@@ -1,7 +1,7 @@
 # Sales tax, bookkeeping and owner controls — the plan in plain English
 
 Written 2026-10-06 for Chris. The detailed build instructions (for the AI that does the building) are in
-`docs/designs/BATCH-G.md`, `BATCH-T.md`, `BATCH-K.md` and `BATCH-O.md`. Nothing here is built yet, and nothing here is
+`docs/archive/designs-completed/BATCH-G.md`, `BATCH-T.md`, `BATCH-K.md` and `BATCH-O.md`. Nothing here is built yet, and nothing here is
 tax advice — your CPA confirms every tax answer before customers are charged.
 
 ## What gets built, in order

@@ -1,36 +1,49 @@
 # STATUS — current work, blockers and next action
 
-Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #315 includes the reviewed ADMIN read-only worksheet correction. T-6C1 (#317) merged as main 7acc04a. T-6C2 (#319) is merged on main `1432585`. T-6C3 (#320) has merged into main. T-6C4 adds RDF filing, credits and conditional billing readiness without enabling live money operations. No customer charging, live payments or fee collection have been activated. No live payments, customer messages or fee charging are activated.
+Updated October 9, 2026 (W-0A PR #342 synchronized with main `540799c`, including workflow PR #344). **Batch T is engineering-complete** (through T-7D #328). **Batch S is
+complete:** S-1A #330, S-1B #331, S-1C #332, S-2 #334 (plus the test-fixture drift fix #333). **COM-L1A** (#335) and
+**COM-L1B** (#336) are merged. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
-**Current engineering:** Batch T closed with T-7C #327 and T-7D #328 merged. Old draft handoff #326 was closed as superseded rather than merged. S-1A (system issue schema, typed writers, privacy screening) was merged in #330 as `19aa141` after green CI and preview. S-1B (bounded source sweep and run lifecycle) merged in #331 as `15b7eaf` with all exact-head CI and Vercel checks green. **S-1C** merged in #332; the focused local/CI drift fix #333 merged as `a9419a6`. **S-2** (private agent key/structured read-only API and manual runbook) is in implementation verification; COM-L is next. The S-1C card records its tests and privacy/role contract. No AI access or external provider activation is authorized.
+**2026-10-09 — Batch W approved (IN-57…IN-60).** Next implementation: **W-0B** (W-0A PR #342 complete pending final merge gate) (`docs/pr-cards/W-0A.md`, `W-0B.md`; no prerequisite, no migration) — they fix purchase use tax that could never be calculated and a dead Today link. Then COM-L resumes at COM-L2; W-1…W-12 come after COM-L15 and before V. Design: `docs/designs/BATCH-W.md`.
 
-T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing and **T-7D** overview/acceptance closeout have merged in #327 and #328. **S-2** is the active implementation card. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+**2026-10-09 — Batch W Amendment A (tax filing on autopilot) added:** W-9 filing autopilot, W-10 use-tax "File now" + filled DR 0252, W-11 live GIS rates (waits on IN-61, may run early once done), W-12 XML return file (waits on IN-62, IN-44). Nothing ever submits or pays on Chris's behalf (D-WA2, IN-63). **D-WA6:** W-2 now also gives every seller-tax answer one dated next step (`nextPurchaseTaxStep`); W-13 receipt reading waits on IN-64; out-of-state seller tax waits on the CPA (IN-65).
+
+**W-0A PR #342 handoff (2026-10-09):** Purchase use-tax confirmation, catch-up and exceptions complete in the PR, incorporating main through workflow PR #344. Exact-head CI/preview must pass on the synchronized commit before merge. **W-0B PR #343** is stacked on W-0A; retarget it to main only after #342 merges. One-command cached checks from #344 are the local validation path. No real filing or payment is activated.
+
+**Recovered unfinished work (2026-10-09, read before starting anything):** found uncommitted in the Vercel Sandbox
+`appliance-desk-s1c-oct8` and committed there (not on GitHub; the sandbox clone originally lacked push credentials; this is resolved as of 2026-10-09):
+- `/vercel/appliance-desk-com-l2`, branch `ai/gpt6/com-l2-foundation`, commit `02e715a` — **COM-L2 started**: schema
+  (+217 lines), migration `20261012130000_com_l2_telecom_foundation`, backup manifest, and
+  `tests/communications-foundation-integration.test.ts`. Unverified. When COM-L2 comes up, run drift checklist A on it
+  against current `main` (rename the migration folder if a later one exists) and finish it instead of starting over.
+- `/vercel/appliance-desk`, branch `recovery/t7d-leftovers-2026-10-09`, commit `691a02f` — edits to the tax overview
+  (`workspace-overview.ts`, `sales-tax/page.tsx`, its test, T-7D card, contract log) left after #328 merged. Compare with
+  `main`; keep only what main lacks, as part of W-3 (taxes in one place) — or discard if superseded.
+  The main sandbox checkout is on that recovery branch: `git checkout main && git pull` before new work.
+- **Test race fixed in #337:** `tests/system-issue-sweep-integration.test.ts` no longer compares global table counts; it
+  records the sweep's own writes (only `systemIssue` allowed). If a similar global-count assertion fails by chance
+  elsewhere, fix it the same way.
+
+**Order after W-0:** COM-L2 … COM-L15 → W-1 … W-12 (W-11/W-12 when their gates clear) → V → F-part-2. Keep owner/legal/CPA and live payment
+gates. [MASTER-ROADMAP](MASTER-ROADMAP.md) is the single handoff; [PLAN](PLAN.md) owns acceptance; implementing sessions
+start at [SESSION-START](SESSION-START.md).
 
 ## Built
 
-A/B/C/R/B2/D/E/E2, F-part-1 and G are merged. T through acquisition UI/frequency/worksheet is merged; T-6C1 added the RDF schema and decision foundation; T-6C2 finalized immutable RDF delivery and sale evidence. Existing operations, financial evidence, renewals, custody, parts, messaging, backups and security must not be rebuilt. E2’s public visual result was rejected as final quality; V remains. Website content controls and owner workspace additions remain designed future work.
+A/B/C/R/B2/D/E/E2, F-part-1, G, T (engineering) and S are merged; COM-L1A and COM-L1B are merged. Existing operations, financial evidence, renewals, custody, parts, messaging, backups and security must not be rebuilt. E2’s public visual result was rejected as final quality; V remains. Website content controls and owner workspace additions remain designed future work.
 
 ## Remaining stages
 
 | Stage | State |
 |---|---|
 | T completion | Engineering complete through #328; owner/CPA/provider/go-live gates remain |
-| S → COM-L → V → F-part-2 | Approved remaining launch engineering and final product proof |
+| S | **Complete** (#330–#334) |
+| W-0A/W-0B → COM-L → W-1…W-8 → V → F-part-2 | Approved remaining launch engineering and final product proof |
 | K → M → O → COM-N | Approved later engineering; K/M after launch unless owner reschedules |
 | BP | Proposed business documents/design; runtime acceptance still required |
 | O32/O29/direct QBO/P/COM-A | Explicitly deferred or owner-selected prerequisites |
-
-## Cleanup and autonomy — October 8
-
-Two open implementation PRs were recovered: #315 and #317. #315’s last permission finding is fixed with persisted-state regression and exact-head review. #317 is synced once onto its final merged prerequisite; its populated upgrade/restore proof now covers configured settings and real RDF rate/record evidence.
-
-Nine existing git worktrees were inventoried, plus the two isolated completion worktrees. Historical dirty work in four worktrees was preserved in local recovery commits under `refs/recovery/20261008/` and named stashes, then left clean. The rental-builder/job fixes shipped in `06d8342c`, customer workspace in `6c3a3a29`, audit in #127 and business templates in #287. Older revenue copies are superseded by receipt-ledger implementation `3514bdc0` and subsequent work. They are recovery history, not another implementation queue. Canonical checkout: `/workspace/scratch/c15372445dd5/appliance-desk`; lower agents start from fresh main here, not an old snapshot.
-
-The instruction to end a turn solely because CI remained was removed. Use the existing two lanes, then a quiet bounded completion wait when finite CI is the only dependency. Provider/session limits still require a real resume mechanism; repo instructions do not restart an ended chat. Publish complete trees atomically, refresh the target base before preflight, and defer only accountable low-risk findings. Tests, exact-head checks, preview and required reviews remain mandatory.
-
-For throughput assessment count **three implementation merges beginning with #317**, excluding #315/#316 and documentation-only #318. Record one brief result here after the next two implementation merges: elapsed time, substantive delivery/defects, red runs, superseded cancellations and base-sync work. No extra report or tracking lane.
 
 ## Gates and limitations
 
@@ -38,75 +51,19 @@ For throughput assessment count **three implementation merges beginning with #31
 - CPA/attorney/GIS, COM setup/consent/retention, V visual approval and final launch inputs remain in OWNER-INPUTS/GO-LIVE-CHECKLIST.
 - Official-page fetchability does not prove a tax answer. Preserve source failures and the manual path.
 - Historical audits remain final-review inputs under F2-D; this cleanup is not a full security certification.
-- This workspace has generated Prisma clients and reusable dependencies. The existing Vercel Sandbox has PostgreSQL 18 binaries outside PATH; on October 8 an isolated 127.0.0.1-only database named appliance_desk_test was migrated/seeded and 27 real-Postgres targeted integration tests passed. GitHub CI uses PostgreSQL 17 and remains the exact-head gate; no Neon or production database was used.
+- See **Environment** below for local database testing.
 
 History and prior acceptance: [retired working snapshot](archive/reset-2026-10-08/README.md). Do not use its old unchecked boxes as the current queue.
 
-## Cash-budget / startup banking design — October 8
+## Environment (update when it changes)
 
-Owner-requested documentation-only K-CASH design and dated primary-source research; proposed K-8 → nine K-CASH
-groups → M, documentation reviewed and owner-approved for planning only. No runtime built or launch/T queue change. Confirmed-cash envelopes,
-protected obligations, annual/recurring costs/targets, bank CSV matching/reconciliation, QBO import evidence and
-contextual screens specified. K opening/export/forecast/posting-revision amendments explicit. IN-54/55 gate
-account-specific activation, not synthetic engineering. No bank/provider/spending/live-money activation.
-
-## Targeted publication checks — October 8
-
-Owner requested immediate throughput improvements without recreating historical
-failures. `npm run preflight` consolidates static checks and selected unit/database/
-browser regressions; shared disposable fixtures now include ADMIN and dummy auth.
-PLAYBOOK Step 4 replaces conflicting browser recipes. Full CI remains mandatory.
-Launcher regression tests exercise failure propagation, selectors and incomplete
-browser evidence; actual build/database/browser proof still comes from the named
-local runs or exact-head CI, not the command plan. No launch gate or feature queue
-changes. Assess the next three implementation merges for completed scope and red
-CI rounds rather than raw PR counts; no extra report/workstream.
-
-Local database testing uses Vercel Sandbox PostgreSQL. The shared launcher was
-verified in the existing sandbox with six tax-overview integration tests passing
-and zero skips; its disposable database was cleaned up. Missing PostgreSQL in a
-scratch checkout is not evidence that the project sandbox is unavailable.
-The final CI run exposed a purchasing browser-test race: its supplier-save URL
-assertion also matched the `/new` form. Require the saved detail URL and named
-supplier heading before navigating away; preserve all persistence/accessibility
-assertions and normal timeouts.
+- **Sandbox GitHub push:** Installed 2026-10-09 by the owner through network header injection, never stored in the repository or sandbox environment; expires 2027-10-09 (one year). Dry-run verified; regular git push now works using HTTP/1.1. Use the fallback runbook if needed.
 
 
-## S-2 implementation evidence — October 9 UTC
+- **Local database testing:** Vercel Sandbox, project `appliance-desk`. Persistent sandbox in use:
+  **`appliance-desk-s1c-oct8`** (most recently active, 2026-10-09; main checkout `/vercel/appliance-desk`, per-card
+  worktrees beside it, PostgreSQL 18). Older persistent `appliance-desk-batch-t1` may have an expired snapshot. Resume,
+  don't recreate — steps in PLAYBOOK 4b. Stop the session when done.
 
-Private OWNER-issued hashed/revocable AI check-up keys; safe typed GET issue API
-and structured-only POST note API; server-side 60/hour/key limiter; manual
-routine instructions without activation. New key model and nullable note
-author reference are covered by disposable PostgreSQL schema/migration,
-backup export/restore sanitization and 26 passing targeted DB/unit tests
-including legacy owner notes, Today role behavior and navigation. Typecheck
-and lint pass locally. New owner/admin keyboard/axe browser spec is registered
-in browser-c; exact-head GitHub CI and preview are mandatory; local browser
-binary unavailable. No payments, provider sends, external scheduled routine,
-production database writes or spending enabled. Owner IN-45 remains deferred.
-
-
-## COM-L1a merged #335 — SMS safety
-
-After Batch S-2 (PR #334) and before later COM features, COM-L1a adds
-independent OFF-by-default SMS master activation, verified-STOP/dispatch
-serialization, and one-shot UNKNOWN send semantics. Existing email retry
-behavior remains unchanged; non-production/unmarked environments cannot
-call Twilio even when credentials are accidentally present. Focused
-real-Postgres messaging, SMS and deployment regressions (54 tests, initial
-local validation) passed. Live SMS remains OFF; no provider configuration
-or customer messaging was enabled. Exact-head CI and preview required.
-
-
-## COM-L1b active — delivery callback integrity
-
-Follows merged #335. A shared row-locked delivery-observation reducer
-preserves strong provider evidence across sender finalization, verified
-Resend/Twilio callbacks and UNKNOWN reconciliation. Verified Twilio status
-receipts received before a matching provider SID remain pending and
-can be replayed safely within the existing billing-reconciliation pass.
-No new provider send or scheduler, and no live activation. Local
-real-PostgreSQL tests exercise early receipt and two-worker replay,
-concurrent delivered/sent callbacks, late sender finalization, and
-invalid-status handling. Exact-head CI and migrations/backup compatibility
-remain mandatory before merge.
+Older entries (October 8 cleanup, K-CASH design note, publication-check note, S-2, COM-L1A and COM-L1B evidence) moved to
+[archive/STATUS-LOG.md](archive/STATUS-LOG.md) on 2026-10-09.

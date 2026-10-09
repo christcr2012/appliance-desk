@@ -391,7 +391,8 @@ async function applyLookup(
       notes.push("No reviewed tax areas were attached to this address.");
     }
 
-    const status: TaxAddressStatus = allReviewed
+    // A business lookup is advisory until an OWNER/ADMIN explicitly confirms it.
+    const status: TaxAddressStatus = allReviewed && target.kind !== "BUSINESS"
       ? "VERIFIED"
       : "NEEDS_REVIEW";
     if (!allReviewed && notes.length === 0) {
@@ -603,6 +604,45 @@ export async function confirmAddressLocation(
       },
     });
   });
+}
+
+/** Manually confirm jurisdictions for the business tax address. */
+export async function confirmBusinessTaxAddress(
+  actorUserId: string, input: { jurisdictionIds: string[] },
+): Promise<void> {
+  const jurisdictionIds = [...new Set(input.jurisdictionIds)];
+  if (jurisdictionIds.length < 1 || jurisdictionIds.length > 25)
+    throw new Error("Choose one to 25 business tax areas.");
+  await prisma.$transaction(async tx => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    const target: Target = { kind: "BUSINESS", address: { line1: "", city: "", zip: "" } };
+    await lockTarget(tx, target);
+    const settings = await tx.businessSettings.findUniqueOrThrow({
+      where: { id: "singleton" }, select: { businessTaxAddress: true },
+    });
+    if (!addressFromJson(settings.businessTaxAddress))
+      throw new Error("Enter a business tax address before confirming tax areas.");
+    const known = await tx.taxJurisdiction.findMany({
+      where: { id: { in: jurisdictionIds } }, select: { id: true },
+    });
+    if (known.length !== jurisdictionIds.length)
+      throw new Error("One or more selected tax areas no longer exist.");
+    const previous = await currentLocation(tx, target);
+    await replaceCurrentLocation(tx, target, {
+      status: "VERIFIED", source: "MANUAL", lookedUpAt: new Date(),
+      confirmedByUserId: actorUserId, reviewNote: null, jurisdictionIds,
+    });
+    await tx.auditLog.create({
+      data: {
+        userId: actorUserId, action: "tax.business_address.confirm",
+        entityType: "BusinessSettings", entityId: "singleton",
+        oldValue: { jurisdictionIds: previous?.jurisdictions.map(j => j.jurisdictionId) ?? [] },
+        newValue: { jurisdictionIds },
+      },
+    });
+  });
+  const { recalculatePendingPurchaseTax } = await import("./purchase-tax-catch-up");
+  await recalculatePendingPurchaseTax(new Date(), 200);
 }
 
 export class TaxNotReadyError extends Error {

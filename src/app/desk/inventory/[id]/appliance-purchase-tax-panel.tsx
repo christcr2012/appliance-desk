@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { PendingPurchaseTaxExplanation } from "@/domains/tax/purchase-tax-explain";
 import { saveAppliancePurchaseTaxAction } from "./tax-actions";
 
 type Choice = "SELLER_CHARGED" | "NONE_CHARGED" | "LESSOR_PERMISSION" | "LATER";
@@ -25,6 +27,7 @@ export function AppliancePurchaseTaxPanel({
     acquisitionReceiptPhotoId: string | null;
     acquisitionTaxRecordedAt: string | null;
     hasPurchaseContext: boolean;
+    pendingTax: PendingPurchaseTaxExplanation | null;
     photos: { id: string; description: string }[];
   };
 }) {
@@ -44,6 +47,17 @@ export function AppliancePurchaseTaxPanel({
     <section className="rounded-lg border p-4 space-y-4" aria-labelledby="purchase-tax-heading">
       <h2 id="purchase-tax-heading" className="text-lg font-semibold">Tax when this appliance was purchased</h2>
       <p className="text-sm">Current record: <strong>{appliance.acquisitionTaxStatus.replaceAll("_", " ").toLowerCase()}</strong>.</p>
+      {appliance.pendingTax?.reason && <p role="status" className="text-sm">
+        {({
+          ANSWER_LATER: "This appliance still needs a purchase-tax answer.",
+          PURCHASE_DATE_OR_COST_MISSING: "Purchase date or cost is missing.",
+          ELECTION_UNDECIDED: "The business purchase-tax election is not chosen yet.",
+          BUSINESS_ADDRESS_UNVERIFIED: "Your business address tax areas need confirmation.",
+          RATES_UNREVIEWED: "Business tax-area rates still need review.",
+        } as const)[appliance.pendingTax.reason]}
+        {" "}{appliance.pendingTax.fixHref && <Link className="font-medium underline"
+          href={appliance.pendingTax.fixHref}>{appliance.pendingTax.fixLabel}</Link>}
+      </p>}
       {!appliance.hasPurchaseContext && (
         <p className="text-sm text-ink-soft" role="note">
           Purchase date or cost is missing. You can record the seller&apos;s answer now,

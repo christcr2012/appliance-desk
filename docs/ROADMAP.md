@@ -599,7 +599,7 @@ was made in a private Claude Design canvas ("Appliance Desk Redesign Mockup"): t
 "Today" screen. **Chris approved the owner desk direction** (2026-10-04): a dark evergreen sidebar with a lime-green "current
 page" pill, an ivory working area, a gradient headline stat card beside plain white stat cards, a visit list with a status
 word and icon on every row, and a "Needs your attention" panel. Public home page decided the same day (IN-32): ivory in
-light mode, evergreen in dark mode. **Now designed as Batch E2 (`docs/designs/BATCH-E2.md`).**
+light mode, evergreen in dark mode. **Now designed as Batch E2 (`docs/archive/designs-completed/BATCH-E2.md`).**
 
 What the real work will need (so it is not forgotten):
 - It is its own batch. Per `AGENTS.md` it needs an approved design (`docs/designs/BATCH-<X>.md`) written first, and it should
@@ -662,7 +662,8 @@ controls → Batch O. Summary: `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Still onl
 
 - **SUTS Excel upload file:** owner uploads one blank template from SUTS, maps each column once, the app fills a copy
   each period. Worth it when the return regularly has more than about 8 rows (`BATCH-T.md` 11.7).
-- **Bulk XML filing file:** SUTS offers Bulk XML to "bulk filers"; whether Chris's account may use it is an open check (BATCH-T WU-TA0 / IN-43). If yes, generating the XML from the return packet replaces typing (its own design amendment).
+- **(Now designed as Batch W PR W-12, 2026-10-09, gate IN-62)** **Bulk XML filing file:** SUTS offers Bulk XML to "bulk filers"; generating the XML from the return packet replaces typing.
+- **Robot (RPA) submission of returns on Colorado's sites:** not built (Batch W D-WA2, IN-63). Revisit only if Colorado publishes an official filing API.
 - **SMS tax reminders:** after live SMS is approved.
 - **(Now designed as Batch M PR M-3, 2026-10-07)** **Card payment of local invoices in the customer portal** (prepaid rent invoices and standalone delivery-fee invoices
   are manual-payment-only in Batch T, D-T14) — would need a Checkout session or Stripe one-off invoice per local invoice

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "b2a06c2",
-  "updated": "2026-10-08",
+  "updated": "2026-10-09",
   "process": "Just-in-time cards from approved contracts; each card includes drift verification and a successor handoff.",
   "cards": [
     {
@@ -2763,7 +2763,7 @@
       "title": "Typed website content registry and historical compatibility",
       "batch": "V",
       "dependencies": [
-        "COM-L15"
+        "W-10"
       ],
       "status": "APPROVED",
       "migration": "website_revision_content_version",
@@ -2904,6 +2904,337 @@
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/O-7.md",
       "risk": "schema"
+    },
+    {
+      "id": "W-0A",
+      "title": "Purchase use tax can be calculated, recalculated and filed",
+      "batch": "W",
+      "dependencies": [],
+      "status": "MERGED",
+      "migration": "none",
+      "budget": 380,
+      "units": [
+        "W-0A"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/locations.ts",
+        "src/domains/tax/acquisition.ts",
+        "src/domains/tax/use-tax.ts",
+        "src/domains/tax/acquisition-attention.ts"
+      ],
+      "tests": [
+        "tests/business-tax-address-confirm-integration.test.ts",
+        "tests/purchase-tax-recalculate-integration.test.ts",
+        "tests/use-tax-unlinked-account-integration.test.ts",
+        "tests/purchase-tax-explain.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "card": "docs/pr-cards/W-0A.md"
+    },
+    {
+      "id": "W-0B",
+      "title": "No dead Today links; delivery-fee records page",
+      "batch": "W",
+      "dependencies": [],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "W-0B"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/acquisition-attention.ts",
+        "src/domains/tax/rdf-records.ts",
+        "src/domains/exceptions/rules.ts"
+      ],
+      "tests": [
+        "tests/today-href-routes.test.ts",
+        "tests/rdf-pending-page-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "card": "docs/pr-cards/W-0B.md"
+    },
+    {
+      "id": "W-1",
+      "title": "To do list: due date, amount, one button, snooze",
+      "batch": "W",
+      "dependencies": [
+        "COM-L15"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-1"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/exceptions/rules.ts",
+        "src/app/desk/today/page.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-1.md"
+    },
+    {
+      "id": "W-2",
+      "title": "Intake and purchase orders say what is owed, to whom, by when",
+      "batch": "W",
+      "dependencies": [
+        "W-1"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-2"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/app/desk/inventory/new-appliance-form.tsx",
+        "src/domains/tax/acquisition.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-2.md"
+    },
+    {
+      "id": "W-3",
+      "title": "Taxes in one place, in plain words",
+      "batch": "W",
+      "dependencies": [
+        "W-2"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-3"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/app/desk/sales-tax/layout.tsx",
+        "src/app/desk/tax/use-tax-worksheets/page.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-3.md"
+    },
+    {
+      "id": "W-4",
+      "title": "Rental turning points create draft visits and To do items",
+      "batch": "W",
+      "dependencies": [
+        "W-3"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-4"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/agreements/index.ts",
+        "src/domains/agreements/progress.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-4.md"
+    },
+    {
+      "id": "W-5",
+      "title": "Failed, held and deposit payments on To do with buttons",
+      "batch": "W",
+      "dependencies": [
+        "W-4"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-5"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/exceptions/rules.ts",
+        "src/app/desk/billing/page.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-5.md"
+    },
+    {
+      "id": "W-6",
+      "title": "Leads and quotes create follow-ups",
+      "batch": "W",
+      "dependencies": [
+        "W-5"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-6"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/leads/index.ts",
+        "src/app/desk/leads/[id]/lead-actions-panel.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-6.md"
+    },
+    {
+      "id": "W-7",
+      "title": "First-time setup checklist",
+      "batch": "W",
+      "dependencies": [
+        "W-6"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-7"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/app/desk/today/page.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-7.md"
+    },
+    {
+      "id": "W-8",
+      "title": "Simpler menu, Schedule screen, plain-words check",
+      "batch": "W",
+      "dependencies": [
+        "W-7"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-8"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/lib/desk-navigation.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-8.md"
+    },
+    {
+      "id": "W-9",
+      "title": "Tax filing autopilot: every period becomes a dated To do; confirmation capture; nothing left unfiled",
+      "batch": "W",
+      "dependencies": [
+        "W-8"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-9"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/filing-reminders.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-9.md"
+    },
+    {
+      "id": "W-10",
+      "title": "Use tax File now panel for Revenue Online and filled official DR 0252",
+      "batch": "W",
+      "dependencies": [
+        "W-9"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "W-10"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/dr0252-worksheet.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-10.md"
+    },
+    {
+      "id": "W-11",
+      "title": "Live Colorado GIS tax rates for every address (gate IN-61)",
+      "batch": "W",
+      "dependencies": [
+        "W-0A"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "W-11"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/colorado-gis.ts",
+        "docs/runbooks/colorado-gis-api.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-11.md"
+    },
+    {
+      "id": "W-12",
+      "title": "Sales tax return XML upload file (gates IN-62, IN-44)",
+      "batch": "W",
+      "dependencies": [
+        "W-10"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "W-12"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/filing-packet.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-12.md"
+    },
+    {
+      "id": "W-13",
+      "title": "Receipt photo reading pre-fills price and seller tax (gate IN-64)",
+      "batch": "W",
+      "dependencies": [
+        "W-2"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "W-13"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/acquisition.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-13.md"
     }
   ],
   "enhancements": [

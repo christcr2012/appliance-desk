@@ -23,6 +23,11 @@ current `docs/DECISIONS.md`, the working file wins.
 | `prompts/DESIGN-BATCH-B-RENEWAL-LIFECYCLE.md`, `prompts/DESIGN-BATCH-E2-REDESIGN.md` | Prompts asking a stronger model for the renewal-lifecycle design and the E2 design. Both answered 2026-10-05 (`docs/designs/BATCH-B2.md`, `BATCH-E2.md`). | History only. |
 | `plans-overhaul/BASELINE.md`, `WORKSPACE-IMPLEMENTATION.md`, `ROLE-AUDIT.md` | O00 baseline reconciliation, workspace implementation notes, role audit. | Evidence behind early decisions. |
 
+| `reset-2026-10-09/AGENTS.md`, `PLAYBOOK.md`, `MASTER-ROADMAP.md` | Full rules, procedure and roadmap before the 2026-10-09 reset (510, 574 and 290 lines). The current files keep every rule in about 40% of the length. | The original wording or date of a specific rule. |
+| `designs-completed/` | Designs for finished batches B, B2, C (with its update and literal spec), D, E (with its drift note), E2, G and Remediation R (with amendment and recovery), retired 2026-10-09. Code comments citing `docs/designs/BATCH-B2.md` or `BATCH-D.md` mean these files. | The reasoning behind a shipped rule. Behavior itself: read the code and tests. |
+| `prompts/` | Design and review prompts that were answered (Batch C literal specs, IN-24 pickup billing, Remediation R implementation, renewal-notice review), retired 2026-10-09. | History only. |
+| `reset-2026-10-08/` | Snapshots from the 2026-10-08 reset (STATUS, PLAN, MASTER-ROADMAP, START-HERE). | Earlier wording of those files. |
+
 Files that are still current stayed where they were:
 `docs/plans/overhaul/DESIGN.md` (screen specs), `PREVIEW-SETUP.md` and
 `PREVIEW-ISOLATION-PROOF.md` (preview isolation evidence),

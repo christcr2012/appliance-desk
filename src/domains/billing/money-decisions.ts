@@ -3,7 +3,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { applyCreditToInvoice, lockCustomerLedger } from "./ledger";
 
 /**
- * Owner/admin decision: spend a customer's account credit on one of their open invoices (docs/designs/BATCH-D.md D5).
+ * Owner/admin decision: spend a customer's account credit on one of their open invoices (docs/archive/designs-completed/BATCH-D.md D5).
  * The actor is checked again inside the transaction, the customer's ledger is locked first (lock order: customer
  * ledger, then the credit and invoice rows inside `applyCreditToInvoice`), and an audit row is written.
  * No money moves outside the database: this only changes what the customer owes.

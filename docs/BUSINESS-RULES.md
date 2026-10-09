@@ -1470,3 +1470,17 @@ overdue returns, amendment decisions, returns due, blocked work, setup
 gaps and informational attention; every action opens an existing page.
 No use-tax acquisition marked UNKNOWN becomes automatically exempt.
 Business/legal gates and owner inputs remain authoritative.
+
+### W-0A purchase-use-tax completion (2026-10-09, PR #338)
+
+The private business tax address must have OWNER/ADMIN confirmation of its
+jurisdictions. A GIS lookup alone is not approval. A changed address resets
+the location to Needs review. The same saved NONE_CHARGED or SELLER_CHARGED
+answer on an UNKNOWN appliance now retries classification instead of accepting
+unknown as final; a bounded daily catch-up also retries waiting purchases.
+Neither process invents a rate, election, purchase amount or missing evidence.
+Unlinked DUE use-tax amounts remain recorded and create a high-priority Today
+action to connect their jurisdiction to a use-tax filing account. When an
+account is connected, previously unassigned DUE rows are attached only to an
+OPEN matching return; existing filed evidence is not rewritten. All new
+settings, locations and use-tax assignments retain role and transaction guards.

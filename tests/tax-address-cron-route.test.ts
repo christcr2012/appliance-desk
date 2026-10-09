@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     reviewRequired: 0,
     ignored: 0,
   })),
+  catchUp: vi.fn(async () => ({ checked: 0, calculated: 0, stillPending: 0 })),
   runAutomation: vi.fn(async (input: { ruleKey: string; work: () => Promise<unknown> }) => {
     try {
       await input.work();
@@ -32,6 +33,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/domains/automation/runs", () => ({ runAutomation: mocks.runAutomation }));
+vi.mock("@/domains/tax/purchase-tax-catch-up", () => ({ recalculatePendingPurchaseTax: mocks.catchUp }));
 vi.mock("@/domains/tax/address-recheck", () => ({
   recheckCurrentTaxAddresses: mocks.recheck,
 }));
@@ -50,6 +52,7 @@ describe("Batch T tax-address re-check cron route", () => {
   beforeEach(() => {
     process.env.CRON_SECRET = "tax-address-secret";
     mocks.recheck.mockClear();
+    mocks.catchUp.mockClear();
     mocks.runWatch.mockClear();
     mocks.runRates.mockClear();
     mocks.runRates.mockResolvedValue({
@@ -91,7 +94,8 @@ describe("Batch T tax-address re-check cron route", () => {
     expect(mocks.recheck).toHaveBeenCalledTimes(1);
     expect(mocks.runWatch).toHaveBeenCalledTimes(1);
     expect(mocks.runRates).toHaveBeenCalledTimes(1);
-    expect(mocks.runAutomation).toHaveBeenCalledTimes(2);
+    expect(mocks.runAutomation).toHaveBeenCalledTimes(3);
+    expect(mocks.catchUp).toHaveBeenCalledTimes(1);
     expect(mocks.runAutomation).toHaveBeenCalledWith(
       expect.objectContaining({ ruleKey: "tax-address-recheck" }),
     );
@@ -103,6 +107,7 @@ describe("Batch T tax-address re-check cron route", () => {
         outcome: "RAN",
         runId: "run-tax-address-recheck",
       },
+      purchaseTaxCatchUp: { outcome: "RAN", runId: "run-tax-address-recheck:purchase-tax-catch-up" },
       taxRateWatch: {
         outcome: "RAN",
         runId: "run-tax-rate-watch",
@@ -125,6 +130,7 @@ describe("Batch T tax-address re-check cron route", () => {
         outcome: "RAN",
         runId: "run-tax-address-recheck",
       },
+      purchaseTaxCatchUp: { outcome: "RAN", runId: "run-tax-address-recheck:purchase-tax-catch-up" },
       taxRateWatch: {
         outcome: "FAILED",
         runId: "run-tax-rate-watch",
@@ -148,6 +154,7 @@ describe("Batch T tax-address re-check cron route", () => {
         outcome: "RAN",
         runId: "run-tax-address-recheck",
       },
+      purchaseTaxCatchUp: { outcome: "RAN", runId: "run-tax-address-recheck:purchase-tax-catch-up" },
       taxRateWatch: {
         outcome: "FAILED",
         runId: "run-tax-rate-watch",

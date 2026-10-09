@@ -119,6 +119,21 @@ jobs:
       - name: Project secret and private-identifier scan
         run: node scripts/check-secrets.mjs
 
+      - name: Sandbox transfer checker tests (used by sandbox-publish.yml)
+        run: node --test scripts/sandbox-transfer.test.mjs
+
+      - name: Docs describe the merged state (app changes update STATUS and their card)
+        # Owner rule 2026-10-09: a PR updates the docs as if it were already merged, so main is accurate
+        # the moment it lands. Escape hatch: "Docs-update: not needed — <reason>" in the PR description
+        # (editing the description does not re-run CI; re-run this job after adding it).
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node --test scripts/check-docs-updated.test.mjs
+          node scripts/check-docs-updated.mjs "$BASE_SHA" "$HEAD_SHA"
+
       - name: Install gitleaks (pinned version, checksum verified)
         run: |
           set -euo pipefail

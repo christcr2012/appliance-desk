@@ -80,7 +80,7 @@ describe.skipIf(!enabled)("T-7D tax workspace overview (isolated PostgreSQL)", (
       .toBe("/desk/sales-tax/returns/" + f.first + "/amend");
     expect(page.attention.find(a => a.id === "period:" + f.first)?.href)
       .toBe("/desk/sales-tax/returns/" + f.first);
-    const allowed = /^\/(desk\/sales-tax\/(setup|taxability|returns(?:\/[A-Za-z0-9_-]+(?:\/amend)?)?|areas#sources)|desk\/inventory\?taxStatus=UNKNOWN)$/;
+    const allowed = /^\/(desk\/sales-tax\/(setup(?:#accounts)?|taxability|returns(?:\/[A-Za-z0-9_-]+(?:\/amend)?)?|areas#sources)|desk\/inventory\?taxStatus=UNKNOWN)$/;
     for (const item of page.attention) {
       expect(item.href).toMatch(allowed);
       expect(item.detail.length).toBeGreaterThan(0);

@@ -1,4 +1,4 @@
-// Real-Postgres proof that the Reports numbers equal their source rows (docs/designs/BATCH-D.md D3). CI / sandbox only.
+// Real-Postgres proof that the Reports numbers equal their source rows (docs/archive/designs-completed/BATCH-D.md D3). CI / sandbox only.
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";

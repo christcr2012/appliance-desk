@@ -1,7 +1,7 @@
 import { businessDateKey, businessDateFromKey } from "@/lib/business-date";
 
 /**
- * The public-profile extras (docs/designs/BATCH-D.md D2): opening hours, holiday closures, social links, logo.
+ * The public-profile extras (docs/archive/designs-completed/BATCH-D.md D2): opening hours, holiday closures, social links, logo.
  * Pure logic (no database). The stored shapes:
  *   hours:            { mon: { closed: true } | { open: "09:00", close: "17:00" }, ... }  (a day that is not listed is not shown)
  *   holidayClosures:  [{ date: "YYYY-MM-DD", label: "Christmas Day" }]                    (at most 30)

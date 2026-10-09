@@ -320,7 +320,7 @@ How each rule works:
      Chris's rule (2026-10-03): delivered-late and swapped-same-type items
      stay on the subscription; a permanently cancelled item must come off it
      from the next period. That is a Batch C work unit
-     (`docs/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`, Part 2) and a
+     (`docs/archive/prompts/DESIGN-BATCH-C-LITERAL-SPECS.md`, Part 2) and a
      `docs/ROADMAP.md` item.
 3. **Pickup day not billed** (default on). The last chargeable day of any
    rental is the day before the pickup/return date, for normal end-of-

@@ -1,6 +1,6 @@
 # Remediation Batch R — acceptance ledger (2026-10-04)
 
-Maps each finding R01–R17 in `docs/designs/REMEDIATION-BATCH-R-2026-10-04.md` to the merged pull
+Maps each finding R01–R17 in `docs/archive/designs-completed/REMEDIATION-BATCH-R-2026-10-04.md` to the merged pull
 request and the tests that prove it. It does not rewrite the two original review reports; their
 findings stay as written and this file is their disposition.
 

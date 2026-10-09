@@ -610,3 +610,21 @@ tax policy. Appliance Desk does not file government returns or send tax
 payments. Confirm all legal/CPA settings and real production evidence
 separately before activating billing.
 
+
+### Purchase tax on appliances (W-0A)
+
+Open **Tax → Setup → Your business address (for tax on things you buy)**.
+Enter the private address, save the settings, choose **Look up tax areas**, and
+review and confirm the tax areas. A lookup by itself does not approve the result.
+After changing the address, look up and confirm again. You must also record
+your short-term rental purchase-tax election and review each applicable area
+rate before the system can calculate use tax on appliances you purchased.
+
+In **Inventory**, open each appliance's **Tax when this appliance was purchased**
+panel. When the purchase-tax status is unknown, the panel explains what's
+missing and links to the relevant fix. The system retries saved answers after
+setup corrections and in its daily catch-up without assuming any tax exemption.
+If Today says **Use tax owed with nowhere to file it**, open **Tax → Setup →
+Filing accounts** and link the area to a use-tax account. An open return for
+the applicable period can then include the unpaid tax. This is preparation,
+not government filing or a payment authorization.

@@ -7,7 +7,7 @@ import { composeTermsChangeNotice } from "@/domains/notices/terms-change";
 import { lockAgreementForActor, type TermActor } from "./actor";
 
 /**
- * Month-to-month rentals (docs/designs/BATCH-B2.md B2-9, B2-10, B2-11).
+ * Month-to-month rentals (docs/archive/designs-completed/BATCH-B2.md B2-9, B2-10, B2-11).
  *
  * A month-to-month rental can be ended online by the customer at any time with no fee. It ends on the first billing
  * anniversary on or after (today + the notice days of the terms that apply to it). The ending reuses the same four

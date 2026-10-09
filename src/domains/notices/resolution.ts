@@ -18,7 +18,7 @@ import { createTaskInTx } from "@/domains/tasks";
 import { noticeWindowState } from "./state";
 
 /**
- * "Fix a missed reminder" (docs/designs/BATCH-B2.md B2-18). One screen, every option. Each option is OWNER/ADMIN,
+ * "Fix a missed reminder" (docs/archive/designs-completed/BATCH-B2.md B2-18). One screen, every option. Each option is OWNER/ADMIN,
  * re-checked inside its transaction, audited, and refused when the notice changed since the screen loaded.
  */
 

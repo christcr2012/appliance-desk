@@ -1,5 +1,5 @@
 /**
- * The website text the owner may change (docs/designs/BATCH-D.md D1). This list is the whitelist: a key that is not
+ * The website text the owner may change (docs/archive/designs-completed/BATCH-D.md D1). This list is the whitelist: a key that is not
  * here can never be saved or shown. Every default is the exact text the public page showed before this list
  * existed, so publishing nothing changes nothing. Prices, phone, email, address and service area are NOT fields:
  * they come from the price list and Settings.

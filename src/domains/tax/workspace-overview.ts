@@ -75,7 +75,7 @@ export async function getTaxWorkspaceOverview(
       periodStart: { gte: account.firstPeriodStart! },
     }));
     const [accounts, periods, amendments, sourceChanges, unknown, settings, taxRules,
-      liveAreas, activeAccountCount, addressPending] =
+      liveAreas, activeAccountCount, addressPending, businessAreas] =
       await Promise.all([
         tx.taxFilingAccount.findMany({
           where: { active: true },
@@ -126,6 +126,13 @@ export async function getTaxWorkspaceOverview(
           isCurrent: true, serviceAddressId: { not: null },
           status: { in: ["FAILED", "NEEDS_REVIEW"] },
         } }),
+        tx.addressTaxLocation.findFirst({
+          where: { forBusinessLocation: true, isCurrent: true },
+          include: { jurisdictions: { include: { jurisdiction: {
+            select: { useTaxFilingAccountId: true },
+          } } } },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        }),
       ]);
     const taxabilityComplete = hasCompleteTaxabilityMatrix(taxRules, liveAreas);
     const accountComplete = accounts.some(account =>
@@ -150,6 +157,12 @@ export async function getTaxWorkspaceOverview(
         detail: accountComplete ? "Configured sales-tax account recorded; verify each additional SUTS area." :
           "Enter the official sales-tax account number, portal, reporting basis and first period in Setup.",
         href: "/desk/sales-tax/setup" },
+      { key: "use-accounts", title: "Use-tax filing accounts linked",
+        complete: Boolean(businessAreas?.status === "VERIFIED" &&
+          businessAreas.jurisdictions.length &&
+          businessAreas.jurisdictions.every(area => area.jurisdiction.useTaxFilingAccountId)),
+        detail: "Link every business tax area to a use-tax filing account, so purchase tax has a return and due date.",
+        href: "/desk/sales-tax/setup#accounts" },
       { key: "periods", title: "Filing calendar", complete: allStartsRecorded,
         detail: "Set a first filing date for every active account before relying on reminders.",
         href: "/desk/sales-tax/setup" },

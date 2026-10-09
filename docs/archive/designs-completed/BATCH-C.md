@@ -1,3 +1,9 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-09.
+> Nothing in this file is a current instruction; any "current", "next", "approved" or
+> "supersedes" language below is historical. The batch is built: its behavior is in the
+> code and tests. The working documents are `AGENTS.md`, `docs/SESSION-START.md`,
+> `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # Design — Batch C: Rental-to-service operations, custody, inventory & purchasing
 
 Status: **NOT APPROVED — do not implement from this document yet.** The implementation-ready text is
