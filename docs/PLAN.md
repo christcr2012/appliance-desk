@@ -188,6 +188,8 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 - [ ] W-0B: no Today item links to a page that doesn't exist (test); delivery-fee records waiting on a decision or amount have a page.
 - [ ] Every To do item shows what, why, amount (if any), due date and one button; items sort by due date; snooze with reason.
 - [ ] Saving an appliance (or receiving parts) with no seller tax shows what is owed, to whom and by when, and adds it to To do; "I'll check later" creates a dated To do.
+- [ ] W-2 (D-WA6): `nextPurchaseTaxStep` gives every answer exactly one next step (full tax → done; partial or none → use tax on the right return with its legal due date; tax-free for rent → rent taxed; another state's tax → CPA To do until IN-65; later → To do in 3 days that turns high 7 days before the covering return closes); intake card, appliance page, PO receiving and To do all show the same step (tests per row); due dates come from the filing calendar, never hard-coded.
+- [ ] W-13 (only if IN-64 is yes): a receipt photo pre-fills price and seller tax marked "check it"; nothing saves without Chris confirming.
 - [ ] Taxes live in one menu entry; use tax is inside it; the return page starts with "File and pay $X on <site> by <date>"; money is typed in dollars.
 - [ ] Signing creates a draft delivery visit + To do; a rental ending in 30 days asks renew / month-to-month / pickup; a decided ending creates a draft pickup visit; drafts never send or charge anything.
 - [ ] Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.

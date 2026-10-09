@@ -697,3 +697,11 @@ use tax (W-10), the live GIS client once the key and written API contract exist 
 once Colorado confirms an in-house filer may use it (W-12, IN-62, IN-44). Robot submission is not built (D-WA2): it would
 store logins, sign and pay in Chris's name, and break silently on site changes; IN-63 records Chris's confirmation.
 Sources: tax.colorado.gov/GIS-API, tax.colorado.gov/software-developers-sales-tax, DR 0800, DR 0252 instructions.
+
+## 2026-10-09 — Every purchase-tax answer gets one next step (Batch W D-WA6/D-WA7)
+
+Chris: the system must realize whether he paid tax to the seller and choose the next step, following filing deadlines.
+The answer model, partial-tax difference and filing calendar already exist; W-2 adds one shared `nextPurchaseTaxStep`
+so every screen shows the same dated step, and unanswered purchases escalate before the covering return closes.
+Out-of-state seller tax is not calculated until the CPA answers IN-65 (saved as `LATER` + note, no schema change).
+Receipt reading (W-13) is optional, gated on IN-64 because it sends receipts to an AI service.

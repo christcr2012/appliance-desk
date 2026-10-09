@@ -3214,6 +3214,27 @@
       "tests": [],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/W-12.md"
+    },
+    {
+      "id": "W-13",
+      "title": "Receipt photo reading pre-fills price and seller tax (gate IN-64)",
+      "batch": "W",
+      "dependencies": [
+        "W-2"
+      ],
+      "status": "APPROVED",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "W-13"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W.md",
+        "src/domains/tax/acquisition.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-13.md"
     }
   ],
   "enhancements": [
