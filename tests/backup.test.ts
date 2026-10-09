@@ -17,7 +17,7 @@ vi.mock("@vercel/blob", () => ({
 // Derive fixtures independently from the schema, not the export's table list.
 const SCHEMA_MODELS = [...readFileSync("prisma/schema.prisma", "utf8").matchAll(/^model (\w+) \{/gm)]
   .map((match) => match[1]!);
-const EXCLUDED_MODELS = ["Session", "Account", "Verification", "TwoFactor"];
+const EXCLUDED_MODELS = ["Session", "Account", "Verification", "TwoFactor", "OpsAgentKey"];
 const BACKUP_TABLES = SCHEMA_MODELS.filter((model) => !EXCLUDED_MODELS.includes(model))
   .map((model) => model[0]!.toLowerCase() + model.slice(1));
 const ALL_TABLES = SCHEMA_MODELS.map((model) => model[0]!.toLowerCase() + model.slice(1));
@@ -105,7 +105,11 @@ describe("exportDatabaseBackup", () => {
     expect(parsed.tables.customer).toEqual([{ id: "cust-1" }]);
     expect(Object.keys(parsed.tables).sort()).toEqual([...BACKUP_TABLES].sort());
     for (const table of BACKUP_TABLES) {
-      expect(parsed.tables[table]).toEqual([{ id: table === "customer" ? "cust-1" : `${table}-1` }]);
+      const row = { id: table === "customer" ? "cust-1" : `${table}-1` };
+      // Agent credential hashes never appear in exports, and restored notes
+      // must not retain foreign keys to intentionally excluded private keys.
+      expect(parsed.tables[table]).toEqual([table === "systemIssueNote"
+        ? { ...row, authorKeyId: null } : row]);
       expect(result.tableCounts?.[table]).toBe(1);
     }
     expect(transactionMock.mock.calls[0]?.[1]).toEqual({ isolationLevel: "RepeatableRead" });

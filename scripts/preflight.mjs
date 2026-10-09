@@ -29,8 +29,8 @@ export function adjacentRegressions(changed) {
       ['tests/today-role-access.test.ts', 'tests/desk-navigation.test.ts']],
     [/^src\/(?:lib\/desk-navigation|components\/desk\/.*navigation)/,
       ['tests/desk-navigation.test.ts']],
-    [/^src\/domains\/backup\//, ['tests/backup-restore-integration.test.ts']],
-    [/^prisma\/schema\.prisma$/, ['tests/schema-health.test.ts']],
+    [/^src\/domains\/backup\//, ['tests/backup-restore-integration.test.ts', 'tests/backup.test.ts']],
+    [/^prisma\/schema\.prisma$/, ['tests/schema-health.test.ts', 'tests/backup.test.ts']],
     [/^src\/app\/.*(?:page|layout)\.[jt]sx?$/, ['tests/accessibility-route-inventory.test.ts']],
   ];
   return [...new Set(paths.flatMap(([re, specs]) =>

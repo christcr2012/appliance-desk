@@ -58,5 +58,6 @@ test('test/CI drift: changed diagnostics require existing Today and navigation r
 test('test/CI drift: route, schema and backup changes retain affected legacy tests', () => {
   assert.ok(adjacentRegressions(['src/app/desk/test/page.tsx']).includes('tests/accessibility-route-inventory.test.ts'));
   assert.ok(adjacentRegressions(['src/domains/backup/manifest.ts']).includes('tests/backup-restore-integration.test.ts'));
+  assert.ok(adjacentRegressions(['prisma/schema.prisma']).includes('tests/backup.test.ts'));
   assert.deepEqual(adjacentRegressions(['docs/PLAN.md']), []);
 });
