@@ -33,9 +33,17 @@ begins the next slice … one for each batch … but also from PR to PR").
 
 6. Inherited review findings assigned to this card are fixed first, each with its test.
 
-## B. End of every PR — reconcile before the next slice (part of the same PR, or immediately after merge)
+## B. End of every PR — reconcile before the next slice (**inside the same PR, written as if it had already merged**)
 
-1. **The card tells the truth.** Its status becomes `MERGED (#n, <sha>)`; any part that was split off or deferred is
+Do every step below in the PR itself, before its final push, describing the world *after* the merge ("W-0A merged
+(#353)"). Until the PR merges, `main` is untouched, so nothing is wrong early; the moment it merges, the docs are
+already correct. (A merge SHA doesn't exist yet: cite the PR number; git history has the SHA.) If the PR is closed
+unmerged, its doc edits vanish with it. CI enforces the minimum (`scripts/check-docs-updated.mjs`, in the secret-scan
+job): a PR that changes `src/` or `prisma/` must also change `docs/STATUS.md` and its card or `work-index.json`, and
+`docs/DATABASE.md` when the schema changes — unless the PR description says "Docs-update: not needed — <reason>".
+
+
+1. **The card tells the truth.** Its status becomes `MERGED (#n)`; any part that was split off or deferred is
    named with its new owner card.
 2. **Successor card updated.** If the next card exists: set its "Baseline inspected" to this merge SHA, fix paths and
    signatures this PR changed, and list any low-risk review findings carried to it (finding, why safe, proving test).
@@ -47,7 +55,7 @@ begins the next slice … one for each batch … but also from PR to PR").
 4. **Living docs updated for shipped behavior:** `docs/BUSINESS-RULES.md` (a rule changed), `docs/DATABASE.md` (schema),
    `docs/OWNER-GUIDE.md` (something Chris now does differently), `docs/GO-LIVE-CHECKLIST.md` (a new switch or key),
    `docs/OWNER-INPUTS.md` (new question or applied answer).
-5. **Queue updated:** `docs/STATUS.md` "Next" names the next card and current `main`; `docs/pr-cards/work-index.json`
+5. **Queue updated:** `docs/STATUS.md` says this PR merged and "Next" names the next card; `docs/pr-cards/work-index.json`
    status/readiness updated; roadmap row updated. Delete the card's resume note.
 6. **If a predecessor changes after its successor branched:** freeze the successor, merge the predecessor, sync the
    successor once onto final `main`, and redo step A only for the contracts that changed.

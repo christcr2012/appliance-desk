@@ -677,3 +677,13 @@ Chris cancelled the GitHub plan that provided Copilot code review. Copilot is re
 PLAYBOOK): never request, wait for or require it. Codex remains the automated reviewer; when Codex is out of quota the
 existing waiver applies (inspect the diff yourself, write "automated review unavailable — waived").
 
+## 2026-10-09 — Every PR updates the docs as if it had already merged
+
+Chris: documentation drifts because the implementing agent updates docs after (or never), not in the PR whose change
+they describe. Decided: checklist B moves inside the PR and is written for the post-merge world (card `MERGED (#n)`,
+STATUS "merged / next", living docs). Unmerged, `main` is untouched; merged, the docs are already right. CI enforces the
+minimum in the always-required secret-scan job (`scripts/check-docs-updated.mjs`, with tests): app changes (`src/`,
+`prisma/`) require `docs/STATUS.md` plus a card or `work-index.json` change, and `docs/DATABASE.md` for schema changes;
+a reasoned "Docs-update: not needed — …" line in the PR description is the escape hatch. Cost accepted: concurrent PRs
+may conflict on STATUS (kept short; resolve by keeping both facts).
+

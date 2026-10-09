@@ -147,9 +147,11 @@ workaround only when needed; never commit generated clients or engines.
 6. Put "CI runs used: N (red: R, cancelled: C)" in the PR description.
 7. The `ci` check is the single gate and must be green **at the exact head** you merge.
 
-## Step 6 — Docs, then open the PR
+## Step 6 — Docs as if merged, then open the PR
 
-Update `docs/STATUS.md` (branch, PR, head), `docs/DECISIONS.md` (dated decisions), `docs/ROADMAP.md` (out-of-scope
+Write the docs for the world **after** this PR merges (DRIFT-PROTOCOL checklist B — CI checks it): the card says
+`MERGED (#n)`, `docs/STATUS.md` says it merged and names the next card, and the living docs describe the new behavior.
+Also update `docs/DECISIONS.md` (dated decisions), `docs/ROADMAP.md` (out-of-scope
 ideas), `docs/OWNER-INPUTS.md` (new questions/answers), `docs/GO-LIVE-CHECKLIST.md` (new switches or keys).
 PR title `<type>: <plain description>`. Description in plain English: what Chris can now do; the acceptance list with
 evidence (test names, CI run, preview URL); owner decisions (IN-xx or none); review dispositions; what is not included;

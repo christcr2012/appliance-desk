@@ -93,7 +93,7 @@ where, and puts it on his To do list; no Today item may link to a page that does
   approval. Money, permissions, signed evidence, state transitions and provider replay follow the reviewed contract; if
   it can't work, propose a dated amendment and get it reviewed. A missing card means write it, not stop.
 - **Drift and reconciliation** (`docs/implementation-contracts/DRIFT-PROTOCOL.md`): checklist A before each PR,
-  B after each merge (card, next card, living docs, STATUS), C when a batch finishes (acceptance proved, docs match the
+  B **inside each PR, written as if it had already merged** (card, next card, living docs, STATUS — CI checks it), C when a batch finishes (acceptance proved, docs match the
   code, retire what no longer instructs, drift-check the next batch). Changed contracts later work inherits go in
   `docs/designs/CHANGES-SINCE-DESIGN.md`.
 - **PR size:** about 500 production lines and 15 files, hard stop ~800 lines, at most one migration, one risk area
