@@ -7,8 +7,9 @@
 // for when something the site is made from changed.
 //
 // Rule: build when any file changed since this branch's last successful Vercel deployment could change the site;
-// skip when every changed file is in NON_APP. Transfer branches never build. Anything uncertain (no earlier
-// deployment, missing base commit, git error, empty diff) builds.
+// skip when every changed file is in NON_APP. A new branch (no earlier deployment) is compared with the current tip
+// of `main` instead — a straight tree comparison, so changes on `main` the branch lacks also count and make it build.
+// Transfer branches never build. Anything uncertain (no comparison possible, git error, empty diff) builds.
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
@@ -24,7 +25,7 @@ export const isAppFile = file => !NON_APP.some(pattern => pattern.test(file));
 /** Returns { build: boolean, reason: string } from the branch, the previous deployed commit and the changed files. */
 export function decide({ branch = '', previousSha = '', changed = null }) {
   if (branch.startsWith('transfer/')) return { build: false, reason: 'transfer branches only carry upload parts' };
-  if (!previousSha) return { build: true, reason: 'no earlier deployment of this branch to compare with' };
+  if (!previousSha) return { build: true, reason: 'nothing to compare with (no earlier deployment, main unavailable)' };
   if (changed === null) return { build: true, reason: `could not compare with ${previousSha}` };
   if (!changed.length) return { build: true, reason: 'no file differences found; building to be safe' };
   const app = changed.find(isAppFile);
@@ -34,12 +35,20 @@ export function decide({ branch = '', previousSha = '', changed = null }) {
 
 function main() {
   const branch = process.env.VERCEL_GIT_COMMIT_REF ?? '';
-  const previousSha = process.env.VERCEL_GIT_PREVIOUS_SHA ?? '';
+  let previousSha = process.env.VERCEL_GIT_PREVIOUS_SHA ?? '';
   let changed = null;
-  if (previousSha && !branch.startsWith('transfer/')) {
+  if (!branch.startsWith('transfer/')) {
     try {
-      execFileSync('git', ['cat-file', '-e', `${previousSha}^{commit}`], { stdio: 'ignore' });
-      changed = execFileSync('git', ['diff', '--name-only', previousSha, 'HEAD'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+      if (previousSha) {
+        execFileSync('git', ['cat-file', '-e', `${previousSha}^{commit}`], { stdio: 'ignore' });
+      } else if (branch && branch !== 'main') {
+        // New branch: fetch only the tip of main (public repository, shallow) and compare the two trees.
+        execFileSync('git', ['fetch', '--quiet', '--depth=1', 'https://github.com/christcr2012/appliance-desk.git', 'main'],
+          { stdio: 'ignore', timeout: 60_000 });
+        previousSha = execFileSync('git', ['rev-parse', 'FETCH_HEAD'], { encoding: 'utf8' }).trim();
+      }
+      if (previousSha)
+        changed = execFileSync('git', ['diff', '--name-only', previousSha, 'HEAD'], { encoding: 'utf8' }).split('\n').filter(Boolean);
     } catch { changed = null; }
   }
   const { build, reason } = decide({ branch, previousSha, changed });
