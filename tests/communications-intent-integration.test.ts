@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requestCommunication } from "@/domains/messaging/request-communication";
 import { saveCommunicationsPolicy } from "@/domains/messaging/communications-policy";
-import { decryptCommunicationContent } from "@/domains/messaging/communications-content";
+import { decryptCommunicationContent, encryptCommunicationContent } from "@/domains/messaging/communications-content";
 import {
   dispatchCommunication, reconcileStaleCommunicationClaims,
 } from "@/domains/messaging/dispatch-communication";
@@ -91,6 +91,9 @@ describe.skipIf(!enabled)("COM-L4A immutable intents (isolated PostgreSQL)", () 
     await prisma.communicationThread.deleteMany({ where: { id: threadId } });
     await prisma.marketingSuppression.deleteMany({ where: { channel: "SMS", address: recipient } });
     await prisma.consentRecord.deleteMany({ where: { contactPointId: pointId } });
+    await prisma.communicationTemplateRevision.deleteMany({
+      where: { key: { startsWith: name + "-template" } },
+    });
     await prisma.contactPoint.deleteMany({ where: { id: pointId } });
     await prisma.businessPhoneNumber.deleteMany({ where: { id: phoneId } });
     await prisma.telecomAccount.deleteMany({ where: { id: accountId } });
@@ -163,6 +166,56 @@ describe.skipIf(!enabled)("COM-L4A immutable intents (isolated PostgreSQL)", () 
       .toEqual({ kind: "CONFLICT" });
   });
 
+  it("renders an approved revision before encryption and blocks expensive actual segments", async () => {
+    const revision = await prisma.communicationTemplateRevision.create({ data: {
+      key: name + "-template", revision: 1, channel: "SMS",
+      purpose: "CONVERSATIONAL", isCurrent: true,
+      approvedAt: new Date(), approvedByUserId: actor,
+      body: "Appointment: {{service}}. Reply STOP for opt out.",
+      variables: { service: { example: "delivery", maxLength: 230 } },
+    } });
+    const current = await prisma.communicationThread.findUniqueOrThrow({ where: { id: threadId } });
+    const prepared = await requestCommunication(actor, {
+      threadId, expectedThreadVersion: current.version,
+      operationKey: name + "-template-frozen",
+      templateRevisionId: revision.id, variables: { service: "installation" },
+    });
+    expect(prepared.kind).toBe("QUEUED");
+    if (prepared.kind !== "QUEUED") throw new Error("Template was not queued");
+    const row = await prisma.messageDelivery.findUniqueOrThrow({ where: { id: prepared.deliveryId } });
+    expect(row.renderedBody).not.toContain("installation");
+    expect(decryptCommunicationContent(row.renderedBody!))
+      .toBe("Appointment: installation. Reply STOP for opt out.");
+    const replay = await requestCommunication(actor, {
+      threadId, expectedThreadVersion: current.version,
+      operationKey: name + "-template-frozen",
+      templateRevisionId: revision.id, variables: { service: "installation" },
+    });
+    expect(replay).toMatchObject({ kind: "QUEUED", replay: true });
+    expect(await requestCommunication(actor, {
+      threadId, expectedThreadVersion: current.version,
+      operationKey: name + "-template-frozen",
+      templateRevisionId: revision.id, variables: { service: "a delivery" },
+    })).toEqual({ kind: "CONFLICT" });
+
+    const latest = await prisma.communicationThread.findUniqueOrThrow({ where: { id: threadId } });
+    // JS .length would claim 200 code units is harmless. UCS-2 has only
+    // 67 units per multipart segment, and the owner's approved policy allows 3.
+    expect(await requestCommunication(actor, {
+      threadId, expectedThreadVersion: latest.version,
+      operationKey: name + "-template-over-budget",
+      templateRevisionId: revision.id, variables: { service: "界".repeat(210) },
+    })).toEqual({ kind: "CONFLICT" });
+    expect(await prisma.messageDelivery.count({
+      where: { idempotencyKey: "com:v1:" + name + "-template-over-budget" },
+    })).toBe(0);
+    expect(await requestCommunication(actor, {
+      threadId, expectedThreadVersion: latest.version,
+      operationKey: name + "-template-missing-variable",
+      templateRevisionId: revision.id,
+    })).toEqual({ kind: "CONFLICT" });
+  });
+
   it("concurrent calls with the same operation key create only one intent", async () => {
     const version = (await prisma.communicationThread.findUniqueOrThrow({
       where: { id: threadId },
@@ -215,6 +268,24 @@ describe.skipIf(!enabled)("COM-L4A immutable intents (isolated PostgreSQL)", () 
       provider: fake, callbackOrigin: "https://example.test",
     })).toEqual({ kind: "ALREADY_CLAIMED", deliveryId: prepared.deliveryId });
     expect(fake.sendSms).toHaveBeenCalledTimes(1);
+  });
+
+  it("last-moment dispatcher refuses altered frozen content exceeding the actual SMS budget", async () => {
+    const prepared = await prepareForDispatch("segment-overrun");
+    await prisma.messageDelivery.update({
+      where: { id: prepared.deliveryId },
+      data: { renderedBody: encryptCommunicationContent("界".repeat(210)) },
+    });
+    const fake: TelecomSmsProvider = { sendSms: vi.fn(async () => {
+      throw new Error("provider must never be called on over-budget text");
+    }) };
+    expect(await dispatchCommunication(prepared.deliveryId, {
+      provider: fake, callbackOrigin: "https://example.test",
+    })).toEqual({ kind: "BLOCKED", deliveryId: prepared.deliveryId });
+    expect(fake.sendSms).not.toHaveBeenCalled();
+    expect(await prisma.messageDelivery.findUniqueOrThrow({
+      where: { id: prepared.deliveryId },
+    })).toMatchObject({ state: "NOT_SENT", lastError: "SEGMENT_LIMIT" });
   });
 
   it("never sends again on UNKNOWN, including ambiguous provider exception", async () => {
