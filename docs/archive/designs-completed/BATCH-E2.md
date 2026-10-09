@@ -1,3 +1,9 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-09.
+> Nothing in this file is a current instruction; any "current", "next", "approved" or
+> "supersedes" language below is historical. The batch is built: its behavior is in the
+> code and tests. The working documents are `AGENTS.md`, `docs/SESSION-START.md`,
+> `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # Design — Batch E2: Visual redesign of the owner desk, customer portal and public site (desktop, phone, light, dark)
 
 Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-05: "I approve e2 and b2"). The owner-desk direction is approved

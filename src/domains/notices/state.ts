@@ -2,7 +2,7 @@ import { addBusinessDays, businessEndOfDay } from "@/lib/business-date";
 
 /**
  * Pure rules for customer notices (no database). The lifecycle and the only allowed
- * transitions are in docs/designs/BATCH-B2.md section 4; this file holds the date rules.
+ * transitions are in docs/archive/designs-completed/BATCH-B2.md section 4; this file holds the date rules.
  */
 
 export type NoticeStatus = "PENDING" | "SENDING" | "SENT" | "UNCERTAIN" | "MISSED" | "FAILED" | "NOT_NEEDED";

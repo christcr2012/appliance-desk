@@ -7,7 +7,7 @@ import { taxCentsForLine } from "./tax";
 
 /**
  * "Who caused the delay?" When the business, not the customer, made a pickup late, the owner or an admin waives the
- * late-return days (docs/designs/BATCH-B2.md WU-B2-9). The original charge stays on the invoice for the record; a
+ * late-return days (docs/archive/designs-completed/BATCH-B2.md WU-B2-9). The original charge stays on the invoice for the record; a
  * negative LATE_RETURN_WAIVER line (and matching tax line) takes it off. Done once per job.
  */
 

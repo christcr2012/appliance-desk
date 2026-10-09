@@ -92,8 +92,10 @@ where, and puts it on his To do list; no Today item may link to a page that does
   approved design and actual code (`docs/pr-cards/README.md`). Ordinary names and implementation details need no
   approval. Money, permissions, signed evidence, state transitions and provider replay follow the reviewed contract; if
   it can't work, propose a dated amendment and get it reviewed. A missing card means write it, not stop.
-- **Drift check on every card** (`docs/implementation-contracts/DRIFT-PROTOCOL.md`). Record actual changed contracts that
-  later work inherits in `docs/designs/CHANGES-SINCE-DESIGN.md`.
+- **Drift and reconciliation** (`docs/implementation-contracts/DRIFT-PROTOCOL.md`): checklist A before each PR,
+  B after each merge (card, next card, living docs, STATUS), C when a batch finishes (acceptance proved, docs match the
+  code, retire what no longer instructs, drift-check the next batch). Changed contracts later work inherits go in
+  `docs/designs/CHANGES-SINCE-DESIGN.md`.
 - **PR size:** about 500 production lines and 15 files, hard stop ~800 lines, at most one migration, one risk area
   (PLAYBOOK Step 3a). No arbitrary one-function PRs; no bundling unrelated money/auth/provider changes.
 - **Model:** whichever model Chris selected does the work; no forced model switch. Sol 5.6 is the routine implementer:
@@ -107,7 +109,8 @@ where, and puts it on his To do list; no Today item may link to a page that does
 - **Before pushing:** `npm run hooks:install` once per checkout; the pre-push hook then runs `npm run check:quick`
   (secrets, migrations, shard check, typecheck, lint) on every push. Add the card's
   `npm run preflight -- --db/--browser` checks (PLAYBOOK 4b), which also run every test importing changed code. Local database testing uses throwaway
-  PostgreSQL in Vercel Sandbox via `scripts/local-postgres-test.sh` — never Neon or production. Never `--no-verify`.
+  PostgreSQL in the project's **Vercel Sandbox** (reuse the persistent sandbox named in STATUS; PLAYBOOK 4b) via
+  `scripts/local-postgres-test.sh` — never Neon or production. Never `--no-verify`.
 - **One push per CI cycle.** A push cancels running CI. After a red run, read all failures, reproduce locally, fix them
   all, push once. Same failure twice → reproduce locally; third red run → evidence-based diagnosis before any push.
   "Flake" is not a cause; never skip, weaken or quarantine a test.

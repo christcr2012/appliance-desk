@@ -16,10 +16,9 @@ Rewritten 2026-10-09 to what still applies (full previous text: `docs/archive/re
 
 ## Step 0b — Drift check (every card)
 
-Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md`: compare the card's baseline with current `main` / the
-prerequisite's final head. Mechanical drift (moved paths, renamed helpers): adapt in this PR and note it. A semantic
-conflict (money, permissions, state transitions, schema, provider replay): write a dated amendment and get it reviewed
-before that slice; continue other approved work.
+`docs/implementation-contracts/DRIFT-PROTOCOL.md` **checklist A**: compare the card's baseline with current `main`,
+fill the drift table in the PR, correct the card before coding. After the PR merges, do **checklist B** (reconcile
+before the next slice); when a batch's last PR merges, do **checklist C** (batch close-out) before the next batch.
 
 ## Step 1 — Branch
 
@@ -88,12 +87,31 @@ throwaway database — this finds the stale fakes, registries and consumers you 
 any domain change so this runs; `--unit` alone skips it (many importing tests need a database). `--plan` shows the
 commands without running them (a plan is not proof). Use `--base <ref>` when stacked.
 
-**Local PostgreSQL (owner standard: Vercel Sandbox).** `--db` uses `scripts/local-postgres-test.sh`: it finds any
-installed server under `/usr/lib/postgresql/*/bin` (not on `PATH`; don't conclude it's missing from `which postgres`),
-starts a fresh localhost-only cluster, creates `appliance_desk_test`, migrates, seeds CI-only fixtures, runs the tests,
-and deletes the cluster. It never reads an existing `DATABASE_URL`, Neon, preview or production. Run as an ordinary user.
-Use the project's existing Vercel Sandbox (`appliance-desk-batch-t1`) when your checkout has no PostgreSQL. If setup
-truly fails, record the exact error and let CI's PostgreSQL 17 jobs supply the proof — never claim unrun tests passed.
+**Local PostgreSQL = Vercel Sandbox (owner standard).** All local database and database-backed browser testing runs in
+the project's Vercel Sandbox, never Neon, production or another database service. Exact steps (Vercel MCP tools; the
+CLI fallback for each tool is `vercel api /v2/sandboxes/...`):
+
+1. **Reuse the persistent sandbox — never create one per card.** `list_named_sandboxes` (project `appliance-desk`,
+   sort `statusUpdatedAt`) and take the most recent *persistent* one; its name is recorded in `docs/STATUS.md`
+   ("Environment"). Resume it with `get_named_sandbox` `{ name, projectId: "appliance-desk", resume: true }` and use the
+   returned session id. Saved snapshots expire after 7 days unused; if resume fails, create one persistent sandbox
+   (runtime `node22`), record its name in STATUS, and tell Chris.
+2. **Run commands** with `run_session_command` `{ command: "bash", args: ["-lc", "<cmd>"], wait: true, timeout: 1200000 }`
+   (never `sudo`; the sandbox user is `ubuntu`, which the launcher requires), then read output with
+   `get_session_command_logs`. Pipe through `| tail -80`.
+3. **Layout:** the main checkout is `/vercel/appliance-desk`; each card gets a worktree beside it:
+   `cd /vercel/appliance-desk && git fetch origin && git worktree add ../appliance-desk-<card> origin/<branch>` (or
+   `git -C ../appliance-desk-<card> pull` when it exists). First time in a worktree: `npm ci` (dependencies are reused
+   afterwards). Remove worktrees of merged cards: `git worktree remove ../appliance-desk-<old-card>`.
+4. **Test:** in the worktree, `npm run preflight -- --db tests/<file>.test.ts [--browser e2e/<spec>.spec.ts]`, or
+   `bash scripts/local-postgres-test.sh tests/<file>.test.ts`. PostgreSQL 18 lives at `/usr/lib/postgresql/18/bin` (not on
+   `PATH`; `which postgres` failing means nothing). The launcher creates a fresh localhost-only `appliance_desk_test`,
+   migrates, seeds CI-only fixtures, runs the tests and deletes the cluster; it never reads an existing `DATABASE_URL`.
+5. **Stop the session when the card's local checks are done** (`stop_session`); the persistent sandbox keeps its
+   snapshot for next time.
+
+Local PostgreSQL results are earlier evidence, **not** a substitute for CI's PostgreSQL 17 jobs. If the sandbox truly
+can't be used, record the exact failing step and let CI supply the proof — never claim unrun tests passed.
 
 **Browser.** `--browser` builds once and runs the spec with saved CI logins. If Chromium or Google Fonts are blocked, set
 `LOCAL_TEST_CHROMIUM` (existing Chromium path) and `LOCAL_TEST_FONT` (an existing `.woff2`). Never `playwright install`.

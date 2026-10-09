@@ -658,3 +658,16 @@ post-D reconciliation stays because F-part-2 depends on it. (5) STATUS trimmed t
 `docs/archive/STATUS-LOG.md`); roadmap's completed T/S tables and the withdrawn delivery forecast removed (snapshot
 archived). The rules themselves did not change.
 
+## 2026-10-09 — Reconciliation checklists, Vercel Sandbox steps, retirement method
+
+Chris: the first retirement (#138) worked better than the 2026-10-08 reset; local testing is Vercel Sandbox PostgreSQL
+and must be documented; Sol needs a process to handle drift from PR to PR and per batch. Decided:
+(1) `DRIFT-PROTOCOL.md` rewritten as checklist A (before each PR), B (after each merge: card, successor card, living
+docs, queue) and C (batch close-out: acceptance proved, docs match code, retire, drift-check the next batch), plus the
+retirement method modelled on #138 — move don't copy, RETIRED banner, update every reference including code comments,
+archive README row, decision entry. (2) The 2026-10-09 retirements got #138-style banners and 20 code comments were
+repointed to `docs/archive/designs-completed/`. The `reset-2026-10-09` snapshot copies stay (already bannered); future
+rewrites rely on git history instead of copies. (3) PLAYBOOK 4b gives exact Vercel Sandbox steps: reuse the persistent
+sandbox named in STATUS (resume, never one per card), worktree per card under `/vercel/`, run via `run_session_command`,
+stop when done. STATUS gains an Environment section.
+

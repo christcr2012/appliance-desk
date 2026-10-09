@@ -33,9 +33,16 @@ A/B/C/R/B2/D/E/E2, F-part-1, G, T (engineering) and S are merged; COM-L1A and CO
 - CPA/attorney/GIS, COM setup/consent/retention, V visual approval and final launch inputs remain in OWNER-INPUTS/GO-LIVE-CHECKLIST.
 - Official-page fetchability does not prove a tax answer. Preserve source failures and the manual path.
 - Historical audits remain final-review inputs under F2-D; this cleanup is not a full security certification.
-- This workspace has generated Prisma clients and reusable dependencies. The existing Vercel Sandbox has PostgreSQL 18 binaries outside PATH; on October 8 an isolated 127.0.0.1-only database named appliance_desk_test was migrated/seeded and 27 real-Postgres targeted integration tests passed. GitHub CI uses PostgreSQL 17 and remains the exact-head gate; no Neon or production database was used.
+- See **Environment** below for local database testing.
 
 History and prior acceptance: [retired working snapshot](archive/reset-2026-10-08/README.md). Do not use its old unchecked boxes as the current queue.
+
+## Environment (update when it changes)
+
+- **Local database testing:** Vercel Sandbox, project `appliance-desk`. Persistent sandbox in use:
+  **`appliance-desk-s1c-oct8`** (most recently active, 2026-10-09; main checkout `/vercel/appliance-desk`, per-card
+  worktrees beside it, PostgreSQL 18). Older persistent `appliance-desk-batch-t1` may have an expired snapshot. Resume,
+  don't recreate — steps in PLAYBOOK 4b. Stop the session when done.
 
 Older entries (October 8 cleanup, K-CASH design note, publication-check note, S-2, COM-L1A and COM-L1B evidence) moved to
 [archive/STATUS-LOG.md](archive/STATUS-LOG.md) on 2026-10-09.

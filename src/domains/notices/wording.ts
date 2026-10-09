@@ -19,7 +19,7 @@ export const WORDING_PLACEHOLDERS = [
 ] as const;
 export type WordingPlaceholder = (typeof WORDING_PLACEHOLDERS)[number];
 
-/** The starting drafts. They are word for word what the migration saved for the owner (docs/designs/BATCH-B2.md). */
+/** The starting drafts. They are word for word what the migration saved for the owner (docs/archive/designs-completed/BATCH-B2.md). */
 export const DEFAULT_TERMS_CHANGE_TEXT =
   "Starting {{effectiveDate}}, these terms will apply to your month-to-month rental with {{businessName}}: {{terms}} You need at least {{noticeDays}} days' notice to end a month-to-month rental. Fixed-term leases (6 or 12 months) are not affected by this change. You can end your rental at any time from the \"My rentals\" page of your customer account, or by contacting us at {{businessPhone}} or {{businessEmail}}.";
 

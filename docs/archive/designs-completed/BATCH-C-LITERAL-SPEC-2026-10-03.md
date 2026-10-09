@@ -1,3 +1,9 @@
+> **RETIRED DOCUMENT — reference only.** Moved to `docs/archive/` on 2026-10-09.
+> Nothing in this file is a current instruction; any "current", "next", "approved" or
+> "supersedes" language below is historical. The batch is built: its behavior is in the
+> code and tests. The working documents are `AGENTS.md`, `docs/SESSION-START.md`,
+> `docs/STATUS.md`, `docs/PLAN.md` and `docs/PLAYBOOK.md`.
+
 # Batch C — literal specification (amendment to `BATCH-C.md`, 2026-10-03)
 
 Written by Claude (Sonnet 5.5, not the stronger model) at Chris's direction, after reading the code at `main` b72f05d

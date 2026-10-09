@@ -1,7 +1,7 @@
 import type { BusinessSettingsUpdate } from "./index";
 
 /**
- * "When equipment comes back early" (docs/designs/BATCH-B2.md B2-19, owner answer IN-29). These are the owner's
+ * "When equipment comes back early" (docs/archive/designs-completed/BATCH-B2.md B2-19, owner answer IN-29). These are the owner's
  * default choices for a rental whose equipment is all picked up before its agreed ending. They are only defaults:
  * on the early-return screen the owner can change any of them for one rental. Pure logic (no database) so the
  * settings form can use it.
