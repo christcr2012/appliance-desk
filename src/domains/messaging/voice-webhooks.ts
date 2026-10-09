@@ -322,17 +322,18 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
     const existingLeg = await tx.callLeg.findUnique({
       where: { accountId_providerCallId: {
         accountId: v.accountId, providerCallId: childSid,
-      } }, select: { answeredByStaffAt: true, callSessionId: true, startedAt: true },
+      } }, select: { answeredByStaffAt: true, callSessionId: true, startedAt: true,
+        status: true },
     });
     if (existingLeg && existingLeg.callSessionId !== session.id) {
       throw new Error("Cross-call leg collision.");
     }
-    const connected = bridged && dialStatus === "completed" &&
-      existingLeg?.answeredByStaffAt != null;
     const response = await storeTwiML(tx, v, eventId, "dial-result",
       bridged ? hangup() : speech(DEFAULT_VOICE_UNAVAILABLE));
     if (!response.fresh) return response.xml;
     const at = new Date(Math.max(Date.now(), existingLeg?.startedAt.getTime() ?? 0));
+    const conflict = !!existingLeg && terminal.has(existingLeg.status) &&
+      existingLeg.status !== statuses[dialStatus];
     const leg = await tx.callLeg.upsert({ where: {
       accountId_providerCallId: { accountId: v.accountId, providerCallId: childSid },
     }, create: {
@@ -340,7 +341,7 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
       providerParentCallId: v.callSid, role: "FORWARD",
       status: statuses[dialStatus], durationSeconds: seconds,
       startedAt: at, endedAt: at,
-    }, update: { status: statuses[dialStatus],
+    }, update: { status: conflict ? existingLeg!.status : statuses[dialStatus],
       durationSeconds: seconds, endedAt: at } });
     if (leg.callSessionId !== session.id) throw new Error("Cross-call leg collision.");
     const answered = bridged && dialStatus === "completed" &&
@@ -349,14 +350,14 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
     await tx.callSession.update({ where: { id: session.id }, data: {
       state: "ENDED", endedAt: new Date(Math.max(Date.now(),
         session.startedAt.getTime(), leg.answeredByStaffAt?.getTime() ?? 0)),
-      outcome: answered ? "ANSWERED" : pending ? "UNKNOWN" : "MISSED",
+      outcome: conflict ? "UNKNOWN" : answered ? "ANSWERED" : pending ? "UNKNOWN" : "MISSED",
       connectedAt: answered ? leg.answeredByStaffAt : null,
       version: { increment: 1 },
     } });
     await tx.providerEvent.update({ where: {
       provider_eventId: { provider: "twilio", eventId },
     }, data: { summary: { step: "dial-result", bridged, childSid,
-      status: dialStatus }, processedAt: new Date() } });
+      status: dialStatus, conflict }, processedAt: new Date() } });
     return response.xml;
   });
 }
