@@ -391,3 +391,9 @@ was corrected to the real `/desk/sales-tax/setup#accounts` section.
 
 - Additive migration `20261012130000_com_l2_telecom_foundation` preserves legacy email/provider events; processed legacy callbacks are marked LEGACY_HANDLED, not inferred APPLIED.
 - Restore ordering treats nullable `MessageDelivery.currentAttemptId` as a second-pass relationship. `MessageAttempt` remains dependent on `MessageDelivery`; both foreign keys stay enforced. Populated real-PostgreSQL backup/restore verifies the lineage. No runtime sending, activation, or consent inference.
+
+
+### COM-L3 schema guards (2026-10-09)
+- Migration 20261012140000_com_l3_communications_threads adds five models, CONVERSATIONAL message purpose, composite account/thread/business-number and per-thread cursor FKs. SQL guards reject mismatched contact environment and outbound messages not backed by the same account's SMS delivery. L4/L5 must respect these.
+- Template revision content and key/channel/purpose are immutable from creation; revisions may change approval/current selection. The one-current partial unique index and frozen MessageDelivery.templateRevisionId ensure historic delivery snapshots are never silently rewritten. L6A edits create a new revision. Old delivery revisions remain null.
+- The five new communication tables are in backup policy with acyclic restore dependencies. No activation, spending or inferred consent.

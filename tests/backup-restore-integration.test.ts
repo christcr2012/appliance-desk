@@ -19,8 +19,11 @@ const databaseUrl = process.env.DATABASE_URL;
 const parsed = databaseUrl ? new URL(databaseUrl) : null;
 // CI exposes Postgres on 5432; Vercel Sandbox uses a randomly chosen loopback port.
 // Reuse the disposable source connection credentials and port, never a fixed host/port.
+// Separate throwaway target per drill; preflight can execute this file twice
+// against the SAME disposable source cluster (related tests, then selected tests).
+const restoreDatabaseName = "appliance_desk_restore_" + randomUUID().replaceAll("-", "").slice(0, 16);
 const restoreTarget = new URL(databaseUrl ?? "postgresql://test@localhost:5432/appliance_desk_test");
-restoreTarget.pathname = "/appliance_desk_restore";
+restoreTarget.pathname = "/" + restoreDatabaseName;
 const restoreUrl = restoreTarget.toString();
 const enabled =
   process.env.CI === "true" &&
@@ -42,6 +45,11 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     delivery: "restore-com-delivery-" + tag,
     attempt: "restore-com-attempt-" + tag,
     consent: "restore-com-consent-" + tag,
+    thread: "restore-com-thread-" + tag,
+    message: "restore-com-message-" + tag,
+    link: "restore-com-link-" + tag,
+    readMarker: "restore-com-read-" + tag,
+    revision: "restore-com-revision-" + tag,
   };
   const numberAddress = "+13035550189";
 
@@ -49,6 +57,14 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
 
   beforeAll(async () => {
     directory = await mkdtemp(path.join(tmpdir(), "appliance-desk-restore-"));
+    // Enabled only for CI against local appliance_desk_test; never touches a hosted database.
+    const admin = new Client({ connectionString: databaseUrl });
+    await admin.connect();
+    try {
+      await admin.query('CREATE DATABASE "' + restoreDatabaseName + '"');
+    } finally {
+      await admin.end();
+    }
     target = new PrismaClient({ adapter: new PrismaPg({ connectionString: restoreUrl }) });
     await prisma.user.create({ data: { id: rdfFixture.user, email: tag + "@example.test", role: "OWNER" } });
     await prisma.customer.create({ data: { id: rdfFixture.customer, userId: rdfFixture.user, referralCode: "RESTORE-" + tag } });
@@ -81,10 +97,17 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       kind: "COM_TEST_EVIDENCE", purpose: "SMS_TRANSACTIONAL", action: "REVOKE",
       source: "STAFF_EVIDENCE", occurredAt: businessDateFromKey("2026-09-01")!,
     } });
+    // COM-L3: template, thread, message, read cursor and link survive real restore.
+    await prisma.communicationTemplateRevision.create({ data: {
+      id: telecom.revision, key: "restore-only", revision: 1, channel: "SMS",
+      purpose: "TRANSACTIONAL", body: "Isolated restore-only template", isCurrent: true,
+      createdByUserId: rdfFixture.user,
+    } });
     await prisma.messageDelivery.create({ data: {
       id: telecom.delivery, idempotencyKey: telecom.delivery,
       channel: "SMS", purpose: "TRANSACTIONAL", recipientType: "Customer",
       recipientId: rdfFixture.customer, recipientAddress: numberAddress, templateKey: "restore-only",
+      telecomAccountId: telecom.account, environment: "TEST", templateRevisionId: telecom.revision,
     } });
     await prisma.messageAttempt.create({ data: {
       id: telecom.attempt, deliveryId: telecom.delivery, accountId: telecom.account,
@@ -93,13 +116,36 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     } });
     await prisma.messageDelivery.update({ where: { id: telecom.delivery },
       data: { currentAttemptId: telecom.attempt } });
+    await prisma.communicationThread.create({ data: {
+      id: telecom.thread, accountId: telecom.account, businessNumberId: telecom.number,
+      externalContactPointId: telecom.point, customerId: rdfFixture.customer, resolution: "RESOLVED",
+    } });
+    await prisma.communicationMessage.create({ data: {
+      id: telecom.message, threadId: telecom.thread, accountId: telecom.account,
+      direction: "OUTBOUND", deliveryId: telecom.delivery,
+      providerResourceId: telecom.message, bodyHash: "restore-only-body-hash",
+      occurredAt: new Date("2026-10-09T12:00:00.000Z"),
+    } });
+    await prisma.communicationLink.create({ data: {
+      id: telecom.link, messageId: telecom.message, entityType: "Invoice",
+      entityId: rdfFixture.invoice, source: "WORKFLOW",
+    } });
+    await prisma.communicationReadMarker.create({ data: {
+      id: telecom.readMarker, threadId: telecom.thread,
+      userId: rdfFixture.user, lastReadMessageId: telecom.message,
+    } });
   });
 
   afterAll(async () => {
+    await prisma.communicationReadMarker.deleteMany({ where: { id: telecom.readMarker } });
+    await prisma.communicationLink.deleteMany({ where: { id: telecom.link } });
+    await prisma.communicationMessage.deleteMany({ where: { id: telecom.message } });
+    await prisma.communicationThread.deleteMany({ where: { id: telecom.thread } });
     await prisma.messageDelivery.updateMany({ where: { id: telecom.delivery },
       data: { currentAttemptId: null } });
     await prisma.messageAttempt.deleteMany({ where: { id: telecom.attempt } });
     await prisma.messageDelivery.deleteMany({ where: { id: telecom.delivery } });
+    await prisma.communicationTemplateRevision.deleteMany({ where: { id: telecom.revision } });
     await prisma.consentRecord.deleteMany({ where: { id: telecom.consent } });
     await prisma.contactBinding.deleteMany({ where: { id: telecom.binding } });
     await prisma.contactPoint.deleteMany({ where: { id: telecom.point } });
@@ -111,6 +157,13 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     await prisma.customer.deleteMany({ where: { id: rdfFixture.customer } });
     await prisma.user.deleteMany({ where: { id: rdfFixture.user } });
     if (target) await target.$disconnect();
+    const admin = new Client({ connectionString: databaseUrl });
+    await admin.connect();
+    try {
+      await admin.query('DROP DATABASE IF EXISTS "' + restoreDatabaseName + '" WITH (FORCE)');
+    } finally {
+      await admin.end();
+    }
     if (directory) await rm(directory, { recursive: true, force: true });
   });
 
@@ -151,6 +204,18 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       .toMatchObject({ deliveryId: telecom.delivery, accountId: telecom.account, state: "NOT_SENT", attemptNumber: 1 });
     expect(await target.messageDelivery.findUniqueOrThrow({ where: { id: telecom.delivery } }))
       .toMatchObject({ currentAttemptId: telecom.attempt, channel: "SMS" });
+    expect(await target.communicationTemplateRevision.findUniqueOrThrow({ where: { id: telecom.revision } }))
+      .toMatchObject({ key: "restore-only", revision: 1, body: "Isolated restore-only template" });
+    expect(await target.communicationThread.findUniqueOrThrow({ where: { id: telecom.thread } }))
+      .toMatchObject({ accountId: telecom.account, customerId: rdfFixture.customer, resolution: "RESOLVED" });
+    expect(await target.communicationMessage.findUniqueOrThrow({ where: { id: telecom.message } }))
+      .toMatchObject({ threadId: telecom.thread, deliveryId: telecom.delivery, direction: "OUTBOUND" });
+    expect(await target.communicationReadMarker.findUniqueOrThrow({ where: { id: telecom.readMarker } }))
+      .toMatchObject({ userId: rdfFixture.user, lastReadMessageId: telecom.message });
+    expect(await target.communicationLink.findUniqueOrThrow({ where: { id: telecom.link } }))
+      .toMatchObject({ messageId: telecom.message, entityType: "Invoice", entityId: rdfFixture.invoice });
+    expect(await target.messageDelivery.findUniqueOrThrow({ where: { id: telecom.delivery } }))
+      .toMatchObject({ currentAttemptId: telecom.attempt, templateRevisionId: telecom.revision });
     expect(await target.consentRecord.findUniqueOrThrow({ where: { id: telecom.consent } }))
       .toMatchObject({ contactPointId: telecom.point, action: "REVOKE", purpose: "SMS_TRANSACTIONAL" });
     expect(await target.account.count()).toBe(0);

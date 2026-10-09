@@ -66,6 +66,12 @@ model User {
 
   // COM-L2 additive communication lineage.
   initiatedMessageDeliveries MessageDelivery[] @relation("MessageDeliveryActor")
+  assignedCommunicationThreads CommunicationThread[] @relation("CommunicationThreadAssignee")
+  communicationReadMarkers CommunicationReadMarker[]
+  authoredCommunicationMessages CommunicationMessage[] @relation("CommunicationMessageActor")
+  attributedCommunicationLinks CommunicationLink[] @relation("CommunicationLinkActor")
+  approvedCommunicationTemplates CommunicationTemplateRevision[] @relation("CommunicationTemplateApprover")
+  createdCommunicationTemplates CommunicationTemplateRevision[] @relation("CommunicationTemplateCreator")
 }
 
 model Session {
@@ -193,6 +199,7 @@ model Customer {
 
   // COM-L2 additive communication lineage.
   contactBindings ContactBinding[]
+  communicationThreads CommunicationThread[]
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +350,7 @@ model Lead {
   // COM-L2 additive communication lineage.
   contactBindings ContactBinding[]
   communicationConsents ConsentRecord[]
+  communicationThreads CommunicationThread[]
 }
 
 // A per-entry contact/communication log for a lead — "called Tuesday, no
@@ -2533,6 +2541,7 @@ model ConsentRecord {
   textHash String?
   occurredAt DateTime?
   scope Json?
+  communicationMessages CommunicationMessage[]
   @@index([contactPointId,purpose,occurredAt,id])
 }
 
@@ -2708,6 +2717,7 @@ enum MessageChannel {
 enum MessagePurpose {
   TRANSACTIONAL
   MARKETING
+  CONVERSATIONAL
 }
 
 enum MessageState {
@@ -2760,6 +2770,9 @@ model MessageDelivery {
   scheduledFor DateTime?
   origin CommunicationOrigin?
   environment TelecomEnvironment?
+  templateRevisionId String?
+  templateRevision CommunicationTemplateRevision? @relation(fields:[templateRevisionId],references:[id],onDelete:Restrict)
+  communicationMessage CommunicationMessage?
 }
 
 model ProviderEvent {
@@ -2948,6 +2961,8 @@ model TelecomAccount {
   deliveries MessageDelivery[]
   attempts MessageAttempt[]
   events ProviderEvent[]
+  communicationThreads CommunicationThread[]
+  communicationMessages CommunicationMessage[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([provider, environment, externalAccountId])
@@ -2960,6 +2975,7 @@ model BusinessPhoneNumber {
   providerNumberId String
   messagingServiceId String?
   capabilities Json @default("{}")
+  communicationThreads CommunicationThread[]
   registrationStatus TelecomRegistrationStatus @default(UNKNOWN)
   isPrimary Boolean @default(false)
   verifiedAt DateTime?
@@ -2968,6 +2984,7 @@ model BusinessPhoneNumber {
   updatedAt DateTime @updatedAt
   @@unique([accountId,address])
   @@unique([accountId,providerNumberId])
+  @@unique([accountId,id])
 }
 model ContactPoint {
   id String @id @default(cuid())
@@ -2979,6 +2996,7 @@ model ContactPoint {
   stoppedAt DateTime?
   bindings ContactBinding[]
   consents ConsentRecord[]
+  communicationThreads CommunicationThread[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([environment,channel,address])
@@ -3022,4 +3040,138 @@ model MessageAttempt {
   @@unique([accountId,providerResourceId])
   @@index([state,startedAt])
   @@index([deliveryId])
+}
+
+// COM-L3: private, per-user communication timelines; provider dispatch remains disabled.
+enum CommunicationThreadResolution {
+  UNRESOLVED
+  AMBIGUOUS
+  RESOLVED
+}
+enum CommunicationThreadStatus {
+  OPEN
+  WAITING
+  CLOSED
+}
+enum CommunicationMessageDirection {
+  INBOUND
+  OUTBOUND
+}
+enum CommunicationLinkSource {
+  EXPLICIT
+  WORKFLOW
+  STAFF_CONFIRMED
+}
+enum CommunicationLinkEntityType {
+  Customer
+  Lead
+  ServiceAddress
+  RentalAgreement
+  Job
+  MaintenanceRequest
+  Invoice
+  Estimate
+}
+
+model CommunicationThread {
+  id String @id @default(cuid())
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  businessNumberId String
+  businessNumber BusinessPhoneNumber @relation(fields:[accountId,businessNumberId],references:[accountId,id],onDelete:Restrict)
+  externalContactPointId String
+  externalContactPoint ContactPoint @relation(fields:[externalContactPointId],references:[id],onDelete:Restrict)
+  customerId String?
+  customer Customer? @relation(fields:[customerId],references:[id],onDelete:Restrict)
+  leadId String?
+  lead Lead? @relation(fields:[leadId],references:[id],onDelete:Restrict)
+  resolution CommunicationThreadResolution @default(UNRESOLVED)
+  status CommunicationThreadStatus @default(OPEN)
+  assignedUserId String?
+  assignedUser User? @relation("CommunicationThreadAssignee",fields:[assignedUserId],references:[id],onDelete:Restrict)
+  version Int @default(1)
+  lastActivityAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages CommunicationMessage[]
+  readMarkers CommunicationReadMarker[]
+  @@unique([accountId,businessNumberId,externalContactPointId])
+  @@unique([accountId,id])
+  @@index([status,lastActivityAt,id])
+  @@index([assignedUserId])
+}
+
+model CommunicationReadMarker {
+  id String @id @default(cuid())
+  threadId String
+  thread CommunicationThread @relation(fields:[threadId],references:[id],onDelete:Restrict)
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Restrict)
+  lastReadOccurredAt DateTime?
+  lastReadMessageId String?
+  lastReadMessage CommunicationMessage? @relation("CommunicationReadPosition",fields:[threadId,lastReadMessageId],references:[threadId,id],onDelete:Restrict)
+  updatedAt DateTime @updatedAt
+  @@unique([threadId,userId])
+}
+
+model CommunicationMessage {
+  id String @id @default(cuid())
+  threadId String
+  thread CommunicationThread @relation(fields:[accountId,threadId],references:[accountId,id],onDelete:Restrict)
+  direction CommunicationMessageDirection
+  deliveryId String? @unique
+  delivery MessageDelivery? @relation(fields:[deliveryId],references:[id],onDelete:Restrict)
+  providerResourceId String?
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  bodyEncrypted String?
+  bodyHash String
+  occurredAt DateTime
+  receivedAt DateTime @default(now())
+  actorUserId String?
+  actorUser User? @relation("CommunicationMessageActor",fields:[actorUserId],references:[id],onDelete:Restrict)
+  consentRecordId String?
+  consentRecord ConsentRecord? @relation(fields:[consentRecordId],references:[id],onDelete:Restrict)
+  redactedAt DateTime?
+  links CommunicationLink[]
+  readMarkers CommunicationReadMarker[] @relation("CommunicationReadPosition")
+  @@unique([accountId,providerResourceId])
+  @@unique([threadId,id])
+  @@index([threadId,occurredAt,id])
+}
+
+model CommunicationLink {
+  id String @id @default(cuid())
+  messageId String
+  message CommunicationMessage @relation(fields:[messageId],references:[id],onDelete:Restrict)
+  entityType CommunicationLinkEntityType
+  entityId String
+  source CommunicationLinkSource
+  createdAt DateTime @default(now())
+  actorUserId String?
+  actorUser User? @relation("CommunicationLinkActor",fields:[actorUserId],references:[id],onDelete:Restrict)
+  @@unique([messageId,entityType,entityId])
+  @@index([entityType,entityId])
+}
+
+model CommunicationTemplateRevision {
+  id String @id @default(cuid())
+  key String
+  revision Int
+  channel MessageChannel
+  purpose MessagePurpose
+  body String
+  subject String?
+  triggerKey String?
+  variables Json @default("{}")
+  policy Json @default("{}")
+  isCurrent Boolean @default(false)
+  approvedAt DateTime?
+  approvedByUserId String?
+  approvedBy User? @relation("CommunicationTemplateApprover",fields:[approvedByUserId],references:[id],onDelete:Restrict)
+  createdAt DateTime @default(now())
+  createdByUserId String?
+  createdBy User? @relation("CommunicationTemplateCreator",fields:[createdByUserId],references:[id],onDelete:Restrict)
+  deliveries MessageDelivery[]
+  @@unique([key,revision])
 }
