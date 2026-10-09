@@ -505,3 +505,8 @@ limited to 2 KB and at most one human/agent author identity. A free-text
 note is never considered safe for an external agent export. Both models are
 included in private backup/restore; API key material belongs to later S-2
 and is intentionally not present here.
+
+
+## Batch S-2 — revocable private AI check-up credentials
+
+`OpsAgentKey` stores only the SHA-256 digest of a 32-byte random bearer token, an OWNER-supplied label, creation and last-use times, and a revocation timestamp. The bearer is returned only once from the owner action. The `SystemIssueNote.authorKeyId` reference is nullable and identifies structured agent notes, distinct from owner-authored notes. `OpsAgentKey` is excluded from database backup/privacy exports; the system-issue-note backup snapshot clears `authorKeyId` so a restored archive never references missing private credentials. Migration `20261012110000_batch_s_ops_keys` is additive, retaining all preexisting notes. This creates **no unattended agent**, external credentials or live provider activation.

@@ -95,6 +95,7 @@ export const BACKUP_MODEL_POLICY = {
   AutomationRun: "automationRun",
   SystemIssue: "systemIssue",
   SystemIssueNote: "systemIssueNote",
+  OpsAgentKey: null,
   MessageDelivery: "messageDelivery",
   ProviderEvent: "providerEvent",
   MarketingSuppression: "marketingSuppression",
