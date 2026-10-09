@@ -743,3 +743,11 @@ W-0B's local browser step was blocked: the sandbox (Ubuntu 26.04) had no browser
 system libraries into the persistent sandbox and verified a launch; `npm run sandbox:browser` repeats it if a future
 session lacks them. "Never `playwright install`" stays the rule for Claude Code cloud containers, which ship a browser.
 Also found: the sandbox push key was on the running session only, not the saved sandbox settings (STATUS Environment).
+
+## 2026-10-09 — Vercel build costs
+
+Billing showed $9–17/day, almost all "Build CPU Minutes" (standard 4-core machine): 84 Vercel builds on Oct 9 (59 PR
+previews, 23 production, 2 transfer branches), most for docs/tests/CI-only pushes. GitHub Actions already builds and
+tests every PR head for free. Decided: Vercel's ignore step (`scripts/vercel-ignore-build.mjs`) now skips any branch,
+PRs included, when nothing the site is built from changed; `transfer/**` never deploys; the ruleset's required
+"Preview" deployment is removed (IN-67) so a skipped preview can't block a merge; `ci` remains the merge gate.
