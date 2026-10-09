@@ -201,8 +201,10 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     reservationExpiresAt: { lt: now },
   } satisfies Prisma.RentalAgreementWhereInput;
   const pastDueWhere = {
-    status: { in: ["DELINQUENT", "OPEN"] },
-    dueDate: { lt: now },
+    OR: [
+      { status: { in: ["DELINQUENT", "PARTIALLY_PAID"] } },
+      { status: "OPEN", dueDate: { lt: now } },
+    ],
   } satisfies Prisma.InvoiceWhereInput;
   const overdueJobWhere = { status: "SCHEDULED", scheduledAt: { lt: now } } satisfies Prisma.JobWhereInput;
   const unreviewedWhere = {
@@ -432,12 +434,20 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             select: {
               id: true,
               customerId: true,
+              status: true,
               dueDate: true,
+              updatedAt: true,
               amountDueCents: true,
               amountPaidCents: true,
+              payments: {
+                where: { status: "failed" },
+                select: { createdAt: true },
+                orderBy: { createdAt: "desc" },
+                take: 1,
+              },
               ...customerSelect,
             },
-            orderBy: [{ dueDate: "asc" }, { id: "asc" }],
+            orderBy: [{ dueDate: "asc" }, { updatedAt: "asc" }, { id: "asc" }],
             take,
           }),
           () => prisma.invoice.count({ where: pastDueWhere }),
@@ -847,18 +857,20 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
-    ...pastDueInvoices.rows
-      .filter((inv): inv is typeof inv & { dueDate: Date } => inv.dueDate !== null)
-      .map((inv) =>
-        pastDueInvoiceException({
-          id: inv.id,
-          customerId: inv.customerId,
-          customerName: customerDisplayName(inv.customer),
-          dueDate: inv.dueDate!,
-          amountDueCents: inv.amountDueCents,
-          amountPaidCents: inv.amountPaidCents,
-        }),
-      ),
+    ...pastDueInvoices.rows.map((inv) =>
+      pastDueInvoiceException({
+        id: inv.id,
+        customerId: inv.customerId,
+        customerName: customerDisplayName(inv.customer),
+        status: inv.status,
+        dueDate: inv.dueDate,
+        // Auto-charge invoices have no due date; use the actual failed
+        // attempt rather than silently dropping them from To do.
+        attentionAt: inv.payments[0]?.createdAt ?? inv.updatedAt,
+        amountDueCents: inv.amountDueCents,
+        amountPaidCents: inv.amountPaidCents,
+      }),
+    ),
     ...overdueJobs.rows
       .filter((j): j is typeof j & { scheduledAt: Date } => j.scheduledAt !== null)
       .map((j) =>

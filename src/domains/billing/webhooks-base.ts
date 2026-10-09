@@ -870,7 +870,23 @@ async function handleInvoicePaymentFailed(
     where: { stripeInvoiceId: webhookInvoice.id },
     select: { id: true },
   });
-  if (existing) return;
+  if (existing) {
+    // A subscription invoice is commonly mirrored as OPEN before Stripe
+    // attempts collection. Preserve settled/void invoices when webhooks race.
+    await db.invoice.updateMany({
+      where: { id: existing.id, status: { notIn: ["PAID", "VOID"] } },
+      data: { status: "DELINQUENT" },
+    });
+    // The webhook-event claim makes replays idempotent; keep the failed
+    // attempt as evidence even if a later paid event already settled it.
+    await recordFailedPaymentAttempt(db, {
+      invoiceId: existing.id,
+      amountCents: webhookInvoice.amount_due,
+      stripePaymentIntentId: extractPaymentIntentId(webhookInvoice),
+      failureReason: "Stripe reported this invoice's payment failed.",
+    });
+    return;
+  }
 
   const stripeInvoice = evidence.invoice(webhookInvoice.id as string);
   const invoice = await db.invoice.create({

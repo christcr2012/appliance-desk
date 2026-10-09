@@ -402,7 +402,9 @@ question:
 - **Today** — everything that actually needs your attention right
   now (overdue rentals, appliances due for maintenance, and today's
   scheduled jobs) in one place, so you don't have to go check several
-  pages separately.
+  pages separately. A failed automatic card charge appears here immediately
+  even if its invoice has no due date. The item shows the unpaid dollars and
+  opens that specific invoice; partial payments and overdue open invoices show too.
 - **Tasks** — your own follow-up to-dos (overdue, due today, and
   everything else), including ones created automatically from things
   like a lost lead or a lead you marked to call back later.

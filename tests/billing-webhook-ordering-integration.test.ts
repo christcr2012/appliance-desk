@@ -155,6 +155,35 @@ describe.skipIf(!enabled)("Stripe messages that arrive out of order (real Postgr
     expect(await prisma.auditLog.count({ where: { entityId: id, action: "billing.subscription_ended" } })).toBe(1);
   });
 
+  it("moves a previously mirrored OPEN invoice to DELINQUENT, records one failed attempt, and replays safely", async () => {
+    const subscription = `sub_failed_${tag}`;
+    const agreementId = await agreement(subscription);
+    const stripeInvoiceId = `in_open_failed_${tag}`;
+    const original = await prisma.invoice.create({
+      data: { customerId, agreementId, stripeInvoiceId, status: "OPEN", amountDueCents: 5200, dueDate: null },
+    });
+    const failed = event("invoice.payment_failed", {
+      id: stripeInvoiceId,
+      amount_due: 5200,
+      parent: { subscription_details: { subscription } },
+    });
+
+    await deliver(failed);
+    await deliver(failed);
+    const row = await prisma.invoice.findUniqueOrThrow({ where: { id: original.id }, include: { payments: true } });
+    expect(row.status).toBe("DELINQUENT");
+    expect(row.dueDate).toBeNull();
+    expect(row.payments).toHaveLength(1);
+    expect(row.payments[0]).toMatchObject({ status: "failed", amountCents: 5200 });
+
+    // An out-of-order failure may be recorded, but must never reopen a void invoice.
+    await prisma.invoice.update({ where: { id: original.id }, data: { status: "VOID" } });
+    await deliver(event("invoice.payment_failed", {
+      id: stripeInvoiceId, amount_due: 5200, parent: { subscription_details: { subscription } },
+    }));
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: original.id } })).status).toBe("VOID");
+  });
+
   it("a payment failure then the payment itself, in either arrival order, ends with the invoice paid and one payment", async () => {
     const subscription = `sub_d_${tag}`;
     const id = await agreement(subscription);
