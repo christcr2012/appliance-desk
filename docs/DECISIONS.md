@@ -830,3 +830,5 @@ start Sol working through the updated plans in the new order." The sets and repa
 ahead of its original place; COM-L reached L6A with L6B in flight. Remaining order (Amendment B section 8): COM-L6B …
 COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 … W-10 → W-19 → W-17 → W-20 → V → F-part-2. One implementer resumes the
 single chain; the second lane is closed unless Chris opens it again. IN-72 records the one default chosen in W-21B.
+Test isolation (#367) also fixed a real robustness bug found by CI: To do crashed when an appliance was removed between
+listing purchase-tax attention and explaining it; a removed appliance now counts as nothing pending.
