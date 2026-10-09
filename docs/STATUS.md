@@ -57,6 +57,10 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 
 ## Environment (update when it changes)
 
+- **Vercel build costs (2026-10-09):** builds now skip when only docs/tests/CI files changed, on PRs too, and
+  transfer branches never build. Needs IN-67 (remove the ruleset's required "Preview" deployment) so skipped previews
+  can't block merges.
+
 - **Sandbox GitHub push:** Installed 2026-10-09 by the owner through network header injection, never stored in the repository or sandbox environment; expires 2027-10-09 (one year). Dry-run verified; regular git push now works using HTTP/1.1. Use the fallback runbook if needed.
   **Check (2026-10-09, Claude):** the key was attached to the running session only — the sandbox's saved settings had no
   injection rule, so it disappears when that session ends. Whoever holds the key applies the same `networkPolicy` with

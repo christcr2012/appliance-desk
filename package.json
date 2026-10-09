@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "preflight": "node scripts/preflight.mjs",
-    "check:preflight": "node --test scripts/preflight.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs",
+    "check:preflight": "node --test scripts/preflight.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs scripts/vercel-ignore-build.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
