@@ -283,27 +283,25 @@ full CI/secret checks, preview where applicable and required semantic review.
 - **Branch names:** `ai/<tool>/<topic>` (for example `ai/codex/batch-b-billing`).
   Branch from current `main`, or from the previous unmerged PR's branch when
   stacking; retarget `main` once the predecessor merges.
-- **Quick local checks, then let CI do the heavy lifting** (agent's call,
-  approved by Chris 2026-10-03). For code changes, before each push run the cheap checks:
-  `npm run typecheck`, `npm run lint`, and `vitest` on the tests you touched
-  or that cover the code you changed. Re-run these on the complete post-rebase/fix tree before publishing;
-  an earlier green head is not proof for a changed tree. Schema/enum changes must include generated-client
-  freshness, exhaustive consumers and required fixture fields; new domain calls must include caller mocks.
-  Do **not** build a local
-  Postgres and run the whole suite or the browser specs by default: CI runs
-  them on disposable infrastructure; measured duration varies by head and runner. Reuse verified local
-  setup rather than rebuilding it for each card. Do run more locally when it is cheaper than
-  guessing: a migration or SQL change (prove it on a scratch database), a
-  failure you cannot understand from CI output, or a browser spec you are
-  actively iterating on. The full recipe stays in `docs/PLAYBOOK.md`.
-  **Vercel Sandbox local Postgres (2026-10-08):** PostgreSQL 18 server binaries
-  are installed at `/usr/lib/postgresql/18/bin`, outside normal PATH. For
-  money, tax, schema, permissions, transaction and idempotency changes, run
-  `bash scripts/local-postgres-test.sh tests/<target>.test.ts` (PLAYBOOK §4b)
-  when local database proof is appropriate. It creates/destroys a fresh
-  localhost-only `appliance_desk_test` and does not require Neon or sudo.
-  Check installed binaries before claiming local Postgres unavailable. CI on
-  PostgreSQL 17 remains the mandatory exact-head merge gate.
+- **Targeted publication preflight (owner, 2026-10-08):** run
+  local database and database-backed browser tests in **Vercel Sandbox PostgreSQL**.
+  Missing binaries in a ChatGPT scratch checkout are not sandbox unavailability:
+  connect to the project's existing sandbox first (PLAYBOOK 4b). Never substitute
+  Neon, a production database or a different external database service.
+  For publication checks use
+  `npm run preflight -- --unit tests/<behavior>.test.ts`, use `--db` for
+  transaction/money/permission/schema regressions, and `--browser` for affected
+  screen/spec tests. Combine selectors so database/browser tests share one fresh
+  localhost-only cluster. Include adjacent consumers/mocks, not just new tests.
+  Refresh the target base; use `--base <prerequisite-ref>` for stacks. Recheck the
+  complete changed tree after repairs/rebase; a prior green head is not proof.
+  Schema/enum changes still require a freshly generated Prisma client, exhaustive
+  consumers and fixture/mocking updates before these checks.
+  See PLAYBOOK Step 4 for optional preinstalled Chromium/font overrides and
+  concrete local setup blockers. Never replace local Postgres with production or
+  Neon, install a browser in the sandbox, claim skipped tests ran, or drop full
+  exact-head CI. A blocked local check requires explicit evidence and CI proof,
+  not speculative repeated pushes. Run the full local suite only when warranted.
 - **Documentation-only checks:** validate changed links, work-index dependencies,
   contract consistency and `git diff --check`; do not run application tests that
   cannot exercise a prose-only change. CI and secret scanning still apply.
@@ -425,9 +423,8 @@ built for **speed**, not minute-saving: every check runs in parallel on every
 push to a pull request, with a goal of results in about 3 minutes
 (`docs/ARCHITECTURE.md` → "CI layout and speed"). The rules:
 
-1. **Cheap local checks, then push; CI runs the rest.** Run typecheck, lint
-   and the tests for what you changed before pushing (see "Quick local checks"
-   above). Push a PR when its cluster is coherent, not after every edit — a new
+1. **Targeted preflight, then one coherent push; CI runs the full suite.**
+   Use the selected behavior/database/browser checks above before publication. Push a PR when its cluster is coherent, not after every edit — a new
    push cancels the running CI. When CI fails, read the **full** logs (CI's
    summary shows only the first 10 failures per step; fetch the job log through
    the API), fix everything you can see, and push once. **Three-red diagnosis checkpoint per
@@ -484,10 +481,9 @@ lint, the unit/integration tests in 3 shards on throwaway Postgres databases,
 and the production build + browser suite in 4 shards. Docs-only changes skip the
 heavy jobs but never the secret scan. See "CI" above.
 
-**Browser tests locally:** cloud sandboxes include Chromium; PLAYWRIGHT_BROWSERS_PATH
-is preset and `playwright install` is forbidden. The build needs a font stand-in
-and the browser needs a path shim: the exact recipe is `docs/PLAYBOOK.md` 4c. Do
-not skip browser specs for screen changes because "the sandbox has no browser".
+**Browser tests locally:** use targeted preflight (PLAYBOOK 4c). The launcher supports
+optional existing Chromium/font overrides; `playwright install` is forbidden in
+the sandbox. Inspect installed resources before declaring setup unavailable.
 
 **Sandbox constraint:** some sandboxes cannot reach `binaries.prisma.sh`, so
 `prisma generate`/`migrate` fail there with a 403. That is network policy, not

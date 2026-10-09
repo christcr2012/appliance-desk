@@ -47,3 +47,24 @@ groups → M, documentation reviewed and owner-approved for planning only. No ru
 protected obligations, annual/recurring costs/targets, bank CSV matching/reconciliation, QBO import evidence and
 contextual screens specified. K opening/export/forecast/posting-revision amendments explicit. IN-54/55 gate
 account-specific activation, not synthetic engineering. No bank/provider/spending/live-money activation.
+
+## Targeted publication checks — October 8
+
+Owner requested immediate throughput improvements without recreating historical
+failures. `npm run preflight` consolidates static checks and selected unit/database/
+browser regressions; shared disposable fixtures now include ADMIN and dummy auth.
+PLAYBOOK Step 4 replaces conflicting browser recipes. Full CI remains mandatory.
+Launcher regression tests exercise failure propagation, selectors and incomplete
+browser evidence; actual build/database/browser proof still comes from the named
+local runs or exact-head CI, not the command plan. No launch gate or feature queue
+changes. Assess the next three implementation merges for completed scope and red
+CI rounds rather than raw PR counts; no extra report/workstream.
+
+Local database testing uses Vercel Sandbox PostgreSQL. The shared launcher was
+verified in the existing sandbox with six tax-overview integration tests passing
+and zero skips; its disposable database was cleaned up. Missing PostgreSQL in a
+scratch checkout is not evidence that the project sandbox is unavailable.
+The final CI run exposed a purchasing browser-test race: its supplier-save URL
+assertion also matched the `/new` form. Require the saved detail URL and named
+supplier heading before navigating away; preserve all persistence/accessibility
+assertions and normal timeouts.

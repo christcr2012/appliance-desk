@@ -26,5 +26,9 @@ export default defineConfig({
   },
   use: {
     baseURL: "http://localhost:3000",
+    // Local sandbox launcher may use preinstalled Chromium; CI leaves this unset.
+    launchOptions: process.env.APPLIANCE_DESK_TEST_CHROMIUM
+      ? { executablePath: process.env.APPLIANCE_DESK_TEST_CHROMIUM }
+      : undefined,
   },
 });
