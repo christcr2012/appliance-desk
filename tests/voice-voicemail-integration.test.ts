@@ -76,7 +76,7 @@ describe.skipIf(!local)("COM-L9 voicemail gates/private lifecycle (real PostgreS
   const original: Record<string, string | undefined> = {};
   let oldPolicy: unknown;
   let oldVersion = 0;
-  async function saveRouting(hours: typeof routing.weeklyHours) {
+  async function saveRouting(hours: Array<{ weekday: number; from: string; to: string }>) {
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: {
       communicationsPolicyVersion: 1,
       communicationsPolicy: {
