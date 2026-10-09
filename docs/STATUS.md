@@ -4,6 +4,18 @@ Updated October 9, 2026 (W-16A #360, W-16B #362, W-21A #365, W-21B #366 sets and
 
 ## Next
 
+**2026-10-09 — COM-L7 voice and private-media foundation:**
+Additive CallSession, CallLeg and CommunicationMedia tables preserve account
+and provider identity, call legs, outcome, private media reference and
+legal-hold/retention evidence. Provider media URLs are not accepted as
+storage keys. Only authorized owner/admin or specifically assigned team
+members can see private call metadata, never the file key or raw media.
+Expired media is held for controlled review, not deleted silently.
+Backups include the new tables. Voice callbacks, calls, voicemail recording
+and transcription are still disabled; no telecom spending or activation.
+Card: docs/pr-cards/COM-L7.md. **Next planned COM-L8 is PAUSED** by
+owner instruction after this and COM-L6B are finished.
+
 **2026-10-09 — COM-L6B authorized communications inbox:**
 The private Owner Desk → Communications workflow now provides bounded
 SMS thread lists and drillthrough, unread per staff user, assignment,

@@ -1727,7 +1727,7 @@
       "dependencies": [
         "COM-L6B"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "com_voice_media",
       "budget": 400,
       "units": [
@@ -1742,8 +1742,8 @@
       "tests": [
         "tests/communication-voice-schema-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L7.md"
+      "readiness": "READY_AFTER_PREREQUISITE",
+      "card": "docs/pr-cards/COM-L7.md"
     },
     {
       "id": "COM-L8",

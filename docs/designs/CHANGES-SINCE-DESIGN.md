@@ -515,3 +515,16 @@ privacy-safe audit evidence. No schema, live provider or send activation.
   `singlePriceStart`); credits `SET_SINGLE_PRICE`; Stripe `subscription-line-reprice-<amendmentId>` operations
   (`claimLineRepriceInTx`/`runLineReprice`/`retryLineReprice` in `subscription-line.ts`, reconciled in
   `reconciliation-base.ts`). W-19/W-20 (portal "next bill") should read these credits and amendments.
+
+
+### 2026-10-09 — COM-L7 private voice data, schema-only boundary
+New CallSession/CallLeg/CommunicationMedia tables exactly anchor call
+lineage to the COM-L2 account/number and optional COM-L3 thread. Raw
+provider call IDs are unique per account; media has private key, hash,
+legal hold and retention date. SQL checks and hold trigger deny URL-like
+storage pointers, inconsistent lifecycle and deleting held recordings.
+An authenticated server metadata helper excludes recording bytes,
+provider IDs and storage keys, with staff assignment authorization.
+Expired media yields only a review list; provider deletion and recovery
+cleanup remain future owner-approved work. Backups include new tables.
+No voice ingress, callback, purchase or call activation.
