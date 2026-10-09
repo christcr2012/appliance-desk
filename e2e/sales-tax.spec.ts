@@ -15,6 +15,14 @@ const date = (day: string) => businessDateFromKey(day)!;
 
 test.describe("sales tax overview and resolved Today routing", () => {
   test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
+  test("delivery fees waiting page loads and passes axe", async ({ page }) => {
+    test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
+    await page.goto("/desk/sales-tax/delivery-fees");
+    await expect(page.getByRole("heading", { name: "Retail delivery fees waiting on you" })).toBeVisible();
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+  });
+
   test("six tax tabs have working navigation at phone width and dark mode", async ({ page }) => {
     test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
     await page.setViewportSize({ width: 360, height: 780 });
