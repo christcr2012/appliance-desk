@@ -53,3 +53,5 @@ requires separately scoped safe owner authorization before activation.
 - No customer sends, signatures, provider spending or live activation.
 - Verify with disposable PostgreSQL security tests, quick preflight,
   exact-head GitHub CI/performance and pull request review.
+
+- Navigation regression: OWNER/ADMIN/STAFF all discover the new inbox; private finance destinations stay hidden from STAFF.

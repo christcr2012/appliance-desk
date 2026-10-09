@@ -1715,7 +1715,8 @@
       ],
       "tests": [
         "tests/communication-inbox-scope.test.ts",
-        "tests/communications-inbound-integration.test.ts"
+        "tests/communications-inbound-integration.test.ts",
+        "tests/desk-navigation.test.ts"
       ],
       "readiness": "READY_AFTER_PREREQUISITE",
       "card": "docs/pr-cards/COM-L6B.md"
