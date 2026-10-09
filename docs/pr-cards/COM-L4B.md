@@ -1,6 +1,6 @@
 # COM-L4B — Account-scoped SMS adapter and claimed dispatch
 
-Status: MERGED (#354) after exact-head CI and review gates. Baseline: merged COM-L4A #353, main 29ebd32 (2026-10-09).
+Status: PR #354 OPEN; final-head CI pending. Local preflight and manual review passed. Do not merge without exact-head required CI. Baseline: merged COM-L4A #353, main 29ebd32 (2026-10-09).
 Design: BATCH-COM §3 provider boundary and §4.1 send/retry reliability. Risk: external provider/ledger; no other batch functionality, schema migration, live activation, paid resource, or public UI.
 
 ## Drift checklist A
