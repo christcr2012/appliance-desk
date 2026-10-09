@@ -1,6 +1,7 @@
 import { Prisma, type AutomationRun } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
+import { recordSystemIssue, resolveSystemIssue } from "@/domains/system-issues";
 
 export type AutomationOutcome = "RAN" | "ALREADY_RAN" | "FAILED" | "PAUSED";
 
@@ -167,12 +168,22 @@ export async function runAutomation(input: RunAutomationInput): Promise<RunAutom
       where: { id: run.id },
       data: { state: "SUCCEEDED", finishedAt: new Date(), counts, error: null },
     });
+    if (input.ruleKey !== "system-issues-sweep") {
+      await resolveSystemIssue("automation:" + input.ruleKey, "SOURCE_SUCCEEDED");
+      await resolveSystemIssue("automation-stale:" + input.ruleKey, "SOURCE_SUCCEEDED");
+    }
     return { outcome: "RAN", runId: run.id };
   } catch (cause) {
     await prisma.automationRun.update({
       where: { id: run.id },
       data: { state: "FAILED", finishedAt: new Date(), error: safeError(cause) },
     });
+    if (input.ruleKey !== "system-issues-sweep") {
+      const allowed = new Set(["Error", "TypeError", "TimeoutError", "AbortError", "FetchError", "PrismaClientKnownRequestError", "PrismaClientInitializationError", "TaxLookupUnavailable", "ProviderTimeoutError"]);
+      const name = cause instanceof Error && allowed.has(cause.name) ? cause.name : "UnknownError";
+      await recordSystemIssue({ kind: "AUTOMATION_FAILED", ruleKey: input.ruleKey,
+        runId: run.id, startedAt: run.startedAt, errorName: name });
+    }
     return { outcome: "FAILED", runId: run.id };
   }
 }

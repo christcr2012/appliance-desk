@@ -4,9 +4,9 @@ Updated October 8, 2026. Acquisition work T-6D1…3 (#313–#315) is merged; #31
 
 ## Next
 
-**Current engineering:** Batch T closed with T-7C #327 and T-7D #328 merged. Old draft handoff #326 was closed as superseded rather than merged. S-1A (system issue schema, typed writers, privacy screening) is in implementation review based on main `e8ed91e`; S-1B is its immediate dependent successor. The S-1A local isolated PostgreSQL and static proof is recorded in its card and PR. This does not activate monitoring integrations or grant AI access.
+**Current engineering:** Batch T closed with T-7C #327 and T-7D #328 merged. Old draft handoff #326 was closed as superseded rather than merged. S-1A (system issue schema, typed writers, privacy screening) was merged in #330 as `19aa141` after green CI and preview. S-1B (bounded source sweep, linked run lifecycle and diagnostic-only cron pass) is the current implementation; S-1C remains next. Its isolated PostgreSQL proof and drift resolution are in the S-1B card and PR. No AI access or external provider activation is authorized.
 
-T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing and **T-7D** overview/acceptance closeout have merged in #327 and #328. **S-1A** is the active implementation card. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
+T-6C4 (#321), T-7A (#322) and T-7B (#323) have merged; **T-7C** guided filing and **T-7D** overview/acceptance closeout have merged in #327 and #328. **S-1B** is the active implementation card. Keep owner/legal/CPA and live payment gates. Refresh each card against its actual merged prerequisite. [MASTER-ROADMAP](MASTER-ROADMAP.md) remains the single handoff; [PLAN](PLAN.md) owns acceptance. No extra handoff document is needed.
 
 ## Built
 
