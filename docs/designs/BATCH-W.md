@@ -156,3 +156,82 @@ reason in the PR.
 - A journey needs a customer-facing message that is not yet approved (existing live-send gates win).
 - A D-W3 row would change money (charge, refund, fee) automatically — always ask first.
 - A tax rule here conflicts with a CPA answer recorded in `docs/OWNER-INPUTS.md`.
+
+---
+
+## 6. Amendment A — Tax filing on autopilot (2026-10-09)
+
+Status: **APPROVED scope** (Chris, 2026-10-09: *"I will also want this built into my system, preferably in a way that
+these filings are handled automatically when applicable … I would, of course, expect you to build as necessary for my
+system"*). The three outside gates below (IN-61…IN-63) are open; the cards that depend on them stay blocked, the rest
+proceed in order.
+
+### 6.1 What Colorado offers (checked 2026-10-09; re-check when the card starts)
+
+| Job | What Colorado provides | What it needs from Chris | Source |
+|---|---|---|---|
+| Tax rate for any address (customer delivery addresses included) | The SUTS **GIS API**: the business's own software sends an address, Colorado returns the state, county, city and special-district rates | A free API key from SUTS (Quick Links → Lookup API Key) saved in Vercel as `COLORADO_GIS_API_KEY`, plus the API instructions shown on that same SUTS page (never the key) copied into `docs/runbooks/colorado-gis-api.md` | tax.colorado.gov/GIS-API; runbook |
+| Sales tax return (state + state-collected cities/counties) | **XML return file** uploaded on the SUTS bulk-filer portal (colorado.blt.govos.com, schemas downloadable after creating an account). The Department tests and approves XML from software makers before use; whether a single business's own software needs the same test is to be confirmed with DOR_LocationFilers@state.co.us | Create the bulk-portal account; send one email (draft in IN-62); answer the CPA question IN-44 (how exempt rent is reported) | tax.colorado.gov/software-developers-sales-tax; DR 0800 |
+| Consumer use tax (DR 0252, the tax owed on equipment bought without Colorado tax) | Filed and paid on **Revenue Online** (a web form; there is no upload file or API) or on the paper DR 0252 by mail | Nothing new: he clicks Submit and pays on Revenue Online, or signs and mails the printed form | DR 0252 instructions (2024) |
+
+No Colorado channel lets software submit a return **and pay it** without the owner. Everything up to that point
+can be automatic.
+
+### 6.2 Decisions
+
+**D-WA1 — The app does everything except press "Submit and pay".** For every filing account the app, without being
+asked: knows each period and its legal due date (already built in T), totals the period when it closes (packet, already
+built), creates the To do item **"File and pay $X on <site> by <date>"** the day the period closes (including **"File a
+$0 return"**, because Colorado requires one), reminds on the W-1 schedule (7 days before, 2 days before, due day,
+overdue daily), and after "I filed and paid it" asks only for the confirmation number and the date paid, then marks
+the appliances' use tax paid. A nightly check raises a high To do if a closed period has no filing item (never
+silently unfiled). Chris's part per return: review the numbers, open the site, paste or upload, submit, pay, type the
+confirmation number.
+
+**D-WA2 — Robot submission (the "RPA" idea) is not built.** Reasons, in priority order: (1) submitting a return is a
+signed statement to the state and paying it moves money from the business bank account — both stay Chris's action
+(AGENTS hard limits); (2) a robot would need Chris's Revenue Online or bank details stored in the app, which T decided
+never to do (BATCH-T 15.5); (3) state web forms change without notice and use bot checks, so a robot breaks silently —
+the worst failure for a tax deadline. The guided hand-off (D-WA3) gets the same result in about two minutes with none of
+these risks. Revisit only if Colorado publishes an official filing API (IN-63 records Chris's answer).
+
+**D-WA3 — Use tax (DR 0252) guided hand-off.** The use-tax return page gets a **"File now"** panel: one button opens
+Revenue Online's consumer use tax return in a new tab, and beside it the app lists Revenue Online's screens in order
+with each value (account, period, purchases, tax per area, total) and a **copy** button; the panel ends with the
+confirmation box. The screen order and labels come from the live public page, recorded in a new section of
+`docs/runbooks/colorado-filing-channels.md` (written in the card from what the agent sees on the page, dated; if the
+page cannot be opened from the sandbox, Chris pastes a screenshot description and the card records that). Second option
+on the same panel: **"Print the filled-in form"** — the official DR 0252 PDF filled with the business name, account
+number, period and amounts, ready to sign and mail (BATCH-T 15.5 already approved this with `pdf-lib`; it was not built).
+No data leaves the app except what Chris copies himself.
+
+**D-WA4 — Live rates from the GIS API, per address.** When IN-61 is done, the real client replaces the manual fallback in
+`src/domains/tax/colorado-gis.ts` exactly as the runbook's contract gate requires (8-second timeout, one network retry,
+zod-checked response, no stored raw response, tests never call Colorado). Every saved customer or delivery address is then
+looked up automatically; the existing nightly re-check (`address-recheck.ts`) and rate-change watch start using it, and
+an address Colorado can't match still becomes a "review this address" To do. Billing keeps using only confirmed
+locations. If the key stops working, a System health issue and a To do appear and billing falls back to the last
+confirmed rates — never a guessed one.
+
+**D-WA5 — Sales tax XML return file.** When IN-62 is answered "yes", the sales tax return page offers **"Download the
+return file"**: an XML file built from the frozen packet in the exact Colorado schema version recorded in the runbook,
+validated against that schema in a test before it is offered. Chris uploads it on the SUTS bulk portal and pays there;
+the app records the confirmation like any return. Until then (or if the answer is "no"), the page keeps the copy-number
+checklist that exists today. Deduction lines stay "not decided" until IN-44 is answered, and the file is not offered for
+a period with an undecided line.
+
+### 6.3 PRs (each writes its card at start; order after W-8, except W-11 which may run as soon as IN-61 is done)
+
+| PR | Builds | Gate | Risk |
+|---|---|---|---|
+| **W-9** | Filing autopilot (D-WA1): every period produces its To do the day it closes, $0 returns included; reminders on the W-1 schedule; confirmation and date-paid capture; nightly "nothing left unfiled" check | none (needs W-1, W-3) | money/compliance |
+| **W-10** | Use tax "File now" panel (D-WA3) with the runbook's screen map and copy buttons; filled official DR 0252 PDF for the current year (`pdf-lib`, form in `src/domains/tax/forms/`) | none | compliance |
+| **W-11** | Live GIS rate lookup (D-WA4) | IN-61 | money |
+| **W-12** | Sales tax XML return file (D-WA5) | IN-62, IN-44 | compliance |
+
+### 6.4 Stop-and-ask (in addition to section 5)
+
+- Anything that would submit a return, store a tax-site or bank login, or start a payment.
+- The GIS documentation or XML schema is not available in writing — never guess an endpoint, field or schema element.
+- Colorado's answer to IN-62 adds conditions (testing cycles, a certification form): record them in the runbook and ask
+  Chris before continuing.

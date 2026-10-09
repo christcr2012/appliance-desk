@@ -16,7 +16,7 @@ current PR/head.
 
 | Stage | Engineering order | Owner gate |
 |---|---|---|
-| Finish launch product | T → S → **W-0A/W-0B** → COM-L → **W-1…W-8** → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
+| Finish launch product | T → S → **W-0A/W-0B** → COM-L → **W-1…W-12** → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
 | Launch | GO-LIVE-CHECKLIST after final evidence | Chris authorizes live operation; engineering evidence is not activation |
 | After launch | K → K-CASH (documentation review pending) → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
 | Proposed later | BP after K/M/O, and relevant COM-N | Explicit runtime design acceptance; IN-48/49/50 for affected offers/programs |
@@ -75,12 +75,16 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-6 | Leads and quotes create follow-ups | JIT — `W-6.md` | W-5 |
 | W-7 | First-time setup checklist | JIT — `W-7.md` | W-6 |
 | W-8 | Simpler menu, Schedule screen, plain-words check | JIT — `W-8.md` | W-7 |
+| W-9 | Tax filing autopilot: every period becomes a dated To do, $0 returns included; confirmation capture; nothing left unfiled | JIT — `W-9.md` | W-8 |
+| W-10 | Use tax "File now" panel for Revenue Online + filled official DR 0252 to print | JIT — `W-10.md` | W-9 |
+| W-11 | Live Colorado tax rates for every address (GIS API) — may run early once IN-61 is done | JIT — `W-11.md` | IN-61 |
+| W-12 | Sales tax return as an XML upload file | JIT — `W-12.md` | W-10, IN-62, IN-44 |
 
 ### V
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| V-C1 | Typed content registry and historical compatibility | JIT — `V-C1.md` | W-8 |
+| V-C1 | Typed content registry and historical compatibility | JIT — `V-C1.md` | W-10 |
 | V-C2 | Photo library with private drafts and explicit publication | JIT — `V-C2.md` | V-C1 |
 | V-C3 | Every public content binding and scheduled promotions | JIT — `V-C3.md` | V-C2 |
 | V-C4 | Clear owner editing, preview, publish and restore | JIT — `V-C4.md` | V-C3 |
