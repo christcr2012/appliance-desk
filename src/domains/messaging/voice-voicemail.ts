@@ -41,7 +41,7 @@ export function approvedVoicemailPolicy(
 
 export function buildVoicemailPrompt(
   origin: string,
-  policy: NonNullable<VoiceRouting["voicemail"]>,
+  policy: { announcement: string; maxSeconds: number },
 ): string {
   const response = new twilio.twiml.VoiceResponse();
   response.say(policy.announcement);
@@ -70,7 +70,7 @@ export function voicemailFinished(): string {
 /** Called while the parent call transaction holds the account lock. */
 export async function recordVoicemailPrompt(
   tx: Tx, v: VerifiedVoice, rootCallSid: string,
-  sessionId: string, policy: NonNullable<VoiceRouting["voicemail"]>,
+  sessionId: string, policy: { maxSeconds: number; retentionDays: number },
 ) {
   const eventId = `voice:${v.accountId}:${rootCallSid}:voicemail-prompt`;
   await tx.providerEvent.createMany({ data: [{
