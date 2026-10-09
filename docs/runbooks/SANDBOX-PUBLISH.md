@@ -5,6 +5,10 @@ ChatGPT chat mode). The sandbox clone cannot push, and large files read out thro
 route moves **git commits**, packed and split into small fingerprinted pieces, and lets GitHub's own built-in token do
 the push. Added 2026-10-09 (Chris: "solve GitHub publishing and file truncation as one infrastructure problem").
 
+**First choice since 2026-10-09:** the sandbox has a push key (STATUS "Environment"), so a plain `git push` from the
+sandbox worktree works — run `npm run setup` there once (it sets HTTP/1.1; HTTP/2 pushes returned 502). Use the steps
+below when that push is refused (key expired or removed) or for a model with no sandbox access.
+
 ## Steps
 
 1. **In the sandbox worktree**, commit your work on a branch named `ai/<tool>/<topic>`, run the PLAYBOOK 4a/4b checks,

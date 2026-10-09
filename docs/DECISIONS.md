@@ -723,3 +723,16 @@ not files — `scripts/sandbox-transfer.mjs pack` makes one git bundle, base64 i
 fingerprints; the model uploads the parts to a `transfer/<id>` branch; `.github/workflows/sandbox-publish.yml` verifies,
 rebuilds, pushes fast-forward to the `ai/*` target with the built-in token, dispatches CI and deletes the transfer
 branch. No GitHub key needed. Chris made it permanent ("I would like this tool to be permanent"); a narrow sandbox push key installed through Sol remains an optional extra. Runbook: `docs/runbooks/SANDBOX-PUBLISH.md`.
+
+## 2026-10-09 — Faster local checks from Sol's W-0A feedback
+
+Sol reported: browser tests failed without a build, checks repeated between preflight / pre-push / CI, sandbox sessions
+expired mid-run, pushes failed with HTTP 502, planning commits caused rebase conflicts, and new pages needed manual
+route registration. Decided: (1) pass records per exact code fingerprint (`scripts/check-cache.mjs`) so the push gate
+skips what preflight ran and interrupted runs resume; the production build is reused until a source file changes;
+(2) `npm run test:db` / `npm run test:browser` one-command entry points, and a direct Playwright run without a build
+stops with that instruction; (3) `npm run setup` sets HTTP/1.1, merge-based syncing and the hook; (4) sync with
+`main` once at the PR boundary by merging, never rebasing; planning PRs don't edit an in-flight card
+(DRIFT-PROTOCOL); (5) `scripts/check-route-inventory.mjs` in the quick gate prints the exact line for a new page.
+CI stays the full exact-head gate (deliberately repeated; it is free and is the only merge evidence). The sandbox push
+key Chris created has a 1-year expiry (renewal noted in STATUS).

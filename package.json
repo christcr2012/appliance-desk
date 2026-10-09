@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "preflight": "node scripts/preflight.mjs",
-    "check:preflight": "node --test scripts/preflight.test.mjs",
+    "check:preflight": "node --test scripts/preflight.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -22,7 +22,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "hooks:install": "git config core.hooksPath .githooks",
+    "hooks:install": "bash scripts/setup-checkout.sh",
+    "setup": "bash scripts/setup-checkout.sh",
+    "test:db": "node scripts/preflight.mjs --db",
+    "test:browser": "node scripts/preflight.mjs --browser",
     "check:quick": "node scripts/preflight.mjs --quick"
   },
   "dependencies": {

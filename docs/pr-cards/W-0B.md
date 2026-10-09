@@ -1,6 +1,6 @@
 # W-0B — No Today item leads nowhere; delivery-fee records get a page to resolve them
 
-Status: **APPROVED** · Baseline inspected: W-0A (PR pending) (2026-10-09; verify merge SHA at next checklist A).
+Status: **APPROVED** · Baseline inspected: W-0A PR #342 (2026-10-09; verify merge SHA at next checklist A).
 Batch: W (`docs/designs/BATCH-W.md` §1, D-W1 last sentence, PR table W-0b) · Prerequisites: none (independent of W-0A;
 either may merge first).
 Base: latest `main`. Migration: **none**. Sizing estimate: ~250 production lines, ≤8 files, risk area: screens.
@@ -61,5 +61,5 @@ W-0A updates `src/domains/tax/acquisition-attention.ts` to add purchase-tax
 reason grouping and a high-priority unlinked use-tax filing alert. The RDF
 block still points to the dead `/desk/tax` route; replace just its href in W-0B.
 The owner setup location/actions have also changed, but RDF statuses and
-`resolvePendingRdfRecords` are unchanged. Review W-0A (PR pending) diff/CI before coding.
+`resolvePendingRdfRecords` are unchanged. Review W-0A PR #342 diff/CI before merge.
 No inherited code-review finding has been waived here yet.
