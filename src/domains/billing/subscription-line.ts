@@ -163,8 +163,12 @@ export function claimLineReductionInTx(
  * provider problem: the outcome is recorded and the billing reconciliation pass retries anything unfinished.
  */
 export async function runLineReduction(pendingDeliveryId: string, claim: LineReduceClaim): Promise<LineReduceResult> {
+  return runLineChange(() => desiredLineReduction(pendingDeliveryId), claim);
+}
+
+async function runLineChange(resolve: () => Promise<LineReduceDesired | null>, claim: LineReduceClaim): Promise<LineReduceResult> {
   if (claim.done) return "done";
-  const desired = await desiredLineReduction(pendingDeliveryId);
+  const desired = await resolve();
   if (!desired) return "skipped";
   if (desired.moot) {
     await prisma.$transaction((tx) => completeProviderOperation(tx, claim.opId, { status: "SUCCEEDED", providerObjectId: desired.subscriptionId }));
@@ -184,7 +188,14 @@ export async function retryLineReduction(
   operation: { id: string; subjectType: string; subjectId: string; idempotencyKey: string; attempts: number },
   pendingDeliveryId: string,
 ): Promise<boolean> {
-  const desired = await desiredLineReduction(pendingDeliveryId);
+  return retryLineChange(operation, () => desiredLineReduction(pendingDeliveryId));
+}
+
+async function retryLineChange(
+  operation: { id: string; subjectType: string; subjectId: string; idempotencyKey: string; attempts: number },
+  resolve: () => Promise<LineReduceDesired | null>,
+): Promise<boolean> {
+  const desired = await resolve();
   if (!desired) return false;
   if (desired.moot) {
     await prisma.$transaction((tx) => completeProviderOperation(tx, operation.id, { status: "SUCCEEDED", providerObjectId: desired.subscriptionId }));
@@ -220,4 +231,65 @@ async function takeOver(operation: { subjectType: string; subjectId: string; ide
     if (error instanceof RetryLater) return null;
     throw error;
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// W-21B: a set's line repriced to single prices after the customer is done with one machine (D-WB8 case 1). Same durable
+// pattern; the operation is keyed by the line amendment, and the target is again the line's current local price.
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const lineRepriceKey = (amendmentId: string) => `subscription-line-reprice-${amendmentId}`;
+
+export function parseLineRepriceKey(key: string): string | null {
+  const match = /^subscription-line-reprice-(.+)$/.exec(key);
+  return match ? match[1]! : null;
+}
+
+export async function desiredLineReprice(amendmentId: string): Promise<LineReduceDesired | null> {
+  const amendment = await prisma.rentalLineAmendment.findUnique({
+    where: { id: amendmentId },
+    select: {
+      rentalLine: {
+        select: {
+          id: true,
+          monthlyPriceCents: true,
+          assignments: { where: { unassignedAt: null }, select: { id: true } },
+          agreement: { select: { status: true, stripeSubscriptionId: true } },
+        },
+      },
+    },
+  });
+  const line = amendment?.rentalLine;
+  if (!line?.agreement.stripeSubscriptionId) return null;
+  if (line.agreement.status !== "ACTIVE") return { moot: true, subscriptionId: line.agreement.stripeSubscriptionId };
+  return {
+    moot: false,
+    subscriptionId: line.agreement.stripeSubscriptionId,
+    rentalLineId: line.id,
+    amountCents: line.monthlyPriceCents,
+    remove: line.assignments.length === 0,
+  };
+}
+
+export function claimLineRepriceInTx(
+  tx: Parameters<typeof claimProviderOperation>[0],
+  input: { amendmentId: string; rentalLineId: string },
+): Promise<LineReduceClaim> {
+  return claimProviderOperation(tx, {
+    kind: "SUBSCRIPTION_UPDATE",
+    subjectType: "RentalLine",
+    subjectId: input.rentalLineId,
+    idempotencyKey: lineRepriceKey(input.amendmentId),
+  });
+}
+
+export function runLineReprice(amendmentId: string, claim: LineReduceClaim): Promise<LineReduceResult> {
+  return runLineChange(() => desiredLineReprice(amendmentId), claim);
+}
+
+export function retryLineReprice(
+  operation: { id: string; subjectType: string; subjectId: string; idempotencyKey: string; attempts: number },
+  amendmentId: string,
+): Promise<boolean> {
+  return retryLineChange(operation, () => desiredLineReprice(amendmentId));
 }
