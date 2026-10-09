@@ -4,7 +4,7 @@ import { Container } from "@/components/site/container";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { ButtonLink, Card } from "@/components/ui";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
-import { getPublishedApplianceTypes, formatCents } from "@/domains/pricing";
+import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getLaunchSettings } from "@/domains/launch";
 import { getContentForRequest } from "@/domains/site-content/request";
 import { catalogAlt, fillSiteText } from "@/domains/site-content/fields";
@@ -20,7 +20,7 @@ export default async function HomePage({
   const params = await searchParams;
   const [settings, applianceTypes, launch, content] = await Promise.all([
     getBusinessSettings(),
-    getPublishedApplianceTypes(),
+    getPublishedCatalog(),
     getLaunchSettings(),
     getContentForRequest(params),
   ]);
@@ -255,7 +255,7 @@ export default async function HomePage({
             <>
               <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {applianceTypes.map((type) => (
-                  <Card key={type.id}>
+                  <Card key={`${type.kind}-${type.id}`}>
                     <ApplianceMedia
                       photoUrl={type.photoUrl}
                       name={type.name}
@@ -273,6 +273,11 @@ export default async function HomePage({
                         / month
                       </span>
                     </p>
+                    {type.savingCents ? (
+                      <p className="mt-1 text-sm font-medium text-accent-dark">
+                        {type.contents} — save {formatCents(type.savingCents)} a month
+                      </p>
+                    ) : null}
                   </Card>
                 ))}
               </div>

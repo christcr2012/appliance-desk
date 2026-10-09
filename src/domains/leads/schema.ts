@@ -33,9 +33,10 @@ export const leadFormSchema = z.object({
   // typo or made-up code never blocks submitting the lead itself.
   referralCode: z.string().trim().max(20).optional().or(z.literal("")),
 
-  applianceTypeIds: z
-    .array(z.string())
-    .min(1, "Select at least one appliance"),
+  // Single machines and sets (rental packages, W-16A) the visitor ticked. At least one of the two is required while
+  // the website lists any (leadFormSchemaForCatalog).
+  applianceTypeIds: z.array(z.string()),
+  packageIds: z.array(z.string()).optional(),
   quantity: z.number().int().min(1).max(50),
   desiredTerm: z.enum(["month-to-month", "6-month", "12-month"]),
   desiredStartDate: z.string().trim().optional().or(z.literal("")),
@@ -64,9 +65,14 @@ export const leadFormSchema = z.object({
   website: z.string().max(200).optional().or(z.literal("")),
 });
 
-/** General enquiries remain possible before any appliance types are published. */
-export function leadFormSchemaForCatalog(hasPublishedTypes: boolean) {
-  return hasPublishedTypes ? leadFormSchema : leadFormSchema.extend({ applianceTypeIds: z.array(z.string()) });
+/** General enquiries remain possible before anything is published; otherwise pick a machine or a set. */
+export function leadFormSchemaForCatalog(hasPublishedItems: boolean) {
+  return hasPublishedItems
+    ? leadFormSchema.refine((v) => v.applianceTypeIds.length + (v.packageIds?.length ?? 0) > 0, {
+        message: "Select at least one appliance",
+        path: ["applianceTypeIds"],
+      })
+    : leadFormSchema;
 }
 
 export type LeadFormInput = z.infer<typeof leadFormSchema>;

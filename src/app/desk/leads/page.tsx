@@ -12,6 +12,7 @@ import {
   type DataListColumn,
 } from "@/components/ui";
 import { formatBusinessDate, formatTaskDate } from "@/lib/business-date";
+import { summarizeApplianceRequests } from "@/domains/leads/requests";
 
 export const metadata = { title: "Leads" };
 
@@ -63,12 +64,7 @@ export default async function LeadsPage({
       key: "request",
       header: "Requested",
       cell: (lead) =>
-        lead.applianceRequests
-          .map(
-            (request) =>
-              `${request.quantity} × ${request.applianceType.name}`,
-          )
-          .join(", ") || "Appliances not specified",
+        summarizeApplianceRequests(lead.applianceRequests, " × ") || "Appliances not specified",
     },
     {
       key: "status",

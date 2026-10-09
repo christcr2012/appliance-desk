@@ -15,6 +15,7 @@ import { getLeadScoringPolicy, parseLeadScoringPolicy } from "./scoring-policy";
 import { recordRealContactInTx } from "./contact";
 import { locateServiceAddress } from "@/domains/tax/locations";
 import type { LeadFormInput } from "./schema";
+import { summarizeApplianceRequests } from "./requests";
 import type { Lead, LeadStatus, Prisma } from "@prisma/client";
 
 /**
@@ -53,6 +54,15 @@ export async function createLead(input: LeadFormInput) {
   );
 
   const lead = await prisma.$transaction(async (tx) => {
+    // A requested set becomes one request row per machine type in it, tagged with the set (W-16A).
+    const packageIds = [...new Set(input.packageIds ?? [])];
+    const packages = packageIds.length
+      ? await tx.rentalPackage.findMany({ where: { id: { in: packageIds }, isActive: true }, include: { components: true } })
+      : [];
+    if (packages.length !== packageIds.length) throw new Error("A requested set is no longer offered.");
+    const packageRequests = packages.flatMap((p) =>
+      p.components.map((c) => ({ applianceTypeId: c.applianceTypeId, packageId: p.id, quantity: input.quantity * c.quantity })),
+    );
     const created = await tx.lead.create({
       data: {
         isBusiness: input.accountType === "business",
@@ -81,13 +91,16 @@ export async function createLead(input: LeadFormInput) {
         isHighValue,
         scoringPolicyVersion: scoringPolicy.version,
         applianceRequests: {
-          create: input.applianceTypeIds.map((applianceTypeId) => ({
-            applianceTypeId,
-            quantity: input.quantity,
-          })),
+          create: [
+            ...packageRequests,
+            ...input.applianceTypeIds.map((applianceTypeId) => ({
+              applianceTypeId,
+              quantity: input.quantity,
+            })),
+          ],
         },
       },
-      include: { applianceRequests: { include: { applianceType: true } } },
+      include: { applianceRequests: { include: { applianceType: true, package: true } } },
     });
 
     await tx.consentRecord.create({
@@ -104,9 +117,7 @@ export async function createLead(input: LeadFormInput) {
   });
 
   const notifyTo = process.env.LEAD_NOTIFICATION_EMAIL || settings.publicEmail;
-  const applianceSummary = lead.applianceRequests
-    .map((r) => `${r.quantity}x ${r.applianceType.name}`)
-    .join(", ");
+  const applianceSummary = summarizeApplianceRequests(lead.applianceRequests);
 
   await deliverMessage({
     idempotencyKey: `lead-notification-${lead.id}`,
@@ -218,7 +229,7 @@ export async function getLeadsPage(
 ) {
   return prisma.lead.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
-    include: { applianceRequests: { include: { applianceType: true } } },
+    include: { applianceRequests: { include: { applianceType: true, package: true } } },
     orderBy: [{ score: "desc" }, { createdAt: "desc" }],
     skip,
     take: pageSize,
@@ -242,7 +253,7 @@ export async function getLeadCountsByStatus(): Promise<Record<LeadStatus, number
 export async function getLeadById(id: string) {
   return prisma.lead.findUnique({
     where: { id },
-    include: { applianceRequests: { include: { applianceType: true } } },
+    include: { applianceRequests: { include: { applianceType: true, package: true } } },
   });
 }
 

@@ -3330,12 +3330,10 @@
     },
     {
       "id": "W-16A",
-      "title": "Rental packages: schema, set price with shown saving, split old set appliances",
+      "title": "Rental packages: schema, settings with shown saving, set type to package, website + quote form + leads",
       "batch": "W",
-      "dependencies": [
-        "W-10"
-      ],
-      "status": "APPROVED",
+      "dependencies": [],
+      "status": "MERGED",
       "migration": "rental_packages",
       "budget": 500,
       "units": [
@@ -3346,13 +3344,17 @@
         "src/domains/billing/pickup-billing.ts",
         "prisma/seed.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/rental-packages.test.ts",
+        "tests/rental-packages-integration.test.ts",
+        "tests/contact-catalog-recovery.test.tsx"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE",
       "plannedCard": "docs/pr-cards/W-16A.md"
     },
     {
       "id": "W-16B",
-      "title": "Packages in quotes, agreements, leads and public pricing",
+      "title": "Package lines on agreements (one machine per part) and estimates; split old set appliances",
       "batch": "W",
       "dependencies": [
         "W-16A"
