@@ -10,8 +10,8 @@ fixes (#367). Everything below reflects `main` after those merges.
 
 - **Done today:** W-0C (#359); COM-L3 (#352), COM-L4A (#353), COM-L4B (#354), COM-L5A (#358), COM-L5B (#361), COM-L6A
   (#363); W-16A (#360), W-16B (#362), W-21A (#365), W-21B (#366); test isolation + CI image mirror (#367).
-- **In flight:** COM-L6B (#364).
-- **Next, in this order:** COM-L6B → COM-L7 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
+- **In flight:** COM-L7 (Sol). COM-L6B merged (#364).
+- **Next, in this order:** COM-L7 → COM-L8 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
   W-8 → W-9 → W-10 → W-19 → W-17 → W-20 → V → F-part-2 (W-11/W-12/W-13 when their outside gates clear). The authority is
   `designs/BATCH-W-AMENDMENT-B.md` section 8; W-16A/B and W-21 are done and must not be redone.
 
@@ -52,7 +52,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | COM-L5A (#358) | Verified inbound SMS and deterministic contact resolution | MERGED — [card](pr-cards/COM-L5A.md) | COM-L4B |
 | COM-L5B (#361) | Scoped consent actions and mandatory disclosure preservation | MERGED — [card](pr-cards/COM-L5B.md) | COM-L5A |
 | COM-L6A (#363) | Template validation, segment preview and reminder migration | MERGED — [card](pr-cards/COM-L6A.md) | COM-L5B |
-| COM-L6B (#364, open) | Authorized SMS inbox and per-user read cursors | JIT — `COM-L6B.md` | COM-L6A |
+| COM-L6B (#364, merged) | Authorized SMS inbox and per-user read cursors | JIT — `COM-L6B.md` | COM-L6A |
 | COM-L7 | Call legs, private media and retention schema | JIT — `COM-L7.md` | COM-L6B |
 | COM-L8 | Deterministic call routing, acceptance and callback reducer | JIT — `COM-L8.md` | COM-L7 |
 | COM-L9 | Optional voicemail private ingest and missed-call inbox | JIT — `COM-L9.md` | COM-L8 |

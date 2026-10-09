@@ -1705,7 +1705,7 @@
       "dependencies": [
         "COM-L6A"
       ],
-      "status": "IN_PROGRESS \u2014 PR #364 open",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1719,10 +1719,13 @@
       ],
       "tests": [
         "tests/communication-inbox-scope.test.ts",
-        "e2e/communications-inbox.spec.ts"
+        "tests/communications-inbound-integration.test.ts",
+        "tests/desk-navigation.test.ts",
+        "e2e/desk-workspace.spec.ts",
+        "e2e/accessibility-routes-desk-a.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L6B.md"
+      "readiness": "MERGED",
+      "card": "docs/pr-cards/COM-L6B.md"
     },
     {
       "id": "COM-L7",

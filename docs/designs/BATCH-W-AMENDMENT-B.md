@@ -347,7 +347,7 @@ Equipment and "Records" under Taxes.
 early-return/repair credits ahead of their place and had them built in a second lane beside COM-L (DECISIONS
 2026-10-09). Their contracts are logged in `CHANGES-SINCE-DESIGN.md`; later cards build on them, never redo them.
 
-**Remaining, in order:** COM-L6B (in flight, #364) → COM-L7 … COM-L15 → **W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 →
+**Remaining, in order:** COM-L7 (in flight; COM-L6B merged #364) → COM-L8 … COM-L15 → **W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 →
 W-5 → W-6 → W-7 → W-8 → W-9 → W-10 → W-19 → W-17 → W-20** → V → F-part-2. W-11/W-12/W-13 run when their outside gates
 clear. (`docs/pr-cards/work-index.json` holds the same chain.) Notes for the remaining cards:
 - **W-18** (dollars-only kit, ⓘ glossary) also converts the screens W-16A/B/W-21 added (sets editor, "Rent as", split

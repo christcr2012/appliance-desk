@@ -6,8 +6,8 @@ Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352�
 
 ### Current queue (read this first)
 
-- **In flight:** COM-L6B — authorized SMS inbox and per-user read cursors (PR #364, Sol).
-- **Then, in this order:** COM-L7 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **In flight:** COM-L7 — call legs, private media and retention schema (Sol). COM-L6B merged (#364).
+- **Then, in this order:** COM-L8 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
@@ -25,6 +25,17 @@ Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352�
 **2026-10-09 — test isolation (#367):** tests that write records existing once for the whole database run one at a time;
 the health sweep counts only issues it actually recorded; CI uses the ECR Public copy of the Postgres image. No test was
 skipped or weakened.
+
+**2026-10-09 — COM-L6B authorized communications inbox (#364):**
+The private Owner Desk → Communications workflow now provides bounded
+SMS thread lists and drillthrough, unread per staff user, assignment,
+workflow status, and version-conflict protection. Every handler checks
+an active team account; staff can access only assigned threads. Ambiguous
+numbers never expose a guessed customer's account or lead linkage; message
+text is decrypted only for authorized thread detail. Audit history records
+assignments/status without message content. All customer texts remain off,
+including the held-for-review day-of reminders. Card: docs/pr-cards/COM-L6B.md.
+**Next: COM-L7** private call/voicemail schema after exact-head merge.
 
 **2026-10-09 — W-21B merged (#366), Claude's lane:** when the customer is done with one machine of a set, the owner
 records it on the repair screen: the rest go to single prices (keeping the agreement's term discount, IN-72), the

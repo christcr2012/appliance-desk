@@ -64,6 +64,12 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/account/settings", role: "CUSTOMER", fixture: "/account/settings" },
   { path: "/account/settings/privacy", role: "CUSTOMER", fixture: "/account/settings/privacy" },
 
+  { path: "/desk/communications", role: "OWNER", fixture: "/desk/communications" },
+  {
+    path: "/desk/communications/[id]", role: "OWNER",
+    fixture: "A private communication thread in an isolated database",
+    manualOnlyReason: "Each thread contains private message content and requires a created signed-provider fixture.",
+  },
   { path: "/desk/activity", role: "OWNER", fixture: "/desk/activity" },
   {
     path: "/desk/agreements/[id]/early-return",
