@@ -234,7 +234,13 @@ export async function stageSwap(
       throw new Error("The replacement unit isn't currently available.");
     }
     const holder = await getOpenCustody(tx, originalApplianceId);
-    if (!holder || holder.customerId !== customerId) {
+    // A machine out for repair with no replacement yet (W-21A) is no longer at the customer, but a replacement swap is
+    // exactly what ends its out-of-service period.
+    const awayForRepair = await tx.outOfServicePeriod.findFirst({
+      where: { applianceId: originalApplianceId, endedOn: null, agreementId },
+      select: { id: true },
+    });
+    if (!awayForRepair && (!holder || holder.customerId !== customerId)) {
       throw new Error("This appliance has no customer recorded as holding it. Record who has it on the appliance page first.");
     }
     const alreadyStaged = await tx.jobAppliance.findFirst({

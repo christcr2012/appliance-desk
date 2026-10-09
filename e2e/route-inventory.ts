@@ -138,6 +138,12 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/inventory/[id]", role: "OWNER", fixture: "/desk/inventory/ci-security-appliance" },
   { path: "/desk/inventory/[id]/qr", role: "OWNER", fixture: "/desk/inventory/ci-security-appliance/qr" },
   {
+    path: "/desk/inventory/[id]/out-of-service",
+    role: "OWNER",
+    fixture: "An appliance with an open out-of-service (taken for repair) period",
+    manualOnlyReason: "CI seeds no open repair period; the flow is covered by tests/out-of-service-integration.test.ts.",
+  },
+  {
     path: "/desk/inventory/[id]/split",
     role: "OWNER",
     fixture: "An appliance still recorded under the retired Washer + Dryer Set type",

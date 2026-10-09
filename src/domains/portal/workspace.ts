@@ -62,6 +62,11 @@ export async function getPortalHome(rawAddressId?: string) {
         status: true,
         serviceAddress: { select: { line1: true, line2: true, city: true } },
         lines: { select: { label: true, monthlyPriceCents: true } },
+        // W-21A: machines away for repair with no replacement yet, so the customer knows a credit is coming.
+        outOfServicePeriods: {
+          where: { endedOn: null },
+          select: { id: true, startedOn: true, appliance: { select: { applianceType: { select: { name: true } } } } },
+        },
       },
     }),
     prisma.invoice.findFirst({

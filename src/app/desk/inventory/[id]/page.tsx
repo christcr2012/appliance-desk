@@ -39,6 +39,7 @@ export default async function ApplianceDetailPage({
   if (!appliance) {
     notFound();
   }
+  const awayForRepair = await prisma.outOfServicePeriod.findFirst({ where: { applianceId: id, endedOn: null }, select: { id: true } });
 
   const openCustody = await getOpenCustody(prisma, id);
   const needsCustodyRecord =
@@ -88,6 +89,14 @@ export default async function ApplianceDetailPage({
           ` · purchased ${formatBusinessDate(appliance.purchaseDate)}`}
       </p>
 
+      {awayForRepair && (
+        <p className="mt-4 rounded-card border border-line bg-subtle p-3 text-sm text-ink">
+          Taken for repair with no replacement yet, so the customer will be credited the days without it.{" "}
+          <Link href={`/desk/inventory/${id}/out-of-service`} className="font-semibold underline hover:text-primary">
+            Return or replace it
+          </Link>
+        </p>
+      )}
       {appliance.applianceType.slug === OLD_SET_TYPE_SLUG && !appliance.archivedAt && (
         <p className="mt-4 rounded-card border border-line bg-subtle p-3 text-sm text-ink">
           This is an old record for a whole washer and dryer set. A set is now separate machines.{" "}

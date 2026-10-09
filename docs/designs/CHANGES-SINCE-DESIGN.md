@@ -498,3 +498,13 @@ OWNER/ADMIN can assign, and mutations revalidate active team roles
 in the write transaction. Read cursors never move backward or accept
 cross-thread message IDs. Thread actions have optimistic version and
 privacy-safe audit evidence. No schema, live provider or send activation.
+
+### W-21A out-of-service periods — 2026-10-09 (#365)
+- Migration `20261013110000_out_of_service_periods`: `OutOfServicePeriod` (one open per machine) and
+  `BusinessSettings.outOfServiceEscalationDays` (default 3). The period stores `creditId` (design said
+  `creditedOnInvoiceId`; the bill line is the existing Stripe-balance credit mirror).
+- Job completion: a SWAP may now record old RETURNED + new NOT_DELIVERED ("taken for repair"); partial REMOVALs on an
+  active rental open periods. `stageSwap` accepts an original with an open period. Credits: `CustomerCredit.sourceType
+  "OUT_OF_SERVICE"`, pushed via `PUSH_CREDIT` handoffs (`runHandoffsByIds` export), labelled by the invoice mirror.
+- `src/domains/billing/out-of-service.ts`: `openOutOfServiceInTx`, `closeOutOfServiceInTx`, `outOfServiceCreditPlan`,
+  `resolveOutOfService`. To do category `OUT_OF_SERVICE`. W-21B adds the "done" decision on the same screen.

@@ -1140,9 +1140,22 @@ scheduled date), never from the moment a status button is pressed.
    is not charged for the 1st. Setting: on/off, **default on**.
 
 Days are Colorado calendar days. Daily amounts are rounded once on the
-total, not per day. There is no "early return" rule: an item returned before
-the end date while the agreement continues is not credited (that reading was
-a misunderstanding, removed the same day — `docs/DECISIONS.md`).
+total, not per day. There is no general "early return" credit for an item the
+customer simply hands back while the agreement continues (`docs/DECISIONS.md`),
+with these exceptions Chris set on 2026-10-09 (D-WB8):
+
+4. **Taken for repair with no replacement (W-21A, any line).** A visit that takes a
+   machine away while the rental goes on (a swap with no replacement delivered, or a
+   pickup of some machines while others stay) starts an out-of-service period. The
+   price stays the same; when a machine is back (a replacement swap, the same machine
+   delivered back, or the owner closes it) the next bill gets
+   `Credit – dryer out of service – N days`: the machine's share of the line price
+   (a set split evenly) per day, using the late-delivery per-day setting, rounded once,
+   never more than billed. The pickup day counts as a day without it; the day a machine
+   arrives counts as a day with it. Paid-in-full rentals: owner decides. To do shows
+   "Return or replace", urgent after the owner's setting (starting value 3 days).
+5. **A machine of a set that is done (W-21B):** the rest is charged at single prices
+   from the day after, with a partial-period credit — built in W-21B.
 
 ## Cross-cutting desk tools (2026-09-28)
 

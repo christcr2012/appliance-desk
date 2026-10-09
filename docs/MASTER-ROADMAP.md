@@ -86,7 +86,8 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-15 | Tax proof per appliance + audit pack; parts purchases join the records | JIT — `W-15.md` | W-2 |
 | W-16A | **MERGED (#360)** Rental packages (sets): schema, settings with shown saving, old set type → package, website + quote form + leads | `W-16A.md` | — (moved ahead by Chris 2026-10-09; runs beside Sol's chain) |
 | W-16B | **MERGED (#362)** Set lines on agreements (one machine per part) and quotes; split old one-record sets (To do + guided screen) | `W-16B.md` | W-16A |
-| W-21 | Machines leaving early: single price + partial-period credit; taken for repair without replacement → out-of-service credit (any line) | JIT — `W-21.md` | W-16B |
+| W-21A | **MERGED (#365)** Taken for repair without replacement → out-of-service credit (any line), To do, screen, portal note | `W-21A.md` | W-16B |
+| W-21B | A machine of a set that is done: single price for the rest from the day after, partial-period credit, Stripe item change | JIT — `W-21B.md` | W-21A |
 | W-19 | Remaining flow gaps (lead→quote, quote→draft, unsigned follow-up, failed signing payment, instant repair To do, pickup requests, pickup after any ending) | JIT — `W-19.md` | W-21 |
 | W-17 | Related panel + History on every record; search by serial/model/seller; cleaning step | JIT — `W-17.md` | W-19 |
 | W-20 | Portal follows the flows: next steps, status timelines, next bill, Pay now | JIT — `W-20.md` | W-17 |
