@@ -16,6 +16,7 @@ export const voiceRoutingSchema = z.object({
   afterHoursMode: z.enum(["CLOSED", "VOICEMAIL"]),
   voicemail: z.object({
     enabled: z.boolean(),
+    onMissedCall: z.boolean(),
     announcement: z.string().trim().min(20).max(400),
     maxSeconds: z.number().int().min(10).max(120),
     retentionDays: z.number().int().min(1).max(3650),
