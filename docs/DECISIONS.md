@@ -772,3 +772,14 @@ merges costs one build; (3) sandbox sessions stop after 30 minutes and heavy che
 Chris (after seeing the bill: the $20 included credit used up and $64.37 on-demand this cycle, almost all builds):
 "every batch if that's not going to be expensive". Per-batch is cheaper than daily, so `release.yml` runs when a
 batch finishes (DRIFT-PROTOCOL C step 5), weekly as a safety net, and on demand. Switch to daily at launch.
+
+## 2026-10-09 — Connected business (Batch W Amendment B, draft for IN-69)
+
+Chris asked for the whole system to flow ("anything interconnected in reality should be interconnected in the system"),
+for group purchases with each appliance's model and serial and audit-ready tax proof, for washer + dryer sets to be two
+separate machines grouped for pricing, and for dollars-only money and ⓘ explanations everywhere. A read-only audit
+found the gaps (no purchase record, serials dropped in group intake, "set" as an appliance type, ten flow dead ends,
+three cents inputs, no help component) and a confirmed defect: failed automatic charges never reach To do (W-0C,
+not gated). Designed: Purchase records, tax proof + audit pack, RentalPackage, connected Related/History pages, flow
+rows D-WB4, portal flows, a plain-language kit, plus V and F-part-2 amendments. Restated: Colorado's GIS service only
+looks up rates; it cannot file; the owner submits.

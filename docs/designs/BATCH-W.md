@@ -1,5 +1,7 @@
 # Design — Batch W: Workflows that tell Chris what to do
 
+Amendment B (connected business, purchases, sets, plain-language kit; DRAFT for IN-69 except W-0C): `BATCH-W-AMENDMENT-B.md`.
+
 Status: **APPROVED** (Chris, 2026-10-09: "Approved, yes to drafts, same day, combine screens" — IN-57…IN-60). Each PR
 still needs its card in `docs/pr-cards/` before it starts (W-0A and W-0B have cards). Written 2026-10-09 against `main` aea29ba3 (#335) after a read-only audit of the owner's
 journeys (tax and intake, rental lifecycle, navigation and wording).

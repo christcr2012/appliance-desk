@@ -176,3 +176,10 @@ is success with notification pending when appropriate. Keep genuine transaction
 failure distinct. Test a thrown sender, a disabled sender, retry after commit,
 and successful send with account/agreement counts. If already proved, cite the
 regression and omit duplicate implementation. No new generic outbox by default.
+
+## 2026-10-09 amendment — F-part-2 proves the connected flows (pending IN-69)
+
+`BATCH-W-AMENDMENT-B.md` section 10: scenario files 13 purchase-to-audit, 14 set lifecycle, 15 ending-to-ready,
+16 failed charge to recovery, 17 portal journeys; an automated connection check (every Related link and To do button
+opens a real page); the owner walkthrough adds purchase intake with serials, a set rental, the pickup chain and an
+audit pack; the plain-words/money check runs over the final product.
