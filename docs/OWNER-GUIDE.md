@@ -352,7 +352,10 @@ contains (any appliance type you have, including ones you add later), the set pr
 website. The screen works out the saving for you ("Renting these separately would be $70 a month; the set is $60 — the
 customer saves $10 a month"). The website and the quote form show sets first, then single machines. Retiring a set
 hides it; signed agreements keep their prices. Your old "Washer + Dryer Set" appliance type was turned into the
-"Washer + Dryer Set" set automatically, at the same price.
+"Washer + Dryer Set" set automatically, at the same price. When you build a rental or a quote, **Rent as** lets you pick a set: its name and price
+fill in (you can still change the price for a special deal), and for a rental you tick one washer and one dryer — any
+two you have. If an older record shows a whole set as one appliance, To do shows **Split … into separate machines**;
+the guided screen keeps that record's history on the washer and adds the dryer to the same rental.
 
 ## Billing, statements, and late fees
 

@@ -452,3 +452,12 @@ activation or customer-messaging changes.
   package land together); the "split an old set appliance" To do + guided screen moved to W-16B.
 - Until W-18 builds `<InfoTip>`/`<MoneyInput>`, the Sets screen explains with field help text and uses the existing dollar
   inputs; W-18 converts it with the other screens.
+
+### W-16B set lines and old-set split — 2026-10-09 (#361)
+- `addRentalLine(..., { packageId })` requires exactly one machine per part (`packagePartsProblem` in
+  `src/domains/packages/pricing.ts`); price stays editable; renewals copy `packageId`. `addEstimateLineItem` takes
+  `packageId` (active sets). Choices come from `listPackagesForLines()`; UI `src/components/desk/package-line-chooser.tsx`.
+- To do category `OLD_SET_APPLIANCE` → `/desk/inventory/[id]/split`; `splitOldSetAppliance` in
+  `src/domains/packages/split.ts` (existing row keeps history; new machines join the same rental line and custody stay;
+  cost/seller tax split evenly). `OLD_SET_TYPE_SLUG` lives in `pricing.ts`.
+- W-21 inherits: a line's machines are its active assignments; a set line is recognisable by `packageId`.

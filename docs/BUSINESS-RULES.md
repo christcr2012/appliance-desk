@@ -18,6 +18,13 @@ Update this file in the same PR that changes a rule.
     single prices (`src/domains/packages/pricing.ts`), never typed in. A set is
     offered on the website only while it is active, published and every machine type
     in it is active. Any type (including new ones) can be part of a set.
+    On an agreement or quote a line can rent a set ("Rent as", W-16B): an agreement
+    set line takes exactly one machine per part (any individual machines of those
+    types); its name and price are filled in from the set and may be changed for a
+    special deal. An appliance still recorded as one old "Washer + Dryer Set" is
+    split on a guided screen: the record keeps its history as the first machine,
+    the other machine joins the same rental unchanged, and recorded cost and seller
+    tax are divided evenly so totals stay exact.
   - Delivery fee, installation fee, and removal/pickup fee are three
     separate, independently configurable one-time fees (Chris may
     charge for any combination of them), each shown as its own line
