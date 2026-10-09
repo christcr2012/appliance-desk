@@ -208,6 +208,7 @@ describe("addRentalLine — prepaid-term discount wiring", () => {
         label: "Washer + dryer set",
         listPriceCents: 6000,
         prepayDiscountCentsPerMonth: 1000,
+        packageId: null,
         monthlyPriceCents: 5000,
       },
     });
@@ -233,6 +234,7 @@ describe("addRentalLine — prepaid-term discount wiring", () => {
         label: "Washer",
         listPriceCents: 3500,
         prepayDiscountCentsPerMonth: 250,
+        packageId: null,
         monthlyPriceCents: 3250,
       },
     });
@@ -258,6 +260,7 @@ describe("addRentalLine — prepaid-term discount wiring", () => {
         label: "Washer",
         listPriceCents: 3500,
         prepayDiscountCentsPerMonth: 0,
+        packageId: null,
         monthlyPriceCents: 3500,
       },
     });
@@ -283,6 +286,7 @@ describe("addRentalLine — prepaid-term discount wiring", () => {
         label: "Cheap single appliance",
         listPriceCents: 200,
         prepayDiscountCentsPerMonth: 500,
+        packageId: null,
         monthlyPriceCents: 0,
       },
     });

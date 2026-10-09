@@ -8,6 +8,9 @@ import { formatCents } from "@/domains/pricing/money";
 
 export type PackageComponentPrice = { quantity: number; monthlyPriceCents: number };
 
+/** The retired appliance type that old one-record washer + dryer sets were filed under, and the package that replaced it. */
+export const OLD_SET_TYPE_SLUG = "washer-dryer-set";
+
 export const MAX_PACKAGE_PRICE_CENTS = 10_000_000; // $100,000 — same ceiling as appliance prices
 export const MAX_COMPONENT_QUANTITY = 10;
 
@@ -60,4 +63,29 @@ export function validatePackageInput(input: PackageInput): string | null {
   }
   if (machineCount(input.components) < 2) return "A set needs at least two machines.";
   return null;
+}
+
+/**
+ * A package line takes exactly the machines the set lists — one appliance per part (W-16B). Returns a plain-words
+ * problem, or null when the chosen machines match, e.g. a Washer + Dryer Set needs one washer and one dryer.
+ */
+export function packagePartsProblem(
+  packageName: string,
+  components: { applianceTypeId: string; name: string; quantity: number }[],
+  chosen: { applianceTypeId: string; name: string }[],
+): string | null {
+  const counts = new Map<string, number>();
+  for (const machine of chosen) counts.set(machine.applianceTypeId, (counts.get(machine.applianceTypeId) ?? 0) + 1);
+  const matches =
+    components.every((c) => counts.get(c.applianceTypeId) === c.quantity) &&
+    [...counts.keys()].every((id) => components.some((c) => c.applianceTypeId === id));
+  if (matches) return null;
+  const picked = new Map<string, { name: string; quantity: number }>();
+  for (const machine of chosen) {
+    const entry = picked.get(machine.applianceTypeId) ?? { name: machine.name, quantity: 0 };
+    entry.quantity += 1;
+    picked.set(machine.applianceTypeId, entry);
+  }
+  const pickedText = picked.size ? packageContents([...picked.values()]) : "nothing";
+  return `${packageName} needs exactly ${packageContents(components)}. You picked ${pickedText}.`;
 }

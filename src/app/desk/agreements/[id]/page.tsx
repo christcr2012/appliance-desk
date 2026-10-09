@@ -10,6 +10,7 @@ import { MonthToMonthEndForm } from "./month-to-month-end-form";
 import { getMonthToMonthEndQuote } from "@/domains/agreements/month-to-month";
 import { billingPeriodFor } from "@/lib/business-date";
 import { latestArtifactId } from "@/domains/documents/artifacts";
+import { listPackagesForLines } from "@/domains/packages";
 
 export const metadata = { title: "Agreement" };
 
@@ -21,9 +22,10 @@ export default async function AgreementDetailPage({
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const { id } = await params;
   if (session.user.role === "STAFF") return <OperationalAgreement id={id} />;
-  const [agreement, availableAppliances] = await Promise.all([
+  const [agreement, availableAppliances, packages] = await Promise.all([
     getAgreementById(id),
     getAppliances({ status: "AVAILABLE" }),
+    listPackagesForLines(),
   ]);
 
   if (!agreement) {
@@ -80,6 +82,7 @@ export default async function AgreementDetailPage({
       <div className="mt-6">
         <AgreementDetailPanel
           agreement={agreement}
+          packages={packages}
           availableAppliances={availableAppliances.map((a) => ({
             id: a.id,
             assetNumber: a.assetNumber,

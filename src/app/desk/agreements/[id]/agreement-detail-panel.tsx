@@ -14,6 +14,7 @@ import {
 import { formatCents } from "@/domains/pricing/money";
 import { isReservationStale } from "@/domains/agreements/reservation-status";
 import type { RentalAgreementStatus } from "@prisma/client";
+import { PackageLineChooser, type PackageLineOption } from "@/components/desk/package-line-chooser";
 
 type ApplianceOption = { id: string; assetNumber: string; typeName: string };
 
@@ -51,9 +52,11 @@ type AgreementRow = {
 export function AgreementDetailPanel({
   agreement,
   availableAppliances,
+  packages = [],
 }: {
   agreement: AgreementRow;
   availableAppliances: ApplianceOption[];
+  packages?: PackageLineOption[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -61,6 +64,7 @@ export function AgreementDetailPanel({
 
   const [label, setLabel] = useState("");
   const [listPriceDollars, setListPriceDollars] = useState("");
+  const [packageId, setPackageId] = useState("");
   const [selectedApplianceIds, setSelectedApplianceIds] = useState<string[]>([]);
 
   function toggleAppliance(id: string) {
@@ -77,12 +81,14 @@ export function AgreementDetailPanel({
         label,
         listPriceDollars,
         applianceIds: selectedApplianceIds,
+        packageId: packageId || null,
       });
       if (result.status === "error") {
         setError(result.message);
       } else {
         setLabel("");
         setListPriceDollars("");
+        setPackageId("");
         setSelectedApplianceIds([]);
         router.refresh();
       }
@@ -296,6 +302,18 @@ export function AgreementDetailPanel({
 
         {agreement.status === "DRAFT" && (
           <form onSubmit={handleAddLine} className="mt-4 space-y-3 border-t border-line pt-4">
+            <PackageLineChooser
+              id="linePackage"
+              packages={packages}
+              value={packageId}
+              onChoose={(choice) => {
+                setPackageId(choice?.packageId ?? "");
+                if (choice) {
+                  setLabel(choice.label);
+                  setListPriceDollars(choice.priceDollars);
+                }
+              }}
+            />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="lineLabel" className="block text-sm font-medium text-ink-soft">

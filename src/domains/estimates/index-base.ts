@@ -139,6 +139,8 @@ export type NewEstimateLineItemInput = {
   quantity: number;
   monthlyPriceCents?: number;
   oneTimeFeeCents?: number;
+  /** Set when the line quotes a package (W-16B); the price stays whatever the owner quotes. */
+  packageId?: string | null;
 };
 
 export async function addEstimateLineItem(
@@ -164,9 +166,15 @@ export async function addEstimateLineItem(
     );
   }
 
+  if (input.packageId) {
+    const pkg = await prisma.rentalPackage.findUnique({ where: { id: input.packageId }, select: { isActive: true } });
+    if (!pkg?.isActive) throw new Error("That set is no longer offered. Choose another set or describe the line yourself.");
+  }
+
   const line = await prisma.estimateLineItem.create({
     data: {
       estimateId,
+      packageId: input.packageId || null,
       serviceAddressId: input.serviceAddressId || null,
       description: input.description,
       quantity: input.quantity,
@@ -180,7 +188,7 @@ export async function addEstimateLineItem(
       action: "estimate.line.add",
       entityType: "Estimate",
       entityId: estimateId,
-      newValue: { description: input.description, quantity: input.quantity },
+      newValue: { description: input.description, quantity: input.quantity, packageId: input.packageId || null },
     },
   });
   return line;

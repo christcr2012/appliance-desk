@@ -25,7 +25,7 @@ export function renewalCreateData(
     | "firstDeliveredOn"
   >,
   lines: ReadonlyArray<
-    Pick<RentalLine, "label" | "monthlyPriceCents" | "listPriceCents" | "prepayDiscountCentsPerMonth">
+    Pick<RentalLine, "label" | "monthlyPriceCents" | "listPriceCents" | "prepayDiscountCentsPerMonth"> & { packageId?: string | null }
   >,
   options: {
     termMonths: number | null;
@@ -66,6 +66,8 @@ export function renewalCreateData(
         monthlyPriceCents: line.monthlyPriceCents,
         listPriceCents: line.listPriceCents,
         prepayDiscountCentsPerMonth: line.prepayDiscountCentsPerMonth,
+        // A renewed set stays a set (W-16B).
+        packageId: line.packageId ?? null,
       })),
     },
   };

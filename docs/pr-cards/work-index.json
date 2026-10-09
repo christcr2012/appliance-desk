@@ -3360,12 +3360,12 @@
     },
     {
       "id": "W-16B",
-      "title": "Package lines on agreements (one machine per part) and estimates; split old set appliances",
+      "title": "Set lines on agreements (one machine per part) and quotes; split old one-record sets",
       "batch": "W",
       "dependencies": [
         "W-16A"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -3375,8 +3375,11 @@
         "docs/designs/BATCH-W-AMENDMENT-B.md",
         "src/domains/pricing/prepay-discount.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/rental-package-lines.test.ts",
+        "tests/rental-package-lines-integration.test.ts"
+      ],
+      "readiness": "READY_AFTER_PREREQUISITE",
       "plannedCard": "docs/pr-cards/W-16B.md"
     },
     {

@@ -22,6 +22,7 @@ import { prisma } from "@/lib/prisma";
 import { explainPendingPurchaseTax } from "@/domains/tax/purchase-tax-explain";
 import { formatBusinessDate } from "@/lib/business-date";
 import { CustodyPanel } from "./custody-panel";
+import { OLD_SET_TYPE_SLUG } from "@/domains/packages/pricing";
 
 export const metadata = { title: "Appliance" };
 
@@ -86,6 +87,15 @@ export default async function ApplianceDetailPage({
         {appliance.purchaseDate &&
           ` · purchased ${formatBusinessDate(appliance.purchaseDate)}`}
       </p>
+
+      {appliance.applianceType.slug === OLD_SET_TYPE_SLUG && !appliance.archivedAt && (
+        <p className="mt-4 rounded-card border border-line bg-subtle p-3 text-sm text-ink">
+          This is an old record for a whole washer and dryer set. A set is now separate machines.{" "}
+          <Link href={`/desk/inventory/${id}/split`} className="font-semibold underline hover:text-primary">
+            Split it into separate machines
+          </Link>
+        </p>
+      )}
 
       {profitability && <ApplianceEarningsSummary report={profitability} />}
 
