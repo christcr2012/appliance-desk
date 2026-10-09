@@ -2910,7 +2910,7 @@
       "title": "Purchase use tax can be calculated, recalculated and filed",
       "batch": "W",
       "dependencies": [],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 380,
       "units": [
