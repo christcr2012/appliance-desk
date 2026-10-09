@@ -88,6 +88,11 @@ If the hook cannot run (a publishing tool that bypasses git), run `npm run check
 | Transactions, money, permissions, schema, concurrency | `npm run test:db -- tests/<file>-integration.test.ts` | ~5 min first run |
 | A screen, page, menu, layout, auth or seed change | `npm run test:browser -- e2e/<spec>.spec.ts` (one spec), or `npm run preflight -- --db <tests> --browser <specs>` | ~8 min first build, then reused |
 
+**Cost rule (target ~$20/month):** the sandbox bills by the minute and GitHub Actions is free. Use the sandbox for
+editing and targeted `test:db` runs; for a full suite or browser specs, push the branch and run the **CI** workflow on
+it (Actions → CI → Run workflow, or the GitHub tool's workflow trigger) — same checks, no charge. Stop the session when
+you pause.
+
 **One command does everything** — the disposable database, migrations, test fixtures, the production build and the browser
 run. Never call `npx playwright test` directly: without a build it stops with this same instruction. Re-running after a
 fix only redoes what changed.

@@ -758,3 +758,11 @@ Live check of the cost fix: docs-only PR #348 still built, because a new branch 
 "uncertain" builds. The ignore step now fetches only the tip of `main` (shallow, public) for a new branch and compares
 the trees; any site file that differs — including `main` changes the branch lacks — still builds; fetch or git
 errors still build.
+
+## 2026-10-09 — Keep Vercel near $20/month
+
+Chris: keep the bill under $20/month, or as close as possible. Beyond skipping non-site builds: (1) `ai/**`,
+`transfer/**`, `recovery/**` branches get no Vercel previews (CI builds and tests them free; `preview/<topic>` branches
+opt in); (2) the live site is released once a day from a green `main` via `live` (`release.yml`, IN-68), so a day of
+merges costs one build; (3) sandbox sessions stop after 30 minutes and heavy checks run in GitHub Actions
+(workflow_dispatch). Expected: about one production build per day plus short sandbox sessions.

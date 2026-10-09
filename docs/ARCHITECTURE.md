@@ -597,6 +597,13 @@ that does not delay the deployment. The build machine is Vercel's standard 4-cor
   (`git.deploymentEnabled`). GitHub Actions builds and tests every PR head for free, so the `ci` check — not a Vercel
   Preview — is the merge gate; the repository ruleset must therefore **not** require a "Preview" deployment
   (OWNER-INPUTS IN-67).
+- **Monthly cost target: about $20 (Chris, 2026-10-09).** Three more limits keep Vercel near the Pro plan price:
+  (1) no previews for `ai/**`, `transfer/**` or `recovery/**` branches (`git.deploymentEnabled`) — CI builds and tests
+  them free; a branch named `preview/<topic>` still gets a preview when Chris needs to see a screen before merge;
+  (2) **daily release**: Vercel's production branch is `live`, which `.github/workflows/release.yml` fast-forwards to
+  a `main` commit with a green `ci` once a day (03:07 Denver) or on demand (Run workflow); `main` itself no longer builds
+  (IN-68); (3) the sandbox's sessions stop after 30 minutes (`timeout`), and heavy checks run in GitHub Actions — push
+  the branch and run "CI" on it (workflow_dispatch) — rather than in the paid sandbox.
 - **TypeScript runs inside `next build` as well as in CI.** Kept on purpose: Vercel can finish a deployment before CI,
   and the 8 s check stops a broken build from ever being promoted.
 - **Known build-log messages:** "Update available 7.10.0 -> 8.0.0-rc" is Prisma advertising a pre-release (ignore

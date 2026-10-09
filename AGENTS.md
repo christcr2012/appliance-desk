@@ -184,8 +184,12 @@ shards; docs-only changes skip the heavy jobs but never the secret scan).
   value leaks, remove it and tell Chris so it gets rotated. Don't extend `.gitleaksignore` or the allowlist without saying
   why in the PR.
 - `.github/workflows/ci.yml` keeps `permissions: contents: read`, uses no repository secrets, never `pull_request_target`,
-  never echoes environment values. The only workflow with write access is `sandbox-publish.yml` (pushes `ai/*` branches
-  fast-forward from verified sandbox transfers, starts CI; no secrets) — keep it that narrow.
+  never echoes environment values. The only workflows with write access are `sandbox-publish.yml` (pushes `ai/*` branches
+  fast-forward from verified sandbox transfers, starts CI) and `release.yml` (fast-forwards `live` to a green `main`
+  once a day); neither uses secrets — keep them that narrow.
+- **Cost (target ~$20/month, Chris 2026-10-09):** Vercel bills builds and sandbox time; GitHub Actions is free. Run
+  heavy checks (full suites, browser tests) by pushing the branch and running "CI" on it, not in the sandbox; stop
+  sandbox sessions when done; merged work reaches the live site with the next daily release (ARCHITECTURE).
 - Prefer unit tests (`tests/`) over browser tests (`e2e/`); use browser tests for axe, real login/session, security
   headers and one click-through per major flow. Every new `e2e/*.spec.ts` goes in a group in `e2e/shards.json`. Never
   log in per test — reuse `e2e/global-setup.ts` sessions. New one-off checks go in the `static` job.
