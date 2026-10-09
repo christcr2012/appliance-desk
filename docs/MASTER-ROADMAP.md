@@ -4,19 +4,26 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## What is next
 
-**2026-10-09 (Chris approved Batch W):** W-0A #342 and W-0B #343 prepared for merge gates; next is **COM-L2** (purchase use tax that actually works; no dead
-Today links) — cards exist and need no prerequisite — then COM-L resumes at COM-L2, then W-1…W-8 before V.
+**Updated 2026-10-09 (reconciled after two lanes worked in parallel).** Two implementers worked at once today: Sol on the
+COM-L chain, and Claude on the sets and repair-credit work Chris moved ahead (W-16A/B, W-21A/B) plus test-isolation
+fixes (#367). Everything below reflects `main` after those merges.
 
-Batch T is engineering-complete (T-7D #328); Batch S is complete (S-1A #330 … S-2 #334); COM-L1A (#335) and COM-L1B (#336) are merged.
-No live tax filing, charging, external AI access or message sending is
-authorized by this sequence. Check [STATUS](STATUS.md) for the exact
-current PR/head.
+- **Done today:** W-0C (#359); COM-L3 (#352), COM-L4A (#353), COM-L4B (#354), COM-L5A (#358), COM-L5B (#361), COM-L6A
+  (#363); W-16A (#360), W-16B (#362), W-21A (#365), W-21B (#366); test isolation + CI image mirror (#367).
+- **In flight:** COM-L7 (Sol). COM-L6B merged (#364).
+- **Next, in this order:** COM-L7 → COM-L8 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
+  W-8 → W-9 → W-10 → W-19 → W-17 → W-20 → V → F-part-2 (W-11/W-12/W-13 when their outside gates clear). The authority is
+  `designs/BATCH-W-AMENDMENT-B.md` section 8; W-16A/B and W-21 are done and must not be redone.
+
+Batch T is engineering-complete (T-7D #328); Batch S is complete (S-1A #330 … S-2 #334); COM-L1A (#335), COM-L1B (#336)
+and COM-L2 (#346) are merged. No live tax filing, charging, external AI access or message sending is authorized by this
+sequence. Check [STATUS](STATUS.md) for the exact current PR/head.
 
 ## Approved sequence and owner gates
 
 | Stage | Engineering order | Owner gate |
 |---|---|---|
-| Finish launch product | T → S → **W-0A/W-0B** → **W-0C** → COM-L → **W-1…W-20** (Amendment B order) → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
+| Finish launch product | T → S → W-0A/W-0B → W-0C → COM-L (to L15) → **W-1…W-20** (Amendment B section 8; W-16A/B and W-21 already done) → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
 | Launch | GO-LIVE-CHECKLIST after final evidence | Chris authorizes live operation; engineering evidence is not activation |
 | After launch | K → K-CASH (documentation review pending) → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
 | Proposed later | BP after K/M/O, and relevant COM-N | Explicit runtime design acceptance; IN-48/49/50 for affected offers/programs |
@@ -39,13 +46,13 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| COM-L3 | Threads, message links and template revisions schema | JIT — `COM-L3.md` | COM-L2 |
-| COM-L4A | Policy, consent eligibility and immutable communication intent | JIT — `COM-L4A.md` | COM-L3 |
-| COM-L4B | Account adapter, claimed SMS dispatch and recovery | JIT — `COM-L4B.md` | COM-L4A |
-| COM-L5A | Verified inbound SMS and deterministic contact resolution | JIT — `COM-L5A.md` | COM-L4B |
-| COM-L5B | Scoped consent actions and mandatory disclosure preservation | JIT — `COM-L5B.md` | COM-L5A |
-| COM-L6A | Template validation, segment preview and reminder migration | JIT — `COM-L6A.md` | COM-L5B |
-| COM-L6B | Authorized SMS inbox and per-user read cursors | JIT — `COM-L6B.md` | COM-L6A |
+| COM-L3 (#352) | Threads, message links and template revisions schema | MERGED — [card](pr-cards/COM-L3.md) | COM-L2 |
+| COM-L4A (#353) | Policy, consent eligibility and immutable communication intent | MERGED — [card](pr-cards/COM-L4A.md) | COM-L3 |
+| COM-L4B (#354) | Account adapter, claimed SMS dispatch and recovery | MERGED — [card](pr-cards/COM-L4B.md) | COM-L4A |
+| COM-L5A (#358) | Verified inbound SMS and deterministic contact resolution | MERGED — [card](pr-cards/COM-L5A.md) | COM-L4B |
+| COM-L5B (#361) | Scoped consent actions and mandatory disclosure preservation | MERGED — [card](pr-cards/COM-L5B.md) | COM-L5A |
+| COM-L6A (#363) | Template validation, segment preview and reminder migration | MERGED — [card](pr-cards/COM-L6A.md) | COM-L5B |
+| COM-L6B (#364, merged) | Authorized SMS inbox and per-user read cursors | JIT — `COM-L6B.md` | COM-L6A |
 | COM-L7 | Call legs, private media and retention schema | JIT — `COM-L7.md` | COM-L6B |
 | COM-L8 | Deterministic call routing, acceptance and callback reducer | JIT — `COM-L8.md` | COM-L7 |
 | COM-L9 | Optional voicemail private ingest and missed-call inbox | JIT — `COM-L9.md` | COM-L8 |
@@ -67,7 +74,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 |---|---|---|---|
 | W-0A (#342) | Purchase use tax can be calculated, recalculated and filed | [card](pr-cards/W-0A.md) | — |
 | W-0B (#343) | No dead Today links; delivery-fee records page | [card](pr-cards/W-0B.md) | — |
-| **W-0C** | Failed automatic charges and partly paid invoices reach To do, linked to the invoice (confirmed defect; **next after the PR in flight**) | JIT — `W-0C.md` | — |
+| W-0C (#359) | Failed automatic charges and partly paid invoices reach To do, linked to the invoice | MERGED — [card](pr-cards/W-0C.md) | — |
 | W-1 | To do list: due date, amount, one button, snooze | JIT — `W-1.md` | COM-L15 |
 | W-2 | Intake and purchase orders say what is owed, to whom, by when; every seller-tax answer gets one dated next step (D-WA6); built on W-14's purchase flow | JIT — `W-2.md` | W-14 |
 | W-3 | Taxes in one place, in plain words | JIT — `W-3.md` | W-2 |
@@ -88,7 +95,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-16B | **MERGED (#362)** Set lines on agreements (one machine per part) and quotes; split old one-record sets (To do + guided screen) | `W-16B.md` | W-16A |
 | W-21A | **MERGED (#365)** Taken for repair without replacement → out-of-service credit (any line), To do, screen, portal note | `W-21A.md` | W-16B |
 | W-21B | **MERGED (#366)** A machine of a set the customer is done with: single price for the rest, partial-period credit, Stripe item change | `W-21B.md` | W-21A |
-| W-19 | Remaining flow gaps (lead→quote, quote→draft, unsigned follow-up, failed signing payment, instant repair To do, pickup requests, pickup after any ending) | JIT — `W-19.md` | W-21 |
+| W-19 | Remaining flow gaps (lead→quote, quote→draft, unsigned follow-up, failed signing payment, instant repair To do, pickup requests, pickup after any ending) | JIT — `W-19.md` | W-10 (W-21 done) |
 | W-17 | Related panel + History on every record; search by serial/model/seller; cleaning step | JIT — `W-17.md` | W-19 |
 | W-20 | Portal follows the flows: next steps, status timelines, next bill, Pay now | JIT — `W-20.md` | W-17 |
 

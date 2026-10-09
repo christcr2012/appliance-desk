@@ -499,6 +499,12 @@ A final `ci` job (the historical required-check name) succeeds only if every job
 
 ## CI layout and speed
 
+**2026-10-09 additions (#367).** CI's Postgres service image is the Docker Official `postgres:17` pulled from its Amazon
+ECR Public copy (`public.ecr.aws/docker/library/postgres:17`) — anonymous Docker Hub pulls hit a rate limit on shared
+runners. Real-database tests that write records existing once for the whole database (the business-settings row,
+Colorado filing accounts) run one at a time in the `node-shared-settings` Vitest project; `tests/shared-state-tests-listed.test.ts`
+fails when a new one is not listed.
+
 **Priority (owner, 2026-10-03): fastest possible CI at equal or better quality.** The repository is public, so standard-runner Actions minutes are free; this replaces the same-day cost-saving design (one browser runner, CI only when a PR opens). The short version is in `AGENTS.md` ("CI"). Nothing was dropped: the same checks and tests run, spread over more machines, plus a new secret scan.
 
 ### What a run is made of (all jobs run side by side)
