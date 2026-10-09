@@ -1,9 +1,13 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { requestCommunication } from "@/domains/messaging/request-communication";
 import { saveCommunicationsPolicy } from "@/domains/messaging/communications-policy";
 import { decryptCommunicationContent } from "@/domains/messaging/communications-content";
+import {
+  dispatchCommunication, reconcileStaleCommunicationClaims,
+} from "@/domains/messaging/dispatch-communication";
+import type { TelecomSmsProvider } from "@/lib/communications/providers/types";
 
 const databaseUrl = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/disabled");
 const enabled = process.env.CI === "true" &&
@@ -176,6 +180,126 @@ describe.skipIf(!enabled)("COM-L4A immutable intents (isolated PostgreSQL)", () 
     expect(await prisma.messageAttempt.count({
       where: { deliveryId: one.deliveryId },
     })).toBe(1);
+  });
+
+  async function prepareForDispatch(suffix: string) {
+    const current = await prisma.communicationThread.findUniqueOrThrow({ where: { id: threadId } });
+    const result = await requestCommunication(actor, {
+      threadId, expectedThreadVersion: current.version,
+      operationKey: name + "-dispatch-" + suffix,
+      body: "Frozen private dispatch test " + suffix,
+    });
+    expect(result.kind).toBe("QUEUED");
+    if (result.kind !== "QUEUED") throw new Error("Failed to create intent");
+    return result;
+  }
+
+  it("claims a single attempt, calls fake provider outside DB lock, records SID and refuses replay", async () => {
+    const prepared = await prepareForDispatch("accepted");
+    const fake: TelecomSmsProvider = {
+      sendSms: vi.fn(async (input) => {
+        expect(input.operationId).toBe(prepared.attemptId);
+        expect(input.callbackUrl).toContain("attempt=" + prepared.attemptId);
+        expect(input.text).toContain("accepted");
+        return { kind: "ACCEPTED" as const, resourceId: "SM" + "a".repeat(32) };
+      }),
+    };
+    expect(await dispatchCommunication(prepared.deliveryId, {
+      provider: fake, callbackOrigin: "https://example.test",
+    })).toEqual({ kind: "ACCEPTED", deliveryId: prepared.deliveryId });
+    expect(await prisma.messageDelivery.findUniqueOrThrow({ where: { id: prepared.deliveryId } }))
+      .toMatchObject({ state: "ACCEPTED", providerMessageId: "SM" + "a".repeat(32) });
+    expect(await prisma.messageAttempt.findUniqueOrThrow({ where: { id: prepared.attemptId } }))
+      .toMatchObject({ state: "ACCEPTED", providerResourceId: "SM" + "a".repeat(32) });
+    expect(await dispatchCommunication(prepared.deliveryId, {
+      provider: fake, callbackOrigin: "https://example.test",
+    })).toEqual({ kind: "ALREADY_CLAIMED", deliveryId: prepared.deliveryId });
+    expect(fake.sendSms).toHaveBeenCalledTimes(1);
+  });
+
+  it("never sends again on UNKNOWN, including ambiguous provider exception", async () => {
+    const prepared = await prepareForDispatch("unknown");
+    const fake: TelecomSmsProvider = { sendSms: vi.fn(async () => {
+      throw new Error("Connection reset after server receipt");
+    }) };
+    expect(await dispatchCommunication(prepared.deliveryId, {
+      provider: fake, callbackOrigin: "https://example.test",
+    })).toEqual({ kind: "UNKNOWN", deliveryId: prepared.deliveryId });
+    expect(await prisma.messageDelivery.findUniqueOrThrow({ where: { id: prepared.deliveryId } }))
+      .toMatchObject({ state: "UNKNOWN" });
+    expect(await dispatchCommunication(prepared.deliveryId, {
+      provider: fake, callbackOrigin: "https://example.test",
+    })).toMatchObject({ kind: "ALREADY_CLAIMED" });
+    expect(fake.sendSms).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a STOP between preparation and claimed dispatch, without provider traffic", async () => {
+    const prepared = await prepareForDispatch("stopped");
+    await prisma.marketingSuppression.create({ data: {
+      channel: "SMS", address: recipient, reason: "stop", source: "TEST",
+    } });
+    const fake: TelecomSmsProvider = { sendSms: vi.fn(async () => ({
+      kind: "ACCEPTED" as const, resourceId: "SM" + "b".repeat(32),
+    })) };
+    try {
+      expect(await dispatchCommunication(prepared.deliveryId, {
+        provider: fake, callbackOrigin: "https://example.test",
+      })).toEqual({ kind: "BLOCKED", deliveryId: prepared.deliveryId });
+      expect(fake.sendSms).not.toHaveBeenCalled();
+      expect(await prisma.messageDelivery.findUniqueOrThrow({ where: { id: prepared.deliveryId } }))
+        .toMatchObject({ state: "SUPPRESSED" });
+      expect(await prisma.messageAttempt.findUniqueOrThrow({ where: { id: prepared.attemptId } }))
+        .toMatchObject({ state: "NOT_SENT" });
+    } finally {
+      await prisma.marketingSuppression.delete({ where: {
+        channel_address: { channel: "SMS", address: recipient },
+      } });
+    }
+  });
+
+  it("recovers a stale claim as UNKNOWN, without retrying provider traffic", async () => {
+    const prepared = await prepareForDispatch("stale");
+    await prisma.messageAttempt.update({ where: { id: prepared.attemptId },
+      data: { state: "DISPATCHING", startedAt: new Date(Date.now() - 600_000) },
+    });
+    const processed = await reconcileStaleCommunicationClaims(new Date());
+    expect(processed).toBeGreaterThanOrEqual(1);
+    expect(await prisma.messageAttempt.findUniqueOrThrow({ where: { id: prepared.attemptId } }))
+      .toMatchObject({ state: "UNKNOWN", errorCode: "DISPATCH_RECOVERY_REQUIRED" });
+    expect(await prisma.messageDelivery.findUniqueOrThrow({ where: { id: prepared.deliveryId } }))
+      .toMatchObject({ state: "UNKNOWN" });
+    expect(await dispatchCommunication(prepared.deliveryId, {
+      provider: { sendSms: vi.fn() }, callbackOrigin: "https://example.test",
+    })).toMatchObject({ kind: "ALREADY_CLAIMED" });
+  });
+
+  it("missing sender or callback configuration cannot send and is recorded NOT_SENT", async () => {
+    const prepared = await prepareForDispatch("unconfigured");
+    expect(await dispatchCommunication(prepared.deliveryId, {
+      callbackOrigin: "https://example.test",
+    })).toEqual({ kind: "NOT_ATTEMPTED", deliveryId: prepared.deliveryId });
+    expect(await prisma.messageAttempt.findUniqueOrThrow({ where: { id: prepared.attemptId } }))
+      .toMatchObject({ state: "NOT_SENT", errorCode: "PROVIDER_NOT_CONFIGURED" });
+  });
+
+  it("owner switch turned off after preparation blocks dispatch before any provider call", async () => {
+    const prepared = await prepareForDispatch("switch-off");
+    const fake: TelecomSmsProvider = { sendSms: vi.fn(async () => ({
+      kind: "ACCEPTED" as const, resourceId: "SM" + "c".repeat(32),
+    })) };
+    await prisma.businessSettings.update({
+      where: { id: "singleton" }, data: { customerSmsEnabled: false },
+    });
+    try {
+      expect(await dispatchCommunication(prepared.deliveryId, {
+        provider: fake, callbackOrigin: "https://example.test",
+      })).toEqual({ kind: "BLOCKED", deliveryId: prepared.deliveryId });
+      expect(fake.sendSms).not.toHaveBeenCalled();
+    } finally {
+      await prisma.businessSettings.update({
+        where: { id: "singleton" }, data: { customerSmsEnabled: true },
+      });
+    }
   });
 
   it("existing STOP suppression blocks every purpose under the same address lock", async () => {

@@ -49,9 +49,44 @@ describe.skipIf(!enabled)("R17 Today exceptions are bounded and ordered in the d
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreementIds } } });
     await prisma.applianceType.deleteMany({ where: { id: typeId } });
+    await prisma.payment.deleteMany({ where: { invoice: { customerId } } });
+    await prisma.invoice.deleteMany({ where: { customerId } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: userId } });
+  });
+
+  it("flags delinquent without a due date, partial payments and overdue OPEN, but not future OPEN or PAID", async () => {
+    const yesterday = new Date(Date.now() - DAY);
+    const tomorrow = new Date(Date.now() + DAY);
+    const failedAt = new Date(Date.now() - 2 * DAY);
+    const statuses = [
+      { status: "DELINQUENT", dueDate: null, amountPaidCents: 1000 },
+      { status: "PARTIALLY_PAID", dueDate: null, amountPaidCents: 2000 },
+      { status: "OPEN", dueDate: yesterday, amountPaidCents: 0 },
+      { status: "OPEN", dueDate: tomorrow, amountPaidCents: 0 },
+      { status: "DELINQUENT", dueDate: tomorrow, amountPaidCents: 0 },
+      { status: "PAID", dueDate: yesterday, amountPaidCents: 5000 },
+      { status: "VOID", dueDate: yesterday, amountPaidCents: 0 },
+    ] as const;
+    const ids: string[] = [];
+    for (const row of statuses) {
+      const invoice = await prisma.invoice.create({
+        data: { customerId, status: row.status, dueDate: row.dueDate, amountDueCents: 5000, amountPaidCents: row.amountPaidCents },
+      });
+      ids.push(invoice.id);
+    }
+    await prisma.payment.create({
+      data: { invoiceId: ids[0], status: "failed", amountCents: 4000, createdAt: failedAt },
+    });
+    const attention = (await getExceptionOverview()).items.filter((item) => item.category === "PAST_DUE_INVOICE");
+    const href = (id: string) => `/desk/billing/customer/${customerId}/invoice/${id}`;
+    for (const index of [0, 1, 2, 4]) expect(attention.some((item) => item.href === href(ids[index]))).toBe(true);
+    for (const index of [3, 5, 6]) expect(attention.some((item) => item.href === href(ids[index]))).toBe(false);
+    const failedItem = attention.find((item) => item.href === href(ids[0]));
+    expect(failedItem?.detail).toContain("$40.00");
+    expect(failedItem?.since).toEqual(failedAt);
+    expect(attention.find((item) => item.href === href(ids[1]))?.detail).toContain("$30.00");
   });
 
   it("one category never returns more than the cap, reports its true total, and keeps the longest-waiting", async () => {

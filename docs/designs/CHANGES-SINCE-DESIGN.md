@@ -412,7 +412,32 @@ existing send gates. **BP** commercial bundles build on `RentalPackage`. **O** s
 (out-of-service escalation days, unsigned follow-up days, record retention). Appliance types are single machines only from
 W-16A on; "Washer + Dryer Set" is a package.
 
-### W-16A rental packages — 2026-10-09 (#358)
+### COM-L4B provider claim and free destination validation (2026-10-09)
+- `src/lib/communications/providers/twilio-sms.ts` uses installed Twilio v6, API key + secret, and an exact account SID match; adapter construction is limited to configured production. Twilio Lookup v2 **Basic** validation makes no paid data-package request (`Fields` never supplied), proves valid US country and E.164 identity; failed/unknown lookup blocks send.
+- `dispatchCommunication` rechecks L4A account/policy/consent/STOP/actor guards immediately before claiming one PREPARED attempt. Status callback includes only the opaque attempt ID with owner-approved HTTPS origin. ACCEPTED/REJECTED/UNKNOWN/NOT_SENT evidence is preserved, monotone reducer prevents terminal downgrades, stale DISPATCHING is UNKNOWN rather than automatic resend. Provider is called after DB commit, not during locks.
+- `communicationsPolicy.productionWebhookOrigin` is an optional strict HTTPS owner-controlled field. Missing field means provider not configured; existing default-off policy and SMS master gate are intact. COM-L5A handles verified inbound identity and callback matching; COM-L6A migrates the existing day reminder. No live activation.
+
+
+### COM-L5A verified inbound SMS and privacy projection (2026-10-09)
+- Dedicated `/api/webhooks/twilio/sms` enforces Node runtime, bounded original form input, SDK signature verified against the owner-approved canonical HTTPS URL (not Host headers), correct account/approved receiving number, durable receipt before empty TwiML 200. Unsigned/preview/invalid requests cannot produce an inbound message.
+- `ingestVerifiedSms` stores one account-scoped inbound provider SID and encrypted CommunicationMessage per verified event transaction, including an unsupported-media marker without downloading MMS. Existing STOP handling still operates while the inbox gate is off; no reply is generated and broad consent is not inferred.
+- `resolveInboundContact` uses only active verified bindings. Unknown => UNRESOLVED, shared => AMBIGUOUS, reassigned or previously ambiguous threads require explicit review instead of automatic takeover of prior history. Phone match never grants portal authentication or links jobs/property/agreements/invoices.
+- New optional `communicationsPolicy.inboundSmsEnabled` is default-off and does not alter separate SMS owner activation. COM-L5B owns STOP/START/HELP consent projection and bounded inbound exchange reply scope.
+- Preflight verified 34 affected and 14 focused unit/DB tests. This is stacked atop unmerged #354 until its missing final-head CI is satisfied.
+
+### 2026-10-09 — W-0C: failed automatic charges enter To do (no migration)
+
+Existing `invoice.payment_failed` webhooks now mark the mirrored invoice DELINQUENT
+unless PAID/VOID and record a failed attempt within the idempotent event transaction.
+To do's invoice attention filter includes DELINQUENT with no due date, PARTIALLY_PAID,
+and overdue OPEN; its invoice-link destination is
+`/desk/billing/customer/[id]/invoice/[invoiceId]`.
+`pastDueInvoiceException` accepts nullable `dueDate` and optional `status` /
+`attentionAt`; sorting uses latest failed attempt when there is no due date.
+Later W workflow/screen work inherits these rules. No schema, late-fee clock, provider
+activation or customer-messaging changes.
+
+### W-16A rental packages — 2026-10-09 (#360)
 - Schema (migration `20261013100000_rental_packages`): `RentalPackage` (name/slug unique, `monthlyPriceCents` ≥ 0,
   `showOnWebsite`, `sortOrder`, `isActive`, `photoUrl`), `RentalPackageComponent` (type, quantity 1–10, unique per type),
   nullable restrict FKs `RentalLine.packageId`, `EstimateLineItem.packageId`, `LeadApplianceRequest.packageId`. The old

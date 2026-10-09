@@ -15,6 +15,12 @@ export const communicationsPolicySchema = z.object({
   approvedPolicyVersion: z.number().int().positive(),
   maxSegments: z.number().int().min(1).max(10),
   supportedCountries: z.array(z.literal("US")).min(1).max(1),
+  inboundSmsEnabled: z.boolean().optional(),
+  productionWebhookOrigin: z.string().url().refine((value) => {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password &&
+      url.pathname === "/" && !url.search && !url.hash && !url.hostname.includes("_");
+  }).optional(),
 }).strict();
 export type CommunicationsPolicy = z.infer<typeof communicationsPolicySchema>;
 

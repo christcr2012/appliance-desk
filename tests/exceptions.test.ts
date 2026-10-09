@@ -153,7 +153,7 @@ describe("exception builders", () => {
     });
     expect(item.severity).toBe("high");
     expect(item.detail).toContain("$30.00");
-    expect(item.href).toBe("/desk/customers/cust-1");
+    expect(item.href).toBe("/desk/billing/customer/cust-1/invoice/inv-1");
   });
 
   it("overdueJobException reads the job type as plain words", () => {
