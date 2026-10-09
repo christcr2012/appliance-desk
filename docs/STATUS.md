@@ -4,6 +4,17 @@ Updated October 9, 2026 (W-16A #360, W-16B #362, W-21A #365, W-21B #366 sets and
 
 ## Next
 
+**2026-10-09 — COM-L6B authorized communications inbox:**
+The private Owner Desk → Communications workflow now provides bounded
+SMS thread lists and drillthrough, unread per staff user, assignment,
+workflow status, and version-conflict protection. Every handler checks
+an active team account; staff can access only assigned threads. Ambiguous
+numbers never expose a guessed customer's account or lead linkage; message
+text is decrypted only for authorized thread detail. Audit history records
+assignments/status without message content. All customer texts remain off,
+including the held-for-review day-of reminders. Card: docs/pr-cards/COM-L6B.md.
+**Next: COM-L7** private call/voicemail schema after exact-head merge.
+
 **2026-10-09 — COM-L6A template preview and reminder safety cutover:**
 Approved SMS templates now validate variables, render immutable encrypted text
 and count GSM-7/UCS-2 segments correctly at preparation and final dispatch.

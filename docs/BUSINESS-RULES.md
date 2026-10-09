@@ -1551,3 +1551,14 @@ COM-L6B authenticated workflow can verify job, sender, contact and scoped
 consent. No unsent job is falsely marked texted. Approved templates render
 only bounded allowlisted values; encoding-aware segment ceilings are checked
 at preparation and final dispatch. Unverified carrier costs remain unknown.
+
+
+**COM-L6B owner/staff communications inbox (2026-10-09):** Inbox access is
+limited to active company team accounts. Owner/admin can triage all SMS
+threads and assign them; staff can view and mark read only assigned
+threads. Unread positions belong to the signed-in staff account and cannot
+be advanced with a message from another thread. Status/assignee mutations
+check the expected thread version and emit an audit record without message
+content. An unresolved phone number does not authorize access to any
+candidate customer's accounts. Reply sending and automated reminder
+activation are still disabled.

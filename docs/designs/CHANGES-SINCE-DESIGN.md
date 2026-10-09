@@ -488,6 +488,17 @@ adapter; it returns held-for-review without a false sent timestamp.
 COM-L6B must implement authenticated operator intent and job/thread approval
 before sending can resume. No migration or live activation.
 
+
+### 2026-10-09 — COM-L6B private SMS inbox and independent read cursors
+Existing COM-L3 thread/message/read-marker schema is now used for
+an actual authenticated owner/staff screen with bounded keyset
+pagination, status/assignment filters, and server-decrypted private
+message details. STAFF is limited to specifically assigned threads,
+OWNER/ADMIN can assign, and mutations revalidate active team roles
+in the write transaction. Read cursors never move backward or accept
+cross-thread message IDs. Thread actions have optimistic version and
+privacy-safe audit evidence. No schema, live provider or send activation.
+
 ### W-21A out-of-service periods — 2026-10-09 (#365)
 - Migration `20261013110000_out_of_service_periods`: `OutOfServicePeriod` (one open per machine) and
   `BusinessSettings.outOfServiceEscalationDays` (default 3). The period stores `creditId` (design said

@@ -15,6 +15,7 @@ const groups = [
     links: [
       ["leads", "Leads"],
       ["customers", "Customers"],
+      ["communications", "Communications"],
       ["estimates", "Estimates", "finance"],
       ["agreements", "Agreements"],
     ],

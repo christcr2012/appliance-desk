@@ -2,8 +2,8 @@ import { expect, it } from "vitest";
 import { activeDeskHref, deskNavigation } from "@/lib/desk-navigation";
 
 it.each([
-  ["OWNER", 26],
-  ["ADMIN", 25],
+  ["OWNER", 27],
+  ["ADMIN", 26],
 ] as const)(
   "keeps %s role-appropriate destinations discoverable with count %i",
   (role, expectedCount) => {
@@ -11,6 +11,7 @@ it.each([
     const links = groups.flatMap((g) => g.links);
     expect(links).toHaveLength(expectedCount);
     expect(new Set(links.map((l) => l.href)).size).toBe(expectedCount);
+    expect(links).toContainEqual({ href: "/desk/communications", label: "Communications" });
     expect(groups.find((g) => g.label === "Money")?.links).toContainEqual({
       href: "/desk/dashboard",
       label: "Business overview",
@@ -38,10 +39,13 @@ it.each([
 
 it("never serializes finance, settings, privacy, automations or purchasing destinations to staff", () => {
   const groups = deskNavigation("STAFF");
-  expect(groups.flatMap((g) => g.links)).toHaveLength(12);
+  expect(groups.flatMap((g) => g.links)).toHaveLength(13);
   expect(JSON.stringify(groups)).not.toMatch(
     /billing|revenue|reports|dashboard|fleet|estimates|purchase-orders|suppliers|launch|\/settings|\/privacy|\/automations|\/growth/,
   );
+  expect(groups.flatMap((g) => g.links)).toContainEqual({
+    href: "/desk/communications", label: "Communications",
+  });
   expect(groups.flatMap((g) => g.links)).toContainEqual({
     href: "/desk/driver",
     label: "Driver view",
