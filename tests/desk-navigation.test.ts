@@ -17,7 +17,7 @@ it.each([
     });
     expect(links).toContainEqual({
       href: "/desk/automations",
-      label: "Automations",
+      label: "System health",
     });
     expect(links).toContainEqual({
       href: "/desk/sales-tax", label: "Sales tax",

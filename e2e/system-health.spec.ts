@@ -31,7 +31,10 @@ test.describe("owner system health", () => {
       await card.getByLabel("Resolution reason (no customer information)").fill("Synthetic source reviewed");
       await card.getByRole("button", { name: "Mark resolved" }).click();
       await expect(page.getByText(summary)).toBeVisible();
-      expect((await prisma.systemIssue.findUniqueOrThrow({ where: { id: issue.id } })).status).toBe("RESOLVED");
+      await expect.poll(async () =>
+        (await prisma.systemIssue.findUniqueOrThrow({ where: { id: issue.id } })).status,
+        { timeout: 15000 },
+      ).toBe("RESOLVED");
       await prisma.systemIssue.update({ where: { id: issue.id }, data: {
         status: "OPEN", resolvedAt: null, resolvedReason: null,
         occurrences: { increment: 1 }, version: { increment: 1 },

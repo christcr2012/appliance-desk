@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   taxExemption: vi.fn(),
   taxAddressLocation: vi.fn(),
   officialSourceWatch: vi.fn(),
+  systemIssues: vi.fn(),
+  systemIssueCount: vi.fn(),
   officialRateAttention: vi.fn(async () => []),
   rdfRefundAttention: vi.fn(async () => []),
   filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } })),
@@ -56,6 +58,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: mocks.taxAddressLocation,
       count: vi.fn().mockResolvedValue(0),
     },
+    systemIssue: { findMany: mocks.systemIssues, count: mocks.systemIssueCount },
     officialSourceWatch: {
       findMany: mocks.officialSourceWatch,
       count: vi.fn().mockResolvedValue(0),
@@ -85,11 +88,13 @@ beforeEach(() => {
     mocks.taxExemption,
     mocks.taxAddressLocation,
     mocks.officialSourceWatch,
+    mocks.systemIssues,
     mocks.officialRateAttention,
     mocks.rdfRefundAttention,
   ]) {
     fn.mockResolvedValue([]);
   }
+  mocks.systemIssueCount.mockResolvedValue(0);
 });
 
 describe("Today server-side visibility", () => {
