@@ -516,3 +516,12 @@ privacy-safe audit evidence. No schema, live provider or send activation.
   `singlePriceStart`); credits `SET_SINGLE_PRICE`; Stripe `subscription-line-reprice-<amendmentId>` operations
   (`claimLineRepriceInTx`/`runLineReprice`/`retryLineReprice` in `subscription-line.ts`, reconciled in
   `reconciliation-base.ts`). W-19/W-20 (portal "next bill") should read these credits and amendments.
+### Order change and reconciliation — 2026-10-09 evening
+- Chris moved W-16A/B and W-21 ahead; they were built in a second lane (Claude) while Sol continued COM-L, and are merged
+  (#360, #362, #365, #366). The remaining order is `BATCH-W-AMENDMENT-B.md` section 8; `work-index.json` W-19 now waits
+  on W-10 (its place in the order) as well as W-21.
+- Inherited by remaining cards: W-18 converts the sets editor, "Rent as" chooser, split screen and out-of-service screen
+  to `<Money>`/`<MoneyInput>`/`<InfoTip>`; W-14 records a set bought together as two machine rows; W-19/W-20 read open
+  `OutOfServicePeriod` rows and `OUT_OF_SERVICE`/`SET_SINGLE_PRICE` credits; W-17's Related panel links an appliance's
+  repair periods and a line's amendments.
+- Test isolation (#367): see ARCHITECTURE "CI layout and speed" and PLAYBOOK 4c.

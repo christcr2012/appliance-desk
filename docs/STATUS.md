@@ -1,10 +1,32 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 (W-16A #360, W-16B #362, W-21A #365, W-21B #366 sets and repair credits; W-0C #359; COM-L5B in Sol lane). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
+Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352–#363 and W-0C #359 by Sol; W-16A #360, W-16B #362, W-21A #365, W-21B #366 and test isolation #367 by Claude). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Next
 
-**2026-10-09 — COM-L6B authorized communications inbox:**
+### Current queue (read this first)
+
+- **In flight:** COM-L7 — call legs, private media and retention schema (Sol). COM-L6B merged (#364).
+- **Then, in this order:** COM-L8 … COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+  → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
+  Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
+- **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
+  one-record sets split) and W-21A/B (out-of-service credits; a set machine the customer is done with → single price).
+  Later cards build on them — see their entries in `designs/CHANGES-SINCE-DESIGN.md` (W-18 converts their screens to
+  the ⓘ/dollars kit; W-14 records a set bought together as two machines; W-19/W-20 show their credits).
+- **Testing:** real-database tests that write the business-settings row or create filing accounts must be listed in
+  `SHARED_SETTINGS_TESTS` (`vitest.config.mts`) — `tests/shared-state-tests-listed.test.ts` enforces it (#367). CI pulls
+  Postgres from `public.ecr.aws/docker/library/postgres:17` (Docker Hub's anonymous limit broke CI on 2026-10-09).
+- **Owner decisions open:** IN-72 (new: prepay discount after a set becomes single machines — a safe default is built;
+  confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
+
+### Recent merges (newest first)
+
+**2026-10-09 — test isolation (#367):** tests that write records existing once for the whole database run one at a time;
+the health sweep counts only issues it actually recorded; CI uses the ECR Public copy of the Postgres image. No test was
+skipped or weakened.
+
+**2026-10-09 — COM-L6B authorized communications inbox (#364):**
 The private Owner Desk → Communications workflow now provides bounded
 SMS thread lists and drillthrough, unread per staff user, assignment,
 workflow status, and version-conflict protection. Every handler checks
@@ -14,6 +36,10 @@ text is decrypted only for authorized thread detail. Audit history records
 assignments/status without message content. All customer texts remain off,
 including the held-for-review day-of reminders. Card: docs/pr-cards/COM-L6B.md.
 **Next: COM-L7** private call/voicemail schema after exact-head merge.
+
+**2026-10-09 — W-21B merged (#366), Claude's lane:** when the customer is done with one machine of a set, the owner
+records it on the repair screen: the rest go to single prices (keeping the agreement's term discount, IN-72), the
+already-billed part of the month is credited, and Stripe's monthly item changes from the next period.
 
 **2026-10-09 — COM-L6A template preview and reminder safety cutover:**
 Approved SMS templates now validate variables, render immutable encrypted text
@@ -37,23 +63,17 @@ Card: `docs/pr-cards/COM-L5B.md`. **Next: COM-L6A**, validated templates, segmen
 and migration of existing reminders. Public lead disclosure text/form choices remain
 explicit follow-up work, not implied by COM-L5B.
 
-**2026-10-09 — W-21B merged (#366), Claude's lane — W-16A/B and W-21 complete:** when the customer is done with one
-machine of a set, the owner records it on the repair screen: the rest go to single prices (with the agreement's term
-discount), the already-billed part of the month is credited, and Stripe's monthly item changes from the next period.
-Together with W-21A this covers Chris's set rules (D-WB8). **This lane's assigned work is done**; Sol's lane continues.
-
 **2026-10-09 — W-21A merged (#365), Claude's lane:** a machine taken for repair with no replacement (a swap with no
 new machine delivered, or a pickup of some machines while others stay) now starts an out-of-service period; when a
 machine is back the customer is credited exactly the days without it on the next bill (any line, set or single).
 To do "Return or replace…" (urgent after 3 days, owner setting), a screen with the three ways forward, and a portal
-note. **Next on this lane: W-21B** (a machine of a set that is done: single price for the rest + partial-period credit).
+note. (W-21B followed as #366.)
 
 **2026-10-09 — W-16A (#360) and W-16B (#362) merged, built by Claude beside Sol's chain (Chris: "you take W-16A/B and
 W-21"):** a washer and dryer set is a **rental package** of separate machines. Sets are managed in Settings → Products
 and pricing → Sets and packages and shown on the website and quote form. Agreements and quotes can now rent a set ("Rent
 as"), with the server checking one machine per part. Old one-record sets show on To do as "Split … into separate
-machines", with a guided screen that keeps history, the rental and exact cost/tax totals. **Next on this lane: W-21**
-(early returns of one machine and out-of-service credits, D-WB8). Sol's lane is unchanged.
+machines", with a guided screen that keeps history, the rental and exact cost/tax totals. (W-21 followed as #365/#366.)
 
 **2026-10-09 — W-0C MERGED (#359), exact-head CI required before merge:**
 After latest `main` c712834 (which includes #356, #357 and the completed in-flight #358),
@@ -88,13 +108,12 @@ actually recorded. The chance failures in tax and health-sweep tests are gone (t
   records the sweep's own writes (only `systemIssue` allowed). If a similar global-count assertion fails by chance
   elsewhere, fix it the same way.
 
-**Order after W-0:** COM-L2 … COM-L15 → W-1 … W-12 (W-11/W-12 when their gates clear) → V → F-part-2. Keep owner/legal/CPA and live payment
-gates. [MASTER-ROADMAP](MASTER-ROADMAP.md) is the single handoff; [PLAN](PLAN.md) owns acceptance; implementing sessions
-start at [SESSION-START](SESSION-START.md).
+**Order:** see "Current queue" above. Keep owner/legal/CPA and live payment gates. [MASTER-ROADMAP](MASTER-ROADMAP.md) is
+the single handoff; [PLAN](PLAN.md) owns acceptance; implementing sessions start at [SESSION-START](SESSION-START.md).
 
 ## Built
 
-A/B/C/R/B2/D/E/E2, F-part-1, G, T (engineering) and S are merged; COM-L1A and COM-L1B are merged. Existing operations, financial evidence, renewals, custody, parts, messaging, backups and security must not be rebuilt. E2’s public visual result was rejected as final quality; V remains. Website content controls and owner workspace additions remain designed future work.
+A/B/C/R/B2/D/E/E2, F-part-1, G, T (engineering) and S are merged; COM-L1A … COM-L6A, W-0A/W-0B/W-0C, W-16A/W-16B and W-21A/W-21B are merged. Existing operations, financial evidence, renewals, custody, parts, messaging, backups and security must not be rebuilt. E2’s public visual result was rejected as final quality; V remains. Website content controls and owner workspace additions remain designed future work.
 
 ## Remaining stages
 
@@ -102,7 +121,7 @@ A/B/C/R/B2/D/E/E2, F-part-1, G, T (engineering) and S are merged; COM-L1A and CO
 |---|---|
 | T completion | Engineering complete through #328; owner/CPA/provider/go-live gates remain |
 | S | **Complete** (#330–#334) |
-| W-0A/W-0B → COM-L → W-1…W-8 → V → F-part-2 | Approved remaining launch engineering and final product proof |
+| COM-L6B…L15 → W-1…W-20 (W-16A/B, W-21 done) → V → F-part-2 | Approved remaining launch engineering and final product proof |
 | K → M → O → COM-N | Approved later engineering; K/M after launch unless owner reschedules |
 | BP | Proposed business documents/design; runtime acceptance still required |
 | O32/O29/direct QBO/P/COM-A | Explicitly deferred or owner-selected prerequisites |

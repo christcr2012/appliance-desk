@@ -1,7 +1,8 @@
 # Design — Batch W Amendment B: the connected business
 
 Status: **APPROVED** (Chris, 2026-10-09: "Yes I approve of the plan" — IN-69; IN-70 answered with the set/out-of-service
-rules in D-WB8). W-0C first; then the order in section 8. Written 2026-10-09 against `main` 53c1e65 after a read-only audit of intake, tax, the desk and the
+rules in D-WB8). Delivered so far: W-0C (#359), and — moved ahead by Chris and built in parallel — W-16A (#360), W-16B
+(#362), W-21A (#365), W-21B (#366). The remaining order is in section 8. Written 2026-10-09 against `main` 53c1e65 after a read-only audit of intake, tax, the desk and the
 portal (findings in section 1, with code references).
 
 Chris, 2026-10-09: *"The whole thing should have a system that flows for anything that should be interconnected … so
@@ -340,11 +341,21 @@ Equipment and "Records" under Taxes.
 - Kit: CI check catches "cents" in a label and a raw `/100`; `<InfoTip>` passes axe and keyboard tests; `<MoneyInput>`
   rejects "12.345" and accepts "1,234.50".
 
-## 8. Order (replaces the W order in `MASTER-ROADMAP.md`)
+## 8. Order (replaces the W order in `MASTER-ROADMAP.md`; re-stated 2026-10-09 after out-of-order delivery)
 
-**W-0C next** (after the PR in flight) → COM-L … COM-L15 → **W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 →
-W-6 → W-7 → W-8 → W-9 → W-10 → W-16A → W-16B → W-21 → W-19 → W-17 → W-20** → V → F-part-2. W-11/W-12/W-13 run when their
-outside gates clear. (`docs/pr-cards/work-index.json` holds the same chain.)
+**Done:** W-0C (#359); W-16A (#360), W-16B (#362), W-21A (#365), W-21B (#366) — Chris moved the sets and the
+early-return/repair credits ahead of their place and had them built in a second lane beside COM-L (DECISIONS
+2026-10-09). Their contracts are logged in `CHANGES-SINCE-DESIGN.md`; later cards build on them, never redo them.
+
+**Remaining, in order:** COM-L7 (in flight; COM-L6B merged #364) → COM-L8 … COM-L15 → **W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 →
+W-5 → W-6 → W-7 → W-8 → W-9 → W-10 → W-19 → W-17 → W-20** → V → F-part-2. W-11/W-12/W-13 run when their outside gates
+clear. (`docs/pr-cards/work-index.json` holds the same chain.) Notes for the remaining cards:
+- **W-18** (dollars-only kit, ⓘ glossary) also converts the screens W-16A/B/W-21 added (sets editor, "Rent as", split
+  screen, out-of-service screen); they use field help text and existing dollar inputs until then.
+- **W-14** (purchases) must record a washer and a dryer bought together as two rows — a set is a rental package, never an
+  appliance type (D-WB3, now in code).
+- **W-19/W-20** read the W-21 facts: open `OutOfServicePeriod` rows, `OUT_OF_SERVICE` and `SET_SINGLE_PRICE` credits and
+  set amendments, so the portal "next bill" and flow gaps include them.
 
 ## 9. Batch V amendment (screens)
 
