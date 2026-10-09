@@ -1,6 +1,6 @@
 # W-0C — Failed automatic card charges appear in To do
 
-Status: **COMPLETE — merged by the W-0C PR after exact-head CI** (PR number in GitHub history).
+Status: **MERGED (#359)** after exact-head CI and required review gates.
 Batch: W Amendment B (APPROVED, IN-69) §6.1. Base: `main` c712834 after #358.
 Migration: none. Money-sensitive. No live Stripe activation, changes to late fees, provider calls, or customer messages.
 
@@ -26,10 +26,11 @@ Follow `docs/implementation-contracts/DRIFT-PROTOCOL.md` checklists A and B; the
 5. No schema change, no spending, no notifications, no live payments.
 
 ## Evidence
-- Verified 2026-10-09: 45 targeted tests passed (5 files) against disposable sandbox PostgreSQL; no skipped tests.
+- Verified 2026-10-09: 53 targeted tests passed (6 files) against disposable sandbox PostgreSQL; no skipped tests.
 - Disposable local Postgres: `tests/billing-webhook-ordering-integration.test.ts`,
   `tests/remediation-r2-bounded-exceptions-integration.test.ts`, and
-  `tests/billing-webhooks.test.ts` (new-invoice path).
+  `tests/billing-webhooks.test.ts` (new-invoice path), and
+  `tests/today-role-access.test.ts` (OWNER/ADMIN finance, STAFF isolation).
 - Unit: `tests/exceptions.test.ts`; route: `tests/today-href-routes.test.ts`.
 - Run `npm run preflight -- --unit tests/exceptions.test.ts --unit tests/today-href-routes.test.ts --db tests/billing-webhook-ordering-integration.test.ts --db tests/remediation-r2-bounded-exceptions-integration.test.ts`,
   then push once, exact-head CI, review, and merge.

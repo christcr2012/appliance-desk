@@ -2977,7 +2977,8 @@
         "tests/billing-webhooks.test.ts",
         "tests/remediation-r2-bounded-exceptions-integration.test.ts",
         "tests/exceptions.test.ts",
-        "tests/today-href-routes.test.ts"
+        "tests/today-href-routes.test.ts",
+        "tests/today-role-access.test.ts"
       ],
       "readiness": "READY_AFTER_PREREQUISITE",
       "card": "docs/pr-cards/W-0C.md"

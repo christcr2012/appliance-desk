@@ -143,7 +143,10 @@ describe("Today server-side visibility", () => {
               {
                 id: "inv-1",
                 customerId: "c-1",
+                status: "OPEN",
                 dueDate: new Date(0),
+                updatedAt: new Date(0),
+                payments: [],
                 amountDueCents: 6000,
                 amountPaidCents: 0,
                 customer: { user: { name: "Customer", email: "c@example.test" } },

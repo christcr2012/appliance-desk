@@ -4,7 +4,7 @@ Updated October 9, 2026 (COM-L4B #354 and COM-L5A #358 merged; W-0C on c712834).
 
 ## Next
 
-**2026-10-09 — W-0C complete (merged by this PR after exact-head CI):**
+**2026-10-09 — W-0C MERGED (#359), exact-head CI required before merge:**
 After latest `main` c712834 (which includes #356, #357 and the completed in-flight #358),
 failed automatic charges on recorded invoices now become DELINQUENT without reopening PAID
 or VOID invoices, and an idempotently claimed event records its failed attempt. To do shows
