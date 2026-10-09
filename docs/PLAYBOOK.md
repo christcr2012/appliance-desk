@@ -67,9 +67,16 @@ reason. Tests are never budgeted.
 
 ### 4a. The automatic gate — installed once, runs on every push
 
-`npm run hooks:install` sets `core.hooksPath` to `.githooks/`. Every `git push` then runs `npm run check:quick`:
-secret scan, migration check, browser-shard check and — when code changed — `npm run typecheck` and `npm run lint`.
-About 1–3 minutes; it alone would have stopped 9 of the 24 recent red runs. If it fails, the push does not happen: fix and push again. **Never use `--no-verify`.**
+`npm run setup` (same as `npm run hooks:install`; once per checkout or sandbox worktree) turns on the pre-push gate and
+sets git to HTTP/1.1 (the sandbox's GitHub connection failed with HTTP 502 over HTTP/2) and merge-based syncing. Every
+`git push` then runs `npm run check:quick`: secret scan, migration check, browser-shard check, route-inventory check
+(prints the exact line to add for a new page) and — when code changed — `npm run typecheck` and `npm run lint`.
+
+**Nothing runs twice on the same code.** Every check records that it passed for the exact code it ran on
+(`scripts/check-cache.mjs`; records live in the checkout's git folder, never committed). The push gate skips what
+preflight already ran ("✓ already passed for this exact code"), a run cut off by an expired sandbox session resumes where
+it stopped, and the production build is reused until a source file changes. Any edit makes a new fingerprint, so a
+record never covers changed code. `--fresh` ignores the records. If it fails, the push does not happen: fix and push again. **Never use `--no-verify`.**
 If the hook cannot run (a publishing tool that bypasses git), run `npm run check:quick` yourself first.
 
 ### 4b. Add the checks your change needs (before the first push of a PR)
@@ -78,8 +85,12 @@ If the hook cannot run (a publishing tool that bypasses git), run `npm run check
 |---|---|---|
 | Docs only | `python3 docs/pr-cards/validate-index.py && git diff --check` | seconds |
 | Logic, no database | `npm run preflight -- --unit tests/<file>.test.ts` | ~2 min |
-| Transactions, money, permissions, schema, concurrency | `npm run preflight -- --db tests/<file>-integration.test.ts` | ~5 min first run |
-| A screen, page, menu, layout, auth or seed change | `npm run preflight -- --db <tests> --browser e2e/<spec>.spec.ts` | ~8 min (one build) |
+| Transactions, money, permissions, schema, concurrency | `npm run test:db -- tests/<file>-integration.test.ts` | ~5 min first run |
+| A screen, page, menu, layout, auth or seed change | `npm run test:browser -- e2e/<spec>.spec.ts` (one spec), or `npm run preflight -- --db <tests> --browser <specs>` | ~8 min first build, then reused |
+
+**One command does everything** — the disposable database, migrations, test fixtures, the production build and the browser
+run. Never call `npx playwright test` directly: without a build it stops with this same instruction. Re-running after a
+fix only redoes what changed.
 
 Repeat `--unit/--db/--browser` for every affected test, including existing ones for changed code. With `--db` or
 `--browser`, preflight also runs **every test that imports a changed source file** (`vitest related`) inside the same
@@ -87,7 +98,10 @@ throwaway database — this finds the stale fakes, registries and consumers you 
 any domain change so this runs; `--unit` alone skips it (many importing tests need a database). `--plan` shows the
 commands without running them (a plan is not proof). Use `--base <ref>` when stacked.
 
-**Getting code to GitHub.** Code reaches GitHub only as git commits. If you have a normal git checkout that can push,
+**Getting code to GitHub.** Code reaches GitHub only as git commits. **The sandbox can `git push` directly** (a GitHub key
+limited to this repository is added by Vercel's network proxy, never stored in the sandbox; installed 2026-10-09, see
+STATUS "Environment"); run `npm run setup` in the worktree first. If a push is refused (401/403: key expired), tell
+Chris and use the transfer route below. If you have a normal git checkout that can push,
 commit and push there (pushing a branch with no PR open runs no CI — `ci.yml` runs only on pull requests and `main`) and
 fetch the branch in the sandbox to test it (`git fetch origin <branch> && git reset --hard origin/<branch>`; the repo is
 public). **If you work in the sandbox and reach GitHub only through a chat tool, publish with
@@ -118,6 +132,9 @@ CLI fallback for each tool is `vercel api /v2/sandboxes/...`):
    migrates, seeds CI-only fixtures, runs the tests and deletes the cluster; it never reads an existing `DATABASE_URL`.
 5. **Stop the session when the card's local checks are done** (`stop_session`); the persistent sandbox keeps its
    snapshot for next time.
+6. **Sessions expire; work survives.** Files and worktrees persist, running commands do not. Before a long step
+   (first build, a big `--db` run) call `extend_session_timeout`; keep the resume note current; if a command was cut
+   off, run the same command again — finished checks are skipped by their pass records.
 
 **When checks report failures — the fix-and-retest loop** (2026-10-09: a session stopped after a broad preflight
 reported four failures). Never stop on a red result, and never re-run the whole gate to "see if it still fails":
@@ -165,7 +182,9 @@ workaround only when needed; never commit generated clients or engines.
 6. Put "CI runs used: N (red: R, cancelled: C)" in the PR description.
 7. The `ci` check is the single gate and must be green **at the exact head** you merge.
 
-**When `main` moves while your PR is open.** If the new commits change only docs
+**When `main` moves while your PR is open.** Sync **once, at the PR boundary** (just before the final push), not every
+time planning lands, and always with `git merge origin/main` — **never rebase** a branch you have pushed (rebasing caused
+W-0A's conflicts and broken status lines). If the new commits change only docs
 (`git diff --stat <your-base>..origin/main -- src prisma tests e2e scripts` prints nothing), no drift re-check is needed:
 `git merge origin/main` before your final push. Conflicts in `docs/STATUS.md`, `docs/MASTER-ROADMAP.md` or
 `work-index.json`: keep **both** sides' entries, then re-run `python3 docs/pr-cards/validate-index.py`. If code changed,

@@ -78,6 +78,16 @@ Do this when the batch's last PR merges, before starting the next batch:
 5. **Queue and status:** MASTER-ROADMAP (batch complete, next batch), `work-index.json`, STATUS, and one
    `docs/DECISIONS.md` entry ("Batch X closed: …, retired …, next batch drift: …"). Then tell Chris in plain English.
 
+## Planning while a card is being built
+
+Planning stays authoritative, but it must not keep interrupting implementation (2026-10-09, Sol: roadmap commits
+during W-0A caused a rebase conflict and wrong W-0A status lines). A planning or docs PR that lands while a card is in
+progress (STATUS "Next"/in-progress line, or an open implementation PR):
+- does **not** edit that card's file, its status lines or its work-index entry — the implementing PR owns them;
+- adds new material in its own sections and says in its description which in-flight card it affects;
+- if the in-flight card must change, says so in one line in STATUS ("W-0A: see Amendment X before merge"); the
+  implementer reconciles it once, at the PR boundary (PLAYBOOK Step 5), by merging `main`.
+
 ## Retirement method (used by C, or any time a document stops being an instruction)
 
 Based on the first consolidation (#138), which worked best:

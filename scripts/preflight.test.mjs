@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parse, commands, adjacentRegressions, relatedSources, run, verifyBrowserReport } from './preflight.mjs';
+import { parse, commands, adjacentRegressions, relatedSources, run, verifyBrowserReport, groupSteps, recordExtra } from './preflight.mjs';
 
 test('documentation avoids app work but preserves static repository checks', () => {
   const steps = commands(parse([]), ['docs/STATUS.md']);
-  assert.equal(steps.length, 4);
+  assert.equal(steps.length, 5);
   assert.ok(steps.some(s => s.includes('scripts/check-secrets.mjs')));
+  assert.ok(steps.some(s => s.includes('scripts/check-route-inventory.mjs')));
   assert.ok(!steps.some(s => s[0] === 'npm'));
 });
 test('code without selected behavior tests fails before any command', () => {
@@ -88,4 +89,22 @@ test('related tests run inside the disposable database, never in the quick gate'
 test('related selector rejects paths outside src and traversal', () => {
   assert.throws(() => parse(['--related', 'tests/x.test.ts']), /Invalid related selector/);
   assert.throws(() => parse(['--related', 'src/../etc/passwd.ts']), /Invalid related selector/);
+});
+
+test('the quick gate runs the same commands as full preflight, so its pass records are shared', () => {
+  const quick = commands(parse(['--quick']), ['src/a.ts']).map(s => s.join(' '));
+  const full = commands(parse(['--unit', 'tests/tax.test.ts']), ['src/a.ts']).map(s => s.join(' '));
+  for (const step of quick) assert.ok(full.includes(step), step);
+});
+test('a test run and its skipped-test check are one record', () => {
+  const groups = groupSteps([['npm', 'run', 'lint'], ['npx', '--no-install', 'vitest', 'run', 'tests/a.test.ts'], ['node', 'scripts/check-no-skipped-tests.mjs', 'vitest-results.json'], ['node', 'x']]);
+  assert.deepEqual(groups.map(g => g.length), [1, 2, 1]);
+});
+test('stand-in font or browser changes what a pass record proves', () => {
+  assert.notEqual(recordExtra({}), recordExtra({ LOCAL_TEST_FONT: '/f.woff2' }));
+  assert.notEqual(recordExtra({}), recordExtra({ LOCAL_TEST_CHROMIUM: '/c' }));
+});
+test('--fresh reaches the database launcher', () => {
+  const steps = commands(parse(['--fresh', '--db', 'tests/tax-integration.test.ts']), ['src/domains/tax/x.ts']);
+  assert.deepEqual(steps.at(-1).slice(0, 4), ['bash', 'scripts/local-postgres-test.sh', '--checks', '--fresh']);
 });

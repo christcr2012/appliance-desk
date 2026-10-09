@@ -106,11 +106,13 @@ where, and puts it on his To do list; no Today item may link to a page that does
 
 ## Verify, push, review, merge (details: PLAYBOOK Steps 4–9)
 
-- **Before pushing:** `npm run hooks:install` once per checkout; the pre-push hook then runs `npm run check:quick`
-  (secrets, migrations, shard check, typecheck, lint) on every push. Add the card's
+- **Before pushing:** `npm run setup` once per checkout or sandbox worktree; the pre-push hook then runs `npm run check:quick`
+  (secrets, migrations, shard check, route inventory, typecheck, lint) on every push. Checks remember passes on identical
+  code, so nothing runs twice. Add the card's
   `npm run preflight -- --db/--browser` checks (PLAYBOOK 4b), which also run every test importing changed code. Local database testing uses throwaway
   PostgreSQL in the project's **Vercel Sandbox** (reuse the persistent sandbox named in STATUS; PLAYBOOK 4b; code reaches GitHub
-  only as git commits — from the sandbox via `docs/runbooks/SANDBOX-PUBLISH.md`) via
+  only as git commits — `git push` from the sandbox (push key installed, STATUS "Environment"), else
+  `docs/runbooks/SANDBOX-PUBLISH.md`) via
   `scripts/local-postgres-test.sh` — never Neon or production. Never `--no-verify`.
 - **One push per CI cycle.** A push cancels running CI. After a red run, read all failures, reproduce locally, fix them
   all, push once. Same failure twice → reproduce locally; third red run → evidence-based diagnosis before any push.
@@ -191,8 +193,10 @@ shards; docs-only changes skip the heavy jobs but never the secret scan).
 
 ```bash
 npm install                 # postinstall runs prisma generate
-npm run hooks:install       # once per checkout: automatic pre-push quick gate
+npm run setup               # once per checkout/worktree: pre-push gate, HTTP/1.1, merge-based syncing
 npm run check:quick         # the same gate by hand
+npm run test:db -- tests/y-integration.test.ts      # disposable database + migrations + fixtures, one command
+npm run test:browser -- e2e/z.spec.ts              # also builds (reused when unchanged); never bare playwright
 npm run preflight -- --unit tests/x.test.ts [--db tests/y-integration.test.ts] [--browser e2e/z.spec.ts]
 npm run typecheck && npm run lint
 npx vitest run tests/x.test.ts
