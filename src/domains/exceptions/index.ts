@@ -42,10 +42,12 @@ import {
   sortExceptions,
   staleReservationException,
   uninspectedReturnException,
+  oldSetApplianceException,
   unreviewedMaintenanceRequestException,
   type ExceptionCategory,
   type ExceptionItem,
 } from "./rules";
+import { OLD_SET_TYPE_SLUG, packageContents } from "@/domains/packages/pricing";
 
 export type { ExceptionItem, ExceptionCategory, ExceptionSeverity } from "./rules";
 
@@ -211,6 +213,11 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     status: "SUBMITTED",
     openedAt: { lt: addDays(now, -UNREVIEWED_MAINTENANCE_REQUEST_DAYS) },
   } satisfies Prisma.MaintenanceRequestWhereInput;
+  const oldSetWhere = {
+    applianceType: { slug: OLD_SET_TYPE_SLUG, isActive: false },
+    archivedAt: null,
+    status: { not: "RETIRED" },
+  } satisfies Prisma.ApplianceWhereInput;
   const uninspectedWhere = {
     status: "AWAITING_INSPECTION",
     updatedAt: { lt: addDays(now, -UNINSPECTED_RETURN_DAYS) },
@@ -282,6 +289,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     returnedEarly,
     custodyGaps,
     pendingLineReductions,
+    oldSetAppliances,
   ] = await Promise.all([
     canViewFinance
       ? capped(
@@ -579,7 +587,31 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           () => prisma.providerOperation.count({ where: pendingReductionWhere }),
         )
       : empty<never>(),
+    // Inventory: appliances still recorded as one old "Washer + Dryer Set" (W-16B); owner/admin split them.
+    canViewFinance
+      ? capped(
+          (take) => prisma.appliance.findMany({
+            where: oldSetWhere,
+            select: { id: true, assetNumber: true, createdAt: true },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take,
+          }),
+          () => prisma.appliance.count({ where: oldSetWhere }),
+        )
+      : empty<never>(),
   ]);
+  const oldSetContents = oldSetAppliances.rows.length
+    ? packageContents(
+        (
+          await prisma.rentalPackageComponent.findMany({
+            where: { package: { slug: OLD_SET_TYPE_SLUG } },
+            select: { quantity: true, applianceType: { select: { name: true, sortOrder: true } } },
+          })
+        )
+          .sort((a, b) => a.applianceType.sortOrder - b.applianceType.sortOrder)
+          .map((c) => ({ quantity: c.quantity, name: c.applianceType.name })),
+      ) || "a washer and a dryer"
+    : "";
   const taxProblemAudits = taxBlockedInvoices.rows.length
     ? await prisma.auditLog.findMany({
         where: {
@@ -889,6 +921,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         problem: r.problem,
       }),
     ),
+    ...oldSetAppliances.rows.map((a) =>
+      oldSetApplianceException({ id: a.id, assetNumber: a.assetNumber, contents: oldSetContents, createdAt: a.createdAt }),
+    ),
     ...uninspectedAppliances.rows.map((a) =>
       uninspectedReturnException({
         id: a.id,
@@ -1008,6 +1043,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["RETURNED_EARLY", returnedEarly],
       ["CUSTODY_UNKNOWN", custodyGaps],
       ["SUBSCRIPTION_UPDATE_PENDING", pendingLineReductions],
+      ["OLD_SET_APPLIANCE", oldSetAppliances],
     ] as Array<[ExceptionCategory, Capped<unknown>]>
   )
     .filter(([, c]) => c.total > c.rows.length)

@@ -50,7 +50,8 @@ export type ExceptionCategory =
   | "ITEM_NOT_DELIVERED"
   | "RETURNED_EARLY"
   | "SUBSCRIPTION_UPDATE_PENDING"
-  | "CUSTODY_UNKNOWN";
+  | "CUSTODY_UNKNOWN"
+  | "OLD_SET_APPLIANCE";
 
 export type ExceptionSeverity = "high" | "medium";
 
@@ -806,4 +807,26 @@ export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {
     if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;
     return a.since.getTime() - b.since.getTime();
   });
+}
+
+/**
+ * An appliance still recorded under the retired "Washer + Dryer Set" type (W-16B). A set is two machines; this record
+ * needs splitting so each machine has its own model, serial and history. Nothing is billed or changed until the owner
+ * does it on the guided screen.
+ */
+export function oldSetApplianceException(item: {
+  id: string;
+  assetNumber: string;
+  contents: string;
+  createdAt: Date;
+}): ExceptionItem {
+  return {
+    category: "OLD_SET_APPLIANCE",
+    severity: "medium",
+    title: `Split ${item.assetNumber} into separate machines (${item.contents})`,
+    detail:
+      "A set is now two separate machines, each with its own model and serial number. The guided screen keeps this record's history on the first machine and adds the other; any rental it is on stays exactly as signed.",
+    href: `/desk/inventory/${item.id}/split`,
+    since: item.createdAt,
+  };
 }

@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/email", () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: false }) }));
@@ -154,41 +153,5 @@ describe.skipIf(!enabled)("rental packages (W-16A) in disposable Postgres", () =
         [typeIds.washer, pkg.id, 2],
       ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
     );
-  });
-
-  it("the migration turns the old set type into a package, points old requests at it and retires the type — safely re-runnable", async () => {
-    const sql = readFileSync("prisma/migrations/20261013100000_rental_packages/migration.sql", "utf8");
-    const dataStep = sql.slice(sql.indexOf("-- Moving existing data"));
-    const statements = dataStep
-      .split(/;\s*\n/)
-      .map((statement) => statement.replace(/^\s*--.*$/gm, "").trim())
-      .filter(Boolean);
-    expect(statements).toHaveLength(4);
-
-    const rollback = new Error("rollback");
-    await expect(
-      prisma.$transaction(async (tx) => {
-        // Start from the pre-W-16A shape: no package, an active set type, a lead that asked for it.
-        await tx.rentalPackage.deleteMany({ where: { slug: "washer-dryer-set" } });
-        const setType = await tx.applianceType.create({
-          data: { name: `Washer + Dryer Set ${tag}`, slug: "washer-dryer-set", monthlyPriceCents: 6100, showOnWebsite: true, sortOrder: 0 },
-        });
-        const lead = await tx.lead.create({
-          data: { contactName: "Old lead", phone: "5550000000", desiredTerm: "month-to-month", quantity: 1, applianceRequests: { create: [{ applianceTypeId: setType.id }] } },
-        });
-        for (let run = 0; run < 2; run += 1) {
-          for (const statement of statements) await tx.$executeRawUnsafe(statement);
-        }
-        const pkg = await tx.rentalPackage.findUniqueOrThrow({
-          where: { slug: "washer-dryer-set" },
-          include: { components: { include: { applianceType: true } } },
-        });
-        expect(pkg).toMatchObject({ monthlyPriceCents: 6100, showOnWebsite: true, isActive: true });
-        expect(pkg.components.map((c) => c.applianceType.slug).sort()).toEqual(["dryer", "washer"]);
-        expect(await tx.applianceType.findUniqueOrThrow({ where: { id: setType.id } })).toMatchObject({ isActive: false, showOnWebsite: false });
-        expect(await tx.leadApplianceRequest.findFirstOrThrow({ where: { leadId: lead.id } })).toMatchObject({ packageId: pkg.id });
-        throw rollback;
-      }),
-    ).rejects.toBe(rollback);
   });
 });

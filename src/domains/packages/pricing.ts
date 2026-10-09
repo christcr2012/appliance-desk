@@ -8,6 +8,9 @@ import { formatCents } from "@/domains/pricing/money";
 
 export type PackageComponentPrice = { quantity: number; monthlyPriceCents: number };
 
+/** The retired appliance type that old one-record washer + dryer sets were filed under, and the package that replaced it. */
+export const OLD_SET_TYPE_SLUG = "washer-dryer-set";
+
 export const MAX_PACKAGE_PRICE_CENTS = 10_000_000; // $100,000 — same ceiling as appliance prices
 export const MAX_COMPONENT_QUANTITY = 10;
 

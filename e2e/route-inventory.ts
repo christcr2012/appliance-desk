@@ -131,6 +131,12 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/growth", role: "OWNER", fixture: "/desk/growth" },
   { path: "/desk/inventory/[id]", role: "OWNER", fixture: "/desk/inventory/ci-security-appliance" },
   { path: "/desk/inventory/[id]/qr", role: "OWNER", fixture: "/desk/inventory/ci-security-appliance/qr" },
+  {
+    path: "/desk/inventory/[id]/split",
+    role: "OWNER",
+    fixture: "An appliance still recorded under the retired Washer + Dryer Set type",
+    manualOnlyReason: "CI seeds no old one-record set; the split itself is covered by tests/rental-package-lines-integration.test.ts.",
+  },
   { path: "/desk/inventory", role: "OWNER", fixture: "/desk/inventory" },
   { path: "/desk/jobs/[id]", role: "OWNER", fixture: "/desk/jobs/ci-security-job" },
   { path: "/desk/jobs/[id]/work-order", role: "OWNER", fixture: "/desk/jobs/ci-security-job/work-order" },
