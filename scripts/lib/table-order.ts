@@ -52,6 +52,9 @@ export function relationDependencies(schema: string): RelationDependency[] {
         // Both edges are nullable and restored in a second pass after their targets exist.
         && !field.attributes.includes('@relation("AcquisitionReceipt"')
         && !field.attributes.includes('@relation("CurrentMessageAttempt"')
+        // COM-L10 nullable self-reference is restored in a second pass.
+        && !(block.name === "CommunicationCostFact" &&
+          field.name === "supersedes")
       ) {
         dependencies.push({ model: block.name, dependsOn: field.type });
       }
