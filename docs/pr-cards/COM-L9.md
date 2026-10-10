@@ -1,6 +1,6 @@
 # COM-L9 — Gated voicemail, private media and missed calls
 
-**Status: IN PROGRESS.** Baseline inspected main `bee0039` (COM-L8 #370 merged).
+**Status: MERGED via PR #375 (conditional on exact-head green CI and review).** Baseline inspected main `bee0039` (COM-L8 #370 merged), then reconciled and merged main `dfd0718` (marketing #371–#374).
 Source: `docs/designs/BATCH-COM.md` §5, §5.1, §9; owner IN-52 pending.
 No live activation or provider edits; COM-L8 callbacks and L7 schema are authoritative.
 
@@ -26,3 +26,11 @@ No live activation or provider edits; COM-L8 callbacks and L7 schema are authori
 ## Gates / next
 IN-52 is still not approved; do not configure live Twilio recording, provider fallback or voicemail storage, run a real call, turn on production capture, delete private customer media or spend money.
 COM-L10 follows only once this PR merges; carry no unapproved activation.
+
+## Evidence and handoff
+
+- COM-L9 adds six guarded API/page routes, reuses L7 schema, and links the SMS inbox to a bounded private missed-call list and call detail. Recording/media import is independently activation-gated and remains OFF by default. No customer dialling, ordinary call recording, transcription, live payment, paid provider setup or real voicemail capture was performed.
+- `tests/voice-routing.test.ts`, `tests/voice-voicemail-integration.test.ts` and `e2e/communications-calls.spec.ts` cover default-off policy, signed callbacks, private import replay, provider failure/retry, expired/held content, declined staff forwarding, direct anonymous media denial and call screen navigation. Real database test is registered in SHARED_SETTINGS_TESTS.
+- The isolated database's `CommunicationMedia_retention_after_creation` and legal-hold/delete invariants remain intact: synthetic tests now backdate creation and explicitly release only their own fixture hold before cleanup.
+- Automated review unavailable — waived. Inspect exact diff, resolve review threads and require exact-head CI. Any capacity-baselines failure from untouched code is measured against recent passes rather than overridden.
+- Next COM-L10 must consume CallSession/CallLeg/ProviderEvent and account-verified usage facts, not assume a returned voicemail resource was downloaded or retained. IN-52 remains an outside live activation gate; no provider settings changed.
