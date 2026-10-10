@@ -16,7 +16,7 @@ MKT-2 hides pricing navigation, rates routes, sitemap entries and structured pri
 
 ### Current queue (read this first)
 
-- **Latest merged:** COM-L7 (#368) and COM-L6B (#364). COM-L8 (#370) is completed for exact-head CI and merge.
+- **Latest in chain:** COM-L8 (#370) merged; COM-L9 (#375) implemented for exact-head CI/merge. Next COM-L10 after #375 merges.
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
 - **Current queue:** COM-L9 → COM-L10 → COM-L11 → COM-L12 → COM-L13A → COM-L13B → COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
@@ -32,6 +32,9 @@ MKT-2 hides pricing navigation, rates routes, sitemap entries and structured pri
   confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
 
 ### Recent merges (newest first)
+
+**2026-10-09 — COM-L9 merged (#375, conditional on exact-head CI):** The private Communications desk now lists missed calls/unknown outcomes, call legs and guarded voicemail playback. Two separately approved switches plus a version-matched owner policy gate the intentional-only recording; ordinary call recording/transcription remain OFF. Signed callbacks import bounded provider audio from pinned Twilio credentials to the existing private Blob store, prove availability only after storage, preserve replay and retry failures. Owner/admin can review, staff only assigned threads; no public media. Voice activation, IN-52 voicemail/privacy/retention approval, external provider fallback and deletion proof remain outside engineering. Disposable Postgres, unit, accessibility and full PR CI are merge gates. Next: COM-L10.
+
 
 **2026-10-09 — COM-L8 merged (#370, pending exact-head GitHub CI before merge):** Twilio voice endpoints are signed against the approved HTTPS origin, account and owned number. Calls use owner-approved Denver business hours and an approved phone destination only after voice policy activation (still OFF); a private press-1 step and durable parent/child callback ledger prevent carrier voicemail or duplicate events from being recorded as staff answering. Call decline, conflicts and missing staff answer are kept as missed/unknown evidence. No ordinary call recording, voicemail, live sending, spending or provider settings change. Tested using disposable PostgreSQL and the COM-L8 regression suite. Next COM-L9: gated voicemail/private media and missed-call inbox.
 
