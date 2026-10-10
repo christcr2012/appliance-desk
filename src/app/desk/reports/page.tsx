@@ -6,6 +6,7 @@ import {
 import { getLeadSourceBreakdown } from "@/domains/leads";
 import { formatCents } from "@/domains/pricing";
 import { requireRole } from "@/lib/session";
+import { TelecomReportSection } from "./telecom-report";
 import { ExportCsvLink } from "@/components/export-csv-link";
 import { MetricStat } from "@/components/desk/metric-stat";
 import {
@@ -31,7 +32,7 @@ type LeadSourceRow = Awaited<
 >[number];
 
 export default async function ReportsPage() {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN");
   const [earnings, missingCostJobs, leadSources] = await Promise.all([
     getEarningsReport(),
     getJobsMissingRepairCost(),
@@ -229,6 +230,7 @@ export default async function ReportsPage() {
         </Card>
       </div>
 
+      <TelecomReportSection actorUserId={session.user.id} />
       <p className="mt-6 max-w-2xl text-xs text-ink-faint">
         “Estimated” is reconstructed from each agreement&apos;s agreed monthly
         price and how long it has been billing. “Collected” is money received

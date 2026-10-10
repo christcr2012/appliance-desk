@@ -8,7 +8,8 @@
       "system-health.spec.ts",
       "appliance-acquisition-tax.spec.ts",
       "owner-portal-workspaces.spec.ts",
-      "telecom-settings.spec.ts"
+      "telecom-settings.spec.ts",
+      "telecom-reports.spec.ts"
     ],
     "browser-b": [
       "revenue-records.spec.ts",

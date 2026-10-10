@@ -2,6 +2,7 @@ import { ProviderOperationKind } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { AUTOMATION_RULES } from "@/domains/automation/health";
+import { collectTelecomAttention } from "@/domains/messaging/telecom-health";
 import { recordSystemIssue, resolveSystemIssue, type SystemIssueInput } from ".";
 
 type SourcePage = {
@@ -26,6 +27,17 @@ export async function collectSystemIssueInputs(
   const issues: SystemIssueInput[] = [];
   const cleared = new Set<string>();
   if (!input.cursor) {
+    const telecom = await collectTelecomAttention(now);
+    issues.push(...telecom.issues);
+    for (const fingerprint of telecom.cleared) cleared.add(fingerprint);
+    const [unresolvedThreads, unlinkedMissedCalls] = await Promise.all([
+      prisma.communicationThread.count({where:{resolution:"UNRESOLVED",status:{in:["OPEN","WAITING"]}}}),
+      prisma.callSession.count({where:{direction:"INBOUND",outcome:{in:["MISSED","VOICEMAIL"]},threadId:null}}),
+    ]);
+    if (unresolvedThreads + unlinkedMissedCalls > 0) issues.push({
+      kind:"TELECOM_CONTACTS_UNRESOLVED",threadCount:unresolvedThreads,unlinkedMissedCalls,
+    });
+    else cleared.add("telecom-unresolved");
     const settings = await prisma.businessSettings.findUnique({
       where: { id: "singleton" }, select: { pausedAutomations: true },
     });
@@ -75,6 +87,17 @@ export async function collectSystemIssueInputs(
     }
   }
   if (!input.cursor) {
+    const telecom = await collectTelecomAttention(now);
+    issues.push(...telecom.issues);
+    for (const fingerprint of telecom.cleared) cleared.add(fingerprint);
+    const [unresolvedThreads, unlinkedMissedCalls] = await Promise.all([
+      prisma.communicationThread.count({where:{resolution:"UNRESOLVED",status:{in:["OPEN","WAITING"]}}}),
+      prisma.callSession.count({where:{direction:"INBOUND",outcome:{in:["MISSED","VOICEMAIL"]},threadId:null}}),
+    ]);
+    if (unresolvedThreads + unlinkedMissedCalls > 0) issues.push({
+      kind:"TELECOM_CONTACTS_UNRESOLVED",threadCount:unresolvedThreads,unlinkedMissedCalls,
+    });
+    else cleared.add("telecom-unresolved");
     // Provider status is never inferred from retries or missing webhooks. A
     // complete grouped query is authoritative for the scoped old operations.
     const oldOperations = await prisma.providerOperation.groupBy({

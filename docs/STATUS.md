@@ -24,9 +24,9 @@ Docs-only change; the engineering queue is unchanged.
 
 ### Current queue (read this first)
 
-- **Latest in chain:** COM-L12 (#378) merged with exact-head CI. COM-L13A owner telecom setup and private statement evidence is at exact-head CI/merge gate; COM-L13B follows only after COM-L13A merges.
+- **Latest in chain:** COM-L13A (#380) merged after all four review fixes and exact-head CI. COM-L13B reports/Today/system-health integration is prepared for exact-head CI and merge; COM-L14A follows only after COM-L13B merges.
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
-- **Current queue:** COM-L13B → COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Current queue:** COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
@@ -40,6 +40,10 @@ Docs-only change; the engineering queue is unchanged.
   confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
 
 ### Recent merges (newest first)
+
+**2026-10-10 — COM-L13B evidence-labelled Reports + To do/S (recorded as if merged, subject to CI):** Private Reports shows separate GMT provider total, previous-period observations, resource/attributed vs unallocated costs, verified statement evidence, reconciliation residual, source freshness and inactive budget preview. All five telecom metric definitions have explicit date/source/basis/drill. Existing S sweep produces PII-free typed HIGH issues for stale previously-working provider sync, comparable mismatched verified statements, unresolved inbox threads and missed calls lacking a thread; existing To do surfaces them with private resolving links and clears on documented recovery. No customer message or provider mutation, notification dispatch, paid Expense or budget activation. IN-53 remains pending. Next COM-L14A.
+
+
 
 **2026-10-10 — COM-L13A owner telecom setup (as if merged; exact-head CI gate):** Private Settings > Phone, texts and provider costs workspace now distinguishes recorded provider/number readiness, off-by-default owner budget proposals, existing versioned SMS templates and private statement drafts from verified evidence. Owner PDF upload accepts a bounded private 4 MB PDF, captures hash, records an audit, and requires a separate owner confirmation plus verified stored bytes before marking the statement VERIFIED; only OWNER/ADMIN may download it. Owner-only policy update uses versioned strict communications policy, bootstraps defaults only from a recorded primary number, and cannot activate SMS/voice/provider calls, automated alerts, payments or K expense posting. Isolated DB evidence covers permissions, tampering, revisions and unchanged paid state. Local browser preflight build was blocked by an external node_modules symlink; security review fixes include 2FA enforcement, signed credits, read-only capabilities, and DB-first private-file reservation invalid for Turbopack; GitHub exact-head browser CI is mandatory.
 
