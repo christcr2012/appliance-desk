@@ -47,5 +47,22 @@ describe("COM-L8 voice hours and launch fences", () => {
       .toBe("UNAVAILABLE");
     expect(decide(now, { routing: { ...route, forwardTo: "555-1234" } }).kind)
       .toBe("UNAVAILABLE");
+  });  it("requires an independent media activation and matching approved version for voicemail", () => {
+    const hours = new Date("2026-07-10T02:00:00Z"); // After-hours in Denver
+    const selected = {
+      ...route, afterHoursMode: "VOICEMAIL",
+      voicemail: { enabled: true, onMissedCall: true,
+        announcement: "After the beep please leave a private message for our team.",
+        maxSeconds: 45, retentionDays: 30, approvedPolicyVersion: 5 },
+    };
+    expect(decide(hours, { routing: selected }).kind).toBe("CLOSED");
+    const enabled = decide(hours, { routing: selected, mediaActivated: true });
+    expect(enabled.kind).toBe("VOICEMAIL");
+    expect(decide(hours, { routing: { ...selected,
+      voicemail: { ...selected.voicemail, approvedPolicyVersion: 4 } },
+      mediaActivated: true }).kind).toBe("CLOSED");
+    expect(decide(hours, { routing: { ...selected, voicemail: { ...selected.voicemail,
+      enabled: false } }, mediaActivated: true }).kind).toBe("CLOSED");
   });
+
 });

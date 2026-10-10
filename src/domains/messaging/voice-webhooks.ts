@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { decryptCommunicationContent, encryptCommunicationContent } from "./communications-content";
 import { decideVoiceRoute, DEFAULT_VOICE_UNAVAILABLE } from "./voice-routing";
+import { approvedVoicemailPolicy, buildVoicemailPrompt,
+  recordVoicemailPrompt, voiceMediaActivated } from "./voice-voicemail";
 import type { VerifiedVoice } from "./voice-webhook-verify";
 
 type Tx = Prisma.TransactionClient;
@@ -99,10 +101,13 @@ export async function incomingVoice(v: VerifiedVoice): Promise<string> {
       routing: v.policy.voiceRouting,
       accountReady: account.status === "READY", numberReady: readyNumber,
       callerNumber: from, businessNumber: to, now: new Date(),
+      mediaActivated: voiceMediaActivated(),
     });
     const xml = route.kind === "DIAL"
       ? dialXml(v.canonicalOrigin, to, route.destination, route.timeoutSeconds)
-      : speech(route.greeting);
+      : route.kind === "VOICEMAIL"
+        ? buildVoicemailPrompt(v.canonicalOrigin, route)
+        : speech(route.greeting);
     const event = await storeTwiML(tx, v, key(v, "inbound", v.callSid), "inbound", xml);
     if (!event.fresh) return event.xml;
 
@@ -121,16 +126,19 @@ export async function incomingVoice(v: VerifiedVoice): Promise<string> {
       accountId: v.accountId, businessNumberId: number.id,
       providerRootCallId: v.callSid, direction: "INBOUND",
       contactPointId: contactPoint?.id ?? null,
-      routingPolicyVersion: route.kind === "DIAL" ? v.policyVersion : 0,
-      state: route.kind === "DIAL" ? "RINGING" : "ENDED",
-      outcome: route.kind === "DIAL" ? null : "MISSED",
-      endedAt: route.kind === "DIAL" ? null : startedAt,
+      routingPolicyVersion: route.kind === "DIAL" || route.kind === "VOICEMAIL" ? v.policyVersion : 0,
+      state: route.kind === "DIAL" ? "RINGING" : route.kind === "VOICEMAIL" ? "CONNECTED" : "ENDED",
+      outcome: route.kind === "DIAL" || route.kind === "VOICEMAIL" ? null : "MISSED",
+      endedAt: route.kind === "DIAL" || route.kind === "VOICEMAIL" ? null : startedAt,
     } });
     await tx.callLeg.create({ data: {
       accountId: v.accountId, callSessionId: session.id, providerCallId: v.callSid,
-      role: "INBOUND", status: route.kind === "DIAL" ? "RINGING" : "COMPLETED",
+      role: "INBOUND", status: route.kind === "DIAL" ? "RINGING" : route.kind === "VOICEMAIL" ? "IN_PROGRESS" : "COMPLETED",
       startedAt, endedAt: route.kind === "DIAL" ? null : startedAt,
     } });
+    if (route.kind === "VOICEMAIL") {
+      await recordVoicemailPrompt(tx, v, v.callSid, session.id, route);
+    }
     // Twilio may deliver a child status before its inbound request; consume
     // the durable pending receipt now rather than silently dropping it.
     const pending = await tx.providerEvent.findMany({
@@ -328,8 +336,12 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
     if (existingLeg && existingLeg.callSessionId !== session.id) {
       throw new Error("Cross-call leg collision.");
     }
-    const response = await storeTwiML(tx, v, eventId, "dial-result",
-      bridged ? hangup() : speech(DEFAULT_VOICE_UNAVAILABLE));
+    const policy = !bridged
+      ? approvedVoicemailPolicy(v, session.routingPolicyVersion, true) : null;
+    const xml = bridged ? hangup() : policy
+      ? buildVoicemailPrompt(v.canonicalOrigin, policy)
+      : speech(DEFAULT_VOICE_UNAVAILABLE);
+    const response = await storeTwiML(tx, v, eventId, "dial-result", xml);
     if (!response.fresh) return response.xml;
     const at = new Date(Math.max(Date.now(), existingLeg?.startedAt.getTime() ?? 0));
     const conflict = !!existingLeg && terminal.has(existingLeg.status) &&
@@ -348,12 +360,16 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
       leg.answeredByStaffAt !== null;
     const pending = bridged && dialStatus === "completed" && !answered;
     await tx.callSession.update({ where: { id: session.id }, data: {
-      state: "ENDED", endedAt: new Date(Math.max(Date.now(),
+      state: policy && !conflict ? "CONNECTED" : "ENDED",
+      endedAt: policy && !conflict ? null : new Date(Math.max(Date.now(),
         session.startedAt.getTime(), leg.answeredByStaffAt?.getTime() ?? 0)),
       outcome: conflict ? "UNKNOWN" : answered ? "ANSWERED" : pending ? "UNKNOWN" : "MISSED",
       connectedAt: answered ? leg.answeredByStaffAt : null,
       version: { increment: 1 },
     } });
+    if (policy && !conflict && !answered && !pending) {
+      await recordVoicemailPrompt(tx, v, v.callSid, session.id, policy);
+    }
     await tx.providerEvent.update({ where: {
       provider_eventId: { provider: "twilio", eventId },
     }, data: { summary: { step: "dial-result", bridged, childSid,

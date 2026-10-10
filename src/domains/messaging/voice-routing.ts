@@ -13,7 +13,15 @@ export const voiceRoutingSchema = z.object({
     to: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/),
   }).strict()).max(21),
   closedDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(366),
-  afterHoursMode: z.literal("CLOSED"),
+  afterHoursMode: z.enum(["CLOSED", "VOICEMAIL"]),
+  voicemail: z.object({
+    enabled: z.boolean(),
+    onMissedCall: z.boolean(),
+    announcement: z.string().trim().min(20).max(400),
+    maxSeconds: z.number().int().min(10).max(120),
+    retentionDays: z.number().int().min(1).max(3650),
+    approvedPolicyVersion: z.number().int().positive(),
+  }).strict().optional(),
   greeting: z.string().trim().min(1).max(160),
   unavailableGreeting: z.string().trim().min(1).max(160),
 }).strict();
@@ -21,7 +29,8 @@ export type VoiceRouting = z.infer<typeof voiceRoutingSchema>;
 
 export type RouteDecision =
   | { kind: "DIAL"; destination: string; timeoutSeconds: number }
-  | { kind: "CLOSED" | "UNAVAILABLE"; greeting: string };
+  | { kind: "CLOSED" | "UNAVAILABLE"; greeting: string }
+  | { kind: "VOICEMAIL"; announcement: string; maxSeconds: number; retentionDays: number };
 
 export const DEFAULT_VOICE_UNAVAILABLE = "Sorry, we cannot take your call right now.";
 
@@ -32,6 +41,8 @@ export function decideVoiceRoute(input: {
   routing: unknown;
   accountReady: boolean;
   numberReady: boolean;
+  /** Separate owner-authorized media switch; omitted stays OFF. */
+  mediaActivated?: boolean;
   businessNumber: string;
   callerNumber: string;
   now: Date;
@@ -64,6 +75,13 @@ export function decideVoiceRoute(input: {
   if (weekday === undefined || route.closedDates.includes(date) ||
       !route.weeklyHours.some((h) => h.weekday === weekday &&
         h.from < h.to && minute >= h.from && minute < h.to)) {
+    const voicemail = route.voicemail;
+    if (route.afterHoursMode === "VOICEMAIL" && input.mediaActivated === true &&
+        voicemail?.enabled === true &&
+        voicemail.approvedPolicyVersion === input.policyVersion) {
+      return { kind: "VOICEMAIL", announcement: voicemail.announcement,
+        maxSeconds: voicemail.maxSeconds, retentionDays: voicemail.retentionDays };
+    }
     return { kind: "CLOSED", greeting: route.greeting };
   }
   return { kind: "DIAL", destination: route.forwardTo, timeoutSeconds: route.timeoutSeconds };

@@ -10,6 +10,8 @@ const VOICE_PATHS = new Set([
   "/api/webhooks/twilio/voice/accept",
   "/api/webhooks/twilio/voice/dial-result",
   "/api/webhooks/twilio/voice/status",
+  "/api/webhooks/twilio/voice/media",
+  "/api/webhooks/twilio/voice/record-complete",
 ]);
 
 function isolatedTest() {
@@ -81,7 +83,8 @@ export async function verifyVoiceRequest(
     if (form.getAll(field).length !== 1 || !form.get(field)) return fail(400);
   }
   for (const field of ["From", "To", "ParentCallSid", "Digits", "SequenceNumber",
-    "CallStatus", "DialCallSid", "DialCallStatus", "DialCallDuration", "DialBridged"]) {
+    "CallStatus", "DialCallSid", "DialCallStatus", "DialCallDuration", "DialBridged",
+    "RecordingSid", "RecordingStatus", "RecordingDuration"]) {
     if (form.getAll(field).length > 1) return fail(400);
   }
   const signature = request.headers.get("x-twilio-signature");

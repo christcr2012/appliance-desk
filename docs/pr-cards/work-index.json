@@ -1785,7 +1785,7 @@
       "dependencies": [
         "COM-L8"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1793,16 +1793,17 @@
       ],
       "evidence": [
         "docs/designs/BATCH-COM.md",
-        "src/domains/messaging/deliver.ts",
-        "src/domains/messaging/events.ts",
-        "src/lib/sms.ts"
+        "src/domains/messaging/voice-voicemail.ts",
+        "src/domains/messaging/voice-media.ts",
+        "src/app/desk/communications/calls/page.tsx"
       ],
       "tests": [
-        "tests/communication-voicemail-integration.test.ts",
-        "e2e/communication-calls.spec.ts"
+        "tests/voice-voicemail-integration.test.ts",
+        "tests/voice-routing.test.ts",
+        "e2e/communications-calls.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L9.md"
+      "readiness": "DONE",
+      "card": "docs/pr-cards/COM-L9.md"
     },
     {
       "id": "COM-L10",
