@@ -11,7 +11,7 @@ test.beforeEach(()=>{
 test("customer communications timeline filter is navigable on mobile",async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto("/desk/customers");
-  const first=page.locator("a[href^='/desk/customers/']").first();
+  const first=page.locator("a[href^='/desk/customers/']:not([href*='/export'])").first();
   await expect(first).toBeVisible();
   const address=await first.getAttribute("href");
   expect(address).toBeTruthy();

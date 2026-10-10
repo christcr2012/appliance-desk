@@ -152,7 +152,7 @@ export async function getCustomerTimelinePage(
       take: PAGE_SIZE + 1,
     });
   })();
-  const commPromise = filter === "notes" ? Promise.resolve({messages:[],calls:[]}) : getLinkedCommunicationRows("Customer", customerId, cursor);
+  const commPromise = filter === "notes" || filter === "activity" ? Promise.resolve({messages:[],calls:[]}) : getLinkedCommunicationRows("Customer", customerId, cursor);
   const [notes, activity, comm] = await Promise.all([notesPromise, activityPromise, commPromise]);
   return mergeTimelinePage(
     notes.map((n) => ({

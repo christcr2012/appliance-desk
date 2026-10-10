@@ -3,6 +3,7 @@ import { beforeAll,afterAll,describe,expect,it,vi } from "vitest";
 vi.mock("@/lib/session",()=>({requireRole:vi.fn().mockResolvedValue({user:{role:"OWNER"}})}));
 import { prisma } from "@/lib/prisma";
 import { getLinkedCommunicationRows } from "@/domains/messaging/context-timeline";
+import { confirmedVoiceThread,linkEarlierConfirmedCalls } from "@/domains/messaging/voice-thread-link";
 import { mergeTimelinePage,readTimelineCursor } from "@/domains/customers/timeline-page";
 
 const u=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
@@ -17,6 +18,7 @@ const otherNo="+1"+(BigInt("0x"+suffix)+BigInt(1)).toString().slice(-10).padStar
 const thirdNo="+1"+(BigInt("0x"+suffix)+BigInt(2)).toString().slice(-10).padStart(10,"0");
 const stamp=new Date("2026-10-10T12:15:00Z");
 let custThread="",leadThread="",otherThread="";
+let pointIds:string[]=[];
 describe.skipIf(!enabled)("COM-L14A exact confirmed context and cursor (real Postgres)",()=>{
   beforeAll(async()=>{
     await prisma.user.create({data:{
@@ -36,6 +38,7 @@ describe.skipIf(!enabled)("COM-L14A exact confirmed context and cursor (real Pos
       address:"+15555559999",providerNumberId:"PN"+suffix}});
     const points=await Promise.all([no,otherNo,thirdNo].map(address=>
       prisma.contactPoint.create({data:{environment:"TEST",channel:"SMS",address}})));
+    pointIds=points.map(p=>p.id);
     const rows=await Promise.all([
       prisma.communicationThread.create({data:{
         accountId,businessNumberId:numberId,externalContactPointId:points[0].id,
@@ -57,7 +60,7 @@ describe.skipIf(!enabled)("COM-L14A exact confirmed context and cursor (real Pos
         occurredAt:stamp,redactedAt:stamp,
       }});
       await prisma.callSession.create({data:{
-        accountId,businessNumberId:numberId,threadId,
+        accountId,businessNumberId:numberId,threadId:null,contactPointId:pointIds[i],
         direction:"INBOUND",providerRootCallId:"CA"+suffix+i,startedAt:stamp,
         outcome:"MISSED",state:"ENDED",
       }});
@@ -75,6 +78,21 @@ describe.skipIf(!enabled)("COM-L14A exact confirmed context and cursor (real Pos
     await prisma.user.deleteMany({where:{id:userId}});
   });
   it("never includes an unrelated or unresolved thread, even with the same timestamps",async()=>{
+    const unlinked=await getLinkedCommunicationRows("Customer",customerId,null);
+    expect(unlinked.calls).toHaveLength(0);
+    const counts=await prisma.$transaction(async tx=>{
+      const customerKey={accountId,businessNumberId:numberId,contactPointId:pointIds[0]};
+      const leadKey={accountId,businessNumberId:numberId,contactPointId:pointIds[1]};
+      const otherKey={accountId,businessNumberId:numberId,contactPointId:pointIds[2]};
+      expect(await confirmedVoiceThread(tx,customerKey)).toBe(custThread);
+      expect(await confirmedVoiceThread(tx,otherKey)).toBeNull();
+      return [
+        await linkEarlierConfirmedCalls(tx,customerKey,custThread),
+        await linkEarlierConfirmedCalls(tx,leadKey,leadThread),
+        await linkEarlierConfirmedCalls(tx,otherKey,otherThread),
+      ];
+    });
+    expect(counts).toEqual([1,1,0]);
     const cust=await getLinkedCommunicationRows("Customer",customerId,null);
     const lead=await getLinkedCommunicationRows("Lead",leadId,null);
     const other=await getLinkedCommunicationRows("Lead",anotherLeadId,null);

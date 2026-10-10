@@ -37,6 +37,7 @@ export async function LeadCommunicationTimeline({
         {item.detail && <p className="mt-1 break-words text-ink-soft">{item.detail}</p>}
         <time className="text-xs text-ink-faint" dateTime={item.createdAt.toISOString()}>
           {formatBusinessDate(item.createdAt)} · {formatBusinessTime(item.createdAt)}
+          {item.authorName ? " · Logged by " + item.authorName : ""}
         </time>
       </li>)}
     </ul>

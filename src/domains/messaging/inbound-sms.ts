@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { linkEarlierConfirmedCalls } from "./voice-thread-link";
 import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import { normalizeSmsAddress } from "./suppression";
 import { encryptCommunicationContent, hashCommunicationContent } from "./communications-content";
@@ -124,6 +125,9 @@ export async function ingestVerifiedSms(input: VerifiedInboundSms): Promise<Inbo
         version: { increment: 1 }, lastActivityAt: receivedAt,
       },
     });
+    if (thread.resolution === "RESOLVED" && (thread.customerId || thread.leadId)) {
+      await linkEarlierConfirmedCalls(tx,{accountId:account.id,businessNumberId:number.id,contactPointId:point.id},thread.id);
+    }
     const message = await tx.communicationMessage.create({ data: {
       threadId: thread.id, accountId: account.id, direction: "INBOUND",
       providerResourceId: input.messageSid,

@@ -16,3 +16,10 @@ Next COM-L14B contextual job/maintenance/billing, then COM-L15; owner pause only
 - Text delivery distinguishes provider-accepted versus delivered/failed/unknown; call results distinguish missed, voicemail and answered. Links point to the protected inbox/thread or call detail.
 - `tests/communication-timeline.test.ts`: cursor/tie/scope/render semantics. `tests/communication-timeline-integration.test.ts`: real PostgreSQL isolated customer/lead/unresolved thread and page-boundary proof. `e2e/communication-timeline.spec.ts`: owner mobile navigation and accessibility. All still require full exact-head CI and review prior to merge.
 - No migration, live sender, consent override or payment/telecom-cost change. Automated review unavailable — waived unless feedback arrives; inspect the diff and resolve any review findings before merge.
+
+### Review fixes on #383
+- Browser test now excludes the customers CSV export link from record navigation.
+- Old customer pagination mocks now include empty communication streams, and Activity-only does not show texts/calls.
+- The real verified voice inbound path sets a CallSession thread only when an existing resolved thread matches the same account, business number and canonical contact point and has exactly one explicit customer/lead FK. When a validated inbound SMS resolves a thread, previously unlinked voice calls on that exact triple are linked. Ambiguous, unresolved, wrong-account and unidentified callers remain unlinked.
+- Timeline call links always lead to exact protected call-detail page; owner can review voicemail there. Lead notes retain their author names. SUPPRESSED messages are labelled suppressed/not sent.
+- DB tests now prove unlinked calls are absent until explicit resolved linkage, then only matching customer and lead calls appear; voice webhook integration remains covered. No new provider mutation, migration or live activation. Five review comments must all be resolved before merge.

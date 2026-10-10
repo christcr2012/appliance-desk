@@ -21,6 +21,7 @@ function stateLabel(value:string|null):string {
     case "FAILED": return "failed";
     case "UNKNOWN": return "unknown delivery status";
     case "NOT_SENT": return "not sent";
+    case "SUPPRESSED": return "suppressed and not sent";
     default: return "delivery unconfirmed";
   }
 }
@@ -66,7 +67,7 @@ export async function getLinkedCommunicationRows(
         :c.outcome==="VOICEMAIL"?"Voicemail; listen in the private call screen"
         :"Status "+(c.outcome??c.state)+"; not proof of a completed conversation",
       authorName:null,createdAt:c.startedAt,
-      href:c.threadId?"/desk/communications/"+encodeURIComponent(c.threadId):
+      href:
         "/desk/communications/calls/"+encodeURIComponent(c.id),
     })),
   };

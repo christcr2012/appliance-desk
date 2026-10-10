@@ -1,5 +1,6 @@
 import twilio from "twilio";
 import { prisma } from "@/lib/prisma";
+import { confirmedVoiceThread } from "./voice-thread-link";
 import type { Prisma } from "@prisma/client";
 import { decryptCommunicationContent, encryptCommunicationContent } from "./communications-content";
 import { decideVoiceRoute, DEFAULT_VOICE_UNAVAILABLE } from "./voice-routing";
@@ -120,12 +121,16 @@ export async function incomingVoice(v: VerifiedVoice): Promise<string> {
         update: {},
         select: { id: true },
       }) : null;
+    const linkedThreadId = contactPoint ? await confirmedVoiceThread(tx,{
+      accountId:v.accountId,businessNumberId:number.id,contactPointId:contactPoint.id,
+    }) : null;
     const startedAt = new Date();
     const session = await tx.callSession.create({ data: {
       startedAt,
       accountId: v.accountId, businessNumberId: number.id,
       providerRootCallId: v.callSid, direction: "INBOUND",
       contactPointId: contactPoint?.id ?? null,
+      threadId:linkedThreadId,
       routingPolicyVersion: route.kind === "DIAL" || route.kind === "VOICEMAIL" ? v.policyVersion : 0,
       state: route.kind === "DIAL" ? "RINGING" : route.kind === "VOICEMAIL" ? "CONNECTED" : "ENDED",
       outcome: route.kind === "DIAL" || route.kind === "VOICEMAIL" ? null : "MISSED",

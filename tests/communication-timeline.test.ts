@@ -65,6 +65,7 @@ describe("COM-L14A confirmed context and stable multi-source cursor",()=>{
     const result=await getLinkedCommunicationRows("Customer","customer-1",null);
     expect(result.messages[0].detail).toContain("Acceptance is not delivery");
     expect(result.messages[1].summary).toBe("Incoming SMS");
+    expect(result.messages[0].detail).not.toContain("suppressed");
     expect(result.calls.map(c=>c.summary)).toEqual(["Missed incoming call","Incoming voicemail"]);
     expect(result.calls[1].href).toBe("/desk/communications/calls/c2");
     expect(JSON.stringify(result)).not.toMatch(/bodyEncrypted|secret body|contactAddress/);
