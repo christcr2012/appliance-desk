@@ -3313,7 +3313,7 @@
     },
     {
       "id": "W-22",
-      "title": "Charges at signing: setup fee per delivery address, bulk self-install per set, large-order down payment",
+      "title": "Charges at signing: $45 administrative setup fee per delivery location, large-order down payment",
       "batch": "W",
       "dependencies": [
         "W-18"

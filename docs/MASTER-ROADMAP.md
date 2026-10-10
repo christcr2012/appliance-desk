@@ -89,7 +89,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-12 | Sales tax return as an XML upload file | JIT — `W-12.md` | W-10, IN-62, IN-44 |
 | W-13 | Receipt photo reading pre-fills price and seller tax (optional) | JIT — `W-13.md` | W-2, IN-64 |
 | W-18 | Plain-language kit: dollars-only money display/input, ⓘ explanations from one glossary, CI check (Amendment B) | JIT — `W-18.md` | W-1, IN-69 |
-| W-22 | Charges at signing: setup fee per delivery address (admin + consumables), bulk self-install per set, large-order down payment (IN-73/74, added 2026-10-10) | JIT — `W-22.md` | W-18 |
+| W-22 | Charges at signing: $45 administrative setup fee per delivery location, large-order down payment (IN-73/74, added 2026-10-10) | JIT — `W-22.md` | W-18 |
 | W-23 | Location contacts: unit label, tenant/on-site contacts and client permission per address (added 2026-10-10) | JIT — `W-23.md` | W-22 |
 | W-14 | Purchases: one receipt, many appliances each with model + serial, tax split by price | JIT — `W-14.md` | W-23 |
 | W-15 | Tax proof per appliance + audit pack; parts purchases join the records | JIT — `W-15.md` | W-2 |

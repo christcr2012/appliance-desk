@@ -297,7 +297,7 @@ the place to plug it in.
 | **W-17** | Connected records: Related panel + History on appliance, customer, agreement, purchase, seller, visit, invoice; search by serial/model/seller; `CLEANING` status and inspection → cleaning/repair (E3) | screens | 1 (enum) |
 | **W-19** | Flow gaps not covered by W-4…W-6: S2, S4, S5, S7, M1 (immediate), M2 (pickup requests), E1 (pickup after any ending), progress-card buttons everywhere | operations | none |
 | **W-20** | Portal follows the flows (D-WB6): next-step messages, status timelines, next bill, "Pay now" on overdue invoices via the existing hosted payment page, packages shown as sets | money/screens | none |
-| **W-22** | Charges at signing (section 6.2): setup fee per delivery address (admin + consumables), bulk self-install per set, large-order down payment; all in the all-in price | money | 1 |
+| **W-22** | Charges at signing (section 6.2): one administrative setup fee per delivery location ($45), large-order down payment; all in the all-in price | money | 1 |
 | **W-23** | Location contacts (section 6.3): unit label and tenant/on-site contacts per address, what the client allows us to contact them about, shown on that location's visits | privacy/screens | 1 |
 | **W-21** | Machines leaving early (D-WB8): single-price repricing with partial-period credit, "taken for repair — no replacement yet" visit result, out-of-service periods and credits on any line, portal/bill wording, To do to return or replace | money | 1 |
 
@@ -330,26 +330,27 @@ Equipment and "Records" under Taxes.
 
 Today the delivery/installation/removal fee settings are shown on `/pricing` but signing collects only a deposit and/or
 damage waiver, and the fees are flat. Chris 2026-10-10: no deposit on ordinary rentals; a **down payment** on large orders;
-a **setup fee** that covers the administrative setup and the consumables (dryer cord, vent hose, braided washer hoses).
-Chris asked Claude to expand his outline; every expansion below is marked **(rec.)** with its recommended answer, and
-the ones that need his word are IN-75…IN-79.
+a **setup fee** (revised the same day to one administrative fee per location — section A).
+Chris asked Claude to expand his outline, then simplified the fee (section A). Expansions are marked **(rec.)** with the
+recommended answer; IN-75, IN-76, IN-78 and IN-79 remain open.
 
-**A. The setup fee.** It always has two parts that stay separate lines (they may be taxed differently, section E):
-the **admin part** (opening the account, paperwork, scheduling, setting up billing) and the **consumables part** (cord,
-vent hose, braided hoses actually left with the machines). Our delivery and installation labor is included.
+**A. The setup fee (revised 2026-10-10 by Chris; supersedes the admin + consumables split).** One **administrative
+setup fee, $45, charged once per delivery location** on each new order. It is one line, not tied to any parts: it helps cover
+the hookup items, the cost of running Appliance Desk and other indirect costs. Separately, as a fixed business rule, **every
+new rental is installed with new hookup items** (washer hoses, dryer cord, dryer vent), for safety, for the machines' life
+and to reduce liability. The delivery visit records "new hookup items installed" for each machine as evidence (rec.).
 
-| Situation | What is charged | Starting values |
-|---|---|---|
-| We deliver and install at an address (normal case) | Once per delivery address: admin + consumables for what that address receives | admin $15 + $10 single / $25 set → **$25 or $40** |
-| Several sets or machines at one address, we install them | Still once per address (Chris's rule) **plus** consumables for each extra set or machine beyond the first **(rec., IN-75)**: parts are used per machine even when the paperwork is shared | 2 sets at one address: $15 + $25 + $25 = $65 |
-| Large order to one address, **customer delivers/installs** (at least the large-order threshold at that address; owner ticks it on the quote) | Per set (or single machine): admin always, consumables only when "Consumables supplied: yes" | per set $15 (no parts) or $40 (with parts) |
-| Adding a machine to an address that already has an active rental | Consumables for the added machine only; no new admin **(rec., IN-75)** | single $10 |
-| Customer moves the rental to a new address | Full setup fee for the new address **(rec., IN-75)**: new paperwork, new parts | $25 / $40 |
-| Renewal at the same address, same machines | Nothing (existing renewal rule waives repeat connection) | — |
-| Swap or re-delivery of a broken machine | Nothing: repairs are included (IN-74 default) | — |
-| Swap the customer asks for when nothing is broken (upgrade, color, size) | Owner may add a manual charge with a reason; nothing automatic | — |
-| Tenant turnover at a property manager's unit, machines stay | Nothing | — |
-| Owner waives or discounts for a promotion or a good client | Allowed per quote with a recorded reason; the shown total updates | — |
+| Situation | What is charged |
+|---|---|
+| New order, we deliver and install at a location (each unit with its own address counts as its own location) | $45 once for that location, however many machines it gets |
+| One order to several locations | $45 for each location |
+| Adding a machine to a location that already has an active rental | No automatic fee; the owner may add one with a reason (rec., IN-75) |
+| Customer moves the rental to a new location | $45 for the new location (rec., IN-75) |
+| Renewal at the same location, same machines | Nothing (existing renewal rule waives repeat connection) |
+| Swap or re-delivery of a broken machine | Nothing: repairs are included |
+| Swap the customer asks for when nothing is broken (upgrade, color, size) | Owner may add a manual charge with a reason |
+| Tenant turnover at a property manager's unit, machines stay | Nothing |
+| Bulk orders, closing a sale, a customer-satisfaction fix, or any other real-world reason | The owner changes or waives the fee on that quote or agreement with a recorded reason; the shown total updates |
 
 **B. The down payment.**
 - Trigger: an order of **5 or more machines, or any business or property-manager customer** (owner settings).
@@ -365,36 +366,36 @@ vent hose, braided hoses actually left with the machines). Our delivery and inst
   retry, and no delivery is scheduled automatically.
 
 **C. Cancelling before delivery (rec., IN-76).** Before a delivery visit is scheduled, everything is refunded. After it is
-scheduled, the admin part is kept and the rest (consumables not used, the down payment) is refunded. After delivery the
+scheduled, the setup fee is kept and the down payment is refunded. After delivery the
 normal early-return rules apply. Refunds use the existing refund path; the owner can override with a reason.
 
-**D. Customer-installed machines (rec., IN-77).** The agreement for a customer-installed order says the customer is
-responsible for correct installation and any damage caused by it (leaks from hoses they fitted, venting); machine faults are
-still repaired at no charge. A service visit that turns out to be an installation problem may carry a trip charge the owner
-adds with a reason (no automatic charge). The machines' serials are still recorded per unit address when the client tells
-us where each one went, so repairs and custody stay accurate.
+**D. Customer installation (rare).** Not a separate price rule. If it ever happens, the owner adjusts the fee on that
+quote with a reason, and the machines still go out with our new hookup items. Agreement wording for who is responsible for
+an installation the customer does themselves is added only if Chris asks for it (IN-77, superseded).
 
-**E. Tax (CPA question, IN-79).** Consumables left with the customer look like a taxable sale of goods; whether the admin
-part is taxable when it is stated separately is unclear under Colorado rules. Each line keeps its own charge category; any
-category Batch T has not decided fails closed to review before the agreement is sent, never guessed.
+**E. Tax (CPA question, IN-79).** The hookup items stay part of Chris's rental equipment (bought by the business,
+tax handled on the purchase side), not sold to the customer. Whether a separately stated administrative setup fee is taxable in
+Colorado when the rental is taxable is a CPA question. The fee line keeps its own charge category; an undecided category fails
+closed to review before an agreement is sent, never guessed.
 
 **F. Showing the price.** Quotes, agreements, the signing page and the website show the **all-in total** of every mandatory
 amount (Colorado HB25-1090), with sales tax and government fees as separate lines; a website example reads "Washer + dryer:
-$400 for 6 months — includes setup, delivery, installation and repairs. Plus sales tax." Fee lines are frozen on the signed
+$405 for 6 months — includes setup, delivery, installation, new hookup items and repairs. Plus sales tax." Fee lines are frozen on the signed
 agreement.
 
-**G. Settings.** Admin part, consumables per single and per set, the large-order threshold (machines) and "business or
-property manager counts as large" — all in dollars or counts, ⓘ explanations, "restore recommended". The parts kit can later
-be linked to parts inventory so each kit used lowers stock (not in W-22; ROADMAP).
+**G. Settings.** Setup fee (starting value $45), the large-order threshold (machines) and "business or property
+manager counts as large", in dollars or counts, with ⓘ explanations and "restore recommended". Per-quote changes need a reason. The hookup kit
+can later be linked to parts inventory so each kit used lowers stock and its cost can be compared with the fee (ROADMAP).
 
 **H. Money rules.** Integer cents through the existing calculation functions; charged in the existing signing checkout and
 marked paid only by the webhook (or a recorded manual payment); the down-payment credit reaches Stripe exactly once.
 
-**I. Tests (throwaway Postgres):** single and set addresses; two sets at one address; three addresses on one quote;
-customer-installed with and without consumables; adding a machine to an active address; a move; the threshold edge (4 vs 5
-machines; a business customer with 1 machine); a per-property estimate giving each agreement its own down payment; the down
-payment covering the first bill once and a replayed webhook not doubling it; a manual check payment; a failed signing payment;
-cancel before and after scheduling; the all-in total equals the sum of the frozen lines.
+**I. Tests (throwaway Postgres):** one location with one machine and with two sets (both $45); three locations on one
+quote ($135); an owner change with a reason and without one (refused); adding a machine to an active location (no fee); a move;
+the threshold edge (4 vs 5 machines; a business customer with 1 machine); a per-property estimate giving each agreement its own
+down payment; the down payment covering the first bill once and a replayed webhook not doubling it; a manual check payment; a
+failed signing payment; cancelling before and after scheduling; "new hookup items installed" recorded per machine on delivery;
+the all-in total equals the sum of the frozen lines.
 
 ### 6.3 W-23 — location contacts (added 2026-10-10, Chris; expanded at his request)
 
@@ -519,9 +520,9 @@ F-part-2 proves the whole business works as connected flows, through the real sc
   7 years after launch).
 - **IN-73** — answered 2026-10-10: no deposit on ordinary rentals; large orders (5+ machines or a business/property-manager
   customer) pay the first month as a down payment (W-22).
-- **IN-74** — answered 2026-10-10: setup fee per delivery address (admin + consumables), per set for bulk self-install,
-  admin always charged; starting values in section 6.2. Swaps/re-deliveries: not charged.
-- **IN-75…IN-79** — expansions Chris asked for (section 6.2 A, C, D, E; 6.3 E–G), each with a recommended default.
+- **IN-74** — answered 2026-10-10, revised the same day: one administrative setup fee, **$45 per delivery location**, not tied
+  to parts; new hookup items on every new rental; the owner may change the fee with a reason. Swaps and re-deliveries: not charged.
+- **IN-75, IN-76, IN-78, IN-79** — open with recommended defaults (6.2 A, C, E; 6.3 E–G). IN-77 superseded (customer installation is rare).
 
 ## 13. Stop-and-ask
 
