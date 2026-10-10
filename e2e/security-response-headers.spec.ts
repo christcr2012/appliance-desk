@@ -38,15 +38,15 @@ test("Metricool image permission is restricted to public-layout documents", asyn
 });
 
 
-test("a client transition from privacy to pricing retains public tracker image permission", async ({ page }) => {
+test("a client transition from privacy to how-it-works retains public tracker image permission", async ({ page }) => {
   await page.route("https://tracker.metricool.com/c3po.jpg*", route => route.fulfill({
     status: 200, contentType: "image/gif",
     body: Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"),
   }));
   await page.goto("/privacy");
   await page.evaluate(() => { document.documentElement.dataset.metricoolTransition = "same-document"; });
-  await page.getByRole("link", { name: "Pricing", exact: true }).first().click();
-  await expect(page).toHaveURL(/\/pricing$/);
+  await page.getByRole("link", { name: "How It Works", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/how-it-works$/);
   expect(await page.evaluate(() => document.documentElement.dataset.metricoolTransition)).toBe("same-document");
   const sent = page.waitForRequest("https://tracker.metricool.com/c3po.jpg?test=public-transition");
   await page.evaluate(() => {

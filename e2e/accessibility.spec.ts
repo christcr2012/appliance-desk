@@ -32,7 +32,8 @@ test("mobile hamburger menu opens and closes with keyboard and mouse", async ({
   await expect(closeToggle).toHaveAttribute("aria-expanded", "true");
   const mobileNav = page.locator("#mobile-menu");
   await expect(mobileNav).toBeVisible();
-  await expect(mobileNav.getByRole("link", { name: "Pricing" })).toBeVisible();
+  await expect(mobileNav.getByRole("link", { name: "How It Works" })).toBeVisible();
+  await expect(mobileNav.getByRole("link", { name: "Pricing" })).toHaveCount(0);
 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
