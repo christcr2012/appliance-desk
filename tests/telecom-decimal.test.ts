@@ -12,6 +12,10 @@ describe("COM-L10 exact signed telecom decimals", () => {
     expect(telecomDecimal("-0.0000000001").toString()).toBe("-1e-10");
     expect(telecomDecimal(new Prisma.Decimal("3.0000000001")).toFixed(10))
       .toBe("3.0000000001");
+    expect(telecomDecimal(new Prisma.Decimal("0.0000000001")).toFixed(10))
+      .toBe("0.0000000001");
+    expect(roundTelecomTotalToCents(new Prisma.Decimal("-0.0000000001"))).toBe(0);
+    expect(() => telecomDecimal(new Prisma.Decimal("0.00000000001"))).toThrow(RangeError);
   });
   it("rejects floating input, nonfinite/exponent, out-of-precision and malformed numbers", () => {
     for (const value of [1.005, NaN, Infinity]) {
