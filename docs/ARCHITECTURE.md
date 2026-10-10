@@ -37,6 +37,9 @@ All of these are stored as **Vercel environment variables** (per environment: Pr
 
 ## Email addresses (Google Workspace)
 
+> The plain-English guide and change record for these addresses is `docs/EMAIL-AND-ALIASES.md` (verified against
+> Google Workspace 2026-10-09). Keep the two in step.
+
 **As of 2026-09-27**, `robinsonappliancerentals.com` has its own real,
 separate Google Workspace mailbox — deliberately its own paid seat, not
 an alias inside Chris's other company's (Robinson AI Systems) mailbox,
