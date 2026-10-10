@@ -14,8 +14,9 @@ MKT-2 merged in #374 and was deployed after exact-head green CI on main dfd0718 
 
 ## Business email guide (owner-requested, 2026-10-09)
 `docs/EMAIL-AND-ALIASES.md` records every business email address, what it is for, where the app uses it and the
-Gmail send-as/label setup. Google Workspace was inspected read-only: all six plan addresses plus `dmarc@` already
-existed, so nothing was created or changed there. Open: IN-02 (public and reply-to email), the DMARC tightening dates
+Gmail send-as/label setup. Google Workspace was inspected: all six plan addresses plus `dmarc@` already existed. On
+the owner's approval two aliases were added, `privacy@` and `accounts@`, each with a Gmail label and filter (read back
+and verified; reversal is in the guide). Open: putting `privacy@` on the website privacy page (needs its own card), IN-02 (public and reply-to email), the DMARC tightening dates
 (2026-10-24 quarantine, 2026-11-23 reject) and the GW-08 mail test. No email, SMS or payment switch was touched.
 Docs-only change; the engineering queue is unchanged.
 
