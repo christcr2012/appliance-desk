@@ -79,7 +79,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-2 | Intake and purchase orders say what is owed, to whom, by when; every seller-tax answer gets one dated next step (D-WA6); built on W-14's purchase flow | JIT — `W-2.md` | W-14 |
 | W-3 | Taxes in one place, in plain words | JIT — `W-3.md` | W-2 |
 | W-4 | Rental turning points create draft visits and To do items | JIT — `W-4.md` | W-3 |
-| W-5 | Failed, held and deposit payments on To do with buttons | JIT — `W-5.md` | W-4 |
+| W-5 | Failed, held and deposit payments on To do with buttons; "Send payment link" on any unpaid bill (2026-10-10) | JIT — `W-5.md` | W-4 |
 | W-6 | Leads and quotes create follow-ups | JIT — `W-6.md` | W-5 |
 | W-7 | First-time setup checklist | JIT — `W-7.md` | W-6 |
 | W-8 | Simpler menu, Schedule screen, plain-words check | JIT — `W-8.md` | W-7 |
@@ -92,7 +92,7 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-22 | Charges at signing: $45 administrative setup fee per delivery location, large-order down payment (IN-73/74, added 2026-10-10) | JIT — `W-22.md` | W-18 |
 | W-23 | Location contacts: unit label, tenant/on-site contacts and client permission per address (added 2026-10-10) | JIT — `W-23.md` | W-22 |
 | W-24 | One link does the whole order: Chris's delivery choices, accept → sign → pay → password → portal; decline; trip fee (added 2026-10-10) | JIT — `W-24.md` | W-23 |
-| W-25 | Phone orders: send-to-finish by email; agreed-by-phone backup off until attorney and Stripe checks (added 2026-10-10) | JIT — `W-25.md` | W-24 |
+| W-25 | Phone orders: Chris enters, customer finishes by emailed link (added 2026-10-10; phone backup cancelled) | JIT — `W-25.md` | W-24 |
 | W-26 | Spanish for customers: quote, agreement, signing, payment, portal, messages (added 2026-10-10) | JIT — `W-26.md` | W-25 |
 | W-14 | Purchases: one receipt, many appliances each with model + serial, tax split by price | JIT — `W-14.md` | W-26 |
 | W-15 | Tax proof per appliance + audit pack; parts purchases join the records | JIT — `W-15.md` | W-2 |

@@ -300,7 +300,7 @@ the place to plug it in.
 | **W-22** | Charges at signing (section 6.2): one administrative setup fee per delivery location ($45), large-order down payment; all in the all-in price | money | 1 |
 | **W-23** | Location contacts (section 6.3): unit label and tenant/on-site contacts per address, what the client allows us to contact them about, shown on that location's visits | privacy/screens | 1 |
 | **W-24** | One link does the whole order (section 6.4): owner-offered delivery choices, delivery questions, accept → agreements created → sign → pay → password → portal; decline; copy link; missed-appointment trip fee | money/sales | 1 |
-| **W-25** | Phone orders (section 6.5): Chris enters everything, the link goes out by email (text when live); backup "agreed by phone" with card typed into Stripe's hosted page, off until lawyer and Stripe checks | money/legal | 1 |
+| **W-25** | Phone orders (section 6.5): Chris enters everything and the customer finishes by the emailed link (text when live); no phone backup | sales | none or 1 |
 | **W-26** | Spanish for customers (section 6.6): quote, agreement, signing, payment pages, portal and messages in Spanish with reviewed translations | screens/legal | 1 |
 | **W-21** | Machines leaving early (D-WB8): single-price repricing with partial-period credit, "taken for repair — no replacement yet" visit result, out-of-service periods and credits on any line, portal/bill wording, To do to return or replace | money | 1 |
 
@@ -488,23 +488,28 @@ choices; there is no morning/afternoon window on visits.
   undecided tax blocks before signing; review-first quotes stop at Accept; a failed payment; a decline; a password set on the page
   logs in; the confirmed date drives late credits; trip fee $0 adds nothing and $N adds one line once.
 
-### 6.5 W-25 — phone orders (added 2026-10-10, Chris approved)
+### 6.5 W-25 — phone orders (added 2026-10-10; backup cancelled the same day)
 
 - **Chris enters everything** in the desk while on the phone (customer, locations, machines, terms) and records the
   delivery choice the customer picks **from the choices Chris offers**.
-- **Standard finish (preferred by Chris):** "Send to finish" emails the customer the same one-sitting link (W-24) with their
-  choices filled in. They sign, pay and set their password themselves. Text joins when live texting is on. Their card goes
-  only to Stripe.
-- **Backup only, off until checked (IN-82):** for a customer who cannot use a link, Chris reads the key terms from a script
-  on screen, the customer agrees out loud, and Chris records **"Agreed by phone"** (date, time, who, the terms version read).
-  The card is typed into **Stripe's own hosted payment page** opened from the desk, with the customer's spoken permission to save it for
-  monthly rent recorded; card numbers never touch Appliance Desk. A copy of the agreement is emailed or mailed. The switch stays off
-  until (1) a Colorado attorney confirms phone agreement and saved-card authorization wording, and (2) Stripe allows phone
-  (card-not-present, staff-entered) payments on the account. Both are GO-LIVE-CHECKLIST items.
-- **Customers without email** can finish by text link once texting is live. Until then the backup applies, or they have no
-  portal. A phone-number login is for later.
-- Permissions: OWNER/ADMIN only. Every phone order records who entered it. Tests: send-to-finish reuses W-24 exactly; the backup
-  switch off hides it; "Agreed by phone" needs the script version and time; no card data in any Appliance Desk table or log.
+- **"Send to finish"** emails the customer the same one-sitting link (W-24) with their choices filled in; they sign, pay
+  and set their password themselves (Chris prefers phone orders to trigger the emailed sign-up/setup). **Copy link** lets Chris
+  text it from his own phone until live texting is on, when the app sends it by text too. Card details go only to Stripe.
+- **No "agreed by phone" backup.** Chris cancelled it on 2026-10-10 as not worth the effort (IN-82). A customer who cannot use
+  a link is handled case by case outside the app, and no card-by-phone entry is built.
+- Permissions: OWNER/ADMIN only; every phone order records who entered it. Tests: send-to-finish reuses W-24 exactly, with the
+  entered choices pre-filled; Copy link gives the same link; no card data in any Appliance Desk table or log.
+
+### 6.7 W-5 addition — "Send payment link" on any unpaid bill (added 2026-10-10, Chris)
+
+W-5's money To do items gain, and every unpaid invoice page in the desk shows, a **"Send payment link"** button. It sends the
+customer the invoice's **secure Stripe payment page** (the hosted invoice page: card or bank account, nothing typed into Appliance
+Desk) by email through the existing customer-email gate, plus **Copy link** so Chris can text it while on the phone (texting from
+the app joins when live texting is on). The link pays that one invoice; a paid invoice shows "Paid" instead of the button.
+**The message explains why** (Chris 2026-10-10). Every payment link arrives with a short message filled in from the invoice: what the bill is for (for example "October rent — washer + dryer at 123 Main St"), the amount due, the due date and, if late, how many days overdue and any late fee already added, the account's total balance when other bills are also open, and the reason it is being sent (a reminder, a payment that failed, a balance after a partial payment, or a payment asked for on the phone). Chris picks the reason (the app suggests one from the invoice's state) and may add a short personal note. The wording is an owner-editable template per reason with "restore recommended", and is sent in the customer's language once W-26 is built. Chris sees the exact message before it is sent, and the sent text is kept in the customer's history. A property manager's message lists only that customer's own bills. Customers can always also pay from their account ("Pay now", W-20). There is **no public "pay any bill" page** (it would invite
+invoice guessing and card testing). The website's "Pay my bill" button goes to the account login (V). Tests: the link
+matches the invoice's Stripe page; the message shows the right amount, due date, days overdue and reason for each invoice state; the send is refused when customer email is off (Copy link still works); the button is hidden
+on paid or void invoices; STAFF cannot send (money).
 
 ### 6.6 W-26 — Spanish for customers (added 2026-10-10, Chris approved)
 
@@ -605,8 +610,8 @@ F-part-2 proves the whole business works as connected flows, through the real sc
 - **IN-74** — answered 2026-10-10, revised the same day: one administrative setup fee, **$45 per delivery location**, not tied
   to parts; new hookup items on every new rental; the owner may change the fee with a reason. Swaps and re-deliveries: not charged.
 - **IN-75, IN-76, IN-78, IN-79** — open with recommended defaults (6.2 A, C, E; 6.3 E–G). IN-77 superseded (customer installation is rare).
-- **IN-80…IN-84** — order flow (sections 6.4–6.6): delivery choices offered by Chris, trip fee (starting $0), phone backup off
-  until checks, Spanish with reviewed translations, phone orders finish by email.
+- **IN-80…IN-83** — order flow (sections 6.4–6.7): delivery choices offered by Chris, trip fee (starting $0), phone orders finish
+  by email (phone backup cancelled), Spanish with reviewed translations, "Send payment link" on any unpaid bill (W-5).
 
 ## 13. Stop-and-ask
 

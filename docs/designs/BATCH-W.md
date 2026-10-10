@@ -140,7 +140,7 @@ reason in the PR.
 | W-2 | Intake "what happens next" (D-W2) using `nextPurchaseTaxStep` (D-WA6, every answer → one dated next step); plain intake question with no default ("Did the seller charge sales tax?" Yes / No / I'll check the receipt later → dated To do in 3 days); purchase-order tax question (D-W3 row 2) | money |
 | W-3 | Taxes in one place (D-W4): menu, tabs, use tax moved in, return page headline + SUTS link, dollars not cents | screens |
 | W-4 | Rental turning points (D-W3): signed → draft delivery + To do; ending in 30 days; ending decided → draft pickup; untimed visits | operations |
-| W-5 | Money turning points: failed payment, held payment, deposit decision on To do with buttons | money |
+| W-5 | Money turning points: failed payment, held payment, deposit decision on To do with buttons; "Send payment link" on any unpaid invoice (Amendment B 6.7, 2026-10-10) | money |
 | W-6 | Leads and quotes: new lead To do, follow-up date on "contacted", approved quote To do | sales |
 | W-7 | Setup checklist (D-W5) | screens |
 | W-8 | Menu (D-W6) + wording check (D-W7) + wording fixes it finds | screens |
