@@ -700,3 +700,8 @@ Owner-configurable rule: an estimate or agreement at or above a threshold (numbe
 customer) requires a down payment (first month at signing, applied to the first bill) or a refundable deposit, with the amount and
 type as settings with explanations and "restore recommended". It reuses the existing estimate deposit checkout and `Deposit` records,
 needs no new payment path, and is shown in the quote total under Colorado's all-in price rule. **Scheduled 2026-10-10 as W-22** (after W-18); IN-73/IN-74 answered.
+
+## 2026-10-10 — Parts kits linked to inventory (from W-22)
+
+Each setup-fee consumables kit (cord, vent hose, braided hoses) used on a delivery could lower parts stock automatically, so the
+consumables price can be checked against what the parts really cost. Not in W-22; needs its own card if Chris wants it.

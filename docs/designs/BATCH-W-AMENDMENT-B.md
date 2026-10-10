@@ -326,57 +326,117 @@ Existing W PRs absorb these rows: **W-2** (intake next steps) now builds on W-14
 drafts already planned; **W-5** covers D3 after W-0C; **W-6** covers S1/S3; **W-8**'s menu adds "Purchases" under
 Equipment and "Records" under Taxes.
 
-### 6.2 W-22 — charges at signing (added 2026-10-10, Chris; IN-73, IN-74)
+### 6.2 W-22 — charges at signing (added 2026-10-10, Chris; IN-73, IN-74; expanded at his request)
 
 Today the delivery/installation/removal fee settings are shown on `/pricing` but signing collects only a deposit and/or
 damage waiver, and the fees are flat. Chris 2026-10-10: no deposit on ordinary rentals; a **down payment** on large orders;
 a **setup fee** that covers the administrative setup and the consumables (dryer cord, vent hose, braided washer hoses).
+Chris asked Claude to expand his outline; every expansion below is marked **(rec.)** with its recommended answer, and
+the ones that need his word are IN-75…IN-79.
 
-- **Setup fee, charged once per delivery address.** It is the administrative part plus the consumables part for what that
-  address receives: starting values admin **$15**, consumables **$10** for a single machine or **$25** for a set, so
-  **$25** for an address getting one machine and **$40** for an address getting a set or more. Each apartment or duplex unit with its own
-  address (line 2) is its own delivery address. Our delivery and installation labor is included.
-- **Bulk delivery to one address where the customer installs.** When a quote sends at least the large-order threshold of machines to one
-  address and the owner marks "customer delivers/installs", the fee is charged **per set (or per single machine)**: the admin
-  part always, plus the consumables part only when we supply consumables ("Consumables supplied: yes/no").
-- **Large-order down payment.** An order at or above the threshold (starting value **5 or more machines, or any business
-  or property-manager customer**) pays the **first month's rent at signing**; it is applied to the first bill (no second
-  charge for that month) and nothing is held back. Ordinary rentals pay no deposit (`depositEnabled` stays off by default;
-  the existing deposit stays available as a separate owner option).
-- Every amount and the threshold are owner settings in dollars with ⓘ explanations and "restore recommended". The setup fee
-  applies to the first delivery to an address. Whether it also applies to swaps or re-deliveries is still open (IN-74); until it is answered, it doesn't.
-- Quotes, agreements, the signing page and the website show the **all-in total** of every mandatory amount (Colorado
-  HB25-1090), with sales tax and government fees shown as separate lines. Fee lines are frozen on the signed agreement.
-- Money rules: integer cents through the existing calculation functions; the fees and the down payment are charged in the existing signing
-  checkout, and the webhook alone marks them paid; the down payment reaches the first bill as Stripe customer-balance credit
-  through the existing credit handoff, exactly once. Each fee line keeps its own charge category for tax. A category whose
-  taxability has not been decided in Batch T fails closed to review, never guessed. Cancelling before delivery refunds the down payment
-  and setup fee through the existing refund path unless the owner records a reason not to (stop-and-ask if the existing
-  cancellation rules say otherwise).
-- Tests on throwaway Postgres: single and set addresses; three addresses on one quote; bulk self-install with and without
-  consumables; the threshold edge (4 vs 5 machines; a business customer with 1 machine); the down payment covering the first bill once; a
-  replayed webhook doesn't double-apply it; a cancel before delivery; the all-in total matching the sum of the frozen lines.
+**A. The setup fee.** It always has two parts that stay separate lines (they may be taxed differently, section E):
+the **admin part** (opening the account, paperwork, scheduling, setting up billing) and the **consumables part** (cord,
+vent hose, braided hoses actually left with the machines). Our delivery and installation labor is included.
 
-### 6.3 W-23 — location contacts (added 2026-10-10, Chris)
+| Situation | What is charged | Starting values |
+|---|---|---|
+| We deliver and install at an address (normal case) | Once per delivery address: admin + consumables for what that address receives | admin $15 + $10 single / $25 set → **$25 or $40** |
+| Several sets or machines at one address, we install them | Still once per address (Chris's rule) **plus** consumables for each extra set or machine beyond the first **(rec., IN-75)**: parts are used per machine even when the paperwork is shared | 2 sets at one address: $15 + $25 + $25 = $65 |
+| Large order to one address, **customer delivers/installs** (at least the large-order threshold at that address; owner ticks it on the quote) | Per set (or single machine): admin always, consumables only when "Consumables supplied: yes" | per set $15 (no parts) or $40 (with parts) |
+| Adding a machine to an address that already has an active rental | Consumables for the added machine only; no new admin **(rec., IN-75)** | single $10 |
+| Customer moves the rental to a new address | Full setup fee for the new address **(rec., IN-75)**: new paperwork, new parts | $25 / $40 |
+| Renewal at the same address, same machines | Nothing (existing renewal rule waives repeat connection) | — |
+| Swap or re-delivery of a broken machine | Nothing: repairs are included (IN-74 default) | — |
+| Swap the customer asks for when nothing is broken (upgrade, color, size) | Owner may add a manual charge with a reason; nothing automatic | — |
+| Tenant turnover at a property manager's unit, machines stay | Nothing | — |
+| Owner waives or discounts for a promotion or a good client | Allowed per quote with a recorded reason; the shown total updates | — |
+
+**B. The down payment.**
+- Trigger: an order of **5 or more machines, or any business or property-manager customer** (owner settings).
+- Amount: the **first month's rent** of every agreement in the order, collected at signing together with the setup fee.
+- Applied to the first bill of **each** agreement it paid for (an estimate split per property gives each agreement its own
+  share, so there is nothing left to reconcile by hand), exactly once, through the existing credit handoff.
+- Delivery that is late or partial keeps the existing late-delivery credits; the down payment still covers the first bill
+  as billed.
+- Not used when the owner records the rental as paid in full in advance (they already paid everything).
+- Big clients often pay by check or bank transfer: the owner can record the down payment and setup fee as a manual payment
+  (the existing "Record a payment" path) instead of card checkout; the agreement then proceeds the same way.
+- If the signing payment fails, the agreement stays "Waiting for payment", a To do item says what failed and the link to
+  retry, and no delivery is scheduled automatically.
+
+**C. Cancelling before delivery (rec., IN-76).** Before a delivery visit is scheduled, everything is refunded. After it is
+scheduled, the admin part is kept and the rest (consumables not used, the down payment) is refunded. After delivery the
+normal early-return rules apply. Refunds use the existing refund path; the owner can override with a reason.
+
+**D. Customer-installed machines (rec., IN-77).** The agreement for a customer-installed order says the customer is
+responsible for correct installation and any damage caused by it (leaks from hoses they fitted, venting); machine faults are
+still repaired at no charge. A service visit that turns out to be an installation problem may carry a trip charge the owner
+adds with a reason (no automatic charge). The machines' serials are still recorded per unit address when the client tells
+us where each one went, so repairs and custody stay accurate.
+
+**E. Tax (CPA question, IN-79).** Consumables left with the customer look like a taxable sale of goods; whether the admin
+part is taxable when it is stated separately is unclear under Colorado rules. Each line keeps its own charge category; any
+category Batch T has not decided fails closed to review before the agreement is sent, never guessed.
+
+**F. Showing the price.** Quotes, agreements, the signing page and the website show the **all-in total** of every mandatory
+amount (Colorado HB25-1090), with sales tax and government fees as separate lines; a website example reads "Washer + dryer:
+$400 for 6 months — includes setup, delivery, installation and repairs. Plus sales tax." Fee lines are frozen on the signed
+agreement.
+
+**G. Settings.** Admin part, consumables per single and per set, the large-order threshold (machines) and "business or
+property manager counts as large" — all in dollars or counts, ⓘ explanations, "restore recommended". The parts kit can later
+be linked to parts inventory so each kit used lowers stock (not in W-22; ROADMAP).
+
+**H. Money rules.** Integer cents through the existing calculation functions; charged in the existing signing checkout and
+marked paid only by the webhook (or a recorded manual payment); the down-payment credit reaches Stripe exactly once.
+
+**I. Tests (throwaway Postgres):** single and set addresses; two sets at one address; three addresses on one quote;
+customer-installed with and without consumables; adding a machine to an active address; a move; the threshold edge (4 vs 5
+machines; a business customer with 1 machine); a per-property estimate giving each agreement its own down payment; the down
+payment covering the first bill once and a replayed webhook not doubling it; a manual check payment; a failed signing payment;
+cancel before and after scheduling; the all-in total equals the sum of the frozen lines.
+
+### 6.3 W-23 — location contacts (added 2026-10-10, Chris; expanded at his request)
 
 Large clients (property managers, apartments, duplexes, houses) already have one customer record with many addresses, each
-with its own rentals, visits and machines. Chris 2026-10-10 also needs each location's current tenant, so he can talk to
-tenants directly when the client allows it.
+with its own rentals, visits, machines, a consolidated statement and "Record a payment" for one check covering several
+properties. Chris 2026-10-10 also needs each location's current tenant, so he can talk to tenants directly when the client
+allows it.
 
-- Each delivery address gets an optional **unit label** and any number of **location contacts** (tenant or on-site
-  contact: name, phone, email, notes, start date, end date). Ending a tenancy keeps the old contact in history.
-- **Permission from the client, per location:** what we may contact the tenant about — delivery and pickup scheduling,
-  repairs and maintenance, swaps — recorded with who gave it and when. Billing and other units are never shown or discussed
-  with a tenant.
-- That location's visits show its current location contact and the allowed topics. Customer contacts on the account stay
-  as they are, for the client.
-- Messages to tenants use the COM-L contact and consent records (`ContactPoint`/`ContactBinding`). Nothing is sent until
-  live SMS/email is turned on through the existing gates. Tenants have no portal login.
-- Permissions: OWNER/ADMIN edit; STAFF see a location's contact only on visits assigned to them; the CUSTOMER (client) sees and edits its own locations' contacts in the portal.
-  Customer A can never see customer B's tenants through any URL, action, search or export. Tests cover each role and the
-  cross-customer case.
-- The later proposed BP property authorization and portfolio contract (`BATCH-BP.md`) build on these records rather than
-  replacing them.
+**A. Who is who.** The **client** (property manager or owner) is the customer: they sign, pay and decide. A **tenant** is a
+location contact, never a customer: no login, no bills, no prices, never told about other units. Other client staff (a
+maintenance lead, an office manager) stay as the account's existing contacts.
+
+**B. Per location.** An optional **unit label** ("Unit 4B", "Upstairs") and **access notes** (gate or lockbox code, pets,
+parking; codes shown only to staff on that visit). Current and past **location contacts** (name, phone, email, preferred
+language, start and end dates).
+
+**C. The client's permission.** A default for the whole account with per-location overrides: may we contact the tenant
+about **delivery and pickup scheduling**, **repairs and maintenance**, **swaps**; who confirms appointments (tenant or client);
+and whether the client wants a copy of each appointment. Recorded with who gave it and when.
+
+**D. Texting a tenant needs the tenant's own consent.** The client's permission lets us contact them; federal texting rules
+still require the tenant's consent to automated texts. That uses the COM-L consent records; until a tenant consents, staff
+call or the client relays. Nothing is sent before live messaging is turned on.
+
+**E. Tenant reports a problem.** A tenant's report creates a repair request on that location's machine and tells the client
+(rec., IN-78: always tell the client; repairs that are included need no approval; damage that will be charged needs the client's
+approval before any charge).
+
+**F. Tenant moves out.** The client (portal) or Chris ends the tenancy; the contact moves to history; an optional "check
+machines at turnover" visit goes on To do; billing to the client continues unless they end the rental. Past tenants'
+details are erased automatically **12 months** after move-out (rec., IN-78; owner setting) — the visits keep only "tenant".
+
+**G. Large clients with many locations.** A spreadsheet import (addresses, unit labels, tenants) checks every row and shows
+problems before saving (rec., IN-78: include as **W-23B** if W-23 would exceed the PR budget).
+
+**H. Permissions.** OWNER/ADMIN edit everything; STAFF see a location's contacts and access notes only on visits assigned to
+them; the client sees and edits its own locations' contacts in the portal; client A can never see client B's tenants through any
+URL, action, search or export. Tests cover each role, the cross-client case, the erase-after-12-months job and the import's
+row checks.
+
+**I. Later.** The proposed BP property authorization and portfolio contract (`BATCH-BP.md`) build on these records instead
+of replacing them.
 
 ## 7. Tests (each PR)
 
@@ -460,7 +520,8 @@ F-part-2 proves the whole business works as connected flows, through the real sc
 - **IN-73** — answered 2026-10-10: no deposit on ordinary rentals; large orders (5+ machines or a business/property-manager
   customer) pay the first month as a down payment (W-22).
 - **IN-74** — answered 2026-10-10: setup fee per delivery address (admin + consumables), per set for bulk self-install,
-  admin always charged; starting values in section 6.2. Still open: swaps/re-deliveries (default: not charged).
+  admin always charged; starting values in section 6.2. Swaps/re-deliveries: not charged.
+- **IN-75…IN-79** — expansions Chris asked for (section 6.2 A, C, D, E; 6.3 E–G), each with a recommended default.
 
 ## 13. Stop-and-ask
 
