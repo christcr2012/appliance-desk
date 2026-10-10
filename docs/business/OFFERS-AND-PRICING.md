@@ -24,7 +24,7 @@ Selecting $50 from the consultant's $45–$50 premium range avoids an ambiguous 
 | Extended delivery | More than 15 and at most 30 miles; candidate $50 per visit | Quote delivery and later removal separately; include any promised pickup in total economics |
 | Beyond 30 miles | Manual approval and quote | No automatic promise or denial based only on a ZIP |
 | Stairs | Candidate $30 per visit for one set or single machine without a usable elevator | Access review still required; quote later removal too; additional flights/equipment assessed individually |
-| Refundable security | Candidate one month of final recurring rent before tax | Deposit liability; existing held amount carries on renewal; any top-up separately agreed |
+| Refundable security | **Chris 2026-10-10 (IN-73): no deposit on ordinary residential rentals.** Large orders (property managers, apartments; threshold to be set) pay a deposit or down payment | Deposit liability; existing held amount carries on renewal; any top-up separately agreed |
 | Setup promotion | Waive or reduce the connection line for eligible standard local offers | Never described as “nothing due” if deposit, prepaid rent or tax remains due |
 | Flexible-offer setup | Normally $50, not promotion-eligible | Owner exception permitted with reason and margin preview |
 

@@ -853,3 +853,12 @@ MKT-1 engineering closed in #371: targeted tests and all exact-head CI/performan
 
 ## 2026-10-09 — Public discovery without prices
 Owner requested all website pricing hidden immediately during discovery. Reuse stored prelaunch mode across all public price surfaces; preserve billing data. Direct old pricing/city links go to the interest list.
+
+## 2026-10-10 — No deposit on ordinary rentals; large orders pay a deposit or down payment (IN-73)
+
+After the Greeley market research (local rental competitors rarely charge a deposit, and the customers most likely to rent have the
+least cash), Chris decided: "We'll skip the deposit for typical rentals but we should probably require a deposit or down payment for
+larger orders, such as property managers, apartments, etc." This matches today's default (`depositEnabled` off) and the existing
+estimate deposit, which is collected when the customer approves online. It replaces the candidate "one month of rent" security in
+`docs/business/OFFERS-AND-PRICING.md` for residential offers. Still open in IN-73: the large-order threshold, and whether it is a down
+payment or a refundable deposit, and how much. The automatic rule is a ROADMAP item until those are answered. It will not be built on a guess.
