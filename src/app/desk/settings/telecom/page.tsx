@@ -57,10 +57,15 @@ export default async function TelecomSettingsPage() {
           <p className="text-sm">Provider checked: {a.checkedAt
             ? a.checkedAt.toLocaleString("en-US",{timeZone:"America/Denver"})
             : "not yet checked"} (Denver time)</p>
+          <p className="mt-2 text-sm">Read-only provider status: {observedProviderStatus(a.readiness)}.
+            {" "}SMS capability: {observedCapability(a.readiness,"observedSmsCapability")};
+            {" "}voice capability: {observedCapability(a.readiness,"observedVoiceCapability")};
+            {" "}primary number matched: {observedCapability(a.readiness,"primaryNumberConfirmed")}.
+            {" "}A2P approval: separately required, not established by this observation.</p>
           <ul className="mt-2 space-y-1 text-sm">
             {a.numbers.map(n=><li key={n.id}>Number {n.address}:
               {" "}{n.registrationStatus}; {n.retiredAt?"retired":n.verifiedAt?"verified record":"unverified record"};
-              {n.isPrimary?" primary number":""}
+              {n.isPrimary?" primary number":""}; observed SMS: {observedCapability(n.capabilities,"sms")}; voice: {observedCapability(n.capabilities,"voice")}
             </li>)}
             {a.numbers.length===0 && <li>No owned numbers recorded.</li>}
           </ul>
@@ -103,4 +108,15 @@ export default async function TelecomSettingsPage() {
         : RECOMMENDED_TELECOM_ALERT_RULES}
     />
   </div>;
+}
+function observedCapability(value: unknown, key: string): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "unknown";
+  const state = (value as Record<string,unknown>)[key];
+  return typeof state === "boolean" ? (state ? "yes" : "no") : "unknown";
+}
+function observedProviderStatus(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "unknown";
+  const state = (value as Record<string,unknown>).providerAccountStatus;
+  return typeof state === "string" && ["active","suspended","closed"].includes(state)
+    ? state : "unknown";
 }

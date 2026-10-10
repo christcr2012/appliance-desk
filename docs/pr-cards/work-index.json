@@ -1909,6 +1909,7 @@
       "tests": [
         "tests/telecom-statement-integration.test.ts",
         "tests/telecom-policy.test.ts",
+        "tests/telecom-api-gate.test.ts",
         "e2e/telecom-settings.spec.ts"
       ],
       "readiness": "DONE",

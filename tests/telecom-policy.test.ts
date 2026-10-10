@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/prisma",()=>({prisma:{}}));
+vi.mock("@/lib/team-actor",()=>({assertActiveTeamActor:vi.fn()}));
 import { communicationsPolicySchema } from "@/domains/messaging/communications-policy";
 import { RECOMMENDED_TELECOM_ALERT_RULES } from "@/domains/messaging/telecom-alerts";
 

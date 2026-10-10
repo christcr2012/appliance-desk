@@ -149,7 +149,7 @@ export function TelecomSettingsControls({accounts,statements,canEdit,canSavePoli
             <option value="USD">USD</option>
           </select></label>
         <label className="text-sm">Statement total (dollars)
-          <input required name="amountDollars" type="number" min="0" step=".01"
+          <input required name="amountDollars" type="number" step=".01"
             className="mt-1 w-full rounded border border-line bg-surface p-2" />
         </label>
         <label className="text-sm col-span-full">Statement PDF (4 MB maximum)

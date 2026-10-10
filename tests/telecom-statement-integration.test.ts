@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { uploadTelecomStatement, verifyTelecomStatement,
-  type PrivateTelecomStatementStore } from "@/domains/messaging/telecom-statements";
+  type PrivateTelecomStatementStore, parseTelecomStatementDollars } from "@/domains/messaging/telecom-statements";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/disabled");
 const enabled = process.env.CI === "true" &&
@@ -96,5 +96,37 @@ describe.skipIf(!enabled)("COM-L13A verified private statement evidence",()=>{
     });
     expect(first.invoiceTotalCents).toBe(1755);
     expect(first.state).toBe("VERIFIED");
+  });
+  it("accepts signed statement credits with exact integer cents",()=>{
+    expect(parseTelecomStatementDollars("-1.25")).toBe(-125);
+    expect(parseTelecomStatementDollars("-0.01")).toBe(-1);
+    expect(parseTelecomStatementDollars("12.34")).toBe(1234);
+    expect(parseTelecomStatementDollars("-0.00")).toBe(0);
+    expect(()=>parseTelecomStatementDollars("1.005")).toThrow("exact dollar");
+    expect(()=>parseTelecomStatementDollars("1e3")).toThrow("exact dollar");
+  });
+  it("reserves durable metadata before writing bytes, so storage failure leaves no orphan",async()=>{
+    const key = "Storage-Failure-"+suffix;
+    let beforeWrite = false;
+    const unavailable: PrivateTelecomStatementStore = {
+      ...store,
+      async put(_path) {
+        const reserved=await prisma.telecomStatement.findFirst({
+          where:{accountId,externalId:key},
+        });
+        beforeWrite=reserved?.state==="DRAFT";
+        throw new Error("Simulated private storage failure");
+      },
+    };
+    await expect(uploadTelecomStatement({
+      ...base,externalId:key,
+    },unavailable)).rejects.toThrow("Simulated private storage failure");
+    expect(beforeWrite).toBe(true);
+    const reserved=await prisma.telecomStatement.findFirstOrThrow({
+      where:{accountId,externalId:key},
+    });
+    expect(await store.read(reserved.privateEvidenceStorageKey)).toBeNull();
+    await expect(verifyTelecomStatement(ownerId,reserved.id,reserved.evidenceHash,store))
+      .rejects.toThrow("missing or already verified");
   });
 });

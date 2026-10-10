@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
-import { uploadTelecomStatement, verifyTelecomStatement } from "@/domains/messaging/telecom-statements";
+import { twoFactorEnrollmentRequired } from "@/domains/security/two-factor";
+import { uploadTelecomStatement, verifyTelecomStatement, productionStatementStore, parseTelecomStatementDollars } from "@/domains/messaging/telecom-statements";
 import { communicationsPolicySchema, saveCommunicationsPolicy } from "@/domains/messaging/communications-policy";
 import { prisma } from "@/lib/prisma";
 import { createHash } from "node:crypto";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { productionStatementStore } from "@/domains/messaging/telecom-statements";
 
 export const runtime = "nodejs";
 const MAX_UPLOAD = 4 * 1024 * 1024;
@@ -14,15 +14,8 @@ function errorResponse(error: unknown): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 function dollarsToCents(value: FormDataEntryValue | null): number {
-  if (typeof value !== "string" || !/^\d{1,8}(?:\.\d{1,2})?$/.test(value)) {
-    throw new Error("Enter a valid dollar amount with up to two decimal places.");
-  }
-  const [dollars, fraction=""] = value.split(".");
-  const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
-  if (!Number.isSafeInteger(cents) || cents > 1_000_000_000) {
-    throw new Error("Statement amount is outside supported limits.");
-  }
-  return cents;
+  if (typeof value !== "string") throw new Error("Enter an exact dollar amount.");
+  return parseTelecomStatementDollars(value);
 }
 export async function POST(req: Request): Promise<Response> {
   const origin = req.headers.get("origin");
@@ -31,6 +24,9 @@ export async function POST(req: Request): Promise<Response> {
   }
   const session = await getServerSession();
   if (!session) return NextResponse.json({error:"Sign in required."},{status:401});
+  if (await twoFactorEnrollmentRequired(session.user.id,session.user.role)) {
+    return NextResponse.json({error:"Two-step enrollment is required."},{status:403});
+  }
   if (session.user.role !== "OWNER") {
     return NextResponse.json({error:"Only the Owner may change telecom setup."},{status:403});
   }
@@ -111,6 +107,9 @@ export async function POST(req: Request): Promise<Response> {
 export async function GET(req: Request): Promise<Response> {
   const session = await getServerSession();
   if (!session) return NextResponse.json({error:"Sign in required."},{status:401});
+  if (await twoFactorEnrollmentRequired(session.user.id,session.user.role)) {
+    return NextResponse.json({error:"Two-step enrollment is required."},{status:403});
+  }
   if (session.user.role !== "OWNER" && session.user.role !== "ADMIN") {
     return NextResponse.json({error:"Not found."},{status:404});
   }

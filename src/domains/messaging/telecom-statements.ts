@@ -89,8 +89,8 @@ export async function uploadTelecomStatement(
   const key="telecom-statements/"+accountId+"/"+randomUUID()+".pdf";
   if (!PRIVATE_KEY.test(key)) throw new Error("Invalid private evidence path.");
   const evidenceHash=createHash("sha256").update(bytes).digest("hex");
-  await store.put(key, bytes);
-  // Authorization and unique revision are rechecked after the external write.
+  // Reserve key and audit under account lock before any external bytes are written.
+  // A failed DB transaction must never leave an untracked private file.
   const result=await prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx,actorUserId,["OWNER"]);
     await tx.$queryRaw`SELECT "id" FROM "TelecomAccount" WHERE "id" = ${accountId} FOR UPDATE`;
@@ -105,13 +105,14 @@ export async function uploadTelecomStatement(
       privateEvidenceStorageKey:key,evidenceHash,state:"DRAFT",
     }});
     await tx.auditLog.create({data:{
-      userId:actorUserId,action:"TELECOM_STATEMENT_DRAFT_UPLOADED",
+      userId:actorUserId,action:"TELECOM_STATEMENT_DRAFT_RESERVED",
       entityType:"TelecomStatement",entityId:row.id,
       newValue:{accountId,revision:row.revision,periodStart:input.periodStart,
         periodEnd:input.periodEnd,hash:evidenceHash},
     }});
     return row;
   });
+  await store.put(key, bytes);
   return {id:result.id,state:"DRAFT"};
 }
 /** Owner attests that the retained private PDF matches the exact statement. */
@@ -151,4 +152,17 @@ async function matchesStoredStatement(
   if (!bytes) return false;
   try { safePdf(bytes); } catch { return false; }
   return createHash("sha256").update(bytes).digest("hex") === expectedHash;
+}
+/** Dollar input is exact, signed and stays integer cents at the UI boundary. */
+export function parseTelecomStatementDollars(value: string): number {
+  if (!/^-?\d{1,8}(?:\.\d{1,2})?$/.test(value)) {
+    throw new Error("Enter an exact dollar amount with up to two decimals.");
+  }
+  const negative = value.startsWith("-");
+  const [dollars, fraction=""] = (negative ? value.slice(1) : value).split(".");
+  const cents = (Number(dollars)*100 + Number(fraction.padEnd(2,"0")))*(negative?-1:1);
+  if (!Number.isSafeInteger(cents) || Math.abs(cents)>1_000_000_000) {
+    throw new Error("Statement amount is outside supported limits.");
+  }
+  return cents === 0 ? 0 : cents;
 }
