@@ -24,9 +24,9 @@ Docs-only change; the engineering queue is unchanged.
 
 ### Current queue (read this first)
 
-- **Latest in chain:** COM-L14A (#383) merged with exact-head CI and performance green; COM-L14B contextual job, maintenance and invoice communication evidence is prepared for CI/merge. COM-L15 begins only after COM-L14B merges.
+- **Latest in chain:** COM-L14B (#392) merged with exact-head CI, all review threads closed and performance green. COM-L15 final synthetic launch proof and owner handoff is at exact-head CI/merge gate. **PAUSE after COM-L15 merges, before W-1.**
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
-- **Current queue:** COM-L15 → W-1 → W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Current queue:** W-1 → W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
@@ -40,6 +40,10 @@ Docs-only change; the engineering queue is unchanged.
   confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
 
 ### Recent merges (newest first)
+
+**2026-10-10 — COM-L15 communications launch evidence (recorded as if merged; still needs exact-head CI):** Added read-only, non-sending isolated PostgreSQL master-gate/delivery-evidence and assigned-job privacy regression, plus OWNER/STAFF mobile browser acceptance for setup/inbox/reports; corrected the prior Twilio runbook and published a plain-English owner launch guide and truthful acceptance ledger. IN-03/09/51/52/53, carrier A2P/voice checks, legal disclosures, media approval, K posting and F-part-2 go-live remain explicitly PENDING. No number purchase, live provider send, voicemail enablement, automatic cost alerts or new production credentials. Owner-requested pause is now before W-1.
+
+
 
 **2026-10-10 — COM-L14B context evidence (recorded as if merged; exact-head CI required):** Job, maintenance and invoice pages show bounded, status-labelled evidence only for explicitly linked communications, never contact-number inference. Owners/admins can link a verified customer-thread message to a work record of the *same* customer from the private inbox; link + audit record are transactional and idempotent. STAFF only sees no-content delivery-status facts on jobs assigned to them; no private inbox, cross-customer data, finance, or company messages. Mobile and PostgreSQL isolation tests included. No provider send, dispatch change or migration. Next COM-L15.
 

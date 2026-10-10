@@ -11,7 +11,8 @@
       "telecom-settings.spec.ts",
       "telecom-reports.spec.ts",
       "communication-timeline.spec.ts",
-      "communication-context.spec.ts"
+      "communication-context.spec.ts",
+      "communication-launch.spec.ts"
     ],
     "browser-b": [
       "revenue-records.spec.ts",

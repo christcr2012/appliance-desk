@@ -1,6 +1,6 @@
 # Twilio communications readiness and activation
 
-**Approved subsystem design; runtime is not yet implemented and this runbook is not proof of setup or production readiness.** Design: ../designs/BATCH-COM.md. Batch COM was approved 2026-10-08, but implementation still follows the approved batch order and live telecom activation remains a separate hard-limit approval. Current legacy SMS is dormant according to STATUS; credentials/number/account state must be verified read-only rather than assumed from old docs.
+**Engineered through COM-L14B; COM-L15 adds final synthetic acceptance evidence.** The private inbox, SMS consent/dispatch fences, inbound routing, voice/call evidence, settings and reporting now have automated test coverage. This is **not proof of live account setup, carrier approval, a working real phone number, or production-readiness**. Live SMS, voice routing, optional voicemail, purchasing and budget actions still require the distinct owner/provider approvals documented here. Old references to dormant legacy SMS do not authorize activation. Design: ../designs/BATCH-COM.md. Owner guide: COMMUNICATIONS-OWNER-HANDOFF.md.
 
 ## 1. Prepare business facts (no paid submission)
 
