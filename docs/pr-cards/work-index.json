@@ -1866,7 +1866,7 @@
       "dependencies": [
         "COM-L11"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1874,16 +1874,17 @@
       ],
       "evidence": [
         "docs/designs/BATCH-COM.md",
-        "src/domains/messaging/deliver.ts",
-        "src/domains/messaging/events.ts",
-        "src/lib/sms.ts"
+        "src/domains/messaging/telecom-costs.ts",
+        "src/domains/messaging/telecom-costs-store.ts",
+        "src/domains/messaging/telecom-alerts.ts",
+        "src/domains/messaging/communications-policy.ts"
       ],
       "tests": [
         "tests/telecom-costs.test.ts",
         "tests/telecom-alerts-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L12.md"
+      "readiness": "DONE",
+      "card": "docs/pr-cards/COM-L12.md"
     },
     {
       "id": "COM-L13A",
