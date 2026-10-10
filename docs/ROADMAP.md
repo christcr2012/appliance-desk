@@ -699,5 +699,4 @@ K's quarter-of-file-use prerequisite unchanged; no fake ready cards or new launc
 Owner-configurable rule: an estimate or agreement at or above a threshold (number of machines and/or a business or property-manager
 customer) requires a down payment (first month at signing, applied to the first bill) or a refundable deposit, with the amount and
 type as settings with explanations and "restore recommended". It reuses the existing estimate deposit checkout and `Deposit` records,
-needs no new payment path, and is shown in the quote total under Colorado's all-in price rule. Waiting on IN-73's details; then write a card
-and slot it where Chris chooses (it touches money, so it gets real-database tests).
+needs no new payment path, and is shown in the quote total under Colorado's all-in price rule. **Scheduled 2026-10-10 as W-22** (after W-18); IN-73/IN-74 answered.

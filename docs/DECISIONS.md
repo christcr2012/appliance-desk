@@ -862,3 +862,16 @@ larger orders, such as property managers, apartments, etc." This matches today's
 estimate deposit, which is collected when the customer approves online. It replaces the candidate "one month of rent" security in
 `docs/business/OFFERS-AND-PRICING.md` for residential offers. Still open in IN-73: the large-order threshold, and whether it is a down
 payment or a refundable deposit, and how much. The automatic rule is a ROADMAP item until those are answered. It will not be built on a guess.
+
+## 2026-10-10 — Charges at signing and location contacts added to Batch W (W-22, W-23)
+
+Chris approved adding two cards right after W-18. **W-22** charges at signing: a setup fee once per delivery address
+(administrative part + consumables: dryer cord, vent hose, braided washer hoses), or per set when a large order goes to one
+location and the customer installs (consumables part only when supplied; admin always), and a down payment (the first month at
+signing, applied to the first bill) on orders of 5+ machines or from a business/property-manager customer. No deposit on ordinary
+rentals. Starting values (admin $15, consumables $10 single / $25 set) are Claude's suggestion, which Chris accepted. Retail parts for a set cost more
+(roughly $80), so the consumables amount assumes bulk buying and is a setting. Reason for the card: the existing fee settings were shown
+on /pricing but never collected at signing, and were flat per order. **W-23** location contacts: unit label and tenant/on-site
+contacts per delivery address, the client's permission topics, shown on that location's visits, messages only through the COM-L
+gates. Contracts are in Amendment B sections 6.2–6.3; acceptance is in PLAN; the validator constant gained W-22/W-23. Open: whether
+swaps/re-deliveries pay the setup fee (IN-74; default no).

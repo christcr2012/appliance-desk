@@ -297,6 +297,8 @@ the place to plug it in.
 | **W-17** | Connected records: Related panel + History on appliance, customer, agreement, purchase, seller, visit, invoice; search by serial/model/seller; `CLEANING` status and inspection → cleaning/repair (E3) | screens | 1 (enum) |
 | **W-19** | Flow gaps not covered by W-4…W-6: S2, S4, S5, S7, M1 (immediate), M2 (pickup requests), E1 (pickup after any ending), progress-card buttons everywhere | operations | none |
 | **W-20** | Portal follows the flows (D-WB6): next-step messages, status timelines, next bill, "Pay now" on overdue invoices via the existing hosted payment page, packages shown as sets | money/screens | none |
+| **W-22** | Charges at signing (section 6.2): setup fee per delivery address (admin + consumables), bulk self-install per set, large-order down payment; all in the all-in price | money | 1 |
+| **W-23** | Location contacts (section 6.3): unit label and tenant/on-site contacts per address, what the client allows us to contact them about, shown on that location's visits | privacy/screens | 1 |
 | **W-21** | Machines leaving early (D-WB8): single-price repricing with partial-period credit, "taken for repair — no replacement yet" visit result, out-of-service periods and credits on any line, portal/bill wording, To do to return or replace | money | 1 |
 
 ### 6.1 W-0C — failed automatic charges must reach To do (confirmed 2026-10-09; runs next, before COM-L2)
@@ -324,6 +326,58 @@ Existing W PRs absorb these rows: **W-2** (intake next steps) now builds on W-14
 drafts already planned; **W-5** covers D3 after W-0C; **W-6** covers S1/S3; **W-8**'s menu adds "Purchases" under
 Equipment and "Records" under Taxes.
 
+### 6.2 W-22 — charges at signing (added 2026-10-10, Chris; IN-73, IN-74)
+
+Today the delivery/installation/removal fee settings are shown on `/pricing` but signing collects only a deposit and/or
+damage waiver, and the fees are flat. Chris 2026-10-10: no deposit on ordinary rentals; a **down payment** on large orders;
+a **setup fee** that covers the administrative setup and the consumables (dryer cord, vent hose, braided washer hoses).
+
+- **Setup fee, charged once per delivery address.** It is the administrative part plus the consumables part for what that
+  address receives: starting values admin **$15**, consumables **$10** for a single machine or **$25** for a set, so
+  **$25** for an address getting one machine and **$40** for an address getting a set or more. Each apartment or duplex unit with its own
+  address (line 2) is its own delivery address. Our delivery and installation labor is included.
+- **Bulk delivery to one address where the customer installs.** When a quote sends at least the large-order threshold of machines to one
+  address and the owner marks "customer delivers/installs", the fee is charged **per set (or per single machine)**: the admin
+  part always, plus the consumables part only when we supply consumables ("Consumables supplied: yes/no").
+- **Large-order down payment.** An order at or above the threshold (starting value **5 or more machines, or any business
+  or property-manager customer**) pays the **first month's rent at signing**; it is applied to the first bill (no second
+  charge for that month) and nothing is held back. Ordinary rentals pay no deposit (`depositEnabled` stays off by default;
+  the existing deposit stays available as a separate owner option).
+- Every amount and the threshold are owner settings in dollars with ⓘ explanations and "restore recommended". The setup fee
+  applies to the first delivery to an address. Whether it also applies to swaps or re-deliveries is still open (IN-74); until it is answered, it doesn't.
+- Quotes, agreements, the signing page and the website show the **all-in total** of every mandatory amount (Colorado
+  HB25-1090), with sales tax and government fees shown as separate lines. Fee lines are frozen on the signed agreement.
+- Money rules: integer cents through the existing calculation functions; the fees and the down payment are charged in the existing signing
+  checkout, and the webhook alone marks them paid; the down payment reaches the first bill as Stripe customer-balance credit
+  through the existing credit handoff, exactly once. Each fee line keeps its own charge category for tax. A category whose
+  taxability has not been decided in Batch T fails closed to review, never guessed. Cancelling before delivery refunds the down payment
+  and setup fee through the existing refund path unless the owner records a reason not to (stop-and-ask if the existing
+  cancellation rules say otherwise).
+- Tests on throwaway Postgres: single and set addresses; three addresses on one quote; bulk self-install with and without
+  consumables; the threshold edge (4 vs 5 machines; a business customer with 1 machine); the down payment covering the first bill once; a
+  replayed webhook doesn't double-apply it; a cancel before delivery; the all-in total matching the sum of the frozen lines.
+
+### 6.3 W-23 — location contacts (added 2026-10-10, Chris)
+
+Large clients (property managers, apartments, duplexes, houses) already have one customer record with many addresses, each
+with its own rentals, visits and machines. Chris 2026-10-10 also needs each location's current tenant, so he can talk to
+tenants directly when the client allows it.
+
+- Each delivery address gets an optional **unit label** and any number of **location contacts** (tenant or on-site
+  contact: name, phone, email, notes, start date, end date). Ending a tenancy keeps the old contact in history.
+- **Permission from the client, per location:** what we may contact the tenant about — delivery and pickup scheduling,
+  repairs and maintenance, swaps — recorded with who gave it and when. Billing and other units are never shown or discussed
+  with a tenant.
+- That location's visits show its current location contact and the allowed topics. Customer contacts on the account stay
+  as they are, for the client.
+- Messages to tenants use the COM-L contact and consent records (`ContactPoint`/`ContactBinding`). Nothing is sent until
+  live SMS/email is turned on through the existing gates. Tenants have no portal login.
+- Permissions: OWNER/ADMIN edit; STAFF see a location's contact only on visits assigned to them; the CUSTOMER (client) sees and edits its own locations' contacts in the portal.
+  Customer A can never see customer B's tenants through any URL, action, search or export. Tests cover each role and the
+  cross-customer case.
+- The later proposed BP property authorization and portfolio contract (`BATCH-BP.md`) build on these records rather than
+  replacing them.
+
 ## 7. Tests (each PR)
 
 - Purchase: 4 appliances, 1 receipt with $165.85 tax → each appliance has its own model/serial, tax split by price sums
@@ -347,11 +401,12 @@ Equipment and "Records" under Taxes.
 early-return/repair credits ahead of their place and had them built in a second lane beside COM-L (DECISIONS
 2026-10-09). Their contracts are logged in `CHANGES-SINCE-DESIGN.md`; later cards build on them, never redo them.
 
-**Remaining, in order:** COM-L7 (in flight; COM-L6B merged #364) → COM-L8 … COM-L15 → **W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 →
+**Remaining, in order:** COM-L7 (in flight; COM-L6B merged #364) → COM-L8 … COM-L15 → **W-1 → W-18 → W-22 → W-23 → W-14 → W-2 → W-15 → W-3 → W-4 →
 W-5 → W-6 → W-7 → W-8 → W-9 → W-10 → W-19 → W-17 → W-20** → V → F-part-2. W-11/W-12/W-13 run when their outside gates
 clear. (`docs/pr-cards/work-index.json` holds the same chain.) Notes for the remaining cards:
 - **W-18** (dollars-only kit, ⓘ glossary) also converts the screens W-16A/B/W-21 added (sets editor, "Rent as", split
   screen, out-of-service screen); they use field help text and existing dollar inputs until then.
+- **W-22/W-23** (added 2026-10-10, sections 6.2–6.3) come right after W-18 so their screens use the dollars kit and ⓘ.
 - **W-14** (purchases) must record a washer and a dryer bought together as two rows — a set is a rental package, never an
   appliance type (D-WB3, now in code).
 - **W-19/W-20** read the W-21 facts: open `OutOfServicePeriod` rows, `OUT_OF_SERVICE` and `SET_SINGLE_PRICE` credits and
@@ -402,6 +457,10 @@ F-part-2 proves the whole business works as connected flows, through the real sc
 - **IN-71** — how long to keep purchase and tax records. Chris 2026-10-09: launch with 7 years after the appliance
   leaves the fleet, fully owner-configurable; still ask the CPA (not a launch blocker — nothing reaches 7 years until
   7 years after launch).
+- **IN-73** — answered 2026-10-10: no deposit on ordinary rentals; large orders (5+ machines or a business/property-manager
+  customer) pay the first month as a down payment (W-22).
+- **IN-74** — answered 2026-10-10: setup fee per delivery address (admin + consumables), per set for bulk self-install,
+  admin always charged; starting values in section 6.2. Still open: swaps/re-deliveries (default: not charged).
 
 ## 13. Stop-and-ask
 

@@ -19,7 +19,7 @@ Selecting $50 from the consultant's $45–$50 premium range avoids an ambiguous 
 
 | Item | Proposed starting rule | Control |
 |---|---|---|
-| Connection fee | $50 per residential delivery job, covering one set or one machine | Explicit installation line; bulk or extra machines quoted separately |
+| Connection fee | **Superseded 2026-10-10 (IN-74):** setup fee per delivery address, admin $15 + consumables $10 for a single machine or $25 for a set; per set for bulk self-install (W-22) | Explicit installation line; bulk or extra machines quoted separately |
 | Core service zone | At most 15 driving miles one way from a private operating origin | Full address, recorded route/manual mileage; not ZIP centroid or tax jurisdiction |
 | Extended delivery | More than 15 and at most 30 miles; candidate $50 per visit | Quote delivery and later removal separately; include any promised pickup in total economics |
 | Beyond 30 miles | Manual approval and quote | No automatic promise or denial based only on a ZIP |
