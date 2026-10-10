@@ -1,5 +1,6 @@
 import {prisma} from "@/lib/prisma";
 import {requireRole} from "@/lib/session";
+import {assertActiveTeamActor} from "@/lib/team-actor";
 import type {ContextKind} from "./context-evidence";
 export async function linkMessageContext(input:{
  threadId:string;messageId:string;kind:ContextKind;entityId:string;
@@ -10,6 +11,7 @@ export async function linkMessageContext(input:{
  if(!["Job","MaintenanceRequest","Invoice"].includes(input.kind))
   throw new Error("Invalid context type.");
  return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,actor.user.id,["OWNER","ADMIN"]);
   const message=await tx.communicationMessage.findFirst({
    where:{id:input.messageId,threadId:input.threadId,
     thread:{resolution:"RESOLVED",customerId:{not:null}}},
@@ -23,14 +25,12 @@ export async function linkMessageContext(input:{
     ?await tx.maintenanceRequest.findFirst({where:{id:input.entityId,customerId},select:{id:true}})
     :await tx.invoice.findFirst({where:{id:input.entityId,customerId},select:{id:true}});
   if(!found) throw new Error("Record does not belong to this customer.");
-  await tx.communicationLink.upsert({
-   where:{messageId_entityType_entityId:{
-    messageId:input.messageId,entityType:input.kind,entityId:input.entityId,
-   }},
-   create:{messageId:input.messageId,entityType:input.kind,
-    entityId:input.entityId,source:"EXPLICIT",actorUserId:actor.user.id},
-   update:{},
+  const inserted=await tx.communicationLink.createMany({
+   data:[{messageId:input.messageId,entityType:input.kind,
+    entityId:input.entityId,source:"EXPLICIT",actorUserId:actor.user.id}],
+   skipDuplicates:true,
   });
+  if(inserted.count===0) return;
   await tx.auditLog.create({data:{
    userId:actor.user.id,action:"COMMUNICATION_CONTEXT_LINKED",
    entityType:input.kind,entityId:input.entityId,
@@ -43,17 +43,17 @@ export async function getContextLinkChoices(customerId:string){
  const [jobs,maintenance,invoices]=await Promise.all([
   prisma.job.findMany({where:{customerId},take:10,
    orderBy:[{createdAt:"desc"},{id:"desc"}],
-   select:{id:true,type:true}}),
+   select:{id:true,type:true,scheduledAt:true}}),
   prisma.maintenanceRequest.findMany({where:{customerId},take:10,
    orderBy:[{openedAt:"desc"},{id:"desc"}],
-   select:{id:true,status:true}}),
+   select:{id:true,status:true,openedAt:true}}),
   prisma.invoice.findMany({where:{customerId},take:10,
    orderBy:[{createdAt:"desc"},{id:"desc"}],
    select:{id:true,invoiceNumber:true}}),
  ]);
  return [
-  ...jobs.map(x=>({value:"Job:"+x.id,label:"Job "+x.type})),
-  ...maintenance.map(x=>({value:"MaintenanceRequest:"+x.id,label:"Maintenance "+x.status})),
+  ...jobs.map(x=>({value:"Job:"+x.id,label:"Job "+x.type+" "+x.id+" ("+(x.scheduledAt?x.scheduledAt.toISOString().slice(0,10):"unscheduled")+")"})),
+  ...maintenance.map(x=>({value:"MaintenanceRequest:"+x.id,label:"Maintenance "+x.status+" "+x.id+" ("+x.openedAt.toISOString().slice(0,10)+")"})),
   ...invoices.map(x=>({value:"Invoice:"+x.id,label:"Invoice #"+x.invoiceNumber})),
  ];
 }
