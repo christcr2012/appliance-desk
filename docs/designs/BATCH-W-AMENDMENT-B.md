@@ -475,6 +475,9 @@ choices; there is no morning/afternoon window on visits.
 - **After payment:** one Requested delivery visit with the chosen date and window + To do "Confirm <name>'s delivery
   <date> <window>"; Chris confirms (the "original delivery date" for late credits is the confirmed one) or proposes other
   choices. This implements Amendment B S6 for link orders (W-4 keeps it for the rest).
+- **Before the payment step** the page says, in plain words, that the customer is going to Robinson Appliance Rentals' secure
+  payment page (run by Stripe, the payment company) and will come back automatically; the Stripe pages carry the business's branding
+  (GO-LIVE-CHECKLIST, Money). The same note appears before "Send payment link" pages open (6.7).
 - **Decline:** the customer can decline with an optional reason; Chris is told; the quote shows Declined.
 - **Sending:** email (existing send, now carrying the whole flow) and a **Copy link** button so Chris can text it from his
   own phone until live texting is on; texting from the app joins when COM-N1 adds its templates.
