@@ -19,6 +19,16 @@ export const communicationsPolicySchema = z.object({
   inboundSmsEnabled: z.boolean().optional(),
   voiceRoutingEnabled: z.boolean().optional(),
   voiceRouting: voiceRoutingSchema.optional(),
+  telecomCostAlerts: z.object({
+    enabled: z.boolean(),
+    monthlyBudgetCents: z.number().int().min(0).max(1000000000),
+    elevatedCents: z.number().int().min(0).max(1000000000),
+    criticalCents: z.number().int().min(0).max(1000000000),
+    spikePercentBasisPoints: z.number().int().min(0).max(100000),
+    minimumSpikeCents: z.number().int().min(0).max(1000000000),
+    staleAfterHours: z.number().int().min(1).max(744),
+  }).strict().refine(v => v.monthlyBudgetCents <= v.elevatedCents &&
+    v.elevatedCents <= v.criticalCents).optional(),
   productionWebhookOrigin: z.string().url().refine((value) => {
     const url = new URL(value);
     return url.protocol === "https:" && !url.username && !url.password &&

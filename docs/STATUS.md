@@ -16,9 +16,9 @@ MKT-2 merged in #374 and was deployed after exact-head green CI on main dfd0718 
 
 ### Current queue (read this first)
 
-- **Latest in chain:** COM-L10 (#376) merged with exact-head CI. COM-L11 read-only telecom reconciliation evidence is implemented in its PR; next COM-L12 after COM-L11 merges.
+- **Latest in chain:** COM-L11 (#377) merged with exact-head CI. COM-L12 is implemented and enters exact-head CI/merge; next COM-L13A only after COM-L12 merges.
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
-- **Current queue:** COM-L12 → COM-L13A → COM-L13B → COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Current queue:** COM-L13A → COM-L13B → COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
@@ -32,6 +32,10 @@ MKT-2 merged in #374 and was deployed after exact-head green CI on main dfd0718 
   confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
 
 ### Recent merges (newest first)
+
+**2026-10-09 — COM-L12 spend and budget evaluation (as if merged; exact-head CI gate):** Pure provider GMT-period totals, separate resource costs/estimates/verified statements, signed credit handling, non-overlapping daily fallback, explicit unknown/incomplete components, and owner ANY/ALL discrepancy tolerances are added. Account-scoped read service enforces OWNER/ADMIN, rejects ambiguous invoice evidence, returns stale cursor details and never treats provider telemetry as paid Expense. Optional policy budget rules are validated, suggested $50/$75/$100 starts OFF; preview evaluator cannot dispatch alerts or disable communications even if configured. No migration, SMS/voice activation, provider payment, side-effecting cron or live budget alert. COM-L13A is next; IN-53 remains outside activation.
+
+
 
 **2026-10-09 — COM-L11 read-only telecom sync (recorded as if merged, pending PR gate):**
 An account-pinned, GET-only Twilio adapter reads bounded GMT Usage pages, Message and Call charges, US messaging rates and owned-number capabilities using existing production-only account credentials. The matching durable cursor is claimed before a page, but the network request runs outside its DB transaction; validated snapshots, matched/unallocated costs and the next cursor commit together. A failed page preserves prior checkpoints, and source revisions keep old evidence. Account-level total usage is not added to resource costs or called an invoiced/paid expense. Missing prices stay unknown; readiness never approves A2P or turns on customer communications. No new schema, routes, paid lookups, SMS/voice, provider writes or financial posting. Next COM-L12: compare evidence, detect anomalies and show uncertainties under IN-53's separate activation gate.
