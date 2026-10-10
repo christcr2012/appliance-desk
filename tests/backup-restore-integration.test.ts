@@ -50,6 +50,12 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     link: "restore-com-link-" + tag,
     readMarker: "restore-com-read-" + tag,
     revision: "restore-com-revision-" + tag,
+    cursor: "restore-cost-cursor-" + tag,
+    usage: "restore-cost-usage-" + tag,
+    rate: "restore-cost-rate-" + tag,
+    statement: "restore-cost-statement-" + tag,
+    costBase: "restore-cost-base-" + tag,
+    costRevision: "restore-cost-revision-" + tag,
   };
   const numberAddress = "+13035550189";
 
@@ -134,9 +140,65 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       id: telecom.readMarker, threadId: telecom.thread,
       userId: rdfFixture.user, lastReadMessageId: telecom.message,
     } });
+    // COM-L10: nonempty exact decimal telemetry and revision links must
+    // survive actual backup/restore, including the deferred self-reference.
+    await prisma.telecomSyncCursor.create({ data: {
+      id: telecom.cursor, accountId: telecom.account, resource: "USAGE",
+      windowStart: new Date("2026-10-01T00:00:00Z"),
+      windowEnd: new Date("2026-11-01T00:00:00Z"),
+      nextPageToken: "next-provider-page",
+    } });
+    await prisma.telecomUsageSnapshot.create({ data: {
+      id: telecom.usage, accountId: telecom.account, category: "sms",
+      startDate: new Date("2026-10-09T00:00:00Z"),
+      endDate: new Date("2026-10-09T00:00:00Z"),
+      count: "1.0000000000", countUnit: "messages",
+      usage: "0.0000000001", usageUnit: "unit",
+      price: "-0.0000000001", currency: "USD",
+      providerAsOf: new Date("2026-10-10T00:00:00Z"),
+      payloadHash: "a".repeat(64), providerSource: "twilio-usage",
+    } });
+    await prisma.telecomRateVersion.create({ data: {
+      id: telecom.rate, accountId: telecom.account, service: "SMS",
+      category: "outbound", destinationKey: "US:ALL", senderType: "local",
+      component: "base", rate: "0.0010000001", currency: "USD",
+      unit: "message", source: "PRICING_API",
+      effectiveFrom: new Date("2026-10-01T00:00:00Z"),
+      fetchedAt: new Date("2026-10-09T00:00:00Z"),
+    } });
+    await prisma.telecomStatement.create({ data: {
+      id: telecom.statement, accountId: telecom.account,
+      externalId: "restore-only-statement", currency: "USD",
+      periodStart: new Date("2026-10-01T00:00:00Z"),
+      periodEnd: new Date("2026-10-31T00:00:00Z"),
+      issueDate: new Date("2026-11-01T00:00:00Z"),
+      privateEvidenceStorageKey: "telecom-statements/restore-only/statement.pdf",
+      evidenceHash: "b".repeat(64), invoiceTotalCents: 11,
+    } });
+    await prisma.communicationCostFact.create({ data: {
+      id: telecom.costBase, accountId: telecom.account,
+      messageAttemptId: telecom.attempt, rateVersionId: telecom.rate,
+      sourceKey: "restore-cost-original", component: "SMS",
+      classification: "PROVIDER_REPORTED", amount: "-0.0000000001",
+      currency: "USD", occurredAt: new Date("2026-10-09T00:00:00Z"),
+    } });
+    await prisma.communicationCostFact.create({ data: {
+      id: telecom.costRevision, accountId: telecom.account,
+      sourceKey: "restore-cost-revised", component: "SMS",
+      classification: "PROVIDER_REPORTED", amount: "-0.0000000002",
+      currency: "USD", occurredAt: new Date("2026-10-09T00:00:00Z"),
+      supersedesId: telecom.costBase,
+    } });
   });
 
   afterAll(async () => {
+    await prisma.communicationCostFact.deleteMany({
+      where: { id: { in: [telecom.costBase, telecom.costRevision] } },
+    });
+    await prisma.telecomStatement.deleteMany({ where: { id: telecom.statement } });
+    await prisma.telecomRateVersion.deleteMany({ where: { id: telecom.rate } });
+    await prisma.telecomUsageSnapshot.deleteMany({ where: { id: telecom.usage } });
+    await prisma.telecomSyncCursor.deleteMany({ where: { id: telecom.cursor } });
     await prisma.communicationReadMarker.deleteMany({ where: { id: telecom.readMarker } });
     await prisma.communicationLink.deleteMany({ where: { id: telecom.link } });
     await prisma.communicationMessage.deleteMany({ where: { id: telecom.message } });
@@ -218,6 +280,24 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       .toMatchObject({ currentAttemptId: telecom.attempt, templateRevisionId: telecom.revision });
     expect(await target.consentRecord.findUniqueOrThrow({ where: { id: telecom.consent } }))
       .toMatchObject({ contactPointId: telecom.point, action: "REVOKE", purpose: "SMS_TRANSACTIONAL" });
+    expect(await target.telecomSyncCursor.findUniqueOrThrow({
+      where: { id: telecom.cursor },
+    })).toMatchObject({ nextPageToken: "next-provider-page" });
+    expect((await target.telecomUsageSnapshot.findUniqueOrThrow({
+      where: { id: telecom.usage },
+    })).price?.toFixed(10)).toBe("-0.0000000001");
+    expect((await target.telecomRateVersion.findUniqueOrThrow({
+      where: { id: telecom.rate },
+    })).rate.toFixed(10)).toBe("0.0010000001");
+    expect(await target.telecomStatement.findUniqueOrThrow({
+      where: { id: telecom.statement },
+    })).toMatchObject({ invoiceTotalCents: 11, state: "DRAFT" });
+    expect(await target.communicationCostFact.findUniqueOrThrow({
+      where: { id: telecom.costRevision },
+    })).toMatchObject({ supersedesId: telecom.costBase, accountId: telecom.account });
+    expect((await target.communicationCostFact.findUniqueOrThrow({
+      where: { id: telecom.costBase },
+    })).amount.toFixed(10)).toBe("-0.0000000001");
     expect(await target.account.count()).toBe(0);
     expect(await target.session.count()).toBe(0);
     expect(await target.verification.count()).toBe(0);
