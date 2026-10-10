@@ -10,15 +10,15 @@ review/approval workflow. No approval is recorded automatically.
 This independent marketing request does not reorder the COM/W engineering queue.
 
 ## Public pricing visibility (owner-requested, 2026-10-09)
-MKT-2 hides pricing navigation, rates routes, sitemap entries and structured price range while prelaunch mode is enabled. Internal pricing remains intact. Deployment verification is the next operational step after exact-head green CI and merge. The pinned engineering queue is unchanged.
+MKT-2 merged in #374 and was deployed after exact-head green CI on main dfd0718 to Vercel production READY (dpl_fjKRCAM258aiNSbnByTHGfHnCSZk). Verified live robinsonappliancerentals.com/pricing and /rent/greeley both 307 redirect to /launch; /launch is 200, sitemap/homepage hide pricing. Internal pricing remains intact. The pinned engineering queue is unchanged.
 
 ## Next
 
 ### Current queue (read this first)
 
-- **Latest in chain:** COM-L8 (#370) merged; COM-L9 (#375) implemented for exact-head CI/merge. Next COM-L10 after #375 merges.
+- **Latest in chain:** COM-L8 (#370) and COM-L9 (#375) merged; COM-L10 is represented by its current PR and must pass exact-head CI before merge. Next COM-L11 only after COM-L10 merges.
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
-- **Current queue:** COM-L9 → COM-L10 → COM-L11 → COM-L12 → COM-L13A → COM-L13B → COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Current queue:** COM-L11 → COM-L12 → COM-L13A → COM-L13B → COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
@@ -32,6 +32,10 @@ MKT-2 hides pricing navigation, rates routes, sitemap entries and structured pri
   confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
 
 ### Recent merges (newest first)
+
+**2026-10-09 — COM-L10 cost evidence schema (as-if merged; exact-head gate):** Added five account-scoped Postgres records for Twilio sync cursors, usage snapshots, signed component costs, provider rates and private verified statements. Provider raw prices/usage preserve Decimal(24,10) with one cents-rounding boundary, distinct estimate/provider/statement basis and no unknown-as-zero. Cross-account FKs, revision links, claim/window/statement invariants and acyclic backup restore checks are enforced. No provider API calls, telecom send, bill, payments, journal, public pricing or owner activation. COM-L11 is next for read-only retrieval and paging; IN-51/52/53 remain separate.
+
+
 
 **2026-10-09 — COM-L9 merged (#375, conditional on exact-head CI):** The private Communications desk now lists missed calls/unknown outcomes, call legs and guarded voicemail playback. Two separately approved switches plus a version-matched owner policy gate the intentional-only recording; ordinary call recording/transcription remain OFF. Signed callbacks import bounded provider audio from pinned Twilio credentials to the existing private Blob store, prove availability only after storage, preserve replay and retry failures. Owner/admin can review, staff only assigned threads; no public media. Voice activation, IN-52 voicemail/privacy/retention approval, external provider fallback and deletion proof remain outside engineering. Disposable Postgres, unit, accessibility and full PR CI are merge gates. Next: COM-L10.
 
