@@ -844,3 +844,12 @@ COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 … W-10 → W-19 →
 single chain; the second lane is closed unless Chris opens it again. IN-72 records the one default chosen in W-21B.
 Test isolation (#367) also fixed a real robustness bug found by CI: To do crashed when an appliance was removed between
 listing purchase-tax attention and explaining it; a removed appliance now counts as nothing pending.
+
+## 2026-10-09 — Metricool public launch analytics
+
+Owner-requested MKT-1 uses the vendor image protocol with a public-path and fixed campaign-value allowlist. Production configuration enables it; private URLs, form data, other query values and referrer paths are excluded. Honor Do Not Track and Global Privacy Control. Only public-layout document CSP permits the tracker image origin, including legal/city pages so client navigation retains it; the runtime still records only the six marketing routes. No roadmap queue or payment/contact-provider gates change. Privacy disclosure receives a new approval version; approval is never inferred or written by this integration.
+
+MKT-1 engineering closed in #371: targeted tests and all exact-head CI/performance checks passed; review findings fixed. Production canonical origin was absent (live JSON-LD defaulted to localhost), now configured to the existing business domain without DNS/hosting changes. Owner authorized moving this to live using the green-main fast-forward release conditions. Metricool receipt and privacy-page review remain open. No COM/W queue change.
+
+## 2026-10-09 — Public discovery without prices
+Owner requested all website pricing hidden immediately during discovery. Reuse stored prelaunch mode across all public price surfaces; preserve billing data. Direct old pricing/city links go to the interest list.

@@ -102,3 +102,20 @@ test.describe("owner launch confirmation visibility", () => {
     }
   });
 });
+
+
+test("prelaunch hides public prices and redirects old pricing and city links", async ({ page, request }) => {
+  const launch = await prisma.launchSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+  test.skip(!launch.prelaunchMode, "Requires prelaunch mode");
+  await page.goto("/?home=live");
+  await expect(page.getByRole("link", { name: "Pricing", exact: true })).toHaveCount(0);
+  await expect(page.getByText("Simple, published pricing")).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText(/\$\d/);
+  for (const route of ["/pricing", "/rent/greeley"]) {
+    await page.goto(route);
+    await expect(page).toHaveURL(/\/launch$/);
+    await expect(page.locator("body")).not.toContainText(/\$\d/);
+  }
+  const sitemap = await request.get("/sitemap.xml");
+  expect(await sitemap.text()).not.toMatch(/\/pricing|\/rent\//);
+});

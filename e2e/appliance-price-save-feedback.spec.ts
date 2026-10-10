@@ -29,7 +29,7 @@ test("saved non-placeholder business name composes home and child browser titles
     await page.getByRole("button", { name: "Save this section" }).click();
     await expect(page.getByRole("status")).toHaveText("Settings saved.");
     expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).publicBusinessName).toBe(fixtureName);
-    for (const [path, title] of [["/", `${fixtureName} — Appliance Rentals in Colorado`], ["/pricing", `Pricing — ${fixtureName}`]]) {
+    for (const [path, title] of [["/", `${fixtureName} — Appliance Rentals in Colorado`], ["/accessibility", `Accessibility Statement — ${fixtureName}`]]) {
       await page.goto(path);
       await expect(page).toHaveTitle(title);
       expect(await page.title()).not.toContain("[Company Name]");

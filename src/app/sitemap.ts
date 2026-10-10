@@ -1,3 +1,4 @@
+import { getLaunchSettings } from "@/domains/launch";
 import type { MetadataRoute } from "next";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import {
@@ -25,6 +26,7 @@ function slugifyCity(city: string): string {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const settings = await getBusinessSettings();
+  const launch = await getLaunchSettings();
   const legalApprovals = (settings as { legalApprovals?: unknown }).legalApprovals;
   const approvedLegalRoutes = [
     ...(isLegalPageApproved(legalApprovals, "privacy", LEGAL_PAGE_VERSIONS.privacy)
@@ -35,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       : []),
   ];
 
-  const staticRoutes = [...PUBLIC_ROUTES, ...approvedLegalRoutes].map((route) => ({
+  const staticRoutes = [...PUBLIC_ROUTES.filter((route) => !launch.prelaunchMode || route !== "/pricing"), ...approvedLegalRoutes].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: route === "" ? ("weekly" as const) : ("monthly" as const),
@@ -45,7 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // One entry per real service-area city (Settings' service area) — see
   // /rent/[city] ("Simple local-search landing pages," Task #46).
   const { cities } = parseServiceArea(settings);
-  const cityRoutes = cities.map((city) => ({
+  const cityRoutes = (launch.prelaunchMode ? [] : cities).map((city) => ({
     url: `${baseUrl}/rent/${slugifyCity(city)}`,
     lastModified: new Date(),
     changeFrequency: "monthly" as const,

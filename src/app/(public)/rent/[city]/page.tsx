@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/site/container";
@@ -38,6 +40,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ city: string }>;
 }): Promise<Metadata> {
+  if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
   const { city: citySlug } = await params;
   const city = await findCity(citySlug);
   if (!city) {
@@ -55,6 +58,7 @@ export default async function CityLandingPage({
 }: {
   params: Promise<{ city: string }>;
 }) {
+  if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
   const { city: citySlug } = await params;
   const city = await findCity(citySlug);
   if (!city) {

@@ -6,6 +6,8 @@ import {
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import Link from "next/link";
+import { MetricoolTracker } from "@/components/site/metricool-tracker";
+import { metricoolConfig } from "@/lib/metricool";
 import { getLaunchSettings } from "@/domains/launch";
 
 // Shared chrome for every public marketing page (home, pricing,
@@ -24,6 +26,7 @@ export default async function PublicLayout({
   ]);
   const serviceArea = parseServiceArea(settings);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const tracking = metricoolConfig(process.env.VERCEL_ENV, process.env.METRICOOL_TRACKING_HASH, baseUrl);
   const legalApprovals = (settings as { legalApprovals?: unknown }).legalApprovals;
   const privacyApproved = isLegalPageApproved(
     legalApprovals,
@@ -54,11 +57,12 @@ export default async function PublicLayout({
     },
     areaServed: serviceArea.cities,
     url: baseUrl,
-    priceRange: "$$",
+    ...(!launch.prelaunchMode ? { priceRange: "$$" } : {}),
   };
 
   return (
     <>
+      {tracking && <MetricoolTracker {...tracking} />}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -80,6 +84,7 @@ export default async function PublicLayout({
         {children}
       </main>
       <Footer
+        prelaunch={launch.prelaunchMode}
         businessName={settings.publicBusinessName}
         phone={settings.publicPhone}
         email={settings.publicEmail}

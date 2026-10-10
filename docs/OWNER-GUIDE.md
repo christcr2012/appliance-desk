@@ -707,3 +707,10 @@ customers. Owner/admin can later review retention deadlines and holds
 when the approved voice workflow is implemented. Media removal requires
 the provider copy, private stored copy and backup copies to be handled
 and confirmed; an expired date alone does not delete anything.
+
+## Website campaign statistics
+Metricool can show public website visits alongside social activity after MKT-1 is
+released and its production tracking identifier is configured. Campaign links use
+source/campaign/post labels. Visits and clicks are not confirmed inquiries or rentals.
+Review the updated privacy page through the existing legal-page approval control.
+Removing METRICOOL_TRACKING_HASH in Vercel and redeploying disables visit tracking.
