@@ -1,5 +1,5 @@
 # MKT-2 — Hide public pricing during discovery
-Status: engineering complete; merged with this PR.
+Status: MERGED (#374), production verified 2026-10-10.
 Owner approved 2026-10-09: immediately hide all public pricing and the pricing page during interest discovery.
 Baseline: 9b51c2b; independent owner request, does not reorder COM/W.
 Drift: public prelaunch homepage already exists, but nav, pricing/city routes and sitemap still expose rates.
@@ -8,3 +8,5 @@ Acceptance: e2e/launch.spec.ts verifies homepage, direct routes, prices and site
 No schema, billing, auth, customer records or message changes. Owner can restore public pricing by disabling prelaunch mode after approving launch readiness.
 
 Review disposition: P1 stale prelaunch assertions fixed in the mobile menu, public CSP transition and child-title test. New prelaunch route/sitemap test passed on first CI. CI run 1 found only these three stale expectations; run 2 verifies the corrected suite.
+
+Closeout: required CI succeeded at 4f936be; automated P1 stale-test finding fixed and resolved. Production dfd0718 is READY. Actual-domain homepage, pricing/city redirects, contact payload and sitemap verified 2026-10-10. No additional production deployment was needed during closeout.
