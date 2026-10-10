@@ -124,11 +124,11 @@ These are conditional release checks for Batch BP, not new blockers for unrelate
 - [ ] Before relying on acquisition-tax exemption: resolve IN-33's unpaid-use-tax question and IN-36 continuity treatment as applicable; the consultant's document is not approval evidence.
 
 
-## Approved COM communications subsystem — not yet built or activated
+## COM communications — engineered in test, not yet live or owner-activated
 
-Design `docs/designs/BATCH-COM.md`; setup `docs/runbooks/COMMUNICATIONS-TWILIO.md`. Engineering and live approval are separate.
+Design `docs/designs/BATCH-COM.md`; setup `docs/runbooks/COMMUNICATIONS-TWILIO.md`. Engineering and live approval are separate. Owner guide: `docs/runbooks/COMMUNICATIONS-OWNER-HANDOFF.md`; tested-vs-pending ledger: `docs/runbooks/COMMUNICATIONS-ACCEPTANCE-LEDGER.md`.
 
-- [x] Design/order approved by Chris 2026-10-08. Selected launch-scope implementation and COM-L/F evidence still remain before activation.
+- [x] Design approved 2026-10-08. COM-L engineering has automated synthetic/database/browser evidence; **this does not fulfill external carrier, owner, legal or F-part-2 live acceptance**.
 - [ ] IN-03/09/51: verify account/permanent Voice+SMS number, entity/EIN/campaign/consent; explicit purchase/port/A2P/provider edit/live-send/publication approvals where applicable.
 - [ ] Production+owner SMS/voice activation fences verified; preview/local/tests never use production account/number or contaminate costs.
 - [ ] For COM-L4B SMS dispatch: set server-side Twilio API key/secret and verify the exact approved HTTPS `communicationsPolicy.productionWebhookOrigin` (never auto-fill it from preview), separate AUTH_TOKEN for signed callbacks; FREE Basic Lookup country validation uses no paid Fields or data packages. Keep both owner master and policy switches off until explicit owner live-send approval.
