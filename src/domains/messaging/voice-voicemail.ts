@@ -187,7 +187,8 @@ async function putVoicemailBytes(key: string, bytes: Buffer): Promise<void> {
   if (!store) throw new Error("Approved private media storage is not available.");
   await put(key, bytes, {
     token: store.token, access: "private", contentType: "audio/mpeg",
-    addRandomSuffix: false, allowOverwrite: false,
+    // Deterministic key: replay after Blob success but DB failure must recover.
+    addRandomSuffix: false, allowOverwrite: true,
     abortSignal: AbortSignal.timeout(MEDIA_TIMEOUT_MS),
   });
 }
