@@ -3099,7 +3099,7 @@
     },
     {
       "id": "W-5",
-      "title": "Failed, held and deposit payments on To do with buttons",
+      "title": "Failed, held and deposit payments on To do with buttons; Send payment link on any unpaid invoice",
       "batch": "W",
       "dependencies": [
         "W-4"
@@ -3379,13 +3379,13 @@
     },
     {
       "id": "W-25",
-      "title": "Phone orders: send-to-finish by email; backup agreed-by-phone with Stripe hosted card entry (off until checks)",
+      "title": "Phone orders: Chris enters the order; the customer finishes by the emailed or copied link",
       "batch": "W",
       "dependencies": [
         "W-24"
       ],
       "status": "APPROVED",
-      "migration": "phone_orders",
+      "migration": "none or phone_orders",
       "budget": 500,
       "units": [
         "W-25"

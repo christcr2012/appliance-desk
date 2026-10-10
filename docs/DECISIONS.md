@@ -904,3 +904,11 @@ backup kept off until attorney and Stripe checks; **W-26** Spanish for customers
 controls unless the attorney says otherwise); a Spanish public website in V via the content registry and `hreflang`, not
 browser auto-translate. Self-scheduling is deliberately not built (later, if the business scales). Order: W-18 → W-22 → W-23 →
 W-24 → W-25 → W-26 → W-14.
+
+## 2026-10-10 — Phone backup cancelled; "Send payment link" added (IN-82)
+
+Chris cancelled W-25's "agreed by phone" backup (staff-entered card, verbal agreement) as not likely worth the effort; phone
+orders finish by the emailed or copied W-24 link. He asked for a way to make online payments: covered by the order link,
+automatic monthly charges, "Pay now" in the account (W-20) and a new "Send payment link" button on any unpaid invoice (W-5;
+Stripe's hosted invoice page, by email through the existing gate, or copied). A public "pay any bill" page is deliberately not built
+(invoice guessing, card testing); the website's "Pay my bill" goes to the account login (V).

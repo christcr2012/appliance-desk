@@ -89,9 +89,7 @@ Previews and test copies never send email, even with the key and the switch on (
 ## Order flow, phone orders and Spanish (W-24…W-26, added 2026-10-10)
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
-| [ ] | **Owner** — Colorado attorney confirms the "agreed by phone" script and saved-card permission wording (IN-82); also the 3-day cancellation notice if Chris ever signs customers up at their home | Attorney review of W-25's script and agreement text | Not reviewed; phone backup switch off | Attorney's written OK; script version recorded in Settings |
-| [ ] | **Owner** — Stripe allows staff-entered phone (card-not-present) payments on the live account (IN-82) | Stripe Dashboard → account settings / support request | Not requested | A test-mode phone payment through the hosted page succeeds, then live is enabled |
-| [ ] | **Owner** — Phone backup switch on (only after the two lines above) | Desk → Settings → Phone orders | Off | "Agreed by phone" appears on a phone order |
+| [ ] | **Owner** — If Chris ever signs customers up at their home: attorney confirms whether the 3-day cancellation notice applies | Attorney review of agreement text | Not reviewed (phone and online orders don't trigger it) | Attorney's written answer recorded |
 | [ ] | **Owner** — Spanish translations reviewed by a fluent reviewer (IN-83) | Desk → Settings → Languages (W-26) / Website content (V) | Not reviewed; English only | Reviewer's sign-off recorded; Español switch visible |
 | [ ] | **Owner** — Trip fee amount for missed appointments (IN-81), if wanted | Desk → Settings → Pickups and deliveries | $0 (off) | A missed-delivery visit offers the fee |
 
