@@ -2,6 +2,14 @@
 
 Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352–#363 and W-0C #359 by Sol; W-16A #360, W-16B #362, W-21A #365, W-21B #366 and test isolation #367 by Claude). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
+## Metricool marketing integration (owner-requested, 2026-10-09)
+MKT-1 public visit tracking is implemented on ai/codex/metricool-public-tracking.
+Exact-head CI, review and production release remain required before calling it live.
+Production METRICOOL_TRACKING_HASH controls activation; private routes and data excluded.
+The changed privacy disclosure has a new version and retains the owner's existing
+review/approval workflow. No approval is recorded automatically.
+This independent marketing request does not reorder the COM/W engineering queue.
+
 ## Next
 
 ### Current queue (read this first)

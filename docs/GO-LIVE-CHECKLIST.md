@@ -151,3 +151,9 @@ actual live provider credentials and official return/payment evidence.
 IN-43/44 only affect packet wording. Do not equate test-only PostgreSQL,
 fixture uploads or previews with a production GIS, government filing or
 payment smoke test.
+
+### Metricool campaign analytics — MKT-1
+- [ ] Production tracking identifier configured; green MKT-1 released.
+- [ ] Verify a real public-site visit in Metricool; never infer receipt from deployment.
+- [ ] Owner reviews the updated privacy-page version through the existing approval control.
+- [ ] Compare visits/clicks with actual interest-list signups; no invented conversions.

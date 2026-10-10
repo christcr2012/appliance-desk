@@ -3507,5 +3507,13 @@
       "status": "ACCEPTANCE_REFINEMENT",
       "cardAtImplementation": true
     }
+  ],
+  "ownerSideRequests": [
+    {
+      "id": "MKT-1",
+      "card": "docs/pr-cards/MKT-1.md",
+      "status": "IMPLEMENTED_PENDING_CI",
+      "scope": "Owner-requested Metricool public website analytics; independent of the pinned roadmap queue"
+    }
   ]
 }

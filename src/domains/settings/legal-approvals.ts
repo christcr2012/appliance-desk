@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 
 export const LEGAL_PAGE_VERSIONS = {
-  privacy: "2026-10-05-1",
+  privacy: "2026-10-09-metricool-1",
   terms: "2026-10-05-1",
 } as const;
 
