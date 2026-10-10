@@ -334,6 +334,23 @@ a **setup fee** (revised the same day to one administrative fee per location —
 Chris asked Claude to expand his outline, then simplified the fee (section A). Expansions are marked **(rec.)** with the
 recommended answer; IN-75, IN-76, IN-78 and IN-79 remain open.
 
+**0. When money is collected (Chris 2026-10-10, standard for every order).** The customer pays the **setup fee when they
+agree to the terms and choose a delivery date** (the signing step). **The first month's rent is billed on delivery** (the existing
+rule: recurring billing starts when the delivery visit is completed). Large orders are the one exception: their down payment
+(section B) is also collected at signing and then covers that first bill.
+
+- **Choosing the delivery date at signing.** The signing page asks for a **preferred delivery date and a morning or afternoon
+  window**. Only dates the owner allows can be picked: starting values are no Sundays or business closed days, at least **2
+  business days** out and at most **30 days** out, all owner settings. The choice creates the delivery visit as **"Requested"** and a To do
+  item "Confirm <name>'s delivery for <date>". Chris confirms it or proposes another date, and the customer is told (by the existing
+  messages once live messaging is on; until then Chris calls). This replaces the S6 step "draft delivery visit with no time + To do
+  'Schedule delivery'" for signed agreements that carry a requested date. An agreement signed in the desk without a date keeps the
+  old step.
+- The requested date is not a promise: the confirmation is. The "original delivery date" used for late-delivery credits is the
+  **confirmed** date, never the merely requested one.
+- Tests add: a date outside the allowed window is refused; a requested date creates exactly one Requested visit and one To do item;
+  confirming it sets the original delivery date; moving it records who moved it and why.
+
 **A. The setup fee (revised 2026-10-10 by Chris; supersedes the admin + consumables split).** One **administrative
 setup fee, $45, charged once per delivery location** on each new order. It is one line, not tied to any parts: it helps cover
 the hookup items, the cost of running Appliance Desk and other indirect costs. Separately, as a fixed business rule, **every
