@@ -3356,11 +3356,77 @@
       "plannedCard": "docs/pr-cards/W-23.md"
     },
     {
+      "id": "W-24",
+      "title": "One link does the whole order: owner-offered delivery choices, accept, sign, pay, password, portal; decline; trip fee",
+      "batch": "W",
+      "dependencies": [
+        "W-23"
+      ],
+      "status": "APPROVED",
+      "migration": "order_link_delivery_choices",
+      "budget": 500,
+      "units": [
+        "W-24"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/estimates/index-base.ts",
+        "src/app/estimate/[id]/page.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-24.md"
+    },
+    {
+      "id": "W-25",
+      "title": "Phone orders: send-to-finish by email; backup agreed-by-phone with Stripe hosted card entry (off until checks)",
+      "batch": "W",
+      "dependencies": [
+        "W-24"
+      ],
+      "status": "APPROVED",
+      "migration": "phone_orders",
+      "budget": 500,
+      "units": [
+        "W-25"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/agreements/index.ts",
+        "src/domains/billing/checkout.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-25.md"
+    },
+    {
+      "id": "W-26",
+      "title": "Spanish for customers: quote, agreement, signing, payment, portal and messages",
+      "batch": "W",
+      "dependencies": [
+        "W-25"
+      ],
+      "status": "APPROVED",
+      "migration": "customer_language",
+      "budget": 500,
+      "units": [
+        "W-26"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/app/sign/[id]/page.tsx",
+        "src/app/account/page.tsx"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-26.md"
+    },
+    {
       "id": "W-14",
       "title": "Purchases: one receipt, many appliances with model and serial, tax split by price",
       "batch": "W",
       "dependencies": [
-        "W-23"
+        "W-26"
       ],
       "status": "APPROVED",
       "migration": "purchase_records",
