@@ -212,6 +212,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/settings", role: "OWNER", fixture: "/desk/settings" },
   { path: "/desk/settings/policies", role: "OWNER", fixture: "/desk/settings/policies" },
   { path: "/desk/settings/preview-storage", role: "OWNER", fixture: "/desk/settings/preview-storage" },
+  { path: "/desk/settings/telecom", role: "OWNER", fixture: "/desk/settings/telecom" },
   { path: "/desk/settings/website", role: "OWNER", fixture: "/desk/settings/website" },
   {
     path: "/desk/suppliers/[id]",

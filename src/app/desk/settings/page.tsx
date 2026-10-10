@@ -317,6 +317,7 @@ export default async function DeskSettingsPage({
           </ButtonLink>
         </div>
       </Card>
+      {section === "notifications" && <div className="mb-4"><ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink></div>}
       {section === "notifications" && <SmsTemplatePreview />}
     </>);
   } else {
