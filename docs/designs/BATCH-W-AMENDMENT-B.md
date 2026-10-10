@@ -506,9 +506,9 @@ W-5's money To do items gain, and every unpaid invoice page in the desk shows, a
 customer the invoice's **secure Stripe payment page** (the hosted invoice page: card or bank account, nothing typed into Appliance
 Desk) by email through the existing customer-email gate, plus **Copy link** so Chris can text it while on the phone (texting from
 the app joins when live texting is on). The link pays that one invoice; a paid invoice shows "Paid" instead of the button.
-Customers can always also pay from their account ("Pay now", W-20). There is **no public "pay any bill" page** (it would invite
+**The message explains why** (Chris 2026-10-10). Every payment link arrives with a short message filled in from the invoice: what the bill is for (for example "October rent — washer + dryer at 123 Main St"), the amount due, the due date and, if late, how many days overdue and any late fee already added, the account's total balance when other bills are also open, and the reason it is being sent (a reminder, a payment that failed, a balance after a partial payment, or a payment asked for on the phone). Chris picks the reason (the app suggests one from the invoice's state) and may add a short personal note. The wording is an owner-editable template per reason with "restore recommended", and is sent in the customer's language once W-26 is built. Chris sees the exact message before it is sent, and the sent text is kept in the customer's history. A property manager's message lists only that customer's own bills. Customers can always also pay from their account ("Pay now", W-20). There is **no public "pay any bill" page** (it would invite
 invoice guessing and card testing). The website's "Pay my bill" button goes to the account login (V). Tests: the link
-matches the invoice's Stripe page; the send is refused when customer email is off (Copy link still works); the button is hidden
+matches the invoice's Stripe page; the message shows the right amount, due date, days overdue and reason for each invoice state; the send is refused when customer email is off (Copy link still works); the button is hidden
 on paid or void invoices; STAFF cannot send (money).
 
 ### 6.6 W-26 — Spanish for customers (added 2026-10-10, Chris approved)
