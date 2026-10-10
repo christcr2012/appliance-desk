@@ -885,3 +885,10 @@ liability; the delivery visit records them. The owner may change the fee per quo
 closing a sale, customer satisfaction). This replaces the admin + consumables split and the per-set customer-install rule in
 Amendment B 6.2 (IN-77 superseded). The hookup items stay business equipment, which simplifies the tax question (IN-79: is the
 separately stated fee taxable).
+
+## 2026-10-10 — Setup fee at signing with a chosen delivery date; rent from delivery (IN-80)
+
+Chris: customers pay the setup fee when they agree to the terms and set the delivery date; the first month is billed on delivery.
+This keeps the existing "billing starts at delivery" rule and adds the customer's preferred delivery date and window to the
+signing step (owner-limited dates; Chris confirms). Late-delivery credits count from the confirmed date, never the requested
+one. Added to W-22 (Amendment B 6.2 section 0); signing in the desk without a date keeps today's "Schedule delivery" To do.
