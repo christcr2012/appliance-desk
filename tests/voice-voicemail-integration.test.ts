@@ -122,6 +122,11 @@ describe.skipIf(!local)("COM-L9 voicemail gates/private lifecycle (real PostgreS
     await saveRouting([]);
   });
   afterAll(async () => {
+    // L7 deliberately prohibits deletion under legal hold: release only our
+    // throwaway synthetic fixture's hold before its isolated teardown.
+    await prisma.communicationMedia.updateMany({
+      where: { session: { accountId } }, data: { legalHold: false },
+    });
     await prisma.communicationMedia.deleteMany({ where: {
       session: { accountId },
     } });
