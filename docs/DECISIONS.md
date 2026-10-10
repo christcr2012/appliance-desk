@@ -844,3 +844,7 @@ COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 … W-10 → W-19 →
 single chain; the second lane is closed unless Chris opens it again. IN-72 records the one default chosen in W-21B.
 Test isolation (#367) also fixed a real robustness bug found by CI: To do crashed when an appliance was removed between
 listing purchase-tax attention and explaining it; a removed appliance now counts as nothing pending.
+
+## 2026-10-09 — Metricool public launch analytics
+
+Owner-requested MKT-1 uses the vendor image protocol with a public-path and fixed campaign-value allowlist. Production configuration enables it; private URLs, form data, other query values and referrer paths are excluded. Honor Do Not Track and Global Privacy Control. Only public marketing CSP permits the tracker image origin. No roadmap queue or payment/contact-provider gates change. Privacy disclosure receives a new approval version; approval is never inferred or written by this integration.

@@ -40,7 +40,7 @@ export default async function PrivacyPage({
   return (
     <Container className="max-w-3xl py-16 md:py-20">
       <h1 className="font-display text-4xl font-semibold text-ink">Privacy Policy</h1>
-      <p className="mt-2 text-sm text-ink-faint">Last updated: 2026-09-29</p>
+      <p className="mt-2 text-sm text-ink-faint">Last updated: 2026-10-09</p>
 
       {!approved && <div className="mt-6"><DraftNotice /></div>}
 
@@ -76,6 +76,11 @@ export default async function PrivacyPage({
         <section>
           <h2 className="font-display text-xl font-semibold text-ink">How we use it</h2>
           <p className="mt-2">To follow up on quote requests, deliver and service rented appliances, bill accurately, comply with the law, and improve the site. We do not sell your personal information, and we do not share it with third parties for their own marketing.</p>
+        </section>
+
+        <section>
+          <h2 className="font-display text-xl font-semibold text-ink">Website visit statistics</h2>
+          <p className="mt-2">We use Metricool to understand visits to our public marketing pages and which campaigns bring visitors to our site. Metricool receives the public page address, fixed campaign labels, browser-window size, referring website domain, and the IP address needed to receive the visit request. This tracking does not use cookies. We exclude account, staff, signing, estimate, and privacy-request pages, and remove other query values and referring-page paths. This Metricool tracking honors browser Do Not Track and Global Privacy Control signals. Form entries are not included in these visit requests.</p>
         </section>
 
         <section>

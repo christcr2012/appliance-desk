@@ -725,3 +725,11 @@ The real return authoring/recording actions remain in the Batch T filing
 domain and are OWNER-only. Unknown purchase tax, official source failures
 and owner/CPA confirmations retain separate resolution gates.
 
+
+## Public campaign visit tracking (MKT-1)
+METRICOOL_TRACKING_HASH is an optional production-only public tracker identifier.
+The public layout sends the provider's image visit protocol on the exact marketing
+route list only, with sanitized UTM labels and origin-only referrer. No external
+tracker JavaScript runs. Private routes, form values, URL fragments and other query
+values are excluded. Browser DNT/GPC disables requests. Blank configuration disables.
+Metricool receipt/live verification is separate from code and CI completion.

@@ -127,6 +127,16 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Only public campaign pages allow Metricool's visit image.
+        // No third-party JavaScript and no tracker permission on private routes.
+        source: "/(pricing|how-it-works|service-area|contact|launch)",
+        headers: [{ key: "Content-Security-Policy", value: cspHeader.replace("img-src 'self';", "img-src 'self' https://tracker.metricool.com;") }],
+      },
+      {
+        source: "/",
+        headers: [{ key: "Content-Security-Policy", value: cspHeader.replace("img-src 'self';", "img-src 'self' https://tracker.metricool.com;") }],
+      },
+      {
         // Keep the admin desk, customer portal, and per-customer signing
         // links out of search engines.
         source: "/(desk|account|sign)/:path*",

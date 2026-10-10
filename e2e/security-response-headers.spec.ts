@@ -23,3 +23,16 @@ test("protected redirects and rejected APIs retain HSTS at the response boundary
   expect(apiResponse.headers()["strict-transport-security"])
     .toBe("max-age=31536000; includeSubDomains");
 });
+
+test("Metricool image permission is restricted to public marketing pages", async ({ request }) => {
+  for (const path of ["/", "/launch", "/pricing"]) {
+    const response = await request.get(path);
+    const csp = response.headers()["content-security-policy"];
+    expect(csp).toContain("img-src 'self' https://tracker.metricool.com;");
+    expect(csp.split("script-src")[1].split(";")[0]).not.toContain("metricool");
+  }
+  for (const path of ["/privacy", "/login", "/desk", "/api/uploads/photo"]) {
+    const response = await request.get(path, { maxRedirects: 0 });
+    expect(response.headers()["content-security-policy"]).not.toContain("tracker.metricool.com");
+  }
+});
