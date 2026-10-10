@@ -20,3 +20,4 @@ Test paths: tests/communication-launch-integration.test.ts and e2e/communication
 
 ### Exact-head CI fixture follow-up
 The pre-existing `messaging-events-integration.test.ts` constructed one synthetic Twilio SID from the first 30 UUID hex characters, which could equal another test's 28-character prefix plus a fixed two-character suffix. This intermittently violated the unique providerMessageId constraint. The final case now uses its own distinct `e5` suffix. All ten isolated Postgres provider-event tests passed. No production delivery code or validation gate changed.
+- Review correction: STAFF browser launch test now asserts an unauthorized provider-settings route actually redirects to `/` and that private provider/statement content is absent, rather than treating an invisible heading as sufficient denial proof. No permission behavior changed.

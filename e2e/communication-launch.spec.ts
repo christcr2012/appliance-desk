@@ -33,7 +33,9 @@ test.describe("COM-L15 staff launch privacy",()=>{
  });
  test("staff cannot open company phone billing and provider setup",async({page})=>{
   await page.goto("/desk/settings/telecom");
-  await expect(page.getByRole("heading",{name:"Phone, texts and provider costs"})).not.toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading",{name:"Phone, texts and provider costs"})).toHaveCount(0);
+  await expect(page.getByText(/verified telecom statement|provider invoice total/i)).toHaveCount(0);
   await page.goto("/desk/communications");
   await expect(page.getByRole("heading",{name:"Communications",exact:true})).toBeVisible();
   await expect(page.getByText(/Staff see only threads assigned to them/)).toBeVisible();
