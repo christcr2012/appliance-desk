@@ -274,7 +274,7 @@ describe.skipIf(!enabled)("provider message events (real Postgres)", () => {
   });
 
   it("applies Twilio delivery state without allowing a later sent callback to downgrade it", async () => {
-    const sid = `SM${tag.slice(0, 30)}`;
+    const sid = `SM${tag.slice(0, 28)}e5`;
     const delivery = await prisma.messageDelivery.create({
       data: {
         idempotencyKey: `event-${tag}-twilio`,

@@ -17,3 +17,6 @@ Test paths: tests/communication-launch-integration.test.ts and e2e/communication
 - OWNER+STAFF browser suite traverses provider setup, separately-labelled financial evidence, and private inbox on a mobile viewport and checks WCAG A/AA. It does not claim to test actual carrier network delivery or sender authorization.
 - The technical Twilio runbook and owner guide are linked from the go-live checklist. The acceptance ledger explicitly marks IN-03/09/51/52/53 and real-provider/legal/K/F acceptance as PENDING, so completed code cannot accidentally be interpreted as production activation.
 - Automated review unavailable — waived if no reviewer arrives. Self diff review required, no unaddressed findings. Exact-head GitHub CI and non-required performance checks must be inspected before merge. After merge, STOP the implementation chain and tell Chris in plain English.
+
+### Exact-head CI fixture follow-up
+The pre-existing `messaging-events-integration.test.ts` constructed one synthetic Twilio SID from the first 30 UUID hex characters, which could equal another test's 28-character prefix plus a fixed two-character suffix. This intermittently violated the unique providerMessageId constraint. The final case now uses its own distinct `e5` suffix. All ten isolated Postgres provider-event tests passed. No production delivery code or validation gate changed.
