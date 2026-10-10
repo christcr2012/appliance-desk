@@ -12,7 +12,13 @@ export function telecomDecimal(value: ExactTelecomDecimal): Prisma.Decimal {
   if (typeof value !== "string" && !(value instanceof Prisma.Decimal)) {
     throw new TypeError("Telecom amounts require an exact decimal string or Prisma.Decimal.");
   }
-  const raw = typeof value === "string" ? value : value.toString();
+  // Prisma.Decimal.toString() may emit scientific notation for tiny exact
+  // values (for example 1e-10); use fixed point only after proving scale.
+  if (value instanceof Prisma.Decimal &&
+      (value.decimalPlaces() > 10 || !value.isFinite())) {
+    throw new RangeError("Telecom decimal exceeds Decimal(24,10) precision.");
+  }
+  const raw = typeof value === "string" ? value : value.toFixed(10);
   if (!decimal24_10.test(raw)) {
     throw new RangeError("Telecom decimal exceeds Decimal(24,10), is not finite, or is not canonical.");
   }
