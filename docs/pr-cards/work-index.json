@@ -3099,7 +3099,7 @@
     },
     {
       "id": "W-5",
-      "title": "Failed, held and deposit payments on To do with buttons; Send payment link on any unpaid invoice",
+      "title": "Failed, held and deposit payments on To do with buttons; Send payment link and Take payment by phone on any unpaid invoice",
       "batch": "W",
       "dependencies": [
         "W-4"

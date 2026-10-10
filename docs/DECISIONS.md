@@ -912,3 +912,11 @@ orders finish by the emailed or copied W-24 link. He asked for a way to make onl
 automatic monthly charges, "Pay now" in the account (W-20) and a new "Send payment link" button on any unpaid invoice (W-5;
 Stripe's hosted invoice page, by email through the existing gate, or copied). A public "pay any bill" page is deliberately not built
 (invoice guessing, card testing); the website's "Pay my bill" goes to the account login (V).
+
+## 2026-10-10 — Phone payments kept (W-5 "Take payment by phone")
+
+Chris: he must be able to process a payment by phone when a customer insists (a temporary card problem, a new card, or
+preference). Cancelling the phone *signing* backup did not cancel phone *payments*. W-5 adds "Take payment by phone": Stripe's
+hosted payment page opened in Chris's browser for the chosen amount, card typed there (never stored in Appliance Desk), paid only on
+Stripe's webhook, the card saved for monthly rent only with recorded spoken permission. Go-live: Stripe confirms staff-typed payments
+are allowed on the account.

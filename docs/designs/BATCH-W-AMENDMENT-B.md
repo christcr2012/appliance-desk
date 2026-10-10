@@ -514,6 +514,28 @@ invoice guessing and card testing). The website's "Pay my bill" button goes to t
 matches the invoice's Stripe page; the message shows the right amount, due date, days overdue and reason for each invoice state; the send is refused when customer email is off (Copy link still works); the button is hidden
 on paid or void invoices; STAFF cannot send (money).
 
+### 6.8 W-5 addition — "Take a payment by phone" (added 2026-10-10, Chris)
+
+Chris must be able to take a payment while a customer is on the phone and insists (their card on file failed, they changed
+cards, or they simply prefer it). This is a payment only. Signing still happens by link (the "agreed by phone" signing backup stays
+cancelled).
+
+- **Where:** a "Take payment by phone" button next to "Send payment link" on any unpaid invoice and on the customer's billing
+  page (choose one bill, or an amount spread over open bills oldest first, like "Record a payment").
+- **How:** the button opens **Stripe's secure payment page in Chris's browser** for that amount. Chris types the card the
+  customer reads out, directly into Stripe's page. **Card numbers never go into Appliance Desk, never on paper, never in notes.** The
+  payment is marked paid only when Stripe confirms it (webhook), exactly as online payments are.
+- **Save the card for monthly rent?** A tick box, off by default: when the customer says yes, Chris ticks it, and the app records
+  who gave permission, when, and the script line read ("You authorize Robinson Appliance Rentals to charge this card for your monthly
+  rent until you tell us otherwise"); the card becomes the default for future bills. Not ticked: it pays this time only.
+- **Receipt:** Stripe's branded receipt email goes to the customer; the customer's history shows "Paid by phone, taken by <name>".
+- **Guards:** OWNER/ADMIN only; the amount can't exceed the bills selected (no overpayment by phone); each phone payment is in the audit log;
+  a declined card shows the reason and suggests "Send payment link" instead.
+- **Before going live:** confirm with Stripe that staff-typed (card-not-present) payments are allowed on the account, and
+  read Stripe's guidance on phone payments (they carry more dispute risk; a recognizable statement name helps — GO-LIVE-CHECKLIST, Money).
+- Tests: a phone payment pays the chosen invoice once (a replayed webhook doesn't pay twice); an amount spread over open bills; a
+  saved card becomes the default only with permission recorded; STAFF can't see the button; no card data in any table or log.
+
 ### 6.6 W-26 — Spanish for customers (added 2026-10-10, Chris approved)
 
 - Customers choose **English or Español** on the quote, agreement, signing, payment and portal pages. The choice is
