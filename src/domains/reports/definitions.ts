@@ -25,6 +25,11 @@ function define(d: Omit<MetricDefinition, "drillHref"> & { drill: string | ((p: 
 }
 
 export const METRICS = {
+  "telecom.reportedSpend": define({ key:"telecom.reportedSpend", label:"Provider-reported telecom spend", dateBasis:"Exact GMT provider billing period", calculation:"Exact total or non-overlapping complete daily totals; not invoice paid", kind:"ACTUAL", sources:["TelecomUsageSnapshot (provider reported, not invoice reconciled)"], drill:"/desk/settings/telecom" }),
+  "telecom.estimatedSpend": define({ key:"telecom.estimatedSpend", label:"Estimated telecom resource costs", dateBasis:"Dates of resource activity", calculation:"Known signed resource estimates, excluding unknown fees/taxes", kind:"ESTIMATE", sources:["CommunicationCostFact", "TelecomRateVersion"], drill:"/desk/reports" }),
+  "telecom.reconciledSpend": define({ key:"telecom.reconciledSpend", label:"Verified provider statement", dateBasis:"Provider statement GMT billing period", calculation:"Private verified statement total; not a payment or posted Expense", kind:"ACTUAL", sources:["TelecomStatement"], drill:"/desk/settings/telecom" }),
+  "telecom.budgetRemaining": define({ key:"telecom.budgetRemaining", label:"Budget warning preview remaining", dateBasis:"Complete fresh provider GMT period", calculation:"Suggested threshold minus provider-reported spend; no alerts enabled", kind:"ESTIMATE", sources:["BusinessSettings communicationsPolicy", "TelecomUsageSnapshot"], drill:"/desk/settings/telecom" }),
+  "telecom.usageSyncAge": define({ key:"telecom.usageSyncAge", label:"Provider usage sync age", dateBasis:"Time since successful sync", calculation:"Now minus last successful usage sync; unknown if never run", kind:"ACTUAL", sources:["TelecomSyncCursor"], drill:"/desk/settings/telecom" }),
   "reports.estimatedEarnings": define({
     key: "reports.estimatedEarnings",
     label: "Estimated earnings (all billing agreements)",

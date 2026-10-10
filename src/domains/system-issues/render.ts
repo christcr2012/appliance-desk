@@ -91,6 +91,27 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       summary = "Messages have unknown delivery status.";
       detail = `Count ${input.count}; oldest ${date(input.oldestSince)}. Check delivery records before resending.`;
       break;
+    case "TELECOM_SYNC_STALE":
+      id(input.scope); date(input.lastSuccessAt);
+      if (input.lastFailureAt) date(input.lastFailureAt);
+      fingerprint = "telecom-sync:" + input.scope; severity = "HIGH";
+      summary = "Telecom provider usage data needs attention.";
+      detail = `Last successful sync ${date(input.lastSuccessAt)}. Check private telecom setup and resync; prior evidence is retained.`;
+      break;
+    case "TELECOM_STATEMENT_DIFFERENCE":
+      id(input.scope);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(input.period)) throw new Error("Invalid provider period");
+      fingerprint = "telecom-statement:" + input.scope + ":" + input.period; severity = "HIGH";
+      summary = "Telecom statement differs from reported charges.";
+      detail = `Provider GMT period ${input.period}; review verified statement and account usage separately in private Reports.`;
+      break;
+    case "TELECOM_CONTACTS_UNRESOLVED":
+      if (![input.threadCount,input.unlinkedMissedCalls].every(n=>Number.isSafeInteger(n) && n>=0 && n<=1000000) ||
+          input.threadCount+input.unlinkedMissedCalls===0) throw new Error("Invalid contact count");
+      fingerprint = "telecom-unresolved"; severity = "HIGH";
+      summary = "Customer communications need follow-up.";
+      detail = `Unresolved threads ${input.threadCount}; missed calls without threads ${input.unlinkedMissedCalls}. Review the private inbox.`;
+      break;
     case "CONFIGURATION_MISSING": {
       id(input.ruleKey);
       const rule = AUTOMATION_RULES.find((item) => item.ruleKey === input.ruleKey);

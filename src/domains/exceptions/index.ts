@@ -1016,7 +1016,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     status: { in: ["OPEN" as const, "ACKNOWLEDGED" as const] } };
   const systemIssueRows = canViewFinance ? await prisma.systemIssue.findMany({
     where: systemIssueWhere, orderBy: [{ lastSeenAt: "desc" }, { id: "desc" }],
-    take: EXCEPTION_CATEGORY_CAP, select: { summary: true, lastSeenAt: true },
+    take: EXCEPTION_CATEGORY_CAP, select: { summary: true, lastSeenAt: true, kind: true },
   }) : [];
   const systemIssueTotal = canViewFinance
     ? await prisma.systemIssue.count({ where: systemIssueWhere }) : 0;
@@ -1024,7 +1024,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...systemIssueRows.map((issue) => ({
       category: "SYSTEM_ISSUE" as const, severity: "high" as const,
       title: issue.summary, detail: "System health needs review.",
-      href: "/desk/automations#system-issues", since: issue.lastSeenAt,
+      href: issue.kind === "TELECOM_CONTACTS_UNRESOLVED" ? "/desk/communications" : issue.kind.startsWith("TELECOM_") ? "/desk/settings/telecom" : "/desk/automations#system-issues", since: issue.lastSeenAt,
     })),
     ...items.filter((item) => item.category !== "SALES_TAX"),
     ...cappedSalesTaxItems,

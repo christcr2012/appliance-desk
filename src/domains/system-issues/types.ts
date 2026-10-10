@@ -8,5 +8,8 @@ export type SystemIssueInput =
   | { kind: "SOURCE_PAGE_CHANGED"; watchId: string; officialUrl: string; contentHash: string }
   | { kind: "TAX_RATE_GUARDRAIL"; jurisdictionId: string; jurisdictionCode: string; asOf: Date; observationId: string }
   | { kind: "MESSAGE_DELIVERY_UNKNOWN"; count: number; oldestSince: Date }
+  | { kind: "TELECOM_SYNC_STALE"; scope: string; lastSuccessAt: Date; lastFailureAt?: Date }
+  | { kind: "TELECOM_STATEMENT_DIFFERENCE"; scope: string; period: string }
+  | { kind: "TELECOM_CONTACTS_UNRESOLVED"; threadCount: number; unlinkedMissedCalls: number }
   | { kind: "CONFIGURATION_MISSING"; ruleKey: string; missingVariableNames: string[] };
 export type SystemIssueResolution = "SOURCE_SUCCEEDED" | "NO_STUCK_ITEMS" | "OWNER_REVIEWED";
