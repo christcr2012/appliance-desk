@@ -2,20 +2,22 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { summarizeAuditAction, type TimelineEntry } from "./timeline";
+import { getLinkedCommunicationRows } from "@/domains/messaging/context-timeline";
 
-export type TimelineFilter = "all" | "notes" | "activity";
-type Cursor = { createdAt: string; id: string; kind: "note" | "activity" };
+export type TimelineFilter = "all" | "notes" | "activity" | "communications";
+export type Cursor = { createdAt: string; id: string; kind: "note" | "activity" | "message" | "call" };
 export type LinkedTimelineEntry = TimelineEntry & { href: string | null };
 const PAGE_SIZE = 25;
+const SOURCE_RANK = {note:0, activity:1, message:2, call:3} as const;
 export function timelineFilter(value?: string): TimelineFilter {
-  return value === "notes" || value === "activity" ? value : "all";
+  return value === "notes" || value === "activity" || value === "communications" ? value : "all";
 }
 export function readTimelineCursor(raw?: string): Cursor | null {
   if (!raw || raw.length > 512) return null;
   try {
     const c = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
     if (
-      (c.kind !== "note" && c.kind !== "activity") ||
+      (!["note", "activity", "message", "call"].includes(c.kind)) ||
       typeof c.id !== "string" ||
       !/^[a-zA-Z0-9_-]{1,128}$/.test(c.id) ||
       typeof c.createdAt !== "string" ||
@@ -43,7 +45,7 @@ export function timelineCursorWhere(
   const equalTime =
     kind === cursor.kind
       ? { createdAt, id: { lt: cursor.id } }
-      : kind === "activity"
+      : SOURCE_RANK[kind] > SOURCE_RANK[cursor.kind]
         ? { createdAt }
         : null;
   return {
@@ -53,14 +55,14 @@ export function timelineCursorWhere(
 export function mergeTimelinePage(
   notes: LinkedTimelineEntry[],
   activity: LinkedTimelineEntry[],
+  messages: LinkedTimelineEntry[] = [],
+  calls: LinkedTimelineEntry[] = [],
 ) {
-  const merged = [...notes, ...activity].sort(
+  const merged = [...notes, ...activity, ...messages, ...calls].sort(
     (a, b) =>
       b.createdAt.getTime() - a.createdAt.getTime() ||
       (a.kind !== b.kind
-        ? a.kind === "note"
-          ? -1
-          : 1
+        ? SOURCE_RANK[a.kind] - SOURCE_RANK[b.kind]
         : a.id === b.id
           ? 0
           : a.id > b.id
@@ -75,7 +77,7 @@ export function mergeTimelinePage(
           JSON.stringify({
             createdAt: last.createdAt.toISOString(),
             kind: last.kind,
-            id: last.id.slice(last.kind === "note" ? 5 : 6),
+            id: last.id.slice(last.kind === "note" ? 5 : last.kind === "activity" ? 6 : last.kind === "message" ? 8 : 5),
           }),
         ).toString("base64url")
       : null;
@@ -98,7 +100,7 @@ export async function getCustomerTimelinePage(
   await requireRole("OWNER", "ADMIN");
   const cursor = readTimelineCursor(rawCursor);
   const notesPromise =
-    filter === "activity"
+    filter === "activity" || filter === "communications"
       ? Promise.resolve([])
       : prisma.customerNote.findMany({
           where: { AND: [{ customerId }, timelineCursorWhere("note", cursor)] },
@@ -112,7 +114,7 @@ export async function getCustomerTimelinePage(
           take: PAGE_SIZE + 1,
         });
   const activityPromise = (async () => {
-    if (filter === "notes") return [];
+    if (filter === "notes" || filter === "communications") return [];
     const [agreements, jobs, requests] = await Promise.all([
       prisma.rentalAgreement.findMany({
         where: { customerId },
@@ -150,7 +152,8 @@ export async function getCustomerTimelinePage(
       take: PAGE_SIZE + 1,
     });
   })();
-  const [notes, activity] = await Promise.all([notesPromise, activityPromise]);
+  const commPromise = filter === "notes" || filter === "activity" ? Promise.resolve({messages:[],calls:[]}) : getLinkedCommunicationRows("Customer", customerId, cursor);
+  const [notes, activity, comm] = await Promise.all([notesPromise, activityPromise, commPromise]);
   return mergeTimelinePage(
     notes.map((n) => ({
       id: `note-${n.id}`,
@@ -170,5 +173,7 @@ export async function getCustomerTimelinePage(
       createdAt: a.createdAt,
       href: entityHref(a.entityType, a.entityId),
     })),
+    comm.messages,
+    comm.calls,
   );
 }

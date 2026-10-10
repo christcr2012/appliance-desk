@@ -19,7 +19,7 @@ import { prisma } from "@/lib/prisma";
 
 export type TimelineEntry = {
   id: string;
-  kind: "note" | "activity";
+  kind: "note" | "activity" | "message" | "call";
   summary: string;
   detail: string | null;
   authorName: string | null;

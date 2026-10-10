@@ -9,7 +9,8 @@
       "appliance-acquisition-tax.spec.ts",
       "owner-portal-workspaces.spec.ts",
       "telecom-settings.spec.ts",
-      "telecom-reports.spec.ts"
+      "telecom-reports.spec.ts",
+      "communication-timeline.spec.ts"
     ],
     "browser-b": [
       "revenue-records.spec.ts",

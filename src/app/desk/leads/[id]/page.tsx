@@ -9,13 +9,14 @@ import {
 } from "@/lib/business-date";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getLeadById, getLeadNotes } from "@/domains/leads";
+import { getLeadById } from "@/domains/leads";
 import { getTasksForLead } from "@/domains/tasks";
 import { LeadActionsPanel } from "./lead-actions-panel";
 import { AddLeadNoteForm } from "./add-lead-note-form";
 import { LinkedTasksPanel } from "@/components/linked-tasks-panel";
 import { getMessageHistory } from "@/domains/messaging/history";
 import { MessageHistoryPanel } from "@/components/desk/message-history-panel";
+import { LeadCommunicationTimeline } from "./communication-timeline";
 
 export const metadata = { title: "Lead" };
 
@@ -28,26 +29,18 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function timeAgo(date: Date): string {
-  const days = Math.floor(
-    (Date.now() - date.getTime()) / (24 * 60 * 60 * 1000),
-  );
-  if (days <= 0) return "today";
-  if (days === 1) return "1 day ago";
-  if (days < 30) return `${days} days ago`;
-  return date.toLocaleDateString("en-US");
-}
 
 export default async function LeadDetailPage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ commsCursor?: string }>;
 }) {
   await requireRole("OWNER", "ADMIN");
   const { id } = await params;
-  const [lead, notes, tasks, estimates, messages] = await Promise.all([
+  const query = await searchParams;
+  const [lead, tasks, estimates, messages] = await Promise.all([
     getLeadById(id),
-    getLeadNotes(id),
     getTasksForLead(id),
     getLeadEstimates(id),
     getMessageHistory("Lead", id),
@@ -232,28 +225,8 @@ export default async function LeadDetailPage({
           with this lead even after it&apos;s converted or lost.
         </p>
         <AddLeadNoteForm leadId={lead.id} />
+        <LeadCommunicationTimeline leadId={id} cursorToken={query.commsCursor} />
 
-        {notes.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">Nothing logged yet.</p>
-        ) : (
-          <ul className="mt-4 space-y-3 border-t border-line pt-4">
-            {notes.map((note) => (
-              <li key={note.id} className="text-sm">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-ink-soft">{note.body}</p>
-                  <span className="shrink-0 text-xs text-ink-faint">
-                    {timeAgo(note.createdAt)}
-                  </span>
-                </div>
-                {note.author && (
-                  <p className="text-xs text-ink-faint">
-                    — {note.author.name ?? note.author.email}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </div>
   );

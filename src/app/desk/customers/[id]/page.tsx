@@ -256,21 +256,21 @@ export default async function CustomerDetailPage({
     const data = await getCustomerTimelinePage(id, filter, query.cursor);
     content = (
       <SectionCard
-        title="Notes and activity"
+        title="Notes, activity and communications"
         description="Internal notes remain visible only to owners and administrators."
       >
         <AddNoteForm customerId={id} />
         <div className="mt-4">
           <FilterBar
             label="Activity type"
-            items={["all", "notes", "activity"].map((f) => ({
+            items={["all", "notes", "activity", "communications"].map((f) => ({
               href: `${href("activity")}&filter=${f}`,
               label:
                 f === "all"
                   ? "All history"
                   : f === "notes"
                     ? "Notes"
-                    : "Activity",
+                    : f === "communications" ? "Texts and calls" : "Activity",
               active: filter === f,
             }))}
           />

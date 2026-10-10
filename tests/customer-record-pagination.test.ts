@@ -7,6 +7,8 @@ const db = vi.hoisted(() => ({
   maintenanceRequest: { count: vi.fn(), findMany: vi.fn() },
   staffTask: { findMany: vi.fn() },
   customerNote: { findMany: vi.fn() },
+  communicationMessage: { findMany: vi.fn() },
+  callSession: { findMany: vi.fn() },
   auditLog: { findMany: vi.fn() },
 }));
 const guard = vi.hoisted(() => vi.fn());
@@ -30,6 +32,8 @@ import {
 beforeEach(() => {
   vi.clearAllMocks();
   guard.mockResolvedValue({ user: { role: "OWNER" } });
+  db.communicationMessage.findMany.mockResolvedValue([]);
+  db.callSession.findMany.mockResolvedValue([]);
 });
 describe("customer record reads", () => {
   it("clamps pages and keeps the same customer scope and stable row order", async () => {
@@ -202,4 +206,14 @@ it("next visit excludes expired appointments and uses a stable future order", as
     where: { customerId: "c1", status: { in: ["SCHEDULED", "IN_PROGRESS"] }, scheduledAt: { gte: now } },
     orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
   }));
+});
+
+it("keeps audit-only activity separate from the new communications filter", async () => {
+  db.rentalAgreement.findMany.mockResolvedValue([]);
+  db.job.findMany.mockResolvedValue([]);
+  db.maintenanceRequest.findMany.mockResolvedValue([]);
+  db.auditLog.findMany.mockResolvedValue([]);
+  await getCustomerTimelinePage("customer-test", "activity");
+  expect(db.communicationMessage.findMany).not.toHaveBeenCalled();
+  expect(db.callSession.findMany).not.toHaveBeenCalled();
 });
