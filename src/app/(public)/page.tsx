@@ -30,9 +30,7 @@ export default async function HomePage({
     a: content[`faq.${i + 1}.a`] ?? "",
   })).filter((item) => item.q && item.a);
   const serviceArea = parseServiceArea(settings);
-  const previewLiveHome =
-    process.env.VERCEL_ENV !== "production" && params.home === "live";
-  const showPrelaunchHome = launch.prelaunchMode && !previewLiveHome;
+  const showPrelaunchHome = launch.prelaunchMode;
 
   if (showPrelaunchHome) {
     return (

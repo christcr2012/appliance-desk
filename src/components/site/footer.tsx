@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Container } from "./container";
-import { NAV_LINKS } from "./nav-links";
+import { publicNavLinks } from "./nav-links";
 import { BusinessHours } from "./business-hours";
 import { socialLinkList } from "@/domains/settings/profile-extras";
 
@@ -15,6 +15,7 @@ export function Footer({
   socialLinks,
   privacyApproved = false,
   termsApproved = false,
+  prelaunch = false,
 }: {
   businessName: string;
   phone: string;
@@ -25,6 +26,7 @@ export function Footer({
   socialLinks?: unknown;
   privacyApproved?: boolean;
   termsApproved?: boolean;
+  prelaunch?: boolean;
 }) {
   const social = socialLinkList(socialLinks);
   const year = new Date().getFullYear();
@@ -59,7 +61,7 @@ export function Footer({
             Explore
           </h2>
           <ul className="mt-4 space-y-2">
-            {NAV_LINKS.map((link) => (
+            {publicNavLinks(prelaunch).map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
