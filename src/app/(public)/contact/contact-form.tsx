@@ -20,7 +20,6 @@ import { submitLead } from "./actions";
 type ApplianceTypeOption = {
   id: string;
   name: string;
-  monthlyPriceCents: number;
 };
 
 const TERM_OPTIONS = [

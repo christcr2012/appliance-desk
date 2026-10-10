@@ -6,3 +6,7 @@ export const NAV_LINKS = [
   { href: "/service-area", label: "Service Area" },
   { href: "/contact", label: "Get a Quote" },
 ] as const;
+
+export function publicNavLinks(prelaunch: boolean) {
+  return NAV_LINKS.filter((link) => !prelaunch || link.href !== "/pricing");
+}

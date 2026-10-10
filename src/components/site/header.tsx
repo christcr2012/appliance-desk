@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Container } from "./container";
-import { NAV_LINKS } from "./nav-links";
+import { publicNavLinks } from "./nav-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button, ButtonLink } from "@/components/ui";
 
@@ -149,7 +149,7 @@ export function Header({
 
         {/* Desktop nav */}
         <nav aria-label="Primary" className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.filter((l) => l.href !== "/contact").map((link) => (
+          {publicNavLinks(prelaunch).filter((l) => l.href !== "/contact").map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -224,7 +224,7 @@ export function Header({
           className="max-h-[70dvh] overflow-y-auto overscroll-contain border-t border-line bg-surface md:hidden"
         >
           <Container className="flex flex-col gap-1 py-4">
-            {NAV_LINKS.filter((l) => l.href !== "/contact").map((link) => (
+            {publicNavLinks(prelaunch).filter((l) => l.href !== "/contact").map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

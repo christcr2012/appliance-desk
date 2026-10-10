@@ -57,7 +57,7 @@ export default async function PublicLayout({
     },
     areaServed: serviceArea.cities,
     url: baseUrl,
-    priceRange: "$$",
+    ...(!launch.prelaunchMode ? { priceRange: "$$" } : {}),
   };
 
   return (
@@ -84,6 +84,7 @@ export default async function PublicLayout({
         {children}
       </main>
       <Footer
+        prelaunch={launch.prelaunchMode}
         businessName={settings.publicBusinessName}
         phone={settings.publicPhone}
         email={settings.publicEmail}

@@ -48,10 +48,10 @@ export default async function ContactPage({
           <ContactForm
             applianceTypes={catalog
               .filter((item) => item.kind === "type")
-              .map((t) => ({ id: t.id, name: t.name, monthlyPriceCents: t.monthlyPriceCents }))}
+              .map((t) => ({ id: t.id, name: t.name }))}
             packages={catalog
               .filter((item) => item.kind === "package")
-              .map((p) => ({ id: p.id, name: p.name, monthlyPriceCents: p.monthlyPriceCents, contents: p.contents ?? "" }))}
+              .map((p) => ({ id: p.id, name: p.name, contents: p.contents ?? "" }))}
           />
         </div>
       </Container>

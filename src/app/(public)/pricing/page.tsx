@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/site/container";
@@ -10,6 +12,9 @@ import { getContentForRequest } from "@/domains/site-content/request";
 import { catalogAlt } from "@/domains/site-content/fields";
 
 export async function generateMetadata(): Promise<Metadata> {
+  if ((await getLaunchSettings()).prelaunchMode) {
+    return { title: "Launch updates", robots: { index: false, follow: false } };
+  }
   const content = await getPublishedContent();
   return { title: content["seo.pricing.title"], description: content["seo.pricing.description"] };
 }
@@ -19,6 +24,7 @@ export default async function PricingPage({
 }: {
   searchParams: Promise<{ revision?: string | string[] }>;
 }) {
+  if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
   const [settings, applianceTypes, content] = await Promise.all([
     getBusinessSettings(),
     getPublishedCatalog(),

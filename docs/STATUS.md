@@ -9,6 +9,9 @@ The changed privacy disclosure has a new version and retains the owner's existin
 review/approval workflow. No approval is recorded automatically.
 This independent marketing request does not reorder the COM/W engineering queue.
 
+## Public pricing visibility (owner-requested, 2026-10-09)
+MKT-2 hides pricing navigation, rates routes, sitemap entries and structured price range while prelaunch mode is enabled. Internal pricing remains intact. Deployment verification is the next operational step after exact-head green CI and merge. The pinned engineering queue is unchanged.
+
 ## Next
 
 ### Current queue (read this first)
