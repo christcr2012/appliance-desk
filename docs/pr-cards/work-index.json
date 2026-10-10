@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "b2a06c2",
-  "updated": "2026-10-09",
+  "updated": "2026-10-10",
   "process": "Just-in-time cards from approved contracts; each card includes drift verification and a successor handoff.",
   "cards": [
     {
@@ -3312,11 +3312,55 @@
       "plannedCard": "docs/pr-cards/W-18.md"
     },
     {
+      "id": "W-22",
+      "title": "Charges at signing: setup fee per delivery address, bulk self-install per set, large-order down payment",
+      "batch": "W",
+      "dependencies": [
+        "W-18"
+      ],
+      "status": "APPROVED",
+      "migration": "signing_charges",
+      "budget": 500,
+      "units": [
+        "W-22"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/settings/index.ts",
+        "src/domains/billing/categories.ts"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-22.md"
+    },
+    {
+      "id": "W-23",
+      "title": "Location contacts: unit label, tenant/on-site contacts and client permission per address",
+      "batch": "W",
+      "dependencies": [
+        "W-22"
+      ],
+      "status": "APPROVED",
+      "migration": "location_contacts",
+      "budget": 500,
+      "units": [
+        "W-23"
+      ],
+      "evidence": [
+        "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "src/domains/customers/workspace.ts",
+        "prisma/schema.prisma"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/W-23.md"
+    },
+    {
       "id": "W-14",
       "title": "Purchases: one receipt, many appliances with model and serial, tax split by price",
       "batch": "W",
       "dependencies": [
-        "W-18"
+        "W-23"
       ],
       "status": "APPROVED",
       "migration": "purchase_records",

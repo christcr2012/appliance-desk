@@ -572,3 +572,10 @@ No voice ingress, callback, purchase or call activation.
 ## 2026-10-09 — MKT-1 owner side request
 
 Public marketing layout gains optional production Metricool visit analytics and an image CSP permission on public-layout documents to support client transitions. Privacy disclosure version changes; existing owner approval must be renewed. No private route, lead submission or downstream rental contract changes. See `docs/pr-cards/MKT-1.md`.
+
+## 2026-10-10 — W-22 and W-23 added after W-18 (Chris)
+
+Order becomes W-1 → W-18 → **W-22 → W-23** → W-14 → … Charges at signing (setup fee per delivery address, bulk self-install per
+set, large-order down payment) and location contacts (tenants per address with client permission) are new Amendment B
+sections 6.2–6.3. Later cards inherit them: W-20 (portal) shows the down payment applied to the first bill; V shows the all-in
+price; the proposed BP property authorization builds on W-23's location contacts.
