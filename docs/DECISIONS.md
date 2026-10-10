@@ -892,3 +892,15 @@ Chris: customers pay the setup fee when they agree to the terms and set the deli
 This keeps the existing "billing starts at delivery" rule and adds the customer's preferred delivery date and window to the
 signing step (owner-limited dates; Chris confirms). Late-delivery credits count from the confirmed date, never the requested
 one. Added to W-22 (Amendment B 6.2 section 0); signing in the desk without a date keeps today's "Schedule delivery" To do.
+
+## 2026-10-10 — Order flow cards W-24…W-26 added (Chris approved)
+
+Code check (2026-10-10): quotes go by email only and need an email; approving a quote does not finish the order (convert +
+a signing link the app only displays); accounts wait for a "set your password" email; quotes cannot be declined; no delivery
+choices or morning/afternoon windows; no phone payments; no phone signing. Chris approved: **W-24** one link finishes a standard
+order (his delivery choices → questions → agreements from the quote → sign → pay → password → portal), decline, Copy link,
+missed-appointment trip fee (starting $0); **W-25** phone orders that finish by an emailed link, with an "agreed by phone"
+backup kept off until attorney and Stripe checks; **W-26** Spanish for customers with reviewed translations (signed English
+controls unless the attorney says otherwise); a Spanish public website in V via the content registry and `hreflang`, not
+browser auto-translate. Self-scheduling is deliberately not built (later, if the business scales). Order: W-18 → W-22 → W-23 →
+W-24 → W-25 → W-26 → W-14.

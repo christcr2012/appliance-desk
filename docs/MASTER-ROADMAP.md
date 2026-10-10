@@ -11,7 +11,7 @@ fixes (#367). Everything below reflects `main` after those merges.
 - **Done today:** W-0C (#359); COM-L3 (#352), COM-L4A (#353), COM-L4B (#354), COM-L5A (#358), COM-L5B (#361), COM-L6A
   (#363); W-16A (#360), W-16B (#362), W-21A (#365), W-21B (#366); test isolation + CI image mirror (#367).
 - **In flight:** COM-L7 (Sol). COM-L6B merged (#364).
-- **Next, in this order:** COM-L7 → COM-L8 … COM-L15 → W-1 → W-18 → W-22 → W-23 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
+- **Next, in this order:** COM-L7 → COM-L8 … COM-L15 → W-1 → W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
   W-8 → W-9 → W-10 → W-19 → W-17 → W-20 → V → F-part-2 (W-11/W-12/W-13 when their outside gates clear). The authority is
   `designs/BATCH-W-AMENDMENT-B.md` section 8; W-16A/B and W-21 are done and must not be redone.
 
@@ -91,7 +91,10 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | W-18 | Plain-language kit: dollars-only money display/input, ⓘ explanations from one glossary, CI check (Amendment B) | JIT — `W-18.md` | W-1, IN-69 |
 | W-22 | Charges at signing: $45 administrative setup fee per delivery location, large-order down payment (IN-73/74, added 2026-10-10) | JIT — `W-22.md` | W-18 |
 | W-23 | Location contacts: unit label, tenant/on-site contacts and client permission per address (added 2026-10-10) | JIT — `W-23.md` | W-22 |
-| W-14 | Purchases: one receipt, many appliances each with model + serial, tax split by price | JIT — `W-14.md` | W-23 |
+| W-24 | One link does the whole order: Chris's delivery choices, accept → sign → pay → password → portal; decline; trip fee (added 2026-10-10) | JIT — `W-24.md` | W-23 |
+| W-25 | Phone orders: send-to-finish by email; agreed-by-phone backup off until attorney and Stripe checks (added 2026-10-10) | JIT — `W-25.md` | W-24 |
+| W-26 | Spanish for customers: quote, agreement, signing, payment, portal, messages (added 2026-10-10) | JIT — `W-26.md` | W-25 |
+| W-14 | Purchases: one receipt, many appliances each with model + serial, tax split by price | JIT — `W-14.md` | W-26 |
 | W-15 | Tax proof per appliance + audit pack; parts purchases join the records | JIT — `W-15.md` | W-2 |
 | W-16A | **MERGED (#360)** Rental packages (sets): schema, settings with shown saving, old set type → package, website + quote form + leads | `W-16A.md` | — (moved ahead by Chris 2026-10-09; runs beside Sol's chain) |
 | W-16B | **MERGED (#362)** Set lines on agreements (one machine per part) and quotes; split old one-record sets (To do + guided screen) | `W-16B.md` | W-16A |

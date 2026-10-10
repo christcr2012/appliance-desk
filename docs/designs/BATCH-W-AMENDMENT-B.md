@@ -299,6 +299,9 @@ the place to plug it in.
 | **W-20** | Portal follows the flows (D-WB6): next-step messages, status timelines, next bill, "Pay now" on overdue invoices via the existing hosted payment page, packages shown as sets | money/screens | none |
 | **W-22** | Charges at signing (section 6.2): one administrative setup fee per delivery location ($45), large-order down payment; all in the all-in price | money | 1 |
 | **W-23** | Location contacts (section 6.3): unit label and tenant/on-site contacts per address, what the client allows us to contact them about, shown on that location's visits | privacy/screens | 1 |
+| **W-24** | One link does the whole order (section 6.4): owner-offered delivery choices, delivery questions, accept → agreements created → sign → pay → password → portal; decline; copy link; missed-appointment trip fee | money/sales | 1 |
+| **W-25** | Phone orders (section 6.5): Chris enters everything, the link goes out by email (text when live); backup "agreed by phone" with card typed into Stripe's hosted page, off until lawyer and Stripe checks | money/legal | 1 |
+| **W-26** | Spanish for customers (section 6.6): quote, agreement, signing, payment pages, portal and messages in Spanish with reviewed translations | screens/legal | 1 |
 | **W-21** | Machines leaving early (D-WB8): single-price repricing with partial-period credit, "taken for repair — no replacement yet" visit result, out-of-service periods and credits on any line, portal/bill wording, To do to return or replace | money | 1 |
 
 ### 6.1 W-0C — failed automatic charges must reach To do (confirmed 2026-10-09; runs next, before COM-L2)
@@ -339,17 +342,9 @@ agree to the terms and choose a delivery date** (the signing step). **The first 
 rule: recurring billing starts when the delivery visit is completed). Large orders are the one exception: their down payment
 (section B) is also collected at signing and then covers that first bill.
 
-- **Choosing the delivery date at signing.** The signing page asks for a **preferred delivery date and a morning or afternoon
-  window**. Only dates the owner allows can be picked: starting values are no Sundays or business closed days, at least **2
-  business days** out and at most **30 days** out, all owner settings. The choice creates the delivery visit as **"Requested"** and a To do
-  item "Confirm <name>'s delivery for <date>". Chris confirms it or proposes another date, and the customer is told (by the existing
-  messages once live messaging is on; until then Chris calls). This replaces the S6 step "draft delivery visit with no time + To do
-  'Schedule delivery'" for signed agreements that carry a requested date. An agreement signed in the desk without a date keeps the
-  old step.
-- The requested date is not a promise: the confirmation is. The "original delivery date" used for late-delivery credits is the
-  **confirmed** date, never the merely requested one.
-- Tests add: a date outside the allowed window is refused; a requested date creates exactly one Requested visit and one To do item;
-  confirming it sets the original delivery date; moving it records who moved it and why.
+- **Choosing the delivery date** is built in W-24 (section 6.4): the customer picks one of the delivery choices **Chris
+  offers** on the quote or agreement, not any open date (Chris 2026-10-10: no self-scheduling system for now). W-22 builds only the
+  money timing; an agreement without a chosen delivery keeps today's scheduling.
 
 **A. The setup fee (revised 2026-10-10 by Chris; supersedes the admin + consumables split).** One **administrative
 setup fee, $45, charged once per delivery location** on each new order. It is one line, not tied to any parts: it helps cover
@@ -456,6 +451,73 @@ row checks.
 **I. Later.** The proposed BP property authorization and portfolio contract (`BATCH-BP.md`) build on these records instead
 of replacing them.
 
+### 6.4 W-24 — one link does the whole order (added 2026-10-10, Chris approved)
+
+Today: quotes go by email only; approving a quote does not finish the order (Chris converts it and copies a separate signing
+link the app never sends); accounts wait for a "set your password" email; quotes cannot be declined; nothing carries delivery
+choices; there is no morning/afternoon window on visits.
+
+- **Delivery choices chosen by Chris.** On a quote (and an agreement sent on its own) Chris adds 1–4 choices, each a date and
+  a window (**morning** or **afternoon**; window hours are owner settings, starting values 8–12 and 12–5). No open calendar
+  for customers (a self-scheduling system is for later, if the business grows).
+- **Delivery questions** the customer answers (or Chris enters): dryer outlet **3-prong, 4-prong or gas**; stairs or tight
+  spots; washer hookups present; anything the crew should know. They show on the delivery visit so the right new cord and
+  hoses go on the truck.
+- **One sitting for a standard quote:** the customer opens the link → reviews → picks a delivery choice → answers the
+  questions → the app creates the agreement(s) from the quote (one per location, terms and tax checked exactly as "send for
+  signature" does today; refused if tax is undecided) → the customer signs → pays the $45 setup fee (plus the down payment on large
+  orders) and saves a card or bank account for monthly rent in Stripe Checkout → **creates their password on the page** and
+  lands in their account. The email it was sent to is marked verified when the link came by email; otherwise a verification email
+  follows.
+- **Quotes Chris must review first** (owner setting: multi-property quotes and quotes with a changed price, starting value on)
+  stop after "Accept" and come to To do as today; Chris converts, and the customer receives the signing link to finish the same
+  remaining steps.
+- **After payment:** one Requested delivery visit with the chosen date and window + To do "Confirm <name>'s delivery
+  <date> <window>"; Chris confirms (the "original delivery date" for late credits is the confirmed one) or proposes other
+  choices. This implements Amendment B S6 for link orders (W-4 keeps it for the rest).
+- **Decline:** the customer can decline with an optional reason; Chris is told; the quote shows Declined.
+- **Sending:** email (existing send, now carrying the whole flow) and a **Copy link** button so Chris can text it from his
+  own phone until live texting is on; texting from the app joins when COM-N1 adds its templates.
+- **Payment did not go through:** the order waits as "Waiting for payment", a To do item shows the amount with "Send a new link" (S7 for
+  this flow); no delivery is confirmed until paid.
+- **Missed appointment (trip fee, IN-81).** "Nobody was there" or "hookups not ready" on a delivery creates a To do "Reschedule
+  <name>" (with new choices) and offers the **trip fee** (owner setting, starting value **$0 = off**; Chris confirms per visit, with a
+  reason to waive). It is added to the next bill. Free, always: bringing back a repaired machine, swaps, and a visit we
+  moved.
+- Tests: the whole sitting on throwaway Postgres (agreements created once, even when submitted twice); a choice that is no longer offered is refused;
+  undecided tax blocks before signing; review-first quotes stop at Accept; a failed payment; a decline; a password set on the page
+  logs in; the confirmed date drives late credits; trip fee $0 adds nothing and $N adds one line once.
+
+### 6.5 W-25 — phone orders (added 2026-10-10, Chris approved)
+
+- **Chris enters everything** in the desk while on the phone (customer, locations, machines, terms) and records the
+  delivery choice the customer picks **from the choices Chris offers**.
+- **Standard finish (preferred by Chris):** "Send to finish" emails the customer the same one-sitting link (W-24) with their
+  choices filled in. They sign, pay and set their password themselves. Text joins when live texting is on. Their card goes
+  only to Stripe.
+- **Backup only, off until checked (IN-82):** for a customer who cannot use a link, Chris reads the key terms from a script
+  on screen, the customer agrees out loud, and Chris records **"Agreed by phone"** (date, time, who, the terms version read).
+  The card is typed into **Stripe's own hosted payment page** opened from the desk, with the customer's spoken permission to save it for
+  monthly rent recorded; card numbers never touch Appliance Desk. A copy of the agreement is emailed or mailed. The switch stays off
+  until (1) a Colorado attorney confirms phone agreement and saved-card authorization wording, and (2) Stripe allows phone
+  (card-not-present, staff-entered) payments on the account. Both are GO-LIVE-CHECKLIST items.
+- **Customers without email** can finish by text link once texting is live. Until then the backup applies, or they have no
+  portal. A phone-number login is for later.
+- Permissions: OWNER/ADMIN only. Every phone order records who entered it. Tests: send-to-finish reuses W-24 exactly; the backup
+  switch off hides it; "Agreed by phone" needs the script version and time; no card data in any Appliance Desk table or log.
+
+### 6.6 W-26 — Spanish for customers (added 2026-10-10, Chris approved)
+
+- Customers choose **English or Español** on the quote, agreement, signing, payment and portal pages. The choice is
+  remembered on the customer and used for their emails, and for texts once live.
+- **Translations are reviewed, not machine-only:** a draft translation is prepared, then checked by a fluent reviewer Chris picks
+  before it is switched on (IN-83). The agreement is shown in Spanish **with the signed English version controlling** unless the
+  attorney advises otherwise (IN-83).
+- The desk stays in English. Owner-edited wording (templates, website text) gets a Spanish field next to the English one.
+- The public website's Spanish version is built in V (section 9), not here.
+- Tests: every customer page renders in both languages with no missing text (a check fails on any untranslated key); the
+  language choice follows the customer into emails; the signed record stores which language was shown.
+
 ## 7. Tests (each PR)
 
 - Purchase: 4 appliances, 1 receipt with $165.85 tax → each appliance has its own model/serial, tax split by price sums
@@ -479,12 +541,12 @@ of replacing them.
 early-return/repair credits ahead of their place and had them built in a second lane beside COM-L (DECISIONS
 2026-10-09). Their contracts are logged in `CHANGES-SINCE-DESIGN.md`; later cards build on them, never redo them.
 
-**Remaining, in order:** COM-L7 (in flight; COM-L6B merged #364) → COM-L8 … COM-L15 → **W-1 → W-18 → W-22 → W-23 → W-14 → W-2 → W-15 → W-3 → W-4 →
+**Remaining, in order:** COM-L7 (in flight; COM-L6B merged #364) → COM-L8 … COM-L15 → **W-1 → W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 →
 W-5 → W-6 → W-7 → W-8 → W-9 → W-10 → W-19 → W-17 → W-20** → V → F-part-2. W-11/W-12/W-13 run when their outside gates
 clear. (`docs/pr-cards/work-index.json` holds the same chain.) Notes for the remaining cards:
 - **W-18** (dollars-only kit, ⓘ glossary) also converts the screens W-16A/B/W-21 added (sets editor, "Rent as", split
   screen, out-of-service screen); they use field help text and existing dollar inputs until then.
-- **W-22/W-23** (added 2026-10-10, sections 6.2–6.3) come right after W-18 so their screens use the dollars kit and ⓘ.
+- **W-22…W-26** (added 2026-10-10, sections 6.2–6.6) come right after W-18 so their screens use the dollars kit and ⓘ.
 - **W-14** (purchases) must record a washer and a dryer bought together as two rows — a set is a rental package, never an
   appliance type (D-WB3, now in code).
 - **W-19/W-20** read the W-21 facts: open `OutOfServicePeriod` rows, `OUT_OF_SERVICE` and `SET_SINGLE_PRICE` credits and
@@ -499,6 +561,9 @@ V keeps its approved visual direction and adds:
   Audit pack, Rental packages, Related panel and History timeline, portal status timelines and Pay now.
 - **Phone-first acceptance** for intake, visits, pickups and inspections at 360 px; desk and portal navigation use the
   W-8 names.
+- **Spanish website (Chris 2026-10-10):** V's content registry (V-C1…V-C5) stores an English and a Spanish value for every
+  public text; V-2/V-3 add an English/Español switch, Spanish page addresses and the search-engine language tags (`hreflang`) so
+  Spanish searches find the Spanish pages; translations are reviewed like W-26's. A browser's automatic translation is not relied on.
 - **V-3 (desk and portal polish)** grows from "polish only" to "polish plus consistent Related/History/To do
   components"; behavior still comes from W (V does not change routes, permissions, money or statuses).
 
@@ -540,6 +605,8 @@ F-part-2 proves the whole business works as connected flows, through the real sc
 - **IN-74** — answered 2026-10-10, revised the same day: one administrative setup fee, **$45 per delivery location**, not tied
   to parts; new hookup items on every new rental; the owner may change the fee with a reason. Swaps and re-deliveries: not charged.
 - **IN-75, IN-76, IN-78, IN-79** — open with recommended defaults (6.2 A, C, E; 6.3 E–G). IN-77 superseded (customer installation is rare).
+- **IN-80…IN-84** — order flow (sections 6.4–6.6): delivery choices offered by Chris, trip fee (starting $0), phone backup off
+  until checks, Spanish with reviewed translations, phone orders finish by email.
 
 ## 13. Stop-and-ask
 

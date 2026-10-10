@@ -579,3 +579,9 @@ Order becomes W-1 → W-18 → **W-22 → W-23** → W-14 → … Charges at sig
 set, large-order down payment) and location contacts (tenants per address with client permission) are new Amendment B
 sections 6.2–6.3. Later cards inherit them: W-20 (portal) shows the down payment applied to the first bill; V shows the all-in
 price; the proposed BP property authorization builds on W-23's location contacts.
+
+## 2026-10-10 — W-24…W-26 added after W-23 (Chris)
+
+Order: … W-18 → W-22 → W-23 → **W-24 → W-25 → W-26** → W-14 … W-24 implements S6 (signed → Requested delivery + To do) and
+S7 (payment failed → new link) for link orders; W-4/W-5 keep them for desk-signed agreements and invoices. W-20 (portal) shows
+the confirmed delivery choice; V adds the Spanish website from W-26's language model; COM-N1 adds texting of the W-24 link.
