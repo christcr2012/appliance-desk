@@ -73,6 +73,7 @@ model User {
   approvedCommunicationTemplates CommunicationTemplateRevision[] @relation("CommunicationTemplateApprover")
   createdCommunicationTemplates CommunicationTemplateRevision[] @relation("CommunicationTemplateCreator")
   actedCallSessions CallSession[] @relation("CallSessionActor")
+  verifiedTelecomStatements TelecomStatement[] @relation("TelecomStatementVerifier")
 }
 
 model Session {
@@ -3057,6 +3058,11 @@ model TelecomAccount {
   communicationMessages CommunicationMessage[]
   callSessions CallSession[]
   callLegs CallLeg[]
+  syncCursors TelecomSyncCursor[]
+  usageSnapshots TelecomUsageSnapshot[]
+  costFacts CommunicationCostFact[]
+  rateVersions TelecomRateVersion[]
+  statements TelecomStatement[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([provider, environment, externalAccountId])
@@ -3071,6 +3077,7 @@ model BusinessPhoneNumber {
   capabilities Json @default("{}")
   communicationThreads CommunicationThread[]
   callSessions CallSession[]
+  costFacts CommunicationCostFact[] @relation("CommunicationCostBusinessNumber")
   registrationStatus TelecomRegistrationStatus @default(UNKNOWN)
   isPrimary Boolean @default(false)
   verifiedAt DateTime?
@@ -3131,6 +3138,7 @@ model MessageAttempt {
   finishedAt DateTime?
   errorCode String?
   nextAttemptAt DateTime?
+  costFacts CommunicationCostFact[] @relation("CommunicationCostMessageAttempt")
   currentFor MessageDelivery? @relation("CurrentMessageAttempt")
   @@unique([deliveryId,attemptNumber])
   @@unique([accountId,providerResourceId])
@@ -3368,6 +3376,7 @@ model CallLeg {
   answeredByStaffAt DateTime?
   startedAt DateTime @default(now())
   endedAt DateTime?
+  costFacts CommunicationCostFact[] @relation("CommunicationCostCallLeg")
   @@unique([accountId,providerCallId])
   @@index([callSessionId])
 }
@@ -3389,4 +3398,158 @@ model CommunicationMedia {
   createdAt DateTime @default(now())
   @@unique([callSessionId,kind,providerResourceId])
   @@index([state,createdAt])
+}
+
+
+// COM-L10 — durable, account-scoped telecom cost evidence only; no live provider actions.
+enum TelecomSyncResource {
+  MESSAGES
+  CALLS
+  USAGE
+  PRICING
+  READINESS
+}
+
+enum TelecomCostClassification {
+  ESTIMATED
+  PROVIDER_REPORTED
+  INVOICE_RECONCILED
+}
+
+enum TelecomRateSource {
+  PRICING_API
+  OWNER_VERIFIED
+}
+
+enum TelecomStatementState {
+  DRAFT
+  VERIFIED
+  SUPERSEDED
+}
+
+model TelecomSyncCursor {
+  id String @id @default(cuid())
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  resource TelecomSyncResource
+  nextPageToken String?
+  windowStart DateTime
+  windowEnd DateTime
+  completedThrough DateTime?
+  claimToken String?
+  claimUntil DateTime?
+  lastSuccessAt DateTime?
+  lastFailureAt DateTime?
+  lastErrorCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([accountId,resource])
+  @@index([claimUntil])
+}
+
+model TelecomUsageSnapshot {
+  id String @id @default(cuid())
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  category String
+  startDate DateTime @db.Date
+  endDate DateTime @db.Date
+  count Decimal @db.Decimal(24,10)
+  countUnit String
+  usage Decimal @db.Decimal(24,10)
+  usageUnit String
+  price Decimal? @db.Decimal(24,10)
+  currency String
+  providerAsOf DateTime
+  capturedAt DateTime @default(now())
+  isTotal Boolean @default(false)
+  payloadHash String
+  providerSource String
+  @@unique([accountId,category,startDate,endDate,providerAsOf,payloadHash])
+  @@index([accountId,startDate,endDate])
+}
+
+model CommunicationCostFact {
+  id String @id @default(cuid())
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  businessNumberId String?
+  businessNumber BusinessPhoneNumber? @relation("CommunicationCostBusinessNumber",fields:[businessNumberId],references:[id],onDelete:Restrict)
+  messageAttemptId String?
+  messageAttempt MessageAttempt? @relation("CommunicationCostMessageAttempt",fields:[messageAttemptId],references:[id],onDelete:Restrict)
+  callLegId String?
+  callLeg CallLeg? @relation("CommunicationCostCallLeg",fields:[callLegId],references:[id],onDelete:Restrict)
+  sourceKey String
+  component String
+  classification TelecomCostClassification
+  amount Decimal @db.Decimal(24,10)
+  currency String
+  quantity Decimal? @db.Decimal(24,10)
+  unit String?
+  rateVersionId String?
+  rateVersion TelecomRateVersion? @relation(fields:[rateVersionId],references:[id],onDelete:Restrict)
+  occurredAt DateTime
+  providerAsOf DateTime?
+  recordedAt DateTime @default(now())
+  supersedesId String? @unique
+  supersedes CommunicationCostFact? @relation("TelecomCostSupersession",fields:[supersedesId],references:[id],onDelete:Restrict)
+  supersededBy CommunicationCostFact? @relation("TelecomCostSupersession")
+  statementId String?
+  statement TelecomStatement? @relation(fields:[statementId],references:[id],onDelete:Restrict)
+  @@unique([accountId,sourceKey,classification])
+  @@index([accountId,occurredAt,classification])
+  @@index([businessNumberId])
+  @@index([messageAttemptId])
+  @@index([callLegId])
+  @@index([rateVersionId])
+  @@index([statementId])
+}
+
+model TelecomRateVersion {
+  id String @id @default(cuid())
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  service String
+  category String
+  destinationCountry String?
+  destinationPrefix String?
+  destinationKey String
+  senderType String
+  component String
+  rate Decimal @db.Decimal(24,10)
+  currency String
+  unit String
+  source TelecomRateSource
+  effectiveFrom DateTime
+  effectiveUntil DateTime?
+  fetchedAt DateTime
+  completeness Json @default("{}")
+  costFacts CommunicationCostFact[]
+  @@unique([accountId,service,component,destinationKey,effectiveFrom,source])
+  @@index([accountId,service,component,effectiveFrom])
+}
+
+model TelecomStatement {
+  id String @id @default(cuid())
+  accountId String
+  account TelecomAccount @relation(fields:[accountId],references:[id],onDelete:Restrict)
+  externalId String
+  periodStart DateTime @db.Date
+  periodEnd DateTime @db.Date
+  currency String
+  invoiceTotalCents Int
+  issueDate DateTime @db.Date
+  privateEvidenceStorageKey String
+  evidenceHash String
+  state TelecomStatementState @default(DRAFT)
+  revision Int @default(1)
+  verifiedByUserId String?
+  verifiedBy User? @relation("TelecomStatementVerifier",fields:[verifiedByUserId],references:[id],onDelete:Restrict)
+  verifiedAt DateTime?
+  paidOn DateTime? @db.Date
+  vendorTaxCents Int?
+  createdAt DateTime @default(now())
+  costFacts CommunicationCostFact[]
+  @@unique([accountId,externalId,revision])
+  @@index([accountId,periodStart,periodEnd])
 }
