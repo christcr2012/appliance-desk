@@ -211,7 +211,6 @@ describe.skipIf(!local)("COM-L9 voicemail gates/private lifecycle (real PostgreS
   it("keeps failed provider media in review and allows signed replay to import; denies unmatched media", async () => {
     const made = await inbound(request("/api/webhooks/twilio/voice", inboundForm(third)));
     expect(made.status).toBe(200);
-    const stranger = await signedMedia(third, extraRec);
     let attempts = 0;
     const download = async () => {
       attempts += 1;
