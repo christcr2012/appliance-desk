@@ -127,9 +127,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Only public campaign pages allow Metricool's visit image.
+        // Public-layout documents allow the image across client-side navigation.
         // No third-party JavaScript and no tracker permission on private routes.
-        source: "/(pricing|how-it-works|service-area|contact|launch)",
+        source: "/(pricing|how-it-works|service-area|contact|launch|privacy|terms|accessibility)",
+        headers: [{ key: "Content-Security-Policy", value: cspHeader.replace("img-src 'self';", "img-src 'self' https://tracker.metricool.com;") }],
+      },
+      {
+        source: "/rent/:path*",
         headers: [{ key: "Content-Security-Policy", value: cspHeader.replace("img-src 'self';", "img-src 'self' https://tracker.metricool.com;") }],
       },
       {

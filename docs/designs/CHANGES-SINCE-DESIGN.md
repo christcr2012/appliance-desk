@@ -543,4 +543,4 @@ No voice ingress, callback, purchase or call activation.
 
 ## 2026-10-09 — MKT-1 owner side request
 
-Public marketing layout gains optional production Metricool visit analytics and a narrowly scoped image CSP permission. Privacy disclosure version changes; existing owner approval must be renewed. No private route, lead submission or downstream rental contract changes. See `docs/pr-cards/MKT-1.md`.
+Public marketing layout gains optional production Metricool visit analytics and an image CSP permission on public-layout documents to support client transitions. Privacy disclosure version changes; existing owner approval must be renewed. No private route, lead submission or downstream rental contract changes. See `docs/pr-cards/MKT-1.md`.

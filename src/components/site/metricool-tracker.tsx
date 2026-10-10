@@ -14,7 +14,8 @@ export function MetricoolTracker({ hash, siteOrigin }: { hash: string; siteOrigi
       doNotTrack: navigator.doNotTrack,
       globalPrivacyControl: (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl,
     });
-    if (!visit || visit === lastVisit.current) return;
+    if (!visit) { lastVisit.current = null; return; }
+    if (visit === lastVisit.current) return;
     lastVisit.current = visit;
     // Best-effort analytics must never interfere with forms or navigation.
     const pixel = new Image();

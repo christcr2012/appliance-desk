@@ -8,7 +8,7 @@ One risk area: public analytics/data minimization. No schema or business mutatio
 ## Drift and build contract
 Public marketing chrome lives in src/app/(public)/layout.tsx, not the root layout.
 Existing CSP allows only self images. Add the single Metricool image origin only
-on the exact marketing route list. No third-party script permission.
+on public-layout documents so client navigation retains the permission. Tracking itself stays on the exact marketing route list. No third-party script permission.
 Use the image protocol from the owner's supplied Metricool tracker: hash/u/bw/bh/ref.
 Build the request locally to omit private query values, fragments and referrer paths.
 Only production with a valid configured hash and matching HTTPS site origin activates.
@@ -31,3 +31,5 @@ No marketing policy or rental terms are changed by the tracker.
 Local preflight required a selected browser spec before running unit checks.
 Per the owner cost rule, browser/build checks run in required free GitHub CI.
 Direct targeted unit tests plus the full quick gate run before the branch push.
+
+Review fixes: public-layout CSP survives privacy-to-marketing client transitions; returning via an excluded route counts a new visit. Component regression and real browser transition coverage added. Canonical public origin was absent in production (live JSON-LD said localhost); NEXT_PUBLIC_APP_URL is now configured to the business domain.

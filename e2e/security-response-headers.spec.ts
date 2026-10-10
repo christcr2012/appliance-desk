@@ -24,15 +24,34 @@ test("protected redirects and rejected APIs retain HSTS at the response boundary
     .toBe("max-age=31536000; includeSubDomains");
 });
 
-test("Metricool image permission is restricted to public marketing pages", async ({ request }) => {
-  for (const path of ["/", "/launch", "/pricing"]) {
+test("Metricool image permission is restricted to public-layout documents", async ({ request }) => {
+  for (const path of ["/", "/launch", "/pricing", "/privacy", "/terms", "/accessibility", "/rent/greeley"]) {
     const response = await request.get(path);
     const csp = response.headers()["content-security-policy"];
     expect(csp).toContain("img-src 'self' https://tracker.metricool.com;");
     expect(csp.split("script-src")[1].split(";")[0]).not.toContain("metricool");
   }
-  for (const path of ["/privacy", "/login", "/desk", "/api/uploads/photo"]) {
+  for (const path of ["/login", "/desk", "/account", "/sign/private", "/api/uploads/photo"]) {
     const response = await request.get(path, { maxRedirects: 0 });
     expect(response.headers()["content-security-policy"]).not.toContain("tracker.metricool.com");
   }
+});
+
+
+test("a client transition from privacy to pricing retains public tracker image permission", async ({ page }) => {
+  await page.route("https://tracker.metricool.com/c3po.jpg*", route => route.fulfill({
+    status: 200, contentType: "image/gif",
+    body: Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"),
+  }));
+  await page.goto("/privacy");
+  await page.evaluate(() => { document.documentElement.dataset.metricoolTransition = "same-document"; });
+  await page.getByRole("link", { name: "Pricing", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/pricing$/);
+  expect(await page.evaluate(() => document.documentElement.dataset.metricoolTransition)).toBe("same-document");
+  const sent = page.waitForRequest("https://tracker.metricool.com/c3po.jpg?test=public-transition");
+  await page.evaluate(() => {
+    const image = new Image();
+    image.src = "https://tracker.metricool.com/c3po.jpg?test=public-transition";
+  });
+  await sent;
 });
