@@ -73,5 +73,6 @@ export function roundTelecomTotalToCents(value: ExactTelecomDecimal | null): num
   if (cents.abs().greaterThan(Number.MAX_SAFE_INTEGER)) {
     throw new RangeError("Telecom cent result is outside safe integer bounds.");
   }
-  return cents.toNumber();
+  const result = cents.toNumber();
+  return result === 0 ? 0 : result;
 }
