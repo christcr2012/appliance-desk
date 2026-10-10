@@ -1893,7 +1893,7 @@
       "dependencies": [
         "COM-L12"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "com_statement_photo_scope_if_needed",
       "budget": 500,
       "units": [
@@ -1901,17 +1901,19 @@
       ],
       "evidence": [
         "docs/designs/BATCH-COM.md",
-        "src/domains/messaging/deliver.ts",
-        "src/domains/messaging/events.ts",
-        "src/lib/sms.ts"
+        "src/app/desk/settings/telecom/page.tsx",
+        "src/app/desk/settings/telecom-controls.tsx",
+        "src/app/api/desk/telecom/route.ts",
+        "src/domains/messaging/telecom-statements.ts"
       ],
       "tests": [
-        "tests/telecom-policy-integration.test.ts",
         "tests/telecom-statement-integration.test.ts",
+        "tests/telecom-policy.test.ts",
+        "tests/telecom-api-gate.test.ts",
         "e2e/telecom-settings.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L13A.md"
+      "readiness": "DONE",
+      "card": "docs/pr-cards/COM-L13A.md"
     },
     {
       "id": "COM-L13B",

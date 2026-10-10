@@ -7,7 +7,8 @@
       "sales-tax-returns.spec.ts",
       "system-health.spec.ts",
       "appliance-acquisition-tax.spec.ts",
-      "owner-portal-workspaces.spec.ts"
+      "owner-portal-workspaces.spec.ts",
+      "telecom-settings.spec.ts"
     ],
     "browser-b": [
       "revenue-records.spec.ts",
