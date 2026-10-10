@@ -560,3 +560,41 @@ media lifecycle, and deletion under a legal hold. Retention review
 never deletes media without independently approved provider, local
 storage and recovery-copy cleanup. Schema tables are in the backup
 manifest and no public media route exists. See COM-L7 card.
+
+
+### COM-L10 — exact telecom usage, cost and statement evidence (2026-10-09)
+
+Migration `20261013140000_com_telecom_cost_evidence` adds five
+account-scoped tables without modifying any existing business row:
+`TelecomSyncCursor` records the one per-account/resource paging checkpoint,
+window, claim and outcome; `TelecomUsageSnapshot` appends provider GMT
+category/date observations with source timestamp and content hash;
+`CommunicationCostFact` preserves signed per-component amounts, distinct
+ESTIMATED/PROVIDER_REPORTED/INVOICE_RECONCILED bases and optional
+same-account revisions; `TelecomRateVersion` preserves exact observed
+rates and bounded effective interval; and `TelecomStatement` tracks
+private evidence, revision, owner verification and integer-cent statement
+total. Cost amount, rate, usage and count use PostgreSQL DECIMAL(24,10)
+via Prisma Decimal. Missing provider price is NULL, never zero. Only
+the aggregate is rounded once to integer cents for display/reconciliation;
+no floating-point money calculations, provider-side billing or booked
+Expense is performed in this schema slice.
+
+SQL CHECKs enforce valid date ranges, currency format, private statement
+path/hash, verification state and safe cursor claim state. An account-scope
+trigger rejects foreign business numbers, message attempts, call legs,
+rates, statements and supersession across different telecom accounts or
+cost classification/currency/component. Append-only source hashes and
+unique scoped keys retain late provider corrections rather than overwrite
+history; later domain write commands must still enforce immutable snapshots.
+These five models are enumerated in `BACKUP_MODEL_POLICY`. During restore,
+nullable `CommunicationCostFact.supersedesId` is restored in a second pass
+after all cost rows exist (just like the previous
+`MessageDelivery.currentAttemptId` deferred edge). This preserves a
+deterministic, acyclic restore-table order and the DB scope trigger.
+
+COM-L11 will implement read-only provider observations and transactional
+cursor advancement, COM-L12 will reconcile comparable periods, and COM-N/K
+will authorize owner-paid accounting only after independent evidence.
+These tables alone do not enable SMS/calls, recording, invoice imports,
+payments, cloud provider API sync or provider charges.

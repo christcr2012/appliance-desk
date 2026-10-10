@@ -273,6 +273,7 @@ async function restore(file: string, target: string): Promise<void> {
 
     const receiptLinks: Array<{ id: string; receiptPhotoId: string }> = [];
     const currentAttemptLinks: Array<{ id: string; attemptId: string }> = [];
+    const costSupersessionLinks: Array<{ id: string; supersedesId: string }> = [];
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
@@ -292,6 +293,18 @@ async function restore(file: string, target: string): Promise<void> {
           if (typeof row.currentAttemptId === "string") {
             currentAttemptLinks.push({ id: String(row.id), attemptId: row.currentAttemptId });
             row.currentAttemptId = null;
+          }
+        }
+      }
+      if (table === "communicationCostFact") {
+        // Restore self-referencing revisions after both source and correction
+        // rows exist. The DB trigger still verifies account/basis/currency.
+        for (const row of data) {
+          if (typeof row.supersedesId === "string") {
+            costSupersessionLinks.push({
+              id: String(row.id), supersedesId: row.supersedesId,
+            });
+            row.supersedesId = null;
           }
         }
       }
@@ -315,6 +328,15 @@ async function restore(file: string, target: string): Promise<void> {
       await prisma.messageDelivery.update({
         where: { id: link.id },
         data: { currentAttemptId: link.attemptId },
+      });
+    }
+
+    // COM-L10: revisions within CommunicationCostFact can point to rows
+    // later in the same backup. Replay the links after all rows are present.
+    for (const link of costSupersessionLinks) {
+      await prisma.communicationCostFact.update({
+        where: { id: link.id },
+        data: { supersedesId: link.supersedesId },
       });
     }
 
