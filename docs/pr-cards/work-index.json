@@ -1951,7 +1951,7 @@
       "dependencies": [
         "COM-L13B"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -1959,15 +1959,17 @@
       ],
       "evidence": [
         "docs/designs/BATCH-COM.md",
-        "src/domains/messaging/deliver.ts",
-        "src/domains/messaging/events.ts",
-        "src/lib/sms.ts"
+        "src/domains/customers/timeline-page.ts",
+        "src/domains/messaging/context-timeline.ts",
+        "src/app/desk/leads/[id]/communication-timeline.tsx"
       ],
       "tests": [
-        "tests/communication-timeline-integration.test.ts"
+        "tests/communication-timeline.test.ts",
+        "tests/communication-timeline-integration.test.ts",
+        "e2e/communication-timeline.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L14A.md"
+      "readiness": "DONE",
+      "card": "docs/pr-cards/COM-L14A.md"
     },
     {
       "id": "COM-L14B",

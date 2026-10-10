@@ -24,9 +24,9 @@ Docs-only change; the engineering queue is unchanged.
 
 ### Current queue (read this first)
 
-- **Latest in chain:** COM-L13A (#380) merged after all four review fixes and exact-head CI. COM-L13B reports/Today/system-health integration is prepared for exact-head CI and merge; COM-L14A follows only after COM-L13B merges.
+- **Latest in chain:** COM-L13B (#382) merged after full exact-head CI and performance checks. COM-L14A confirmed customer/lead communications timeline is implemented and enters CI/merge gate; COM-L14B starts only after L14A merges.
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
-- **Current queue:** COM-L14A → COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Current queue:** COM-L14B → COM-L15 → W-1 → W-18 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
@@ -40,6 +40,10 @@ Docs-only change; the engineering queue is unchanged.
   confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
 
 ### Recent merges (newest first)
+
+**2026-10-10 — COM-L14A customer/lead communication timelines (as if merged, subject to full CI):** Existing OWNER/ADMIN customer notes/activity timeline now adds confirmed FK-linked SMS and call outcomes with one 25-row stable time/source/id cursor, separate source limits and communications filter. Lead contact history presents internal notes and verified linked communications together with cursor pagination, private inbox drill links, accepted-versus-delivered distinction and no phone-number-only identity linking or decrypted message content. No provider send/activation, schema migration or new billed action. COM-L14B follows.
+
+
 
 **2026-10-10 — COM-L13B evidence-labelled Reports + To do/S (recorded as if merged, subject to CI):** Private Reports shows separate GMT provider total, previous-period observations, resource/attributed vs unallocated costs, verified statement evidence, reconciliation residual, source freshness and inactive budget preview. All five telecom metric definitions have explicit date/source/basis/drill. Existing S sweep produces PII-free typed HIGH issues for stale previously-working provider sync, comparable mismatched verified statements, unresolved inbox threads and missed calls lacking a thread; existing To do surfaces them with private resolving links and clears on documented recovery. No customer message or provider mutation, notification dispatch, paid Expense or budget activation. IN-53 remains pending. Next COM-L14A.
 
