@@ -132,6 +132,7 @@ Design `docs/designs/BATCH-COM.md`; setup `docs/runbooks/COMMUNICATIONS-TWILIO.m
 - [ ] IN-52: voicemail/privacy/retention policy approved if selected; ordinary recordings/transcription independently OFF.
 - [ ] IN-53: budget/destination/feature/alert rules accepted; Today/S and independent alert path proven.
 - [ ] Monthly provider usage vs estimate vs verified invoice distinct; stale/unknown/unallocated costs visible; no K posting until statement/payment verified.
+- [ ] **COM-L10 telemetry boundary:** Raw provider prices, credits and rate/usage observations use account-scoped Decimal(24,10), and cannot be reported as booked costs or paid invoices. Confirm L11 provider sync evidence and L12 statement/usage reconciliation before any owner budget/report activation. L10 migration does not itself fetch any provider data or create an Expense.
 - [ ] Controlled production proof only consenting owner phones after explicit live approval; activate workflows separately; no automatic public number replacement.
 
 ## Post-launch K-CASH activation — not a rental-launch gate
