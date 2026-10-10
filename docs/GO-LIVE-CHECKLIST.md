@@ -52,7 +52,8 @@ Previews and test copies never send email, even with the key and the switch on (
 ## 5. Website and company information
 | [ ] | Real business name, phone, email, address, hours, service area | Desk → Settings (Owner) | Placeholders like "[Phone Number]" until entered | Public site shows real details |
 | [x] | Custom Robinson Appliance Rentals domain bought and pointed at the site | Vercel + domain registrar | Live | Production site opens on the custom domain over HTTPS |
-| [ ] | `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` set to the real domain | Vercel (Production) | Test address | Login and emailed links go to your domain |
+| [x] | `NEXT_PUBLIC_APP_URL` set to the real domain | Vercel (Production) | `https://robinsonappliancerentals.com` | MKT-1: configured 2026-10-09; production READY on live 193b3f7; homepage JSON-LD verified on the actual domain |
+| [ ] | `BETTER_AUTH_URL` set to the real domain; real login and emailed links verified | Vercel (Production) | Unchanged by MKT-1; verification pending | Login and emailed links go to your domain |
 
 ## 6. Accounts, security and platform
 | [ ] | Your owner login created and tested; test/seed accounts removed from production | Agent with your OK (never on the live database without your say) | Pending | Only real people can log in |
@@ -153,7 +154,7 @@ fixture uploads or previews with a production GIS, government filing or
 payment smoke test.
 
 ### Metricool campaign analytics — MKT-1
-- [ ] Production tracking identifier configured; green MKT-1 released.
+- [x] Production tracking identifier configured; green MKT-1 released from live 193b3f7 on 2026-10-09. Homepage and launch page serve the tracker and permit its image; login CSP excludes it.
 - [ ] Verify a real public-site visit in Metricool; never infer receipt from deployment.
 - [ ] Owner reviews the updated privacy-page version through the existing approval control.
 - [ ] Compare visits/clicks with actual interest-list signups; no invented conversions.

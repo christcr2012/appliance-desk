@@ -3,7 +3,7 @@
 Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352–#363 and W-0C #359 by Sol; W-16A #360, W-16B #362, W-21A #365, W-21B #366 and test isolation #367 by Claude). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
 
 ## Metricool marketing integration (owner-requested, 2026-10-09)
-MKT-1 public visit tracking is merged in #371; exact-head CI and performance checks passed. Both automated review findings were fixed and regression-tested. Production release and Metricool receipt verification remain separate open checks.
+MKT-1 public visit tracking is merged in #371; exact-head CI and performance checks passed. Both automated review findings were fixed and regression-tested. Released from live 193b3f7 on 2026-10-09; Vercel production is READY. Actual-domain homepage and launch page serve the configured tracker; login CSP excludes it. Metricool receipt verification remains an open operational check.
 Production METRICOOL_TRACKING_HASH controls activation; private routes and data excluded.
 The changed privacy disclosure has a new version and retains the owner's existing
 review/approval workflow. No approval is recorded automatically.
