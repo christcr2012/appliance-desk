@@ -3512,7 +3512,7 @@
     {
       "id": "MKT-1",
       "card": "docs/pr-cards/MKT-1.md",
-      "status": "IMPLEMENTED_PENDING_CI",
+      "status": "MERGED_ENGINEERING_COMPLETE",
       "scope": "Owner-requested Metricool public website analytics; independent of the pinned roadmap queue"
     }
   ]

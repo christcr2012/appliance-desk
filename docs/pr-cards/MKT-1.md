@@ -1,6 +1,6 @@
 # MKT-1 — Metricool public campaign visit tracking
 
-Status: implemented on ai/codex/metricool-public-tracking; exact-head CI and release required.
+Status: engineering complete, merged #371. CI 38008066162 passed on 585cc8a2f49b4c419250e26667e464a95185ea2b. Production release/receipt remain separate.
 Approved scope: owner request 2026-10-09 to connect robinsonappliancerentals.com to Metricool.
 Baseline inspected: bee0039 (COM-L8 #370).
 One risk area: public analytics/data minimization. No schema or business mutation.
@@ -33,3 +33,5 @@ Per the owner cost rule, browser/build checks run in required free GitHub CI.
 Direct targeted unit tests plus the full quick gate run before the branch push.
 
 Review fixes: public-layout CSP survives privacy-to-marketing client transitions; returning via an excluded route counts a new visit. Component regression and real browser transition coverage added. Canonical public origin was absent in production (live JSON-LD said localhost); NEXT_PUBLIC_APP_URL is now configured to the business domain.
+
+Closeout: 17 targeted tests, full quick gate, required CI and performance checks passed. Both review findings fixed with component/browser regressions. Owner explicitly authorized moving this to live on 2026-10-09. No workflow dispatch tool is exposed; an equivalent non-force fast-forward is authorized only after exact main ci succeeds, with a lease on observed live. Privacy review and actual Metricool receipt remain open.
