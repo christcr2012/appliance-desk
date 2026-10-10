@@ -310,7 +310,11 @@ describe.skipIf(!enabled)("Remediation R1 delivery facts and handoff leases (rea
     expect(handoffMocks.startBilling).toHaveBeenCalledTimes(1);
 
     release();
-    await expect(workerA).resolves.toEqual({ done: 1, failed: 0 });
+    // This is a global sweep. Another test file may have pending handoffs;
+    // its company-wide done count cannot serve as a row-scoped lease assertion.
+    const batch = await workerA;
+    expect(batch.done).toBeGreaterThanOrEqual(1);
+    expect(batch.failed).toBe(0);
     const saved = await prisma.jobBillingHandoff.findUniqueOrThrow({ where: { id: row.id } });
     expect(saved).toMatchObject({ status: "DONE", attempts: 1, claimedAt: null });
   });
