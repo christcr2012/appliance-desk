@@ -14,6 +14,9 @@ vi.mock("@/domains/jobs", () => ({
   getJobsCount: vi.fn(async () => 1),
   getDispatchBoardJobs: mocks.board,
 }));
+vi.mock("@/components/desk/context-communication-panel", () => ({
+  ContextCommunicationPanel: () => null,
+}));
 vi.mock("@/domains/maintenance", () => ({
   getMaintenanceRequestById: mocks.maintenance,
 }));

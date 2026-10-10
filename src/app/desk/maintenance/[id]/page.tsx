@@ -1,3 +1,4 @@
+import { ContextCommunicationPanel } from "@/components/desk/context-communication-panel";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -103,6 +104,7 @@ export default async function MaintenanceDetailPage({
           canScheduleJobs={canScheduleJobs}
         />
       </div>
+      {canScheduleJobs && <ContextCommunicationPanel kind="MaintenanceRequest" id={request.id} />}
     </div>
   );
 }

@@ -10,7 +10,8 @@
       "owner-portal-workspaces.spec.ts",
       "telecom-settings.spec.ts",
       "telecom-reports.spec.ts",
-      "communication-timeline.spec.ts"
+      "communication-timeline.spec.ts",
+      "communication-context.spec.ts"
     ],
     "browser-b": [
       "revenue-records.spec.ts",

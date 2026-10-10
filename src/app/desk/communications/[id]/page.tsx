@@ -2,8 +2,9 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getSmsInboxThread } from "@/domains/messaging/inbox";
+import { getContextLinkChoices } from "@/domains/messaging/context-links";
 import { Button, Card, PageHeader } from "@/components/ui";
-import { markThreadReadAction, changeThreadStatusAction, assignThreadAction } from "./actions";
+import { markThreadReadAction, changeThreadStatusAction, assignThreadAction, linkMessageContextAction } from "./actions";
 
 export const metadata = { title: "SMS conversation" };
 export default async function SmsConversation({
@@ -13,6 +14,8 @@ export default async function SmsConversation({
   const { id } = await params;
   const thread = await getSmsInboxThread(session.user.id,id);
   const isOwnerAdmin = session.user.role === "OWNER" || session.user.role === "ADMIN";
+  const contextChoices = isOwnerAdmin && thread.customerId
+    ? await getContextLinkChoices(thread.customerId) : [];
   const staff = isOwnerAdmin ? await prisma.user.findMany({
     where: { role: { in: ["OWNER","ADMIN","STAFF"] }, archivedAt: null },
     select: { id: true, name: true, email: true },
@@ -53,6 +56,26 @@ export default async function SmsConversation({
           </form>
         )}
       </Card>
+      {isOwnerAdmin && contextChoices.length > 0 && thread.messages.length > 0 && (
+        <Card title="Attach communication to a work record" description="Use only when this message truly concerns the selected job, maintenance request, or invoice.">
+          <form action={linkMessageContextAction} className="flex flex-col gap-3 text-sm">
+            <input type="hidden" name="threadId" value={id} />
+            <label>Which message?
+              <select name="messageId" required defaultValue="" className="mt-1 w-full rounded border border-line bg-surface p-2">
+                <option value="" disabled>Choose a message</option>
+                {thread.messages.map(msg=><option key={msg.id} value={msg.id}>{msg.direction} · {msg.occurredAt.toLocaleString()}</option>)}
+              </select>
+            </label>
+            <label>Which work record?
+              <select name="target" required defaultValue="" className="mt-1 w-full rounded border border-line bg-surface p-2">
+                <option value="" disabled>Choose a job, maintenance request, or invoice</option>
+                {contextChoices.map(target=><option key={target.value} value={target.value}>{target.label}</option>)}
+              </select>
+            </label>
+            <Button type="submit">Link record</Button>
+          </form>
+        </Card>
+      )}
       <Card title="Messages" description="Only authorized staff can view message bodies. Redacted or unavailable content stays hidden.">
         {thread.messages.length === 0 ? <p>No messages recorded.</p> : (
           <ol className="space-y-4">
@@ -61,6 +84,7 @@ export default async function SmsConversation({
                 <p className="text-sm font-semibold">{msg.direction} · {msg.occurredAt.toLocaleString()}</p>
                 <p className="mt-2 whitespace-pre-wrap break-words text-sm">{msg.text}</p>
                 {msg.delivery && <p className="text-xs text-ink-soft">Delivery: {msg.delivery.state}</p>}
+
               </li>
             ))}
           </ol>

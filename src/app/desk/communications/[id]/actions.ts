@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
+import { linkMessageContext } from "@/domains/messaging/context-links";
 import { markSmsInboxRead, updateSmsThreadStatus, assignSmsThread } from "@/domains/messaging/inbox";
 
 function str(form: FormData, name: string): string {
@@ -32,4 +33,19 @@ export async function assignThreadAction(form: FormData) {
     str(form,"assignee") || null);
   revalidatePath("/desk/communications/"+id);
   revalidatePath("/desk/communications");
+}
+export async function linkMessageContextAction(form:FormData){
+ const threadId=str(form,"threadId");
+ const messageId=str(form,"messageId");
+ const target=str(form,"target");
+ const separator=target.indexOf(":");
+ if(separator<1) throw new Error("Choose a linked record.");
+ const kind=target.slice(0,separator);
+ const entityId=target.slice(separator+1);
+ if(!["Job","MaintenanceRequest","Invoice"].includes(kind)) throw new Error("Invalid context.");
+ await linkMessageContext({threadId,messageId,
+  kind:kind as "Job"|"MaintenanceRequest"|"Invoice",entityId});
+ revalidatePath("/desk/communications/"+threadId);
+ const prefix=kind==="Job"?"jobs":kind==="MaintenanceRequest"?"maintenance":null;
+ if(prefix) revalidatePath("/desk/"+prefix+"/"+entityId);
 }
