@@ -1841,7 +1841,7 @@
       "dependencies": [
         "COM-L10"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1849,15 +1849,15 @@
       ],
       "evidence": [
         "docs/designs/BATCH-COM.md",
-        "src/domains/messaging/deliver.ts",
-        "src/domains/messaging/events.ts",
-        "src/lib/sms.ts"
+        "src/lib/communications/providers/twilio-read.ts",
+        "src/domains/messaging/telecom-sync.ts"
       ],
       "tests": [
+        "tests/telecom-read-adapter.test.ts",
         "tests/telecom-sync-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L11.md"
+      "readiness": "DONE",
+      "card": "docs/pr-cards/COM-L11.md"
     },
     {
       "id": "COM-L12",
