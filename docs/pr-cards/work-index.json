@@ -1978,7 +1978,7 @@
       "dependencies": [
         "COM-L14A"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 430,
       "units": [
@@ -1986,16 +1986,19 @@
       ],
       "evidence": [
         "docs/designs/BATCH-COM.md",
-        "src/domains/messaging/deliver.ts",
-        "src/domains/messaging/events.ts",
-        "src/lib/sms.ts"
+        "src/domains/messaging/context-evidence.ts",
+        "src/domains/messaging/context-links.ts",
+        "src/components/desk/context-communication-panel.tsx",
+        "src/app/desk/communications/[id]/page.tsx"
       ],
       "tests": [
         "tests/communication-context-scope.test.ts",
+        "tests/communication-context-links.test.ts",
+        "tests/communication-context-integration.test.ts",
         "e2e/communication-context.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/COM-L14B.md"
+      "readiness": "DONE",
+      "card": "docs/pr-cards/COM-L14B.md"
     },
     {
       "id": "COM-L15",

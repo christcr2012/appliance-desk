@@ -1,3 +1,4 @@
+import { ContextCommunicationPanel } from "@/components/desk/context-communication-panel";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
@@ -151,6 +152,7 @@ export default async function DeskInvoicePage({
           />
         )}
       </section>
+      <ContextCommunicationPanel kind="Invoice" id={invoiceId} />
     </div>
   );
 }

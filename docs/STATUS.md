@@ -24,9 +24,9 @@ Docs-only change; the engineering queue is unchanged.
 
 ### Current queue (read this first)
 
-- **Latest in chain:** COM-L13B (#382) merged after full exact-head CI and performance checks. COM-L14A confirmed customer/lead communications timeline is implemented and enters CI/merge gate; COM-L14B starts only after L14A merges.
+- **Latest in chain:** COM-L14A (#383) merged with exact-head CI and performance green; COM-L14B contextual job, maintenance and invoice communication evidence is prepared for CI/merge. COM-L15 begins only after COM-L14B merges.
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
-- **Current queue:** COM-L14B → COM-L15 → W-1 → W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Current queue:** COM-L15 → W-1 → W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old
@@ -40,6 +40,10 @@ Docs-only change; the engineering queue is unchanged.
   confirm or change), IN-71 (record retention, CPA), IN-61, IN-62, IN-63, IN-64, IN-65, IN-44.
 
 ### Recent merges (newest first)
+
+**2026-10-10 — COM-L14B context evidence (recorded as if merged; exact-head CI required):** Job, maintenance and invoice pages show bounded, status-labelled evidence only for explicitly linked communications, never contact-number inference. Owners/admins can link a verified customer-thread message to a work record of the *same* customer from the private inbox; link + audit record are transactional and idempotent. STAFF only sees no-content delivery-status facts on jobs assigned to them; no private inbox, cross-customer data, finance, or company messages. Mobile and PostgreSQL isolation tests included. No provider send, dispatch change or migration. Next COM-L15.
+
+
 
 **2026-10-10 — COM-L14A customer/lead communication timelines (as if merged, subject to full CI):** Existing OWNER/ADMIN customer notes/activity timeline now adds confirmed FK-linked SMS and call outcomes with one 25-row stable time/source/id cursor, separate source limits and communications filter. Lead contact history presents internal notes and verified linked communications together with cursor pagination, private inbox drill links, accepted-versus-delivered distinction and no phone-number-only identity linking or decrypted message content. No provider send/activation, schema migration or new billed action. COM-L14B follows.
 

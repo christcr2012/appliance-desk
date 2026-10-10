@@ -1,3 +1,4 @@
+import { ContextCommunicationPanel } from "@/components/desk/context-communication-panel";
 import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -164,6 +165,7 @@ export default async function JobDetailPage({
           ...(job.canViewFinance ? { partsCostCents: job.partsCostCents, laborCostCents: job.laborCostCents } : {}),
         }} canViewFinance={canViewFinance} />
       </div>
+      <ContextCommunicationPanel kind="Job" id={job.id} />
     </div>
   );
 }
