@@ -232,8 +232,11 @@ describe.skipIf(!local)("COM-L9 voicemail gates/private lifecycle (real PostgreS
       .rejects.toThrow("lacks matching approved prompt");
     expect(await prisma.communicationMedia.count({ where: { providerResourceId: extraRec } })).toBe(0);
 
+    // The L7 database invariant requires retentionUntil >= createdAt.
+    // Backdate this disposable fixture's creation along with its expired deadline.
     await prisma.communicationMedia.update({ where: { id: after.id },
-      data: { retentionUntil: new Date("2020-01-01") } });
+      data: { createdAt: new Date("2019-01-01"),
+        retentionUntil: new Date("2020-01-01") } });
     expect(await getPrivateVoiceMediaForRead(ownerId, after.id)).toBeNull();
     await prisma.communicationMedia.update({ where: { id: after.id },
       data: { legalHold: true } });
