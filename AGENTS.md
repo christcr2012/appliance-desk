@@ -153,6 +153,7 @@ where, and puts it on his To do list; no Today item may link to a page that does
 | Dated decisions and reasons | `docs/DECISIONS.md` (append one per design decision) |
 | Ideas not being built | `docs/ROADMAP.md` |
 | Go-live switches | `docs/GO-LIVE-CHECKLIST.md` |
+| Business email addresses, aliases, send-as and where each is used | `docs/EMAIL-AND-ALIASES.md` |
 | How Chris uses the product | `docs/OWNER-GUIDE.md` |
 | Security/billing constraints for PRs | `docs/AI-PR-READ-FIRST.md` |
 | Audit findings (reference) | `docs/AUDIT_SYNTHESIS.md`, `docs/audits/`, `docs/reviews/` |
