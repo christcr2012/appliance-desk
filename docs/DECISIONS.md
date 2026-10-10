@@ -875,3 +875,13 @@ on /pricing but never collected at signing, and were flat per order. **W-23** lo
 contacts per delivery address, the client's permission topics, shown on that location's visits, messages only through the COM-L
 gates. Contracts are in Amendment B sections 6.2–6.3; acceptance is in PLAN; the validator constant gained W-22/W-23. Open: whether
 swaps/re-deliveries pay the setup fee (IN-74; default no).
+
+## 2026-10-10 — Setup fee simplified: one $45 administrative fee per location (IN-74 revised)
+
+Chris: customer installation should be very rare; the setup fee "should just remain an administrative fee and it is applied per
+location … it is not attached to the consumables." Standard fee $45, covering in part the hookup items, the cost of running
+Appliance Desk and other indirect costs. Every new rental gets new hookup items (hoses, cord, vent) for safety, longevity and
+liability; the delivery visit records them. The owner may change the fee per quote/agreement with a recorded reason (bulk,
+closing a sale, customer satisfaction). This replaces the admin + consumables split and the per-set customer-install rule in
+Amendment B 6.2 (IN-77 superseded). The hookup items stay business equipment, which simplifies the tax question (IN-79: is the
+separately stated fee taxable).
