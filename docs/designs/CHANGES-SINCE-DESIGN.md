@@ -643,3 +643,13 @@ customer-facing signed totals, and have not been collected. No schema,
 Stripe, SMS, email, signed artifact or first-bill payment logic changed.
 Next W-22C must freeze/customer-present the exact approved tax-inclusive
 terms before any collection and maintain the IN-79 CPA gate.
+
+### 2026-10-11 — W-22C0 private signing preparation reconciliation (#401)
+
+`src/domains/billing/signing-charge-readiness.ts` exports the pure
+`assessPreparedSigningCharges(expectedAgreementIds, charges)` validator; it
+reports coherent draft money and *blocking* tax/signing conditions.
+`getPreparedSigningChargeReview` additionally selects the source fingerprint
+for that validator. No schema, state, provider or customer-facing price contract
+changed. Inherited W-22C requirement: freeze and enforce verified all-in
+pricing atomically before allowing signed payment, including IN-79 fail-closed.

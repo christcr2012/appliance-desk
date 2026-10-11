@@ -15,6 +15,7 @@ import { getDraftSigningChargePreview } from "@/domains/billing/signing-charge-p
 import { formatMoney } from "@/lib/money-ui";
 import { getPreparedSigningChargeReview } from "@/domains/billing/signing-charge-review";
 import { SigningChargePrepareForm } from "./signing-charge-prepare-form";
+import { assessPreparedSigningCharges } from "@/domains/billing/signing-charge-readiness";
 
 export const metadata = { title: "Agreement" };
 
@@ -42,6 +43,9 @@ export default async function AgreementDetailPage({
     agreement.status === "DRAFT" ? getDraftSigningChargePreview(agreement.id) : null,
     agreement.status === "DRAFT" ? getPreparedSigningChargeReview(agreement.id) : [],
   ]);
+  const readiness = preparedCharges.length > 0
+    ? assessPreparedSigningCharges(preparedCharges.map((row) => row.agreementId), preparedCharges)
+    : null;
   const earlierOptions: Date[] = [];
   if (endQuote && agreement.nextBillingDate) {
     for (let k = 0; k < 600; k += 1) {
@@ -115,6 +119,27 @@ export default async function AgreementDetailPage({
             book a delivery, collect money, or issue a first-bill credit.
           </p>
           <SigningChargePrepareForm agreementId={agreement.id} />
+          {readiness && (
+            <div className="mt-3 rounded-md border border-border p-3" role="status">
+              <p className="text-sm font-medium">Pre-signing reconciliation</p>
+              <p className="mt-1 text-sm">
+                {readiness.amountsReconciled
+                  ? "Draft allocations reconcile across this order."
+                  : "Draft allocations need correction before they can be finalized."}
+              </p>
+              <p className="mt-1 text-sm text-ink-soft">
+                {readiness.machineCount} machine(s) · Setup: {formatMoney(readiness.totalSetupCents)} ·
+                Down payment: {formatMoney(readiness.totalDownPaymentCents)} ·
+                Pre-tax subtotal: {formatMoney(readiness.totalBeforeTaxCents)}
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
+                {readiness.reasons.map((reason) => <li key={reason}>{reason}</li>)}
+              </ul>
+              <p className="mt-2 text-sm font-medium">
+                Not approved for signing, freezing, charging or sending to customers.
+              </p>
+            </div>
+          )}
           {preparedCharges.length > 0 ? (
             <div className="mt-4 space-y-3">
               <p className="text-sm font-medium">
