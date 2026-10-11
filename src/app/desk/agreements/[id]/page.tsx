@@ -11,6 +11,8 @@ import { getMonthToMonthEndQuote } from "@/domains/agreements/month-to-month";
 import { billingPeriodFor } from "@/lib/business-date";
 import { latestArtifactId } from "@/domains/documents/artifacts";
 import { listPackagesForLines } from "@/domains/packages";
+import { getDraftSigningChargePreview } from "@/domains/billing/signing-charge-preview";
+import { formatMoney } from "@/lib/money-ui";
 
 export const metadata = { title: "Agreement" };
 
@@ -32,9 +34,10 @@ export default async function AgreementDetailPage({
     notFound();
   }
 
-  const [endQuote, signedArtifactId] = await Promise.all([
+  const [endQuote, signedArtifactId, signingPreview] = await Promise.all([
     agreement.status === "ACTIVE" && agreement.termMonths === null ? getMonthToMonthEndQuote(agreement.id) : null,
     agreement.signature?.signedAt ? latestArtifactId("SIGNED_AGREEMENT", agreement.id) : null,
+    agreement.status === "DRAFT" ? getDraftSigningChargePreview(agreement.id) : null,
   ]);
   const earlierOptions: Date[] = [];
   if (endQuote && agreement.nextBillingDate) {
@@ -76,6 +79,27 @@ export default async function AgreementDetailPage({
         </p>
       )}
 
+      {signingPreview && (
+        <section aria-labelledby="signing-preview-heading" className="mt-6 rounded-lg border border-border p-4">
+          <h2 id="signing-preview-heading" className="font-semibold">Signing charges — planning preview</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Estimated mandatory signing amounts for this draft order. This is not a bill,
+            a payment request, or a signed contract. First month&apos;s rent begins at delivery,
+            except that a large-order down payment will credit that first bill.
+          </p>
+          <dl className="mt-3 space-y-1 text-sm">
+            <div className="flex justify-between"><dt>Administrative setup fees</dt><dd>{formatMoney(signingPreview.setupTotalCents)}</dd></div>
+            <div className="flex justify-between"><dt>Large-order down payment</dt><dd>{formatMoney(signingPreview.downPaymentTotalCents)}</dd></div>
+            <div className="flex justify-between font-semibold"><dt>Before any applicable tax</dt><dd>{formatMoney(signingPreview.amountDueAtSigningCents)}</dd></div>
+          </dl>
+          <p className="mt-2 text-sm text-ink-soft">
+            {signingPreview.locations.length} delivery location(s); {signingPreview.machineCount} machine(s).
+            {signingPreview.requiresTaxReview
+              ? " Setup-fee tax treatment needs CPA confirmation before this total can be finalized."
+              : " Tax and full customer-facing totals will be finalized in the signing workflow."}
+          </p>
+        </section>
+      )}
       <div className="mt-6">
         <AgreementProgress agreement={agreement} />
       </div>

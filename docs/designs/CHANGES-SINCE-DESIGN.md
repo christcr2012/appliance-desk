@@ -601,3 +601,16 @@ price; the proposed BP property authorization builds on W-23's location contacts
 Order: … W-18 → W-22 → W-23 → **W-24 → W-25 → W-26** → W-14 … W-24 implements S6 (signed → Requested delivery + To do) and
 S7 (payment failed → new link) for link orders; W-4/W-5 keep them for desk-signed agreements and invoices. W-20 (portal) shows
 the confirmed delivery choice; V adds the Spanish website from W-26's language model; COM-N1 adds texting of the W-24 link.
+
+
+### 2026-10-11 — W-22B0 private draft signing-charge preview (#398)
+
+W-22A's integer-cent calculator is now fed from actual draft rental lines,
+package component quantities, customer business flags, settings and already
+ACTIVE address rentals (`src/domains/billing/signing-charge-preview.ts`).
+Converted quote siblings are grouped by `sourceEstimateId`, and an incomplete
+or non-draft sibling suppresses a misleading preview. Only OWNER/ADMIN see
+the read-only preview on a draft agreement. No new records, charges, credits,
+signatures, provider calls or customer-facing quote updates. W-22B persistence
+must preserve these data boundaries while adding durable/versioned ownership
+and tax evidence; the preview is not a frozen pricing contract.
