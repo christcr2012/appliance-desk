@@ -1,6 +1,8 @@
 # STATUS — current work, blockers and next action
 
-Updated October 9, 2026 evening (reconciled after two lanes: COM-L3…L6A #352–#363 and W-0C #359 by Sol; W-16A #360, W-16B #362, W-21A #365, W-21B #366 and test isolation #367 by Claude). Batch T and Batch S are engineering-complete. No live payments, customer messages, fee charging or tax filing are activated.
+Updated 2026-10-11 against main `9d582f5e` (#396). COM-L15 #393, W-1 #394,
+W-18 #395 and W-22A #396 are merged. W-22 remains partial; no live payments,
+customer messages, fee charging or tax filing are activated.
 
 ## Metricool marketing integration (owner-requested, 2026-10-09)
 MKT-1 public visit tracking is merged in #371; exact-head CI and performance checks passed. Both automated review findings were fixed and regression-tested. Released from live 193b3f7 on 2026-10-09; Vercel production is READY. Actual-domain homepage and launch page serve the configured tracker; login CSP excludes it. Metricool receipt verification remains an open operational check.
@@ -20,24 +22,34 @@ and verified; reversal is in the guide). Open: putting `privacy@` on the website
 (2026-10-24 quarantine, 2026-11-23 reject) and the GW-08 mail test. No email, SMS or payment switch was touched.
 Docs-only change; the engineering queue is unchanged.
 
+## Implementation guidance — documentation update, 2026-10-11
+
+[Implementation recipes](implementation-contracts/IMPLEMENTATION-RECIPES.md) add a
+bounded card packet, trusted input/storage mappings, lock/provider/receipt patterns,
+fixtures and targeted checks. The linked W-22 persistence example separates existing
+code from candidate interfaces; it does not approve a schema, collect money or mark
+W-22 complete. Startup and card-writing instructions route agents to only the needed
+section. Queue, owner gates, public pricing hide and CI policy remain unchanged.
+No application code or tests changed. Verified index, quick gate, diff/path/link
+checks; exact-head CI and PR review remain publication gates.
+
 ## Next
 
-### W-1 owner To do workflow (as if merged; exact-head CI still required)
+### W-1 owner To do workflow — merged #394
 
-W-1 adds one clear action per exception, genuine Denver-time deadlines, exact outstanding balances, and a private durable owner/admin snooze with reason and audit history. Staff cannot snooze. Snoozed issues remain visible in a separate section and return automatically after the date. An additive Postgres table is included in the backup registry. Focused pure and disposable Postgres regressions are under tests/todo-w1*. No live payment, tax filing, customer messaging or other activation. The next planned card is W-18. This status entry is conditional on green exact-head CI and merge.
+W-1 adds one clear action per exception, genuine Denver-time deadlines, exact outstanding balances, and a private durable owner/admin snooze with reason and audit history. Staff cannot snooze. Snoozed issues remain visible in a separate section and return automatically after the date. An additive Postgres table is included in the backup registry. Focused pure and disposable Postgres regressions are under tests/todo-w1*. No live payment, tax filing, customer messaging or other activation. The next planned card is W-18. Merged #394; W-18 followed in #395.
 
-### W-18 money and explanation kit (as-if-merged; exact-head CI still required)
+### W-18 money and explanation kit — merged #395
 
 W-18 gives owner screens precise two-decimal dollar amounts, an exact dollar-entry parser, and an accessible glossary InfoTip. Sales-tax and use-tax setup now ask for dollars, never raw pennies; existing cent-based storage, audit and tax rules are unchanged. Repair, set pricing, fee and purchase-cost displays use shared helpers. Unit and UI tests and a repo preflight guard protect the wording and conversions. No provider activation, migration, or spending. Next: W-22 signing charges.
 
-### W-22A signing-charge foundation (as-if-merged, awaiting PR checks)
+### W-22A signing-charge foundation — merged #396
 
 The first W-22 slice records $45-per-new-delivery-location setup and five-machine/business down-payment settings; an owner-only settings screen with exact dollar entry, independently verified actor, audited updates and stale-edit protection; and a tested per-location integer-cent charge planner. Tax treatment remains UNDECIDED until CPA confirmation. No Stripe charge, payment credit, signing snapshot or live collection has been enabled. **W-22 is not complete.** Next W-22B/C must persist charge/credit lines, implement hosted/manual signing payments, webhook replay, cancellation, delivery evidence, all-in quote/contract/customer totals and browser acceptance before W-23. See docs/pr-cards/W-22.md for boundaries.
 
 ### Current queue (read this first)
 
-- **Latest in chain:** COM-L14B (#392) merged with exact-head CI, all review threads closed and performance green. COM-L15 final synthetic launch proof and owner handoff is at exact-head CI/merge gate. **PAUSE after COM-L15 merges, before W-1.**
-- **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
+- **Latest in chain:** W-22A (#396) merged after COM-L15 #393, W-1 #394 and W-18 #395. No open PRs at the 2026-10-11 documentation verification; recheck before implementation. The earlier COM-L15 pause checkpoint was passed by the subsequent merged work.
 - **Current queue:** W-22 (B/C completion) → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.

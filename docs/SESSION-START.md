@@ -19,6 +19,9 @@ pushes). Never copy source files through tool output.
 3. Is there a **resume note**? `ls docs/pr-cards/*.progress.md 2>/dev/null` — if your card has one, read it and continue
    from its "Next step". Do not restart work that it lists as done.
 4. Read your card (`docs/pr-cards/<ID>.md`). Read only what its "Read only these" list says.
+   Writing/refreshing a JIT card? Open the routing table and **Card packet** in
+   [IMPLEMENTATION-RECIPES](implementation-contracts/IMPLEMENTATION-RECIPES.md), then only the matching recipe.
+   W-22 remainder has a linked worked example; proposed paths must be resolved against actual code.
 
 ## 2. Never do these without Chris (from AGENTS "Hard limits")
 

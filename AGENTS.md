@@ -89,8 +89,10 @@ where, and puts it on his To do list; no Today item may link to a page that does
 
 - **Approved designs, just-in-time cards.** Implement only approved scope (`docs/designs/`, `docs/PLAN.md`). The
   implementing model writes the card for the current capability (and its immediate successor when useful) from the
-  approved design and actual code (`docs/pr-cards/README.md`). Ordinary names and implementation details need no
-  approval. Money, permissions, signed evidence, state transitions and provider replay follow the reviewed contract; if
+  approved design and actual code (`docs/pr-cards/README.md`). Use only the matching section of
+  `docs/implementation-contracts/IMPLEMENTATION-RECIPES.md` for exact integration/test patterns; refresh its
+  baseline and proposed interfaces in the JIT card. Recipes never grant semantic or owner approval.
+  Ordinary names and implementation details need no approval. Money, permissions, signed evidence, state transitions and provider replay follow the reviewed contract; if
   it can't work, propose a dated amendment and get it reviewed. A missing card means write it, not stop.
 - **Drift and reconciliation** (`docs/implementation-contracts/DRIFT-PROTOCOL.md`): checklist A before each PR,
   B **inside each PR, written as if it had already merged** (card, next card, living docs, STATUS — CI checks it), C when a batch finishes (acceptance proved, docs match the

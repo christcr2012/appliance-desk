@@ -11,6 +11,15 @@ coding; the implementer can do this. Approved design/amendments govern semantic
 behavior. Cards cannot silently override them. Combine adjacent compatible units
 within AGENTS' existing budget; do not create one PR per checkbox.
 
+## Concrete execution packet
+
+Use [IMPLEMENTATION-RECIPES](../implementation-contracts/IMPLEMENTATION-RECIPES.md#card-packet)
+to add exact file/symbol/caller, input→storage→DTO mappings, ordered locks/side effects,
+fixture numbers, before/after counts and successor exports to the current card. Read
+only its matching recipe. [W-22 persistence](../implementation-contracts/W-22-PERSISTENCE-RECIPE.md)
+is the next-unit worked example at #396; it proposes interfaces, not an approved
+schema or a prewritten distant card. Resolve them JIT under the drift protocol.
+
 ## Minimum card
 
 Use exact current paths and relevant design headings. Usually 40–100 lines:
