@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   raw: vi.fn(),
   earlyResolution: vi.fn(),
   audit: vi.fn(),
+  snoozes: vi.fn(),
   taxExemption: vi.fn(),
   taxAddressLocation: vi.fn(),
   officialSourceWatch: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock("@/lib/prisma", () => ({
     earlyReturnResolution: { findMany: mocks.earlyResolution },
     providerOperation: { findMany: mocks.providerOp, count: vi.fn().mockResolvedValue(0) },
     auditLog: { findMany: mocks.audit },
+    exceptionSnooze: { findMany: mocks.snoozes },
     customerTaxExemption: {
       findMany: mocks.taxExemption,
       count: vi.fn().mockResolvedValue(0),
@@ -87,6 +89,7 @@ beforeEach(() => {
     mocks.raw,
     mocks.earlyResolution,
     mocks.audit,
+    mocks.snoozes,
     mocks.taxExemption,
     mocks.taxAddressLocation,
     mocks.officialSourceWatch,

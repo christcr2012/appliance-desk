@@ -598,3 +598,18 @@ cursor advancement, COM-L12 will reconcile comparable periods, and COM-N/K
 will authorize owner-paid accounting only after independent evidence.
 These tables alone do not enable SMS/calls, recording, invoice imports,
 payments, cloud provider API sync or provider charges.
+
+### W-1 — owner To do snooze evidence (2026-10-11)
+
+Additive migration `20261014100000_w1_exception_snoozes` creates
+`ExceptionSnooze`, keyed by a deterministic hash of an existing exception
+identity (category, destination and when needed title). It records the
+category, destination, reason, future snooze-until time, owner/admin actor,
+and creation/update timestamps. The actor FK restricts deletion, and the
+snooze deadline is indexed. Only a verified active OWNER/ADMIN may revise or
+clear it; actions lock existing rows and append `AuditLog` entries, preserving
+full snooze history without exposing customer message content. A snooze does
+not change the business record, invoice, job, collection status, provider
+message or deadline; once expired, unresolved To do items reappear. Backup
+manifest explicitly includes the snooze model after `User`. One additive
+migration, no destructive change or live activation.

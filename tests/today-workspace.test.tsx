@@ -26,7 +26,7 @@ beforeEach(() => {
   cleanup();
   vi.resetAllMocks();
   m.role.mockResolvedValue({ user: { role: "STAFF" } });
-  m.exceptions.mockResolvedValue({ items: [], truncated: [] });
+  m.exceptions.mockResolvedValue({ items: [], snoozed: [], truncated: [] });
   m.jobs.mockResolvedValue([]);
   m.tasks.mockResolvedValue({ tasks: [], totalCount: 0, overdueCount: 0 });
   m.requests.mockResolvedValue(3);
@@ -88,6 +88,7 @@ it("says plainly when a group has more items than are shown", async () => {
   }));
   m.exceptions.mockResolvedValue({
     items,
+    snoozed: [],
     truncated: [{ category: "OVERDUE_JOB", total: 73, shown: 50 }],
   });
 
