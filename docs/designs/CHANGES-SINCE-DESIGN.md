@@ -1,3 +1,7 @@
+### 2026-10-11 — W-22A foundation, not signing activation
+
+W-22A adds configuration and a pure per-location signing-charge plan for D-WB section 6.2. It does not charge, credit, refund, schedule or amend signed documents. Tax treatment starts undecided and no fee may be charged until the outstanding IN-79 CPA question is cleared; W-22B/C still own contract lines, payment webhooks, credit-on-first-invoice idempotency and delivery/cancellation workflows. The shared singleton update is actor-checked, locked and audited. W-22 remains incomplete in the work index; finish it before W-23.
+
 ### 2026-10-11 — W-18 plain-words money kit
 
 A shared Money/MoneyInput and exact dollar parser replaces cents-valued inputs on sales-tax and use-tax setup. InfoTip and one glossary now explain fee settings, set price, and custody with accessible keyboard/close behavior. Existing repair, tax, PO, settings, telecom cost and rental form money presentation now routes through shared helpers, and preflight catches raw cents division and visible cents. No change to internal integer-cent records, owner decisions, provider activation or preexisting status-label helpers. Next W-22/W-24 build atop this kit; their amounts remain design-gated.

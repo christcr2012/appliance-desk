@@ -3333,7 +3333,7 @@
         "W-18"
       ],
       "status": "APPROVED",
-      "migration": "signing_charges",
+      "migration": "20261015100000_w22_signing_charge_settings (W-22A only; full signing payments pending)",
       "budget": 500,
       "units": [
         "W-22"
@@ -3341,10 +3341,14 @@
       "evidence": [
         "docs/designs/BATCH-W-AMENDMENT-B.md",
         "src/domains/settings/index.ts",
-        "src/domains/billing/categories.ts"
+        "src/domains/billing/categories.ts",
+        "src/domains/billing/signing-charges.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/signing-charge-plan-w22.test.ts",
+        "tests/signing-charge-settings-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/W-22.md"
     },
     {

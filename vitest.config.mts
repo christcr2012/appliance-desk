@@ -5,6 +5,7 @@ import path from "node:path";
 const SHARED_SETTINGS_TESTS = [
   "tests/agreements-term-integration.test.ts",
   "tests/settings-integration.test.ts",
+  "tests/signing-charge-settings-integration.test.ts",
   "tests/sms-activation-integration.test.ts",
   "tests/communication-launch-integration.test.ts", // reads seeded singleton; keep alongside serialized settings writers
   "tests/settings-terms-policy-integration.test.ts",
