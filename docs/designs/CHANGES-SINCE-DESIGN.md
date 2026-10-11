@@ -653,3 +653,13 @@ reports coherent draft money and *blocking* tax/signing conditions.
 for that validator. No schema, state, provider or customer-facing price contract
 changed. Inherited W-22C requirement: freeze and enforce verified all-in
 pricing atomically before allowing signed payment, including IN-79 fail-closed.
+
+### 2026-10-11 — W-22C1 fee tax vocabulary (#402)
+
+`ADMIN_SETUP_FEE` invoice kind maps exclusively to `ADMINISTRATIVE_SETUP`
+tax category; migration `20261015120000_w22_admin_setup_tax_category`
+adds two PostgreSQL enum values; a separate
+`20261015120500_w22_admin_setup_tax_default` migration seeds an undecided
+default rule after the enum value commits (required for backup restore).
+Separate setup category cannot inherit RENTAL/INSTALLATION tax policy.
+CPA IN-79 and tax-inclusive freeze/send remain gated.

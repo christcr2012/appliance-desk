@@ -17,6 +17,18 @@ and removes only its temporary cluster. See [PLAYBOOK §4b](PLAYBOOK.md#4b-local
 Never use Neon, Vercel preview or production data; CI's PostgreSQL 17 suite
 is the final merge authority.
 
+## W-22 setup charge tax category (2026-10-11)
+
+`InvoiceLineItemKind.ADMIN_SETUP_FEE` maps to the dedicated
+`TaxChargeCategory.ADMINISTRATIVE_SETUP`, never to rental or installation.
+The two additive migration steps are deliberately separated: PostgreSQL
+requires the added enum to commit before an `UNDECIDED` default rule can
+refer to it, including through the transaction-wrapped backup restore.
+The new default `TaxabilityRule` is explicitly `UNDECIDED`, and each
+self-collected jurisdiction needs its own independently confirmed rule and
+rate. This schema scaffold alone does not satisfy CPA decision IN-79, send
+a tax-inclusive agreement, add Stripe tax rates or activate payment.
+
 ## Auth & people
 
 - **User** — anyone who can log in: Chris (`OWNER`), any staff he adds

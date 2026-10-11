@@ -23,6 +23,7 @@ export type LedgerCategory =
 
 const CATEGORY_BY_KIND: Record<InvoiceLineItemKind, LedgerCategory> = {
   RENTAL: "RENT",
+  ADMIN_SETUP_FEE: "FEES",
   DELIVERY_FEE: "FEES",
   INSTALLATION_FEE: "FEES",
   REMOVAL_FEE: "FEES",
@@ -51,7 +52,7 @@ export function categorizeLine(kind: InvoiceLineItemKind): LedgerCategory {
 /** Owner-facing names for each group. */
 export const LEDGER_CATEGORY_LABELS: Record<LedgerCategory, string> = {
   RENT: "Rent",
-  FEES: "Fees (delivery, installation, removal, damage waiver)",
+  FEES: "Fees (administrative setup, delivery, installation, removal, damage waiver)",
   DEPOSIT: "Deposit",
   TAX: "Sales tax",
   RETAIL_DELIVERY_FEE: "Colorado retail delivery fee",

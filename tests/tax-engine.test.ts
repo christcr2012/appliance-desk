@@ -27,6 +27,7 @@ function jurisdiction(
 describe("categoryForLineKind", () => {
   it.each([
     ["RENTAL", 100, "RENTAL"],
+    ["ADMIN_SETUP_FEE", 100, "ADMINISTRATIVE_SETUP"],
     ["LATE_RETURN", 100, "LATE_RETURN"],
     ["LATE_RETURN_WAIVER", -100, "LATE_RETURN"],
     ["DELIVERY_FEE", 100, "DELIVERY"],

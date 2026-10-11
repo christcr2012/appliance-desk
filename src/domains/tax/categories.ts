@@ -1,5 +1,6 @@
 export const TAX_CHARGE_CATEGORIES = [
   "RENTAL",
+  "ADMINISTRATIVE_SETUP",
   "LATE_RETURN",
   "DELIVERY",
   "INSTALLATION",
@@ -13,6 +14,7 @@ export const TAX_CHARGE_CATEGORIES = [
 export type TaxChargeCategory = (typeof TAX_CHARGE_CATEGORIES)[number];
 
 export type InvoiceLineItemKind =
+  | "ADMIN_SETUP_FEE"
   | "RENTAL"
   | "RETAIL_DELIVERY_FEE"
   | "DELIVERY_FEE"
@@ -44,6 +46,8 @@ export function categoryForLineKind(
   amountCents: number,
 ): LineTaxCategory {
   switch (kind) {
+    case "ADMIN_SETUP_FEE":
+      return "ADMINISTRATIVE_SETUP";
     case "RENTAL":
       return "RENTAL";
     case "LATE_RETURN":

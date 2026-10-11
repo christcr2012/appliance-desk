@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-11 as if PR #400 (W-22B1) merged, following main `40f79a4` (#399). COM-L15 #393, W-1 #394,
+Updated 2026-10-11 as if PR #402 (W-22C1) merged, following main `1d18648` (#401). COM-L15 #393, W-1 #394,
 W-18 #395 and W-22A #396 are merged. W-22 remains partial; no live payments,
 customer messages, fee charging or tax filing are activated.
 
@@ -94,6 +94,16 @@ No live collection, customer communication, signatures, invoice credits,
 refunds or deliveries were changed. W-22 stays PARTIAL, and W-23 stays blocked.
 Next: W-22C signed immutable tax-inclusive facts + guarded send.
 
+## W-22C1 — independent administrative setup tax category (#402)
+
+W-22's administrative setup fee now has its own database tax charge category
+and invoice-line kind. Existing rental, installation and other tax decisions
+never answer this new category. The new default jurisdiction rule is
+UNDECIDED. CPA IN-79 remains OPEN; this is only taxonomy/policy scaffolding,
+not a signed all-in total or permission to collect a fee. No provider or
+customer billing changes. Next: W-22C reviewed immutable all-in signing
+facts and send enforcement; W-23 remains blocked.
+
 ## Next
 
 ### W-1 owner To do workflow — merged #394
@@ -110,7 +120,7 @@ The first W-22 slice records $45-per-new-delivery-location setup and five-machin
 
 ### Current queue (read this first)
 
-- **Latest in chain:** W-22B1 (#400) merged after W-22B (#399) and W-22B0 (#398) after COM-L15 #393, W-1 #394 and W-18 #395. No open PRs before #398; recheck before implementation. The earlier COM-L15 pause checkpoint was passed by the subsequent merged work.
+- **Latest in chain:** W-22C1 (#402) merged after W-22C0 (#401) and W-22B1 (#400) merged after W-22B (#399) and W-22B0 (#398) after COM-L15 #393, W-1 #394 and W-18 #395. No open PRs before #398; recheck before implementation. The earlier COM-L15 pause checkpoint was passed by the subsequent merged work.
 - **Current queue:** W-22 (B/C completion) → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
