@@ -115,6 +115,20 @@ small parts (manifest last) to a `transfer/<id>` branch, and the "sandbox publis
 them. Never copy source files one by one through tool output (they get cut off), and never put a GitHub key in the
 sandbox.
 
+**GitHub REST fallback when this chat environment cannot run local checks.**
+Use the connected GitHub REST API (or GitHub plugin REST actions) to read the
+current branch/head, workflow runs, individual jobs, test logs, check-runs and
+review threads. If local shell/sandbox test execution is unavailable, push a
+reviewable branch through the documented authorized publishing route, open a
+PR, and use the existing GitHub Actions throwaway-Postgres/unit/browser jobs
+as the execution environment. Inspect all failed job logs through GitHub REST,
+fix the code and rerun the relevant validation at the new exact head; require
+passing `ci` before merging. REST **reads CI evidence**; it does not magically
+execute tests locally or replace disposable Postgres. Clearly distinguish
+locally passed tests from CI-only proof. Never call production/Neon a test DB,
+weaken checks, bypass approvals, invent a green result or merge a failing head.
+This fallback applies to later agents and new sessions as well.
+
 **Local PostgreSQL = Vercel Sandbox (owner standard).** All local database and database-backed browser testing runs in
 the project's Vercel Sandbox, never Neon, production or another database service. Exact steps (Vercel MCP tools; the
 CLI fallback for each tool is `vercel api /v2/sandboxes/...`):

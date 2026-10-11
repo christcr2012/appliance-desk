@@ -118,6 +118,21 @@ straight to an agreement.
    from Reserved to Rented. Ending or cancelling an agreement frees its
    appliances back to Available automatically.
 
+### Review draft signing charges before sending a contract
+
+On a **Draft** rental agreement (owner or admin account), the private
+**Prepare this order for signing** panel lets you save or refresh a draft
+calculation. It shows one administrative setup fee per new delivery address
+and any large-order down payment separately for each agreement. If one quote
+has several locations, review all its prepared records together. The
+button never charges a customer, books a delivery, sends a contract or
+applies a first-bill credit. If you change a draft, refresh its calculation.
+
+**These are planning amounts, not a final all-in customer price.** Setup-fee
+tax treatment is still awaiting CPA review. The later W-22 signing/payment
+steps must be completed before these records can be used to collect the
+setup fee at signing or credit rent on delivery.
+
 ## Landlords and property managers with several buildings
 
 A customer isn't limited to one address. If you're signing up a

@@ -3344,12 +3344,14 @@
         "src/domains/billing/categories.ts",
         "src/domains/billing/signing-charges.ts",
         "src/domains/billing/signing-charge-preview.ts",
-        "src/domains/billing/signing-charge-snapshot.ts"
+        "src/domains/billing/signing-charge-snapshot.ts",
+        "src/domains/billing/signing-charge-review.ts"
       ],
       "tests": [
         "tests/signing-charge-plan-w22.test.ts",
         "tests/signing-charge-preview-w22.test.ts",
         "tests/signing-charge-snapshot-integration.test.ts",
+        "tests/signing-charge-owner-review-w22.test.ts",
         "tests/signing-charge-settings-integration.test.ts"
       ],
       "readiness": "CARD_READY",

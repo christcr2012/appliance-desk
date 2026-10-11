@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-11 as if PR #399 (W-22B) merged, following main `f81922f` (#398). COM-L15 #393, W-1 #394,
+Updated 2026-10-11 as if PR #400 (W-22B1) merged, following main `40f79a4` (#399). COM-L15 #393, W-1 #394,
 W-18 #395 and W-22A #396 are merged. W-22 remains partial; no live payments,
 customer messages, fee charging or tax filing are activated.
 
@@ -64,6 +64,24 @@ webhook replay, first-bill credit, cancellation and delivery evidence. CPA
 IN-79 remains pending; never activate live money or customer messages.
 W-22 and its queue index remain PARTIAL; W-23 cannot begin.
 
+## W-22B1 — owner draft signing-charge preparation and review (#400)
+
+Draft agreement owners/admins can now prepare or refresh private per-agreement
+signing-charge allocations on the agreement page, then see each address's
+machine count, setup fee, first-month down payment, pre-tax subtotal and
+revision in dollars. Every server action reauthorizes before the database
+write; the read additionally checks role, customer, quote and draft state.
+Missing sibling records are not misleadingly displayed as a complete order.
+All prepared amounts are expressly **not signed, payable or settled**.
+Eight unit/role/isolation tests pass locally; browser, CI and review remain
+exact-head merge gates. No Stripe, customer email/SMS, live payment or CPA
+tax treatment was activated.
+
+W-22 remains PARTIAL. **Next: W-22C freeze tax-inclusive agreement/signing
+facts**, then guarded hosted/manual payment, replay-safe first bill credits,
+refund/cancellation and delivery evidence. W-23 stays blocked until W-22
+fully meets its approved acceptance. Stop this chat after merged PR #400.
+
 ## Next
 
 ### W-1 owner To do workflow — merged #394
@@ -80,7 +98,7 @@ The first W-22 slice records $45-per-new-delivery-location setup and five-machin
 
 ### Current queue (read this first)
 
-- **Latest in chain:** W-22B (#399) merged after W-22B0 (#398) and W-22A (#396) after COM-L15 #393, W-1 #394 and W-18 #395. No open PRs before #398; recheck before implementation. The earlier COM-L15 pause checkpoint was passed by the subsequent merged work.
+- **Latest in chain:** W-22B1 (#400) merged after W-22B (#399) and W-22B0 (#398) after COM-L15 #393, W-1 #394 and W-18 #395. No open PRs before #398; recheck before implementation. The earlier COM-L15 pause checkpoint was passed by the subsequent merged work.
 - **Current queue:** W-22 (B/C completion) → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
