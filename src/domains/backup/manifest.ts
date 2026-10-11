@@ -39,6 +39,7 @@ export const BACKUP_MODEL_POLICY = {
   ApplianceInspectionAmendment: "applianceInspectionAmendment",
   JobBillingHandoff: "jobBillingHandoff",
   RentalAgreement: "rentalAgreement",
+  AgreementSigningCharge: "agreementSigningCharge",
   EarlyReturnResolution: "earlyReturnResolution",
   RentalLine: "rentalLine",
   ApplianceAssignment: "applianceAssignment",

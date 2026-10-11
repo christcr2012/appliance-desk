@@ -918,6 +918,7 @@ model RentalAgreement {
   termsOverride Json?
 
   lines RentalLine[]
+  signingChargeSnapshot AgreementSigningCharge?
 
   signature   SignatureRecord?
   jobs        Job[]
@@ -932,6 +933,30 @@ model RentalAgreement {
   @@index([customerId])
   @@index([status])
   @@index([continuityRootId])
+}
+
+// W-22B: independently attributed draft signing amounts. Not a paid receipt.
+model AgreementSigningCharge {
+  id                   String @id @default(cuid())
+  agreementId          String @unique
+  agreement            RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  serviceAddressId     String
+  sourceEstimateId     String?
+  version              Int @default(1)
+  machineCount         Int
+  firstMonthRentCents  Int
+  setupFeeCents        Int
+  downPaymentCents     Int
+  signingSubtotalCents Int
+  setupFeeTaxTreatment String
+  settingsUpdatedAt    DateTime
+  sourceFingerprint    String
+  createdByUserId      String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  frozenAt             DateTime?
+
+  @@index([sourceEstimateId, serviceAddressId])
 }
 
 model EarlyReturnResolution {
