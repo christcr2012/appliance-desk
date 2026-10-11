@@ -313,3 +313,13 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 
 Older entries (October 8 cleanup, K-CASH design note, publication-check note, S-2, COM-L1A and COM-L1B evidence) moved to
 [archive/STATUS-LOG.md](archive/STATUS-LOG.md) on 2026-10-09.
+
+## W-22C2 private tax evidence and anti-stall guidance (#403)
+
+W-22C2 adds a pure, non-collecting setup-tax candidate calculation using
+jurisdiction-confirmed ADMINISTRATIVE_SETUP treatment. It never freezes a
+contract, sends a payment or issues a first-invoice credit. The anti-stall
+runbook now documents bounded isolated Postgres tests, exact-head CI and
+manual review fallback. **Next: W-22C3 immutable agreement totals and guarded
+send/sign**, followed by W-22 payment/credit/cancellation/delivery. IN-79
+remains open; W-23 is still blocked.
