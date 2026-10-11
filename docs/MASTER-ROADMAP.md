@@ -4,16 +4,19 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## What is next
 
-**Updated 2026-10-09 (reconciled after two lanes worked in parallel).** Two implementers worked at once today: Sol on the
-COM-L chain, and Claude on the sets and repair-credit work Chris moved ahead (W-16A/B, W-21A/B) plus test-isolation
-fixes (#367). Everything below reflects `main` after those merges.
+**Verified 2026-10-11 against main `9d582f5e` (#396).** Current status is in STATUS.
 
-- **Done today:** W-0C (#359); COM-L3 (#352), COM-L4A (#353), COM-L4B (#354), COM-L5A (#358), COM-L5B (#361), COM-L6A
-  (#363); W-16A (#360), W-16B (#362), W-21A (#365), W-21B (#366); test isolation + CI image mirror (#367).
-- **In flight:** COM-L7 (Sol). COM-L6B merged (#364).
-- **Next, in this order:** W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
-  W-8 → W-9 → W-10 → W-19 → W-17 → W-20 → V → F-part-2 (W-11/W-12/W-13 when their outside gates clear). The authority is
-  `designs/BATCH-W-AMENDMENT-B.md` section 8; W-16A/B and W-21 are done and must not be redone.
+- **Merged:** COM-L through COM-L15 (#393), W-1 (#394), W-18 (#395), W-22A (#396).
+  W-16A/B and W-21A/B were completed earlier and must not be redone.
+- **In flight:** no open PRs at this verification; recheck GitHub before starting.
+- **Next:** finish W-22 persistence/signing/payment/credit/delivery acceptance; W-22A
+  is configuration and pure planning only. Use the bounded
+  [implementation recipes](implementation-contracts/IMPLEMENTATION-RECIPES.md) and
+  linked worked example when authoring its next JIT card.
+- **Then:** W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
+  W-8 → W-9 → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 retain
+  outside gates. Authority: Amendment B section 8 and work-index; this guidance adds
+  execution detail without changing sequence or approvals.
 
 Batch T is engineering-complete (T-7D #328); Batch S is complete (S-1A #330 … S-2 #334); COM-L1A (#335), COM-L1B (#336)
 and COM-L2 (#346) are merged. No live tax filing, charging, external AI access or message sending is authorized by this
