@@ -187,7 +187,7 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 
 - [ ] W-0A: an owner can confirm the business tax address on screen; appliances waiting on setup get their use tax calculated automatically (once); use tax with no linked filing account raises a high To do item; Today and the appliance page say why tax is unknown and link the fix.
 - [ ] W-0B: no Today item links to a page that doesn't exist (test); delivery-fee records waiting on a decision or amount have a page.
-- [ ] Every To do item shows what, why, amount (if any), due date and one button; items sort by due date; snooze with reason.
+- [x] W-1: owner To do shows what, why, actual known amount/deadline and action; real-dated sort, durable audited snooze/reopen, unit and isolated database proof (PR gate still required).
 - [ ] Saving an appliance (or receiving parts) with no seller tax shows what is owed, to whom and by when, and adds it to To do; "I'll check later" creates a dated To do.
 - [ ] W-2 (D-WA6): `nextPurchaseTaxStep` gives every answer exactly one next step (full tax → done; partial or none → use tax on the right return with its legal due date; tax-free for rent → rent taxed; another state's tax → CPA To do until IN-65; later → To do in 3 days that turns high 7 days before the covering return closes); intake card, appliance page, PO receiving and To do all show the same step (tests per row); due dates come from the filing calendar, never hard-coded.
 - [ ] W-13 (only if IN-64 is yes): a receipt photo pre-fills price and seller tax marked "check it"; nothing saves without Chris confirming.

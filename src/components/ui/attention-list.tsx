@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatCents } from "@/domains/pricing/money";
 import type { ExceptionItem } from "@/domains/exceptions";
 
 export type AttentionGroup = {
@@ -13,11 +14,15 @@ export function AttentionList({
   acknowledgeTaxSourceAction,
   undoOfficialRateAction,
   applyOfficialRateAction,
+  snoozeAction,
+  unsnoozeAction,
 }: {
   groups: AttentionGroup[];
   acknowledgeTaxSourceAction?: (formData: FormData) => Promise<void>;
   undoOfficialRateAction?: (formData: FormData) => Promise<void>;
   applyOfficialRateAction?: (formData: FormData) => Promise<void>;
+  snoozeAction?: (formData: FormData) => Promise<void>;
+  unsnoozeAction?: (formData: FormData) => Promise<void>;
 }) {
   if (groups.length === 0) {
     return (
@@ -57,8 +62,46 @@ export function AttentionList({
                     <span className="mt-1 block text-sm text-ink-soft">
                       {item.detail}
                     </span>
+                    {item.amountCents !== undefined ? <span className="mt-1 block text-sm font-semibold text-ink">Amount owed: {formatCents(item.amountCents)}</span> : null}
+                    {item.dueLabel ? <span className="mt-1 block text-sm text-ink-soft">{item.dueLabel}</span> : null}
                   </Link>
+                  {item.snooze ? <p className="text-sm text-ink-soft">Snoozed until {item.snooze.until.toISOString().slice(0, 10)} by {item.snooze.actorName}: {item.snooze.reason}</p> : null}
+                  {item.snoozeHistory?.length ? (
+                    <details className="mt-2 text-sm text-ink-soft">
+                      <summary className="min-h-11 cursor-pointer">Snooze history ({item.snoozeHistory.length})</summary>
+                      <ul className="list-disc space-y-1 pl-5">
+                        {item.snoozeHistory.map((entry, index) => (
+                          <li key={index}>{entry.at.toISOString().slice(0, 10)}: {entry.actorName} — {entry.reason} (until {entry.until.toISOString().slice(0, 10)})</li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <Link href={item.primaryAction?.href ?? item.href}
+                      className="inline-flex min-h-11 items-center rounded-control border border-line px-3 text-sm font-medium text-link">
+                      {item.primaryAction?.label ?? "Review item"}
+                    </Link>
+                    {item.snooze && unsnoozeAction && item.todoKey ? (
+                      <form action={unsnoozeAction}>
+                        <input type="hidden" name="key" value={item.todoKey} />
+                        <button type="submit" className="min-h-11 text-sm text-link underline">
+                          Resume now
+                        </button>
+                      </form>
+                    ) : null}
+                    {!item.snooze && snoozeAction && item.todoKey ? (
+                      <details className="text-sm">
+                        <summary className="min-h-11 cursor-pointer text-link">Snooze until…</summary>
+                        <form action={snoozeAction} className="grid gap-2 rounded-control border border-line p-3">
+                          <input type="hidden" name="key" value={item.todoKey} />
+                          <label htmlFor={"snooze-date-" + item.todoKey}>Resume date (up to 90 days)</label>
+                          <input id={"snooze-date-" + item.todoKey} name="until" type="date" required className="rounded-control border border-line p-2" />
+                          <label htmlFor={"snooze-reason-" + item.todoKey}>Reason for snoozing</label>
+                          <input id={"snooze-reason-" + item.todoKey} name="reason" minLength={3} maxLength={500} required className="rounded-control border border-line p-2" />
+                          <button type="submit" className="min-h-11 rounded-control bg-ink px-3 text-white">Save snooze</button>
+                        </form>
+                      </details>
+                    ) : null}
                     {item.sourceHref ? (
                       <a
                         href={item.sourceHref}

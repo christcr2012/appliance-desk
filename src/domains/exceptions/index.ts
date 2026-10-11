@@ -1,3 +1,4 @@
+import { todoAction, todoDeadlineLabel, todoKey } from "./todo";
 import { businessDateKey, businessDayBounds, businessDaysBetween } from "@/lib/business-date";
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
@@ -68,7 +69,7 @@ function customerDisplayName(customer: { user: { name: string | null; email: str
 export const EXCEPTION_CATEGORY_CAP = 50;
 
 export type ExceptionTruncation = { category: ExceptionCategory; total: number; shown: number };
-export type ExceptionOverview = { items: ExceptionItem[]; truncated: ExceptionTruncation[] };
+export type ExceptionOverview = { items: ExceptionItem[]; snoozed: ExceptionItem[]; truncated: ExceptionTruncation[] };
 
 type Capped<T> = { rows: T[]; total: number };
 
@@ -1085,7 +1086,44 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     .filter(([, c]) => c.total > c.rows.length)
     .map(([category, c]) => ({ category, total: c.total, shown: c.rows.length }));
 
-  return { items: sortExceptions(visibleItems), truncated };
+  const ordered = sortExceptions(visibleItems).map((item) => ({
+    ...item, todoKey: todoKey(item), primaryAction: todoAction(item), dueLabel: todoDeadlineLabel(item.dueOn, now, item.dueDateOnly) ?? undefined,
+  }));
+  const stored = ordered.length ? await prisma.exceptionSnooze.findMany({
+    where: { key: { in: ordered.map((item) => item.todoKey) }, snoozedUntil: { gt: now } },
+    include: { actor: { select: { name: true, email: true } } },
+  }) : [];
+  const byKey = new Map(stored.map((record) => [record.key, record]));
+  const auditRows = canViewFinance && ordered.length ? await prisma.auditLog.findMany({
+    where: { entityType: "ExceptionSnooze", action: "todo.snoozed",
+      entityId: { in: ordered.map((item) => item.todoKey) } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 200,
+    select: { entityId: true, newValue: true, createdAt: true,
+      user: { select: { name: true, email: true } } },
+  }) : [];
+  const historyByKey = new Map<string, NonNullable<ExceptionItem["snoozeHistory"]>>();
+  for (const row of auditRows) {
+    if (!row.entityId || !row.newValue || typeof row.newValue !== "object" || Array.isArray(row.newValue)) continue;
+    const value = row.newValue as Record<string, unknown>;
+    if (typeof value.until !== "string" || typeof value.reason !== "string") continue;
+    const until = new Date(value.until + "T12:00:00Z");
+    if (!Number.isFinite(until.getTime())) continue;
+    const history = historyByKey.get(row.entityId) ?? [];
+    history.push({ at: row.createdAt, until, reason: value.reason,
+      actorName: row.user?.name ?? row.user?.email ?? "Former team member" });
+    historyByKey.set(row.entityId, history);
+  }
+  const marked = ordered.map((item) => {
+    const record = byKey.get(item.todoKey);
+    const withHistory = { ...item, snoozeHistory: historyByKey.get(item.todoKey) };
+    return record ? { ...withHistory, snooze: {
+      until: record.snoozedUntil, reason: record.reason,
+      actorName: record.actor.name ?? record.actor.email,
+    } } : withHistory;
+  });
+  return { items: marked.filter((item) => !item.snooze),
+    snoozed: marked.filter((item) => !!item.snooze), truncated };
+
 }
 
 export async function getExceptions(): Promise<ExceptionItem[]> {

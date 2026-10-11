@@ -54,6 +54,7 @@ model User {
   updatedAt DateTime @updatedAt
   archivedAt DateTime?
 
+  exceptionSnoozes ExceptionSnooze[]
   auditLogEntries AuditLog[]
   customerNotes   CustomerNote[]
   leadNotes       LeadNote[]
@@ -3552,4 +3553,19 @@ model TelecomStatement {
   costFacts CommunicationCostFact[]
   @@unique([accountId,externalId,revision])
   @@index([accountId,periodStart,periodEnd])
+}
+
+// W-1: durable, actor-attributed snoozes for owner To do exceptions.
+model ExceptionSnooze {
+  key            String   @id @db.VarChar(64)
+  category       String   @db.VarChar(80)
+  href           String   @db.VarChar(400)
+  snoozedUntil   DateTime
+  reason         String   @db.VarChar(500)
+  actorUserId    String
+  actor          User     @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([snoozedUntil])
 }
