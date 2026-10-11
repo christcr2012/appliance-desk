@@ -673,3 +673,5 @@ ADMINISTRATIVE_SETUP rules. Its result is a **private draft** only and has
 state, atomic immutable signing evidence, server-side send/sign guards and
 separate checkout/payment/credit integration. AGENTS and SESSION-START now
 link `docs/runbooks/ANTI-STALL-RECOVERY.md` for future agents.
+
+Codex review #403: SetupTaxRule now requires a literal ADMINISTRATIVE_SETUP category and rechecks that category at runtime; the W-22C3 database adapter must select category.

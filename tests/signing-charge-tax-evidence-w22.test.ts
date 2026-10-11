@@ -6,7 +6,7 @@ const confirmed = new Date("2026-10-10T12:00:00.000Z");
 function fixture(overrides: Partial<SigningFeeTaxInput> = {}): SigningFeeTaxInput {
   return {
     setupFeeCents: 4500, downPaymentCents: 3500, setupFeeTaxTreatment: "TAXABLE",
-    rules: [{ jurisdictionId: null, taxability: "TAXABLE", cpaConfirmedOn: confirmed }],
+    rules: [{ category: "ADMINISTRATIVE_SETUP", jurisdictionId: null, taxability: "TAXABLE", cpaConfirmedOn: confirmed }],
     context: {
       taxDate: date, leaseTermMonths: 12, election: "COLLECT_ON_RENTALS",
       defaultRules: { ADMINISTRATIVE_SETUP: "TAXABLE" },
@@ -34,10 +34,18 @@ describe("W-22C2 candidate setup-tax evidence (no collection)", () => {
   });
   it("rejects undecided, future-dated and mismatched rule evidence", () => {
     expect(reviewSigningFeeTax(fixture({ setupFeeTaxTreatment: "UNDECIDED" })).status).toBe("REVIEW_REQUIRED");
-    expect(reviewSigningFeeTax(fixture({ rules: [{ jurisdictionId: null, taxability: "TAXABLE",
+    expect(reviewSigningFeeTax(fixture({ rules: [{ category: "ADMINISTRATIVE_SETUP", jurisdictionId: null, taxability: "TAXABLE",
       cpaConfirmedOn: new Date("2026-10-12T00:00:00.000Z") }] })).status).toBe("REVIEW_REQUIRED");
-    expect(reviewSigningFeeTax(fixture({ rules: [{ jurisdictionId: null, taxability: "EXEMPT",
+    expect(reviewSigningFeeTax(fixture({ rules: [{ category: "ADMINISTRATIVE_SETUP", jurisdictionId: null, taxability: "EXEMPT",
       cpaConfirmedOn: confirmed }] })).status).toBe("REVIEW_REQUIRED");
+  });
+  it("refuses CPA proof accidentally taken from RENTAL instead of ADMINISTRATIVE_SETUP", () => {
+    const f = fixture();
+    const forged = [{ ...f.rules[0], category: "RENTAL" }] as unknown as typeof f.rules;
+    expect(reviewSigningFeeTax({ ...f, rules: forged })).toMatchObject({
+      status: "REVIEW_REQUIRED", candidateSigningTotalCents: null,
+      eligibleForCollection: false,
+    });
   });
   it("requires a specific home-rule rule even when a state default exists", () => {
     const f = fixture();
@@ -46,7 +54,7 @@ describe("W-22C2 candidate setup-tax evidence (no collection)", () => {
   });
   it("returns 0 setup tax for independently confirmed exemption", () => {
     const f = fixture({ setupFeeTaxTreatment: "NOT_TAXABLE",
-      rules: [{ jurisdictionId: null, taxability: "EXEMPT", cpaConfirmedOn: confirmed }] });
+      rules: [{ category: "ADMINISTRATIVE_SETUP", jurisdictionId: null, taxability: "EXEMPT", cpaConfirmedOn: confirmed }] });
     f.context.defaultRules.ADMINISTRATIVE_SETUP = "EXEMPT";
     expect(reviewSigningFeeTax(f)).toMatchObject({ status: "CALCULATED_DRAFT", setupTaxCents: 0,
       candidateSigningTotalCents: 8000, eligibleForCollection: false });

@@ -1,6 +1,7 @@
 import { computeTax, resolveTaxability, type EngineInput, type EngineTaxLine } from "@/domains/tax/engine";
 
 export type SetupTaxRule = {
+  category: "ADMINISTRATIVE_SETUP";
   jurisdictionId: string | null;
   taxability: "TAXABLE" | "EXEMPT" | "UNDECIDED";
   cpaConfirmedOn: Date | null;
@@ -64,7 +65,7 @@ export function reviewSigningFeeTax(input: SigningFeeTaxInput): SigningFeeTaxRev
     const proof = localRule ?? (jurisdiction.administration === "STATE_COLLECTED"
       ? rules.find((rule) => rule.jurisdictionId === null) : undefined);
     const effective = resolveTaxability(jurisdiction, "ADMINISTRATIVE_SETUP", context);
-    if (!proof || proof.taxability === "UNDECIDED" || !proof.cpaConfirmedOn ||
+    if (!proof || proof.category !== "ADMINISTRATIVE_SETUP" || proof.taxability === "UNDECIDED" || !proof.cpaConfirmedOn ||
         !Number.isFinite(proof.cpaConfirmedOn.getTime()) ||
         proof.cpaConfirmedOn > context.taxDate || effective.taxability !== proof.taxability) {
       reasons.push(`Independent CPA-confirmed setup-fee tax treatment is missing for ${jurisdiction.name}.`);
