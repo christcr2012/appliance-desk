@@ -4,9 +4,10 @@ import { parse, commands, adjacentRegressions, relatedSources, run, verifyBrowse
 
 test('documentation avoids app work but preserves static repository checks', () => {
   const steps = commands(parse([]), ['docs/STATUS.md']);
-  assert.equal(steps.length, 5);
+  assert.equal(steps.length, 6);
   assert.ok(steps.some(s => s.includes('scripts/check-secrets.mjs')));
   assert.ok(steps.some(s => s.includes('scripts/check-route-inventory.mjs')));
+  assert.ok(steps.some(s => s.includes('scripts/check-w18-money.mjs')));
   assert.ok(!steps.some(s => s[0] === 'npm'));
 });
 test('code without selected behavior tests fails before any command', () => {
