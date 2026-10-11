@@ -25,7 +25,7 @@ export async function getPreparedSigningChargeReview(agreementId: string) {
       id: true, agreementId: true, serviceAddressId: true,
       machineCount: true, setupFeeCents: true, downPaymentCents: true,
       signingSubtotalCents: true, firstMonthRentCents: true,
-      version: true, frozenAt: true, setupFeeTaxTreatment: true,
+      version: true, frozenAt: true, setupFeeTaxTreatment: true, sourceFingerprint: true,
       updatedAt: true,
       agreement: { select: {
         serviceAddress: { select: { line1: true, city: true, state: true, zip: true } },

@@ -82,6 +82,18 @@ facts**, then guarded hosted/manual payment, replay-safe first bill credits,
 refund/cancellation and delivery evidence. W-23 stays blocked until W-22
 fully meets its approved acceptance. Stop this chat after merged PR #400.
 
+## W-22C0 — prepared-charge reconciliation (PR #401)
+
+The owner draft-review page checks that one prepared order has all its
+agreement allocations, one fee per new location, consistent revisions,
+reconciled cents and correct down-payment attribution. A visible warning
+separates this private draft from a frozen, tax-inclusive customer contract.
+A configured tax treatment does not clear CPA gate IN-79. The agreement send
+path is not yet integrated with these checks; do not infer it is protected.
+No live collection, customer communication, signatures, invoice credits,
+refunds or deliveries were changed. W-22 stays PARTIAL, and W-23 stays blocked.
+Next: W-22C signed immutable tax-inclusive facts + guarded send.
+
 ## Next
 
 ### W-1 owner To do workflow — merged #394
