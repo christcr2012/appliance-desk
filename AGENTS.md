@@ -34,6 +34,13 @@ sections below when a step names them.
     the predecessor. At most two unmerged implementation PRs in a chain. If the predecessor changes, freeze the
     successor, then sync it once onto final `main` after the merge. No third PR or side project to fill CI time.
 
+**When a command appears stalled, follow
+[`docs/runbooks/ANTI-STALL-RECOVERY.md`](docs/runbooks/ANTI-STALL-RECOVERY.md)
+before retrying.** In particular, preflight can silently broaden a one-file
+DB test into 1,000+ related tests; inspect `--plan` and use the bounded
+isolated Postgres runner for the actual single-spec probe. Record the command
+ID/log and distinguish an in-progress pre-push gate from a failed `git push`.
+
 ## What this is
 
 **Appliance Desk** runs Chris Robinson's appliance rental business in Colorado (Robinson Appliance Rentals, Greeley

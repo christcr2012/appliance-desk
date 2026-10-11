@@ -66,6 +66,12 @@ Delete it in the card's final commit (the PR description carries the summary).
 
 ## 5. Anti-stall rules (from AGENTS "Working without stalling" — mandatory)
 
+For command expansion, tool rejection, sandbox session changes, migration
+restore failures and CI/review waits, use
+[`runbooks/ANTI-STALL-RECOVERY.md`](runbooks/ANTI-STALL-RECOVERY.md)
+*before* retrying. Preserve the exact-head merge and approval gates.
+
+
 - Read files over ~300 lines by section only (`grep -n` the heading or name, then `sed -n 'A,Bp'`, ≤150 lines).
 - Every search has a path and `| head -50`; never search the repo root, `node_modules`, `.next`.
 - Only commands that finish by themselves: `npx vitest run <file>` (never bare `vitest`), never `npm run dev`,

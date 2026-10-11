@@ -663,3 +663,13 @@ adds two PostgreSQL enum values; a separate
 default rule after the enum value commits (required for backup restore).
 Separate setup category cannot inherit RENTAL/INSTALLATION tax policy.
 CPA IN-79 and tax-inclusive freeze/send remain gated.
+
+### 2026-10-11 — W-22C2 draft tax candidate and anti-stall runbook (#403)
+
+`src/domains/billing/signing-charge-tax-evidence.ts` exports
+`reviewSigningFeeTax`, accepting independently CPA-confirmed per-jurisdiction
+ADMINISTRATIVE_SETUP rules. Its result is a **private draft** only and has
+`eligibleForCollection: false` in every path. W-22C3 still owns authenticated
+state, atomic immutable signing evidence, server-side send/sign guards and
+separate checkout/payment/credit integration. AGENTS and SESSION-START now
+link `docs/runbooks/ANTI-STALL-RECOVERY.md` for future agents.
