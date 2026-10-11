@@ -13,6 +13,8 @@ import { latestArtifactId } from "@/domains/documents/artifacts";
 import { listPackagesForLines } from "@/domains/packages";
 import { getDraftSigningChargePreview } from "@/domains/billing/signing-charge-preview";
 import { formatMoney } from "@/lib/money-ui";
+import { getPreparedSigningChargeReview } from "@/domains/billing/signing-charge-review";
+import { SigningChargePrepareForm } from "./signing-charge-prepare-form";
 
 export const metadata = { title: "Agreement" };
 
@@ -34,10 +36,11 @@ export default async function AgreementDetailPage({
     notFound();
   }
 
-  const [endQuote, signedArtifactId, signingPreview] = await Promise.all([
+  const [endQuote, signedArtifactId, signingPreview, preparedCharges] = await Promise.all([
     agreement.status === "ACTIVE" && agreement.termMonths === null ? getMonthToMonthEndQuote(agreement.id) : null,
     agreement.signature?.signedAt ? latestArtifactId("SIGNED_AGREEMENT", agreement.id) : null,
     agreement.status === "DRAFT" ? getDraftSigningChargePreview(agreement.id) : null,
+    agreement.status === "DRAFT" ? getPreparedSigningChargeReview(agreement.id) : [],
   ]);
   const earlierOptions: Date[] = [];
   if (endQuote && agreement.nextBillingDate) {
@@ -98,6 +101,60 @@ export default async function AgreementDetailPage({
               ? " Setup-fee tax treatment needs CPA confirmation before this total can be finalized."
               : " Tax and full customer-facing totals will be finalized in the signing workflow."}
           </p>
+        </section>
+      )}
+      {agreement.status === "DRAFT" && (
+        <section aria-labelledby="prepared-charges-heading" className="mt-6 rounded-lg border border-border p-4">
+          <h2 id="prepared-charges-heading" className="font-semibold">
+            Prepare this order for signing
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Save a private version of the draft setup fees and first-month
+            down-payment amounts for each rental agreement. You can refresh
+            it after changing an unsent draft. This does not send a contract,
+            book a delivery, collect money, or issue a first-bill credit.
+          </p>
+          <SigningChargePrepareForm agreementId={agreement.id} />
+          {preparedCharges.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              <p className="text-sm font-medium">
+                Prepared records — verify every location before any customer-facing quote
+              </p>
+              {preparedCharges.map((charge) => (
+                <div key={charge.id} className="rounded-md border border-border p-3">
+                  <p className="font-medium">
+                    {charge.agreement.serviceAddress.line1},{" "}
+                    {charge.agreement.serviceAddress.city},{" "}
+                    {charge.agreement.serviceAddress.state}{" "}
+                    {charge.agreement.serviceAddress.zip}
+                  </p>
+                  <p className="text-xs text-ink-soft">
+                    {charge.machineCount} machine(s) · Draft revision {charge.version}
+                  </p>
+                  <dl className="mt-2 space-y-1 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt>Setup fee allocated here</dt><dd>{formatMoney(charge.setupFeeCents)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt>Down payment for this agreement</dt><dd>{formatMoney(charge.downPaymentCents)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3 font-semibold">
+                      <dt>Draft subtotal before tax</dt><dd>{formatMoney(charge.signingSubtotalCents)}</dd>
+                    </div>
+                  </dl>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    {charge.setupFeeTaxTreatment === "UNDECIDED"
+                      ? "Setup-fee tax treatment awaits CPA confirmation; do not send or charge this total."
+                      : "Prepared amounts are not a tax-inclusive final signing total or proof of payment."}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-ink-soft">
+              No complete order-wide preparation is on record yet.
+            </p>
+          )}
         </section>
       )}
       <div className="mt-6">

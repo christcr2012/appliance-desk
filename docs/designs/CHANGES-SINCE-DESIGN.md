@@ -629,3 +629,17 @@ draft evidence only**, not invoices, signed terms, payable collection, tax
 filing or Stripe credit. W-22C must freeze reviewed tax-inclusive customer
 facts before using any of these values for payment and first-bill credit.
 Tests: `tests/signing-charge-snapshot-integration.test.ts`. No live activation.
+
+
+### 2026-10-11 — W-22B1 owner draft review workflow (#400)
+
+Draft agreement owners/admins now have a form-backed, authenticated
+preparation action and account-scoped read for the versioned
+`AgreementSigningCharge` evidence. Only complete, all-DRAFT sibling
+orders display allocations; staff remains isolated through its existing
+operational view and the independent reader's authorization. The UI uses
+money-in-dollars and warns that the prepared amounts exclude tax, are not
+customer-facing signed totals, and have not been collected. No schema,
+Stripe, SMS, email, signed artifact or first-bill payment logic changed.
+Next W-22C must freeze/customer-present the exact approved tax-inclusive
+terms before any collection and maintain the IN-79 CPA gate.

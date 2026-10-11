@@ -23,6 +23,12 @@ pushes). Never copy source files through tool output.
    [IMPLEMENTATION-RECIPES](implementation-contracts/IMPLEMENTATION-RECIPES.md), then only the matching recipe.
    W-22 remainder has a linked worked example; proposed paths must be resolved against actual code.
 
+**Testing/CI tool fallback:** If this chat environment cannot execute local
+commands, use the connected GitHub REST route for workflow/check-run status,
+job logs, PR review and exact-head CI evidence. The authoritative procedure
+is `docs/PLAYBOOK.md` §4b; do not confuse REST inspection with running a
+local test or bypassing the project's disposable-database rules.
+
 ## 2. Never do these without Chris (from AGENTS "Hard limits")
 
 Live Stripe payments, live SMS or customer email; buying anything; changing or deleting real customer, billing or
