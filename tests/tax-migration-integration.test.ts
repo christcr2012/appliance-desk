@@ -88,7 +88,7 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
       where: { jurisdictionId: null },
       orderBy: { category: "asc" },
     });
-    expect(defaults).toHaveLength(9);
+    expect(defaults).toHaveLength(10);
     expect(new Set(defaults.map((row) => row.taxability))).toEqual(
       new Set(["UNDECIDED"]),
     );
@@ -103,6 +103,7 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
         "EARLY_TERMINATION",
         "LATE_PAYMENT_FEE",
         "OTHER_CHARGE",
+        "ADMINISTRATIVE_SETUP",
       ]),
     );
     expect(migration).not.toContain('INSERT INTO "TaxFilingAccount"');

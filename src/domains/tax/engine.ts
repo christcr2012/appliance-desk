@@ -56,6 +56,7 @@ export type EngineResult =
   | { ok: false; problems: string[] };
 
 const CATEGORY_WORDS: Record<TaxChargeCategory, string> = {
+  ADMINISTRATIVE_SETUP: "Administrative setup fee",
   RENTAL: "Rental",
   LATE_RETURN: "Late return rent",
   DELIVERY: "Delivery",

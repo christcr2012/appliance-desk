@@ -1635,6 +1635,7 @@ enum InvoiceStatus {
 }
 
 enum InvoiceLineItemKind {
+  ADMIN_SETUP_FEE
   RETAIL_DELIVERY_FEE
   RENTAL
   DELIVERY_FEE
@@ -1675,6 +1676,7 @@ enum TaxReviewStatus {
 }
 
 enum TaxChargeCategory {
+  ADMINISTRATIVE_SETUP
   RENTAL
   LATE_RETURN
   DELIVERY
