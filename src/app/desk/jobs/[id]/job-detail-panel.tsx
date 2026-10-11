@@ -1,4 +1,5 @@
 "use client";
+import { moneyInputValue } from "@/lib/money-ui";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -209,10 +210,10 @@ export function JobDetailPanel({
   const [photoAlt, setPhotoAlt] = useState("");
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [partsCostDollars, setPartsCostDollars] = useState(
-    job.partsCostCents != null ? (job.partsCostCents / 100).toFixed(2) : "",
+    job.partsCostCents != null ? moneyInputValue(job.partsCostCents) : "",
   );
   const [laborCostDollars, setLaborCostDollars] = useState(
-    job.laborCostCents != null ? (job.laborCostCents / 100).toFixed(2) : "",
+    job.laborCostCents != null ? moneyInputValue(job.laborCostCents) : "",
   );
   const [costError, setCostError] = useState<string | null>(null);
   const [costSaved, setCostSaved] = useState(false);

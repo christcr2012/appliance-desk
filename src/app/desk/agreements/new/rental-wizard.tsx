@@ -1,4 +1,5 @@
 "use client";
+import { centsAsDollars } from "@/lib/money-ui";
 
 import { useRef, useState, useTransition } from "react";
 import { formatCents } from "@/domains/pricing/money";
@@ -223,12 +224,10 @@ export function RentalWizard({
     initialDraft
       ? {
           termMonths: initialDraft.termMonths?.toString() ?? "",
-          depositDollars: (initialDraft.depositCents / 100).toString(),
-          damageWaiverDollars: (
-            initialDraft.damageWaiverCents / 100
-          ).toString(),
+          depositDollars: centsAsDollars(initialDraft.depositCents).toString(),
+          damageWaiverDollars: centsAsDollars(initialDraft.damageWaiverCents).toString(),
           lateFeeGraceDays: initialDraft.lateFeeGraceDays.toString(),
-          lateFeeDollars: (initialDraft.lateFeeCents / 100).toString(),
+          lateFeeDollars: centsAsDollars(initialDraft.lateFeeCents).toString(),
           lateFeePercent: initialDraft.lateFeePercent.toString(),
           paidInFullInAdvance: initialDraft.paidInFullInAdvance,
         }

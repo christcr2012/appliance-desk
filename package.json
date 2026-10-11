@@ -8,7 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint && node scripts/check-e2-ui-tokens.mjs",
+    "lint": "eslint && node scripts/check-e2-ui-tokens.mjs && node scripts/check-w18-money.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "postinstall": "prisma generate",
     "db:migrate:deploy": "prisma migrate deploy",

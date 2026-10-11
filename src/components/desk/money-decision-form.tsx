@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { centsInWords } from "@/lib/money-words";
 import type { MoneyActionState } from "@/app/desk/billing/money-actions";
 
@@ -38,7 +39,7 @@ export function MoneyDecisionForm({
 }) {
   const id = useId();
   const router = useRouter();
-  const [dollars, setDollars] = useState(defaultCents ? (defaultCents / 100).toFixed(2) : "");
+  const [dollars, setDollars] = useState(defaultCents ? moneyInputValue(defaultCents) : "");
   const [select, setSelect] = useState(options?.[0]?.value ?? "");
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -47,13 +48,13 @@ export function MoneyDecisionForm({
 
   const typed = Math.round(Number(dollars) * 100);
   const validAmount = Number.isFinite(typed) && typed > 0 && typed <= maxCents && /^\d+(\.\d{1,2})?$/.test(dollars.trim());
-  const dollarText = validAmount ? `$${(typed / 100).toFixed(2)}` : null;
+  const dollarText = validAmount ? formatMoney(typed) : null;
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setResult(null);
     if (!validAmount) {
-      setResult({ status: "error", message: `Enter an amount between $0.01 and $${(maxCents / 100).toFixed(2)}.` });
+      setResult({ status: "error", message: `Enter an amount between $0.01 and ${formatMoney(maxCents)}.` });
       return;
     }
     setBusy(true);
@@ -87,7 +88,7 @@ export function MoneyDecisionForm({
       )}
       <div>
         <label htmlFor={`${id}-amt`} className="block text-sm font-medium text-ink">
-          Amount (most you can enter: ${(maxCents / 100).toFixed(2)})
+          Amount (most you can enter: ${formatMoney(maxCents)})
         </label>
         <div className="mt-1 flex items-center gap-2">
           <span aria-hidden="true">$</span>

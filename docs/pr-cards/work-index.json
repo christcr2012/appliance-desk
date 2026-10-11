@@ -3306,7 +3306,7 @@
       "dependencies": [
         "W-1"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3317,8 +3317,12 @@
         "src/domains/pricing/money.ts",
         "src/components/ui/form-controls.tsx"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/money-ui-w18.test.ts",
+        "tests/info-tip-w18.test.tsx",
+        "scripts/check-w18-money.mjs"
+      ],
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/W-18.md"
     },
     {

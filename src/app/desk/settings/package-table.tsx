@@ -1,5 +1,6 @@
 "use client";
 
+import { InfoTip } from "@/components/ui/info-tip";
 import { useState, useTransition } from "react";
 import { Button, Checkbox, Field, Select, StatusPill } from "@/components/ui";
 import { formatCents, formatCentsAsPlainDecimal } from "@/domains/pricing/money";
@@ -231,8 +232,9 @@ function PackageEditor({
         required
       />
       <div className="max-w-xs">
+        <InfoTip term="set-price" />
         <Field
-          label="Set price per month (dollars)"
+          label="Set price per month ($)"
           type="number"
           min={0}
           step="0.01"

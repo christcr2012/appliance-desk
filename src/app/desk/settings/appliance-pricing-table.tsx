@@ -1,4 +1,5 @@
 "use client";
+import { moneyInputValue } from "@/lib/money-ui";
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
@@ -98,7 +99,7 @@ export function AppliancePricingTable({ rows }: { rows: ApplianceTypeRow[] }) {
 
 function ApplianceControls({ row }: { row: ApplianceTypeRow }) {
   const [price, setPrice] = useState(
-    (row.monthlyPriceCents / 100).toFixed(2),
+    moneyInputValue(row.monthlyPriceCents),
   );
   const [visible, setVisible] = useState(row.showOnWebsite);
   const [photoUrl, setPhotoUrl] = useState(row.photoUrl ?? "");

@@ -1,3 +1,4 @@
+import { moneyInputValue } from "@/lib/money-ui";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +23,7 @@ function isAmendment(value: unknown): value is FilingAmendmentPacket {
         Number.isSafeInteger(row.previouslyReportedCents) && Number.isSafeInteger(row.correctedCents);
     });
 }
-const money = (cents: number) => (cents / 100).toFixed(2);
+const money = (cents: number) => moneyInputValue(cents);
 const field = "w-full rounded border border-border bg-background p-2";
 export default async function AmendmentPage({ params }: {
   params: Promise<{ periodId: string }>;
