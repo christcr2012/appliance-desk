@@ -1,3 +1,4 @@
+import { moneyInputValue } from "@/lib/money-ui";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getPrivateReturn } from "@/domains/tax/returns-view";
@@ -7,7 +8,7 @@ import { FilingCopyField } from "../filing-copy-field";
 import { filingStepKeys } from "@/domains/tax/filing-step-keys";
 import { saveReturnProgressAction, recordFiledReturnAction } from "../actions";
 
-const money = (value: number) => (value / 100).toFixed(2);
+const money = (value: number) => moneyInputValue(value);
 const label = "block space-y-1 text-sm font-medium";
 const control = "w-full rounded-lg border border-border bg-background p-2 text-foreground";
 

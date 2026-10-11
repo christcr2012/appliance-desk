@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { confirmBusinessTaxAddress, locateBusinessTaxAddress } from "@/domains/tax/locations";
 import { requireRole } from "@/lib/session";
+import { parseDollarInput } from "@/lib/money-ui";
 import { saveTaxSettings, saveTaxFilingAccount, saveTaxabilityCell, addRdfRate, addManualTaxRateVersion, type TaxSettingsInput, type FilingAccountInput } from "@/domains/tax/setup";
 import { RdfHandling, ShortTermLeaseElection, TaxFilingAccountKind, TaxFilingFrequency, TaxReportingBasis, TaxChargeCategory, Taxability } from "@prisma/client";
 export type TaxActionState = { error: string; success: string };
@@ -26,7 +27,7 @@ export async function saveTaxSettingsAction(_state: TaxActionState, form: FormDa
       shortTermLeaseElection: v(form, "shortTermLeaseElection") as ShortTermLeaseElection,
       shortTermLeaseElectionNote: v(form, "shortTermLeaseElectionNote") || null,
       rdfHandling: v(form, "rdfHandling") as RdfHandling,
-      rdfThresholdCents: integer(v(form, "rdfThresholdCents")),
+      rdfThresholdCents: parseDollarInput(v(form, "rdfThresholdDollars"), 100000000),
       rdfCpaConfirmedOn: dt(v(form, "rdfCpaConfirmedOn")),
       autoApplyOfficialRateChanges: form.get("autoApplyOfficialRateChanges") === "on",
       autoRateChangeMaxMilliPercent: integer(v(form, "autoRateChangeMaxMilliPercent")),
@@ -117,7 +118,7 @@ export async function addRdfRateAction(_state: TaxActionState, form: FormData): 
     const session = await requireRole("OWNER");
     await addRdfRate(session.user.id, {
       effectiveOn: dt(v(form, "effectiveOn")) ?? new Date("invalid"),
-      amountCents: integer(v(form, "amountCents")),
+      amountCents: parseDollarInput(v(form, "amountDollars"), 1000),
     });
     revalidatePath("/desk/sales-tax/setup");
     return { error: "", success: "New July fee rate saved without rewriting historical rates." };

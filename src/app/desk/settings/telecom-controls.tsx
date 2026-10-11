@@ -1,4 +1,5 @@
 "use client";
+import { moneyInputValue } from "@/lib/money-ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { RECOMMENDED_TELECOM_ALERT_RULES, type TelecomAlertRules } from "@/domains/messaging/telecom-alerts";
@@ -13,7 +14,7 @@ type Props = {
   canEdit:boolean; canSavePolicy:boolean; bootstrapAccountId:string | null;
   version:number; savedRules:TelecomAlertRules;
 };
-function dollars(cents:number):string { return (cents/100).toFixed(2); }
+function dollars(cents:number):string { return moneyInputValue(cents); }
 function toCents(value:string):number {
   if (!/^\d{1,8}(?:\.\d{1,2})?$/.test(value)) throw new Error("Enter a valid dollar amount.");
   const [whole, fraction=""] = value.split(".");

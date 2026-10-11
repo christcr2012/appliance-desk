@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Money, MoneyInput } from "@/components/ui/money";
+import { InfoTip } from "@/components/ui/info-tip";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "./forms";
@@ -57,7 +59,7 @@ export default async function TaxSetupPage() {
           <label className={field}>Who pays<select name="rdfHandling" className={css} defaultValue={settings.rdfHandling}>
             <option value="UNDECIDED">Undecided</option><option value="COLLECT_FROM_CUSTOMER">Customer</option><option value="PAY_MYSELF">Business</option>
           </select></label>
-          <label className={field}>Threshold (cents)<input name="rdfThresholdCents" type="number" min={0} className={css} defaultValue={settings.rdfThresholdCents} required /></label>
+          <label className={field}>Delivery fee threshold ($) <InfoTip term="rdf-threshold" /><MoneyInput name="rdfThresholdDollars" cents={settings.rdfThresholdCents} className={css} /></label>
           <label className={field}>CPA confirmed on<input name="rdfCpaConfirmedOn" type="date" className={css} defaultValue={settings.rdfCpaConfirmedOn?.toISOString().slice(0,10)} /></label>
         </div>
       </fieldset>
@@ -110,11 +112,11 @@ export default async function TaxSetupPage() {
     </section>
     <section id="fee-rates" className="space-y-3">
       <h2 className="font-semibold">Recorded fee rates</h2>
-      <ul className="space-y-1 text-sm">{rates.map(rate => <li key={rate.id}>{rate.effectiveOn.toISOString().slice(0,10)} — ${(rate.amountCents/100).toFixed(2)}</li>)}</ul>
+      <ul className="space-y-1 text-sm">{rates.map(rate => <li key={rate.id}>{rate.effectiveOn.toISOString().slice(0,10)} — <Money cents={rate.amountCents} /></li>)}</ul>
       {owner && <TaxActionForm action={addRdfRateAction} title="Add a July 1 statutory fee rate" submitLabel="Record rate">
         <div className="grid gap-3 md:grid-cols-2">
           <label className={field}>Effective July 1<input className={css} name="effectiveOn" type="date" required /></label>
-          <label className={field}>Amount (cents)<input className={css} name="amountCents" type="number" min={0} max={1000} required /></label>
+          <label className={field}>Fee amount ($) <InfoTip term="rdf-rate" /><MoneyInput name="amountDollars" cents={0} className={css} /></label>
         </div>
       </TaxActionForm>}
     </section>

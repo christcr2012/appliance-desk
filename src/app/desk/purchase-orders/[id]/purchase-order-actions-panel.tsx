@@ -1,4 +1,5 @@
 "use client";
+import { moneyInputValue } from "@/lib/money-ui";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -169,7 +170,7 @@ export function PurchaseOrderActionsPanel({
                   inputMode="decimal"
                   placeholder={
                     line.unitCostKnown
-                      ? (line.unitCostCents / 100).toFixed(2)
+                      ? moneyInputValue(line.unitCostCents)
                       : "unknown"
                   }
                   value={prices[line.id] ?? ""}

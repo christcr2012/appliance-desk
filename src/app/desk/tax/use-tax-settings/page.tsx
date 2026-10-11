@@ -3,20 +3,23 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { parseDollarInput } from "@/lib/money-ui";
+import { MoneyInput, Money } from "@/components/ui/money";
+import { InfoTip } from "@/components/ui/info-tip";
 
 export const metadata = { title: "Consumer use-tax threshold", robots: { index: false, follow: false } };
 
 async function saveUseTaxThreshold(form: FormData) {
   "use server";
   const session = await requireRole("OWNER");
-  const raw = form.get("thresholdCents");
+  const raw = form.get("thresholdDollars");
   const oldRaw = form.get("expectedCents");
   const reset = form.get("operation") === "restore";
-  const next = reset ? 30000 : Number(raw);
+  const next = reset ? 30000 : parseDollarInput(typeof raw === "string" ? raw : "", 100000000);
   const old = Number(oldRaw);
   if (!Number.isSafeInteger(next) || next < 0 || next > 100000000 ||
       !Number.isSafeInteger(old) || old < 0) {
-    throw new Error("Enter a valid threshold in cents.");
+    throw new Error("Enter a valid threshold in dollars.");
   }
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, session.user.id, ["OWNER"]);
@@ -59,14 +62,13 @@ export default async function UseTaxThresholdPage() {
       </p>
       <form action={saveUseTaxThreshold} className="space-y-4 rounded-md border p-4">
         <input type="hidden" name="expectedCents" value={cents} />
-        <label htmlFor="thresholdCents" className="block font-medium">
-          Annual use tax due threshold (cents)
+        <label htmlFor="thresholdDollars" className="block font-medium">
+          Annual use tax due threshold ($) <InfoTip term="use-tax-threshold" />
         </label>
-        <input id="thresholdCents" name="thresholdCents" type="number" step="1" min="0"
-          max="100000000" defaultValue={cents} required
+        <MoneyInput id="thresholdDollars" name="thresholdDollars" cents={cents}
           className="w-full rounded-md border bg-surface p-2" />
-        <p className="text-xs text-ink-soft">
-          {cents} cents is ${(cents / 100).toFixed(2)}. The initial default is $300.
+        <p id="thresholdDollars-help" className="text-xs text-ink-soft">
+          Current threshold: <Money cents={cents} />. The initial default is $300.00.
         </p>
         <div className="flex flex-wrap gap-3">
           <button type="submit" className="rounded-md border px-4 py-2 font-medium">

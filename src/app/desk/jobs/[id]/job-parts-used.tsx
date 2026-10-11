@@ -1,4 +1,5 @@
 "use client";
+import { formatMoney } from "@/lib/money-ui";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -7,7 +8,7 @@ import { recordPartUsageAction, reversePartMovementAction } from "../../purchasi
 export type PartsUsedRow = { id: string; label: string; quantity: number; unitCostCents: number | null; reversed: boolean };
 
 function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return formatMoney(cents);
 }
 
 /**

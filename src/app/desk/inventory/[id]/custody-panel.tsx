@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { InfoTip } from "@/components/ui/info-tip";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { recordManualCustodyAction } from "../actions";
@@ -48,7 +49,7 @@ export function CustodyPanel({
 
   return (
     <div className="rounded-lg border border-line bg-white p-5">
-      <h2 className="font-medium text-ink">Who has it</h2>
+      <h2 className="font-medium text-ink">Who has it <InfoTip term="custody" /></h2>
       {current ? (
         <p className="mt-2 text-sm text-ink-soft">
           With{" "}

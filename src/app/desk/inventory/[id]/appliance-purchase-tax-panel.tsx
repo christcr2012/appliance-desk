@@ -1,4 +1,5 @@
 "use client";
+import { moneyInputValue } from "@/lib/money-ui";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -36,7 +37,7 @@ export function AppliancePurchaseTaxPanel({
     CHOICES.find((row) => row.value === appliance.acquisitionTaxChoice)?.value ?? "LATER",
   );
   const [vendorTaxDollars, setVendorTaxDollars] = useState(
-    appliance.acquisitionTaxPaidCents === null ? "0.00" : (appliance.acquisitionTaxPaidCents / 100).toFixed(2),
+    appliance.acquisitionTaxPaidCents === null ? "0.00" : moneyInputValue(appliance.acquisitionTaxPaidCents),
   );
   const [sellerNote, setSellerNote] = useState(appliance.acquisitionSellerNote ?? "");
   const [receiptPhotoId, setReceiptPhotoId] = useState(appliance.acquisitionReceiptPhotoId ?? "");

@@ -1,3 +1,4 @@
+import { centsAsDollars } from "@/lib/money-ui";
 import { NoticeDeliveryForm } from "./notice-delivery-form";
 import { MonthToMonthForm } from "./month-to-month-form";
 import { EarlyReturnForm } from "./early-return-form";
@@ -357,25 +358,25 @@ export default async function DeskSettingsPage({
             serviceAreaZips: Array.isArray(settings.serviceAreaZips)
               ? (settings.serviceAreaZips as string[]).join(", ")
               : "",
-            deliveryFeeDollars: settings.oneTimeDeliveryFeeCents / 100,
-            installationFeeDollars: settings.oneTimeInstallationFeeCents / 100,
-            removalFeeDollars: settings.oneTimeRemovalFeeCents / 100,
+            deliveryFeeDollars: centsAsDollars(settings.oneTimeDeliveryFeeCents),
+            installationFeeDollars: centsAsDollars(settings.oneTimeInstallationFeeCents),
+            removalFeeDollars: centsAsDollars(settings.oneTimeRemovalFeeCents),
             damageWaiverEnabled: settings.damageWaiverEnabled,
             depositEnabled: settings.depositEnabled,
             lateFeeGraceDays: settings.lateFeeGraceDays,
-            lateFeeFlatDollars: settings.lateFeeFlatCents / 100,
+            lateFeeFlatDollars: centsAsDollars(settings.lateFeeFlatCents),
             lateFeePercent: settings.lateFeePercent,
             sixMonthPrepaySetDollars:
-              settings.sixMonthPrepayDiscountSetCents / 100,
+              centsAsDollars(settings.sixMonthPrepayDiscountSetCents),
             sixMonthPrepaySingleDollars:
-              settings.sixMonthPrepayDiscountSingleCents / 100,
+              centsAsDollars(settings.sixMonthPrepayDiscountSingleCents),
             twelveMonthPrepaySetDollars:
-              settings.twelveMonthPrepayDiscountSetCents / 100,
+              centsAsDollars(settings.twelveMonthPrepayDiscountSetCents),
             twelveMonthPrepaySingleDollars:
-              settings.twelveMonthPrepayDiscountSingleCents / 100,
+              centsAsDollars(settings.twelveMonthPrepayDiscountSingleCents),
             twelveMonthPrepayFreeMonthEnabled:
               settings.twelveMonthPrepayFreeMonthEnabled,
-            referralRewardDollars: settings.referralRewardCents / 100,
+            referralRewardDollars: centsAsDollars(settings.referralRewardCents),
             draftReservationHoldDays: settings.draftReservationHoldDays,
           }}
         />
