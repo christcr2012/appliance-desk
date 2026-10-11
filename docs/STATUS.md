@@ -22,11 +22,15 @@ Docs-only change; the engineering queue is unchanged.
 
 ## Next
 
+### W-1 owner To do workflow (as if merged; exact-head CI still required)
+
+W-1 adds one clear action per exception, genuine Denver-time deadlines, exact outstanding balances, and a private durable owner/admin snooze with reason and audit history. Staff cannot snooze. Snoozed issues remain visible in a separate section and return automatically after the date. An additive Postgres table is included in the backup registry. Focused pure and disposable Postgres regressions are under tests/todo-w1*. No live payment, tax filing, customer messaging or other activation. The next planned card is W-18. This status entry is conditional on green exact-head CI and merge.
+
 ### Current queue (read this first)
 
 - **Latest in chain:** COM-L14B (#392) merged with exact-head CI, all review threads closed and performance green. COM-L15 final synthetic launch proof and owner handoff is at exact-head CI/merge gate. **PAUSE after COM-L15 merges, before W-1.**
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
-- **Current queue:** W-1 → W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Current queue:** W-18 → W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old

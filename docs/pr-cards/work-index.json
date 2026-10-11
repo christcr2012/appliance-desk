@@ -3023,8 +3023,8 @@
       "dependencies": [
         "COM-L15"
       ],
-      "status": "APPROVED",
-      "migration": "none",
+      "status": "MERGED",
+      "migration": "20261014100000_w1_exception_snoozes",
       "budget": 450,
       "units": [
         "W-1"
@@ -3034,8 +3034,11 @@
         "src/domains/exceptions/rules.ts",
         "src/app/desk/today/page.tsx"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/todo-w1.test.ts",
+        "tests/todo-w1-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/W-1.md"
     },
     {

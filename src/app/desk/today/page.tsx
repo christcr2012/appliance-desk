@@ -8,6 +8,7 @@ import {
   undoAutoAppliedRateVersion,
 } from "@/domains/tax/official-rate-auto-apply";
 import { acknowledgeOfficialSourceChange } from "@/domains/tax/official-source-watch";
+import { snoozeTodo, unsnoozeTodo } from "@/domains/exceptions/todo";
 import { getDueTaskSummary } from "@/domains/tasks/workspace";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
@@ -109,13 +110,35 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   CUSTODY_UNKNOWN: "Who has this appliance?",
 };
 
+async function snoozeToDoAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER", "ADMIN");
+  const key = formData.get("key");
+  const until = formData.get("until");
+  const reason = formData.get("reason");
+  if (typeof key !== "string" || typeof until !== "string" || typeof reason !== "string")
+    throw new Error("Complete the snooze form.");
+  const overview = await getExceptionOverview();
+  await snoozeTodo({ key, until, reason, actorUserId: session.user.id,
+    active: [...overview.items, ...overview.snoozed] });
+  revalidatePath("/desk/today");
+}
+async function resumeToDoAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER", "ADMIN");
+  const key = formData.get("key");
+  if (typeof key !== "string") throw new Error("Invalid To do item.");
+  await unsnoozeTodo({ key, actorUserId: session.user.id });
+  revalidatePath("/desk/today");
+}
+
 export default async function TodayPage() {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const role = (session.user as { role?: string }).role ?? "";
   const canCreateVisit = role === "OWNER" || role === "ADMIN";
   const now = new Date();
 
-  const [{ items: exceptions, truncated }, jobs, followUps, openRequests] =
+  const [{ items: exceptions, snoozed, truncated }, jobs, followUps, openRequests] =
     await Promise.all([
       getExceptionOverview(),
       getTodaysJobs(now),
@@ -290,9 +313,20 @@ export default async function TodayPage() {
             applyOfficialRateAction={
               role === "OWNER" ? applyOfficialRateAction : undefined
             }
+            snoozeAction={canCreateVisit ? snoozeToDoAction : undefined}
           />
         </Card>
       </div>
+
+      {snoozed.length > 0 ? (
+        <details className="mt-6 rounded-card border border-line p-4">
+          <summary className="cursor-pointer font-semibold text-ink">Snoozed To do items ({snoozed.length})</summary>
+          <AttentionList
+            groups={[{ category: "snoozed", title: "Paused until their resume date", total: snoozed.length, items: snoozed }]}
+            unsnoozeAction={canCreateVisit ? resumeToDoAction : undefined}
+          />
+        </details>
+      ) : null}
 
       <div className="mt-6">
         <Card

@@ -83,6 +83,16 @@ export type ExceptionItem = {
         id: string;
         label: string;
       };
+  /** Real due date only; an issue's creation time is not a deadline. */
+  dueOn?: Date;
+  dueDateOnly?: boolean;
+  /** Outstanding money, in integer cents. */
+  amountCents?: number;
+  dueLabel?: string;
+  primaryAction?: { label: string; href: string };
+  todoKey?: string;
+  snooze?: { until: Date; reason: string; actorName: string };
+  snoozeHistory?: { at: Date; reason: string; until: Date; actorName: string }[];
   /** For sorting oldest-first within a category. */
   since: Date;
 };
@@ -581,6 +591,7 @@ export function staleReservationException(agreement: {
     detail:
       "This draft is holding equipment that could go to someone else — sign it, extend the hold, or cancel it.",
     href: `/desk/agreements/${agreement.id}`,
+    dueOn: agreement.reservationExpiresAt,
     since: agreement.reservationExpiresAt,
   };
 }
@@ -611,6 +622,9 @@ export function pastDueInvoiceException(invoice: {
     title: `${invoice.customerName}: ${reason.toLowerCase()}`,
     detail: `$${(owedCents / 100).toFixed(2)} still owed${dateDetail}.`,
     href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
+    dueOn: invoice.dueDate ?? undefined,
+    dueDateOnly: true,
+    amountCents: owedCents,
     since: invoice.dueDate ?? invoice.attentionAt ?? new Date(),
   };
 }
@@ -627,6 +641,7 @@ export function overdueJobException(job: {
     title: `${job.type.replace(/_/g, " ").toLowerCase()} job is overdue`,
     detail: `Scheduled for ${job.scheduledAt.toLocaleDateString("en-US")}${job.customerName ? ` (${job.customerName})` : ""} but never marked in progress or completed.`,
     href: `/desk/jobs/${job.id}`,
+    dueOn: job.scheduledAt,
     since: job.scheduledAt,
   };
 }
@@ -750,6 +765,8 @@ export function taxReturnDueException(input: {
       `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
       (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),
     href: input.periodId ? `/desk/sales-tax/returns/${input.periodId}` : "/desk/sales-tax/returns",
+    dueOn: input.dueOn,
+    dueDateOnly: true,
     since: input.periodEnd,
   };
 }
@@ -768,6 +785,8 @@ export function taxLicenseRenewalException(input: {
     detail: `License expiration: ${businessDateKey(input.expiresOn)}.` +
       (input.readOnly ? " Ask an Owner to update the license." : " Check and renew the license."),
     href: "/desk/sales-tax/setup",
+    dueOn: input.expiresOn,
+    dueDateOnly: true,
     since: input.expiresOn,
   };
 }
@@ -805,6 +824,9 @@ export function taxFilingNotReadyException(input: {
 }
 export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {
   return [...items].sort((a, b) => {
+    if (a.dueOn && b.dueOn && a.dueOn.getTime() !== b.dueOn.getTime())
+      return a.dueOn.getTime() - b.dueOn.getTime();
+    if (!!a.dueOn !== !!b.dueOn) return a.dueOn ? -1 : 1;
     if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;
     return a.since.getTime() - b.since.getTime();
   });

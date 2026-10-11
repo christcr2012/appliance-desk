@@ -92,6 +92,7 @@ export const BACKUP_MODEL_POLICY = {
   CustomerContact: "customerContact",
   StaffTask: "staffTask",
   AuditLog: "auditLog",
+  ExceptionSnooze: "exceptionSnooze",
   LaunchSettings: "launchSettings",
   LaunchSubscriber: "launchSubscriber",
   LaunchDelivery: "launchDelivery",
