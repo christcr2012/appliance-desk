@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-Updated 2026-10-11 against main `9d582f5e` (#396). COM-L15 #393, W-1 #394,
+Updated 2026-10-11 as if PR #398 (W-22B0) merged, following main `6f03d60` (#397). COM-L15 #393, W-1 #394,
 W-18 #395 and W-22A #396 are merged. W-22 remains partial; no live payments,
 customer messages, fee charging or tax filing are activated.
 
@@ -33,6 +33,19 @@ section. Queue, owner gates, public pricing hide and CI policy remain unchanged.
 No application code or tests changed. Verified index, quick gate, diff/path/link
 checks; exact-head CI and PR review remain publication gates.
 
+## W-22B0 — private signing-charge draft preview (#398)
+
+The owner/admin agreement detail now previews an order-wide, source-derived
+setup-fee and large-order down payment before tax. Conversion siblings share
+one fee per location; washer/dryer packages count each machine, and prepaid
+rent/active locations avoid repeat charges. The preview is informational,
+not an invoice, hosted checkout amount, signed snapshot or customer promise.
+Tests: `tests/signing-charge-preview-w22.test.ts`; exact-head CI must be
+green before this entry can be considered merged. The #397 recipes were
+already incorporated. **Next: W-22B charge/credit persistence**, followed
+by W-22C checkout/signing, webhook replay and operational/browser evidence;
+IN-79 remains an explicit CPA taxability gate. Do not begin W-23 yet.
+
 ## Next
 
 ### W-1 owner To do workflow — merged #394
@@ -49,7 +62,7 @@ The first W-22 slice records $45-per-new-delivery-location setup and five-machin
 
 ### Current queue (read this first)
 
-- **Latest in chain:** W-22A (#396) merged after COM-L15 #393, W-1 #394 and W-18 #395. No open PRs at the 2026-10-11 documentation verification; recheck before implementation. The earlier COM-L15 pause checkpoint was passed by the subsequent merged work.
+- **Latest in chain:** W-22B0 (#398) merged after W-22A (#396) after COM-L15 #393, W-1 #394 and W-18 #395. No open PRs before #398; recheck before implementation. The earlier COM-L15 pause checkpoint was passed by the subsequent merged work.
 - **Current queue:** W-22 (B/C completion) → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.

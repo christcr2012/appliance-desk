@@ -3342,10 +3342,12 @@
         "docs/designs/BATCH-W-AMENDMENT-B.md",
         "src/domains/settings/index.ts",
         "src/domains/billing/categories.ts",
-        "src/domains/billing/signing-charges.ts"
+        "src/domains/billing/signing-charges.ts",
+        "src/domains/billing/signing-charge-preview.ts"
       ],
       "tests": [
         "tests/signing-charge-plan-w22.test.ts",
+        "tests/signing-charge-preview-w22.test.ts",
         "tests/signing-charge-settings-integration.test.ts"
       ],
       "readiness": "CARD_READY",
