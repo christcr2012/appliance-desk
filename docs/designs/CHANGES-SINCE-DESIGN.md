@@ -614,3 +614,18 @@ the read-only preview on a draft agreement. No new records, charges, credits,
 signatures, provider calls or customer-facing quote updates. W-22B persistence
 must preserve these data boundaries while adding durable/versioned ownership
 and tax evidence; the preview is not a frozen pricing contract.
+
+
+### 2026-10-11 — W-22B draft signing allocation persistence (#399)
+
+`AgreementSigningCharge` is a new one-to-one child of `RentalAgreement`,
+with migration `20261015110000_w22_signing_charge_snapshots`. Its
+`prepareDraftSigningChargeSnapshots` write transaction (OWNER/ADMIN, active
+actor, deterministic agreement locks, settings share-lock) attributes one
+setup fee per address and down payment to the correct rental agreement.
+Stable fingerprints and revisions make retries idempotent; frozen revisions
+cannot be repriced through this entrypoint. Snapshot values are **pre-tax
+draft evidence only**, not invoices, signed terms, payable collection, tax
+filing or Stripe credit. W-22C must freeze reviewed tax-inclusive customer
+facts before using any of these values for payment and first-bill credit.
+Tests: `tests/signing-charge-snapshot-integration.test.ts`. No live activation.
