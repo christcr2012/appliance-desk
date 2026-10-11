@@ -2353,6 +2353,12 @@ model BusinessSettings {
   oneTimeDeliveryFeeCents     Int @default(0)
   oneTimeInstallationFeeCents Int @default(0)
   oneTimeRemovalFeeCents      Int @default(0)
+  // W-22A: configuration only; money collection is a separate guarded integration.
+  administrativeSetupFeeCents Int @default(4500)
+  largeOrderMachineThreshold  Int @default(5)
+  businessRequiresDownPayment Boolean @default(true)
+  setupFeeTaxTreatment String @default("UNDECIDED")
+  setupFeeTaxDecisionNote String?
   damageWaiverEnabled     Boolean @default(false)
   depositEnabled          Boolean @default(false)
   // Usual visit length in minutes (Batch C P1-A); used when a job has no length of its own.

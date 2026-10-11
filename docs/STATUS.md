@@ -30,11 +30,15 @@ W-1 adds one clear action per exception, genuine Denver-time deadlines, exact ou
 
 W-18 gives owner screens precise two-decimal dollar amounts, an exact dollar-entry parser, and an accessible glossary InfoTip. Sales-tax and use-tax setup now ask for dollars, never raw pennies; existing cent-based storage, audit and tax rules are unchanged. Repair, set pricing, fee and purchase-cost displays use shared helpers. Unit and UI tests and a repo preflight guard protect the wording and conversions. No provider activation, migration, or spending. Next: W-22 signing charges.
 
+### W-22A signing-charge foundation (as-if-merged, awaiting PR checks)
+
+The first W-22 slice records $45-per-new-delivery-location setup and five-machine/business down-payment settings; an owner-only settings screen with exact dollar entry, independently verified actor, audited updates and stale-edit protection; and a tested per-location integer-cent charge planner. Tax treatment remains UNDECIDED until CPA confirmation. No Stripe charge, payment credit, signing snapshot or live collection has been enabled. **W-22 is not complete.** Next W-22B/C must persist charge/credit lines, implement hosted/manual signing payments, webhook replay, cancellation, delivery evidence, all-in quote/contract/customer totals and browser acceptance before W-23. See docs/pr-cards/W-22.md for boundaries.
+
 ### Current queue (read this first)
 
 - **Latest in chain:** COM-L14B (#392) merged with exact-head CI, all review threads closed and performance green. COM-L15 final synthetic launch proof and owner handoff is at exact-head CI/merge gate. **PAUSE after COM-L15 merges, before W-1.**
 - **Owner resumed 2026-10-09:** Implement COM-L8 to COM-L15 in order; pause after COM-L15 merges, before W-1.
-- **Current queue:** W-22 → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
+- **Current queue:** W-22 (B/C completion) → W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 → W-8 → W-9
   → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 when their outside gates clear (IN-61, IN-62/IN-44, IN-64).
   Authority: `designs/BATCH-W-AMENDMENT-B.md` section 8 and `pr-cards/work-index.json`.
 - **Already done out of order (do not redo):** W-16A/B (sets are rental packages of separate machines; "Rent as"; old

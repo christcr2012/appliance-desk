@@ -19,6 +19,7 @@ import { FilterBar } from "@/components/desk/workspace";
 import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
+import { SigningChargeForm } from "./signing-charge-form";
 import { AppliancePricingTable } from "./appliance-pricing-table";
 import { PackageTable } from "./package-table";
 import { listPackagesForSettings } from "@/domains/packages";
@@ -82,6 +83,17 @@ export default async function DeskSettingsPage({
             .filter((t) => t.isActive)
             .map((t) => ({ id: t.id, name: t.name, monthlyPriceCents: t.monthlyPriceCents }))}
         />
+      </Card>
+      <Card title="New-order setup and down payments"
+        description="Configure future signing charges; live collection remains gated.">
+        <SigningChargeForm editable={session.user.role === "OWNER"} settings={{
+          administrativeSetupFeeCents: settings.administrativeSetupFeeCents,
+          largeOrderMachineThreshold: settings.largeOrderMachineThreshold,
+          businessRequiresDownPayment: settings.businessRequiresDownPayment,
+          setupFeeTaxTreatment: settings.setupFeeTaxTreatment,
+          setupFeeTaxDecisionNote: settings.setupFeeTaxDecisionNote,
+          updatedAt: settings.updatedAt,
+        }} />
       </Card>
       <Card
         title="Products and pricing"

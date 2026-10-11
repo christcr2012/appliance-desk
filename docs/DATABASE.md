@@ -613,3 +613,7 @@ not change the business record, invoice, job, collection status, provider
 message or deadline; once expired, unresolved To do items reappear. Backup
 manifest explicitly includes the snooze model after `User`. One additive
 migration, no destructive change or live activation.
+
+### W-22A — signing-charge settings (2026-10-11)
+
+`20261015100000_w22_signing_charge_settings` adds five columns to the one `BusinessSettings` singleton: `administrativeSetupFeeCents` (4500 default), `largeOrderMachineThreshold` (5), `businessRequiresDownPayment` (true), `setupFeeTaxTreatment` (UNDECIDED), and `setupFeeTaxDecisionNote` (optional). No historical agreement, customer, invoice, Stripe object or payment is changed. The owner-only settings action validates integer-cents inputs and CPA treatment, locks the singleton row to prevent simultaneous updates, checks the existing timestamp, and records an attributed audit log. The W-22B/C charge/credit linkage remains unimplemented and may not be assumed active. No destructive or data-backfill operation.

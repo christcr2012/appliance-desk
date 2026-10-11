@@ -21,5 +21,8 @@ export const GLOSSARY = {
   "set-price": { title: "Set price", description: "A washer and dryer set groups two individually tracked machines. It is not one inventory appliance." },
   "prepaid-discount": { title: "Prepaid discount", description: "An approved reduction for paying a longer rental term in advance. The signed agreement controls each customer's amount." },
   "custody": { title: "Custody", description: "Who has an appliance and when it moved. Each machine keeps its own delivery, pickup, and inspection history." },
+  "admin-setup-fee": { title: "Administrative setup fee", description: "The recommended $45 charge applies once per new delivery location, not per machine. It does not automatically apply to a repair, swap or renewal. The owner may adjust a quote with a written reason." },
+  "large-order-down-payment": { title: "Large-order down payment", description: "For orders of at least five machines, or business and property-manager clients, the proposed signing payment includes the first month of each rental. That amount must later be credited to the first invoice exactly once." },
+  "setup-fee-tax": { title: "Setup fee tax treatment", description: "Whether Colorado taxes the separately stated administrative setup fee needs tax-adviser confirmation. Undecided treatment blocks collection in the proposed signing-charge plan." },
 } as const;
 export type GlossaryKey = keyof typeof GLOSSARY;
