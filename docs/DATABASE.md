@@ -725,3 +725,24 @@ migration and no existing schema snapshot is silently reclassified.
 The deposit/down-payment portion is **not** automatically credited to an
 invoice; the next separately reviewed W-22 unit owns the exactly-once
 invoice application. TEST evidence only, and never a LIVE activation.
+
+### W-22D9 — settled down-payment entitlement (PR #421)
+
+`20261015180000_w22_down_payment_entitlement` creates
+`SigningDownPaymentCredit` with `agreementId` as primary key, unique receipt ID,
+immutable frozen-order fingerprint, positive first-month down-payment cents
+and creation timestamp. Restricted foreign keys bind both the actual rental
+agreement and the `SETTLED` signed obligation and existing cash receipt. A
+PostgreSQL insert trigger proves the same agreement, customer, settlement,
+full receipt amount, frozen order hash and exact down-payment share; other
+constraints reject duplicate entitlements. An UPDATE/DELETE trigger refuses
+changes to credited entitlement rows, and source-record triggers protect its
+settled receipt amount, customer, provider charge and accepted obligation
+amount/fingerprint against relabeling. The `Receipt` row records the full
+signing charge; the entitlement records **only its first-month portion**.
+There is no new invoice `Payment`, `CustomerCredit`, `CreditApplication` or
+Stripe customer-balance write. A subsequent approved W-22 step must apply
+this entitlement to the correct first delivery invoice exactly once and
+reconcile real provider application/readback before the UI claims credit.
+No old invoice/signature is backfilled or modified. Backup manifest includes
+the additive model. IN-79 and Stripe LIVE remain separately gated.
