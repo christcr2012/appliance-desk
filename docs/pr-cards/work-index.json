@@ -3333,7 +3333,7 @@
         "W-18"
       ],
       "status": "APPROVED",
-      "migration":  "20261015100000_w22_signing_charge_settings + 20261015110000_w22_signing_charge_snapshots (W-22 partial; payments pending)",
+      "migration": "20261015100000_w22_signing_charge_settings + 20261015110000_w22_signing_charge_snapshots (W-22 partial; payments pending)",
       "budget": 500,
       "units": [
         "W-22"
@@ -3665,6 +3665,13 @@
       "card": "docs/pr-cards/MKT-2.md",
       "status": "MERGED_ENGINEERING_COMPLETE",
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
+    }
+  ],
+  "activeExecution": "W-22D12",
+  "executionPackets": [
+    {
+      "id": "W-22D12",
+      "path": "docs/pr-cards/execution/W-22D12.json"
     }
   ]
 }

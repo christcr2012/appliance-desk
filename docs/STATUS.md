@@ -1,10 +1,52 @@
 # STATUS — current work, blockers and next action
 
-## W-22D11 exact first-invoice Stripe credit implementation — PR #423 implementation and acceptance separated
+## Current execution tooling and next capability (owner request 2026-10-12)
+
+**Inspected prerequisite:** #423 merged; main `600f93ed`. Its exact-head CI,
+performance and daily-release-policy runs passed. Recheck current GitHub/main,
+concurrent work and reviews at session start. No real Stripe TEST acceptance claimed.
+
+**Implemented in the execution-efficiency PR; merge/check status must be verified:**
+- `npm run work -- start` validates and prints the bounded active packet;
+  `read <number>` prints bounded code/design context; `route <unit>` gives later
+  scope anchors, never inferred dependency eligibility.
+- `check`/CI reject stale existing references, unsafe paths/selectors and wrong
+  parents. `plan` reports proposed test files; `verify` refuses missing tests and
+  runs normal preflight; `probe` is only disposable-DB diagnosis.
+- `doctor` diagnoses hook/lock/dependency setup without exposing credentials;
+  `install` safely supplies synthetic localhost config to per-worktree npm ci/Prisma
+  generation, avoiding the reproduced missing-DIRECT_URL startup failure;
+  `drift` shows changed integration paths; `metrics` reports bounded local
+  passed/failed/cached timings; `prompt` produces an unverified restart draft.
+- Actual-content check fingerprints survive staging/commit of identical files;
+  real changes, modes and merge conflicts invalidate evidence. Secret scans cover
+  tracked/non-ignored new files before staging too, preserving the gate. All existing
+  test/authorization/exact-head gates remain. No product financial code changed.
+- Active W-22 card is short; historical implementation log preserved. Old
+  ~800-line stop and manual preview/batch-release contradictions reconciled.
+  Larger cohesive capabilities are permitted with explicit risk/validation.
+
+**Local validation:** 58 Node regression tests pass; index validation preserves all
+144 card groups/148 acceptance units and changed active links. Disposable-Git
+cache comparison: three old keys versus one new key for stage/commit of identical
+files. Secret scan and complete sandbox preflight (typecheck/lint/static checks) pass;
+safe offline installer/generation and doctor were exercised in the real worktree.
+The following quick gate reused all seven passing checks. Exact-head CI/review/merge
+are still pending; these local figures do not claim a total project speedup.
+
+**Next:** W-22D12 ([card](pr-cards/W-22D12.md)); run `npm run work -- start`.
+Prove/repair exact signing credit, tax, actual paid amount and balance through
+webhook mirror → scoped invoice DTO → shared owner/customer document/print.
+Its new regression/browser files are **proposed**, not implemented. Then select
+eligible manual settlement/cancellation/delivery remainder from W-22; retain
+CPA IN-79, LIVE/money-out gates, real TEST evidence distinction and W-23 dependency.
+This owner-authorized maintenance request is one cohesive PR, not a five-feature batch.
+
+## W-22D11 exact first-invoice Stripe credit — MERGED #423; actual provider acceptance remains open
 
 Approved goal: correctly deduct signing first-month rent from its **own**
 subscription's first invoice, once, without billing a second agreement.
-The current branch implements an immutable receipt/credit invoice application
+Merged #423 implements an immutable receipt/credit invoice application
 journal, a negative agreement-tagged subscription first-invoice item,
 readback against actual provider object IDs, UNKNOWN outcome recovery and
 local webhook CREDIT mirroring. Disposable PostgreSQL/mocked-provider checks
@@ -38,8 +80,8 @@ sibling property's bill. This W-22 batch is an outcome boundary, not a quota.
 | Capability / criterion | Code | Automated proof | Deployed / real integration acceptance | Next |
 | --- | --- | --- | --- | --- |
 | Frozen signed amount and TEST Stripe settlement | Implemented through #420 | Exact-head CI and disposable PostgreSQL; authenticated provider evidence path tested | LIVE disabled; no live end-to-end acceptance | Keep existing isolation and reconciliation |
-| Receipt-bound per-agreement down-payment entitlement | Implemented in W-22D9 (#421) | Disposable PostgreSQL and exact-head #421 CI passed | Not deployed or accepted | Implement W-22D10 exact first-invoice application |
-| First delivery invoice credit exactly once (local and Stripe) | #422 fail-closed barrier; #423 candidate exact provider application/mirror | Disposable PostgreSQL and provider-shape tests; exact-head CI pending | No authenticated TEST provider acceptance; LIVE off | Verify #423 CI/review and real TEST readback; reconcile owner/customer invoice amounts |
+| Receipt-bound per-agreement down-payment entitlement | Implemented in W-22D9 (#421) | Disposable PostgreSQL and exact-head #421 CI passed | Real acceptance not observed | Reuse in D12; do not rebuild entitlement |
+| First delivery invoice credit exactly once (local and Stripe) | #423 merged exact provider application/mirror; #422 barrier retained | #423 exact-head CI, performance and daily-release-policy passed; disposable DB/mocked-provider tests | No authenticated TEST provider acceptance; LIVE off | D12 owner/customer invoice amounts and integrated proof; real TEST readback when available |
 | Cancellation, refunds, and per-machine hookup/delivery acceptance | NOT complete | NOT proven end-to-end | NOT accepted | Follow the approved W-22 dependency chain after credit accounting |
 
 **Deferred-blocker register:** IN-79 requires CPA-backed Colorado setup-fee
@@ -511,8 +553,8 @@ History and prior acceptance: [retired working snapshot](archive/reset-2026-10-0
 
 ## Environment (update when it changes)
 
-- **Cost target ~$20/month (2026-10-09):** no previews for `ai/**` branches; release to `live` per batch, weekly safety net (workflow
-  `release.yml`; IN-68 switches Vercel's production branch to `live`); sandbox sessions stop after 30 minutes; heavy
+- **Current release/cost policy (2026-10-12):** automatic previews disabled; scheduled daily checked main→live only
+  (`daily-live.yml`), no manual batch/weekly release; sandbox sessions remain bounded; heavy
   checks run in free GitHub Actions. The sandbox push key **does** carry over to new sessions (verified: session started
   15:49 UTC after the old one expired had both injection rules).
 

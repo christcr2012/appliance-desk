@@ -920,3 +920,25 @@ preference). Cancelling the phone *signing* backup did not cancel phone *payment
 hosted payment page opened in Chris's browser for the chosen amount, card typed there (never stored in Appliance Desk), paid only on
 Stripe's webhook, the card saved for monthly rent only with recorded spoken permission. Go-live: Stripe confirms staff-typed payments
 are allowed on the account.
+
+## 2026-10-12 — outcome-led execution toolkit for lighter selected models
+
+Owner authorized one cohesive, potentially larger implementation-efficiency PR after #423.
+Remove the arbitrary ~800-production-line stop; retain coherent integration/risk boundaries,
+reviewability, additive migration/upgrade/restore proof, all existing test/authorization gates
+and no forced model switch. No five-PR padding for this targeted maintenance request.
+
+A dependency-free `work` entrypoint validates one current execution packet, provides bounded
+code reads/current drift/setup diagnosis and exact selectors, and reuses mandatory preflight.
+Later-unit routing is discovery, not inferred readiness. Short active cards preserve history
+in an archive; D12 starts from #423's invoice application/mirror rather than rebuilding them.
+Remove contradictory manual previews/batch releases and premature merge-status instructions;
+only the scheduled daily checked main-to-live release remains authoritative.
+
+Measured disposable-Git regression: identical files before staging/after staging/after commit
+produced three old cache keys, one new actual-content key. Broaden the secret scan to the same
+tracked/non-ignored-new file set before staging; do not read external symlink targets. Real
+content/mode/identity changes or conflicts invalidate checks; failed/skipped result groups
+never receive a pass. Bounded local timings distinguish passed/failed/cache hits; they do not
+claim CI duration, total project acceleration or real-provider acceptance. No product schema,
+financial logic, owner input answer, activation, production deployment or resource expansion changed.

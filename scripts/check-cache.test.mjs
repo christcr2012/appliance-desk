@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { chmodSync, mkdtempSync, writeFileSync, rmSync, symlinkSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { codeFingerprint, BUILD_PATHSPEC, recordName, hasPassed, markPassed } from './check-cache.mjs';
@@ -64,4 +64,53 @@ test('a record exists only after a pass and is specific to command and code', ()
     assert.equal(hasPassed(recordName([['npm', 'run', 'lint']], 'f2'), dir), false);
     assert.equal(hasPassed(recordName([['npm', 'run', 'typecheck']], 'f1'), dir), false);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a successful check survives staging, committing and deletion commits with identical working bytes', () => {
+  const dir = scratchRepo();
+  try { inRepo(dir, () => {
+    const git = (...args) => execFileSync('git', args);
+    writeFileSync('a.ts', 'edited\n'); writeFileSync('new\nfile.ts', 'new\n');
+    const before = codeFingerprint();
+    const record = recordName([['npm', 'run', 'lint']], before);
+    markPassed(record, 'lint');
+    git('add', '.');
+    assert.equal(codeFingerprint(), before, 'staging does not change the checked files');
+    git('commit', '-qm', 'checked changes');
+    assert.equal(codeFingerprint(), before);
+    assert.ok(hasPassed(recordName([['npm', 'run', 'lint']], codeFingerprint())));
+    unlinkSync('a.ts');
+    const deleted = codeFingerprint();
+    assert.notEqual(deleted, before);
+    git('add', '-u'); git('commit', '-qm', 'remove');
+    assert.equal(codeFingerprint(), deleted);
+    writeFileSync('a.ts', 'edited\n');
+    assert.equal(codeFingerprint(), before, 'restored bytes are the same tree');
+  }); } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('executable permission and symlink identity invalidate checks without reading their targets', () => {
+  const dir = scratchRepo();
+  try { inRepo(dir, () => {
+    const before = codeFingerprint();
+    chmodSync('a.ts', 0o755);
+    assert.notEqual(codeFingerprint(), before);
+    chmodSync('a.ts', 0o644);
+    assert.equal(codeFingerprint(), before);
+    symlinkSync('/does-not-exist-one', 'link');
+    const first = codeFingerprint();
+    unlinkSync('link'); symlinkSync('/does-not-exist-two', 'link');
+    assert.notEqual(codeFingerprint(), first);
+  }); } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('unresolved index conflicts cannot reuse passing evidence', () => {
+  const dir = scratchRepo();
+  try { inRepo(dir, () => {
+    const git = (...args) => execFileSync('git', args);
+    git('checkout', '-qb', 'other'); writeFileSync('a.ts', 'other\n'); git('commit', '-qam', 'other');
+    git('checkout', '-q', '-'); writeFileSync('a.ts', 'ours\n'); git('commit', '-qam', 'ours');
+    assert.throws(() => git('merge', 'other'));
+    assert.throws(() => codeFingerprint(), /Resolve unmerged/);
+  }); } finally { rmSync(dir, { recursive: true, force: true }); }
 });

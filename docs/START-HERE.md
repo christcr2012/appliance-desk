@@ -4,9 +4,9 @@ Robinson Appliance Rentals is Chris's Colorado appliance rental business. Applia
 
 ## Read only what this work needs
 
-1. Implementing a card: [SESSION-START](SESSION-START.md) (one page). Otherwise AGENTS — workflow and hard limits.
+1. Implementing a capability: `npm run work -- start` (checked packet, no install needed), then [SESSION-START](SESSION-START.md) (one page). Otherwise AGENTS — workflow and hard limits.
 2. [STATUS](STATUS.md) — current head/state/next item.
-3. [MASTER-ROADMAP](MASTER-ROADMAP.md) — one owner/agent handoff and work coverage.
+3. [MASTER-ROADMAP](MASTER-ROADMAP.md) — ordered scope/work coverage; STATUS holds the current handoff.
 4. Next execution card, then its named design/code/test sections. If JIT, write the short card from approved semantic contracts first; [drift protocol](implementation-contracts/DRIFT-PROTOCOL.md) applies every time.
 5. PLAN's relevant acceptance and PLAYBOOK's relevant verification commands.
 

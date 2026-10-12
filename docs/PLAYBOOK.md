@@ -14,6 +14,14 @@ Rewritten 2026-10-09 to what still applies (full previous text: `docs/archive/re
    dependent behavior off; list the ID.
 5. Run `npm run hooks:install` once per checkout (Step 4).
 
+## Step 0a — Checked work packet
+
+Run `npm run work -- start` and `npm run work -- doctor`. Use `route <unit>` for a later unit's bounded discovery
+anchors. `plan` prints exact selectors and missing proposed files without executing tests; `verify` uses the packet's
+validated selectors and the normal preflight. See [packet authoring](pr-cards/README.md). No packet result proves
+GitHub merge, real-provider acceptance or dependency eligibility. Diagnose a small failing DB spec with `probe`,
+then complete normal preflight. `metrics` reports local passed/failed/cached timings; do not optimize away checks.
+
 ## Step 0b — Drift check (every card)
 
 `docs/implementation-contracts/DRIFT-PROTOCOL.md` **checklist A**: compare the card's baseline with current `main`,
@@ -47,17 +55,20 @@ While implementing:
 
 ### Step 3a — PR size
 
-About 500 production lines (tests/docs not counted), about 15 production files, hard stop ~800 lines, at most one
-migration (only where the card names it), one risk area (schema / money / auth / provider / screens), at most one new
-browser spec. Measure before opening the PR:
+Choose one complete observable outcome and its integration/risk boundary. The owner removed the old ~800-line
+ceiling on 2026-10-12. Routine lighter-model estimates of 450–800 production lines are useful, not a stopping gate;
+larger cohesive work is permitted when the chosen model can reliably implement, review and verify it. Related
+additive migrations need explicit order/upgrade/restore proof. Select browser specs for actual flows, not a quota.
+Measure for review before opening the PR:
 
 ```bash
 git diff --shortstat origin/<base>...HEAD -- src prisma scripts ':!scripts/**/*.test.*'
 git diff --name-only origin/<base>...HEAD -- src prisma scripts | wc -l
 ```
 
-Combine adjacent approved units when they make one testable capability within budget; split only for a concrete
-reason. Tests are never budgeted.
+Combine adjacent approved units when they finish one testable capability; split only for concrete independent risk,
+ordered migration prerequisites, reviewability or an actual execution limit. Name the residual acceptance/successor
+when splitting. A pure helper, draft warning or safety barrier is not the parent outcome. Tests are never budgeted.
 
 ## Step 4 — Verify before pushing (this is where most time was lost)
 
@@ -143,8 +154,10 @@ CLI fallback for each tool is `vercel api /v2/sandboxes/...`):
    `get_session_command_logs`. Pipe through `| tail -80`.
 3. **Layout:** the main checkout is `/vercel/appliance-desk`; each card gets a worktree beside it:
    `cd /vercel/appliance-desk && git fetch origin && git worktree add ../appliance-desk-<card> origin/<branch>` (or
-   `git -C ../appliance-desk-<card> pull` when it exists). First time in a worktree: `npm ci` (dependencies are reused
-   afterwards). Remove worktrees of merged cards: `git worktree remove ../appliance-desk-<old-card>`.
+   `git -C ../appliance-desk-<card> pull` when it exists). First time in a worktree: `npm run work -- install` (bounded `npm ci --include=dev` with synthetic localhost
+   Prisma-generation config; dependencies are reused afterwards). Never symlink another worktree's node_modules: React/Turbopack can resolve duplicate modules or reject
+   an outside tree. Try `npm ci --offline` only when cache is complete; repair actual install errors before testing.
+   Remove only clean, merged, inactive worktrees after checking their branch/PR; never discard another session's work.
 4. **Test:** in the worktree, `npm run preflight -- --db tests/<file>.test.ts [--browser e2e/<spec>.spec.ts]`, or
    `bash scripts/local-postgres-test.sh tests/<file>.test.ts`. PostgreSQL 18 lives at `/usr/lib/postgresql/18/bin` (not on
    `PATH`; `which postgres` failing means nothing). The launcher creates a fresh localhost-only `appliance_desk_test`,
@@ -212,14 +225,16 @@ W-0A's conflicts and broken status lines). If the new commits change only docs
 `work-index.json`: keep **both** sides' entries, then re-run `python3 docs/pr-cards/validate-index.py`. If code changed,
 re-check only the parts of drift checklist A that touch your card's paths.
 
-## Step 6 — Docs as if merged, then open the PR
+## Step 6 — Reconcile implemented behavior and pending gates, then open the PR
 
-Write the docs for the world **after** this PR merges (DRIFT-PROTOCOL checklist B — CI checks it): the card says
-`MERGED (#n)`, `docs/STATUS.md` says it merged and names the next card, and the living docs describe the new behavior.
+Reconcile docs **inside** this PR (DRIFT-PROTOCOL checklist B — CI checks it): describe implemented behavior and
+name the next capability, but label pending CI/review/merge/real acceptance truthfully. Do not predeclare an actual
+merge or a passing check. At verified merge, put the confirmed main/head/check evidence in the permanent PR comment
+and final handoff; the next substantive PR reconciles that checkpoint in STATUS without a docs-only follow-up.
 Also update `docs/DECISIONS.md` (dated decisions), `docs/ROADMAP.md` (out-of-scope
 ideas), `docs/OWNER-INPUTS.md` (new questions/answers), `docs/GO-LIVE-CHECKLIST.md` (new switches or keys).
 PR title `<type>: <plain description>`. Description in plain English: what Chris can now do; the acceptance list with
-evidence (test names, CI run, preview URL); owner decisions (IN-xx or none); review dispositions; what is not included;
+evidence (test names, CI run, actual local/Actions browser proof); owner decisions (IN-xx or none); review dispositions; what is not included;
 CI runs used. Delete the card's resume note in the final commit.
 
 ## Step 7 — Review
@@ -236,14 +251,16 @@ CI runs used. Delete the card's resume note in the final commit.
 4. Resolve a thread only after verifying the fix at the exact head (review-thread connector or GraphQL
    `resolveReviewThread`).
 
-## Step 8 — Preview
+## Step 8 — Browser and deployment evidence
 
-Every PR gets a Vercel preview (isolated database; never sends messages or charges cards). For UI changes click through
-the flow at 360, 768 and 1440 px in light and dark. Backend: confirm the preview built. Docs: nothing to click.
+Automatic Vercel previews are disabled by the owner's daily-release/cost policy. Do not request or wait for one.
+Keep existing selected local/Actions browser, phone/light/dark/keyboard/axe checks and full CI mandatory; record what
+was actually exercised. A green development PR is not deployed/real-provider acceptance. The scheduled daily workflow
+alone updates `live`; no manual deployment or promotion. See [release policy](../.github/RELEASE-POLICY.md).
 
 ## Step 9 — Merge (authorized when all are true)
 
-`ci` green at the exact head; acceptance met with evidence; preview checked; reviews handled. Merge with the
+`ci` and all required checks green at the exact head; PR acceptance and existing local/Actions browser evidence met; reviews handled. Merge with the
 expected-head SHA (merge commits, no squash). Stacks merge bottom-up: **retarget each PR to `main` before merging it**
 (merging into its base branch leaves `main` without the work), wait for fresh `ci` at that head, then merge.
 `gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge-async -f merge_method=merge -f merge_action=direct_merge -f sha=<head>`

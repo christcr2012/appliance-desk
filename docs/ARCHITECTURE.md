@@ -6,8 +6,8 @@ One Next.js 16 (App Router) application. No monorepo, no microservices.
 
 | Piece | Where | Notes |
 |---|---|---|
-| Source code | GitHub — `christcr2012/appliance-desk` (private) | `main` is production. All work happens on branches, merged via PR. |
-| Hosting | Vercel — team **Robinson AI Systems**, project **appliance-desk** | `main` → production; PRs/branches → preview deployments. Custom domain **robinsonappliancerentals.com** is live and verified (DNS hosted on Vercel's own nameservers). |
+| Source code | GitHub — public `christcr2012/appliance-desk` | `main` is development; work lands through checked PRs. Daily checked promotion alone updates `live`. |
+| Hosting | Vercel — team **Robinson AI Systems**, project **appliance-desk** | `live` → production; automatic previews disabled. Domain **robinsonappliancerentals.com**; daily release/cost policy governs. |
 | Database | Neon — project **Appliance Desk** (`jolly-term-08991992`), database `appliance_desk`, branch `main` | Region: **AWS US East 1 (N. Virginia)** — see `docs/DECISIONS.md` for why. |
 
 ## Environment variables
@@ -498,7 +498,7 @@ Never rely on hiding a nav link as the only protection for anything.
 - **migrations and unit/integration tests** — throwaway Postgres → check for un-reviewed destructive migrations → apply migrations → verify schema health (the same check production runs before building) → prove schema health rejects a missing column → prove a populated historical database upgrades → seed business content and test-only OWNER/CUSTOMER/STAFF accounts → unit and real-Postgres integration tests.
 - **production build and browser acceptance** — sharded across 3 runners. Each shard gets its own throwaway Postgres, applies migrations, verifies schema health, seeds, runs the production build, installs the Playwright browser, then runs the Playwright/axe accessibility, security and end-to-end spec files assigned to it. The assignment lives in `e2e/shards.json` (named groups → spec files) and is run by `scripts/e2e-shard.mjs <group>`. Playwright's own `--shard` was tried first and rejected: it balances by test *count*, and this suite's test durations are so uneven that one runner got ~4x the runtime of the others. The groups are balanced by measured duration instead; after each shard runs, the script prints a per-file duration notice (from Playwright's JSON reporter, CI-only) that is readable from the Checks API — use those numbers to rebalance. The script refuses to run, and the static-checks job fails (`--check`), if any `e2e/*.spec.ts` is unassigned, double-assigned, or missing, so a new spec file can never silently stop running. Every spec still runs exactly once per CI run. Each shard uploads its own Playwright report (`playwright-report-<group>`).
 
-A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel deploys previews for every PR and production on merge to `main` independently of this workflow.
+A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel builds only `live`; automatic previews are disabled. Daily checked promotion is independent of development PR batch counts; no deployment is required to merge a green development PR.
 
 ## CI layout and speed
 
@@ -606,14 +606,12 @@ that does not delay the deployment. The build machine is Vercel's standard 4-cor
   (`git.deploymentEnabled`). GitHub Actions builds and tests every PR head for free, so the `ci` check — not a Vercel
   Preview — is the merge gate; the repository ruleset must therefore **not** require a "Preview" deployment
   (OWNER-INPUTS IN-67).
-- **Monthly cost target: about $20 (Chris, 2026-10-09).** Three more limits keep Vercel near the Pro plan price:
-  (1) no previews for `ai/**`, `transfer/**` or `recovery/**` branches (`git.deploymentEnabled`) — CI builds and tests
-  them free; a branch named `preview/<topic>` still gets a preview when Chris needs to see a screen before merge;
-  (2) **release per batch**: Vercel's production branch is `live`, which `.github/workflows/release.yml` fast-forwards
-  to a `main` commit with a green `ci` when a batch finishes (the agent runs it), weekly as a safety net (Mon 03:07
-  Denver), or on demand (Run workflow) — switch to daily at launch; `main` itself no longer builds
-  (IN-68); (3) the sandbox's sessions stop after 30 minutes (`timeout`), and heavy checks run in GitHub Actions — push
-  the branch and run "CI" on it (workflow_dispatch) — rather than in the paid sandbox.
+- **Current cost/release policy (owner 2026-10-12):** automatic previews are disabled for every branch except
+  `live`; no `preview/<topic>` exception. `.github/workflows/daily-live.yml` alone promotes a checked main snapshot
+  once per Denver day. No manual batch/weekly release, deployment or promotion. Existing sandbox sessions/checks
+  remain bounded; use free Actions for heavy full suites. See [.github/RELEASE-POLICY](../.github/RELEASE-POLICY.md)
+  and [HOSTING-COST-POLICY](HOSTING-COST-POLICY.md). Historical build measurements above are observations, not a
+  command to deploy a development branch.
 - **TypeScript runs inside `next build` as well as in CI.** Kept on purpose: Vercel can finish a deployment before CI,
   and the 8 s check stops a broken build from ever being promoted.
 - **Known build-log messages:** "Update available 7.10.0 -> 8.0.0-rc" is Prisma advertising a pre-release (ignore

@@ -1,116 +1,107 @@
-# SESSION-START — one page to begin (or resume) an implementation session
+# SESSION-START — resume one complete capability
 
-For Sol 5.6 (or any model) implementing an approved PR card. Read **this page and your card**, then work. Open other
-rule files only when a step below names them, a section at a time. `AGENTS.md` still governs; this page is its short
-form for card work (Chris, 2026-10-09, after sessions kept stopping during start-up reading).
+For Sol 5.6 or any selected model. [AGENTS](../AGENTS.md) governs;
+read this page and the current packet/card, not every planning file.
+[STATUS](STATUS.md) is the permanent handoff; historical entries are reference.
 
-For hosting costs, daily main-to-live promotion, disabled previews, and
-Neon idle limits, consult [HOSTING-COST-POLICY](HOSTING-COST-POLICY.md)
-**only when deployment or cost controls are relevant**. This is not a new
-approval to activate Stripe LIVE or bypass CPA IN-79.
+## 1. Orient once, then edit
 
-## Blocker recovery and independent work (required)
+1. Fetch actual main: `git fetch origin +refs/heads/main:refs/remotes/origin/main`.
+   Check branch/dirty work, open PRs, exact-head checks, unresolved reviews and
+   concurrent work. Preserve another session's work; never reset a dirty checkout.
+2. Read the current top handoff in STATUS. Resume your card's `.progress.md` if
+   present; do not redo its completed steps. Once per worktree: `npm run setup`.
+3. `npm run work -- start` prints the checked active capability, exact integration
+   references, ordered implementation, proving cases and scoped gates. It works
+   before npm install. `npm run work -- doctor` diagnoses hook/lock/dependency
+   problems without reading credentials or contacting providers.
+4. Read the card and only the named functions/design headings. `npm run work -- read 4`
+   prints at most 102 lines around numbered integration reference 4. `npm run work -- drift`
+   lists changed integration files; apply [DRIFT-PROTOCOL](implementation-contracts/DRIFT-PROTOCOL.md)
+   checklist A. Later unit without a packet: `npm run work -- route <unit>` and
+   [packet authoring](pr-cards/README.md); missing card means write it, not stop.
 
-Follow the permanent scoped-blocker triage in `AGENTS.md`: investigate and
-attempt authorized fixes first; document precise affected acceptance/evidence
-in `docs/STATUS.md`; recheck on owner/dependency/environment changes. A
-blocked provider/approval is not permission to stop approved unrelated work.
-Inspect the work index and dependencies before an early stop; retain all gates
-and never invent external acceptance or pad the five-PR boundary.
+## 2. Implement the outcome together
 
-## Milestone outcome and acceptance (required each session)
+Name the complete observable result before coding. Include its existing domain,
+DTO, caller/UI and meaningful tests in one reviewable capability. Routine
+450–800 production-line estimates are advisory; the owner removed the old ceiling.
+Larger cohesive PRs are permitted with an explicit integration/risk/validation
+plan. Split only for concrete independent risk, migration order, reviewability
+or execution limits, and name the residual acceptance and successor.
 
-Before selecting the next card, use `AGENTS.md`'s milestone-led batch rules
-and `docs/STATUS.md`'s permanent handoff to identify the highest-priority
-eligible customer outcome; confirm the implementation/automation/deployment/
-real-acceptance distinction, and recheck owner/dependency/environment blockers.
-Five merged PRs is the normal boundary, not acceptance. Preserve current
-approved scope and all hosted/owner/production gates; add any lasting workflow
-changes to the next substantive implementation PR, not a docs-only PR.
+Ordinary file/function names, additive implementation details and mechanical drift
+are engineering work. Missing money/security/business semantics still require the
+approved contract; never guess a policy or treat recommendations as owner answers.
+Use established helpers, lock/actor/tenant rules and fixtures before inventing new ones.
+One bounded discovery pass → edit the contract/tests → implement; no distant card-writing spree.
 
-## 1. Find your place (2 minutes)
+## 3. Diagnose small, verify complete, publish once
 
-Local database testing uses the project's **Vercel Sandbox** (PLAYBOOK 4b has the exact steps; reuse the sandbox named
-in STATUS, never create one per card). Code reaches GitHub only as git commits: `git push` from
-the sandbox (its push key is installed — STATUS "Environment"), or `docs/runbooks/SANDBOX-PUBLISH.md` if the key fails (pack → upload small parts → the workflow
-pushes). Never copy source files through tool output.
+- `npm run work -- plan` shows selectors, missing proposed tests and affected-source
+  fan-out. No checks run. A small explicit selector can still pull in many related tests.
+- Fix one failing DB spec with `npm run test:db:probe -- tests/exact.test.ts` or the
+  current packet's `work -- probe`. These are diagnostic, not publication proof.
+- After the proposed tests exist, `npm run work -- verify` runs their validated
+  selectors through normal preflight; `--fresh` forces checks. Keep all required
+  related regressions and local/Actions browser/build gates. `work -- metrics`
+  reports bounded local elapsed times, failures and cache hits, not CI/acceptance.
+- Local database/browser tests use the existing Vercel Sandbox and disposable
+  localhost PostgreSQL, never Neon/production ([PLAYBOOK §4b](PLAYBOOK.md)). Use
+  a real per-worktree install: `npm run work -- install` (add `--offline` only with a
+  complete npm cache). It uses synthetic localhost config for Prisma generation
+  and never migrates/seeds; no real DIRECT_URL or shared node_modules symlink. Reuse the persistent sandbox.
+- Finish docs/card/packet/STATUS in the implementation PR before final checks.
+  Describe implemented behavior and actual pending gates; do not predeclare merge
+  or real acceptance. Staging/committing identical files preserves passing local
+  records. Any real file/mode change invalidates them. Failed/interrupted groups
+  never get a pass; exact-head CI and review are still mandatory.
+- Push the complete checked tree once per CI cycle via sandbox Git (or
+  [SANDBOX-PUBLISH](runbooks/SANDBOX-PUBLISH.md)). No `--no-verify`, source copying,
+  skipped/disabled tests or repeated blind pushes. Batch all known failures/findings.
+- While CI/review runs, work only on the eligible immediate successor in the
+  two-lane chain. Sync once onto the predecessor's final main; no third PR.
 
+## 4. Scoped recovery and hard limits
 
-1. `git fetch origin +refs/heads/main:refs/remotes/origin/main && git status -sb && git log --oneline -5` — and once per checkout or sandbox worktree `npm run setup`
-   (pre-push quick gate, HTTP/1.1 for GitHub, merge-based syncing). Checks remember what already passed on the same
-   code, so re-running after an interruption only redoes what is left.
-2. `sed -n '1,40p' docs/STATUS.md` → the **Next** section names the card.
-3. Is there a **resume note**? `ls docs/pr-cards/*.progress.md 2>/dev/null` — if your card has one, read it and continue
-   from its "Next step". Do not restart work that it lists as done.
-4. Read your card (`docs/pr-cards/<ID>.md`). Read only what its "Read only these" list says.
-   Writing/refreshing a JIT card? Open the routing table and **Card packet** in
-   [IMPLEMENTATION-RECIPES](implementation-contracts/IMPLEMENTATION-RECIPES.md), then only the matching recipe.
-   W-22 remainder has a linked worked example; proposed paths must be resolved against actual code.
+Investigate the failure and attempt authorized code/configuration/dependency/doc
+remedies first; check already recorded owner answers. For a genuine external gate,
+record only its affected operation, attempted remedies, needed evidence/decision,
+prerequisites, reopening trigger and next action in STATUS. Continue the highest-priority
+approved independent work; requeue the slice when its gate clears. Inspect the
+actual index/dependencies before claiming nothing is eligible. A blocked card,
+missing credential, reviewer quota or line count is not a project-wide stop.
 
-**Testing/CI tool fallback:** If this chat environment cannot execute local
-commands, use the connected GitHub REST route for workflow/check-run status,
-job logs, PR review and exact-head CI evidence. The authoritative procedure
-is `docs/PLAYBOOK.md` §4b; do not confuse REST inspection with running a
-local test or bypassing the project's disposable-database rules.
+Keep explicit gates for LIVE Stripe, SMS/customer email, spend, destructive real
+customer/billing/signature changes, production fixtures, cross-project changes,
+direct main commits, public signup and secrets. Do not weaken authorization,
+independent money-out approval, signed facts, isolation, tests or exact-head checks.
+Implementation/mocks/CI do not imply deployed or authenticated real-provider acceptance.
 
-## 2. Never do these without Chris (from AGENTS "Hard limits")
+Automatic Vercel previews are disabled. Only the scheduled daily checked main→live
+workflow releases production; no manual batch release, preview or promotion.
+Existing local/Actions browser tests remain mandatory. Read
+[HOSTING-COST-POLICY](HOSTING-COST-POLICY.md) only when hosting/cost work is relevant.
 
-Live Stripe payments, live SMS or customer email; buying anything; changing or deleting real customer, billing or
-signature data; seeds/resets against production; anything outside this project; committing directly to `main`;
-skipping, disabling or weakening tests; re-enabling public sign-up; secrets anywhere in code, docs or logs.
+## 5. Resume, wait and finish
 
-## 3. The work loop
+After each coherent commit, keep a ≤20-line card `.progress.md`: branch/head,
+done, next step, lane A PR/check/review/merge state, lane B successor, blocker.
+Delete it from the completed capability's final tree. On interruption resume that
+checkpoint; use [ANTI-STALL-RECOVERY](runbooks/ANTI-STALL-RECOVERY.md) before retrying.
 
-1. Branch `ai/<tool>/<topic>` from latest `main` (or the card's base).
-2. Drift check: `docs/implementation-contracts/DRIFT-PROTOCOL.md` **checklist A** (table in the PR, card corrected
-   first). Mechanical drift: fix and note it. A real decision missing: stop that card (§6).
-3. Build one work unit → its tests → `npm run preflight -- --unit/--db/--browser <the card's tests>` (PLAYBOOK 4b; the
-   registry table in 4c lists what else to update) →
-   **commit locally** → update the resume note (§4). Repeat. Checks red → the fix-and-retest loop in PLAYBOOK 4b (one
-   failing file at a time, then the full check once) — never stop on a red result.
-4. **Code first, then docs.** Publishing verified code beats polishing documents: in an implementation PR, edit only the
-   docs checklist B names; any other doc cleanup goes in STATUS as a note for later.
-5. When the card is complete: update the docs **as if this PR had already merged** (card `MERGED (#n)`, STATUS, living
-   docs — DRIFT-PROTOCOL checklist B; CI fails an app PR that skips STATUS/card), push once (the hook runs the quick gate; never `--no-verify`), open
-   the PR, then follow PLAYBOOK Steps 5–9. Checklist B is done inside the PR, not after it. Last PR of a batch: **checklist C** (batch close-out) before the next batch. One push per CI cycle; after a red run read every failure, reproduce it
-   locally, fix them all, push once.
+Read bounded sections (about 150 lines); narrow searches and output. Commands
+must finish (Vitest `run`, no dev/watch); slow commands need timeout/log/command id.
+The same failure twice means change the hypothesis. After about ten reads without
+an edit, write the smallest justified edit/test, unless a concrete decision remains.
+Check external waits once, act on new evidence, then advance useful work; keep the
+turn active through finite CI using PLAYBOOK's bounded waits.
 
-## 4. Resume note — so stopping never loses your place
-
-Keep `docs/pr-cards/<ID>.progress.md` (≤20 lines) on your branch and update it after every commit:
-
-```
-Card: W-0A · Branch: ai/sol/w-0a · Last commit: <sha> <subject>
-Done: 1 business address confirm (tests pass) · 2 re-save recalculates
-Next step: 3 catch-up — write recalculatePendingPurchaseTax, then its integration test
-Blocked: none
-```
-
-Delete it in the card's final commit (the PR description carries the summary).
-
-## 5. Anti-stall rules (from AGENTS "Working without stalling" — mandatory)
-
-For command expansion, tool rejection, sandbox session changes, migration
-restore failures and CI/review waits, use
-[`runbooks/ANTI-STALL-RECOVERY.md`](runbooks/ANTI-STALL-RECOVERY.md)
-*before* retrying. Preserve the exact-head merge and approval gates.
-
-
-- Read files over ~300 lines by section only (`grep -n` the heading or name, then `sed -n 'A,Bp'`, ≤150 lines).
-- Every search has a path and `| head -50`; never search the repo root, `node_modules`, `.next`.
-- Only commands that finish by themselves: `npx vitest run <file>` (never bare `vitest`), never `npm run dev`,
-  watch modes, `tail -f` or sleep/poll loops; wrap slow ones in `timeout 600`; `GIT_PAGER=cat`, `CI=1`.
-- Pipe long output through `| tail -80`. Same command fails or hangs twice → change approach or record the blocker.
-- After ~10 reads/searches without an edit, stop exploring and make the smallest next edit.
-- CI, reviews and previews: check once, act on what is new, then do other work. Don't watch.
-
-## 6. Stopping
-
-Stop only for a real gate: a hard limit (§2), a missing money/security/schema decision, or a card over 800 production
-lines. Before stopping: commit, update the resume note's "Next step" and "Blocked", update `docs/STATUS.md`, and say in
-one plain-English paragraph what is done and what Chris needs to decide.
-
-## Restart message for Chris to paste when a session stops
-
-> Continue the Appliance Desk work. Read `docs/SESSION-START.md`, then your card's resume note
-> (`docs/pr-cards/<ID>.progress.md`) if it exists, and pick up at its "Next step". Follow the anti-stall rules.
+Normal development stops after five verified substantive merged PRs, never padding
+or treating count as acceptance. A targeted maintenance request may be one cohesive
+PR. Earlier stop needs evidence all approved work is blocked or an actual execution
+limit. Record confirmed main/PR heads/checks/review dispositions, unfinished acceptance,
+gates and next outcome in the permanent PR comment/final handoff; reconcile STATUS
+in the next substantive PR. `npm run work -- prompt` produces a compact **draft**;
+verify GitHub checkpoint evidence before giving it to Chris. Future prompts refer
+to AGENTS/SESSION-START/STATUS and the active packet, not a copied rulebook.

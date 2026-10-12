@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "id": "W-22D12",
+  "parent": "W-22",
+  "baseline": "600f93edf2bf203a9ba7abbd0e4a11936843646e",
+  "card": "docs/pr-cards/W-22D12.md",
+  "outcome": "Owner and customer see the exact first-invoice signing credit, tax, actual payment and remaining balance without double credit or false paid status.",
+  "risk": "Read-only financial presentation and integrated acceptance; no schema or provider mutation.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-W-AMENDMENT-B.md",
+      "anchor": "### 6.2 W-22",
+      "purpose": "Approved down-payment attribution and all-in display behavior only."
+    },
+    {
+      "path": "src/domains/billing/signing-first-invoice-application.ts",
+      "anchor": "verifySigningFirstInvoiceCredit",
+      "purpose": "Reuse strict agreement/subscription/invoice line evidence; credit is not settlement."
+    },
+    {
+      "path": "src/domains/billing/signing-invoice-mirror.ts",
+      "anchor": "signingInvoiceMirrorProof",
+      "purpose": "Existing verified negative CREDIT line identity and early/replay rejection."
+    },
+    {
+      "path": "src/domains/billing/invoice-detail.ts",
+      "anchor": "getInvoiceDetail",
+      "purpose": "Stored totals, payments, customer-scoped DTO and existing balance calculation."
+    },
+    {
+      "path": "src/components/billing/invoice-document.tsx",
+      "anchor": "export function InvoiceDocument",
+      "purpose": "Shared owner/customer/print presentation; do not duplicate."
+    },
+    {
+      "path": "src/app/account/billing/invoice/[invoiceId]/page.tsx",
+      "anchor": "customerId: customer.id",
+      "purpose": "Preserve portal session/customer and draft isolation."
+    },
+    {
+      "path": "src/app/desk/billing/customer/[id]/invoice/[invoiceId]/page.tsx",
+      "anchor": "invoice.customer.id !== id",
+      "purpose": "Preserve OWNER/ADMIN and selected-customer guards."
+    },
+    {
+      "path": "tests/signing-send-guard-w22-integration.test.ts",
+      "anchor": "SigningFirstInvoiceApplication",
+      "purpose": "Reuse actual settled/applicable signing fixtures and immutable journal tests."
+    }
+  ],
+  "proposedFiles": [
+    "tests/signing-invoice-views-w22.test.tsx",
+    "tests/signing-invoice-views-w22-integration.test.ts",
+    "e2e/signing-first-invoice-views.spec.ts"
+  ],
+  "invariants": [
+    "No second subtraction: the stored amount due already includes the mirrored negative line.",
+    "Credit application does not establish PAID status; actual payment evidence remains separate.",
+    "No generic customer-balance credit, foreign agreement attribution, money-out, LIVE activation or rewritten signed facts.",
+    "Customer queries pass their authenticated customerId; owner pages keep existing finance-role and customer guards."
+  ],
+  "sequence": [
+    "Extend existing settled/applicable signing fixture through webhook mirror and scoped invoice-detail read.",
+    "Prove the shared InvoiceDocument renders the negative line and exact net due/paid/balance; repair only demonstrated mismatches.",
+    "Cover replay, early/unknown evidence, sibling property, foreign customer, hidden drafts and legacy invoices.",
+    "Add one saved-session browser flow for owner/customer invoice routes and print/phone/dark/keyboard/axe; register its shard.",
+    "Complete selected preflight and exact-head CI/review; update this packet/card and STATUS with actual evidence."
+  ],
+  "acceptance": [
+    "Synthetic 6000 rent + 480 tax - 6000 signing credit => due 480, paid 0, balance 480, OPEN; an independent successful 480 payment => balance 0.",
+    "Pending entitlement alone never displays applied credit or PAID; duplicate webhook/application never duplicates money/line.",
+    "Foreign customer and sibling agreement get no credit/detail leakage; DRAFT stays hidden.",
+    "Owner and customer use the same invoice document and matching recorded figures; authenticated browser flow proves both routes."
+  ],
+  "gates": [
+    {
+      "id": "IN-79",
+      "affected": "Actual setup-fee tax configuration and charge-bearing sends; synthetic read-only invoice tests can proceed.",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Obtain and record CPA-backed classification; do not invent taxability from fixture rates.",
+      "reopen": "Recorded CPA decision plus independently verified tax configuration and behavior."
+    },
+    {
+      "id": "TEST-PROVIDER",
+      "affected": "Real authenticated Stripe TEST acceptance only; local disposable PostgreSQL/mocked-provider checks remain implementation proof.",
+      "source": "docs/STATUS.md",
+      "remedy": "Check existing authorized TEST environment and exercise exact subscription/invoice/line readback if available; never use LIVE.",
+      "reopen": "Authorized TEST credentials/environment and independently reconciled actual invoice evidence are available."
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/signing-first-invoice-application-w22.test.ts",
+      "tests/signing-invoice-mirror-w22.test.ts",
+      "tests/signing-invoice-views-w22.test.tsx"
+    ],
+    "db": [
+      "tests/signing-send-guard-w22-integration.test.ts",
+      "tests/customer-isolation.test.ts",
+      "tests/signing-invoice-views-w22-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/signing-first-invoice-views.spec.ts"
+    ],
+    "node": []
+  },
+  "next": "Keep W-22 PARTIAL; write the next eligible manual-payment/cancellation/delivery packet from current approved contracts. W-23 depends on complete W-22 acceptance."
+}

@@ -1,18 +1,19 @@
-# MASTER ROADMAP — the one handoff
+# MASTER ROADMAP — scope and ordered work coverage
 
 Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
 ## What is next
 
-**Verified 2026-10-11 against main `9d582f5e` (#396).** Current status is in STATUS.
+**Verified 2026-10-12 against merged #423, main `600f93ed`.** Recheck live GitHub before editing.
 
-- **Merged:** COM-L through COM-L15 (#393), W-1 (#394), W-18 (#395), W-22A (#396).
-  W-16A/B and W-21A/B were completed earlier and must not be redone.
-- **In flight:** no open PRs at this verification; recheck GitHub before starting.
-- **Next:** finish W-22 persistence/signing/payment/credit/delivery acceptance; W-22A
-  is configuration and pure planning only. Use the bounded
-  [implementation recipes](implementation-contracts/IMPLEMENTATION-RECIPES.md) and
-  linked worked example when authoring its next JIT card.
+- **Implemented:** W-22 settings, snapshots, frozen send/sign, TEST collection/receipt and exact first-invoice
+  application/mirror through #423. Code and mocked/disposable proof are not authenticated real-provider acceptance.
+  COM-L through L15, W-1/W-18 and earlier W-16/W-21 work must not be rebuilt.
+- **Next:** `npm run work -- start` → W-22D12 owner/customer invoice amounts and integrated proof. The active
+  [W-22 parent](pr-cards/W-22.md) lists manual settlement, cancellation/refund and new-hookup delivery remainders;
+  the historical slice log is archived. No new broad architecture planning is needed before implementation.
+- **Gates:** CPA IN-79 and actual TEST-provider acceptance affect their own operations. Continue eligible independent
+  implementation while keeping W-22 PARTIAL and W-23 dependent on complete W-22 acceptance. See STATUS.
 - **Then:** W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
   W-8 → W-9 → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 retain
   outside gates. Authority: Amendment B section 8 and work-index; this guidance adds
@@ -34,11 +35,11 @@ sequence. Check [STATUS](STATUS.md) for the exact current PR/head.
 
 ## Implementing agent — paste this
 
-> Read `docs/SESSION-START.md`, STATUS and the next card (plus its resume note `docs/pr-cards/<ID>.progress.md` if present). Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch blocking findings/failures, assign only safe low-risk follow-ups under PLAYBOOK, refresh exact-head gates, and merge when authorized and green. When finite CI is the only dependency, keep the turn active with PLAYBOOK’s bounded quiet completion wait. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
+> Run `npm run work -- start`; read `docs/SESSION-START.md`, the top STATUS handoff and the current card (plus its resume note `docs/pr-cards/<ID>.progress.md` if present). Find the cited design headings and named code/tests in bounded sections. Run the per-card drift protocol against latest main and the prerequisite's final reviewed head. If no execution card exists, write one short card from the approved design with exact current paths, transaction/permissions/provider boundaries, meaningful tests and completion evidence. Routine details are yours to implement; missing money/security/schema/provider decisions require a reviewed contract amendment first, not an unsafe guess or a mandatory model switch. Implement a coherent capability, run the cheap targeted checks, push once. While checks run, implement only the eligible immediate successor in the same chain. Batch blocking findings/failures, assign only safe low-risk follow-ups under PLAYBOOK, refresh exact-head gates, and merge when authorized and green. When finite CI is the only dependency, keep the turn active with PLAYBOOK’s bounded quiet completion wait. Update the existing card and STATUS; update the shared contract log only for downstream-relevant contract changes. Do not create a new handoff file. Continue while eligible work exists; stop only for a real gate, with committed work and the exact next action.
 
 ## Work coverage
 
-`work-index.json` is the compact machine-readable coverage list. Existing cards are linked below; **JIT** rows are covered by the approved design and need their execution card written when their prerequisite is real. These rows are coherent capability boundaries, not a requirement to create artificially small PRs. Adjacent compatible work may share a reviewed PR within AGENTS' budget, while preserving acceptance/IDs/migration ownership. Proposed BP rows are planned scope, not approval.
+`work-index.json` is the compact machine-readable coverage list. Existing cards are linked below; **JIT** rows are covered by the approved design and need their execution card written when their prerequisite is real. These rows are coherent capability boundaries, not a requirement to create artificially small PRs. Adjacent compatible work may share a reviewed PR under AGENTS' outcome-led risk/review guidance, while preserving acceptance/IDs/migration ownership. Proposed BP rows are planned scope, not approval.
 
 ### T and S — complete
 

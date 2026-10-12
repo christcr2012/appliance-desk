@@ -336,3 +336,33 @@ request interfaces when exercising the genuine role implementation, not the
 role checker or Prisma. This up-front fixture prevents another review/
 re-push/full-CI round trip. Preserve per-test cleanup of any restrictive FK
 children before deleting parent test agreements.
+
+### October 12 — checked capability entrypoint and stage/commit cache repair
+
+Use `npm run work -- start` before another broad reading pass; `read <number>`
+prints at most 102 lines around one integration anchor. `route <unit>` provides
+later discovery anchors only. `doctor` diagnoses missing hooks, mismatched lock
+or a shared dependency tree without probing credentials/providers. Write/refresh
+one current card/packet from actual approved contracts, not all future cards.
+
+The former cache fingerprint mixed index/diff representations: the same checked
+bytes got three keys before staging/after staging/after commit. Actual file,
+path/mode/symlink identity now yields one key. Secret scanning includes new
+non-ignored files before staging, matching cache coverage; the security gate is
+not skipped. Finish docs before final checks so real edits do not invalidate them.
+Use `work -- metrics` to inspect bounded local passed/failed/cached elapsed data;
+`--fresh` forces checks and no cached local result replaces exact-head CI.
+
+`work -- plan` reports proposed test files and affected-source fan-out. A missing
+proposed regression is implementation work: write it, do not retry verify or
+claim the plan passed. `probe` remains single-spec diagnostic; complete normal
+preflight after focused repairs. A stale anchor means mechanical drift to repair,
+not project-wide blockage. No old 800-line, preview or manual batch-release stop.
+
+A clean worktree install in this session failed because `prisma generate` requires
+DIRECT_URL even without a connection. `npm run work -- install [--offline]` now
+runs reviewed generation-only postinstall with synthetic localhost DATABASE_URL/
+DIRECT_URL, strips inherited deployment/provider identity, includes dev tools and
+refuses a shared node_modules symlink. It never runs migrate/seed, prints credentials
+or claims provider readiness. Offline install requires the existing npm cache;
+repair a real missing-package error instead of adding production connection strings.
