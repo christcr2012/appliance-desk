@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   notice: vi.fn(),
   pendingDelivery: vi.fn(),
   providerOp: vi.fn(),
+  signingPayment: vi.fn(),
+  signingPaymentCount: vi.fn(),
   raw: vi.fn(),
   earlyResolution: vi.fn(),
   audit: vi.fn(),
@@ -51,6 +53,7 @@ vi.mock("@/lib/prisma", () => ({
     pendingDelivery: { findMany: mocks.pendingDelivery },
     earlyReturnResolution: { findMany: mocks.earlyResolution },
     providerOperation: { findMany: mocks.providerOp, count: vi.fn().mockResolvedValue(0) },
+    agreementSigningPayment: { findMany: mocks.signingPayment, count: mocks.signingPaymentCount },
     auditLog: { findMany: mocks.audit },
     exceptionSnooze: { findMany: mocks.snoozes },
     customerTaxExemption: {
@@ -86,6 +89,7 @@ beforeEach(() => {
     mocks.notice,
     mocks.pendingDelivery,
     mocks.providerOp,
+    mocks.signingPayment,
     mocks.raw,
     mocks.earlyResolution,
     mocks.audit,
@@ -101,6 +105,7 @@ beforeEach(() => {
     fn.mockResolvedValue([]);
   }
   mocks.systemIssueCount.mockResolvedValue(0);
+  mocks.signingPaymentCount.mockResolvedValue(0);
 });
 
 describe("Today server-side visibility", () => {
@@ -123,6 +128,7 @@ describe("Today server-side visibility", () => {
     expect(mocks.notice).not.toHaveBeenCalled();
     // The Stripe-update-pending read is money: STAFF never trigger it.
     expect(mocks.providerOp).not.toHaveBeenCalled();
+    expect(mocks.signingPayment).not.toHaveBeenCalled();
     // An item still waiting for delivery is operational: STAFF see it too.
     expect(mocks.pendingDelivery).toHaveBeenCalledTimes(1);
     // stale reservations and renewals that did not start (term-ended agreements come from SQL)

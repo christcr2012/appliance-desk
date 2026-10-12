@@ -1,5 +1,17 @@
 # STATUS — current work, blockers and next action
 
+## W-22D5 outstanding signing payment To do (PR #415)
+
+Finance-authorized OWNER/ADMIN users now see positive, still-unpaid frozen
+signing obligations in the `/desk/today` To do list, with exact amount,
+customer, signed time and an agreement-specific review action. The bounded
+oldest-first query reports truncation; STAFF sees no financial information.
+Waived zero-fee agreements and any future settled records are not presented
+as unpaid. These are manual follow-ups, **not recorded receipts**: no Stripe
+checkout, payment settlement or first-bill credit is enabled. W-22 remains
+PARTIAL, CPA IN-79 OPEN, W-23 blocked.
+
+
 ## W-22D4 atomic signed payment obligation (PR #414)
 
 The same locked database transaction that signs a reviewed, frozen W-22
