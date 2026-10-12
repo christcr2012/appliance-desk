@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-freeze";
 import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
 import { getReviewedSigningPayment } from "@/domains/billing/signing-payment-readiness";
+import { signAgreementAction } from "@/app/sign/[id]/actions";
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-real-ip": "127.0.0.1" }) }));
+vi.mock("@/lib/rate-limit", () => ({ isRateLimited: vi.fn(async () => false) }));
 import { getSignatureRecordForSigning, sendForSignature, signAgreement } from "@/domains/agreements";
 import { seedTaxReadyContext } from "./helpers/tax-ready";
 
@@ -14,7 +17,7 @@ const enabled = process.env.CI === "true" && db.pathname === "/appliance_desk_te
 describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolated DB)", () => {
   const tag = randomUUID().replaceAll("-", "");
   let ownerId: string, userId: string, customerId: string, addressId: string;
-  let agreementId: string, signatureId: string;
+  let agreementId: string, signatureId: string, positiveAgreementId: string | undefined;
   let cleanTax: (() => Promise<void>) | null = null;
   beforeAll(async () => {
     ownerId = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
@@ -39,6 +42,13 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
   afterAll(async () => {
     if (!agreementId) return;
     await prisma.documentArtifact.deleteMany({ where: { customerId } });
+    if (positiveAgreementId) {
+      await prisma.auditLog.deleteMany({ where: { entityId: positiveAgreementId } });
+      await prisma.signatureRecord.deleteMany({ where: { agreementId: positiveAgreementId } });
+      await prisma.agreementSigningCharge.deleteMany({ where: { agreementId: positiveAgreementId } });
+      await prisma.rentalLine.deleteMany({ where: { agreementId: positiveAgreementId } });
+      await prisma.rentalAgreement.deleteMany({ where: { id: positiveAgreementId } });
+    }
     await prisma.auditLog.deleteMany({ where: { entityId: agreementId } });
     await prisma.signatureRecord.deleteMany({ where: { agreementId } });
     await prisma.agreementSigningCharge.deleteMany({ where: { agreementId } });
@@ -107,15 +117,52 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
   });
 
   it("accepts the unchanged frozen offer using the atomic signature transition", async () => {
-    await signAgreement(signatureId, {
-      signerName: "Verified Customer", signerEmail: "signed@example.test", ipAddress: null,
+    // Exercise the actual public action through the real locked signature,
+    // persisted frozen evidence, and payment-readiness query. Only Next's
+    // request headers / test rate limiter are mocked, not Prisma or money.
+    const result = await signAgreementAction(signatureId, {
+      signerName: "Verified Customer", signerEmail: "signed@example.test", agreedToTerms: true,
     });
+    expect(result).toMatchObject({ status: "success", agreementId,
+      checkoutUrl: null, pendingSigningAmountCents: 0 });
     expect((await prisma.signatureRecord.findUniqueOrThrow({ where: { id: signatureId } })).signedAt).not.toBeNull();
     const verified = await getReviewedSigningPayment(agreementId);
     expect(verified).toMatchObject({ customerId, agreementId,
       plan: { agreementId, allInCents: 0, items: [], evidenceVersion: 1 },
     });
     expect(verified.signedAt).toBeInstanceOf(Date);
+    expect(await prisma.invoice.count({ where: { agreementId } })).toBe(0);
+  });
+
+  it("returns a genuinely signed $35.00 W-22 down payment from PostgreSQL, without legacy Stripe", async () => {
+    positiveAgreementId = (await prisma.rentalAgreement.create({ data: {
+      customerId, serviceAddressId: addressId,
+    } })).id;
+    await prisma.rentalLine.createMany({ data: Array.from({ length: 5 }, (_, i) => ({
+      agreementId: positiveAgreementId!, label: `Washer ${i + 1}`,
+      monthlyPriceCents: 700, listPriceCents: 700,
+    })) });
+    await prisma.agreementSigningCharge.create({ data: {
+      agreementId: positiveAgreementId, serviceAddressId: addressId, version: 1,
+      machineCount: 5, firstMonthRentCents: 3500, setupFeeCents: 0,
+      downPaymentCents: 3500, signingSubtotalCents: 3500,
+      setupFeeTaxTreatment: "UNDECIDED", settingsUpdatedAt: new Date(),
+      sourceFingerprint: "c".repeat(64), createdByUserId: ownerId,
+    } });
+    expect((await freezeReviewedSigningOrder(ownerId, positiveAgreementId)).status).toBe("FROZEN");
+    const sig = await sendForSignature(ownerId, positiveAgreementId);
+    expect(sig.signingAllInCents).toBe(3500);
+    const beforeProvider = await prisma.providerOperation.count();
+    const signed = await signAgreementAction(sig.id, {
+      signerName: "Real Customer", signerEmail: "real@example.test", agreedToTerms: true,
+    });
+    expect(signed).toMatchObject({ status: "success", agreementId: positiveAgreementId,
+      checkoutUrl: null, pendingSigningAmountCents: 3500 });
+    expect(await prisma.invoice.count({ where: { agreementId: positiveAgreementId } })).toBe(0);
+    expect(await prisma.providerOperation.count()).toBe(beforeProvider);
+    const proof = await getReviewedSigningPayment(positiveAgreementId);
+    expect(proof.plan).toMatchObject({ allInCents: 3500,
+      items: [{ kind: "FIRST_MONTH_DOWN_PAYMENT", amountCents: 3500 }] });
   });
 
   it("refuses altered proof after signing, with no payment or invoice side effects", async () => {
