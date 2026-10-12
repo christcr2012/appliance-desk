@@ -308,3 +308,16 @@ exact-head CI aggregate. Never leave a known failed local preflight
 unreported, confuse expected stderr from `.rejects` tests with actual
 failures, or weaken money-history constraints merely to make fixture teardown
 pass. Store the actual result and remaining risk in the PR review note.
+
+### October 12 — exact-head CI exposed a global-count race missed by local probes
+
+PR #414's first exact-head CI run passed typecheck, browser shards and 2/3
+unit shards, but unit shard 1 failed a W-22 integration assertion comparing
+**global** `ProviderOperation.count()` before and after a checkout refusal.
+Another concurrently running suite legitimately created an unrelated provider
+operation in the same disposable test database (8 vs 7). That assertion did
+not measure the target agreement's side effects. Fix every affected counter
+to scope by `subjectId: agreementId` (or equivalent entity identity); verify
+isolated tests, then push a **new** head and require fresh exact-head CI. Do
+not rerun an unchanged flaky shard as if that fixed the test, and do not
+change production provider controls to accommodate incorrect fixture counts.
