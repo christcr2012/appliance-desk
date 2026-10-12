@@ -9,6 +9,15 @@ Neon idle limits, consult [HOSTING-COST-POLICY](HOSTING-COST-POLICY.md)
 **only when deployment or cost controls are relevant**. This is not a new
 approval to activate Stripe LIVE or bypass CPA IN-79.
 
+## Blocker recovery and independent work (required)
+
+Follow the permanent scoped-blocker triage in `AGENTS.md`: investigate and
+attempt authorized fixes first; document precise affected acceptance/evidence
+in `docs/STATUS.md`; recheck on owner/dependency/environment changes. A
+blocked provider/approval is not permission to stop approved unrelated work.
+Inspect the work index and dependencies before an early stop; retain all gates
+and never invent external acceptance or pad the five-PR boundary.
+
 ## Milestone outcome and acceptance (required each session)
 
 Before selecting the next card, use `AGENTS.md`'s milestone-led batch rules

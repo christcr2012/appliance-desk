@@ -19,6 +19,10 @@ const mocks = vi.hoisted(() => {
     rentalAgreementUpdateMany: vi.fn(),
     signingPaymentFindUnique: vi.fn(),
     signingCreditFindUnique: vi.fn(),
+    signingApplicationFindUnique: vi.fn(),
+    signingApplicationCreate: vi.fn(),
+    invoicesRetrieve: vi.fn(),
+    invoiceLinesList: vi.fn(),
     claimProviderOperation: vi.fn(),
     completeProviderOperation: vi.fn(),
     runProviderCall: vi.fn(),
@@ -68,6 +72,10 @@ vi.mock("@/lib/prisma", () => ({
         $queryRaw: (...args: unknown[]) => mocks.queryRaw(...args),
         agreementSigningPayment: { findUnique: (...args: unknown[]) => mocks.signingPaymentFindUnique(...args) },
         signingDownPaymentCredit: { findUnique: (...args: unknown[]) => mocks.signingCreditFindUnique(...args) },
+        signingFirstInvoiceApplication: {
+          findUnique: (...args: unknown[]) => mocks.signingApplicationFindUnique(...args),
+          create: (...args: unknown[]) => mocks.signingApplicationCreate(...args),
+        },
         rentalAgreement: {
           findUniqueOrThrow: (...args: unknown[]) => mocks.rentalAgreementFindUniqueOrThrow(...args),
           update: (...args: unknown[]) => mocks.rentalAgreementUpdate(...args),
@@ -95,6 +103,10 @@ vi.mock("@/lib/stripe", () => ({
     },
     products: { create: (...args: unknown[]) => mocks.productsCreate(...args) },
     subscriptions: { create: (...args: unknown[]) => mocks.subscriptionsCreate(...args) },
+    invoices: {
+      retrieve: (...args: unknown[]) => mocks.invoicesRetrieve(...args),
+      listLineItems: (...args: unknown[]) => mocks.invoiceLinesList(...args),
+    },
   }),
 }));
 
@@ -143,6 +155,8 @@ describe("startRecurringBillingForAgreement", () => {
     mocks.rentalAgreementUpdateMany.mockResolvedValue({ count: 1 });
     mocks.signingPaymentFindUnique.mockResolvedValue(null);
     mocks.signingCreditFindUnique.mockResolvedValue(null);
+    mocks.signingApplicationFindUnique.mockResolvedValue(null);
+    mocks.signingApplicationCreate.mockResolvedValue({});
     mocks.claimProviderOperation.mockResolvedValue({
       done: false,
       opId: "provider-op-1",
@@ -154,7 +168,25 @@ describe("startRecurringBillingForAgreement", () => {
     mocks.productsCreate.mockImplementation(async ({ name }: { name: string }) => ({
       id: `prod_${name.replace(/\s+/g, "_")}`,
     }));
-    mocks.subscriptionsCreate.mockResolvedValue({ id: "sub_fake_1" });
+    mocks.subscriptionsCreate.mockResolvedValue({
+      id: "sub_fake_1", latest_invoice: "in_fake_1",
+    });
+    mocks.invoicesRetrieve.mockResolvedValue({
+      id: "in_fake_1", livemode: false, currency: "usd",
+      billing_reason: "subscription_create", customer: "cus_fake_1",
+      parent: { subscription_details: { subscription: "sub_fake_1" } },
+      status: "open",
+    });
+    mocks.invoiceLinesList.mockResolvedValue({
+      has_more: false, data: [{
+        id: "il_fake_1", invoice: "in_fake_1", amount: -4000,
+        livemode: false, metadata: {
+          signing_credit_agreement: "agr-1",
+          signing_credit_order: "a".repeat(64),
+          signing_credit_receipt: "receipt-1",
+        },
+      }],
+    });
     mocks.taxRateVersionIdsForAgreement.mockResolvedValue([]);
     mocks.engineRateIds = [];
     mocks.ensureStripeTaxRate.mockImplementation(async (rateVersionId: string) => `txr_${rateVersionId}`);
@@ -186,7 +218,7 @@ describe("startRecurringBillingForAgreement", () => {
     expect(mocks.productsCreate).not.toHaveBeenCalled();
     expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
   });
-  it("blocks a settled agreement until its first-invoice credit is truly applied", async () => {
+  it("applies the exact signed down payment on the matching Stripe first invoice", async () => {
     mocks.signingPaymentFindUnique.mockResolvedValue({
       agreementId: "agr-1", downPaymentCents: 4000, status: "SETTLED",
       receiptId: "receipt-1", orderFingerprint: "a".repeat(64),
@@ -197,10 +229,46 @@ describe("startRecurringBillingForAgreement", () => {
     });
     const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
     const result = await startRecurringBillingForAgreement("agr-1");
-    expect(result.state).toBe("BLOCKED");
-    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
-    expect(mocks.productsCreate).not.toHaveBeenCalled();
-    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+    expect(result.state).toBe("DONE");
+    expect(mocks.subscriptionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        add_invoice_items: [expect.objectContaining({
+          price_data: expect.objectContaining({ unit_amount: -4000, currency: "usd" }),
+          metadata: expect.objectContaining({ signing_credit_agreement: "agr-1",
+            signing_credit_receipt: "receipt-1" }),
+        })],
+      }), expect.any(Object),
+    );
+    expect(mocks.invoicesRetrieve).toHaveBeenCalledWith("in_fake_1");
+    expect(mocks.signingApplicationCreate).toHaveBeenCalledWith({ data: expect.objectContaining({
+      agreementId: "agr-1", receiptId: "receipt-1", amountCents: 4000,
+      stripeInvoiceId: "in_fake_1", stripeInvoiceLineId: "il_fake_1",
+    }) });
+  });
+  it("keeps an uncertain W-22 provider invoice in reconciliation, never marking credit applied", async () => {
+    mocks.signingPaymentFindUnique.mockResolvedValue({
+      agreementId: "agr-1", downPaymentCents: 4000, status: "SETTLED",
+      receiptId: "receipt-1", orderFingerprint: "a".repeat(64),
+    });
+    mocks.signingCreditFindUnique.mockResolvedValue({
+      agreementId: "agr-1", amountCents: 4000, receiptId: "receipt-1",
+      orderFingerprint: "a".repeat(64),
+    });
+    mocks.invoiceLinesList.mockResolvedValue({
+      has_more: false, data: [{ id: "il_other", invoice: "in_fake_1", amount: -3999,
+        livemode: false, metadata: { signing_credit_agreement: "agr-1",
+          signing_credit_order: "a".repeat(64), signing_credit_receipt: "receipt-1" } }],
+    });
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+    const result = await startRecurringBillingForAgreement("agr-1");
+    expect(result.state).toBe("UNKNOWN");
+    expect(mocks.signingApplicationCreate).not.toHaveBeenCalled();
+    expect(mocks.completeProviderOperation).toHaveBeenCalledWith(
+      expect.anything(), "provider-op-1", expect.objectContaining({ status: "UNKNOWN", providerObjectId: "sub_fake_1" }),
+    );
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: { billingBlockedReason: expect.stringContaining("Reconcile Stripe") },
+    }));
   });
   it("flags a previously started W-22 subscription for owner reconciliation", async () => {
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(

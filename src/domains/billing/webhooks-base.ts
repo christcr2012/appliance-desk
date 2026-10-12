@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { processSigningCheckoutEvent } from "./signing-payment-settlement";
+import { signingInvoiceMirrorProof } from "./signing-invoice-mirror";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { RDF_LINE_DESCRIPTION } from "@/domains/tax/rdf-charges";
@@ -173,11 +174,18 @@ export async function mirrorStripeInvoiceLines(
   customerId: string,
   invoiceId: string,
 ): Promise<{ subtotalCents: number; depositLineAmountCents: number | null }> {
+  const signingCreditLine = await signingInvoiceMirrorProof(db, agreementId, stripeInvoice);
   const existingLines = await db.invoiceLineItem.findMany({
     where: { invoiceId },
     select: { id: true, kind: true, amountCents: true },
   });
   if (existingLines.length > 0) {
+    if (signingCreditLine && !existingLines.some(line =>
+      line.kind === "CREDIT" &&
+      line.amountCents === stripeInvoice.lines.data.find(
+        providerLine => providerLine.id === signingCreditLine.lineId)?.amount)) {
+      throw new Error("An existing local invoice omitted the verified signing credit.");
+    }
     // Amounts and labels are not unique: two separately delivered taxable
     // sales can both have the same statutory fee on one invoice. Their
     // immutable record IDs, not a .find(amount), own the local mirror lines.
@@ -213,8 +221,12 @@ export async function mirrorStripeInvoiceLines(
   });
   const providerLines = stripeInvoice.lines.data.map((line) => ({
     stripeLine: line,
-    kind: inferLineItemKind(line.description, line.metadata?.rdf_record_id),
-    description: line.description ?? "Charge",
+    kind: signingCreditLine !== null && line.id === signingCreditLine.lineId
+      ? "CREDIT" as const
+      : inferLineItemKind(line.description, line.metadata?.rdf_record_id),
+    description: signingCreditLine !== null && line.id === signingCreditLine.lineId
+      ? signingCreditLine.description
+      : line.description ?? "Charge",
     amountCents: line.amount,
     rentalLineId: matchRentalLineId(line.description, agreementLines),
   }));

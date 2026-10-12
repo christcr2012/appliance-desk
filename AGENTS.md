@@ -221,6 +221,33 @@ bash scripts/local-postgres-test.sh tests/y-integration.test.ts
 
 Some sandboxes can't reach `binaries.prisma.sh` (403): that's network policy; use the approved workaround in PLAYBOOK 4b.
 
+## Blocker triage is scoped, remedied and revisited (owner, 2026-10-12)
+
+One blocked operation, milestone, acceptance check, tool or credential is
+**not** an automatic project-wide halt. Before declaring a blocker, inspect
+its direct failure evidence and attempt every authorized remedy: underlying
+code defect, environment/configuration, dependency/version, stale instructions,
+CI/reviews, and owner decisions already recorded. Implement and verify
+everything independent that remains possible; a blocker note alone is not
+progress. Never bypass authorization, independent money-out approvals,
+tenant/data-integrity protections, tests, CI or external acceptance.
+
+For each genuine external dependency, record in `docs/STATUS.md` its exact
+affected operation, proof of attempted remedy, needed permission/decision/
+evidence, prerequisites, reopening trigger, and next action. Separate
+implemented/tested from deployed/real provider acceptance. Reevaluate blockers
+after relevant owner input, merges and environment changes and automatically
+return newly eligible work to the queue. Inspect the **remaining approved work
+index and dependency graph** before concluding the batch is exhausted; advance
+the highest-priority independent work instead of stopping. An early stop before
+the normal five substantial merged PRs requires concrete evidence of no
+eligible approved work **or** a specific execution limitation, not merely a
+preferred milestone blocked. Do not manufacture work, pad PR count, or request
+approval that was already given. Carry this rule forward in compact handoffs by
+referring to AGENTS/SESSION-START/STATUS rather than copying this paragraph.
+Hosting limits, daily checked `main`→`live`, preview restrictions, Stripe
+LIVE and Cortiware gates remain unchanged.
+
 ## Milestone-led batches and permanent continuation (owner, 2026-10-12)
 
 Five **verified merged** substantive PRs is the normal session boundary, never the

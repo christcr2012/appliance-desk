@@ -746,3 +746,23 @@ this entitlement to the correct first delivery invoice exactly once and
 reconcile real provider application/readback before the UI claims credit.
 No old invoice/signature is backfilled or modified. Backup manifest includes
 the additive model. IN-79 and Stripe LIVE remain separately gated.
+
+### W-22D11 — exact provider first-invoice credit application
+
+`20261015190000_w22_signing_first_invoice` introduces the additive
+`SigningFirstInvoiceApplication` table. Its agreement primary key and unique
+Stripe subscription, invoice and invoice-line IDs are restrictive links to an
+immutable `SigningDownPaymentCredit` entitlement. The SQL insert trigger
+requires exact settled receipt, frozen fingerprint/cents and the rental
+agreement's recorded matching Stripe subscription; UPDATE/DELETE are rejected.
+No historical rent, credit, receipt, invoice or Stripe object is backfilled or
+mutated by this migration. The backup registry includes the new child model;
+restore agreement, obligation, receipt and entitlement before application.
+
+The provider request includes exactly one negative, agreement-tagged
+first-invoice item; after real invoice and line readback, the application row
+records **provider credit application only**, not payment settlement. The
+webhook mirror uses the exact negative invoice item as local `CREDIT`, refusing
+early/foreign/duplicate/incomplete lines. A failed or uncertain provider call
+is reconciled, never marked paid or automatically retried as a new charge.
+Stripe LIVE, CPA IN-79 and all money-out/production gates remain unchanged.

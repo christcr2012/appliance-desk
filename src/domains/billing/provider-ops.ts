@@ -203,7 +203,7 @@ export async function completeProviderOperation(
   result:
     | { status: "SUCCEEDED"; providerObjectId: string }
     | { status: "FAILED"; error: unknown }
-    | { status: "UNKNOWN"; error?: unknown }
+    | { status: "UNKNOWN"; error?: unknown; providerObjectId?: string }
     | { status: "DRIFT"; providerObjectId: string; note: string },
 ): Promise<void> {
   const locked = await tx.$queryRaw<
@@ -282,6 +282,7 @@ export async function completeProviderOperation(
       where: { id: opId },
       data: {
         status: "UNKNOWN",
+        ...(result.providerObjectId ? { providerObjectId: result.providerObjectId } : {}),
         lastError: result.error === undefined ? null : sanitizeProviderError(result.error),
         completedAt: null,
       },
