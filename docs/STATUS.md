@@ -1,5 +1,30 @@
 # STATUS — current work, blockers and next action
 
+## October 12 hosting-cost handoff integrated into W-22D7 (#418)
+
+Latest main includes the owner-directed daily checked main-to-live workflow
+(#417) and verified Neon 0.25 CU/300-second idle policy (#419).
+The consolidated `docs/HOSTING-COST-POLICY.md` links the authoritative
+merged policies and forbids automatic previews, manual promotions, unapproved
+resource increases and Stripe LIVE activation. The requested separate hosting
+handoff branch was not present in the appliance-desk remote at verification;
+this integration uses the merged policies and explicit owner instructions.
+
+
+## W-22D7 TEST signing Checkout (PR #418)
+
+The signed, frozen per-agreement amount can now be used to create an idempotent
+Stripe TEST hosted Checkout session. The provider ID is stored against the
+durable attempt after its cents, currency, fingerprint and agreement ID are
+verified; repeat calls retrieve it instead of opening another session. An
+unknown old attempt and non-test/production configuration fail closed. Checkout
+completion is **not** payment settlement; no invoice credit or paid status
+is set. The existing webhook now explicitly rejects W-22-tagged Checkout events
+rather than misclassifying them as legacy deposit payments. The service is not
+exposed through a public route while CPA IN-79 and
+owner LIVE approval remain open. Next: authenticated webhook verification and
+durable receipt settlement, then first-invoice credit. W-23 stays blocked.
+
 ## W-22D6 durable collection attempt reservation (PR #416)
 
 A transaction now rechecks signed immutable W-22 evidence against its stored unpaid obligation

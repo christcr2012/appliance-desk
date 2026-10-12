@@ -4,6 +4,11 @@ For Sol 5.6 (or any model) implementing an approved PR card. Read **this page an
 rule files only when a step below names them, a section at a time. `AGENTS.md` still governs; this page is its short
 form for card work (Chris, 2026-10-09, after sessions kept stopping during start-up reading).
 
+For hosting costs, daily main-to-live promotion, disabled previews, and
+Neon idle limits, consult [HOSTING-COST-POLICY](HOSTING-COST-POLICY.md)
+**only when deployment or cost controls are relevant**. This is not a new
+approval to activate Stripe LIVE or bypass CPA IN-79.
+
 ## 1. Find your place (2 minutes)
 
 Local database testing uses the project's **Vercel Sandbox** (PLAYBOOK 4b has the exact steps; reuse the sandbox named
