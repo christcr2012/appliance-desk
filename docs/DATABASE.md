@@ -690,3 +690,23 @@ is implemented in a successor. The signature and this obligation commit or
 roll back together. Neither an obligation nor a signature is a payment receipt,
 Stripe charge, deposit, credit or permission to deliver. This additive model
 is in the backup registry; no historical signatures are backfilled.
+
+### W-22D6 durable payment attempt reservations (2026-10-12)
+
+`20261015160000_w22_signing_payment_attempt` adds
+`SigningPaymentAttempt` as a child of `AgreementSigningPayment` (restrictive
+foreign key). Each attempt records one signed per-agreement amount, immutable
+order fingerprint, method (STRIPE_CHECKOUT or MANUAL), monotonically increasing
+retry number and a deterministic, unique request key. A unique optional
+provider object ID prevents provider references being reused across agreements;
+database checks reject invalid cents, fingerprint, method and status.
+The obligation remains `AWAITING_PAYMENT` when an attempt is merely
+`PREPARED`. Neither a successful card charge nor an offline receipt is
+implied by this table. Future provider settlement must independently verify
+its own event and then record receipt/credit evidence; CPA IN-79 still blocks
+unapproved live tax/payment activation.
+
+For backups and restores, `src/domains/backup/manifest.ts` includes the new
+model; restore parents (agreement and obligation) before its children. The
+migration preserves all existing signed obligations and old records; no
+backfill, activation, or destructive change occurs.
