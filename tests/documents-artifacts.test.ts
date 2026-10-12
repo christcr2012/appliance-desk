@@ -149,6 +149,7 @@ describe.skipIf(!enabled)("Batch D evidence artifacts (real Postgres)", () => {
     await prisma.documentArtifact.deleteMany({ where: { customerId: { in: [ids.customerA, ids.customerB] } } });
     await prisma.invoice.deleteMany({ where: { id: ids.invoiceB } });
     await prisma.auditLog.deleteMany({ where: { entityId: { in: [ids.agreementA, ids.agreementFail] } } });
+    await prisma.agreementSigningPayment.deleteMany({ where: { agreementId: { in: [ids.agreementA, ids.agreementFail] } } });
     await prisma.signatureRecord.deleteMany({ where: { agreementId: { in: [ids.agreementA, ids.agreementFail] } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: [ids.agreementA, ids.agreementFail] } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: [ids.agreementA, ids.agreementFail] } } });

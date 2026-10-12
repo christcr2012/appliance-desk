@@ -8,6 +8,7 @@ import {
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
 import { offerMatchesFrozenEvidence } from "./signing-offer-proof";
 import {
   assertTaxReadyForAgreement,
@@ -610,6 +611,13 @@ export async function signAgreement(
     if (signResult.count !== 1) {
       throw new Error("This agreement was already signed.");
     }
+
+    // W-22D4: the same atomic signature transaction creates exactly one
+    // frozen, agreement-owned *obligation*. Never infer that money arrived.
+    // A failed obligation write rolls the signature itself back.
+    await tx.agreementSigningPayment.create({
+      data: signedPaymentObligation(line, signedAt),
+    });
 
     const scheduledRenewal = Boolean(agreement.renewedFromAgreementId && agreement.startDate);
     await tx.rentalAgreement.update({

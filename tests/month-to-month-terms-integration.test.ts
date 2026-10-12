@@ -76,6 +76,7 @@ describe.skipIf(!enabled)("month-to-month terms versions and the change notice",
       where: { OR: [{ userId: ownerId }, { entityId: { in: [...ids, ...created.map((v) => String(v.version))] } }] },
     });
     await prisma.customerNotice.deleteMany({ where: { customerId } });
+    await prisma.agreementSigningPayment.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.signatureRecord.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: ids } } });

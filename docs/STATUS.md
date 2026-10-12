@@ -1,5 +1,18 @@
 # STATUS — current work, blockers and next action
 
+## W-22D4 atomic signed payment obligation (PR #414)
+
+The same locked database transaction that signs a reviewed, frozen W-22
+agreement now records exactly one immutable, per-agreement payment
+**obligation** with complete fee, setup tax, down-payment and total cents.
+Duplicate/replayed signature and failed obligation insert roll back; a DB
+constraint refuses false paid statuses or unreconciled money. This is
+not a charge, receipt, down-payment credit or permission to schedule delivery.
+W-22 remains PARTIAL, CPA IN-79 OPEN and W-23 blocked. Next: owner To do
+for payment owed, followed by separately reviewed Stripe/manual settlement,
+replay-safe first bill credit, refunds and per-machine hookup proof.
+
+
 ## W-22D3 pending signing payment message (PR #413)
 
 After signing the frozen reviewed offer, the customer now gets an exact
