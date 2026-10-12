@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { firstInvoiceSigningBlocker, SIGNING_INVOICE_CREDIT_BLOCKER } from "@/domains/billing/signing-first-invoice-gate";
 import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-freeze";
 import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
 import { getReviewedSigningPayment } from "@/domains/billing/signing-payment-readiness";
@@ -462,6 +463,7 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
       orderFingerprint: order.orderFingerprint,
       amountCents: order.downPaymentCents,
     });
+    expect(firstInvoiceSigningBlocker(settled, entitlement)).toBe(SIGNING_INVOICE_CREDIT_BLOCKER);
     expect(await prisma.signingDownPaymentCredit.count({
       where: { agreementId: positiveAgreementId },
     })).toBe(1);

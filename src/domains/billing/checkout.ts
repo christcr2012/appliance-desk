@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { firstInvoiceSigningBlocker } from "./signing-first-invoice-gate";
 import { cancelAtSecondsFor, subscriptionStartSecondsFor } from "./subscription-term";
 import {
   applySubscriptionEnds,
@@ -435,6 +436,27 @@ export async function startRecurringBillingForAgreement(
           data: { billingBlockedReason: DELIVERY_BLOCKER },
         });
         return { done: true, outcome: { state: "BLOCKED", detail: DELIVERY_BLOCKER }, subscriptionEndIds: [] };
+      }
+
+      const signingObligation = await tx.agreementSigningPayment.findUnique({
+        where: { agreementId },
+        select: { agreementId: true, downPaymentCents: true, status: true,
+          receiptId: true, orderFingerprint: true },
+      });
+      const signingCredit = signingObligation?.downPaymentCents
+        ? await tx.signingDownPaymentCredit.findUnique({
+            where: { agreementId },
+            select: { agreementId: true, amountCents: true, receiptId: true,
+              orderFingerprint: true },
+          })
+        : null;
+      const signingBlocker = firstInvoiceSigningBlocker(signingObligation, signingCredit);
+      if (signingBlocker) {
+        await tx.rentalAgreement.update({
+          where: { id: agreementId },
+          data: { billingBlockedReason: signingBlocker },
+        });
+        return { done: true, outcome: { state: "BLOCKED", detail: signingBlocker }, subscriptionEndIds: [] };
       }
 
       let endDate = agreement.endDate;
