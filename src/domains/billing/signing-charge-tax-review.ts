@@ -57,6 +57,22 @@ export async function getDraftSigningTaxReviewInTx(
   const rows: PrivateOrderTaxPreview["rows"] = [];
   const problems: string[] = [];
   for (const charge of charges) {
+    // A partially reviewed address may have some jurisdiction links while
+    // other taxes are absent. Never show a complete-looking candidate.
+    const taxLocation = await tx.addressTaxLocation.findFirst({
+      where: { serviceAddressId: charge.serviceAddressId, isCurrent: true },
+      select: { status: true },
+    });
+    if (charge.setupFeeCents > 0 && taxLocation?.status !== "VERIFIED") {
+      const reason = "Verify every jurisdiction at this service address before reviewing setup tax.";
+      const review: SigningFeeTaxReview = { status: "REVIEW_REQUIRED", reasons: [reason],
+        setupTaxCents: null, candidateSigningTotalCents: null,
+        jurisdictionLines: [], eligibleForCollection: false };
+      rows.push({ agreementId: charge.agreementId, serviceAddressId: charge.serviceAddressId,
+        version: charge.version, review });
+      problems.push(`${charge.agreementId}: ${reason}`);
+      continue;
+    }
     const context = await getAgreementTaxContext(tx, charge.agreementId, effectiveOn);
     const ids = context.jurisdictions.map((row) => row.id);
     const rules = await tx.taxabilityRule.findMany({
