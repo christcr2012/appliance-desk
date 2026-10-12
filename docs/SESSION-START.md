@@ -12,7 +12,7 @@ the sandbox (its push key is installed — STATUS "Environment"), or `docs/runbo
 pushes). Never copy source files through tool output.
 
 
-1. `git fetch origin && git status -sb && git log --oneline -5` — and once per checkout or sandbox worktree `npm run setup`
+1. `git fetch origin +refs/heads/main:refs/remotes/origin/main && git status -sb && git log --oneline -5` — and once per checkout or sandbox worktree `npm run setup`
    (pre-push quick gate, HTTP/1.1 for GitHub, merge-based syncing). Checks remember what already passed on the same
    code, so re-running after an interruption only redoes what is left.
 2. `sed -n '1,40p' docs/STATUS.md` → the **Next** section names the card.

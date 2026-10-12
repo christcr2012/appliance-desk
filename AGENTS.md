@@ -105,8 +105,8 @@ where, and puts it on his To do list; no Today item may link to a page that does
   B **inside each PR, written as if it had already merged** (card, next card, living docs, STATUS — CI checks it), C when a batch finishes (acceptance proved, docs match the
   code, retire what no longer instructs, drift-check the next batch). Changed contracts later work inherits go in
   `docs/designs/CHANGES-SINCE-DESIGN.md`.
-- **PR size:** about 500 production lines and 15 files, hard stop ~800 lines, at most one migration, one risk area
-  (PLAYBOOK Step 3a). No arbitrary one-function PRs; no bundling unrelated money/auth/provider changes.
+- **PR size:** target 450–800 production lines when one natural capability warrants it (about 500 typical), around 15 files, hard stop ~800 lines, at most one migration, one risk area
+  (PLAYBOOK Step 3a). Group connected operations into one independently reviewable capability; no arbitrary one-function PRs, filler or bundling unrelated money/auth/provider changes. Prefer focused disposable DB diagnosis before full affected-graph preflight; see the anti-stall runbook.
 - **Model:** whichever model Chris selected does the work; no forced model switch. Sol 5.6 is the routine implementer:
   light effort for an already-tested pattern, medium for schema, money, auth, provider recovery or unfamiliar multi-file
   work. A missing decision is never solved by guessing. An optional second opinion may settle one concrete question.

@@ -32,7 +32,7 @@ for speed.**
 - **Select, then run:** `npm run preflight -- --plan --unit <spec> --db <spec>`
   shows the selected scope. For an isolated Postgres fixture, invoke
   `timeout 600 bash scripts/local-postgres-test.sh --checks --db <spec>`
-  to avoid accidentally sweeping every related source test. The focused test
+  to avoid accidentally sweeping every related source test. The supported shorter form is npm run test:db:probe -- tests/exact.test.ts. That command is diagnostic ONLY; full preflight and exact-head CI remain mandatory. The focused test
   is not proof that CI has passed; full exact-head CI is still mandatory.
 - **Bound and observe:** use `timeout 600` on slow operations, `set -o
   pipefail`, and a file-backed log (`> /tmp/<card>-check.log 2>&1`) with a
@@ -60,3 +60,7 @@ for speed.**
   never assert all five merges if only some completed.
 
 The progress log is for resumability, not permission to publish partial work.
+
+## Sandbox stale remote tracking (October 11, 2026)
+
+When a checkout lacks remote.origin.fetch, git fetch origin main may update only FETCH_HEAD, leaving origin/main stale. Compare git ls-remote origin refs/heads/main with git rev-parse origin/main; if mismatched, run git fetch origin +refs/heads/main:refs/remotes/origin/main. Preserve any preexisting dirty checkout and use a separate clean worktree.
