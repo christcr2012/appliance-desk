@@ -921,6 +921,7 @@ model RentalAgreement {
   signingChargeSnapshot AgreementSigningCharge?
   signingPaymentObligation AgreementSigningPayment?
   signingDownPaymentCredit SigningDownPaymentCredit?
+  signingFirstInvoiceApplication SigningFirstInvoiceApplication?
 
   signature   SignatureRecord?
   jobs        Job[]
@@ -1006,7 +1007,23 @@ model SigningDownPaymentCredit {
   receipt          Receipt @relation(fields: [receiptId], references: [id], onDelete: Restrict)
   orderFingerprint String
   amountCents      Int
+  application      SigningFirstInvoiceApplication?
   createdAt        DateTime @default(now())
+}
+
+// Stripe invoice-line readback of the FIRST billed subscription invoice only.
+// Unlike the entitlement, this row proves a specific provider application.
+model SigningFirstInvoiceApplication {
+  agreementId String @id
+  entitlement SigningDownPaymentCredit @relation(fields: [agreementId], references: [agreementId], onDelete: Restrict)
+  agreement RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict, map: "SigningFirstInvoiceApplication_agreement_fkey")
+  stripeSubscriptionId String @unique
+  stripeInvoiceId String @unique
+  stripeInvoiceLineId String @unique
+  orderFingerprint String
+  receiptId String
+  amountCents Int
+  appliedAt DateTime @default(now())
 }
 
 model SigningPaymentAttempt {

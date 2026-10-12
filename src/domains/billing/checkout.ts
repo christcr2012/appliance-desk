@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { firstInvoiceSigningBlocker } from "./signing-first-invoice-gate";
+import {
+  firstInvoiceSigningBlocker, SIGNING_INVOICE_CREDIT_BLOCKER,
+} from "./signing-first-invoice-gate";
+import {
+  signingFirstInvoiceItem, verifySigningFirstInvoiceCredit,
+  type FrozenSigningCredit, type VerifiedFirstInvoiceCredit,
+} from "./signing-first-invoice-application";
 import { cancelAtSecondsFor, subscriptionStartSecondsFor } from "./subscription-term";
 import {
   applySubscriptionEnds,
@@ -405,6 +411,7 @@ export async function startRecurringBillingForAgreement(
             stripeDefaultPaymentMethodId: string;
           };
           plan: CheckoutLinePlan[];
+          signingCredit: FrozenSigningCredit | null;
         };
       };
 
@@ -451,12 +458,33 @@ export async function startRecurringBillingForAgreement(
           })
         : null;
       const signingBlocker = firstInvoiceSigningBlocker(signingObligation, signingCredit);
-      if (signingBlocker) {
+      if (signingBlocker && signingBlocker !== SIGNING_INVOICE_CREDIT_BLOCKER) {
         await tx.rentalAgreement.update({
           where: { id: agreementId },
           data: { billingBlockedReason: signingBlocker },
         });
         return { done: true, outcome: { state: "BLOCKED", detail: signingBlocker }, subscriptionEndIds: [] };
+      }
+      const signingCreditEvidence: FrozenSigningCredit | null =
+        signingBlocker === SIGNING_INVOICE_CREDIT_BLOCKER && signingCredit
+          ? { agreementId, receiptId: signingCredit.receiptId,
+              orderFingerprint: signingCredit.orderFingerprint,
+              amountCents: signingCredit.amountCents }
+          : null;
+      if (signingCreditEvidence && agreement.stripeSubscriptionId) {
+        const application = await tx.signingFirstInvoiceApplication.findUnique({
+          where: { agreementId },
+        });
+        if (!application || application.stripeSubscriptionId !== agreement.stripeSubscriptionId ||
+            application.receiptId !== signingCreditEvidence.receiptId ||
+            application.amountCents !== signingCreditEvidence.amountCents) {
+          await tx.rentalAgreement.update({
+            where: { id: agreementId },
+            data: { billingBlockedReason: SIGNING_INVOICE_CREDIT_BLOCKER },
+          });
+          return { done: true, outcome: { state: "BLOCKED",
+            detail: SIGNING_INVOICE_CREDIT_BLOCKER }, subscriptionEndIds: [] };
+        }
       }
 
       let endDate = agreement.endDate;
@@ -588,6 +616,7 @@ export async function startRecurringBillingForAgreement(
               agreement.customer.stripeDefaultPaymentMethodId,
           },
           plan,
+          signingCredit: signingCreditEvidence,
         },
       };
     });
@@ -653,6 +682,11 @@ export async function startRecurringBillingForAgreement(
   }
 
   const cancelAt = cancelAtSecondsFor(claimed.agreement) ?? undefined;
+  const signedFirstInvoiceItem = claimed.agreement.signingCredit
+    ? signingFirstInvoiceItem(
+        claimed.agreement.signingCredit, items[0]!.price_data.product,
+      )
+    : null;
 
   const providerResult = await runProviderCall(() =>
     stripe.subscriptions.create(
@@ -661,6 +695,7 @@ export async function startRecurringBillingForAgreement(
         default_payment_method:
           claimed.agreement.customer.stripeDefaultPaymentMethodId,
         items,
+        ...(signedFirstInvoiceItem ? { add_invoice_items: [signedFirstInvoiceItem] } : {}),
         metadata: {
           agreementId: claimed.agreement.id,
           firstDeliveredOn: claimed.agreement.firstDeliveredOn.toISOString(),
@@ -707,7 +742,40 @@ export async function startRecurringBillingForAgreement(
   }
 
   const stripeSubscriptionId = providerResult.value.id;
-  const finalized = await prisma.$transaction(async (tx): Promise<{ outcome: HandoffWorkOutcome; subscriptionEndIds: string[] }> => {
+  let verifiedCredit: VerifiedFirstInvoiceCredit | null = null;
+  if (claimed.agreement.signingCredit) {
+    try {
+      const latest = providerResult.value.latest_invoice;
+      const invoiceId = typeof latest === "string" ? latest : latest?.id;
+      if (!invoiceId) throw new Error("Stripe did not return the first subscription invoice.");
+      const [invoice, providerLines] = await Promise.all([
+        stripe.invoices.retrieve(invoiceId),
+        stripe.invoices.listLineItems(invoiceId, { limit: 100 }),
+      ]);
+      verifiedCredit = verifySigningFirstInvoiceCredit(
+        claimed.agreement.signingCredit, stripeSubscriptionId,
+        claimed.agreement.customer.stripeCustomerId,
+        invoice, providerLines.data, providerLines.has_more,
+      );
+    } catch (error) {
+      // A subscription may already have been created/charged. Never issue a
+      // second subscription request or call an uncertain credit applied.
+      await prisma.$transaction(async tx => {
+        await completeProviderOperation(tx, claimed.opId, {
+          status: "UNKNOWN", error,
+          providerObjectId: stripeSubscriptionId,
+        });
+        await tx.rentalAgreement.update({
+          where: { id: agreementId },
+          data: { billingBlockedReason: RECONCILIATION_BLOCKER },
+        });
+      });
+      return { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER };
+    }
+  }
+  let finalized: { outcome: HandoffWorkOutcome; subscriptionEndIds: string[] };
+  try {
+    finalized = await prisma.$transaction(async (tx): Promise<{ outcome: HandoffWorkOutcome; subscriptionEndIds: string[] }> => {
     const locked = await tx.$queryRaw<
       Array<{
         id: string;
@@ -722,6 +790,23 @@ export async function startRecurringBillingForAgreement(
       FOR UPDATE
     `;
     const agreement = locked[0];
+    const persistVerifiedCredit = async () => {
+      if (!verifiedCredit) return;
+      const existing = await tx.signingFirstInvoiceApplication.findUnique({
+        where: { agreementId },
+      });
+      if (existing) {
+        if (existing.stripeSubscriptionId !== verifiedCredit.stripeSubscriptionId ||
+            existing.stripeInvoiceId !== verifiedCredit.stripeInvoiceId ||
+            existing.stripeInvoiceLineId !== verifiedCredit.stripeInvoiceLineId ||
+            existing.receiptId !== verifiedCredit.receiptId ||
+            existing.amountCents !== verifiedCredit.amountCents) {
+          throw new Error("A different first-invoice signing credit is already recorded.");
+        }
+      } else {
+        await tx.signingFirstInvoiceApplication.create({ data: verifiedCredit });
+      }
+    };
     if (!agreement) {
       await completeProviderOperation(tx, claimed.opId, {
         status: "DRIFT",
@@ -755,6 +840,7 @@ export async function startRecurringBillingForAgreement(
           billingBlockedReason: null,
         },
       });
+      await persistVerifiedCredit();
       await completeProviderOperation(tx, claimed.opId, {
         status: "SUCCEEDED",
         providerObjectId: stripeSubscriptionId,
@@ -771,6 +857,7 @@ export async function startRecurringBillingForAgreement(
           billingBlockedReason: null,
         },
       });
+      await persistVerifiedCredit();
       await completeProviderOperation(tx, claimed.opId, {
         status: "SUCCEEDED",
         providerObjectId: stripeSubscriptionId,
@@ -789,7 +876,31 @@ export async function startRecurringBillingForAgreement(
       data: { billingBlockedReason: RECONCILIATION_BLOCKER },
     });
     return { outcome: { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER }, subscriptionEndIds: [] };
-  });
+    });
+  } catch (error) {
+    // Legacy agreements retain their established idempotent retry contract.
+    if (!claimed.agreement.signingCredit) throw error;
+    // Stripe may already have billed the invoice. Preserve the provider
+    // subscription ID and force reconciliation instead of a new charge.
+    try {
+      await prisma.$transaction(async tx => {
+        await completeProviderOperation(tx, claimed.opId, {
+          status: "UNKNOWN", error,
+          providerObjectId: stripeSubscriptionId,
+        });
+        await tx.rentalAgreement.update({
+          where: { id: agreementId },
+          data: { billingBlockedReason: RECONCILIATION_BLOCKER },
+        });
+      });
+    } catch {
+      await prisma.rentalAgreement.updateMany({
+        where: { id: agreementId },
+        data: { billingBlockedReason: RECONCILIATION_BLOCKER },
+      }).catch(() => undefined);
+    }
+    return { state: "UNKNOWN", detail: RECONCILIATION_BLOCKER };
+  }
   await applySubscriptionEnds(finalized.subscriptionEndIds);
   return finalized.outcome;
 }

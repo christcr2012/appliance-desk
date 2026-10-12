@@ -55,7 +55,7 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
       where: { agreementId: { in: [agreementId, ...(positiveAgreementId ? [positiveAgreementId] : [])] } },
     });
     if (!process.env.DATABASE_URL?.includes("/appliance_desk_test")) throw new Error("Disposable database required for W-22 fixture cleanup");
-    await prisma.$executeRaw`TRUNCATE TABLE "SigningDownPaymentCredit"`;
+    await prisma.$executeRaw`TRUNCATE TABLE "SigningFirstInvoiceApplication", "SigningDownPaymentCredit"`;
     await prisma.agreementSigningPayment.deleteMany({
       where: { agreementId: { in: [agreementId, ...(positiveAgreementId ? [positiveAgreementId] : [])] } },
     });
@@ -493,6 +493,31 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
       ) VALUES (${agreementId}, ${settled.receiptId}, ${order.orderFingerprint}, 3500)
     `).rejects.toThrow();
     expect(await prisma.receipt.count({ where: { customerId } })).toBe(1);
+    // This is a local accounting identity test, NOT fabricated Stripe acceptance.
+    // Only the actual provider-readback function may supply these IDs in product code.
+    await prisma.rentalAgreement.update({ where: { id: positiveAgreementId },
+      data: { stripeSubscriptionId: "sub_test_signing_first_invoice" } });
+    const applicationData = {
+      agreementId: positiveAgreementId!,
+      receiptId: settled.receiptId!,
+      orderFingerprint: order.orderFingerprint,
+      amountCents: order.downPaymentCents,
+      stripeSubscriptionId: "sub_test_signing_first_invoice",
+      stripeInvoiceId: "in_test_signing_first_invoice",
+      stripeInvoiceLineId: "il_test_signing_first_invoice",
+    };
+    expect(await prisma.signingFirstInvoiceApplication.create({ data: applicationData }))
+      .toMatchObject(applicationData);
+    await expect(prisma.signingFirstInvoiceApplication.create({ data: {
+      ...applicationData, agreementId, stripeInvoiceId: "in_test_foreign",
+      stripeInvoiceLineId: "il_test_foreign",
+    } })).rejects.toThrow();
+    await expect(prisma.$executeRaw`UPDATE "SigningFirstInvoiceApplication"
+      SET "amountCents" = 1 WHERE "agreementId" = ${positiveAgreementId}`)
+      .rejects.toThrow();
+    await expect(prisma.signingFirstInvoiceApplication.create({ data: {
+      ...applicationData, amountCents: applicationData.amountCents - 1,
+    } })).rejects.toThrow();
     expect(await prisma.invoice.count({ where: { agreementId: positiveAgreementId } })).toBe(0);
     expect(await prisma.customerCredit.count({ where: { customerId } })).toBe(0);
     await expect(prisma.$transaction(tx => processSigningCheckoutEvent(

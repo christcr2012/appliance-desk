@@ -1,5 +1,34 @@
 # STATUS — current work, blockers and next action
 
+## W-22D11 exact first-invoice Stripe credit implementation — PR #423 implementation and acceptance separated
+
+Approved goal: correctly deduct signing first-month rent from its **own**
+subscription's first invoice, once, without billing a second agreement.
+The current branch implements an immutable receipt/credit invoice application
+journal, a negative agreement-tagged subscription first-invoice item,
+readback against actual provider object IDs, UNKNOWN outcome recovery and
+local webhook CREDIT mirroring. Disposable PostgreSQL/mocked-provider checks
+are implementation evidence; authenticated real Stripe TEST acceptance has
+**not** been observed. Neither success at subscription creation nor a credit
+journal declares invoice **PAID**. The customer/owner invoice display must
+still be audited end-to-end before this milestone closes.
+
+**Blocker investigation and re-entry** (AGENTS scoped-blocker rule):
+- CPA **IN-79**: external determination of Colorado taxable administrative
+  setup fee; the prior decision is already recorded as OPEN in OWNER-INPUTS.
+  Prerequisite: CPA-backed classification; re-open tax configuration/acceptance
+  when the actual decision is recorded; next: ask CPA, never invent the rate.
+- Real Stripe TEST application: no authenticated, verified TEST invoice
+  integration evidence is available in this session. This blocks **provider
+  acceptance**, not local implementation/testing or unrelated approved work.
+  Re-check configured authorized TEST credentials/environment before acceptance,
+  never use LIVE; next: run an isolated real TEST flow and reconcile provider
+  invoice/negative line/receipt with PostgreSQL evidence when accessible.
+- W-23 requires actual W-22 completion (including cancellation/refund and
+  delivery); not eligible merely because this code/CI is green. Recheck
+  once W-22 acceptance is complete. Continue the next approved independent
+  W-22 cancellation/delivery work rather than stopping for CPA/TEST gates.
+
 ## Permanent milestone handoff and acceptance matrix (2026-10-12)
 
 **Outcome:** Every eligible signed agreement can move through exact payment,
@@ -9,8 +38,8 @@ sibling property's bill. This W-22 batch is an outcome boundary, not a quota.
 | Capability / criterion | Code | Automated proof | Deployed / real integration acceptance | Next |
 | --- | --- | --- | --- | --- |
 | Frozen signed amount and TEST Stripe settlement | Implemented through #420 | Exact-head CI and disposable PostgreSQL; authenticated provider evidence path tested | LIVE disabled; no live end-to-end acceptance | Keep existing isolation and reconciliation |
-| Receipt-bound per-agreement down-payment entitlement | Implemented in W-22D9 (#421) | Disposable PostgreSQL and exact-head CI are required | Not deployed or accepted | Implement W-22D10 exact first-invoice application |
-| First delivery invoice credit exactly once (local and Stripe) | Double-charge barrier in #422; credit application NOT implemented | NOT proven | NOT accepted; never display credited or paid invoice | Implement next eligible W-22D10 with provider allocation/readback |
+| Receipt-bound per-agreement down-payment entitlement | Implemented in W-22D9 (#421) | Disposable PostgreSQL and exact-head #421 CI passed | Not deployed or accepted | Implement W-22D10 exact first-invoice application |
+| First delivery invoice credit exactly once (local and Stripe) | #422 fail-closed barrier; #423 candidate exact provider application/mirror | Disposable PostgreSQL and provider-shape tests; exact-head CI pending | No authenticated TEST provider acceptance; LIVE off | Verify #423 CI/review and real TEST readback; reconcile owner/customer invoice amounts |
 | Cancellation, refunds, and per-machine hookup/delivery acceptance | NOT complete | NOT proven end-to-end | NOT accepted | Follow the approved W-22 dependency chain after credit accounting |
 
 **Deferred-blocker register:** IN-79 requires CPA-backed Colorado setup-fee
