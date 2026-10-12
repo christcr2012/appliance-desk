@@ -3,9 +3,8 @@
   "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
   "git": {
     "deploymentEnabled": {
-      "transfer/**": false,
-      "ai/**": false,
-      "recovery/**": false
+      "**": false,
+      "live": true
     }
   },
   "crons": [

@@ -170,3 +170,10 @@ payment smoke test.
 - [ ] Verify a real public-site visit in Metricool; never infer receipt from deployment.
 - [ ] Owner reviews the updated privacy-page version through the existing approval control.
 - [ ] Compare visits/clicks with actual interest-list signups; no invented conversions.
+
+## Daily deployment cost controls (2026-10-12)
+
+- [ ] Before linking or activating this server, verify that GitHub has both main and live; initialize live from main only if absent and verify both SHA references.
+- [ ] In each linked Vercel project's Production environment, set Branch Tracking to live and read it back. Disable automatic Preview deployments and verify that setting. No Vercel project setting is implied by vercel.json.
+- [ ] Confirm exact-head existing application CI and release-policy pass; development PRs never require a paid Vercel preview. Apply live-only Git rules to any nested Vercel root configuration.
+- [ ] Verify the first scheduled daily promotion and its live-promotion date tag; validate the resulting production deployment from live. Keep all existing access, spending and activation gates.
