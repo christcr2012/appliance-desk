@@ -90,6 +90,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   RETAIL_DELIVERY_FEE: "Retail delivery fee needs review",
   STALE_RESERVATION: "Reservation expired",
   PAST_DUE_INVOICE: "Past due",
+  SIGNING_PAYMENT_DUE: "Signing payment to collect",
   OVERDUE_JOB: "Overdue job",
   UNREVIEWED_MAINTENANCE_REQUEST: "Needs review",
   UNINSPECTED_RETURN: "Needs inspection",

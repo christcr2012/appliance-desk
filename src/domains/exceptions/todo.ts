@@ -9,6 +9,7 @@ export function todoKey(item: Pick<ExceptionItem, "category" | "href" | "title">
 }
 const ACTION_LABEL: Record<string, string> = {
   PAST_DUE_INVOICE: "Review unpaid invoice",
+  SIGNING_PAYMENT_DUE: "Review signing payment",
   OVERDUE_JOB: "Open visit",
   EARLY_ENDING_NOT_DONE: "Schedule pickup",
   TAX_RETURN_DUE: "File return",
