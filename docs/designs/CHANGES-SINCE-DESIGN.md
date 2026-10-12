@@ -675,3 +675,16 @@ separate checkout/payment/credit integration. AGENTS and SESSION-START now
 link `docs/runbooks/ANTI-STALL-RECOVERY.md` for future agents.
 
 Codex review #403: SetupTaxRule now requires a literal ADMINISTRATIVE_SETUP category and rechecks that category at runtime; the W-22C3 database adapter must select category.
+
+### 2026-10-11 — W-22C3 private owner tax review (#404)
+
+`getDraftSigningTaxReview(InTx)` in
+`src/domains/billing/signing-charge-tax-review.ts` requires owner/admin at
+the public entrypoint and builds a transaction-consistent scoped draft read.
+The DB adapter explicitly selects category from jurisdiction tax rules for
+`reviewSigningFeeTax` (#403 review fix). The agreement owner screen labels
+all values as draft candidates, not payable. No schema, provider or signed
+artifact change. Next W-22C4 inherits the existing category proof check and
+must still freeze authenticated exact totals and guard send/sign.
+
+Codex review fix #404: any positive setup fee now requires current AddressTaxLocation.status VERIFIED before reading jurisdiction tax rules, even when partial jurisdiction links exist. A real Postgres NEEDS_REVIEW-with-linked-state test blocks all tax candidates.

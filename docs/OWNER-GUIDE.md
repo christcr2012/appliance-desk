@@ -729,3 +729,12 @@ released and its production tracking identifier is configured. Campaign links us
 source/campaign/post labels. Visits and clicks are not confirmed inquiries or rentals.
 Review the updated privacy page through the existing legal-page approval control.
 Removing METRICOOL_TRACKING_HASH in Vercel and redeploying disables visit tracking.
+
+### Draft signing tax review (W-22C3)
+
+On an unsent rental agreement, the owner-only preparation section can show
+private setup-fee tax candidates for each related property. This does **not**
+mean the charge is approved, due, collected, sent or locked into a contract.
+If the tax rule or jurisdiction lacks CPA-confirmed evidence, resolve that
+outside the draft workflow before a final, tax-inclusive agreement can be
+implemented. The CPA question IN-79 remains open.
