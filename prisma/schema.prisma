@@ -919,6 +919,7 @@ model RentalAgreement {
 
   lines RentalLine[]
   signingChargeSnapshot AgreementSigningCharge?
+  signingPaymentObligation AgreementSigningPayment?
 
   signature   SignatureRecord?
   jobs        Job[]
@@ -961,6 +962,26 @@ model AgreementSigningCharge {
   frozenChargeEvidence  Json?
 
   @@index([sourceEstimateId, serviceAddressId])
+}
+
+// W-22D4: a signature creates a durable unpaid obligation, NOT a receipt.
+// Amounts and fingerprint copy only server-verified immutable signing evidence.
+model AgreementSigningPayment {
+  agreementId       String @id
+  agreement         RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  orderFingerprint  String
+  evidenceVersion   Int
+  setupFeeCents     Int
+  setupTaxCents     Int
+  downPaymentCents  Int
+  totalCents        Int
+  // NOT_DUE or AWAITING_PAYMENT until a separately reviewed settlement path exists.
+  status            String
+  signedAt          DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status, signedAt])
 }
 
 model EarlyReturnResolution {

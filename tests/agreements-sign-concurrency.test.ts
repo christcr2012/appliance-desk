@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // reservations (tests/agreements-reservation.test.ts).
 
 const signatureRecordUpdateMany = vi.fn();
+const signingPaymentCreate = vi.fn();
 const rentalAgreementUpdate = vi.fn();
 const rentalLineFindMany = vi.fn();
 const auditLogCreate = vi.fn();
@@ -37,6 +38,7 @@ function makeTx() {
     },
     rentalLine: { findMany: rentalLineFindMany },
     auditLog: { create: auditLogCreate },
+    agreementSigningPayment: { create: signingPaymentCreate },
   };
 }
 
@@ -72,6 +74,7 @@ vi.mock("@/lib/prisma", () => ({
 describe("signAgreement — atomic conditional update", () => {
   beforeEach(() => {
     signatureRecordUpdateMany.mockReset();
+    signingPaymentCreate.mockReset().mockResolvedValue({});
     rentalAgreementUpdate.mockReset().mockResolvedValue({});
     rentalLineFindMany.mockReset().mockResolvedValue([]);
     auditLogCreate.mockReset().mockResolvedValue({});

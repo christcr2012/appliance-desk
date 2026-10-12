@@ -5,6 +5,8 @@ import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-fre
 import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
 import { getReviewedSigningPayment } from "@/domains/billing/signing-payment-readiness";
 import { signAgreementAction } from "@/app/sign/[id]/actions";
+import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
+import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-real-ip": "127.0.0.1" }) }));
 vi.mock("@/lib/rate-limit", () => ({ isRateLimited: vi.fn(async () => false) }));
 import { getSignatureRecordForSigning, sendForSignature, signAgreement } from "@/domains/agreements";
@@ -42,6 +44,9 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
   afterAll(async () => {
     if (!agreementId) return;
     await prisma.documentArtifact.deleteMany({ where: { customerId } });
+    await prisma.agreementSigningPayment.deleteMany({
+      where: { agreementId: { in: [agreementId, ...(positiveAgreementId ? [positiveAgreementId] : [])] } },
+    });
     if (positiveAgreementId) {
       await prisma.auditLog.deleteMany({ where: { entityId: positiveAgreementId } });
       await prisma.signatureRecord.deleteMany({ where: { agreementId: positiveAgreementId } });
@@ -100,9 +105,9 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
   });
 
   it("never falls back to a legacy charge for a real frozen customer-accepted agreement", async () => {
-    const before = await prisma.providerOperation.count();
+    const before = await prisma.providerOperation.count({ where: { subjectId: agreementId } });
     await expect(createCheckoutSessionForAgreement(agreementId)).rejects.toThrow(/legacy checkout is blocked/);
-    expect(await prisma.providerOperation.count()).toBe(before);
+    expect(await prisma.providerOperation.count({ where: { subjectId: agreementId } })).toBe(before);
     expect(await prisma.invoice.count({ where: { agreementId } })).toBe(0);
   });
 
@@ -116,6 +121,26 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     } });
   });
 
+  it("rolls back the entire signature when the immutable payment obligation cannot be inserted", async () => {
+    const proof = await prisma.$transaction(tx => getFrozenSigningOrderInTx(tx, agreementId));
+    const line = proof.find(row => row.agreementId === agreementId)!;
+    // Force a unique conflict after signatureRecord.updateMany succeeds.
+    await prisma.agreementSigningPayment.create({ data: signedPaymentObligation(line, new Date()) });
+    const beforeAudit = await prisma.auditLog.count({ where: {
+      action: "agreement.sign", entityId: agreementId,
+    } });
+    try {
+      await expect(signAgreement(signatureId, {
+        signerName: "Customer", signerEmail: "customer@test.invalid", ipAddress: null,
+      })).rejects.toThrow();
+      expect((await prisma.signatureRecord.findUniqueOrThrow({ where: { id: signatureId } })).signedAt).toBeNull();
+      expect((await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreementId } })).status).toBe("AWAITING_SIGNATURE");
+      expect(await prisma.auditLog.count({ where: { action: "agreement.sign", entityId: agreementId } })).toBe(beforeAudit);
+    } finally {
+      await prisma.agreementSigningPayment.delete({ where: { agreementId } });
+    }
+  });
+
   it("accepts the unchanged frozen offer using the atomic signature transition", async () => {
     // Exercise the actual public action through the real locked signature,
     // persisted frozen evidence, and payment-readiness query. Only Next's
@@ -126,6 +151,10 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     expect(result).toMatchObject({ status: "success", agreementId,
       checkoutUrl: null, pendingSigningAmountCents: 0 });
     expect((await prisma.signatureRecord.findUniqueOrThrow({ where: { id: signatureId } })).signedAt).not.toBeNull();
+    expect(await prisma.agreementSigningPayment.findUniqueOrThrow({ where: { agreementId } })).toMatchObject({
+      status: "NOT_DUE", totalCents: 0, downPaymentCents: 0,
+      orderFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
     const verified = await getReviewedSigningPayment(agreementId);
     expect(verified).toMatchObject({ customerId, agreementId,
       plan: { agreementId, allInCents: 0, items: [], evidenceVersion: 1 },
@@ -152,17 +181,34 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     expect((await freezeReviewedSigningOrder(ownerId, positiveAgreementId)).status).toBe("FROZEN");
     const sig = await sendForSignature(ownerId, positiveAgreementId);
     expect(sig.signingAllInCents).toBe(3500);
-    const beforeProvider = await prisma.providerOperation.count();
+    const beforeProvider = await prisma.providerOperation.count({ where: { subjectId: positiveAgreementId } });
     const signed = await signAgreementAction(sig.id, {
       signerName: "Real Customer", signerEmail: "real@example.test", agreedToTerms: true,
     });
     expect(signed).toMatchObject({ status: "success", agreementId: positiveAgreementId,
       checkoutUrl: null, pendingSigningAmountCents: 3500 });
     expect(await prisma.invoice.count({ where: { agreementId: positiveAgreementId } })).toBe(0);
-    expect(await prisma.providerOperation.count()).toBe(beforeProvider);
+    expect(await prisma.providerOperation.count({ where: { subjectId: positiveAgreementId } })).toBe(beforeProvider);
+    expect(await prisma.agreementSigningPayment.findUniqueOrThrow({ where: { agreementId: positiveAgreementId } })).toMatchObject({
+      status: "AWAITING_PAYMENT", totalCents: 3500, downPaymentCents: 3500,
+      setupFeeCents: 0, setupTaxCents: 0,
+    });
     const proof = await getReviewedSigningPayment(positiveAgreementId);
     expect(proof.plan).toMatchObject({ allInCents: 3500,
       items: [{ kind: "FIRST_MONTH_DOWN_PAYMENT", amountCents: 3500 }] });
+  });
+
+  it("database rejects an invented settled status or changed obligation total", async () => {
+    expect(positiveAgreementId).toBeTruthy();
+    await expect(prisma.agreementSigningPayment.update({
+      where: { agreementId: positiveAgreementId }, data: { status: "SETTLED" },
+    })).rejects.toThrow();
+    await expect(prisma.agreementSigningPayment.update({
+      where: { agreementId: positiveAgreementId }, data: { totalCents: 3499 },
+    })).rejects.toThrow();
+    expect(await prisma.agreementSigningPayment.findUniqueOrThrow({
+      where: { agreementId: positiveAgreementId },
+    })).toMatchObject({status:"AWAITING_PAYMENT", totalCents:3500});
   });
 
   it("refuses altered proof after signing, with no payment or invoice side effects", async () => {
@@ -170,7 +216,7 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     const initial = await prisma.agreementSigningCharge.findUniqueOrThrow({ where: { agreementId } });
     const before = {
       invoices: await prisma.invoice.count({ where: { agreementId } }),
-      providerOperations: await prisma.providerOperation.count(),
+      providerOperations: await prisma.providerOperation.count({ where: { subjectId: agreementId } }),
     };
     try {
       await prisma.signatureRecord.update({ where: { id: signatureId }, data: {
@@ -194,7 +240,7 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     }
     expect(await getReviewedSigningPayment(agreementId)).toMatchObject({ customerId, agreementId });
     expect(await prisma.invoice.count({ where: { agreementId } })).toBe(before.invoices);
-    expect(await prisma.providerOperation.count()).toBe(before.providerOperations);
+    expect(await prisma.providerOperation.count({ where: { subjectId: agreementId } })).toBe(before.providerOperations);
   });
 
   it("refuses prepaid or legacy-payable agreements even when signed", async () => {

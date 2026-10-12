@@ -674,3 +674,19 @@ tax, down-payment and all-in cents. The content hash protects the canonical
 HTML. Artifact recreation rechecks the source signing record against frozen
 source evidence and refuses mismatches; previously sealed historical
 documents are unchanged. This is contract evidence, not a payment receipt.
+
+### W-22D4 signed payment obligation (PR #414)
+
+`AgreementSigningPayment` stores one immutable signing-time **amount owed**
+per agreement after the independently verified frozen offer is actually
+signed. `agreementId` is its key and a restrict-delete FK; `orderFingerprint`
+is the complete-order SHA-256 and `evidenceVersion` is 1. `setupFeeCents`,
+`setupTaxCents`, `downPaymentCents` and `totalCents` are nonnegative stored
+cents; a database CHECK requires their exact sum and a 64-hex-character
+fingerprint. The row shares the original signed timestamp. `status` is
+`AWAITING_PAYMENT` for a positive sum, or `NOT_DUE` for zero. The CHECK refuses
+any invented paid/settled state until a reviewed, receipt-backed transition
+is implemented in a successor. The signature and this obligation commit or
+roll back together. Neither an obligation nor a signature is a payment receipt,
+Stripe charge, deposit, credit or permission to deliver. This additive model
+is in the backup registry; no historical signatures are backfilled.

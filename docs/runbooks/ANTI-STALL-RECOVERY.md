@@ -261,3 +261,63 @@ GitHub `ci` and browser jobs** as the merge gate. A clean isolated `npm ci`
 is an optional *future* diagnostic only if within time/cost guardrails, not
 permission to bypass CI. Clearly say local browser acceptance was unavailable
 when reporting, even if GitHub CI later passes.
+
+### October 12 — second sandbox expiry between accepted PR and DB probe
+
+The `appliance-desk-s1c-oct8` session `sbx_CDAVfTwGnE2wMdIdMTQI0CTwtwM7`
+expired at its configured 30-minute limit just before W-22D4's next
+command was accepted. The API returned `410 sandbox_stopped`; **no DB probe
+was started and no test failed**. Resuming that *same* persistent sandbox
+preserved the complete dirty W-22D4 worktree. The refreshed session was
+extended within the existing sandbox's resource tier before its substantial
+DB/preflight run; no paid upgrade or extra sandbox was created.
+
+Before any 5+ minute preflight/push in a resumed sandbox, read its actual
+`expiresAt` and compare remaining lifetime with the command's bounded
+timeout and a practical review/publish margin. If too short, checkpoint the
+PR/dirty-worktree/command first, then request an allowed extension of the
+**same** session within existing cost/approval limits. If extension is not
+available, run a shorter focused check and checkpoint for a clean resume;
+never launch a full command that cannot finish within its lease, and do not
+silently buy resources. After `410`, resume and inspect preserved worktree
+and remote receipts before trying a command on the new session ID.
+
+### October 12 — completed 7-minute preflight was not reported or triaged
+
+W-22D4's broad affected-graph preflight **finished with exit code 1**
+(446 seconds); it did not hang. The agent failed to inspect that terminal
+receipt before its next user-facing reply. Its summary was `157` suites:
+`151 passed`, `2 skipped`, `4 failed`; of `1,000` tests,
+`997 passed`, `2 skipped`, and one assertion failed. The new FK correctly
+blocked three legacy integration fixtures from deleting agreements while
+`AgreementSigningPayment` still existed. Fix their teardown ordering instead
+of weakening the **ON DELETE RESTRICT** production financial-audit FK. The
+fourth failure asserted `shortTermLeaseElection=UNDECIDED` while the
+shared BusinessSettings singleton was `COLLECT_ON_RENTALS` during a wide
+parallel run. That tax migration suite passed in isolation alongside the
+three repaired suites (38/38), and focused signing/backup/restore cases passed
+(30/30). Treat the shared-settings interaction as a test-isolation suspicion,
+**not** a tax-code fix or a green broad preflight.
+
+**Required response:** after any command's bounded timeout or completion,
+read its exit code and the bottom-of-log summary immediately, extract each
+failing test or cleanup, and record them before unrelated work. Repair
+precisely the failing fixture/model; rerun those cases in the repository's
+isolated disposable DB, then run requested affected checks and require the
+exact-head CI aggregate. Never leave a known failed local preflight
+unreported, confuse expected stderr from `.rejects` tests with actual
+failures, or weaken money-history constraints merely to make fixture teardown
+pass. Store the actual result and remaining risk in the PR review note.
+
+### October 12 — exact-head CI exposed a global-count race missed by local probes
+
+PR #414's first exact-head CI run passed typecheck, browser shards and 2/3
+unit shards, but unit shard 1 failed a W-22 integration assertion comparing
+**global** `ProviderOperation.count()` before and after a checkout refusal.
+Another concurrently running suite legitimately created an unrelated provider
+operation in the same disposable test database (8 vs 7). That assertion did
+not measure the target agreement's side effects. Fix every affected counter
+to scope by `subjectId: agreementId` (or equivalent entity identity); verify
+isolated tests, then push a **new** head and require fresh exact-head CI. Do
+not rerun an unchanged flaky shard as if that fixed the test, and do not
+change production provider controls to accommodate incorrect fixture counts.

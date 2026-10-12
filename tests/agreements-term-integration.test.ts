@@ -153,6 +153,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
     await prisma.consentRecord.deleteMany({ where: { customerId } });
     await prisma.auditLog.deleteMany({ where: { entityId: { in: ids } } });
     await prisma.invoice.deleteMany({ where: { customerId } });
+    await prisma.agreementSigningPayment.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.signatureRecord.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { renewedFromAgreementId: { in: ids } } });
