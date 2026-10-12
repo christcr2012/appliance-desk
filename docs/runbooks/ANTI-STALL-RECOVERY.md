@@ -138,3 +138,48 @@ sandbox resources. Record the exact local limitation, preserve successful
 focused/unit/disposable-Postgres checks and require the unchanged full
 GitHub exact-head CI/browser checks before merge. A browser acceptance claim
 is permissible only after the corresponding CI/browser job passes.
+
+
+## October 12 — external PostgreSQL image pull quota, and stalled CI diagnosis
+
+During PR #409 (head d14ef91) the Performance Baselines capacity job
+failed before checkout/test/setup because the external container registry
+responded `toomanyrequests: Data limit exceeded` for
+`public.ecr.aws/docker/library/postgres:17` on all three runner pull
+attempts. The separately required CI workflow completed all eleven jobs
+successfully on the same PR head, including browser and unit shards.
+This is an *external registry capacity failure*, not a failed application
+performance assertion; do not change product code or claim the performance
+baseline passed.
+
+Recovery sequence for a failure discovered during publication:
+
+1. Read the failing *job* log, not just workflow summary. Identify the
+   first error and whether repository steps were reached; record the job ID,
+   head SHA, exact error, failed workflow name, and which CI checks passed.
+2. Classify infrastructure-only errors (registry HTTP 429/data limit,
+   unavailable GitHub runner, transient DNS) separately from failing tests.
+   Preserve all required checks. Never waive a performance/security gate
+   simply because its infrastructure failed.
+3. Retry the failed workflow jobs **once**, only if the existing GitHub Actions
+   API permits it. A 403 `This workflow run cannot be retried` is a terminal
+   response for that attempt: do not poll/retry the identical operation.
+4. If retry is refused, inspect the repository's existing workflow-dispatch
+   or documented CI fallback and the actual branch protections. Prefer
+   preserving an immutable existing head to a dummy commit just to force
+   another run; avoid switching registries speculatively or changing paid
+   runner resources. If the performance check is required, keep the PR open
+   until a genuinely passing required result exists.
+5. After a failed *optional* diagnostic job, if the repository's merge gates
+   permit proceeding, explicitly record the diagnostic as failed/external,
+   not passed. Complete code review, exact-head required CI and approvals
+   before merge. Do not count a PR until GitHub confirms `merged=true`.
+
+While a successor worktree is being prepared, track the predecessor PR's
+actual state and checks at every tool boundary. A running workflow should
+not cause silence: report its current state, then perform independent
+authorized successor work without claiming merge.
+
+## October 12 — document renderer related-test fan-out
+
+W-22C6C changes to document rendering made `preflight --related` select 149 files and 953 tests on disposable Postgres, even though the explicit requested specs were small. The first pass reported three legacy lifecycle fixture failures because mocks omitted the new setupFeeCents/setupTaxCents/downPaymentCents evidence. Preserve strict production validation; correct incomplete mocks with explicit reconciled zero cents, run failing specs in `test:db:probe` first, then rerun required preflight and exact-head CI. A plan is a scope estimate, not a guarantee of a small run. Avoid repeating a full 953-test run until targeted failure fixtures are repaired.

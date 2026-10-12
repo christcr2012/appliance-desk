@@ -2,7 +2,7 @@
 // evidence; W-22 integration separately exercises real frozen verification.
 vi.mock("@/domains/billing/signing-frozen-verify", () => ({
   getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
-    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1,
+    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1, setupFeeCents: 0, setupTaxCents: 0, downPaymentCents: 0,
   }],
 }));
 import { vi } from "vitest";
@@ -12,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { signAgreement } from "@/domains/agreements";
 import {
+  createSignedAgreementArtifactInTx,
   freezeInvoiceArtifact,
   readArtifactForViewer,
 } from "@/domains/documents/artifacts";
@@ -195,6 +196,12 @@ describe.skipIf(!enabled)("Batch D evidence artifacts (real Postgres)", () => {
       where: { kind: "SIGNED_AGREEMENT", subjectId: ids.agreementA },
       select: { id: true, html: true, sha256: true, payload: true },
     });
+    expect(frozen.payload).toMatchObject({ frozenSigning: {
+      schemaVersion: 1, orderFingerprint: "a".repeat(64), allInCents: 0,
+      setupFeeCents: 0, setupTaxCents: 0, downPaymentCents: 0,
+    } });
+    expect(frozen.html).toContain("Reviewed signing charges");
+    expect(frozen.html).toContain("Not a payment receipt");
 
     const changedName = `Changed after signing ${tag}`;
     await prisma.businessSettings.update({
@@ -215,6 +222,32 @@ describe.skipIf(!enabled)("Batch D evidence artifacts (real Postgres)", () => {
       await prisma.businessSettings.update({
         where: { id: "singleton" },
         data: { publicBusinessName: originalBusinessName },
+      });
+    }
+  });
+
+  it("rejects changed signed-link proof without rewriting an existing artifact", async () => {
+    const before = await prisma.documentArtifact.findFirstOrThrow({
+      where: { kind: "SIGNED_AGREEMENT", subjectId: ids.agreementA },
+      select: { id: true, sha256: true },
+    });
+    const original = await prisma.signatureRecord.findUniqueOrThrow({
+      where: { id: signatureA }, select: { signingOrderFingerprint: true },
+    });
+    await prisma.signatureRecord.update({
+      where: { id: signatureA }, data: { signingOrderFingerprint: "b".repeat(64) },
+    });
+    try {
+      await expect(prisma.$transaction(tx =>
+        createSignedAgreementArtifactInTx(tx, ids.agreementA),
+      )).rejects.toThrow(/no longer matches/);
+      expect((await prisma.documentArtifact.findUniqueOrThrow({
+        where: { id: before.id }, select: { sha256: true },
+      })).sha256).toBe(before.sha256);
+    } finally {
+      await prisma.signatureRecord.update({
+        where: { id: signatureA },
+        data: { signingOrderFingerprint: original.signingOrderFingerprint },
       });
     }
   });

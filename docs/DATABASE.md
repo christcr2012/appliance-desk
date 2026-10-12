@@ -665,3 +665,12 @@ was issued. The additive database constraint prevents partially populated
 new evidence while preserving existing historical signatures. Server-side
 links with absent/incorrect proof are not accepted as valid W-22 signing
 evidence; the new fields are **not** proof of payment or provider settlement.
+
+### W-22C6C immutable signed-document amount provenance
+
+SIGNED_AGREEMENT DocumentArtifact payloads created with W-22 frozen signing
+offers now embed version, order fingerprint and exact per-agreement setup,
+tax, down-payment and all-in cents. The content hash protects the canonical
+HTML. Artifact recreation rechecks the source signing record against frozen
+source evidence and refuses mismatches; previously sealed historical
+documents are unchanged. This is contract evidence, not a payment receipt.

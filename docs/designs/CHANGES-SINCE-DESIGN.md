@@ -711,3 +711,10 @@ SignatureRecord retains the frozen per-agreement total and canonical order
 fingerprint at send time; customer read and sign revalidate this exact match.
 This is separate from future signing-payment settlement. IN-79 and owner
 financial/communication activation gates remain unchanged.
+
+### W-22C6C — signed-document immutable money evidence
+
+The signed agreement artifact now preserves the tax-inclusive customer offer,
+all-in per-agreement cents and order digest in document HTML and JSON payload.
+If source signing evidence changes, regeneration fails instead of recasting
+old contract proof; external collections and CPA gate IN-79 are unchanged.

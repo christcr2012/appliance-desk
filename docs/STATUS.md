@@ -1,4 +1,14 @@
 # STATUS — current work, blockers and next action
+## W-22C6C signed document proof (PR #410)
+
+The signed artifact now retains reviewed all-in setup/tax/down-payment cents
+and frozen SHA-256 provenance in the immutable contract payload and HTML.
+It rejects conflicting stored signature evidence and never implies payment
+settlement. W-22 remains PARTIAL; IN-79 CPA decision OPEN, W-23 blocked.
+Next: approved W-22 payment settlement, first-invoice credit, exceptions,
+cancellation/refunds and delivery proof in card order.
+
+
 ## W-22C6B guarded frozen send/sign (candidate PR #409)
 
 A server-side link now binds the customer-visible tax-inclusive signing
