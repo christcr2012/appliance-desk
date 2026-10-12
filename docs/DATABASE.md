@@ -656,3 +656,12 @@ are not silently converted to approved signing totals. The owner-only domain
 transaction writes evidence atomically after independent CPA-category review.
 This is NOT a Stripe receipt or signed contract; send/sign/payment readers
 must reject absent/incomplete frozen evidence and verify its own provenance.
+
+### W-22C6B signing-link proof
+
+SignatureRecord's nullable signingOrderFingerprint, signingAllInCents and
+signingEvidenceVersion retain what the recipient saw when the signing link
+was issued. The additive database constraint prevents partially populated
+new evidence while preserving existing historical signatures. Server-side
+links with absent/incorrect proof are not accepted as valid W-22 signing
+evidence; the new fields are **not** proof of payment or provider settlement.

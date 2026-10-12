@@ -1,3 +1,11 @@
+// Existing terms/notices/document-artifact assertions predate W-22 monetary
+// evidence; W-22 integration separately exercises real frozen verification.
+vi.mock("@/domains/billing/signing-frozen-verify", () => ({
+  getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
+    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1,
+  }],
+}));
+import { vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
@@ -123,7 +131,7 @@ describe.skipIf(!enabled)("month-to-month terms versions and the change notice",
 
   it("mtm-terms-new-rental-starts-on-newest-version", async () => {
     const created = await agreement({ termMonths: null, status: "AWAITING_SIGNATURE" });
-    const signature = await prisma.signatureRecord.create({ data: { agreementId: created.id, provider: "test" } });
+    const signature = await prisma.signatureRecord.create({ data: { agreementId: created.id, provider: "test", signingOrderFingerprint: "a".repeat(64), signingAllInCents: 0, signingEvidenceVersion: 1 } });
     await signAgreement(signature.id, { signerName: "Terms Customer", signerEmail: `${tag}-c@example.test`, ipAddress: null });
     const signed = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: created.id } });
     expect(signed.status).toBe("ACTIVE");

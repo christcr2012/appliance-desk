@@ -1,3 +1,10 @@
+// Existing terms/notices/document-artifact assertions predate W-22 monetary
+// evidence; W-22 integration separately exercises real frozen verification.
+vi.mock("@/domains/billing/signing-frozen-verify", () => ({
+  getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
+    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1,
+  }],
+}));
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const stripeMock = vi.hoisted(() => ({

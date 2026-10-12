@@ -74,6 +74,16 @@ export default async function SignPage({
             Paid in full, in advance — your first month is free.
           </p>
         )}
+        {signature.frozenSigningLine && (
+          <section aria-label="Reviewed signing charges" className="space-y-1 border-t border-line pt-3">
+            <h2 className="font-medium">Signing charges for this service address</h2>
+            <p>Administrative setup: {formatCents(signature.frozenSigningLine.setupFeeCents)}</p>
+            <p>Setup sales tax: {formatCents(signature.frozenSigningLine.setupTaxCents)}</p>
+            <p>First-month down payment: {formatCents(signature.frozenSigningLine.downPaymentCents)}</p>
+            <p className="font-semibold">Tax-inclusive signing amount: {formatCents(signature.frozenSigningLine.allInCents)}</p>
+            <p className="text-ink-soft">These are the frozen amounts for review, not a receipt or confirmation of payment. Regular rent is billed when delivery is completed; a down payment will be applied to the first bill.</p>
+          </section>
+        )}
         {agreement.depositCents > 0 && (
           <p>Deposit: {formatCents(agreement.depositCents)}</p>
         )}
