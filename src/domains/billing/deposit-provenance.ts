@@ -596,6 +596,9 @@ async function depositIdForAgreement(agreementId: string): Promise<string | null
 async function captureCheckoutDeposit(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  // W-22 signing setup/down-payment receipts are NOT old damage deposits.
+  // Never attach them to a legacy Deposit or estimate funding lineage.
+  if (session.metadata?.attemptId || session.metadata?.orderFingerprint) return;
   if (session.mode !== "payment" || session.payment_status !== "paid") return;
   const paymentIntentId =
     typeof session.payment_intent === "string"

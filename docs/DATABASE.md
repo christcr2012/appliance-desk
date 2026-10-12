@@ -710,3 +710,18 @@ For backups and restores, `src/domains/backup/manifest.ts` includes the new
 model; restore parents (agreement and obligation) before its children. The
 migration preserves all existing signed obligations and old records; no
 backfill, activation, or destructive change occurs.
+
+
+### W-22D8 — authenticated TEST settlement receipt (2026-10-12)
+
+`20261015170000_w22_signing_test_settlement` adds optional receipt/settled-at
+columns to `AgreementSigningPayment` and a unique Stripe PaymentIntent ID to
+`SigningPaymentAttempt`. A PostgreSQL check allows `SETTLED` only with a
+receipt ID and settlement timestamp; unpaid and waived obligations cannot
+pretend to have receipts. The receipt links to the existing `Receipt` table,
+whose unique provider charge ID also stops money being recorded twice.
+Existing unpaid and waived records remain valid. No destructive/backfill
+migration and no existing schema snapshot is silently reclassified.
+The deposit/down-payment portion is **not** automatically credited to an
+invoice; the next separately reviewed W-22 unit owns the exactly-once
+invoice application. TEST evidence only, and never a LIVE activation.

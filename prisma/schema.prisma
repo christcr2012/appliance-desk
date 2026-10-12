@@ -978,6 +978,11 @@ model AgreementSigningPayment {
   // NOT_DUE or AWAITING_PAYMENT until a separately reviewed settlement path exists.
   status            String
   signedAt          DateTime
+  // Only an authenticated, provider-verified payment may populate these.
+  // No first-invoice credit is applied merely from a receipt.
+  receiptId         String? @unique
+  receipt           Receipt? @relation(fields: [receiptId], references: [id], onDelete: Restrict)
+  settledAt         DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -1000,6 +1005,7 @@ model SigningPaymentAttempt {
   orderFingerprint String
   amountCents      Int
   providerObjectId String? @unique
+  stripePaymentIntentId String? @unique
   failureCode      String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -1937,6 +1943,7 @@ model Receipt {
   notes            String?
   payments         Payment[]
   fundedDeposit    Deposit?
+  signingPaymentObligation AgreementSigningPayment?
   createdAt        DateTime      @default(now())
 
   @@index([customerId, receivedOn])

@@ -1,5 +1,22 @@
 # STATUS — current work, blockers and next action
 
+## W-22D8 verified Stripe TEST signing receipt settlement (PR #420)
+
+Authenticated Stripe TEST signing checkout events now reconcile the immutable
+accepted agreement/attempt with the payment intent's succeeded status, exact
+USD cents, metadata and unique charge. Under the established short locked
+webhook transaction the provider charge creates one durable customer receipt,
+marks the attempt SUCCEEDED and the obligation SETTLED; event replays never
+double-record cash. Unpaid Checkout completion is not settlement, failed
+asynchronous attempts can be retried, and duplicate/altered/live evidence is
+rejected. Production activation remains blocked. **The collected first-month
+down payment is recorded but is NOT yet credited against an invoice.**
+Next W-22: per-agreement, replay-safe first-invoice credit/application,
+cancellation/refund decisions and per-machine delivery acceptance. CPA IN-79
+OPEN; W-22 PARTIAL, W-23 blocked. Hosting controls remain in
+docs/HOSTING-COST-POLICY.md and the merged .github policies.
+
+
 ## October 12 hosting-cost handoff integrated into W-22D7 (#418)
 
 Latest main includes the owner-directed daily checked main-to-live workflow
