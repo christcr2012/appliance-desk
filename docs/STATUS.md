@@ -1,5 +1,16 @@
 # STATUS — current work, blockers and next action
 
+## October 12 hosting-cost handoff integrated into W-22D7 (#418)
+
+Latest main includes the owner-directed daily checked main-to-live workflow
+(#417) and verified Neon 0.25 CU/300-second idle policy (#419).
+The consolidated `docs/HOSTING-COST-POLICY.md` links the authoritative
+merged policies and forbids automatic previews, manual promotions, unapproved
+resource increases and Stripe LIVE activation. The requested separate hosting
+handoff branch was not present in the appliance-desk remote at verification;
+this integration uses the merged policies and explicit owner instructions.
+
+
 ## W-22D7 TEST signing Checkout (PR #418)
 
 The signed, frozen per-agreement amount can now be used to create an idempotent
