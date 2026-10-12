@@ -1,0 +1,50 @@
+name: Daily live policy
+on:
+  schedule:
+    - cron: '23 10 * * *' # 04:23 Denver daylight / 03:23 standard; GitHub may delay.
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-live-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  policy:
+    name: release-policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require PRs to target main
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: test "$BASE_BRANCH" = main
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - run: node --test .github/release/promote-live.test.mjs
+
+  promote:
+    name: scheduled-live-promotion
+    if: github.event_name == 'schedule' && github.ref == 'refs/heads/main'
+    needs: policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      checks: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Checked daily fast-forward only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/release/promote-live.mjs
