@@ -58,7 +58,7 @@ export function commands(options, changed) {
     throw new Error('Code changed: select its meaningful unit, database or browser regressions. --plan does not count as verification.');
   if (!options.inside && screen && !options.browser.length)
     throw new Error('Screen/spec changed: select affected --browser specs before publishing. If local setup is blocked, record the exact blocker and use required CI; do not claim local browser proof.');
-  const list = options.inside ? [] : [ ['node', 'scripts/check-secrets.mjs'], ['node', 'scripts/check-migrations.mjs'], ['node', 'scripts/e2e-shard.mjs', '--check'], ['node', 'scripts/check-route-inventory.mjs'], ['node', 'scripts/check-w18-money.mjs'], ['node', '--test', 'scripts/preflight.test.mjs'] ];
+  const list = options.inside ? [] : [ ['node', 'scripts/check-secrets.mjs'], ['node', 'scripts/check-migrations.mjs'], ['node', 'scripts/e2e-shard.mjs', '--check'], ['node', 'scripts/check-route-inventory.mjs'], ['node', 'scripts/check-w18-money.mjs'], ['node', '--test', 'scripts/preflight.test.mjs', 'scripts/probe-db.test.mjs'] ];
   if (!options.inside && application) list.push(['npm', 'run', 'typecheck'], ['npm', 'run', 'lint']);
   const adjacent = options.inside ? [] : adjacentRegressions(changed)
     .filter(file => !options.unit.includes(file) && !options.db.includes(file) && existsSync(file));

@@ -1,5 +1,10 @@
 # STATUS — current work, blockers and next action
 
+## October 11 development-infrastructure upgrade (DEV-EFF-406; merged #406)
+
+The separate diagnostic disposable-Postgres probe selects literal DB test specs without expensive import-graph expansion. Existing mandatory preflight, exact-head CI and provider/owner gates remain unchanged. Sandbox stale tracking-ref diagnosis added to recovery guidance. Next product capability is W-22C5: reviewed immutable all-in signing evidence and guarded send/sign. IN-79 remains OPEN and W-23 blocked. See docs/pr-cards/DEV-EFF-406.md; record only after exact-head CI and review.
+
+
 Updated 2026-10-11 as if PR #402 (W-22C1) merged, following main `1d18648` (#401). COM-L15 #393, W-1 #394,
 W-18 #395 and W-22A #396 are merged. W-22 remains partial; no live payments,
 customer messages, fee charging or tax filing are activated.
