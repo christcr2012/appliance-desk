@@ -1,5 +1,17 @@
 # STATUS — current work, blockers and next action
 
+## W-22D2 verified signed payment readiness (PR #412)
+
+After W-22D1 #411 merged, a read-only, repeatable-read payment gate now
+requires an actually signed ACTIVE agreement, the full independently verified
+frozen sibling order, and the exact accepted agreement-specific signature
+proof. Legacy deposit/waiver or prepaid state blocks collection preparation,
+as do mismatched order cents/hash; no invoice, provider or receipt is written.
+This is a prerequisite, **not checkout or payment settlement**. Next: durable
+provider request and replay-safe W-22 payment records, then first bill credits,
+refund/cancellation and delivery evidence. CPA IN-79 OPEN, W-22 PARTIAL, W-23 blocked.
+
+
 ## W-22D1 frozen-payment safety (PR #411)
 
 Signed W-22 fee/tax/down-payment evidence now has a provider-independent,
