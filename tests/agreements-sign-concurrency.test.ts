@@ -44,7 +44,7 @@ function makeTx() {
 // independently covered W-22 frozen-order database verification.
 vi.mock("@/domains/billing/signing-frozen-verify", () => ({
   getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
-    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1,
+    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1, setupFeeCents: 0, setupTaxCents: 0, downPaymentCents: 0,
   }],
 }));
 vi.mock("@/domains/documents/artifacts", () => ({

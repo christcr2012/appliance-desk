@@ -23,6 +23,16 @@ export type SignedAgreementPayload = {
     prepayDiscountCentsPerMonth: number;
   }>;
   monthlyTotalCents: number;
+  // W-22: immutable proof included in a newly signed agreement artifact.
+  // Absent only on historical pre-W-22 documents.
+  frozenSigning?: {
+    schemaVersion: 1;
+    orderFingerprint: string;
+    setupFeeCents: number;
+    setupTaxCents: number;
+    downPaymentCents: number;
+    allInCents: number;
+  };
   depositCents: number;
   damageWaiverCents: number;
   lateFeeGraceDays: number;
@@ -125,12 +135,20 @@ export function renderSignedAgreement(payload: SignedAgreementPayload): string {
   const renewal = payload.terms.autoRenew
     ? `<div class="box"><h2>Automatic renewal</h2><p>${e(payload.terms.autoRenew.noticeLine)}</p><p>${e(payload.terms.autoRenew.termsText).replaceAll("\n", "<br>")}</p></div>`
     : "";
+  const frozen = payload.frozenSigning;
+  if (frozen && (frozen.schemaVersion !== 1 ||
+      !/^[a-f0-9]{64}$/.test(frozen.orderFingerprint) ||
+      ![frozen.setupFeeCents, frozen.setupTaxCents,
+        frozen.downPaymentCents, frozen.allInCents].every(n => Number.isSafeInteger(n) && n >= 0) ||
+      frozen.setupFeeCents + frozen.setupTaxCents + frozen.downPaymentCents !== frozen.allInCents))
+    throw new Error("Frozen signing totals do not reconcile.");
+  const frozenHtml = frozen ? `<div class="box"><h2>Reviewed signing charges</h2><p>Setup: ${e(formatCents(frozen.setupFeeCents))}</p><p>Setup tax: ${e(formatCents(frozen.setupTaxCents))}</p><p>Down payment: ${e(formatCents(frozen.downPaymentCents))}</p><p class="total">Tax-inclusive signing amount: ${e(formatCents(frozen.allInCents))}</p><p>Not a payment receipt. Any collected down payment is credited to the first delivery invoice.</p><p>Frozen order: ${e(frozen.orderFingerprint)}</p></div>` : "";
   const fee = [
     payload.lateFeeCents > 0 ? formatCents(payload.lateFeeCents) : "",
     payload.lateFeePercent > 0 ? `${payload.lateFeePercent}%` : "",
   ].filter(Boolean).join(" or ") || "None";
   const body = `<div class="grid"><div><h2>Customer</h2><p>${e(payload.customer.name)}<br>${e(payload.customer.email)}</p></div><div><h2>Service address</h2><p>${e(payload.serviceAddress)}</p></div></div>
-<div class="box"><p><strong>Term:</strong> ${payload.termMonths ? `${payload.termMonths} months` : "Month-to-month"}</p><table><thead><tr><th>Appliance</th><th class="right">Monthly price</th></tr></thead><tbody>${lineRows}</tbody></table><p class="right total">Monthly total: ${e(formatCents(payload.monthlyTotalCents))}</p>${payload.freeMonthGranted ? "<p><strong>Paid in full, in advance — first month free.</strong></p>" : ""}<p>Deposit: ${e(formatCents(payload.depositCents))}</p><p>Damage waiver: ${e(formatCents(payload.damageWaiverCents))}</p><p>Late fee after ${payload.lateFeeGraceDays} days: ${e(fee)}</p><p>Sales tax rate: ${e((payload.taxRateMilliPercent / 1000).toFixed(3).replace(/\.?0+$/, ""))}%</p></div>${ending}${renewal}
+<div class="box"><p><strong>Term:</strong> ${payload.termMonths ? `${payload.termMonths} months` : "Month-to-month"}</p><table><thead><tr><th>Appliance</th><th class="right">Monthly price</th></tr></thead><tbody>${lineRows}</tbody></table><p class="right total">Monthly total: ${e(formatCents(payload.monthlyTotalCents))}</p>${payload.freeMonthGranted ? "<p><strong>Paid in full, in advance — first month free.</strong></p>" : ""}<p>Deposit: ${e(formatCents(payload.depositCents))}</p><p>Damage waiver: ${e(formatCents(payload.damageWaiverCents))}</p><p>Late fee after ${payload.lateFeeGraceDays} days: ${e(fee)}</p><p>Sales tax rate: ${e((payload.taxRateMilliPercent / 1000).toFixed(3).replace(/\.?0+$/, ""))}%</p></div>${frozenHtml}${ending}${renewal}
 <div class="box"><h2>Signature evidence</h2><p>Signed by ${e(payload.signature.signerName)} (${e(payload.signature.signerEmail)}) on ${e(date(payload.signature.signedAt))}.</p><p class="muted">IP address: ${e(payload.signature.ipAddress ?? "Not recorded")}</p></div>`;
   return shell("Signed rental agreement", payload.business, body);
 }

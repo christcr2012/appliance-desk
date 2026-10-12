@@ -3,6 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { describeSnapshotTerms } from "@/domains/agreements/terms-snapshot";
+import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { offerMatchesFrozenEvidence } from "@/domains/agreements/signing-offer-proof";
 import { getCustomerStatement } from "@/domains/billing/statements";
 import {
   RENDERER_VERSION,
@@ -80,7 +82,7 @@ export async function createSignedAgreementArtifactInTx(tx: Tx, agreementId: str
           },
         },
         signature: {
-          select: { signerName: true, signerEmail: true, ipAddress: true, signedAt: true },
+          select: { signerName: true, signerEmail: true, ipAddress: true, signedAt: true, signingOrderFingerprint: true, signingAllInCents: true, signingEvidenceVersion: true },
         },
       },
     }),
@@ -97,6 +99,13 @@ export async function createSignedAgreementArtifactInTx(tx: Tx, agreementId: str
   const lockedTerms = agreement.termMonths
     ? describeSnapshotTerms(agreement.termsSnapshot)
     : { ending: null, autoRenew: null };
+  const signedProof = agreement.signature;
+  const needsW22 = signedProof.signingOrderFingerprint !== null ||
+    signedProof.signingAllInCents !== null || signedProof.signingEvidenceVersion !== null;
+  const lines = needsW22 ? await getFrozenSigningOrderInTx(tx, agreement.id) : [];
+  const frozenLine = lines.find(line => line.agreementId === agreement.id);
+  if (needsW22 && !offerMatchesFrozenEvidence(signedProof, frozenLine))
+    throw new Error("Signed contract money evidence no longer matches the offer.");
   const payload: SignedAgreementPayload = {
     agreementId: agreement.id,
     business: businessFrom(settings),
@@ -108,6 +117,11 @@ export async function createSignedAgreementArtifactInTx(tx: Tx, agreementId: str
     termMonths: agreement.termMonths,
     lines: agreement.lines,
     monthlyTotalCents: agreement.lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0),
+    ...(frozenLine ? { frozenSigning: {
+      schemaVersion: frozenLine.schemaVersion, orderFingerprint: frozenLine.orderFingerprint,
+      setupFeeCents: frozenLine.setupFeeCents, setupTaxCents: frozenLine.setupTaxCents,
+      downPaymentCents: frozenLine.downPaymentCents, allInCents: frozenLine.allInCents,
+    } } : {}),
     depositCents: agreement.depositCents,
     damageWaiverCents: agreement.damageWaiverCents,
     lateFeeGraceDays: agreement.lateFeeGraceDays,
