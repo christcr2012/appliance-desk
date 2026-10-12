@@ -686,3 +686,5 @@ The DB adapter explicitly selects category from jurisdiction tax rules for
 all values as draft candidates, not payable. No schema, provider or signed
 artifact change. Next W-22C4 inherits the existing category proof check and
 must still freeze authenticated exact totals and guard send/sign.
+
+Codex review fix #404: any positive setup fee now requires current AddressTaxLocation.status VERIFIED before reading jurisdiction tax rules, even when partial jurisdiction links exist. A real Postgres NEEDS_REVIEW-with-linked-state test blocks all tax candidates.

@@ -33,6 +33,7 @@ describe.skipIf(!enabled)("W-22C3 private signing tax review (disposable databas
     if (!agreementId) return;
     await prisma.agreementSigningCharge.deleteMany({ where: { agreementId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
+    await prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId: addressId } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: userId } });
@@ -59,7 +60,22 @@ describe.skipIf(!enabled)("W-22C3 private signing tax review (disposable databas
     expect(result.rows[0]).toMatchObject({ agreementId, version: 1,
       review: { status: "REVIEW_REQUIRED", candidateSigningTotalCents: null,
         eligibleForCollection: false } });
-    expect(result.rows[0].review.reasons.join(" ")).toMatch(/IN-79|jurisdictions/i);
+    expect(result.rows[0].review.reasons.join(" ")).toMatch(/IN-79|jurisdictions|Verify/i);
+  });
+
+  it("refuses a partially reviewed location with jurisdiction links", async () => {
+    const state = await prisma.taxJurisdiction.findUniqueOrThrow({ where: { code: "CO" } });
+    const location = await prisma.addressTaxLocation.create({ data: {
+      serviceAddressId: addressId, status: "NEEDS_REVIEW", source: "MANUAL", lookedUpAt: now,
+    } });
+    await prisma.addressTaxJurisdiction.create({ data: {
+      addressTaxLocationId: location.id, jurisdictionId: state.id,
+    } });
+    const result = await review();
+    expect(result.orderReady).toBe(false);
+    expect(result.rows[0].review).toMatchObject({ status: "REVIEW_REQUIRED",
+      candidateSigningTotalCents: null, eligibleForCollection: false });
+    expect(result.reasons.join(" ")).toMatch(/Verify every jurisdiction/);
   });
 
   it("fails closed if saved location identity no longer matches", async () => {
