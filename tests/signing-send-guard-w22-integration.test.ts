@@ -53,6 +53,8 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     await prisma.signingPaymentAttempt.deleteMany({
       where: { agreementId: { in: [agreementId, ...(positiveAgreementId ? [positiveAgreementId] : [])] } },
     });
+    if (!process.env.DATABASE_URL?.includes("/appliance_desk_test")) throw new Error("Disposable database required for W-22 fixture cleanup");
+    await prisma.$executeRaw`TRUNCATE TABLE "SigningDownPaymentCredit"`;
     await prisma.agreementSigningPayment.deleteMany({
       where: { agreementId: { in: [agreementId, ...(positiveAgreementId ? [positiveAgreementId] : [])] } },
     });
@@ -450,6 +452,43 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
       where: { id: attempt.id },
     })).toMatchObject({ status: "SUCCEEDED", stripePaymentIntentId: intentId });
     expect(await run()).toBe(true);
+    expect(await Promise.all([run(), run()])).toEqual([true, true]);
+    const entitlement = await prisma.signingDownPaymentCredit.findUniqueOrThrow({
+      where: { agreementId: positiveAgreementId },
+    });
+    expect(entitlement).toMatchObject({
+      agreementId: positiveAgreementId,
+      receiptId: settled.receiptId,
+      orderFingerprint: order.orderFingerprint,
+      amountCents: order.downPaymentCents,
+    });
+    expect(await prisma.signingDownPaymentCredit.count({
+      where: { agreementId: positiveAgreementId },
+    })).toBe(1);
+    await expect(prisma.$executeRaw`
+      UPDATE "SigningDownPaymentCredit" SET "amountCents" = 1
+      WHERE "agreementId" = ${positiveAgreementId}
+    `).rejects.toThrow();
+    await expect(prisma.$executeRaw`
+      INSERT INTO "SigningDownPaymentCredit" (
+        "agreementId", "receiptId", "orderFingerprint", "amountCents"
+      ) VALUES (
+        ${positiveAgreementId}, ${settled.receiptId}, ${order.orderFingerprint},
+        ${order.downPaymentCents + 1}
+      )
+    `).rejects.toThrow();
+    await expect(prisma.$executeRaw`
+      UPDATE "AgreementSigningPayment" SET "downPaymentCents" = 1
+      WHERE "agreementId" = ${positiveAgreementId}
+    `).rejects.toThrow();
+    await expect(prisma.$executeRaw`
+      UPDATE "Receipt" SET "amountCents" = 1 WHERE "id" = ${settled.receiptId}
+    `).rejects.toThrow();
+    await expect(prisma.$executeRaw`
+      INSERT INTO "SigningDownPaymentCredit" (
+        "agreementId", "receiptId", "orderFingerprint", "amountCents"
+      ) VALUES (${agreementId}, ${settled.receiptId}, ${order.orderFingerprint}, 3500)
+    `).rejects.toThrow();
     expect(await prisma.receipt.count({ where: { customerId } })).toBe(1);
     expect(await prisma.invoice.count({ where: { agreementId: positiveAgreementId } })).toBe(0);
     expect(await prisma.customerCredit.count({ where: { customerId } })).toBe(0);

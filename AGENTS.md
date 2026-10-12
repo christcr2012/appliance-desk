@@ -221,6 +221,39 @@ bash scripts/local-postgres-test.sh tests/y-integration.test.ts
 
 Some sandboxes can't reach `binaries.prisma.sh` (403): that's network policy; use the approved workaround in PLAYBOOK 4b.
 
+## Milestone-led batches and permanent continuation (owner, 2026-10-12)
+
+Five **verified merged** substantive PRs is the normal session boundary, never the
+purpose or proof of completion. At startup check actual `main`, CI, existing PRs,
+review threads, active worktrees, owner decisions and `docs/pr-cards/work-index.json`;
+then name the **highest-priority eligible customer/developer outcome** and each
+remaining acceptance criterion in `docs/STATUS.md`. Plan coherent, correctly
+sequenced PRs that materially complete/advance that outcome. Fix real CI,
+security, money, review and correctness defects first; do not pad a batch,
+skip dependencies, or take a blocked milestone as ready just to reach five.
+
+`docs/STATUS.md` is the **single permanent continuation/handoff record** (not
+another instruction file). For each active milestone distinguish **implemented
+code**, **local/automated proof**, **deployed behavior**, and **real external /
+end-to-end acceptance**. Green CI, reference/mocked tests or configured hosting
+do not imply release or real-provider acceptance. Do not close an acceptance
+criterion while its real proof is missing. Each blocked/deferred item must name
+its exact gate, needed decision/evidence, prerequisites, reopening condition and
+next action; check blockers again on session startup, relevant owner answers,
+merges and environment changes. Reconcile owner answers already recorded in
+`docs/OWNER-INPUTS.md` with code and index rather than requesting them again.
+
+Maintain the existing card, risk, size, migration, review and exact-head gates.
+Update STATUS and the active card **inside the next substantive feature PR**,
+not a documentation-only PR. At stop, record confirmed merge/main SHA, open
+PR head/checks, progress, actual acceptance, blockers and next eligible unit.
+Give Chris one compact paste-ready continuation prompt instructing verification
+of live GitHub/concurrent work, reading `AGENTS.md`/`docs/SESSION-START.md`/
+`docs/STATUS.md`, resuming the stated outcome, rechecking gates, doing the next
+normal five-PR batch safely, updating STATUS, and producing the same handoff.
+Keep owner/spend/Stripe LIVE/destructive gates and daily checked `main`→`live`
+release policy unchanged; no Cortiware work.
+
 ## Ending a session
 
 1. `docs/STATUS.md`: merged, in progress (branch, PR, head SHA, CI run), blocked and why, next.

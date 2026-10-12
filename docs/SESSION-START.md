@@ -9,6 +9,16 @@ Neon idle limits, consult [HOSTING-COST-POLICY](HOSTING-COST-POLICY.md)
 **only when deployment or cost controls are relevant**. This is not a new
 approval to activate Stripe LIVE or bypass CPA IN-79.
 
+## Milestone outcome and acceptance (required each session)
+
+Before selecting the next card, use `AGENTS.md`'s milestone-led batch rules
+and `docs/STATUS.md`'s permanent handoff to identify the highest-priority
+eligible customer outcome; confirm the implementation/automation/deployment/
+real-acceptance distinction, and recheck owner/dependency/environment blockers.
+Five merged PRs is the normal boundary, not acceptance. Preserve current
+approved scope and all hosted/owner/production gates; add any lasting workflow
+changes to the next substantive implementation PR, not a docs-only PR.
+
 ## 1. Find your place (2 minutes)
 
 Local database testing uses the project's **Vercel Sandbox** (PLAYBOOK 4b has the exact steps; reuse the sandbox named

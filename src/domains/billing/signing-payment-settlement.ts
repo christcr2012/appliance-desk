@@ -113,6 +113,16 @@ export async function processSigningCheckoutEvent(
         attempt.status !== "SUCCEEDED") {
       throw new Error("Conflicting second signing payment requires owner reconciliation.");
     }
+    const entitlement = await tx.signingDownPaymentCredit.findUnique({
+      where: { agreementId },
+    });
+    if (obligation.downPaymentCents > 0
+      ? !entitlement || entitlement.receiptId !== obligation.receiptId ||
+        entitlement.amountCents !== obligation.downPaymentCents ||
+        entitlement.orderFingerprint !== obligation.orderFingerprint
+      : Boolean(entitlement)) {
+      throw new Error("Signing receipt and first-invoice entitlement require reconciliation.");
+    }
     return true; // Replay, including a distinct Stripe event ID.
   }
   if (obligation.status !== "AWAITING_PAYMENT" || obligation.receiptId ||
@@ -143,5 +153,18 @@ export async function processSigningCheckoutEvent(
     where: { agreementId },
     data: { status: "SETTLED", receiptId: receipt.id, settledAt: details.receivedOn },
   });
+  if (obligation.downPaymentCents > 0) {
+    // This immutable, receipt-backed entitlement is NOT yet an invoice credit.
+    // No generic customer-balance credit is created: that could be spent on
+    // a different property's invoice before delivery.
+    await tx.signingDownPaymentCredit.create({
+      data: {
+        agreementId,
+        receiptId: receipt.id,
+        orderFingerprint: obligation.orderFingerprint,
+        amountCents: obligation.downPaymentCents,
+      },
+    });
+  }
   return true;
 }

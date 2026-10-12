@@ -1,5 +1,34 @@
 # STATUS — current work, blockers and next action
 
+## Permanent milestone handoff and acceptance matrix (2026-10-12)
+
+**Outcome:** Every eligible signed agreement can move through exact payment,
+receipt, first invoice, and delivery without double charging or crediting a
+sibling property's bill. This W-22 batch is an outcome boundary, not a quota.
+
+| Capability / criterion | Code | Automated proof | Deployed / real integration acceptance | Next |
+| --- | --- | --- | --- | --- |
+| Frozen signed amount and TEST Stripe settlement | Implemented through #420 | Exact-head CI and disposable PostgreSQL; authenticated provider evidence path tested | LIVE disabled; no live end-to-end acceptance | Keep existing isolation and reconciliation |
+| Receipt-bound per-agreement down-payment entitlement | W-22D9 in progress; not merged | Focused disposable PostgreSQL tests; exact-head CI and review pending | Not deployed or accepted | Complete D9 gates and merge |
+| First delivery invoice credit exactly once (local and Stripe) | NOT implemented | NOT proven | NOT accepted; never display credited or paid invoice | Implement next eligible W-22D10 with provider allocation/readback |
+| Cancellation, refunds, and per-machine hookup/delivery acceptance | NOT complete | NOT proven end-to-end | NOT accepted | Follow the approved W-22 dependency chain after credit accounting |
+
+**Deferred-blocker register:** IN-79 requires CPA-backed Colorado setup-fee
+classification (dependent on approved W-22 tax category); reopened only after
+the CPA determination is recorded in `docs/OWNER-INPUTS.md`, tax configuration
+and behavior verified. Next: ask CPA the existing IN-79 question, not owner to
+repeat an answer. W-23 depends on W-22 actual completion and acceptance;
+reopen only after W-22 criteria are genuinely met. Stripe LIVE and money-out
+remain subject to their separate existing explicit owner approvals; next:
+TEST-only accounting, no activation/spend. W-24 customer delivery-date choices
+have their own separate work index dependency; do not silently pull them into
+W-22. Recheck this register at session start and after owner input, PR merge
+or hosted integration change. Existing hosting-cost policies remain in force.
+
+## W-22D9 settled down-payment entitlement (PR #421)
+
+The Stripe TEST receipt now creates one immutable per-agreement down-payment entitlement with exact frozen amount, fingerprint and receipt; PostgreSQL rejects altered and foreign allocations. This is NOT an applied invoice credit. Next: invoice-specific application and provider readback, then cancellation, refund and delivery. CPA IN-79 OPEN; W-22 PARTIAL; W-23 blocked.
+
 ## W-22D8 verified Stripe TEST signing receipt settlement (PR #420)
 
 Authenticated Stripe TEST signing checkout events now reconcile the immutable
