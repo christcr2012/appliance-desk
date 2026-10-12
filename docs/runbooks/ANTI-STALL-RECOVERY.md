@@ -22,6 +22,51 @@ for speed.**
    review comments/threads, perform and record the repository-approved manual
    review/waiver, never wait indefinitely or claim an automated review passed.
 
+## Diagnosed October 12, 2026 — PR handoff and expiring sandbox
+
+W-22C6A commit `6c0065a` was pushed to the remote branch, but the agent
+continued into W-22C6B without creating its PR. The completed push and clean
+worktree were mistaken for a completed publication step. That is a *handoff
+state gap*, not a Git authentication or application failure.
+
+After each PR, record and verify **all six distinct states**:
+
+1. **Committed:** `git rev-parse HEAD`, `git status --short`, exact tests and
+   base SHA recorded in the card's progress checkpoint.
+2. **Pushing:** capture the Vercel session/command ID. Pre-push hooks can run
+   `typecheck`/`eslint` at high CPU for minutes. Query that same command
+   and inspect its exit code and logs; do not start a duplicate push or bypass
+   hooks merely because the branch is not yet visible.
+3. **Remote confirmed:** compare `git ls-remote origin
+   refs/heads/<branch>` to local HEAD. If a process/session disappeared,
+   check the remote SHA **before** retrying. A matching remote commit means
+   the push is done; go straight to PR lookup.
+4. **PR confirmed:** search GitHub for an open or closed PR using the exact
+   branch. If none exists and the remote SHA matches, immediately create
+   the PR via GitHub MCP/REST. Record PR number. Never treat branch-pushed
+   as PR-open or begin a successor without a recorded owner for this step.
+5. **Exact-head gates:** verify required CI jobs on the PR's *current* head,
+   unresolved review threads and comments; use the allowed manual-review
+   waiver only when automated review is genuinely unavailable. Queued and
+   running checks are not passes.
+6. **Merge receipt:** require `merged=true` and the actual merge/main SHA,
+   then review post-merge checks and refresh the successor once. Only a
+   verified merge increments the five-PR session count.
+
+**Sandbox expiry** is different from an individual command timeout. A
+`410 sandbox_stopped` means the old session ID is unusable. Resume the named
+persistent sandbox, capture its new session ID, then inspect the worktree,
+git status, remote branches and PRs before reissuing anything. Uncommitted
+worktrees must not be hard-reset. Prefer short bounded, observable calls.
+Before a long pre-push/CI operation, verify the remaining sandbox lifetime
+and capture the current command/next action in the progress checkpoint.
+
+**Decision table:** a running process with CPU activity is slow, not stalled;
+a terminated command with nonzero exit needs first-error triage; a remote
+branch with no PR needs PR creation; an open PR with green CI needs review/
+merge; a stopped sandbox needs session recovery. Never repeat the same
+operation without checking which of these states actually applies.
+
 ## Exact recovery loop
 
 - **Checkpoint before a slow command:** write the current card/step, branch,
