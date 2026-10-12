@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({
   session: vi.fn(),
-  twoFactor: vi.fn(async () => false),
+  twoFactor: vi.fn(async (..._args: unknown[]) => false),
 }));
 vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: (...args: unknown[]) => authMocks.session(...args) } },
