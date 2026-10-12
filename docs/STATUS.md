@@ -1,6 +1,6 @@
 # STATUS — current work, blockers and next action
 
-## W-22D7 TEST signing Checkout (PR #417)
+## W-22D7 TEST signing Checkout (PR #418)
 
 The signed, frozen per-agreement amount can now be used to create an idempotent
 Stripe TEST hosted Checkout session. The provider ID is stored against the
