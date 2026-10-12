@@ -16,7 +16,7 @@ Do not author distant execution cards or implement every row below at once.
 | State change/schema | Transaction and persistence | Current mutation and matching DB test |
 | Stripe/email/SMS/recovery | Provider and receipt | AI-PR-READ-FIRST; current adapter |
 | To do/portal/detail | Obligations and reads | Current DTO/query and destination page |
-| Remaining W-22 | Worked example | [W-22 persistence recipe](W-22-PERSISTENCE-RECIPE.md) |
+| Remaining W-22 | `npm run work -- start`; current [W-22 card](../pr-cards/W-22.md) | Checked D12 packet and its existing invoice/mirror/document symbols; persistence recipe is historical discovery only |
 | Later cards | Remaining-work map | One mapped row, then write that card JIT |
 
 ## Card packet

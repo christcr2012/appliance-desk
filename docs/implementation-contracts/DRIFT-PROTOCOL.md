@@ -33,17 +33,18 @@ begins the next slice … one for each batch … but also from PR to PR").
 
 6. Inherited review findings assigned to this card are fixed first, each with its test.
 
-## B. End of every PR — reconcile before the next slice (**inside the same PR, written as if it had already merged**)
+## B. End of every PR — reconcile implemented behavior inside the same PR
 
-Do every step below in the PR itself, before its final push, describing the world *after* the merge ("W-0A merged
-(#353)"). Until the PR merges, `main` is untouched, so nothing is wrong early; the moment it merges, the docs are
-already correct. (A merge SHA doesn't exist yet: cite the PR number; git history has the SHA.) If the PR is closed
-unmerged, its doc edits vanish with it. CI enforces the minimum (`scripts/check-docs-updated.mjs`, in the secret-scan
+Do every step below in the PR itself, before its final push, describing implemented behavior while preserving
+truthful pending merge/CI/review/real-acceptance labels. Cite the PR, not an invented future merge SHA. The permanent
+PR comment/final handoff records confirmed merge evidence; the next substantive PR reconciles STATUS. If closed
+unmerged, the branch's doc edits never become current instructions on main. CI enforces the minimum (`scripts/check-docs-updated.mjs`, in the secret-scan
 job): a PR that changes `src/` or `prisma/` must also change `docs/STATUS.md` and its card or `work-index.json`, and
 `docs/DATABASE.md` when the schema changes — unless the PR description says "Docs-update: not needed — <reason>".
 
 
-1. **The card tells the truth.** Its status becomes `MERGED (#n)`; any part that was split off or deferred is
+1. **The card tells the truth.** Record implemented behavior and actual pending gates; use `MERGED (#n)` only after
+   observing the merge, never as anticipated evidence. Any part that was split off or deferred is
    named with its new owner card.
 2. **Successor card updated.** If the next card exists: set its "Baseline inspected" to this merge SHA, fix paths and
    signatures this PR changed, and list any low-risk review findings carried to it (finding, why safe, proving test).
@@ -55,17 +56,18 @@ job): a PR that changes `src/` or `prisma/` must also change `docs/STATUS.md` an
 4. **Living docs updated for shipped behavior:** `docs/BUSINESS-RULES.md` (a rule changed), `docs/DATABASE.md` (schema),
    `docs/OWNER-GUIDE.md` (something Chris now does differently), `docs/GO-LIVE-CHECKLIST.md` (a new switch or key),
    `docs/OWNER-INPUTS.md` (new question or applied answer).
-5. **Queue updated:** `docs/STATUS.md` says this PR merged and "Next" names the next card; `docs/pr-cards/work-index.json`
+5. **Queue updated:** `docs/STATUS.md` states actual implementation/merge/check evidence and "Next" names the next capability; `docs/pr-cards/work-index.json`
    status/readiness updated; roadmap row updated. Delete the card's resume note.
 6. **If a predecessor changes after its successor branched:** freeze the successor, merge the predecessor, sync the
    successor once onto final `main`, and redo step A only for the contracts that changed.
 
-## C. End of every batch or major section — close-out (one small docs PR)
+## C. End of every batch or major section — close-out in the final capability PR
 
-Do this when the batch's last PR merges, before starting the next batch:
+Include this in the batch's last substantive PR; reconcile confirmed merge evidence in its permanent comment and the
+next substantive PR. Do not create a bookkeeping-only PR or require a separate planning session:
 
 1. **Acceptance is proved.** Every item of the batch's `docs/PLAN.md` acceptance list is checked with evidence (test
-   name, PR, CI run, preview). Anything unproved stays open with an owner card — never ticked to close the batch.
+   name, PR, CI run, actual browser/provider proof). Anything unproved stays open with an owner card — never ticked to close the batch.
 2. **Living docs match the code:** BUSINESS-RULES, DATABASE, ARCHITECTURE (new jobs, crons, env vars), OWNER-GUIDE,
    GO-LIVE-CHECKLIST, OWNER-INPUTS.
 3. **Retire what no longer instructs anyone** (method below): the batch's design if nothing upcoming depends on it (if
@@ -75,9 +77,9 @@ Do this when the batch's last PR merges, before starting the next batch:
 4. **Check the next batch against today's code** before its first card: run its design's "Verify before starting"
    table; classify each difference with the kinds table; amend the design (dated) or record "no drift" in STATUS. Write
    (or refresh) the next batch's first card from the result.
-5. **Release it:** run the "release to live site" workflow (Actions → Run workflow, or the GitHub tool's workflow
-   trigger on `release.yml`, ref `main`) once `ci` on `main` is green; confirm `live` moved and the production build
-   finished. This is how finished work reaches the live site (Chris, 2026-10-09: per batch, to keep Vercel near $20/month).
+5. **Release remains scheduled:** only the daily checked `main`→`live` workflow promotes production. Do not trigger
+   a manual batch release, request a Vercel preview or wait for deployment to merge a green development PR. Record
+   actual released/provider evidence separately when observed; [release policy](../../.github/RELEASE-POLICY.md).
 6. **Queue and status:** MASTER-ROADMAP (batch complete, next batch), `work-index.json`, STATUS, and one
    `docs/DECISIONS.md` entry ("Batch X closed: …, retired …, next batch drift: …"). Then tell Chris in plain English.
 
@@ -107,6 +109,6 @@ Based on the first consolidation (#138), which worked best:
 
 ## Limits
 
-These checks keep plans and code aligned; they don't prove the code is correct. Exact-head tests, preview and review
+These checks keep plans and code aligned; they don't prove the code is correct. Exact-head tests, required local/Actions browser proof and review
 remain the completion evidence. A card is trustworthy because it was reconciled at its baseline, not because of who
 wrote it.

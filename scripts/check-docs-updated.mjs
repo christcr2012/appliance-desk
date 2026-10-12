@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // "Docs describe the merged state" gate (Chris, 2026-10-09). A PR that changes the application must
-// update the documentation as if it were already merged, so main's docs are accurate the moment it lands.
+// update implementation/card/STATUS in the same PR; pending merge/check/acceptance labels stay truthful.
 // Escape hatch for a genuinely doc-neutral change: a line in the PR description starting with
 // "Docs-update: not needed" followed by the reason.
 import { execFileSync } from 'node:child_process';

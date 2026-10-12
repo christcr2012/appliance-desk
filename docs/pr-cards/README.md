@@ -9,7 +9,7 @@ prerequisites are still hypothetical. `work-index.json` preserves all later scop
 A missing card required by a design's implementation gate must be written before
 coding; the implementer can do this. Approved design/amendments govern semantic
 behavior. Cards cannot silently override them. Combine adjacent compatible units
-within AGENTS' existing budget; do not create one PR per checkbox.
+under AGENTS' outcome-led risk/review guidance; do not create one PR per checkbox.
 
 ## Concrete execution packet
 
@@ -25,7 +25,7 @@ schema or a prewritten distant card. Resolve them JIT under the drift protocol.
 Use exact current paths and relevant design headings. Usually 40–100 lines:
 
 - ID, scope/acceptance IDs, prerequisites and actual checked base/head.
-- One risk area, migration ownership and realistic budget; split only if needed.
+- One coherent integration/risk boundary, migration ordering/ownership and realistic estimate; split only for a concrete reason.
 - Bounded reading list and per-card drift disposition.
 - Build contract: public types/result unions; transaction/lock boundaries;
   actor and tenant scope; money/provider recovery; setting defaults and immutable
@@ -55,3 +55,42 @@ limited to that question; no mandatory model handoff or parallel planning lane.
 
 If every contract matches the predecessor, record that once in the PR. Update
 CHANGES-SINCE-DESIGN only when later work inherits an actual contract change.
+
+## Checked packet: one current capability, no repeated archaeology
+
+The active short card explains changed input→storage→DTO mappings, lock/side-effect
+boundaries, exact fixture numbers and before/after counts. Its adjacent JSON packet
+routes the implementer to **existing** symbols and supplies validated test selectors.
+Historical slice logs go in `docs/archive/implementation-history/`; do not append
+another long historical chapter to the active card. Parent acceptance stays open
+until the full workflow is proved. No automatic readiness inference from APPROVED.
+
+Register the packet in `work-index.json`'s `executionPackets` and select it with
+`activeExecution`. Reuse [W-22D12](W-22D12.md) and [its packet](execution/W-22D12.json)
+as a worked example, changing actual contracts rather than copying its financial fixtures.
+The schema is implemented in `scripts/work-packet.mjs` and enforced by `check:work`/CI:
+
+| Field | Meaning |
+|---|---|
+| `version`, `id`, `parent`, `baseline`, `card` | Version 1; stable capability/parent IDs; inspected full Git SHA; existing current card |
+| `outcome`, `risk`, `next` | Complete observable result; coherent risk boundary; exact unfinished successor |
+| `references` | Existing repository `path`, exact `anchor` symbol/heading, and bounded reading `purpose`; 1–12 |
+| `proposedFiles` | Explicitly new paths, including tests; not evidence they exist or work |
+| `invariants`, `sequence`, `acceptance` | Immutable contracts, ordered integration, meaningful expected results |
+| `gates` | Stable id, exact affected operation, existing source, attempted/needed remedy and reopening trigger |
+| `checks` | `unit`/`db`/`browser`/`node` arrays of exact regression paths; no arbitrary command or shell strings |
+
+`work -- read <number>` prints bounded context around a checked anchor (not a whole file).
+`work -- check` rejects missing existing files/anchors, wrong parent, unsafe/symlink
+paths and invalid selectors. `plan` displays missing proposed tests; `verify` refuses
+them until implemented. The command runs existing preflight/DB/browser launchers,
+not a weaker validation path. `probe` is diagnosis only. `route <unit>` prints the
+later scope's existing discovery anchors; it never marks dependencies accepted.
+When a capability finishes, update the next current packet in that same substantive
+PR; preserve parent/acceptance IDs and refresh against actual main/review evidence.
+
+A packet is navigation, not business approval, feature completion or real-provider
+acceptance. Scripts check existence/anchors, not semantics. Keep actual owner inputs
+and independent external proof visible. Never put secrets/customer facts/provider
+IDs into the public packet. Do not write all future packets before their predecessors
+are real; this would recreate stale distant planning.

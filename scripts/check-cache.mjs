@@ -4,27 +4,35 @@
 //
 // A record is a small file under the checkout's own git directory (never committed, never shared between
 // checkouts). Its name combines the exact command and a fingerprint of the code: every tracked file's content,
-// every uncommitted edit and every new untracked file. Any change to the code produces a new fingerprint, so
+// untracked file, mode and symlink identity. Stage/commit representations do not change the fingerprint;
+// actual file changes do. A runtime/command-specific record ensures that
 // a record can only ever skip a check that already passed on byte-identical code. `--fresh` ignores records.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const git = (args, input) => execFileSync('git', args, { encoding: 'utf8', input, maxBuffer: 256 * 1024 * 1024 });
 
 /**
  * Fingerprint of the working tree for the given git pathspec (default: everything).
- * Tracked content comes from the index entries plus the uncommitted diff; untracked files are hashed by git.
+ * Hash actual files, not index/diff representations: staging and committing identical
+ * bytes must not invalidate a pass. Include paths, executable bits, deletions and
+ * symlink identities. Never follow a symlink out of the checkout.
  */
 export function codeFingerprint(pathspec = ['.']) {
   const hash = createHash('sha256');
-  hash.update(git(['ls-files', '-s', '--', ...pathspec]));
-  hash.update(git(['diff', 'HEAD', '--binary', '--', ...pathspec]));
-  const untracked = git(['ls-files', '--others', '--exclude-standard', '-z', '--', ...pathspec]).split('\0').filter(Boolean);
-  if (untracked.length) {
-    hash.update(untracked.join('\0'));
-    hash.update(git(['hash-object', '--stdin-paths'], untracked.join('\n') + '\n'));
+  if (git(['ls-files', '-u', '--', ...pathspec]).trim()) throw new Error('Resolve unmerged files before recording checks.');
+  const paths = [...new Set(git(['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', ...pathspec])
+    .split('\0').filter(Boolean))].sort();
+  for (const file of paths) {
+    let stat;
+    try { stat = lstatSync(file); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    if (!stat.isFile() && !stat.isSymbolicLink()) throw new Error('Unsupported check input: ' + file);
+    const kind = stat.isSymbolicLink() ? 'link' : (stat.mode & 0o111 ? 'executable' : 'file');
+    const bytes = stat.isSymbolicLink() ? Buffer.from(readlinkSync(file)) : readFileSync(file);
+    hash.update(JSON.stringify([file, kind, bytes.length]) + '\0');
+    hash.update(bytes);
   }
   return hash.digest('hex');
 }

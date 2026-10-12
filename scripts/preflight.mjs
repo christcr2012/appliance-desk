@@ -4,6 +4,7 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { codeFingerprint, hasPassed, markPassed, recordName } from './check-cache.mjs';
+import { recordTiming } from './preflight-evidence.mjs';
 
 export function parse(args) {
   const result = { base: 'origin/main', unit: [], db: [], browser: [], related: [], plan: false, inside: false, quick: false, fresh: false };
@@ -44,7 +45,7 @@ export function relatedSources(changed, exists = existsSync) {
   return changed.filter(p => /^src\/[\w/.()[\]@-]+\.tsx?$/.test(p) && !p.includes('..') && exists(p));
 }
 
-export function commands(options, changed) {
+export function commands(options, changed, exists = existsSync) {
   const application = changed.some(p => !p.startsWith('docs/') && !p.endsWith('.md'));
   const behavior = changed.some(p => /^(src|prisma|tests|e2e)\//.test(p));
   const screen = changed.some(p => /^src\/components\//.test(p) || /^src\/app\/.*\.tsx$/.test(p) || /^src\/app\/(?:.*\/)?(page|layout)\.[jt]s$/.test(p) || /^src\/.*\.css$/.test(p) || /^e2e\/.+\.spec\.ts$/.test(p));
@@ -58,12 +59,12 @@ export function commands(options, changed) {
     throw new Error('Code changed: select its meaningful unit, database or browser regressions. --plan does not count as verification.');
   if (!options.inside && screen && !options.browser.length)
     throw new Error('Screen/spec changed: select affected --browser specs before publishing. If local setup is blocked, record the exact blocker and use required CI; do not claim local browser proof.');
-  const list = options.inside ? [] : [ ['node', 'scripts/check-secrets.mjs'], ['node', 'scripts/check-migrations.mjs'], ['node', 'scripts/e2e-shard.mjs', '--check'], ['node', 'scripts/check-route-inventory.mjs'], ['node', 'scripts/check-w18-money.mjs'], ['node', '--test', 'scripts/preflight.test.mjs', 'scripts/probe-db.test.mjs'] ];
+  const list = options.inside ? [] : [ ['node', 'scripts/check-secrets.mjs'], ['node', 'scripts/check-migrations.mjs'], ['node', 'scripts/e2e-shard.mjs', '--check'], ['node', 'scripts/check-route-inventory.mjs'], ['node', 'scripts/check-w18-money.mjs'], ['node', '--test', 'scripts/preflight.test.mjs', 'scripts/probe-db.test.mjs', 'scripts/work-session.test.mjs', 'scripts/preflight-evidence.test.mjs', 'scripts/check-cache.test.mjs', 'scripts/check-secrets.test.mjs', 'scripts/install-worktree.test.mjs'] ];
   if (!options.inside && application) list.push(['npm', 'run', 'typecheck'], ['npm', 'run', 'lint']);
   const adjacent = options.inside ? [] : adjacentRegressions(changed)
-    .filter(file => !options.unit.includes(file) && !options.db.includes(file) && existsSync(file));
+    .filter(file => !options.unit.includes(file) && !options.db.includes(file) && exists(file));
   if (!options.inside && (options.db.length || options.browser.length || adjacent.length)) {
-    const selections = [...options.unit.map(p => ['--unit', p]), ...[...options.db, ...adjacent].map(p => ['--db', p]), ...options.browser.map(p => ['--browser', p]), ...relatedSources(changed).map(p => ['--related', p])].flat();
+    const selections = [...options.unit.map(p => ['--unit', p]), ...[...options.db, ...adjacent].map(p => ['--db', p]), ...options.browser.map(p => ['--browser', p]), ...relatedSources(changed, exists).map(p => ['--related', p])].flat();
     list.push(['bash', 'scripts/local-postgres-test.sh', '--checks', ...(options.fresh ? ['--fresh'] : []), ...selections]);
   } else {
     if (options.related.length) list.push(['npx', '--no-install', 'vitest', 'related', '--run', '--passWithNoTests', ...options.related]);
@@ -89,7 +90,36 @@ export function groupSteps(steps) {
 
 // Settings that change what a browser check proves (stand-in font or browser) are part of its record.
 export function recordExtra(env = process.env) {
-  return [env.LOCAL_TEST_FONT ? 'stand-in-font' : '', env.LOCAL_TEST_CHROMIUM ? 'stand-in-chromium' : ''].join('|');
+  return [process.version, env.LOCAL_TEST_FONT ? 'stand-in-font' : '', env.LOCAL_TEST_CHROMIUM ? 'stand-in-chromium' : ''].join('|');
+}
+
+// Whole test/report groups pass together. Interrupted groups never get a pass.
+export function executeGroups(steps, { plan = false, fresh = false, fingerprint = '',
+  passed = hasPassed, mark = markPassed, execute = run, record = recordTiming,
+  clock = () => performance.now(), output = console.log } = {}) {
+  const observe = entry => {
+    try { record(entry); } catch { output('Local timing journal unavailable; check/CI requirements unchanged.'); }
+  };
+  for (const group of groupSteps(steps)) {
+    const name = recordName(group, fingerprint, recordExtra());
+    if (!plan && !fresh && passed(name)) {
+      output(`✓ already passed for this exact code: ${group.map(s => s.join(' ')).join(' && ')}`);
+      observe({ status: 'cached', elapsedMs: 0, commands: group }); continue;
+    }
+    const start = clock();
+    try {
+      for (const step of group) { output('> ' + step.join(' ')); if (!plan) execute(step, undefined, fresh); }
+    } catch (error) {
+      if (!plan) observe({ status: 'failed', elapsedMs: Math.round(clock() - start), commands: group });
+      throw error;
+    }
+    if (!plan) {
+      mark(name, group.map(s => s.join(' ')).join(' && '));
+      const elapsedMs = Math.round(clock() - start);
+      observe({ status: 'passed', elapsedMs, commands: group });
+      output(`✓ check group passed in ${(elapsedMs / 1000).toFixed(1)}s`);
+    }
+  }
 }
 
 export function run(command, executor = spawnSync, fresh = process.argv.includes('--fresh')) {
@@ -132,15 +162,7 @@ function main() {
   // Each check records that it passed for this exact code (scripts/check-cache.mjs): the pre-push gate then skips
   // what preflight just ran, and a run cut off by an expired sandbox session resumes where it stopped.
   const fingerprint = options.plan ? '' : codeFingerprint();
-  for (const group of groupSteps(steps)) {
-    const name = recordName(group, fingerprint, recordExtra());
-    if (!options.plan && !options.fresh && hasPassed(name)) {
-      console.log(`✓ already passed for this exact code: ${group.map(step => step.join(' ')).join(' && ')}`);
-      continue;
-    }
-    for (const step of group) { console.log(`> ${step.join(' ')}`); if (!options.plan) run(step); }
-    if (!options.plan) markPassed(name, group.map(step => step.join(' ')).join(' && '));
-  }
+  executeGroups(steps, { plan: options.plan, fresh: options.fresh, fingerprint });
   console.log(options.plan ? 'Plan only: no checks ran.' : 'Selected preflight passed. Any subsequent code/base change requires fresh affected checks; full exact-head CI is still required.');
 }
 

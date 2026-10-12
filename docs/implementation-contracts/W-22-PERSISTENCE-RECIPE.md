@@ -1,4 +1,10 @@
-# W-22 persistence worked example — refresh before writing the next card
+# W-22 persistence worked example — historical pattern, not next work
+
+**Persistence and provider application were implemented through #423.** Use
+`npm run work -- start` and the current [W-22 card](../pr-cards/W-22.md).
+This baseline example is preserved for its pattern; never recreate its proposed
+models/functions because they appear below. Actual code and current packet win
+on engineering facts; approved design/owner inputs still govern semantics.
 
 Baseline inspected: main `9d582f5e316052ef3a28e22492723f49fab411be`, #396.
 Parent scope: `docs/pr-cards/W-22.md`; approved Amendment B §6.2; PLAN W-22;

@@ -5,8 +5,9 @@ to be followed literally. If it is written here, it is current. History and reas
 `docs/archive/` (look things up there; never take instructions from them). The repo, not chat history, is the memory.
 Rewritten 2026-10-09 to what still applies; the full previous text is `docs/archive/reset-2026-10-09/AGENTS.md`.
 
-**Implementing an approved PR card?** Read `docs/SESSION-START.md` (one page) and the card, then work. Open the
-sections below when a step names them.
+**Implementing an approved capability?** Read `docs/SESSION-START.md`, the top current handoff in STATUS, then run
+`npm run work -- start` (no dependency install needed). It checks the active packet and prints bounded integration
+references, ordered work, meaningful tests and scoped gates. Open other sections only when that work names them.
 
 **Other sessions** (design, planning, review): this file → `docs/START-HERE.md` → `docs/STATUS.md` →
 `docs/MASTER-ROADMAP.md` → the relevant `docs/PLAN.md` section and design headings. Never read `docs/DECISIONS.md`,
@@ -58,7 +59,8 @@ what changed, how it was verified, what he must decide, what is next.
 1. No placeholders, stubs, TODO-as-implementation or mock data presented as real.
 2. Tests exercise real behavior; business rules, permissions, money and concurrency get real tests on throwaway Postgres.
 3. CI green: typecheck, lint, unit/integration, production build, browser/accessibility.
-4. The card's acceptance (from `docs/PLAN.md`) checked item by item with evidence (test names, CI run, preview URL).
+4. The capability's acceptance (from `docs/PLAN.md`) checked item by item with actual test/CI/local browser evidence;
+   real provider and owner acceptance remain separate. No paid Vercel preview is required under the daily-release policy.
 5. `docs/STATUS.md` updated.
 
 If something isn't finished, say so and record it in STATUS. Never present partial work as done — Chris has been burned
@@ -102,11 +104,17 @@ where, and puts it on his To do list; no Today item may link to a page that does
   Ordinary names and implementation details need no approval. Money, permissions, signed evidence, state transitions and provider replay follow the reviewed contract; if
   it can't work, propose a dated amendment and get it reviewed. A missing card means write it, not stop.
 - **Drift and reconciliation** (`docs/implementation-contracts/DRIFT-PROTOCOL.md`): checklist A before each PR,
-  B **inside each PR, written as if it had already merged** (card, next card, living docs, STATUS — CI checks it), C when a batch finishes (acceptance proved, docs match the
+  B **inside each PR, describing implemented behavior with truthful pending gates** (card, next card, living docs, STATUS — CI checks it), C when a batch finishes (acceptance proved, docs match the
   code, retire what no longer instructs, drift-check the next batch). Changed contracts later work inherits go in
   `docs/designs/CHANGES-SINCE-DESIGN.md`.
-- **PR size:** target 450–800 production lines when one natural capability warrants it (about 500 typical), around 15 files, hard stop ~800 lines, at most one migration, one risk area
-  (PLAYBOOK Step 3a). Group connected operations into one independently reviewable capability; no arbitrary one-function PRs, filler or bundling unrelated money/auth/provider changes. Prefer focused disposable DB diagnosis before full affected-graph preflight; see the anti-stall runbook.
+- **PR size (owner, 2026-10-12):** deliver one coherent, independently verifiable outcome. 450–800 production lines
+  is a useful estimate for routine lighter-model work, **not a ceiling, minimum or stopping gate**. Larger cohesive PRs
+  are allowed when the selected model can implement/review/test them reliably; state the integration boundary and
+  risk/validation plan before editing. Include adjacent DTO, UI, persistence and regression work needed to finish
+  the capability. Split only for concrete independent risk, migration ordering, reviewability or execution limits;
+  name the remaining acceptance and successor. No arbitrary one-function or warning-only slices, filler, unrelated
+  features or scope inflation. Related additive migrations may share the capability when their order/upgrade/restore
+  proof is explicit. Production-line counts guide review, never substitute for correctness or permission.
 - **Model:** whichever model Chris selected does the work; no forced model switch. Sol 5.6 is the routine implementer:
   light effort for an already-tested pattern, medium for schema, money, auth, provider recovery or unfamiliar multi-file
   work. A missing decision is never solved by guessing. An optional second opinion may settle one concrete question.
@@ -137,9 +145,9 @@ where, and puts it on his To do list; no Today item may link to a page that does
   diff yourself and write "automated review unavailable — waived" — never claim a review that didn't run. Record a
   disposition for every finding (fixed / already fixed / superseded / still open). Resolve threads only after verifying
   the fix at the exact head.
-- **Merging (authorized by Chris):** `ci` green at the exact head, acceptance met with evidence, preview checked when one
-  was built (Vercel builds only when site files changed — every build costs money), reviews
-  handled → merge with the expected-head SHA. Stacks merge bottom-up, **retargeting each PR to `main` first**. Tell Chris
+- **Merging (authorized by Chris):** `ci` and all other required checks green at the exact head, PR acceptance met
+  with evidence, existing required local/Actions browser checks and reviews handled → merge with the expected-head SHA.
+  Vercel previews are disabled; never request one or treat its absence as a development blocker. Stacks merge bottom-up, **retargeting each PR to `main` first**. Tell Chris
   before merging if a money, security or data-loss finding is not fixed in the same PR. Merging never covers a hard limit.
 - **Security or money hole already on `main`:** fix it immediately in its own PR.
 
@@ -156,7 +164,7 @@ where, and puts it on his To do list; no Today item may link to a page that does
 | Product behavior | `docs/PRODUCT-SPEC.md` |
 | Remaining acceptance and launch gates | `docs/PLAN.md` |
 | Active designs (how) | `docs/designs/` (completed ones: `docs/archive/designs-completed/`) |
-| Exactly what one PR builds | `docs/pr-cards/<ID>.md` (wins over the design where they differ) |
+| Exactly what one capability builds | `docs/pr-cards/<ID>.md` and its checked execution packet; approved design/owner inputs govern semantics |
 | Current state and next item | `docs/STATUS.md`, `docs/MASTER-ROADMAP.md` |
 | Owner decisions | `docs/OWNER-INPUTS.md` |
 | Dated decisions and reasons | `docs/DECISIONS.md` (append one per design decision) |
@@ -167,6 +175,32 @@ where, and puts it on his To do list; no Today item may link to a page that does
 | Security/billing constraints for PRs | `docs/AI-PR-READ-FIRST.md` |
 | Audit findings (reference) | `docs/AUDIT_SYNTHESIS.md`, `docs/audits/`, `docs/reviews/` |
 | Retired documents (reference only) | `docs/archive/` |
+
+## Execution packets and efficient completion
+
+`docs/pr-cards/work-index.json` points to one active execution packet. Keep the
+current card about 40–100 lines, integration references bounded, and historical
+slice logs in `docs/archive/implementation-history/`. The packet records exact
+current file/symbol/caller, input→storage→DTO mapping, ordered locks/side effects,
+replay/rollback/unknown behavior, concrete fixture numbers and named checks. Ordinary
+implementation choices need no owner approval; unresolved business/financial/security
+semantics still follow approved contracts and scoped-blocker recovery.
+
+`npm run work -- check` catches stale integration anchors/unsafe selectors; it
+never approves scope or proves a feature. `plan` shows missing proposed tests and
+related-source fan-out before work; `probe` is diagnostic only; `verify` refuses
+missing tests and runs the existing mandatory preflight. Use `doctor` for local
+hook/lock/dependency-tree problems, `drift` for changed integration paths, `metrics`
+for bounded local timing/cache observations, and `prompt` for a compact restart
+**draft**. Reconcile live GitHub evidence before calling a checkpoint verified.
+Do not put secrets, customer data, arbitrary commands or provider IDs in packets.
+
+Name a complete observable outcome before editing. If only a prerequisite can
+land, explain the concrete safety/migration/review reason and exact unfinished
+acceptance; do not rename a helper as the completed milestone. Finish docs before
+final checks. Staging/committing identical files reuses actual-content pass records;
+real file/mode changes invalidate them, and `--fresh` forces checks. Never remove
+related regressions, browser proof or exact-head CI to improve a timing number.
 
 ## Engineering rules for every change
 
@@ -195,12 +229,12 @@ shards; docs-only changes skip the heavy jobs but never the secret scan).
   why in the PR.
 - `.github/workflows/ci.yml` keeps `permissions: contents: read`, uses no repository secrets, never `pull_request_target`,
   never echoes environment values. The only workflows with write access are `sandbox-publish.yml` (pushes `ai/*` branches
-  fast-forward from verified sandbox transfers, starts CI) and `release.yml` (fast-forwards `live` to a green `main`
+  fast-forward from verified sandbox transfers, starts CI) and `daily-live.yml` (fast-forwards `live` to a green `main`
   once a day); neither uses secrets — keep them that narrow.
 - **Cost (target ~$20/month, Chris 2026-10-09):** Vercel bills builds and sandbox time; GitHub Actions is free. Run
   heavy checks (full suites, browser tests) by pushing the branch and running "CI" on it, not in the sandbox; stop
-  sandbox sessions when done; merged work reaches the live site when its batch is released — run the "release to live site" workflow after a
-  batch's last PR merges (weekly safety net; ARCHITECTURE).
+  sandbox sessions when done. Only the scheduled daily checked `main`→`live` workflow releases production; no
+  manual batch release, preview or promotion. See `.github/RELEASE-POLICY.md`.
 - Prefer unit tests (`tests/`) over browser tests (`e2e/`); use browser tests for axe, real login/session, security
   headers and one click-through per major flow. Every new `e2e/*.spec.ts` goes in a group in `e2e/shards.json`. Never
   log in per test — reuse `e2e/global-setup.ts` sessions. New one-off checks go in the `static` job.
@@ -208,8 +242,12 @@ shards; docs-only changes skip the heavy jobs but never the secret scan).
 ## How to run things
 
 ```bash
-npm install                 # postinstall runs prisma generate
+npm run work -- install     # clean per-worktree npm ci + safe synthetic Prisma generation config
 npm run setup               # once per checkout/worktree: pre-push gate, HTTP/1.1, merge-based syncing
+npm run work -- start       # checked active capability; works before npm install
+npm run work -- route W-23  # later scope anchors; never an eligibility claim
+npm run work -- plan        # selectors, proposed tests, related-graph warning; no tests executed
+npm run work -- verify      # current packet checks after its proposed tests exist
 npm run check:quick         # the same gate by hand
 npm run test:db -- tests/y-integration.test.ts      # disposable database + migrations + fixtures, one command
 npm run test:browser -- e2e/z.spec.ts              # also builds (reused when unchanged); never bare playwright
@@ -270,9 +308,9 @@ next action; check blockers again on session startup, relevant owner answers,
 merges and environment changes. Reconcile owner answers already recorded in
 `docs/OWNER-INPUTS.md` with code and index rather than requesting them again.
 
-Maintain the existing card, risk, size, migration, review and exact-head gates.
-Update STATUS and the active card **inside the next substantive feature PR**,
-not a documentation-only PR. At stop, record confirmed merge/main SHA, open
+Maintain card/contract, migration safety, review and exact-head gates; apply the outcome-led size guidance above.
+Update STATUS and the active card/packet **inside the substantive implementation PR**. Execution-tooling changes
+may be one cohesive owner-authorized tooling PR; do not manufacture five feature PRs for a targeted maintenance request. At stop, record confirmed merge/main SHA, open
 PR head/checks, progress, actual acceptance, blockers and next eligible unit.
 Give Chris one compact paste-ready continuation prompt instructing verification
 of live GitHub/concurrent work, reading `AGENTS.md`/`docs/SESSION-START.md`/

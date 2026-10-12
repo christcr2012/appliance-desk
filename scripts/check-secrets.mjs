@@ -2,7 +2,7 @@
 // Repository secret/identifier check. This repo is PUBLIC, so anything committed
 // is visible to everyone, permanently. Runs in CI on every change and locally:
 //
-//   node scripts/check-secrets.mjs          scan every tracked file
+//   node scripts/check-secrets.mjs          scan tracked + non-ignored new files
 //
 // It complements gitleaks (which scans credentials across the whole git
 // history, see .gitleaks.toml). This script adds repo-specific rules gitleaks
@@ -17,9 +17,10 @@
 // narrowly-scoped entry to ALLOW below, with a reason.
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
+import { readFileSync, lstatSync, readlinkSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { validatePackets } from "./work-packet.mjs";
 
 const OBVIOUS_FAKE = /example|fake|not-real|not-for-production|placeholder|dummy|synthetic|redacted|changeme|\.test\b/i;
 
@@ -90,33 +91,46 @@ export function scanPath(file) {
   return findings;
 }
 
-function main() {
-  const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
-  const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+export function scanWorkingTree(root) {
+  const files = [...new Set(execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
     .split("\0")
-    .filter(Boolean);
+    .filter(Boolean))].sort();
   const findings = [];
   for (const file of files) {
     findings.push(...scanPath(file));
     if (SKIP_PATH.test(file)) continue;
     const abs = path.join(root, file);
-    let size;
+    let stat;
     try {
-      size = statSync(abs).size;
-    } catch {
-      continue; // deleted in the working tree
+      stat = lstatSync(abs);
+    } catch (error) {
+      if (error.code === "ENOENT") continue; // deleted in the working tree
+      throw error;
     }
-    if (size > 1_500_000) continue;
-    const text = readFileSync(abs, "utf8");
+    if (stat.size > 1_500_000) continue;
+    if (!stat.isFile() && !stat.isSymbolicLink()) throw new Error("Unsupported secret-scan input: " + file);
+    // Match cache inputs: scan symlink identity, never an external target's secrets.
+    const text = stat.isSymbolicLink() ? readlinkSync(abs) : readFileSync(abs, "utf8");
     if (text.includes("\u0000")) continue;
     findings.push(...scanText(file, text));
   }
+  return { files, findings };
+}
+
+function main() {
+  const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
+  const { files, findings } = scanWorkingTree(root);
   if (findings.length) {
     console.error(`check-secrets: ${findings.length} finding(s). This repository is public: remove them (and rotate the credential if it was real).`);
     for (const f of findings) console.error(`  ${f.file}${f.line ? `:${f.line}` : ""}  ${f.rule}  [${f.preview}]`);
     process.exit(1);
   }
-  console.log(`check-secrets: OK (${files.length} tracked files scanned).`);
+  console.log(`check-secrets: OK (${files.length} tracked/non-ignored new files scanned).`);
+  // The existing always-on CI entrypoint covers docs-only packet changes without
+  // adding workflow permissions or an application dependency-install requirement.
+  const index = JSON.parse(readFileSync(path.join(root, "docs/pr-cards/work-index.json"), "utf8"));
+  validatePackets(root, index);
+  console.log("Execution packet references and selectors checked; no acceptance inferred.");
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) main();
