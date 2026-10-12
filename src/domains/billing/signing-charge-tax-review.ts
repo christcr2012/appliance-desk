@@ -4,9 +4,11 @@ import { requireRole } from "@/lib/session";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
 import { assessPreparedSigningCharges } from "./signing-charge-readiness";
 import { reviewSigningFeeTax, type SigningFeeTaxReview } from "./signing-charge-tax-evidence";
+import { assembleSigningOrderDraft, type SigningOrderDraftContract } from "./signing-order-draft-contract";
 
 export type PrivateOrderTaxPreview = {
   orderReady: boolean;
+  orderDraft: SigningOrderDraftContract | null;
   reasons: string[];
   rows: Array<{
     agreementId: string;
@@ -28,7 +30,7 @@ export async function getDraftSigningTaxReviewInTx(
   effectiveOn: Date,
 ): Promise<PrivateOrderTaxPreview> {
   const blocked = (reasons: string[]): PrivateOrderTaxPreview => ({
-    orderReady: false, reasons: [...new Set(reasons)], rows: [],
+    orderReady: false, orderDraft: null, reasons: [...new Set(reasons)], rows: [],
   });
   const target = await tx.rentalAgreement.findUnique({ where: { id: agreementId },
     select: { id: true, customerId: true, sourceEstimateId: true, status: true } });
@@ -77,7 +79,9 @@ export async function getDraftSigningTaxReviewInTx(
     rows.push({ agreementId: charge.agreementId,
       serviceAddressId: charge.serviceAddressId, version: charge.version, review });
   }
-  return { orderReady: problems.length === 0, reasons: [...new Set(problems)], rows };
+  const orderDraft = problems.length === 0 ? assembleSigningOrderDraft({ agreements: charges, taxRows: rows }) : null;
+  if (orderDraft?.status === "BLOCKED") problems.push(...orderDraft.reasons);
+  return { orderReady: problems.length === 0 && orderDraft?.status === "OWNER_DRAFT_ONLY", orderDraft, reasons: [...new Set(problems)], rows };
 }
 
 /** Entry point exclusively for the authenticated owner/admin desk. */
