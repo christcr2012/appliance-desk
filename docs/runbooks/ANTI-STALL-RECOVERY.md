@@ -183,3 +183,81 @@ authorized successor work without claiming merge.
 ## October 12 — document renderer related-test fan-out
 
 W-22C6C changes to document rendering made `preflight --related` select 149 files and 953 tests on disposable Postgres, even though the explicit requested specs were small. The first pass reported three legacy lifecycle fixture failures because mocks omitted the new setupFeeCents/setupTaxCents/downPaymentCents evidence. Preserve strict production validation; correct incomplete mocks with explicit reconciled zero cents, run failing specs in `test:db:probe` first, then rerun required preflight and exact-head CI. A plan is a scope estimate, not a guarantee of a small run. Avoid repeating a full 953-test run until targeted failure fixtures are repaired.
+
+## October 12 — interruption after green CI while successor has uncommitted work
+
+**Observed recurrence:** PR #412 (`7fd5e54`) had passed exact-head `ci` but remained
+OPEN, while the successor W-22D3 worktree held edits and untracked tests. The
+previous Vercel Sandbox session expired; querying its old command/log API
+returned `410 sandbox_stopped`. The agent did not return to the PR's
+**review → merge → receipt** handoff, despite checks being green. This is a
+lost *handoff owner*, not a repository test failure, credential failure or
+missing code. The UI test from the next worktree remained in the persistent
+snapshot and was recoverable. Do not speculate that a command stalled until
+its actual state is inspected.
+
+**Practical prevention (required in 5-PR sessions):**
+
+1. At the beginning of each tool burst, look at the **oldest open PR** and
+   current worktree before doing new edits. Log one short line in the active
+   card's `.progress.md`: `A: PR #number/head/ci/review/merge next action | B:
+   worktree/HEAD/dirty files/next test | verified main SHA | merge count`.
+   If the PR is green, immediately review and merge; do not leave it open
+   while continuing with successor refinements. Never treat 'CI green' as
+   'merged'. Delete the progress note in the final commit when both lanes
+   have a verifiable owner/receipt.
+2. **Tool budget per handoff:** one batched GitHub call for PR head, the `ci`
+   check and review threads/comments; one corresponding outcome: fix,
+   record manual-review waiver where Codex quota is exhausted, or merge.
+   Queued/running CI is not permission to merge; proceed with the already
+   authorized successor work *only while it is actually running*. Never
+   send repeated identical status queries without new actionable work.
+3. **When a user interrupts or a sandbox expires**, never start a new
+   worktree or discard a modified one. Check live `main`, open PRs and CI
+   first. Resume the same named persistent sandbox from its last snapshot,
+   capture the **new session ID**, inspect `git worktree list`, `git status
+   -sb` and untracked files for the predecessor and successor. A stopped
+   command ID has no current progress; retrieve saved logs from the
+   restored worktree (or rerun a bounded *idempotent* test), not the dead
+   session. If completed PR head remains green, resolve review and merge
+   **before** continuing the preserved successor.
+4. **The exact checkpoint is written immediately, not remembered:** as soon
+   as the predecessor PR exists, put PR number, full head, CI state and
+   pending review/merge in the successor progress note, before substantial
+   successor edits. Update it after the predecessor merges, including the
+   merge SHA and whether `origin/main` is synchronized. The next chat must
+   use those receipts, not the PR number expected from a prompt.
+5. **End-of-burst reporting:** report `merged N/5`, the actual open PRs,
+   exact head/check state, dirty successor worktree, and what operation
+   currently owns the next action. An idle tool gap is **not** an active
+   process; never claim a background test/review still runs without a
+   live command or GitHub queued/running status.
+
+**Observed recovery:** resumed `appliance-desk-s1c-oct8` from its snapshot,
+confirmed W-22D3's uncommitted action/UI tests intact, confirmed PR #412
+12/12 checks successful on `7fd5e54`, reviewed/waived quota-exhausted Codex,
+merged #412 at `3b2b11568d031572dfd9a000b0b0ba9274c4d676`, then fast-forwarded
+the successor to that exact `main` without resetting its changes. Preserve this
+sequence for the next interruption. No new cost tier, secret or provider switch.
+
+### October 12 — reused dependency tree becomes an invalid browser-build fixture
+
+While validating W-22D3, the first sandbox browser build failed because a
+worktree `node_modules` symlink targeted `/vercel/appliance-desk/node_modules`
+outside Turbopack's project root. Replacing that **known symlink only** with
+a local `cp -al` clone allowed resolution to progress, but the **second**
+browser build failed before any browser test, reporting missing
+`@vercel/turbopack/postcss`, `@better-auth/core/api`, `zod` and hundreds of
+module resolution errors. The hardlinked copy included a nested
+`node_modules/node_modules` symlink to the original checkout. This is a
+sandbox dependency-tree problem, not evidence the changed UI failed.
+
+**Second-strike response:** do **not** retry this build repeatedly, overwrite
+another worktree's dependencies, run blind package upgrades, disable browser
+checks or purchase larger sandbox resources. Preserve focused UI/action
+results and TypeScript/lint evidence, record both exact failing commands,
+then publish only with the repository's required unmodified **exact-head
+GitHub `ci` and browser jobs** as the merge gate. A clean isolated `npm ci`
+is an optional *future* diagnostic only if within time/cost guardrails, not
+permission to bypass CI. Clearly say local browser acceptance was unavailable
+when reporting, even if GitHub CI later passes.

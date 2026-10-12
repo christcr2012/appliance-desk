@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { signAgreementAction } from "./actions";
+import { formatMoney } from "@/lib/money-ui";
 
 export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
   const [isPending, startTransition] = useTransition();
@@ -10,6 +11,8 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signed, setSigned] = useState(false);
+  const [pendingSigningAmountCents, setPendingSigningAmountCents] = useState<number | null>(null);
+  const [paymentNeedsReview, setPaymentNeedsReview] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +31,10 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
         // docs/BUSINESS-RULES.md's billing rules).
         window.location.href = result.checkoutUrl;
       } else {
+        if (result.status === "success") {
+          setPendingSigningAmountCents(result.pendingSigningAmountCents ?? null);
+          setPaymentNeedsReview(result.paymentNeedsReview ?? false);
+        }
         setSigned(true);
       }
     });
@@ -37,11 +44,30 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
         <p className="font-medium">Thanks — your agreement is signed.</p>
-        <p className="mt-1">
-          We&apos;ll be in touch about setting up payment and scheduling
-          delivery. A copy of this confirmation was recorded with your
-          name, email, and the time you signed.
-        </p>
+        {paymentNeedsReview ? (
+          <p className="mt-1" role="status">
+            We need to review your payment details before collecting any funds.
+            No payment was confirmed here. We&apos;ll contact you to arrange payment and delivery.
+          </p>
+        ) : pendingSigningAmountCents !== null ? (
+          <div className="mt-2 space-y-1" role="status">
+            <p className="font-semibold">
+              {pendingSigningAmountCents > 0
+                ? `Signing amount still to pay: ${formatMoney(pendingSigningAmountCents)}`
+                : "No signing charge is due for this agreement."}
+            </p>
+            <p>Signing does not confirm that payment was received. We&apos;ll arrange a
+              secure payment link or an owner-recorded payment if needed, then contact
+              you about delivery. Rent begins billing on delivery; down payments
+              will count toward that first invoice.</p>
+          </div>
+        ) : (
+          <p className="mt-1">
+            We&apos;ll be in touch about setting up payment and scheduling
+            delivery. No payment was confirmed by signing. Your signature
+            confirmation has been recorded.
+          </p>
+        )}
       </div>
     );
   }

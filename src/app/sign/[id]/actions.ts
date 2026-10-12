@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 import { signAgreement } from "@/domains/agreements";
 import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
+import { getReviewedSigningPayment } from "@/domains/billing/signing-payment-readiness";
 import { startRenewalIfDue } from "@/domains/agreements/renewal-start";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
@@ -12,7 +13,8 @@ const RATE_LIMIT = { max: 10, windowMs: 10 * 60 * 1000 };
 
 export type SignActionState =
   | { status: "idle" }
-  | { status: "success"; agreementId: string; checkoutUrl: string | null }
+  | { status: "success"; agreementId: string; checkoutUrl: string | null;
+      pendingSigningAmountCents?: number; paymentNeedsReview?: boolean }
   | { status: "error"; message: string };
 
 const signSchema = z.object({
@@ -65,7 +67,10 @@ export async function signAgreementAction(
     let checkoutUrl: string | null = null;
     const signed = await prisma.rentalAgreement.findUnique({
       where: { id: agreementId },
-      select: { renewedFromAgreementId: true },
+      select: { renewedFromAgreementId: true,
+        signingChargeSnapshot: { select: { id: true } },
+        signature: { select: { signingOrderFingerprint: true, signingAllInCents: true } },
+      },
     });
     if (signed?.renewedFromAgreementId) {
       // A renewal continues the rental the customer already pays for: no new
@@ -77,6 +82,22 @@ export async function signAgreementAction(
         console.error(`Signed renewal ${agreementId} but couldn't start it yet:`, startError);
       }
       return { status: "success", agreementId, checkoutUrl };
+    }
+    // W-22: signing is not payment. Never attempt the legacy deposit/waiver
+    // checkout for frozen fees, and never imply that an unavailable provider
+    // checkout collected the amount the customer accepted.
+    if (signed?.signingChargeSnapshot || signed?.signature?.signingOrderFingerprint ||
+        signed?.signature?.signingAllInCents != null) {
+      try {
+        const reviewed = await getReviewedSigningPayment(agreementId);
+        return { status: "success", agreementId, checkoutUrl: null,
+          pendingSigningAmountCents: reviewed.plan.allInCents };
+      } catch {
+        // Signing already committed. An inconsistent payment proof must not
+        // be downgraded to a success receipt or retried with legacy checkout.
+        return { status: "success", agreementId, checkoutUrl: null,
+          paymentNeedsReview: true };
+      }
     }
     try {
       checkoutUrl = await createCheckoutSessionForAgreement(agreementId);

@@ -1,5 +1,18 @@
 # STATUS — current work, blockers and next action
 
+## W-22D3 pending signing payment message (PR #413)
+
+After signing the frozen reviewed offer, the customer now gets an exact
+**still to pay** amount or a human-review warning; signing alone is not a
+receipt. The old Checkout is not called for any W-22 evidence, while legacy
+no-W-22 signing and renewals preserve their existing paths. The owner must
+still arrange a payment; no W-22 Stripe/manual provider collection or first
+invoice credit is implemented by this slice. Anti-stall runbook records the
+October 12 PR #412 waiting-for-merge/sandbox expiration incident and a
+required two-lane handoff checkpoint. W-22 remains PARTIAL; IN-79 OPEN,
+W-23 blocked. Next: version-scoped signing payment and replay-safe settlement.
+
+
 ## W-22D2 verified signed payment readiness (PR #412)
 
 After W-22D1 #411 merged, a read-only, repeatable-read payment gate now
