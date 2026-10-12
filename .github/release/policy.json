@@ -1,0 +1,7 @@
+{
+  "repository": "christcr2012/appliance-desk",
+  "requiredChecks": [
+    "release-policy",
+    "ci"
+  ]
+}
