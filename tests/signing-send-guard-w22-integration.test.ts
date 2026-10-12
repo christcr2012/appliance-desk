@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-freeze";
 import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
 import { getReviewedSigningPayment } from "@/domains/billing/signing-payment-readiness";
+import { createSigningTestCheckout } from "@/domains/billing/signing-payment-checkout";
+import { __setStripeClientForTests } from "@/lib/stripe";
+import type Stripe from "stripe";
 import { signAgreementAction } from "@/app/sign/[id]/actions";
 import { prepareSigningPaymentAttempt } from "@/domains/billing/signing-payment-attempts";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
@@ -231,6 +234,75 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     expect(await prisma.agreementSigningPayment.findUniqueOrThrow({
       where: { agreementId: positiveAgreementId },
     })).toMatchObject({ status: "AWAITING_PAYMENT", totalCents: 3500 });
+  });
+
+  it("TEST Stripe Checkout is gated, exact-amount, idempotent, and never records fake settlement", async () => {
+    expect(positiveAgreementId).toBeTruthy();
+    const beforeReceiptCount = await prisma.receipt.count({ where: { customerId } });
+    const beforeInvoiceCount = await prisma.invoice.count({ where: { agreementId: positiveAgreementId } });
+    const env = {
+      gate: process.env.W22_SIGNING_TEST_CHECKOUT_ENABLED,
+      secret: process.env.STRIPE_SECRET_KEY,
+      vercel: process.env.VERCEL_ENV,
+      url: process.env.NEXT_PUBLIC_APP_URL,
+    };
+    let creates = 0, retrieves = 0;
+    const fake: { session?: Stripe.Checkout.Session } = {};
+    try {
+      delete process.env.W22_SIGNING_TEST_CHECKOUT_ENABLED;
+      await expect(createSigningTestCheckout(positiveAgreementId!)).rejects.toThrow(/not authorized/);
+      process.env.W22_SIGNING_TEST_CHECKOUT_ENABLED = "true";
+      process.env.STRIPE_SECRET_KEY = ["sk", "test", "local-only"].join("_");
+      process.env.VERCEL_ENV = "preview";
+      process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
+      __setStripeClientForTests({ checkout: { sessions: {
+        create: async (params: Stripe.Checkout.SessionCreateParams, options: Stripe.RequestOptions) => {
+          creates++;
+          expect(options.idempotencyKey).toMatch(/^w22-sign-[a-f0-9]{64}$/);
+          expect(params.mode).toBe("payment");
+          expect(params.line_items?.map(item => item.price_data?.unit_amount)).toEqual([3500]);
+          expect(params.payment_intent_data?.metadata?.orderFingerprint).toMatch(/^[a-f0-9]{64}$/);
+          fake.session = {
+            id: "cs_test_fake_w22_" + tag, mode: "payment",
+            client_reference_id: positiveAgreementId!, amount_total: 3500,
+            currency: "usd", payment_status: "unpaid", status: "open",
+            metadata: params.metadata, url: "https://checkout.stripe.com/c/pay/test",
+          } as Stripe.Checkout.Session;
+          return fake.session;
+        },
+        retrieve: async (id: string) => {
+          retrieves++;
+          expect(id).toBe(fake.session?.id);
+          return fake.session!;
+        },
+      } } } as unknown as Stripe);
+      const first = await createSigningTestCheckout(positiveAgreementId!);
+      const second = await createSigningTestCheckout(positiveAgreementId!);
+      expect(creates).toBe(1);
+      expect(retrieves).toBe(1);
+      expect(first).toMatchObject({ status: "AWAITING_CUSTOMER", checkoutUrl: "https://checkout.stripe.com/c/pay/test" });
+      expect(second.sessionId).toBe(first.sessionId);
+      expect(await prisma.signingPaymentAttempt.findUniqueOrThrow({
+        where: { id: first.attemptId },
+      })).toMatchObject({ status: "PENDING", providerObjectId: first.sessionId,
+        amountCents: 3500 });
+      expect(await prisma.agreementSigningPayment.findUniqueOrThrow({
+        where: { agreementId: positiveAgreementId },
+      })).toMatchObject({ status: "AWAITING_PAYMENT" });
+      expect(await prisma.receipt.count({ where: { customerId } })).toBe(beforeReceiptCount);
+      expect(await prisma.invoice.count({ where: { agreementId: positiveAgreementId } })).toBe(beforeInvoiceCount);
+    } finally {
+      __setStripeClientForTests(null);
+      for (const [name, value] of [
+        ["W22_SIGNING_TEST_CHECKOUT_ENABLED", env.gate],
+        ["STRIPE_SECRET_KEY", env.secret],
+        ["VERCEL_ENV", env.vercel],
+        ["NEXT_PUBLIC_APP_URL", env.url],
+      ] as const) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
   });
 
   it("database rejects an invented settled status or changed obligation total", async () => {

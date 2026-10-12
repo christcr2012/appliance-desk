@@ -1,5 +1,17 @@
 # STATUS — current work, blockers and next action
 
+## W-22D7 TEST signing Checkout (PR #417)
+
+The signed, frozen per-agreement amount can now be used to create an idempotent
+Stripe TEST hosted Checkout session. The provider ID is stored against the
+durable attempt after its cents, currency, fingerprint and agreement ID are
+verified; repeat calls retrieve it instead of opening another session. An
+unknown old attempt and non-test/production configuration fail closed. Checkout
+completion is **not** payment settlement; no invoice credit or paid status
+is set. The service is not exposed through a public route while CPA IN-79 and
+owner LIVE approval remain open. Next: authenticated webhook verification and
+durable receipt settlement, then first-invoice credit. W-23 stays blocked.
+
 ## W-22D6 durable collection attempt reservation (PR #416)
 
 A transaction now rechecks signed immutable W-22 evidence against its stored unpaid obligation
