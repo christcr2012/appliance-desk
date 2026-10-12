@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { processSigningCheckoutEvent } from "./signing-payment-settlement";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { RDF_LINE_DESCRIPTION } from "@/domains/tax/rdf-charges";
@@ -1104,6 +1105,9 @@ async function processLockedEvent(
   const referralIdsToSettle: string[] = [];
   switch (event.type) {
     case "checkout.session.completed":
+      if (await processSigningCheckoutEvent(
+        db, evidence, event, event.data.object as Stripe.Checkout.Session,
+      )) break;
       await handleCheckoutSessionCompleted(
         db,
         evidence,
@@ -1111,6 +1115,9 @@ async function processLockedEvent(
       );
       break;
     case "checkout.session.async_payment_succeeded":
+      if (await processSigningCheckoutEvent(
+        db, evidence, event, event.data.object as Stripe.Checkout.Session,
+      )) break;
       await handleCheckoutSessionAsyncPaymentSucceeded(
         db,
         evidence,
@@ -1118,6 +1125,9 @@ async function processLockedEvent(
       );
       break;
     case "checkout.session.async_payment_failed":
+      if (await processSigningCheckoutEvent(
+        db, evidence, event, event.data.object as Stripe.Checkout.Session,
+      )) break;
       await handleCheckoutSessionAsyncPaymentFailed(
         db,
         event.data.object as Stripe.Checkout.Session,

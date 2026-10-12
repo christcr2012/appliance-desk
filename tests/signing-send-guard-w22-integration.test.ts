@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-freeze";
 import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
 import { getReviewedSigningPayment } from "@/domains/billing/signing-payment-readiness";
+import { processSigningCheckoutEvent } from "@/domains/billing/signing-payment-settlement";
+import type { WebhookEvidence } from "@/domains/billing/webhook-evidence";
 import { createSigningTestCheckout } from "@/domains/billing/signing-payment-checkout";
 import { __setStripeClientForTests } from "@/lib/stripe";
 import type Stripe from "stripe";
@@ -54,6 +56,7 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     await prisma.agreementSigningPayment.deleteMany({
       where: { agreementId: { in: [agreementId, ...(positiveAgreementId ? [positiveAgreementId] : [])] } },
     });
+    await prisma.receipt.deleteMany({ where: { customerId } });
     if (positiveAgreementId) {
       await prisma.auditLog.deleteMany({ where: { entityId: positiveAgreementId } });
       await prisma.signatureRecord.deleteMany({ where: { agreementId: positiveAgreementId } });
@@ -364,4 +367,99 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     } });
     expect(await getReviewedSigningPayment(agreementId)).toMatchObject({ customerId, agreementId });
   });
+
+  it("authenticates TEST provider evidence and records exactly one immutable signing receipt on replay", async () => {
+    expect(positiveAgreementId).toBeTruthy();
+    const attempt = await prisma.signingPaymentAttempt.findFirstOrThrow({
+      where: { agreementId: positiveAgreementId },
+    });
+    const order = await prisma.agreementSigningPayment.findUniqueOrThrow({
+      where: { agreementId: positiveAgreementId },
+    });
+    const chargeId = "ch_test_signing_" + tag;
+    const intentId = "pi_test_signing_" + tag;
+    const session = {
+      id: attempt.providerObjectId,
+      livemode: false,
+      mode: "payment",
+      currency: "usd",
+      client_reference_id: positiveAgreementId,
+      amount_total: order.totalCents,
+      payment_status: "paid",
+      payment_intent: intentId,
+      metadata: {
+        agreementId: positiveAgreementId!,
+        attemptId: attempt.id,
+        orderFingerprint: order.orderFingerprint,
+      },
+    } as unknown as Stripe.Checkout.Session;
+    const intent: Stripe.PaymentIntent = {
+      id: intentId, livemode: false, status: "succeeded",
+      amount: order.totalCents, amount_received: order.totalCents,
+      currency: "usd", latest_charge: chargeId,
+      metadata: {
+        agreementId: positiveAgreementId!,
+        attemptId: attempt.id,
+        orderFingerprint: order.orderFingerprint,
+      },
+    } as unknown as Stripe.PaymentIntent;
+    const details = { stripeChargeId: chargeId, method: "card", receivedOn: new Date("2026-10-12T19:00:00Z") };
+    const evidence = {
+      paymentIntentWithMethod: () => intent,
+      paymentDetails: () => details,
+    } as unknown as WebhookEvidence;
+    const event = {
+      id: "evt_test_signing_" + tag,
+      type: "checkout.session.completed",
+      livemode: false,
+      data: { object: session },
+    } as Stripe.Event;
+    const run = async () => prisma.$transaction(tx =>
+      processSigningCheckoutEvent(tx, evidence, event, session));
+
+    await expect(prisma.$transaction(tx =>
+      processSigningCheckoutEvent(tx, evidence, {
+        ...event, livemode: true,
+      }, session))).rejects.toThrow(/unapproved/);
+    const badSession = { ...session, amount_total: order.totalCents - 1 } as Stripe.Checkout.Session;
+    await expect(prisma.$transaction(tx =>
+      processSigningCheckoutEvent(tx, evidence, event, badSession))).rejects.toThrow(/does not match/);
+    expect(await prisma.receipt.count({ where: { customerId } })).toBe(0);
+    const originalAmount = intent.amount_received;
+    try {
+      intent.amount_received = order.totalCents - 1;
+      await expect(run()).rejects.toThrow(/not a verified/);
+      expect(await prisma.receipt.count({ where: { customerId } })).toBe(0);
+    } finally {
+      intent.amount_received = originalAmount;
+    }
+    expect(await run()).toBe(true);
+    const settled = await prisma.agreementSigningPayment.findUniqueOrThrow({
+      where: { agreementId: positiveAgreementId },
+    });
+    expect(settled).toMatchObject({
+      status: "SETTLED", totalCents: 3500, settledAt: details.receivedOn,
+    });
+    expect(settled.receiptId).toBeTruthy();
+    expect(await prisma.receipt.findUniqueOrThrow({ where: { id: settled.receiptId! } }))
+      .toMatchObject({
+        source: "STRIPE", amountCents: 3500, stripeChargeId: chargeId,
+        customerId,
+      });
+    expect(await prisma.signingPaymentAttempt.findUniqueOrThrow({
+      where: { id: attempt.id },
+    })).toMatchObject({ status: "SUCCEEDED", stripePaymentIntentId: intentId });
+    expect(await run()).toBe(true);
+    expect(await prisma.receipt.count({ where: { customerId } })).toBe(1);
+    expect(await prisma.invoice.count({ where: { agreementId: positiveAgreementId } })).toBe(0);
+    expect(await prisma.customerCredit.count({ where: { customerId } })).toBe(0);
+    await expect(prisma.$transaction(tx => processSigningCheckoutEvent(
+      tx, {
+        paymentIntentWithMethod: () => ({ ...intent, id: "pi_test_other" }),
+        paymentDetails: () => details,
+      } as unknown as WebhookEvidence, event, session,
+    ))).rejects.toThrow(/not a verified/);
+    expect(await prisma.receipt.count({ where: { customerId } })).toBe(1);
+  });
+
 });
