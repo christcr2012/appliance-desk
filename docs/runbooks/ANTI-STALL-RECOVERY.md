@@ -321,3 +321,18 @@ to scope by `subjectId: agreementId` (or equivalent entity identity); verify
 isolated tests, then push a **new** head and require fresh exact-head CI. Do
 not rerun an unchanged flaky shard as if that fixed the test, and do not
 change production provider controls to accommodate incorrect fixture counts.
+
+### October 12 — review-safe financial visibility test recipe
+
+PR #415 initially had mocked `AgreementSigningPayment` and `requireRole`
+tests. Reviewer P1 correctly required real database/authorization acceptance.
+Before publishing any future finance-visible exception/query slice, pair
+quick deterministic mock tests with at least one **disposable PostgreSQL**
+probe: insert real due/waived records, execute the genuine query and role
+validator against controlled authenticated identities, demonstrate
+OWNER/ADMIN visibility and STAFF/CUSTOMER rejection, verify amount/ordering
+and zero forbidden side effects. Mock only external session issuance/Next
+request interfaces when exercising the genuine role implementation, not the
+role checker or Prisma. This up-front fixture prevents another review/
+re-push/full-CI round trip. Preserve per-test cleanup of any restrictive FK
+children before deleting parent test agreements.
