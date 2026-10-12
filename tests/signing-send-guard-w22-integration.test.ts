@@ -204,14 +204,21 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
 
   it("reserves exactly one durable attempt, refuses incompatible methods and invented provider outcomes", async () => {
     expect(positiveAgreementId).toBeTruthy();
-    const first = await prepareSigningPaymentAttempt(positiveAgreementId!, "STRIPE_CHECKOUT");
+    const concurrent = await Promise.all(Array.from({ length: 5 },
+      () => prepareSigningPaymentAttempt(positiveAgreementId!, "STRIPE_CHECKOUT")));
+    expect(new Set(concurrent.map(result => result.id)).size).toBe(1);
+    const first = concurrent[0]!;
     expect(first).toMatchObject({
       agreementId: positiveAgreementId, amountCents: 3500,
       method: "STRIPE_CHECKOUT", status: "PREPARED", attemptNumber: 1,
     });
     expect((await prepareSigningPaymentAttempt(positiveAgreementId!, "STRIPE_CHECKOUT")).id).toBe(first.id);
     expect(await prisma.signingPaymentAttempt.count({ where: { agreementId: positiveAgreementId } })).toBe(1);
-    await expect(prepareSigningPaymentAttempt(positiveAgreementId!, "MANUAL")).rejects.toThrow(/incompatible/);
+    await expect(prepareSigningPaymentAttempt(positiveAgreementId!, "MANUAL")).rejects.toThrow(/authenticated/);
+    await expect(prepareSigningPaymentAttempt(positiveAgreementId!, "MANUAL", userId))
+      .rejects.toThrow(/no longer has access/);
+    await expect(prepareSigningPaymentAttempt(positiveAgreementId!, "MANUAL", ownerId))
+      .rejects.toThrow(/incompatible/);
     await expect(prepareSigningPaymentAttempt(agreementId, "STRIPE_CHECKOUT")).rejects.toThrow();
     await expect(prisma.signingPaymentAttempt.update({
       where: { id: first.id }, data: { amountCents: -1 },

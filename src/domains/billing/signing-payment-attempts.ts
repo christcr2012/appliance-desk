@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { getReviewedSigningPaymentInTx } from "./signing-payment-readiness";
 
 export type SigningCollectionMethod = "STRIPE_CHECKOUT" | "MANUAL";
@@ -19,11 +20,25 @@ export type PreparedSigningAttempt = {
 export async function prepareSigningPaymentAttempt(
   agreementId: string,
   method: SigningCollectionMethod,
+  actingFinanceUserId?: string,
 ): Promise<PreparedSigningAttempt> {
   if (method !== "STRIPE_CHECKOUT" && method !== "MANUAL") {
     throw new Error("Unknown signing payment collection method.");
   }
+  if (method === "MANUAL" && !actingFinanceUserId) {
+    throw new Error("An authenticated OWNER or ADMIN is required for a manual collection attempt.");
+  }
   const attempt = await prisma.$transaction(async tx => {
+    if (method === "MANUAL") {
+      await assertActiveTeamActor(tx, actingFinanceUserId!, ["OWNER", "ADMIN"]);
+    }
+    // Serialize on the same obligation row before checking active attempts:
+    // READ COMMITTED ensures a waiting caller sees the first committed child.
+    const locks = await tx.$queryRaw<Array<{ agreementId: string }>>`
+      SELECT "agreementId" FROM "AgreementSigningPayment"
+      WHERE "agreementId" = ${agreementId} FOR UPDATE
+    `;
+    if (locks.length !== 1) throw new Error("Signing obligation is missing.");
     // This rereads the actual signed evidence in the SAME serializable transaction.
     const reviewed = await getReviewedSigningPaymentInTx(tx, agreementId);
     const obligation = await tx.agreementSigningPayment.findUnique({
@@ -68,7 +83,7 @@ export async function prepareSigningPaymentAttempt(
       orderFingerprint: obligation.orderFingerprint,
       amountCents: obligation.totalCents,
     } });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
   return {
     id: attempt.id,
     agreementId: attempt.agreementId,

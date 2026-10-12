@@ -3,8 +3,8 @@
 ## W-22D6 durable collection attempt reservation (PR #416)
 
 A transaction now rechecks signed immutable W-22 evidence against its stored unpaid obligation
-before reserving a uniquely keyed checkout/manual collection attempt. Repeated requests return
-the same still-active attempt, conflicting methods are blocked, and DB constraints reject
+before reserving a uniquely keyed checkout/manual collection attempt. Concurrent/replayed requests return
+the same still-active attempt, unauthorized manual methods are blocked, and DB constraints reject
 invalid methods, totals or statuses. This is **not** Stripe collection or proof of payment.
 Existing receipts, invoices and paid-state remain unchanged. Next: provider checkout integration
 with hard CPA IN-79 activation gate, then verified settlement and replay-safe first-bill credit.
