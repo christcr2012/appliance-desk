@@ -17,11 +17,11 @@ export type ReviewedSigningPayment = {
   plan: FrozenSigningCheckoutPlan;
 };
 
-export async function getReviewedSigningPayment(
+export async function getReviewedSigningPaymentInTx(
+  tx: Prisma.TransactionClient,
   agreementId: string,
 ): Promise<ReviewedSigningPayment> {
   if (!agreementId) throw new Error("Agreement is required.");
-  return prisma.$transaction(async (tx) => {
     const agreement = await tx.rentalAgreement.findUnique({
       where: { id: agreementId },
       select: { id: true, customerId: true, status: true,
@@ -51,5 +51,13 @@ export async function getReviewedSigningPayment(
       throw new Error("Frozen payment total does not match the signed offer.");
     }
     return { customerId: agreement.customerId, agreementId, signedAt: signature.signedAt, plan };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+}
+
+export async function getReviewedSigningPayment(
+  agreementId: string,
+): Promise<ReviewedSigningPayment> {
+  return prisma.$transaction(
+    tx => getReviewedSigningPaymentInTx(tx, agreementId),
+    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+  );
 }

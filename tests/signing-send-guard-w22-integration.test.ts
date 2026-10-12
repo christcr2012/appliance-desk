@@ -5,6 +5,7 @@ import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-fre
 import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
 import { getReviewedSigningPayment } from "@/domains/billing/signing-payment-readiness";
 import { signAgreementAction } from "@/app/sign/[id]/actions";
+import { prepareSigningPaymentAttempt } from "@/domains/billing/signing-payment-attempts";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-real-ip": "127.0.0.1" }) }));
@@ -44,6 +45,9 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
   afterAll(async () => {
     if (!agreementId) return;
     await prisma.documentArtifact.deleteMany({ where: { customerId } });
+    await prisma.signingPaymentAttempt.deleteMany({
+      where: { agreementId: { in: [agreementId, ...(positiveAgreementId ? [positiveAgreementId] : [])] } },
+    });
     await prisma.agreementSigningPayment.deleteMany({
       where: { agreementId: { in: [agreementId, ...(positiveAgreementId ? [positiveAgreementId] : [])] } },
     });
@@ -196,6 +200,30 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     const proof = await getReviewedSigningPayment(positiveAgreementId);
     expect(proof.plan).toMatchObject({ allInCents: 3500,
       items: [{ kind: "FIRST_MONTH_DOWN_PAYMENT", amountCents: 3500 }] });
+  });
+
+  it("reserves exactly one durable attempt, refuses incompatible methods and invented provider outcomes", async () => {
+    expect(positiveAgreementId).toBeTruthy();
+    const first = await prepareSigningPaymentAttempt(positiveAgreementId!, "STRIPE_CHECKOUT");
+    expect(first).toMatchObject({
+      agreementId: positiveAgreementId, amountCents: 3500,
+      method: "STRIPE_CHECKOUT", status: "PREPARED", attemptNumber: 1,
+    });
+    expect((await prepareSigningPaymentAttempt(positiveAgreementId!, "STRIPE_CHECKOUT")).id).toBe(first.id);
+    expect(await prisma.signingPaymentAttempt.count({ where: { agreementId: positiveAgreementId } })).toBe(1);
+    await expect(prepareSigningPaymentAttempt(positiveAgreementId!, "MANUAL")).rejects.toThrow(/incompatible/);
+    await expect(prepareSigningPaymentAttempt(agreementId, "STRIPE_CHECKOUT")).rejects.toThrow();
+    await expect(prisma.signingPaymentAttempt.update({
+      where: { id: first.id }, data: { amountCents: -1 },
+    })).rejects.toThrow();
+    await expect(prisma.signingPaymentAttempt.update({
+      where: { id: first.id }, data: { status: "PAID" },
+    })).rejects.toThrow();
+    expect(await prisma.receipt.count({ where: { customerId } })).toBe(0);
+    expect(await prisma.invoice.count({ where: { agreementId: positiveAgreementId } })).toBe(0);
+    expect(await prisma.agreementSigningPayment.findUniqueOrThrow({
+      where: { agreementId: positiveAgreementId },
+    })).toMatchObject({ status: "AWAITING_PAYMENT", totalCents: 3500 });
   });
 
   it("database rejects an invented settled status or changed obligation total", async () => {

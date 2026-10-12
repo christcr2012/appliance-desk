@@ -981,7 +981,31 @@ model AgreementSigningPayment {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  attempts          SigningPaymentAttempt[]
+
   @@index([status, signedAt])
+}
+
+// W-22D6: reserving a collection request is not receiving money.
+// Only an authenticated Stripe settlement or explicit owner-confirmed receipt
+// may later transition an attempt and the parent obligation.
+model SigningPaymentAttempt {
+  id               String @id @default(cuid())
+  agreementId      String
+  obligation       AgreementSigningPayment @relation(fields: [agreementId], references: [agreementId], onDelete: Restrict)
+  requestKey       String @unique
+  attemptNumber    Int
+  method           String
+  status           String @default("PREPARED")
+  orderFingerprint String
+  amountCents      Int
+  providerObjectId String? @unique
+  failureCode      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([agreementId, attemptNumber])
+  @@index([agreementId, status])
 }
 
 model EarlyReturnResolution {
