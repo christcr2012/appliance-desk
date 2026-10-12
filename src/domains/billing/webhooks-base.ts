@@ -653,11 +653,23 @@ async function handleEstimateDepositCheckoutCompleted(
   );
 }
 
+/**
+ * Until the dedicated W-22 settlement handler is wired, a tagged Checkout
+ * must NOT fall into the legacy deposit/waiver invoice handler. Throwing
+ * keeps the event retryable instead of persisting a false legacy payment.
+ */
+export function assertNoUnsettledW22Checkout(session: Stripe.Checkout.Session): void {
+  if (session.metadata?.attemptId || session.metadata?.orderFingerprint) {
+    throw new Error("W-22 signed-payment settlement handler is not active; retry later.");
+  }
+}
+
 async function handleCheckoutSessionCompleted(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  assertNoUnsettledW22Checkout(session);
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
     await handleEstimateDepositCheckoutCompleted(db, evidence, session, estimateId);
@@ -726,6 +738,7 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
       : session.payment_intent?.id;
   if (!paymentIntentId) return;
 
+  assertNoUnsettledW22Checkout(session);
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
     const estimate = await db.estimate.findUniqueOrThrow({
@@ -762,6 +775,7 @@ async function handleCheckoutSessionAsyncPaymentFailed(
   db: Prisma.TransactionClient,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  assertNoUnsettledW22Checkout(session);
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
     await db.auditLog.create({

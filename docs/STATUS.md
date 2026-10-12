@@ -8,7 +8,9 @@ durable attempt after its cents, currency, fingerprint and agreement ID are
 verified; repeat calls retrieve it instead of opening another session. An
 unknown old attempt and non-test/production configuration fail closed. Checkout
 completion is **not** payment settlement; no invoice credit or paid status
-is set. The service is not exposed through a public route while CPA IN-79 and
+is set. The existing webhook now explicitly rejects W-22-tagged Checkout events
+rather than misclassifying them as legacy deposit payments. The service is not
+exposed through a public route while CPA IN-79 and
 owner LIVE approval remain open. Next: authenticated webhook verification and
 durable receipt settlement, then first-invoice credit. W-23 stays blocked.
 
