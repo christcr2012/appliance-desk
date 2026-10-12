@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => {
     rentalAgreementFindUniqueOrThrow: vi.fn(),
     rentalAgreementUpdate: vi.fn(),
     rentalAgreementUpdateMany: vi.fn(),
+    signingPaymentFindUnique: vi.fn(),
+    signingCreditFindUnique: vi.fn(),
     claimProviderOperation: vi.fn(),
     completeProviderOperation: vi.fn(),
     runProviderCall: vi.fn(),
@@ -64,6 +66,8 @@ vi.mock("@/lib/prisma", () => ({
     $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
       callback({
         $queryRaw: (...args: unknown[]) => mocks.queryRaw(...args),
+        agreementSigningPayment: { findUnique: (...args: unknown[]) => mocks.signingPaymentFindUnique(...args) },
+        signingDownPaymentCredit: { findUnique: (...args: unknown[]) => mocks.signingCreditFindUnique(...args) },
         rentalAgreement: {
           findUniqueOrThrow: (...args: unknown[]) => mocks.rentalAgreementFindUniqueOrThrow(...args),
           update: (...args: unknown[]) => mocks.rentalAgreementUpdate(...args),
@@ -137,6 +141,8 @@ describe("startRecurringBillingForAgreement", () => {
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement());
     mocks.rentalAgreementUpdate.mockResolvedValue({});
     mocks.rentalAgreementUpdateMany.mockResolvedValue({ count: 1 });
+    mocks.signingPaymentFindUnique.mockResolvedValue(null);
+    mocks.signingCreditFindUnique.mockResolvedValue(null);
     mocks.claimProviderOperation.mockResolvedValue({
       done: false,
       opId: "provider-op-1",
@@ -165,6 +171,54 @@ describe("startRecurringBillingForAgreement", () => {
     vi.useRealTimers();
   });
 
+  it("blocks unsettled W-22 first rent before any Stripe provider operation", async () => {
+    mocks.signingPaymentFindUnique.mockResolvedValue({
+      agreementId: "agr-1", downPaymentCents: 4000, status: "AWAITING_PAYMENT",
+      receiptId: null, orderFingerprint: "a".repeat(64),
+    });
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+    const result = await startRecurringBillingForAgreement("agr-1");
+    expect(result.state).toBe("BLOCKED");
+    expect(mocks.rentalAgreementUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: { billingBlockedReason: expect.stringContaining("down payment") },
+    }));
+    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+    expect(mocks.productsCreate).not.toHaveBeenCalled();
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+  });
+  it("blocks a settled agreement until its first-invoice credit is truly applied", async () => {
+    mocks.signingPaymentFindUnique.mockResolvedValue({
+      agreementId: "agr-1", downPaymentCents: 4000, status: "SETTLED",
+      receiptId: "receipt-1", orderFingerprint: "a".repeat(64),
+    });
+    mocks.signingCreditFindUnique.mockResolvedValue({
+      agreementId: "agr-1", amountCents: 4000, receiptId: "receipt-1",
+      orderFingerprint: "a".repeat(64),
+    });
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+    const result = await startRecurringBillingForAgreement("agr-1");
+    expect(result.state).toBe("BLOCKED");
+    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+    expect(mocks.productsCreate).not.toHaveBeenCalled();
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+  });
+  it("flags a previously started W-22 subscription for owner reconciliation", async () => {
+    mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
+      baseAgreement({ stripeSubscriptionId: "sub_existing" }),
+    );
+    mocks.signingPaymentFindUnique.mockResolvedValue({
+      agreementId: "agr-1", downPaymentCents: 4000, status: "SETTLED",
+      receiptId: "receipt-1", orderFingerprint: "a".repeat(64),
+    });
+    mocks.signingCreditFindUnique.mockResolvedValue({
+      agreementId: "agr-1", amountCents: 4000, receiptId: "receipt-1",
+      orderFingerprint: "a".repeat(64),
+    });
+    const { startRecurringBillingForAgreement } = await import("@/domains/billing/checkout");
+    expect((await startRecurringBillingForAgreement("agr-1")).state).toBe("BLOCKED");
+    expect(mocks.claimProviderOperation).not.toHaveBeenCalled();
+    expect(mocks.subscriptionsCreate).not.toHaveBeenCalled();
+  });
   it("blocks recurring billing when there is no durable first-delivery fact", async () => {
     mocks.rentalAgreementFindUniqueOrThrow.mockResolvedValue(
       baseAgreement({ firstDeliveredOn: null, billingStartedAt: null }),

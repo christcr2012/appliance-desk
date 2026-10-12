@@ -10,7 +10,7 @@ sibling property's bill. This W-22 batch is an outcome boundary, not a quota.
 | --- | --- | --- | --- | --- |
 | Frozen signed amount and TEST Stripe settlement | Implemented through #420 | Exact-head CI and disposable PostgreSQL; authenticated provider evidence path tested | LIVE disabled; no live end-to-end acceptance | Keep existing isolation and reconciliation |
 | Receipt-bound per-agreement down-payment entitlement | Implemented in W-22D9 (#421) | Disposable PostgreSQL and exact-head CI are required | Not deployed or accepted | Implement W-22D10 exact first-invoice application |
-| First delivery invoice credit exactly once (local and Stripe) | NOT implemented | NOT proven | NOT accepted; never display credited or paid invoice | Implement next eligible W-22D10 with provider allocation/readback |
+| First delivery invoice credit exactly once (local and Stripe) | Double-charge barrier in #422; credit application NOT implemented | NOT proven | NOT accepted; never display credited or paid invoice | Implement next eligible W-22D10 with provider allocation/readback |
 | Cancellation, refunds, and per-machine hookup/delivery acceptance | NOT complete | NOT proven end-to-end | NOT accepted | Follow the approved W-22 dependency chain after credit accounting |
 
 **Deferred-blocker register:** IN-79 requires CPA-backed Colorado setup-fee
@@ -24,6 +24,21 @@ TEST-only accounting, no activation/spend. W-24 customer delivery-date choices
 have their own separate work index dependency; do not silently pull them into
 W-22. Recheck this register at session start and after owner input, PR merge
 or hosted integration change. Existing hosting-cost policies remain in force.
+
+## W-22D10 first-invoice double-charge barrier (MERGED #422)
+
+Recurring Stripe subscription setup now checks the W-22 signed payment and
+receipt-backed credit before any provider claim or product/subscription call.
+A positive down payment (unpaid, inconsistent, or already collected) blocks
+a new first rent invoice until its exact agreement-specific Stripe invoice
+application is implemented and reconciled. The existing billing-blocked To do
+shows an actionable agreement link and the reason. Historical/waived/no-credit
+agreements keep their existing path. Even an already-recorded subscription is
+flagged for owner reconciliation instead of being called safe. No new payment,
+credit application, delivery permission, owner approval or LIVE activation.
+Next: W-22D11 negative first-invoice item on the *matching* subscription,
+durable local allocation, real Stripe readback/retry, and portal amounts.
+IN-79 OPEN, W-22 PARTIAL, W-23 blocked.
 
 ## W-22D9 settled down-payment entitlement (PR #421)
 
