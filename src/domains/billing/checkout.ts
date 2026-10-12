@@ -221,8 +221,23 @@ export async function createCheckoutSessionForAgreement(agreementId: string): Pr
     include: {
       customer: { include: { user: { select: { name: true, email: true } } } },
       lines: true,
+      signingChargeSnapshot: { select: { id: true } },
+      signature: { select: { signingOrderFingerprint: true, signingAllInCents: true, signingEvidenceVersion: true } },
     },
   });
+
+  // W-22: the legacy deposit/waiver Checkout has no signed setup-tax or
+  // per-agreement down-payment allocation. It must never silently replace a
+  // customer-accepted frozen all-in price with the old amount. No provider
+  // call (including customer creation) is allowed until the separate,
+  // replay-safe W-22 settlement path is ready. Historical agreements without
+  // any W-22 evidence retain the original checkout behavior.
+  if (agreement.signingChargeSnapshot ||
+      agreement.signature?.signingOrderFingerprint != null ||
+      agreement.signature?.signingAllInCents != null ||
+      agreement.signature?.signingEvidenceVersion != null) {
+    throw new Error("Frozen signing charges require the W-22 payment checkout; legacy checkout is blocked.");
+  }
 
   const alreadyHasDeposit = (await prisma.deposit.count({ where: { agreementId } })) > 0;
   const plan = buildCheckoutLinePlan({

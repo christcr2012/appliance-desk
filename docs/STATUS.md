@@ -1,4 +1,15 @@
 # STATUS — current work, blockers and next action
+
+## W-22D1 frozen-payment safety (PR #411)
+
+Signed W-22 fee/tax/down-payment evidence now has a provider-independent,
+per-agreement payment-line planner. Legacy deposit/waiver Checkout refuses
+new or incomplete W-22 evidence before Stripe, rather than charging an
+amount different from the accepted offer. Historical no-W-22 Checkout remains.
+This is **not payment integration or settlement**: next W-22D2 must build
+the recoverable Stripe/manual path, proof-bound webhook and first-bill credit.
+IN-79 OPEN; no live money or CPA treatment enabled. W-22 PARTIAL, W-23 blocked.
+
 ## W-22C6C signed document proof (PR #410)
 
 The signed artifact now retains reviewed all-in setup/tax/down-payment cents
