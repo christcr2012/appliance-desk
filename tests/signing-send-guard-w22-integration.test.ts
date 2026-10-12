@@ -484,6 +484,7 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     await expect(prisma.$executeRaw`
       UPDATE "Receipt" SET "amountCents" = 1 WHERE "id" = ${settled.receiptId}
     `).rejects.toThrow();
+    await expect(prisma.$executeRaw`UPDATE "AgreementSigningPayment" SET "signedAt" = NOW() WHERE "agreementId" = ${positiveAgreementId}`).rejects.toThrow();
     await expect(prisma.$executeRaw`
       INSERT INTO "SigningDownPaymentCredit" (
         "agreementId", "receiptId", "orderFingerprint", "amountCents"

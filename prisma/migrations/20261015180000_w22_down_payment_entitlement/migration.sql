@@ -45,6 +45,10 @@ BEGIN
     AND (NEW."receiptId" IS DISTINCT FROM OLD."receiptId"
      OR NEW."orderFingerprint" IS DISTINCT FROM OLD."orderFingerprint"
      OR NEW."downPaymentCents" IS DISTINCT FROM OLD."downPaymentCents"
+     OR NEW."setupFeeCents" IS DISTINCT FROM OLD."setupFeeCents"
+     OR NEW."setupTaxCents" IS DISTINCT FROM OLD."setupTaxCents"
+     OR NEW."evidenceVersion" IS DISTINCT FROM OLD."evidenceVersion"
+     OR NEW."signedAt" IS DISTINCT FROM OLD."signedAt"
      OR NEW."totalCents" IS DISTINCT FROM OLD."totalCents"
      OR NEW."status" IS DISTINCT FROM OLD."status"
      OR NEW."settledAt" IS DISTINCT FROM OLD."settledAt") THEN
@@ -63,6 +67,8 @@ BEGIN
   AND (NEW."amountCents" IS DISTINCT FROM OLD."amountCents"
    OR NEW."customerId" IS DISTINCT FROM OLD."customerId"
    OR NEW."source" IS DISTINCT FROM OLD."source"
+   OR NEW."method" IS DISTINCT FROM OLD."method"
+   OR NEW."recordedByUserId" IS DISTINCT FROM OLD."recordedByUserId"
    OR NEW."stripeChargeId" IS DISTINCT FROM OLD."stripeChargeId"
    OR NEW."receivedOn" IS DISTINCT FROM OLD."receivedOn") THEN
   RAISE EXCEPTION 'Settled signing credit receipt cannot be changed' USING ERRCODE = '23514';

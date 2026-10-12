@@ -9,7 +9,7 @@ sibling property's bill. This W-22 batch is an outcome boundary, not a quota.
 | Capability / criterion | Code | Automated proof | Deployed / real integration acceptance | Next |
 | --- | --- | --- | --- | --- |
 | Frozen signed amount and TEST Stripe settlement | Implemented through #420 | Exact-head CI and disposable PostgreSQL; authenticated provider evidence path tested | LIVE disabled; no live end-to-end acceptance | Keep existing isolation and reconciliation |
-| Receipt-bound per-agreement down-payment entitlement | W-22D9 in progress; not merged | Focused disposable PostgreSQL tests; exact-head CI and review pending | Not deployed or accepted | Complete D9 gates and merge |
+| Receipt-bound per-agreement down-payment entitlement | Implemented in W-22D9 (#421) | Disposable PostgreSQL and exact-head CI are required | Not deployed or accepted | Implement W-22D10 exact first-invoice application |
 | First delivery invoice credit exactly once (local and Stripe) | NOT implemented | NOT proven | NOT accepted; never display credited or paid invoice | Implement next eligible W-22D10 with provider allocation/readback |
 | Cancellation, refunds, and per-machine hookup/delivery acceptance | NOT complete | NOT proven end-to-end | NOT accepted | Follow the approved W-22 dependency chain after credit accounting |
 
