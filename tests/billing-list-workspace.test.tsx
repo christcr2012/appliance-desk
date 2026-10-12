@@ -56,10 +56,13 @@ it("statements do not fetch the invoice list and authorization runs before finan
   );
   expect(m.page).not.toHaveBeenCalled();
   expect(m.count).not.toHaveBeenCalled();
-  m.guard.mockRejectedValue(new Error("denied"));
+  const denial = new Error("denied");
+  m.guard.mockRejectedValue(denial);
   m.balances.mockClear();
-  await expect(Page({ searchParams: Promise.resolve({}) })).rejects.toThrow(
-    "denied",
+  const rejection = await Page({ searchParams: Promise.resolve({}) }).then(
+    () => null,
+    (error: unknown) => error,
   );
+  expect(rejection).toBe(denial);
   expect(m.balances).not.toHaveBeenCalled();
 });

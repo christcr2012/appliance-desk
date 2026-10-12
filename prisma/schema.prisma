@@ -920,6 +920,7 @@ model RentalAgreement {
   lines RentalLine[]
   signingChargeSnapshot AgreementSigningCharge?
   signingPaymentObligation AgreementSigningPayment?
+  signingDownPaymentCredit SigningDownPaymentCredit?
 
   signature   SignatureRecord?
   jobs        Job[]
@@ -987,6 +988,7 @@ model AgreementSigningPayment {
   updatedAt         DateTime @updatedAt
 
   attempts          SigningPaymentAttempt[]
+  firstInvoiceEntitlement SigningDownPaymentCredit?
 
   @@index([status, signedAt])
 }
@@ -994,6 +996,19 @@ model AgreementSigningPayment {
 // W-22D6: reserving a collection request is not receiving money.
 // Only an authenticated Stripe settlement or explicit owner-confirmed receipt
 // may later transition an attempt and the parent obligation.
+// W-22: an immutable, receipt-backed entitlement, not yet an invoice application.
+ // A separately audited, per-invoice accounting operation must consume it.
+model SigningDownPaymentCredit {
+  agreementId      String @id
+  obligation       AgreementSigningPayment @relation(fields: [agreementId], references: [agreementId], onDelete: Restrict, map: "SigningDownPaymentCredit_agreementId_fkey")
+  agreement        RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict, map: "SigningDownPaymentCredit_rentalAgreement_fkey")
+  receiptId        String @unique
+  receipt          Receipt @relation(fields: [receiptId], references: [id], onDelete: Restrict)
+  orderFingerprint String
+  amountCents      Int
+  createdAt        DateTime @default(now())
+}
+
 model SigningPaymentAttempt {
   id               String @id @default(cuid())
   agreementId      String
@@ -1944,6 +1959,7 @@ model Receipt {
   payments         Payment[]
   fundedDeposit    Deposit?
   signingPaymentObligation AgreementSigningPayment?
+  signingDownPaymentCredit SigningDownPaymentCredit?
   createdAt        DateTime      @default(now())
 
   @@index([customerId, receivedOn])

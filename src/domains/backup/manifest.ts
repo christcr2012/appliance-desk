@@ -42,6 +42,7 @@ export const BACKUP_MODEL_POLICY = {
   AgreementSigningCharge: "agreementSigningCharge",
   AgreementSigningPayment: "agreementSigningPayment",
   SigningPaymentAttempt: "signingPaymentAttempt",
+  SigningDownPaymentCredit: "signingDownPaymentCredit",
   EarlyReturnResolution: "earlyReturnResolution",
   RentalLine: "rentalLine",
   ApplianceAssignment: "applianceAssignment",
