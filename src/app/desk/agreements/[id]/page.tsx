@@ -16,6 +16,7 @@ import { formatMoney } from "@/lib/money-ui";
 import { getPreparedSigningChargeReview } from "@/domains/billing/signing-charge-review";
 import { SigningChargePrepareForm } from "./signing-charge-prepare-form";
 import { assessPreparedSigningCharges } from "@/domains/billing/signing-charge-readiness";
+import { getDraftSigningTaxReview } from "@/domains/billing/signing-charge-tax-review";
 
 export const metadata = { title: "Agreement" };
 
@@ -37,11 +38,12 @@ export default async function AgreementDetailPage({
     notFound();
   }
 
-  const [endQuote, signedArtifactId, signingPreview, preparedCharges] = await Promise.all([
+  const [endQuote, signedArtifactId, signingPreview, preparedCharges, taxReview] = await Promise.all([
     agreement.status === "ACTIVE" && agreement.termMonths === null ? getMonthToMonthEndQuote(agreement.id) : null,
     agreement.signature?.signedAt ? latestArtifactId("SIGNED_AGREEMENT", agreement.id) : null,
     agreement.status === "DRAFT" ? getDraftSigningChargePreview(agreement.id) : null,
     agreement.status === "DRAFT" ? getPreparedSigningChargeReview(agreement.id) : [],
+    agreement.status === "DRAFT" ? getDraftSigningTaxReview(agreement.id) : null,
   ]);
   const readiness = preparedCharges.length > 0
     ? assessPreparedSigningCharges(preparedCharges.map((row) => row.agreementId), preparedCharges)
@@ -138,6 +140,36 @@ export default async function AgreementDetailPage({
               <p className="mt-2 text-sm font-medium">
                 Not approved for signing, freezing, charging or sending to customers.
               </p>
+            </div>
+          )}
+          {taxReview && preparedCharges.length > 0 && (
+            <div className="mt-3 rounded-md border border-border p-3">
+              <h3 className="text-sm font-semibold">Setup tax — private working figures</h3>
+              <p className="mt-1 text-sm text-ink-soft">
+                {taxReview.orderReady
+                  ? "Tax candidates calculated for owner review only."
+                  : "Tax candidates cannot be finalized until the items below are resolved."}
+                {" "}These are not signed, payable or customer-approved totals.
+              </p>
+              {taxReview.rows.map((row) => (
+                <div key={row.agreementId} className="mt-2 border-t border-border pt-2 text-sm">
+                  <p className="font-medium">Agreement {row.agreementId} — draft version {row.version}</p>
+                  {row.review.status === "CALCULATED_DRAFT" ? (
+                    <p className="text-ink-soft">
+                      Candidate setup tax: {formatMoney(row.review.setupTaxCents ?? 0)};
+                      candidate signing total: {formatMoney(row.review.candidateSigningTotalCents ?? 0)}.
+                      Not an invoice or collection authorization.
+                    </p>
+                  ) : (
+                    <ul className="list-disc pl-5 text-ink-soft">
+                      {row.review.reasons.map((reason) => <li key={reason}>{reason}</li>)}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              {taxReview.reasons.length > 0 && <p className="mt-2 text-sm text-ink-soft">
+                {taxReview.reasons.length} outstanding item(s) prevent an order-wide candidate total.
+              </p>}
             </div>
           )}
           {preparedCharges.length > 0 ? (

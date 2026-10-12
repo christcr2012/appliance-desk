@@ -323,3 +323,12 @@ runbook now documents bounded isolated Postgres tests, exact-head CI and
 manual review fallback. **Next: W-22C3 immutable agreement totals and guarded
 send/sign**, followed by W-22 payment/credit/cancellation/delivery. IN-79
 remains open; W-23 is still blocked.
+
+## W-22C3 — private order-wide tax review (#404)
+
+OWNER/ADMIN can inspect a per-agreement setup-tax candidate based solely on
+stored draft records and confirmed category-specific jurisdiction evidence.
+No posted or signed total, provider payment, credit or customer communication
+is created. Tax uncertainty remains visible and blocked from being described
+as payable. W-22 and IN-79 remain open; next W-22C4 contract draft/freeze
+foundation, then server send/sign, collection and delivery. W-23 blocked.
