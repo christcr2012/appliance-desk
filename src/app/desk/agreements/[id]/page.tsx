@@ -151,6 +151,7 @@ export default async function AgreementDetailPage({
                   : "Tax candidates cannot be finalized until the items below are resolved."}
                 {" "}These are not signed, payable or customer-approved totals.
               </p>
+              {taxReview.orderDraft?.totals && <p className="mt-3 font-semibold">All properties — private draft setup, tax and down payment total: {formatMoney(taxReview.orderDraft.totals.allInCandidateCents)}. Not signed or payable.</p>}
               {taxReview.rows.map((row) => (
                 <div key={row.agreementId} className="mt-2 border-t border-border pt-2 text-sm">
                   <p className="font-medium">Agreement {row.agreementId} — draft version {row.version}</p>

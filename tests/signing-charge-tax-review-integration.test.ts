@@ -78,6 +78,22 @@ describe.skipIf(!enabled)("W-22C3 private signing tax review (disposable databas
     expect(result.reasons.join(" ")).toMatch(/Verify every jurisdiction/);
   });
 
+  it("assembles a private all-in order candidate when the setup fee is waived", async () => {
+    await prisma.agreementSigningCharge.update({ where: { agreementId },
+      data: { setupFeeCents: 0, signingSubtotalCents: 0 } });
+    try {
+      const result = await review();
+      expect(result).toMatchObject({ orderReady: true,
+        orderDraft: { status: "OWNER_DRAFT_ONLY",
+          eligibleForSigning: false, eligibleForCollection: false,
+          totals: { setupFeeCents: 0, setupTaxCents: 0, allInCandidateCents: 0 } } });
+      expect(result.orderDraft?.draftFingerprint).toMatch(/^[0-9a-f]{64}$/);
+    } finally {
+      await prisma.agreementSigningCharge.update({ where: { agreementId },
+        data: { setupFeeCents: 4500, signingSubtotalCents: 4500 } });
+    }
+  });
+
   it("fails closed if saved location identity no longer matches", async () => {
     await prisma.agreementSigningCharge.update({ where: { agreementId },
       data: { serviceAddressId: "wrong-location" } });

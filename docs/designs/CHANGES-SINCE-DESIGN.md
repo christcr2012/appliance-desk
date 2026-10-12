@@ -688,3 +688,15 @@ artifact change. Next W-22C4 inherits the existing category proof check and
 must still freeze authenticated exact totals and guard send/sign.
 
 Codex review fix #404: any positive setup fee now requires current AddressTaxLocation.status VERIFIED before reading jurisdiction tax rules, even when partial jurisdiction links exist. A real Postgres NEEDS_REVIEW-with-linked-state test blocks all tax candidates.
+
+### W-22C4 owner draft contract assembly (#405)
+
+`assembleSigningOrderDraft` in
+`src/domains/billing/signing-order-draft-contract.ts` validates one tax row
+per prepared agreement, per-address setup fee uniqueness, exact integer-cent
+jurisdiction totals and stable source/version/fingerprint. It returns
+`OWNER_DRAFT_ONLY`, never signer/collector permission. The owner-only tax
+review adapter now includes `orderDraft`, and `/desk/agreements/[id]` shows
+aggregate private totals. No schema or provider change. W-22C5 must turn
+verified facts into a durable immutable snapshot under locks and enforce
+all signing/payment gates, including CPA IN-79.
