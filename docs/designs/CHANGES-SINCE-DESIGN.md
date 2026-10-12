@@ -700,3 +700,7 @@ review adapter now includes `orderDraft`, and `/desk/agreements/[id]` shows
 aggregate private totals. No schema or provider change. W-22C5 must turn
 verified facts into a durable immutable snapshot under locks and enforce
 all signing/payment gates, including CPA IN-79.
+
+### W-22C5 — reviewed signing evidence (2026-10-11)
+
+Private per-agreement freeze evidence is additive on AgreementSigningCharge. Reuse its order fingerprint, evidence and snapshot version in future guarded send/sign/payment flows; never reinterpret the private draft or mutable settings as a payable total. CPA gate IN-79 remains independent and open.

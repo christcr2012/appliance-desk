@@ -955,6 +955,10 @@ model AgreementSigningCharge {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   frozenAt             DateTime?
+  frozenOrderFingerprint String?
+  frozenAllInCents      Int?
+  frozenSetupTaxCents   Int?
+  frozenChargeEvidence  Json?
 
   @@index([sourceEstimateId, serviceAddressId])
 }

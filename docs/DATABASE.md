@@ -644,3 +644,15 @@ invoices/receipts/signed terms or proof of tax status or settlement.
 The transaction service serializes preparation under agreement locks,
 and the backup manifest preserves the child record. Migration:
 `20261015110000_w22_signing_charge_snapshots`.
+
+### W-22C5 frozen signing evidence
+
+AgreementSigningCharge keeps the DRAFT allocation and, separately, nullable
+frozenOrderFingerprint, frozenAllInCents, frozenSetupTaxCents and
+frozenChargeEvidence (versioned per-agreement JSON jurisdiction/amount facts)
+alongside frozenAt. The additive check requires all new frozen evidence fields
+together, not partial additions. Existing frozenAt-only legacy test/records
+are not silently converted to approved signing totals. The owner-only domain
+transaction writes evidence atomically after independent CPA-category review.
+This is NOT a Stripe receipt or signed contract; send/sign/payment readers
+must reject absent/incomplete frozen evidence and verify its own provenance.
