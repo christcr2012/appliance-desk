@@ -146,6 +146,34 @@ describe("createCheckoutSessionForAgreement — mode selection", () => {
     );
   });
 
+  it("refuses legacy checkout for a frozen W-22 charge before any Stripe or tax side effect", async () => {
+    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({
+      signingChargeSnapshot: { id: "charge-1" },
+      signature: { signingOrderFingerprint: "a".repeat(64), signingAllInCents: 4500, signingEvidenceVersion: 1 },
+    }));
+    const { createCheckoutSessionForAgreement } = await import("@/domains/billing/checkout");
+    await expect(createCheckoutSessionForAgreement("agr-1")).rejects.toThrow(/legacy checkout is blocked/);
+    expect(checkoutSessionsCreate).not.toHaveBeenCalled();
+    expect(depositCount).not.toHaveBeenCalled();
+    expect(taxMocks.rateVersionIds).not.toHaveBeenCalled();
+  });
+
+  it("refuses even incomplete or not-yet-signed W-22 charge evidence", async () => {
+    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ signingChargeSnapshot: { id: "charge-1" } }));
+    const { createCheckoutSessionForAgreement } = await import("@/domains/billing/checkout");
+    await expect(createCheckoutSessionForAgreement("agr-1")).rejects.toThrow(/legacy checkout is blocked/);
+    expect(checkoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("refuses signature-only W-22 evidence when the charge row was lost", async () => {
+    rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({
+      signature: { signingOrderFingerprint: "a".repeat(64), signingAllInCents: 4500, signingEvidenceVersion: 1 },
+    }));
+    const { createCheckoutSessionForAgreement } = await import("@/domains/billing/checkout");
+    await expect(createCheckoutSessionForAgreement("agr-1")).rejects.toThrow(/legacy checkout is blocked/);
+    expect(checkoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
   it("still refuses an agreement with nothing at all to charge (no rental lines)", async () => {
     rentalAgreementFindUniqueOrThrow.mockResolvedValue(baseAgreement({ lines: [] }));
     const { createCheckoutSessionForAgreement } = await import("@/domains/billing/checkout");

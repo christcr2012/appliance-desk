@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-freeze";
+import { createCheckoutSessionForAgreement } from "@/domains/billing/checkout";
 import { getSignatureRecordForSigning, sendForSignature, signAgreement } from "@/domains/agreements";
 import { seedTaxReadyContext } from "./helpers/tax-ready";
 
@@ -85,6 +86,13 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
       .toBe("AWAITING_SIGNATURE");
     await prisma.signatureRecord.update({ where: { id: signatureId },
       data: { signingOrderFingerprint: original.signingOrderFingerprint } });
+  });
+
+  it("never falls back to a legacy charge for a real frozen customer-accepted agreement", async () => {
+    const before = await prisma.providerOperation.count();
+    await expect(createCheckoutSessionForAgreement(agreementId)).rejects.toThrow(/legacy checkout is blocked/);
+    expect(await prisma.providerOperation.count()).toBe(before);
+    expect(await prisma.invoice.count({ where: { agreementId } })).toBe(0);
   });
 
   it("accepts the unchanged frozen offer using the atomic signature transition", async () => {
