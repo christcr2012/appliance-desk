@@ -1,3 +1,11 @@
+// Existing terms/notices/document-artifact assertions predate W-22 monetary
+// evidence; W-22 integration separately exercises real frozen verification.
+vi.mock("@/domains/billing/signing-frozen-verify", () => ({
+  getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
+    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1,
+  }],
+}));
+import { vi } from "vitest";
 import { createHash, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -109,6 +117,13 @@ describe.skipIf(!enabled)("Batch D evidence artifacts (real Postgres)", () => {
 
     signatureA = await createAgreement(ids.agreementA, ids.customerA, ids.addressA, "Washer");
     signatureFail = await createAgreement(ids.agreementFail, ids.customerB, ids.addressB, "Dryer");
+    // These legacy document-artifact fixtures isolate signed-PDF behavior.
+    // W-22 separately verifies the immutable order against real tax evidence.
+    await prisma.signatureRecord.updateMany({
+      where: { id: { in: [signatureA, signatureFail] } },
+      data: { signingOrderFingerprint: "a".repeat(64), signingAllInCents: 0,
+        signingEvidenceVersion: 1 },
+    });
 
     await prisma.invoice.create({
       data: {

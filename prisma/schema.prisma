@@ -1116,6 +1116,10 @@ model SignatureRecord {
   signerName  String?
   signerEmail String?
   ipAddress   String?
+  // W-22C6B: immutable evidence customer saw when this link was issued.
+  signingOrderFingerprint String?
+  signingAllInCents       Int?
+  signingEvidenceVersion  Int?
 
   createdAt DateTime @default(now())
 }

@@ -109,3 +109,32 @@ The progress log is for resumability, not permission to publish partial work.
 ## Sandbox stale remote tracking (October 11, 2026)
 
 When a checkout lacks remote.origin.fetch, git fetch origin main may update only FETCH_HEAD, leaving origin/main stale. Compare git ls-remote origin refs/heads/main with git rev-parse origin/main; if mismatched, run git fetch origin +refs/heads/main:refs/remotes/origin/main. Preserve any preexisting dirty checkout and use a separate clean worktree.
+
+## October 12 — Next.js/Turbopack worktree dependency symlink
+
+A sandbox worktree at `/vercel/appliance-desk-w22c6b` passed unit,
+TypeScript and disposable DB checks but `npm run build` failed with
+`Symlink [project]/node_modules is invalid, it points out of the filesystem
+root`. Its `node_modules` was a symlink to another worktree, which
+Turbopack explicitly refused; this is **not** a product test failure.
+
+Inspect `ls -ld node_modules` first. If it is exactly the checkout-created
+symlink to the known dependency installation, preserve the target and
+replace only that symlink with a worktree-local dependency tree (a hardlink
+clone with `cp -al` is cheap on one filesystem; otherwise use the repository's
+normal install process). Never remove a real directory containing user work.
+Do not update/install packages into a shared hardlink clone; a real isolated
+`npm ci` is required before such mutations. Rerun the same browser/build
+check and then retain the exact-head CI gate.
+
+## October 12 — bounded 4-GB Sandbox browser-build resource gate
+
+After replacing the external and nested `node_modules` symlinks, the
+2-vCPU / 4-GB sandbox's local `npm run build` was killed with exit code
+137 during the disposable-browser acceptance run. This differs from the
+Turbopack symlink failure: it is a resource limit, not a new assertion.
+Do not retry the same heavy build repeatedly or silently upgrade paid
+sandbox resources. Record the exact local limitation, preserve successful
+focused/unit/disposable-Postgres checks and require the unchanged full
+GitHub exact-head CI/browser checks before merge. A browser acceptance claim
+is permissible only after the corresponding CI/browser job passes.

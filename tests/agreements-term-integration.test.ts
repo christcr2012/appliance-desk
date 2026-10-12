@@ -1,3 +1,11 @@
+// This pre-W-22 lifecycle suite tests terms/concurrency, not signing-money
+// persistence. A dedicated W-22 suite exercises the real frozen guard in Postgres.
+vi.mock("@/domains/billing/signing-frozen-verify", () => ({
+  getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
+    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1,
+  }],
+}));
+import { vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";

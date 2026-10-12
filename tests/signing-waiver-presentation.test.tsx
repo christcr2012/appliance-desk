@@ -61,3 +61,20 @@ it("shows no locked terms on a month-to-month agreement or an older one with no 
   render(await SignPage({ params: Promise.resolve({ id: "sig" }) }));
   expect(screen.queryByText("Ending this agreement early")).toBeNull();
 });
+
+it("shows the exact frozen per-location tax-inclusive signing amount without claiming payment", async () => {
+  m.signature.mockResolvedValue({
+    id: "sig", agreement: { ...baseAgreement, termMonths: null },
+    frozenSigningLine: {
+      setupFeeCents: 4500, setupTaxCents: 135, downPaymentCents: 3500,
+      allInCents: 8135, orderFingerprint: "a".repeat(64), schemaVersion: 1,
+    },
+  });
+  render(await SignPage({ params: Promise.resolve({ id: "sig" }) }));
+  expect(screen.getByText("Administrative setup: $45")).toBeVisible();
+  expect(screen.getByText("Setup sales tax: $1.35")).toBeVisible();
+  expect(screen.getByText("First-month down payment: $35")).toBeVisible();
+  expect(screen.getByText("Tax-inclusive signing amount: $81.35")).toBeVisible();
+  expect(screen.getByText(/not a receipt or confirmation of payment/i)).toBeVisible();
+  expect(screen.getByText("Total: $40/month")).toBeVisible();
+});

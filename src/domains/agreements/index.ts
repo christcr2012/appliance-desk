@@ -7,6 +7,8 @@ import {
   recomputeForAgreementInTx,
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
+import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { offerMatchesFrozenEvidence } from "./signing-offer-proof";
 import {
   assertTaxReadyForAgreement,
   combinedRentalTaxRateMilliPercentForAgreement,
@@ -475,6 +477,12 @@ export async function sendForSignature(userId: string, agreementId: string) {
       throw new Error("Add at least one appliance to this agreement first.");
     }
 
+    // Financial facts are reviewed and frozen per location, never computed
+    // from a browser-supplied draft while releasing a signing link.
+    const frozen = await getFrozenSigningOrderInTx(tx, agreementId);
+    const signingLine = frozen.find(row => row.agreementId === agreementId);
+    if (!signingLine) throw new Error("Frozen signing charges are not available.");
+
     const taxDate = new Date();
     await assertTaxReadyForAgreement(tx, agreementId, taxDate);
     const taxRateMilliPercent =
@@ -485,7 +493,7 @@ export async function sendForSignature(userId: string, agreementId: string) {
       );
 
     const signature = await tx.signatureRecord.create({
-      data: { agreementId, provider: "typed_signature" },
+      data: { agreementId, provider: "typed_signature", signingOrderFingerprint: signingLine.orderFingerprint, signingAllInCents: signingLine.allInCents, signingEvidenceVersion: signingLine.schemaVersion },
     });
     // A fixed-term agreement is locked to the ending/renewal terms in force
     // right now (or this customer's own override): later changes to the
@@ -511,6 +519,8 @@ export async function sendForSignature(userId: string, agreementId: string) {
         action: "agreement.send_for_signature",
         entityType: "RentalAgreement",
         entityId: agreementId,
+        newValue: { frozenOrderFingerprint: signingLine.orderFingerprint,
+          frozenAllInCents: signingLine.allInCents, evidenceVersion: signingLine.schemaVersion },
       },
     });
     return signature;
@@ -518,23 +528,26 @@ export async function sendForSignature(userId: string, agreementId: string) {
 }
 
 export async function getSignatureRecordForSigning(id: string) {
-  const signature = await prisma.signatureRecord.findUnique({
-    where: { id },
-    include: {
-      agreement: {
-        include: {
-          customer: {
-            include: { user: { select: { name: true, email: true } } },
-          },
-          serviceAddress: true,
-          lines: true,
-        },
-      },
-    },
+  return prisma.$transaction(async (tx) => {
+    const signature = await tx.signatureRecord.findUnique({
+      where: { id },
+      include: { agreement: { include: {
+        customer: { include: { user: { select: { name: true, email: true } } } },
+        serviceAddress: true, lines: true,
+      } } },
+    });
+    if (!signature || signature.signedAt ||
+        signature.agreement.status !== "AWAITING_SIGNATURE") return null;
+    try {
+      const order = await getFrozenSigningOrderInTx(tx, signature.agreementId);
+      const line = order.find(row => row.agreementId === signature.agreementId);
+      if (!offerMatchesFrozenEvidence(signature, line)) return null;
+      return { ...signature, frozenSigningLine: line };
+    } catch {
+      // Fail closed without exposing other agreement/customer details.
+      return null;
+    }
   });
-  if (!signature || signature.signedAt) return null;
-  if (signature.agreement.status !== "AWAITING_SIGNATURE") return null;
-  return signature;
 }
 
 import { newestMonthToMonthVersionInTx } from "./month-to-month";
@@ -566,12 +579,26 @@ export async function signAgreement(
       throw new Error("This agreement isn't available to sign right now.");
     }
 
+    // Recheck inside the signature's locked transaction. A stale link cannot
+    // accept different money/tax facts from the reviewed customer offer.
+    const frozen = await getFrozenSigningOrderInTx(tx, agreement.id);
+    const line = frozen.find(row => row.agreementId === agreement.id);
+    const offered = await tx.signatureRecord.findUnique({
+      where: { id: signatureRecordId },
+      select: { signingOrderFingerprint: true, signingAllInCents: true,
+        signingEvidenceVersion: true },
+    });
+    if (!line || !offerMatchesFrozenEvidence(offered, line))
+      throw new Error("The frozen signing agreement is no longer valid.");
     const signedAt = new Date();
     const signResult = await tx.signatureRecord.updateMany({
       where: {
         id: signatureRecordId,
         agreementId: agreement.id,
         signedAt: null,
+        signingOrderFingerprint: line.orderFingerprint,
+        signingAllInCents: line.allInCents,
+        signingEvidenceVersion: line.schemaVersion,
       },
       data: {
         signerName: input.signerName,

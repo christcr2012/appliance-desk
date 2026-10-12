@@ -704,3 +704,10 @@ all signing/payment gates, including CPA IN-79.
 ### W-22C5 — reviewed signing evidence (2026-10-11)
 
 Private per-agreement freeze evidence is additive on AgreementSigningCharge. Reuse its order fingerprint, evidence and snapshot version in future guarded send/sign/payment flows; never reinterpret the private draft or mutable settings as a payable total. CPA gate IN-79 remains independent and open.
+
+### W-22C6B — signing-link version lock
+
+SignatureRecord retains the frozen per-agreement total and canonical order
+fingerprint at send time; customer read and sign revalidate this exact match.
+This is separate from future signing-payment settlement. IN-79 and owner
+financial/communication activation gates remain unchanged.

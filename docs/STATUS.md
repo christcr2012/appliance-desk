@@ -1,4 +1,14 @@
 # STATUS — current work, blockers and next action
+## W-22C6B guarded frozen send/sign (candidate PR #409)
+
+A server-side link now binds the customer-visible tax-inclusive signing
+amount to the independently frozen per-agreement order fingerprint. A
+missing or mismatched snapshot denies send/sign. The public signing page
+shows exactly that address's setup, tax and down-payment evidence and does
+not claim payment. This remains unmerged pending full CI/review. W-22 PARTIAL;
+CPA gate IN-79 OPEN, W-23 blocked.
+
+
 ## W-22C6A — frozen evidence integrity readback (#408)
 
 The server-only readback verifies all per-agreement cents, customer ownership/address and the canonical tax/jurisdiction fingerprint. JSONB key order is normalized. It cannot send, sign or collect. W-22 PARTIAL, CPA IN-79 OPEN, W-23 blocked; next W-22C6B guarded send/sign and customer totals.

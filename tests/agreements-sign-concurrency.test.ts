@@ -22,7 +22,11 @@ function makeTx() {
     // Signing locks the agreement row (FOR UPDATE) and re-reads its status
     // inside the transaction before the conditional signature update.
     $queryRaw: async () => [{ id: "agr-1" }],
-    signatureRecord: { updateMany: signatureRecordUpdateMany },
+    signatureRecord: {
+      updateMany: signatureRecordUpdateMany,
+      findUnique: async () => ({ signingOrderFingerprint: "a".repeat(64),
+        signingAllInCents: 0, signingEvidenceVersion: 1 }),
+    },
     rentalAgreement: {
       findUniqueOrThrow: async () => ({
         id: "agr-1",
@@ -36,6 +40,13 @@ function makeTx() {
   };
 }
 
+// This legacy concurrency suite isolates signing's atomic update from the
+// independently covered W-22 frozen-order database verification.
+vi.mock("@/domains/billing/signing-frozen-verify", () => ({
+  getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
+    agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1,
+  }],
+}));
 vi.mock("@/domains/documents/artifacts", () => ({
   createSignedAgreementArtifactInTx,
 }));
@@ -85,7 +96,11 @@ describe("signAgreement — atomic conditional update", () => {
     });
 
     expect(signatureRecordUpdateMany).toHaveBeenCalledWith({
-      where: { id: "sig-1", agreementId: "agr-1", signedAt: null },
+      where: {
+        id: "sig-1", agreementId: "agr-1", signedAt: null,
+        signingOrderFingerprint: "a".repeat(64), signingAllInCents: 0,
+        signingEvidenceVersion: 1,
+      },
       data: expect.objectContaining({ signerName: "Jane Doe" }),
     });
     expect(rentalAgreementUpdate).toHaveBeenCalled();
