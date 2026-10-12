@@ -1,5 +1,10 @@
 # STATUS — current work, blockers and next action
 
+## W-22C5 reviewed frozen charge evidence (merged #407)
+
+The private owner-only freeze now stores each prepared agreement's immutable, versioned, tax-inclusive signing evidence and independent jurisdiction proof. It does not send, sign or collect; the next approved unit is W-22C6 guarded send/sign with customer presentation. IN-79 CPA gate remains OPEN and W-23 blocked. See W-22 card and independent test evidence.
+
+
 ## October 11 development-infrastructure upgrade (DEV-EFF-406; merged #406)
 
 The separate diagnostic disposable-Postgres probe selects literal DB test specs without expensive import-graph expansion. Existing mandatory preflight, exact-head CI and provider/owner gates remain unchanged. Sandbox stale tracking-ref diagnosis added to recovery guidance. Next product capability is W-22C5: reviewed immutable all-in signing evidence and guarded send/sign. IN-79 remains OPEN and W-23 blocked. See docs/pr-cards/DEV-EFF-406.md; record only after exact-head CI and review.
