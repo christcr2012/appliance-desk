@@ -237,3 +237,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Daily release and build-cost policy (owner, 2026-10-12)
 
 PRs target `main`. Follow [the daily release policy](.github/RELEASE-POLICY.md): only the daily scheduled job updates `live`; Vercel builds only `live`. Do not request or wait for a Vercel preview deployment, manually deploy production, or promote at a development batch boundary. Keep all existing local/Actions tests mandatory; this policy introduces no new application build/browser requirement where none existed. This newer owner instruction supersedes older batch/weekly release guidance.
+
+## Neon idle-cost profile (owner, 2026-10-12)
+
+Read [the verified cost profile and future scaling procedure](.github/NEON-COST-POLICY.md) before changing database capacity or adding scheduled database traffic. Keep 0.25 CU capped computes and five-minute autosuspend while no real-world workload exists; performance increases require measured need and owner-approved spend.
