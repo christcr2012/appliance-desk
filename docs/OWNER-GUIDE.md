@@ -738,3 +738,7 @@ mean the charge is approved, due, collected, sent or locked into a contract.
 If the tax rule or jurisdiction lacks CPA-confirmed evidence, resolve that
 outside the draft workflow before a final, tax-inclusive agreement can be
 implemented. The CPA question IN-79 remains open.
+
+### Order-wide draft signing review (W-22C4)
+
+The owner can view a private, all-location signing-cost candidate after all prepared charges and tax evidence reconcile. This includes setup fees, separately calculated setup tax, and first-month down payments. It is NOT a customer bill, signed contract or payment authorization. CPA gate IN-79 and final freeze/send/checkout remain open.

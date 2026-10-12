@@ -332,3 +332,15 @@ No posted or signed total, provider payment, credit or customer communication
 is created. Tax uncertainty remains visible and blocked from being described
 as payable. W-22 and IN-79 remain open; next W-22C4 contract draft/freeze
 foundation, then server send/sign, collection and delivery. W-23 blocked.
+
+## W-22C4 — canonical private all-in order candidate (#405)
+
+The owner desk now assembles a single private draft across every related
+agreement and delivery property. It reconciles setup fees, first-month
+prepayments, separately validated setup tax and jurisdiction evidence.
+A stable draft fingerprint detects changes. Neither the calculated totals
+nor the owner display constitute a customer contract, a charge, signed
+payment evidence or approval to collect; all such paths remain disabled.
+**Next: W-22C5 reviewed immutable per-agreement tax-inclusive freeze and
+server send/sign gates**, followed by W-22 checkout/manual payment, credit,
+refund/cancellation and delivery acceptance. IN-79 open; W-23 blocked.
