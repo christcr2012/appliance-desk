@@ -1,5 +1,23 @@
 # STATUS — current work, blockers and next action
 
+## Owner-requested release maintenance — shared fixture isolation (2026-10-13)
+
+The six MCP production aliases reached READY at their checked release snapshots.
+Appliance Desk release automation fixes #428 and registry recovery #430 are merged.
+The owner explicitly requested a one-off manual release after checks; routine
+agent development still merges main, and nightly checked main→live runs at
+00:01 America/Denver. Provider LIVE, communications and spending gates remain.
+
+Main run 38404970079 proved an intermittent W-22 signing failure: indirect callers
+of seedTaxReadyContext were not in SHARED_SETTINGS_TESTS and could overwrite or
+restore BusinessSettings.singleton while another fixture signed an agreement.
+Ten existing helper callers now join the serial lane; the guard recognizes helper
+calls even without an inline database-name marker. No application money/tax
+semantics, assertions or suites are removed. Local source/config inventory and
+secret checks pass; full exact-head Actions unit/browser and main checks remain
+required before release. Active W-22D14 PR #429 is left to its existing agent.
+
+
 ## W-22D13 PR #427 — shared-settings CI recovery (2026-10-13)
 
 Live GitHub PR #427 head `cbc96f7` passed all four saved-session browser
