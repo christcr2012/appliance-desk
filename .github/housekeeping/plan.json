@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "repository": "christcr2012/appliance-desk",
+  "archive": "archive/housekeeping-2026-10-13",
+  "branches": [
+    {
+      "name": "ai/claude/transfer-smoke-test",
+      "sha": "00d801e27177a80e1ed7f3cf7b34ab6d45b76314",
+      "disposition": "test-fixture",
+      "prs": [],
+      "reason": "Reviewed historical recovery branch; superseded implementation or infrastructure handoff retained in archive."
+    },
+    {
+      "name": "ai/gpt6/t7c-guided-filing-handoff",
+      "sha": "ec6defa24b850bb1bf531edf865228c1dfb994dc",
+      "disposition": "superseded",
+      "prs": [
+        326
+      ],
+      "reason": "Reviewed historical recovery branch; superseded implementation or infrastructure handoff retained in archive."
+    }
+  ]
+}

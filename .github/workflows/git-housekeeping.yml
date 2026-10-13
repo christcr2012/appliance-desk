@@ -1,0 +1,45 @@
+name: Owner-authorized Git housekeeping
+on:
+  pull_request:
+    paths: ['.github/housekeeping/**', '.github/workflows/git-housekeeping.yml']
+  push:
+    branches: [main]
+    paths: ['.github/housekeeping/**', '.github/workflows/git-housekeeping.yml']
+permissions:
+  contents: read
+jobs:
+  housekeeping-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - run: node --test .github/housekeeping/cleanup.test.mjs
+      - name: Validate exact repository and branch manifest
+        run: node --input-type=module -e 'import {readFileSync} from "node:fs"; import {validatePlan} from "./.github/housekeeping/cleanup.mjs"; validatePlan(JSON.parse(readFileSync(".github/housekeeping/plan.json","utf8")), process.env.GITHUB_REPOSITORY)'
+  preserve-and-prune:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: housekeeping-plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: read
+    concurrency:
+      group: owner-git-housekeeping-20261013
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - run: node .github/housekeeping/cleanup.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
