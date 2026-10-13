@@ -1,7 +1,8 @@
 name: Daily live policy
 on:
   schedule:
-    - cron: '23 10 * * *' # 04:23 Denver daylight / 03:23 standard; GitHub may delay.
+    - cron: '1 0 * * *' # 00:01 Denver year-round; GitHub may delay.
+      timezone: America/Denver
   pull_request:
     types: [opened, synchronize, reopened, edited]
   push:
@@ -35,7 +36,7 @@ jobs:
     if: github.event_name == 'schedule' && github.ref == 'refs/heads/main'
     needs: policy
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     permissions:
       contents: write
       checks: read
