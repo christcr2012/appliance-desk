@@ -153,10 +153,12 @@ export default async function JobDetailPage({
           id: job.id, type: job.type, status: job.status,
           completionNotes: job.completionNotes, checklist: job.checklist,
           swapReplacementIds: job.swapReplacementIds,
-          appliances: job.appliances.map(({ appliance, result, role }) => ({ result: result ?? null, role, appliance: {
-            id: appliance.id, assetNumber: appliance.assetNumber, status: appliance.status,
-            applianceType: { name: appliance.applianceType.name },
-          } })),
+          appliances: job.appliances.map(({ appliance, result, role, newHookupItemsInstalled }) => ({
+            result: result ?? null, role, newHookupItemsInstalled, appliance: {
+              id: appliance.id, assetNumber: appliance.assetNumber, status: appliance.status,
+              applianceType: { name: appliance.applianceType.name },
+            },
+          })),
           photos: job.photos.map(({ id: photoId, altText }) => ({
             id: photoId,
             url: privatePhotoReadPath(photoId),

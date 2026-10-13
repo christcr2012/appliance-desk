@@ -38,6 +38,11 @@
       "purpose": "STAFF redacted DTO must project the per-machine hookup evidence, never finance fields."
     },
     {
+      "path": "src/app/desk/jobs/[id]/page.tsx",
+      "anchor": "JobDetailPanel",
+      "purpose": "Explicitly forward selected per-machine hookup evidence from server to staff and owner UI."
+    },
+    {
       "path": "tests/job-completion-integration.test.ts",
       "anchor": "describe.skipIf(!enabled)",
       "purpose": "Existing disposable PostgreSQL fixture and full completion regression."

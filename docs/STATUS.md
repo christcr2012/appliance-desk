@@ -1,8 +1,21 @@
 # STATUS — current work, blockers and next action
 
-## W-22D14 — new hookup proof per delivered appliance (in progress)
+## W-22D14 — new hookup proof per delivered appliance (PR #429 under verification)
 
-After merged #427 at main 621443d370669538980a63f83458ca8acffb15ad, selected the independently approved per-machine new hookup evidence from W-22. Implemented an additive nullable JobAppliance field (historical completed jobs remain unknown), delivered-only staff/owner form, truthful completed evidence, linked actionable missed-hookup task and partial-job result without disturbing custody or billing. New disposable-Postgres regressions verify true/missing/unknown, denial, replay and idempotent handoff; GitHub saved-session browser detected and led to repair of the STAFF redacted job-detail projection (no finance data); exact-head CI/browser/migration/review still required before claiming merged. D13 manual signing payments merged; W-22 PARTIAL, CPA IN-79 OPEN, recommended IN-75/76 unresolved, W-23 blocked. No LIVE, money-out or release.
+New per-machine true/false/unknown hookup evidence, missing-item high-priority
+follow-up, PARTIAL visit and unchanged delivered custody/billing are implemented.
+A saved-session staff browser test exposed an actual server-page projection omission:
+although `getDeskJobById` selected the persisted field, `page.tsx` dropped it
+before `JobDetailPanel`. The page now forwards it to STAFF and owner; existing
+browser regression asserts visible evidence before and after reload. Old records
+remain NULL (unknown). Selected local database/related tests and quick checks
+passed; the local Next.js browser build was killed (137) by this 4GB sandbox.
+Exact-head GitHub CI/browser, performance and review are still required. The
+branch merged current #431 fixture isolation and #430 official Postgres image,
+keeping both other-agent changes and all existing tests. No automated review
+was available due to Codex quota; manual disposition must be recorded.
+W-22 PARTIAL, CPA IN-79 OPEN, IN-75/76 recommendations only, W-23 blocked.
+No LIVE, money-out, customer communications, spending or manual release.
 
 ## Owner-requested release maintenance — shared fixture isolation (2026-10-13)
 
