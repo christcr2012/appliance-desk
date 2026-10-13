@@ -119,7 +119,11 @@ describe.skipIf(!enabled)("W-22 unpaid signing To do (actual PostgreSQL and requ
         x.href === "/desk/agreements/" + a));
       expect(ours).toHaveLength(2);
       expect(ours.map(x => x.amountCents)).toEqual([3500, 7200]);
-      expect(ours.map(x => x.since)).toEqual([signDates[0], signDates[2]]);
+      expect(ours[0].since).toEqual(signDates[0]);
+      const fail = await prisma.signingPaymentAttempt.findFirstOrThrow({
+        where: { agreementId: agreements[2], status: "FAILED" },
+      });
+      expect(ours[1].since).toEqual(fail.updatedAt);
       expect(results.rows.find(x => x.href.endsWith(agreements[1]!))).toBeUndefined();
       expect(ours[0].primaryAction?.href).toBe("/desk/agreements/" + agreements[0]);
       expect(ours[0].detail).toContain("not been recorded as paid");
