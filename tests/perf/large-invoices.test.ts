@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getInvoicesCount, getInvoicesPage } from "@/domains/billing";
+import { prisma } from "@/lib/prisma";
 import {
   createLargeInvoiceFixture,
   enforceRecordedBaseline,
@@ -19,6 +20,18 @@ describe.skipIf(!PERF_ENABLED)("Batch F 5,000-invoice billing list (isolated CI 
   afterAll(async () => {
     if (fixture) await fixture.cleanup();
   }, 30_000);
+
+  it("has the matching newest-first compound index after a real migration", async () => {
+    const indexes = await prisma.$queryRaw<Array<{ indexdef: string }>>`
+      SELECT indexdef FROM pg_indexes
+      WHERE schemaname = current_schema()
+        AND tablename = 'Invoice'
+        AND indexname = 'Invoice_createdAt_id_idx'
+    `;
+    expect(indexes).toHaveLength(1);
+    expect(indexes[0]!.indexdef).toContain('"createdAt" DESC');
+    expect(indexes[0]!.indexdef).toMatch(/\bid DESC\b/);
+  });
 
   it("keeps the real billing count + first page bounded within baseline", async () => {
     const result = await measuredMedian("f-large-invoices-billing-page", async () =>

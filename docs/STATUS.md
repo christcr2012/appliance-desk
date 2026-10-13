@@ -1,6 +1,29 @@
 # STATUS — current work, blockers and next action
 
 
+## Invoice-list performance investigation — index correction (PR pending, 2026-10-13)
+
+Post-#432 main `917b22c` is the verified baseline. Investigated the
+independent #429 5,000-invoice performance failure (5.42ms against 5.304ms
+guard) using disposable PostgreSQL and the actual count+page operation.
+EXPLAIN found sequential scan and top-N sort over 5,002 rows because the
+billing page orders by createdAt DESC and id DESC without a compound index.
+One isolated same-fixture before/after probe measured 3.82 -> 1.63 ms/op
+medians and EXPLAIN execution 1.551 -> 0.045ms with a disposable matching
+index. Root cause is demonstrably missing sort support; variability across
+runners still exists and is not explained away. The additive schema migration
+and index-regression test are undergoing full local/Actions validation.
+No threshold/fixture change, performance waiver, spending or deployment.
+
+W-22D15 (#432) merged with exact-head PR CI/review after safe failure
+deadlines and owner/manual evidence; provider Stripe TEST remains unverified.
+Owner IN-75/76 now answered, but case-specific refund authorization, counsel
+and implementation remain pending. Rental-only IN-84 answered and no
+rent-to-own scope. CPA IN-79 OPEN, W-22 PARTIAL, W-23 blocked.
+Next product unit: JIT W-22 cancellation and signing-through-delivery
+completion after this independent measured performance repair.
+
+
 ## Active W-22D15 — failed signing payment review, PR #432 qualifying CI recovery
 
 Current upstream main `2ba7776b462436ecb2b35dcab35a26e4b5477257`

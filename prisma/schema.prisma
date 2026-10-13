@@ -2043,6 +2043,9 @@ model Invoice {
   @@index([customerId])
   @@index([agreementId])
   @@index([issuedAt])
+  // Owner billing lists sort newest first with stable ID tie-breaker.
+  // Without this compound order index, 5k invoices need a heap scan + sort.
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "Invoice_createdAt_id_idx")
 }
 
 model InvoiceLineItem {

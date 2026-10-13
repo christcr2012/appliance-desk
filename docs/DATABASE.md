@@ -318,6 +318,10 @@ same external object twice or losing the local link.
   *in advance* — see docs/BUSINESS-RULES.md). Has a human-facing
   `invoiceNumber` separate from its internal id, its own immutable amount
   snapshot, and Batch B's integer `version` for deterministic racing writes.
+  The additive `Invoice_createdAt_id_idx` compound descending index preserves
+  stable newest-first billing list pagination without scanning and sorting
+  thousands of rows (migration `20261015210000_invoice_created_at_id_sort`).
+  The count and page APIs, invoice identity, and money fields are unchanged.
 - **InvoiceLineItem** — one priced line on an invoice (rent, a fee, the
   deposit, tax, a discount, a later credit or correction), snapshotted
   at creation and never edited afterward. A partial unique database index
