@@ -1,12 +1,36 @@
 # STATUS — current work, blockers and next action
 
+## Verified Next.js security patch follow-up (2026-10-12)
+
+Runtime Next.js and matching eslint-config-next are pinned to 16.3.8, a patch
+update from 16.3.6. Npm's actual advisory ranges all ended below 16.3.8; registry
+metadata confirmed this exact release exists. No blanket npm audit fix or framework
+major/minor migration. Existing signed/payment/owner/hosting contracts are unchanged.
+This security follow-up inherits merged #424's execution toolkit and checked D12
+packet; no new product scope or five-PR padding.
+
+Local proof: real clean safe install, 58 tooling Node regressions, focused session/preview
+tests, complete preflight/typecheck/lint, index/links and audit readback passed.
+Next is absent from the actual post-patch npm audit. Exact-head CI/review/merge,
+deployment and provider acceptance still require their own evidence. Next: finish exact-head regression/CI
+and review, then resume W-22D12 with `npm run work -- start`. No LIVE activation.
+
+A separate **development-tool** advisory affects braces <=3.0.3 through fast-glob /
+micromatch / eslint-config-next. Registry version enumeration ends at 3.0.3; braces 3.0.4 lookup returns E404; npm's proposed eslint-config-next 14 downgrade
+is not a compatible repair for Next 16. No untrusted user glob input was found in
+this project's lint workflow. Keep this precise upstream follow-up visible; recheck
+when a compatible patched braces release or reviewed parent dependency is available.
+This does not block the verified Next patch or D12. No clean-audit claim.
+
 ## Current execution tooling and next capability (owner request 2026-10-12)
 
 **Inspected prerequisite:** #423 merged; main `600f93ed`. Its exact-head CI,
 performance and daily-release-policy runs passed. Recheck current GitHub/main,
 concurrent work and reviews at session start. No real Stripe TEST acceptance claimed.
 
-**Implemented in the execution-efficiency PR; merge/check status must be verified:**
+**MERGED #424** at main `059fa296c37f160163e6428c3ff6770f7ef3e790`; exact PR-head CI/release-policy passed; manual review disposition is on #424. #424 post-merge main CI run 38324577116 and release-policy run 38324577229 passed; recheck at future heads.
+
+**Implemented:**
 - `npm run work -- start` validates and prints the bounded active packet;
   `read <number>` prints bounded code/design context; `route <unit>` gives later
   scope anchors, never inferred dependency eligibility.
@@ -31,8 +55,7 @@ concurrent work and reviews at session start. No real Stripe TEST acceptance cla
 cache comparison: three old keys versus one new key for stage/commit of identical
 files. Secret scan and complete sandbox preflight (typecheck/lint/static checks) pass;
 safe offline installer/generation and doctor were exercised in the real worktree.
-The following quick gate reused all seven passing checks. Exact-head CI/review/merge
-are still pending; these local figures do not claim a total project speedup.
+The following quick gate reused all seven passing checks. #424 exact-head CI/release-policy and the documented manual review disposition passed before merge; these local figures do not claim a total project speedup.
 
 **Next:** W-22D12 ([card](pr-cards/W-22D12.md)); run `npm run work -- start`.
 Prove/repair exact signing credit, tax, actual paid amount and balance through
