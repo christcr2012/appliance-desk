@@ -205,6 +205,7 @@ const completeJobSchema = z.object({
         applianceId: z.string().trim().min(1).max(64),
         result: z.enum(RESULT_VALUES),
         note: z.string().max(500).optional().or(z.literal("")),
+        newHookupItemsInstalled: z.boolean().nullable().optional(),
       }),
     )
     .max(200),
@@ -231,7 +232,8 @@ export async function completeJobAction(jobId: string, raw: Record<string, unkno
       completionKey: data.completionKey,
       performedOn: performed.value,
       completionNotes: data.completionNotes || null,
-      results: data.results.map((r) => ({ applianceId: r.applianceId, result: r.result, note: r.note || undefined })),
+      results: data.results.map((r) => ({ applianceId: r.applianceId, result: r.result, note: r.note || undefined,
+        newHookupItemsInstalled: r.newHookupItemsInstalled })),
     });
   } catch (error) {
     if (error instanceof JobVersionError) {

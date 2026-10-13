@@ -42,7 +42,7 @@ export class JobCompletionConflictError extends Error {
   }
 }
 
-export type JobApplianceResultInput = { applianceId: string; result: JobApplianceResult; note?: string };
+export type JobApplianceResultInput = { applianceId: string; result: JobApplianceResult; note?: string; newHookupItemsInstalled?: boolean | null };
 
 export type CompleteJobInput = {
   jobId: string;
@@ -236,6 +236,16 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     // A swap may take the old machine without delivering the new one (W-21A, D-WB8 case 3): it is "taken for repair —
     // no replacement yet", and the customer is credited the days without it once a machine is back.
     const isDelivery = before.type === "DELIVERY" || before.type === "INSTALLATION";
+    for (const result of input.results) {
+      if (result.newHookupItemsInstalled == null) continue; // No evidence; never claim installed.
+      if (typeof result.newHookupItemsInstalled !== "boolean" ||
+          !isDelivery || result.result !== "DELIVERED") {
+        throw new JobCompletionConflictError("New hookup evidence applies only to a delivered unit on a delivery or installation visit.");
+      }
+      if (!result.newHookupItemsInstalled && !result.note?.trim()) {
+        throw new JobCompletionConflictError("Explain which new hookup items were not installed so the follow-up is actionable.");
+      }
+    }
     const notDeliveredIds = scopeIds.filter((id) => resultOf.get(id)!.result === "NOT_DELIVERED");
     if (isDelivery && notDeliveredIds.length > 0 && !before.agreementId) {
       throw new JobCompletionConflictError("Only a delivery or installation job for a rental agreement can have items marked not delivered.");
@@ -345,6 +355,8 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         data: {
           result: result.result,
           resultNote: result.note?.trim() ? result.note.trim().slice(0, 500) : null,
+          newHookupItemsInstalled: isDelivery && result.result === "DELIVERED"
+            ? result.newHookupItemsInstalled ?? null : null,
           resultRecordedAt: completedAt,
           resultRecordedByUserId: userId,
         },
@@ -570,6 +582,30 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       followUpTaskIds.push(task.id);
     }
 
+    // New-rental hookup kits belong to the business. Never report that they
+    // were installed if the technician marked otherwise; follow up once, with
+    // the job, machine and technician's explanation attached.
+    const missedHookupIds = isDelivery
+      ? deliveredIds.filter((id) => resultOf.get(id)!.newHookupItemsInstalled === false)
+      : [];
+    for (const applianceId of missedHookupIds) {
+      const appliance = applianceById.get(applianceId)!;
+      const reason = resultOf.get(applianceId)!.note!.trim().slice(0, 500);
+      const { task } = await createTaskInTx(
+        tx,
+        { userId: actor.id, role: actor.role as "OWNER" | "ADMIN" | "STAFF" },
+        {
+          note: `Install new hookup items for ${appliance.applianceType.name} ${appliance.assetNumber}${customerName ? ` (${customerName})` : ""}: ${reason}`,
+          priority: "HIGH",
+          jobId: before.id,
+          customerId: customerId ?? null,
+          applianceId,
+          sourceKey: `job:${before.id}:${applianceId}:hookup-missing`,
+        },
+      );
+      followUpTaskIds.push(task.id);
+    }
+
     // --- durable handoffs for the provider work that follows the commit ---------------------------
     const handoffRows: Array<{ jobId: string; kind: "START_RECURRING_BILLING" | "PUSH_CREDIT"; subjectId: string }> = [];
     if (isDelivery && before.agreementId && deliveredIds.length > 0) {
@@ -580,7 +616,7 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
     const handoffs = await tx.jobBillingHandoff.findMany({ where: { jobId: before.id }, select: { id: true }, orderBy: { id: "asc" } });
 
     // --- the job itself ----------------------------------------------------------------------------
-    const allPositive = scopeIds.every((id) => POSITIVE.has(resultOf.get(id)!.result));
+    const allPositive = scopeIds.every((id) => POSITIVE.has(resultOf.get(id)!.result)) && missedHookupIds.length === 0;
     const jobOutcome: JobOutcome = allPositive ? "COMPLETE" : "PARTIAL";
     const updated = await tx.job.updateMany({
       where: { id: before.id, status: "IN_PROGRESS", version: before.version },

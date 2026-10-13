@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "id": "W-22D14",
+  "parent": "W-22",
+  "baseline": "621443d370669538980a63f83458ca8acffb15ad",
+  "card": "docs/pr-cards/W-22D14.md",
+  "outcome": "Per-appliance new hookup installed / missing / unknown evidence survives delivery completion and replay with linked follow-up for missing items.",
+  "risk": "Additive nullable migration and technician completion, custody and billing paths remain locked and unchanged.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-W-AMENDMENT-B.md",
+      "anchor": "### 6.2 W-22",
+      "purpose": "Owner approved new hookup items for rentals, evidence per delivered machine."
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "anchor": "model JobAppliance",
+      "purpose": "Existing per-machine completion record, nullable legacy evidence."
+    },
+    {
+      "path": "src/domains/jobs/completion.ts",
+      "anchor": "export async function completeJob",
+      "purpose": "Transaction actor, custody, handoff, replay, partial result and follow-up."
+    },
+    {
+      "path": "src/app/desk/jobs/actions.ts",
+      "anchor": "const completeJobSchema",
+      "purpose": "Validated authenticated completion API."
+    },
+    {
+      "path": "src/app/desk/jobs/[id]/job-detail-panel.tsx",
+      "anchor": "function handleComplete",
+      "purpose": "In-progress staff form, durable completed display."
+    },
+    {
+      "path": "src/domains/desk-access/index.ts",
+      "anchor": "getDeskJobById",
+      "purpose": "STAFF redacted DTO must project the per-machine hookup evidence, never finance fields."
+    },
+    {
+      "path": "src/app/desk/jobs/[id]/page.tsx",
+      "anchor": "JobDetailPanel",
+      "purpose": "Explicitly forward selected per-machine hookup evidence from server to staff and owner UI."
+    },
+    {
+      "path": "tests/job-completion-integration.test.ts",
+      "anchor": "describe.skipIf(!enabled)",
+      "purpose": "Existing disposable PostgreSQL fixture and full completion regression."
+    }
+  ],
+  "proposedFiles": [
+    "tests/job-completion-integration.test.ts",
+    "e2e/staff-job-follow-up.spec.ts"
+  ],
+  "invariants": [
+    "Unknown is NULL and not a false installation claim, including old completed jobs.",
+    "Positive claim only for DELIVERED on DELIVERY or INSTALLATION.",
+    "Negative claim requires actionable explanation and one idempotent follow-up.",
+    "Do not change physical custody, billing start, provider or finance claims."
+  ],
+  "sequence": [
+    "Add safe nullable migration and model field.",
+    "Save/validate machine-specific evidence transactionally without defeating replay.",
+    "Wire real staff completion form and completed evidence view.",
+    "Prove DB race, partial delivery, invalid claims and owner/staff browser, then CI/review."
+  ],
+  "acceptance": [
+    "True/false/null survive completion per machine and user/date remain available.",
+    "False creates one task and PARTIAL while delivered custody and billing remain correct.",
+    "Claims on non-delivery or NOT_DELIVERED reject; replay does not duplicate tasks."
+  ],
+  "gates": [
+    {
+      "id": "IN-79",
+      "affected": "New administrative setup fee tax treatment not decided",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "No tax behavior change or new undecided fee send",
+      "reopen": "CPA decision"
+    },
+    {
+      "id": "MONEY-OUT",
+      "affected": "None in this card",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "No refunds or money-out",
+      "reopen": "Independent owner approval"
+    }
+  ],
+  "checks": {
+    "unit": [],
+    "db": [
+      "tests/job-completion-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/staff-job-follow-up.spec.ts"
+    ],
+    "node": []
+  },
+  "next": "After D14, verify complete signing-through-delivery integration and eligible cancellation, keeping IN-76 recommendation distinct from owner decision."
+}

@@ -90,3 +90,67 @@ test("staff shared route completes a swap and both units move together", async (
     await prisma.user.deleteMany({ where: { id: userId } });
   }
 });
+
+test("staff delivery records per-machine new hookup evidence and shows it after completion", async ({ page }) => {
+  test.skip(!enabled || !fs.existsSync(staff), "Disposable CI database only");
+  const { prisma } = await import("../src/lib/prisma");
+  const tag = randomUUID();
+  const jobId = `hookup-job-${tag}`;
+  const userId = `hookup-user-${tag}`;
+  const customerId = `hookup-customer-${tag}`;
+  const addressId = `hookup-address-${tag}`;
+  const agreementId = `hookup-agreement-${tag}`;
+  const applianceId = `hookup-unit-${tag}`;
+  try {
+    const type = await prisma.applianceType.findFirstOrThrow();
+    await prisma.user.create({ data: { id: userId, email: `hookup-${tag}@example.test`,
+      name: "Hookup fixture", role: "CUSTOMER", emailVerified: true } });
+    await prisma.customer.create({ data: { id: customerId, userId,
+      referralCode: `H${tag.replaceAll("-", "").slice(0, 18)}` } });
+    await prisma.serviceAddress.create({ data: { id: addressId, customerId, line1: "15 Hookup Ave",
+      city: "Greeley", state: "CO", zip: "80631" } });
+    const agreement = await prisma.rentalAgreement.create({ data: {
+      id: agreementId, customerId, serviceAddressId: addressId, status: "ACTIVE",
+      lines: { create: { label: "Washer", monthlyPriceCents: 3500, listPriceCents: 3500 } },
+    }, include: { lines: true } });
+    await prisma.appliance.create({ data: { id: applianceId, assetNumber: `HU-${tag}`,
+      applianceTypeId: type.id, status: "RESERVED" } });
+    await prisma.applianceAssignment.create({ data: { rentalLineId: agreement.lines[0]!.id, applianceId } });
+    await prisma.job.create({ data: {
+      id: jobId, type: "DELIVERY", status: "IN_PROGRESS", customerId,
+      serviceAddressId: addressId, agreementId,
+      appliances: { create: { applianceId } },
+    } });
+    await page.setViewportSize({ width: 360, height: 880 });
+    await page.goto(`/desk/jobs/${jobId}`);
+    const evidence = page.getByRole("combobox", { name: /New hookup items for/i });
+    await expect(evidence).toHaveValue("unknown");
+    await evidence.selectOption("yes");
+    await page.getByRole("button", { name: "Complete job", exact: true }).click();
+    await expect(page.getByText("Status: COMPLETED")).toBeVisible();
+    await expect(page.getByText(/New hookups: installed \(recorded\)/)).toBeVisible();
+    expect((await prisma.jobAppliance.findUniqueOrThrow({
+      where: { jobId_applianceId: { jobId, applianceId } },
+    })).newHookupItemsInstalled).toBe(true);
+    await page.reload();
+    await expect(page.getByText(/New hookups: installed \(recorded\)/)).toBeVisible();
+  } finally {
+    await prisma.auditLog.deleteMany({ where: { OR: [
+      { entityId: { in: [jobId, applianceId, agreementId] } }, { userId },
+    ] } });
+    await prisma.staffTask.deleteMany({ where: { jobId } });
+    await prisma.jobBillingHandoff.deleteMany({ where: { jobId } });
+    await prisma.retailDeliveryFeeRecord.deleteMany({ where: { agreementId } });
+    await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId } });
+    await prisma.pendingDelivery.deleteMany({ where: { agreementId } });
+    await prisma.jobAppliance.deleteMany({ where: { jobId } });
+    await prisma.job.deleteMany({ where: { id: jobId } });
+    await prisma.applianceAssignment.deleteMany({ where: { applianceId } });
+    await prisma.rentalLine.deleteMany({ where: { agreementId } });
+    await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
+    await prisma.appliance.deleteMany({ where: { id: applianceId } });
+    await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
+    await prisma.customer.deleteMany({ where: { id: customerId } });
+    await prisma.user.deleteMany({ where: { id: userId } });
+  }
+});

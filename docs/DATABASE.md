@@ -766,3 +766,7 @@ webhook mirror uses the exact negative invoice item as local `CREDIT`, refusing
 early/foreign/duplicate/incomplete lines. A failed or uncertain provider call
 is reconciled, never marked paid or automatically retried as a new charge.
 Stripe LIVE, CPA IN-79 and all money-out/production gates remain unchanged.
+
+### W-22D14 new hookup evidence
+
+JobAppliance.newHookupItemsInstalled is a nullable Boolean. Old completed jobs remain NULL (unknown). True means newly installed items explicitly recorded at delivery, false means missing items requiring a machine-linked To do, and null means unrecorded. The existing JobAppliance resultRecordedAt and resultRecordedByUserId identify who and when. No direct billing, tax or parts inventory changes.

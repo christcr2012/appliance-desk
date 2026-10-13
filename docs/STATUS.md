@@ -1,5 +1,22 @@
 # STATUS — current work, blockers and next action
 
+## W-22D14 — new hookup proof per delivered appliance (PR #429 under verification)
+
+New per-machine true/false/unknown hookup evidence, missing-item high-priority
+follow-up, PARTIAL visit and unchanged delivered custody/billing are implemented.
+A saved-session staff browser test exposed an actual server-page projection omission:
+although `getDeskJobById` selected the persisted field, `page.tsx` dropped it
+before `JobDetailPanel`. The page now forwards it to STAFF and owner; existing
+browser regression asserts visible evidence before and after reload. Old records
+remain NULL (unknown). Selected local database/related tests and quick checks
+passed; the local Next.js browser build was killed (137) by this 4GB sandbox.
+Exact-head GitHub CI/browser, performance and review are still required. The
+branch merged current #431 fixture isolation and #430 official Postgres image,
+keeping both other-agent changes and all existing tests. No automated review
+was available due to Codex quota; manual disposition must be recorded.
+W-22 PARTIAL, CPA IN-79 OPEN, IN-75/76 recommendations only, W-23 blocked.
+No LIVE, money-out, customer communications, spending or manual release.
+
 ## Owner-requested release maintenance — shared fixture isolation (2026-10-13)
 
 The six MCP production aliases reached READY at their checked release snapshots.
