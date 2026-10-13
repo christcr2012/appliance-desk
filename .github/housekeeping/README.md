@@ -1,0 +1,5 @@
+# Owner-authorized Git housekeeping — October 13, 2026
+
+The owner requested full reconciliation of abandoned, duplicated and superseded Git work. plan.json pins exact source tips and PR dispositions. Preserve all listed source history under the non-production archive before deleting any unchanged branch; protect active PR heads/bases, advanced tips, main, live and existing archives. **Never merge the archive into main**: its current-main file tree and historical parents preserve recovery history without introducing obsolete code.
+
+The write job runs only on main push after checked merge and expires October 15 UTC. Tests cover protected refs, active/advanced heads, archive ancestry with a different historical file tree and stale deletion leases against real local Git. Actual Action success and independent remote ref readback are required before claiming deletions. No release, provider mutation, credential retrieval or spending is performed. Existing application/CI/provider acceptance gates remain mandatory.
