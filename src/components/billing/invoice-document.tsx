@@ -3,6 +3,7 @@ import type { InvoiceDetail } from "@/domains/billing/invoice-detail";
 import { safeLogoUrl } from "@/domains/settings/profile-extras";
 import { isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { formatCents } from "@/domains/pricing/money";
+import { SIGNING_FIRST_INVOICE_DESCRIPTION } from "@/domains/billing/signing-first-invoice-application";
 import { invoiceStatusLabel } from "@/lib/status-labels";
 
 // A single invoice laid out like a real business document — logo and
@@ -49,6 +50,11 @@ function formatDate(date: Date | null): string {
 }
 
 export function InvoiceDocument({ invoice }: { invoice: InvoiceDetail }) {
+  // Only an actually mirrored invoice CREDIT is signing payment proof. Never
+  // infer it from an unpaid obligation or a separately recorded entitlement.
+  const hasSigningCredit = invoice.lineItems.some((line) =>
+    line.kind === "CREDIT" && line.amountCents < 0 &&
+    line.description === SIGNING_FIRST_INVOICE_DESCRIPTION);
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-white print:rounded-none print:border-0 print:text-black">
       <div className="flex flex-wrap items-start justify-between gap-4 bg-action px-6 py-6 text-on-action print:bg-white print:px-0 print:pt-0 print:text-black">
@@ -151,13 +157,19 @@ export function InvoiceDocument({ invoice }: { invoice: InvoiceDetail }) {
               <span>{formatCents(invoice.amountDueCents)}</span>
             </div>
             <div className="flex justify-between text-ink-soft">
-              <span>Paid</span>
+              <span>Paid on this invoice</span>
               <span>{formatCents(invoice.amountPaidCents)}</span>
             </div>
             <div className="flex justify-between border-t border-line pt-1.5 text-base font-semibold text-ink">
               <span>Balance owed</span>
               <span>{formatCents(invoice.balanceCents)}</span>
             </div>
+            {hasSigningCredit && (
+              <p className="pt-2 text-xs text-ink-soft">
+                First-month money paid at signing is already deducted in the credit line above.
+                It is not subtracted again from this balance.
+              </p>
+            )}
           </div>
         </div>
 

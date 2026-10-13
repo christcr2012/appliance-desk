@@ -2,7 +2,7 @@
   "version": 1,
   "id": "W-22D12",
   "parent": "W-22",
-  "baseline": "600f93edf2bf203a9ba7abbd0e4a11936843646e",
+  "baseline": "1a1ba9a107cdbb6fd6f341b150e2b34c42961956",
   "card": "docs/pr-cards/W-22D12.md",
   "outcome": "Owner and customer see the exact first-invoice signing credit, tax, actual payment and remaining balance without double credit or false paid status.",
   "risk": "Read-only financial presentation and integrated acceptance; no schema or provider mutation.",

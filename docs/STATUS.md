@@ -1,5 +1,27 @@
 # STATUS — current work, blockers and next action
 
+## W-22D12 first-invoice shared display (2026-10-12; external gates independent)
+
+D12 extends the read-only invoice DTO with existing line kinds and clarifies
+on the shared owner/customer/print document that verified first-month money
+is **already deducted** as one invoice CREDIT. "Paid on this invoice" is
+separate; existing tax, due, paid, balance, status and authorization remain
+unchanged. Synthetic $60 rent + $4.80 tax - $60 signing credit gives $4.80
+due and OPEN until actual independent invoice payment. Saved-session
+owner/customer browser tests and unit/disposable-Postgres tests verify
+print/mobile/dark/keyboard/axe, pending, replay, property isolation and
+draft denial. Do not equate mock/provider-shape tests with real Stripe TEST
+acceptance. Local selected typecheck/lint/static/DB/unit checks passed (38 selected tests),
+but local Next.js production build was OOM-killed (137) in the 4-GB sandbox,
+so local browser did NOT run. This is the repository's known anti-stall
+resource limit, not a waived test: exact-head GitHub Actions build/browser,
+CI and review must pass before merge. No extra hosting spend was approved.
+
+Next after D12: owner-recorded signing payment, then approved cancellation/
+refund and per-machine hookup in prerequisite order. IN-75/76 remain
+recommendations unless owner answers exist. W-22 PARTIAL, CPA IN-79 OPEN,
+W-23 blocked. No LIVE Stripe, money-out, external communications or spend.
+
 ## Verified Next.js security patch follow-up (2026-10-12)
 
 Runtime Next.js and matching eslint-config-next are pinned to 16.3.8, a patch
