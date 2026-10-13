@@ -1570,3 +1570,17 @@ media evidence has a private storage key and content hash. No public
 recording link is retained. Legal hold forbids purge; retention deadlines
 create owner review work, not automatic deletion. Only assigned staff or
 owner/admin may inspect voice metadata; no key/audio is returned.
+
+### W-22 signing: owner-confirmed offline money received (2026-10-12/13)
+
+The one exact signed/frozen agreement obligation (setup plus applicable tax
+and per-agreement down payment) determines manual signing money-in. After
+OWNER/ADMIN confirmation of actual receipt, a MANUAL attempt, receipt
+and audit event are recorded under existing signed-evidence and row-lock
+guards; an agreement-only downpayment entitlement is recorded at most once.
+No generic customer Credit or invoice Payment is generated. Replay
+returns the original receipt only with identical actor/method/reference/date;
+any amount/identity change or pending Stripe attempt is denied.
+The first invoice remains unpaid until actually paid independently; billing
+still begins on delivery. CPA IN-79 and independent refund approvals remain
+unchanged. No tax or cancellation policy was decided by this implementation.

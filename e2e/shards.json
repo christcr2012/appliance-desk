@@ -45,6 +45,7 @@
       "launch.spec.ts",
       "signing-waiver-presentation.spec.ts",
       "signing-first-invoice-views.spec.ts",
+      "signing-manual-payment.spec.ts",
       "work-order-print.spec.ts",
       "security-response-headers.spec.ts",
       "accessibility-routes-desk-b.spec.ts",

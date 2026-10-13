@@ -742,3 +742,16 @@ implemented. The CPA question IN-79 remains open.
 ### Order-wide draft signing review (W-22C4)
 
 The owner can view a private, all-location signing-cost candidate after all prepared charges and tax evidence reconcile. This includes setup fees, separately calculated setup tax, and first-month down payments. It is NOT a customer bill, signed contract or payment authorization. CPA gate IN-79 and final freeze/send/checkout remain open.
+
+## Recording a signing payment by check or bank transfer (W-22D13)
+
+On Desk > Agreements > a signed agreement, OWNER or ADMIN reviews the
+exact frozen signing amount and may enter a check, bank transfer or cash
+payment ONLY once that money was actually received. Record the business
+date and reference, confirm receipt explicitly, then record. If a
+Stripe payment is pending, investigate instead of recording another
+payment. A matching retry returns the original receipt; a changed
+reference or conflicting attempt is denied. The down payment belongs to
+this agreement's first invoice, not other properties. STAFF and
+customers have no access to this owner-only action. LIVE charges and
+refunds have separate approvals.
