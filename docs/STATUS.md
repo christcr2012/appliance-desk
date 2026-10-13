@@ -1,5 +1,26 @@
 # STATUS — current work, blockers and next action
 
+## W-22D13 PR #427 — shared-settings CI recovery (2026-10-13)
+
+Live GitHub PR #427 head `cbc96f7` passed all four saved-session browser
+shards, static gates and policy checks; full CI failed in shard 1 on
+`tax-migration-integration` because its assertion read the writable
+`BusinessSettings.singleton` after unrelated serialized integration
+fixtures exercised Colorado tax choices. The test now verifies the **actual
+database column defaults** using a short-lived separately named settings row,
+with `finally` cleanup and without changing business tax decisions or
+resetting other tests' state. Its isolated disposable-PostgreSQL run passed.
+Performance baselines independently failed before tests on a public ECR
+PostgreSQL 17 image pull (`toomanyrequests`); use documented, authorized
+retry/recovery, not test removal. Re-run full exact-head checks after the
+single corrective commit; inspect/waive unavailable automated review only
+with recorded manual-review disposition, then merge if all gates pass.
+
+D13 implementation remains owner/admin-confirmed money-in evidence on one
+signed agreement, not a Stripe charge or invoice-wide credit. W-22 PARTIAL,
+CPA IN-79 OPEN, IN-75/76 recommended only, W-23 blocked. No money-out,
+customer communications, LIVE Stripe or manual production release.
+
 ## W-22D13 — owner-recorded signing payment (2026-10-12/13; CI pending)
 
 Verified predecessor #426 merged to main 9087bc2fb3ec40a176f821809551a9b9c17470c1.
