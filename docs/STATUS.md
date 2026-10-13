@@ -1,5 +1,34 @@
 # STATUS — current work, blockers and next action
 
+
+## Active W-22D15 — failed signing payment owner review (PR pending, 2026-10-13)
+
+Actual verified main `b031aafda20692da7208ce643247a8fded9ac48a` includes
+D14 #429 and separate #430/#431 infrastructure fixes. Main CI run 38412878263
+and policy run 38412877486 **passed**. Live `072cd351` remains behind as
+scheduled checked release has not caught up; never release manually here.
+
+This card completes failed-signing **visibility and owner reconciliation**, not
+Stripe TEST provider acceptance or general cancellation. A persisted failed
+attempt becomes one high-priority, owner-only agreement To do; pending
+provider attempts still require reconciliation. Owner agreement view identifies
+the failure and makes existing explicitly verified manual alternate collection
+available; no provider retry, receipt fabrication, automatic delivery scheduling,
+money-out or live collection. Unit, real throwaway Postgres, existing-session
+browser, exact-head CI and review must all be verified before merge; local
+development checks are not equivalent to real provider acceptance.
+
+Independent performance watch: #429's 5,000-invoice median 5.42ms failed the
+5.304ms cap; a separate isolated throwaway PostgreSQL sandbox measurement on
+the same main source yielded 5.11ms (samples 5.11/4.76/5.86/4.82/5.79ms).
+This shows near-threshold measurement variation, **not** a proven root cause.
+Do not waive, rebaseline, disable or present the performance run as green.
+
+IN-79 CPA tax classification remains OPEN; IN-75/76 only recommendations;
+pre-delivery refund money-out policy stays gated. W-22 PARTIAL, W-23 blocked.
+No LIVE, spending, communications, destructive production changes, or manual
+Vercel release. Continue eligible W-22 work after exact-head PR verification.
+
 ## W-22D14 — new hookup proof per delivered appliance (PR #429 under verification)
 
 New per-machine true/false/unknown hookup evidence, missing-item high-priority

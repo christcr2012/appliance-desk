@@ -80,11 +80,22 @@ describe.skipIf(!enabled)("W-22 unpaid signing To do (actual PostgreSQL and requ
         status: cents ? "AWAITING_PAYMENT" : "NOT_DUE",
         signedAt: signDates[i]!,
       } });
+      if (i === 2) {
+        await prisma.signingPaymentAttempt.create({ data: {
+          agreementId: a.id, attemptNumber: 1,
+          requestKey: "fixture-" + tag, method: "STRIPE_CHECKOUT",
+          status: "FAILED", orderFingerprint: "a".repeat(64),
+          amountCents: cents, failureCode: "STRIPE_ASYNC_PAYMENT_FAILED",
+        } });
+      }
     }
   });
 
   afterAll(async () => {
     if (agreements.length) {
+      await prisma.signingPaymentAttempt.deleteMany({
+        where: { agreementId: { in: agreements } },
+      });
       await prisma.agreementSigningPayment.deleteMany({
         where: { agreementId: { in: agreements } },
       });
@@ -113,6 +124,25 @@ describe.skipIf(!enabled)("W-22 unpaid signing To do (actual PostgreSQL and requ
       expect(ours[0].primaryAction?.href).toBe("/desk/agreements/" + agreements[0]);
       expect(ours[0].detail).toContain("not been recorded as paid");
     }
+  });
+
+  it("loads the failed attempt from PostgreSQL, with one high-priority actionable row", async () => {
+    acting(adminId, "ADMIN");
+    const result = await listSigningPaymentAttention(50);
+    const target = "/desk/agreements/" + agreements[2];
+    const ours = result.rows.filter(row => row.href === target);
+    expect(ours).toHaveLength(1);
+    expect(ours[0]).toMatchObject({
+      severity: "high", amountCents: 7200,
+      primaryAction: { href: target, label: "Investigate failed payment" },
+    });
+    expect(ours[0].detail).toContain("unsuccessful asynchronous");
+    expect(ours[0].detail).not.toContain("recorded as paid");
+    const obligation = await prisma.agreementSigningPayment.findUniqueOrThrow({
+      where: { agreementId: agreements[2] },
+    });
+    expect(obligation.status).toBe("AWAITING_PAYMENT");
+    expect(obligation.receiptId).toBeNull();
   });
 
   it("STAFF and CUSTOMER are rejected by real requireRole, not Prisma mocks", async () => {

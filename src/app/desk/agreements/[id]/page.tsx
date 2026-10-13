@@ -43,8 +43,7 @@ export default async function AgreementDetailPage({
   const signingPayment = await prisma.agreementSigningPayment.findUnique({
     where: { agreementId: agreement.id },
     include: { receipt: true,
-      attempts: { where: { status: { in: ["PREPARED", "PENDING"] } },
-        orderBy: { createdAt: "desc" }, take: 1 } },
+      attempts: { orderBy: { attemptNumber: "desc" }, take: 1 } },
   });
   const todayParts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Denver", year: "numeric", month: "2-digit", day: "2-digit",
@@ -245,6 +244,15 @@ export default async function AgreementDetailPage({
             </p>
           )}
           {signingPayment.status === "AWAITING_PAYMENT" &&
+            signingPayment.attempts[0]?.status === "FAILED" && (
+              <p className="mt-2 text-sm text-danger" role="alert">
+                The latest signing collection attempt failed. Verify the provider
+                outcome before starting another payment. The signed amount is
+                still due, and a failed attempt is not a receipt.
+              </p>
+            )}
+          {signingPayment.status === "AWAITING_PAYMENT" &&
+            signingPayment.attempts[0]?.status !== "FAILED" &&
             signingPayment.attempts[0]?.method === "STRIPE_CHECKOUT" && (
               <p className="mt-2 text-sm" role="status">
                 A card payment is already prepared or pending. Investigate its actual
@@ -252,7 +260,8 @@ export default async function AgreementDetailPage({
               </p>
             )}
           {signingPayment.status === "AWAITING_PAYMENT" && signingPayment.totalCents > 0 &&
-            signingPayment.attempts[0]?.method !== "STRIPE_CHECKOUT" && (
+            (signingPayment.attempts[0]?.status === "FAILED" ||
+              signingPayment.attempts[0]?.method !== "STRIPE_CHECKOUT") && (
               <ManualSigningPaymentForm agreementId={agreement.id}
                 amountCents={signingPayment.totalCents} receivedOn={localDay} />
             )}

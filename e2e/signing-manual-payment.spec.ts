@@ -49,6 +49,15 @@ test("manual signing collection is an owner-only, explicit accessible review —
     await expect(page.getByLabel("Date received")).toBeVisible();
     await expect(page.getByLabel("Payment reference")).toBeVisible();
     await expect(page.getByRole("button", { name: "Record signing payment" })).toBeVisible();
+    await prisma.signingPaymentAttempt.create({ data: {
+      agreementId: agreement.id, requestKey: "w22-failure-" + randomUUID(),
+      attemptNumber: 1, method: "STRIPE_CHECKOUT", status: "FAILED",
+      orderFingerprint: "a".repeat(64), amountCents: 3500,
+      failureCode: "STRIPE_ASYNC_PAYMENT_FAILED",
+    } });
+    await page.reload();
+    await expect(page.getByRole("alert")).toContainText("attempt failed");
+    await expect(page.getByRole("button", { name: "Record signing payment" })).toBeVisible();
     expect((await new AxeBuilder({ page })
       .include('[aria-labelledby="signing-manual-heading"]')
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze()).violations).toEqual([]);
