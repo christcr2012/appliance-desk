@@ -3,6 +3,17 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  // Tax-ready fixtures also write/restore BusinessSettings.singleton through their helper.
+  "tests/billing-webhooks.test.ts",
+  "tests/pickup-billing-end-integration.test.ts",
+  "tests/signing-manual-payment-w22-integration.test.ts",
+  "tests/signing-send-guard-w22-integration.test.ts",
+  "tests/tax-address-recheck-integration.test.ts",
+  "tests/tax-exemptions-integration.test.ts",
+  "tests/tax-prepaid-invoice-integration.test.ts",
+  "tests/tax-rate-change-integration.test.ts",
+  "tests/tax-refund-evidence-integration.test.ts",
+  "tests/tax-stripe-invoice-mirror-integration.test.ts",
   "tests/agreements-term-integration.test.ts",
   "tests/settings-integration.test.ts",
   "tests/signing-charge-settings-integration.test.ts",
