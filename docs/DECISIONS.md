@@ -942,3 +942,14 @@ content/mode/identity changes or conflicts invalidate checks; failed/skipped res
 never receive a pass. Bounded local timings distinguish passed/failed/cache hits; they do not
 claim CI duration, total project acceleration or real-provider acceptance. No product schema,
 financial logic, owner input answer, activation, production deployment or resource expansion changed.
+
+## 2026-10-12 — exact published Next 16.3.8 security patch, separate from tooling
+
+GitHub reported dependency advisories during #424 publication. Actual npm audit
+identified six Next ranges ending below 16.3.8; npm view confirmed Next and matching
+eslint-config-next 16.3.8 exist. Use that exact patch pair and locked resolutions,
+not audit's latest-minor or incompatible eslint 14 downgrade. Full existing
+framework/browser/security CI remains required. The separate dev-only braces
+stack-exhaustion advisory has no available compatible 3.0.4 patch (verified E404);
+keep its upstream reopening condition visible instead of applying an unsupported
+major override or claiming a clean audit. No product, money, schema or release-policy change.

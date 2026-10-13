@@ -42,7 +42,6 @@ verification must refuse them until the next implementer supplies real tests.
 
 ## Status
 
-Implementation present on the maintenance branch; local/CI/review/merge evidence is
-recorded truthfully in STATUS and the PR. No live deployment, payment, refund,
+MERGED #424 at main `059fa296c37f160163e6428c3ff6770f7ef3e790` after exact-head CI/release-policy and documented manual review. Confirm current main CI separately. No live deployment, payment, refund,
 communications, resource increase or customer acceptance claimed. No downstream
 product contract changed. Next: W-22D12, not another architecture/planning session.
