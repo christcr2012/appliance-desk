@@ -1,16 +1,21 @@
 # STATUS — current work, blockers and next action
 
 
-## Active W-22D15 — failed signing payment review, PR #432 pending recheck
+## Active W-22D15 — failed signing payment review, PR #432 qualifying CI recovery
 
-Current verified upstream main is `2ba7776b462436ecb2b35dcab35a26e4b5477257`
-with merged owner-decision documentation #433/#434, both exact-head and
-merged-main CI green. Development PR #432 was opened at older main and
-failed browser-d only on an ambiguous Playwright alert selector (the
-actual failure banner was present). Codex found an actionable second
-issue: failed payment lacked due date and failure-at timestamp. Both
-are corrected in the same branch and now require new exact-head CI,
-browser and review after merging upstream, not waiver.
+Current upstream main `2ba7776b462436ecb2b35dcab35a26e4b5477257`
+includes owner decisions #433/#434. The updated W-22D15 branch includes that
+exact main through a normal merge, without rebase. The former ambiguous
+Playwright alert selector and Codex finding (missing same-day failed-payment
+deadline and failure timestamp) are fixed. Codex review thread is resolved
+with exact-head test evidence. Workflow-dispatched CI run `38460370577` passed
+all three unit shards, four browser shards, secret/static and aggregate gates
+at `4b8b899`. However a GitHub Actions-bot branch synchronization caused
+pull-request workflows to report `action_required`, so ruleset 24419414
+still considered required PR-context `ci` missing and refused merge.
+This targeted handoff update attempts a fresh GitHub-App-authored PR sync
+to obtain a qualifying exact-head PR check. No bypass, waiver or production
+release was attempted; do not merge until the required check really passes.
 
 W-22D15 owner To do shows one failed attempt with same-day deadline
 based on persisted attempt update time, distinct from pending/ordinary
