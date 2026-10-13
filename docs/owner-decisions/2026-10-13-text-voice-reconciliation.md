@@ -4,6 +4,24 @@
 
 **Status convention:** "Answered; application pending" records a business answer, not finished functionality. "Partially answered" means a specific operational, legal or provider choice remains. A proposed/default dollar amount is an owner-editable starting value, not immutable code or approval to change a signed agreement. All rollout, LIVE, money-out, external communications, paid-provider, privacy and CPA/attorney gates stay intact. No current pricing publication, production mutation or new provider charge is authorized by this document.
 
+## Completeness and count — why 23 edited register rows does NOT mean only 23 decisions
+
+The owner-facing staging consolidation enumerated **56 distinct subject entries**, including approved starting values, deferrals, partial answers and professional gates. Its category audit is **22 pricing/billing**, **5 delivery/field**, **6 property-manager/tenant**, **11 communications/launch** and **12 accounting/tax**. Some entries combine multiple discrete choices (for example, damage claims), while others restate a previously approved rule. Therefore **56 is a coverage count, not a count of 56 outstanding questions or 56 newly approved features**.
+
+The repo's `OWNER-INPUTS.md` contains **82 numbered entries in all**, spanning completed, open, deferred, provider, legal and CPA work. This reconciliation changes **23 matching numbered entries** because one numbered entry can encompass several subjects (IN-06, IN-78 and IN-55 especially), and other recovered answers were already represented in older answered entries or had no unique IN number. The following full subject-level sections preserve the policy details for implementation. The 23 edited rows are **not the total number of business decisions discussed**, nor are all 82 register entries currently open. Do not use either number as the answer to "how many owner decisions remain?" without separately reviewing unresolved owner-only inputs and excluding outside-expert and release/setup gates.
+
+The five staging sections cover:
+
+| Group | Distinct subject entries | Topics encompassed |
+|---|---:|---|
+| Pricing, offers, billing and cancellation | 22 | Prices; machine-level set discount; partial return; annual prepayment; discounts; setup; add-on; relocation; four delivery zones; driving-distance method; delivery marketing; household deposits; large down payment and reserve; two cancellation policies; late fee; partial allocation; survey |
+| Delivery and field work | 5 | Manual appointment confirmation; telephone versus delivery hours; incremental inventory; trip discretion; bundled maintenance |
+| Property managers and tenants | 6 | Tenant repair notice; misuse/damage liability; claim/due-date/dispute/auto-charge rules; tenant privacy retention; spreadsheet import; deferred partner commissions |
+| Communications and launch | 11 | Public/reply email; mailbox aliases; home privacy; business number; phone schedule; greeting; retention; transcription/recording; Twilio budget; Spanish; launch timing |
+| Accounting, funding and tax | 12 | QuickBooks edition; export portability; bank selection; LLC assets/personal tools; repeat contributions; draws; opening balances; manual tax submissions; deferred AI scans; optional ACH; tax-record retention; CPA/attorney gate |
+
+This is a **conversation-answer reconciliation**, not a claim that every past message outside the recovered chat was accessible. The independent 2026-10-13 owner consolidation remains the staging evidence, while `OWNER-INPUTS` and this document record actionable answers for the repo. No engineering agent should ask a question just because its old ID still says open; read what the owner actually said about its subject first.
+
 ## Rental pricing, set discounts and return accounting
 
 - **Initial offers:** Refurbished washers and dryers at $35/month per appliance, $60/month for a washer/dryer pair. New/premium/bulk offers remain unpublished; any future offers, margins, eligibility, promotions and fine print require review before publication. Special account prices and discounts must be editable.
