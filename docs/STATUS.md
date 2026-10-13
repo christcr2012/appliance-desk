@@ -1,5 +1,9 @@
 # STATUS — current work, blockers and next action
 
+## W-22D14 — new hookup proof per delivered appliance (in progress)
+
+After merged #427 at main 621443d370669538980a63f83458ca8acffb15ad, selected the independently approved per-machine new hookup evidence from W-22. Implemented an additive nullable JobAppliance field (historical completed jobs remain unknown), delivered-only staff/owner form, truthful completed evidence, linked actionable missed-hookup task and partial-job result without disturbing custody or billing. New disposable-Postgres regressions verify true/missing/unknown, denial, replay and idempotent handoff; exact-head CI/browser/migration/review still required before claiming merged. D13 manual signing payments merged; W-22 PARTIAL, CPA IN-79 OPEN, recommended IN-75/76 unresolved, W-23 blocked. No LIVE, money-out or release.
+
 ## W-22D13 PR #427 — shared-settings CI recovery (2026-10-13)
 
 Live GitHub PR #427 head `cbc96f7` passed all four saved-session browser

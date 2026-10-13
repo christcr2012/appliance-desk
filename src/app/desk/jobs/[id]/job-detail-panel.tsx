@@ -87,6 +87,7 @@ type JobRow = {
   checklist: unknown;
   appliances: {
     result?: JobApplianceResult | null;
+    newHookupItemsInstalled?: boolean | null;
     role?: JobApplianceRole;
     appliance: {
       id: string;
@@ -204,6 +205,8 @@ export function JobDetailPanel({
     Object.fromEntries(completionScope.map((row) => [row.applianceId, row.defaultResult])),
   );
   const [completionKey] = useState(newCompletionKey);
+  const [newHookups, setNewHookups] = useState<Record<string, "yes" | "no" | "unknown">>({});
+  const [hookupNotes, setHookupNotes] = useState<Record<string, string>>({});
   const [removeMessage, setRemoveMessage] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
@@ -289,7 +292,16 @@ export function JobDetailPanel({
         completionKey,
         performedOn,
         completionNotes,
-        results: completionScope.map((row) => ({ applianceId: row.applianceId, result: results[row.applianceId] ?? row.defaultResult })),
+        results: completionScope.map((row) => ({
+          applianceId: row.applianceId,
+          result: results[row.applianceId] ?? row.defaultResult,
+          newHookupItemsInstalled: (job.type === "DELIVERY" || job.type === "INSTALLATION") &&
+            (results[row.applianceId] ?? row.defaultResult) === "DELIVERED"
+              ? newHookups[row.applianceId] === "yes" ? true
+                : newHookups[row.applianceId] === "no" ? false : null
+              : null,
+          note: hookupNotes[row.applianceId] || undefined,
+        })),
       });
       if (result.status === "error") {
         setStatusMessage(result.message);
@@ -382,6 +394,41 @@ export function JobDetailPanel({
                           </option>
                         ))}
                       </select>
+                      {(job.type === "DELIVERY" || job.type === "INSTALLATION") &&
+                        (results[row.applianceId] ?? row.defaultResult) === "DELIVERED" && (
+                          <div className="mt-2 space-y-2">
+                            <label className="block text-sm text-ink-soft">
+                              New hookup items for this machine
+                              <select
+                                aria-label={`New hookup items for ${row.label}`}
+                                value={newHookups[row.applianceId] ?? "unknown"}
+                                onChange={(event) => setNewHookups((prior) => ({
+                                  ...prior, [row.applianceId]: event.target.value as "yes" | "no" | "unknown",
+                                }))}
+                                className="mt-1 block rounded-md border border-line-strong px-2 py-1.5"
+                              >
+                                <option value="unknown">Not recorded (does not prove installation)</option>
+                                <option value="yes">Yes — new hookup items installed</option>
+                                <option value="no">No — hookup items still need attention</option>
+                              </select>
+                            </label>
+                            {newHookups[row.applianceId] === "no" && (
+                              <label className="block text-sm text-ink-soft">
+                                What needs fixing? (creates a To do task)
+                                <textarea
+                                  aria-label={`Hookup follow-up for ${row.label}`}
+                                  required
+                                  maxLength={500}
+                                  value={hookupNotes[row.applianceId] ?? ""}
+                                  onChange={(event) => setHookupNotes((prior) => ({
+                                    ...prior, [row.applianceId]: event.target.value,
+                                  }))}
+                                  className="mt-1 block w-full rounded-md border border-line-strong px-2 py-1.5"
+                                />
+                              </label>
+                            )}
+                          </div>
+                        )}
                     </li>
                   ))}
                 </ul>
@@ -433,6 +480,13 @@ export function JobDetailPanel({
                 {job.appliances.map((a) => (
                   <li key={a.appliance.id}>
                     {a.appliance.applianceType.name} ({a.appliance.assetNumber}): {a.result ? RESULT_LABELS[a.result] : "no result recorded"}
+                    {(job.type === "DELIVERY" || job.type === "INSTALLATION") && a.result === "DELIVERED" && (
+                      <span className="ml-1">
+                        — New hookups: {a.newHookupItemsInstalled === true ? "installed (recorded)"
+                          : a.newHookupItemsInstalled === false ? "NOT installed — follow-up required"
+                          : "not recorded (unknown)"}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -348,4 +348,72 @@ describe.skipIf(!enabled)("completeJob", () => {
     const raced = new Set(racedApplianceIds);
     expect((await findCustodyInvariantViolations(prisma)).filter((violation) => raced.has(violation.applianceId))).toEqual([]);
   });
+  it("records new hookup items for each delivered machine without inventing evidence for an undelivered unit", async () => {
+    const delivered = await unit();
+    const waiting = await unit();
+    const j = await job("DELIVERY", [delivered, waiting]);
+    const completionKey = key();
+    const input = {
+      jobId: j.id, expectedVersion: 1, completionKey,
+      performedOn: businessDateFromKey("2026-09-12"), completionNotes: null,
+      results: [
+        { applianceId: delivered, result: "DELIVERED" as const, newHookupItemsInstalled: true },
+        { applianceId: waiting, result: "NOT_DELIVERED" as const },
+      ],
+    };
+    const result = await completeJob(ownerId, input);
+    expect(result.outcome).toBe("PARTIAL");
+    const rows = await prisma.jobAppliance.findMany({ where: { jobId: j.id } });
+    expect(rows.find((r) => r.applianceId === delivered)).toMatchObject({
+      result: "DELIVERED", newHookupItemsInstalled: true, resultRecordedByUserId: ownerId,
+    });
+    expect(rows.find((r) => r.applianceId === waiting)).toMatchObject({
+      result: "NOT_DELIVERED", newHookupItemsInstalled: null,
+    });
+    expect(await prisma.jobBillingHandoff.count({ where: { jobId: j.id, kind: "START_RECURRING_BILLING" } })).toBe(1);
+    expect((await completeJob(ownerId, input)).replayed).toBe(true);
+    expect(await prisma.jobAppliance.count({
+      where: { jobId: j.id, newHookupItemsInstalled: true },
+    })).toBe(1);
+  });
+
+  it("keeps a missed hookup truthful, creates one actionable task and never blocks custody or billing", async () => {
+    const u = await unit();
+    const j = await job("DELIVERY", [u]);
+    const completionKey = key();
+    const input = {
+      jobId: j.id, expectedVersion: 1, completionKey,
+      performedOn: businessDateFromKey("2026-09-12"), completionNotes: null,
+      results: [{ applianceId: u, result: "DELIVERED" as const,
+        newHookupItemsInstalled: false, note: "New dryer vent is missing" }],
+    };
+    const first = await completeJob(ownerId, input);
+    expect(first.outcome).toBe("PARTIAL");
+    expect(await status(u)).toBe("RENTED");
+    expect(await prisma.jobBillingHandoff.count({ where: { jobId: j.id, kind: "START_RECURRING_BILLING" } })).toBe(1);
+    const saved = await prisma.jobAppliance.findUniqueOrThrow({ where: { jobId_applianceId: { jobId: j.id, applianceId: u } } });
+    expect(saved.newHookupItemsInstalled).toBe(false);
+    const task = await prisma.staffTask.findFirstOrThrow({ where: {
+      sourceKey: `job:${j.id}:${u}:hookup-missing`,
+    } });
+    expect(task.note).toContain("New dryer vent is missing");
+    expect((await completeJob(ownerId, input)).replayed).toBe(true);
+    expect(await prisma.staffTask.count({ where: { id: task.id } })).toBe(1);
+  });
+
+  it("rejects fabricated hookup claims on undelivered results without completing or moving custody", async () => {
+    const u = await unit();
+    const j = await job("DELIVERY", [u]);
+    await expect(finish(j.id, [], { results: [
+      { applianceId: u, result: "NOT_DELIVERED", newHookupItemsInstalled: true },
+    ] })).rejects.toThrow(/hookup evidence applies only/);
+    expect((await jobRow(j.id)).status).toBe("IN_PROGRESS");
+    expect(await status(u)).toBe("RESERVED");
+    await expect(finish(j.id, [], { results: [
+      { applianceId: u, result: "DELIVERED", newHookupItemsInstalled: false },
+    ] })).rejects.toThrow(/Explain which new hookup/);
+    expect((await jobRow(j.id)).status).toBe("IN_PROGRESS");
+  });
+
+
 });

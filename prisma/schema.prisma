@@ -1406,6 +1406,9 @@ model JobAppliance {
   role                   JobApplianceRole   @default(PRIMARY)
   result                 JobApplianceResult?
   resultNote             String?
+  // Null means no evidence was recorded, including all historical visits.
+  // Explicit false is preserved rather than claiming hookup items were installed.
+  newHookupItemsInstalled Boolean?
   resultRecordedAt       DateTime?
   resultRecordedByUserId String?
   reservationActive      Boolean            @default(false)
