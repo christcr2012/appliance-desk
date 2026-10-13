@@ -14,6 +14,9 @@ import { signAgreementAction } from "@/app/sign/[id]/actions";
 import { prepareSigningPaymentAttempt } from "@/domains/billing/signing-payment-attempts";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { signingInvoiceMirrorProof } from "@/domains/billing/signing-invoice-mirror";
+import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
+import { SIGNING_FIRST_INVOICE_DESCRIPTION } from "@/domains/billing/signing-first-invoice-application";
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-real-ip": "127.0.0.1" }) }));
 vi.mock("@/lib/rate-limit", () => ({ isRateLimited: vi.fn(async () => false) }));
 import { getSignatureRecordForSigning, sendForSignature, signAgreement } from "@/domains/agreements";
@@ -508,6 +511,53 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
     };
     expect(await prisma.signingFirstInvoiceApplication.create({ data: applicationData }))
       .toMatchObject(applicationData);
+    // D12 ties actual durable settlement/application fixtures to the same
+    // provider-bound negative line the owner/customer invoice detail renders.
+    // Synthetic TEST identifiers remain local proof, never Stripe acceptance.
+    const providerLine = {
+      id: applicationData.stripeInvoiceLineId,
+      invoice: applicationData.stripeInvoiceId,
+      amount: -applicationData.amountCents,
+      metadata: {
+        signing_credit_agreement: positiveAgreementId!,
+        signing_credit_order: order.orderFingerprint,
+        signing_credit_receipt: settled.receiptId!,
+      },
+    } as unknown as Stripe.InvoiceLineItem;
+    const providerInvoice = {
+      id: applicationData.stripeInvoiceId,
+      lines: { data: [providerLine], has_more: false },
+    } as Stripe.Invoice;
+    const boundLine = await signingInvoiceMirrorProof(prisma, positiveAgreementId!, providerInvoice);
+    expect(boundLine).toMatchObject({
+      lineId: applicationData.stripeInvoiceLineId,
+      description: SIGNING_FIRST_INVOICE_DESCRIPTION,
+    });
+    expect(await signingInvoiceMirrorProof(prisma, positiveAgreementId!, providerInvoice))
+      .toEqual(boundLine);
+    const localFirstInvoice = await prisma.invoice.create({ data: {
+      customerId, agreementId: positiveAgreementId,
+      stripeInvoiceId: applicationData.stripeInvoiceId,
+      status: "OPEN", subtotalCents: 0, taxCents: 280,
+      amountDueCents: 280, amountPaidCents: 0,
+      lineItems: { create: [
+        { kind: "RENTAL", description: "Rental first month", amountCents: 3500 },
+        { kind: "CREDIT", description: boundLine!.description, amountCents: -3500 },
+        { kind: "TAX", description: "Synthetic tax for rendering", amountCents: 280 },
+      ] },
+    } });
+    try {
+      const scoped = await getInvoiceDetail(localFirstInvoice.id, { customerId });
+      expect(scoped).toMatchObject({
+        status: "OPEN", amountDueCents: 280, amountPaidCents: 0, balanceCents: 280,
+      });
+      expect(scoped?.lineItems.filter(item => item.kind === "CREDIT")).toEqual([
+        expect.objectContaining({ amountCents: -3500, description: SIGNING_FIRST_INVOICE_DESCRIPTION }),
+      ]);
+      expect(await getInvoiceDetail(localFirstInvoice.id, { customerId: "foreign-customer" })).toBeNull();
+    } finally {
+      await prisma.invoice.delete({ where: { id: localFirstInvoice.id } });
+    }
     await expect(prisma.signingFirstInvoiceApplication.create({ data: {
       ...applicationData, agreementId, stripeInvoiceId: "in_test_foreign",
       stripeInvoiceLineId: "il_test_foreign",
