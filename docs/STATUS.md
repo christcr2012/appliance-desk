@@ -4,6 +4,24 @@
 
 After merged #427 at main 621443d370669538980a63f83458ca8acffb15ad, selected the independently approved per-machine new hookup evidence from W-22. Implemented an additive nullable JobAppliance field (historical completed jobs remain unknown), delivered-only staff/owner form, truthful completed evidence, linked actionable missed-hookup task and partial-job result without disturbing custody or billing. New disposable-Postgres regressions verify true/missing/unknown, denial, replay and idempotent handoff; GitHub saved-session browser detected and led to repair of the STAFF redacted job-detail projection (no finance data); exact-head CI/browser/migration/review still required before claiming merged. D13 manual signing payments merged; W-22 PARTIAL, CPA IN-79 OPEN, recommended IN-75/76 unresolved, W-23 blocked. No LIVE, money-out or release.
 
+## Owner-requested release maintenance — shared fixture isolation (2026-10-13)
+
+The six MCP production aliases reached READY at their checked release snapshots.
+Appliance Desk release automation fixes #428 and registry recovery #430 are merged.
+The owner explicitly requested a one-off manual release after checks; routine
+agent development still merges main, and nightly checked main→live runs at
+00:01 America/Denver. Provider LIVE, communications and spending gates remain.
+
+Main run 38404970079 proved an intermittent W-22 signing failure: indirect callers
+of seedTaxReadyContext were not in SHARED_SETTINGS_TESTS and could overwrite or
+restore BusinessSettings.singleton while another fixture signed an agreement.
+Ten existing helper callers now join the serial lane; the guard recognizes helper
+calls even without an inline database-name marker. No application money/tax
+semantics, assertions or suites are removed. Local source/config inventory and
+secret checks pass; full exact-head Actions unit/browser and main checks remain
+required before release. Active W-22D14 PR #429 is left to its existing agent.
+
+
 ## W-22D13 PR #427 — shared-settings CI recovery (2026-10-13)
 
 Live GitHub PR #427 head `cbc96f7` passed all four saved-session browser

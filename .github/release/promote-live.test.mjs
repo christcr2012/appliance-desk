@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checksPass, decide, denverDay, run } from './promote-live.mjs';
+import { checksPass, checksFailed, decide, denverDay, run } from './promote-live.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -30,6 +30,9 @@ test('requires successful latest exact-head trusted checks', () => {
   assert.equal(checksPass([], ['ci'], main), false);
   assert.equal(checksPass([good, { ...good, id: 2, conclusion: 'failure' }], ['ci'], main), false);
   assert.equal(checksPass([good], ['ci', 'missing'], main), false);
+  assert.equal(checksFailed([{ ...good, conclusion: 'failure' }], ['ci'], main), true);
+  assert.equal(checksFailed([{ ...good, status: 'in_progress', conclusion: null }], ['ci'], main), false);
+  assert.equal(checksFailed([{ ...good, head_sha: live, conclusion: 'failure' }], ['ci'], main), false);
 });
 test('one checked fast-forward daily; reruns and unchanged heads skip', () => {
   const state = { main, live, ancestor: true, green: true, alreadyToday: false };
@@ -55,17 +58,38 @@ test('real atomic git promotion, read-back and second same-day update refusal', 
     writeFileSync(join(dir, 'fixture.txt'), 'first');
     git('add', 'fixture.txt'); git('commit', '-m', 'first');
     git('push', 'origin', 'main', 'main:live');
+    const original = git('rev-parse', 'HEAD');
     writeFileSync(join(dir, 'fixture.txt'), 'second');
     git('commit', '-am', 'second'); git('push', 'origin', 'main');
+    const second = git('rev-parse', 'HEAD');
+    writeFileSync(join(dir, 'fixture.txt'), 'concurrent agent');
+    git('commit', '-am', 'concurrent main');
     const checked = git('rev-parse', 'HEAD');
+    git('checkout', '--detach', original);
     Object.assign(process.env, { GITHUB_REPOSITORY: 'example/repo', GITHUB_REF: 'refs/heads/main',
       GITHUB_EVENT_NAME: 'schedule', GH_TOKEN: 'fixture' });
-    globalThis.fetch = async () => ({ ok: true, json: async () => ({ total_count: 1,
-      check_runs: [{ ...good, head_sha: checked }] }) });
     process.chdir(dir);
-    await run({ repository: 'example/repo', requiredChecks: ['ci'] });
+    const policy = { repository: 'example/repo', requiredChecks: ['ci'] };
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ total_count: 1,
+      check_runs: [{ ...good, head_sha: second, conclusion: 'failure' }] }) });
+    await assert.rejects(run(policy), /check failed/);
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], original);
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ total_count: 0, check_runs: [] }) });
+    await assert.rejects(run(policy, { attempts: 2, pause: async () => {} }), /window exhausted/);
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], original);
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      if (calls === 1) git('push', 'origin', checked + ':refs/heads/main');
+      return { ok: true, json: async () => ({ total_count: 1, check_runs: [{ ...good,
+        head_sha: calls === 1 ? second : checked,
+        status: calls === 2 ? 'in_progress' : 'completed' }] }) };
+    };
+    await run(policy, { attempts: 3, pause: async () => {} });
+    assert.equal(calls, 3);
     assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], checked);
     assert.equal(git('ls-remote', 'origin', 'refs/tags/live-promotion/' + denverDay()).split(/\s+/)[0], checked);
+    git('checkout', 'main');
     writeFileSync(join(dir, 'fixture.txt'), 'third');
     git('commit', '-am', 'third'); git('push', 'origin', 'main');
     await run({ repository: 'example/repo', requiredChecks: ['ci'] });
@@ -77,4 +101,10 @@ test('real atomic git promotion, read-back and second same-day update refusal', 
     keys.forEach((key, i) => { if (before[i] === undefined) delete process.env[key]; else process.env[key] = before[i]; });
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('owner release schedule is 00:01 Denver with native DST handling', () => {
+  const workflow = readFileSync(new URL('../workflows/daily-live.yml', import.meta.url), 'utf8');
+  assert.equal((workflow.match(/^\s*- cron:/gm) || []).length, 1);
+  assert.match(workflow, /- cron: '1 0 \* \* \*'[^\n]*\n\s+timezone: America\/Denver\s*\n/);
 });
