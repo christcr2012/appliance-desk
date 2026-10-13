@@ -8,7 +8,7 @@ export function signingPaymentDueItem(row: {
   totalCents: number;
   signedAt: Date;
   customerName: string;
-  latestAttempt?: { status: string; failureCode: string | null } | null;
+  latestAttempt?: { status: string; failureCode: string | null; updatedAt: Date } | null;
 }): ExceptionItem {
   if (!row.agreementId || !Number.isSafeInteger(row.totalCents) || row.totalCents <= 0 ||
       !Number.isFinite(row.signedAt.getTime())) {
@@ -17,6 +17,7 @@ export function signingPaymentDueItem(row: {
   const href = "/desk/agreements/" + encodeURIComponent(row.agreementId);
   const failed = row.latestAttempt?.status === "FAILED";
   const pending = row.latestAttempt?.status === "PENDING";
+  const failureAt = failed ? row.latestAttempt?.updatedAt : undefined;
   return {
     category: "SIGNING_PAYMENT_DUE",
     severity: failed ? "high" : "medium",
@@ -30,7 +31,8 @@ export function signingPaymentDueItem(row: {
         : "The agreement is signed, but the signing amount has not been recorded as paid. Arrange secure payment and verify collection before treating it as settled.",
     href,
     amountCents: row.totalCents,
-    since: row.signedAt,
+    since: failureAt ?? row.signedAt,
+    dueOn: failureAt,
     primaryAction: { href, label: failed ? "Investigate failed payment" : "Review signing payment" },
   };
 }
@@ -50,7 +52,7 @@ export async function listSigningPaymentAttention(limit: number): Promise<{
     select: {
       agreementId: true, totalCents: true, signedAt: true,
       attempts: { orderBy: { attemptNumber: "desc" }, take: 1,
-        select: { status: true, failureCode: true } },
+        select: { status: true, failureCode: true, updatedAt: true } },
       agreement: { select: { customer: { select: { user: {
         select: { name: true, email: true },
       } } } } },

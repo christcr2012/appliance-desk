@@ -30,24 +30,27 @@ describe("W-22 signing payment To do", () => {
   it("elevates verified failed attempts without leaking arbitrary provider failure codes", () => {
     const failed = signingPaymentDueItem({
       agreementId: "failed-1", totalCents: 4500, signedAt, customerName: "Taylor",
-      latestAttempt: { status: "FAILED", failureCode: "provider-token-secret-not-safe" },
+      latestAttempt: { updatedAt: new Date("2026-10-13T19:00:00Z"), status: "FAILED", failureCode: "provider-token-secret-not-safe" },
     });
     expect(failed).toMatchObject({
       category: "SIGNING_PAYMENT_DUE", severity: "high",
       primaryAction: { href: "/desk/agreements/failed-1", label: "Investigate failed payment" },
     });
     expect(failed.title).toContain("failed");
+    expect(failed.dueOn).toEqual(new Date("2026-10-13T19:00:00Z"));
+    expect(failed.since).toEqual(failed.dueOn);
     expect(failed.detail).toContain("do not assume money was received");
     expect(failed.detail).not.toContain("provider-token-secret-not-safe");
     const pending = signingPaymentDueItem({
       agreementId: "pending-1", totalCents: 4500, signedAt, customerName: "Taylor",
-      latestAttempt: { status: "PENDING", failureCode: null },
+      latestAttempt: { updatedAt: new Date("2026-10-13T19:00:00Z"), status: "PENDING", failureCode: null },
     });
     expect(pending.severity).toBe("medium");
+    expect(pending.dueOn).toBeUndefined();
     expect(pending.detail).toContain("not a receipt");
     const stripeFailed = signingPaymentDueItem({
       agreementId: "failed-2", totalCents: 4500, signedAt, customerName: "Taylor",
-      latestAttempt: { status: "FAILED", failureCode: "STRIPE_ASYNC_PAYMENT_FAILED" },
+      latestAttempt: { updatedAt: new Date("2026-10-13T19:00:00Z"), status: "FAILED", failureCode: "STRIPE_ASYNC_PAYMENT_FAILED" },
     });
     expect(stripeFailed.detail).toContain("unsuccessful asynchronous");
   });

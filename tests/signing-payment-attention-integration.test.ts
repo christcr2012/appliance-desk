@@ -137,6 +137,11 @@ describe.skipIf(!enabled)("W-22 unpaid signing To do (actual PostgreSQL and requ
       primaryAction: { href: target, label: "Investigate failed payment" },
     });
     expect(ours[0].detail).toContain("unsuccessful asynchronous");
+    const recordedFailure = await prisma.signingPaymentAttempt.findFirstOrThrow({
+      where: { agreementId: agreements[2], status: "FAILED" },
+    });
+    expect(ours[0].dueOn).toEqual(recordedFailure.updatedAt);
+    expect(ours[0].since).toEqual(recordedFailure.updatedAt);
     expect(ours[0].detail).not.toContain("recorded as paid");
     const obligation = await prisma.agreementSigningPayment.findUniqueOrThrow({
       where: { agreementId: agreements[2] },

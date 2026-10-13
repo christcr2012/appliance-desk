@@ -56,7 +56,7 @@ test("manual signing collection is an owner-only, explicit accessible review —
       failureCode: "STRIPE_ASYNC_PAYMENT_FAILED",
     } });
     await page.reload();
-    await expect(page.getByRole("alert")).toContainText("attempt failed");
+    await expect(page.getByText("The latest signing collection attempt failed", { exact: false })).toContainText("attempt failed");
     await expect(page.getByRole("button", { name: "Record signing payment" })).toBeVisible();
     expect((await new AxeBuilder({ page })
       .include('[aria-labelledby="signing-manual-heading"]')
