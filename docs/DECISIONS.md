@@ -20,6 +20,12 @@ editing the earlier decision away.
 
 ---
 
+### 2026-10-13 (later) — rental-only business and late fee; federal leasing review
+
+Chris confirmed **no rent-to-own**; older future rent-to-own suggestions do not represent current approved scope. He approved **five calendar days after the agreed payment due date** before a **single $5 flat late charge on day six**, waivable with documented discretion, as an owner-configurable **starting policy** for ordinary appliance rentals. Neither the rent-to-own statute nor the current code's $0 late-fee default validates deployment, existing contracts or legal enforceability. IN-84 records the decision. This is a documentation-only decision; no code, charges, signed agreements, customer messaging or LIVE provider state changed.
+
+CFPB Regulation M (12 CFR Part 1013) concerns qualifying leases of **personal property**, not only car leases, and may include standalone washer/dryer contracts. Screen six- and twelve-month household agreements for >4-month binding term, 2026 $73,400 contractual-obligation threshold, lessor activity and exclusions; genuine month-to-month and actual business/entity leases have different treatment. See [dated statute/counsel issue map](business/ORDINARY-APPLIANCE-LEASE-LAW-2026-10-13.md). Attorney verification of final terms, disclosure, advertising and other Colorado consumer/lease law remains OPEN; CPA IN-79 remains OPEN. W-22/W-23 gates unchanged.
+
 ### 2026-10-13 — owner text/voice policy reconciliation (documentation only)
 
 The owner answered a batch of open business-policy questions in text and voice. [The dated subject-by-subject record](owner-decisions/2026-10-13-text-voice-reconciliation.md) is the authoritative *new* owner-answer source for these choices, not proof of implementation or provider acceptance. In particular:

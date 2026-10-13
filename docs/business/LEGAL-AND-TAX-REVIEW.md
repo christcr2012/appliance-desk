@@ -29,6 +29,10 @@ Use IN-33 through IN-39, IN-44 and IN-46 rather than creating duplicate tax ques
 
 Specifically confirm treatment of continuous use across renewals, mixed-tax-status equipment sets, equipment swaps, taxes paid before registration, acquisition tax credits, setup bundles, deposit application, partner commissions and any eventual rent-to-own program. Tax return forms, filing cadence and current rules must be verified when filing; the consultant's instruction to remit every local use tax directly to the state is not a safe general procedure.
 
+## October 13 owner correction — rental-only legal scope
+
+The owner explicitly rules out rent-to-own. Older references in this memo to an eventual rent-to-own product are now **superseded future proposals**, not authorized work. The five-calendar-day grace period and one $5 flat late fee per overdue installment are accepted **starting business policy**, not verified legality/production configuration. Review the [ordinary appliance leasing federal/Colorado issue map](ORDINARY-APPLIANCE-LEASE-LAW-2026-10-13.md): in particular the potential Regulation M coverage of standalone consumer **six-/twelve-month** appliance rentals, and genuine month-to-month and actual commercial-contract distinctions. Attorney review of fees, customer documents, disclosures and public offers remains a launch gate; preserve open CPA questions.
+
 ## Counsel review packet
 
 Prepare approved templates for residential terms, a property authorization, a commercial master and equipment schedule, and a referral partnership agreement. Confirm legal entity and signer authority; ordinary-use service scope; deposit handling; cancellation and early-ending treatment; safe access; damage disputes; premium replacement promises; and public price presentation. Preserve online cancellation throughout any retention offer.
