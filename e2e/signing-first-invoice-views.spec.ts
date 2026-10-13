@@ -55,7 +55,7 @@ test("owner and customer see the identical credited first invoice, including pri
       await expect(target.getByText(SIGNING_FIRST_INVOICE_DESCRIPTION)).toBeVisible();
       await expect(target.getByText("First-month money paid at signing is already deducted", { exact: false })).toBeVisible();
       await expect(target.getByText("Balance owed")).toBeVisible();
-      await expect(target.getByText("Paid on this invoice")).toBeVisible();
+      await expect(target.getByText("Paid on this invoice", { exact: true })).toBeVisible();
       await expect(target.getByText("100 Signed Invoice Proof St", { exact: false })).toBeVisible();
       expect(await target.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       const printButton = target.getByRole("button", { name: "Print / save as PDF" });
