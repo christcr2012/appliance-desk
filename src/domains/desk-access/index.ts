@@ -132,6 +132,7 @@ export async function getDeskJobById(id: string) {
       appliances: {
         select: {
           result: true,
+          newHookupItemsInstalled: true,
           role: true,
           appliance: {
             select: {

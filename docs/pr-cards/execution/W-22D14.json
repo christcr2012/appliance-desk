@@ -33,6 +33,11 @@
       "purpose": "In-progress staff form, durable completed display."
     },
     {
+      "path": "src/domains/desk-access/index.ts",
+      "anchor": "getDeskJobById",
+      "purpose": "STAFF redacted DTO must project the per-machine hookup evidence, never finance fields."
+    },
+    {
       "path": "tests/job-completion-integration.test.ts",
       "anchor": "describe.skipIf(!enabled)",
       "purpose": "Existing disposable PostgreSQL fixture and full completion regression."
