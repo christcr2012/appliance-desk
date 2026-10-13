@@ -1,5 +1,7 @@
 # STATUS — current work, blockers and next action
 
+**2026-10-13 owner-policy reconciliation (documentation only):** Newly approved business choices are recorded in [OWNER-INPUTS](OWNER-INPUTS.md) and [the text/voice decision appendix](owner-decisions/2026-10-13-text-voice-reconciliation.md). The old IN-75/76 'recommendations only' language in historical handoffs is superseded by those *owner answers*, **not** by verified code. W-22 remains PARTIAL; CPA IN-79 OPEN; W-23 blocked; no provider/LIVE/money-out/publication gates waived.
+
 ## W-22D14 — new hookup proof per delivered appliance (PR #429 under verification)
 
 New per-machine true/false/unknown hookup evidence, missing-item high-priority
