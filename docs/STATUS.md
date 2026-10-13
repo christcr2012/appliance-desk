@@ -24,7 +24,7 @@ Next product unit: JIT W-22 cancellation and signing-through-delivery
 completion after this independent measured performance repair.
 
 
-## Active W-22D15 — failed signing payment review, PR #432 qualifying CI recovery
+## Historical W-22D15 — PR #432 merged (superseded recovery handoff)
 
 Current upstream main `2ba7776b462436ecb2b35dcab35a26e4b5477257`
 includes owner decisions #433/#434. The updated W-22D15 branch includes that
@@ -36,9 +36,10 @@ all three unit shards, four browser shards, secret/static and aggregate gates
 at `4b8b899`. However a GitHub Actions-bot branch synchronization caused
 pull-request workflows to report `action_required`, so ruleset 24419414
 still considered required PR-context `ci` missing and refused merge.
-This targeted handoff update attempts a fresh GitHub-App-authored PR sync
-to obtain a qualifying exact-head PR check. No bypass, waiver or production
-release was attempted; do not merge until the required check really passes.
+Historical resolution: a GitHub-App-authored PR sync established the
+required exact-head pull_request CI run `38461068954`, which passed,
+and PR #432 merged as main `917b22c` after all review threads were resolved.
+No bypass, waiver or manual Vercel release was used.
 
 W-22D15 owner To do shows one failed attempt with same-day deadline
 based on persisted attempt update time, distinct from pending/ordinary
@@ -47,11 +48,15 @@ evidence and existing separately confirmed MANUAL money-in path.
 Still no automatic provider retry, fabricated receipt, scheduled visit,
 Stripe LIVE or refund. Actual provider TEST acceptance remains unverified.
 
-#429 independent benchmark red: 5,000-invoice 5.42ms against
-unchanged 5.304ms guard. Measured independently on disposable PostgreSQL
-at 5.11ms with samples 5.11/4.76/5.86/4.82/5.79ms, and PR #432
-head performance run passed before the correction. This suggests
-variance, not verified root cause. Keep guard and investigate systematically.
+Historical #429 independent benchmark red: 5,000-invoice 5.42ms against
+the unchanged 5.304ms guard. A different isolated PostgreSQL run
+measured 5.11ms (samples 5.11/4.76/5.86/4.82/5.79). At the time
+these results suggested unexplained variation. **Superseded by
+PERF-INV5000 / PR #435 above:** direct EXPLAIN and same-fixture
+before/after measurement subsequently established the missing
+createdAt/id sort index as a genuine query bottleneck, while
+runner-to-runner latency variation still merits monitoring.
+Do not waive, remove or rebaseline the regression guard.
 
 Owner IN-75 relocation and IN-76 cancellation **answered** in #433:
 $75 per relocation job requires case approval and no second $45 setup;
