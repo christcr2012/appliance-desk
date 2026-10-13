@@ -1,33 +1,46 @@
 # STATUS — current work, blockers and next action
 
 
-## Active W-22D15 — failed signing payment owner review (PR pending, 2026-10-13)
+## Active W-22D15 — failed signing payment review, PR #432 pending recheck
 
-Actual verified main `b031aafda20692da7208ce643247a8fded9ac48a` includes
-D14 #429 and separate #430/#431 infrastructure fixes. Main CI run 38412878263
-and policy run 38412877486 **passed**. Live `072cd351` remains behind as
-scheduled checked release has not caught up; never release manually here.
+Current verified upstream main is `2ba7776b462436ecb2b35dcab35a26e4b5477257`
+with merged owner-decision documentation #433/#434, both exact-head and
+merged-main CI green. Development PR #432 was opened at older main and
+failed browser-d only on an ambiguous Playwright alert selector (the
+actual failure banner was present). Codex found an actionable second
+issue: failed payment lacked due date and failure-at timestamp. Both
+are corrected in the same branch and now require new exact-head CI,
+browser and review after merging upstream, not waiver.
 
-This card completes failed-signing **visibility and owner reconciliation**, not
-Stripe TEST provider acceptance or general cancellation. A persisted failed
-attempt becomes one high-priority, owner-only agreement To do; pending
-provider attempts still require reconciliation. Owner agreement view identifies
-the failure and makes existing explicitly verified manual alternate collection
-available; no provider retry, receipt fabrication, automatic delivery scheduling,
-money-out or live collection. Unit, real throwaway Postgres, existing-session
-browser, exact-head CI and review must all be verified before merge; local
-development checks are not equivalent to real provider acceptance.
+W-22D15 owner To do shows one failed attempt with same-day deadline
+based on persisted attempt update time, distinct from pending/ordinary
+unsigned/uncaptured money. The owner agreement page shows failed
+evidence and existing separately confirmed MANUAL money-in path.
+Still no automatic provider retry, fabricated receipt, scheduled visit,
+Stripe LIVE or refund. Actual provider TEST acceptance remains unverified.
 
-Independent performance watch: #429's 5,000-invoice median 5.42ms failed the
-5.304ms cap; a separate isolated throwaway PostgreSQL sandbox measurement on
-the same main source yielded 5.11ms (samples 5.11/4.76/5.86/4.82/5.79ms).
-This shows near-threshold measurement variation, **not** a proven root cause.
-Do not waive, rebaseline, disable or present the performance run as green.
+#429 independent benchmark red: 5,000-invoice 5.42ms against
+unchanged 5.304ms guard. Measured independently on disposable PostgreSQL
+at 5.11ms with samples 5.11/4.76/5.86/4.82/5.79ms, and PR #432
+head performance run passed before the correction. This suggests
+variance, not verified root cause. Keep guard and investigate systematically.
 
-IN-79 CPA tax classification remains OPEN; IN-75/76 only recommendations;
-pre-delivery refund money-out policy stays gated. W-22 PARTIAL, W-23 blocked.
-No LIVE, spending, communications, destructive production changes, or manual
-Vercel release. Continue eligible W-22 work after exact-head PR verification.
+Owner IN-75 relocation and IN-76 cancellation **answered** in #433:
+$75 per relocation job requires case approval and no second $45 setup;
+ordinary before-delivery refund is full regardless of scheduling;
+commercial default full refund within 72 hours, then setup-fee
+retention with returned down payment, subject to explicit owner review,
+contract/counsel and independent money-out approval. These are NOT
+implemented or authorized to pay out by this PR. Owner IN-84 in #434
+confirms rental-only (no rent-to-own) and the disclosed editable
+5-calendar-day grace / one $5 fee on day 6 per overdue installment;
+actual activation remains gated on correct terms/legal review.
+
+CPA IN-79 remains OPEN, W-22 PARTIAL, W-23 blocked.
+Never auto-activate LIVE, messages, spending, refunds,
+production data changes or Vercel release.
+
+**2026-10-13 owner-policy reconciliation (documentation only):** Newly approved business choices are recorded in [OWNER-INPUTS](OWNER-INPUTS.md) and [the text/voice decision appendix](owner-decisions/2026-10-13-text-voice-reconciliation.md). The old IN-75/76 'recommendations only' language in historical handoffs is superseded by those *owner answers*, **not** by verified code. W-22 remains PARTIAL; CPA IN-79 OPEN; W-23 blocked; no provider/LIVE/money-out/publication gates waived.
 
 ## W-22D14 — new hookup proof per delivered appliance (PR #429 under verification)
 

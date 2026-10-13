@@ -1,5 +1,7 @@
 # Roadmap — deferred & suggested items
 
+> **2026-10-13 owner scope correction: RENTAL ONLY.** No rent-to-own or early-purchase program is authorized or in eligible roadmap scope. Historical proposals below mentioning a future rent-to-own ledger are superseded and must not be implemented unless the owner expressly reverses this decision. See `docs/DECISIONS.md` and `docs/business/ORDINARY-APPLIANCE-LEASE-LAW-2026-10-13.md`.
+
 Things intentionally **not** built yet — either deferred by the plan
 (`docs/PLAN.md` is the plan; `docs/STATUS.md` says where it stands) or a
 suggestion an AI had while working and is flagging for Chris to decide on.

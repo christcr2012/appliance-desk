@@ -20,6 +20,23 @@ editing the earlier decision away.
 
 ---
 
+### 2026-10-13 (later) — rental-only business and late fee; federal leasing review
+
+Chris confirmed **no rent-to-own**; older future rent-to-own suggestions do not represent current approved scope. He approved **five calendar days after the agreed payment due date** before a **single $5 flat late charge on day six**, waivable with documented discretion, as an owner-configurable **starting policy** for ordinary appliance rentals. Neither the rent-to-own statute nor the current code's $0 late-fee default validates deployment, existing contracts or legal enforceability. IN-84 records the decision. This is a documentation-only decision; no code, charges, signed agreements, customer messaging or LIVE provider state changed.
+
+CFPB Regulation M (12 CFR Part 1013) concerns qualifying leases of **personal property**, not only car leases, and may include standalone washer/dryer contracts. Screen six- and twelve-month household agreements for >4-month binding term, 2026 $73,400 contractual-obligation threshold, lessor activity and exclusions; genuine month-to-month and actual business/entity leases have different treatment. See [dated statute/counsel issue map](business/ORDINARY-APPLIANCE-LEASE-LAW-2026-10-13.md). Attorney verification of final terms, disclosure, advertising and other Colorado consumer/lease law remains OPEN; CPA IN-79 remains OPEN. W-22/W-23 gates unchanged.
+
+### 2026-10-13 — owner text/voice policy reconciliation (documentation only)
+
+The owner answered a batch of open business-policy questions in text and voice. [The dated subject-by-subject record](owner-decisions/2026-10-13-text-voice-reconciliation.md) is the authoritative *new* owner-answer source for these choices, not proof of implementation or provider acceptance. In particular:
+- IN-75: add-on at an existing active address does not automatically incur setup; relocating is **$75 per job** and **not** another $45 administrative setup.
+- IN-76: regular pre-delivery cancellations are **fully refunded even if scheduled**; large orders default to a configurable **72-hour** full-refund window and otherwise normally keep the setup fee, with per-case owner approval.
+- IN-70/72: separate machine lines and visible set discounts; protect **already prepaid** pricing after a partial return and credit the returned machine's unused discounted share; cash refunds require finance authorization. Existing implementation requires reconciliation.
+- IN-06: driving-mile delivery bands: free to 15 miles, $75 over 15–30, $125 over 30–50; over 50 OFF; fee waivers and any expansion stay manually controlled. Phone hours are independent.
+- IN-02/03/05/48/50/51/52/53/54/55/63/64/73/74/78/80/83 now include answered, provisional, deferred or partial owner directions as specified in OWNER-INPUTS, with remaining verified provider/professional gates explicitly held open.
+
+The owner intends a November **readiness-based**, not date-guaranteed, launch. This PR does not modify app code, send mail, enable voice/Stripe, move money, publish new offers, infer a CPA classification or authorize purchases. W-22 remains partial, W-23 blocked, and CPA IN-79 open.
+
 ### 2026-10-08 — owner-requested K-CASH design (documentation review pending)
 
 Chris requested current startup-bank/QBO research and robust envelopes/planned costs with advance domain/UI/tests

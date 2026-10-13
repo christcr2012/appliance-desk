@@ -36,8 +36,7 @@ Update this file in the same PR that changes a rule.
   - Refundable security deposit and/or non-refundable damage waiver:
     both supported, each can be turned on/off and priced per appliance
     type.
-  - Late fee: configurable grace period (days) + flat fee and/or
-    percentage.
+  - Late fee: **owner decision October 13, 2026:** five **calendar** days after the disclosed due date, then **one flat $5 fee on day six per overdue installment**, not $5/day or repeated on the same unpaid installment. Owner/finance-authorized staff can waive with an auditable reason. Both fee and grace period are editable. The existing code's $0 starting flat fee is **not proof of activation**; do not rewrite signed terms or assess any new charge without agreed disclosures and counsel review. See `docs/business/ORDINARY-APPLIANCE-LEASE-LAW-2026-10-13.md`. Percent-based alternatives remain a technical capability, **not** an approved starting policy.
   - Sales tax: Batch T uses the exact service address, its verified taxing
     jurisdictions, effective rate versions, and the configured taxability rules.
     There is no business-wide rate field in Settings or the rental builder, and

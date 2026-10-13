@@ -77,10 +77,10 @@
     },
     {
       "id": "IN-76",
-      "affected": "Pre-delivery cancellation refund policy not approved",
+      "affected": "Owner decision recorded; refund implementation and legal review remain pending",
       "source": "docs/OWNER-INPUTS.md",
       "remedy": "No cancellation, refund or money-out",
-      "reopen": "Explicit owner answer"
+      "reopen": "Case-specific refund approval and reviewed customer terms"
     },
     {
       "id": "TEST-STRIPE",
