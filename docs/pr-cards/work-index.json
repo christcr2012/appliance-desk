@@ -3667,11 +3667,15 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-22D12",
+  "activeExecution": "W-22D13",
   "executionPackets": [
     {
       "id": "W-22D12",
       "path": "docs/pr-cards/execution/W-22D12.json"
+    },
+    {
+      "id": "W-22D13",
+      "path": "docs/pr-cards/execution/W-22D13.json"
     }
   ]
 }

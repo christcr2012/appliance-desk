@@ -17,6 +17,8 @@ import { getPreparedSigningChargeReview } from "@/domains/billing/signing-charge
 import { SigningChargePrepareForm } from "./signing-charge-prepare-form";
 import { assessPreparedSigningCharges } from "@/domains/billing/signing-charge-readiness";
 import { getDraftSigningTaxReview } from "@/domains/billing/signing-charge-tax-review";
+import { prisma } from "@/lib/prisma";
+import { ManualSigningPaymentForm } from "./manual-signing-payment-form";
 
 export const metadata = { title: "Agreement" };
 
@@ -37,6 +39,19 @@ export default async function AgreementDetailPage({
   if (!agreement) {
     notFound();
   }
+
+  const signingPayment = await prisma.agreementSigningPayment.findUnique({
+    where: { agreementId: agreement.id },
+    include: { receipt: true,
+      attempts: { where: { status: { in: ["PREPARED", "PENDING"] } },
+        orderBy: { createdAt: "desc" }, take: 1 } },
+  });
+  const todayParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Denver", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const localDay = ["year", "month", "day"]
+    .map((type) => todayParts.find((part) => part.type === type)?.value ?? "")
+    .join("-");
 
   const [endQuote, signedArtifactId, signingPreview, preparedCharges, taxReview] = await Promise.all([
     agreement.status === "ACTIVE" && agreement.termMonths === null ? getMonthToMonthEndQuote(agreement.id) : null,
@@ -213,6 +228,34 @@ export default async function AgreementDetailPage({
               No complete order-wide preparation is on record yet.
             </p>
           )}
+        </section>
+      )}
+      {signingPayment && (
+        <section aria-labelledby="signing-manual-heading" className="mt-6 rounded-lg border border-line p-4">
+          <h2 id="signing-manual-heading" className="text-lg font-semibold">Signing payment</h2>
+          <p className="text-sm text-ink-soft">
+            Signed amount: {formatMoney(signingPayment.totalCents)} — {signingPayment.status === "SETTLED"
+              ? "recorded" : "waiting for verified payment"}.
+          </p>
+          {signingPayment.status === "SETTLED" && signingPayment.receipt && (
+            <p className="mt-2 text-sm">
+              Receipt {signingPayment.receipt.id} · {signingPayment.receipt.method} ·
+              recorded {signingPayment.receipt.receivedOn.toLocaleDateString("en-US", { timeZone: "America/Denver" })}.
+              Money received for signing is distinct from money paid on the first invoice.
+            </p>
+          )}
+          {signingPayment.status === "AWAITING_PAYMENT" &&
+            signingPayment.attempts[0]?.method === "STRIPE_CHECKOUT" && (
+              <p className="mt-2 text-sm" role="status">
+                A card payment is already prepared or pending. Investigate its actual
+                outcome before attempting manual collection; no duplicate receipt is allowed.
+              </p>
+            )}
+          {signingPayment.status === "AWAITING_PAYMENT" && signingPayment.totalCents > 0 &&
+            signingPayment.attempts[0]?.method !== "STRIPE_CHECKOUT" && (
+              <ManualSigningPaymentForm agreementId={agreement.id}
+                amountCents={signingPayment.totalCents} receivedOn={localDay} />
+            )}
         </section>
       )}
       <div className="mt-6">

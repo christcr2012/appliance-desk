@@ -109,13 +109,19 @@ describe.skipIf(!enabled)("Batch T tax migration (real Postgres)", () => {
     expect(migration).not.toContain('INSERT INTO "TaxFilingAccount"');
   });
 
-  it("gives existing business settings safe undecided defaults", async () => {
-    const settings = await prisma.businessSettings.findUniqueOrThrow({
-      where: { id: "singleton" },
-    });
-    expect(settings.shortTermLeaseElection).toBe("UNDECIDED");
-    expect(settings.retailDeliveryFeeDecision).toBe("UNDECIDED");
-    expect(settings.businessTaxAddress).toEqual({});
+  it("gives a new business settings row safe undecided defaults without reading shared settings", async () => {
+    // The singleton is intentionally updated by other integration tests and is not
+    // evidence of the database default. Exercise the migrated column defaults on
+    // an isolated row instead of depending on file order in the shared DB shard.
+    const id = `tax-migration-settings-${tag}`;
+    const settings = await prisma.businessSettings.create({ data: { id } });
+    try {
+      expect(settings.shortTermLeaseElection).toBe("UNDECIDED");
+      expect(settings.retailDeliveryFeeDecision).toBe("UNDECIDED");
+      expect(settings.businessTaxAddress).toEqual({});
+    } finally {
+      await prisma.businessSettings.delete({ where: { id } });
+    }
   });
 
   it("partial unique index rejects a second default rule for one category", async () => {
