@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "id": "W-22D15",
+  "parent": "W-22",
+  "baseline": "b031aafda20692da7208ce643247a8fded9ac48a",
+  "card": "docs/pr-cards/W-22D15.md",
+  "outcome": "Failed or pending signing payment evidence is visible on owner To do and agreement review, with explicit owner investigation and safe manual collection; no failed attempt becomes a receipt or an automatic delivery.",
+  "risk": "Money-in failure reporting and owner/manual path only; no automatic retry, money-out, LIVE activation, scheduling or tax decision.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-W-AMENDMENT-B.md",
+      "anchor": "### 6.2 W-22",
+      "purpose": "Approved failed signing payment review and retry expectation."
+    },
+    {
+      "path": "src/domains/exceptions/signing-payment-attention.ts",
+      "anchor": "export function signingPaymentDueItem",
+      "purpose": "Existing bounded, role-gated owner To do projection."
+    },
+    {
+      "path": "src/domains/billing/signing-payment-settlement.ts",
+      "anchor": "checkout.session.async_payment_failed",
+      "purpose": "Provider-authenticated failure evidence, not proof of collected money."
+    },
+    {
+      "path": "src/domains/billing/signing-payment-attempts.ts",
+      "anchor": "export async function prepareSigningPaymentAttempt",
+      "purpose": "Existing locked attempt, successful/pending refusal and explicit retry numbers."
+    },
+    {
+      "path": "src/app/desk/agreements/[id]/page.tsx",
+      "anchor": "Signing payment",
+      "purpose": "Real owner reconciliation screen and eligible manual fallback."
+    },
+    {
+      "path": "tests/signing-payment-attention-integration.test.ts",
+      "anchor": "describe.skipIf(!enabled)",
+      "purpose": "Disposable PostgreSQL role and accurate failed-attempt selection."
+    },
+    {
+      "path": "e2e/signing-manual-payment.spec.ts",
+      "anchor": "manual signing collection",
+      "purpose": "Owner-only browser state, failure acknowledgement and inaccessible unauthorized form."
+    }
+  ],
+  "proposedFiles": [
+    "tests/signing-payment-attention-w22.test.ts",
+    "tests/signing-payment-attention-integration.test.ts",
+    "e2e/signing-manual-payment.spec.ts"
+  ],
+  "invariants": [
+    "Only signed AWAITING_PAYMENT obligations appear; settled and not-due never appear.",
+    "Latest durable attempt determines pending/failed language; failure codes never become untrusted UI text.",
+    "A failed Stripe attempt is not a receipt, paid invoice, credit or authority to schedule delivery.",
+    "Manual collection reuses owner/admin role, explicit verified-money confirmation, signed frozen amount and transaction locks.",
+    "No automatic Stripe retry, LIVE payment, money-out, tax classification, deployment or notifications."
+  ],
+  "sequence": [
+    "Project latest persisted failure/pending attempt and high-priority failed To do.",
+    "Show confirmed failure and safe manual alternate collection on existing owner agreement screen.",
+    "Prove codes are redacted, settled rows excluded, DB attempt select and owner/staff/customer browser isolation.",
+    "Run selected throwaway PostgreSQL and browser checks, CI and review at final head."
+  ],
+  "acceptance": [
+    "Latest FAILED attempt creates one high-priority agreement link with truthful failure explanation.",
+    "Latest PENDING stays non-receipted; no live/automatic money or delivery transition.",
+    "Owner sees failed evidence and may use explicit signed manual collection fallback; staff/customer cannot.",
+    "Legacy no-attempt unpaid obligations retain existing review behavior."
+  ],
+  "gates": [
+    {
+      "id": "IN-79",
+      "affected": "Tax on setup fee undecided",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "No charge-bearing activation changes",
+      "reopen": "CPA decision"
+    },
+    {
+      "id": "IN-76",
+      "affected": "Owner decision recorded; refund implementation and legal review remain pending",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "No cancellation, refund or money-out",
+      "reopen": "Case-specific refund approval and reviewed customer terms"
+    },
+    {
+      "id": "TEST-STRIPE",
+      "affected": "Authenticated real TEST-provider acceptance",
+      "source": "docs/pr-cards/W-22.md",
+      "remedy": "Synthetic test data is implementation evidence only",
+      "reopen": "Owner-authorized TEST environment"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/signing-payment-attention-w22.test.ts"
+    ],
+    "db": [
+      "tests/signing-payment-attention-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/signing-manual-payment.spec.ts"
+    ],
+    "node": []
+  },
+  "next": "Complete remaining signing through delivery and real Stripe TEST acceptance; IN-76 cancellation money-out remains gated and W-23 blocked."
+}

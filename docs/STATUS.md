@@ -1,5 +1,50 @@
 # STATUS — current work, blockers and next action
 
+
+## Active W-22D15 — failed signing payment review, PR #432 qualifying CI recovery
+
+Current upstream main `2ba7776b462436ecb2b35dcab35a26e4b5477257`
+includes owner decisions #433/#434. The updated W-22D15 branch includes that
+exact main through a normal merge, without rebase. The former ambiguous
+Playwright alert selector and Codex finding (missing same-day failed-payment
+deadline and failure timestamp) are fixed. Codex review thread is resolved
+with exact-head test evidence. Workflow-dispatched CI run `38460370577` passed
+all three unit shards, four browser shards, secret/static and aggregate gates
+at `4b8b899`. However a GitHub Actions-bot branch synchronization caused
+pull-request workflows to report `action_required`, so ruleset 24419414
+still considered required PR-context `ci` missing and refused merge.
+This targeted handoff update attempts a fresh GitHub-App-authored PR sync
+to obtain a qualifying exact-head PR check. No bypass, waiver or production
+release was attempted; do not merge until the required check really passes.
+
+W-22D15 owner To do shows one failed attempt with same-day deadline
+based on persisted attempt update time, distinct from pending/ordinary
+unsigned/uncaptured money. The owner agreement page shows failed
+evidence and existing separately confirmed MANUAL money-in path.
+Still no automatic provider retry, fabricated receipt, scheduled visit,
+Stripe LIVE or refund. Actual provider TEST acceptance remains unverified.
+
+#429 independent benchmark red: 5,000-invoice 5.42ms against
+unchanged 5.304ms guard. Measured independently on disposable PostgreSQL
+at 5.11ms with samples 5.11/4.76/5.86/4.82/5.79ms, and PR #432
+head performance run passed before the correction. This suggests
+variance, not verified root cause. Keep guard and investigate systematically.
+
+Owner IN-75 relocation and IN-76 cancellation **answered** in #433:
+$75 per relocation job requires case approval and no second $45 setup;
+ordinary before-delivery refund is full regardless of scheduling;
+commercial default full refund within 72 hours, then setup-fee
+retention with returned down payment, subject to explicit owner review,
+contract/counsel and independent money-out approval. These are NOT
+implemented or authorized to pay out by this PR. Owner IN-84 in #434
+confirms rental-only (no rent-to-own) and the disclosed editable
+5-calendar-day grace / one $5 fee on day 6 per overdue installment;
+actual activation remains gated on correct terms/legal review.
+
+CPA IN-79 remains OPEN, W-22 PARTIAL, W-23 blocked.
+Never auto-activate LIVE, messages, spending, refunds,
+production data changes or Vercel release.
+
 **2026-10-13 owner-policy reconciliation (documentation only):** Newly approved business choices are recorded in [OWNER-INPUTS](OWNER-INPUTS.md) and [the text/voice decision appendix](owner-decisions/2026-10-13-text-voice-reconciliation.md). The old IN-75/76 'recommendations only' language in historical handoffs is superseded by those *owner answers*, **not** by verified code. W-22 remains PARTIAL; CPA IN-79 OPEN; W-23 blocked; no provider/LIVE/money-out/publication gates waived.
 
 ## W-22D14 — new hookup proof per delivered appliance (PR #429 under verification)

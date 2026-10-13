@@ -8,21 +8,32 @@ export function signingPaymentDueItem(row: {
   totalCents: number;
   signedAt: Date;
   customerName: string;
+  latestAttempt?: { status: string; failureCode: string | null; updatedAt: Date } | null;
 }): ExceptionItem {
   if (!row.agreementId || !Number.isSafeInteger(row.totalCents) || row.totalCents <= 0 ||
       !Number.isFinite(row.signedAt.getTime())) {
     throw new Error("Valid positive signing payment obligation required.");
   }
   const href = "/desk/agreements/" + encodeURIComponent(row.agreementId);
+  const failed = row.latestAttempt?.status === "FAILED";
+  const pending = row.latestAttempt?.status === "PENDING";
+  const failureAt = failed ? row.latestAttempt?.updatedAt : undefined;
   return {
     category: "SIGNING_PAYMENT_DUE",
-    severity: "medium",
-    title: "Signing payment awaiting collection — " + row.customerName,
-    detail: "The agreement is signed, but the signing amount has not been recorded as paid. Arrange secure payment and verify collection before treating it as settled.",
+    severity: failed ? "high" : "medium",
+    title: (failed ? "Signing payment failed — " : pending ? "Signing payment awaiting verification — " : "Signing payment awaiting collection — ") + row.customerName,
+    detail: failed
+      ? (row.latestAttempt?.failureCode === "STRIPE_ASYNC_PAYMENT_FAILED"
+          ? "Stripe reported an unsuccessful asynchronous signing payment. " : "The latest signing payment attempt failed. ") +
+        "Verify the provider outcome and arrange a new secure collection from the agreement; do not assume money was received or schedule delivery automatically."
+      : pending
+        ? "The signing payment attempt is pending provider verification. Reconcile its outcome before any new collection; a pending attempt is not a receipt."
+        : "The agreement is signed, but the signing amount has not been recorded as paid. Arrange secure payment and verify collection before treating it as settled.",
     href,
     amountCents: row.totalCents,
-    since: row.signedAt,
-    primaryAction: { href, label: "Review signing payment" },
+    since: failureAt ?? row.signedAt,
+    dueOn: failureAt,
+    primaryAction: { href, label: failed ? "Investigate failed payment" : "Review signing payment" },
   };
 }
 
@@ -40,6 +51,8 @@ export async function listSigningPaymentAttention(limit: number): Promise<{
     where,
     select: {
       agreementId: true, totalCents: true, signedAt: true,
+      attempts: { orderBy: { attemptNumber: "desc" }, take: 1,
+        select: { status: true, failureCode: true, updatedAt: true } },
       agreement: { select: { customer: { select: { user: {
         select: { name: true, email: true },
       } } } } },
@@ -51,6 +64,7 @@ export async function listSigningPaymentAttention(limit: number): Promise<{
     rows: rows.map(row => signingPaymentDueItem({
       agreementId: row.agreementId, totalCents: row.totalCents,
       signedAt: row.signedAt,
+      latestAttempt: row.attempts?.[0] ?? null,
       customerName: row.agreement.customer.user.name ?? row.agreement.customer.user.email,
     })),
     total: rows.length < limit ? rows.length :
