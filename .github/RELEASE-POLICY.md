@@ -24,6 +24,12 @@ CI registry recovery (2026-10-13): main run 38403982749 and prior main runs fail
 
 ## Missed-event recovery (owner repair, 2026-10-14)
 
+A successful checked no-change run now creates the same dated daily receipt as
+a promotion. Otherwise a later fallback could deploy a post-midnight merge
+even though the primary schedule ran successfully. The receipt is tag-only on
+an unchanged live branch and does not invoke an additional Vercel build.
+The check inventory, concurrency readback and no-force tag creation still apply.
+
 The primary remains 00:01 Denver. Backup events run at 00:17, 01:17 and 05:37 Denver,
 plus 12:43 UTC (06:43 MDT / 05:43 MST). Each invokes the same atomic, checked,
 once-per-Denver-day promoter. These are recovery opportunities, not extra releases.
