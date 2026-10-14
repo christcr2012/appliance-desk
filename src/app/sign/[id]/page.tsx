@@ -101,7 +101,7 @@ export default async function SignPage({
         )}
       </div>
 
-      <ReviewedSigningOrder order={signature.frozenOrder} />
+      {signature.frozenOrder && <ReviewedSigningOrder order={signature.frozenOrder} />}
 
       {lockedTerms.ending && (
         <section
