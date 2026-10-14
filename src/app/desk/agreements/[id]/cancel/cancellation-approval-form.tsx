@@ -22,7 +22,7 @@ export function CancellationApprovalForm({agreementId,fingerprint,canRetain,defa
   <label className="block">Cancellation reason and exceptions
    <textarea name="reason" required minLength={12} maxLength={500} rows={3} className="w-full border rounded-lg p-2"/>
   </label>
-  <label className="block"><input type="checkbox" name="reviewedTerms" required/> I reviewed this customer's agreed terms and approve cancellation.</label>
+  <label className="block"><input type="checkbox" name="reviewedTerms" required/> I reviewed this customer&apos;s agreed terms and approve cancellation.</label>
   <p className="text-sm">No refund is sent or marked returned. Money-out requires separate authorization and provider evidence. An outside-window full refund needs an explicit documented override.</p>
   {state.error&&<p role="alert">{state.error}</p>}
   <button disabled={pending} type="submit" className="rounded-lg border p-3">Approve cancellation and record refund due</button>
