@@ -12,6 +12,7 @@ import { addBusinessDays, formatBusinessDate, formatBusinessTime } from "@/lib/b
 import { getServerSession } from "@/lib/session";
 import { getPortalData, getPortalJobsPage } from "@/domains/portal";
 import { formatCents } from "@/domains/pricing/money";
+import { SigningPaymentSummary } from "@/components/billing/signing-payment-summary";
 import { prisma } from "@/lib/prisma";
 import {
   rentalAgreementStatusLabel,
@@ -176,6 +177,7 @@ export default async function AccountRentalsPage({
                 </ul>
 
                 <p className="mt-3 text-sm font-medium text-ink">Monthly total: {formatCents(total)}</p>
+                <SigningPaymentSummary summary={agreement.signingPaymentSummary ?? null} />
                 {agreement.freeMonthGranted && (
                   <p className="text-sm font-medium text-success">Paid in full, in advance — your first month was free.</p>
                 )}
