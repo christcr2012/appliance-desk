@@ -33,7 +33,7 @@ test("owner can schedule a signed delivery draft; staff finance To do stays priv
     await prisma.job.update({where:{id:job.id},data:{scheduledAt:new Date("2026-10-20T16:00:00Z")}});
     await customerPage.reload();
     await expect(customerPage.getByText("Delivery is being arranged.", {exact:false})).toHaveCount(0);
-    await expect(customerPage.getByText("Oct 20, 2026", {exact:false})).toBeVisible();
+    await expect(customerPage.getByText("Tuesday, October 20, 2026", {exact:false})).toBeVisible();
     await prisma.job.update({where:{id:job.id},data:{scheduledAt:null}});
    } finally { await customerContext.close(); }
   }
