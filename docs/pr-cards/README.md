@@ -17,7 +17,11 @@ prerequisites are still hypothetical. `work-index.json` preserves all later scop
 A missing card required by a design's implementation gate must be written before
 coding; the implementer can do this. Approved design/amendments govern semantic
 behavior. Cards cannot silently override them. Combine adjacent compatible units
-under AGENTS' outcome-led risk/review guidance; do not create one PR per checkbox.
+under AGENTS' outcome-led risk/review guidance; target 2–5 actually completed
+approved slices per implementation PR on average, not one PR per checkbox.
+Use the existing packet's `slices` definitions and update
+`current-pr-scorecard.json`; each completed ID requires test/integration
+evidence, not merely a passing helper.
 
 ## Concrete execution packet
 

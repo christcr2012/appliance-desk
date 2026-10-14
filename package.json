@@ -32,7 +32,8 @@
     "work": "node scripts/work-session.mjs",
     "check:work": "node scripts/work-session.mjs check",
     "session:status": "node scripts/session-status.mjs",
-    "check:session": "node --test scripts/session-status.test.mjs && node scripts/session-status.mjs"
+    "check:session": "node --test scripts/session-status.test.mjs scripts/pr-progress.test.mjs && node scripts/session-status.mjs && node scripts/pr-progress.mjs --check",
+    "pr:progress": "node scripts/pr-progress.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
