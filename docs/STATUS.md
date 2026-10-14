@@ -64,7 +64,9 @@ PR #438's concurrent source repair and verified October 14 READY deployment are 
 
 The owner directed every subsequent session to **keep building approved
 capabilities that depend on attorney/CPA/bookkeeper review** wherever safely
-possible. Build changeable, validated, authorized, audited and where necessary
+possible. The restriction applies to **conducting affected real business**
+until review is approved, not developing/testing/merging the project; unrelated
+business remains usable. Build changeable, validated, authorized, audited and where necessary
 effective-dated settings plus end-to-end tests; preserve immutable signed and
 billed evidence and fail closed at the exact unapproved customer charge,
 binding term, filing or LIVE action. Never presume the answer or silently

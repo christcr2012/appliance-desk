@@ -7,9 +7,11 @@ implementation. Update this file when an answer is supplied; reference the
 ID from `docs/STATUS.md`, the PR description and the affected batch in
 `docs/PLAN.md`. Never store passwords or keys here.
 
-**Permanent owner rule (2026-10-14):** Professional review is a scoped
-approval/activation dependency, **not** a blanket implementation blocker.
-Where practical, finish the approved workflow with editable, validated,
+**Permanent owner rule (2026-10-14):** Professional review gates **real-world
+business use of the affected capability** until required approval is verified;
+it does **not** gate its development, automated tests, normal reviewed code
+merge, or unrelated business activity. Where practical, finish the approved
+workflow with editable, validated,
 role-controlled, versioned/effective-dated rules and safe UNDECIDED states so
 CPA/counsel answers and future legal changes can be applied later in Settings.
 Preserve signed/billed history, keep unapproved binding terms/collections/filings

@@ -39,14 +39,19 @@ Do not revisit passing hardening without a demonstrated defect or approved requi
 ## 1b. Keep review-dependent development moving (standing owner rule)
 
 Before declaring a legal, CPA, accounting or owner-interpretation blocker, split
-the selected outcome into the **configurable implementation** and the precise
-**professionally/owner-approved activation or customer obligation**. Read the
+the selected outcome into the **configurable implementation** (which continues)
+and the precise **real-business-use operation** that requires review (which
+must remain disabled until verified approval). This rule does not halt coding,
+test execution, source merge or unrelated parts of the running business. Read the
 new standing rule in AGENTS.md. Implement independent work end-to-end with stored,
 validated, role-restricted, audited, and where appropriate effective-dated
 configuration; test both alternative configurations and UNDECIDED fail-closed
-behavior. Never quietly freeze a provisional interpretation in code, show an
-unconfirmed all-in payable amount, bypass a legal protection, or alter prior
-signed/billed evidence when rules change. A configurable capability is not
+behavior at **every real-business entry point**, including customer, owner,
+API and provider paths. Internal previews must be non-actionable, clearly
+provisional and barred from becoming binding customer transactions. Never
+quietly freeze a provisional interpretation in code, show an unconfirmed all-in
+payable amount, bypass a legal protection, or alter prior signed/billed evidence
+when rules change. A configurable capability is not
 approval to use it in production.
 
 Keep the specific pending review/decision ID and the prevented operation in
