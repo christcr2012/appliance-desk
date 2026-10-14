@@ -26,8 +26,11 @@ test("signing link shows complete verified two-address order without collecting 
     }});
     addresses.push(second.id);
     await prisma.estimate.create({data:{
-      id:estimateId,title:"Two site frozen offer",customerId:original.customerId,createdByUserId:ownerId,
+      id:estimateId,title:"Two site frozen offer",customerId:original.customerId,createdByUserId:ownerId,status:"CONVERTED",
     }});
+    await page.goto("/estimate/"+estimateId);
+    await expect(page.getByRole("heading",{name:"Your complete order price is being reviewed"})).toBeVisible();
+    await expect(page.getByText("Combined signing amount across addresses")).toHaveCount(0);
     const fields=[
       {id:ids[0],addressId:original.id,setupFeeCents:4500,downPaymentCents:4000},
       {id:ids[1],addressId:second.id,setupFeeCents:0,downPaymentCents:6000},
@@ -83,6 +86,13 @@ test("signing link shows complete verified two-address order without collecting 
       const axe=await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21a","wcag21aa"]).analyze();
       expect(axe.violations).toEqual([]);
     }
+    await page.goto("/estimate/"+estimateId);
+    await expect(page.getByRole("heading",{name:"Complete reviewed signing order"})).toBeVisible();
+    await expect(page.getByText("Combined signing amount across addresses")).toBeVisible();
+    await expect(page.getByText("$145",{exact:true})).toBeVisible();
+    await expect(page.getByText(/not a signature or payment request/)).toBeVisible();
+    await page.goto("/desk/estimates/"+estimateId);
+    await expect(page.getByRole("link",{name:"View customer estimate and final reviewed order"})).toBeVisible();
     expect((await prisma.signatureRecord.findUniqueOrThrow({where:{id:sigId}})).signedAt).toBeNull();
     expect(await prisma.agreementSigningPayment.count({where:{agreementId:{in:ids}}})).toBe(0);
     await page.goto("/desk/agreements/"+ids[0]);
