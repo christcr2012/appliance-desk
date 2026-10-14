@@ -1,3 +1,16 @@
+## Signing-obligation owner/customer readback continuation — October 14
+
+From source `2f68599ac35d65e6c72e919475381483a7dca289`, both customer Rentals and owner agreement review
+consume `customerSigningSummary` and render the same authorized,
+customer-isolated amount/status breakdown. Both withhold all amounts on
+REVIEW_REQUIRED; only an exact-customer, exact-value, valid-date settled
+receipt is labelled received. Signing receipt does not prove the first
+invoice credit. The new UI pure and route tests are pre-merge checks;
+production authenticated customer/Stripe TEST readback remains queued.
+This closes a readback seam, **not** the entire W-22FIN outcome. The
+current owner/customer all-in quote + enforceable approval/payment-to-delivery
+workflow remains the current unfinished work before W-23.
+
 # W-22FIN — Complete configurable signing-to-delivery business workflow
 
 ## Recovered portal engineering — October 14

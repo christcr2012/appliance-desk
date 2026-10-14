@@ -1,3 +1,22 @@
+## October 14 checked production catch-up and W-22FIN continuation
+
+Manual owner-approved release is independently verified: `main` and `live`
+both `2f68599ac35d65e6c72e919475381483a7dca289` (#449), Vercel production deployment
+`dpl_3QHctQyDoLX1a8gRFMg8isvbjEXR` READY at that source and assigned
+`robinsonappliancerentals.com` plus `www` without alias error.
+Exact-head GitHub CI, three unit shards, four browser shards and release-policy
+were SUCCESS. This clears source/release ancestry for the existing queue, NOT
+authenticated customer, live-provider or legal/CPA sign-off.
+
+W-22FIN substantive source continuation now shares the existing customer-isolated,
+receipt-validated signing-obligation readback between account Rentals and the owner
+agreement view. Review-required status hides corrupt/unverified amounts, awaiting
+and received stay distinct, and first-invoice credit is never assumed. The
+existing source verification for the underlying DTO remains inherited; new UI
+behavioral tests and exact-head Actions/merge are separately required. Multi-
+location all-in estimate/approval gating and full payment-to-delivery integration
+remain unfinished; do not advance W-23 or activate any real-business gate.
+
 ## October 14 completion recovery and checked release preparation
 
 Owner requested complete Git reconciliation before a one-off manual release.
@@ -68,7 +87,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "W-22 remains partial; preserve W-23 sequencing, refunds/signatures, customer isolation and provider approval gates",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+    "lastEvidence": "Release source 2f68599ac35d65e6c72e919475381483a7dca289 verified in READY Vercel deployment dpl_3QHctQyDoLX1a8gRFMg8isvbjEXR; source ancestry and exact-head CI now proven. Authenticated customer, Stripe TEST, carrier/provider or owner acceptance NOT executed or passed; production credentials/fixtures not used."
   },
   {
     "id": "DESK-COMMS",
@@ -79,7 +98,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Existing SMS/customer email consent and activation gates; no sending or live activation implied",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+    "lastEvidence": "Release source 2f68599ac35d65e6c72e919475381483a7dca289 verified in READY Vercel deployment dpl_3QHctQyDoLX1a8gRFMg8isvbjEXR; source ancestry and exact-head CI now proven. Authenticated customer, Stripe TEST, carrier/provider or owner acceptance NOT executed or passed; production credentials/fixtures not used."
   },
   {
     "id": "APPLIANCE-W22-PORTAL-RECEIPT",
@@ -90,7 +109,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Existing authorized owner/customer test accounts only; no production fixture creation, customer charge, communication or policy activation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Recovered unfinished source; six pure tests, lint and typecheck passed locally. Exact-head disposable-Postgres/browser/build CI must pass; no deployed/customer acceptance claimed."
+    "lastEvidence": "Source commit c0de6e7 is included in deployed 2f68599ac35d65e6c72e919475381483a7dca289 / READY Vercel production; exact-head main CI unit+browser succeeded. Customer-scoped real production authenticated readback and corrupt/foreign denial probes remain unverified: do not run live fixtures without explicit approval."
   }
 ]
 ```

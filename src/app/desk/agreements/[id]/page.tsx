@@ -20,6 +20,8 @@ import { assessPreparedSigningCharges } from "@/domains/billing/signing-charge-r
 import { getDraftSigningTaxReview } from "@/domains/billing/signing-charge-tax-review";
 import { prisma } from "@/lib/prisma";
 import { ManualSigningPaymentForm } from "./manual-signing-payment-form";
+import { customerSigningSummary } from "@/domains/portal/signing-status";
+import { SigningPaymentSummary } from "@/components/billing/signing-payment-summary";
 
 export const metadata = { title: "Agreement" };
 
@@ -46,6 +48,9 @@ export default async function AgreementDetailPage({
     include: { receipt: true,
       attempts: { orderBy: { attemptNumber: "desc" }, take: 1 } },
   });
+  const verifiedSigningSummary = signingPayment
+    ? customerSigningSummary(signingPayment, agreement.customer.id)
+    : null;
   const cancellation = await prisma.preDeliveryCancellation.findUnique({where:{agreementId:agreement.id}});
   const todayParts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Denver", year: "numeric", month: "2-digit", day: "2-digit",
@@ -259,11 +264,8 @@ export default async function AgreementDetailPage({
       {signingPayment && (
         <section aria-labelledby="signing-manual-heading" className="mt-6 rounded-lg border border-line p-4">
           <h2 id="signing-manual-heading" className="text-lg font-semibold">Signing payment</h2>
-          <p className="text-sm text-ink-soft">
-            Signed amount: {formatMoney(signingPayment.totalCents)} — {signingPayment.status === "SETTLED"
-              ? "recorded" : "waiting for verified payment"}.
-          </p>
-          {signingPayment.status === "SETTLED" && signingPayment.receipt && (
+          <SigningPaymentSummary summary={verifiedSigningSummary} />
+          {verifiedSigningSummary?.status === "RECEIVED" && signingPayment.receipt && (
             <p className="mt-2 text-sm">
               Receipt {signingPayment.receipt.id} · {signingPayment.receipt.method} ·
               recorded {signingPayment.receipt.receivedOn.toLocaleDateString("en-US", { timeZone: "America/Denver" })}.
