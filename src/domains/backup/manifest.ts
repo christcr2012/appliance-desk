@@ -40,6 +40,8 @@ export const BACKUP_MODEL_POLICY = {
   JobBillingHandoff: "jobBillingHandoff",
   RentalAgreement: "rentalAgreement",
   AgreementSigningCharge: "agreementSigningCharge",
+  // Owner-attested CPA decision history is business-critical restore evidence.
+  SetupFeeTaxDecisionVersion: "setupFeeTaxDecisionVersion",
   AgreementSigningPayment: "agreementSigningPayment",
   SigningPaymentAttempt: "signingPaymentAttempt",
   SigningDownPaymentCredit: "signingDownPaymentCredit",

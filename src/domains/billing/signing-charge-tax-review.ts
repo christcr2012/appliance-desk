@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
 import { assessPreparedSigningCharges } from "./signing-charge-readiness";
+import { getEffectiveSetupTaxTreatmentInTx } from "./setup-tax-policy-version";
 import { reviewSigningFeeTax, type SigningFeeTaxReview } from "./signing-charge-tax-evidence";
 import { assembleSigningOrderDraft, type SigningOrderDraftContract } from "./signing-order-draft-contract";
 
@@ -53,6 +54,11 @@ export async function getDraftSigningTaxReviewInTx(
       agreements.find((agreement) => agreement.id === row.agreementId)?.serviceAddressId !== row.serviceAddressId)) {
     return blocked(["Refresh signing charges for all delivery locations before reviewing tax."]);
   }
+  // An old prepared snapshot, or a manually selected tax choice with no
+  // actual CPA evidence, must never make the affected real-business path ready.
+  const approvedTreatment = await getEffectiveSetupTaxTreatmentInTx(tx, effectiveOn);
+  const reviewMissing = charges.some(row => row.setupFeeCents > 0 &&
+    (approvedTreatment === "UNDECIDED" || row.setupFeeTaxTreatment !== approvedTreatment));
   const readiness = assessPreparedSigningCharges(agreements.map((row) => row.id), charges);
   if (!readiness.amountsReconciled) return blocked(readiness.reasons);
 
@@ -95,6 +101,8 @@ export async function getDraftSigningTaxReviewInTx(
     rows.push({ agreementId: charge.agreementId,
       serviceAddressId: charge.serviceAddressId, version: charge.version, review });
   }
+  if (reviewMissing) problems.push(
+    "Setup-fee tax approval is missing or changed. Record the CPA evidence in Settings and refresh the draft.");
   const orderDraft = problems.length === 0 ? assembleSigningOrderDraft({ agreements: charges, taxRows: rows }) : null;
   if (orderDraft?.status === "BLOCKED") problems.push(...orderDraft.reasons);
   return { orderReady: problems.length === 0 && orderDraft?.status === "OWNER_DRAFT_ONLY", orderDraft, reasons: [...new Set(problems)], rows };

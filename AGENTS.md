@@ -17,6 +17,135 @@ Mapped/planned is not implemented or accepted. Service autonomy and all existing
 provider/security/owner gates remain binding.
 
 
+## Roadmap order, complete batches and immediate owner escalation — permanent owner rule (2026-10-14)
+
+The authoritative approved roadmap, indexed batch order and current checked
+execution packet determine **what is developed next**. Work from actual main;
+reconcile newer merged work first. Treat each active batch/subdivision as an
+**outcome to finish**, not a source of unlimited one-helper PR slices. Finish
+the current planned unit and its coherent end-to-end integration/verification
+before advancing to the next ordered unit. A PR-count target or easier task
+elsewhere **never** justifies skipping unfinished work. PRs may be large enough
+to complete the outcome while retaining independent risk/CI/review boundaries;
+never invent filler work to satisfy cadence.
+
+If a selected step appears blocked:
+1. Investigate the exact cause and attempt authorized remedies. Check existing
+   owner answers, current approved design, interfaces, infrastructure and official
+   sources before claiming missing input. If a **necessary owner decision** is
+   genuinely missing, ask the owner **immediately in the active conversation**,
+   with the minimal exact question, available options and recommended choice.
+   Do not make that choice without the owner or silently put the feature into
+   a future batch; record the answer and resume **the same session and unit**.
+2. If a technical problem is within scope, solve it now and preserve the
+   intended implementation sequence; do not prematurely mark it a blocker.
+   If a professional determination is needed, research and implement the full
+   configurable feature with provisional, source-backed settings; the
+   professional sign-off restricts affected **real business use only**.
+3. Only genuinely external acceptance waiting on a checked live deployment,
+   provider credentials/events, legally required sign-off, or another
+   independently controlled future event may remain in the **scoped acceptance
+   queue**. State the required revision, exact verification step, responsible
+   approver, re-entry trigger, and present evidence. Continue **eligible
+   engineering within the same batch**; do not reclassify unimplemented code as
+   release-dependent acceptance.
+4. If a truly unavoidable obstacle prevents that precise implementation
+   step and owner help cannot resolve it in this session, explicitly identify
+   the failed attempt, minimal needed action, and re-entry point to the owner.
+   Preserve the branch and handoff. Never quietly defer unfinished work,
+   claim a batch complete, or start its dependent successor.
+
+The active packet, roadmap/status and owner-input register must agree. Update
+them in the substantive PR as implementation advances, with truthful distinct
+states for coded, CI-proven, released and externally accepted. Normal session
+PR cadence is subordinate to **ordered complete capabilities and safety gates**.
+A session handoff points back to the same unfinished unit unless engineering
+completion is supported by evidence; real external acceptance may remain in
+the explicit queue without blocking unrelated, already-eligible code.
+
+## Owner questions and publicly researched regulatory defaults — permanent protocol (2026-10-14)
+
+**Owner-business decisions are a short interaction, not a permanent dependency.**
+Before making or postponing a decision, search OWNER-INPUTS, dated owner decisions,
+current config and the governing design. If an implementation **actually needs**
+a missing business-specific choice (policy, price, operational preference, grant,
+or user-provided factual input), pause that dependent operation and ask the owner
+the **smallest precise actionable question** in the current chat. Give an
+understandable recommendation and consequences/options when helpful; do not
+invent the owner's answer. Preserve the branch, exact question/decision ID,
+acceptance impact, and resume point. On answer, record it in the decision register,
+implement it and **resume the same session**; do not make the owner restart the
+batch or ask the same question again. If another eligible unit is independent,
+continue it while the answer is outstanding. Only an actual required owner
+decision justifies interrupting; not technical architecture or a question that
+can be answered from existing instructions.
+
+**Research answerable law instead of asking the owner for legal facts.**
+For legal, CPA, regulatory and record-retention dependent features, agents must:
+1. Research the relevant **current official** legislation, regulations, agency
+   guidance and government FAQs; include **local/home-rule jurisdiction** rules
+   when applicable. Check enactment versus effective dates, applicability,
+   amendments, official interpretations and reliably announced future changes.
+   Note access date and exact source URLs in the relevant card/decision record.
+   Secondary commentary may orient research but is not evidence of the law.
+2. Choose the most supportable **provisional initial settings** from that research
+   (including future effective-dated revisions when the effective rule is actually
+   enacted/officially adopted). Distinguish known law, interpretation, case-specific
+   uncertainty, and the owner's separate business preferences. Never fabricate an
+   official rate, legally binding effective date or professional opinion.
+3. Implement those defaults as owner-editable, role-protected, validated and
+   audited **policy versions** with effective dates where material. The owner
+   should be able to replace/update advice later through the app. Effective-date
+   changes must not silently rewrite already signed or invoiced transactions.
+   Cover default/alternative/unknown/new-law transitions with tests.
+4. Mark any **explicitly required** CPA/attorney/professional sign-off as
+   REVIEW_REQUIRED with a concrete owner-facing path to record confirmation,
+   source/reference, decision, effective date and acknowledgement. Where such
+   sign-off gates actual business use, do not confuse provisional defaults with
+   verified approval. Only the **affected business operation** stays disabled;
+   unrelated use and engineering continue. Do not invent or extend approval
+   requirements where published law and owner policy do not require them.
+5. Show exactly why the operation is blocked and where the owner can clear it.
+   On validated owner acknowledgement, re-evaluate *all* independent gates,
+   lift only the satisfied restriction, and retain immutable approval/audit
+   history. An owner attestation records the owner's receipt of professional
+   advice; it never makes the agent a lawyer or CPA.
+
+When legal applicability remains genuinely indeterminate from public sources,
+record **what** the professional must answer rather than guessing the legal
+conclusion. Build safe simulations and full surrounding implementation meanwhile.
+A missing owner answer temporarily pauses that exact path; a missing
+professional determination gates affected **business use**, never implementation.
+
+## Roadmap-order completion and owner-assisted blocker resolution — permanent owner rule 2026-10-14
+
+Implement the approved roadmap in its recorded order. Reconcile actual main, the active
+work-index packet, parent batch and handoff; finish each currently eligible batch or
+cohesive subdivision end-to-end (integration and regression coverage) before taking
+up later dependent units. Substantial PRs may split only for a concrete migration,
+risk or review boundary. PR-count alignment never justifies tiny slices, incomplete
+engineering or selecting easier later work.
+
+A difficulty is NOT permission to defer: troubleshoot CI, fixtures, design drift,
+review feedback and implementation in the same session. For a genuinely required
+missing business decision or owner-supplied fact, first search recorded decisions
+and implement safe configurable portions; then ask the owner in the same chat for
+the smallest specific answer/authorization, with why it is needed, recommended
+options, consequences and the paused action. Document remedies and re-entry in the
+existing card, and resume the SAME outcome when answered. Do not request a prior
+approval twice or silently carry implementable work to later sessions.
+
+Only real checked-release, provider, customer and professional business-use
+acceptance waits in the maintained queue, with required revision and verification
+procedure. Professional review never blocks safe implementation, tests or merge;
+the affected real-business transaction must remain disabled until actual approval.
+Advance to a later roadmap unit only when the current unit's eligible engineering
+is complete and verified; explicitly permitted independent parallel work is the
+only other exception. Never mislabel missing implementation as pending acceptance.
+Normal five substantial PR session cadence and multiple-of-five closeout never
+override scope completion or justify filler. Concise handoffs include actual main,
+last merged PR, current roadmap unit and genuine external acceptance gates.
+
 ## Pending professional review is an activation gate, not a development stop — owner standing rule 2026-10-14
 
 A question for an attorney, CPA, bookkeeper or other professional **must not become a

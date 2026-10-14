@@ -28,7 +28,13 @@ describe.skipIf(!enabled)("W-22A signing settings on disposable Postgres", () =>
       businessRequiresDownPayment: old.businessRequiresDownPayment,
       setupFeeTaxTreatment: old.setupFeeTaxTreatment,
       setupFeeTaxDecisionNote: old.setupFeeTaxDecisionNote,
+      setupFeeTaxPlanningTreatment: old.setupFeeTaxPlanningTreatment,
+      setupFeeTaxConfirmedOn: old.setupFeeTaxConfirmedOn,
+      setupFeeTaxEffectiveFrom: old.setupFeeTaxEffectiveFrom,
+      setupFeeTaxApprovedAt: old.setupFeeTaxApprovedAt,
+      setupFeeTaxAdviserReference: old.setupFeeTaxAdviserReference,
     } });
+    await prisma.setupFeeTaxDecisionVersion.deleteMany({ where: { ownerUserId: owner } });
     await prisma.auditLog.deleteMany({ where: { userId: { in: [owner, staff] } } });
     await prisma.user.deleteMany({ where: { id: { in: [owner, staff] } } });
   });
@@ -40,6 +46,7 @@ describe.skipIf(!enabled)("W-22A signing settings on disposable Postgres", () =>
     data.set("largeOrderCancellationFullRefundHours", "72");
     data.set("businessRequiresDownPayment", "on");
     data.set("setupFeeTaxTreatment", "UNDECIDED");
+    data.set("setupFeeTaxPlanningTreatment", "TAXABLE");
     return data;
   };
   it("denies staff via database reauthorization", async () => {
@@ -63,12 +70,27 @@ describe.skipIf(!enabled)("W-22A signing settings on disposable Postgres", () =>
     let current = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     const invalid = form(current.updatedAt);
     invalid.set("setupFeeTaxTreatment", "TAXABLE");
-    expect((await saveSigningChargeSettingsAction({ error: "", success: "" }, invalid)).error).toMatch(/tax adviser/i);
+    expect((await saveSigningChargeSettingsAction({ error: "", success: "" }, invalid)).error).toMatch(/Confirm the CPA/i);
+    const proof = form(current.updatedAt);
+    proof.set("setupFeeTaxTreatment", "TAXABLE");
+    proof.set("setupFeeTaxOwnerAttested", "on");
+    proof.set("setupFeeTaxDecisionNote", "Mandatory setup fee is taxable for this transaction.");
+    proof.set("setupFeeTaxConfirmedOn", "2026-10-12");
+    proof.set("setupFeeTaxEffectiveFrom", "2026-10-14");
+    proof.set("setupFeeTaxAdviserReference", "Adviser memo W22-IN79 dated 2026-10-12");
+    expect((await saveSigningChargeSettingsAction({ error: "", success: "" }, proof)).success).toMatch(/saved/i);
+    const approved = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    expect(approved.setupFeeTaxApprovedAt).not.toBeNull();
+    expect(approved.setupFeeTaxAdviserReference).toContain("IN79");
+    expect(await prisma.setupFeeTaxDecisionVersion.count({ where: { ownerUserId: owner, treatment: "TAXABLE" } })).toBe(1);
+    expect((await prisma.auditLog.findFirst({where:{userId:owner,action:"settings.signing_charges.update"},orderBy:{createdAt:"desc"}}))?.newValue).toEqual(expect.objectContaining({ taxTreatment: "TAXABLE" }));
     current = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     const reset = form(current.updatedAt);
     reset.set("operation", "restore");
     expect((await saveSigningChargeSettingsAction({ error: "", success: "" }, reset)).success).toMatch(/saved/i);
     const restored = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     expect(restored.setupFeeTaxTreatment).toBe("UNDECIDED");
+    expect(restored.setupFeeTaxPlanningTreatment).toBe("TAXABLE");
+    expect(restored.setupFeeTaxApprovedAt).toBeNull();
   });
 });

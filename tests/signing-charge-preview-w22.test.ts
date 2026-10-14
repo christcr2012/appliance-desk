@@ -7,6 +7,7 @@ const db = vi.hoisted(() => ({
 vi.mock("@/lib/prisma", () => ({ prisma: {
   rentalAgreement: db.agreements, customer: db.customer, businessSettings: db.settings,
 } }));
+vi.mock("@/domains/billing/setup-tax-policy-version", () => ({ getEffectiveSetupTaxTreatment: vi.fn(async () => "UNDECIDED") }));
 import { calculateDraftSigningPreview, getDraftSigningChargePreview, type DraftSigningAgreement } from "@/domains/billing/signing-charge-preview";
 import { DEFAULT_SIGNING_CHARGE_SETTINGS } from "@/domains/billing/signing-charges";
 

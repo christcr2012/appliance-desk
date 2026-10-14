@@ -36,6 +36,44 @@ cohesive PR needs explicit integration/risk/verification coverage. Preserve actu
 migration ordering, risk isolation and every business/security/financial decision gate.
 Do not revisit passing hardening without a demonstrated defect or approved requirement.
 
+## 1a. Finish the roadmap unit in order before selecting another
+
+Read AGENTS.md's *Roadmap order, complete batches and immediate owner
+escalation* rule. Start from actual main and the active work-index packet.
+Build and verify the **entire current outcome**, not an arbitrary next
+helper. Keep its dependencies, customer path and integration together.
+Do not carry unfinished engineering to later sessions merely because it
+needs more work, easier tickets exist, or a PR multiple is near.
+
+For any perceived blocker, investigate, attempt an authorized fix and
+consult existing owner decisions. If a required business choice is
+missing, ask the owner directly **now**, then record the answer and
+resume the selected unit. Research official law instead of asking
+the owner for public facts; configurable provisional defaults allow
+development while professional confirmation gates actual affected
+business use. Only true external/release-dependent acceptance belongs
+in the queue. A handoff is not a substitute for finishing available
+implementation.
+
+## 1aa. Ask owner promptly, research law independently
+
+Follow AGENTS.md's permanent owner-question and regulatory-default protocol.
+Read dated owner decisions before asking. If a *necessary business policy*
+choice is genuinely missing, ask the smallest question with a recommended
+option immediately in the current chat, keep exact re-entry context, then
+resume the session when the owner answers; never archive a whole implementation
+batch as blocked. Continue independently eligible development while awaiting
+the answer if possible.
+
+For legal/CPA questions, search primary public statutes, enacted amendments,
+effective dates, official agency guidance and applicable home-rule rules before
+planning. Implement the most grounded initial policy as provisional **editable**
+configuration, store source/date/uncertainty in its existing card, and add
+effective-dated revisions for verified future changes. Explicit professional
+approval remains a separate, owner-clearable **business-use** gate, not an
+engineering gate. An owner setting or synthetic scenario must not masquerade
+as genuine CPA or counsel approval.
+
 ## 1b. Keep review-dependent development moving (standing owner rule)
 
 Before declaring a legal, CPA, accounting or owner-interpretation blocker, split
@@ -60,6 +98,21 @@ acceptance. An unresolved professional review does not block unrelated work
 or source merge unless that precise review was an explicit pre-merge requirement.
 When reviewed input arrives, apply and verify the setting/effective version;
 do not ask the owner to reopen already implemented adjacent work.
+
+## Roadmap-first execution: complete the current outcome
+
+Use the work-index active packet and parent card in approved dependency order.
+Finish all implementable work and regressions in the current coherent batch
+before moving to a later dependent unit. Do not defer unresolved CI, fixtures,
+implementation or review corrections to later sessions or split the outcome
+into serial mini-PRs just to count PRs. Seek root cause and fix it here.
+If an essential unrecorded owner decision truly blocks safe implementation,
+ask one precise question to the human owner in this chat, record its exact
+scope/remedy and resume the same task when answered. Safe configurable work
+continues; CPA/legal review gates affected real-world transactions only.
+Only genuine release/provider/customer/professional external acceptance may
+remain queued after eligible engineering is finished. Independent parallel
+work requires explicit roadmap eligibility. AGENTS.md is authoritative.
 
 ## 3. Build, verify, publish
 

@@ -20,6 +20,8 @@ import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { SigningChargeForm } from "./signing-charge-form";
+import { businessDateKey } from "@/lib/business-date";
+import { getEffectiveSetupTaxTreatment } from "@/domains/billing/setup-tax-policy-version";
 import { AppliancePricingTable } from "./appliance-pricing-table";
 import { PackageTable } from "./package-table";
 import { listPackagesForSettings } from "@/domains/packages";
@@ -53,6 +55,16 @@ export default async function DeskSettingsPage({
   const session = await requireRole("OWNER", "ADMIN");
   const section = settingsSection((await searchParams).section);
   const settings = await getBusinessSettings();
+  const activeSetupTaxTreatment = section === "policies"
+    ? await getEffectiveSetupTaxTreatment() : "UNDECIDED";
+  const upcomingSetupPolicies = section === "policies"
+    ? await prisma.setupFeeTaxDecisionVersion.findMany({
+      where: { effectiveFromKey: { gt: businessDateKey(new Date()) },
+        cancelledAt: null },
+      orderBy: [{ effectiveFromKey: "asc" }, { ownerApprovedAt: "desc" }], take: 10,
+      select: { id: true, effectiveFromKey: true, treatment: true },
+    }) : [];
+
   const leadScoringPolicy = section === "policies" ? await getLeadScoringPolicy() : null;
   let content: React.ReactNode;
   if (section === "products") {
@@ -86,13 +98,19 @@ export default async function DeskSettingsPage({
       </Card>
       <Card title="New-order setup and down payments"
         description="Configure future signing charges; live collection remains gated.">
-        <SigningChargeForm editable={session.user.role === "OWNER"} settings={{
+        <SigningChargeForm editable={session.user.role === "OWNER"}
+          activeTaxTreatment={activeSetupTaxTreatment} upcomingPolicies={upcomingSetupPolicies} settings={{
           administrativeSetupFeeCents: settings.administrativeSetupFeeCents,
           largeOrderMachineThreshold: settings.largeOrderMachineThreshold,
           largeOrderCancellationFullRefundHours: settings.largeOrderCancellationFullRefundHours,
           businessRequiresDownPayment: settings.businessRequiresDownPayment,
           setupFeeTaxTreatment: settings.setupFeeTaxTreatment,
           setupFeeTaxDecisionNote: settings.setupFeeTaxDecisionNote,
+          setupFeeTaxPlanningTreatment: settings.setupFeeTaxPlanningTreatment,
+          setupFeeTaxConfirmedOn: settings.setupFeeTaxConfirmedOn,
+          setupFeeTaxEffectiveFrom: settings.setupFeeTaxEffectiveFrom,
+          setupFeeTaxApprovedAt: settings.setupFeeTaxApprovedAt,
+          setupFeeTaxAdviserReference: settings.setupFeeTaxAdviserReference,
           updatedAt: settings.updatedAt,
         }} />
       </Card>

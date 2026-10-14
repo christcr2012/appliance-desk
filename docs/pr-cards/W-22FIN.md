@@ -6,6 +6,23 @@ first-invoice credit, no-time delivery draft and owner To do remain inherited
 contracts, not work to repeat. Inspected baseline main
 `64f000b3374621f0644d11b8b34b8bb0f1fd0d4b`.
 
+**Execution priority:** This is the current roadmap unit. Complete its
+approved engineering outcome before selecting W-23 or any later batch.
+A missing owner-specific choice requires an immediate question and
+same-session continuation; CPA IN-79 only gates affected actual business
+use. Future release/Stripe/owner acceptance remains in its separate
+ledger, not as a pretext to defer W-22FIN source work.
+
+## Completion-first ordering (owner instruction 2026-10-14)
+
+W-22FIN is the current engineering milestone. Finish the complete eligible
+all-in customer/owner workflow, configurable owner rules, payment recovery,
+delivery readbacks and regressions before W-23. The only permitted carryover
+is precisely documented genuine external CPA/counsel/Stripe TEST, release and
+authenticated customer/provider acceptance. If a missing owner decision
+prevents safe implementation, ask the owner during this session; do not
+silently skip the work or create endless small D19/D20 slices.
+
 ## Observable outcome (finish the cohesive engineering milestone)
 
 The owner can prepare and review an actual all-in offer across each service
@@ -22,6 +39,43 @@ and supported safe retry/readback. The signed agreement's existing unscheduled
 DELIVERY job is schedulable by owner/staff, and delivery/billing/payment evidence
 remains distinguished; no automatic customer appointment, payment confirmation,
 real refund or communication is invented.
+
+## Regulatory evidence and configurable starting assumption — 2026-10-14
+
+Research basis (verify before application; never a CPA determination):
+- Colorado DOR, *Sales & Use Tax Topics: Leases*:
+  https://tax.colorado.gov/sales-use-tax-topics-leases
+  explains that associated lease-contract charges are generally taxable and that
+  short-term lease treatment depends on acquisition tax/permission, for state-
+  administered taxes. This supports a **taxable setup fee as the provisional
+  planning assumption**, but NOT confirmation that the business's $45 charge
+  is taxable in each service jurisdiction or that any particular lease-election
+  path is currently authorized.
+- Colorado DOR, adopted July 7, 2026, *Special Rule 46: Leases*:
+  https://tax.colorado.gov/news-article/adopted-sales-tax-on-leases
+  (consult official promulgated rule for actual effective date and changes).
+- Colorado Legislature, HB25-1090:
+  https://leg.colorado.gov/bills/hb25-1090
+  addresses all-in mandatory price disclosures; taxes/government charges may
+  be separately identified as the statute permits.
+- Colorado DOR, retail delivery rate and exemption:
+  https://tax.colorado.gov/retail-delivery-fee-rates
+  https://tax.colorado.gov/special-topics-retail-delivery-fees
+  official July 2026–June 2027 rate $0.31 where applicable, but small-business
+  and exempt transactions must not be charged blindly. Home-rule city rules
+  need their own confirmation.
+
+The persisted **provisional setup-tax planning default is TAXABLE**, editable
+by the owner independently from the CPA-confirmed treatment. It is never
+authoritative in the charge-bearing send, tax snapshot or collection
+authorization path. Regression tests must enforce that separation.
+
+Use these sources for **synthetic preview defaults and configurable policies**,
+not automatic business-use approval. CPA IN-79 remains unresolved. The
+owner must be able to record a real adviser determination, dated evidence and
+effective policy in Settings, see remaining jurisdiction/address gates, and
+remove the affected restriction after *all* independent checks pass. Regulatory
+text/rates can change; refresh authoritative sources on future policy updates.
 
 ## Professional-review restriction — business-use gate, NOT coding gate
 
