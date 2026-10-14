@@ -63,6 +63,12 @@ beforeAll(async () => {
     ],
   });
 
+  await prisma.agreementSigningPayment.create({
+    data: { agreementId: ids.agreementA, orderFingerprint: `portal-fixture-${tag}`,
+      evidenceVersion: 1, setupFeeCents: 1100, setupTaxCents: 100, downPaymentCents: 1800,
+      totalCents: 3000, status: "AWAITING_PAYMENT", signedAt: new Date() },
+  });
+
   const now = Date.now();
   for (let i = 0; i < PORTAL_PAGE_SIZE + 1; i += 1) {
     await prisma.job.create({
@@ -108,6 +114,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await prisma.agreementSigningPayment.deleteMany({ where: { agreementId: { in: [ids.agreementA, ids.agreementB] } } });
   await prisma.maintenanceRequest.deleteMany({ where: { customerId: { in: [ids.customerA, ids.customerB] } } });
   await prisma.job.deleteMany({ where: { customerId: { in: [ids.customerA, ids.customerB] } } });
   await prisma.rentalLine.deleteMany({ where: { agreementId: { in: [ids.agreementA, ids.agreementB] } } });
@@ -145,6 +152,7 @@ describe("Batch D customer portal completion", () => {
       "paidInFullInAdvance",
       "renewalPreference",
       "serviceAddress",
+      "signingPaymentSummary",
       "startDate",
       "status",
       "termMonths",
@@ -152,6 +160,11 @@ describe("Batch D customer portal completion", () => {
       "terminationRequestedAt",
       "termsSnapshot",
     ].sort());
+    expect(agreement.signingPaymentSummary).toMatchObject({ status: "AWAITING_PAYMENT", totalCents: 3000, receivedOn: null });
+    expect(agreement).not.toHaveProperty("signingPaymentObligation");
+    expect(JSON.stringify(agreement)).not.toContain("portal-fixture-");
+    const foreign = await getPortalData(ids.userB);
+    expect(foreign?.rentalAgreements[0]?.signingPaymentSummary).toBeNull();
     expect(Object.keys(agreement.lines[0]!).sort()).toEqual([
       "assignments",
       "id",

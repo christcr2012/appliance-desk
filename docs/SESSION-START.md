@@ -36,12 +36,15 @@ cohesive PR needs explicit integration/risk/verification coverage. Preserve actu
 migration ordering, risk isolation and every business/security/financial decision gate.
 Do not revisit passing hardening without a demonstrated defect or approved requirement.
 
-## 1a. Finish the roadmap unit in order before selecting another
+## 2. Finish the roadmap unit in order before selecting another
 
 Read AGENTS.md's *Roadmap order, complete batches and immediate owner
 escalation* rule. Start from actual main and the active work-index packet.
 Build and verify the **entire current outcome**, not an arbitrary next
 helper. Keep its dependencies, customer path and integration together.
+Use one finite checklist in that existing packet: remaining domain/provider
+behavior, owner/customer callers, denial/replay/failure paths, fixtures and
+integration proof. A passing helper or PR count is not completion of the outcome.
 Do not carry unfinished engineering to later sessions merely because it
 needs more work, easier tickets exist, or a PR multiple is near.
 
@@ -101,18 +104,8 @@ do not ask the owner to reopen already implemented adjacent work.
 
 ## Roadmap-first execution: complete the current outcome
 
-Use the work-index active packet and parent card in approved dependency order.
-Finish all implementable work and regressions in the current coherent batch
-before moving to a later dependent unit. Do not defer unresolved CI, fixtures,
-implementation or review corrections to later sessions or split the outcome
-into serial mini-PRs just to count PRs. Seek root cause and fix it here.
-If an essential unrecorded owner decision truly blocks safe implementation,
-ask one precise question to the human owner in this chat, record its exact
-scope/remedy and resume the same task when answered. Safe configurable work
-continues; CPA/legal review gates affected real-world transactions only.
-Only genuine release/provider/customer/professional external acceptance may
-remain queued after eligible engineering is finished. Independent parallel
-work requires explicit roadmap eligibility. AGENTS.md is authoritative.
+Follow §2 above and AGENTS.md's authoritative completion rule. Independent
+parallel work requires explicit roadmap eligibility; preserve every activation gate.
 
 ## 3. Build, verify, publish
 
@@ -179,7 +172,10 @@ source implementation dependencies remain in the existing work index. Split broa
 rows into exact scenario rows as fixtures/revisions are reconciled. No fake pass entries.
 After every meaningful merge, add any new deployment-dependent checks in that PR; pin
 its source commit, never a guessed future merge SHA. After a release, execute cleared
-checks promptly, record sanitized read/write/denial/readback/cleanup proof, and retain
+checks only when that source is in deployed ancestry. If a permitted squash/rebase
+removed the pin, reconcile it to the independently verified merged implementation
+commit before handoff; never mark it passed or repin to unrelated code.
+Execute cleared checks promptly, record sanitized read/write/denial/readback/cleanup proof, and retain
 failed/uncertain fixture recovery tasks. New changes, rollback, authorization or environment
 changes reopen affected proof. NEVER copy credentials/private fixture IDs into the queue.
 

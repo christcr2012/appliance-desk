@@ -1,3 +1,16 @@
+## October 14 completion recovery and checked release preparation
+
+Owner requested complete Git reconciliation before a one-off manual release.
+Consolidated duplicate completion rules while preserving owner-decision/regulatory
+and activation gates; recovered unfinished customer signing-evidence DTO code with
+invalid/foreign/ambiguous receipt denials and isolated integration coverage.
+Repaired the capacity workflow Postgres image after verified ECR data-limit failure;
+all performance thresholds and tests remain unchanged. Local six pure tests, lint,
+index/housekeeping tests and full typecheck passed; no local PostgreSQL is installed,
+so real DB/browser/build/performance proof is required in exact-head Actions.
+W-22FIN remains the current parent outcome; never claim this is full completion.
+No provider acceptance or business activation is implied by the authorized release.
+
 ## Owner direction — sequential batch completion, not recurring slice carryover
 
 Current active work is W-22FIN. Finish its whole remaining **engineering**

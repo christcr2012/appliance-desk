@@ -1,5 +1,20 @@
 # W-22FIN — Complete configurable signing-to-delivery business workflow
 
+## Recovered portal engineering — October 14
+
+Recovered the unfinished customer signing DTO branch into the current portal query,
+with immutable obligation amounts, explicit awaiting/received/not-due/review states,
+same-customer exact-amount dated receipt checks and no raw receipt/customer IDs.
+Invalid or unsigned amounts stay absent; a signature never proves payment or invoice
+credit. Six pure regressions and a customer-isolated real-Postgres DTO regression
+cover the recovered integration. Local pure tests, targeted lint and full typecheck
+passed with a 4 GiB typecheck heap. This runner has no local PostgreSQL; required CI
+provides that execution, not a fabricated local pass. This recovers branch work,
+not the remaining customer all-in UI or the entire W-22FIN outcome. No business-use
+policy, Stripe LIVE, customer communication or production fixture is activated.
+
+
+
 **Scope:** W-22 parent card / approved Amendment B §6.2. This packet resumes
 **after merged W-22D18 (#442)**. Existing signature, refundable-payment evidence,
 first-invoice credit, no-time delivery draft and owner To do remain inherited
