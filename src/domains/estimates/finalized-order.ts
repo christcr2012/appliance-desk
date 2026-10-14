@@ -30,7 +30,7 @@ export function completeConvertedEstimateScope(
  * This never sends, signs, publishes, collects or creates agreements.
  */
 export async function getFinalizedConvertedEstimateOrder(estimateId: string): Promise<FinalizedEstimateOrder> {
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient): Promise<FinalizedEstimateOrder> => {
     const estimate = await tx.estimate.findUnique({
       where: { id: estimateId },
       select: { status: true, customerId: true },

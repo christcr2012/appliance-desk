@@ -28,6 +28,9 @@ test("signing link shows complete verified two-address order without collecting 
     await prisma.estimate.create({data:{
       id:estimateId,title:"Two site frozen offer",customerId:original.customerId,createdByUserId:ownerId,status:"CONVERTED",
     }});
+    await page.goto("/estimate/"+estimateId);
+    await expect(page.getByRole("heading",{name:"Your complete order price is being reviewed"})).toBeVisible();
+    await expect(page.getByText("Combined signing amount across addresses")).toHaveCount(0);
     const fields=[
       {id:ids[0],addressId:original.id,setupFeeCents:4500,downPaymentCents:4000},
       {id:ids[1],addressId:second.id,setupFeeCents:0,downPaymentCents:6000},
