@@ -1,3 +1,16 @@
+## W-22FIN converted preliminary estimate → verified frozen final readback
+
+The original estimate link now explicitly separates provisional rental-line
+figures from final location-level money. For a CONVERTED order, a complete
+customer-owned frozen signing digest is required before displaying per-site
+and combined setup, tax and down payment totals; missing/foreign sibling
+agreements result in REVIEW_REQUIRED instead of a fictitious all-in offer.
+Owner estimate view links to the same customer result. Existing draft
+approval/deposit and standalone mandatory-other-charge policy remain
+unfinished work within W-22FIN; no W-23 authorization or real business
+activation is implied. CI, release and owner/provider acceptance remain
+independent.
+
 ## W-22FIN signing payment recovery and verified retry guard
 
 Owner/admin agreement and exception workspaces explicitly separate PENDING
@@ -213,6 +226,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "PR #454 source implemented against merged #453, with exact-head tests and CI still required before claiming engineering acceptance; production not deployed."
+  },
+  {
+    "id": "W22FIN-FINAL-ESTIMATE-READBACK",
+    "priority": 1,
+    "requiredRevision": "858a99ba16a892a7e887bbab4ac1285c6a2578b8",
+    "task": "After checked release, open an approved existing converted multi-location estimate with owner and authorized customer link: show exact frozen charges for all locations or review-required when one location incomplete, without implied payment or sending",
+    "procedure": "docs/pr-cards/W-22FIN.md",
+    "gates": "Use existing safe read-only records, no live synthetic estimate/job/payment mutation, professional/Stripe/communication gates unchanged",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Source implementation after PR #454 and isolated browser synthetic coverage planned; exact-head CI and production user acceptance remain unverified."
   }
 ]
 ```

@@ -2,15 +2,18 @@ import { formatCents } from "@/domains/pricing";
 import type { ReviewedSigningOrderReadback } from "@/domains/billing/signing-order-readback";
 
 /** Same server-verified, customer-isolated order figures on both signing and owner screens. */
-export function ReviewedSigningOrder({ order }: { order: ReviewedSigningOrderReadback }) {
+export function ReviewedSigningOrder({ order, context = "signing" }: {
+  order: ReviewedSigningOrderReadback; context?: "signing" | "estimate";
+}) {
   return (
     <section aria-label="Complete reviewed signing order" className="mt-5 rounded-lg border border-line bg-surface p-4 text-sm">
       <h2 className="font-semibold">Complete reviewed signing order</h2>
       <p className="mt-1 text-ink-soft">
         {order.locations.length} service {order.locations.length === 1 ? "address" : "addresses"}.
-        These amounts come from the frozen reviewed order. This page signs only
-        the agreement for the highlighted address; the combined order is context,
-        not another payment request or proof of receipt.
+        These amounts come from the frozen reviewed order.
+        {context === "estimate"
+          ? " This is the reviewed order following your preliminary estimate, not a signature or payment request. Each agreement must be signed separately."
+          : " This page signs only the agreement for the highlighted address; the combined order is context, not another payment request or proof of receipt."}
       </p>
       <div className="mt-3 space-y-3">
         {order.locations.map(location => (

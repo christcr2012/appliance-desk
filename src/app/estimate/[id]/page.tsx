@@ -4,6 +4,8 @@ import { businessDateFromKey, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { EstimateResponseForm } from "./estimate-response-form";
 import { PayDepositButton } from "./pay-deposit-button";
+import { getFinalizedConvertedEstimateOrder } from "@/domains/estimates/finalized-order";
+import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
 
 export const metadata = {
   title: "Your estimate",
@@ -33,6 +35,8 @@ export default async function PublicEstimatePage({
     );
   }
 
+  const reviewedOrder = estimate.status === "CONVERTED"
+    ? await getFinalizedConvertedEstimateOrder(estimate.id) : null;
   const monthly = estimate.lineItems.reduce((sum, l) => sum + l.monthlyPriceCents * l.quantity, 0);
   const oneTime = estimate.lineItems.reduce((sum, l) => sum + l.oneTimeFeeCents * l.quantity, 0);
   const customerName = estimate.customer
@@ -48,6 +52,12 @@ export default async function PublicEstimatePage({
         <p className="mt-4 whitespace-pre-line text-sm text-ink-soft">{estimate.clientMessage}</p>
       )}
 
+      <p className="mt-4 text-sm text-ink-soft" role="note">
+        These estimate line items are preliminary rental and one-time figures,
+        not a finalized all-in signing price. Mandatory setup charges, location taxes,
+        down payments and other applicable fees must be reviewed separately before
+        a binding rental agreement is signed.
+      </p>
       <div className="mt-6 space-y-3 rounded-lg border border-line bg-surface p-5 text-sm">
         <ul className="divide-y divide-line">
           {estimate.lineItems.map((line) => (
@@ -85,6 +95,19 @@ export default async function PublicEstimatePage({
         )}
       </div>
 
+      {reviewedOrder?.status === "FINAL_REVIEWED" && (
+        <ReviewedSigningOrder order={reviewedOrder.order} context="estimate" />
+      )}
+      {estimate.status === "CONVERTED" && reviewedOrder?.status !== "FINAL_REVIEWED" && (
+        <section aria-label="Final reviewed price pending" className="mt-5 rounded-lg border border-line bg-subtle p-4 text-sm" role="status">
+          <h2 className="font-semibold">Your complete order price is being reviewed</h2>
+          <p className="mt-1 text-ink-soft">
+            An all-in signing total is not yet available for every service address.
+            Contact the business before treating these preliminary figures as final.
+            No amount on this page proves payment or a confirmed delivery appointment.
+          </p>
+        </section>
+      )}
       <div className="mt-6">
         {estimate.status === "APPROVED" && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">

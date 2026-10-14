@@ -1,3 +1,19 @@
+## Converted estimate → verified reviewed signing offer — W-22FIN
+
+Original public estimate URL now retains historical preliminary rental-only
+figures but clearly labels their exclusions. Once the customer's estimate is
+CONVERTED and **every** linked agreement has independently verified frozen
+tax-inclusive signing evidence, that same public URL shows a complete,
+customer-isolated per-location and combined offer (no estimate-local guessed
+fees). Until all sources agree, a review-required status replaces the finalized
+offer; no partial total is exposed as final. Owner estimate detail links to the
+same customer-facing readback. Shared frozen-order component distinguishes
+estimate context from actually signing one address; no signature, outbound
+message, Stripe attempt, provider fee, first-invoice credit or public product
+pricing is created. The existing isolated two-location browser fixture
+checks owner, signed order and converted estimate. This is not yet
+pre-approval all-in acceptance; remaining workflow continues under W-22FIN.
+
 ## Payment UNKNOWN/FAILED recovery — scoped W-22FIN continuation
 
 OWNER/ADMIN agreement view now distinguishes a verified receipt, failure,

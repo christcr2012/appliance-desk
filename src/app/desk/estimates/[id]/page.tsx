@@ -106,6 +106,19 @@ export default async function EstimateDetailPage({
         </p>
       )}
 
+      {estimate.status === "CONVERTED" && (
+        <div className="mt-4 rounded-lg border border-line p-3 text-sm">
+          <p className="font-medium">Customer's reviewed order readback</p>
+          <p className="mt-1 text-ink-soft">
+            Once all converted agreements have frozen, approved charges, the original
+            estimate link shows the complete reconciled signing amounts.
+            An incomplete order displays a review-required warning, never a guessed total.
+          </p>
+          <Link href={`/estimate/${estimate.id}`} className="mt-2 inline-block underline">
+            View customer estimate and final reviewed order
+          </Link>
+        </div>
+      )}
       {estimate.createdAgreements.length > 0 && (
         <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
           <p className="font-medium">
