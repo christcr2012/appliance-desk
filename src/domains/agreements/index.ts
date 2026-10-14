@@ -8,6 +8,7 @@ import {
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { getReviewedSigningOrderReadbackInTx } from "@/domains/billing/signing-order-readback";
 import { assertCurrentSigningPolicyInTx } from "@/domains/billing/signing-business-use-gate";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
 import { offerMatchesFrozenEvidence } from "./signing-offer-proof";
@@ -547,7 +548,8 @@ export async function getSignatureRecordForSigning(id: string) {
       const order = await getFrozenSigningOrderInTx(tx, signature.agreementId);
       const line = order.find(row => row.agreementId === signature.agreementId);
       if (!offerMatchesFrozenEvidence(signature, line)) return null;
-      return { ...signature, frozenSigningLine: line };
+      const frozenOrder = await getReviewedSigningOrderReadbackInTx(tx, signature.agreementId);
+      return { ...signature, frozenSigningLine: line, frozenOrder };
     } catch {
       // Fail closed without exposing other agreement/customer details.
       return null;
