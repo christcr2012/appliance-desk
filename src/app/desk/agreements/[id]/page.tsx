@@ -76,7 +76,8 @@ export default async function AgreementDetailPage({
     agreement.status === "DRAFT" ? getPreparedSigningChargeReview(agreement.id) : [],
     agreement.status === "DRAFT" ? getDraftSigningTaxReview(agreement.id) : null,
   ]);
-  const frozenOrder = signingPayment
+  const hasFrozenSigningOffer = Boolean(agreement.signature?.signingOrderFingerprint);
+  const frozenOrder = hasFrozenSigningOffer
     ? await getReviewedSigningOrderReadback(agreement.id).catch(() => null)
     : null;
   const locationLabels = signingPreview
@@ -130,7 +131,7 @@ export default async function AgreementDetailPage({
         </p>
       )}
 
-      {signingPayment && !frozenOrder && (
+      {hasFrozenSigningOffer && !frozenOrder && (
         <p role="status" className="mt-4 rounded-lg border border-line p-3 text-sm">
           Frozen signing order could not be verified. Review the agreement records before using a displayed amount.
         </p>
