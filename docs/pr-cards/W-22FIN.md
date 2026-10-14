@@ -1,3 +1,15 @@
+## Signed-delivery scheduling status readback — W-22FIN continuation
+
+A signed, unscheduled DELIVERY job belongs to the same customer-scoped rental
+read model as its genuine booked visits. The account Rentals page now
+states explicitly that an unscheduled delivery is **being arranged, not booked**;
+when the owner records an actual future appointment it displays that time
+instead. Unsigned draft delivery jobs remain hidden while real scheduled
+visits retain visibility. Owner To do still owns scheduling and payment checks;
+no customer self-booking, notification, or provider side effect. The
+disposable-Postgres/browser test checks the unscheduled-to-booked transition.
+This closes another readback step, not the all-in estimate/approval completion.
+
 ## Signing-obligation owner/customer readback continuation — October 14
 
 From source `2f68599ac35d65e6c72e919475381483a7dca289`, both customer Rentals and owner agreement review

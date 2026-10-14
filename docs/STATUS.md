@@ -1,3 +1,15 @@
+## W-22FIN next integration — genuine pending delivery visibility
+
+The signed-delivery job already persisted by W-22D18 has `status=SCHEDULED`
+with a null appointment time. Customer Rentals previously queried scheduled
+times only, omitting that real unscheduled handoff. The following implementation
+now includes the signed, same-customer delivery draft and distinguishes
+"being arranged" from a confirmed visit. The established owner-only scheduling
+To do and money readiness remain authoritative. Browser/DB, CI and external
+acceptance remain distinct; this is no auto-booking or customer message.
+W-22FIN remains IN_PROGRESS pending complete all-in quote/approval and
+payment-to-delivery acceptance.
+
 ## October 14 checked production catch-up and W-22FIN continuation
 
 Manual owner-approved release is independently verified: `main` and `live`

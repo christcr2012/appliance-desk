@@ -88,6 +88,7 @@ export async function getPortalData(userId: string) {
           termsSnapshot: true,
           terminationRequestedAt: true,
           terminationEffectiveOn: true,
+          signature: { select: { signedAt: true } },
           signingPaymentObligation: {
             select: {
               setupFeeCents: true, setupTaxCents: true, downPaymentCents: true,
@@ -121,8 +122,12 @@ export async function getPortalData(userId: string) {
           },
           jobs: {
             where: {
-              status: { in: ["SCHEDULED", "IN_PROGRESS"] },
-              scheduledAt: { gte: now },
+              OR: [
+                { status: { in: ["SCHEDULED", "IN_PROGRESS"] }, scheduledAt: { gte: now } },
+                // A signed rental may have a real delivery job that the owner
+                // has not scheduled yet; never invent an appointment time.
+                { type: "DELIVERY", status: "SCHEDULED", scheduledAt: null },
+              ],
             },
             select: jobSelect,
             orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
@@ -150,8 +155,12 @@ export async function getPortalData(userId: string) {
     phone: customer.phone,
     smsOptInAt: customer.smsOptInAt,
     serviceAddresses: customer.serviceAddresses,
-    rentalAgreements: customer.rentalAgreements.map(({ signingPaymentObligation, ...agreement }) => ({
-      ...agreement, signingPaymentSummary: customerSigningSummary(signingPaymentObligation, customer.id),
+    rentalAgreements: customer.rentalAgreements.map(({ signingPaymentObligation, signature, ...agreement }) => ({
+      ...agreement,
+      // Do not advertise an unsigned/order-draft visit to the customer.
+      // Existing scheduled visits keep their normal visibility.
+      jobs: signature?.signedAt ? agreement.jobs : agreement.jobs.filter(job => job.scheduledAt !== null),
+      signingPaymentSummary: customerSigningSummary(signingPaymentObligation, customer.id),
     })),
     jobs: customer.jobs.slice(0, PORTAL_PAGE_SIZE),
     jobsHasMore: customer.jobs.length > PORTAL_PAGE_SIZE,

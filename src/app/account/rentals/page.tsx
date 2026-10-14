@@ -154,6 +154,11 @@ export default async function AccountRentalsPage({
                     <p className="mt-1 text-sm text-ink-soft">
                       {jobTypeLabel(nextVisit.type)} · {formatBusinessDate(nextVisit.scheduledAt)} · {formatBusinessTime(nextVisit.scheduledAt)}
                     </p>
+                  ) : nextVisit?.type === "DELIVERY" ? (
+                    <p className="mt-1 text-sm text-ink-soft">
+                      Delivery is being arranged. The business has not confirmed a date or time yet.
+                      This is a request in progress, not a booked appointment.
+                    </p>
                   ) : (
                     <p className="mt-1 text-sm text-ink-soft">No visit is scheduled for this rental.</p>
                   )}
