@@ -1,3 +1,18 @@
+## Delivery dispatch must reverify signed money — W-22FIN
+
+Starting a DELIVERY/INSTALLATION job linked to a W-22 prepared agreement
+now rechecks its accepted immutable fingerprint, matching payment evidence
+and its **same-customer, exact-amount received** receipt (or a genuine signed
+zero-due obligation) inside the job-status transaction under the agreement
+lock. Any missing/foreign/partial/ambiguous/pending payment denies physical
+dispatch with an actionable owner message; booking a date remains possible.
+Legacy rentals with no W-22 prep retain their prior operation. Pure
+denial/identity/zero tests and a full isolated Postgres
+freeze → sign → owner-receipt → dispatch integration suite
+are required at exact-head CI; production/provider confirmation stays in
+the acceptance queue. This is one safety-critical part of unfinished
+W-22FIN, not W-22 engineering completion.
+
 ## Signed-delivery scheduling status readback — W-22FIN continuation
 
 A signed, unscheduled DELIVERY job belongs to the same customer-scoped rental

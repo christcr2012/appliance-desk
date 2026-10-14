@@ -7,6 +7,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/billing-webhooks.test.ts",
   "tests/pickup-billing-end-integration.test.ts",
   "tests/signing-manual-payment-w22-integration.test.ts",
+  "tests/signing-dispatch-integration-w22fin.test.ts",
   "tests/signing-send-guard-w22-integration.test.ts",
   "tests/tax-address-recheck-integration.test.ts",
   "tests/tax-exemptions-integration.test.ts",
