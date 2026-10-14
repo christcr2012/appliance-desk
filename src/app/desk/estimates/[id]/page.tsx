@@ -7,6 +7,9 @@ import { estimateStatusLabel } from "@/lib/status-labels";
 import { EstimateLineItemsPanel } from "./line-items-panel";
 import { SendEstimateButton } from "./send-estimate-button";
 import { ConvertEstimatePanel } from "./convert-estimate-panel";
+import { PrepareEstimateAgreementsButton } from "./prepare-agreements-button";
+import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote";
+import { ReviewedPreapprovalQuote } from "@/components/estimates/reviewed-preapproval-quote";
 import { listPackagesForLines } from "@/domains/packages";
 import { getPrivateEstimateAllInReview } from "@/domains/estimates/all-in-review-reader";
 import { OwnerAllInEstimateReview } from "@/components/estimates/owner-all-in-review";
@@ -22,8 +25,9 @@ export default async function EstimateDetailPage({
 }) {
   await requireRole("OWNER", "ADMIN");
   const { id } = await params;
-  const [estimate, packages, allInReview] = await Promise.all([
+  const [estimate, packages, allInReview, preparedQuote] = await Promise.all([
     getEstimateDetail(id), listPackagesForLines(), getPrivateEstimateAllInReview(id),
+    getPreparedEstimateQuote(id),
   ]);
 
   if (!estimate) {
@@ -144,6 +148,11 @@ export default async function EstimateDetailPage({
         </div>
       )}
 
+      {(estimate.status === "DRAFT" || estimate.status === "CHANGES_REQUESTED") && (
+        <PrepareEstimateAgreementsButton estimateId={estimate.id} eligible={!!estimate.customerId && estimate.lineItems.length > 0} />
+      )}
+
+      <ReviewedPreapprovalQuote quote={preparedQuote} owner />
       {allInReview && <OwnerAllInEstimateReview preview={allInReview} />}
 
       <EstimateLineItemsPanel

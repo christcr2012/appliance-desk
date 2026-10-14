@@ -1,3 +1,16 @@
+## W-22FIN preapproval preparation, exact quote identity and stale approval denial
+
+Owner/ADMIN can prepare customer-owned draft agreements while an estimate is
+editable, without approving, converting, sending, booking or charging. Exact
+owned packages, per-site frozen signing amounts, current owner applicability
+and verified monthly rental-tax version evidence must reconcile before the
+public estimate shows reviewed totals. A fingerprint changing after send
+invalidates customer approval. Unreviewed leads receive a clearly nonbinding
+preliminary email and cannot approve or pay; they may request changes.
+This completes W-22FIN-PREAPPROVAL-PREPARE, NOT the full mandatory-fee quote.
+Nonzero visit fees, waiver/RDF, deposits and full legacy conversion reconciliation
+remain approved W-22FIN engineering. Preserve CPA/counsel/owner/Stripe gates.
+
 ## W-22FIN owner mandatory-charge policy and preapproval readiness — implementation checkpoint
 
 A stale local main was also discovered to mislead the rolling progress report; default comparison now uses the verified origin/main ref.

@@ -28,6 +28,12 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/domains/messaging/deliver", () => ({
   deliverMessage: (...a: unknown[]) => deliverMessage(...a),
 }));
+vi.mock("@/domains/estimates/preapproval-quote", () => ({
+  getPreparedEstimateQuoteInTx: vi.fn().mockResolvedValue({
+    status: "REVIEW_REQUIRED", reasons: ["No frozen reviewed charge."],
+    quoteFingerprint: null, orderFingerprint: null,
+  }),
+}));
 vi.mock("@/domains/settings", () => ({
   getBusinessSettings: vi.fn().mockResolvedValue({
     publicBusinessName: "Robinson Appliance Rentals",

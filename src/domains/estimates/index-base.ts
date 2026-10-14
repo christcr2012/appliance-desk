@@ -12,6 +12,7 @@ import {
 } from "@/domains/leads";
 
 import { isEstimatePastValidity } from "./validity";
+import { getPreparedEstimateQuoteInTx } from "./preapproval-quote";
 
 const EDITABLE_STATUSES: EstimateStatus[] = ["DRAFT", "CHANGES_REQUESTED"];
 const PUBLICLY_VIEWABLE_STATUSES: EstimateStatus[] = [
@@ -325,6 +326,11 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
     if (estimate.lineItems.length === 0) {
       throw new Error("Add at least one line item before sending this estimate.");
     }
+    const prepared = await getPreparedEstimateQuoteInTx(tx, estimateId);
+    // A lead may still receive a clearly nonbinding preliminary scope.
+    // Only a complete verified frozen order may carry binding quote identity.
+    const fullyReviewed = prepared.status === "READY" &&
+      !!prepared.quoteFingerprint && !!prepared.orderFingerprint;
 
     const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
     const recipientName = estimate.customer
@@ -341,7 +347,10 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
     const sentAt = new Date(Math.max(Date.now(), previous + 1));
     await tx.estimate.update({
       where: { id: estimateId },
-      data: { status: "SENT", sentAt },
+      data: { status: "SENT", sentAt,
+        reviewedQuoteFingerprint: fullyReviewed ? prepared.quoteFingerprint : null,
+        reviewedOrderFingerprint: fullyReviewed ? prepared.orderFingerprint : null,
+        reviewedQuoteAt: fullyReviewed ? new Date() : null },
     });
     await tx.auditLog.create({
       data: {
@@ -352,9 +361,9 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
         newValue: { sentAt: sentAt.toISOString() },
       },
     });
-    return { estimate, recipientEmail, recipientName, sentAt };
+    return { estimate, recipientEmail, recipientName, sentAt, fullyReviewed };
   });
-  const { estimate, recipientEmail, recipientName, sentAt } = claimed;
+  const { estimate, recipientEmail, recipientName, sentAt, fullyReviewed } = claimed;
 
   const settings = await getBusinessSettings();
   const appUrl =
@@ -370,6 +379,11 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
   }
   if (oneTime > 0) {
     parts.push(`Estimated one-time charges: $${(oneTime / 100).toFixed(2)}.`);
+  }
+  if (!fullyReviewed) {
+    parts.push("This is preliminary, not an all-in binding offer. Setup, delivery, taxes, refundable deposits or other required charges may be missing. You cannot approve or pay from this estimate until the owner sends a verified updated offer.");
+  } else {
+    parts.push("The reviewed all-in breakdown includes each prepared service address and shows the total due at signing separately from future rent.");
   }
   if (estimate.clientMessage) parts.push(estimate.clientMessage);
   parts.push("Review the full details and let us know if it works for you:");
@@ -596,6 +610,13 @@ export async function approveEstimate(
       throw new Error("This estimate isn't available to approve right now.");
     }
     if (await expireIfPastValidityInTx(tx, estimate)) return { expired: true as const };
+    const approvedOffer = await getPreparedEstimateQuoteInTx(tx, id);
+    if (approvedOffer.status !== "READY" || !approvedOffer.quoteFingerprint ||
+        !estimate.reviewedQuoteFingerprint || !estimate.reviewedOrderFingerprint ||
+        approvedOffer.quoteFingerprint !== estimate.reviewedQuoteFingerprint ||
+        approvedOffer.orderFingerprint !== estimate.reviewedOrderFingerprint) {
+      throw new Error("This estimate's verified all-in order has changed or was never reviewed. Request an updated estimate before approval.");
+    }
 
     let customerId = estimate.customerId;
     let activationEmail: string | null = null;
@@ -734,6 +755,14 @@ export async function convertEstimateToAgreements(
 
     if (estimate.status !== "APPROVED") {
       throw new Error("Only an approved estimate can be converted.");
+    }
+    // Prepared preapproval shells will be verified and adopted by the
+    // converted agreement transaction; creating duplicates is forbidden.
+    const preparedShellCount = await tx.rentalAgreement.count({
+      where: { sourceEstimateId: estimateId },
+    });
+    if (preparedShellCount) {
+      throw new Error("This approved estimate has prepared frozen agreement drafts. Complete the existing order through the reviewed conversion workflow; duplicate shells are forbidden.");
     }
     if (!estimate.customerId) {
       throw new Error("This estimate isn't linked to a customer yet.");

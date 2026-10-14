@@ -6,6 +6,8 @@ import { EstimateResponseForm } from "./estimate-response-form";
 import { PayDepositButton } from "./pay-deposit-button";
 import { getFinalizedConvertedEstimateOrder } from "@/domains/estimates/finalized-order";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
+import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote";
+import { ReviewedPreapprovalQuote } from "@/components/estimates/reviewed-preapproval-quote";
 
 export const metadata = {
   title: "Your estimate",
@@ -37,6 +39,12 @@ export default async function PublicEstimatePage({
 
   const reviewedOrder = estimate.status === "CONVERTED"
     ? await getFinalizedConvertedEstimateOrder(estimate.id) : null;
+  const quoteCandidate = estimate.status !== "CONVERTED"
+    ? await getPreparedEstimateQuote(estimate.id) : null;
+  const quoteIsCurrent = quoteCandidate?.status === "READY" &&
+    quoteCandidate.quoteFingerprint === estimate.reviewedQuoteFingerprint &&
+    quoteCandidate.orderFingerprint === estimate.reviewedOrderFingerprint;
+  const reviewedQuote = quoteIsCurrent ? quoteCandidate : null;
   const monthly = estimate.lineItems.reduce((sum, l) => sum + l.monthlyPriceCents * l.quantity, 0);
   const oneTime = estimate.lineItems.reduce((sum, l) => sum + l.oneTimeFeeCents * l.quantity, 0);
   const customerName = estimate.customer
@@ -95,6 +103,13 @@ export default async function PublicEstimatePage({
         )}
       </div>
 
+      {reviewedQuote && <ReviewedPreapprovalQuote quote={reviewedQuote} />}
+      {(estimate.status === "SENT" || estimate.status === "VIEWED") && !reviewedQuote && (
+        <section className="mt-4 rounded border border-amber-400 p-4 text-sm" role="alert">
+          The reviewed all-in offer needs to be refreshed before you can approve it.
+          Please request changes or contact the business. Preliminary figures are not binding.
+        </section>
+      )}
       {reviewedOrder?.status === "FINAL_REVIEWED" && (
         <ReviewedSigningOrder order={reviewedOrder.order} context="estimate" />
       )}
@@ -123,7 +138,9 @@ export default async function PublicEstimatePage({
                   One more step: a deposit of {formatCents(estimate.depositCents)} is due before
                   we can move forward.
                 </p>
-                <PayDepositButton estimateId={estimate.id} />
+                {reviewedQuote ? <PayDepositButton estimateId={estimate.id} /> : (
+                  <p className="mt-1">Deposit checkout requires a renewed, verified complete signing order.</p>
+                )}
               </>
             ) : (
               <p className="mt-1">We&apos;ll be in touch about next steps.</p>
@@ -149,7 +166,9 @@ export default async function PublicEstimatePage({
             <p className="font-medium">This estimate was approved and is being set up.</p>
           </div>
         )}
-        {!RESPONDED_STATUSES.has(estimate.status) && <EstimateResponseForm estimateId={estimate.id} />}
+        {!RESPONDED_STATUSES.has(estimate.status) && (
+          <EstimateResponseForm estimateId={estimate.id} allowApproval={!!reviewedQuote} />
+        )}
       </div>
     </main>
   );

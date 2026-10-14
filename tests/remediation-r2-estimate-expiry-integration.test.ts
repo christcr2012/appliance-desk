@@ -83,20 +83,20 @@ describe.skipIf(!enabled)("R09 an expired estimate cannot be answered", () => {
     expect((await load(row.id)).customerId).toBeNull();
   });
 
-  it("a still-valid estimate and one with no deadline can be approved", async () => {
+  it("valid dates do not override a missing exact frozen all-in quote", async () => {
     const valid = await estimate(nextWeek());
     const open = await estimate(null);
-    await approveEstimate(valid, input);
-    await approveEstimate(open, input);
-    expect((await load(valid)).status).toBe("APPROVED");
-    expect((await load(open)).status).toBe("APPROVED");
+    await expect(approveEstimate(valid, input)).rejects.toThrow(/reviewed|all-in/i);
+    await expect(approveEstimate(open, input)).rejects.toThrow(/reviewed|all-in/i);
+    expect((await load(valid)).status).toBe("SENT");
+    expect((await load(open)).status).toBe("SENT");
   });
 
-  it("the last second of the valid-through day still works", async () => {
+  it("last valid-through second is not a backdoor around unfinished charges", async () => {
     const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Denver" }).format(new Date());
     const { businessDateEnd } = await import("@/lib/business-date");
     const id = await estimate(businessDateEnd(dayKey));
-    await approveEstimate(id, input);
-    expect((await load(id)).status).toBe("APPROVED");
+    await expect(approveEstimate(id, input)).rejects.toThrow(/reviewed|all-in/i);
+    expect((await load(id)).status).toBe("SENT");
   });
 });

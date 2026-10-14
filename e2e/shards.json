@@ -54,7 +54,8 @@
       "security-response-headers.spec.ts",
       "accessibility-routes-desk-b.spec.ts",
       "communications-calls.spec.ts",
-      "signing-multilocation-order.spec.ts"
+      "signing-multilocation-order.spec.ts",
+      "preapproval-estimate-prepare.spec.ts"
     ]
   }
 }

@@ -320,6 +320,12 @@ export async function createDepositCheckoutSessionForEstimate(
 ): Promise<string | null> {
   const estimate = await prisma.estimate.findUniqueOrThrow({ where: { id: estimateId } });
   if (estimate.depositCents <= 0 || estimate.depositPaidAt) return null;
+  // Never charge an old provisional quote or a changed/prepared order from
+  // the legacy deposit button. A receipt is not an all-in reviewed obligation.
+  if (!estimate.reviewedQuoteFingerprint || !estimate.reviewedOrderFingerprint ||
+      !["APPROVED", "CONVERTED"].includes(estimate.status)) {
+    throw new Error("Legacy estimate deposit checkout is disabled until the complete frozen order and deposit allocation reconcile.");
+  }
   if (!estimate.customerId) {
     throw new Error("This estimate isn't linked to a customer yet — can't collect a deposit.");
   }

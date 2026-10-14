@@ -4,27 +4,25 @@
   "parent": "W-22FIN",
   "completedSlices": [
     {
-      "id": "W-22FIN-POLICY",
+      "id": "W-22FIN-PREAPPROVAL-PREPARE",
       "acceptanceEvidence": [
-        "New owner-only dated applicability revisions with audit and explicit reason in src/domains/billing/signing-mandatory-policy.ts; existing effective-dated setup tax decisions remain separate; tests/signing-mandatory-policy-integration-w22fin.test.ts verifies role and history.",
-        "Undecided fees, unresolved setup tax and jurisdiction rates are always REVIEW_REQUIRED with false binding/collection flags in src/domains/estimates/all-in-preview.ts; tests/estimate-all-in-preview-w22fin.test.ts covers prohibited claims and tax alternatives; agreement signing gate remains independent.",
-        "Disposable Postgres test tests/signing-mandatory-policy-integration-w22fin.test.ts verifies owner/staff, append-only audits and full restoration; e2e/mandatory-signing-policy.spec.ts verifies authenticated owner settings and accessibility; signed price snapshots are unchanged by configuration."
+        "Preapproval agreements and owner action prepare exactly owned draft agreements with idempotent row-locked storage and no side effects; tests/estimate-preapproval-prepare-integration-w22fin.test.ts plus e2e/preapproval-estimate-prepare.spec.ts cover ownership, retry, no paid state",
+        "Preapproval quote reader verifies all original packages, effective dated mandatory policy, jurisdiction rental tax versions and signed frozen per-address order with SHA-256 fingerprint; tests/estimate-preapproval-quote-w22fin.test.ts and estimate-preapproval-readback-w22fin.test.tsx assert amounts and denial",
+        "Estimate send/approval, legacy checkout and public UI reject stale/missing binding review; preliminary messages are explicitly nonbinding; existing send/expiry/concurrency tests retain denial and request-changes coverage"
       ]
     }
   ],
   "remainingEngineering": [
-    "W-22FIN-QUOTE: Persist and independently verify a complete owner-reviewed preapproval all-in offer including all tax and applicable mandatory charges; currently owner preview explicitly excludes unsettled categories.",
-    "W-22FIN-APPROVAL: Connect complete immutable quote to legacy estimate send/approve/deposit checkout without allowing provisional amounts to become binding or payable.",
-    "W-22FIN-RECOVERY: Complete provider-authoritative payment, cancellation and uncertain-state recovery acceptance without automatic money-out.",
-    "W-22FIN-DELIVERY: Verify full multi-location signed agreement through delivery and first-invoice credits with isolated real database/browser proof."
+    "W-22FIN-QUOTE remains unfinished for mandatory nonzero delivery/install/removal fees, damage waivers, RDF, refundable deposits and corresponding tax allocation; current quotes fail closed rather than silently charging zero",
+    "W-22FIN-APPROVAL must adopt prepared agreements without duplicating shells and align early deposit checkout with exact frozen approval and first invoice credit",
+    "W-22FIN-RECOVERY and W-22FIN-DELIVERY require more multi-site cancellation/retry/invoice and provider acceptance"
   ],
   "externalAcceptance": [
-    "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
-    "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
+    "STATUS release acceptance queue remains pending for genuine reviewed READY production revision and authenticated owner/customer/Stripe TEST checks",
+    "IN-79 CPA, IN-07 counsel, price publication, real customer communication and independent owner money-out permissions not granted"
   ],
-  "workloadException": "A single policy-completion slice is a high-risk multi-layer financial configuration boundary including owner UI, append-only audited storage, immutable history, multi-location preview and DB/browser denial tests. Do not count the still-unfinished estimate approval workflow as complete.",
+  "workloadException": "This complete preapproval draft preparation and stale-quote denial workflow is one cohesive high-risk milestone step; intentionally does not count incomplete fee allocation or conversion as full QUOTE/APPROVAL slices.",
   "evidence": [
-    "Source modules and paths listed in W-22FIN policy card; exact-head CI required before merge.",
-    "New W-22FIN policy tests, existing setup-tax-policy-version and signing-business-use-gate tests, owner settings browser accessibility."
+    "Source tests, database fixture and browser regression plus required exact-head CI and review; no deployment or provider evidence inferred"
   ]
 }
