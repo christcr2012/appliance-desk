@@ -1,3 +1,26 @@
+## October 14 W-22FIN engineering continuation and acceptance handoff
+
+Completed in session: PR #450 owner/customer exact settled signing amount
+readback; #451 signed pending delivery vs real appointment; #452 verified
+receipt gate on physical dispatch; #453 complete frozen per-location signing
+order on customer/owner views; #454 fail-closed provider-uncertain retry and
+owner issue guidance. PR #455 adds a converted estimate's same verified
+all-location frozen offer with review-required for incomplete revisions.
+
+**Unfinished engineering, same W-22FIN unit:** owner-prepared all-in offer
+available to customer *before* estimate approval; itemize/include all
+mandatory charge categories (including any refundable deposit, damage waiver
+or retail delivery fee where legally applicable) in an owner-approved
+effective-dated policy; link provisional estimate approval/early checkout
+to that binding frozen amount rather than treating old monthly/one-time lines
+as a payable complete offer; prove full multi-site reversal/recovery and
+first-delivery invoice once all accepted facts reconcile. The converted
+estimate readback is an integration improvement, not an excuse to move W-23.
+Do not activate real tax-dependent pricing or Stripe LIVE without the
+retained owner/CPA/counsel/professional gates. Do not make a production fixture
+or send live customer messages for acceptance. The maintained
+`release-acceptance` queue below governs future checked releases.
+
 ## W-22FIN converted preliminary estimate → verified frozen final readback
 
 The original estimate link now explicitly separates provisional rental-line
@@ -230,13 +253,13 @@ open obligations, original fixture ownership, approvals and deployment provenanc
   {
     "id": "W22FIN-FINAL-ESTIMATE-READBACK",
     "priority": 1,
-    "requiredRevision": "858a99ba16a892a7e887bbab4ac1285c6a2578b8",
+    "requiredRevision": "42a8d744b80e939e5f69dee3cdcce5ddbfd30785",
     "task": "After checked release, open an approved existing converted multi-location estimate with owner and authorized customer link: show exact frozen charges for all locations or review-required when one location incomplete, without implied payment or sending",
     "procedure": "docs/pr-cards/W-22FIN.md",
     "gates": "Use existing safe read-only records, no live synthetic estimate/job/payment mutation, professional/Stripe/communication gates unchanged",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Source implementation after PR #454 and isolated browser synthetic coverage planned; exact-head CI and production user acceptance remain unverified."
+    "lastEvidence": "Source PR #455 implementation commit 42a8d744b80e939e5f69dee3cdcce5ddbfd30785 prepared; exact-head CI, checked production release, and authenticated real customer/provider acceptance remain unverified."
   }
 ]
 ```

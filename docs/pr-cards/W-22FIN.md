@@ -1,3 +1,17 @@
+## Permanent PR #455 handoff
+
+Work finished in this session's #450–#455 integration PRs is listed in
+`docs/STATUS.md`. Reconcile actual main and live on the next run; live still
+tracked at the earlier #449 release at the last independent observation.
+Read and execute the release-acceptance JSON queue only where its required
+revision is included in a checked READY deployment and permitted live owner
+TEST/read-only evidence exists; don't promote synthetic CI to external proof.
+Continue **W-22FIN**, not W-23: the remaining cohesive engineering is the
+pre-approval all-in quote/mandatory charges and enforceable estimate-to-
+frozen-order acceptance and payment/first invoice sequence. Record exact
+pass/fail and owner/professional limitations without fabricating approval.
+Normal PR cadence ends on #455 if this PR is merged after full required CI.
+
 ## Converted estimate → verified reviewed signing offer — W-22FIN
 
 Original public estimate URL now retains historical preliminary rental-only

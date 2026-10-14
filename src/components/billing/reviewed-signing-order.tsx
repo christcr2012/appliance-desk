@@ -20,7 +20,7 @@ export function ReviewedSigningOrder({ order, context = "signing" }: {
           <div key={location.agreementId} className="rounded-md border border-line p-3">
             <p className="font-medium">
               {location.serviceAddress}
-              {location.current && <span className="ml-2 text-ink-soft">(this agreement)</span>}
+              {location.current && context === "signing" && <span className="ml-2 text-ink-soft">(this agreement)</span>}
             </p>
             <dl className="mt-2 space-y-1 text-ink-soft">
               <div className="flex justify-between gap-3"><dt>Administrative setup</dt><dd>{formatCents(location.setupFeeCents)}</dd></div>
