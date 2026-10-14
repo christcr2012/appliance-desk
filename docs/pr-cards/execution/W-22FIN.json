@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "id": "W-22FIN",
+  "parent": "W-22",
+  "baseline": "64f000b3374621f0644d11b8b34b8bb0f1fd0d4b",
+  "card": "docs/pr-cards/W-22FIN.md",
+  "outcome": "Complete configurable W-22 all-in owner/customer offer through signing, safe failure recovery and first delivery; real business activation stays locked on review.",
+  "risk": "Financial rounding, tenant access, historical signed evidence and Stripe idempotency. Reviewed tax and counsel terms govern real business use only, not engineering.",
+  "next": "After substantive W-22 engineering and exact-head verification, resume highest-priority eligible W-23 and retain separate CPA/legal/Stripe TEST/customer acceptance in STATUS queue.",
+  "references": [
+    {
+      "path": "src/domains/billing/signing-charge-preview.ts",
+      "anchor": "export async function getDraftSigningChargePreview",
+      "purpose": "Owner draft policy/fees and location-level amounts, not a customer claim"
+    },
+    {
+      "path": "src/domains/billing/signing-frozen-evidence.ts",
+      "anchor": "export function buildFrozenSigningEvidence",
+      "purpose": "Existing locked all-in payment/tax provenance and per-agreement exact cents"
+    },
+    {
+      "path": "src/app/estimate/[id]/page.tsx",
+      "anchor": "export default async function PublicEstimatePage",
+      "purpose": "Current customer estimate line prices missing mandatory consolidated quote total"
+    },
+    {
+      "path": "src/app/desk/estimates/[id]/page.tsx",
+      "anchor": "export default async function EstimateDetailPage",
+      "purpose": "Owner estimate totals/approval flow and disclosures"
+    },
+    {
+      "path": "src/app/account/rentals/page.tsx",
+      "anchor": "export default async function AccountRentalsPage",
+      "purpose": "Authenticated customer frozen/signing/payment state read surface"
+    },
+    {
+      "path": "src/app/sign/[id]/page.tsx",
+      "anchor": "Signing charges for this service address",
+      "purpose": "Existing frozen signing tax/fee evidence read-only customer presentation"
+    },
+    {
+      "path": "src/domains/agreements/index.ts",
+      "anchor": "export async function lockRentalAgreementInTx",
+      "purpose": "Shared lifecycle lock before changing binding terms or payment state"
+    },
+    {
+      "path": "src/domains/agreements/signed-delivery.ts",
+      "anchor": "export async function ensureSignedDeliveryDraftInTx",
+      "purpose": "Real signed agreement to unscheduled delivery handoff already merged"
+    }
+  ],
+  "proposedFiles": [
+    "tests/w22-fin-all-in.test.ts",
+    "tests/w22-fin-business-gates-integration.test.ts",
+    "e2e/w22-fin-complete-flow.spec.ts"
+  ],
+  "invariants": [
+    "Unreviewed IN-79 tax classification prevents all affected real-customer offers, agreements, charges and collection; only synthetic owner preview/test is allowed",
+    "Price and fee settings are owner-authorized and audit/version-controlled; signed, invoiced and settled records never silently reprice",
+    "Multi-location setup charged at most once per eligible service location; approved waiver reasons remain attributable and signed totals reconcile",
+    "Stripe pending/failed/unknown does not count as received; retries recover by idempotency without duplicate charges",
+    "No public prelaunch price, self-booked delivery, automatic refund, email or SMS activation",
+    "Agreement/customer and provider IDs remain scoped; unauthorized staff/customer cannot read another customer's financial terms"
+  ],
+  "sequence": [
+    "Inspect current estimate and agreement DTO/access paths against approved all-in requirements; use one owner-reviewed source of amount truth",
+    "Complete per-location setup/down-payment/waiver and configured tax readiness, authorization and historical snapshots end-to-end",
+    "Expose complete truthful owner quote, eligible customer estimate, signing and portal amounts while blocking provisional payable customer actions",
+    "Complete failed signing payment owner follow-up, provider-checked retry and first-delivery/first-invoice reconciliation without changing D18 delivered behavior",
+    "Run focused unit and disposable PostgreSQL/browser regressions; update parent acceptance and separate gated acceptance queue then exact-head CI/review"
+  ],
+  "acceptance": [
+    "Owner can see required reviewed total plus separately disclosed tax for each location; no undisclosed mandatory extras",
+    "Customer cannot approve/bind/pay a provisional missing-tax quote; approved cases reconcile estimate, signed order and receipts",
+    "Waivers/overrides have role-checked recorded reasons; changing future policy preserves existing signatures, bills and provider evidence",
+    "Failed/UNKNOWN payments get actual actionable Today navigation and do not mark paid; idempotent retries and full/partial deliveries remain safe",
+    "Real Stripe TEST, counsel/CPA, LIVE publication and deployment-dependent acceptance remain OPEN until independently evidenced"
+  ],
+  "gates": [
+    {
+      "id": "IN-79",
+      "affected": "Real-customer offer, charge-bearing agreement send, collection using unresolved setup tax",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Build configurable taxable/exempt/undecided branches and tests while keeping business-use lock",
+      "reopen": "CPA-reviewed tax classification and owner-approved effective policy verified"
+    },
+    {
+      "id": "IN-07",
+      "affected": "Unreviewed binding customer terms and legal text",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Versioned private templates/previews and contract evidence; no unapproved binding terms",
+      "reopen": "Counsel approves applicable template/effective version"
+    },
+    {
+      "id": "IN-48",
+      "affected": "Public publication of new pricing and promotional offers",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Use unpublished owner preview; respect current prelaunch hidden-price rule",
+      "reopen": "Explicit owner public offer approval"
+    },
+    {
+      "id": "W-22TEST",
+      "affected": "Authenticated real Stripe TEST readback and live account acceptance",
+      "source": "docs/pr-cards/W-22.md",
+      "remedy": "Keep isolated/provider-mocked tests separate, no LIVE or money-out",
+      "reopen": "Real scoped Stripe TEST and authenticated app readback after checked release"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/signing-charge-plan-w22.test.ts",
+      "tests/w22-fin-all-in.test.ts"
+    ],
+    "db": [
+      "tests/signing-charge-settings-integration.test.ts",
+      "tests/w22-fin-business-gates-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/w22-fin-complete-flow.spec.ts",
+      "e2e/signed-delivery-todo.spec.ts"
+    ],
+    "node": []
+  }
+}
