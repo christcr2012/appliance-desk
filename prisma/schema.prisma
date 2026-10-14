@@ -2513,6 +2513,13 @@ model BusinessSettings {
   businessRequiresDownPayment Boolean @default(true)
   setupFeeTaxTreatment String @default("UNDECIDED")
   setupFeeTaxDecisionNote String?
+  // Research-based suggestion is separate from owner approval of real tax treatment.
+  setupFeeTaxPlanningTreatment String @default("TAXABLE")
+  // Unverified prior settings do not authorize real-business use. Owner can record later CPA proof.
+  setupFeeTaxConfirmedOn DateTime?
+  setupFeeTaxEffectiveFrom DateTime?
+  setupFeeTaxApprovedAt DateTime?
+  setupFeeTaxAdviserReference String?
   damageWaiverEnabled     Boolean @default(false)
   depositEnabled          Boolean @default(false)
   // Usual visit length in minutes (Batch C P1-A); used when a job has no length of its own.

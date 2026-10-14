@@ -93,6 +93,11 @@ export default async function DeskSettingsPage({
           businessRequiresDownPayment: settings.businessRequiresDownPayment,
           setupFeeTaxTreatment: settings.setupFeeTaxTreatment,
           setupFeeTaxDecisionNote: settings.setupFeeTaxDecisionNote,
+          setupFeeTaxPlanningTreatment: settings.setupFeeTaxPlanningTreatment,
+          setupFeeTaxConfirmedOn: settings.setupFeeTaxConfirmedOn,
+          setupFeeTaxEffectiveFrom: settings.setupFeeTaxEffectiveFrom,
+          setupFeeTaxApprovedAt: settings.setupFeeTaxApprovedAt,
+          setupFeeTaxAdviserReference: settings.setupFeeTaxAdviserReference,
           updatedAt: settings.updatedAt,
         }} />
       </Card>

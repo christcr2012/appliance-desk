@@ -1,4 +1,27 @@
-### Workflow maintenance handoff — owner publication approved
+## Owner direction — sequential batch completion, not recurring slice carryover
+
+Current active work is W-22FIN. Finish its whole remaining **engineering**
+and tests before beginning W-23. The agent must investigate and solve
+technical blockers, directly ask the owner for missing owner decisions
+and resume immediately after the reply. Do not silently defer source work
+or use PR alignment as a reason to switch batches. Only exact
+deployment/provider/professional **acceptance** may remain queued
+with provenance and a specific re-entry trigger. Full rule in AGENTS.md.
+
+## Permanent owner-question and regulatory-default workflow — 2026-10-14
+
+Owner clarification: unresolved operational/business choices are interactive,
+scoped questions. Ask in the active session after checking existing recorded
+answers, then record the answer and resume; never strand an entire batch.
+For laws, statutes, accounting and CPA/legal matters, agents research official
+primary sources, guidance and future effective changes to build provisional,
+owner-configurable, versioned defaults now. Explicit professional sign-off is
+tracked separately and restricts only affected real business use. The affected
+feature must explain its gate and give the owner an audited confirmation path.
+AGENTS.md and SESSION-START.md hold the full permanent requirements.
+This is a development procedure, not legal/tax approval or live authorization.
+
+## W-22FIN progress — CPA-backed owner activation path under implementation (2026-10-14)\n\nThe next substantial W-22 implementation adds recorded adviser confirmation, effective date, owner attestation, and audited tax-policy revisions. It will deny unreviewed/legacy tax choices during both draft preparation and downstream tax review, preserving remaining per-jurisdiction rules and verified address obligations. This is SOURCE WORK ONLY until exact-head CI/review/merge, followed by checked release and independent real-provider acceptance. It does not approve CPA/legal treatment, customer charges, Stripe LIVE or public pricing. Remaining all-in customer quote and integrated delivery acceptance still belong to W-22FIN; the owner expects the whole engineering milestone, not small repeated handoffs.\n\n### Workflow maintenance handoff — owner publication approved
 
 New offline session utility: eight behavioral tests passed, including actual Git ancestry, partial releases, unknown/failed deployments, rollback, dependency gating, invalid queues, PR alignment and bounded output. All repository queues validate. Existing source/status evidence is preserved; no provider acceptance or release was performed. Owner explicitly approved publication on October 14; publish the reviewed maintenance branch, require exact-head CI/reviews, and merge only when those gates pass. No extra production release is authorized by this approval. Full broad application suites on the shared runner were interrupted after resource/time-limit failures; do not claim them passed. Existing exact-head remote CI/review gates must pass before any main merge.
 
