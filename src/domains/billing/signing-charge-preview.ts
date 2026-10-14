@@ -30,8 +30,16 @@ export function calculateDraftSigningPreview(input: {
   businessCustomer: boolean;
   propertyManagerCustomer: boolean;
   settings: SigningChargeSettings;
+  feeOverrides?: readonly { serviceAddressId: string; setupFeeCents: number; reason: string }[];
 }) {
   const { agreements, existingActiveAddressIds, settings } = input;
+  const overrides = new Map<string, { cents: number; reason: string }>();
+  for (const item of input.feeOverrides ?? []) {
+    if (!item.serviceAddressId || overrides.has(item.serviceAddressId)) {
+      throw new Error("Duplicate or unknown location fee overrides require owner review.");
+    }
+    overrides.set(item.serviceAddressId, { cents: item.setupFeeCents, reason: item.reason });
+  }
   if (!agreements.length || agreements.some((item) => item.status !== "DRAFT")) {
     throw new Error("Signing charges can only be previewed for draft agreements.");
   }
@@ -68,9 +76,27 @@ export function calculateDraftSigningPreview(input: {
       deliveryRequired: true,
       newRentalAtLocation: true,
       existingActiveRental: existing.has(serviceAddressId),
+      ...(overrides.has(serviceAddressId)
+        ? { setupFeeOverrideCents: overrides.get(serviceAddressId)!.cents,
+            setupFeeOverrideReason: overrides.get(serviceAddressId)!.reason }
+        : {}),
     })),
   };
-  return buildSigningChargePlan(planInput);
+  if ([...overrides.keys()].some(id => !byAddress.has(id))) {
+    throw new Error("An adjusted setup fee has no order location.");
+  }
+  const plan = buildSigningChargePlan(planInput);
+  return {
+    ...plan,
+    // The presence of an owner-authored override is independent from whether
+    // its cents happen to match today's configured recommended fee.
+    // Keeping the reason makes Restore available even after settings change.
+    locations: plan.locations.map(location => ({
+      ...location,
+      feeOverrideReason: overrides.get(location.serviceAddressId)?.reason ??
+        location.feeOverrideReason,
+    })),
+  };
 }
 
 export async function getDraftSigningChargePreview(agreementId: string) {
@@ -99,7 +125,7 @@ export async function getDraftSigningChargePreview(agreementId: string) {
   // a sibling draft still needs its rental lines entered.
   if (agreements.length === 0 || agreements.some((agreement) => agreement.status !== "DRAFT" || agreement.lines.length === 0)) return null;
   const addressIds = [...new Set(agreements.map((agreement) => agreement.serviceAddressId))];
-  const [customer, active, settings] = await Promise.all([
+  const [customer, active, settings, overrides] = await Promise.all([
     prisma.customer.findUniqueOrThrow({
       where: { id: selected.customerId },
       select: { isBusiness: true, isPropertyManager: true },
@@ -109,10 +135,19 @@ export async function getDraftSigningChargePreview(agreementId: string) {
       select: { serviceAddressId: true },
     }),
     prisma.businessSettings.findUnique({ where: { id: "singleton" } }),
+    prisma.signingSetupFeeOverride.findMany({
+      where: { agreementId: { in: agreements.map(row => row.id) } },
+      select: { agreementId: true, setupFeeCents: true, reason: true },
+    }),
   ]);
+  const addressByAgreement = new Map(agreements.map(row => [row.id, row.serviceAddressId]));
   return calculateDraftSigningPreview({
     agreements,
     existingActiveAddressIds: active.map((item) => item.serviceAddressId),
+    feeOverrides: overrides.map(row => ({
+      serviceAddressId: addressByAgreement.get(row.agreementId)!,
+      setupFeeCents: row.setupFeeCents, reason: row.reason,
+    })),
     businessCustomer: customer.isBusiness,
     propertyManagerCustomer: customer.isPropertyManager,
     settings: {

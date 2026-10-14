@@ -23,6 +23,15 @@ authenticated customer/provider acceptance. If a missing owner decision
 prevents safe implementation, ask the owner during this session; do not
 silently skip the work or create endless small D19/D20 slices.
 
+### Implementation checkpoint: owner fee waivers/overrides
+
+The W-22FIN substantive implementation integrates an OWNER-only waiver/fee
+override form on the actual multi-location draft agreement page, durable
+actor/reason, fee read/review and prepared charge invalidation. Its source
+fingerprint includes reason and adjusted cents. Signed and settled funds
+are not rewritten. Real tax/CPA/Stripe acceptance remains separately gated.
+No later W-23 work becomes eligible solely because this subsystem merges.
+
 ## Observable outcome (finish the cohesive engineering milestone)
 
 The owner can prepare and review an actual all-in offer across each service

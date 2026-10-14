@@ -919,6 +919,7 @@ model RentalAgreement {
 
   lines RentalLine[]
   signingChargeSnapshot AgreementSigningCharge?
+  setupFeeOverride SigningSetupFeeOverride?
   signingPaymentObligation AgreementSigningPayment?
   signingDownPaymentCredit SigningDownPaymentCredit?
   signingFirstInvoiceApplication SigningFirstInvoiceApplication?
@@ -937,6 +938,20 @@ model RentalAgreement {
   @@index([customerId])
   @@index([status])
   @@index([continuityRootId])
+}
+
+// W-22FIN: durable owner reason for an order/location fee exception.
+// The adjustment belongs to the lexicographically first agreement at a
+// service address for the same estimate; verified in the locked write path.
+model SigningSetupFeeOverride {
+  id String @id @default(cuid())
+  agreementId String @unique
+  agreement RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  setupFeeCents Int
+  reason String
+  authorizedByUserId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // W-22B: independently attributed draft signing amounts. Not a paid receipt.

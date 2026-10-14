@@ -3,9 +3,11 @@ const db = vi.hoisted(() => ({
   agreements: { findUnique: vi.fn(), findMany: vi.fn() },
   customer: { findUniqueOrThrow: vi.fn() },
   settings: { findUnique: vi.fn() },
+  overrides: { findMany: vi.fn() },
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: {
   rentalAgreement: db.agreements, customer: db.customer, businessSettings: db.settings,
+  signingSetupFeeOverride: db.overrides,
 } }));
 vi.mock("@/domains/billing/setup-tax-policy-version", () => ({ getEffectiveSetupTaxTreatment: vi.fn(async () => "UNDECIDED") }));
 import { calculateDraftSigningPreview, getDraftSigningChargePreview, type DraftSigningAgreement } from "@/domains/billing/signing-charge-preview";
@@ -20,6 +22,38 @@ const preview = (agreements: DraftSigningAgreement[], overrides: Partial<Paramet
     propertyManagerCustomer: false, settings: DEFAULT_SIGNING_CHARGE_SETTINGS, ...overrides });
 
 describe("W-22 signing-charge stored-draft preview", () => {
+  it("keeps one owner-reasoned waiver per location while preserving down payment", () => {
+    const result = preview([agreement("a", "unit-a", 6000, 2), agreement("b", "unit-b", 3500)], {
+      businessCustomer: true,
+      feeOverrides: [{ serviceAddressId: "unit-a", setupFeeCents: 0,
+        reason: "Owner approved a multi-unit setup waiver" }],
+    });
+    expect(result).toMatchObject({ setupTotalCents: 4500, downPaymentTotalCents: 9500 });
+    expect(result.locations.find(row => row.serviceAddressId === "unit-a")).toMatchObject({
+      setupFeeCents: 0, feeOverrideReason: "Owner approved a multi-unit setup waiver",
+    });
+  });
+  it("retains stored owner override identity even when price later matches the default", () => {
+    const result = preview([agreement("a", "home", 6000)], { feeOverrides: [
+      { serviceAddressId: "home", setupFeeCents: 4500, reason: "Owner-approved exception retained for audit" },
+    ] });
+    expect(result.locations).toHaveLength(1);
+    expect(result.locations[0].setupFeeCents).toBe(4500);
+    expect(result.locations[0].feeOverrideReason).toBe("Owner-approved exception retained for audit");
+  });
+  it("rejects duplicated overrides, unknown locations and missing reasons", () => {
+    const agreements = [agreement("a", "home", 5000)];
+    expect(() => preview(agreements, { feeOverrides: [
+      { serviceAddressId: "home", setupFeeCents: 0, reason: "owner waiver" },
+      { serviceAddressId: "home", setupFeeCents: 0, reason: "other reason" },
+    ] })).toThrow(/Duplicate/);
+    expect(() => preview(agreements, { feeOverrides: [
+      { serviceAddressId: "absent", setupFeeCents: 0, reason: "no address" },
+    ] })).toThrow(/no order location/);
+    expect(() => preview(agreements, { feeOverrides: [
+      { serviceAddressId: "home", setupFeeCents: 0, reason: "" },
+    ] })).toThrow(/reason/);
+  });
   it("quotes one fee at an address, even with two distinct rental agreements", () => {
     const result = preview([agreement("a", "home", 3500), agreement("b", "home", 6000, 2)]);
     expect(result).toMatchObject({ machineCount: 3, setupTotalCents: 4500, downPaymentTotalCents: 0,
@@ -48,7 +82,10 @@ describe("W-22 signing-charge stored-draft preview", () => {
 });
 
 describe("W-22B0 private read boundary", () => {
-  beforeEach(() => { vi.resetAllMocks(); });
+  beforeEach(() => {
+    vi.resetAllMocks();
+    db.overrides.findMany.mockResolvedValue([]);
+  });
   it("does not read customer financial records for a non-draft agreement", async () => {
     db.agreements.findUnique.mockResolvedValue({ id: "signed", status: "ACTIVE", customerId: "c", sourceEstimateId: null });
     expect(await getDraftSigningChargePreview("signed")).toBeNull();
