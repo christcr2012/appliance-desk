@@ -65,7 +65,7 @@ test('git measures production changes, skips maintenance merges, and finds imple
     const report=renderProgress(root,baseline,'main');
     assert.match(report,/Rolling production additions average/);
     assert.match(report,/#101 \+1/);
-    assert.match(report,/Rolling declared slice average \(1 evidenced PR scorecards\): 1.0/);
+    assert.match(report,/Rolling declared slice average \(2 evidenced PR scorecards, including current\): 1.0/);
   } finally {rmSync(root,{recursive:true,force:true});}
 });
 test('format-only edits do not inflate meaningful production additions',()=>{
