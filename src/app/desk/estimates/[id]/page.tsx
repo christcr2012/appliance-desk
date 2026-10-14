@@ -108,7 +108,7 @@ export default async function EstimateDetailPage({
 
       {estimate.status === "CONVERTED" && (
         <div className="mt-4 rounded-lg border border-line p-3 text-sm">
-          <p className="font-medium">Customer's reviewed order readback</p>
+          <p className="font-medium">Customer&apos;s reviewed order readback</p>
           <p className="mt-1 text-ink-soft">
             Once all converted agreements have frozen, approved charges, the original
             estimate link shows the complete reconciled signing amounts.
