@@ -7,7 +7,8 @@ zero-due obligation) inside the job-status transaction under the agreement
 lock. Any missing/foreign/partial/ambiguous/pending payment denies physical
 dispatch with an actionable owner message; booking a date remains possible.
 Legacy rentals with no W-22 prep retain their prior operation. Pure
-denial/identity/zero tests and the existing job/receipt integration suites
+denial/identity/zero tests and a full isolated Postgres
+freeze → sign → owner-receipt → dispatch integration suite
 are required at exact-head CI; production/provider confirmation stays in
 the acceptance queue. This is one safety-critical part of unfinished
 W-22FIN, not W-22 engineering completion.

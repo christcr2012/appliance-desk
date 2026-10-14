@@ -1,108 +1,104 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { updateJobStatus } from "@/domains/jobs";
-
-const uri = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
-const disposable = process.env.CI === "true" &&
-  ["localhost", "127.0.0.1"].includes(uri.hostname) &&
-  uri.pathname === "/appliance_desk_test";
-
-describe.skipIf(!disposable)("W-22FIN signed delivery dispatch guard on disposable PostgreSQL", () => {
-  const tag = "w22-start-" + randomUUID().replaceAll("-", "");
-  const fingerprint = "c".repeat(64);
-  const signedAt = new Date("2026-10-14T13:00:00Z");
-  let ownerId: string, customerId: string, addressId: string, agreementId: string, jobId: string;
-  let foreignCustomerId: string, foreignUserId: string, userId: string;
-  let receiptId: string | null = null;
-
+import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-freeze";
+import { sendForSignature } from "@/domains/agreements";
+import { signAgreementAction } from "@/app/sign/[id]/actions";
+import { prepareSigningPaymentAttempt } from "@/domains/billing/signing-payment-attempts";
+import { recordManualSigningPayment } from "@/domains/billing/signing-payment-manual";
+import { seedTaxReadyContext } from "./helpers/tax-ready";
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-real-ip": "127.0.0.1" }) }));
+vi.mock("@/lib/rate-limit", () => ({ isRateLimited: vi.fn(async () => false) }));
+const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
+const enabled = process.env.CI === "true" && ["localhost","127.0.0.1"].includes(url.hostname) &&
+  url.pathname === "/appliance_desk_test";
+describe.skipIf(!enabled)("W-22FIN real settled-money-before-dispatch on disposable Postgres", () => {
+  const tag = randomUUID().replaceAll("-", "");
+  let ownerId:string, userId:string, customerId:string, addressId:string, agreementId:string, jobId:string;
+  let cleanupTax:(()=>Promise<void>)|null = null;
   beforeAll(async () => {
-    ownerId = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
-    userId = (await prisma.user.create({ data: {
-      email: tag + "@test.invalid", role: "CUSTOMER", emailVerified: true,
-    } })).id;
-    customerId = (await prisma.customer.create({ data: {
-      userId, referralCode: "D" + tag.slice(-15),
-    } })).id;
-    foreignUserId = (await prisma.user.create({ data: {
-      email: "foreign-" + tag + "@test.invalid", role: "CUSTOMER", emailVerified: true,
-    } })).id;
-    foreignCustomerId = (await prisma.customer.create({ data: {
-      userId: foreignUserId, referralCode: "F" + tag.slice(-15),
-    } })).id;
-    addressId = (await prisma.serviceAddress.create({ data: {
-      customerId, line1: "1 Dispatch Proof St", city: "Greeley", state: "CO", zip: "80631",
-    } })).id;
-    agreementId = (await prisma.rentalAgreement.create({ data: {
-      customerId, serviceAddressId: addressId, status: "ACTIVE",
-    } })).id;
-    await prisma.signatureRecord.create({ data: {
-      agreementId, provider: "test", signedAt,
-      signingOrderFingerprint: fingerprint,
-      signingAllInCents: 4800, signingEvidenceVersion: 1,
-    } });
-    jobId = (await prisma.job.create({ data: {
-      type: "DELIVERY", status: "SCHEDULED",
-      customerId, agreementId, serviceAddressId: addressId,
-    } })).id;
+    ownerId = (await prisma.user.findFirstOrThrow({ where:{ role:"OWNER" } })).id;
+    userId = (await prisma.user.create({data:{
+      email:"w22-dispatch-"+tag+"@test.invalid",role:"CUSTOMER",emailVerified:true,
+    }})).id;
+    customerId = (await prisma.customer.create({data:{
+      userId,referralCode:"DW"+tag.slice(0,15),
+    }})).id;
+    addressId = (await prisma.serviceAddress.create({data:{
+      customerId,line1:"18 Real Signing St",city:"Greeley",zip:"80631",
+    }})).id;
+    const tax = await seedTaxReadyContext(addressId);
+    cleanupTax = tax.cleanup;
+    agreementId = (await prisma.rentalAgreement.create({data:{customerId,serviceAddressId:addressId}})).id;
+    await prisma.rentalLine.createMany({data:Array.from({length:5},(_,n)=>({
+      agreementId,label:"Washer "+(n+1),monthlyPriceCents:700,listPriceCents:700,
+    }))});
+    await prisma.agreementSigningCharge.create({data:{
+      agreementId,serviceAddressId:addressId,version:1,machineCount:5,
+      firstMonthRentCents:3500,setupFeeCents:0,downPaymentCents:3500,
+      signingSubtotalCents:3500,setupFeeTaxTreatment:"UNDECIDED",
+      settingsUpdatedAt:new Date(),sourceFingerprint:"d".repeat(64),createdByUserId:ownerId,
+    }});
+    expect((await freezeReviewedSigningOrder(ownerId,agreementId)).status).toBe("FROZEN");
+    const sig=await sendForSignature(ownerId,agreementId);
+    expect(await signAgreementAction(sig.id,{
+      signerName:"Dispatch Customer",signerEmail:"dispatch@example.test",agreedToTerms:true,
+    })).toMatchObject({status:"success",pendingSigningAmountCents:3500});
+    const job=await prisma.job.findFirstOrThrow({where:{
+      agreementId,type:"DELIVERY",status:"SCHEDULED",
+    },select:{id:true,scheduledAt:true}});
+    expect(job.scheduledAt).toBeNull();
+    jobId=job.id;
   });
-
   afterAll(async () => {
-    if (jobId) await prisma.auditLog.deleteMany({ where: { entityType: "Job", entityId: jobId } });
-    if (jobId) await prisma.job.deleteMany({ where: { id: jobId } });
-    if (agreementId) {
-      await prisma.agreementSigningPayment.deleteMany({ where: { agreementId } });
-      await prisma.signatureRecord.deleteMany({ where: { agreementId } });
-      await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
+    if(!agreementId)return;
+    if(process.env.DATABASE_URL?.includes("/appliance_desk_test")){
+      await prisma.$executeRaw`TRUNCATE TABLE "SigningFirstInvoiceApplication", "SigningDownPaymentCredit"`;
     }
-    if (receiptId) await prisma.receipt.deleteMany({ where: { id: receiptId } });
-    if (addressId) await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
-    if (customerId) await prisma.customer.deleteMany({ where: { id: customerId } });
-    if (userId) await prisma.user.deleteMany({ where: { id: userId } });
-    if (foreignCustomerId) await prisma.customer.deleteMany({ where: { id: foreignCustomerId } });
-    if (foreignUserId) await prisma.user.deleteMany({ where: { id: foreignUserId } });
+    await prisma.signingPaymentAttempt.deleteMany({where:{agreementId}});
+    await prisma.agreementSigningPayment.deleteMany({where:{agreementId}});
+    await prisma.receipt.deleteMany({where:{customerId}});
+    await prisma.auditLog.deleteMany({where:{OR:[
+      {entityType:"Job",entityId:jobId},
+      {entityType:"RentalAgreement",entityId:agreementId},
+    ]}});
+    await prisma.signatureRecord.deleteMany({where:{agreementId}});
+    await prisma.agreementSigningCharge.deleteMany({where:{agreementId}});
+    await prisma.rentalLine.deleteMany({where:{agreementId}});
+    await prisma.job.deleteMany({where:{agreementId}});
+    await prisma.rentalAgreement.deleteMany({where:{id:agreementId}});
+    await cleanupTax?.();
+    await prisma.serviceAddress.deleteMany({where:{id:addressId}});
+    await prisma.customer.deleteMany({where:{id:customerId}});
+    await prisma.user.deleteMany({where:{id:userId}});
   });
-
-  it("denies a physical start without a signed obligation and while payment is pending", async () => {
-    await expect(updateJobStatus(ownerId, jobId, "IN_PROGRESS"))
-      .rejects.toThrow(/payment review/i);
-    await prisma.agreementSigningPayment.create({ data: {
-      agreementId, orderFingerprint: fingerprint, evidenceVersion: 1,
-      setupFeeCents: 4500, setupTaxCents: 300, downPaymentCents: 0,
-      totalCents: 4800, status: "AWAITING_PAYMENT", signedAt,
-    } });
-    await expect(updateJobStatus(ownerId, jobId, "IN_PROGRESS"))
-      .rejects.toThrow(/actually received/i);
-    expect((await prisma.job.findUniqueOrThrow({ where: { id: jobId } })).status)
-      .toBe("SCHEDULED");
+  it("denies unsigned money state and merely prepared payment attempts without changing the job",async()=>{
+    await expect(updateJobStatus(ownerId,jobId,"IN_PROGRESS")).rejects.toThrow(/actually received/i);
+    expect(await prepareSigningPaymentAttempt(agreementId,"MANUAL",ownerId))
+      .toMatchObject({status:"PREPARED",amountCents:3500});
+    await expect(updateJobStatus(ownerId,jobId,"IN_PROGRESS")).rejects.toThrow(/actually received/i);
+    expect((await prisma.job.findUniqueOrThrow({where:{id:jobId}})).status).toBe("SCHEDULED");
   });
-
-  it("denies foreign and short receipts, then permits one genuinely matched settled start", async () => {
-    const rcpt = await prisma.receipt.create({ data: {
-      customerId: foreignCustomerId, source: "MANUAL",
-      amountCents: 4800, method: "check", receivedOn: signedAt,
-    } });
-    receiptId = rcpt.id;
-    await prisma.agreementSigningPayment.update({ where: { agreementId }, data: {
-      status: "SETTLED", receiptId,
-    } });
-    await expect(updateJobStatus(ownerId, jobId, "IN_PROGRESS"))
-      .rejects.toThrow(/actually received/i);
-    await prisma.receipt.update({ where: { id: receiptId }, data: {
-      customerId, amountCents: 4799,
-    } });
-    await expect(updateJobStatus(ownerId, jobId, "IN_PROGRESS"))
-      .rejects.toThrow(/actually received/i);
-    await prisma.receipt.update({ where: { id: receiptId }, data: {
-      amountCents: 4800,
-    } });
-    const started = await updateJobStatus(ownerId, jobId, "IN_PROGRESS");
-    expect(started.status).toBe("IN_PROGRESS");
-    await expect(updateJobStatus(ownerId, jobId, "IN_PROGRESS"))
-      .rejects.toThrow(/already/i);
-    expect(await prisma.auditLog.count({ where: {
-      entityType: "Job", entityId: jobId, action: "job.status",
-    } })).toBe(1);
-    expect(await prisma.invoice.count({ where: { agreementId } })).toBe(0);
+  it("requires legitimate OWNER recording and permits one start only after exact receipt",async()=>{
+    const attempt=await prepareSigningPaymentAttempt(agreementId,"MANUAL",ownerId);
+    const payment={agreementId,attemptId:attempt.id,actingUserId:ownerId,
+      method:"check" as const,reference:"CHK-"+tag.slice(0,12),
+      receivedOn:"2026-10-14",confirmedReceived:true};
+    await expect(recordManualSigningPayment({...payment,actingUserId:userId})).rejects.toThrow();
+    await expect(updateJobStatus(ownerId,jobId,"IN_PROGRESS")).rejects.toThrow(/actually received/i);
+    const paid=await recordManualSigningPayment(payment);
+    expect(paid.amountCents).toBe(3500);
+    const ob=await prisma.agreementSigningPayment.findUniqueOrThrow({
+      where:{agreementId},include:{receipt:true},
+    });
+    expect(ob.status).toBe("SETTLED");
+    expect(ob.receipt).toMatchObject({id:paid.receiptId,customerId,amountCents:3500});
+    expect((await updateJobStatus(ownerId,jobId,"IN_PROGRESS")).status).toBe("IN_PROGRESS");
+    await expect(updateJobStatus(ownerId,jobId,"IN_PROGRESS")).rejects.toThrow(/already/i);
+    expect(await prisma.auditLog.count({where:{
+      action:"job.status",entityType:"Job",entityId:jobId,
+    }})).toBe(1);
+    expect(await prisma.invoice.count({where:{agreementId}})).toBe(0);
   });
 });

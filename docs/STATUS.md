@@ -132,6 +132,39 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "Source commit c0de6e7 is included in deployed 2f68599ac35d65e6c72e919475381483a7dca289 / READY Vercel production; exact-head main CI unit+browser succeeded. Customer-scoped real production authenticated readback and corrupt/foreign denial probes remain unverified: do not run live fixtures without explicit approval."
+  },
+  {
+    "id": "W22FIN-SIGNING-OWNER-CUSTOMER",
+    "priority": 1,
+    "requiredRevision": "d8aa536965d47d1694d455e67239b14cb5acc094",
+    "task": "Authenticated existing customer and OWNER confirmation of same frozen signing amount in Rentals and Desk, correct pending/received states, invalid/foreign receipts denied, first-invoice credit not assumed",
+    "procedure": "docs/pr-cards/W-22FIN.md",
+    "gates": "No new live fixtures, payment, messaging, professional approval or provider activation",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "PR #450 merged; full exact-head CI, isolated database and browser tests passed. Source not independently observed in live production; real authenticated acceptance unverified."
+  },
+  {
+    "id": "W22FIN-SIGNED-DELIVERY-VISIT",
+    "priority": 1,
+    "requiredRevision": "9afff558ccf113fbb0441939f7016a1eb4caa9e5",
+    "task": "Customer with signed unscheduled DELIVERY job sees being arranged, not booked; after owner schedules, actual date/time appears; no phantom appointment",
+    "procedure": "docs/pr-cards/W-22FIN.md",
+    "gates": "Read existing owner/customer records only; no production fixture, job mutation or customer notification without separate authorization",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "PR #451 merged; exact-head full CI/disposable Postgres/browser acceptance passed. Released and real-user acceptance still pending."
+  },
+  {
+    "id": "W22FIN-DISPATCH-RECEIPT",
+    "priority": 1,
+    "requiredRevision": "2350c63c599bcfddd79899d6c949a0960c2cddf6",
+    "task": "After checked release, validate W-22 delivery start requires signed frozen proof and exact customer receipt or zero-due; pending/unknown/foreign funds do not authorize dispatch",
+    "procedure": "docs/pr-cards/W-22FIN.md",
+    "gates": "Never start a real production delivery for testing; no money-out or Stripe LIVE; existing approved TEST/customer acceptance only",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "PR #452 proposed; pure payment-denial cases and genuine frozen order/sign/owner-receipt disposable-Postgres suite; exact-head CI and release/provider acceptance still pending."
   }
 ]
 ```
