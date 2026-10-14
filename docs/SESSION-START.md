@@ -36,6 +36,26 @@ cohesive PR needs explicit integration/risk/verification coverage. Preserve actu
 migration ordering, risk isolation and every business/security/financial decision gate.
 Do not revisit passing hardening without a demonstrated defect or approved requirement.
 
+## 1b. Keep review-dependent development moving (standing owner rule)
+
+Before declaring a legal, CPA, accounting or owner-interpretation blocker, split
+the selected outcome into the **configurable implementation** and the precise
+**professionally/owner-approved activation or customer obligation**. Read the
+new standing rule in AGENTS.md. Implement independent work end-to-end with stored,
+validated, role-restricted, audited, and where appropriate effective-dated
+configuration; test both alternative configurations and UNDECIDED fail-closed
+behavior. Never quietly freeze a provisional interpretation in code, show an
+unconfirmed all-in payable amount, bypass a legal protection, or alter prior
+signed/billed evidence when rules change. A configurable capability is not
+approval to use it in production.
+
+Keep the specific pending review/decision ID and the prevented operation in
+OWNER-INPUTS and the work card; separately queue deployment/provider/owner
+acceptance. An unresolved professional review does not block unrelated work
+or source merge unless that precise review was an explicit pre-merge requirement.
+When reviewed input arrives, apply and verify the setting/effective version;
+do not ask the owner to reopen already implemented adjacent work.
+
 ## 3. Build, verify, publish
 
 Use focused behavioral tests/lint at meaningful seams while developing. Local commits

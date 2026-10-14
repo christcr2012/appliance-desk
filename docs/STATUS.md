@@ -60,6 +60,21 @@ evidence. Actual Stripe TEST and W-22 complete signing-through-delivery,
 all-in quote/website acceptance, CPA IN-79, legal and LIVE remain open.
 PR #438's concurrent source repair and verified October 14 READY deployment are preserved. Recovery additionally checks GITHUB_TRIGGERING_ACTOR and github.triggering_actor, so non-owner reruns of the owner's prior recovery cannot promote a newer day. Original and triggering actors must both be christcr2012, on main with explicit recovery input. Negative tests cover another/missing triggering actor. Exact-head CI and existing application/provider gates remain mandatory.
 
+## Owner standing rule — complete configurable work despite professional review (2026-10-14)
+
+The owner directed every subsequent session to **keep building approved
+capabilities that depend on attorney/CPA/bookkeeper review** wherever safely
+possible. Build changeable, validated, authorized, audited and where necessary
+effective-dated settings plus end-to-end tests; preserve immutable signed and
+billed evidence and fail closed at the exact unapproved customer charge,
+binding term, filing or LIVE action. Never presume the answer or silently
+activate on passing CI. See AGENTS.md, SESSION-START and OWNER-INPUTS.
+W-22 IN-79 remains an explicit setup-tax **charge/send approval gate**, not
+a reason to defer the surrounding all-in disclosures, owner policy configuration
+or other implementation. Genuine legal/CPA/customer/Stripe TEST acceptance
+remains separately OPEN. Next engineering priority remains cohesive W-22
+completion, not further single-helper slices. No release authorized.
+
 # STATUS — current work, blockers and next action
 
 ## October 14 release recovery — live verified, trigger repair pending PR #438

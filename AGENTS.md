@@ -17,6 +17,52 @@ Mapped/planned is not implemented or accepted. Service autonomy and all existing
 provider/security/owner gates remain binding.
 
 
+## Pending professional review is an activation gate, not a development stop — owner standing rule 2026-10-14
+
+A question for an attorney, CPA, bookkeeper or other professional **must not become a
+blanket reason to stop building an otherwise approved capability**. Where technically
+and legally safe, build the complete workflow now so that the later professional
+answer can be entered as owner-controlled, validated configuration **without another
+implementation PR**. This applies to existing and future batches. Laws and
+professional advice may change: design for governed changes over time, not a
+one-off hard-coded interpretation.
+
+For each review-dependent capability, agents **must**:
+1. Separate **engineering readiness** (data model, calculations, screens, draft
+   workflows, access controls, tests) from **decision/activation readiness**
+   (professionally validated treatment, approved customer language, actual
+   collection/filing/sending/LIVE use). Explicitly list the exact gated operation,
+   not the entire batch, in its card and owner-input/acceptance ledger.
+2. Prefer editable settings for rates, taxable categories, exemptions, thresholds,
+   notice windows, retention policies, disclosures, jurisdiction choices and
+   effective dates, with clear plain-English owner UI, permitted roles, input
+   validation, documented unknown states and a durable audit of who changed what,
+   when and why. Use a versioned ruleset/snapshot where historically material.
+   Business-selectable choices **never** override mandatory legal protections.
+3. Preserve immutable agreed/signed terms, prior invoices, collected payments,
+   accounting/tax evidence and historical rates. A policy update applies only to
+   eligible future events, with effective dates and deliberate correction/adjustment
+   paths where required; do not silently reprice or rewrite old records.
+4. Treat a genuinely unresolved required classification as **UNDECIDED**:
+   implement safe previews with conspicuous status and synthetic tests, but fail
+   closed before issuing affected binding terms, charging, collecting, filing,
+   activating automated actions or claiming compliance. Do not guess a tax result,
+   call a provisional interpretation approved, invent a legal default or enable
+   an override to bypass an actual compliance rule. Legal/CPA review is not
+   supplied by passing CI, editing a setting or seeing a READY deployment.
+5. Test alternate approved/future configurations, unknown/missing configuration,
+   role restrictions, changes across effective dates, frozen historical evidence
+   and denied activation. Track external reviews separately for later acceptance;
+   when input arrives, configure and validate it without redoing unrelated code.
+   If a particular step cannot safely be implemented without the interpretation,
+   isolate **that step only**, record its reason, and continue independent work.
+
+This standing rule does **not** authorize legal/tax advice, new owner policy,
+public price disclosure, Stripe LIVE, money-out, email/SMS, spending, production
+data mutations or bypass of any required owner/professional/security approval.
+Review-dependent implementation can merge only after the normal PR checks,
+while live activation/real-provider acceptance remain explicitly pending.
+
 ## Efficient release-aware execution — owner instruction 2026-10-14
 
 [SESSION-START](docs/SESSION-START.md) is the consolidated session procedure;
