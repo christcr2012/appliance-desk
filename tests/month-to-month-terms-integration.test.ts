@@ -79,6 +79,7 @@ describe.skipIf(!enabled)("month-to-month terms versions and the change notice",
     await prisma.agreementSigningPayment.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.signatureRecord.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: ids } } });
+    await prisma.job.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: ids } } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
