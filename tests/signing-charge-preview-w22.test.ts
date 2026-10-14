@@ -33,6 +33,14 @@ describe("W-22 signing-charge stored-draft preview", () => {
       setupFeeCents: 0, feeOverrideReason: "Owner approved a multi-unit setup waiver",
     });
   });
+  it("retains stored owner override identity even when price later matches the default", () => {
+    const result = preview([agreement("a", "home", 6000)], { feeOverrides: [
+      { serviceAddressId: "home", setupFeeCents: 4500, reason: "Owner-approved exception retained for audit" },
+    ] });
+    expect(result.locations).toHaveLength(1);
+    expect(result.locations[0].setupFeeCents).toBe(4500);
+    expect(result.locations[0].feeOverrideReason).toBe("Owner-approved exception retained for audit");
+  });
   it("rejects duplicated overrides, unknown locations and missing reasons", () => {
     const agreements = [agreement("a", "home", 5000)];
     expect(() => preview(agreements, { feeOverrides: [

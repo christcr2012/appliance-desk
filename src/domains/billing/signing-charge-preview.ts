@@ -85,7 +85,18 @@ export function calculateDraftSigningPreview(input: {
   if ([...overrides.keys()].some(id => !byAddress.has(id))) {
     throw new Error("An adjusted setup fee has no order location.");
   }
-  return buildSigningChargePlan(planInput);
+  const plan = buildSigningChargePlan(planInput);
+  return {
+    ...plan,
+    // The presence of an owner-authored override is independent from whether
+    // its cents happen to match today's configured recommended fee.
+    // Keeping the reason makes Restore available even after settings change.
+    locations: plan.locations.map(location => ({
+      ...location,
+      feeOverrideReason: overrides.get(location.serviceAddressId)?.reason ??
+        location.feeOverrideReason,
+    })),
+  };
 }
 
 export async function getDraftSigningChargePreview(agreementId: string) {

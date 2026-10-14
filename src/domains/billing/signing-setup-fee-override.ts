@@ -35,6 +35,9 @@ export async function saveSigningSetupFeeOverride(
       agreements.some(row => row.status !== "DRAFT")) throw new Error("Every order agreement must remain a draft.");
     await tx.$queryRaw`SELECT "id" FROM "RentalAgreement"
       WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
+    // The first actor check already holds a User FOR SHARE lock until commit;
+    // repeat the explicit role read here for defense in depth at the write point.
+    await assertActiveTeamActor(tx, ownerUserId, ["OWNER"]);
     // Recheck after row locking: a concurrent send/cancel must not allow
     // adjustments based on a previously observed DRAFT status.
     const locked = await tx.rentalAgreement.findMany({
