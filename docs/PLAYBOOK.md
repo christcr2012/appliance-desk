@@ -1,5 +1,7 @@
 # PLAYBOOK — how to deliver one PR card, step by step
 
+Session startup, cadence and release-dependent proof follow `docs/SESSION-START.md`. These recipes preserve all existing security, review and validation gates. Run focused checks at coherent seams and full required gates before publishing, rather than the whole suite after each small local edit.
+
 The rules are in `AGENTS.md`; the short start is `docs/SESSION-START.md`; the work is the card in `docs/pr-cards/`.
 Rewritten 2026-10-09 to what still applies (full previous text: `docs/archive/reset-2026-10-09/PLAYBOOK.md`).
 

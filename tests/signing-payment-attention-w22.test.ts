@@ -59,7 +59,7 @@ describe("W-22 signing payment To do", () => {
     const result = await listSigningPaymentAttention(50);
     expect(f.requireRole).toHaveBeenCalledWith("OWNER", "ADMIN");
     expect(f.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: {status:"AWAITING_PAYMENT"},
+      where: {status:"AWAITING_PAYMENT",agreement:{status:{not:"CANCELLED"}}},
       orderBy:[{signedAt:"asc"},{agreementId:"asc"}],take:50,
     }));
     expect(result.rows.map(x => x.amountCents)).toEqual([3500,7200]);
@@ -72,7 +72,7 @@ describe("W-22 signing payment To do", () => {
     const result=await listSigningPaymentAttention(1);
     expect(result.total).toBe(4);
     expect(result.rows).toHaveLength(1);
-    expect(f.count).toHaveBeenCalledWith({where:{status:"AWAITING_PAYMENT"}});
+    expect(f.count).toHaveBeenCalledWith({where:{status:"AWAITING_PAYMENT",agreement:{status:{not:"CANCELLED"}}}});
   });
   it("denies staff before any database query and rejects unbounded requests", async () => {
     f.requireRole.mockRejectedValue(new Error("Forbidden"));

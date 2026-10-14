@@ -68,12 +68,14 @@ describe.skipIf(!enabled)("W-22C6B signed offer is bound to frozen cents (isolat
       await prisma.signatureRecord.deleteMany({ where: { agreementId: positiveAgreementId } });
       await prisma.agreementSigningCharge.deleteMany({ where: { agreementId: positiveAgreementId } });
       await prisma.rentalLine.deleteMany({ where: { agreementId: positiveAgreementId } });
+      await prisma.job.deleteMany({ where: { agreementId: positiveAgreementId } });
       await prisma.rentalAgreement.deleteMany({ where: { id: positiveAgreementId } });
     }
     await prisma.auditLog.deleteMany({ where: { entityId: agreementId } });
     await prisma.signatureRecord.deleteMany({ where: { agreementId } });
     await prisma.agreementSigningCharge.deleteMany({ where: { agreementId } });
     await prisma.rentalLine.deleteMany({ where: { agreementId } });
+    await prisma.job.deleteMany({ where: { agreementId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
     await cleanTax?.();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });

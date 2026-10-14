@@ -40,6 +40,12 @@ export async function prepareSigningPaymentAttempt(
     `;
     if (locks.length !== 1) throw new Error("Signing obligation is missing.");
     // This rereads the actual signed evidence in the SAME serializable transaction.
+    const agreement = await tx.rentalAgreement.findUnique({
+      where: { id: agreementId }, select: { status: true },
+    });
+    if (!agreement || !["ACTIVE", "SCHEDULED"].includes(agreement.status)) {
+      throw new Error("Cancelled or unsigned agreements cannot collect signing money.");
+    }
     const reviewed = await getReviewedSigningPaymentInTx(tx, agreementId);
     const obligation = await tx.agreementSigningPayment.findUnique({
       where: { agreementId },

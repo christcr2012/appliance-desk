@@ -1583,3 +1583,55 @@ any amount/identity change or pending Stripe attempt is denied.
 The first invoice remains unpaid until actually paid independently; billing
 still begins on delivery. CPA IN-79 and independent refund approvals remain
 unchanged. No tax or cancellation policy was decided by this implementation.
+
+## W-22D16 — before-delivery cancellation approval (2026-10-13 implementation branch)
+
+The October 13 verified main/live baseline is `7e0d99f` (#436); Vercel production deployment
+`dpl_oGFdAyB13CjvKBdnTPMjQGh27wwH` is READY on the exact live revision.
+That release was the separately authorized one-time release; subsequent releases follow
+normal checked daily promotion. No source change in this entry is live before that process.
+
+The new owner-only cancellation review uses the existing agreement lifecycle closure to
+release reserved inventory, close the rental, and record the specific approved refund
+obligation atomically. It checks physical delivery and billing-start evidence, a receipt-backed
+signing payment, pending Stripe attempts, other collected/held invoice payments and
+deposits, and first-invoice credit application. A stale decision cannot be submitted.
+The default ordinary refund is full even if a delivery was scheduled; for a larger
+down-payment order the owner-configurable window starts at 72 hours from signing and
+setup plus recorded setup tax can ordinarily be retained afterward, subject to explicit
+case-by-case override and signed contract review. No payment is moved or reported
+returned. Today and the agreement show any pending external refund until separately
+reconciled. Generic paid cancellation without review is denied.
+
+The additive `PreDeliveryCancellation` record and owner-configurable hour setting are
+included in database backup model coverage. Implementation is separately checked with
+unit, disposable PostgreSQL and browser acceptance; deployed service and independent
+Stripe TEST evidence are *not* implied by those tests. Case-specific money-out, provider
+refund state reconciliation, legal/counsel review and tax CPA IN-79 remain separately gated.
+
+## W-22D17 — external refund returned evidence
+
+IN-76 owner cancellation approval is separate from the money actually
+returned. The business never records a refund as paid merely because the
+agreement was cancelled. Owner/admin can confirm an already completed
+manual return (check, bank, cash) with its unique evidence reference and
+audit trail. This state is owner-attested, not Stripe-provider proof.
+The Stripe TEST option is read-only and checks exact original-charge,
+amount, currency and succeeded provider state; no actual Stripe refund
+is created, and Stripe LIVE/production remains blocked. The approved
+refund cents cannot be edited through the screen. An unpaid return
+remains on Today until evidence is atomically reconciled. Existing
+separate money-out approvals and legal/CPA decisions are unchanged.
+
+## W-22D18 customer signature / delivery handoff
+
+When a new rental is signed, create one genuine unassigned,
+unscheduled DELIVERY job in the signature transaction. Reuse any
+active preexisting delivery visit; never create a new delivery for an
+early renewal. A real owner/admin Today task links that unscheduled job
+until a date is set. It reminds the owner to confirm whether the
+signing payment was actually collected before dispatch; signing alone
+is not a charge receipt. A draft visit has no promised appointment,
+does not send a customer notice and does not start billing or claim
+a completed delivery. The existing dispatch/job-detail screen owns
+the final scheduling decision.

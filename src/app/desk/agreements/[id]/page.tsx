@@ -15,6 +15,7 @@ import { getDraftSigningChargePreview } from "@/domains/billing/signing-charge-p
 import { formatMoney } from "@/lib/money-ui";
 import { getPreparedSigningChargeReview } from "@/domains/billing/signing-charge-review";
 import { SigningChargePrepareForm } from "./signing-charge-prepare-form";
+import { SetupFeeOverrideForm } from "./setup-fee-override-form";
 import { assessPreparedSigningCharges } from "@/domains/billing/signing-charge-readiness";
 import { getDraftSigningTaxReview } from "@/domains/billing/signing-charge-tax-review";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +46,7 @@ export default async function AgreementDetailPage({
     include: { receipt: true,
       attempts: { orderBy: { attemptNumber: "desc" }, take: 1 } },
   });
+  const cancellation = await prisma.preDeliveryCancellation.findUnique({where:{agreementId:agreement.id}});
   const todayParts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Denver", year: "numeric", month: "2-digit", day: "2-digit",
   }).formatToParts(new Date());
@@ -59,6 +61,12 @@ export default async function AgreementDetailPage({
     agreement.status === "DRAFT" ? getPreparedSigningChargeReview(agreement.id) : [],
     agreement.status === "DRAFT" ? getDraftSigningTaxReview(agreement.id) : null,
   ]);
+  const locationLabels = signingPreview
+    ? new Map((await prisma.serviceAddress.findMany({
+      where: { id: { in: signingPreview.locations.map(row => row.serviceAddressId) } },
+      select: { id: true, line1: true, city: true },
+    })).map(row => [row.id, row.line1 + ", " + row.city]))
+    : new Map<string, string>();
   const readiness = preparedCharges.length > 0
     ? assessPreparedSigningCharges(preparedCharges.map((row) => row.agreementId), preparedCharges)
     : null;
@@ -93,6 +101,8 @@ export default async function AgreementDetailPage({
         {agreement.serviceAddress.line1}, {agreement.serviceAddress.city},{" "}
         {agreement.serviceAddress.state} {agreement.serviceAddress.zip}
       </p>
+      {cancellation && <section className="mt-3 rounded-lg border p-4" role="status"><h2 className="font-semibold">Cancellation review</h2><p>Approved refund due: {formatMoney(cancellation.refundDueCents)}. Status: {cancellation.refundState === "PENDING_EXTERNAL_REFUND" ? "Not yet paid — separate money-out approval required" : cancellation.refundState === "NOT_REQUIRED" ? "No signing refund due" : cancellation.refundState === "RETURNED_STRIPE_TEST_VERIFIED" ? "Stripe TEST return verified" : "Manual return recorded"}.</p><p>Retained: {formatMoney(cancellation.retainedCents)}. Approved reason: {cancellation.reason}</p></section>}
+      {cancellation?.refundState === "PENDING_EXTERNAL_REFUND" && <Link href={`/desk/agreements/${agreement.id}/refund`} className="text-primary underline">Reconcile returned refund</Link>}
       {signedArtifactId && (
         <p className="mt-3 text-sm">
           <Link className="font-medium text-primary underline" href={`/api/documents/${signedArtifactId}`} target="_blank">
@@ -115,6 +125,23 @@ export default async function AgreementDetailPage({
             <div className="flex justify-between"><dt>Large-order down payment</dt><dd>{formatMoney(signingPreview.downPaymentTotalCents)}</dd></div>
             <div className="flex justify-between font-semibold"><dt>Before any applicable tax</dt><dd>{formatMoney(signingPreview.amountDueAtSigningCents)}</dd></div>
           </dl>
+          {session.user.role === "OWNER" && (
+            <div className="mt-4 space-y-3">
+              <h3 className="text-sm font-semibold">Owner-approved location fee waivers and overrides</h3>
+              {signingPreview.locations.map(location => (
+                <div key={location.serviceAddressId} className="space-y-2">
+                  <p className="text-sm font-medium">
+                    {locationLabels.get(location.serviceAddressId) ?? location.serviceAddressId}
+                    {" · "}Current fee: {formatMoney(location.setupFeeCents)}
+                  </p>
+                  <SetupFeeOverrideForm agreementId={agreement.id}
+                    addressId={location.serviceAddressId}
+                    currentCents={location.setupFeeCents}
+                    existingReason={location.feeOverrideReason} />
+                </div>
+              ))}
+            </div>
+          )}
           <p className="mt-2 text-sm text-ink-soft">
             {signingPreview.locations.length} delivery location(s); {signingPreview.machineCount} machine(s).
             {signingPreview.requiresTaxReview

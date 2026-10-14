@@ -8,7 +8,6 @@ import {
   removeRentalLineAction,
   sendForSignatureAction,
   endAgreementAction,
-  cancelAgreementAction,
   extendReservationAction,
 } from "../actions";
 import { formatCents } from "@/domains/pricing/money";
@@ -36,6 +35,7 @@ type AgreementRow = {
   damageWaiverCents: number;
   termMonths: number | null;
   startDate: Date | null;
+  firstDeliveredOn: Date | null;
   paidInFullInAdvance: boolean;
   freeMonthGranted: boolean;
   reservationExpiresAt: Date | null;
@@ -120,15 +120,6 @@ export function AgreementDetailPanel({
     });
   }
 
-  function handleCancel() {
-    if (!confirm("Cancel this agreement? Any assigned appliances go back to available.")) return;
-    startTransition(async () => {
-      const result = await cancelAgreementAction(agreement.id);
-      if (result.status === "error") setError(result.message);
-      router.refresh();
-    });
-  }
-
   function handleExtendReservation() {
     startTransition(async () => {
       const result = await extendReservationAction(agreement.id);
@@ -179,14 +170,12 @@ export function AgreementDetailPanel({
               agreement.status === "AWAITING_SIGNATURE" ||
               agreement.status === "SCHEDULED" ||
               agreement.status === "ACTIVE") && (
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={handleCancel}
-                className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:border-red-400 disabled:opacity-50"
+              <Link
+                href={agreement.firstDeliveredOn ? "/desk/agreements/" + agreement.id + "/early-return" : "/desk/agreements/" + agreement.id + "/cancel"}
+                className="rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:border-red-400"
               >
-                Cancel
-              </button>
+                Review cancellation
+              </Link>
             )}
           </div>
         </div>

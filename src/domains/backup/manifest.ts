@@ -40,6 +40,9 @@ export const BACKUP_MODEL_POLICY = {
   JobBillingHandoff: "jobBillingHandoff",
   RentalAgreement: "rentalAgreement",
   AgreementSigningCharge: "agreementSigningCharge",
+  SigningSetupFeeOverride: "signingSetupFeeOverride",
+  // Owner-attested CPA decision history is business-critical restore evidence.
+  SetupFeeTaxDecisionVersion: "setupFeeTaxDecisionVersion",
   AgreementSigningPayment: "agreementSigningPayment",
   SigningPaymentAttempt: "signingPaymentAttempt",
   SigningDownPaymentCredit: "signingDownPaymentCredit",
@@ -126,6 +129,7 @@ export const BACKUP_MODEL_POLICY = {
   TelecomStatement: "telecomStatement",
   ProviderEvent: "providerEvent",
   MarketingSuppression: "marketingSuppression",
+  PreDeliveryCancellation: "preDeliveryCancellation",
   AssetNumberCounter: "assetNumberCounter",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 

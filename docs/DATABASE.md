@@ -29,6 +29,51 @@ self-collected jurisdiction needs its own independently confirmed rule and
 rate. This schema scaffold alone does not satisfy CPA decision IN-79, send
 a tax-inclusive agreement, add Stripe tax rates or activate payment.
 
+## W-22 setup-tax owner evidence and future revisions (2026-10-14)
+
+The additive `20261015233000_w22_setup_tax_owner_approval` migration retains
+all existing settings and introduces a **separate provisional** research-based
+`BusinessSettings.setupFeeTaxPlanningTreatment` (starting `TAXABLE`). This
+field **never** grants customer charge, agreement send or provider approval.
+
+The independent business-use policy is `setupFeeTaxTreatment`, with
+`setupFeeTaxDecisionNote`, `setupFeeTaxConfirmedOn`,
+`setupFeeTaxEffectiveFrom`, `setupFeeTaxApprovedAt` and
+`setupFeeTaxAdviserReference`. Old decided strings without actual
+professional provenance remain unapproved. Only the OWNER can record
+confirmation with explicit acknowledgement, dated evidence and a
+traceable adviser reference; the existing settings optimistic lock, team
+reauthorization and AuditLog preserve who changed what and when.
+Saving `UNDECIDED` revokes the recorded approval; later effective dates
+remain blocked until active. Historical signed snapshots, invoices and
+completed payments are not rewritten. Independent verified address,
+jurisdiction-specific taxability, rate, legal terms and provider gates
+remain separate. Owner guidance changes affect eligible new drafts,
+not already signed obligations. Missing evidence is a business-use
+restriction, **not** a software development blocker.
+
+The parallel \`SetupFeeTaxDecisionVersion\` records immutable successive
+owner-approved tax treatments by Colorado-local \`effectiveFromKey\` and
+\`cpaConfirmedOnKey\`, with decision note, adviser reference, approving owner
+ID/time, and cancellation timestamp. New future-dated versions do **not**
+supersede the current effective version prematurely; a revoked/undecided
+version blocks affected new customer actions and cancels future successors.
+The send-for-signature transaction rechecks the effective policy against
+the frozen signing evidence under a shared settings lock; changes after freeze
+cannot silently reach the customer. The separate legacy singleton fields
+remain for UI continuity, not a substitute for the version history.
+
+## W-22 owner-reasoned location setup fees (2026-10-14)
+
+The additive \`20261015234000_w22_setup_fee_owner_overrides\` migration stores one
+\`SigningSetupFeeOverride\` against the deterministic first agreement of each
+service address in an order, never a customer-submitted cents field. Its OWNER
+actor, reason, amount and audit history are stored; adjustment changes are
+allowed only while every sibling remains DRAFT and no sibling has frozen
+signing evidence. Updates remove every unfrozen prepared snapshot across the
+order so the owner must review and prepare the revised amounts again.
+Signatures, receipts and settled invoices are never repriced.
+
 ## Auth & people
 
 - **User** — anyone who can log in: Chris (`OWNER`), any staff he adds
@@ -774,3 +819,29 @@ Stripe LIVE, CPA IN-79 and all money-out/production gates remain unchanged.
 ### W-22D14 new hookup evidence
 
 JobAppliance.newHookupItemsInstalled is a nullable Boolean. Old completed jobs remain NULL (unknown). True means newly installed items explicitly recorded at delivery, false means missing items requiring a machine-linked To do, and null means unrecorded. The existing JobAppliance resultRecordedAt and resultRecordedByUserId identify who and when. No direct billing, tax or parts inventory changes.
+
+### W-22D16 — approved cancellation liability (2026-10-13)
+
+`20261015220000_pre_delivery_cancellation` adds `BusinessSettings.largeOrderCancellationFullRefundHours`
+(default 72, owner-editable 1–720) and one agreement-keyed `PreDeliveryCancellation`.
+The record stores the reviewed source receipt/order fingerprint, refund/retention cents,
+chosen policy, reason, affirmative terms review, approving user and timestamp.
+`refundState=PENDING_EXTERNAL_REFUND` means still owed; `NOT_REQUIRED` means
+no actual signing money was received. These are not Stripe refund states or evidence
+that money was returned. Application code computes sums from locked provider-verified
+receipt obligations, never from browser values. The model is included in backup
+manifest coverage. Additive migration only, no historical backfill, Stripe money-out
+or automatic customer notice.
+
+### W-22D17 refund return evidence
+
+Additive `20261015230000_w22_refund_reconciliation` extends one
+`PreDeliveryCancellation` per agreement with nullable returned date,
+recorded-at, approving owner ID, method, globally unique reference and
+JSON evidence. `PENDING_EXTERNAL_REFUND` remains an unpaid liability.
+`RETURNED_MANUAL_RECORDED` means the owner attested to a completed
+external check/bank/cash return with a stored reference, not provider proof.
+`RETURNED_STRIPE_TEST_VERIFIED` requires successful read-only Stripe TEST
+refund evidence tied to the original charge and exact amount; provider
+money-out is never invoked. History is not backfilled or marked returned.
+Existing backup manifest for `PreDeliveryCancellation` covers new fields.

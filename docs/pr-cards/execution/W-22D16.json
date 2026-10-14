@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "id": "W-22D16",
+  "parent": "W-22",
+  "baseline": "7e0d99fa8701d318421d95eb4cfed79c52d3cff5",
+  "card": "docs/pr-cards/W-22D16.md",
+  "outcome": "Owner-approved undelivered rental cancellation records an exact, receipt-backed refund obligation on the agreement and Today; never automatically moves money or marks it returned.",
+  "risk": "Existing agreement lifecycle + signing receipts + separately gated external refund; additive schema, no provider money-out.",
+  "next": "W-22: permissioned refund reconciliation with provider/owner evidence, all-in presentation and full signing-delivery acceptance remain.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-W-AMENDMENT-B.md",
+      "anchor": "### 6.2 W-22",
+      "purpose": "Approved signing and cancellation requirements, IN-76."
+    },
+    {
+      "path": "src/domains/agreements/index.ts",
+      "anchor": "export async function closeAgreementInTx",
+      "purpose": "Reuse locked cancellation, inventory and billing closure."
+    },
+    {
+      "path": "src/domains/billing/signing-payment-settlement.ts",
+      "anchor": "processSigningCheckoutEvent",
+      "purpose": "Immutable verified receipt and provider retry contract."
+    },
+    {
+      "path": "src/domains/billing/signing-payment-attempts.ts",
+      "anchor": "export async function prepareSigningPaymentAttempt",
+      "purpose": "No collection after closing or while Stripe attempt is pending."
+    },
+    {
+      "path": "src/domains/billing/refunds-base.ts",
+      "anchor": "executeStripeRefund",
+      "purpose": "Existing provider money-out gate; not invoked by cancellation."
+    },
+    {
+      "path": "src/app/desk/agreements/[id]/page.tsx",
+      "anchor": "Signing payment",
+      "purpose": "Existing owner agreement and billing evidence surface."
+    },
+    {
+      "path": "src/domains/exceptions/signing-payment-attention.ts",
+      "anchor": "listSigningPaymentAttention",
+      "purpose": "Bounded owner To Do; exclude cancelled obligations."
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/agreements/pre-delivery-cancellation.ts",
+    "src/domains/exceptions/cancellation-refund-attention.ts",
+    "src/app/desk/agreements/[id]/cancel/page.tsx",
+    "src/app/desk/agreements/[id]/cancel/actions.ts",
+    "src/app/desk/agreements/[id]/cancel/cancellation-approval-form.tsx",
+    "tests/pre-delivery-cancellation-policy.test.ts",
+    "tests/pre-delivery-cancellation-integration.test.ts",
+    "e2e/pre-delivery-cancellation.spec.ts"
+  ],
+  "invariants": [
+    "OWNER/ADMIN + active actor review case-specific signed terms and actual settled amount; no browser-derived cents.",
+    "Reject any physical delivery, started billing, first-invoice application, unresolved Stripe attempt, paid invoice or funded deposit.",
+    "Cancellation and refund liability are atomic with agreement lock and signing obligation lock; duplicate/changed evidence denied.",
+    "Default FULL for ordinary customers; large order 72-hour owner-configured refund window; later retained setup only and explicit override audit.",
+    "Record pending refund due as outstanding, never paid/provider-verified; no automatic Stripe refund, email, SMS, money-out or LIVE gate."
+  ],
+  "sequence": [
+    "Reconcile receipt and held funds under locks, calculate exact owner-visible refund and policy decision.",
+    "Allow owner/admin to review signed terms, provide reason and approve once; close rental in same transaction.",
+    "Show unpaid refund on agreement and Today with a high-priority direct link.",
+    "Prove policy, Postgres lifecycle/races, authenticated browser and authorization, full repo gates/review."
+  ],
+  "acceptance": [
+    "Owner sees accurate setup/down payment/refund before first delivery; selected policy and reason stored, no money moves.",
+    "Paid and unpaid cancellation correct, pending provider and linked other finance evidence block safely.",
+    "Legacy unreviewed paid cancel bypass blocked, replay/stale approval rejected, role-isolated read/write.",
+    "Today surfaces pending refund until separately proven reconciled; schema backup and UI accessibility validated."
+  ],
+  "gates": [
+    {
+      "id": "IN-79",
+      "affected": "Tax classification of setup fee affects charge-bearing signing",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "No tax classification changes or LIVE collection",
+      "reopen": "CPA-backed signed decision"
+    },
+    {
+      "id": "IN-76",
+      "affected": "Money-out and contract/legal-specific cancellation approval",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Only local approved liability, no funds returned",
+      "reopen": "Explicit case-specific authority and counsel evidence"
+    },
+    {
+      "id": "W-22TEST",
+      "affected": "Real Stripe TEST connected acceptance",
+      "source": "docs/pr-cards/W-22.md",
+      "remedy": "Disposable database/provider mocks only until verified readback",
+      "reopen": "Authenticated Stripe TEST transactions and independent provider evidence"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/pre-delivery-cancellation-policy.test.ts"
+    ],
+    "db": [
+      "tests/pre-delivery-cancellation-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/pre-delivery-cancellation.spec.ts"
+    ],
+    "node": []
+  }
+}

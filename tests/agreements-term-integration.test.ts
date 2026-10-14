@@ -156,6 +156,7 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
     await prisma.agreementSigningPayment.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.signatureRecord.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: ids } } });
+    await prisma.job.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { renewedFromAgreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: ids } } });
     await taxReady?.cleanup();
@@ -327,6 +328,26 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
       const signed = await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreement.id } });
       expect(signed.status).toBe("ACTIVE");
       expect(signed.termsSnapshot).toEqual(sent.termsSnapshot);
+      const deliveryJobs = await prisma.job.findMany({ where: { agreementId: agreement.id, type: "DELIVERY", status: "SCHEDULED" } });
+      expect(deliveryJobs).toHaveLength(1);
+      expect(deliveryJobs[0].scheduledAt).toBeNull();
+      expect(deliveryJobs[0].customerId).toBe(agreement.customerId);
+    });
+
+    it("reuses the owner-created delivery job when a customer signs", async()=>{
+      await setPolicy({...flat5000});
+      const agreement=await draft();
+      const existing=await prisma.job.create({data:{
+        type:"DELIVERY",status:"SCHEDULED",scheduledAt:null,
+        agreementId:agreement.id,customerId:agreement.customerId,
+        serviceAddressId:agreement.serviceAddressId,
+      }});
+      const signature=await sendForSignature(ownerId,agreement.id);
+      await signAgreement(signature.id,{signerName:"Term Customer",
+        signerEmail:"c@example.test",ipAddress:null});
+      const visits=await prisma.job.findMany({where:{agreementId:agreement.id,type:"DELIVERY"}});
+      expect(visits).toHaveLength(1);
+      expect(visits[0].id).toBe(existing.id);
     });
 
     it("uses the owner's per-customer terms when set, and locks nothing for month-to-month", async () => {

@@ -46,7 +46,7 @@ export async function listSigningPaymentAttention(limit: number): Promise<{
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
     throw new Error("A bounded signing payment attention limit is required.");
   }
-  const where = { status: "AWAITING_PAYMENT" };
+  const where = { status: "AWAITING_PAYMENT", agreement: { status: { not: "CANCELLED" as const } } };
   const rows = await prisma.agreementSigningPayment.findMany({
     where,
     select: {

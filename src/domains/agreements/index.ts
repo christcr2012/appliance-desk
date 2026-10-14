@@ -8,8 +8,10 @@ import {
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { assertCurrentSigningPolicyInTx } from "@/domains/billing/signing-business-use-gate";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
 import { offerMatchesFrozenEvidence } from "./signing-offer-proof";
+import { ensureSignedDeliveryDraftInTx } from "./signed-delivery";
 import {
   assertTaxReadyForAgreement,
   combinedRentalTaxRateMilliPercentForAgreement,
@@ -485,6 +487,8 @@ export async function sendForSignature(userId: string, agreementId: string) {
     if (!signingLine) throw new Error("Frozen signing charges are not available.");
 
     const taxDate = new Date();
+    // A policy may have changed after the order was frozen.
+    await assertCurrentSigningPolicyInTx(tx, frozen, taxDate);
     await assertTaxReadyForAgreement(tx, agreementId, taxDate);
     const taxRateMilliPercent =
       await combinedRentalTaxRateMilliPercentForAgreement(
@@ -591,6 +595,9 @@ export async function signAgreement(
     });
     if (!line || !offerMatchesFrozenEvidence(offered, line))
       throw new Error("The frozen signing agreement is no longer valid.");
+    // Unsent and unsigned agreements cannot bypass a subsequently revoked
+    // CPA decision. Existing signed agreements keep their historical amounts.
+    await assertCurrentSigningPolicyInTx(tx, frozen, new Date());
     const signedAt = new Date();
     const signResult = await tx.signatureRecord.updateMany({
       where: {
@@ -639,6 +646,7 @@ export async function signAgreement(
               : {}),
           },
     });
+    if (!scheduledRenewal && agreement.customerId) await ensureSignedDeliveryDraftInTx(tx, agreement);
     if (agreement.paidInFullInAdvance) {
       await createPrepaidRentInvoiceInTx(tx, agreement.id, signedAt);
     }
@@ -693,6 +701,21 @@ export async function closeAgreementInTx(
   const agreement = await lockRentalAgreementInTx(tx, agreementId);
   const check = canTransitionAgreementStatus(agreement.status, newStatus);
   if (!check.ok) throw new Error(check.reason);
+  // Generic cancellation (auto-renewals, old callers) must never silently
+  // release a paid, undelivered agreement without an owner-reviewed liability.
+  if (newStatus === "CANCELLED" && !agreement.firstDeliveredOn) {
+    const paid = await tx.agreementSigningPayment.findUnique({
+      where: { agreementId }, select: { status: true },
+    });
+    if (paid?.status === "SETTLED") {
+      const approval = await tx.preDeliveryCancellation.findUnique({
+        where: { agreementId }, select: { agreementId: true },
+      });
+      if (!approval) throw new Error(
+        "This undelivered agreement has collected money. Use the owner cancellation and refund review."
+      );
+    }
+  }
   if (agreement.status === "ACTIVE") {
     const waiting = await tx.rentalAgreement.findFirst({
       where: { renewedFromAgreementId: agreementId, status: "SCHEDULED" },

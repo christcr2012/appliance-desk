@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "id": "W-22D17",
+  "parent": "W-22",
+  "baseline": "f4cd4ea1bc984b0bf01cecd0599cf13f4f6d5e20",
+  "card": "docs/pr-cards/W-22D17.md",
+  "outcome": "OWNER/ADMIN reconciles a completed verified-receipt refund due, independently recording manual return or read-only Stripe TEST success without initiating money-out.",
+  "risk": "Additive receipt-backed evidence; preserves money-out, LIVE, customer messaging and legal gates.",
+  "next": "W-22 actual Stripe TEST acceptance, signing-through-delivery and all-in quote/website acceptance remain.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-W-AMENDMENT-B.md",
+      "anchor": "### 6.2 W-22",
+      "purpose": "Approved signing and cancellation requirements, IN-76."
+    },
+    {
+      "path": "src/domains/agreements/index.ts",
+      "anchor": "export async function closeAgreementInTx",
+      "purpose": "Reuse locked cancellation, inventory and billing closure."
+    },
+    {
+      "path": "src/domains/billing/signing-payment-settlement.ts",
+      "anchor": "processSigningCheckoutEvent",
+      "purpose": "Immutable verified receipt and provider retry contract."
+    },
+    {
+      "path": "src/domains/billing/signing-payment-attempts.ts",
+      "anchor": "export async function prepareSigningPaymentAttempt",
+      "purpose": "No collection after closing or while Stripe attempt is pending."
+    },
+    {
+      "path": "src/domains/billing/refunds-base.ts",
+      "anchor": "executeStripeRefund",
+      "purpose": "Existing provider money-out gate; not invoked by cancellation."
+    },
+    {
+      "path": "src/app/desk/agreements/[id]/page.tsx",
+      "anchor": "Signing payment",
+      "purpose": "Existing owner agreement and billing evidence surface."
+    },
+    {
+      "path": "src/domains/exceptions/signing-payment-attention.ts",
+      "anchor": "listSigningPaymentAttention",
+      "purpose": "Bounded owner To Do; exclude cancelled obligations."
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/agreements/pre-delivery-refund-evidence.ts",
+    "src/domains/agreements/pre-delivery-refund-return.ts",
+    "src/app/desk/agreements/[id]/refund/page.tsx",
+    "src/app/desk/agreements/[id]/refund/actions.ts",
+    "src/app/desk/agreements/[id]/refund/refund-return-form.tsx",
+    "tests/pre-delivery-refund-evidence.test.ts",
+    "tests/pre-delivery-cancellation-integration.test.ts",
+    "e2e/pre-delivery-refund.spec.ts"
+  ],
+  "invariants": [
+    "Original signing receipt and approved cancellation must match before return reconciliation",
+    "OWNER/ADMIN active team actor and agreement plus cancellation locks enforced in transaction",
+    "Only exact successful Stripe TEST refund readback or separately owner-attested manual return may close pending liability",
+    "No automatic Stripe money-out, no LIVE, no customer communications or guessed provider evidence",
+    "Duplicate and stale submissions refused; pending Today card disappears only after independent return evidence"
+  ],
+  "sequence": [
+    "Recheck approved refund and original receipt; show pending amount with no browser-controlled cents",
+    "Owner verifies completed external return and its method plus unique reference",
+    "Lock agreement and refund in one transaction; audit, update evidence and clear To do",
+    "Verify unit, isolated Postgres, authenticated browser and exact-head CI acceptance"
+  ],
+  "acceptance": [
+    "Paid cancellation can later be independently reconciled without any new money-out",
+    "Manual confirmation records verified owner assertion separately from Stripe TEST provider readback",
+    "Forgery, replay, stale amount, missing receipt, wrong role and duplicate reference refused",
+    "Today and agreement show truthful outstanding versus returned state; provider TEST acceptance separately gated"
+  ],
+  "gates": [
+    {
+      "id": "IN-79",
+      "affected": "Tax classification of setup fee affects charge-bearing signing",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "No tax classification changes or LIVE collection",
+      "reopen": "CPA-backed signed decision"
+    },
+    {
+      "id": "IN-76",
+      "affected": "Money-out and contract/legal-specific cancellation approval",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Only local approved liability, no funds returned",
+      "reopen": "Explicit case-specific authority and counsel evidence"
+    },
+    {
+      "id": "W-22TEST",
+      "affected": "Real Stripe TEST connected acceptance",
+      "source": "docs/pr-cards/W-22.md",
+      "remedy": "Disposable database/provider mocks only until verified readback",
+      "reopen": "Authenticated Stripe TEST transactions and independent provider evidence"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/pre-delivery-refund-evidence.test.ts"
+    ],
+    "db": [
+      "tests/pre-delivery-cancellation-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/pre-delivery-refund.spec.ts"
+    ],
+    "node": []
+  }
+}

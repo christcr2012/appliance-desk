@@ -1,3 +1,4 @@
+import { getEffectiveSetupTaxTreatmentInTx } from "./setup-tax-policy-version";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -63,16 +64,25 @@ export async function prepareDraftSigningChargeSnapshots(userId: string, agreeme
       where: { serviceAddressId: { in: addressIds }, status: "ACTIVE" },
       select: { serviceAddressId: true },
     });
+    const overrides = await tx.signingSetupFeeOverride.findMany({
+      where: { agreementId: { in: ids } },
+      orderBy: { agreementId: "asc" }, // Stable fingerprint across PostgreSQL plans.
+      select: { agreementId: true, setupFeeCents: true, reason: true },
+    });
+    const addressByAgreement = new Map(agreements.map(row => [row.id, row.serviceAddressId]));
+    const feeOverrides = overrides.map(row => ({
+      serviceAddressId: addressByAgreement.get(row.agreementId)!,
+      setupFeeCents: row.setupFeeCents, reason: row.reason,
+    }));
     const planSettings = {
       setupFeeCents: settings.administrativeSetupFeeCents,
       largeOrderMachineThreshold: settings.largeOrderMachineThreshold,
       businessRequiresDownPayment: settings.businessRequiresDownPayment,
-      setupFeeTaxTreatment: (settings.setupFeeTaxTreatment === "TAXABLE" ||
-        settings.setupFeeTaxTreatment === "NOT_TAXABLE"
-          ? settings.setupFeeTaxTreatment : "UNDECIDED") as "TAXABLE" | "NOT_TAXABLE" | "UNDECIDED",
+      setupFeeTaxTreatment: await getEffectiveSetupTaxTreatmentInTx(tx, new Date()),
     };
     const plan = calculateDraftSigningPreview({
       agreements: agreements as DraftSigningAgreement[],
+      feeOverrides,
       existingActiveAddressIds: alreadyRented.map((row) => row.serviceAddressId),
       businessCustomer: customer.isBusiness,
       propertyManagerCustomer: customer.isPropertyManager,
@@ -81,7 +91,8 @@ export async function prepareDraftSigningChargeSnapshots(userId: string, agreeme
 
     const fingerprint = createHash("sha256").update(JSON.stringify({
       agreements, alreadyRented: alreadyRented.map((row) => row.serviceAddressId).sort(),
-      customer, settings: planSettings, settingsUpdatedAt: settings.updatedAt.toISOString(),
+      customer, settings: planSettings, feeOverrides,
+      settingsUpdatedAt: settings.updatedAt.toISOString(),
     })).digest("hex");
     const byAddress = new Map(plan.locations.map((location) => [location.serviceAddressId, location]));
     const feeAssigned = new Set<string>();

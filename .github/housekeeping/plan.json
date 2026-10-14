@@ -2,6 +2,7 @@
   "version": 1,
   "repository": "christcr2012/appliance-desk",
   "archive": "archive/housekeeping-2026-10-13",
+  "maintenanceBranch": "ai/codex/completion-recovery-20261014",
   "branches": [
     {
       "name": "ai/claude/transfer-smoke-test",
@@ -18,6 +19,24 @@
         326
       ],
       "reason": "Reviewed historical recovery branch; superseded implementation or infrastructure handoff retained in archive."
+    },
+    {
+      "name": "ai/gpt6/release-schedule-fallback-20261014",
+      "sha": "5fa5b3f730252e54dd02891485542dc1fd3b93db",
+      "disposition": "superseded",
+      "reason": "Current reviewed daily trigger/recovery implementation supersedes this older experiment; preserve history without reverting newer triggers."
+    },
+    {
+      "name": "ai/gpt6/w22-customer-receipt-portal",
+      "sha": "665ed37e2730c7d377db57470ff36e357d73bd1a",
+      "disposition": "superseded",
+      "reason": "Recovered and strengthened in this maintenance with customer-scoped signing DTO and receipt/invalid-data regressions; do not merge its obsolete tree."
+    },
+    {
+      "name": "ai/gpt6/w22fin-setup-fee-overrides",
+      "sha": "eca2d2fd272cfc5aac41db221be4b13d8facb13f",
+      "disposition": "merged",
+      "reason": "Verified main includes this implementation; preserve exact source-tip history before pruning."
     }
   ]
 }

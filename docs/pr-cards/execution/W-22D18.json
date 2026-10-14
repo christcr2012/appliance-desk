@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "id": "W-22D18",
+  "parent": "W-22",
+  "baseline": "d5b994dd11af641d8f4e437ee566cea345ab2129",
+  "card": "docs/pr-cards/W-22D18.md",
+  "outcome": "Customer signing atomically produces one unscheduled new-rental delivery job and owner/admin Today scheduling To do without assuming payment or dispatch.",
+  "risk": "No automatic job dispatch, financial collection, owner permission changes, LIVE Stripe, or outbound customer messages.",
+  "next": "Remaining W-22: all-in quote/website presentation and real Stripe TEST signing-through-delivery acceptance.",
+  "references": [
+    {
+      "path": "src/domains/agreements/index.ts",
+      "anchor": "export async function signAgreement",
+      "purpose": "Atomic customer signature handoff"
+    },
+    {
+      "path": "src/domains/agreements/signed-delivery.ts",
+      "anchor": "export async function ensureSignedDeliveryDraftInTx",
+      "purpose": "Prevent duplicate non-renewal draft delivery visits"
+    },
+    {
+      "path": "src/domains/exceptions/signed-delivery-attention.ts",
+      "anchor": "export async function listSignedDeliveryAttention",
+      "purpose": "Owner/admin visible bounded scheduling To do"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/agreements/index.ts",
+    "src/domains/agreements/signed-delivery.ts",
+    "src/domains/exceptions/signed-delivery-attention.ts",
+    "src/domains/exceptions/index.ts",
+    "src/domains/exceptions/rules.ts",
+    "src/app/desk/today/page.tsx",
+    "tests/agreements-term-integration.test.ts",
+    "tests/signed-delivery-attention.test.ts",
+    "e2e/signed-delivery-todo.spec.ts"
+  ],
+  "invariants": [
+    "Signing preserves frozen offer, paid versus pending evidence, and agreement status independently",
+    "Only new (not renewal) signed rentals receive delivery draft; existing live delivery job reused",
+    "No time, assignee, payment success or customer notification is invented",
+    "Today task filters real signed undelivered active agreement and real unscheduled job",
+    "Staff/customer roles cannot access owner scheduling/finance To do"
+  ],
+  "sequence": [
+    "Reconcile signed new rental and existing delivery job in locked signature transaction",
+    "Create unassigned unscheduled delivery job atomically when none exists",
+    "Show bounded owner/admin Today scheduling To do and link existing job detail",
+    "Verify unit, disposable PostgreSQL, owner/staff browser and exact-head CI"
+  ],
+  "acceptance": [
+    "One delivery draft created after successful new signature, none after renewal or failed signature",
+    "Signed delivery appears in owner/admin Today until scheduled and never implies signing payment settled",
+    "Owner may navigate to actual job; staff/customer cannot see restricted scheduling reminder",
+    "Existing new job/scheduling and signed-document flows remain compatible"
+  ],
+  "gates": [
+    {
+      "id": "IN-79",
+      "affected": "Tax classification of setup fee affects charge-bearing signing",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "No tax classification changes or LIVE collection",
+      "reopen": "CPA-backed signed decision"
+    },
+    {
+      "id": "IN-76",
+      "affected": "Money-out and contract/legal-specific cancellation approval",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Only local approved liability, no funds returned",
+      "reopen": "Explicit case-specific authority and counsel evidence"
+    },
+    {
+      "id": "W-22TEST",
+      "affected": "Real Stripe TEST connected acceptance",
+      "source": "docs/pr-cards/W-22.md",
+      "remedy": "Disposable database/provider mocks only until verified readback",
+      "reopen": "Authenticated Stripe TEST transactions and independent provider evidence"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/signed-delivery-attention.test.ts",
+      "tests/today-role-access.test.ts"
+    ],
+    "db": [
+      "tests/agreements-term-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/signed-delivery-todo.spec.ts"
+    ],
+    "node": []
+  }
+}

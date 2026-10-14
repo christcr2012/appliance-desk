@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   providerOp: vi.fn(),
   signingPayment: vi.fn(),
   signingPaymentCount: vi.fn(),
+  cancellationRefunds: vi.fn(),
+  cancellationRefundCount: vi.fn(),
   raw: vi.fn(),
   earlyResolution: vi.fn(),
   audit: vi.fn(),
@@ -41,6 +43,9 @@ vi.mock("@/domains/tax/filing-attention", () => ({
 vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
   listOfficialRateAttention: mocks.officialRateAttention,
 }));
+vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
+  listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -54,6 +59,7 @@ vi.mock("@/lib/prisma", () => ({
     earlyReturnResolution: { findMany: mocks.earlyResolution },
     providerOperation: { findMany: mocks.providerOp, count: vi.fn().mockResolvedValue(0) },
     agreementSigningPayment: { findMany: mocks.signingPayment, count: mocks.signingPaymentCount },
+    preDeliveryCancellation: { findMany: mocks.cancellationRefunds, count: mocks.cancellationRefundCount },
     auditLog: { findMany: mocks.audit },
     exceptionSnooze: { findMany: mocks.snoozes },
     customerTaxExemption: {
@@ -90,6 +96,7 @@ beforeEach(() => {
     mocks.pendingDelivery,
     mocks.providerOp,
     mocks.signingPayment,
+    mocks.cancellationRefunds,
     mocks.raw,
     mocks.earlyResolution,
     mocks.audit,
@@ -106,6 +113,7 @@ beforeEach(() => {
   }
   mocks.systemIssueCount.mockResolvedValue(0);
   mocks.signingPaymentCount.mockResolvedValue(0);
+  mocks.cancellationRefundCount.mockResolvedValue(0);
 });
 
 describe("Today server-side visibility", () => {

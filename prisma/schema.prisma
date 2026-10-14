@@ -919,9 +919,11 @@ model RentalAgreement {
 
   lines RentalLine[]
   signingChargeSnapshot AgreementSigningCharge?
+  setupFeeOverride SigningSetupFeeOverride?
   signingPaymentObligation AgreementSigningPayment?
   signingDownPaymentCredit SigningDownPaymentCredit?
   signingFirstInvoiceApplication SigningFirstInvoiceApplication?
+  preDeliveryCancellation PreDeliveryCancellation?
 
   signature   SignatureRecord?
   jobs        Job[]
@@ -938,7 +940,38 @@ model RentalAgreement {
   @@index([continuityRootId])
 }
 
+// W-22FIN: durable owner reason for an order/location fee exception.
+// The adjustment belongs to the lexicographically first agreement at a
+// service address for the same estimate; verified in the locked write path.
+model SigningSetupFeeOverride {
+  id String @id @default(cuid())
+  agreementId String @unique
+  agreement RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  setupFeeCents Int
+  reason String
+  authorizedByUserId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // W-22B: independently attributed draft signing amounts. Not a paid receipt.
+// Owner-attested CPA determinations for administrative setup tax. Policy history
+// uses Colorado-local YYYY-MM-DD keys, never UTC-midnight-as-business-midnight.
+model SetupFeeTaxDecisionVersion {
+  id                  String @id @default(cuid())
+  effectiveFromKey    String
+  cpaConfirmedOnKey   String?
+  treatment           String
+  decisionNote        String?
+  adviserReference    String?
+  ownerApprovedAt     DateTime @default(now())
+  ownerUserId         String
+  cancelledAt         DateTime?
+  createdAt           DateTime @default(now())
+
+  @@index([effectiveFromKey, ownerApprovedAt])
+}
+
 model AgreementSigningCharge {
   id                   String @id @default(cuid())
   agreementId          String @unique
@@ -1067,6 +1100,32 @@ model EarlyReturnResolution {
   createdAt          DateTime @default(now())
 
   @@index([jobId])
+}
+
+// Owner-approved pre-delivery cancellation review, NOT evidence that money was returned.
+model PreDeliveryCancellation {
+  agreementId        String @id
+  agreement          RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  receiptId          String?
+  orderFingerprint   String?
+  policy             String
+  signedAmountCents  Int
+  refundDueCents     Int
+  retainedCents      Int
+  reason             String
+  reviewedTerms      Boolean
+  approvedByUserId   String
+  approvedAt         DateTime @default(now())
+  // PENDING_EXTERNAL_REFUND is an unpaid liability; never a Stripe refund claim.
+  refundState        String
+  returnedOn         DateTime?
+  returnedRecordedAt DateTime?
+  returnedByUserId   String?
+  refundMethod       String?
+  refundReference    String? @unique
+  returnEvidence     Json?
+
+  @@index([refundState, approvedAt])
 }
 
 model RentalLine {
@@ -2482,9 +2541,18 @@ model BusinessSettings {
   // W-22A: configuration only; money collection is a separate guarded integration.
   administrativeSetupFeeCents Int @default(4500)
   largeOrderMachineThreshold  Int @default(5)
+  largeOrderCancellationFullRefundHours Int @default(72)
   businessRequiresDownPayment Boolean @default(true)
   setupFeeTaxTreatment String @default("UNDECIDED")
   setupFeeTaxDecisionNote String?
+  // Research-based suggestion is separate from owner approval of real tax treatment.
+  setupFeeTaxPlanningTreatment String @default("TAXABLE")
+  // Append-only, owner-attributed rule versions; future rules do not preempt current ones.
+  // Unverified prior settings do not authorize real-business use. Owner can record later CPA proof.
+  setupFeeTaxConfirmedOn DateTime?
+  setupFeeTaxEffectiveFrom DateTime?
+  setupFeeTaxApprovedAt DateTime?
+  setupFeeTaxAdviserReference String?
   damageWaiverEnabled     Boolean @default(false)
   depositEnabled          Boolean @default(false)
   // Usual visit length in minutes (Batch C P1-A); used when a job has no length of its own.
