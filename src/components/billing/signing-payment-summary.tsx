@@ -35,7 +35,7 @@ export function SigningPaymentSummary({ summary }: {
   const notDue = summary.status === "NOT_DUE";
   return (
     <section aria-label="Signing payment" className="mt-3 rounded-card border border-line bg-subtle p-3 text-sm" role="status">
-      <h3 className="font-medium text-ink">Signing payment</h3>
+      <h3 className="font-medium text-ink">Signing charge breakdown</h3>
       <dl className="mt-2 space-y-1 text-ink-soft">
         <div className="flex justify-between gap-3"><dt>Administrative setup</dt><dd>{formatCents(summary.setupFeeCents!)}</dd></div>
         <div className="flex justify-between gap-3"><dt>Setup sales tax</dt><dd>{formatCents(summary.setupTaxCents!)}</dd></div>

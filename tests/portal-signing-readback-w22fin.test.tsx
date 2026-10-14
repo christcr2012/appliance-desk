@@ -27,7 +27,7 @@ it.each(["AWAITING_PAYMENT", "RECEIVED", "REVIEW_REQUIRED"] as const)(
       } }],
     });
     render(await AccountRentalsPage({ searchParams: Promise.resolve({}) }));
-    expect(screen.getByRole("region", { name: "Signing payment" })).toBeVisible();
+    expect(screen.getByRole("status", { name: "Signing payment" })).toBeVisible();
     if (status === "REVIEW_REQUIRED") {
       expect(screen.getByText("Signing payment needs review")).toBeVisible();
       expect(screen.queryByText("Signed signing amount")).toBeNull();
