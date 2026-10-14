@@ -15,6 +15,8 @@ import {
 } from "./scheduling";
 import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
 import { assertJobScopeInTx } from "./scope";
+import { lockRentalAgreementInTx } from "@/domains/agreements";
+import { assertSigningPaymentReadyForDispatchInTx } from "@/domains/billing/signing-dispatch-readiness";
 
 export { sendJobDayOfReminders } from "./day-of-reminders";
 export {
@@ -323,6 +325,15 @@ export async function updateJobStatus(
     await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId, write: "STATUS" });
 
     const peeked = await tx.job.findUniqueOrThrow({ where: { id: jobId } });
+    // W-22FIN: booking is not dispatch. Hold the agreement lock while
+    // verifying the accepted receipt and changing physical delivery status.
+    // Agreement comes before maintenance request/job in the lock order.
+    if (newStatus === "IN_PROGRESS" &&
+        (peeked.type === "DELIVERY" || peeked.type === "INSTALLATION") &&
+        peeked.agreementId) {
+      await lockRentalAgreementInTx(tx, peeked.agreementId);
+      await assertSigningPaymentReadyForDispatchInTx(tx, peeked.agreementId);
+    }
     // Lock order: the maintenance request (if any) before the job.
     if (peeked.maintenanceRequestId) await lockMaintenanceRequestInTx(tx, peeked.maintenanceRequestId);
     const before = await tx.job.findUniqueOrThrow({ where: { id: jobId } });

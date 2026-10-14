@@ -1,3 +1,13 @@
+## W-22FIN delivery/payment reconciliation — dispatch guard
+
+A signed physical delivery start now re-verifies the agreement's frozen
+W-22 offer and exact owned signing receipt/zero-due evidence under an
+agreement lock; an appointment booking remains separate. This prevents
+pending, unknown and wrong-customer payments from authorizing dispatch.
+Synthetic unit assertions and exact-head CI are required before merge;
+genuine provider/customer acceptance and owner-controlled business use
+remain separately pending. No status/Stripe LIVE/communications activation.
+
 ## W-22FIN next integration — genuine pending delivery visibility
 
 The signed-delivery job already persisted by W-22D18 has `status=SCHEDULED`
