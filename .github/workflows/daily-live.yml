@@ -3,6 +3,16 @@ on:
   schedule:
     - cron: '1 0 * * *' # 00:01 Denver year-round; GitHub may delay.
       timezone: America/Denver
+    - cron: '19 0 * * *' # Backup if the top-of-hour scheduled event is dropped.
+      timezone: America/Denver
+    - cron: '17 1 * * *' # Second recovery window, still same Denver day.
+      timezone: America/Denver
+  workflow_dispatch:
+    inputs:
+      recovery_day:
+        description: "Denver date of missed daily release (YYYY-MM-DD; owner only)"
+        required: true
+        type: string
   pull_request:
     types: [opened, synchronize, reopened, edited]
   push:
@@ -33,7 +43,7 @@ jobs:
 
   promote:
     name: scheduled-live-promotion
-    if: github.event_name == 'schedule' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.actor == 'christcr2012')) && github.ref == 'refs/heads/main'
     needs: policy
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -48,4 +58,5 @@ jobs:
       - name: Checked daily fast-forward only
         env:
           GH_TOKEN: ${{ github.token }}
+          RECOVERY_DENVER_DAY: ${{ inputs.recovery_day }}
         run: node .github/release/promote-live.mjs
