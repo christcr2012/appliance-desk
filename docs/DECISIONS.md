@@ -20,6 +20,28 @@ editing the earlier decision away.
 
 ---
 
+
+### 2026-10-14 — October 13 owner replies routed into existing roadmap; no skipped batches
+
+The owner requested an engineering-grade, lower-level-agent-ready architecture
+review of his October 13 text and voice replies, not another list of questions.
+The reconciled source documents 56 subject decisions across five categories;
+23 numbered IN entries were updated because subjects overlap. Approved
+decisions are routed into **existing work-index units**, with W-22FIN active,
+then W-23/W-24/W-25/W-26, and later unchanged approved order.
+The [implementation map](owner-decisions/2026-10-13-implementation-map.json),
+[architecture/acceptance contract](designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md)
+and CI map validator are source-to-work guidance, **not** proof that the work
+has been coded, tested, deployed or accepted. K-CASH and BP stay proposed,
+not auto-approved. Owner-specific decisions answered October 13 must not be
+asked again; true future CPA/counsel/provider confirmation gates affected
+real business use, not development.
+
+The later October 13 IN-84 answer (five days of grace; one $5 late fee on
+day six) controls over the earlier recovered-chat summary that could not
+find a grace number. It is not a legal approval or live fee activation.
+
+
 ### 2026-10-13 (later) — rental-only business and late fee; federal leasing review
 
 Chris confirmed **no rent-to-own**; older future rent-to-own suggestions do not represent current approved scope. He approved **five calendar days after the agreed payment due date** before a **single $5 flat late charge on day six**, waivable with documented discretion, as an owner-configurable **starting policy** for ordinary appliance rentals. Neither the rent-to-own statute nor the current code's $0 late-fee default validates deployment, existing contracts or legal enforceability. IN-84 records the decision. This is a documentation-only decision; no code, charges, signed agreements, customer messaging or LIVE provider state changed.

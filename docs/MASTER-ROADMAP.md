@@ -2,26 +2,40 @@
 
 Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
-## What is next
+## What is next — 2026-10-14 source and implementation reconciliation
 
-**Verified 2026-10-12 against merged #423, main `600f93ed`.** Recheck live GitHub before editing.
+**Current checked baseline on October 14: merged PR #447, main 0b5bfa2.**
+This is a historical checkpoint: check GitHub again before implementation.
+The active indexed unit stays **W-22FIN**, not W-23; W-22 has been built through
+setup-fee owner controls but its entire all-in signed/delivery/payment and
+prepaid-return engineering/acceptance remains incomplete. PR numbers, older
+session slice handoffs and provider TEST mocks are not proof of completion.
 
-- **Implemented:** W-22 settings, snapshots, frozen send/sign, TEST collection/receipt and exact first-invoice
-  application/mirror through #423. Code and mocked/disposable proof are not authenticated real-provider acceptance.
-  COM-L through L15, W-1/W-18 and earlier W-16/W-21 work must not be rebuilt.
-- **Next:** `npm run work -- start` → W-22D12 owner/customer invoice amounts and integrated proof. The active
-  [W-22 parent](pr-cards/W-22.md) lists manual settlement, cancellation/refund and new-hookup delivery remainders;
-  the historical slice log is archived. No new broad architecture planning is needed before implementation.
-- **Gates:** CPA IN-79 and actual TEST-provider acceptance affect their own operations. Continue eligible independent
-  implementation while keeping W-22 PARTIAL and W-23 dependent on complete W-22 acceptance. See STATUS.
-- **Then:** W-23 → W-24 → W-25 → W-26 → W-14 → W-2 → W-15 → W-3 → W-4 → W-5 → W-6 → W-7 →
-  W-8 → W-9 → W-10 → W-19 → W-17 → W-20 → V → F-part-2. W-11/W-12/W-13 retain
-  outside gates. Authority: Amendment B section 8 and work-index; this guidance adds
-  execution detail without changing sequence or approvals.
+**New required implementer reading:** October 13
+[56-subject owner-answer mapping](owner-decisions/2026-10-13-implementation-map.json)
+and [complete engineering/acceptance contract](designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md).
+A 56-subject inventory and 23 updated IN rows represent overlapping owner answers,
+**not 56 new tickets or questions**. Build and test each subject when its *existing
+approved roadmap unit* becomes active; no redesign from scratch or skipped unfinished
+current unit. Implementation cards must apply corresponding contract invariants.
 
-Batch T is engineering-complete (T-7D #328); Batch S is complete (S-1A #330 … S-2 #334); COM-L1A (#335), COM-L1B (#336)
-and COM-L2 (#346) are merged. No live tax filing, charging, external AI access or message sending is authorized by this
-sequence. Check [STATUS](STATUS.md) for the exact current PR/head.
+**Preserved ordering:** W-22FIN (reconcile prior W-21 prepaid-set return behavior
+within current outcome) → W-23 (location and tenant claim/privacy/import) →
+W-24 (driving zones, relocation, preferred dates, controlled booking) →
+W-25 (phone order/customer link and existing communications) →
+W-26 (Spanish after fluent/legal review) → W-14 → W-2 → W-15 → W-3 →
+W-4 → W-5 → W-6 → W-7 → W-8 → W-9 → W-10 → W-19 → W-17 →
+W-20 → V → F-part-2, subject to newer checked approved index changes.
+W-11/12/13 retain their independently scoped provider/CPA prerequisites.
+Completed W-1/W-18, COM-L and earlier features must not be rebuilt.
+
+Later K/M/O follow their existing postlaunch order. **K-CASH remains PROPOSED
+requiring its own design review, and BP remains PROPOSED requiring business/runtime
+design approval**. Mapping known owner preferences to those units is not approval
+to advance, pay, publish, or deploy them. Real professional/provider/business
+acceptance is separate from code implementation, explicitly queued with revision,
+procedure and re-entry trigger. CPA/counsel review restricts affected real use,
+**not safe source development**; each restriction needs owner-unlock workflow.
 
 ## Approved sequence and owner gates
 

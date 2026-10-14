@@ -1,5 +1,16 @@
 # START HERE — Appliance Desk
 
+**New October 14 decision-to-implementation routing:** October 13 owner
+answers cover **56 distinct subjects** (not 56 open PRs). For the
+currently active W-22FIN or any future next approved unit, read the
+[owner decision implementation map](owner-decisions/2026-10-13-implementation-map.json)
+and [engineering/acceptance addendum](designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md)
+after the usual work-index/card and before implementing policy-dependent
+customer/owner behavior. Maintain order, leave proposed future designs
+unapproved and preserve real-use legal/provider gates. CI guards coverage
+with scripts/check-owner-decisions.mjs.
+
+
 Robinson Appliance Rentals is Chris's Colorado appliance rental business. Appliance Desk is one Next.js application: the public site, owner/staff Desk and customer portal. It runs on Vercel with Prisma/Neon, Better Auth, Stripe (test), Resend, dormant Twilio, private media, Vitest and sharded Playwright/axe. Chris operates it mostly from a phone; controls and errors must be plain language.
 
 ## Read only what this work needs

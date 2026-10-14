@@ -10,6 +10,15 @@ Research: [startup bank evidence](../research/2026-10-08-startup-banking-quickbo
 Current code has receipts/credits/provider reconciliation/generic CSV, NOT K's journal/expenses or this budget.
 Write JIT execution cards against actual merged K; do not treat planned models as existing code.
 
+**October 13 owner accounting answers:** The
+[engineering packet](OWNER-DECISIONS-2026-10-13-ENGINEERING.md) and
+[subject map](../owner-decisions/2026-10-13-implementation-map.json) capture
+multiple small individually dated owner contributions, documented loans,
+draws and real opening assets; no invented starting balances and no personal
+tools booked without transfer. QBO Free is only an edition preference;
+balanced portable CSV/CPA exports and future paid compatibility are required.
+Bank not selected. **K-CASH remains PROPOSED, not approved or moved earlier.**
+
 ## 0. Product decision and boundaries
 
 One business operating checking account initially; QBO Free is the first candidate, not a promised verified tenant.

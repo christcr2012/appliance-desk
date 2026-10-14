@@ -4,6 +4,15 @@
 
 **Baseline:** main `730f449ea5c7300a0a1f27c214074a9301736ad3`, inspected 2026-10-07. #298/#299 are merged. #300 is the only open PR observed; its tax metadata concurrency review is fixed at its recorded head and is outside this batch. This design does not change its branch or interrupt tax implementation.
 
+**October 13 telecom acceptance overlay:** See
+[owner-answer engineering packet](OWNER-DECISIONS-2026-10-13-ENGINEERING.md)
+and [subject map](../owner-decisions/2026-10-13-implementation-map.json).
+The existing COM-L implementation is not to be rebuilt. Owner preferences
+(08:00–18:30 Denver phone-only routing; 90-day voicemail private retention;
+transcription/recording OFF; $20 notify-only budget with $10/$15/$20 alerts;
+support@ reply identity) require provider, consent, privacy and real
+activation proof separately. No number purchase or paid change authorized.
+
 ## 0. Current-code inventory and drift
 
 The tree inventory and bounded repository searches covered phone/messaging/metrics references. Full source reads covered messaging delivery/events/history/suppression, SMS adapter, Twilio route, reminder sender, provider settings, deployment safety, dashboard, reports, and customer timeline. Schema sections, Batch E/S/K designs, current process, launch gates, review guidance and relevant historical audit excerpts were inspected. This is a subsystem architecture review, not a claim that every source file or report was independently audited.

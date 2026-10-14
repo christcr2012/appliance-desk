@@ -29,6 +29,31 @@ called this "gate G"):
 Documentation-only changes use AGENTS’ documentation checks; application/UI/
 DST/migration proofs above apply to the behavior actually changed.
 
+## October 13 owner-answer coverage and phased acceptance
+
+The [56 decision-subject map](owner-decisions/2026-10-13-implementation-map.json)
+and [engineering/acceptance design](designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md)
+attach the October 13 owner replies to **existing approved work units** in the
+master roadmap. The owner register's 23 modified IN rows overlap those subjects;
+neither number measures unbuilt features or unanswered owner preferences.
+CI verifies mapping, active W-22FIN order and proposed-scope safeguards using
+node scripts/check-owner-decisions.mjs. This is a coverage mechanism, not proof
+that functionality exists.
+
+When a mapped unit becomes the next approved active unit: reconcile actual code,
+deliver its complete customer/owner outcome, test auth/financial/PII/replay/
+local business date/permissions, prove exact-head CI, checked live and genuine
+external acceptance **separately**, and update its own card. Configure
+source-backed private provisional rules for development but require actual
+owner-recorded professional guidance/effective date before affected real use.
+Independent refunds, publications, provider spending, live messages, recording
+and Stripe activation stay explicitly gated.
+
+**Latest owner precedence:** October 13 later IN-84/DECISIONS affirm **five
+calendar days after due date plus one $5 fee on day six**, owner configurable,
+despite the prior extracted conversation summary not establishing a grace
+number; law/terms review is not hereby complete.
+
 ## Built — do not rebuild
 
 A, B, C, R, B2, D, E, E2, F-part-1 and G are merged. T is built through T-6b2 (#310): acquisition evidence/per-unit rules, RDF and tax workspace screens remain. E2's public visual result was rejected as final quality, so V remains. Live payments/customer email/SMS remain separately gated. Complete historical deliverables and acceptance are preserved in [the pre-reset plan](archive/reset-2026-10-08/PLAN.md), not discarded.

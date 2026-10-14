@@ -119,6 +119,11 @@ jobs:
       - name: Project secret and private-identifier scan
         run: node scripts/check-secrets.mjs
 
+      - name: October 13 answered-owner decision coverage and ordered roadmap map
+        run: |
+          node --test scripts/check-owner-decisions.test.mjs
+          node scripts/check-owner-decisions.mjs
+
       - name: Sandbox transfer checker tests (used by sandbox-publish.yml)
         run: node --test scripts/sandbox-transfer.test.mjs
 
