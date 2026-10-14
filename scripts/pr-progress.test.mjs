@@ -87,7 +87,7 @@ test('PR check rejects stale scorecards and dishonest maintenance source changes
     write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify({...card,evidence:['Accepted criterion proof supplied by the PR.']}));
     git(root,'add','.');git(root,'commit','-qm','provide current scorecard');
     assert.equal(validatePRChange(root,baseline).additions,1);
-    write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify({...card,kind:'maintenance',evidence:['This is now falsely called maintenance.']}));
+    write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify({...card,kind:'maintenance',completedSlices:[],evidence:['This is now falsely called maintenance.']}));
     git(root,'add','.');git(root,'commit','-qm','misclassify customer code');
     assert.throws(()=>validatePRChange(root,baseline),/production code/);
   } finally {rmSync(root,{recursive:true,force:true});}
