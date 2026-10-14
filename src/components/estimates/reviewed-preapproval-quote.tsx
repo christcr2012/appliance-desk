@@ -32,7 +32,7 @@ export function ReviewedPreapprovalQuote({ quote, owner = false }: {
         jurisdiction rates; legally applicable rate changes at invoicing may change
         future bill tax. A reviewed offer is not a payment receipt or delivery booking.
       </p>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" role="region" aria-label="Scrollable per-address reviewed money" tabIndex={0}>
         <table className="w-full text-left">
           <caption className="mb-2 text-left text-ink-soft">
             Tax and signing amounts per service address

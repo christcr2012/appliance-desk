@@ -17,7 +17,7 @@ export function OwnerAllInEstimateReview({ preview }: { preview: EstimateAllInPr
         </p>
       </div>
       {preview.locations.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" role="region" aria-label="Scrollable per-address reviewed money" tabIndex={0}>
           <table className="w-full text-left">
             <caption className="mb-2 text-left text-ink-soft">Known amounts by service address — tax and unresolved fees excluded</caption>
             <thead><tr className="border-b border-line">
