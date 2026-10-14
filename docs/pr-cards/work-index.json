@@ -2,7 +2,7 @@
   "version": 1,
   "auditedBase": "b2a06c2",
   "updated": "2026-10-14",
-  "process": "Just-in-time cards from approved contracts; each card includes drift verification and a successor handoff. Session execution and queued deployed acceptance follow docs/SESSION-START.md.",
+  "process": "Just-in-time cards from approved contracts; each card includes drift verification and a successor handoff. Session execution and queued deployed acceptance follow docs/SESSION-START.md. Session PR counts are informational only; combine related roadmap slices into complete deliverables and checkpoint for context safety.",
   "cards": [
     {
       "id": "T-6D1",
