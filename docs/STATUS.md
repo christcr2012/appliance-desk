@@ -24,6 +24,25 @@ checks, production/spending gates and no-force rules remain mandatory.
 W-22D17 manual/Stripe TEST refund evidence reconciliation remains
 independent and has not moved any customer funds.
 
+## W-22D17 external refund reconciliation (current implementation branch)
+
+Based on the checked D16 cancellation and October 14 `f4cd4ea`
+production release, the isolated branch `ai/gpt6/w22d17-refund-reconciliation`
+adds owner-only recording of an **externally completed** refund. It rechecks
+the original receipt and pending cancellation under database locks and
+stores the unique return reference, method, actual event date and audit.
+Manual check/bank/cash is labelled owner-attested; Stripe TEST requires a
+read-only provider refund success matched to the original charge, USD
+currency and approved cents, and is disabled for production/LIVE mode.
+The pending Today item only disappears on a committed return record.
+No money-out, messages, tax choice or production fixture was executed.
+
+**Evidence:** five disposable PostgreSQL cases and three provider/policy unit
+cases passed; browser/auth/accessibility, exact-head CI and real Stripe TEST
+provider acceptance are separately pending. Work packet W-22D17 is active;
+W-22 stays PARTIAL. The October 14 live release is proven at `f4cd4ea`.
+The separate release reliability repair PR #438 merged to main; normal
+daily checked live promotion applies to it, not immediate deployment.
 
 
 ## October 13 verified release and W-22D16 implementation (current)

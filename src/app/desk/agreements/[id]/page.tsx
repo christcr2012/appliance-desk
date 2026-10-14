@@ -94,7 +94,8 @@ export default async function AgreementDetailPage({
         {agreement.serviceAddress.line1}, {agreement.serviceAddress.city},{" "}
         {agreement.serviceAddress.state} {agreement.serviceAddress.zip}
       </p>
-      {cancellation && <section className="mt-3 rounded-lg border p-4" role="status"><h2 className="font-semibold">Cancellation review</h2><p>Approved refund due: {formatMoney(cancellation.refundDueCents)}. Status: {cancellation.refundState === "PENDING_EXTERNAL_REFUND" ? "Not yet paid — separate money-out approval required" : "No signing refund due"}.</p><p>Retained: {formatMoney(cancellation.retainedCents)}. Approved reason: {cancellation.reason}</p></section>}
+      {cancellation && <section className="mt-3 rounded-lg border p-4" role="status"><h2 className="font-semibold">Cancellation review</h2><p>Approved refund due: {formatMoney(cancellation.refundDueCents)}. Status: {cancellation.refundState === "PENDING_EXTERNAL_REFUND" ? "Not yet paid — separate money-out approval required" : cancellation.refundState === "NOT_REQUIRED" ? "No signing refund due" : cancellation.refundState === "RETURNED_STRIPE_TEST_VERIFIED" ? "Stripe TEST return verified" : "Manual return recorded"}.</p><p>Retained: {formatMoney(cancellation.retainedCents)}. Approved reason: {cancellation.reason}</p></section>}
+      {cancellation?.refundState === "PENDING_EXTERNAL_REFUND" && <Link href={`/desk/agreements/${agreement.id}/refund`} className="text-primary underline">Reconcile returned refund</Link>}
       {signedArtifactId && (
         <p className="mt-3 text-sm">
           <Link className="font-medium text-primary underline" href={`/api/documents/${signedArtifactId}`} target="_blank">

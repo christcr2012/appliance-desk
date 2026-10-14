@@ -787,3 +787,16 @@ that money was returned. Application code computes sums from locked provider-ver
 receipt obligations, never from browser values. The model is included in backup
 manifest coverage. Additive migration only, no historical backfill, Stripe money-out
 or automatic customer notice.
+
+### W-22D17 refund return evidence
+
+Additive `20261015230000_w22_refund_reconciliation` extends one
+`PreDeliveryCancellation` per agreement with nullable returned date,
+recorded-at, approving owner ID, method, globally unique reference and
+JSON evidence. `PENDING_EXTERNAL_REFUND` remains an unpaid liability.
+`RETURNED_MANUAL_RECORDED` means the owner attested to a completed
+external check/bank/cash return with a stored reference, not provider proof.
+`RETURNED_STRIPE_TEST_VERIFIED` requires successful read-only Stripe TEST
+refund evidence tied to the original charge and exact amount; provider
+money-out is never invoked. History is not backfilled or marked returned.
+Existing backup manifest for `PreDeliveryCancellation` covers new fields.

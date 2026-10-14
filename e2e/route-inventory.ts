@@ -97,6 +97,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason:
       "The seeded agreement id is generated per run; agreement presentation and behavior have dedicated browser/integration coverage.",
   },
+  { path: "/desk/agreements/[id]/refund", role: "OWNER", fixture: "Approved cancellation in a disposable database", manualOnlyReason: "An owner-only verified refund liability is required; dedicated DB/browser tests supply this fixture." },
   { path: "/desk/agreements/new", role: "OWNER", fixture: "/desk/agreements/new" },
   { path: "/desk/agreements", role: "OWNER", fixture: "/desk/agreements" },
   { path: "/desk/automations", role: "OWNER", fixture: "/desk/automations" },
