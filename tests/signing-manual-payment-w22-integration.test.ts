@@ -94,8 +94,8 @@ describe.skipIf(!enabled)("W-22D13 exact owner-recorded signing payment (disposa
     expect(await prisma.signingDownPaymentCredit.count({ where: { agreementId } })).toBe(0);
     expect((await prisma.agreementSigningPayment.findUniqueOrThrow({ where: { agreementId } })).status).toBe("AWAITING_PAYMENT");
   });
-  it("does not open a second payment attempt while a prior outcome is UNKNOWN", async () => {
-    await prisma.signingPaymentAttempt.update({ where: { id: attemptId }, data: { status: "UNKNOWN" } });
+  it("does not open a second payment attempt while a prior attempt shows success without a settled obligation", async () => {
+    await prisma.signingPaymentAttempt.update({ where: { id: attemptId }, data: { status: "SUCCEEDED" } });
     await expect(prepareSigningPaymentAttempt(agreementId, "MANUAL", ownerId))
       .rejects.toThrow(/Reconcile its authoritative receipt/);
     expect(await prisma.signingPaymentAttempt.count({ where: { agreementId } })).toBe(1);

@@ -1,10 +1,12 @@
 ## Payment UNKNOWN/FAILED recovery — scoped W-22FIN continuation
 
 OWNER/ADMIN agreement view now distinguishes a verified receipt, failure,
-provider PENDING/UNKNOWN/SUCCEEDED-without-local-receipt, unmatched prior
+provider PENDING/uncertain-remote-result/SUCCEEDED-without-local-receipt, unmatched prior
 attempt, and no attempt. Provider-uncertain states cannot offer manual
 collection or create a second attempt; `prepareSigningPaymentAttempt` also
-refuses UNKNOWN/SUCCEEDED under its obligation lock (not just UI wording).
+refuses any anomalous SUCCEEDED-without-receipt under its obligation lock; the
+DB rejects UNKNOWN as a stored attempt state, while remote UNKNOWN must stay
+PENDING until authoritative resolution (not just UI wording).
 A final FAILED attempt may be retried under a new durable identity only after
 provider confirmation; a verified full offline receipt needs explicit owner
 attestation. Owner Today/exception view shows urgent uncertain results and
