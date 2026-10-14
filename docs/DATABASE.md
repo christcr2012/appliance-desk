@@ -1,3 +1,22 @@
+## W-22FIN mandatory-charge owner policy (October 14, 2026)
+
+Migration `20261014223000_signing_mandatory_policy_versions` adds
+`BusinessSettings.signingMandatoryPolicyVersions JSONB NOT NULL DEFAULT '[]'`.
+This is an append-only, numbered, effective-dated configuration history for
+owner-reviewed delivery, installation, removal, damage-waiver and retail-delivery
+applicability, **not** a second money ledger or a chargeable estimate. Each
+revision stores the recording owner identity, date, reason and individual
+applicability decisions. The owner-only mutation serializes on the existing
+BusinessSettings singleton `FOR UPDATE` and writes an `AuditLog` event
+`signing.mandatory_policy_version`; role checks occur inside the transaction.
+Invalid/missing or future-dated decisions resolve to `UNDECIDED`, never a
+presumed charge or verified tax exemption. Older signed agreements, payment
+receipts and invoices remain unaffected. The estimate owner-only preview
+assembles existing machine/location/setup/down-payment amounts but continues to
+fail closed on missing jurisdiction rules, statutory retail-delivery rates,
+refundable deposit treatment and other mandatory charges. No customer-facing
+binding quote, CPA/counsel approval or Stripe collection is conferred.
+
 # Database — plain-English guide
 
 The full technical definition lives in `prisma/schema.prisma`. This file
