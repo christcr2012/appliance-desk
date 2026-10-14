@@ -24,6 +24,7 @@ describe.skipIf(!enabled)("W-22A signing settings on disposable Postgres", () =>
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: {
       administrativeSetupFeeCents: old.administrativeSetupFeeCents,
       largeOrderMachineThreshold: old.largeOrderMachineThreshold,
+      largeOrderCancellationFullRefundHours: old.largeOrderCancellationFullRefundHours,
       businessRequiresDownPayment: old.businessRequiresDownPayment,
       setupFeeTaxTreatment: old.setupFeeTaxTreatment,
       setupFeeTaxDecisionNote: old.setupFeeTaxDecisionNote,
@@ -36,6 +37,7 @@ describe.skipIf(!enabled)("W-22A signing settings on disposable Postgres", () =>
     data.set("updatedAt", updatedAt.toISOString());
     data.set("setupFeeDollars", "45.00");
     data.set("largeOrderMachineThreshold", "5");
+    data.set("largeOrderCancellationFullRefundHours", "72");
     data.set("businessRequiresDownPayment", "on");
     data.set("setupFeeTaxTreatment", "UNDECIDED");
     return data;

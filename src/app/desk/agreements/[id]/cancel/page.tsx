@@ -14,7 +14,7 @@ export default async function CancelPage({params}:{params:Promise<{id:string}>})
  let blocker:string|null=null;
  try { quote=await getPreDeliveryCancellationQuote(id); }
  catch(e) {blocker=e instanceof Error?e.message:"Reconciliation required.";}
- return <main className="max-w-2xl space-y-4">
+ return <div className="max-w-2xl space-y-4">
   <Link href={"/desk/agreements/"+encodeURIComponent(id)} className="underline">Back to agreement</Link>
   <h1 className="text-xl font-semibold">Cancellation and refund review</h1>
   <p>Customer: {agreement.customer.user.name??agreement.customer.user.email}</p>
@@ -30,5 +30,5 @@ export default async function CancelPage({params}:{params:Promise<{id:string}>})
    <CancellationApprovalForm agreementId={id} fingerprint={quote.fingerprint}
      canRetain={quote.defaultPolicy==="RETAIN_SETUP"} defaultPolicy={quote.defaultPolicy} receiptCents={quote.signingAmountCents} setupCents={quote.setupAndTaxCents}/>
   </section>}
- </main>;
+ </div>;
 }

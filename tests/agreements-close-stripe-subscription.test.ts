@@ -20,6 +20,7 @@ function makeTx() {
   return {
     $queryRaw: (...args: unknown[]) => mocks.queryRaw(...args),
     rentalLine: { findMany: mocks.rentalLineFindMany },
+    agreementSigningPayment: { findUnique: async () => null },
     applianceAssignment: { update: mocks.applianceAssignmentUpdate },
     appliance: {
       findUniqueOrThrow: mocks.applianceFindUniqueOrThrow,
