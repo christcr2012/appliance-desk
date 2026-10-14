@@ -30,9 +30,12 @@ just to finish a development batch. Follow the existing checked release policy.
 Read the authoritative work index/roadmap and the highest-priority eligible card.
 State its observable result and finite acceptance before editing. Read only its named
 code seams, design sections and fixtures; reuse existing helpers and task/packet tools.
-Group compatible operations into a complete usable workflow, including callers/tests.
-Line counts are review estimates, not mandatory artificial slice boundaries. A larger
-cohesive PR needs explicit integration/risk/verification coverage. Preserve actual
+Group compatible adjacent roadmap slices into a complete usable workflow,
+including callers, real integration and tests. Plan a suitable coherent PR
+around ~500–800 production lines plus tests; this is advisory and not a
+reason to pad a smaller valid outcome or fragment a larger one. Explicitly
+list included slice IDs and acceptance criteria before writing code. Larger
+cohesive PRs require extra integration/risk/verification coverage. Preserve actual
 migration ordering, risk isolation and every business/security/financial decision gate.
 Do not revisit passing hardening without a demonstrated defect or approved requirement.
 
@@ -186,9 +189,20 @@ CI/review state, successor and exact blocker. Diagnose and attempt authorized re
 before deferring; isolate the operation and continue approved independent work. Limited
 release frequency is planned queued acceptance, never a project-wide stop.
 
-Normal implementation sessions deliver five substantial merged PRs including inherited
-work; adjust to the next higher PR-number multiple of five using actual allocation and
-recalculate for concurrency. No special six-PR rule, filler or documentation-only quota.
+Normal implementation sessions complete as many fully verified, cohesive roadmap
+slices as fit a safe, recoverable chat context. A suitable PR may integrate
+several adjacent small slices (typically targeting ~500–800 production lines
+plus tests), but contracts, review risk and end-to-end behavior determine size;
+a complete smaller slice or a safe larger slice is legitimate. No fixed
+number of PRs, five-PR cadence, next-multiple alignment, or filler quota.
+Do not count a passing helper as a completed outcome. After each verified
+merge, checkpoint the exact head/CI/reviews, completed slices, implementation
+and deployed/real-acceptance state, and one next action. Start another slice
+only when the remaining context can support its implementation, review, CI
+repair, merge and durable handoff; otherwise end at the clean checkpoint.
+Persist unfinished work on its existing approved card, not only in chat.
+Report completed roadmap slices and acceptance deltas, first-pass CI failures
+and correction cycles, not PR count as a productivity metric.
 This owner-requested repository optimization is scoped maintenance, not a five-feature
 batch. Preserve safety even when no further eligible work or an execution limit remains.
 At completed-session end update status/cards/index, verify final main, leave a permanent

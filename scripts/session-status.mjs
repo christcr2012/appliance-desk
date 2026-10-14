@@ -65,11 +65,6 @@ export function planQueue(rows, observation, isAncestor) {
   });
 }
 
-export function nextBoundary(latest) {
-  if (!Number.isSafeInteger(latest) || latest < 0) throw new Error('Latest PR must be a nonnegative integer.');
-  return (Math.floor(latest / 5) + 1) * 5;
-}
-
 function git(root, ...args) {
   try { return execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
   catch { return null; }
@@ -109,7 +104,7 @@ export function run(root, args) {
     'Candidates need existing authorization, fixture isolation and cleanup. This command never runs provider tests or releases.'];
   if (flags['--latest-pr']) {
     if (!/^\d+$/.test(flags['--latest-pr'])) throw new Error('Latest PR must be an integer.');
-    lines.push(`Next session boundary: PR #${nextBoundary(Number(flags['--latest-pr']))}; no filler.`);
+    lines.push(`Latest observed PR: #${Number(flags['--latest-pr'])} (informational only; no session PR quota or numeric boundary).`);
   }
   lines.push(`Queue: ${plan.length} total; ${plan.length - active.length} recorded passes; ${active.length} tasks to reconsider.`);
   for (const row of active.slice(0, limit)) lines.push(`${row.priority}. ${row.id} ${row.disposition}: ${row.task}`, `   Procedure: ${row.procedure}; gates: ${row.gates}`, `   Last evidence: ${row.lastEvidence}`);
