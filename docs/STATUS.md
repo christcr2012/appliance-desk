@@ -1,3 +1,7 @@
+## October 14 recovery rerun owner authentication — follow-up
+
+PR #438's concurrent source repair and verified October 14 READY deployment are preserved. Recovery additionally checks GITHUB_TRIGGERING_ACTOR and github.triggering_actor, so non-owner reruns of the owner's prior recovery cannot promote a newer day. Original and triggering actors must both be christcr2012, on main with explicit recovery input. Negative tests cover another/missing triggering actor. Exact-head CI and existing application/provider gates remain mandatory.
+
 # STATUS — current work, blockers and next action
 
 ## October 14 release recovery — live verified, trigger repair pending PR #438

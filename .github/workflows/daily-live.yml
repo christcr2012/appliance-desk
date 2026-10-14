@@ -52,7 +52,7 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' ||
-       (github.event_name == 'workflow_dispatch' && inputs.recover_missed_daily == true && github.actor == 'christcr2012'))
+       (github.event_name == 'workflow_dispatch' && inputs.recover_missed_daily == true && github.actor == 'christcr2012' && github.triggering_actor == 'christcr2012'))
     needs: policy
     runs-on: ubuntu-24.04
     timeout-minutes: 15
