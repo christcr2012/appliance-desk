@@ -96,6 +96,19 @@ export function validateScorecard(card, packet) {
   return { kind: card.kind, completedSlices: seen.size, declaredIds: [...seen] };
 }
 
+export function validatePRChange(root, base, head = 'HEAD') {
+  const changes = git(root, 'diff', '--name-only', base, head, '--', CARD).trim().split('\n');
+  if (!changes.includes(CARD))
+    throw new Error('Each substantive PR must update the checked outcome scorecard rather than inherit previous claims');
+  const card = scorecardFromRoot(root);
+  const stats = measureDiff(root, base, head);
+  if (card.kind === 'maintenance' && (stats.additions || stats.deletions))
+    throw new Error('PR modifies production code but claims maintenance-only status');
+  if (card.kind === 'implementation' && !stats.additions && !stats.deletions)
+    throw new Error('Implementation PR has no meaningful production-code change; explain and classify legitimate maintenance separately');
+  return stats;
+}
+
 export function scorecardFromRoot(root) {
   const index = JSON.parse(readFileSync(resolve(root, INDEX), 'utf8'));
   const entry = (index.executionPackets ?? []).find(p => p.id === index.activeExecution);
@@ -130,15 +143,18 @@ export function renderProgress(root, base = 'origin/main', ref = 'main') {
 }
 
 function main(argv) {
-  let check = false, base = 'origin/main', ref = 'main';
+  let check = false, requireChanged = false, base = 'origin/main', ref = 'main';
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--check') check = true;
+    else if (argv[i] === '--require-changed') requireChanged = true;
     else if (argv[i] === '--base' && argv[i + 1]) base = argv[++i];
     else if (argv[i] === '--ref' && argv[i + 1]) ref = argv[++i];
-    else throw new Error('Usage: pr-progress.mjs [--check] [--base origin/main] [--ref main]');
+    else throw new Error('Usage: pr-progress.mjs [--check] [--require-changed] [--base REF] [--ref REF]');
   }
+  if (requireChanged && !check) throw new Error('--require-changed requires --check');
   if (check) {
     const card = scorecardFromRoot(ROOT);
+    if (requireChanged) validatePRChange(ROOT, base, ref);
     return 'Scorecard valid: ' + card.kind + ' / ' + card.completedSlices + ' declared complete slices. Content and acceptance evidence still require review.';
   }
   return renderProgress(ROOT, base, ref);

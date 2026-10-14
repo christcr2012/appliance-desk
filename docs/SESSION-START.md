@@ -200,8 +200,9 @@ production lines and the last five merged implementation PRs when history exists
 A shortfall in either rolling target should be explained in the PR, not fixed
 with filler code or fictitious acceptance. Rolling slice averages use only
 scorecards changed by their own implementation PRs; older undocumented
-completions are `unknown`, not zero and not invented. The script validates shape and
-approved IDs, not test truth; exact-head CI and human/code review still govern.
+completions are `unknown`, not zero and not invented. CI requires an updated scorecard for each PR and rejects production-code changes
+misclassified as maintenance. It validates shape and approved IDs, not test
+truth; exact-head CI and human/code review still govern.
 
 ## 5. Checkpoint and finish
 

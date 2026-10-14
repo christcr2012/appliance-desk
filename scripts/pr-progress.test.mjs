@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { productionPath, parseNumstat, measureDiff, mergedImplementationHistory, validateScorecard, renderProgress } from './pr-progress.mjs';
+import { productionPath, parseNumstat, measureDiff, mergedImplementationHistory, validateScorecard, validatePRChange, renderProgress } from './pr-progress.mjs';
 
 const approved = { id:'W-22FIN', slices:[
   {id:'W-22FIN-QUOTE', acceptance:['Quote reconciles', 'Missing taxes deny']},
@@ -74,5 +74,21 @@ test('format-only edits do not inflate meaningful production additions',()=>{
     write(root,'src/domain.ts','  export   const owner = 1;\n');
     git(root,'add','.');git(root,'commit','-qm','whitespace only');
     assert.equal(measureDiff(root,before,'HEAD').additions,0);
+  } finally {rmSync(root,{recursive:true,force:true});}
+});
+
+test('PR check rejects stale scorecards and dishonest maintenance source changes', () => {
+  const root=repo();
+  try {
+    const baseline=git(root,'rev-parse','HEAD');
+    write(root,'src/domain.ts','export const owner = 1;\nexport const second = 2;\n');
+    git(root,'add','.');git(root,'commit','-qm','source without evidence');
+    assert.throws(()=>validatePRChange(root,baseline),/must update/);
+    write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify({...card,evidence:['Accepted criterion proof supplied by the PR.']}));
+    git(root,'add','.');git(root,'commit','-qm','provide current scorecard');
+    assert.equal(validatePRChange(root,baseline).additions,1);
+    write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify({...card,kind:'maintenance',evidence:['This is now falsely called maintenance.']}));
+    git(root,'add','.');git(root,'commit','-qm','misclassify customer code');
+    assert.throws(()=>validatePRChange(root,baseline),/production code/);
   } finally {rmSync(root,{recursive:true,force:true});}
 });
