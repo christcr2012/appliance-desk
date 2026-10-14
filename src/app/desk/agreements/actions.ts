@@ -224,6 +224,13 @@ export async function cancelAgreementAction(
 ): Promise<AgreementActionState> {
   const session = await requireRole("OWNER", "ADMIN");
   try {
+    // Legacy server callers cannot bypass the reviewed cancellation flow.
+    const agreement = await prisma.rentalAgreement.findUniqueOrThrow({
+      where: { id: agreementId }, select: { firstDeliveredOn: true },
+    });
+    if (!agreement.firstDeliveredOn) throw new Error(
+      "Use the before-delivery cancellation review to approve refund liabilities."
+    );
     await cancelAgreement(session.user.id, agreementId);
   } catch (error) {
     return {

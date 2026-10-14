@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = {
   oneTimeRemovalFeeCents: 0,
   administrativeSetupFeeCents: 4500,
   largeOrderMachineThreshold: 5,
+  largeOrderCancellationFullRefundHours: 72,
   businessRequiresDownPayment: true,
   setupFeeTaxTreatment: "UNDECIDED",
   setupFeeTaxDecisionNote: null as string | null,

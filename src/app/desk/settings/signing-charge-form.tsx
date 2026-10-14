@@ -5,7 +5,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { saveSigningChargeSettingsAction } from "./signing-charge-actions";
 
 export function SigningChargeForm({ settings, editable }: {
-  settings: { administrativeSetupFeeCents: number; largeOrderMachineThreshold: number;
+  settings: { administrativeSetupFeeCents: number; largeOrderMachineThreshold: number; largeOrderCancellationFullRefundHours: number;
     businessRequiresDownPayment: boolean; setupFeeTaxTreatment: string;
     setupFeeTaxDecisionNote: string | null; updatedAt: Date };
   editable: boolean;
@@ -20,6 +20,10 @@ export function SigningChargeForm({ settings, editable }: {
       </label>
       <label className="grid gap-1 text-sm font-medium">Large order starts at this many machines <InfoTip term="large-order-down-payment" />
         <input type="number" min={1} max={1000} name="largeOrderMachineThreshold" defaultValue={settings.largeOrderMachineThreshold} required className="rounded-control border border-line p-2" />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">Large-order full refund window (hours)
+        <input type="number" min={1} max={720} name="largeOrderCancellationFullRefundHours" defaultValue={settings.largeOrderCancellationFullRefundHours} required className="rounded-control border border-line p-2" />
+        <span className="text-ink-soft font-normal">Starting value 72 hours after signing. Afterward the setup charge is ordinarily retained; each cancellation still needs owner approval and contract review.</span>
       </label>
       <label className="flex items-center gap-2 text-sm md:col-span-2">
         <input type="checkbox" name="businessRequiresDownPayment" defaultChecked={settings.businessRequiresDownPayment} />
@@ -38,7 +42,7 @@ export function SigningChargeForm({ settings, editable }: {
       <div className="md:col-span-2 flex items-center gap-3">
 
         <button disabled={!editable || pending} type="submit" className="min-h-11 rounded-control border border-line px-4 font-medium">Save signing settings</button>
-        <button disabled={!editable || pending} name="operation" value="restore" formNoValidate type="submit" className="min-h-11 rounded-control border border-line px-4 text-sm">Restore $45 and five machines</button>
+        <button disabled={!editable || pending} name="operation" value="restore" formNoValidate type="submit" className="min-h-11 rounded-control border border-line px-4 text-sm">Restore signing defaults</button>
       </div>
     </form>
     {state.error ? <p role="alert" className="text-sm text-danger">{state.error}</p> : null}

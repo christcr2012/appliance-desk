@@ -17,6 +17,9 @@ export async function saveSigningChargeSettingsAction(
     const reset = form.get("operation") === "restore";
     const setupFeeCents = reset ? 4500 : parseDollarInput(get(form, "setupFeeDollars"), 1_000_000);
     const threshold = reset ? 5 : Number(get(form, "largeOrderMachineThreshold"));
+    const refundHours = reset ? 72 : Number(get(form, "largeOrderCancellationFullRefundHours"));
+    if (!Number.isInteger(refundHours) || refundHours < 1 || refundHours > 720)
+      throw new Error("Enter a full-refund window from 1 to 720 hours.");
     if (!Number.isInteger(threshold) || threshold < 1 || threshold > 1000)
       throw new Error("Enter a machine threshold from 1 to 1,000.");
     const taxTreatment = reset ? "UNDECIDED" : get(form, "setupFeeTaxTreatment");
@@ -38,6 +41,7 @@ export async function saveSigningChargeSettingsAction(
         data: {
           administrativeSetupFeeCents: setupFeeCents,
           largeOrderMachineThreshold: threshold,
+          largeOrderCancellationFullRefundHours: refundHours,
           businessRequiresDownPayment,
           setupFeeTaxTreatment: taxTreatment,
           setupFeeTaxDecisionNote: note || null,
@@ -49,10 +53,11 @@ export async function saveSigningChargeSettingsAction(
         oldValue: {
           fee: settings.administrativeSetupFeeCents,
           threshold: settings.largeOrderMachineThreshold,
+          cancellationHours: settings.largeOrderCancellationFullRefundHours,
           business: settings.businessRequiresDownPayment,
           taxTreatment: settings.setupFeeTaxTreatment,
         },
-        newValue: { fee: setupFeeCents, threshold, business: businessRequiresDownPayment,
+        newValue: { fee: setupFeeCents, threshold, cancellationHours: refundHours, business: businessRequiresDownPayment,
           taxTreatment, decisionNote: note },
       }});
     });

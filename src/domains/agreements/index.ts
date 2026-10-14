@@ -693,6 +693,21 @@ export async function closeAgreementInTx(
   const agreement = await lockRentalAgreementInTx(tx, agreementId);
   const check = canTransitionAgreementStatus(agreement.status, newStatus);
   if (!check.ok) throw new Error(check.reason);
+  // Generic cancellation (auto-renewals, old callers) must never silently
+  // release a paid, undelivered agreement without an owner-reviewed liability.
+  if (newStatus === "CANCELLED" && !agreement.firstDeliveredOn) {
+    const paid = await tx.agreementSigningPayment.findUnique({
+      where: { agreementId }, select: { status: true },
+    });
+    if (paid?.status === "SETTLED") {
+      const approval = await tx.preDeliveryCancellation.findUnique({
+        where: { agreementId }, select: { agreementId: true },
+      });
+      if (!approval) throw new Error(
+        "This undelivered agreement has collected money. Use the owner cancellation and refund review."
+      );
+    }
+  }
   if (agreement.status === "ACTIVE") {
     const waiting = await tx.rentalAgreement.findFirst({
       where: { renewedFromAgreementId: agreementId, status: "SCHEDULED" },

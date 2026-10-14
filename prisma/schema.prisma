@@ -922,6 +922,7 @@ model RentalAgreement {
   signingPaymentObligation AgreementSigningPayment?
   signingDownPaymentCredit SigningDownPaymentCredit?
   signingFirstInvoiceApplication SigningFirstInvoiceApplication?
+  preDeliveryCancellation PreDeliveryCancellation?
 
   signature   SignatureRecord?
   jobs        Job[]
@@ -1067,6 +1068,26 @@ model EarlyReturnResolution {
   createdAt          DateTime @default(now())
 
   @@index([jobId])
+}
+
+// Owner-approved pre-delivery cancellation review, NOT evidence that money was returned.
+model PreDeliveryCancellation {
+  agreementId        String @id
+  agreement          RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  receiptId          String?
+  orderFingerprint   String?
+  policy             String
+  signedAmountCents  Int
+  refundDueCents     Int
+  retainedCents      Int
+  reason             String
+  reviewedTerms      Boolean
+  approvedByUserId   String
+  approvedAt         DateTime @default(now())
+  // PENDING_EXTERNAL_REFUND is an unpaid liability; never a Stripe refund claim.
+  refundState        String
+
+  @@index([refundState, approvedAt])
 }
 
 model RentalLine {
@@ -2482,6 +2503,7 @@ model BusinessSettings {
   // W-22A: configuration only; money collection is a separate guarded integration.
   administrativeSetupFeeCents Int @default(4500)
   largeOrderMachineThreshold  Int @default(5)
+  largeOrderCancellationFullRefundHours Int @default(72)
   businessRequiresDownPayment Boolean @default(true)
   setupFeeTaxTreatment String @default("UNDECIDED")
   setupFeeTaxDecisionNote String?
