@@ -66,6 +66,7 @@ export async function prepareDraftSigningChargeSnapshots(userId: string, agreeme
     });
     const overrides = await tx.signingSetupFeeOverride.findMany({
       where: { agreementId: { in: ids } },
+      orderBy: { agreementId: "asc" }, // Stable fingerprint across PostgreSQL plans.
       select: { agreementId: true, setupFeeCents: true, reason: true },
     });
     const addressByAgreement = new Map(agreements.map(row => [row.id, row.serviceAddressId]));

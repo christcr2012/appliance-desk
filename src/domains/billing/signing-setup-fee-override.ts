@@ -35,7 +35,22 @@ export async function saveSigningSetupFeeOverride(
       agreements.some(row => row.status !== "DRAFT")) throw new Error("Every order agreement must remain a draft.");
     await tx.$queryRaw`SELECT "id" FROM "RentalAgreement"
       WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
-    const onAddress = agreements.filter(row => row.serviceAddressId === serviceAddressId);
+    // Recheck after row locking: a concurrent send/cancel must not allow
+    // adjustments based on a previously observed DRAFT status.
+    const locked = await tx.rentalAgreement.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, status: true, customerId: true, sourceEstimateId: true,
+        serviceAddressId: true },
+      orderBy: { id: "asc" },
+    });
+    if (locked.length !== agreements.length || locked.some((row, i) =>
+      row.id !== agreements[i].id || row.status !== "DRAFT" ||
+      row.customerId !== target.customerId ||
+      row.sourceEstimateId !== target.sourceEstimateId ||
+      row.serviceAddressId !== agreements[i].serviceAddressId)) {
+      throw new Error("The draft order changed during review. Refresh before adjusting fees.");
+    }
+    const onAddress = locked.filter(row => row.serviceAddressId === serviceAddressId);
     if (!onAddress.length) throw new Error("This delivery location does not belong to the draft order.");
     const canonicalId = onAddress[0].id;
     const existing = await tx.signingSetupFeeOverride.findMany({
