@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readQueue, planQueue, nextBoundary, run } from './session-status.mjs';
+import { readQueue, planQueue, run } from './session-status.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -46,9 +46,8 @@ test('invalid, duplicate, missing, unknown and cyclic queue entries are refused'
   for (const text of ['none', block([]) + block([]), block([row(), row()]), block([{ ...row(), requiredRevision: 'main' }]), block([{ ...row(), dependsOn: ['MISSING'] }]), block([{ ...row(), dependsOn: ['READ'] }]), block([{ ...row(), procedure: '' }])]) assert.throws(() => readQueue(text));
   assert.deepEqual(readQueue(block([])), []);
 });
-test('five-PR boundary uses actual allocation; no special six-PR case', () => {
-  assert.equal(nextBoundary(104), 105); assert.equal(nextBoundary(105), 110);
-  assert.throws(() => nextBoundary(-1)); assert.throws(() => nextBoundary(1.5));
+test('PR count is informational and cannot dictate a session boundary', () => {
+  assert.doesNotMatch(run.toString(), /Next session boundary/);
 });
 test('real git refs and ancestry drive the offline CLI without network/mutations', () => {
   const root = mkdtempSync(join(tmpdir(), 'session-status-'));
@@ -62,7 +61,7 @@ test('real git refs and ancestry drive the offline CLI without network/mutations
     writeFileSync(join(root, 'docs/STATUS.md'), block([row('FIRST', first), row('SECOND', second)]));
     const before = git('status', '--porcelain');
     const output = run(root, ['--deployed', first, '--state', 'READY', '--latest-pr', '104']);
-    assert.match(output, /FIRST DEPLOYED_CANDIDATE_CHECK_GATES/); assert.match(output, /SECOND WAIT_RELEASE_OR_FETCH_HISTORY/); assert.match(output, /#105/);
+    assert.match(output, /FIRST DEPLOYED_CANDIDATE_CHECK_GATES/); assert.match(output, /SECOND WAIT_RELEASE_OR_FETCH_HISTORY/); assert.match(output, /Latest observed PR: #104 \(informational only/); assert.doesNotMatch(output, /Next session boundary/);
     assert.equal(git('status', '--porcelain'), before);
     assert.match(run(root, []), /VERIFY_DEPLOYMENT/);
     assert.throws(() => run(root, ['--deployed', first])); assert.throws(() => run(root, ['--deployed', first, '--state', 'FAKE'])); assert.throws(() => run(root, ['--latest-pr', '1.5']));
