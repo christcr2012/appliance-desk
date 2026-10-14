@@ -34,6 +34,7 @@ describe.skipIf(!enabled)("W-22A signing settings on disposable Postgres", () =>
       setupFeeTaxApprovedAt: old.setupFeeTaxApprovedAt,
       setupFeeTaxAdviserReference: old.setupFeeTaxAdviserReference,
     } });
+    await prisma.setupFeeTaxDecisionVersion.deleteMany({ where: { ownerUserId: owner } });
     await prisma.auditLog.deleteMany({ where: { userId: { in: [owner, staff] } } });
     await prisma.user.deleteMany({ where: { id: { in: [owner, staff] } } });
   });
@@ -81,6 +82,7 @@ describe.skipIf(!enabled)("W-22A signing settings on disposable Postgres", () =>
     const approved = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     expect(approved.setupFeeTaxApprovedAt).not.toBeNull();
     expect(approved.setupFeeTaxAdviserReference).toContain("IN79");
+    expect(await prisma.setupFeeTaxDecisionVersion.count({ where: { ownerUserId: owner, treatment: "TAXABLE" } })).toBe(1);
     expect((await prisma.auditLog.findFirst({where:{userId:owner,action:"settings.signing_charges.update"},orderBy:{createdAt:"desc"}}))?.newValue).toEqual(expect.objectContaining({ taxTreatment: "TAXABLE" }));
     current = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     const reset = form(current.updatedAt);

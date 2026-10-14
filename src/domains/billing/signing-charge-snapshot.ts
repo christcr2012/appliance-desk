@@ -1,4 +1,4 @@
-import { effectiveSetupTaxTreatment } from "./setup-tax-approval";
+import { getEffectiveSetupTaxTreatmentInTx } from "./setup-tax-policy-version";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -68,7 +68,7 @@ export async function prepareDraftSigningChargeSnapshots(userId: string, agreeme
       setupFeeCents: settings.administrativeSetupFeeCents,
       largeOrderMachineThreshold: settings.largeOrderMachineThreshold,
       businessRequiresDownPayment: settings.businessRequiresDownPayment,
-      setupFeeTaxTreatment: effectiveSetupTaxTreatment(settings),
+      setupFeeTaxTreatment: await getEffectiveSetupTaxTreatmentInTx(tx, new Date()),
     };
     const plan = calculateDraftSigningPreview({
       agreements: agreements as DraftSigningAgreement[],

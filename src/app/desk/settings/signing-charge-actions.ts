@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { parseDollarInput } from "@/lib/money-ui";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { requireRole } from "@/lib/session";
+import { businessDateKey } from "@/lib/business-date";
 import { parseSetupTaxOwnerApproval } from "@/domains/billing/setup-tax-owner-approval";
 export type SigningSettingsState = { error: string; success: string };
 const get = (form: FormData, name: string) => {
@@ -31,13 +32,14 @@ export async function saveSigningChargeSettingsAction(
       throw new Error("Choose a valid tax decision.");
     const note = reset ? "" : get(form, "setupFeeTaxDecisionNote");
     if (note.length > 500) throw new Error("Record no more than 500 characters of CPA guidance.");
+    const decisionTime = new Date();
     const approval = parseSetupTaxOwnerApproval({
       treatment: taxTreatment, note,
       confirmedOn: get(form, "setupFeeTaxConfirmedOn"),
       effectiveFrom: get(form, "setupFeeTaxEffectiveFrom"),
       reference: get(form, "setupFeeTaxAdviserReference"),
       attested: form.get("setupFeeTaxOwnerAttested") === "on",
-    });
+    }, decisionTime);
     const expected = new Date(get(form, "updatedAt"));
     if (!Number.isFinite(expected.getTime())) throw new Error("Refresh settings before saving.");
     const businessRequiresDownPayment = reset || form.get("businessRequiresDownPayment") === "on";
@@ -46,6 +48,9 @@ export async function saveSigningChargeSettingsAction(
       await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = ${"singleton"} FOR UPDATE`;
       const settings = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
       if (expected.getTime() !== settings.updatedAt.getTime()) throw new Error("Settings changed. Refresh and try again.");
+      const appliesNow = taxTreatment === "UNDECIDED" ||
+        (approval.setupFeeTaxEffectiveFrom !== null &&
+          approval.setupFeeTaxEffectiveFrom.getTime() <= new Date().getTime());
       await tx.businessSettings.update({
         where: { id: "singleton" },
         data: {
@@ -54,14 +59,36 @@ export async function saveSigningChargeSettingsAction(
           largeOrderCancellationFullRefundHours: refundHours,
           businessRequiresDownPayment,
           setupFeeTaxPlanningTreatment: planningTreatment,
-          setupFeeTaxTreatment: taxTreatment,
-          setupFeeTaxDecisionNote: approval.setupFeeTaxDecisionNote,
-          setupFeeTaxConfirmedOn: approval.setupFeeTaxConfirmedOn,
-          setupFeeTaxEffectiveFrom: approval.setupFeeTaxEffectiveFrom,
-          setupFeeTaxApprovedAt: approval.setupFeeTaxApprovedAt,
-          setupFeeTaxAdviserReference: approval.setupFeeTaxAdviserReference,
+          ...(appliesNow ? {
+            setupFeeTaxTreatment: taxTreatment,
+            setupFeeTaxDecisionNote: approval.setupFeeTaxDecisionNote,
+            setupFeeTaxConfirmedOn: approval.setupFeeTaxConfirmedOn,
+            setupFeeTaxEffectiveFrom: approval.setupFeeTaxEffectiveFrom,
+            setupFeeTaxApprovedAt: approval.setupFeeTaxApprovedAt,
+            setupFeeTaxAdviserReference: approval.setupFeeTaxAdviserReference,
+          } : {}),
         },
       });
+      const now = new Date();
+      const effectiveFromKey = approval.setupFeeTaxEffectiveFrom
+        ? approval.setupFeeTaxEffectiveFrom.toISOString().slice(0, 10)
+        : businessDateKey(now);
+      if (taxTreatment === "UNDECIDED") {
+        // A revocation also cancels previously scheduled successor policies.
+        await tx.setupFeeTaxDecisionVersion.updateMany({
+          where: { effectiveFromKey: { gt: businessDateKey(now) }, cancelledAt: null },
+          data: { cancelledAt: now },
+        });
+      }
+      await tx.setupFeeTaxDecisionVersion.create({ data: {
+        treatment: taxTreatment,
+        effectiveFromKey,
+        cpaConfirmedOnKey: approval.setupFeeTaxConfirmedOn?.toISOString().slice(0, 10) ?? null,
+        decisionNote: approval.setupFeeTaxDecisionNote,
+        adviserReference: approval.setupFeeTaxAdviserReference,
+        ownerApprovedAt: now,
+        ownerUserId: session.user.id,
+      }});
       await tx.auditLog.create({ data: {
         userId: session.user.id, action: "settings.signing_charges.update",
         entityType: "BusinessSettings", entityId: "singleton",
@@ -75,7 +102,8 @@ export async function saveSigningChargeSettingsAction(
           taxReview: settings.setupFeeTaxApprovedAt?.toISOString() ?? "UNDECIDED",
         },
         newValue: { fee: setupFeeCents, threshold, cancellationHours: refundHours, business: businessRequiresDownPayment,
-          taxTreatment, planningTreatment, decisionNote: approval.setupFeeTaxDecisionNote,
+          taxTreatment, planningTreatment, futureEffective: !appliesNow,
+          decisionNote: approval.setupFeeTaxDecisionNote,
           cpaConfirmedOn: approval.setupFeeTaxConfirmedOn?.toISOString() ?? null,
           effectiveFrom: approval.setupFeeTaxEffectiveFrom?.toISOString() ?? null,
           ownerApprovedAt: approval.setupFeeTaxApprovedAt?.toISOString() ?? null,
@@ -83,7 +111,7 @@ export async function saveSigningChargeSettingsAction(
       }});
     });
     revalidatePath("/desk/settings");
-    return { error: "", success: "Signing charge settings saved. Live collection is still off." };
+    return { error: "", success: "Signing settings and any approved policy revision saved. Separate customer and LIVE payment gates remain enforced." };
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     return { error: /^(Enter|Choose|Record|Confirm|Provide|Refresh|Settings changed|The dollar amount)/.test(message)

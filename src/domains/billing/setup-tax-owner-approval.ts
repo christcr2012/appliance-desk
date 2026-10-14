@@ -1,3 +1,5 @@
+import { businessDateFromKey } from "@/lib/business-date";
+
 export type SetupTaxApprovalForm = {
   treatment: string;
   note: string;
@@ -6,11 +8,9 @@ export type SetupTaxApprovalForm = {
   reference: string;
   attested: boolean;
 };
-const dateKey = /^\d{4}-\d{2}-\d{2}$/;
+// Date-only owner fields are Colorado calendar dates, never midnight UTC.
 function date(value: string): Date | null {
-  if (!dateKey.test(value)) return null;
-  const d = new Date(value + "T00:00:00.000Z");
-  return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === value ? d : null;
+  return businessDateFromKey(value);
 }
 /** Owner acknowledgement is required each time a decided policy is saved.
  * No assumed or invented professional review; any undecided save clears prior approval. */

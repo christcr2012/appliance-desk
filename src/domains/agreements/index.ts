@@ -8,6 +8,7 @@ import {
 } from "@/domains/billing/subscription-end";
 import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { assertCurrentSigningPolicyInTx } from "@/domains/billing/signing-business-use-gate";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
 import { offerMatchesFrozenEvidence } from "./signing-offer-proof";
 import { ensureSignedDeliveryDraftInTx } from "./signed-delivery";
@@ -486,6 +487,8 @@ export async function sendForSignature(userId: string, agreementId: string) {
     if (!signingLine) throw new Error("Frozen signing charges are not available.");
 
     const taxDate = new Date();
+    // A policy may have changed after the order was frozen.
+    await assertCurrentSigningPolicyInTx(tx, frozen, taxDate);
     await assertTaxReadyForAgreement(tx, agreementId, taxDate);
     const taxRateMilliPercent =
       await combinedRentalTaxRateMilliPercentForAgreement(
@@ -592,6 +595,9 @@ export async function signAgreement(
     });
     if (!line || !offerMatchesFrozenEvidence(offered, line))
       throw new Error("The frozen signing agreement is no longer valid.");
+    // Unsent and unsigned agreements cannot bypass a subsequently revoked
+    // CPA decision. Existing signed agreements keep their historical amounts.
+    await assertCurrentSigningPolicyInTx(tx, frozen, new Date());
     const signedAt = new Date();
     const signResult = await tx.signatureRecord.updateMany({
       where: {

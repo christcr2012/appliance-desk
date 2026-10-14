@@ -52,6 +52,17 @@ remain separate. Owner guidance changes affect eligible new drafts,
 not already signed obligations. Missing evidence is a business-use
 restriction, **not** a software development blocker.
 
+The parallel \`SetupFeeTaxDecisionVersion\` records immutable successive
+owner-approved tax treatments by Colorado-local \`effectiveFromKey\` and
+\`cpaConfirmedOnKey\`, with decision note, adviser reference, approving owner
+ID/time, and cancellation timestamp. New future-dated versions do **not**
+supersede the current effective version prematurely; a revoked/undecided
+version blocks affected new customer actions and cancels future successors.
+The send-for-signature transaction rechecks the effective policy against
+the frozen signing evidence under a shared settings lock; changes after freeze
+cannot silently reach the customer. The separate legacy singleton fields
+remain for UI continuity, not a substitute for the version history.
+
 ## Auth & people
 
 - **User** — anyone who can log in: Chris (`OWNER`), any staff he adds

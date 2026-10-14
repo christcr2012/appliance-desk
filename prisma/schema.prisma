@@ -940,6 +940,23 @@ model RentalAgreement {
 }
 
 // W-22B: independently attributed draft signing amounts. Not a paid receipt.
+// Owner-attested CPA determinations for administrative setup tax. Policy history
+// uses Colorado-local YYYY-MM-DD keys, never UTC-midnight-as-business-midnight.
+model SetupFeeTaxDecisionVersion {
+  id                  String @id @default(cuid())
+  effectiveFromKey    String
+  cpaConfirmedOnKey   String?
+  treatment           String
+  decisionNote        String?
+  adviserReference    String?
+  ownerApprovedAt     DateTime @default(now())
+  ownerUserId         String
+  cancelledAt         DateTime?
+  createdAt           DateTime @default(now())
+
+  @@index([effectiveFromKey, ownerApprovedAt])
+}
+
 model AgreementSigningCharge {
   id                   String @id @default(cuid())
   agreementId          String @unique
@@ -2515,6 +2532,7 @@ model BusinessSettings {
   setupFeeTaxDecisionNote String?
   // Research-based suggestion is separate from owner approval of real tax treatment.
   setupFeeTaxPlanningTreatment String @default("TAXABLE")
+  // Append-only, owner-attributed rule versions; future rules do not preempt current ones.
   // Unverified prior settings do not authorize real-business use. Owner can record later CPA proof.
   setupFeeTaxConfirmedOn DateTime?
   setupFeeTaxEffectiveFrom DateTime?

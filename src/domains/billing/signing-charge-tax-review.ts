@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
 import { assessPreparedSigningCharges } from "./signing-charge-readiness";
-import { effectiveSetupTaxTreatment } from "./setup-tax-approval";
+import { getEffectiveSetupTaxTreatmentInTx } from "./setup-tax-policy-version";
 import { reviewSigningFeeTax, type SigningFeeTaxReview } from "./signing-charge-tax-evidence";
 import { assembleSigningOrderDraft, type SigningOrderDraftContract } from "./signing-order-draft-contract";
 
@@ -56,8 +56,7 @@ export async function getDraftSigningTaxReviewInTx(
   }
   // An old prepared snapshot, or a manually selected tax choice with no
   // actual CPA evidence, must never make the affected real-business path ready.
-  const settings = await tx.businessSettings.findUnique({ where: { id: "singleton" } });
-  const approvedTreatment = effectiveSetupTaxTreatment(settings, effectiveOn);
+  const approvedTreatment = await getEffectiveSetupTaxTreatmentInTx(tx, effectiveOn);
   const reviewMissing = charges.some(row => row.setupFeeCents > 0 &&
     (approvedTreatment === "UNDECIDED" || row.setupFeeTaxTreatment !== approvedTreatment));
   const readiness = assessPreparedSigningCharges(agreements.map((row) => row.id), charges);

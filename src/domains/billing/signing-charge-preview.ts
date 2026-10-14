@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { effectiveSetupTaxTreatment } from "./setup-tax-approval";
+import { getEffectiveSetupTaxTreatment } from "./setup-tax-policy-version";
 import {
   buildSigningChargePlan,
   DEFAULT_SIGNING_CHARGE_SETTINGS,
@@ -119,7 +119,7 @@ export async function getDraftSigningChargePreview(agreementId: string) {
       setupFeeCents: settings?.administrativeSetupFeeCents ?? DEFAULT_SIGNING_CHARGE_SETTINGS.setupFeeCents,
       largeOrderMachineThreshold: settings?.largeOrderMachineThreshold ?? DEFAULT_SIGNING_CHARGE_SETTINGS.largeOrderMachineThreshold,
       businessRequiresDownPayment: settings?.businessRequiresDownPayment ?? DEFAULT_SIGNING_CHARGE_SETTINGS.businessRequiresDownPayment,
-      setupFeeTaxTreatment: effectiveSetupTaxTreatment(settings),
+      setupFeeTaxTreatment: await getEffectiveSetupTaxTreatment(),
     },
   });
 }
