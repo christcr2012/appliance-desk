@@ -1,5 +1,20 @@
 # STATUS — current work, blockers and next action
 
+## October 14 checked release: scheduler missed; reliability repair pending
+
+The normal 00:01 America/Denver release never generated a scheduled Actions
+run on October 14. Verified main f4cd4ea has passing exact-head ci and
+release-policy. Live remains 7e0d99f and Vercel production READY still serves
+that October 13 snapshot. GitHub documents dropped/delayed scheduled events
+near the hour; this is a likely platform-level cause, not a verified failure
+log. The corrective release workflow adds 00:19 and 01:17 Denver same-day
+fallbacks plus an owner-only dated recovery dispatch. Tests preserve the
+atomic daily marker, CI exact-head, ancestry and no-force protections.
+**No October 14 release is claimed** until live, Vercel READY and the
+production domain are independently verified. D17 refund-reconciliation
+work continues on its separate isolated branch.
+
+
 
 ## October 13 verified release and W-22D16 implementation (current)
 
