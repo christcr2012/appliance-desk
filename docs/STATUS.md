@@ -1,5 +1,26 @@
 # STATUS — current work, blockers and next action
 
+## October 14 release recovery — live verified, trigger repair pending PR #438
+
+The scheduled 00:01 Denver event was absent on October 14. Owner-authorized
+same-day recovery subsequently fast-forwarded main and live to the checked
+`f4cd4ea1bc984b0bf01cecd0599cf13f4f6d5e20`. The dated
+`live-promotion/2026-10-14` Git tag independently resolves to that SHA.
+Vercel deployment `dpl_BBHMiZJUn9jEtTPwssR3g1yP9KbT` is READY
+at the exact live commit, with the production aliases
+`robinsonappliancerentals.com` and `www.robinsonappliancerentals.com`
+assigned and no alias error. This is release/deployment evidence,
+not authenticated Stripe/customer workflow acceptance.
+
+PR #438 fixes the missed trigger with bounded Denver and UTC fallbacks,
+owner-only manual recovery, and a checked no-op daily receipt to prevent
+extra intraday promotions if the 00:01 run succeeded with no changes.
+Existing exact-main ci and release-policy, atomic dated marker, ancestry
+checks, production/spending gates and no-force rules remain mandatory.
+W-22D17 manual/Stripe TEST refund evidence reconciliation remains
+independent and has not moved any customer funds.
+
+
 
 ## October 13 verified release and W-22D16 implementation (current)
 
