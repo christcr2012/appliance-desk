@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "preflight": "node scripts/preflight.mjs",
-    "check:preflight": "node --test scripts/preflight.test.mjs scripts/probe-db.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs scripts/vercel-ignore-build.test.mjs scripts/work-session.test.mjs scripts/preflight-evidence.test.mjs scripts/check-secrets.test.mjs scripts/install-worktree.test.mjs",
+    "check:preflight": "node --test scripts/preflight.test.mjs scripts/probe-db.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs scripts/vercel-ignore-build.test.mjs scripts/work-session.test.mjs scripts/preflight-evidence.test.mjs scripts/check-secrets.test.mjs scripts/install-worktree.test.mjs && npm run check:session",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -30,7 +30,9 @@
     "test:browser": "node scripts/preflight.mjs --browser",
     "check:quick": "node scripts/preflight.mjs --quick",
     "work": "node scripts/work-session.mjs",
-    "check:work": "node scripts/work-session.mjs check"
+    "check:work": "node scripts/work-session.mjs check",
+    "session:status": "node scripts/session-status.mjs",
+    "check:session": "node --test scripts/session-status.test.mjs && node scripts/session-status.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
