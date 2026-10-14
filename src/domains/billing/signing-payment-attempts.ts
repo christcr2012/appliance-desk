@@ -71,8 +71,13 @@ export async function prepareSigningPaymentAttempt(
     const previous = await tx.signingPaymentAttempt.findFirst({
       where: { agreementId },
       orderBy: { attemptNumber: "desc" },
-      select: { attemptNumber: true },
+      select: { attemptNumber: true, status: true },
     });
+    // A provider-uncertain result cannot become another charge merely by
+    // requesting a fresh attempt. Hold this under the same obligation lock.
+    if (previous && ["UNKNOWN", "SUCCEEDED"].includes(previous.status)) {
+      throw new Error("The preceding signing payment may have succeeded. Reconcile its authoritative receipt before any retry.");
+    }
     if (previous && previous.attemptNumber >= 100) {
       throw new Error("Payment retries require owner investigation.");
     }

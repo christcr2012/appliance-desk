@@ -48,6 +48,14 @@ describe("W-22 signing payment To do", () => {
     expect(pending.severity).toBe("medium");
     expect(pending.dueOn).toBeUndefined();
     expect(pending.detail).toContain("not a receipt");
+    const uncertain = signingPaymentDueItem({
+      agreementId: "unknown-1", totalCents: 4500, signedAt, customerName: "Taylor",
+      latestAttempt: { updatedAt: new Date("2026-10-13T19:00:00Z"), status: "UNKNOWN", failureCode: null },
+    });
+    expect(uncertain).toMatchObject({
+      severity: "high", primaryAction: { label: "Reconcile uncertain payment" },
+    });
+    expect(uncertain.detail).toContain("before any new collection");
     const stripeFailed = signingPaymentDueItem({
       agreementId: "failed-2", totalCents: 4500, signedAt, customerName: "Taylor",
       latestAttempt: { updatedAt: new Date("2026-10-13T19:00:00Z"), status: "FAILED", failureCode: "STRIPE_ASYNC_PAYMENT_FAILED" },

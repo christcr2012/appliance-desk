@@ -1,3 +1,20 @@
+## Payment UNKNOWN/FAILED recovery — scoped W-22FIN continuation
+
+OWNER/ADMIN agreement view now distinguishes a verified receipt, failure,
+provider PENDING/uncertain-remote-result/SUCCEEDED-without-local-receipt, unmatched prior
+attempt, and no attempt. Provider-uncertain states cannot offer manual
+collection or create a second attempt; `prepareSigningPaymentAttempt` also
+refuses any anomalous SUCCEEDED-without-receipt under its obligation lock; the
+DB rejects UNKNOWN as a stored attempt state, while remote UNKNOWN must stay
+PENDING until authoritative resolution (not just UI wording).
+A final FAILED attempt may be retried under a new durable identity only after
+provider confirmation; a verified full offline receipt needs explicit owner
+attestation. Owner Today/exception view shows urgent uncertain results and
+points to the specific agreement without exposing provider secrets.
+Pure policy tests and isolated PostgreSQL UNKNOWN denial/final-failure replay
+are required. No provider API, LIVE charge, refund, new customer message or
+first-invoice credit is inferred. Full W-22FIN quote integration remains.
+
 ## Verified cross-location customer and owner offer readback — PR #453
 
 Both signing URL and owner agreement view now share one verified, customer-

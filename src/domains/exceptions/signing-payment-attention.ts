@@ -17,23 +17,26 @@ export function signingPaymentDueItem(row: {
   const href = "/desk/agreements/" + encodeURIComponent(row.agreementId);
   const failed = row.latestAttempt?.status === "FAILED";
   const pending = row.latestAttempt?.status === "PENDING";
+  const uncertain = ["UNKNOWN","SUCCEEDED"].includes(row.latestAttempt?.status ?? "");
   const failureAt = failed ? row.latestAttempt?.updatedAt : undefined;
   return {
     category: "SIGNING_PAYMENT_DUE",
-    severity: failed ? "high" : "medium",
-    title: (failed ? "Signing payment failed — " : pending ? "Signing payment awaiting verification — " : "Signing payment awaiting collection — ") + row.customerName,
+    severity: failed || uncertain ? "high" : "medium",
+    title: (failed ? "Signing payment failed — " : uncertain ? "Signing payment needs reconciliation — " : pending ? "Signing payment awaiting verification — " : "Signing payment awaiting collection — ") + row.customerName,
     detail: failed
       ? (row.latestAttempt?.failureCode === "STRIPE_ASYNC_PAYMENT_FAILED"
           ? "Stripe reported an unsuccessful asynchronous signing payment. " : "The latest signing payment attempt failed. ") +
         "Verify the provider outcome and arrange a new secure collection from the agreement; do not assume money was received or schedule delivery automatically."
-      : pending
-        ? "The signing payment attempt is pending provider verification. Reconcile its outcome before any new collection; a pending attempt is not a receipt."
-        : "The agreement is signed, but the signing amount has not been recorded as paid. Arrange secure payment and verify collection before treating it as settled.",
+      : uncertain
+        ? "The provider outcome is uncertain or succeeded without a matching settled receipt. Investigate the provider-authoritative result before any new collection; an attempt is not payment."
+        : pending
+          ? "The signing payment attempt is pending provider verification. Reconcile its outcome before any new collection; a pending attempt is not a receipt."
+          : "The agreement is signed, but the signing amount has not been recorded as paid. Arrange secure payment and verify collection before treating it as settled.",
     href,
     amountCents: row.totalCents,
     since: failureAt ?? row.signedAt,
     dueOn: failureAt,
-    primaryAction: { href, label: failed ? "Investigate failed payment" : "Review signing payment" },
+    primaryAction: { href, label: failed ? "Investigate failed payment" : uncertain ? "Reconcile uncertain payment" : "Review signing payment" },
   };
 }
 

@@ -1,3 +1,17 @@
+## W-22FIN signing payment recovery and verified retry guard
+
+Owner/admin agreement and exception workspaces explicitly separate PENDING
+provider results, uncertain remote outcomes, final FAILED attempts and
+verified settled receipts. An attempt with a persisted SUCCEEDED state but no
+reconciled signed receipt cannot silently create a second charge; DB status
+constraints intentionally reject UNKNOWN, so unresolved remote outcomes
+remain PENDING and require provider-authoritative reconciliation. The
+server-side reservation rechecks the attempt state under the existing
+obligation lock. A synthetic failed prior attempt may be retried with a
+fresh idempotent key; owner confirmation of real offline funds remains
+mandatory before recording a receipt. Exact-head CI and provider/customer
+acceptance remain independently pending. W-22FIN remains active; no W-23.
+
 ## October 14 W-22FIN multi-address frozen offer visibility
 
 Customer signing and owner agreement now read one independently verified
@@ -188,6 +202,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "PR #453 source implemented, new isolated browser and pure tests added; required CI/release/authenticated user acceptance not yet claimed."
+  },
+  {
+    "id": "W22FIN-PAYMENT-RECOVERY",
+    "priority": 1,
+    "requiredRevision": "e776e4a3468a3cebda1e1be505606d69125f4567",
+    "task": "After checked release, authenticated owner view shows clear response for PENDING/provider-uncertain/FAILED signing payment; no duplicate attempt under actual unconfirmed provider outcome; safely recover only after confirmed failure and legitimate receipt.",
+    "procedure": "docs/pr-cards/W-22FIN.md",
+    "gates": "No synthetic production charge/receipt/attempt mutation; read-only existing owner TEST evidence first; no autonomous money-out/Stripe LIVE/customer messages",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "PR #454 source implemented against merged #453, with exact-head tests and CI still required before claiming engineering acceptance; production not deployed."
   }
 ]
 ```
