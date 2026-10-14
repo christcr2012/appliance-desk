@@ -120,5 +120,52 @@
       "e2e/signed-delivery-todo.spec.ts"
     ],
     "node": []
-  }
+  },
+  "slices": [
+    {
+      "id": "W-22FIN-POLICY",
+      "outcome": "Owner-reviewed effective-dated mandatory fees, tax policy and all-location charge model",
+      "acceptance": [
+        "Owner-only configuration, reasons and immutable effective versions cover mandatory fee and tax alternatives",
+        "Any unresolved professional determination denies affected binding offers, preserving synthetic preview",
+        "Real PostgreSQL and browser tests prove audits, ownership and nonretroactive signed amounts"
+      ]
+    },
+    {
+      "id": "W-22FIN-QUOTE",
+      "outcome": "Complete owner/customer all-in estimate before approval",
+      "acceptance": [
+        "Before approval each address has mandatory fees, distinct taxes and combined reviewed total",
+        "Incomplete mandatory charges or unknown jurisdiction hide binding totals and block send/approval",
+        "Owner/customer and multi-location browser tests reconcile every amount"
+      ]
+    },
+    {
+      "id": "W-22FIN-APPROVAL",
+      "outcome": "Estimate acceptance and checkout bind to the exact reviewed frozen order",
+      "acceptance": [
+        "No legacy provisional estimate or deposit checkout creates a payable incomplete offer",
+        "Approved terms and signing evidence share tenant-owned immutable amount/fingerprint",
+        "Concurrent/replay/denial PostgreSQL and browser tests prove safe approval and first invoice allocation"
+      ]
+    },
+    {
+      "id": "W-22FIN-RECOVERY",
+      "outcome": "Complete signed-payment and cancellation recovery without duplicate money movement",
+      "acceptance": [
+        "Provider-authoritative pending/failed/uncertain/succeeded states and retries are idempotent",
+        "Owner Today shows actionable reconciliation while wrong-tenant/partial receipts cannot settle",
+        "Cancel/reversal tests preserve money-out approval and signed historical facts"
+      ]
+    },
+    {
+      "id": "W-22FIN-DELIVERY",
+      "outcome": "Verified signing through booked dispatch, delivery and first invoice",
+      "acceptance": [
+        "Owner/staff schedule only a real signed customer's pending delivery without inventing appointment",
+        "Physical dispatch requires verified exact signed payment and handles partial/multi-site delivery",
+        "Disposable PostgreSQL/browser tests reconcile first invoice credit and denial/replay paths"
+      ]
+    }
+  ]
 }

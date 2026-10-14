@@ -211,13 +211,18 @@ references, ordered work, meaningful tests and scoped gates. Open other sections
 ## Roadmap-throughput and context-safe execution — owner correction 2026-10-14
 
 **Completion outranks PR count.** The goal is completed, usable, safely proven product
-functionality, not GitHub activity. Each PR must integrate at least one whole eligible
-roadmap slice; package multiple adjacent small slices from the same approved parent
-outcome when their contract, risk, callers, integration and tests belong together.
-Plan around roughly 500–800 production-code lines per *suitable* cohesive PR,
-plus meaningful tests, as an advisory review-size range, never a minimum, quota,
-or reason for filler code. Larger or smaller coherent boundaries are permitted
-when evidence, risk and testability justify them. Avoid one-helper/one-tool PRs
+functionality, not GitHub activity. Each implementation PR should **average 2–5 genuinely completed approved roadmap
+slices**, grouping adjacent small slices from the same approved parent when their
+contract, risk, callers, integration and tests belong together. One high-risk
+complete slice or a larger coherent bundle may justify an exception: explain it,
+do not rename individual helpers as slices. The **rolling target is 400–800
+meaningful production-code lines added per implementation PR on average**,
+excluding tests, documentation, generated files and formatting-only changes.
+Measure the last five merged implementation PRs plus the proposed PR with
+`npm run pr:progress`. The target is a planning/review expectation, not a
+padding quota, merge veto, hard cap, or substitute for product outcomes.
+A shortfall requires an honest explanation and larger *legitimate* subsequent
+workloads, never unnecessary code. Avoid one-helper/one-tool PRs
 when the remaining compatible slice work can be completed safely together.
 
 **No fixed PR count or multiple-of-five boundary.** Older directions elsewhere
@@ -237,8 +242,13 @@ reported failures in one root-cause-informed correction cycle where possible.
 If repeated CI fixes occur, investigate contract/test drift and reduce the
 *next* PR's risk surface; do not silently split the current work to manufacture
 success. Track complete slices/outcomes, real acceptance closed, remaining
-work, first-pass CI failures, correction pushes and actual review overhead.
-Lines of code and merged PRs are diagnostic statistics, not progress scores.
+engineering, first-pass CI failures, correction pushes and review overhead.
+Update the checked `docs/pr-cards/current-pr-scorecard.json` in each PR:
+list approved slice IDs, proof per acceptance criterion, remaining engineering,
+external acceptance separately and justified workload exceptions. `npm run
+pr:progress -- --check` validates declared IDs and evidence structure; the
+reviewer/CI must verify actual correctness. Source line counts and PR totals
+diagnose undersized workloads, but cannot substitute for full acceptance.
 Every safety, money-out, service autonomy, release and approval gate remains.
 
 ## Working without stalling (mandatory; written with Sol 5.6 at medium effort in mind)
@@ -335,8 +345,9 @@ where, and puts it on his To do list; no Today item may link to a page that does
   B **inside each PR, describing implemented behavior with truthful pending gates** (card, next card, living docs, STATUS — CI checks it), C when a batch finishes (acceptance proved, docs match the
   code, retire what no longer instructs, drift-check the next batch). Changed contracts later work inherits go in
   `docs/designs/CHANGES-SINCE-DESIGN.md`.
-- **PR size (owner, 2026-10-12):** deliver one coherent, independently verifiable outcome. 450–800 production lines
-  is a useful estimate for routine lighter-model work, **not a ceiling, minimum or stopping gate**. Larger cohesive PRs
+- **PR size (updated 2026-10-14):** deliver cohesive, independently verifiable outcomes. Target a
+  rolling **400–800 added production lines and 2–5 fully completed approved roadmap slices
+  per implementation PR on average**, without inventing work, skipping tests, or weakening review. Larger cohesive PRs
   are allowed when the selected model can implement/review/test them reliably; state the integration boundary and
   risk/validation plan before editing. Include adjacent DTO, UI, persistence and regression work needed to finish
   the capability. Split only for concrete independent risk, migration ordering, reviewability or execution limits;
@@ -505,10 +516,9 @@ implemented/tested from deployed/real provider acceptance. Reevaluate blockers
 after relevant owner input, merges and environment changes and automatically
 return newly eligible work to the queue. Inspect the **remaining approved work
 index and dependency graph** before concluding the batch is exhausted; advance
-the highest-priority independent work instead of stopping. An early stop before
-the normal five substantial merged PRs requires concrete evidence of no
-eligible approved work **or** a specific execution limitation, not merely a
-preferred milestone blocked. Do not manufacture work, pad PR count, or request
+the highest-priority independent work instead of stopping. An early stop before finishing the current coherent work requires concrete
+evidence of no eligible approved work **or** a specific execution/context
+limitation, not merely a preferred milestone blocked. Do not manufacture work, pad PR count, or request
 approval that was already given. Carry this rule forward in compact handoffs by
 referring to AGENTS/SESSION-START/STATUS rather than copying this paragraph.
 Hosting limits, daily checked `main`→`live`, preview restrictions, Stripe

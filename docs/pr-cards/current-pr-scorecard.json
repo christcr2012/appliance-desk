@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "kind": "maintenance",
+  "parent": "W-22FIN",
+  "completedSlices": [],
+  "remainingEngineering": [
+    "Continue W-22FIN existing approved outcome; no product slices claimed by this tooling PR."
+  ],
+  "externalAcceptance": [
+    "Preserve existing STATUS release-acceptance queue; no provider/owner proof claimed."
+  ],
+  "workloadException": "Workflow/tooling implementation only; do not count as a product implementation PR.",
+  "evidence": [
+    "Checked repository guidance, measurable Git-based PR statistics and scorecard-validator tests."
+  ]
+}

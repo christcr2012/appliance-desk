@@ -2,7 +2,7 @@
   "version": 1,
   "auditedBase": "b2a06c2",
   "updated": "2026-10-14",
-  "process": "Just-in-time cards from approved contracts; each card includes drift verification and a successor handoff. Session execution and queued deployed acceptance follow docs/SESSION-START.md. Session PR counts are informational only; combine related roadmap slices into complete deliverables and checkpoint for context safety.",
+  "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance.",
   "cards": [
     {
       "id": "T-6D1",

@@ -10,7 +10,8 @@ Continue **W-22FIN**, not W-23: the remaining cohesive engineering is the
 pre-approval all-in quote/mandatory charges and enforceable estimate-to-
 frozen-order acceptance and payment/first invoice sequence. Record exact
 pass/fail and owner/professional limitations without fabricating approval.
-Normal PR cadence ends on #455 if this PR is merged after full required CI.
+Historical handoff: #455 was the last merge of that session; current workload
+targets and session procedures are governed by AGENTS.md and SESSION-START.md.
 
 ## Converted estimate → verified reviewed signing offer — W-22FIN
 
