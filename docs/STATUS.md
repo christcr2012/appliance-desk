@@ -280,6 +280,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "Source PR #455 implementation commit 42a8d744b80e939e5f69dee3cdcce5ddbfd30785 prepared; exact-head CI, checked production release, and authenticated real customer/provider acceptance remain unverified."
+  },
+  {
+    "id": "W22FIN-MANDATORY-OWNER-POLICY",
+    "priority": 4,
+    "requiredRevision": "5bf9efe7a063061ae646149d85a7c721fedfcef4",
+    "task": "After checked READY production ancestry, verify owner-only mandatory-charge policy and estimate review readback; maintain unresolved financial gates.",
+    "procedure": "Authenticate scoped owner; read policy revision and nonpayable per-location estimate review only. Check denied admin/staff mutation in authorized isolated acceptance; never write a production policy fixture.",
+    "gates": "Requires permitted owner identity and verified READY ancestry. No real tax-dependent send, customer collection, public price, or live/provider mutation.",
+    "lastEvidence": "Source implementation and local synthetic tests only; not independently deployed or owner accepted.",
+    "dependsOn": [],
+    "status": "PENDING"
   }
 ]
 ```
