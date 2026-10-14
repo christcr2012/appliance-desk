@@ -29,6 +29,29 @@ self-collected jurisdiction needs its own independently confirmed rule and
 rate. This schema scaffold alone does not satisfy CPA decision IN-79, send
 a tax-inclusive agreement, add Stripe tax rates or activate payment.
 
+## W-22 setup-tax owner evidence and future revisions (2026-10-14)
+
+The additive `20261015233000_w22_setup_tax_owner_approval` migration retains
+all existing settings and introduces a **separate provisional** research-based
+`BusinessSettings.setupFeeTaxPlanningTreatment` (starting `TAXABLE`). This
+field **never** grants customer charge, agreement send or provider approval.
+
+The independent business-use policy is `setupFeeTaxTreatment`, with
+`setupFeeTaxDecisionNote`, `setupFeeTaxConfirmedOn`,
+`setupFeeTaxEffectiveFrom`, `setupFeeTaxApprovedAt` and
+`setupFeeTaxAdviserReference`. Old decided strings without actual
+professional provenance remain unapproved. Only the OWNER can record
+confirmation with explicit acknowledgement, dated evidence and a
+traceable adviser reference; the existing settings optimistic lock, team
+reauthorization and AuditLog preserve who changed what and when.
+Saving `UNDECIDED` revokes the recorded approval; later effective dates
+remain blocked until active. Historical signed snapshots, invoices and
+completed payments are not rewritten. Independent verified address,
+jurisdiction-specific taxability, rate, legal terms and provider gates
+remain separate. Owner guidance changes affect eligible new drafts,
+not already signed obligations. Missing evidence is a business-use
+restriction, **not** a software development blocker.
+
 ## Auth & people
 
 - **User** — anyone who can log in: Chris (`OWNER`), any staff he adds
