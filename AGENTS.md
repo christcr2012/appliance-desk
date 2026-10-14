@@ -208,6 +208,39 @@ references, ordered work, meaningful tests and scoped gates. Open other sections
 `docs/MASTER-ROADMAP.md` → the relevant `docs/PLAN.md` section and design headings. Never read `docs/DECISIONS.md`,
 `docs/archive/` or audit reports end to end; search them for a specific question.
 
+## Roadmap-throughput and context-safe execution — owner correction 2026-10-14
+
+**Completion outranks PR count.** The goal is completed, usable, safely proven product
+functionality, not GitHub activity. Each PR must integrate at least one whole eligible
+roadmap slice; package multiple adjacent small slices from the same approved parent
+outcome when their contract, risk, callers, integration and tests belong together.
+Plan around roughly 500–800 production-code lines per *suitable* cohesive PR,
+plus meaningful tests, as an advisory review-size range, never a minimum, quota,
+or reason for filler code. Larger or smaller coherent boundaries are permitted
+when evidence, risk and testability justify them. Avoid one-helper/one-tool PRs
+when the remaining compatible slice work can be completed safely together.
+
+**No fixed PR count or multiple-of-five boundary.** Older directions elsewhere
+requiring five or ten PRs or PR-number alignment are superseded. Do not invent
+small PRs or pad changes to satisfy a number. Spend the chat's usable context
+on complete outcomes; after each merged PR, preserve an exact recoverable
+checkpoint (branch/head, card/slice coverage, focused and CI proof, open review,
+deployed/live versus source, pending acceptance and next action). Before starting
+another work unit, assess whether the remaining chat context can support its
+implementation, corrections, tests, merge and handoff. If not, finish a clean
+checkpoint instead of beginning work likely to be abandoned. Never use a
+continuation prompt instead of completing currently feasible work.
+
+**Adaptive CI budget and measurement.** Validate focused behavior at meaningful
+code seams, run required complete gates on the final coherent tree and fix all
+reported failures in one root-cause-informed correction cycle where possible.
+If repeated CI fixes occur, investigate contract/test drift and reduce the
+*next* PR's risk surface; do not silently split the current work to manufacture
+success. Track complete slices/outcomes, real acceptance closed, remaining
+work, first-pass CI failures, correction pushes and actual review overhead.
+Lines of code and merged PRs are diagnostic statistics, not progress scores.
+Every safety, money-out, service autonomy, release and approval gate remains.
+
 ## Working without stalling (mandatory; written with Sol 5.6 at medium effort in mind)
 
 1. **Read by section.** Files over ~300 lines (`prisma/schema.prisma`, `docs/designs/BATCH-T.md`, `docs/PLAN.md`,
