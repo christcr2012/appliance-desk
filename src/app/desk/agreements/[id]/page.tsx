@@ -22,6 +22,7 @@ import { prisma } from "@/lib/prisma";
 import { ManualSigningPaymentForm } from "./manual-signing-payment-form";
 import { customerSigningSummary } from "@/domains/portal/signing-status";
 import { SigningPaymentSummary } from "@/components/billing/signing-payment-summary";
+import { signingPaymentRecoveryAdvice } from "@/domains/billing/signing-payment-recovery";
 import { getReviewedSigningOrderReadback } from "@/domains/billing/signing-order-readback";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
 
@@ -53,6 +54,13 @@ export default async function AgreementDetailPage({
   const verifiedSigningSummary = signingPayment
     ? customerSigningSummary(signingPayment, agreement.customer.id)
     : null;
+  const recovery = signingPayment ? signingPaymentRecoveryAdvice({
+    obligationStatus: signingPayment.status,
+    totalCents: signingPayment.totalCents,
+    receiptVerified: verifiedSigningSummary?.status === "RECEIVED",
+    fingerprint: signingPayment.orderFingerprint,
+    latestAttempt: signingPayment.attempts[0] ?? null,
+  }) : null;
   const cancellation = await prisma.preDeliveryCancellation.findUnique({where:{agreementId:agreement.id}});
   const todayParts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Denver", year: "numeric", month: "2-digit", day: "2-digit",
@@ -299,9 +307,18 @@ export default async function AgreementDetailPage({
                 outcome before attempting manual collection; no duplicate receipt is allowed.
               </p>
             )}
-          {signingPayment.status === "AWAITING_PAYMENT" && signingPayment.totalCents > 0 &&
-            (signingPayment.attempts[0]?.status === "FAILED" ||
-              signingPayment.attempts[0]?.method !== "STRIPE_CHECKOUT") && (
+          {recovery && (
+            <div className="mt-3 rounded-lg border border-line bg-subtle p-3 text-sm" role="status">
+              <h3 className="font-semibold">{recovery.heading}</h3>
+              <p className="mt-1 text-ink-soft">{recovery.explanation}</p>
+              {recovery.providerReconciliationRequired && (
+                <p className="mt-2 font-medium">
+                  Reconcile the provider outcome and signed agreement evidence before retrying or dispatch.
+                </p>
+              )}
+            </div>
+          )}
+          {recovery?.canRecordManual && (
               <ManualSigningPaymentForm agreementId={agreement.id}
                 amountCents={signingPayment.totalCents} receivedOn={localDay} />
             )}

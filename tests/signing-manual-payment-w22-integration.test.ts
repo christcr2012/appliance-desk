@@ -94,6 +94,19 @@ describe.skipIf(!enabled)("W-22D13 exact owner-recorded signing payment (disposa
     expect(await prisma.signingDownPaymentCredit.count({ where: { agreementId } })).toBe(0);
     expect((await prisma.agreementSigningPayment.findUniqueOrThrow({ where: { agreementId } })).status).toBe("AWAITING_PAYMENT");
   });
+  it("does not open a second payment attempt while a prior outcome is UNKNOWN", async () => {
+    await prisma.signingPaymentAttempt.update({ where: { id: attemptId }, data: { status: "UNKNOWN" } });
+    await expect(prepareSigningPaymentAttempt(agreementId, "MANUAL", ownerId))
+      .rejects.toThrow(/Reconcile its authoritative receipt/);
+    expect(await prisma.signingPaymentAttempt.count({ where: { agreementId } })).toBe(1);
+    // A synthetic verified final failure makes a new idempotent retry permissible.
+    // Production cannot arbitrarily rewrite provider outcomes.
+    await prisma.signingPaymentAttempt.update({ where: { id: attemptId }, data: { status: "FAILED" } });
+    const next = await prepareSigningPaymentAttempt(agreementId, "MANUAL", ownerId);
+    expect(next.attemptNumber).toBe(2);
+    attemptId = next.id;
+    expect(await prisma.signingPaymentAttempt.count({ where: { agreementId } })).toBe(2);
+  });
   it("serializes concurrent identical confirmations into exactly one audited cash receipt and one agreement credit", async () => {
     const results = await Promise.all([
       recordManualSigningPayment(payment()), recordManualSigningPayment(payment()),
