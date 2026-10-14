@@ -74,6 +74,41 @@ While CI waits, advance the approved immediate successor; at most two unmerged P
 Follow existing REST/Sandbox fallbacks if local execution is unavailable; report actual
 Actions evidence honestly. Merge only exact-head green checks plus required reviews.
 
+### First-pass validation and review
+
+Before the first publication of a coherent change, use the existing card/packet to
+name each changed boundary, its proving test/fixture and the existing command that
+checks it. Keep this compact; reuse the PR's verification section, not a new ledger.
+
+- Trace inputs through the actual caller, helper/client, provider request and result.
+  Verify method, path/version, scopes, query/body fields, pagination and response shape
+  against the pinned schema/SDK or cited current provider contract **before** adapting
+  fixtures. Test the captured outbound request; a permissive fake is not contract proof.
+- Reuse realistic fixtures with required fields and relationships. Assert meaningful
+  results, denied paths and applicable provider failures/ambiguous writes; prove no
+  unintended call or replay. Never weaken a fake/assertion just to turn CI green.
+- Search changed exports and data shapes for affected callers, fakes, DB adapters,
+  catalogs and tests; update them together. Run existing repository/index/schema/catalog
+  validators plus the affected behavioral tests before the full publication gates.
+- Review the complete diff against the card and applicable security guide before
+  opening the PR. Inspect inherited unresolved findings and all current review threads;
+  record each fix or evidence-backed disposition under the repository's review rules.
+  A reply alone does not resolve a finding; recheck reviews immediately before merge.
+- When CI fails, collect every completed failing job/annotation and trace the root
+  cause before one correction push. Reproduce with the smallest relevant existing
+  command; retain a regression test for an actual behavioral defect. A repeated failure
+  requires new diagnostic evidence, not another speculative fixture edit.
+
+Record exact commands, results and unavailable checks truthfully in the PR. REST-only
+sessions still inspect contracts, fixtures and the full diff before publication, then
+use required exact-head Actions evidence for execution they cannot perform locally.
+Do not invent commands, relax coverage or merge gates, or rerun unchanged passing checks
+unless changes or new evidence invalidate them. Live proof remains in the release queue.
+
+Use the existing `work` packet and `check:quick`/`preflight` selectors; verify
+changed Prisma/domain/API/UI shapes and their fixtures together. DB/browser/build
+requirements remain in PLAYBOOK; no provider or production DB replaces test fixtures.
+
 **PR merge readiness and product acceptance are separate.** A safe implementation PR
 may merge with deployment-dependent proof queued, when all pre-merge gates pass and
 no explicit card/owner rule requires that proof before merge. Keep such a milestone
