@@ -79,6 +79,11 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/activity", role: "OWNER", fixture: "/desk/activity" },
   {
+    path: "/desk/agreements/[id]/cancel", role: "OWNER",
+    fixture: "An undelivered rental agreement in isolated CI storage",
+    manualOnlyReason: "Requires a per-test agreement id and active authenticated owner; the dedicated Playwright spec covers the review and accessibility.",
+  },
+  {
     path: "/desk/agreements/[id]/early-return",
     role: "OWNER",
     fixture: "A generated fixed-term active agreement eligible for early return",
