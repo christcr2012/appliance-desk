@@ -1,5 +1,7 @@
 ## W-22FIN owner mandatory-charge policy and preapproval readiness — implementation checkpoint
 
+A stale local main was also discovered to mislead the rolling progress report; default comparison now uses the verified origin/main ref.
+
 An owner-only dated, append-only and audited policy now records applicability
 decisions for delivery, installation, removal, damage waiver and retail delivery.
 It deliberately does not certify tax, legal terms, pricing publication or the
