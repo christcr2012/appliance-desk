@@ -39,7 +39,7 @@ export function measureDiff(root, from, to, tripleDot = false) {
   return parseNumstat(git(root, 'diff', '--numstat', '-z', '--ignore-all-space', '--no-renames', range));
 }
 
-export function mergedImplementationHistory(root, ref = 'main', count = 5) {
+export function mergedImplementationHistory(root, ref = 'origin/main', count = 5) {
   const commits = git(root, 'log', '--first-parent', '-n', '180', '--format=%H%x09%s', ref).trim().split('\n').filter(Boolean);
   const results = [];
   for (const entry of commits) {
@@ -118,7 +118,7 @@ export function scorecardFromRoot(root) {
   return validateScorecard(JSON.parse(readFileSync(resolve(root, CARD), 'utf8')), packet);
 }
 
-export function renderProgress(root, base = 'origin/main', ref = 'main') {
+export function renderProgress(root, base = 'origin/main', ref = 'origin/main') {
   const card = scorecardFromRoot(root);
   const history = mergedImplementationHistory(root, ref);
   const current = measureDiff(root, base, 'HEAD', true);
@@ -143,7 +143,7 @@ export function renderProgress(root, base = 'origin/main', ref = 'main') {
 }
 
 function main(argv) {
-  let check = false, requireChanged = false, base = 'origin/main', ref = 'main';
+  let check = false, requireChanged = false, base = 'origin/main', ref = 'origin/main';
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--check') check = true;
     else if (argv[i] === '--require-changed') requireChanged = true;

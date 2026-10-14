@@ -1,3 +1,25 @@
+## W-22FIN owner mandatory-charge policy and preapproval readiness — implementation checkpoint
+
+A stale local main was also discovered to mislead the rolling progress report; default comparison now uses the verified origin/main ref.
+
+An owner-only dated, append-only and audited policy now records applicability
+decisions for delivery, installation, removal, damage waiver and retail delivery.
+It deliberately does not certify tax, legal terms, pricing publication or the
+applicability of a given charge at a particular jurisdiction/address. The owner
+estimate page now assembles verified line/address/package counts with setup and
+first-month advance amounts, keeps deposits separate, and explicitly lists all
+missing mandatory charges. It labels the subtotal **NOT all-in or payable** and
+never authorizes customer approval, Stripe, signature or collection. Historical
+signed prices and receipts remain unchanged. See W-22FIN active card and the
+PR scorecard; new disposable DB/browser tests and exact-head CI are pre-merge gates.
+
+**Outstanding engineering in W-22FIN (do not start W-23):** independently
+verified preapproval all-in quote, immutable owner review, customer binding
+acceptance and deposit checkout tied to exact reviewed obligation, full
+multi-site cancellation/retry/first-invoice/delivery reconciliation. Recheck
+only eligible real released acceptance at verified live revision; professional
+IN-79/IN-07 and owner publication/money-out approvals remain separate.
+
 ## October 14 W-22FIN engineering continuation and acceptance handoff
 
 Completed in session: PR #450 owner/customer exact settled signing amount
@@ -260,6 +282,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "Source PR #455 implementation commit 42a8d744b80e939e5f69dee3cdcce5ddbfd30785 prepared; exact-head CI, checked production release, and authenticated real customer/provider acceptance remain unverified."
+  },
+  {
+    "id": "W22FIN-MANDATORY-OWNER-POLICY",
+    "priority": 4,
+    "requiredRevision": "5bf9efe7a063061ae646149d85a7c721fedfcef4",
+    "task": "After checked READY production ancestry, verify owner-only mandatory-charge policy and estimate review readback; maintain unresolved financial gates.",
+    "procedure": "Authenticate scoped owner; read policy revision and nonpayable per-location estimate review only. Check denied admin/staff mutation in authorized isolated acceptance; never write a production policy fixture.",
+    "gates": "Requires permitted owner identity and verified READY ancestry. No real tax-dependent send, customer collection, public price, or live/provider mutation.",
+    "lastEvidence": "Source implementation and local synthetic tests only; not independently deployed or owner accepted.",
+    "dependsOn": [],
+    "status": "PENDING"
   }
 ]
 ```

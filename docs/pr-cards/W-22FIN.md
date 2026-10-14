@@ -1,3 +1,23 @@
+## Owner mandatory-charge versioning and preapproval diagnostics
+
+This policy implementation extends the existing singleton settings/audit
+model, not a second charge ledger. Owner-only mutations serialize under
+the singleton row lock and append effective-dated reasoned policy revisions;
+staff/customer writes are denied. Missing/invalid revisions fail closed.
+Five charge categories remain independently classified; researched provisional
+Colorado tax treatment and retail delivery assumptions never become automatic
+business authority. Private owner estimate review groups real package machines
+and locations, applies the existing one-setup-fee and first-month advance plan,
+and explicitly lists unknown taxes, deposits, services and unverified fees.
+It does **not** claim a complete customer quote, payable estimate, or verified
+tax jurisdiction. Existing signed/frozen contractual evidence is untouched.
+
+Tests: signing-mandatory-policy-w22fin, signing-mandatory-policy-integration-w22fin,
+estimate-all-in-preview-w22fin and browser mandatory-signing-policy spec.
+Production source/CI/hosted/real-provider acceptance remain distinct.
+Continue W-22FIN-QUOTE and W-22FIN-APPROVAL without skipping unresolved
+binding money gates; do not declare the parent finished.
+
 ## Permanent PR #455 handoff
 
 Work finished in this session's #450–#455 integration PRs is listed in

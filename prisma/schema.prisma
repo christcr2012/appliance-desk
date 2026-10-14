@@ -2553,6 +2553,8 @@ model BusinessSettings {
   setupFeeTaxEffectiveFrom DateTime?
   setupFeeTaxApprovedAt DateTime?
   setupFeeTaxAdviserReference String?
+  // Append-only dated decisions about other mandatory charges; not an all-in price or CPA approval.
+  signingMandatoryPolicyVersions Json @default("[]")
   damageWaiverEnabled     Boolean @default(false)
   depositEnabled          Boolean @default(false)
   // Usual visit length in minutes (Batch C P1-A); used when a job has no length of its own.

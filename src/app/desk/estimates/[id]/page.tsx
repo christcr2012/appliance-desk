@@ -8,6 +8,8 @@ import { EstimateLineItemsPanel } from "./line-items-panel";
 import { SendEstimateButton } from "./send-estimate-button";
 import { ConvertEstimatePanel } from "./convert-estimate-panel";
 import { listPackagesForLines } from "@/domains/packages";
+import { getPrivateEstimateAllInReview } from "@/domains/estimates/all-in-review-reader";
+import { OwnerAllInEstimateReview } from "@/components/estimates/owner-all-in-review";
 
 export const metadata = { title: "Estimate" };
 
@@ -20,7 +22,9 @@ export default async function EstimateDetailPage({
 }) {
   await requireRole("OWNER", "ADMIN");
   const { id } = await params;
-  const [estimate, packages] = await Promise.all([getEstimateDetail(id), listPackagesForLines()]);
+  const [estimate, packages, allInReview] = await Promise.all([
+    getEstimateDetail(id), listPackagesForLines(), getPrivateEstimateAllInReview(id),
+  ]);
 
   if (!estimate) {
     notFound();
@@ -139,6 +143,8 @@ export default async function EstimateDetailPage({
           </p>
         </div>
       )}
+
+      {allInReview && <OwnerAllInEstimateReview preview={allInReview} />}
 
       <EstimateLineItemsPanel
         estimateId={estimate.id}
