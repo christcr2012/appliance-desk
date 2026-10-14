@@ -10,6 +10,7 @@ import { createSignedAgreementArtifactInTx } from "@/domains/documents/artifacts
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
 import { offerMatchesFrozenEvidence } from "./signing-offer-proof";
+import { ensureSignedDeliveryDraftInTx } from "./signed-delivery";
 import {
   assertTaxReadyForAgreement,
   combinedRentalTaxRateMilliPercentForAgreement,
@@ -639,6 +640,7 @@ export async function signAgreement(
               : {}),
           },
     });
+    if (!scheduledRenewal && agreement.customerId) await ensureSignedDeliveryDraftInTx(tx, agreement);
     if (agreement.paidInFullInAdvance) {
       await createPrepaidRentInvoiceInTx(tx, agreement.id, signedAt);
     }

@@ -1622,3 +1622,16 @@ is created, and Stripe LIVE/production remains blocked. The approved
 refund cents cannot be edited through the screen. An unpaid return
 remains on Today until evidence is atomically reconciled. Existing
 separate money-out approvals and legal/CPA decisions are unchanged.
+
+## W-22D18 customer signature / delivery handoff
+
+When a new rental is signed, create one genuine unassigned,
+unscheduled DELIVERY job in the signature transaction. Reuse any
+active preexisting delivery visit; never create a new delivery for an
+early renewal. A real owner/admin Today task links that unscheduled job
+until a date is set. It reminds the owner to confirm whether the
+signing payment was actually collected before dispatch; signing alone
+is not a charge receipt. A draft visit has no promised appointment,
+does not send a customer notice and does not start billing or claim
+a completed delivery. The existing dispatch/job-detail screen owns
+the final scheduling decision.

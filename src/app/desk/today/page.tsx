@@ -92,6 +92,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   PAST_DUE_INVOICE: "Past due",
   SIGNING_PAYMENT_DUE: "Signing payment to collect",
   CANCELLATION_REFUND_DUE: "Cancellation refund owed",
+  SIGNED_DELIVERY_UNSCHEDULED: "Signed rental — schedule delivery",
   OVERDUE_JOB: "Overdue job",
   UNREVIEWED_MAINTENANCE_REQUEST: "Needs review",
   UNINSPECTED_RETURN: "Needs inspection",

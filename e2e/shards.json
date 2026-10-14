@@ -48,6 +48,7 @@
       "signing-manual-payment.spec.ts",
       "pre-delivery-cancellation.spec.ts",
       "pre-delivery-refund.spec.ts",
+      "signed-delivery-todo.spec.ts",
       "work-order-print.spec.ts",
       "security-response-headers.spec.ts",
       "accessibility-routes-desk-b.spec.ts",
