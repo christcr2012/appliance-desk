@@ -51,6 +51,7 @@ test('git measures production changes, skips maintenance merges, and finds imple
     write(root,'src/domain.ts','export const owner = 1;\nexport const checkout = 2;\n');
     write(root,'src/component.test.ts','test only\n');
     write(root,'docs/note.md','docs only\n');
+    write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify({...card,evidence:['PR #101 criterion proof in exact-head CI.']}));
     git(root,'add','.');git(root,'commit','-qm','implement');
     const stats=measureDiff(root,baseline,'HEAD');assert.deepEqual(stats,{additions:1,deletions:0,files:1});
     git(root,'checkout','-q','main');git(root,'merge','--no-ff','-m','Merge pull request #101 from test/feat','feat');
@@ -59,10 +60,12 @@ test('git measures production changes, skips maintenance merges, and finds imple
     git(root,'checkout','-q','main');git(root,'merge','--no-ff','-m','Merge pull request #102 from test/docs','docs');
     const history=mergedImplementationHistory(root,'main');
     assert.deepEqual(history.map(x=>x.pr),[101]);
+    assert.equal(history[0].completedSlices,1);
     write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify(card));
     const report=renderProgress(root,baseline,'main');
     assert.match(report,/Rolling production additions average/);
     assert.match(report,/#101 \+1/);
+    assert.match(report,/Rolling declared slice average \(1 evidenced PR scorecards\): 1.0/);
   } finally {rmSync(root,{recursive:true,force:true});}
 });
 test('format-only edits do not inflate meaningful production additions',()=>{

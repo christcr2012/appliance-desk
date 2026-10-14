@@ -50,7 +50,17 @@ export function mergedImplementationHistory(root, ref = 'main', count = 5) {
     if (parents.length < 3) continue;
     const stats = measureDiff(root, parents[1], sha);
     if (!stats.additions && !stats.deletions) continue; // maintenance-only merges are not product implementation samples
-    results.push({ pr: Number(pr[1]), ...stats });
+    // Never reuse a previous PR's completion claims. Require a scorecard changed
+    // by this merge; historical PRs without evidence count as unknown, not zero.
+    let completedSlices = null;
+    if (git(root, 'diff', '--name-only', parents[1], sha, '--', CARD).trim() === CARD) {
+      try {
+        const recorded = JSON.parse(git(root, 'show', sha + ':' + CARD));
+        if (recorded.kind === 'implementation' && Array.isArray(recorded.completedSlices))
+          completedSlices = recorded.completedSlices.length;
+      } catch { /* No supported scorecard history: unknown, never fabricated */ }
+    }
+    results.push({ pr: Number(pr[1]), completedSlices, ...stats });
     if (results.length >= count) break;
   }
   return results;
@@ -99,16 +109,22 @@ export function renderProgress(root, base = 'origin/main', ref = 'main') {
   const card = scorecardFromRoot(root);
   const history = mergedImplementationHistory(root, ref);
   const current = measureDiff(root, base, 'HEAD', true);
+  if (card.kind === 'maintenance' && (current.additions || current.deletions))
+    throw new Error('Production source changed in a maintenance-scoped PR: classify actual implementation work honestly');
   const comparable = card.kind === 'implementation' && (current.additions || current.deletions);
   const sample = (comparable ? [current, ...history].slice(0, 5) : history.slice(0, 5));
   const mean = sample.length ? Math.round(sample.reduce((s, r) => s + r.additions, 0) / sample.length) : null;
+  const sliceSamples = (comparable ? [card.completedSlices, ...history.map(r => r.completedSlices)] : history.map(r => r.completedSlices))
+    .filter(Number.isInteger).slice(0, 5);
+  const meanSlices = sliceSamples.length ? (sliceSamples.reduce((a, b) => a + b, 0) / sliceSamples.length).toFixed(1) : 'not available';
   return [
     'PR progress (offline planning; claims require independent acceptance review)',
     'Current: ' + card.kind + '; source +' + current.additions + '/-' + current.deletions + ' across ' + current.files + ' production files',
     'Declared completed approved slices: ' + card.completedSlices + ' (' + (card.declaredIds.join(', ') || 'none') + ')',
-    'Recent merged implementation PRs: ' + history.map(x => '#' + x.pr + ' +' + x.additions).join(', '),
+    'Recent merged implementation PRs: ' + history.map(x => '#' + x.pr + ' +' + x.additions + ' source, ' + (x.completedSlices ?? 'unknown') + ' declared slices').join(', '),
     'Rolling production additions average (' + sample.length + ' measured implementation PRs' + (comparable ? ', including current' : '') + '): ' + (mean ?? 'not available') + '; target 400–800',
-    'Target 2–5 completed slices per implementation PR on average; per-slice proof is checked by reviewer, not inferred from lines.',
+    'Rolling declared slice average (' + sliceSamples.length + ' evidenced PR scorecards' + (comparable ? ', including current' : '') + '): ' + meanSlices + '; target 2–5. Historical unrecorded slices remain unknown.',
+    'Per-slice proof requires independent reviewer/CI checks; no line or declaration is an acceptance pass.',
     'Formatting-only diffs ignored; renames treated as add/delete; incomplete/shallow history must be disclosed, never invented.'
   ].join('\n');
 }
