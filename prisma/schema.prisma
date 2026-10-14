@@ -1086,6 +1086,12 @@ model PreDeliveryCancellation {
   approvedAt         DateTime @default(now())
   // PENDING_EXTERNAL_REFUND is an unpaid liability; never a Stripe refund claim.
   refundState        String
+  returnedOn         DateTime?
+  returnedRecordedAt DateTime?
+  returnedByUserId   String?
+  refundMethod       String?
+  refundReference    String? @unique
+  returnEvidence     Json?
 
   @@index([refundState, approvedAt])
 }

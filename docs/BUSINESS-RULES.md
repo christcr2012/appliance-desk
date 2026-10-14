@@ -1608,3 +1608,17 @@ included in database backup model coverage. Implementation is separately checked
 unit, disposable PostgreSQL and browser acceptance; deployed service and independent
 Stripe TEST evidence are *not* implied by those tests. Case-specific money-out, provider
 refund state reconciliation, legal/counsel review and tax CPA IN-79 remain separately gated.
+
+## W-22D17 — external refund returned evidence
+
+IN-76 owner cancellation approval is separate from the money actually
+returned. The business never records a refund as paid merely because the
+agreement was cancelled. Owner/admin can confirm an already completed
+manual return (check, bank, cash) with its unique evidence reference and
+audit trail. This state is owner-attested, not Stripe-provider proof.
+The Stripe TEST option is read-only and checks exact original-charge,
+amount, currency and succeeded provider state; no actual Stripe refund
+is created, and Stripe LIVE/production remains blocked. The approved
+refund cents cannot be edited through the screen. An unpaid return
+remains on Today until evidence is atomically reconciled. Existing
+separate money-out approvals and legal/CPA decisions are unchanged.

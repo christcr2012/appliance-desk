@@ -93,6 +93,36 @@ describe.skipIf(!enabled)("W-22 approved before-delivery cancellations (disposab
   })).rejects.toThrow(/Refresh/);
   expect(await prisma.preDeliveryCancellation.count({where:{agreementId:id}})).toBe(0);
  });
+ it("owner independently records a completed manual return",async()=>{
+  const id=await make(true);
+  const approved=await getPreDeliveryCancellationQuote(id);
+  await approvePreDeliveryCancellation({agreementId:id,actorUserId:actor,
+   expectedFingerprint:approved.fingerprint,policy:"FULL_REFUND",
+   reason:"Customer cancelled before delivery",reviewedTerms:true});
+  const {getRefundReturnReview,recordExternallyReturnedRefund}=await import(
+   "@/domains/agreements/pre-delivery-refund-return");
+  const before=await getRefundReturnReview(id);
+  expect(before.refundState).toBe("PENDING_EXTERNAL_REFUND");
+  await expect(recordExternallyReturnedRefund({
+   agreementId:id,actorUserId:actor,expectedFingerprint:before.fingerprint,
+   method:"MANUAL_CHECK",reference:"CHECK-"+id,confirmedReturned:false,
+  })).rejects.toThrow();
+  const result=await recordExternallyReturnedRefund({
+   agreementId:id,actorUserId:actor,expectedFingerprint:before.fingerprint,
+   method:"MANUAL_CHECK",reference:"CHECK-"+id,confirmedReturned:true,
+  });
+  expect(result.refundState).toBe("RETURNED_MANUAL_RECORDED");
+  const stored=await prisma.preDeliveryCancellation.findUniqueOrThrow({where:{agreementId:id}});
+  expect(stored).toMatchObject({refundDueCents:10500,refundMethod:"MANUAL_CHECK",
+   refundReference:"CHECK-"+id,returnedByUserId:actor});
+  const {listCancellationRefundAttention}=await import(
+   "@/domains/exceptions/cancellation-refund-attention");
+  expect((await listCancellationRefundAttention(50)).rows.some(x=>x.href.endsWith(id+"/refund"))).toBe(false);
+  await expect(recordExternallyReturnedRefund({
+   agreementId:id,actorUserId:actor,expectedFingerprint:before.fingerprint,
+   method:"MANUAL_CHECK",reference:"CHECK-"+id,confirmedReturned:true,
+  })).rejects.toThrow();
+ });
  afterAll(async()=>{
   await prisma.signingPaymentAttempt.deleteMany({where:{agreementId:{in:ids}}});
   await prisma.preDeliveryCancellation.deleteMany({where:{agreementId:{in:ids}}});
