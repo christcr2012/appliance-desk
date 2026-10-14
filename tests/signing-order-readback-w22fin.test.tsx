@@ -36,6 +36,10 @@ describe("W-22FIN frozen order cross-address readback",()=>{
     expect(()=>presentReviewedSigningOrder(rows,addresses,"foreign")).toThrow();
     expect(()=>presentReviewedSigningOrder([...rows,rows[0]],addresses,"a")).toThrow();
     expect(()=>presentReviewedSigningOrder(rows,[...addresses,addresses[0]],"a")).not.toThrow();
+    // Two rentals at one customer-owned address must not be mistaken for a foreign site.
+    expect(()=>presentReviewedSigningOrder([
+      rows[0],{...rows[1],serviceAddressId:"addr-a"},
+    ],[addresses[0]],"a")).not.toThrow();
   });
   it("never accepts mixed order fingerprints, invalid arithmetic or unsafe sums",()=>{
     expect(()=>presentReviewedSigningOrder([rows[0],{...rows[1],orderFingerprint:"c".repeat(64)}],addresses,"a")).toThrow();

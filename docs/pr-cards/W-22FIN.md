@@ -1,3 +1,17 @@
+## Verified cross-location customer and owner offer readback — PR #453
+
+Both signing URL and owner agreement view now share one verified, customer-
+scoped frozen-order readback. It reconciles per-location setup, setup tax,
+down payment and tax-inclusive amount against the complete order and marks
+the current agreement. This does not sign other properties, demand another
+payment, infer an invoice credit, change historical terms or publish prices.
+If any address is foreign/missing or any sibling frozen digest disagrees,
+the signing URL fails closed; owner view displays a review warning.
+Three-width/axe disposable-browser coverage proves the same data in public
+signing and authenticated owner views. This is eligible W-22FIN engineering,
+not the full remaining all-in estimate/approval milestone; real-identity and
+provider acceptance stay release-gated.
+
 ## Delivery dispatch must reverify signed money — W-22FIN
 
 Starting a DELIVERY/INSTALLATION job linked to a W-22 prepared agreement

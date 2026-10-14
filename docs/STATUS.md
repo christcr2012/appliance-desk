@@ -1,3 +1,15 @@
+## October 14 W-22FIN multi-address frozen offer visibility
+
+Customer signing and owner agreement now read one independently verified
+frozen customer-order digest, with separate current-address signing amount,
+per-address fees/tax/down payment and order-wide reconciliation.
+An incomplete/foreign source hides the public signing link instead of
+showing partial totals. Existing prelaunch publication, provider charge,
+professional approval and first-invoice gates remain unchanged. Exact-head
+database/browser acceptance and genuine release/user acceptance are distinct.
+W-22FIN remains unfinished until estimate approval and complete recovery
+flow are integrated; W-23 remains blocked.
+
 ## W-22FIN delivery/payment reconciliation — dispatch guard
 
 A signed physical delivery start now re-verifies the agreement's frozen
@@ -165,6 +177,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "PR #452 proposed; pure payment-denial cases and genuine frozen order/sign/owner-receipt disposable-Postgres suite; exact-head CI and release/provider acceptance still pending."
+  },
+  {
+    "id": "W22FIN-MULTI-ORDER-VIEW",
+    "priority": 1,
+    "requiredRevision": "08735efa56b6302d3ec818eea316e41394007199",
+    "task": "After checked release, review an approved existing two-location customer signing link and owner desk, confirm one complete immutable frozen order, per-address and combined amounts, no second checkout/receipt and denial of missing/foreign scope.",
+    "procedure": "docs/pr-cards/W-22FIN.md",
+    "gates": "Read only, no live fixtures, payment, customer message or public pricing; professional and Stripe approvals remain independent",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "PR #453 source implemented, new isolated browser and pure tests added; required CI/release/authenticated user acceptance not yet claimed."
   }
 ]
 ```

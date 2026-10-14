@@ -35,13 +35,12 @@ export function presentReviewedSigningOrder(
   if (!verified.length || verified.length > 500 ||
       new Set(verified.map(x => x.agreementId)).size !== verified.length ||
       !verified.some(x => x.agreementId === currentAgreementId) ||
-      new Set(verified.map(x => x.serviceAddressId)).size !== verified.length ||
       new Set(verified.map(x => x.orderFingerprint)).size !== 1 ||
       !/^[a-f0-9]{64}$/.test(verified[0].orderFingerprint)) {
     throw new Error("Complete matching frozen order is required.");
   }
   const addressById = new Map(addresses.map(x => [x.id, x]));
-  if (addressById.size !== verified.length ||
+  if (addressById.size !== new Set(verified.map(x => x.serviceAddressId)).size ||
       verified.some(line => !addressById.has(line.serviceAddressId))) {
     throw new Error("A service address is missing from the reviewed order.");
   }
