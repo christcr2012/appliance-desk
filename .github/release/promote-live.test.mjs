@@ -103,8 +103,77 @@ test('real atomic git promotion, read-back and second same-day update refusal', 
   }
 });
 
-test('owner release schedule is 00:01 Denver with native DST handling', () => {
+test('bounded schedule backups preserve midnight, daily marker and owner recovery', () => {
   const workflow = readFileSync(new URL('../workflows/daily-live.yml', import.meta.url), 'utf8');
-  assert.equal((workflow.match(/^\s*- cron:/gm) || []).length, 1);
-  assert.match(workflow, /- cron: '1 0 \* \* \*'[^\n]*\n\s+timezone: America\/Denver\s*\n/);
+  const crons = [...workflow.matchAll(/cron: '([^']+)'/g)].map(m => m[1]);
+  assert.deepEqual(crons, ['1 0 * * *', '17 0 * * *', '17 1 * * *', '37 5 * * *', '43 12 * * *']);
+  assert.equal((workflow.match(/timezone: America\/Denver/g) || []).length, 4);
+  assert.match(workflow, /recover_missed_daily:/);
+  assert.match(workflow, /default: false/);
+  assert.match(workflow, /github.actor == 'christcr2012'/);
+  assert.match(workflow, /RECOVER_MISSED_DAILY:/);
+  assert.match(workflow, /cancel-in-progress: false/);
+});
+test('recovery requires explicit owner, expected repository, main and elapsed midnight', async () => {
+  const { authorizedReleaseInvocation } = await import('./promote-live.mjs');
+  const env = { GITHUB_REPOSITORY: 'example/repo', GITHUB_REF: 'refs/heads/main',
+    GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_ACTOR: 'christcr2012',
+    RECOVER_MISSED_DAILY: 'true', GH_TOKEN: 'fixture' };
+  const time = new Date('2026-10-14T11:00:00Z');
+  assert.equal(authorizedReleaseInvocation(env, 'example/repo', time), true);
+  for (const change of [{ GITHUB_ACTOR: 'other' }, { RECOVER_MISSED_DAILY: 'false' },
+    { RECOVER_MISSED_DAILY: undefined }, { GITHUB_REF: 'refs/heads/live' },
+    { GITHUB_REPOSITORY: 'other/repo' }, { GITHUB_EVENT_NAME: 'push' },
+    { GH_TOKEN: '' }])
+    assert.equal(authorizedReleaseInvocation({ ...env, ...change }, 'example/repo', time), false);
+  assert.equal(authorizedReleaseInvocation(env, 'example/repo', new Date('2026-10-14T06:00:00Z')), false);
+  assert.equal(authorizedReleaseInvocation(env, 'example/repo', new Date('2026-12-14T07:00:00Z')), false);
+  assert.equal(authorizedReleaseInvocation(env, 'example/repo', new Date('2026-12-14T07:01:00Z')), true);
+  assert.equal(authorizedReleaseInvocation({ ...env, GITHUB_EVENT_NAME: 'schedule' }, 'example/repo', time), true);
+});
+
+test('successful no-op records a daily tag and blocks later fallback promotion', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'release-noop-'));
+  const cwd = process.cwd(), fetchBefore = globalThis.fetch;
+  const keys = ['GITHUB_REPOSITORY', 'GITHUB_REF', 'GITHUB_EVENT_NAME', 'GH_TOKEN'];
+  const before = keys.map(key => process.env[key]);
+  const git = (...args) => execFileSync('git', args, {
+    cwd: dir, encoding: 'utf8', stdio: 'pipe'
+  }).trim();
+  try {
+    git('init', '--bare', join(dir, 'remote.git'));
+    git('init', '-b', 'main');
+    git('config', 'user.email', 'test@example.invalid');
+    git('config', 'user.name', 'Release test');
+    git('remote', 'add', 'origin', join(dir, 'remote.git'));
+    writeFileSync(join(dir, 'unchanged.txt'), 'original');
+    git('add', 'unchanged.txt');
+    git('commit', '-m', 'original');
+    git('push', 'origin', 'main', 'main:live');
+    const original = git('rev-parse', 'HEAD');
+    Object.assign(process.env, { GITHUB_REPOSITORY: 'example/repo',
+      GITHUB_REF: 'refs/heads/main', GITHUB_EVENT_NAME: 'schedule',
+      GH_TOKEN: 'fixture' });
+    process.chdir(dir);
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      total_count: 1, check_runs: [{ ...good, head_sha: original }]
+    }) });
+    await run({ repository: 'example/repo', requiredChecks: ['ci'] });
+    const tag = 'refs/tags/live-promotion/' + denverDay();
+    assert.equal(git('ls-remote', 'origin', tag).split(/\s+/)[0], original);
+    writeFileSync(join(dir, 'unchanged.txt'), 'merged after primary');
+    git('commit', '-am', 'later merge');
+    git('push', 'origin', 'main');
+    await run({ repository: 'example/repo', requiredChecks: ['ci'] });
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], original);
+    assert.equal(git('ls-remote', 'origin', tag).split(/\s+/)[0], original);
+  } finally {
+    process.chdir(cwd);
+    globalThis.fetch = fetchBefore;
+    keys.forEach((key, i) => {
+      if (before[i] === undefined) delete process.env[key];
+      else process.env[key] = before[i];
+    });
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

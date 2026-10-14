@@ -8,6 +8,24 @@ export function denverDay(now = new Date()) {
   return ['year', 'month', 'day'].map(type => parts.find(p => p.type === type).value).join('-');
 }
 
+export function denverMinute(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Denver', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(now);
+  return Number(parts.find(p => p.type === 'hour')?.value) * 60 +
+    Number(parts.find(p => p.type === 'minute')?.value);
+}
+
+export function authorizedReleaseInvocation(env, repository, now = new Date()) {
+  if (env.GITHUB_REPOSITORY !== repository ||
+    env.GITHUB_REF !== 'refs/heads/main' || !env.GH_TOKEN) return false;
+  if (env.GITHUB_EVENT_NAME === 'schedule') return true;
+  // No default dispatch or automated production override; GitHub owner only.
+  return env.GITHUB_EVENT_NAME === 'workflow_dispatch' &&
+    env.GITHUB_ACTOR === 'christcr2012' &&
+    env.RECOVER_MISSED_DAILY === 'true' && denverMinute(now) >= 1;
+}
+
 export function checksPass(runs, required, sha) {
   return required.every(name => {
     const run = runs.filter(r => r.name === name && r.app?.slug === 'github-actions' &&
@@ -39,8 +57,8 @@ function git(args) {
 export async function run(policy = JSON.parse(readFileSync(new URL('./policy.json', import.meta.url), 'utf8')),
   { attempts = 20, pause = () => new Promise(resolve => setTimeout(resolve, 30000)) } = {}) {
   const repo = process.env.GITHUB_REPOSITORY;
-  if (process.env.GITHUB_EVENT_NAME !== 'schedule' || process.env.GITHUB_REF !== 'refs/heads/main' ||
-      repo !== policy.repository || !process.env.GH_TOKEN) throw Error('Scheduled owner main only');
+  if (!authorizedReleaseInvocation(process.env, policy.repository))
+    throw Error('Scheduled or explicitly owner-recovered main only');
   const deadline = Date.now() + 10 * 60 * 1000;
   const marker = 'live-promotion/' + denverDay();
   const tagged = () => git(['ls-remote', '--tags', 'origin', 'refs/tags/' + marker]) !== '';
@@ -52,7 +70,7 @@ export async function run(policy = JSON.parse(readFileSync(new URL('./policy.jso
       '+refs/heads/live:refs/remotes/origin/live']);
     const main = git(['rev-parse', 'origin/main']);
     const live = git(['rev-parse', 'origin/live']);
-    if (tagged() || main === live) { console.log('No promotion needed today'); return; }
+    if (tagged()) { console.log('Already decided today'); return; }
     let ancestor = false;
     try { git(['merge-base', '--is-ancestor', live, main]); ancestor = true; } catch { /* fail closed */ }
     const runs = [];
@@ -77,6 +95,21 @@ export async function run(policy = JSON.parse(readFileSync(new URL('./policy.jso
     if (checksFailed(runs, policy.requiredChecks, main)) throw Error('Required main check failed for ' + main);
     if (!checksPass(runs, policy.requiredChecks, main)) {
       console.log('Waiting for required checks on ' + main); continue;
+    }
+    // A successful no-op at the primary time also consumes this Denver day's
+    // release opportunity. Otherwise a fallback could deploy a later merge
+    // even though the primary schedule succeeded with no changes.
+    if (main === live) {
+      if (tagged()) return;
+      if (remoteHead('main') !== main || remoteHead('live') !== live) continue;
+      try {
+        git(['push', 'origin', main + ':refs/tags/' + marker]);
+      } catch (error) {
+        if (!tagged()) throw error; // Ref conflict is safe only if another run won.
+      }
+      if (!tagged()) throw Error('No-op daily receipt read-back failed');
+      console.log('Recorded checked no-op for ' + denverDay());
+      return;
     }
     const action = decide({ main, live, alreadyToday: tagged(), ancestor,
       green: checksPass(runs, policy.requiredChecks, main) });
