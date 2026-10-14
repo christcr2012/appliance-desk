@@ -7,6 +7,14 @@ implementation. Update this file when an answer is supplied; reference the
 ID from `docs/STATUS.md`, the PR description and the affected batch in
 `docs/PLAN.md`. Never store passwords or keys here.
 
+**October 13 answers now have an implementation home:** The
+[56-subject implementation map](owner-decisions/2026-10-13-implementation-map.json)
+and [implementation engineering packet](designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md)
+cross-reference this register and preserve active W-22FIN priority. These are
+design coverage, **not** 56 open owner inputs or a claim of implementation.
+Refer to later October 13 IN-84/DECISIONS for the settled five-calendar-day
+grace/$5 late rule; professional enforceability/real-use approval is separate.
+
 **Ordered implementation requirement:** A missing owner preference is a
 temporary, in-session question; it must not be used to sidestep the
 currently selected batch. Ask, record, resume. Only precise external

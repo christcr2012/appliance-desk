@@ -1,5 +1,14 @@
 # Batch BP business offers operations and partnerships
 
+
+**October 13 owner decision — partner commissions remain OFF at launch.**
+The [engineering packet](OWNER-DECISIONS-2026-10-13-ENGINEERING.md) and
+[56-subject map](../owner-decisions/2026-10-13-implementation-map.json)
+route this future business program here; the mapping does not approve rates,
+eligibility, terms, clawbacks, payables, thresholds, payout timing or spending.
+This BP design remains PROPOSED pending its original runtime/business approval.
+
+
 **Status:** PROPOSED architecture and implementation plan, written at the owner's request on 2026-10-07. No runtime changes in this documentation PR. Business prices, terms and live activation are not approved by this document.
 
 **Baseline:** `main` at `7da67620851c7ca98cc67d6de3716c38a3983dc1` (#285). T remains in progress; K, M and O are designed but not implemented at this baseline. Read by section. Business source and every disposition: [source trace](../business/SOURCE-DISPOSITION.md).

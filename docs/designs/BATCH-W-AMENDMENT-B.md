@@ -17,6 +17,14 @@ connected in real life is connected in the app". It also amends Batch V (screens
 
 ---
 
+**October 13 owner-decision addendum (2026-10-14):**
+[Engineering contract](OWNER-DECISIONS-2026-10-13-ENGINEERING.md) and
+[subject map](../owner-decisions/2026-10-13-implementation-map.json) refine
+sections 6.2–6.6: setup choice/reason, prepaid set return, separate commercial
+reserves, tenant damage/dispute, verified driving-distance fee and owner-booked
+appointment requests. Reconcile later decisions over earlier recommendations
+without editing signed contracts. W-22FIN must finish before W-23.
+
 ## 1. What the audit found (2026-10-09)
 
 **Purchasing and inventory**

@@ -1,5 +1,13 @@
 # Execution cards — just in time
 
+**Owner-answer crosswalk:** [October 13 implementation map](../owner-decisions/2026-10-13-implementation-map.json)
+and [engineering contract](../designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md)
+contain 56 source-backed subject decisions and acceptance expectations.
+When authoring the **current ordered approved unit** only, include matching
+subject IDs in its short card/drift handoff. This adds no new ticket sequence
+or external use approval. scripts/check-owner-decisions.mjs validates the map.
+
+
 The selected implementing agent writes a short card for the current capability
 and, when useful, its eligible immediate successor. Sol 5.6 at light/medium
 is the intended routine use; unresolved semantic conflicts may need deeper
