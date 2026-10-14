@@ -1,3 +1,45 @@
+### Workflow maintenance handoff — owner publication approved
+
+New offline session utility: eight behavioral tests passed, including actual Git ancestry, partial releases, unknown/failed deployments, rollback, dependency gating, invalid queues, PR alignment and bounded output. All repository queues validate. Existing source/status evidence is preserved; no provider acceptance or release was performed. Owner explicitly approved publication on October 14; publish the reviewed maintenance branch, require exact-head CI/reviews, and merge only when those gates pass. No extra production release is authorized by this approval. Full broad application suites on the shared runner were interrupted after resource/time-limit failures; do not claim them passed. Existing exact-head remote CI/review gates must pass before any main merge.
+
+## Release acceptance queue — workflow optimization 2026-10-14
+
+Owner-authorized guidance/tooling maintenance: consolidated session procedure, focused
+checks between meaningful edits, substantial capability grouping, and read-only queued
+acceptance/PR-boundary report. This records source/tooling work, not a live/provider pass.
+The queue below seeds existing outstanding obligations; reconcile exact scenarios and
+already-proven evidence from the unchanged cards/ledger before running. Keep all prior
+open obligations, original fixture ownership, approvals and deployment provenance.
+
+<!-- release-acceptance:start -->
+```json
+[
+  {
+    "id": "DESK-W22",
+    "priority": 1,
+    "requiredRevision": "d5b994dd11af641d8f4e437ee566cea345ab2129",
+    "task": "Catch up deployed cancellation/signing/delivery checks and remaining genuine Stripe TEST acceptance",
+    "procedure": "docs/STATUS.md",
+    "gates": "W-22 remains partial; preserve W-23 sequencing, refunds/signatures, customer isolation and provider approval gates",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+  },
+  {
+    "id": "DESK-COMMS",
+    "priority": 2,
+    "requiredRevision": "d5b994dd11af641d8f4e437ee566cea345ab2129",
+    "task": "Reconcile deployed communications acceptance and execute only cleared checks",
+    "procedure": "docs/runbooks/COMMUNICATIONS-ACCEPTANCE-LEDGER.md",
+    "gates": "Existing SMS/customer email consent and activation gates; no sending or live activation implied",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+  }
+]
+```
+<!-- release-acceptance:end -->
+
 ## October 14 recovery rerun owner authentication — follow-up
 
 ## W-22D18 — signed rental gets a real draft delivery job and owner To do

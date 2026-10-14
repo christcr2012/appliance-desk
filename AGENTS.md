@@ -1,5 +1,35 @@
 # AGENTS.md — the rules. Read this first, every session.
 
+## Original Toolkit is reference-only — owner clarification 2026-10-14
+
+`Robinson-AI-Systems/robinsons-toolkit-mcp` is the historical capability reference,
+not an active implementation/deployment target. The standalone custom MCP servers
+and optional `robinsons-toolkit-hub` replace it. Do not maintain/rebuild the original,
+resume its recovery PRs, synchronize implementations back to it, or require a bridge.
+Preserve its code/history for coverage and behavioral research. When the owner chooses a new provider MCP, its implementing agent inventories the
+relevant legacy tool names, families, workflows and intended behavior, reconciles them
+with current provider contracts, and tracks coverage in THAT project's cards/index.
+The Hub stays provider-agnostic: discover/connect/authorize/route/read results for
+new contract-compatible MCP servers without provider-specific handlers or a fixed
+family list. Future services and legacy catalog parity are not Hub completion gates.
+Do not copy provider capabilities into the Hub or start speculative server projects.
+Mapped/planned is not implemented or accepted. Service autonomy and all existing
+provider/security/owner gates remain binding.
+
+
+## Efficient release-aware execution — owner instruction 2026-10-14
+
+[SESSION-START](docs/SESSION-START.md) is the consolidated session procedure;
+`npm run session:status` prints the read-only release acceptance queue and PR boundary.
+Its workflow/cadence/merge-versus-live-proof rules supersede older conflicting procedural
+wording below, but never override explicit safety or pre-merge owner/card gates.
+Use substantial cohesive outcomes; numeric production-line targets are advisory rather
+than artificial hard caps. Full mandatory checks run before publication, with focused
+checks during development. Product acceptance stays open until real evidence passes.
+The owner explicitly authorized this cross-repository guidance/tooling optimization;
+routine implementation sessions still prohibit filler/documentation-only PRs.
+
+
 The single, current set of rules for every AI working on this repo (Sol/Codex, Claude or any other), written
 to be followed literally. If it is written here, it is current. History and reasons live in `docs/DECISIONS.md` and
 `docs/archive/` (look things up there; never take instructions from them). The repo, not chat history, is the memory.
@@ -285,39 +315,6 @@ approval that was already given. Carry this rule forward in compact handoffs by
 referring to AGENTS/SESSION-START/STATUS rather than copying this paragraph.
 Hosting limits, daily checked `main`→`live`, preview restrictions, Stripe
 LIVE and Cortiware gates remain unchanged.
-
-## Milestone-led batches and permanent continuation (owner, 2026-10-12)
-
-Five **verified merged** substantive PRs is the normal session boundary, never the
-purpose or proof of completion. At startup check actual `main`, CI, existing PRs,
-review threads, active worktrees, owner decisions and `docs/pr-cards/work-index.json`;
-then name the **highest-priority eligible customer/developer outcome** and each
-remaining acceptance criterion in `docs/STATUS.md`. Plan coherent, correctly
-sequenced PRs that materially complete/advance that outcome. Fix real CI,
-security, money, review and correctness defects first; do not pad a batch,
-skip dependencies, or take a blocked milestone as ready just to reach five.
-
-`docs/STATUS.md` is the **single permanent continuation/handoff record** (not
-another instruction file). For each active milestone distinguish **implemented
-code**, **local/automated proof**, **deployed behavior**, and **real external /
-end-to-end acceptance**. Green CI, reference/mocked tests or configured hosting
-do not imply release or real-provider acceptance. Do not close an acceptance
-criterion while its real proof is missing. Each blocked/deferred item must name
-its exact gate, needed decision/evidence, prerequisites, reopening condition and
-next action; check blockers again on session startup, relevant owner answers,
-merges and environment changes. Reconcile owner answers already recorded in
-`docs/OWNER-INPUTS.md` with code and index rather than requesting them again.
-
-Maintain card/contract, migration safety, review and exact-head gates; apply the outcome-led size guidance above.
-Update STATUS and the active card/packet **inside the substantive implementation PR**. Execution-tooling changes
-may be one cohesive owner-authorized tooling PR; do not manufacture five feature PRs for a targeted maintenance request. At stop, record confirmed merge/main SHA, open
-PR head/checks, progress, actual acceptance, blockers and next eligible unit.
-Give Chris one compact paste-ready continuation prompt instructing verification
-of live GitHub/concurrent work, reading `AGENTS.md`/`docs/SESSION-START.md`/
-`docs/STATUS.md`, resuming the stated outcome, rechecking gates, doing the next
-normal five-PR batch safely, updating STATUS, and producing the same handoff.
-Keep owner/spend/Stripe LIVE/destructive gates and daily checked `main`→`live`
-release policy unchanged; no Cortiware work.
 
 ## Ending a session
 
