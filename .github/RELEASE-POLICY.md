@@ -2,7 +2,7 @@
 
 Owner-approved 2026-10-12. Pull requests target `main`; `main` is the default development branch. Do not merge PRs into `live` or push directly to it. Do not run Vercel CLI production deployments or manually promote a preview during routine development.
 
-`.github/workflows/daily-live.yml` alone promotes a checked main snapshot to `live`, once per America/Denver calendar day, scheduled at 10:23 UTC (04:23 daylight time / 03:23 standard time; GitHub may start late). An atomic branch and dated tag update prevents a rerun from promoting twice. No changes means no release; failed, pending or missing required checks or diverged history refuse promotion. Nothing force-pushes. Existing customer billing and MCP production-access gates remain unchanged.
+`.github/workflows/daily-live.yml` alone promotes a checked main snapshot to `live`, once per America/Denver calendar day, scheduled at 00:01 America/Denver with 00:19 and 01:17 same-day fallback attempts (GitHub may delay or drop events). An atomic branch and dated tag update prevents a rerun from promoting twice. No changes means no release; failed, pending or missing required checks or diverged history refuse promotion. Nothing force-pushes. Existing customer billing and MCP production-access gates remain unchanged.
 
 Vercel projects linked to this repository must track `live` for production and have automatic preview deployments disabled. `vercel.json` permits Git deployments only for `live`, including future linked projects. Keep existing GitHub CI and any existing local browser/build tests enabled; use local fixtures rather than paid Vercel previews. Emergency releases require a separate explicit owner instruction. The release schedule is independent of development PR batch counts.
 
@@ -21,3 +21,22 @@ For a new Vercel project, set Settings → Environments → Production → Branc
 An explicit owner request can authorize a one-off manual release after the exact candidate passes required checks. Read fresh main/live refs, require ancestry, update live without force and with an expected-head lease, then verify Vercel production reaches READY for that SHA and the production alias resolves to it. A branch update alone is not deployment-success evidence. This exception does not authorize automatic releases at agent batch boundaries, new provider production permissions or spending.
 
 CI registry recovery (2026-10-13): main run 38403982749 and prior main runs failed before tests when the ECR Postgres mirror exceeded its public data limit. Unit and browser services now use the official public `postgres:17` image on GitHub-hosted Ubuntu runners, where GitHub documents a Docker Hub public-pull exemption: https://docs.github.com/en/actions/reference/limits#docker-hubs-rate-limit-for-github-actions. The database version, isolated test databases, all three unit shards, all four browser shards and required aggregate CI remain unchanged. Actual Actions initialization and test completion are the acceptance evidence; never bypass failed CI to release.
+
+## Resilient Denver scheduling and missed-day recovery — October 14, 2026
+
+On October 14 the 00:01 Denver release was not invoked at all: no scheduled
+GitHub Actions run exists. Its calendar-time YAML is supported, so there is
+no failed run log to attribute the missed event to. GitHub documents that
+scheduled events near hour boundaries can be delayed or dropped.
+Keep 00:01 as the primary owner-specified time; two same-Denver-day
+fallback triggers at 00:19 and 01:17 provide independent delivery chances.
+The immutable per-day tag and atomic live fast-forward mean these are *not*
+separate promotions or additional production builds.
+
+For a missed day, the repository owner can explicitly launch Actions >
+Daily live policy > Run workflow on main with recovery_day set to the current
+America/Denver YYYY-MM-DD. Only the GitHub actor christcr2012, the current
+Denver calendar date, successful independent exact-head ci/release-policy,
+un-diverged live history and absent dated marker permit promotion.
+This does not authorize a separate production build by agents. Independently
+verify Vercel READY and the production alias after an actual recovery.
