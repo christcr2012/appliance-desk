@@ -23,8 +23,8 @@ jobs:
     timeout-minutes: 10
     services:
       postgres:
-        # Match the isolated application CI fixture. ECR Public data limits
-        # prevented PR #447 performance tests from starting; retain PostgreSQL 17.
+        # Match the isolated application CI fixture. The ECR Public mirror hit
+        # its data limit before any performance test ran on PR #447.
         image: postgres:17
         env:
           POSTGRES_USER: test

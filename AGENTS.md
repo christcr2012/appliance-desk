@@ -62,6 +62,8 @@ PR cadence is subordinate to **ordered complete capabilities and safety gates**.
 A session handoff points back to the same unfinished unit unless engineering
 completion is supported by evidence; real external acceptance may remain in
 the explicit queue without blocking unrelated, already-eligible code.
+Independent parallel work must be explicitly roadmap-eligible; do not advance
+to a dependent successor while eligible engineering in this unit is unfinished.
 
 ## Owner questions and publicly researched regulatory defaults — permanent protocol (2026-10-14)
 
@@ -119,32 +121,10 @@ professional determination gates affected **business use**, never implementation
 
 ## Roadmap-order completion and owner-assisted blocker resolution — permanent owner rule 2026-10-14
 
-Implement the approved roadmap in its recorded order. Reconcile actual main, the active
-work-index packet, parent batch and handoff; finish each currently eligible batch or
-cohesive subdivision end-to-end (integration and regression coverage) before taking
-up later dependent units. Substantial PRs may split only for a concrete migration,
-risk or review boundary. PR-count alignment never justifies tiny slices, incomplete
-engineering or selecting easier later work.
-
-A difficulty is NOT permission to defer: troubleshoot CI, fixtures, design drift,
-review feedback and implementation in the same session. For a genuinely required
-missing business decision or owner-supplied fact, first search recorded decisions
-and implement safe configurable portions; then ask the owner in the same chat for
-the smallest specific answer/authorization, with why it is needed, recommended
-options, consequences and the paused action. Document remedies and re-entry in the
-existing card, and resume the SAME outcome when answered. Do not request a prior
-approval twice or silently carry implementable work to later sessions.
-
-Only real checked-release, provider, customer and professional business-use
-acceptance waits in the maintained queue, with required revision and verification
-procedure. Professional review never blocks safe implementation, tests or merge;
-the affected real-business transaction must remain disabled until actual approval.
-Advance to a later roadmap unit only when the current unit's eligible engineering
-is complete and verified; explicitly permitted independent parallel work is the
-only other exception. Never mislabel missing implementation as pending acceptance.
-Normal five substantial PR session cadence and multiple-of-five closeout never
-override scope completion or justify filler. Concise handoffs include actual main,
-last merged PR, current roadmap unit and genuine external acceptance gates.
+The canonical rule is **Roadmap order, complete batches and immediate owner
+escalation** above, together with **Owner questions and publicly researched
+regulatory defaults**. Follow those requirements and SESSION-START §2; this
+heading remains for existing references, not a second competing procedure.
 
 ## Pending professional review is an activation gate, not a development stop — owner standing rule 2026-10-14
 

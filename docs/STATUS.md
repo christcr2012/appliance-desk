@@ -1,3 +1,16 @@
+## October 14 completion recovery and checked release preparation
+
+Owner requested complete Git reconciliation before a one-off manual release.
+Consolidated duplicate completion rules while preserving owner-decision/regulatory
+and activation gates; recovered unfinished customer signing-evidence DTO code with
+invalid/foreign/ambiguous receipt denials and isolated integration coverage.
+Repaired the capacity workflow Postgres image after verified ECR data-limit failure;
+all performance thresholds and tests remain unchanged. Local six pure tests, lint,
+index/housekeeping tests and full typecheck passed; no local PostgreSQL is installed,
+so real DB/browser/build/performance proof is required in exact-head Actions.
+W-22FIN remains the current parent outcome; never claim this is full completion.
+No provider acceptance or business activation is implied by the authorized release.
+
 ## Owner direction — sequential batch completion, not recurring slice carryover
 
 Current active work is W-22FIN. Finish its whole remaining **engineering**
@@ -67,6 +80,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "dependsOn": [],
     "status": "PENDING",
     "lastEvidence": "Existing ledger/card remains authoritative; current live/provider acceptance must be reconciled at session start. Seed revision conservatively includes reviewed current main."
+  },
+  {
+    "id": "APPLIANCE-W22-PORTAL-RECEIPT",
+    "priority": 3,
+    "requiredRevision": "c0de6e7da0bacfbabc114547745b286c2f4d0188",
+    "task": "Verify signed customer signing obligation/receipt DTO with own-account scope, corrupt/foreign receipt denials and no provisional or raw receipt evidence",
+    "procedure": "docs/pr-cards/W-22FIN.md",
+    "gates": "Existing authorized owner/customer test accounts only; no production fixture creation, customer charge, communication or policy activation",
+    "dependsOn": [],
+    "status": "PENDING",
+    "lastEvidence": "Recovered unfinished source; six pure tests, lint and typecheck passed locally. Exact-head disposable-Postgres/browser/build CI must pass; no deployed/customer acceptance claimed."
   }
 ]
 ```

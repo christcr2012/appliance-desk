@@ -9,6 +9,8 @@ import {
   getActiveApplianceOptionsForUser,
 } from "@/domains/agreements/active-appliances";
 
+import { customerSigningSummary } from "./signing-status";
+
 export const PORTAL_PAGE_SIZE = 20;
 
 const serviceAddressSelect = {
@@ -86,6 +88,13 @@ export async function getPortalData(userId: string) {
           termsSnapshot: true,
           terminationRequestedAt: true,
           terminationEffectiveOn: true,
+          signingPaymentObligation: {
+            select: {
+              setupFeeCents: true, setupTaxCents: true, downPaymentCents: true,
+              totalCents: true, status: true, signedAt: true,
+              receipt: { select: { customerId: true, amountCents: true, receivedOn: true } },
+            },
+          },
           serviceAddress: { select: serviceAddressSelect },
           lines: {
             select: {
@@ -141,7 +150,9 @@ export async function getPortalData(userId: string) {
     phone: customer.phone,
     smsOptInAt: customer.smsOptInAt,
     serviceAddresses: customer.serviceAddresses,
-    rentalAgreements: customer.rentalAgreements,
+    rentalAgreements: customer.rentalAgreements.map(({ signingPaymentObligation, ...agreement }) => ({
+      ...agreement, signingPaymentSummary: customerSigningSummary(signingPaymentObligation, customer.id),
+    })),
     jobs: customer.jobs.slice(0, PORTAL_PAGE_SIZE),
     jobsHasMore: customer.jobs.length > PORTAL_PAGE_SIZE,
     maintenanceRequests: customer.maintenanceRequests.slice(0, PORTAL_PAGE_SIZE),

@@ -4,8 +4,22 @@ import {execFileSync} from 'node:child_process';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {validatePlan,selectCandidates,createArchive,ancestor} from './cleanup.mjs';
+import {validatePlan,selectCandidates,createArchive,ancestor,includeMaintenanceBranch,archiveCoversPlan} from './cleanup.mjs';
 const pinned='a'.repeat(40);const plan={version:1,repository:'owner/repo',archive:'archive/housekeeping-2026-10-13',branches:[{name:'ai/old',sha:pinned,disposition:'merged'}]};
+test('maintenance self-pruning requires exact approved name and merged ancestry',()=>{
+ const name='ai/codex/completion-recovery-20261014',p={...plan,maintenanceBranch:name};
+ for(const bad of ['main','live','ai/arbitrary'])assert.throws(()=>validatePlan({...plan,maintenanceBranch:bad},'owner/repo'));
+ const remote=new Map([[name,pinned]]);
+ assert.equal(includeMaintenanceBranch(p,remote,'main',()=>false),p);
+ assert.equal(includeMaintenanceBranch(p,new Map(),'main',()=>true),p);
+ assert.equal(includeMaintenanceBranch(p,remote,'main',()=>true).branches.at(-1).sha,pinned);
+});
+test('new present tips can be preserved, but missing unarchived history cannot be discarded',()=>{
+ const b=plan.branches[0],none=()=>false;
+ assert.equal(archiveCoversPlan(plan,'main','archive',{candidates:[b],retained:[]},none),true);
+ assert.equal(archiveCoversPlan(plan,'main','archive',{candidates:[],retained:[]},none),false);
+ assert.equal(archiveCoversPlan(plan,'main','archive',{candidates:[],retained:[]},()=>true),true);
+});
 test('refuses wrong repository, protected refs, duplicates, malformed SHAs and unapproved dispositions',()=>{
  assert.equal(validatePlan(plan,'owner/repo'),plan);assert.throws(()=>validatePlan(plan,'other/repo'));
  for(const name of ['main','live','archive/keep','ai/x:main','ai/../main'])assert.throws(()=>validatePlan({...plan,branches:[{...plan.branches[0],name}]},'owner/repo'));
