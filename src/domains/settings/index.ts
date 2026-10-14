@@ -33,6 +33,7 @@ const DEFAULT_SETTINGS = {
   setupFeeTaxEffectiveFrom: null as Date | null,
   setupFeeTaxApprovedAt: null as Date | null,
   setupFeeTaxAdviserReference: null as string | null,
+  signingMandatoryPolicyVersions: [] as unknown,
   damageWaiverEnabled: false,
   depositEnabled: false,
   lateFeeGraceDays: 5,

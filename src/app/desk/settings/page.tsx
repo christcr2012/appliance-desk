@@ -20,6 +20,8 @@ import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { SigningChargeForm } from "./signing-charge-form";
+import { MandatorySigningPolicyForm } from "./mandatory-signing-policy-form";
+import { effectiveMandatorySigningPolicy, parseMandatorySigningPolicyVersions } from "@/domains/billing/signing-mandatory-policy";
 import { businessDateKey } from "@/lib/business-date";
 import { getEffectiveSetupTaxTreatment } from "@/domains/billing/setup-tax-policy-version";
 import { AppliancePricingTable } from "./appliance-pricing-table";
@@ -113,6 +115,11 @@ export default async function DeskSettingsPage({
           setupFeeTaxAdviserReference: settings.setupFeeTaxAdviserReference,
           updatedAt: settings.updatedAt,
         }} />
+      </Card>
+      <Card title="Mandatory fees on complete estimates" description="Owner-only effective-dated rule revisions; charge collection stays disabled until independent clearance.">
+        <MandatorySigningPolicyForm editable={session.user.role === "OWNER"} effectiveDate={businessDateKey(new Date())}
+          current={effectiveMandatorySigningPolicy(settings.signingMandatoryPolicyVersions)}
+          history={parseMandatorySigningPolicyVersions(settings.signingMandatoryPolicyVersions)} />
       </Card>
       <Card
         title="Products and pricing"

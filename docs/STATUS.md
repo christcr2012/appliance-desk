@@ -1,3 +1,23 @@
+## W-22FIN owner mandatory-charge policy and preapproval readiness — implementation checkpoint
+
+An owner-only dated, append-only and audited policy now records applicability
+decisions for delivery, installation, removal, damage waiver and retail delivery.
+It deliberately does not certify tax, legal terms, pricing publication or the
+applicability of a given charge at a particular jurisdiction/address. The owner
+estimate page now assembles verified line/address/package counts with setup and
+first-month advance amounts, keeps deposits separate, and explicitly lists all
+missing mandatory charges. It labels the subtotal **NOT all-in or payable** and
+never authorizes customer approval, Stripe, signature or collection. Historical
+signed prices and receipts remain unchanged. See W-22FIN active card and the
+PR scorecard; new disposable DB/browser tests and exact-head CI are pre-merge gates.
+
+**Outstanding engineering in W-22FIN (do not start W-23):** independently
+verified preapproval all-in quote, immutable owner review, customer binding
+acceptance and deposit checkout tied to exact reviewed obligation, full
+multi-site cancellation/retry/first-invoice/delivery reconciliation. Recheck
+only eligible real released acceptance at verified live revision; professional
+IN-79/IN-07 and owner publication/money-out approvals remain separate.
+
 ## October 14 W-22FIN engineering continuation and acceptance handoff
 
 Completed in session: PR #450 owner/customer exact settled signing amount
