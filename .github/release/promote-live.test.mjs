@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checksPass, checksFailed, decide, denverDay, run } from './promote-live.mjs';
+import { checksPass, checksFailed, decide, denverDay, releaseEventAllowed, run } from './promote-live.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -105,6 +105,17 @@ test('real atomic git promotion, read-back and second same-day update refusal', 
 
 test('owner release schedule is 00:01 Denver with native DST handling', () => {
   const workflow = readFileSync(new URL('../workflows/daily-live.yml', import.meta.url), 'utf8');
-  assert.equal((workflow.match(/^\s*- cron:/gm) || []).length, 1);
+  assert.equal((workflow.match(/^\s*- cron:/gm) || []).length, 3);
   assert.match(workflow, /- cron: '1 0 \* \* \*'[^\n]*\n\s+timezone: America\/Denver\s*\n/);
+});
+
+test('missed release recovery is strictly owner and exact Denver date', () => {
+  const allowed = { GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_ACTOR: 'christcr2012',
+    RECOVERY_DENVER_DAY: '2026-10-14' };
+  assert.equal(releaseEventAllowed(allowed, '2026-10-14'), true);
+  assert.equal(releaseEventAllowed({ ...allowed, GITHUB_ACTOR: 'app[bot]' }, '2026-10-14'), false);
+  assert.equal(releaseEventAllowed({ ...allowed, RECOVERY_DENVER_DAY: '2026-10-13' }, '2026-10-14'), false);
+  assert.equal(releaseEventAllowed(allowed, '2026-10-15'), false);
+  assert.equal(releaseEventAllowed({ GITHUB_EVENT_NAME: 'pull_request' }, '2026-10-14'), false);
+  assert.equal(releaseEventAllowed({ GITHUB_EVENT_NAME: 'schedule' }, '2026-10-14'), true);
 });
