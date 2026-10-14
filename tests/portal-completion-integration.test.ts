@@ -64,7 +64,7 @@ beforeAll(async () => {
   });
 
   await prisma.agreementSigningPayment.create({
-    data: { agreementId: ids.agreementA, orderFingerprint: `portal-fixture-${tag}`,
+    data: { agreementId: ids.agreementA, orderFingerprint: "f".repeat(64),
       evidenceVersion: 1, setupFeeCents: 1100, setupTaxCents: 100, downPaymentCents: 1800,
       totalCents: 3000, status: "AWAITING_PAYMENT", signedAt: new Date() },
   });
@@ -162,7 +162,7 @@ describe("Batch D customer portal completion", () => {
     ].sort());
     expect(agreement.signingPaymentSummary).toMatchObject({ status: "AWAITING_PAYMENT", totalCents: 3000, receivedOn: null });
     expect(agreement).not.toHaveProperty("signingPaymentObligation");
-    expect(JSON.stringify(agreement)).not.toContain("portal-fixture-");
+    expect(JSON.stringify(agreement)).not.toContain("f".repeat(64));
     const foreign = await getPortalData(ids.userB);
     expect(foreign?.rentalAgreements[0]?.signingPaymentSummary).toBeNull();
     expect(Object.keys(agreement.lines[0]!).sort()).toEqual([

@@ -5,6 +5,22 @@
   "maintenanceBranch": "ai/codex/completion-recovery-20261014",
   "branches": [
     {
+      "name": "ai/claude/transfer-smoke-test",
+      "sha": "00d801e27177a80e1ed7f3cf7b34ab6d45b76314",
+      "disposition": "test-fixture",
+      "prs": [],
+      "reason": "Reviewed historical recovery branch; superseded implementation or infrastructure handoff retained in archive."
+    },
+    {
+      "name": "ai/gpt6/t7c-guided-filing-handoff",
+      "sha": "ec6defa24b850bb1bf531edf865228c1dfb994dc",
+      "disposition": "superseded",
+      "prs": [
+        326
+      ],
+      "reason": "Reviewed historical recovery branch; superseded implementation or infrastructure handoff retained in archive."
+    },
+    {
       "name": "ai/gpt6/release-schedule-fallback-20261014",
       "sha": "5fa5b3f730252e54dd02891485542dc1fd3b93db",
       "disposition": "superseded",
