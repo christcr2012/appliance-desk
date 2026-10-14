@@ -117,11 +117,11 @@ test('bounded schedule backups preserve midnight, daily marker and owner recover
 test('recovery requires explicit owner, expected repository, main and elapsed midnight', async () => {
   const { authorizedReleaseInvocation } = await import('./promote-live.mjs');
   const env = { GITHUB_REPOSITORY: 'example/repo', GITHUB_REF: 'refs/heads/main',
-    GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_ACTOR: 'christcr2012',
+    GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_ACTOR: 'christcr2012', GITHUB_TRIGGERING_ACTOR: 'christcr2012',
     RECOVER_MISSED_DAILY: 'true', GH_TOKEN: 'fixture' };
   const time = new Date('2026-10-14T11:00:00Z');
   assert.equal(authorizedReleaseInvocation(env, 'example/repo', time), true);
-  for (const change of [{ GITHUB_ACTOR: 'other' }, { RECOVER_MISSED_DAILY: 'false' },
+  for (const change of [{ GITHUB_TRIGGERING_ACTOR: 'other' }, { GITHUB_TRIGGERING_ACTOR: undefined }, { GITHUB_ACTOR: 'other' }, { RECOVER_MISSED_DAILY: 'false' },
     { RECOVER_MISSED_DAILY: undefined }, { GITHUB_REF: 'refs/heads/live' },
     { GITHUB_REPOSITORY: 'other/repo' }, { GITHUB_EVENT_NAME: 'push' },
     { GH_TOKEN: '' }])

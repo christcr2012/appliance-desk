@@ -22,7 +22,7 @@ export function authorizedReleaseInvocation(env, repository, now = new Date()) {
   if (env.GITHUB_EVENT_NAME === 'schedule') return true;
   // No default dispatch or automated production override; GitHub owner only.
   return env.GITHUB_EVENT_NAME === 'workflow_dispatch' &&
-    env.GITHUB_ACTOR === 'christcr2012' &&
+    env.GITHUB_ACTOR === 'christcr2012' && env.GITHUB_TRIGGERING_ACTOR === 'christcr2012' &&
     env.RECOVER_MISSED_DAILY === 'true' && denverMinute(now) >= 1;
 }
 
