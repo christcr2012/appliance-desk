@@ -42,6 +42,22 @@ open obligations, original fixture ownership, approvals and deployment provenanc
 
 ## October 14 recovery rerun owner authentication — follow-up
 
+## W-22D18 — signed rental gets a real draft delivery job and owner To do
+
+PR #441 (D17) merged with all exact-head checks; normal daily release
+remains on `live` for production. D18 is scoped to Amendment B S6:
+a non-renewal customer signature atomically persists one unassigned,
+unscheduled DELIVERY job unless one already exists. The active agreement's
+To do links the actual job until owner schedules delivery. This is
+owner/admin finance-context work; staff and customers do not receive
+the owner reminder. Signing remains different from receiving money:
+verify the signing payment before dispatch, and do not auto-book or
+notify the customer.
+
+Disposable PostgreSQL signing/renewal and role/To do unit tests pass;
+authenticated browser and exact-head Actions still need independent
+evidence. Actual Stripe TEST and W-22 complete signing-through-delivery,
+all-in quote/website acceptance, CPA IN-79, legal and LIVE remain open.
 PR #438's concurrent source repair and verified October 14 READY deployment are preserved. Recovery additionally checks GITHUB_TRIGGERING_ACTOR and github.triggering_actor, so non-owner reruns of the owner's prior recovery cannot promote a newer day. Original and triggering actors must both be christcr2012, on main with explicit recovery input. Negative tests cover another/missing triggering actor. Exact-head CI and existing application/provider gates remain mandatory.
 
 # STATUS — current work, blockers and next action

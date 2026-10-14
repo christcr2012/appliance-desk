@@ -68,6 +68,7 @@ describe.skipIf(!enabled)("W-22D13 exact owner-recorded signing payment (disposa
     await prisma.signatureRecord.deleteMany({ where: { agreementId } });
     await prisma.agreementSigningCharge.deleteMany({ where: { agreementId } });
     await prisma.rentalLine.deleteMany({ where: { agreementId } });
+    await prisma.job.deleteMany({ where: { agreementId } });
     await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
     await cleanupTax?.();
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });

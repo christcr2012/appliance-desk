@@ -8,6 +8,7 @@ import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention
 import { prisma } from "@/lib/prisma";
 import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
+import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
 import {
@@ -1014,6 +1015,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     : { rows: [], total: 0 };
 
   const cancellationRefundAttention = canViewFinance ? await listCancellationRefundAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
+  const signedDeliveryAttention = canViewFinance ? await listSignedDeliveryAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -1036,6 +1038,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...items.filter((item) => item.category !== "SALES_TAX"),
     ...signingPaymentAttention.rows,
     ...cancellationRefundAttention.rows,
+    ...signedDeliveryAttention.rows,
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
@@ -1073,6 +1076,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["PAST_DUE_INVOICE", pastDueInvoices],
       ["SIGNING_PAYMENT_DUE", signingPaymentAttention],
       ["CANCELLATION_REFUND_DUE", cancellationRefundAttention],
+      ["SIGNED_DELIVERY_UNSCHEDULED", signedDeliveryAttention],
       ["OVERDUE_JOB", overdueJobs],
       ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
       ["UNINSPECTED_RETURN", uninspectedAppliances],
