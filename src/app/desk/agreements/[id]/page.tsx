@@ -22,6 +22,8 @@ import { prisma } from "@/lib/prisma";
 import { ManualSigningPaymentForm } from "./manual-signing-payment-form";
 import { customerSigningSummary } from "@/domains/portal/signing-status";
 import { SigningPaymentSummary } from "@/components/billing/signing-payment-summary";
+import { getReviewedSigningOrderReadback } from "@/domains/billing/signing-order-readback";
+import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
 
 export const metadata = { title: "Agreement" };
 
@@ -66,6 +68,10 @@ export default async function AgreementDetailPage({
     agreement.status === "DRAFT" ? getPreparedSigningChargeReview(agreement.id) : [],
     agreement.status === "DRAFT" ? getDraftSigningTaxReview(agreement.id) : null,
   ]);
+  const hasFrozenSigningOffer = Boolean(agreement.signature?.signingOrderFingerprint);
+  const frozenOrder = hasFrozenSigningOffer
+    ? await getReviewedSigningOrderReadback(agreement.id).catch(() => null)
+    : null;
   const locationLabels = signingPreview
     ? new Map((await prisma.serviceAddress.findMany({
       where: { id: { in: signingPreview.locations.map(row => row.serviceAddressId) } },
@@ -117,6 +123,12 @@ export default async function AgreementDetailPage({
         </p>
       )}
 
+      {hasFrozenSigningOffer && !frozenOrder && (
+        <p role="status" className="mt-4 rounded-lg border border-line p-3 text-sm">
+          Frozen signing order could not be verified. Review the agreement records before using a displayed amount.
+        </p>
+      )}
+      {frozenOrder && <ReviewedSigningOrder order={frozenOrder} />}
       {signingPreview && (
         <section aria-labelledby="signing-preview-heading" className="mt-6 rounded-lg border border-border p-4">
           <h2 id="signing-preview-heading" className="font-semibold">Signing charges — planning preview</h2>

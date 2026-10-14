@@ -52,7 +52,8 @@
       "work-order-print.spec.ts",
       "security-response-headers.spec.ts",
       "accessibility-routes-desk-b.spec.ts",
-      "communications-calls.spec.ts"
+      "communications-calls.spec.ts",
+      "signing-multilocation-order.spec.ts"
     ]
   }
 }
