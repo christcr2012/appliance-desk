@@ -21,3 +21,17 @@ For a new Vercel project, set Settings → Environments → Production → Branc
 An explicit owner request can authorize a one-off manual release after the exact candidate passes required checks. Read fresh main/live refs, require ancestry, update live without force and with an expected-head lease, then verify Vercel production reaches READY for that SHA and the production alias resolves to it. A branch update alone is not deployment-success evidence. This exception does not authorize automatic releases at agent batch boundaries, new provider production permissions or spending.
 
 CI registry recovery (2026-10-13): main run 38403982749 and prior main runs failed before tests when the ECR Postgres mirror exceeded its public data limit. Unit and browser services now use the official public `postgres:17` image on GitHub-hosted Ubuntu runners, where GitHub documents a Docker Hub public-pull exemption: https://docs.github.com/en/actions/reference/limits#docker-hubs-rate-limit-for-github-actions. The database version, isolated test databases, all three unit shards, all four browser shards and required aggregate CI remain unchanged. Actual Actions initialization and test completion are the acceptance evidence; never bypass failed CI to release.
+
+## Missed-event recovery (owner repair, 2026-10-14)
+
+The primary remains 00:01 Denver. Backup events run at 00:17, 01:17 and 05:37 Denver,
+plus 12:43 UTC (06:43 MDT / 05:43 MST). Each invokes the same atomic, checked,
+once-per-Denver-day promoter. These are recovery opportunities, not extra releases.
+GitHub can omit every scheduled event; backup configuration alone does not prove reliability.
+Verify the actual run, daily receipt, released SHA and Vercel production deployment.
+
+If all events are missed, the signed-in owner `christcr2012` can Run workflow on
+`main` with `recover_missed_daily` checked. The default is false; other actors,
+branches and invocations fail closed. Recovery retains exact-main CI, ancestry,
+atomic marker and read-back checks and skips if a release already occurred that day.
+No provider production permission, plan, spending limit or preview setting changes.
