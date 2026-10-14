@@ -89,6 +89,7 @@ export default async function DeskSettingsPage({
         <SigningChargeForm editable={session.user.role === "OWNER"} settings={{
           administrativeSetupFeeCents: settings.administrativeSetupFeeCents,
           largeOrderMachineThreshold: settings.largeOrderMachineThreshold,
+          largeOrderCancellationFullRefundHours: settings.largeOrderCancellationFullRefundHours,
           businessRequiresDownPayment: settings.businessRequiresDownPayment,
           setupFeeTaxTreatment: settings.setupFeeTaxTreatment,
           setupFeeTaxDecisionNote: settings.setupFeeTaxDecisionNote,

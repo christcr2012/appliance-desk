@@ -1,6 +1,19 @@
 # STATUS — current work, blockers and next action
 
 
+## October 13 verified release and W-22D16 implementation (current)
+
+**Observed current GitHub:** main and live are both `7e0d99fa8701d318421d95eb4cfed79c52d3cff5` (#436); no open PRs or issues and no unfinished remote implementation branches. The two `archive/` branches are intentional and must not be merged. The exact-head CI, release-policy and housekeeping workflow passed. **Observed Vercel production:** deployment `dpl_oGFdAyB13CjvKBdnTPMjQGh27wwH` is READY for exactly the same `live` SHA and assigned public aliases, without alias error. This confirms the October 13 one-time release outcome; normal reviewed daily releases resume. It does not prove authenticated app/Stripe acceptance.
+
+**Current branch in this handoff:** `ai/gpt6/w22-pre-delivery-cancellation-20261013` from current main. Work packet W-22D16 implements **approved IN-76 pre-delivery owner cancellation and accountable refund-due workflow**, not a money-out transaction. Owner/admin reviews receipt, delivery, signed terms and pending charges, confirms full or eligible large-order retention, and the atomic agreement cancellation stores explicit refundable/retained cents with a permanent audit and high-priority refund To do. Settings define the 72-hour large-order full refund window. Undelivered unpaid agreements have zero refund. Existing signed obligations, invoice payments and deposits are not silently ignored. Generic cancellation may not release collected signing funds without the review. No Stripe refund, live payment, automatic communication, tax decision or production write is activated.
+
+**Evidence so far (pre-PR; rerun at final head):** schema validates, 5 policy unit cases pass, 4 real disposable PostgreSQL integration tests pass, work packet selector/anchor check passes. Typegen succeeded; a 2GB-default-heap typecheck ran out of memory in local sandbox and a bounded heap retry is underway. Saved-session browser spec and full Actions validation still required. No merge or deployment of this feature claimed here.
+
+**Next owner-gated acceptance:** independently verified external refunds, provider state after cancellation, legal review of signed cancellation terms, CPA IN-79 administrative-fee tax, and Stripe TEST real-provider acceptance remain separate. W-22 remains PARTIAL; W-23 sequencing gate remains. Next approved independent W-22 work is visible without requesting routine approvals already supplied.
+
+---
+
+
 ## Invoice-list performance investigation — index correction (PR pending, 2026-10-13)
 
 Post-#432 main `917b22c` is the verified baseline. Investigated the

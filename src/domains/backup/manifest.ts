@@ -126,6 +126,7 @@ export const BACKUP_MODEL_POLICY = {
   TelecomStatement: "telecomStatement",
   ProviderEvent: "providerEvent",
   MarketingSuppression: "marketingSuppression",
+  PreDeliveryCancellation: "preDeliveryCancellation",
   AssetNumberCounter: "assetNumberCounter",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 

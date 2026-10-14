@@ -774,3 +774,16 @@ Stripe LIVE, CPA IN-79 and all money-out/production gates remain unchanged.
 ### W-22D14 new hookup evidence
 
 JobAppliance.newHookupItemsInstalled is a nullable Boolean. Old completed jobs remain NULL (unknown). True means newly installed items explicitly recorded at delivery, false means missing items requiring a machine-linked To do, and null means unrecorded. The existing JobAppliance resultRecordedAt and resultRecordedByUserId identify who and when. No direct billing, tax or parts inventory changes.
+
+### W-22D16 — approved cancellation liability (2026-10-13)
+
+`20261015220000_pre_delivery_cancellation` adds `BusinessSettings.largeOrderCancellationFullRefundHours`
+(default 72, owner-editable 1–720) and one agreement-keyed `PreDeliveryCancellation`.
+The record stores the reviewed source receipt/order fingerprint, refund/retention cents,
+chosen policy, reason, affirmative terms review, approving user and timestamp.
+`refundState=PENDING_EXTERNAL_REFUND` means still owed; `NOT_REQUIRED` means
+no actual signing money was received. These are not Stripe refund states or evidence
+that money was returned. Application code computes sums from locked provider-verified
+receipt obligations, never from browser values. The model is included in backup
+manifest coverage. Additive migration only, no historical backfill, Stripe money-out
+or automatic customer notice.
