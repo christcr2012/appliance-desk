@@ -131,3 +131,49 @@ test('recovery requires explicit owner, expected repository, main and elapsed mi
   assert.equal(authorizedReleaseInvocation(env, 'example/repo', new Date('2026-12-14T07:01:00Z')), true);
   assert.equal(authorizedReleaseInvocation({ ...env, GITHUB_EVENT_NAME: 'schedule' }, 'example/repo', time), true);
 });
+
+test('successful no-op records a daily tag and blocks later fallback promotion', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'release-noop-'));
+  const cwd = process.cwd(), fetchBefore = globalThis.fetch;
+  const keys = ['GITHUB_REPOSITORY', 'GITHUB_REF', 'GITHUB_EVENT_NAME', 'GH_TOKEN'];
+  const before = keys.map(key => process.env[key]);
+  const git = (...args) => execFileSync('git', args, {
+    cwd: dir, encoding: 'utf8', stdio: 'pipe'
+  }).trim();
+  try {
+    git('init', '--bare', join(dir, 'remote.git'));
+    git('init', '-b', 'main');
+    git('config', 'user.email', 'test@example.invalid');
+    git('config', 'user.name', 'Release test');
+    git('remote', 'add', 'origin', join(dir, 'remote.git'));
+    writeFileSync(join(dir, 'unchanged.txt'), 'original');
+    git('add', 'unchanged.txt');
+    git('commit', '-m', 'original');
+    git('push', 'origin', 'main', 'main:live');
+    const original = git('rev-parse', 'HEAD');
+    Object.assign(process.env, { GITHUB_REPOSITORY: 'example/repo',
+      GITHUB_REF: 'refs/heads/main', GITHUB_EVENT_NAME: 'schedule',
+      GH_TOKEN: 'fixture' });
+    process.chdir(dir);
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      total_count: 1, check_runs: [{ ...good, head_sha: original }]
+    }) });
+    await run({ repository: 'example/repo', requiredChecks: ['ci'] });
+    const tag = 'refs/tags/live-promotion/' + denverDay();
+    assert.equal(git('ls-remote', 'origin', tag).split(/\s+/)[0], original);
+    writeFileSync(join(dir, 'unchanged.txt'), 'merged after primary');
+    git('commit', '-am', 'later merge');
+    git('push', 'origin', 'main');
+    await run({ repository: 'example/repo', requiredChecks: ['ci'] });
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], original);
+    assert.equal(git('ls-remote', 'origin', tag).split(/\s+/)[0], original);
+  } finally {
+    process.chdir(cwd);
+    globalThis.fetch = fetchBefore;
+    keys.forEach((key, i) => {
+      if (before[i] === undefined) delete process.env[key];
+      else process.env[key] = before[i];
+    });
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
