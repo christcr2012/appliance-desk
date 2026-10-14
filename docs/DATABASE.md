@@ -63,6 +63,17 @@ the frozen signing evidence under a shared settings lock; changes after freeze
 cannot silently reach the customer. The separate legacy singleton fields
 remain for UI continuity, not a substitute for the version history.
 
+## W-22 owner-reasoned location setup fees (2026-10-14)
+
+The additive \`20261015234000_w22_setup_fee_owner_overrides\` migration stores one
+\`SigningSetupFeeOverride\` against the deterministic first agreement of each
+service address in an order, never a customer-submitted cents field. Its OWNER
+actor, reason, amount and audit history are stored; adjustment changes are
+allowed only while every sibling remains DRAFT and no sibling has frozen
+signing evidence. Updates remove every unfrozen prepared snapshot across the
+order so the owner must review and prepare the revised amounts again.
+Signatures, receipts and settled invoices are never repriced.
+
 ## Auth & people
 
 - **User** — anyone who can log in: Chris (`OWNER`), any staff he adds

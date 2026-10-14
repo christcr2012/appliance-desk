@@ -21,6 +21,15 @@ feature must explain its gate and give the owner an audited confirmation path.
 AGENTS.md and SESSION-START.md hold the full permanent requirements.
 This is a development procedure, not legal/tax approval or live authorization.
 
+## W-22FIN checkpoint — recorded owner fee adjustment (2026-10-14)
+
+Owner-only audited per-location signing fee adjustments, optional full waiver
+and immutable signed-order guard are under active substantive implementation.
+This is not the whole W-22FIN batch: all-in customer/owner estimate-through-
+agreement presentation and payment failure follow-up still require engineering,
+test evidence and merge. Actual CPA review, legally approved terms, Stripe TEST
+and production release/acceptance remain separate scope-specific gates.
+
 ## W-22FIN progress — CPA-backed owner activation path under implementation (2026-10-14)\n\nThe next substantial W-22 implementation adds recorded adviser confirmation, effective date, owner attestation, and audited tax-policy revisions. It will deny unreviewed/legacy tax choices during both draft preparation and downstream tax review, preserving remaining per-jurisdiction rules and verified address obligations. This is SOURCE WORK ONLY until exact-head CI/review/merge, followed by checked release and independent real-provider acceptance. It does not approve CPA/legal treatment, customer charges, Stripe LIVE or public pricing. Remaining all-in customer quote and integrated delivery acceptance still belong to W-22FIN; the owner expects the whole engineering milestone, not small repeated handoffs.\n\n### Workflow maintenance handoff — owner publication approved
 
 New offline session utility: eight behavioral tests passed, including actual Git ancestry, partial releases, unknown/failed deployments, rollback, dependency gating, invalid queues, PR alignment and bounded output. All repository queues validate. Existing source/status evidence is preserved; no provider acceptance or release was performed. Owner explicitly approved publication on October 14; publish the reviewed maintenance branch, require exact-head CI/reviews, and merge only when those gates pass. No extra production release is authorized by this approval. Full broad application suites on the shared runner were interrupted after resource/time-limit failures; do not claim them passed. Existing exact-head remote CI/review gates must pass before any main merge.
