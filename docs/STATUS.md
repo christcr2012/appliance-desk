@@ -306,6 +306,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "lastEvidence": "Source implementation and local synthetic tests only; not independently deployed or owner accepted.",
     "dependsOn": [],
     "status": "PENDING"
+  },
+  {
+    "id": "W22FIN-PREAPPROVAL-READBACK",
+    "priority": 5,
+    "requiredRevision": "4b8570e38981b76ef35538bfdfb9ccb7f52ff545",
+    "task": "Verify authenticated owner prepared multi-property estimate quote readback and public stale-quote denial after checked READY release.",
+    "procedure": "Use separately permitted owner and isolated customer read identities; inspect fully signed frozen order, matching quote hashes, denial of legacy provisional approval, and no provider mutation or live fixture creation.",
+    "gates": "Checked READY revision ancestry, owner/customer permission and isolated safe fixture. Counsel/CPA/Stripe TEST and publication restrictions remain separate.",
+    "lastEvidence": "Only local pure unit tests and source review; no real deployed authenticated acceptance.",
+    "dependsOn": [],
+    "status": "PENDING"
   }
 ]
 ```
