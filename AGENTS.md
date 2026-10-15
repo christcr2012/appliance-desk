@@ -11,6 +11,26 @@ The rolling sample used for per-PR workload statistics is not a session quota.
 
 ## PR workload is measured in predefined batch subsections — owner clarification 2026-10-14
 
+**Bundle, card and PR boundaries — owner alignment 2026-10-15.** A card defines
+approved subsection scope; it is not automatically a PR or bundle boundary.
+A bundle is a coherent usable implementation outcome, normally averaging 2–5
+fully completed existing subsections and 400–800 meaningful production-code
+lines (tests/docs/generated/formatting excluded). Select the related cards and
+full acceptance before coding. One substantial subsection can qualify when its
+full workload naturally warrants it; merely finishing a smaller card does not
+make it a bundle. Larger coherent outcomes are allowed when reliably reviewable.
+There is no 500/800-line ceiling, file-count ceiling, one-migration quota or
+blanket one-risk-area rule. Related migrations may share a PR with explicit
+ordering, upgrade/restore proof and safe rollout. Keep every distinct risk,
+permission, confirmation and provider boundary independently enforced/tested;
+shared delivery never combines or relaxes those controls. Split delivery only
+for a concrete migration, dependency, safety or reviewability reason; record
+that reason and the unfinished integration. A bundle spanning PRs counts once
+when its intended outcome is fully implemented, verified and merged. The current
+owner prompt sets bundle count, never a standing repository quota. These rules
+supersede older numeric/grouping restrictions in recipes or example cards.
+
+
 **The countable work unit is a predefined batch subsection** in the authoritative
 approved roadmap/design, such as H-3, H-4 or B-5 (use this repository's actual IDs).
 The target is **2–5 fully completed batch subsections per substantive PR on
@@ -368,7 +388,7 @@ Vercel projects or Neon projects. If a name you are about to create might alread
 
 ## Scope and owner decisions
 
-Build what the current card asks, completely. Other ideas go in `docs/ROADMAP.md` and your report — don't build them
+Build the full selected approved card or related cards for the current bundle. Other ideas go in `docs/ROADMAP.md` and your report — don't build them
 unasked. Audit and review items are already mapped to batches; work them when their batch comes up. Deferring is not
 resolving: keep it listed. Owner decisions live in `docs/OWNER-INPUTS.md` with stable IDs; check there first and ask only
 for what the current card needs. An answer is applied only once the setting and the behavior are verified.

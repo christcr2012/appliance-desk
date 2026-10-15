@@ -1,5 +1,9 @@
 # Execution cards — just in time
 
+A card defines approved scope, not an automatic separate PR or bundle. Group related
+whole subsections under AGENTS' bundle/card/PR rule; keep every acceptance criterion,
+permission and migration proof, with no numeric per-card ceiling.
+
 **Owner-answer crosswalk:** [October 13 implementation map](../owner-decisions/2026-10-13-implementation-map.json)
 and [engineering contract](../designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md)
 contain 56 source-backed subject decisions and acceptance expectations.

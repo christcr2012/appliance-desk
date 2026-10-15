@@ -36,11 +36,14 @@ the entire billing domain. Existing tax category handling starts at
 
 ## Proposed slice and interfaces — resolve in the JIT card
 
-A coherent next slice is **draft persistence + frozen price presentation**, within
-one money risk area and at most one migration. Payment, first-invoice credit,
-refund/cancellation and delivery evidence remain named successor scope. If the
-vertical slice exceeds ~800 production lines, split at a complete persisted
-capability, retaining the parent W-22 acceptance and index as incomplete.
+The draft persistence + frozen price presentation seam below is an internal
+implementation step, not a required PR/bundle boundary. Use the current W-22FIN
+packet and approved roadmap for remaining payment, first-invoice credit,
+refund/cancellation and delivery scope; this older recipe does not reschedule them.
+Related additive migrations may share the coherent outcome with explicit order
+and upgrade/restore proof. No 800-line threshold or single-risk count requires a
+split; record a concrete migration/dependency/safety/reviewability reason and keep
+the parent acceptance/index incomplete until the whole outcome is proven.
 
 Candidate new module (does not exist):
 `src/domains/billing/signing-charge-persistence.ts`. Candidate API (not exported):

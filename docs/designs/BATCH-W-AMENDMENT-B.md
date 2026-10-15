@@ -262,7 +262,7 @@ the place to plug it in.
 
 ---
 
-## 4. Schema (additive, one migration per PR that needs it)
+## 4. Schema (additive, explicit migration order and upgrade/restore proof)
 
 - **`Purchase`** (W-14): `id`, `supplierId?` (existing `Supplier`), `sellerName?` (private seller), `purchasedOn`
   (date), `reference?` (receipt/invoice number), `subtotalCents`, `sellerTaxCents`, `sellerTaxKind`
