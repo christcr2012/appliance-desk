@@ -5,7 +5,8 @@ import {
   addLocationPerson, createTenantRepairLink, effectiveLocationPermission,
   eraseExpiredTenantPII, getJobLocationPrivacy, importLocationCsv, locationWorkspace,
   moveOutLocationPerson, saveAccountLocationPermission, saveLocationDetails,
-  setLocationRetention, submitTenantRepair, tenantRepairOptions,
+  setLocationRetention, recordTenantPurgeReview, setTenantPrivacyHold,
+  previewLocationCsv, submitTenantRepair, tenantRepairOptions,
 } from "@/domains/customers/location-contacts";
 
 const target = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/disabled");
@@ -26,6 +27,8 @@ describe.skipIf(!enabled)("W-23 actual Postgres ownership and tenant life cycle"
   let agreementId: string;
   let lineId: string;
   let oldRetention = 12;
+  let oldPurgeReview: { tenantContactPurgeApprovedAt: Date | null;
+    tenantContactPurgeApprovalReference: string | null; tenantContactPurgeApprovedBy: string | null };
   const owner = { role: "OWNER" as const, userId: userIds[0] };
   const client = { role: "CUSTOMER" as const, userId: userIds[1], customerId: customerIds[0] };
   const foreign = { role: "CUSTOMER" as const, userId: userIds[2], customerId: customerIds[1] };
@@ -35,6 +38,14 @@ describe.skipIf(!enabled)("W-23 actual Postgres ownership and tenant life cycle"
   beforeAll(async () => {
     oldRetention = (await prisma.businessSettings.findUnique({ where: { id: "singleton" },
       select: { tenantContactRetentionMonths: true } }))?.tenantContactRetentionMonths ?? 12;
+    const original = await prisma.businessSettings.findUnique({
+      where: { id: "singleton" }, select: {
+        tenantContactPurgeApprovedAt: true, tenantContactPurgeApprovalReference: true,
+        tenantContactPurgeApprovedBy: true,
+      },
+    });
+    oldPurgeReview = original ?? { tenantContactPurgeApprovedAt: null,
+      tenantContactPurgeApprovalReference: null, tenantContactPurgeApprovedBy: null };
     await prisma.user.createMany({ data: [
       { id: userIds[0], email: prefix + "-o@example.test", role: "OWNER" },
       { id: userIds[1], email: prefix + "-a@example.test", role: "CUSTOMER" },
@@ -62,10 +73,11 @@ describe.skipIf(!enabled)("W-23 actual Postgres ownership and tenant life cycle"
   });
   afterAll(async () => {
     await prisma.businessSettings.update({ where: { id: "singleton" },
-      data: { tenantContactRetentionMonths: oldRetention } });
+      data: { tenantContactRetentionMonths: oldRetention, ...oldPurgeReview } });
     await prisma.customerNotice.deleteMany({ where: { customerId: { in: customerIds } } });
     await prisma.maintenanceRequest.deleteMany({ where: { customerId: { in: customerIds } } });
     await prisma.staffTask.deleteMany({ where: { customerId: { in: customerIds } } });
+    await prisma.locationPortfolioImport.deleteMany({ where: { customerId: { in: customerIds } } });
     await prisma.auditLog.deleteMany({ where: { OR: [
       { userId: { in: userIds } },
       { entityId: { in: [...addresses,...customerIds,...requests] } },
@@ -166,9 +178,9 @@ describe.skipIf(!enabled)("W-23 actual Postgres ownership and tenant life cycle"
       .toBe(originalLine.monthlyPriceCents);
     await prisma.locationContact.update({where:{id:person},data:{endedAt:new Date("2024-01-01T00:00:00Z")}});
     const erased = await eraseExpiredTenantPII(new Date("2026-10-15T00:00:00Z"));
-    expect(erased).toBeGreaterThanOrEqual(1);
+    expect(erased).toBe(0); // Cron exists but irreversibly erases nothing without review and activation.
     expect(await prisma.locationContact.findUniqueOrThrow({where:{id:person}}))
-      .toMatchObject({name:null,phone:null,email:null,preferredLanguage:"en"});
+      .toMatchObject({name:"Former"});
     await setLocationRetention(owner, 24);
     expect((await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"}}))
       .tenantContactRetentionMonths).toBe(24);
@@ -183,10 +195,62 @@ describe.skipIf(!enabled)("W-23 actual Postgres ownership and tenant life cycle"
     });
     addresses.push(address.id);
     expect(await prisma.locationContact.count({where:{serviceAddressId:address.id}})).toBe(1);
-    await expect(importLocationCsv(owner,customerIds[0],csv)).rejects.toThrow(/already exists/i);
+    expect(await importLocationCsv(owner,customerIds[0],csv)).toBe(1);
+    expect((await previewLocationCsv(owner,customerIds[0],csv)).length).toBe(1);
+    expect(await prisma.serviceAddress.count({where:{customerId:customerIds[0],line1:"600 Test Rd"}})).toBe(1);
+    const crossAccount=header+"\n200 Test St,,Denver,CO,80201,Unit 7,Other,,,en\n";
+    await expect(importLocationCsv(owner,customerIds[0],crossAccount)).rejects.toThrow(/already exists/i);
+    await expect(previewLocationCsv(owner,customerIds[0],crossAccount)).rejects.toThrow(/already exists/i);
     const bad=header+"\n700 Test Rd,,Denver,CO,80201,,,,,\n=1+1,,Denver,CO,80201,,,,,\n";
     await expect(importLocationCsv(owner,customerIds[0],bad)).rejects.toThrow(/formula/i);
     expect(await prisma.serviceAddress.count({where:{customerId:customerIds[0],line1:"700 Test Rd"}})).toBe(0);
     await expect(importLocationCsv(client,customerIds[0],csv)).rejects.toThrow(/owner/i);
   });
+  it("blocks future occupants and all unapproved or held tenant erasures", async () => {
+    const address = await prisma.serviceAddress.create({ data: {
+      customerId: customerIds[0], line1: "813 Hold Lane", city: "Denver", zip: "80201",
+    } }); addresses.push(address.id);
+    const current = await addLocationPerson(owner, customerIds[0], address.id, {
+      name: "Held person", role: "TENANT", phone: "3035550131",
+      email: "hold@example.test", preferredLanguage: "en", startedAt: "",
+    }); createdContacts.push(current);
+    await moveOutLocationPerson(owner, customerIds[0], address.id, current, false);
+    await prisma.locationContact.update({ where: { id: current },
+      data: { endedAt: new Date("2024-01-01T00:00:00Z") } });
+    await setTenantPrivacyHold(owner,customerIds[0],address.id,current,"Pending claim evidence");
+    await recordTenantPurgeReview(owner,"Counsel-reviewed tenant retention documentation reference");
+    const oldFlag = process.env.TENANT_PII_PURGE_ENABLED;
+    try {
+      process.env.TENANT_PII_PURGE_ENABLED = "true";
+      expect(await eraseExpiredTenantPII(new Date("2026-10-15T00:00:00Z"))).toBe(0);
+      await setTenantPrivacyHold(owner,customerIds[0],address.id,current,null,"Evidence reviewed, hold released");
+      await prisma.maintenanceRequest.create({ data: {
+        customerId: customerIds[0], serviceAddressId: address.id, problem: "Unresolved occupant damage",
+      } });
+      expect(await eraseExpiredTenantPII(new Date("2026-10-15T00:00:00Z"))).toBe(0);
+      await prisma.maintenanceRequest.deleteMany({where:{serviceAddressId:address.id}});
+      expect(await eraseExpiredTenantPII(new Date("2026-10-15T00:00:00Z"))).toBe(1);
+      expect(await prisma.locationContact.findUniqueOrThrow({where:{id:current}}))
+        .toMatchObject({name:null,phone:null,email:null});
+    } finally {
+      if (oldFlag === undefined) delete process.env.TENANT_PII_PURGE_ENABLED;
+      else process.env.TENANT_PII_PURGE_ENABLED = oldFlag;
+    }
+  });
+
+  it("never exposes future-dated occupants on assigned visits", async () => {
+    const future = await addLocationPerson(owner, customerIds[0], addresses[0], {
+      name:"Not moved in", role:"TENANT",phone:"3035557777",email:"future@example.test",
+      preferredLanguage:"en",startedAt:"2027-05-01",
+    }); createdContacts.push(future);
+    const visit = await prisma.job.create({data:{customerId:customerIds[0],
+      serviceAddressId:addresses[0],type:"MAINTENANCE_VISIT",
+      assignedToUserId:userIds[3],status:"SCHEDULED"}});
+    jobIds.push(visit.id);
+    const view = await getJobLocationPrivacy({role:"STAFF",userId:userIds[3]},visit.id);
+    expect(view?.locationContacts.some(p=>p.id===future)).toBe(false);
+    await expect(createTenantRepairLink(client,customerIds[0],addresses[0],future))
+      .rejects.toThrow();
+  });
+
 });
