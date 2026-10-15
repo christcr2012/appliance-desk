@@ -110,6 +110,23 @@ describe.skipIf(!enabled)("W-23 actual Postgres ownership and tenant life cycle"
     expect((await getJobLocationPrivacy({ userId: userIds[3], role: "STAFF" },job.id))?.accessNotes)
       .toContain("4321");
     expect(await getJobLocationPrivacy({ userId: userIds[1], role: "STAFF" },job.id)).toBeNull();
+    const occupant = await addLocationPerson(client, customerIds[0], addresses[0], {
+      name: "Staff Restricted", role: "TENANT", phone: "3035550140",
+      email: "scope@example.test", preferredLanguage: "en", startedAt: "",
+    }); createdContacts.push(occupant);
+    await saveLocationDetails(client, customerIds[0], addresses[0], {
+      unitLabel: "4B", accessNotes: "dog; gate code 4321",
+      override: { ...permission, maintenance: false },
+    });
+    const masked = await getJobLocationPrivacy({ userId: userIds[3], role: "STAFF" }, job.id);
+    expect(masked?.contactAllowed).toBe(false);
+    expect(masked?.locationContacts.find(p => p.id === occupant))
+      .toMatchObject({ phone: null, email: null });
+    await saveLocationDetails(client, customerIds[0], addresses[0], {
+      unitLabel: "4B", accessNotes: "dog; gate code 4321", override: null,
+    });
+    const allowed = await getJobLocationPrivacy({ userId: userIds[3], role: "STAFF" }, job.id);
+    expect(allowed?.locationContacts.find(p => p.id === occupant)?.phone).toBe("3035550140");
     await prisma.job.update({ where: { id:job.id },data:{assignedToUserId:null} });
     expect(await getJobLocationPrivacy({ userId:userIds[3], role:"STAFF" },job.id)).toBeNull();
     expect(await getJobLocationPrivacy({ userId:userIds[1], role:"CUSTOMER" },job.id)).toBeNull();

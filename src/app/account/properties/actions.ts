@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import {
   addLocationPerson, createTenantRepairLink, importLocationCsv, locationWorkspace, moveOutLocationPerson,
-  parseLocationCsv, saveAccountLocationPermission, saveLocationDetails,
+  previewLocationCsv, saveAccountLocationPermission, saveLocationDetails,
   setLocationRetention, type LocationActor,
 } from "@/domains/customers/location-contacts";
 
@@ -59,7 +59,7 @@ export async function previewLocationImportAction(customerId: string, csv: strin
   const actor = await scopedActor(customerId);
   if (actor.role === "CUSTOMER") return { ok: false as const, message: "Owner/admin import only." };
   try {
-    const rows = parseLocationCsv(csv);
+    const rows = await previewLocationCsv(actor, customerId, csv);
     return { ok: true as const, count: rows.length, digest: digest(csv),
       addresses: rows.map(row => ({ street: row.street, unit: row.unit, city: row.city, zip: row.zip })) };
   } catch (error) {

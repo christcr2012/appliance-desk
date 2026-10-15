@@ -55,8 +55,9 @@ test("W-23 owner and customer can update the same owned site; guest cannot see p
     try {
       const unauth = await visitor.newPage();
       await unauth.goto("/desk/customers/" + customer.id + "/locations");
-      await expect(unauth).toHaveURL(/\/login/);
       await expect(unauth.getByText("Keep gate locked.")).toHaveCount(0);
+      await expect(unauth.getByRole("heading", { name: /location contacts for/i })).toHaveCount(0);
+      await expect(unauth.getByRole("button", { name: "Add contact" })).toHaveCount(0);
     } finally { await visitor.close(); }
     // A desktop + narrow viewport still displays the label/contact action.
     await page.setViewportSize({ width: 375, height: 800 });

@@ -96,6 +96,9 @@ export default async function JobDetailPage({
 
       {privateLocation && <section className="mt-4 rounded-lg border border-line bg-subtle p-3 text-sm">
         <h2 className="font-medium">Assigned-visit location details</h2>
+        <p>Appointment confirmer: {privateLocation.permission.appointmentConfirmer === "TENANT" ? "tenant, if contact permitted" : "client"}</p>
+        {!privateLocation.contactAllowed && session.user.role === "STAFF" &&
+          <p>Client has not authorized tenant contact about this visit; phone and email are withheld.</p>}
         {privateLocation.unitLabel && <p>Unit: {privateLocation.unitLabel}</p>}
         {privateLocation.accessNotes && <p className="whitespace-pre-wrap">Private access notes: {privateLocation.accessNotes}</p>}
         <ul>{privateLocation.locationContacts.map(contact => <li key={contact.id}>

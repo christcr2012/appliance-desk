@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/location-contacts-integration.test.ts", // W-23 retention policy is global and restored after testing.
   "tests/w22-v2-flow-integration.test.ts",
   // Tax-ready fixtures also write/restore BusinessSettings.singleton through their helper.
   "tests/billing-webhooks.test.ts",

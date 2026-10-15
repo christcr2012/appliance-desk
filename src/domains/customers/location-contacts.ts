@@ -275,6 +275,25 @@ export function parseLocationCsv(text: string): ImportRow[] {
   }
   return result;
 }
+/** Preview both per-row syntax AND collisions with the account's actual sites.
+ * Commit re-checks in SERIALIZABLE; the preview is never a write authorization. */
+export async function previewLocationCsv(actor: LocationActor, customerId: string, csv: string) {
+  if (actor.role !== "OWNER" && actor.role !== "ADMIN")
+    throw new Error("Only owner/admin may preview a portfolio import.");
+  const records = parseLocationCsv(csv);
+  await prisma.$transaction(async tx => {
+    await requireCustomer(tx, actor, customerId);
+    const existing = await tx.serviceAddress.findMany({
+      where: { customerId }, select: { line1: true, line2: true, city: true, state: true, zip: true },
+    });
+    const keys = new Set(existing.map(addressKey));
+    const collision = records.find(row => keys.has(addressKey({
+      line1: row.street, line2: row.unit, city: row.city, state: row.state, zip: row.zip,
+    })));
+    if (collision) throw new Error("An imported property already exists on this account: " + collision.street);
+  });
+  return records;
+}
 function addressKey(row: { line1: string; line2?: string | null; city: string; state: string; zip: string }) {
   return [row.line1, row.line2 ?? "", row.city, row.state.toUpperCase(), row.zip].join("|").toLowerCase();
 }
@@ -316,15 +335,28 @@ export async function getJobLocationPrivacy(actor: { userId: string; role: strin
       ...(actor.role === "STAFF" ? { assignedToUserId: actor.userId,
         status: { in: ["SCHEDULED", "IN_PROGRESS"] as const } } : {}),
     },
-    select: { customerId: true, serviceAddress: {
+    select: { customerId: true, type: true, serviceAddress: {
       select: { customerId: true, unitLabel: true, accessNotes: true,
+        locationContactPolicy: true,
+        customer: { select: { locationContactPolicy: true } },
         locationContacts: { where: { endedAt: null, erasedAt: null },
           select: { id: true, name: true, role: true, phone: true, email: true,
             preferredLanguage: true } } },
     } },
   });
   if (!row?.serviceAddress || row.customerId !== row.serviceAddress.customerId) return null;
-  return row.serviceAddress;
+  const { customer, locationContactPolicy, ...site } = row.serviceAddress;
+  const permission = effectiveLocationPermission(customer.locationContactPolicy, locationContactPolicy);
+  const topic = row.type === "SWAP" ? "swaps" : row.type === "MAINTENANCE_VISIT"
+    ? "maintenance" : "deliveryPickup";
+  const contactAllowed = mayContactTenant(permission, topic);
+  // OWNER/ADMIN can administer site contacts, but assigned staff cannot call a
+  // tenant on a topic the paying client has not authorized.
+  return { ...site, permission, contactAllowed,
+    locationContacts: actor.role === "STAFF" && !contactAllowed
+      ? site.locationContacts.map(person => ({ ...person, phone: null, email: null }))
+      : site.locationContacts,
+  };
 }
 
 
