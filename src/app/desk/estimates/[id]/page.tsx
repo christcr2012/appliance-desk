@@ -15,6 +15,9 @@ import { getPrivateEstimateAllInReview } from "@/domains/estimates/all-in-review
 import { OwnerAllInEstimateReview } from "@/components/estimates/owner-all-in-review";
 import { getPreparedReserveOverview } from "@/domains/estimates/commercial-reserve-allocation";
 import { CommercialReserveAllocationForm } from "./commercial-reserve-allocation-form";
+import { getPreparedMandatoryChargeOverview } from
+  "@/domains/estimates/mandatory-charge-allocation";
+import { MandatoryChargeLocationReviewForm } from "./mandatory-charge-location-form";
 
 export const metadata = { title: "Estimate" };
 
@@ -27,9 +30,10 @@ export default async function EstimateDetailPage({
 }) {
   const session = await requireRole("OWNER", "ADMIN");
   const { id } = await params;
-  const [estimate, packages, allInReview, preparedQuote, reserve] = await Promise.all([
+  const [estimate, packages, allInReview, preparedQuote, reserve, mandatory] = await Promise.all([
     getEstimateDetail(id), listPackagesForLines(), getPrivateEstimateAllInReview(id),
     getPreparedEstimateQuote(id), getPreparedReserveOverview(id),
+    getPreparedMandatoryChargeOverview(id),
   ]);
 
   if (!estimate) {
@@ -155,6 +159,8 @@ export default async function EstimateDetailPage({
       )}
 
       {reserve && <CommercialReserveAllocationForm overview={reserve}
+        owner={session.user.role === "OWNER"} />}
+      {mandatory && <MandatoryChargeLocationReviewForm overview={mandatory}
         owner={session.user.role === "OWNER"} />}
       <ReviewedPreapprovalQuote quote={preparedQuote} owner />
       {allInReview && <OwnerAllInEstimateReview preview={allInReview} />}
