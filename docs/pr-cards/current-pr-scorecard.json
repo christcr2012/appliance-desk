@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "kind": "risk_remediation",
+  "kind": "maintenance",
   "parent": "W-22FIN",
   "completedSlices": [],
   "remainingEngineering": [
@@ -13,15 +13,10 @@
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Risk repair of a confirmed financial policy defect under current W-22FIN; zero complete predefined batch subsections and zero implementation bundles. PR is not counted toward the requested five bundles. No legal/provider/hosted/production acceptance implied.",
+  "workloadException": "Owner explicitly requested cross-repository documentation consistency review; zero completed product subsections or bundles and zero production-code changes.",
   "evidence": [
-    "Inspected main 20466bc50cead4d300523ee38382f34267a07f4d with zero open PRs and existing W-22FIN contract.",
-    "Pure and disposable-PostgreSQL test cases added for zero-advance five-machine, business-classified, original signing window and legacy full-refund-only cases; passing results require exact-head CI evidence.",
-    "New signature-bound owner policy JSON, transaction scope verification, schema migration and SQL immutability/reconciliation triggers; no LIVE Stripe/refund operation."
-  ],
-  "riskEvidence": [
-    "Confirmed original pre-delivery cancellation derives large order solely from positive down payment, misclassifying prepaid five-machine and business accounts with no advance; original snapshot also read mutable window settings.",
-    "Fix freezes complete tenant-scoped machine classification, customer business flags and owner window at signature and rejects legacy retention and malformed historical evidence, under database immutability and cancellation source constraints.",
-    "New pure tests/signed-cancellation-policy-w22fin.test.ts, amended pre-delivery policy tests and disposable-Postgres cancellation integration regressions cover zero advance, owner business flags, history and SQL denial; full exact-head CI/review is independently required."
+    "AGENTS/SESSION-START/PLAYBOOK/card/recipe guidance aligned to current whole-subsection bundle scope; removed stale automatic numeric/migration/risk splitting rules.",
+    "Existing work-index and marked acceptance queue unchanged; W-22FIN remains incomplete and all legal/provider/owner/CI/release gates retained.",
+    "Local check:quick documentation preflight passed; full required exact-head CI/review mandatory before merge."
   ]
 }
