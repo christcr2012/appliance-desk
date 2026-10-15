@@ -7,7 +7,8 @@ import { prisma } from "@/lib/prisma";
 import {
   addLocationPerson, createTenantRepairLink, importLocationCsv, locationWorkspace, moveOutLocationPerson,
   previewLocationCsv, saveAccountLocationPermission, saveLocationDetails,
-  setLocationRetention, type LocationActor,
+  setLocationRetention, setTenantPrivacyHold, previewTenantRetentionErasure,
+  recordTenantPurgeReview, type LocationActor,
 } from "@/domains/customers/location-contacts";
 
 async function scopedActor(customerId: string): Promise<LocationActor> {
@@ -91,4 +92,25 @@ export async function createTenantRepairLinkAction(customerId: string, siteId: s
     path: await createTenantRepairLink(actor, customerId, siteId, contactId) }; }
   catch (error) { return { ok: false as const,
     message: error instanceof Error ? error.message : "Unable to create link." }; }
+}
+
+export async function setTenantPrivacyHoldAction(customerId: string, addressId: string,
+  contactId: string, reason: string | null, releaseNote?: string) {
+  const actor = await scopedActor(customerId);
+  return outcome(() => setTenantPrivacyHold(actor, customerId, addressId, contactId,
+    reason, releaseNote), customerId, reason ? "Privacy hold recorded." : "Hold release audited.");
+}
+export async function previewTenantRetentionAction() {
+  const session = await requireRole("OWNER");
+  return previewTenantRetentionErasure({ role: "OWNER", userId: session.user.id });
+}
+export async function recordTenantPurgeReviewAction(reference: string) {
+  const session = await requireRole("OWNER");
+  try {
+    await recordTenantPurgeReview({role:"OWNER", userId:session.user.id}, reference);
+    revalidatePath("/desk/settings");
+    return { ok:true as const, message:"Review reference recorded; purge remains disabled until separate deployment activation." };
+  } catch (error) {
+    return { ok:false as const, message:error instanceof Error ? error.message : "Invalid review reference." };
+  }
 }

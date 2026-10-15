@@ -277,6 +277,16 @@ model ServiceAddress {
 
 // W-23 tenant occupants do not become paying customers or login users.
 // Erasure leaves an anonymous row for visit history and compliance evidence.
+model LocationPortfolioImport {
+  id String @id @default(cuid())
+  customerId String
+  digest String
+  importedCount Int
+  approvedByUserId String
+  createdAt DateTime @default(now())
+  @@unique([customerId, digest])
+}
+
 model LocationContact {
   id String @id @default(cuid())
   serviceAddressId String
@@ -289,6 +299,8 @@ model LocationContact {
   startedAt DateTime?
   endedAt DateTime?
   erasedAt DateTime?
+  privacyHoldAt DateTime?
+  privacyHoldReason String?
   repairTokenHash String? @unique
   repairTokenExpiresAt DateTime?
   createdAt DateTime @default(now())
@@ -2595,6 +2607,10 @@ model BusinessSettings {
   id    String @id @default("singleton")
 
   tenantContactRetentionMonths Int @default(12)
+  // Fail closed until separate documented privacy/legal review AND operator activation.
+  tenantContactPurgeApprovedAt DateTime?
+  tenantContactPurgeApprovalReference String?
+  tenantContactPurgeApprovedBy String?
   publicBusinessName String @default("[Company Name]")
   publicPhone        String @default("[Phone Number]")
   publicEmail        String @default("[Email Address]")

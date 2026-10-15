@@ -7,6 +7,7 @@ import {
   addLocationPersonAction, commitLocationImportAction, createTenantRepairLinkAction, endLocationPersonAction,
   previewLocationImportAction, updateLocationAccountAction,
   updateLocationSiteAction, updateTenantRetentionAction,
+  setTenantPrivacyHoldAction, previewTenantRetentionAction, recordTenantPurgeReviewAction,
   type MutationState,
 } from "@/app/account/properties/actions";
 
@@ -44,11 +45,12 @@ function PermissionFields({ initial }: { initial: LocationPermission }) {
 function dateLabel(value: Date | string | null) {
   return value ? new Date(value).toLocaleDateString() : "Not recorded";
 }
-function SiteEditor({ customerId, site, mutate, busy }: {
+function SiteEditor({ customerId, site, mutate, busy, owner }: {
   customerId: string; site: Site; mutate: (key: string, task: () => Promise<MutationState>) => void;
-  busy: boolean;
+  busy: boolean; owner: boolean;
 }) {
   const [showContact, setShowContact] = useState(false);
+  const [holdReason, setHoldReason] = useState("");
   const [repairLink, setRepairLink] = useState<string | null>(null);
   const [override, setOverride] = useState(site.locationContactPolicy !== null);
   return <section className="rounded-lg border border-line p-4 space-y-3">
@@ -115,6 +117,27 @@ function SiteEditor({ customerId, site, mutate, busy }: {
                 className="text-primary underline">Move out + inspection To do</button>
             </span>}
           </div>
+          {owner && !person.erasedAt && <div className="mt-2 space-y-2 text-sm">
+            <p className="text-ink-soft">{person.privacyHoldAt
+              ? "Privacy/legal hold active: " + (person.privacyHoldReason ?? "No recorded reason")
+              : "No recorded privacy/legal hold"}</p>
+            <form className="flex flex-wrap gap-2" onSubmit={e => {
+              e.preventDefault();
+              const reason = holdReason.trim();
+              mutate("hold:"+person.id, () => setTenantPrivacyHoldAction(
+                customerId, site.id, person.id, person.privacyHoldAt ? null : reason,
+                person.privacyHoldAt ? reason : undefined));
+              setHoldReason("");
+            }}>
+              <label>Reason {person.privacyHoldAt ? "for release" : "for hold"}
+                <input required minLength={8} maxLength={500} value={holdReason}
+                  onChange={e => setHoldReason(e.target.value)}
+                  className="ml-2 rounded border border-line p-2" /></label>
+              <button disabled={busy} className="rounded border border-line p-2">
+                {person.privacyHoldAt ? "Release hold with audit" : "Place privacy/legal hold"}
+              </button>
+            </form>
+          </div>}
           {!person.erasedAt && <p className="text-ink-soft">{person.phone || "No phone"} · {person.email || "No email"}
             {person.endedAt ? " · Moved out " + dateLabel(person.endedAt) : " · Current"}
           </p>}
@@ -159,6 +182,8 @@ export function LocationsPanel({ customerId, locations, owner, retentionMonths }
   const [busy, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [csv, setCsv] = useState("");
+  const [retentionPreview, setRetentionPreview] = useState<Awaited<ReturnType<typeof previewTenantRetentionAction>> | null>(null);
+  const [reviewReference, setReviewReference] = useState("");
   const [preview, setPreview] = useState<{
     count: number; digest: string; addresses: { street: string; unit: string; city: string; zip: string }[];
   } | null>(null);
@@ -183,7 +208,7 @@ export function LocationsPanel({ customerId, locations, owner, retentionMonths }
     </form>
     <h2 className="text-xl font-semibold">Locations</h2>
     {locations.serviceAddresses.map(site =>
-      <SiteEditor key={site.id} customerId={customerId} site={site} mutate={mutate} busy={busy} />)}
+      <SiteEditor key={site.id} customerId={customerId} site={site} mutate={mutate} busy={busy} owner={owner} />)}
     {!locations.serviceAddresses.length && <p>No locations on this account.</p>}
     {owner && <section className="rounded-lg border border-line p-4 space-y-3">
       <h2 className="text-lg font-semibold">Bulk property and tenant import</h2>
@@ -212,13 +237,37 @@ export function LocationsPanel({ customerId, locations, owner, retentionMonths }
         mutate("retention", () => updateTenantRetentionAction(Number(d.get("months"))));
       }}>
       <h2 className="font-semibold">Past-tenant privacy retention</h2>
-      <p className="text-sm text-ink-soft">After move-out, erase former tenant name, email and phone automatically. Retain only non-identifying records. Default 12 months.</p>
+      <p className="text-sm text-ink-soft">Default 12 months after move-out. Erasure is OFF until independent privacy/legal review is recorded and a separate deployment setting is explicitly enabled. Holds and all recorded repair cases block erasure.</p>
       <label className="text-sm">Months
         <input name="months" type="number" min={1} max={120} step={1} defaultValue={retentionMonths}
           className="mx-2 w-20 rounded border border-line p-2" />
       </label>
       <button disabled={busy} className="rounded bg-action px-3 py-2 text-on-action">Save retention</button>
     </form>}
+    {retentionMonths !== null && <section className="rounded-lg border border-line p-4 space-y-3">
+      <h2 className="font-semibold">Irreversible erasure readiness (owner only)</h2>
+      <button type="button" disabled={busy} className="rounded border border-line px-3 py-2"
+        onClick={() => startTransition(async () => {
+          try { setRetentionPreview(await previewTenantRetentionAction()); }
+          catch { setMessage("Unable to retrieve authorized retention preview."); }
+        })}>Preview eligible/blocked records</button>
+      {retentionPreview && <p className="text-sm" role="status">
+        Eligible: {retentionPreview.eligible}. Legal holds: {retentionPreview.legalHolds}.
+        Repair/case holds: {retentionPreview.repairHolds}. Recorded external review:
+        {retentionPreview.approved ? " yes" : " no"}. Operator activation:
+        {retentionPreview.deploymentEnabled ? " enabled" : " OFF"}.
+      </p>}
+      <form onSubmit={e => { e.preventDefault();
+        mutate("review", () => recordTenantPurgeReviewAction(reviewReference)); }}>
+        <label className="block text-sm">External privacy/legal approval reference (required to record a genuine review; does not start purge)
+          <textarea required minLength={12} maxLength={500} value={reviewReference}
+            onChange={e => setReviewReference(e.target.value)}
+            className="mt-2 w-full rounded border border-line p-2" />
+        </label>
+        <button disabled={busy} className="mt-2 rounded border border-line px-3 py-2">
+          Record reviewed approval reference</button>
+      </form>
+    </section>}
     {message && <p role="status" className="rounded border border-line p-3 text-sm">{message}</p>}
   </div>;
 }

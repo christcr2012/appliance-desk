@@ -91,7 +91,8 @@ export async function locationWorkspace(actor: LocationActor, customerId: string
           locationContacts: {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             select: { id: true, name: true, role: true, phone: true, email: true,
-              preferredLanguage: true, startedAt: true, endedAt: true, erasedAt: true },
+              preferredLanguage: true, startedAt: true, endedAt: true, erasedAt: true,
+              privacyHoldAt: true, privacyHoldReason: true },
           },
         },
       },
@@ -102,7 +103,15 @@ export async function locationWorkspace(actor: LocationActor, customerId: string
     ...row,
     permission: effectiveLocationPermission(row.locationContactPolicy, null),
     serviceAddresses: row.serviceAddresses.map(site => ({
-      ...site, permission: effectiveLocationPermission(row.locationContactPolicy, site.locationContactPolicy),
+      ...site,
+      // A customer's ordinary tenancy view does not disclose internal legal hold
+      // deliberation or owner-only review references.
+      locationContacts: site.locationContacts.map(contact => ({
+        ...contact,
+        privacyHoldAt: actor.role === "CUSTOMER" ? null : contact.privacyHoldAt,
+        privacyHoldReason: actor.role === "CUSTOMER" ? null : contact.privacyHoldReason,
+      })),
+      permission: effectiveLocationPermission(row.locationContactPolicy, site.locationContactPolicy),
     })),
   };
 }
@@ -157,13 +166,15 @@ export async function moveOutLocationPerson(actor: LocationActor, customerId: st
   await prisma.$transaction(async tx => {
     await requireAddress(tx, actor, customerId, addressId);
     const existing = await tx.locationContact.findFirst({
-      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null },
+      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null,
+        OR: [{ startedAt: null }, { startedAt: { lte: new Date() } }] },
       select: { startedAt: true },
     });
     if (!existing || (existing.startedAt && existing.startedAt > new Date()))
       throw new Error("This contact has already left or has an invalid tenancy start.");
     const updated = await tx.locationContact.updateMany({
-      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null },
+      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null,
+        OR: [{ startedAt: null }, { startedAt: { lte: new Date() } }] },
       data: { endedAt: new Date(), repairTokenHash: null, repairTokenExpiresAt: null },
     });
     if (updated.count !== 1) throw new Error("This contact already moved out.");
@@ -182,20 +193,31 @@ export async function moveOutLocationPerson(actor: LocationActor, customerId: st
 export async function eraseExpiredTenantPII(now = new Date(), limit = 250) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new Error("Invalid batch.");
   const settings = await prisma.businessSettings.findUnique({
-    where: { id: "singleton" }, select: { tenantContactRetentionMonths: true },
+    where: { id: "singleton" }, select: { tenantContactRetentionMonths: true,
+      tenantContactPurgeApprovedAt: true, tenantContactPurgeApprovalReference: true },
   });
+  // Deployment and recorded owner/adviser clearance are independent. Do not silently
+  // turn on irreversible production PII erasure when the migration lands.
+  if (process.env.TENANT_PII_PURGE_ENABLED !== "true" ||
+    !settings?.tenantContactPurgeApprovedAt ||
+    !settings.tenantContactPurgeApprovalReference) return 0;
   const months = settings?.tenantContactRetentionMonths ?? 12;
   if (!Number.isSafeInteger(months) || months < 1 || months > 120)
     throw new Error("Invalid retention policy; erasure denied.");
   const cutoff = subMonths(now, months);
   return prisma.$transaction(async tx => {
     const rows = await tx.locationContact.findMany({
-      where: { endedAt: { lte: cutoff }, erasedAt: null },
+      where: { endedAt: { lte: cutoff }, erasedAt: null, privacyHoldAt: null,
+        // Any recorded repair is potentially relevant to a claim/dispute. Keep the
+        // occupant until a reviewed hold release process exists; never infer closure.
+        serviceAddress: { maintenanceRequests: { none: {} } } },
       select: { id: true }, orderBy: [{ endedAt: "asc" }, { id: "asc" }], take: limit,
     });
     if (!rows.length) return 0;
     const changed = await tx.locationContact.updateMany({
-      where: { id: { in: rows.map(x => x.id) }, endedAt: { lte: cutoff }, erasedAt: null },
+      where: { id: { in: rows.map(x => x.id) }, endedAt: { lte: cutoff },
+        erasedAt: null, privacyHoldAt: null,
+        serviceAddress: { maintenanceRequests: { none: {} } } },
       data: { name: null, phone: null, email: null, preferredLanguage: "en",
         repairTokenHash: null, repairTokenExpiresAt: null, erasedAt: now },
     });
@@ -222,6 +244,64 @@ export async function setLocationRetention(actor: LocationActor, months: number)
   });
 }
 
+/** Read-only policy preview; include blocked rows so an owner can investigate
+ * holds/claims without any irreversible write or revealing PII to staff/clients. */
+export async function previewTenantRetentionErasure(actor: LocationActor, now = new Date()) {
+  if (actor.role !== "OWNER") throw new Error("Owner permission required.");
+  const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" },
+    select: { tenantContactRetentionMonths: true, tenantContactPurgeApprovedAt: true,
+      tenantContactPurgeApprovalReference: true } });
+  const months = settings?.tenantContactRetentionMonths ?? 12;
+  const cutoff = subMonths(now, months);
+  const [eligible, legalHolds, repairHolds] = await Promise.all([
+    prisma.locationContact.count({ where: { endedAt: { lte: cutoff },
+      erasedAt: null, privacyHoldAt: null,
+      serviceAddress: { maintenanceRequests: { none: {} } } } }),
+    prisma.locationContact.count({ where: { endedAt: { lte: cutoff },
+      erasedAt: null, privacyHoldAt: { not: null } } }),
+    prisma.locationContact.count({ where: { endedAt: { lte: cutoff },
+      erasedAt: null, privacyHoldAt: null,
+      serviceAddress: { maintenanceRequests: { some: {} } } } }),
+  ]);
+  return { retentionMonths: months, eligible, legalHolds, repairHolds,
+    approved: !!settings?.tenantContactPurgeApprovedAt &&
+      !!settings.tenantContactPurgeApprovalReference,
+    deploymentEnabled: process.env.TENANT_PII_PURGE_ENABLED === "true" };
+}
+
+/** Recording an approval reference does not activate the cron: the deployment
+ * operator must separately enable TENANT_PII_PURGE_ENABLED after genuine review. */
+export async function recordTenantPurgeReview(actor: LocationActor, reference: string) {
+  if (actor.role !== "OWNER") throw new Error("Owner permission required.");
+  const source = z.string().trim().min(12).max(500).parse(reference);
+  await prisma.$transaction(async tx => {
+    await tx.businessSettings.upsert({ where: { id: "singleton" },
+      create: { tenantContactPurgeApprovedAt: new Date(),
+        tenantContactPurgeApprovalReference: source, tenantContactPurgeApprovedBy: actor.userId },
+      update: { tenantContactPurgeApprovedAt: new Date(),
+        tenantContactPurgeApprovalReference: source, tenantContactPurgeApprovedBy: actor.userId },
+    });
+    await event(tx, actor, "location.retention.review_recorded", "singleton",
+      { reference: source, automaticActivation: false });
+  });
+}
+export async function setTenantPrivacyHold(actor: LocationActor, customerId: string,
+  addressId: string, contactId: string, reason: string | null, releaseNote?: string) {
+  if (actor.role !== "OWNER" && actor.role !== "ADMIN")
+    throw new Error("Owner/admin required for hold decisions.");
+  const note = reason === null ? null : z.string().trim().min(8).max(500).parse(reason);
+  const release = reason === null ? z.string().trim().min(8).max(500).parse(releaseNote) : null;
+  await prisma.$transaction(async tx => {
+    await requireAddress(tx, actor, customerId, addressId);
+    const changed = await tx.locationContact.updateMany({
+      where: { id: contactId, serviceAddressId: addressId, erasedAt: null },
+      data: { privacyHoldAt: note ? new Date() : null, privacyHoldReason: note },
+    });
+    if (changed.count !== 1) throw new Error("Contact not found.");
+    await event(tx, actor, note ? "location.retention.hold" : "location.retention.release",
+      addressId, { contactId, reason: note, releaseReason: release });
+  });
+}
 export const IMPORT_HEADERS =
   "street,unit,city,state,zip,unitLabel,tenantName,tenantPhone,tenantEmail,language";
 export type ImportRow = {
@@ -268,7 +348,8 @@ export function parseLocationCsv(text: string): ImportRow[] {
     });
     if (Object.values(obj).some(v => /^[=+@-]/.test(v)))
       throw new Error("Spreadsheet formula on row " + (i + 2));
-    const key = [obj.street, obj.unit, obj.city, obj.state, obj.zip].join("|").toLowerCase();
+    const key = addressKey({ line1: obj.street, line2: obj.unit,
+      city: obj.city, state: obj.state, zip: obj.zip });
     if (seen.has(key)) throw new Error("Duplicate property on row " + (i + 2));
     seen.add(key);
     result.push(obj);
@@ -281,36 +362,51 @@ export async function previewLocationCsv(actor: LocationActor, customerId: strin
   if (actor.role !== "OWNER" && actor.role !== "ADMIN")
     throw new Error("Only owner/admin may preview a portfolio import.");
   const records = parseLocationCsv(csv);
+  const digest = createHash("sha256").update(JSON.stringify(records)).digest("hex");
   await prisma.$transaction(async tx => {
     await requireCustomer(tx, actor, customerId);
+    const committed = await tx.locationPortfolioImport.findUnique({
+      where: { customerId_digest: { customerId, digest } },
+    });
+    if (committed) return; // A previously committed identical file is already applied.
+
+    await requireCustomer(tx, actor, customerId);
     const existing = await tx.serviceAddress.findMany({
-      where: { customerId }, select: { line1: true, line2: true, city: true, state: true, zip: true },
+      select: { customerId: true, line1: true, line2: true, city: true, state: true, zip: true },
     });
     const keys = new Set(existing.map(addressKey));
     const collision = records.find(row => keys.has(addressKey({
       line1: row.street, line2: row.unit, city: row.city, state: row.state, zip: row.zip,
     })));
-    if (collision) throw new Error("An imported property already exists on this account: " + collision.street);
+    if (collision) throw new Error("An imported property already exists in the portfolio: " + collision.street);
   });
   return records;
 }
 function addressKey(row: { line1: string; line2?: string | null; city: string; state: string; zip: string }) {
-  return [row.line1, row.line2 ?? "", row.city, row.state.toUpperCase(), row.zip].join("|").toLowerCase();
+  return [row.line1, row.line2 ?? "", row.city, row.state, row.zip]
+    .map(part => part.trim().replace(/\s+/g, " ").toLowerCase()).join("|");
 }
 export async function importLocationCsv(actor: LocationActor, customerId: string, csv: string) {
   if (actor.role !== "OWNER" && actor.role !== "ADMIN")
     throw new Error("Only owner/admin may approve portfolio imports.");
   const records = parseLocationCsv(csv);
+  const digest = createHash("sha256").update(JSON.stringify(records)).digest("hex");
   return prisma.$transaction(async tx => {
+    // A successful prior commit is a no-op even if the HTTP response was lost.
+    const previous = await tx.locationPortfolioImport.findUnique({
+      where: { customerId_digest: { customerId, digest } },
+    });
+    if (previous) { await requireCustomer(tx, actor, customerId); return previous.importedCount; }
+
     await requireCustomer(tx, actor, customerId);
     const existing = await tx.serviceAddress.findMany({
-      where: { customerId }, select: { line1: true, line2: true, city: true, state: true, zip: true },
+      select: { customerId: true, line1: true, line2: true, city: true, state: true, zip: true },
     });
     const keys = new Set(existing.map(addressKey));
     for (const entry of records) {
       if (keys.has(addressKey({ line1: entry.street, line2: entry.unit,
         city: entry.city, state: entry.state, zip: entry.zip })))
-        throw new Error("An imported property already exists on this account.");
+        throw new Error("An imported property already exists in the portfolio.");
     }
     for (const entry of records) {
       const site = await tx.serviceAddress.create({ data: {
@@ -324,7 +420,10 @@ export async function importLocationCsv(actor: LocationActor, customerId: string
         preferredLanguage: entry.language || "en",
       } });
     }
-    await event(tx, actor, "location.import", customerId, { count: records.length });
+    await tx.locationPortfolioImport.create({ data: {
+      customerId, digest, importedCount: records.length, approvedByUserId: actor.userId,
+    } });
+    await event(tx, actor, "location.import", customerId, { count: records.length, digest });
     return records.length;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20000 });
 }
@@ -339,7 +438,8 @@ export async function getJobLocationPrivacy(actor: { userId: string; role: strin
       select: { customerId: true, unitLabel: true, accessNotes: true,
         locationContactPolicy: true,
         customer: { select: { locationContactPolicy: true } },
-        locationContacts: { where: { endedAt: null, erasedAt: null },
+        locationContacts: { where: { endedAt: null, erasedAt: null,
+          OR: [{ startedAt: null }, { startedAt: { lte: new Date() } }] },
           select: { id: true, name: true, role: true, phone: true, email: true,
             preferredLanguage: true } } },
     } },
@@ -375,7 +475,8 @@ export async function createTenantRepairLink(actor: LocationActor, customerId: s
     const policy = effectiveLocationPermission(site.customer.locationContactPolicy, site.locationContactPolicy);
     if (!policy.maintenance) throw new Error("Client has not authorized tenant maintenance contact at this location.");
     const updated = await tx.locationContact.updateMany({
-      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null },
+      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null,
+        OR: [{ startedAt: null }, { startedAt: { lte: new Date() } }] },
       data: { repairTokenHash: hash, repairTokenExpiresAt: new Date(Date.now() + 7 * 86400000) },
     });
     if (updated.count !== 1) throw new Error("Choose a current contact.");
@@ -393,7 +494,8 @@ export async function tenantRepairOptions(token: string) {
   if (!hash) return null;
   const person = await prisma.locationContact.findFirst({
     where: { repairTokenHash: hash, repairTokenExpiresAt: { gt: new Date() },
-      endedAt: null, erasedAt: null },
+      endedAt: null, erasedAt: null,
+        OR: [{ startedAt: null }, { startedAt: { lte: new Date() } }] },
     select: { id: true, serviceAddress: {
       select: { id: true, customerId: true, line1: true, city: true, unitLabel: true,
         locationContactPolicy: true, customer: {
@@ -431,7 +533,8 @@ export async function submitTenantRepair(token: string, input: { applianceId: st
   return prisma.$transaction(async tx => {
     const person = await tx.locationContact.findFirst({
       where: { repairTokenHash: hash, repairTokenExpiresAt: { gt: new Date() },
-        endedAt: null, erasedAt: null },
+        endedAt: null, erasedAt: null,
+        OR: [{ startedAt: null }, { startedAt: { lte: new Date() } }] },
       select: { id: true, serviceAddressId: true, serviceAddress: {
         select: { customerId: true, locationContactPolicy: true,
           customer: { select: { archivedAt: true, locationContactPolicy: true } } },
@@ -451,7 +554,8 @@ export async function submitTenantRepair(token: string, input: { applianceId: st
     if (!activeRental) throw new Error("Choose a machine on this location's active rental.");
     const consumed = await tx.locationContact.updateMany({
       where: { id: person.id, repairTokenHash: hash, repairTokenExpiresAt: { gt: new Date() },
-        endedAt: null, erasedAt: null },
+        endedAt: null, erasedAt: null,
+        OR: [{ startedAt: null }, { startedAt: { lte: new Date() } }] },
       data: { repairTokenHash: null, repairTokenExpiresAt: null },
     });
     if (consumed.count !== 1) throw new Error("This repair link was already used.");

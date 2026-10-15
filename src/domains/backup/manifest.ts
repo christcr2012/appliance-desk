@@ -21,6 +21,7 @@ export const BACKUP_MODEL_POLICY = {
   ServiceAddress: "serviceAddress",
   // Privately scoped tenant contact recovery must include history, never a session token.
   LocationContact: "locationContact",
+  LocationPortfolioImport: "locationPortfolioImport",
   Lead: "lead",
   LeadNote: "leadNote",
   LeadApplianceRequest: "leadApplianceRequest",
