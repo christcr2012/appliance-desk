@@ -7,9 +7,17 @@ CREATE OR REPLACE FUNCTION "w22_guard_commercial_reserve_terms"()
 RETURNS TRIGGER AS $$
 DECLARE i INTEGER;
 BEGIN
-  IF (OLD."status" <> 'DRAFT' OR NEW."status" <> 'DRAFT') AND (
-     OLD."depositCents" IS DISTINCT FROM NEW."depositCents" OR
-     OLD."commercialReservePolicyVersions" IS DISTINCT FROM NEW."commercialReservePolicyVersions") THEN
+  -- Only newly negotiated/versioned commercial reserve is governed by this
+  -- historical lock. Legacy agreements with an empty policy array preserve
+  -- their preexisting deposit correction/finance recovery behavior.
+  IF (OLD."status" <> 'DRAFT' OR NEW."status" <> 'DRAFT')
+     AND (
+       jsonb_array_length(OLD."commercialReservePolicyVersions") > 0 OR
+       jsonb_array_length(NEW."commercialReservePolicyVersions") > 0
+     ) AND (
+       OLD."depositCents" IS DISTINCT FROM NEW."depositCents" OR
+       OLD."commercialReservePolicyVersions" IS DISTINCT FROM NEW."commercialReservePolicyVersions"
+     ) THEN
     RAISE EXCEPTION 'Historical signed or sent commercial reserve terms cannot be rewritten';
   END IF;
   IF OLD."commercialReservePolicyVersions" IS DISTINCT FROM NEW."commercialReservePolicyVersions" THEN

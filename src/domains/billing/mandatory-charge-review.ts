@@ -178,9 +178,11 @@ export function nextMandatoryChargeReview(input:{
   if(previous.length===256)throw new Error("Mandatory review history reached its safe limit.");
   const candidate:ReviewedMandatoryChargeRevision={
     ...input.revision,schemaVersion:1,revision:previous.length+1,
-    professionalReview:"REVIEW_REQUIRED",sourceFingerprint:
-      mandatoryReviewFingerprint(input.revision),
+    professionalReview:"REVIEW_REQUIRED",sourceFingerprint:"",
   };
+  // A stable canonical projection, not the caller's object property order,
+  // binds every stored charge/tax/RDF/reserve source cent.
+  candidate.sourceFingerprint=mandatoryReviewFingerprint(normalizedDetails(candidate));
   // Never permit replacing a version with unrelated address/source identity.
   if(previous.some(row=>row.agreementId!==candidate.agreementId||
      row.estimateId!==candidate.estimateId||

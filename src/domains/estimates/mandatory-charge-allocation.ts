@@ -194,7 +194,12 @@ export async function savePreparedMandatoryChargeReview(input:{
     const rdf=await provisionalRdfOrderDecisionInTx(tx,asOf);
     const versions=new Map(input.expectedRevisions.map(row=>[row.agreementId,row.revision]));
     const changed:string[]=[];
-    const audit:unknown[]=[];
+    const audit:Array<{
+      agreementId:string;revision:number;feeCents:number;
+      taxStatus:string;taxCents:number|null;rdfStatus:string;
+      rdfCustomerCents:number|null;refundableReserveCents:number;
+      sourceFingerprint:string;
+    }>=[];
     for(const agreement of agreements){
       const choice=byId.get(agreement.id)!;
       // RDF cannot be moved onto an out-of-state location to mask its tax

@@ -168,6 +168,7 @@ export async function savePreparedCommercialReserveAllocation(input:{
     const settings=await tx.businessSettings.findUniqueOrThrow({
       where:{id:"singleton"},select:{largeOrderMachineThreshold:true}});
     const machineCount=machineCountFromLines(estimate.lineItems);
+    if (!estimate.customer) throw new Error("Commercial customer scope was lost.");
     const eligible=commercialEligible(estimate.customer,machineCount,settings.largeOrderMachineThreshold);
     const total=sumCents(proposals.map(row=>row.amountCents));
     if(total!==estimate.depositCents)

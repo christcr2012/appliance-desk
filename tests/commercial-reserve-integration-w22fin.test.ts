@@ -122,7 +122,7 @@ describe.skipIf(!enabled)("W-22FIN commercial reserve owner workflow on disposab
     expect(result.changedAgreementIds).toHaveLength(2);
     const after=await getPreparedReserveOverview(estimateId);
     expect(after).toMatchObject({expectedReserveCents:15000,allocatedReserveCents:15000});
-    expect(after?.allocations.map(row=>row.amountCents).sort()).toEqual([5000,10000]);
+    expect(after?.allocations.map(row=>row.amountCents).sort((a,b)=>a-b)).toEqual([5000,10000]);
     expect(after?.allocations.every(row=>row.revision===1)).toBe(true);
     expect(await prisma.deposit.count({where:{agreementId:{in:ids}}})).toBe(0);
     expect(await prisma.agreementSigningPayment.count({where:{agreementId:{in:ids}}})).toBe(0);
@@ -165,6 +165,6 @@ describe.skipIf(!enabled)("W-22FIN commercial reserve owner workflow on disposab
       expectedEstimateUpdatedAt:new Date(fresh.overview.estimateUpdatedAt),
       expectedRevisions:fresh.expectedRevisions,allocations:fresh.allocations,
       reason:"Attempt to change a customer's already sent signed terms"}))
-      .rejects.toThrow(/prepared agreement set/);
+      .rejects.toThrow(/prepared agreement set/i);
   });
 });

@@ -1,3 +1,24 @@
+### PR #464 live checkpoint — original W-22FIN owner policy, exact-head CI repair
+
+Branch `ai/gpt6/w22fin-policy-commercial-reserve-20261014` was recovered
+from unattached blobs and moved to real commits `c08e42b` and `79825f8`.
+PR #464 was opened against verified main `4740313d`; the first exact-head
+CI ran and found scoped TypeScript errors, a browser-build client import of
+the server pricing index, fixture assumptions and a too-broad trigger.
+The secret scanner itself passed but the docs-update check requested a
+`docs/DATABASE.md` migration description. Fixes are being applied together
+on the PR; they are not yet a green-gate or merge claim.
+
+The refined SQL protection applies to **new explicitly versioned commercial
+reserve histories** only. Unversioned prior agreements retain their
+documented legacy finance-update behavior. The amount still cannot be
+accepted, signed, charged or refunded through this provisional policy UI;
+new service/RDF/deposit money categories remain incompatible with V1
+frozen payment envelope until W-22FIN-QUOTE, APPROVAL, RECOVERY and DELIVERY
+are completely implemented and tested. No whole subsection or bundle is
+counted by this unverified PR; no CPA, counsel, owner provider TEST or
+checked production acceptance is claimed.
+
 ### Active W-22FIN owner policy continuation — October 15 REST checkpoint
 
 After PR #463 merged at `4740313d`, checked live `main` remained that

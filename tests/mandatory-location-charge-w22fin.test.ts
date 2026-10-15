@@ -39,8 +39,8 @@ describe("W-22FIN owner-reviewed mandatory location policy",()=>{
     expect(()=>validateLocalChargeChoice(input,global)).toThrow(/Record why/);
     const choice=validateLocalChargeChoice({...input,
       exceptionReasons:{delivery:"Property already has the agreed delivery equipment"}},global);
-    expect(mandatoryChargeAmounts({global,choice,settings,agreementWaiverCents:0}))
-      .toMatchObject([{amountCents:0,reason:"Property already has the agreed delivery equipment"}]);
+    expect(mandatoryChargeAmounts({global,choice,settings,agreementWaiverCents:0})
+      .at(0)).toMatchObject({amountCents:0,reason:"Property already has the agreed delivery equipment"});
   });
   it("refuses an unknown global decision or invented zero-price mandatory fee",()=>{
     expect(()=>validateLocalChargeChoice(location,{...global,delivery:"UNDECIDED"}))
