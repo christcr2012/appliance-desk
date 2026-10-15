@@ -2,7 +2,7 @@
   "version": 1,
   "auditedBase": "b2a06c2",
   "updated": "2026-10-14",
-  "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance.",
+  "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
       "id": "T-6D1",

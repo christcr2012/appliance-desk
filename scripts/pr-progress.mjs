@@ -133,11 +133,11 @@ export function renderProgress(root, base = 'origin/main', ref = 'origin/main') 
   return [
     'PR progress (offline planning; claims require independent acceptance review)',
     'Current: ' + card.kind + '; source +' + current.additions + '/-' + current.deletions + ' across ' + current.files + ' production files',
-    'Declared completed approved slices: ' + card.completedSlices + ' (' + (card.declaredIds.join(', ') || 'none') + ')',
-    'Recent merged implementation PRs: ' + history.map(x => '#' + x.pr + ' +' + x.additions + ' source, ' + (x.completedSlices ?? 'unknown') + ' declared slices').join(', '),
+    'Declared completed packet tasks (not batch-subsection completion): ' + card.completedSlices + ' (' + (card.declaredIds.join(', ') || 'none') + ')',
+    'Recent merged implementation PRs: ' + history.map(x => '#' + x.pr + ' +' + x.additions + ' source, ' + (x.completedSlices ?? 'unknown') + ' declared packet tasks').join(', '),
     'Rolling production additions average (' + sample.length + ' measured implementation PRs' + (comparable ? ', including current' : '') + '): ' + (mean ?? 'not available') + '; target 400–800',
-    'Rolling declared slice average (' + sliceSamples.length + ' evidenced PR scorecards' + (comparable ? ', including current' : '') + '): ' + meanSlices + '; target 2–5. Historical unrecorded slices remain unknown.',
-    'Per-slice proof requires independent reviewer/CI checks; no line or declaration is an acceptance pass.',
+    'Rolling declared packet-task average (' + sliceSamples.length + ' evidenced PR scorecards' + (comparable ? ', including current' : '') + '): ' + meanSlices + '; diagnostic only, not batch-subsection throughput. Historical unrecorded tasks remain unknown.',
+    'PR workload target: 2–5 fully completed predefined batch subsections (such as H-3 or B-5), not packet-task counts. Verify full subsection scope and evidence independently.',
     'Formatting-only diffs ignored; renames treated as add/delete; incomplete/shallow history must be disclosed, never invented.'
   ].join('\n');
 }
@@ -155,7 +155,7 @@ function main(argv) {
   if (check) {
     const card = scorecardFromRoot(ROOT);
     if (requireChanged) validatePRChange(ROOT, base, ref);
-    return 'Scorecard valid: ' + card.kind + ' / ' + card.completedSlices + ' declared complete slices. Content and acceptance evidence still require review.';
+    return 'Scorecard valid: ' + card.kind + ' / ' + card.completedSlices + ' declared packet tasks. This is not a count of completed batch subsections; full subsection evidence still requires review.';
   }
   return renderProgress(ROOT, base, ref);
 }

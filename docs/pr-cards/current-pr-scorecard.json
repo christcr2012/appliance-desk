@@ -1,17 +1,8 @@
 {
   "version": 1,
-  "kind": "implementation",
+  "kind": "maintenance",
   "parent": "W-22FIN",
-  "completedSlices": [
-    {
-      "id": "W-22FIN-POLICY",
-      "acceptanceEvidence": [
-        "New owner-only dated applicability revisions with audit and explicit reason in src/domains/billing/signing-mandatory-policy.ts; existing effective-dated setup tax decisions remain separate; tests/signing-mandatory-policy-integration-w22fin.test.ts verifies role and history.",
-        "Undecided fees, unresolved setup tax and jurisdiction rates are always REVIEW_REQUIRED with false binding/collection flags in src/domains/estimates/all-in-preview.ts; tests/estimate-all-in-preview-w22fin.test.ts covers prohibited claims and tax alternatives; agreement signing gate remains independent.",
-        "Disposable Postgres test tests/signing-mandatory-policy-integration-w22fin.test.ts verifies owner/staff, append-only audits and full restoration; e2e/mandatory-signing-policy.spec.ts verifies authenticated owner settings and accessibility; signed price snapshots are unchanged by configuration."
-      ]
-    }
-  ],
+  "completedSlices": [],
   "remainingEngineering": [
     "W-22FIN-QUOTE: Persist and independently verify a complete owner-reviewed preapproval all-in offer including all tax and applicable mandatory charges; currently owner preview explicitly excludes unsettled categories.",
     "W-22FIN-APPROVAL: Connect complete immutable quote to legacy estimate send/approve/deposit checkout without allowing provisional amounts to become binding or payable.",
@@ -22,9 +13,9 @@
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "A single policy-completion slice is a high-risk multi-layer financial configuration boundary including owner UI, append-only audited storage, immutable history, multi-location preview and DB/browser denial tests. Do not count the still-unfinished estimate approval workflow as complete.",
+  "workloadException": "Owner-requested terminology/reporting maintenance only: define PR workload as predefined batch subsections while preserving technical slices and packet tasks; no product subsection completion claimed.",
   "evidence": [
-    "Source modules and paths listed in W-22FIN policy card; exact-head CI required before merge.",
-    "New W-22FIN policy tests, existing setup-tax-policy-version and signing-business-use-gate tests, owner settings browser accessibility."
+    "Existing session-tool tests and PR progress tests verify reporting; required exact-head Actions gates remain mandatory.",
+    "Current roadmap, packet scope, remaining engineering and external acceptance preserved; no provider, production or business gate changed."
   ]
 }
