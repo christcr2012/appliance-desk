@@ -1013,6 +1013,8 @@ model AgreementSigningPayment {
   // NOT_DUE or AWAITING_PAYMENT until a separately reviewed settlement path exists.
   status            String
   signedAt          DateTime
+  // Signed size, account classification and refund window: historical, not current settings.
+  cancellationPolicyEvidence Json?
   // Only an authenticated, provider-verified payment may populate these.
   // No first-invoice credit is applied merely from a receipt.
   receiptId         String? @unique
@@ -1114,6 +1116,7 @@ model PreDeliveryCancellation {
   retainedCents      Int
   reason             String
   reviewedTerms      Boolean
+  signedPolicyEvidence Json?
   approvedByUserId   String
   approvedAt         DateTime @default(now())
   // PENDING_EXTERNAL_REFUND is an unpaid liability; never a Stripe refund claim.

@@ -26,7 +26,26 @@ export default async function CancelPage({params}:{params:Promise<{id:string}>})
    <p>Standard refund due: {formatMoney(quote.refundableCents)}</p>
    <p>Standard amount retained: {formatMoney(quote.retainedCents)}</p>
    <p>{quote.receiptId?"A linked receipt exists.":"There is no settled signing receipt."}</p>
-   {quote.largeOrder&&<p>The large-order full refund window {quote.withinFullRefundWindow?"is open.":"has passed."}</p>}
+   {quote.policyEvidenceStatus === "SIGNED" ? (
+     <div className="mt-2 space-y-1 text-sm">
+       <p>Original signing policy: {quote.largeOrder ? "large order" : "ordinary order"}.
+         {quote.largeOrderReasons.length > 0
+           ? " Basis: " + quote.largeOrderReasons.map(reason => ({
+               MACHINE_THRESHOLD:"original order machine count",
+               BUSINESS_CUSTOMER:"business customer",
+               PROPERTY_MANAGER:"property manager",
+             }[reason] ?? reason)).join(", ") + "." : ""}
+       </p>
+       {quote.largeOrder && <p>The {quote.fullRefundHours}-hour full-refund window from signing
+         {quote.withinFullRefundWindow ? " is still open." : " has passed."}</p>}
+     </div>
+   ) : (
+     <p role="status" className="mt-2 border border-line p-2 text-sm">
+       Historical signing policy was not frozen for this agreement. No setup-fee
+       retention is calculated from today&apos;s settings. Full refund only; review
+       the actual signed terms and finance history before approval.
+     </p>
+   )}
    <CancellationApprovalForm agreementId={id} fingerprint={quote.fingerprint}
      canRetain={quote.defaultPolicy==="RETAIN_SETUP"} defaultPolicy={quote.defaultPolicy} receiptCents={quote.signingAmountCents} setupCents={quote.setupAndTaxCents}/>
   </section>}

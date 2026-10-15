@@ -1,5 +1,21 @@
 // This pre-W-22 lifecycle suite tests terms/concurrency, not signing-money
 // persistence. A dedicated W-22 suite exercises the real frozen guard in Postgres.
+// Legacy lifecycle/artifact fixtures mock frozen signing money; the
+// signing-era cancellation evidence is tested with real DB independently.
+vi.mock("@/domains/agreements/signed-cancellation-policy", () => ({
+  getCancellationPolicyAtSigningInTx: async (
+    _tx: unknown, input: { agreementId: string; orderFingerprint: string; signedAt: Date },
+  ) => ({
+    schemaVersion: 1, agreementId: input.agreementId,
+    orderFingerprint: input.orderFingerprint, signedAt: input.signedAt.toISOString(),
+    settingsUpdatedAt: "2026-10-12T12:00:00.000Z",
+    machineThreshold: 5, fullRefundHours: 72,
+    machines: [{ agreementId: input.agreementId, count: 1 }],
+    businessCustomer: false, propertyManagerCustomer: false,
+    largeOrder: false, reasons: [],
+  }),
+}));
+
 vi.mock("@/domains/billing/signing-frozen-verify", () => ({
   getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
     agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1, setupFeeCents: 0, setupTaxCents: 0, downPaymentCents: 0,

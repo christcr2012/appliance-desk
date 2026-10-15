@@ -1,5 +1,7 @@
 import { randomUUID, createHash } from "node:crypto";
 import { afterAll,beforeAll,describe,expect,it,vi } from "vitest";
+import type { Prisma } from "@prisma/client";
+import { buildSignedCancellationPolicyEvidence } from "@/domains/agreements/signed-cancellation-policy";
 import { prisma } from "@/lib/prisma";
 import { cancelAgreement } from "@/domains/agreements";
 import { approvePreDeliveryCancellation,getPreDeliveryCancellationQuote } from "@/domains/agreements/pre-delivery-cancellation";
@@ -23,18 +25,35 @@ describe.skipIf(!enabled)("W-22 approved before-delivery cancellations (disposab
   await prisma.customer.create({data:{id:customer,userId:customerUser,referralCode:"CC"+key.slice(0,16)}});
   await prisma.serviceAddress.create({data:{id:address,customerId:customer,line1:"1 Review Test Way",city:"Greeley",state:"CO",zip:"80631"}});
  });
- async function make(paid:boolean,pending=false){
+ async function make(paid:boolean,pending=false, options?:{
+   signedPolicy?:boolean; prepaid?:boolean; machineCount?:number;
+   businessCustomer?:boolean; signedDaysAgo?:number;
+  }){
   const id="w22c-"+ids.length+"-"+key;ids.push(id);
-  await prisma.rentalAgreement.create({data:{id,customerId:customer,serviceAddressId:address,status:"ACTIVE",startDate:new Date(Date.now()-24*3600000),lines:{create:[{label:"Washer and dryer",monthlyPriceCents:6000,listPriceCents:6000}]}}});
+  const signedAt=new Date(Date.now()-(options?.signedDaysAgo??1)*24*3600000);
+  const paidCents=options?.prepaid?4500:10500;
+  const advanceCents=options?.prepaid?0:6000;
+  const fingerprint=createHash("sha256").update(id).digest("hex");
+  const signedPolicy=options?.signedPolicy?buildSignedCancellationPolicyEvidence({
+   agreementId:id,orderFingerprint:fingerprint,signedAt,
+   settings:{largeOrderMachineThreshold:5,largeOrderCancellationFullRefundHours:72,
+    updatedAt:new Date("2026-10-12T12:00:00.000Z")},
+   machines:[{agreementId:id,machineCount:options.machineCount??1}],
+   businessCustomer:options.businessCustomer??false,propertyManagerCustomer:false,
+  }):null;
+  await prisma.rentalAgreement.create({data:{id,customerId:customer,serviceAddressId:address,status:"ACTIVE",
+   paidInFullInAdvance:options?.prepaid??false,
+   startDate:new Date(Date.now()-24*3600000),lines:{create:[{label:"Washer and dryer",monthlyPriceCents:6000,listPriceCents:6000}]}}});
   const receipt=paid?await prisma.receipt.create({data:{
-    customerId:customer,source:"MANUAL",amountCents:10500,method:"check",receivedOn:new Date(Date.now()-24*3600000),
+    customerId:customer,source:"MANUAL",amountCents:paidCents,method:"check",receivedOn:signedAt,
     recordedByUserId:actor,
   }}):null;
   await prisma.agreementSigningPayment.create({data:{
-    agreementId:id,orderFingerprint:createHash("sha256").update(id).digest("hex"),evidenceVersion:1,setupFeeCents:4500,
-    setupTaxCents:0,downPaymentCents:6000,totalCents:10500,
-    status:paid?"SETTLED":"AWAITING_PAYMENT",signedAt:new Date(Date.now()-24*3600000),
-    receiptId:receipt?.id,settledAt:paid?new Date(Date.now()-24*3600000):null,
+    agreementId:id,orderFingerprint:fingerprint,evidenceVersion:1,setupFeeCents:4500,
+    setupTaxCents:0,downPaymentCents:advanceCents,totalCents:paidCents,
+    status:paid?"SETTLED":"AWAITING_PAYMENT",signedAt,
+    ...(signedPolicy?{cancellationPolicyEvidence:signedPolicy as unknown as Prisma.InputJsonValue}:{}),
+    receiptId:receipt?.id,settledAt:paid?signedAt:null,
   }});
   if(pending)await prisma.signingPaymentAttempt.create({data:{
     agreementId:id,requestKey:"pending-"+id,attemptNumber:1,method:"STRIPE_CHECKOUT",status:"PENDING",
@@ -69,6 +88,50 @@ describe.skipIf(!enabled)("W-22 approved before-delivery cancellations (disposab
     reason:"Duplicate cancellation must not run again",reviewedTerms:true
   })).rejects.toThrow();
   expect(await prisma.preDeliveryCancellation.count({where:{agreementId:id}})).toBe(1);
+ });
+ it("synthetic prepaid-mode five-machine zero-advance signing payment retains setup under its frozen window",async()=>{
+  const id=await make(true,false,{signedPolicy:true,prepaid:true,machineCount:5,signedDaysAgo:4});
+  const quote=await getPreDeliveryCancellationQuote(id);
+  expect(quote).toMatchObject({signingAmountCents:4500,largeOrder:true,
+   policyEvidenceStatus:"SIGNED",fullRefundHours:72,
+   defaultPolicy:"RETAIN_SETUP",refundableCents:0,retainedCents:4500});
+  await approvePreDeliveryCancellation({agreementId:id,actorUserId:actor,
+   expectedFingerprint:quote.fingerprint,policy:"RETAIN_SETUP",
+   reason:"Owner reviewed original signed prepaid large-order terms",
+   reviewedTerms:true});
+  const saved=await prisma.preDeliveryCancellation.findUniqueOrThrow({where:{agreementId:id}});
+  expect(saved).toMatchObject({signedAmountCents:4500,refundDueCents:0,retainedCents:4500,
+   refundState:"NOT_REQUIRED"});
+  expect(saved.signedPolicyEvidence).toMatchObject({largeOrder:true,reasons:["MACHINE_THRESHOLD"]});
+  expect((await prisma.rentalAgreement.findUniqueOrThrow({where:{id}})).status).toBe("CANCELLED");
+ });
+ it("an original business order with one appliance remains large without an advance",async()=>{
+  const id=await make(true,false,{signedPolicy:true,prepaid:true,
+   machineCount:1,businessCustomer:true,signedDaysAgo:4});
+  const quote=await getPreDeliveryCancellationQuote(id);
+  expect(quote).toMatchObject({largeOrder:true,defaultPolicy:"RETAIN_SETUP",
+   policyEvidenceStatus:"SIGNED"});
+  expect(quote.largeOrderReasons).toContain("BUSINESS_CUSTOMER");
+ });
+ it("historical obligations without signed policy never acquire today's retention rule",async()=>{
+  const id=await make(true);
+  const quote=await getPreDeliveryCancellationQuote(id);
+  expect(quote).toMatchObject({policyEvidenceStatus:"LEGACY_UNVERIFIED",
+   defaultPolicy:"FULL_REFUND",signingAmountCents:10500});
+  await expect(approvePreDeliveryCancellation({agreementId:id,actorUserId:actor,
+   expectedFingerprint:quote.fingerprint,policy:"RETAIN_SETUP",
+   reason:"Attempt to apply new policy to an older signature",reviewedTerms:true
+  })).rejects.toThrow(/full signing payment/);
+  expect(await prisma.preDeliveryCancellation.count({where:{agreementId:id}})).toBe(0);
+ });
+ it("database denies rewriting the frozen signed policy after signing",async()=>{
+  const id=await make(true,false,{signedPolicy:true,machineCount:5});
+  const before=await prisma.agreementSigningPayment.findUniqueOrThrow({where:{agreementId:id}});
+  await expect(prisma.agreementSigningPayment.update({where:{agreementId:id},
+   data:{cancellationPolicyEvidence:{schemaVersion:1,largeOrder:false}}
+  })).rejects.toThrow();
+  const after=await prisma.agreementSigningPayment.findUniqueOrThrow({where:{agreementId:id}});
+  expect(after.cancellationPolicyEvidence).toEqual(before.cancellationPolicyEvidence);
  });
  it("refuses unresolved provider collection without cancelling",async()=>{
   const id=await make(false,true);

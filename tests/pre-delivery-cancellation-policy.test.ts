@@ -14,6 +14,19 @@ describe("approved pre-delivery refund policy",()=>{
   const out=calculatePreDeliveryCancellationAmounts({...base,now:new Date("2026-10-20"),policy:"RETAIN_SETUP"});
   expect(out).toMatchObject({refundableCents:6000,retainedCents:4500});
  });
+ it("a prepaid large order with no rent advance keeps its large-order classification",()=>{
+  const out=calculatePreDeliveryCancellationAmounts({...base,downPaymentCents:0,
+   receivedCents:4500,largeOrder:true,now:new Date("2026-10-20"),policy:"RETAIN_SETUP"});
+  expect(out).toMatchObject({largeOrder:true,retainedCents:4500,refundableCents:0});
+ });
+ it("an ordinary order never becomes large because money was advanced",()=>{
+  expect(()=>calculatePreDeliveryCancellationAmounts({...base,largeOrder:false,
+   now:new Date("2026-10-20"),policy:"RETAIN_SETUP"})).toThrow(/full signing payment/);
+ });
+ it("a clock earlier than the signature never authorizes setup retention",()=>{
+  expect(()=>calculatePreDeliveryCancellationAmounts({...base,largeOrder:true,
+   now:new Date("2026-10-01"),policy:"RETAIN_SETUP"})).toThrow(/full signing payment/);
+ });
  it("owner may override with full refund even outside window",()=>{
   expect(calculatePreDeliveryCancellationAmounts({...base,now:new Date("2026-10-20"),policy:"FULL_REFUND"}).refundableCents).toBe(10500);
  });

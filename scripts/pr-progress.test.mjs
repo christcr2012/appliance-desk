@@ -43,6 +43,30 @@ test('scorecard requires approved complete slices with evidence for every approv
   assert.equal(validateScorecard({...card,kind:'maintenance',completedSlices:[]},approved).completedSlices,0);
   assert.throws(()=>validateScorecard({...card,kind:'maintenance'},approved),/Maintenance/);
 });
+test('genuine financial risk remediation is separately tracked without invented completed subsections',()=>{
+  const remedy={...card,kind:'risk_remediation',completedSlices:[],
+    workloadException:'Confirmed receipt integrity defect with isolated repair; not a completed W-22FIN subsection.',
+    riskEvidence:[
+      'Reproduction: original fixture permits an incorrect legacy classification.',
+      'Repair: signature-bound policy and SQL immutability prohibit repricing.',
+      'Regression: tests/signed-cancellation-policy-w22fin.test.ts verifies denial.',
+    ]};
+  assert.equal(validateScorecard(remedy,approved).completedSlices,0);
+  assert.throws(()=>validateScorecard({...remedy,completedSlices:card.completedSlices},approved),
+    /must not claim/);
+  assert.throws(()=>validateScorecard({...remedy,riskEvidence:[]},approved),/at least three/);
+  assert.throws(()=>validateScorecard({...remedy,workloadException:''},approved),
+    /workload exception/);
+  const root=repo();try{
+    const baseline=git(root,'rev-parse','HEAD');
+    write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify(remedy));
+    git(root,'add','.');git(root,'commit','-qm','risk note without product code');
+    assert.throws(()=>validatePRChange(root,baseline),/production-source/);
+    write(root,'src/domain.ts','export const owner = 1;\nexport const refundGuard = true;\n');
+    git(root,'add','.');git(root,'commit','-qm','separately evidenced financial fix');
+    assert.equal(validatePRChange(root,baseline).additions,1);
+  }finally{rmSync(root,{recursive:true,force:true});}
+});
 test('git measures production changes, skips maintenance merges, and finds implementation history',()=>{
   const root=repo();
   try {

@@ -1,41 +1,27 @@
 {
   "version": 1,
-  "kind": "implementation",
+  "kind": "risk_remediation",
   "parent": "W-22FIN",
-  "completedSlices": [
-    {
-      "id": "W-22FIN-CANCEL-SAFETY",
-      "acceptanceEvidence": [
-        "tests/pre-delivery-cancellation-integration.test.ts: PREPARED/PENDING/SUCCEEDED denial through generic and reviewed entry points; original main failed all three new cases.",
-        "tests/pre-delivery-cancellation-integration.test.ts: actual pg_stat_activity lock wait and committed-attempt reread; ACTIVE agreement and no refund/cancellation row.",
-        "tests/signing-cancellation-readiness.test.ts and existing integration/close suites: 24 focused tests passed in disposable PostgreSQL 18; required exact-head full CI remains the merge gate."
-      ]
-    },
-    {
-      "id": "W-22FIN-VIEWED-QUOTE",
-      "acceptanceEvidence": [
-        "tests/estimate-viewed-quote-form.test.tsx and estimate-viewed-quote-action.test.ts: rendered revision reaches the domain unchanged; strict malformed/missing parser and no checkout on denial.",
-        "tests/estimate-preapproval-prepare-integration-w22fin.test.ts: four missing/malformed/stale cases failed against merged 5703c6ea, pass after repair with unchanged status/approval fields and no audit writes.",
-        "Real PostgreSQL old/new-tab concurrent approval plus expiry and estimate concurrency suites passed in the 41-test combined run; exact-head full CI/browser remains required."
-      ]
-    }
-  ],
+  "completedSlices": [],
   "remainingEngineering": [
-    "W-22FIN-QUOTE: Persist and independently verify a complete owner-reviewed preapproval all-in offer including all tax and applicable mandatory charges; currently owner preview explicitly excludes unsettled categories.",
-    "W-22FIN-APPROVAL: Connect complete immutable quote to legacy estimate send/approve/deposit checkout without allowing provisional amounts to become binding or payable.",
-    "W-22FIN-RECOVERY: Complete provider-authoritative payment, cancellation and uncertain-state recovery acceptance without automatic money-out.",
-    "W-22FIN-DELIVERY: Verify full multi-location signed agreement through delivery and first-invoice credits with isolated real database/browser proof."
+    "W-22FIN-QUOTE: Persist and independently verify complete per-location mandatory visit, tax, RDF, waiver and refundable reserve charges and a customer-visible immutable all-in offer.",
+    "W-22FIN-APPROVAL: Complete source-to-legacy estimate approval and deposit/payment checkout for the full inclusive quote; currently only supported zero-deposit categories qualify.",
+    "W-22FIN-RECOVERY: Signed cancellation size/window evidence correction is an isolated source patch; entire provider/unknown/refund/all-category cancellation and partial multi-site recovery remains unfinished.",
+    "W-22FIN-DELIVERY: Complete multi-location physical delivery and first-invoice credit/return lifecycle browser+DB evidence."
   ],
   "externalAcceptance": [
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Owner-requested existing-work audit found cancellation and viewed-quote money/contract integrity holes on main. Isolated corrective PR follows AGENTS. Internal remediation tasks count zero completed predefined batch subsections; parent W-22FIN and full remaining quote/recovery/delivery outcomes stay unfinished.",
+  "workloadException": "Risk repair of a confirmed financial policy defect under current W-22FIN; zero complete predefined batch subsections and zero implementation bundles. PR is not counted toward the requested five bundles. No legal/provider/hosted/production acceptance implied.",
   "evidence": [
-    "Original main b4071206 plus the three regression cases failed on disposable PostgreSQL: generic cancellation incorrectly succeeded.",
-    "Fixed shared agreement-to-obligation lock guard passed 24 focused tests, including a genuine blocked database transaction; no provider, customer or production mutation.",
-    "docs/reviews/2026-10-15-existing-work-review.md records bounded coverage, fixed defects, exact concurrent quote PR revision and remaining review findings.",
-    "Reconciled merged PR #459 (5703c6ea), fixed viewed-quote approval across page/form/action/domain, and passed 41 focused tests plus typecheck/lint/quick with a 3GB Node heap.",
-    "docs/designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md maps current professional-review IN subjects to researched configurable policies, evidence and finite acceptance; no real professional approval claimed."
+    "Inspected main 20466bc50cead4d300523ee38382f34267a07f4d with zero open PRs and existing W-22FIN contract.",
+    "Pure and disposable-PostgreSQL test cases added for zero-advance five-machine, business-classified, original signing window and legacy full-refund-only cases; passing results require exact-head CI evidence.",
+    "New signature-bound owner policy JSON, transaction scope verification, schema migration and SQL immutability/reconciliation triggers; no LIVE Stripe/refund operation."
+  ],
+  "riskEvidence": [
+    "Confirmed original pre-delivery cancellation derives large order solely from positive down payment, misclassifying prepaid five-machine and business accounts with no advance; original snapshot also read mutable window settings.",
+    "Fix freezes complete tenant-scoped machine classification, customer business flags and owner window at signature and rejects legacy retention and malformed historical evidence, under database immutability and cancellation source constraints.",
+    "New pure tests/signed-cancellation-policy-w22fin.test.ts, amended pre-delivery policy tests and disposable-Postgres cancellation integration regressions cover zero advance, owner business flags, history and SQL denial; full exact-head CI/review is independently required."
   ]
 }

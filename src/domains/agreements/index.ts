@@ -11,6 +11,7 @@ import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-veri
 import { getReviewedSigningOrderReadbackInTx } from "@/domains/billing/signing-order-readback";
 import { assertCurrentSigningPolicyInTx } from "@/domains/billing/signing-business-use-gate";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
+import { getCancellationPolicyAtSigningInTx } from "./signed-cancellation-policy";
 import { getSigningCancellationPaymentInTx } from "@/domains/billing/signing-cancellation-readiness";
 import { offerMatchesFrozenEvidence } from "./signing-offer-proof";
 import { ensureSignedDeliveryDraftInTx } from "./signed-delivery";
@@ -622,11 +623,23 @@ export async function signAgreement(
       throw new Error("This agreement was already signed.");
     }
 
-    // W-22D4: the same atomic signature transaction creates exactly one
-    // frozen, agreement-owned *obligation*. Never infer that money arrived.
-    // A failed obligation write rolls the signature itself back.
+    // Freeze the actual order size, customer type and owner window before
+    // signature commits. A prepaid large account has no rent advance, but its
+    // original classification must not be lost at cancellation.
+    const cancellationPolicy = await getCancellationPolicyAtSigningInTx(tx, {
+      agreementId: agreement.id,
+      customerId: agreement.customerId,
+      orderFingerprint: line.orderFingerprint,
+      signedAt,
+      verifiedAgreementIds: frozen.map(row => row.agreementId),
+    });
+    // One atomic customer-owned obligation, never a payment receipt.
+    // A failed policy/obligation write rolls the signature itself back.
     await tx.agreementSigningPayment.create({
-      data: signedPaymentObligation(line, signedAt),
+      data: {
+        ...signedPaymentObligation(line, signedAt),
+        cancellationPolicyEvidence: cancellationPolicy as unknown as Prisma.InputJsonValue,
+      },
     });
 
     const scheduledRenewal = Boolean(agreement.renewedFromAgreementId && agreement.startDate);

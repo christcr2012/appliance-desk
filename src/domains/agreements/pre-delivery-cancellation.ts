@@ -5,6 +5,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { SUCCESSFUL_PAYMENT_STATUSES, HELD_PAYMENT_STATUS } from "@/domains/billing/payment-status";
 import { requireRole } from "@/lib/session";
 import { getSigningCancellationPaymentInTx } from "@/domains/billing/signing-cancellation-readiness";
+import { readSignedCancellationPolicyEvidence, type SignedCancellationPolicyEvidence } from "./signed-cancellation-policy";
 import {
   lockRentalAgreementInTx,
   closeAgreementInTx,
@@ -24,6 +25,9 @@ export type PreDeliveryCancellationQuote = {
   setupAndTaxCents: number;
   largeOrder: boolean;
   withinFullRefundWindow: boolean;
+  fullRefundHours: number;
+  policyEvidenceStatus: "SIGNED" | "LEGACY_UNVERIFIED";
+  largeOrderReasons: SignedCancellationPolicyEvidence["reasons"];
   defaultPolicy: CancellationPolicy;
   fingerprint: string;
   signedAt: Date | null;
@@ -35,15 +39,26 @@ export function calculatePreDeliveryCancellationAmounts(input: {
   setupFeeCents: number;
   setupTaxCents: number;
   downPaymentCents: number;
+  /** Signed, order-level classification; advances are NOT evidence of size. */
+  largeOrder?: boolean;
   signedAt: Date | null;
   now: Date;
   hours: number;
   policy: CancellationPolicy;
 }) {
-  const largeOrder = input.downPaymentCents > 0;
-  const withinWindow = Boolean(input.signedAt &&
-    input.now.getTime() - input.signedAt.getTime() <= input.hours * 60 * 60 * 1000);
-  const mayRetain = largeOrder && !withinWindow;
+  if (!Number.isSafeInteger(input.hours) || input.hours < 1 || input.hours > 720 ||
+      !(input.now instanceof Date) || !Number.isFinite(input.now.getTime()) ||
+      (input.signedAt !== null && (!(input.signedAt instanceof Date) ||
+        !Number.isFinite(input.signedAt.getTime())))) {
+    throw new Error("Signed cancellation timing needs finance reconciliation.");
+  }
+  const largeOrder = input.largeOrder ?? input.downPaymentCents > 0;
+  const elapsed = input.signedAt
+    ? input.now.getTime() - input.signedAt.getTime() : null;
+  const withinWindow = elapsed !== null && elapsed >= 0 &&
+    elapsed <= input.hours * 60 * 60 * 1000;
+  const mayRetain = largeOrder && elapsed !== null &&
+    elapsed > input.hours * 60 * 60 * 1000;
   if (input.policy === "RETAIN_SETUP" && !mayRetain) {
     throw new Error("This cancellation must return the full signing payment.");
   }
@@ -86,13 +101,20 @@ async function quoteInTx(tx: Tx, agreementId: string, now: Date, policyOverride?
     throw new Error("The first bill already used signing funds. Reconcile the invoice before cancelling.");
   }
   const obligation = await getSigningCancellationPaymentInTx(tx, agreementId, agreement.customerId);
-  const settings = await tx.businessSettings.findUnique({ where: { id: "singleton" },
-    select: { largeOrderCancellationFullRefundHours: true, updatedAt: true } });
-  const hours = settings?.largeOrderCancellationFullRefundHours ?? 72;
+  // A new signature freezes the original order's machine count, customer
+  // classification and refund window. Current mutable BusinessSettings NEVER
+  // reprices that agreement. Old unsigned policy histories cannot be invented:
+  // legacy obligations are FULL_REFUND-only until reviewed with counsel.
+  const signedPolicy: SignedCancellationPolicyEvidence | null = obligation
+    ? readSignedCancellationPolicyEvidence(obligation.cancellationPolicyEvidence, {
+      agreementId, orderFingerprint: obligation.orderFingerprint,
+      signedAt: obligation.signedAt,
+    }) : null;
+  const hours = signedPolicy?.fullRefundHours ?? 72;
   const receivedCents = obligation?.status === "SETTLED" ? obligation.receipt!.amountCents : 0;
-  const defaultPolicy: CancellationPolicy = receivedCents > 0 && obligation &&
-      obligation.downPaymentCents > 0 && obligation.signedAt &&
-      now.getTime() - obligation.signedAt.getTime() > hours * 3600000
+  const elapsed = obligation?.signedAt ? now.getTime() - obligation.signedAt.getTime() : null;
+  const defaultPolicy: CancellationPolicy = receivedCents > 0 && signedPolicy?.largeOrder &&
+      elapsed !== null && elapsed > hours * 3600000
     ? "RETAIN_SETUP" : "FULL_REFUND";
   const policy = policyOverride ?? defaultPolicy;
   const amounts = calculatePreDeliveryCancellationAmounts({
@@ -100,6 +122,7 @@ async function quoteInTx(tx: Tx, agreementId: string, now: Date, policyOverride?
     setupFeeCents: obligation?.setupFeeCents ?? 0,
     setupTaxCents: obligation?.setupTaxCents ?? 0,
     downPaymentCents: obligation?.downPaymentCents ?? 0,
+    largeOrder: signedPolicy?.largeOrder ?? false,
     signedAt: obligation?.signedAt ?? null, now, hours, policy,
   });
   const signingAmountCents = receivedCents;
@@ -109,13 +132,17 @@ async function quoteInTx(tx: Tx, agreementId: string, now: Date, policyOverride?
     obligation?.orderFingerprint, receiptId, receivedCents,
     obligation?.signedAt?.toISOString(), obligation?.setupFeeCents,
     obligation?.setupTaxCents, obligation?.downPaymentCents, hours,
-    settings?.updatedAt?.toISOString(), defaultPolicy,
+    signedPolicy, defaultPolicy,
   ])).digest("hex");
   return {
     agreementId, status: agreement.status, receiptId, signingAmountCents,
     refundableCents: amounts.refundableCents, retainedCents: amounts.retainedCents,
     setupAndTaxCents: (obligation?.setupFeeCents ?? 0) + (obligation?.setupTaxCents ?? 0),
     largeOrder: amounts.largeOrder, withinFullRefundWindow: amounts.withinWindow,
+    fullRefundHours: hours,
+    policyEvidenceStatus: signedPolicy ? "SIGNED" as const : "LEGACY_UNVERIFIED" as const,
+    largeOrderReasons: signedPolicy?.reasons ?? [],
+    signedPolicyEvidence: signedPolicy,
     defaultPolicy, fingerprint, signedAt: obligation?.signedAt ?? null,
     orderFingerprint: obligation?.orderFingerprint ?? null,
     refundState: amounts.refundableCents > 0
@@ -170,6 +197,9 @@ export async function approvePreDeliveryCancellation(input: {
         retainedCents: quote.retainedCents,
         reason,
         reviewedTerms: true,
+        ...(quote.signedPolicyEvidence
+          ? { signedPolicyEvidence: quote.signedPolicyEvidence as unknown as Prisma.InputJsonValue }
+          : {}),
         approvedByUserId: input.actorUserId,
         approvedAt,
         refundState: quote.refundState,
@@ -182,6 +212,9 @@ export async function approvePreDeliveryCancellation(input: {
         policy: input.policy, receiptId: quote.receiptId,
         refundDueCents: quote.refundableCents, retainedCents: quote.retainedCents,
         refundState: quote.refundState, reason,
+        signedPolicyVersion: quote.signedPolicyEvidence?.schemaVersion ?? null,
+        signedPolicyReasons: quote.largeOrderReasons,
+        fullRefundHours: quote.fullRefundHours,
       },
     } });
     const closing = await closeAgreementInTx(tx, input.actorUserId, input.agreementId, "CANCELLED");
