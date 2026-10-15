@@ -8,10 +8,10 @@
     "Twelve exact per-revision acceptance rows remain PENDING in docs/STATUS.md. Eleven existing sources are already deployed; their missing authenticated/provider prerequisites are not release deferrals. V2 requires its own checked scheduled release.",
     "Genuine IN-79 CPA, IN-07 counsel, Stripe TEST, owner/customer/carrier acceptance and public-pricing/communication/LIVE/money-out approvals remain independent. Synthetic tests and owner attestation controls cannot supply professional advice or authorize real use."
   ],
-  "workloadException": "Owner-requested workflow and parallel CI maintenance; no product source or completed bundle is claimed.",
+  "workloadException": "Owner-requested completion-accounting workflow maintenance; no application source, engineering subsection or product bundle is claimed.",
   "evidence": [
-    "Native resource recovery tests refuse repeated unchanged build termination without manufacturing a pass.",
-    "Native preparation/publication tests catch current-main conflicts without moving branch/worktree.",
-    "CI topology, shard-width, timeout and phase-budget regressions preserve all existing quality checks; exact-head Actions remains mandatory."
+    "Native scope and completion-ledger regressions prove new original evidence without invented code, old-pass credit or relaxed approvals.",
+    "All currently eligible authorized obligations remain required in repository order beyond N; original product roadmap and active implementation PR are preserved.",
+    "Existing publication, parallel CI, review, merge and final-main gates remain required; no real provider acceptance or production activation claimed."
   ]
 }

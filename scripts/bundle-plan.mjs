@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyCompletionEvidence } from './completion-evidence.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
 const words = value => typeof value === 'string' && value.trim().length >= 12 && value.length <= 3000;
@@ -16,18 +17,24 @@ export function readBundlePlan(card) {
   const match = /^```json\s*\n([\s\S]*?)\n```$/.exec(card.split(start)[1].split(end)[0].trim());
   if (!match) throw Error('Bundle plan must be one fenced JSON object.');
   const plan = JSON.parse(match[1]);
+  const completion = plan?.workKind === 'COMPLETION';
+  if (plan?.workKind !== undefined && !['ENGINEERING', 'COMPLETION'].includes(plan.workKind)) throw Error('Unknown bundle workKind.');
   if (!plan || !SHA.test(plan.baseRevision) || !words(plan.outcome) ||
       !words(plan.integrationBoundary) || !words(plan.newEngineering) || !words(plan.relatedWorkDecision) ||
-      !Number.isSafeInteger(plan.estimatedProductionLines) || plan.estimatedProductionLines < 1 ||
+      !Number.isSafeInteger(plan.estimatedProductionLines) || plan.estimatedProductionLines < (completion ? 0 : 1) ||
       !Array.isArray(plan.subsections) || !plan.subsections.length)
     throw Error('Plan needs baseline, outcome, integration, NEW engineering estimate and related-work selection.');
   const ids = new Set();
   for (const row of plan.subsections) {
     if (!row || !/^[A-Z0-9][A-Z0-9-]{1,79}$/.test(row.id) || ids.has(row.id) ||
-        !list(row.acceptance) || !list(row.remainingEngineering))
+        !list(row.acceptance) || !(completion ? Array.isArray(row.remainingEngineering) && row.remainingEngineering.length === 0 && list(row.remainingWork) : list(row.remainingEngineering)))
       throw Error('Plan needs distinct existing subsection IDs, full acceptance and remaining NEW engineering.');
     ids.add(row.id);
   }
+  if (completion && (!Array.isArray(plan.acceptanceTasks) || !plan.acceptanceTasks.length ||
+      new Set(plan.acceptanceTasks).size !== plan.acceptanceTasks.length ||
+      plan.acceptanceTasks.some(id => !/^[A-Z0-9][A-Z0-9-]{0,63}$/.test(id))))
+    throw Error('Completion plan needs distinct existing acceptance task IDs; review alone is not completion.');
   return plan;
 }
 
@@ -38,6 +45,7 @@ export function assessBundleDelivery(plan, report) {
       !same(plan.subsections.map(row => row.id), report.subsections.map(row => row?.id)) ||
       new Set(report.subsections.map(row => row?.id)).size !== report.subsections.length)
     throw Error('Delivery must account for EVERY originally planned subsection; never shrink the plan after coding.');
+  const completion = plan.workKind === 'COMPLETION';
   let incomplete = false;
   for (const row of plan.subsections) {
     const actual = report.subsections.find(item => item.id === row.id);
@@ -45,6 +53,10 @@ export function assessBundleDelivery(plan, report) {
         !Array.isArray(actual.criteria) || actual.criteria.length !== row.acceptance.length)
       throw Error('Every planned criterion needs evidence and each subsection needs explicit remaining engineering.');
     if (actual.remainingEngineering.length) incomplete = true;
+    if (completion) {
+      if (!Array.isArray(actual.remainingWork) || !actual.remainingWork.every(words)) throw Error('Completion delivery needs explicit remainingWork.');
+      if (actual.remainingWork.length) incomplete = true;
+    }
     for (let i = 0; i < row.acceptance.length; i++) {
       const criterion = actual.criteria[i];
       if (criterion?.criterion !== row.acceptance[i] || !words(criterion.evidence))
@@ -58,7 +70,7 @@ export function assessBundleDelivery(plan, report) {
     throw Error('Delivery needs actual production measurements, plan comparison, new-work evidence and continuation decision.');
   const changed = report.productionAdded + report.productionRemoved;
   const underGuide = plan.subsections.length < 2 || changed < 400;
-  if (report.decision === 'CONTINUE' || incomplete || changed === 0)
+  if (report.decision === 'CONTINUE' || incomplete || (!completion && changed === 0))
     return { status: 'CONTINUE_BUNDLE', underGuide, plannedSubsections: plan.subsections.map(row => row.id) };
   if (underGuide && (report.decision !== 'SUBSTANTIAL_EXCEPTION' || !list(report.exceptionEvidence)))
     throw Error('Below-guide delivery needs an explicit substantial-work exception and evidence; completing a small card is insufficient.');
@@ -102,7 +114,10 @@ export function run(root, args) {
   }
   const plan = verifyFrozenPlan(root, cardPath, options['--planned-at']);
   const report = JSON.parse(readFileSync(resolve(root, options['--report']), 'utf8'));
-  return assessBundleDelivery(plan, report);
+  const result = assessBundleDelivery(plan, report);
+  if (plan.workKind === 'COMPLETION' && result.status === 'SCOPE_ACCOUNTING_CHECKED')
+    return { ...result, completion: verifyCompletionEvidence(root, plan, options['--planned-at']) };
+  return result;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

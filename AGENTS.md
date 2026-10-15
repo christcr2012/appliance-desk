@@ -3,7 +3,7 @@
 ## Session entry and authority
 
 “Do N bundles” starts the complete procedure in [docs/SESSION-START.md](docs/SESSION-START.md).
-N sets new implementation workload only; acceptance, reconciliation, required checks,
+N sets substantial implementation/completion workload; acceptance, reconciliation, required checks,
 reviews, merges, cleanup and permanent handoff remain session obligations. Project
 instructions need only identify this repository and point here; keep workflow rules
 in the repository. A push or met bundle count is not permission to omit closeout.
@@ -20,6 +20,15 @@ Keep checkpoints, complete coherent PRs and preserve all required gates.
 The rolling sample used for per-PR workload statistics is not a session quota.
 
 ## PR workload is measured in predefined batch subsections — owner clarification 2026-10-14
+
+**Completion mode and all ready obligations.** The production-code sizing rules
+below describe ENGINEERING. SESSION-START's COMPLETION mode also permits substantial
+NEW original real-world completion with zero production lines, frozen full criteria
+and newly passed permanent evidence. Old code/audits/reused passes count zero.
+“Do N bundles” still requires every other currently eligible authorized obligation
+in repository priority/dependency order; N never narrows the workflow or waives
+acceptance, reviews, release policy or handoff. Do not invent features to meet N.
+
 
 **Bundle, card and PR boundaries — owner alignment 2026-10-15.** A card defines
 approved subsection scope; it is not automatically a PR or bundle boundary.
