@@ -366,3 +366,48 @@ DIRECT_URL, strips inherited deployment/provider identity, includes dev tools an
 refuses a shared node_modules symlink. It never runs migrate/seed, prints credentials
 or claims provider readiness. Offline install requires the existing npm cache;
 repair a real missing-package error instead of adding production connection strings.
+
+## October 15 — GitHub blob-only implementation without a published checkpoint
+
+**Observed:** main was `4740313d`, no open PR, and
+`ai/gpt6/w22fin-policy-commercial-reserve-20261014` still pointed at
+`4740313d`, even after many GitHub `create_blob` writes. Those Git objects
+are individually uploaded draft content, **not a commit, branch change, PR,
+review request, verified test or protected handoff**. No command was running;
+the stall was a missing publication/checkpoint handoff and unbounded preparation,
+not a CI outage or permission error. The preceding PR #463 had already merged.
+
+**Mandatory GitHub REST progression (especially from chat/phone, no checkout):**
+
+1. Reconcile current main, the branch ref and open PRs once. Write a short
+   explicit file/SHA manifest and stop research once the affected integration
+   contract is known. Never claim isolated `create_blob` objects are recoverable
+   branch progress. A blob SHA can be garbage collected if not reachable.
+2. At the first coherent, bounded code-and-test checkpoint (no more than about
+   **five consecutive new blobs** without one), create a tree **using the current
+   branch base-tree SHA**, then commit with its exact parent, then `update_ref`
+   with `expected_sha`. Verify the ref actually moved. If `update_ref`
+   rejects, inspect new main/branch and reconcile; never force-push blindly.
+3. Before starting another domain, either complete this PR's integrated
+   acceptance and publish it, or record precisely which remaining whole
+   subsection acceptance blocks publication. Put anti-stall guidance in that
+   **substantive** PR, never an orphan documentation-only PR.
+4. Once a checked commit is eligible, open the PR immediately and capture its
+   number, head SHA, exact-head CI state and unresolved reviewer feedback.
+   Turn a failure into a targeted code/test correction and repeat exact-head
+   gates; do not confuse CI running with no progress or silently keep editing
+   unrelated uncommitted source. Use a real merge receipt before incrementing
+   completed bundle counts.
+5. Give the owner a concise visible update when a long tool burst would
+   otherwise be silent (~20 seconds): branch/PR/head, actual completed
+   engineering, current gate, next operation. A progress update is **not** a
+   promise of background work; finish available steps in the current turn.
+   Never count a draft PR, helper, schema field or partially satisfied packet
+   as a completed roadmap subsection.
+
+If interrupted after several blobs but before commit, recover the existing
+blob SHAs from the tool transcript, verify them against the *same repo*, inspect
+the current branch tip and create a single reviewed tree; do not recalculate a
+new unrelated scope or discard verified source. If a stored blob cannot be read,
+rebuild only that file. Record that the branch has remained unchanged until
+a successful commit/ref update is independently confirmed.
