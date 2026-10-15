@@ -28,7 +28,11 @@ fully completed existing subsections and 400–800 meaningful production-code
 lines (tests/docs/generated/formatting excluded). Select the related cards and
 full acceptance before coding. One substantial subsection can qualify when its
 full workload naturally warrants it; merely finishing a smaller card does not
-make it a bundle. Larger coherent outcomes are allowed when reliably reviewable.
+make it a bundle. Preserve the pre-code plan and compare actual delivery under
+SESSION-START’s **Bundle target and delivery boundaries** procedure and
+`npm run session:bundle`; below-guide exceptions need concrete NEW workload proof,
+not the mere fact that a card finished. Larger coherent outcomes are allowed when
+reliably reviewable.
 There is no 500/800-line ceiling, file-count ceiling, one-migration quota or
 blanket one-risk-area rule. Related migrations may share a PR with explicit
 ordering, upgrade/restore proof and safe rollout. Keep every distinct risk,

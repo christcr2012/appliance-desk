@@ -1,5 +1,18 @@
 ### October 15 — owner-requested bundle guidance consistency review
 
+## Owner-requested bundle scope accounting correction — October 15
+
+Operational maintenance, zero product bundles/subsections: preserve an inspected
+pre-code plan in the existing execution card, compare all original criteria with
+actual new engineering, retain undersized completions as contributions, and require
+explicit review of substantial-work exceptions. `session:bundle` checks frozen Git
+plans and delivery accounting; `check:session` includes behavioral regressions.
+Existing CI/review/merge gates remain required. No provider/deployed acceptance,
+release, activation or spending is claimed. Existing work and acceptance queues
+remain authoritative; their obligations are unchanged. See SESSION-START and
+SESSION-WORKFLOW maintenance card for procedure, proof and publication boundary.
+
+
 ## Acceptance-first session tooling — October 15, 2026
 
 Owner-authorized cross-repository workflow repair: session status now presents
