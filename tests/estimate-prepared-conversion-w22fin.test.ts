@@ -86,7 +86,8 @@ describe("W-22FIN exact prepared conversion adoption", () => {
     })).toThrow(/single-property/i);
   });
   it("converted replay accepts only exact owned unique original estimates", () => {
-    const rows = fixture().prepared.map(({status: _status, ...row}) => row);
+    const rows = fixture().prepared.map(row => ({ id: row.id, customerId: row.customerId,
+      serviceAddressId: row.serviceAddressId, sourceEstimateId: row.sourceEstimateId }));
     expect(validateConvertedEstimateReplay(rows, { estimateId:"estimate-1",customerId:"customer-1" }))
       .toEqual(["agreement-1","agreement-2"]);
     for (const altered of [
