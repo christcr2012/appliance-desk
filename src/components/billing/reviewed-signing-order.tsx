@@ -26,6 +26,12 @@ export function ReviewedSigningOrder({ order, context = "signing" }: {
               <div className="flex justify-between gap-3"><dt>Administrative setup</dt><dd>{formatCents(location.setupFeeCents)}</dd></div>
               <div className="flex justify-between gap-3"><dt>Setup sales tax</dt><dd>{formatCents(location.setupTaxCents)}</dd></div>
               <div className="flex justify-between gap-3"><dt>First-month down payment</dt><dd>{formatCents(location.downPaymentCents)}</dd></div>
+              {location.additionalItems.map((item, index) => (
+                <div key={item.label + index} className="flex justify-between gap-3">
+                  <dt>{item.label}{item.status === "BUSINESS_PAID" ? " (paid by business)" : ""}</dt>
+                  <dd>{formatCents(item.amountCents)}</dd>
+                </div>
+              ))}
               <div className="flex justify-between gap-3 font-semibold text-ink"><dt>Signing amount for this address</dt><dd>{formatCents(location.signingAmountCents)}</dd></div>
             </dl>
           </div>
@@ -35,6 +41,12 @@ export function ReviewedSigningOrder({ order, context = "signing" }: {
         <div className="flex justify-between gap-3"><dt>Combined administrative setup</dt><dd>{formatCents(order.totals.setupFeeCents)}</dd></div>
         <div className="flex justify-between gap-3"><dt>Combined setup sales tax</dt><dd>{formatCents(order.totals.setupTaxCents)}</dd></div>
         <div className="flex justify-between gap-3"><dt>Combined down payments</dt><dd>{formatCents(order.totals.downPaymentCents)}</dd></div>
+        {order.totals.additionalCents > 0 && (
+          <div className="flex justify-between gap-3">
+            <dt>Additional reviewed fees, service taxes and refundable reserves</dt>
+            <dd>{formatCents(order.totals.additionalCents)}</dd>
+          </div>
+        )}
         <div className="flex justify-between gap-3 font-semibold"><dt>Combined signing amount across addresses</dt><dd>{formatCents(order.totals.signingAmountCents)}</dd></div>
       </dl>
       <p className="mt-2 text-ink-soft">

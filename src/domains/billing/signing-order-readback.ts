@@ -2,10 +2,12 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getFrozenSigningOrderInTx } from "./signing-frozen-verify";
 import type { FrozenSigningEvidence } from "./signing-frozen-evidence";
+import { verifySigningV2Extension } from "./signing-v2-lines";
 
 export type ReviewedSigningOrderReadback = {
   orderFingerprint: string;
   currentAgreementId: string;
+  evidenceVersion: 1 | 2;
   locations: Array<{
     agreementId: string;
     serviceAddress: string;
@@ -13,10 +15,11 @@ export type ReviewedSigningOrderReadback = {
     setupTaxCents: number;
     downPaymentCents: number;
     signingAmountCents: number;
+    additionalItems: Array<{ label: string; amountCents: number; status: string }>;
     current: boolean;
   }>;
   totals: { setupFeeCents: number; setupTaxCents: number;
-    downPaymentCents: number; signingAmountCents: number };
+    downPaymentCents: number; additionalCents: number; signingAmountCents: number };
 };
 
 function addCents(a: number, b: number): number {
@@ -45,14 +48,39 @@ export function presentReviewedSigningOrder(
     throw new Error("A service address is missing from the reviewed order.");
   }
   const totals = { setupFeeCents: 0, setupTaxCents: 0,
-    downPaymentCents: 0, signingAmountCents: 0 };
+    downPaymentCents: 0, additionalCents: 0, signingAmountCents: 0 };
   const locations = [...verified].sort((a,b) => a.agreementId.localeCompare(b.agreementId)).map(line => {
     const addr = addressById.get(line.serviceAddressId)!;
     const values = [line.setupFeeCents,line.setupTaxCents,line.downPaymentCents,line.allInCents];
     if (values.some(value => !Number.isSafeInteger(value) || value < 0) ||
-        addCents(addCents(line.setupFeeCents,line.setupTaxCents),line.downPaymentCents) !== line.allInCents) {
+        (line.schemaVersion === 1 &&
+          addCents(addCents(line.setupFeeCents,line.setupTaxCents),line.downPaymentCents) !== line.allInCents)) {
       throw new Error("Frozen signing values disagree.");
     }
+    const additionalItems = line.schemaVersion === 2
+      ? (() => {
+        verifySigningV2Extension(line.v2Extension, line);
+        const items = line.v2Extension.components
+          .filter(row => !["ADMINISTRATIVE_SETUP", "FIRST_MONTH_RENT_ADVANCE"].includes(row.category))
+          .map(row => ({
+            label: row.category.replaceAll("_", " ").toLowerCase(),
+            amountCents: row.amountCents,
+            status: row.disposition,
+          }));
+        items.push(...line.v2Extension.taxLines
+          .filter(row => !row.componentId.endsWith(":ADMINISTRATIVE_SETUP"))
+          .map(row => ({ label: "Tax — " + row.category.toLowerCase(),
+            amountCents: row.taxCents, status: "DUE_NOW" as const })));
+        return items;
+      })()
+      : [];
+    const additional = addCents(0,additionalItems
+      .filter(item => item.status === "DUE_NOW")
+      .reduce((sum,item) => addCents(sum,item.amountCents),0));
+    if (addCents(addCents(addCents(line.setupFeeCents,line.setupTaxCents),
+        line.downPaymentCents),additional) !== line.allInCents)
+      throw new Error("Frozen V2 breakdown does not match the billed amount.");
+    totals.additionalCents = addCents(totals.additionalCents,additional);
     totals.setupFeeCents = addCents(totals.setupFeeCents,line.setupFeeCents);
     totals.setupTaxCents = addCents(totals.setupTaxCents,line.setupTaxCents);
     totals.downPaymentCents = addCents(totals.downPaymentCents,line.downPaymentCents);
@@ -62,12 +90,14 @@ export function presentReviewedSigningOrder(
       serviceAddress: [addr.line1,addr.line2,addr.city,addr.state,addr.zip].filter(Boolean).join(", "),
       setupFeeCents: line.setupFeeCents, setupTaxCents: line.setupTaxCents,
       downPaymentCents: line.downPaymentCents, signingAmountCents: line.allInCents,
+      additionalItems,
       current: line.agreementId === currentAgreementId,
     };
   });
-  if (addCents(addCents(totals.setupFeeCents,totals.setupTaxCents),totals.downPaymentCents) !== totals.signingAmountCents)
+  if (addCents(addCents(addCents(totals.setupFeeCents,totals.setupTaxCents),
+      totals.downPaymentCents),totals.additionalCents) !== totals.signingAmountCents)
     throw new Error("Frozen order totals disagree.");
-  return { orderFingerprint: verified[0].orderFingerprint,currentAgreementId,locations,totals };
+  return { orderFingerprint: verified[0].orderFingerprint,currentAgreementId,evidenceVersion:verified[0].schemaVersion,locations,totals };
 }
 
 /** Never load/order/display another customer's service address through a public signing URL. */

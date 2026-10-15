@@ -121,6 +121,15 @@ export async function createSignedAgreementArtifactInTx(tx: Tx, agreementId: str
       schemaVersion: frozenLine.schemaVersion, orderFingerprint: frozenLine.orderFingerprint,
       setupFeeCents: frozenLine.setupFeeCents, setupTaxCents: frozenLine.setupTaxCents,
       downPaymentCents: frozenLine.downPaymentCents, allInCents: frozenLine.allInCents,
+      ...(frozenLine.schemaVersion === 2 ? {
+        v2Components: frozenLine.v2Extension.components.map(row => ({
+          category: row.category, amountCents: row.amountCents,
+          disposition: row.disposition, termsReference: row.termsReference,
+        })),
+        v2Taxes: frozenLine.v2Extension.taxLines.map(row => ({
+          category: row.category, taxCents: row.taxCents,
+        })),
+      } : {}),
     } } : {}),
     depositCents: agreement.depositCents,
     damageWaiverCents: agreement.damageWaiverCents,

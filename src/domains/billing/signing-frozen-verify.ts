@@ -1,6 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { createHash } from "node:crypto";
 import type { FrozenSigningEvidence } from "./signing-frozen-evidence";
+import {
+  verifySigningV2Extension, buildSigningV2Extension,
+  type SigningV2Extension,
+} from "./signing-v2-lines";
 
 export type StoredSigningEvidence = {
   agreementId: string;
@@ -28,7 +32,7 @@ function verifyLine(row: StoredSigningEvidence): FrozenSigningEvidence {
   const { agreementId, serviceAddressId, sourceFingerprint, orderFingerprint,
     agreementVersion, setupFeeCents, downPaymentCents, setupTaxCents, allInCents,
     schemaVersion, jurisdictions } = value;
-  if (schemaVersion !== 1 || agreementId !== row.agreementId ||
+  if (![1, 2].includes(schemaVersion as number) || agreementId !== row.agreementId ||
       serviceAddressId !== row.serviceAddressId ||
       agreementVersion !== row.version || sourceFingerprint !== row.sourceFingerprint ||
       orderFingerprint !== row.frozenOrderFingerprint ||
@@ -37,7 +41,8 @@ function verifyLine(row: StoredSigningEvidence): FrozenSigningEvidence {
       allInCents !== row.frozenAllInCents ||
       !cents(setupFeeCents) || !cents(downPaymentCents) ||
       !cents(setupTaxCents) || !cents(allInCents) ||
-      setupFeeCents + downPaymentCents + setupTaxCents !== allInCents ||
+      (schemaVersion === 1 &&
+        setupFeeCents + downPaymentCents + setupTaxCents !== allInCents) ||
       !Array.isArray(jurisdictions)) throw new Error("Frozen signing evidence does not match the agreement.");
   let tax = 0;
   for (const item of jurisdictions) {
@@ -51,6 +56,19 @@ function verifyLine(row: StoredSigningEvidence): FrozenSigningEvidence {
     if (!cents(tax)) throw new Error("Frozen jurisdiction tax overflow.");
   }
   if (tax !== setupTaxCents) throw new Error("Frozen tax lines do not reconcile.");
+  if (schemaVersion === 2) {
+    if (!object(value.v2Extension))
+      throw new Error("The V2 categories are missing from frozen agreement.");
+    const extension = verifySigningV2Extension(
+      value.v2Extension as unknown as SigningV2Extension, {
+        agreementId: row.agreementId, setupFeeCents, downPaymentCents,
+        setupTaxCents, allInCents,
+      });
+    return { ...value, schemaVersion: 2, v2Extension: extension } as
+      FrozenSigningEvidence;
+  }
+  if ("v2Extension" in value)
+    throw new Error("Legacy frozen evidence cannot contain unverified V2 money.");
   return value as unknown as FrozenSigningEvidence;
 }
 
@@ -84,7 +102,10 @@ export function verifyFrozenSigningOrder(
       jurisdictionId: row.jurisdictionId, rateVersionId: row.rateVersionId,
       taxableCents: row.taxableCents, exemptCents: row.exemptCents, taxCents: row.taxCents,
     })),
+    ...(line.schemaVersion === 2 ? { v2Extension: line.v2Extension } : {}),
   }));
+  if (new Set(evidence.map(line => line.schemaVersion)).size !== 1)
+    throw new Error("Mixed V1 and V2 evidence cannot form one customer order.");
   const computed = createHash("sha256").update(JSON.stringify({ sourceFingerprint, lines })).digest("hex");
   if (computed !== orderFingerprint)
     throw new Error("Frozen all-in order fingerprint does not match.");
@@ -104,7 +125,10 @@ export async function getFrozenSigningOrderInTx(
   const scope = { customerId: target.customerId,
     ...(target.sourceEstimateId ? { sourceEstimateId: target.sourceEstimateId } : { id: target.id }) };
   const agreements = await tx.rentalAgreement.findMany({
-    where: scope, select: { id: true, serviceAddressId: true }, orderBy: { id: "asc" },
+    where: scope, select: {
+      id: true, serviceAddressId: true, sourceEstimateId: true, depositCents: true,
+      mandatoryChargeReviewVersions: true, commercialReservePolicyVersions: true,
+    }, orderBy: { id: "asc" },
   });
   if (!agreements.length || agreements.length > 500 ||
       !agreements.some(row => row.id === agreementId))
@@ -115,5 +139,40 @@ export async function getFrozenSigningOrderInTx(
   if (charges.length !== agreements.length || charges.some(charge =>
       agreements.find(agreement => agreement.id === charge.agreementId)?.serviceAddressId !== charge.serviceAddressId))
     throw new Error("Complete matching frozen signing evidence is required.");
-  return verifyFrozenSigningOrder(charges, agreements.map(row => row.id));
+  const frozen = verifyFrozenSigningOrder(charges, agreements.map(row => row.id));
+  // A valid hash over stored JSON is insufficient. Independently reconstruct
+  // each V2 money category from its append-only, agreement-owned source history.
+  for (const line of frozen) {
+    if (line.schemaVersion !== 2) continue;
+    const owner = agreements.find(row => row.id === line.agreementId);
+    if (!owner || !owner.sourceEstimateId)
+      throw new Error("V2 financial review lost its source estimate identity.");
+    const review = Array.isArray(owner.mandatoryChargeReviewVersions)
+      ? owner.mandatoryChargeReviewVersions.findLast(row =>
+          typeof row === "object" && row !== null &&
+          !Array.isArray(row) && row.revision === line.v2Extension.mandatoryReviewRevision)
+      : null;
+    if (!review || typeof review !== "object" || Array.isArray(review) ||
+        typeof review.settingsUpdatedAt !== "string")
+      throw new Error("Historical mandatory policy is unavailable.");
+    const actual = buildSigningV2Extension({
+      agreementId: line.agreementId, serviceAddressId: line.serviceAddressId,
+      estimateId: owner.sourceEstimateId,
+      setupFeeCents: line.setupFeeCents,
+      downPaymentCents: line.downPaymentCents,
+      setupTaxCents: line.setupTaxCents,
+      setupJurisdictions: line.jurisdictions,
+      depositCents: owner.depositCents,
+      mandatoryHistory: owner.mandatoryChargeReviewVersions,
+      reserveHistory: owner.commercialReservePolicyVersions,
+      policyRevision: line.v2Extension.ownerPolicyRevision,
+      settingsUpdatedAt: review.settingsUpdatedAt,
+      expectedReviewRevision: line.v2Extension.mandatoryReviewRevision,
+      expectedReserveRevision: line.v2Extension.reserveTermsRevision,
+    });
+    if (actual.allInCents !== line.allInCents ||
+        JSON.stringify(actual.extension) !== JSON.stringify(line.v2Extension))
+      throw new Error("Frozen categories no longer match their historical source.");
+  }
+  return frozen;
 }

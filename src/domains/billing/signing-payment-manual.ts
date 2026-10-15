@@ -1,3 +1,4 @@
+import { signedReserveAmount } from "./signing-reserve-liability";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -43,7 +44,7 @@ export async function recordManualSigningPayment(input: ManualSigningPaymentInpu
     if (locked.length !== 1) throw new Error("Signed payment obligation is missing.");
     const obligation = await tx.agreementSigningPayment.findUnique({
       where: { agreementId: input.agreementId },
-      include: { agreement: { select: { customerId: true } }, receipt: true },
+      include: { agreement: { select: { customerId: true, depositCents: true } }, receipt: true },
     });
     const attempt = await tx.signingPaymentAttempt.findUnique({
       where: { id: input.attemptId },
@@ -55,6 +56,7 @@ export async function recordManualSigningPayment(input: ManualSigningPaymentInpu
         attempt.providerObjectId || attempt.stripePaymentIntentId ||
         obligation.totalCents <= 0)
       throw new Error("Manual attempt differs from signed obligation.");
+    const reserveAmount = signedReserveAmount({ ...obligation, agreementDepositCents: obligation.agreement.depositCents });
     if (obligation.status === "SETTLED") {
       const receipt = obligation.receipt;
       if (!receipt || attempt.status !== "SUCCEEDED" || receipt.source !== "MANUAL" ||
@@ -63,6 +65,14 @@ export async function recordManualSigningPayment(input: ManualSigningPaymentInpu
           receipt.method !== input.method || receipt.notes !== notes ||
           receipt.receivedOn.getTime() !== receivedOn.getTime())
         throw new Error("Signing payment already settled; investigate before recording again.");
+      const recordedReserve = await tx.deposit.findMany({
+        where: { agreementId: input.agreementId, sourceReceiptId: receipt.id },
+        select: { amountCents: true },
+      });
+      if (reserveAmount > 0
+        ? recordedReserve.length !== 1 || recordedReserve[0].amountCents !== reserveAmount
+        : recordedReserve.length !== 0)
+        throw new Error("Collected reserve has not reconciled with the original receipt.");
       return { receiptId: receipt.id, amountCents: receipt.amountCents,
         method: input.method, receivedOn: receipt.receivedOn, replayed: true };
     }
@@ -93,6 +103,11 @@ export async function recordManualSigningPayment(input: ManualSigningPaymentInpu
       where: { agreementId: input.agreementId },
       data: { status: "SETTLED", receiptId: receipt.id, settledAt: receivedOn },
     });
+    if (reserveAmount > 0)
+      await tx.deposit.create({ data: {
+        agreementId: input.agreementId, sourceReceiptId: receipt.id,
+        amountCents: reserveAmount, refundable: true,
+      } });
     if (obligation.downPaymentCents > 0)
       await tx.signingDownPaymentCredit.create({
         data: { agreementId: input.agreementId, receiptId: receipt.id,

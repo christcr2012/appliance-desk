@@ -27,6 +27,7 @@ export type EstimatePreparedQuoteLocation = {
   setupTaxCents: number;
   advanceCents: number;
   signingAmountCents: number;
+  additionalItems?: Array<{ label: string; amountCents: number; status: string }>;
   rateVersionIds: string[];
 };
 export type EstimatePreparedQuote = {
@@ -175,7 +176,7 @@ export async function getPreparedEstimateQuoteInTx(
         frozen.locations.some(line => !agreementIds.includes(line.agreementId))) {
       return rejected(["Every service address needs the same complete frozen signing order."]);
     }
-    const coverage = assessEstimateQuoteCategories({
+    const coverage = frozen.evidenceVersion === 2 ? [] : assessEstimateQuoteCategories({
       depositCents: estimate.depositCents,
       hasUnclassifiedOneTimeFees: estimate.lineItems.some(item => item.oneTimeFeeCents > 0),
       setupFeeCents: frozen.totals.setupFeeCents,
@@ -215,6 +216,7 @@ export async function getPreparedEstimateQuoteInTx(
         setupTaxCents: frozenAddress.setupTaxCents,
         advanceCents: frozenAddress.downPaymentCents,
         signingAmountCents: frozenAddress.signingAmountCents,
+        additionalItems: frozenAddress.additionalItems,
         rateVersionIds: taxVersionIds,
       });
     }

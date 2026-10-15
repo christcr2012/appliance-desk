@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { commands, parse as preflightOptions, relatedSources } from './preflight.mjs';
 import { checkArguments, loadPacket, referenceExcerpt, renderPacket, validatePackets } from './work-packet.mjs';
 import { installWorktree } from './install-worktree.mjs';
+import { workCheckpoint } from "./work-checkpoint.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const git = (root, args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 15000, maxBuffer: 8 * 1024 * 1024 }).trim();
@@ -41,12 +42,12 @@ export function doctor(root) {
 
 export function continuation(packet, head) {
   if (!/^[a-f0-9]{40}$/.test(head)) throw new Error('Invalid local head');
-  return `Resume christcr2012/appliance-desk from actual current main. Local checkpoint ${head} is not proof of GitHub merge or CI. Reconcile open PRs, concurrent work and unresolved reviews first. Read AGENTS.md, docs/SESSION-START.md and the current handoff at the top of docs/STATUS.md; run npm run work -- start. Next recorded outcome: ${packet.outcome} (${packet.id}); refresh the packet against current code and owner inputs. Follow the approved scope, scoped-blocker recovery, safeguards and outcome-led PR sizing; complete the normal five substantive merged-PR batch without padding. Update the existing execution packet/card and STATUS inside the implementation PR, keep implementation separate from real acceptance, and end with a verified checkpoint and the same compact continuation format.`;
+  return `Resume christcr2012/appliance-desk from actual current main. Local checkpoint ${head} is not proof of GitHub merge or CI. Reconcile open PRs, concurrent work and unresolved reviews first. Read AGENTS.md, docs/SESSION-START.md and the current handoff at the top of docs/STATUS.md; run npm run work -- start. Next recorded outcome: ${packet.outcome} (${packet.id}); refresh the packet against current code and owner inputs. Follow the approved scope, scoped-blocker recovery, safeguards and outcome-led PR sizing; complete the bundle workload requested in the current owner prompt (if any), without counting PRs, helpers or repairs as bundles. Update the existing execution packet/card and STATUS inside the implementation PR, keep implementation separate from real acceptance, and finish eligible session obligations, then end with a verified checkpoint and compact permanent handoff.`;
 }
 
 export function main(args, root = ROOT, execute = spawnSync, output = console.log) {
   const [action = 'start', ...rest] = args;
-  const allowed = ['start', 'read', 'route', 'check', 'plan', 'verify', 'probe', 'doctor', 'install', 'drift', 'prompt', 'metrics'];
+  const allowed = ['start', 'read', 'route', 'check', 'plan', 'verify', 'probe', 'doctor', 'install', 'drift', 'prompt', 'metrics', 'checkpoint'];
   if (!allowed.includes(action)) throw new Error('Usage: npm run work -- ' + allowed.join('|') + ' [packet-id] [--fresh]');
   if (action === 'install') return installWorktree(rest, root, execute, output);
   const fresh = rest.includes('--fresh');
@@ -70,6 +71,7 @@ export function main(args, root = ROOT, execute = spawnSync, output = console.lo
     output('Execution packets checked: current references, parent scope, selectors and scoped gates. Not behavior/acceptance proof.');
     return 0;
   }
+  if (action === 'checkpoint') { output(JSON.stringify(workCheckpoint(root), null, 2)); return 0; }
   if (action === 'doctor') {
     const report = doctor(root);
     output(JSON.stringify(report, null, 2)); return report.issues.length ? 1 : 0;

@@ -1016,6 +1016,7 @@ model AgreementSigningPayment {
   setupTaxCents     Int
   downPaymentCents  Int
   totalCents        Int
+  componentEvidence Json?
   // NOT_DUE or AWAITING_PAYMENT until a separately reviewed settlement path exists.
   status            String
   signedAt          DateTime

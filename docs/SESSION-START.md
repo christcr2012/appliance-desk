@@ -1,4 +1,4 @@
-# SESSION-START — implement, then catch up released acceptance
+# SESSION-START — reconcile released acceptance before selecting implementation
 
 ## Bundle target and delivery boundaries — owner alignment 2026-10-15
 
@@ -282,3 +282,51 @@ cleanup, secret handling and all required local/Actions tests are unchanged.
 ## Appliance Desk execution tools
 
 Use `npm run work -- start`, `plan`, `read`, `drift`, `verify` and `prompt` with the current packet. Preserve the existing disposable-Postgres/Sandbox preflight and per-worktree install; do not reuse shared node_modules or real database URLs. Browser/build checks remain mandatory. The continuation command produces a draft, not independent GitHub evidence.
+## Anti-stall recovery: persistent progress, not a restart (2026-10-15)
+
+The approved W-22FIN V2 implementation exposed a concrete failure pattern: 20
+working-tree changes spanning more than ten financial consumers accumulated
+without a recoverable Git commit or one accurate boundary list. Large command
+payloads were rejected, and the initial TypeScript process exhausted the
+default Node heap (a later 3072 MB heap typecheck succeeded). The agent then
+responded to interruptions by repeating diagnosis instead of making the
+next bounded implementation/checkpoint step. This was **execution workflow
+failure**, not evidence that the roadmap, credentials or provider approval
+was blocked.
+
+**Required corrective loop for large integration bundles:**
+
+1. After reconciling main, live, PRs, acceptance and the approved whole
+   subsection, run `npm run work -- checkpoint` in the existing implementation
+   worktree. This *read-only* command lists changed/untracked paths, head/ref
+   divergence and unresolved conflicts. It neither certifies nor commits work.
+2. Divide the **work**, not the bundle count: keep a written list of real
+   integration consumers (financial sources, frozen proof, signing, settlement,
+   cancellation, first invoice, owner/customer DTO, migration, tests). After
+   each coherent end-to-end edit, run its focused tests and inspect actual
+   exit code and logs. Do not open a separate PR for helper/docs/repair work.
+3. When a tool call or check fails, identify its precise cause. For rejected
+   oversized shell patches use short, targeted edits. For TypeScript OOM use
+   isolated `NODE_OPTIONS=--max-old-space-size=3072 npm run typecheck` on
+   a 4 GB sandbox, or authorized CI resources. Do not suppress, truncate, or
+   misreport failures; a piped `head`/`tail` needs `set -o pipefail`.
+4. Before the session becomes long, commit a coherent, recoverable
+   **work-in-progress checkpoint** to the *same implementation branch* once
+   locally feasible. WIP commits do not satisfy review, merge, engineering
+   completion or release gates. Push to that branch only under existing
+   repository PR/push policy and never bypass exact-head CI. Record failed
+   checks and next consumer in the permanent PR handoff before interruption.
+5. After an interruption, FIRST recover the existing worktree, run
+   `npm run work -- checkpoint`, resume the next recorded consumer, and
+   perform the previously missed eligible acceptance. Do not start a fresh
+   worktree/PR, redo all passing checks, restate a diagnosis without action,
+   or silently discard uncommitted files.
+6. Only claim a **bundle completed** after its entire approved engineering
+   outcome is implemented, required tests/reviews pass at the merged head,
+   and the PR is merged. Independently verify latest READY/live deployed
+   ancestry per acceptance requirement; main ahead of live never disqualifies
+   checks present in deployed source. Preserve all live payment, approval,
+   customer consent, refund and spending restrictions.
+
+This recovery procedure is operational only: it cannot lower any existing
+check, professional/provider gate, legal approval, or release policy.

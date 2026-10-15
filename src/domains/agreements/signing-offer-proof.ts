@@ -7,7 +7,7 @@ export type SigningOfferProof = {
 export type FrozenOfferLine = {
   orderFingerprint: string;
   allInCents: number;
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
 };
 export function offerMatchesFrozenEvidence(
   offer: SigningOfferProof | null,

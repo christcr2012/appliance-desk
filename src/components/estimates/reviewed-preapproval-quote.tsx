@@ -51,7 +51,15 @@ export function ReviewedPreapprovalQuote({ quote, owner = false }: {
                 <td className="py-2 pr-3">{formatCents(row.monthlyRentCents)}</td>
                 <td className="py-2 pr-3">{formatCents(row.monthlyRentTaxCents)}</td>
                 <td className="py-2 pr-3">{formatCents(row.setupFeeCents + row.setupTaxCents)}</td>
-                <td className="py-2">{formatCents(row.advanceCents)}</td>
+                <td className="py-2">
+                  {formatCents(row.advanceCents)}
+                  {(row.additionalItems ?? []).map((item, index) => (
+                    <p key={item.label + index} className="text-xs text-ink-soft">
+                      {item.label}: {item.status === "BUSINESS_PAID" ?
+                        "Paid by business" : formatCents(item.amountCents)}
+                    </p>
+                  ))}
+                </td>
               </tr>
             ))}
           </tbody>

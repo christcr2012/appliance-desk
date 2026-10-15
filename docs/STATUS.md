@@ -1,3 +1,69 @@
+## 2026-10-15 W-22FIN active handoff — interrupted long integration and acceptance reconciliation
+
+**Branch/worktree:** `ai/gpt6/w22fin-v2-complete-20261015` in
+`/vercel/appliance-desk-w22fin-v2`, based on main `fbbd1508` (#465).
+At startup there were zero open PRs; do not count this ongoing implementation
+as complete or create a *separate* anti-stall documentation PR. Preserve the
+existing branch and all working files. `npm run work -- checkpoint` prints
+current Git divergence, changed files, unresolved conflicts and recovery
+steps. Use the anti-stall loop in `docs/SESSION-START.md`. **Unmerged and
+unreviewed changes do not count as a bundle**, irrespective of passing unit tests.
+
+**Why this session stalled:** broad W-22FIN V1→V2 evidence integration acquired
+20 uncommitted changes across financial consumer boundaries. Initial unbounded
+Node typecheck exhausted its heap; some large shell-edit operations were
+rejected and had to be split. The agent diagnosed repeatedly instead of
+continuing a bounded action. Added `scripts/work-checkpoint.mjs`,
+`npm run work -- checkpoint`, unit tests and a permanent same-PR recovery rule.
+Tests `tests/work-checkpoint.test.ts` pass (three focused assertions).
+Run `NODE_OPTIONS=--max-old-space-size=3072 npm run typecheck` in this 4 GB
+sandbox, not an unbounded TypeScript retry.
+
+**Engineering in progress (W-22FIN; not yet a completed subsection):**
+explicit sorted V2 mandatory fees/reserve/RDF/service tax alongside immutable
+V1, versioned draft/freeze/reverification, reviewed quote/readback,
+checkout items, receipt-backed deposit liability, first invoice limited to
+rent advance, and document breakdown. Synthetic two-property $456.06 V2
+freeze/checkout proof passes. The exact end-to-end workflow remains
+unfinished: complete and independently verify signed professional-use gates,
+multi-location preapproval/acceptance, signed cancellation and partial-delivery
+refund/reserve handling, isolated PostgreSQL migration replay and browser
+acceptance, all original packet criteria, and exact-head CI/reviews/merge.
+Do not soften owner refund, Stripe LIVE, communication, legal/CPA or release
+approvals. A prior test environment without DATABASE_URL caused two suites
+to fail before assertions; both later passed with synthetic localhost
+DATABASE_URL/DIRECT_URL. No production DB or money changed.
+
+**Live release reconciliation (not user acceptance):** verified
+Vercel READY production `dpl_52TWf2hvNct3psyRVv3YhVqvWKbK`,
+branch `live` source `4740313d`, assigned to
+`robinsonappliancerentals.com`. Production GET / was 200; anonymous
+GET /account/rentals and /desk redirected 307 to /login.
+The **11** queued acceptance cases in the JSON below each have an
+ancestry-required commit included in this deployed revision. Main ahead of
+live is **not** a deferral. The anonymous probes are not authenticated or
+provider passes. The outstanding checks and their specific unmet prerequisites:
+
+| Queue IDs | Unmet prerequisite and next permitted action |
+|---|---|
+| DESK-W22, W22FIN-DISPATCH-RECEIPT | Authorized existing signed customer/owner TEST records and verified Stripe TEST settlement; read existing scoped records first, no live delivery start or synthetic charge |
+| DESK-COMMS | Owner consent/IN-09 A2P, IN-51–53 voice/privacy/budget choices and approved controlled carrier evidence; leave sends/activation OFF |
+| APPLIANCE-W22-PORTAL-RECEIPT, W22FIN-SIGNING-OWNER-CUSTOMER | Authorized authenticated existing customer and owner sessions, own/foreign/invalid receipt readback; do not create production records |
+| W22FIN-SIGNED-DELIVERY-VISIT | Existing approved signed delivery order with unscheduled/scheduled evidence; read-only compare customer calendar, no mutation |
+| W22FIN-MULTI-ORDER-VIEW | Authorized existing two-address frozen estimate and scoped owner/customer signing readback; confirm amounts and missing/foreign denial |
+| W22FIN-PAYMENT-RECOVERY | Authorized existing owner TEST payment attempt/receipt proving pending vs failed vs settled; no independent new charges |
+| W22FIN-FINAL-ESTIMATE-READBACK | Existing converted multi-location owner/customer estimate with independently frozen reviewed amount |
+| W22FIN-MANDATORY-OWNER-POLICY | Scoped owner authenticated policy readback and separately permitted isolated staff-denial test; counsel/CPA gate remains independent |
+| W22FIN-PREAPPROVAL-READBACK | Approved existing prepared estimate/customer link and owner identity; stale quote denial and exact V2 frozen fingerprint |
+
+**Next action:** inspect changed files and full original W-22FIN contract,
+finish all version-sensitive consumers and isolated financial rejection/replay
+tests, review current checks, commit to the **same implementation branch**,
+and open/merge the implementation PR only with all required gates green.
+Re-evaluate the 11 queued acceptance cases against the READY revision before
+ending; do not mark them passed for ancestry alone.
+
+
 ### October 15 — owner-requested bundle guidance consistency review
 
 Reviewed current main 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. Aligned existing governing instructions, session
