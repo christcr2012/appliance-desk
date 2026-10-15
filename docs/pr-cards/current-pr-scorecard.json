@@ -1,17 +1,33 @@
 {
   "version": 1,
-  "kind": "maintenance",
-  "parent": "W-22FIN",
-  "completedSlices": [],
+  "kind": "implementation",
+  "parent": "W-23",
+  "completedSlices": [
+    {
+      "id": "W-23",
+      "acceptanceEvidence": [
+        "Role mapping in src/app/account/properties/actions.ts plus separate nonlogin /tenant/repair link; data and no-price projection in src/domains/customers/location-contacts.ts.",
+        "Prisma LocationContact/ServiceAddress fields and src/components/locations/locations-panel.tsx forms with staff visit projection; tests/location-contacts-integration.test.ts scoped reads.",
+        "src/domains/customers/location-contacts.ts effectiveLocationPermission and actor-audited account/site overrides; tests/location-contacts.test.ts policy matrix.",
+        "src/domains/customers/location-contacts.ts tenantTextPermittedWithoutConsent fail-closed; no actual tenant SMS path introduced or enabled; independent COM-L acceptance remains gated.",
+        "Single-use tenant form and active appliance assignment in submitTenantRepair; CustomerNotice pending is client-scoped; no damage charge path; tests/location-contacts-integration.test.ts replay.",
+        "moveOutLocationPerson emits optional StaffTask and leaves signed records untouched; rent-line invariant in tests/location-contacts-integration.test.ts.",
+        "eraseExpiredTenantPII with 12-month default, owner-updated setting, cron, minimal audit; real database test proves PII null and original rental rate.",
+        "parseLocationCsv plus owner/admin transactional serializable import, preview hash and rollback; tests/location-contacts.test.ts and tests/location-contacts-integration.test.ts.",
+        "scopedActor/session-derived Customer ID, requireAddress and assignedToUserId visit restriction; real database foreign and unassigned-denial tests.",
+        "CI suite and browser acceptance are pending at draft head and must be verified before merge; fixtures/tests in tests/location-contacts-integration.test.ts plus exact-head Actions evidence later."
+      ]
+    }
+  ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Twelve exact per-revision acceptance rows remain PENDING in docs/STATUS.md. Eleven existing sources are already deployed; their missing authenticated/provider prerequisites are not release deferrals. V2 requires its own checked scheduled release.",
-    "Genuine IN-79 CPA, IN-07 counsel, Stripe TEST, owner/customer/carrier acceptance and public-pricing/communication/LIVE/money-out approvals remain independent. Synthetic tests and owner attestation controls cannot supply professional advice or authorize real use."
+    "Genuine customer/owner/assigned staff and tenant readback on the checked LIVE revision remains pending until the deployed SHA, owner-approved authenticated fixture and service interactions can be checked without production mutations.",
+    "Tenant SMS must retain its independent tenant COM-L opt-in, carrier/owner activation and message safety gates. Pending CustomerNotice is not proof of external email delivery; no LIVE, price, charges, money out or production activation authorized."
   ],
-  "workloadException": "Owner-requested completion-accounting workflow maintenance; no application source, engineering subsection or product bundle is claimed.",
+  "workloadException": "W-23 is one unusually wide predefined roadmap subsection but covers a complete multi-role security/privacy boundary, tenant repair, turnover, retention and CSV; never split into fake helper IDs to inflate bundle accounting.",
   "evidence": [
-    "Native scope and completion-ledger regressions prove new original evidence without invented code, old-pass credit or relaxed approvals.",
-    "All currently eligible authorized obligations remain required in repository order beyond N; original product roadmap and active implementation PR are preserved.",
-    "Existing publication, parallel CI, review, merge and final-main gates remain required; no real provider acceptance or production activation claimed."
+    "Frozen pre-code plan docs/pr-cards/W-23.md at commit 0cb1c6aef844467c156a438e6401dfe0a7c06a41 based on actual current main.",
+    "Full W-23 source and migration are present; one substantive 1000+ line PR is under exact-head CI and security review, not yet accepted until green.",
+    "Disposable PostgreSQL tests cover cross-tenant access, tenant token replay/foreign machine denial, optional turnover, erasure policy and transactional CSV."
   ]
 }

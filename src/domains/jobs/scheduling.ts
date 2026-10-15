@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
 import { assertJobScopeInTx } from "./scope";
 import { businessDateKey } from "@/lib/business-date";
+import { effectiveLocationPermission } from "@/domains/customers/location-contacts";
 
 // ---------------------------------------------------------------------------
 // Scheduling (Batch C, slice P1-A). Who does a visit, how long it takes, and
@@ -233,6 +234,27 @@ export async function scheduleJob(
       },
     });
     if (updated.count !== 1) throw new JobVersionError();
+
+    // The account's contact preference controls the client's appointment copy.
+    // No tenant SMS, login, fee or third-party provider operation is authorized.
+    const site = await tx.job.findUnique({
+      where: { id: input.jobId },
+      select: { customerId: true, serviceAddress: {
+        select: { customerId: true, locationContactPolicy: true,
+          customer: { select: { locationContactPolicy: true } } },
+      } },
+    });
+    if (site?.serviceAddress && site.customerId === site.serviceAddress.customerId &&
+        effectiveLocationPermission(site.serviceAddress.customer.locationContactPolicy,
+          site.serviceAddress.locationContactPolicy).copyClient) {
+      await tx.customerNotice.create({ data: {
+        customerId: site.customerId,
+        kind: "LOCATION_APPOINTMENT",
+        dedupeKey: "location-appointment:" + input.jobId + ":" + (input.expectedVersion + 1),
+        subject: "A service appointment was updated",
+        body: "Your appliance service appointment was updated. Sign in to your customer account or contact the office for details.",
+      } });
+    }
 
     await tx.auditLog.create({
       data: {

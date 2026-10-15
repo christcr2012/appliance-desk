@@ -2,7 +2,7 @@
   "version": 1,
   "source": "docs/owner-decisions/2026-10-13-text-voice-reconciliation.md",
   "purpose": "Owner answer to approved roadmap and testable execution coverage, not implementation/live proof",
-  "updated": "2026-10-14",
+  "updated": "2026-10-15",
   "expectedGroupCounts": {
     "pricing": 22,
     "delivery": 5,
@@ -10,7 +10,7 @@
     "communications": 11,
     "accounting": 12
   },
-  "activeExecutionMustRemain": "W-22FIN",
+  "activeExecutionMustRemain": "W-23",
   "entries": [
     {
       "id": "OD13-PRI-01",

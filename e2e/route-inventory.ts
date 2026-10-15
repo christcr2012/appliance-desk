@@ -24,6 +24,12 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/service-area", role: "PUBLIC", fixture: "/service-area" },
   { path: "/terms", role: "PUBLIC", fixture: "/terms" },
   {
+    path: "/tenant/repair/[token]",
+    role: "PUBLIC",
+    fixture: "An individually created time-limited one-use link for a permitted current occupant",
+    manualOnlyReason: "The token is short-lived and one-use, requiring a controlled tenant and assigned-appliance fixture.",
+  },
+  {
     path: "/estimate/[id]",
     role: "PUBLIC",
     fixture: "A real public estimate link in an isolated test database",
@@ -60,6 +66,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
       "The customer seed creates the invoice with a generated id; its authorization behavior is covered separately by customer-isolation tests.",
   },
   { path: "/account/maintenance", role: "CUSTOMER", fixture: "/account/maintenance" },
+  { path: "/account/properties", role: "CUSTOMER", fixture: "/account/properties" },
   { path: "/account/rentals", role: "CUSTOMER", fixture: "/account/rentals" },
   { path: "/account/settings", role: "CUSTOMER", fixture: "/account/settings" },
   { path: "/account/settings/privacy", role: "CUSTOMER", fixture: "/account/settings/privacy" },
@@ -131,6 +138,12 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     fixture: "A generated customer id in the isolated CI database",
     manualOnlyReason:
       "The CI customer id is generated per run; customer workspace behavior is covered by dedicated browser tests.",
+  },
+  {
+    path: "/desk/customers/[id]/locations",
+    role: "OWNER",
+    fixture: "A customer with created location contacts in disposable CI storage",
+    manualOnlyReason: "The client identifier changes per run; e2e/location-contacts.spec.ts exercises an authenticated owner/customer fixture.",
   },
   { path: "/desk/customers/new", role: "OWNER", fixture: "/desk/customers/new" },
   { path: "/desk/customers", role: "OWNER", fixture: "/desk/customers" },

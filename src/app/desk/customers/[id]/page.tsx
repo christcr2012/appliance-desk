@@ -129,6 +129,8 @@ export default async function CustomerDetailPage({
     const data = await getCustomerProperties(id);
     content = data && (
       <div className="space-y-6">
+        <p className="mb-3"><Link href={`/desk/customers/${id}/locations`} className="font-medium text-primary underline">
+          Manage unit labels, tenant contacts and location permissions →</Link></p>
         <ServiceAddressesPanel
           customerId={id}
           addresses={data.serviceAddresses}
