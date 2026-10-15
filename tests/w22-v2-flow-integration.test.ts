@@ -7,13 +7,13 @@ import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
 import { businessDateFromKey } from "@/lib/business-date";
 const provider=vi.hoisted(()=>({params:null as Stripe.SubscriptionCreateParams|null,calls:0}));
 vi.mock("@/lib/stripe",()=>({getStripeClient:()=>({
- products:{create:async()=>({id:"prod_v2_synthetic"})},
- subscriptions:{create:async(params:Stripe.SubscriptionCreateParams)=>{provider.params=params;provider.calls++;return {id:"sub_v2_synthetic",latest_invoice:"in_v2_synthetic"};}},
+ products:{create:async()=>({id:"prod_v2_synthetic_"+tag})},
+ subscriptions:{create:async(params:Stripe.SubscriptionCreateParams)=>{provider.params=params;provider.calls++;return {id:"sub_v2_synthetic_"+tag,latest_invoice:"in_v2_synthetic_"+tag};}},
  invoices:{
-  retrieve:async()=>({id:"in_v2_synthetic",livemode:false,billing_reason:"subscription_create",currency:"usd",customer:provider.params?.customer,
-   status:"open",parent:{subscription_details:{subscription:"sub_v2_synthetic"}}}),
-  listLineItems:async()=>({has_more:false,data:(provider.params?.add_invoice_items??[]).map((row,i)=>({id:"il_v2_synthetic_"+i,livemode:false,
-    invoice:"in_v2_synthetic",amount:row.price_data?.unit_amount,metadata:row.metadata}))}),
+  retrieve:async()=>({id:"in_v2_synthetic_"+tag,livemode:false,billing_reason:"subscription_create",currency:"usd",customer:provider.params?.customer,
+   status:"open",parent:{subscription_details:{subscription:"sub_v2_synthetic_"+tag}}}),
+  listLineItems:async()=>({has_more:false,data:(provider.params?.add_invoice_items??[]).map((row,i)=>({id:"il_v2_synthetic_"+tag+"_"+i,livemode:false,
+    invoice:"in_v2_synthetic_"+tag,amount:row.price_data?.unit_amount,metadata:row.metadata}))}),
  },
 })}));
 import { createSyntheticW22V2Order } from "./helpers/w22-v2-order";
@@ -112,7 +112,7 @@ describe.skipIf(!enabled)("V2 two-address sign, settlement, reserve, cancellatio
   // Real physical delivery commits before the simulated provider first invoice.
   // No real Stripe acceptance is claimed by these synthetic provider objects.
   const a=await prisma.rentalAgreement.findUniqueOrThrow({where:{id:ids[0]},include:{lines:true}});
-  await prisma.customer.update({where:{id:a.customerId},data:{stripeCustomerId:"cus_v2_synthetic",stripeDefaultPaymentMethodId:"pm_v2_synthetic"}});
+  await prisma.customer.update({where:{id:a.customerId},data:{stripeCustomerId:"cus_v2_synthetic_"+tag,stripeDefaultPaymentMethodId:"pm_v2_synthetic_"+tag}});
   const type=await prisma.applianceType.findFirstOrThrow();
   const results=[];
   for(let i=0;i<2;i++){
