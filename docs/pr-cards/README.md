@@ -38,6 +38,12 @@ schema or a prewritten distant card. Resolve them JIT under the drift protocol.
 
 ## Minimum card
 
+Keep one finite consumer/fixture checklist for the selected outcome: actual symbol
+and caller, required input/result shape, persistence/provider boundary, role/scope,
+full synthetic fixture and refusal/recovery proof. Reuse existing recipes/decisions;
+check the real adapter/form control early. This is detail inside the current card,
+not another planning document, invented subsection or separate approval ceremony.
+
 Use exact current paths and relevant design headings. Usually 40–100 lines:
 
 - ID, scope/acceptance IDs, prerequisites and actual checked base/head.
