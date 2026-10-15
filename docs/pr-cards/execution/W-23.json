@@ -43,7 +43,8 @@
     "prisma/migrations/20261016100000_w23_location_contacts/migration.sql",
     "tests/location-contacts.test.ts",
     "tests/location-contacts-integration.test.ts",
-    "src/app/tenant/repair/[token]/page.tsx"
+    "src/app/tenant/repair/[token]/page.tsx",
+    "e2e/location-contacts.spec.ts"
   ],
   "invariants": [
     "Clients alone remain paying/signed customers; tenants do not have login, price or billing access.",
@@ -96,7 +97,9 @@
     "db": [
       "tests/location-contacts-integration.test.ts"
     ],
-    "browser": [],
+    "browser": [
+      "e2e/location-contacts.spec.ts"
+    ],
     "node": []
   },
   "slices": [
