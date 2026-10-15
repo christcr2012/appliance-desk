@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { EstimateStatus, Prisma } from "@prisma/client";
+import { Prisma, type EstimateStatus } from "@prisma/client";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
 import { createDraftAgreementInTx } from "@/domains/agreements";
@@ -12,6 +12,9 @@ import {
 } from "@/domains/leads";
 
 import { isEstimatePastValidity } from "./validity";
+import { getPreparedEstimateQuoteInTx } from "./preapproval-quote";
+import { validatePreparedConversion, validateConvertedEstimateReplay } from "./prepared-conversion";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 
 const EDITABLE_STATUSES: EstimateStatus[] = ["DRAFT", "CHANGES_REQUESTED"];
 const PUBLICLY_VIEWABLE_STATUSES: EstimateStatus[] = [
@@ -325,6 +328,11 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
     if (estimate.lineItems.length === 0) {
       throw new Error("Add at least one line item before sending this estimate.");
     }
+    const prepared = await getPreparedEstimateQuoteInTx(tx, estimateId);
+    // A lead may still receive a clearly nonbinding preliminary scope.
+    // Only a complete verified frozen order may carry binding quote identity.
+    const fullyReviewed = prepared.status === "READY" &&
+      !!prepared.quoteFingerprint && !!prepared.orderFingerprint;
 
     const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
     const recipientName = estimate.customer
@@ -341,7 +349,10 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
     const sentAt = new Date(Math.max(Date.now(), previous + 1));
     await tx.estimate.update({
       where: { id: estimateId },
-      data: { status: "SENT", sentAt },
+      data: { status: "SENT", sentAt,
+        reviewedQuoteFingerprint: fullyReviewed ? prepared.quoteFingerprint : null,
+        reviewedOrderFingerprint: fullyReviewed ? prepared.orderFingerprint : null,
+        reviewedQuoteAt: fullyReviewed ? new Date() : null },
     });
     await tx.auditLog.create({
       data: {
@@ -352,9 +363,9 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
         newValue: { sentAt: sentAt.toISOString() },
       },
     });
-    return { estimate, recipientEmail, recipientName, sentAt };
+    return { estimate, recipientEmail, recipientName, sentAt, fullyReviewed };
   });
-  const { estimate, recipientEmail, recipientName, sentAt } = claimed;
+  const { estimate, recipientEmail, recipientName, sentAt, fullyReviewed } = claimed;
 
   const settings = await getBusinessSettings();
   const appUrl =
@@ -370,6 +381,11 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
   }
   if (oneTime > 0) {
     parts.push(`Estimated one-time charges: $${(oneTime / 100).toFixed(2)}.`);
+  }
+  if (!fullyReviewed) {
+    parts.push("This is preliminary, not an all-in binding offer. Setup, delivery, taxes, refundable deposits or other required charges may be missing. You cannot approve or pay from this estimate until the owner sends a verified updated offer.");
+  } else {
+    parts.push("The reviewed all-in breakdown includes each prepared service address and shows the total due at signing separately from future rent.");
   }
   if (estimate.clientMessage) parts.push(estimate.clientMessage);
   parts.push("Review the full details and let us know if it works for you:");
@@ -576,6 +592,7 @@ export async function getEstimateForApproval(id: string) {
 }
 
 export type ApproveEstimateInput = {
+  expectedQuoteFingerprint: string;
   approverName: string;
   approverEmail: string;
   ipAddress: string | null;
@@ -596,6 +613,16 @@ export async function approveEstimate(
       throw new Error("This estimate isn't available to approve right now.");
     }
     if (await expireIfPastValidityInTx(tx, estimate)) return { expired: true as const };
+    const approvedOffer = await getPreparedEstimateQuoteInTx(tx, id);
+    if (approvedOffer.status !== "READY" || !approvedOffer.quoteFingerprint ||
+        typeof input.expectedQuoteFingerprint !== "string" ||
+        !/^[a-f0-9]{64}$/.test(input.expectedQuoteFingerprint) ||
+        input.expectedQuoteFingerprint !== approvedOffer.quoteFingerprint ||
+        !estimate.reviewedQuoteFingerprint || !estimate.reviewedOrderFingerprint ||
+        approvedOffer.quoteFingerprint !== estimate.reviewedQuoteFingerprint ||
+        approvedOffer.orderFingerprint !== estimate.reviewedOrderFingerprint) {
+      throw new Error("This estimate's verified all-in order has changed or was never reviewed. Request an updated estimate before approval.");
+    }
 
     let customerId = estimate.customerId;
     let activationEmail: string | null = null;
@@ -721,19 +748,80 @@ export async function convertEstimateToAgreements(
     if (estimate.status === "CONVERTED") {
       const existing = await tx.rentalAgreement.findMany({
         where: { sourceEstimateId: estimateId },
-        select: { id: true },
+        select: { id: true, customerId: true, sourceEstimateId: true, serviceAddressId: true },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       });
-      if (existing.length === 0) {
-        throw new Error(
-          "This estimate is marked converted but has no linked agreements. Review it before retrying.",
-        );
-      }
-      return existing.map((agreement) => agreement.id);
+      return validateConvertedEstimateReplay(existing, {
+        estimateId, customerId: estimate.customerId,
+      });
     }
 
     if (estimate.status !== "APPROVED") {
       throw new Error("Only an approved estimate can be converted.");
+    }
+    // Prepared preapproval shells will be verified and adopted by the
+    // converted agreement transaction; creating duplicates is forbidden.
+    const prepared = await tx.rentalAgreement.findMany({
+      where: { sourceEstimateId: estimateId },
+      select: {
+        id: true, customerId: true, sourceEstimateId: true,
+        serviceAddressId: true, status: true,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    if (prepared.length) {
+      await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+      const preparedIds = prepared.map(row => row.id).sort();
+      await tx.$queryRaw`SELECT "id" FROM "RentalAgreement"
+        WHERE "id" IN (${Prisma.join(preparedIds)}) ORDER BY "id" FOR UPDATE`;
+      // A preapproval conversion adopts DRAFT shells. It does not collect,
+      // book, sign, issue an invoice or create a first-invoice credit.
+      const [signatures, obligations, invoices, deliveries, deposits, credits] = await Promise.all([
+        tx.signatureRecord.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.agreementSigningPayment.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.invoice.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.job.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.deposit.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.signingDownPaymentCredit.count({ where: { agreementId: { in: preparedIds } } }),
+      ]);
+      if (signatures || obligations || invoices || deliveries || deposits || credits) {
+        throw new Error("Prepared conversion cannot silently adopt signed, paid, invoiced or scheduled agreement activity.");
+      }
+      if (!estimate.customerId) {
+        throw new Error("The approved estimate must belong to the prepared agreement customer.");
+      }
+      const reviewedQuote = await getPreparedEstimateQuoteInTx(tx, estimateId);
+      const originalLines = await tx.estimateLineItem.findMany({
+        where: { estimateId }, select: {
+          description: true, serviceAddressId: true,
+        },
+      });
+      const exactAddresses = resolveConversionAddresses(originalLines, input);
+      const evidence = validatePreparedConversion({
+        estimateId, customerId: estimate.customerId,
+        reviewedQuoteFingerprint: estimate.reviewedQuoteFingerprint,
+        reviewedOrderFingerprint: estimate.reviewedOrderFingerprint,
+        requestedMode: input.mode,
+        requestedAddressId: input.mode === "single" ? input.serviceAddressId : null,
+        quoteAddresses: exactAddresses, prepared,
+        estimateDepositCents: estimate.depositCents,
+        estimateDepositPaidAt: estimate.depositPaidAt, quote: reviewedQuote,
+      });
+      await tx.estimate.update({
+        where: { id: estimateId }, data: { status: "CONVERTED", convertedAt: new Date() },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId, action: "estimate.convert_prepared",
+          entityType: "Estimate", entityId: estimateId,
+          newValue: { agreementIds: evidence.agreementIds,
+            orderFingerprint: evidence.orderFingerprint,
+            quoteFingerprint: evidence.quoteFingerprint,
+            dueAtSigningCents: evidence.amountDueAtSigningCents,
+            paid: false, signed: false, invoiced: false },
+        },
+      });
+      return evidence.agreementIds;
     }
     if (!estimate.customerId) {
       throw new Error("This estimate isn't linked to a customer yet.");

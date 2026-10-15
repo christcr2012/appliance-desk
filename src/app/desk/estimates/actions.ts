@@ -13,6 +13,8 @@ import {
   convertEstimateToAgreements,
 } from "@/domains/estimates";
 import { dollarsToCents } from "@/domains/pricing";
+import { prepareEstimateAgreementsBeforeApproval } from "@/domains/estimates/preapproval-agreements";
+import type { ConvertEstimateInput } from "@/domains/estimates";
 import {
   INVALID_VALID_UNTIL_MESSAGE,
   parseEstimateValidUntil,
@@ -252,5 +254,19 @@ export async function convertEstimateAction(
       status: "error",
       message: error instanceof Error ? error.message : "Couldn't convert this estimate.",
     };
+  }
+}
+
+/** Owner-only draft preparation. Customer acceptance remains separately gated. */
+export async function prepareEstimateAgreementsAction(
+  estimateId: string, mode: ConvertEstimateInput,
+): Promise<{ status: "success"; agreementIds: string[] } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    const agreementIds = await prepareEstimateAgreementsBeforeApproval(session.user.id, estimateId, mode);
+    revalidatePath(`/desk/estimates/${estimateId}`);
+    return { status: "success", agreementIds };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Cannot prepare these agreements." };
   }
 }

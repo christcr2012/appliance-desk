@@ -1,5 +1,10 @@
 # October 13 owner answers — engineering and acceptance contract
 
+**Professional-review detail:** [Research-to-implementation contract](PROFESSIONAL-REVIEW-IMPLEMENTATION.md)
+covers the remaining professional-review register, including consumer terms,
+renewal/ending, tax elections/reporting, book/tax assets, access, privacy and
+translations. Open review does not suspend eligible design or implementation.
+
 **October 15 follow-through:** use the [primary-source research](../research/2026-10-15-owner-decision-follow-through.md)
 for applicability, dated rates and precise professional questions. The
 [W-22FIN integration contract](../implementation-contracts/W-22FIN-INTEGRATION.md)

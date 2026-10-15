@@ -10,6 +10,14 @@
         "tests/pre-delivery-cancellation-integration.test.ts: actual pg_stat_activity lock wait and committed-attempt reread; ACTIVE agreement and no refund/cancellation row.",
         "tests/signing-cancellation-readiness.test.ts and existing integration/close suites: 24 focused tests passed in disposable PostgreSQL 18; required exact-head full CI remains the merge gate."
       ]
+    },
+    {
+      "id": "W-22FIN-VIEWED-QUOTE",
+      "acceptanceEvidence": [
+        "tests/estimate-viewed-quote-form.test.tsx and estimate-viewed-quote-action.test.ts: rendered revision reaches the domain unchanged; strict malformed/missing parser and no checkout on denial.",
+        "tests/estimate-preapproval-prepare-integration-w22fin.test.ts: four missing/malformed/stale cases failed against merged 5703c6ea, pass after repair with unchanged status/approval fields and no audit writes.",
+        "Real PostgreSQL old/new-tab concurrent approval plus expiry and estimate concurrency suites passed in the 41-test combined run; exact-head full CI/browser remains required."
+      ]
     }
   ],
   "remainingEngineering": [
@@ -22,10 +30,12 @@
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Owner-requested existing-work audit found a money-integrity hole on main. AGENTS requires an immediate isolated fix. This internal remediation task is zero completed predefined batch subsections; W-22FIN-RECOVERY and parent remain unfinished. No padding or throughput claim.",
+  "workloadException": "Owner-requested existing-work audit found cancellation and viewed-quote money/contract integrity holes on main. Isolated corrective PR follows AGENTS. Internal remediation tasks count zero completed predefined batch subsections; parent W-22FIN and full remaining quote/recovery/delivery outcomes stay unfinished.",
   "evidence": [
     "Original main b4071206 plus the three regression cases failed on disposable PostgreSQL: generic cancellation incorrectly succeeded.",
     "Fixed shared agreement-to-obligation lock guard passed 24 focused tests, including a genuine blocked database transaction; no provider, customer or production mutation.",
-    "docs/reviews/2026-10-15-existing-work-review.md records bounded coverage, fixed defects, exact concurrent quote PR revision and remaining review findings."
+    "docs/reviews/2026-10-15-existing-work-review.md records bounded coverage, fixed defects, exact concurrent quote PR revision and remaining review findings.",
+    "Reconciled merged PR #459 (5703c6ea), fixed viewed-quote approval across page/form/action/domain, and passed 41 focused tests plus typecheck/lint/quick with a 3GB Node heap.",
+    "docs/designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md maps current professional-review IN subjects to researched configurable policies, evidence and finite acceptance; no real professional approval claimed."
   ]
 }

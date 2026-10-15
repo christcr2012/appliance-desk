@@ -3,6 +3,12 @@
 If code and this document ever disagree, this document (and Chris) win.
 Update this file in the same PR that changes a rule.
 
+**Customer-viewed quote revision:** estimate approval must submit the exact
+reviewed quote fingerprint rendered to that customer. Under the estimate lock,
+it must match both the stored owner-reviewed revision and recomputed offer.
+Missing, malformed or stale fingerprints deny before approval or checkout; a
+replacement offer on the same URL cannot be accepted from an old browser tab.
+
 **Cancellation payment integrity:** an undelivered agreement cannot be cancelled
 through either generic closure or owner refund review while a signing provider
 attempt is pending/unverified, or reports success without a reconciled receipt.

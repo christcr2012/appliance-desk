@@ -7,10 +7,46 @@ generic close bypassed pending collection, and reviewed cancellation missed
 SUCCEEDED without a reconciled receipt. Three new cases failed on original main;
 24 focused tests passed with the fix on disposable PostgreSQL, including an
 observed lock-wait race. Exact-head full CI/review/merge remain required.
-The audit also identifies missing customer-view fingerprint submission in open
-PR #459 at c2cbe80f; reconcile before accepting that implementation. Its branch
-is untouched. W-22FIN remains active and incomplete; the internal remediation
-counts zero whole predefined batch subsections. No release/provider proof claimed.
+PR #459 then merged as 5703c6ea. Reconciled that main and repaired its missing
+customer-view fingerprint submission across page/form/action/locked domain.
+Four old-view cases failed on the merged baseline; the combined repairs passed
+41 focused tests, including a concurrent old/new-tab race. Its former branch
+was untouched. The professional-review implementation contract now maps the
+current IN register to researched configurable policies and concrete proof.
+W-22FIN remains active/incomplete; internal remediation tasks count zero whole
+predefined batch subsections. No release/provider/professional proof claimed.
+
+## Completion checkpoint — W-22FIN-APPROVAL, while W-22FIN-QUOTE remains gated
+
+Owner-prepared customer-owned agreement drafts can now be adopted by an
+approved estimate without creating duplicate agreements or deposit obligations.
+The conversion transaction serializes on the Estimate and every prepared
+agreement, verifies the original frozen order, customer ownership, date-effective
+tax/policy identities, and refuses to convert if any signature, payment
+obligation, invoice, dispatch or deposit already exists. Successful conversion
+records an audit, never a paid/signature/first-invoice-credit claim, and
+concurrent replays return only the same original agreement identities.
+
+Supported verified zero-deposit offers can follow this flow, and preliminary
+prospect estimates remain nonbinding. The parent W-22FIN-QUOTE is **still open**:
+required nonzero service, RDF, damage waiver and refundable deposit categories
+must be fully allocated and reviewed before such offers may bind. This
+completion checkpoint proves source rules and synthetic database/browser
+regressions only; it does not prove live Stripe TEST, counsel or CPA acceptance.
+All previous pending release-dependent rows remain pending.
+
+## W-22FIN preapproval preparation, exact quote identity and stale approval denial
+
+Owner/ADMIN can prepare customer-owned draft agreements while an estimate is
+editable, without approving, converting, sending, booking or charging. Exact
+owned packages, per-site frozen signing amounts, current owner applicability
+and verified monthly rental-tax version evidence must reconcile before the
+public estimate shows reviewed totals. A fingerprint changing after send
+invalidates customer approval. Unreviewed leads receive a clearly nonbinding
+preliminary email and cannot approve or pay; they may request changes.
+This completes W-22FIN-APPROVAL source-side safeguards for supported verified, zero-deposit quotes with exact frozen order adoption and safe concurrency. W-22FIN-QUOTE remains incomplete for nonzero mandatory categories and refundable deposits.
+Nonzero visit fees, waiver/RDF and refundable deposits remain approved
+W-22FIN engineering; legacy prepared conversion now uses the original drafts. Preserve CPA/counsel/owner/Stripe gates.
 
 ### October 15 decision research and implementation-detail maintenance
 
@@ -331,6 +367,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "procedure": "Authenticate scoped owner; read policy revision and nonpayable per-location estimate review only. Check denied admin/staff mutation in authorized isolated acceptance; never write a production policy fixture.",
     "gates": "Requires permitted owner identity and verified READY ancestry. No real tax-dependent send, customer collection, public price, or live/provider mutation.",
     "lastEvidence": "Source implementation and local synthetic tests only; not independently deployed or owner accepted.",
+    "dependsOn": [],
+    "status": "PENDING"
+  },
+  {
+    "id": "W22FIN-PREAPPROVAL-READBACK",
+    "priority": 5,
+    "requiredRevision": "4b8570e38981b76ef35538bfdfb9ccb7f52ff545",
+    "task": "Verify authenticated owner prepared multi-property estimate quote readback and public stale-quote denial after checked READY release.",
+    "procedure": "Use separately permitted owner and isolated customer read identities; inspect fully signed frozen order, matching quote hashes, denial of legacy provisional approval, and no provider mutation or live fixture creation.",
+    "gates": "Checked READY revision ancestry, owner/customer permission and isolated safe fixture. Counsel/CPA/Stripe TEST and publication restrictions remain separate.",
+    "lastEvidence": "Only local pure unit tests and source review; no real deployed authenticated acceptance.",
     "dependsOn": [],
     "status": "PENDING"
   }

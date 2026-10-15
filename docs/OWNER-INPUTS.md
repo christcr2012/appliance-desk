@@ -1,5 +1,10 @@
 # Owner inputs and launch decisions
 
+**Research-to-code coverage:** [Professional-review implementation contract](designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md)
+maps this register's existing review subjects to researched policies, data/
+evidence, configuration, tests and precise real-use gates. Apply it with the
+current ordered card; no new approval queue or repeated owner questions.
+
 Reconciled with owner text + voice choices 2026-10-13 (see docs/owner-decisions/2026-10-13-text-voice-reconciliation.md). This is the project decision register, not a claim that
 these items have been entered into the live app's Tasks screen. Chris asked
 that work requiring his input be recorded rather than repeatedly interrupting

@@ -1,3 +1,15 @@
+## W-22FIN reviewed estimate fingerprint migration
+
+Migration 20261014232000_preapproval_frozen_quote_identity adds nullable
+Estimate.reviewedQuoteFingerprint, Estimate.reviewedOrderFingerprint and
+Estimate.reviewedQuoteAt. Null means no reviewed all-in binding offer,
+including historical preliminary estimates. Stored identities reference the
+existing verified frozen signing order, not another charges ledger. Customer
+approval recomputes both fingerprints under the Estimate lock, denying stale
+packages, addresses, rates or policy versions. The stored identity cannot
+prove counsel/CPA approval, a paid deposit, a signing receipt or an invoice
+credit; these remain separately checked.
+
 ## W-22FIN mandatory-charge owner policy (October 14, 2026)
 
 Migration `20261014223000_signing_mandatory_policy_versions` adds

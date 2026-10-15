@@ -3,7 +3,9 @@
 import { useEffect, useState, useTransition } from "react";
 import { approveEstimateAction, requestEstimateChangesAction, type EstimateResponseState } from "./actions";
 
-export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
+export function EstimateResponseForm({ estimateId, allowApproval = false, expectedQuoteFingerprint }: {
+  estimateId: string; allowApproval?: boolean; expectedQuoteFingerprint?: string | null;
+}) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState<"choose" | "approve" | "changes">("choose");
   const [approverName, setApproverName] = useState("");
@@ -47,7 +49,7 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
   function handleApprove(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      setResult(await approveEstimateAction(estimateId, { approverName, approverEmail }));
+      setResult(await approveEstimateAction(estimateId, { approverName, approverEmail, expectedQuoteFingerprint }));
     });
   }
 
@@ -159,13 +161,13 @@ export function EstimateResponseForm({ estimateId }: { estimateId: string }) {
 
   return (
     <div className="flex flex-wrap gap-3">
-      <button
+      {allowApproval && <button
         type="button"
         onClick={() => setMode("approve")}
         className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action"
       >
         Approve estimate
-      </button>
+      </button>}
       <button
         type="button"
         onClick={() => setMode("changes")}
