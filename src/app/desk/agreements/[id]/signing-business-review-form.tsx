@@ -1,11 +1,12 @@
 "use client";
 import { useActionState, useState } from "react";
-import { saveSigningBusinessReviewAction } from "./signing-business-review-action";
-export function SigningBusinessReviewForm({agreementId,fingerprint,day,editable,current}: {
-  agreementId:string;fingerprint:string;day:string;editable:boolean;current:string;
+import { saveSigningBusinessReviewAction, reopenUnsignedSigningOrderAction } from "./signing-business-review-action";
+export function SigningBusinessReviewForm({agreementId,fingerprint,day,editable,current,canReopen}: {
+  agreementId:string;fingerprint:string;day:string;editable:boolean;current:string;canReopen:boolean;
 }){
   const [approving,setApproving]=useState(false);
   const [state,action,pending]=useActionState(saveSigningBusinessReviewAction,{ok:false,message:""});
+  const [reopened,reopen,reopening]=useActionState(reopenUnsignedSigningOrderAction,{ok:false,message:""});
   return <section className="mt-4 rounded-lg border border-line p-4" aria-label="Signing business clearance">
     <h2 className="font-semibold">Signing business clearance</h2>
     <p className="mt-2 text-sm text-ink-soft">Record advice you have actually received from your CPA and attorney for this exact frozen order, including its services, tax, delivery fee, refundable reserve and cancellation terms. A planning calculation or a test is not professional advice. New revisions preserve all earlier records.</p>
@@ -27,5 +28,12 @@ export function SigningBusinessReviewForm({agreementId,fingerprint,day,editable,
       {!editable&&<p className="text-sm text-ink-soft">Only the owner may record or revoke clearance.</p>}
       {state.message&&<p role={state.ok?"status":"alert"} className="text-sm">{state.message}</p>}
     </form>
+    {editable&&canReopen&&<form action={reopen} className="mt-4 space-y-2 border-t border-line pt-3">
+      <input type="hidden" name="agreementId" value={agreementId}/><input type="hidden" name="expectedOrderFingerprint" value={fingerprint}/>
+      <p className="text-sm text-ink-soft">If settings or tax evidence changed, reopen only an unsigned editable order. Prior frozen evidence stays in history; all locations need preparation and review again.</p>
+      <label className="block text-sm">Reason to reopen unsigned order<textarea name="reason" minLength={12} maxLength={500} required rows={2} className="mt-1 block w-full rounded border border-line bg-surface p-2"/></label>
+      <button disabled={reopening} className="rounded border border-line px-4 py-2 text-sm" type="submit">Reopen unsigned order for review</button>
+      {reopened.message&&<p role={reopened.ok?"status":"alert"} className="text-sm">{reopened.message}</p>}
+    </form>}
   </section>;
 }

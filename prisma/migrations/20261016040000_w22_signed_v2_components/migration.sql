@@ -164,3 +164,20 @@ END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER "w22_v2_signed_source" BEFORE INSERT OR UPDATE ON "AgreementSigningPayment"
 FOR EACH ROW EXECUTE FUNCTION "w22_v2_signed_source"();
+-- Accepted V2 snapshots remain immutable even through direct SQL or a stale UI.
+CREATE FUNCTION "w22_protect_accepted_v2_snapshot"() RETURNS TRIGGER AS $$
+BEGIN
+ IF OLD."frozenChargeEvidence"->>'schemaVersion'='2' AND (
+   EXISTS(SELECT 1 FROM "SignatureRecord" WHERE "agreementId"=OLD."agreementId") OR
+   EXISTS(SELECT 1 FROM "AgreementSigningPayment" WHERE "agreementId"=OLD."agreementId")
+ ) THEN
+  IF TG_OP='DELETE' OR OLD IS DISTINCT FROM NEW THEN
+   RAISE EXCEPTION 'Accepted V2 frozen signing evidence is immutable';
+  END IF;
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+ RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "w22_protect_accepted_v2_snapshot" BEFORE UPDATE OR DELETE ON "AgreementSigningCharge"
+FOR EACH ROW EXECUTE FUNCTION "w22_protect_accepted_v2_snapshot"();

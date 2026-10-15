@@ -42,9 +42,9 @@ export async function getReviewedSigningPaymentInTx(
     }
     const frozen = await getFrozenSigningOrderInTx(tx, agreementId);
     const target = frozen.find(row => row.agreementId === agreementId);
+    if(target?.schemaVersion===1 && (agreement.depositCents!==0||agreement.damageWaiverCents!==0))
+      throw new Error("Signing payment is not eligible for legacy unallocated deposit or waiver collection.");
     if (!target || !offerMatchesFrozenEvidence(signature, target) ||
-        (target.schemaVersion === 1 &&
-          (agreement.depositCents !== 0 || agreement.damageWaiverCents !== 0)) ||
         (target.schemaVersion === 2 &&
           target.v2Extension.components.find(c => c.category === "COMMERCIAL_RESERVE")?.amountCents !== agreement.depositCents)) {
       throw new Error("Customer-accepted payment proof no longer matches the frozen order.");

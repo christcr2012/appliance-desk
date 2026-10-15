@@ -968,6 +968,15 @@ order is agreement → obligation → review → receipt/reserve. The command lo
 monotonic revision and exact frozen source; update/delete is forbidden. Backup
 policy includes these records and their existing agreement/user dependencies.
 
+Unsigned reopening locks the editable source estimate and every agreement,
+rejects any signature/payment/invoice/deposit/job or delivery evidence, archives
+the complete prior frozen JSON in AuditLog, then clears the mutable freeze and
+reviewed estimate identity. SQL protects accepted V2 snapshots against update or
+delete. Restore orders AuditLog before historical reviews so archived unsigned
+clearance remains restorable after reopening. Binding unsigned actions compare
+the current settings version and independently recomputed jurisdiction taxes;
+changes require a new freeze rather than silently adopting stale terms.
+
 V2 signature constraints explicitly accept version 2 while preserving historical
 V1 meaning. V2 obligation insertion checks its signature, immutable frozen amount
 and JSONB component equality. Component CHECK validation returns false for missing

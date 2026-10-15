@@ -79,6 +79,10 @@ describe.skipIf(!enabled)("V2 two-address sign, settlement, reserve, cancellatio
   await expect(prisma.signingBusinessReview.updateMany({where:{orderFingerprint},data:{reason:"Cannot rewrite the prior immutable approval"}})).rejects.toThrow(/immutable/);
  });
  it("signs each location, settles exactly once, dispatches only paid A and cancels/refunds only B including reserve",async()=>{
+  await recordSigningBusinessReview(owner,{...review(),decision:"REVIEW_REQUIRED",taxAdviserReference:"",legalAdviserReference:"",termsReference:"",confirmedOnKey:""});
+  await expect(sendForSignature(owner,ids[0])).rejects.toThrow(/owner-recorded CPA/);
+  expect((await prisma.agreementSigningCharge.findUniqueOrThrow({where:{agreementId:ids[0]}})).frozenOrderFingerprint).toBe(orderFingerprint);
+  await recordSigningBusinessReview(owner,review());
   for(const id of ids){const sig=await sendForSignature(owner,id);await signAgreement(sig.id,{signerName:"Synthetic Customer",signerEmail:"v2@test.invalid",ipAddress:null});}
   const aJob=await prisma.job.findFirstOrThrow({where:{agreementId:ids[0],type:"DELIVERY"}});
   expect(aJob.scheduledAt).toBeNull();await expect(updateJobStatus(owner,aJob.id,"IN_PROGRESS")).rejects.toThrow(/actually received/);
@@ -134,3 +138,56 @@ describe.skipIf(!enabled)("V2 two-address sign, settlement, reserve, cancellatio
 
  });
 });
+
+// Round-trip the actual V2 signature, receipt, reserve, adviser revisions and
+// application through the supported restore command, not hand-written INSERTs.
+import { Client } from "pg";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { mkdtemp,writeFile,rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { buildDatabaseBackupSnapshot } from "@/domains/backup";
+import { reopenUnsignedSigningOrder } from "@/domains/billing/signing-unsigned-reopen";
+it.skipIf(!enabled)("reopens only an untouched unsigned draft and preserves prior frozen evidence for renewed review",async()=>{
+ const fixture=await createSyntheticW22V2Order();
+ try{
+  await recordSigningBusinessReview(fixture.owner,{...review(fixture.ids[0]),expectedOrderFingerprint:fixture.orderFingerprint});
+  await expect(reopenUnsignedSigningOrder(fixture.owner,{agreementId:fixture.ids[0],expectedOrderFingerprint:"f".repeat(64),reason:"Synthetic stale reopening must not change draft"})).rejects.toThrow(/changed/);
+  const before=await prisma.agreementSigningCharge.findUniqueOrThrow({where:{agreementId:fixture.ids[0]}});
+  await reopenUnsignedSigningOrder(fixture.owner,{agreementId:fixture.ids[0],expectedOrderFingerprint:fixture.orderFingerprint,reason:"Synthetic changed policy requires new order review"});
+  const after=await prisma.agreementSigningCharge.findUniqueOrThrow({where:{agreementId:fixture.ids[0]}});
+  expect(after.frozenAt).toBeNull();expect(after.version).toBe(before.version+1);
+  expect(await prisma.signingBusinessReview.count({where:{orderFingerprint:fixture.orderFingerprint}})).toBe(2);
+  const audit=await prisma.auditLog.findFirstOrThrow({where:{entityId:fixture.ids[0],action:"signing.unsigned_order_reopened"}});
+  expect(JSON.stringify(audit.oldValue)).toContain(fixture.orderFingerprint);
+  await expect(reopenUnsignedSigningOrder(owner,{agreementId:ids[0],expectedOrderFingerprint:orderFingerprint,reason:"Signed orders cannot use the unsigned reopening path"})).rejects.toThrow();
+ }finally{await fixture.cleanup();}
+});
+
+it.skipIf(!enabled)("restores complete V2 financial history and source-trigger ordering",async()=>{
+ const database="appliance_desk_restore_v2_"+tag.slice(0,16);
+ const adminUrl=new URL(process.env.DATABASE_URL!);adminUrl.pathname="/postgres";
+ const restoreUrl=new URL(process.env.DATABASE_URL!);restoreUrl.pathname="/"+database;
+ const admin=new Client({connectionString:adminUrl.toString()});await admin.connect();
+ const dir=await mkdtemp(path.join(tmpdir(),"w22-v2-restore-"));
+ let restored:PrismaClient|undefined;
+ try{
+  await admin.query('CREATE DATABASE "'+database+'"');
+  const snapshot=await buildDatabaseBackupSnapshot();
+  const file=path.join(dir,"synthetic-backup.json");await writeFile(file,JSON.stringify(snapshot.payload));
+  await promisify(execFile)(process.execPath,["node_modules/tsx/dist/cli.mjs","scripts/restore-backup.ts",file,"--into",restoreUrl.toString()],
+    {timeout:120_000,maxBuffer:2*1024*1024});
+  restored=new PrismaClient({adapter:new PrismaPg({connectionString:restoreUrl.toString()})});
+  expect(await restored.signingBusinessReview.count({where:{orderFingerprint}})).toBeGreaterThanOrEqual(2);
+  expect((await restored.agreementSigningPayment.findUniqueOrThrow({where:{agreementId:ids[0]}})).totalCents).toBe(28631);
+  expect((await restored.deposit.findFirstOrThrow({where:{agreementId:ids[1]}})).refundedAmountCents).toBe(5000);
+  expect((await restored.signingFirstInvoiceApplication.findUniqueOrThrow({where:{agreementId:ids[0]}})).amountCents).toBe(6000);
+  await expect(restored.signingBusinessReview.updateMany({where:{orderFingerprint},data:{reason:"Restored history must remain immutable"}})).rejects.toThrow(/immutable/);
+ }finally{
+  await restored?.$disconnect();await admin.query('DROP DATABASE IF EXISTS "'+database+'" WITH (FORCE)');
+  await admin.end();await rm(dir,{recursive:true,force:true});
+ }
+},120_000);

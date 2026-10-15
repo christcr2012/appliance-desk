@@ -27,10 +27,19 @@ DECLARE previous INTEGER;
 BEGIN
  PERFORM 1 FROM "RentalAgreement" WHERE "id"=NEW."agreementId" FOR UPDATE;
  SELECT COALESCE(MAX("revision"),0) INTO previous FROM "SigningBusinessReview" WHERE "agreementId"=NEW."agreementId";
- IF NEW."revision"<>previous+1 OR NOT EXISTS (
+ IF NEW."revision"<>previous+1 OR NOT (
+  EXISTS (
    SELECT 1 FROM "AgreementSigningCharge" WHERE "agreementId"=NEW."agreementId"
      AND "frozenOrderFingerprint"=NEW."orderFingerprint" AND "frozenAt" IS NOT NULL
      AND "frozenChargeEvidence"->>'schemaVersion'='2'
+  ) OR EXISTS (
+   SELECT 1 FROM "AuditLog" a CROSS JOIN LATERAL jsonb_array_elements(
+     CASE WHEN jsonb_typeof(a."oldValue")='array' THEN a."oldValue" ELSE '[]'::jsonb END
+   ) prior WHERE a."action"='signing.unsigned_order_reopened'
+    AND prior->>'agreementId'=NEW."agreementId"
+    AND prior->>'frozenOrderFingerprint'=NEW."orderFingerprint"
+    AND prior->'frozenChargeEvidence'->>'schemaVersion'='2'
+  )
  ) THEN RAISE EXCEPTION 'Owner review requires the exact frozen order and next immutable revision'; END IF;
  RETURN NEW;
 END;

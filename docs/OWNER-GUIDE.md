@@ -767,6 +767,13 @@ review. Approval does not enable Stripe LIVE, public pricing, customer messages,
 or a refund. Administrative setup tax still needs its independent Settings
 classification and jurisdiction evidence.
 
+If settings, tax evidence or unsigned terms change, the owner can **Reopen
+unsigned order for review** with a reason. This applies only to complete draft
+orders with no signature, payment, invoice, deposit or delivery job and an
+editable source estimate. The prior frozen evidence stays in the audit history.
+Prepare, review and freeze the new version, then record fresh clearance; an old
+clearance cannot authorize the new amount. Signed orders cannot be reopened.
+
 A negotiated refundable commercial reserve is part of the signing amount; do
 not collect a separate estimate deposit for it. Receipt readback distinguishes
 unpaid from received and shows the additional categories. For before-delivery

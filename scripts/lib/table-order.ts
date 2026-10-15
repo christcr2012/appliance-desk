@@ -79,6 +79,7 @@ export function deriveRestoreTableOrder(schema: string, policy: BackupPolicy): s
   const triggerDependencies = [
     {model:"AgreementSigningPayment",dependsOn:"SignatureRecord"},
     {model:"SigningBusinessReview",dependsOn:"AgreementSigningCharge"},
+    {model:"SigningBusinessReview",dependsOn:"AuditLog"},
   ];
   for (const edge of [...relationDependencies(schema),...triggerDependencies]) {
     if (includedSet.has(edge.model) && includedSet.has(edge.dependsOn)) {

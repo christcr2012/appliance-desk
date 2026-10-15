@@ -142,7 +142,7 @@ export default async function AgreementDetailPage({
       )}
       {frozenOrder && <ReviewedSigningOrder order={frozenOrder} />}
       {frozenOrder?.evidenceVersion === 2 && <SigningBusinessReviewForm agreementId={agreement.id}
-        fingerprint={frozenOrder.orderFingerprint} day={localDay} editable={session.user.role === "OWNER"}
+        fingerprint={frozenOrder.orderFingerprint} day={localDay} editable={session.user.role === "OWNER"} canReopen={agreement.status === "DRAFT"}
         current={businessReview ? `Recorded revision ${businessReview.revision}: ${businessReview.decision === "APPROVED" ? "advice received" : "review required"}` : "Review required — no owner clearance is recorded."} />}
       {signingPreview && (
         <section aria-labelledby="signing-preview-heading" className="mt-6 rounded-lg border border-border p-4">
