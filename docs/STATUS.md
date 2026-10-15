@@ -7,9 +7,22 @@ and verified monthly rental-tax version evidence must reconcile before the
 public estimate shows reviewed totals. A fingerprint changing after send
 invalidates customer approval. Unreviewed leads receive a clearly nonbinding
 preliminary email and cannot approve or pay; they may request changes.
-This completes W-22FIN-PREAPPROVAL-PREPARE, NOT the full mandatory-fee quote.
+This advances the existing W-22FIN-QUOTE/APPROVAL sections but neither whole predefined batch subsection is yet complete.
 Nonzero visit fees, waiver/RDF, deposits and full legacy conversion reconciliation
 remain approved W-22FIN engineering. Preserve CPA/counsel/owner/Stripe gates.
+
+### Owner workflow clarification — October 14, 2026
+
+PR workload is counted in whole predefined batch subsections from the approved
+roadmap/design, never technical slices or packet checklist tasks. Partial
+subsections count zero complete; retain all remaining engineering and separate
+external acceptance. Session PR count and scope come only from the current
+owner prompt, with no standing quota or PR-number alignment. Historical PR
+counts below record earlier work and do not instruct future sessions.
+This owner-requested maintenance changes guidance/report wording only; required
+CI/review, security, provider, spending and release gates remain unchanged.
+Focused reporting tests passed locally; exact-head full Actions gates are required
+before merge. No product subsection, deployment or provider acceptance claimed.
 
 ## W-22FIN owner mandatory-charge policy and preapproval readiness — implementation checkpoint
 

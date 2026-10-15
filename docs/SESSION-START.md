@@ -1,5 +1,17 @@
 # SESSION-START — implement, then catch up released acceptance
 
+## Count complete predefined batch subsections
+
+The PR workload target is 2–5 whole predefined batch subsections on average,
+using the existing roadmap/design IDs such as H-3 or B-5. Technical slices,
+functions, tools, UI hookups, guards and packet checklist tasks are internal
+implementation steps, not countable batch subsections. List the subsection IDs
+and full scope before coding. Partial subsections count zero; count each once
+when eligible engineering and required pre-merge proof are complete, with
+external acceptance tracked separately. Use focused checks while building,
+then the full required gates on the substantial assembled PR. See the governing
+instructions' **PR workload is measured in predefined batch subsections** rule.
+
 ## 0. Reconcile and recover
 
 Read the governing instructions and the current permanent handoff, not historical
@@ -33,7 +45,7 @@ code seams, design sections and fixtures; reuse existing helpers and task/packet
 Group compatible adjacent roadmap slices into a complete usable workflow,
 including callers, real integration and tests. Plan implementation PRs around a **rolling average of 400–800 meaningful
 production-code additions** (exclude tests/docs/generated/format-only work)
-and **2–5 fully complete approved roadmap slices** per PR on average.
+and **2–5 fully complete predefined batch subsections** per PR on average.
 Use `npm run pr:progress` to measure actual diffs and recent merges; do not
 pad changes or break a safe coherent boundary solely to meet numeric targets.
 Explicitly list approved slice IDs and their full acceptance criteria before
@@ -188,7 +200,9 @@ changes reopen affected proof. NEVER copy credentials/private fixture IDs into t
 ## 4a. PR outcome scorecard — checked claims, independently reviewed proof
 
 Each PR updates `docs/pr-cards/current-pr-scorecard.json`. For an implementation
-PR, use the existing approved `slices` in the active execution packet; each
+PR, use the predefined batch subsections in the authoritative roadmap/design;
+packet `slices` are internal checklist tasks unless they already represent a whole
+such subsection. Count full batch subsections, not the packet's task count; each
 claimed completed ID must have concrete acceptance evidence and zero remaining
 engineering for that slice. Maintain remaining engineering and external-release/
 provider/owner acceptance separately. A maintenance/tooling PR uses
@@ -213,11 +227,10 @@ release frequency is planned queued acceptance, never a project-wide stop.
 
 Normal implementation sessions complete as many fully verified, cohesive roadmap
 slices as fit a safe, recoverable chat context. Target rolling averages of
-**400–800 production-code additions and 2–5 complete approved slices per
+**400–800 production-code additions and 2–5 complete predefined batch subsections per
 implementation PR**; review risk, end-to-end behavior and context safety can
 justify a documented exception. Never substitute line counts for functionality
-or fabricate slice subdivisions to inflate progress. No fixed
-number of PRs, five-PR cadence, next-multiple alignment, or filler quota.
+or fabricate slice subdivisions to inflate progress. Session PR count is set only by the current owner prompt.
 Do not count a passing helper as a completed outcome. After each verified
 merge, checkpoint the exact head/CI/reviews, completed slices, implementation
 and deployed/real-acceptance state, and one next action. Start another slice
@@ -226,8 +239,7 @@ repair, merge and durable handoff; otherwise end at the clean checkpoint.
 Persist unfinished work on its existing approved card, not only in chat.
 Report completed roadmap slices and acceptance deltas, first-pass CI failures
 and correction cycles, not PR count as a productivity metric.
-This owner-requested repository optimization is scoped maintenance, not a five-feature
-batch. Preserve safety even when no further eligible work or an execution limit remains.
+This owner-requested repository optimization is scoped maintenance, not a product implementation batch. Preserve safety even when no further eligible work or an execution limit remains.
 At completed-session end update status/cards/index, verify final main, leave a permanent
 handoff on the final merged PR and automatically give a short continuation prompt:
 repository + verified handoff + next outcome + queue pointer. Refer to the repository

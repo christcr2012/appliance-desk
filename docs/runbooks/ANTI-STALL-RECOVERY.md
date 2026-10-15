@@ -51,7 +51,7 @@ After each PR, record and verify **all six distinct states**:
    running checks are not passes.
 6. **Merge receipt:** require `merged=true` and the actual merge/main SHA,
    then review post-merge checks and refresh the successor once. Only a
-   verified merge increments the five-PR session count.
+   verified merge is recorded against the current owner-requested scope.
 
 **Sandbox expiry** is different from an individual command timeout. A
 `410 sandbox_stopped` means the old session ID is unusable. Resume the named

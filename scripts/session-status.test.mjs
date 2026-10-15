@@ -61,6 +61,8 @@ test('real git refs and ancestry drive the offline CLI without network/mutations
     writeFileSync(join(root, 'docs/STATUS.md'), block([row('FIRST', first), row('SECOND', second)]));
     const before = git('status', '--porcelain');
     const output = run(root, ['--deployed', first, '--state', 'READY', '--latest-pr', '104']);
+    assert.match(output, /PR work unit = one whole predefined batch subsection/);
+    assert.match(output, /Partial subsection = zero completed batch subsections/);
     assert.match(output, /FIRST DEPLOYED_CANDIDATE_CHECK_GATES/); assert.match(output, /SECOND WAIT_RELEASE_OR_FETCH_HISTORY/); assert.match(output, /Latest observed PR: #104 \(informational only/); assert.doesNotMatch(output, /Next session boundary/);
     assert.equal(git('status', '--porcelain'), before);
     assert.match(run(root, []), /VERIFY_DEPLOYMENT/);

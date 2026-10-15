@@ -132,15 +132,6 @@
       ]
     },
     {
-      "id": "W-22FIN-PREAPPROVAL-PREPARE",
-      "outcome": "Owner prepares exact customer-owned agreement drafts before estimate approval and safely exposes only matched frozen multi-location money; preliminary customer acceptance stays prohibited",
-      "acceptance": [
-        "Owner/ADMIN prepares each real service-address agreement idempotently while estimate remains editable, with owned packages and no payment/customer send; staff/foreign and wrong addresses denied",
-        "Original estimate packages and prices and complete frozen agreement amounts are reconciled, with current owner fee policy and jurisdiction tax version evidence; stale or partial amounts are hidden",
-        "Legacy preliminary estimate email is clearly nonbinding; approval and checkout reject missing or stale exact reviewed fingerprints; customer may still request changes"
-      ]
-    },
-    {
       "id": "W-22FIN-QUOTE",
       "outcome": "Complete owner/customer all-in estimate before approval",
       "acceptance": [

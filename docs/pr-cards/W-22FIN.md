@@ -1,6 +1,6 @@
 ## Preapproval source-of-money, preparation and explicit limits
 
-New W-22FIN-PREAPPROVAL-PREPARE is an observable prerequisite, not a
+This preapproval preparation is an observable prerequisite, not a
 replacement for W-22FIN-QUOTE. It creates one owner/customer-address draft
 agreement per actual location before estimate approval. The full originally
 verified frozen order and rental packages, date-effective fee decisions, tax
