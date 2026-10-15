@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { EstimateStatus, Prisma } from "@prisma/client";
+import { Prisma, type EstimateStatus } from "@prisma/client";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
 import { createDraftAgreementInTx } from "@/domains/agreements";
@@ -13,6 +13,8 @@ import {
 
 import { isEstimatePastValidity } from "./validity";
 import { getPreparedEstimateQuoteInTx } from "./preapproval-quote";
+import { validatePreparedConversion, validateConvertedEstimateReplay } from "./prepared-conversion";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 
 const EDITABLE_STATUSES: EstimateStatus[] = ["DRAFT", "CHANGES_REQUESTED"];
 const PUBLICLY_VIEWABLE_STATUSES: EstimateStatus[] = [
@@ -742,15 +744,12 @@ export async function convertEstimateToAgreements(
     if (estimate.status === "CONVERTED") {
       const existing = await tx.rentalAgreement.findMany({
         where: { sourceEstimateId: estimateId },
-        select: { id: true },
+        select: { id: true, customerId: true, sourceEstimateId: true, serviceAddressId: true },
         orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       });
-      if (existing.length === 0) {
-        throw new Error(
-          "This estimate is marked converted but has no linked agreements. Review it before retrying.",
-        );
-      }
-      return existing.map((agreement) => agreement.id);
+      return validateConvertedEstimateReplay(existing, {
+        estimateId, customerId: estimate.customerId,
+      });
     }
 
     if (estimate.status !== "APPROVED") {
@@ -758,11 +757,67 @@ export async function convertEstimateToAgreements(
     }
     // Prepared preapproval shells will be verified and adopted by the
     // converted agreement transaction; creating duplicates is forbidden.
-    const preparedShellCount = await tx.rentalAgreement.count({
+    const prepared = await tx.rentalAgreement.findMany({
       where: { sourceEstimateId: estimateId },
+      select: {
+        id: true, customerId: true, sourceEstimateId: true,
+        serviceAddressId: true, status: true,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     });
-    if (preparedShellCount) {
-      throw new Error("This approved estimate has prepared frozen agreement drafts. Complete the existing order through the reviewed conversion workflow; duplicate shells are forbidden.");
+    if (prepared.length) {
+      await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+      const preparedIds = prepared.map(row => row.id).sort();
+      await tx.$queryRaw`SELECT "id" FROM "RentalAgreement"
+        WHERE "id" IN (${Prisma.join(preparedIds)}) ORDER BY "id" FOR UPDATE`;
+      // A preapproval conversion adopts DRAFT shells. It does not collect,
+      // book, sign, issue an invoice or create a first-invoice credit.
+      const [signatures, obligations, invoices, deliveries, deposits, credits] = await Promise.all([
+        tx.signatureRecord.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.agreementSigningPayment.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.invoice.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.job.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.deposit.count({ where: { agreementId: { in: preparedIds } } }),
+        tx.signingDownPaymentCredit.count({ where: { agreementId: { in: preparedIds } } }),
+      ]);
+      if (signatures || obligations || invoices || deliveries || deposits || credits) {
+        throw new Error("Prepared conversion cannot silently adopt signed, paid, invoiced or scheduled agreement activity.");
+      }
+      if (!estimate.customerId) {
+        throw new Error("The approved estimate must belong to the prepared agreement customer.");
+      }
+      const reviewedQuote = await getPreparedEstimateQuoteInTx(tx, estimateId);
+      const originalLines = await tx.estimateLineItem.findMany({
+        where: { estimateId }, select: {
+          description: true, serviceAddressId: true,
+        },
+      });
+      const exactAddresses = resolveConversionAddresses(originalLines, input);
+      const evidence = validatePreparedConversion({
+        estimateId, customerId: estimate.customerId,
+        reviewedQuoteFingerprint: estimate.reviewedQuoteFingerprint,
+        reviewedOrderFingerprint: estimate.reviewedOrderFingerprint,
+        requestedMode: input.mode,
+        requestedAddressId: input.mode === "single" ? input.serviceAddressId : null,
+        quoteAddresses: exactAddresses, prepared,
+        estimateDepositCents: estimate.depositCents,
+        estimateDepositPaidAt: estimate.depositPaidAt, quote: reviewedQuote,
+      });
+      await tx.estimate.update({
+        where: { id: estimateId }, data: { status: "CONVERTED", convertedAt: new Date() },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId, action: "estimate.convert_prepared",
+          entityType: "Estimate", entityId: estimateId,
+          newValue: { agreementIds: evidence.agreementIds,
+            orderFingerprint: evidence.orderFingerprint,
+            quoteFingerprint: evidence.quoteFingerprint,
+            dueAtSigningCents: evidence.amountDueAtSigningCents,
+            paid: false, signed: false, invoiced: false },
+        },
+      });
+      return evidence.agreementIds;
     }
     if (!estimate.customerId) {
       throw new Error("This estimate isn't linked to a customer yet.");

@@ -1,3 +1,22 @@
+## Completion checkpoint — W-22FIN-APPROVAL, while W-22FIN-QUOTE remains gated
+
+Owner-prepared customer-owned agreement drafts can now be adopted by an
+approved estimate without creating duplicate agreements or deposit obligations.
+The conversion transaction serializes on the Estimate and every prepared
+agreement, verifies the original frozen order, customer ownership, date-effective
+tax/policy identities, and refuses to convert if any signature, payment
+obligation, invoice, dispatch or deposit already exists. Successful conversion
+records an audit, never a paid/signature/first-invoice-credit claim, and
+concurrent replays return only the same original agreement identities.
+
+Supported verified zero-deposit offers can follow this flow, and preliminary
+prospect estimates remain nonbinding. The parent W-22FIN-QUOTE is **still open**:
+required nonzero service, RDF, damage waiver and refundable deposit categories
+must be fully allocated and reviewed before such offers may bind. This
+completion checkpoint proves source rules and synthetic database/browser
+regressions only; it does not prove live Stripe TEST, counsel or CPA acceptance.
+All previous pending release-dependent rows remain pending.
+
 ## W-22FIN preapproval preparation, exact quote identity and stale approval denial
 
 Owner/ADMIN can prepare customer-owned draft agreements while an estimate is
@@ -7,7 +26,7 @@ and verified monthly rental-tax version evidence must reconcile before the
 public estimate shows reviewed totals. A fingerprint changing after send
 invalidates customer approval. Unreviewed leads receive a clearly nonbinding
 preliminary email and cannot approve or pay; they may request changes.
-This advances the existing W-22FIN-QUOTE/APPROVAL sections but neither whole predefined batch subsection is yet complete.
+This completes W-22FIN-APPROVAL source-side safeguards for supported verified, zero-deposit quotes with exact frozen order adoption and safe concurrency. W-22FIN-QUOTE remains incomplete for nonzero mandatory categories and refundable deposits.
 Nonzero visit fees, waiver/RDF, deposits and full legacy conversion reconciliation
 remain approved W-22FIN engineering. Preserve CPA/counsel/owner/Stripe gates.
 

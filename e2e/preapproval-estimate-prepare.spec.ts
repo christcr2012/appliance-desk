@@ -44,6 +44,19 @@ test("owner can prepare actual estimate-owned agreement shells without approving
     expect(children).toHaveLength(1);
     expect(children[0].customerId).toBe(address.customerId);
     expect(children[0].status).toBe("DRAFT");
+    await prisma.estimate.update({ where: { id: estimate.id },
+      data: { status: "SENT", sentAt: new Date() } });
+    await page.goto("/estimate/" + estimate.id);
+    await expect(page.getByRole("button", { name: "Approve estimate" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Request changes" })).toBeVisible();
+    await expect(page.getByText(/reviewed all-in offer needs to be refreshed/i)).toBeVisible();
+    const { approveEstimate } = await import("../src/domains/estimates");
+    await expect(approveEstimate(estimate.id, {
+      approverName: "Unauthorised incomplete estimate",
+      approverEmail: "not-approved@example.test", ipAddress: "127.0.0.1",
+    })).rejects.toThrow(/reviewed|all-in/i);
+    expect((await prisma.estimate.findUniqueOrThrow({ where: { id: estimate.id } })).status).toBe("SENT");
+    await page.goto("/desk/estimates/" + estimate.id);
     const accessibility = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
     expect(accessibility.violations).toEqual([]);

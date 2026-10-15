@@ -2,17 +2,27 @@
   "version": 1,
   "kind": "implementation",
   "parent": "W-22FIN",
-  "completedSlices": [],
+  "completedSlices": [
+    {
+      "id": "W-22FIN-APPROVAL",
+      "acceptanceEvidence": [
+        "Legacy estimate send marks incomplete prospects explicitly nonbinding, public EstimateResponseForm hides approve absent exact stored reviewed fingerprint; both approveEstimate locked transaction and checkout require verified evidence. e2e/preapproval-estimate-prepare.spec.ts asserts rejection; tests/estimate-send-email-switch.test.ts and remediation-r2-estimate-expiry-integration.test.ts preserve preliminary workflow.",
+        "Original customer-owned prepared agreements are SHA-verified against exact quote line identities, owner dated policy and current jurisdiction rental tax using getPreparedEstimateQuoteInTx; reviewedQuoteFingerprint and reviewedOrderFingerprint are stored on send and compared on approve. The converted order is adopted under Estimate/RentalAgreement row locks with scope validation in prepared-conversion.ts; tests/estimate-preapproval-quote-w22fin.test.ts and estimate-prepared-conversion-w22fin.test.ts assert forgery/revision/tenant denial.",
+        "Concurrent adopt/replay denied duplicate agreements, deposit, signing/payment obligations, invoices or early credit by tests/estimate-preapproval-prepare-integration-w22fin.test.ts; authenticated browser fixture checks preapproval denied and owner preparation; existing signing-first-invoice integration/browser suites verify separately receipt-backed application without advance credit at conversion. Genuine Stripe/provider TEST acceptance remains PENDING, not faked."
+      ]
+    }
+  ],
   "remainingEngineering": [
-    "W-22FIN-QUOTE remains unfinished for mandatory nonzero delivery/install/removal fees, damage waivers, RDF, refundable deposits and corresponding tax allocation; current quotes fail closed rather than silently charging zero",
-    "W-22FIN-APPROVAL must adopt prepared agreements without duplicating shells and align early deposit checkout with exact frozen approval and first invoice credit",
-    "W-22FIN-RECOVERY and W-22FIN-DELIVERY require more multi-site cancellation/retry/invoice and provider acceptance"
+    "W-22FIN-QUOTE: mandatory nonzero delivery, installation/removal, damage waiver, RDF and refundable deposits with verified legal/tax evidence must join reviewed all-in signing evidence before any such binding quote; no silent zero or unaudited deposits.",
+    "W-22FIN-RECOVERY: owner-permission and provider-authoritative cancellation, refund/uncertain payment paths remain to be completed or independently accepted.",
+    "W-22FIN-DELIVERY: full real multi-site acceptance through delivery and first-invoice credit still awaits real provider TEST/owner approval.",
+    "Existing project-wide signed legal, CPA tax and production/customer outreach gates remain separate and block live charges until properly cleared."
   ],
   "externalAcceptance": [
     "STATUS release acceptance queue remains pending for genuine reviewed READY production revision and authenticated owner/customer/Stripe TEST checks",
     "IN-79 CPA, IN-07 counsel, price publication, real customer communication and independent owner money-out permissions not granted"
   ],
-  "workloadException": "Predefined roadmap subsection W-22FIN-QUOTE/APPROVAL is still partial, so completed subsection count is zero. This PR finishes a coherent safe preapproval preparation boundary (~605 production lines) but is NOT a completed new countable batch subsection. Owner-directed stop/recover work; remaining engineering is explicitly in the handoff.",
+  "workloadException": "Completed one predefined W-22FIN-APPROVAL subsection as part of finishing the already-started preapproval/atomic conversion workflow in the same PR. W-22FIN-QUOTE remains incomplete; unsupported mandatory charge/deposit categories always reject positive binding offers. Real provider acceptance is separately pending and never inferred from synthetic test fixtures.",
   "evidence": [
     "Source tests, database fixture and browser regression plus required exact-head CI and review; no deployment or provider evidence inferred"
   ]

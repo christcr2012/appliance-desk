@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { prepareEstimateAgreementsBeforeApproval } from "@/domains/estimates/preapproval-agreements";
+import { convertEstimateToAgreements } from "@/domains/estimates";
+import { getPreparedEstimateQuoteInTx } from "@/domains/estimates/preapproval-quote";
+
+vi.mock("@/domains/estimates/preapproval-quote", () => ({
+  getPreparedEstimateQuoteInTx: vi.fn(),
+}));
+const mockedQuote = vi.mocked(getPreparedEstimateQuoteInTx);
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && url.pathname === "/appliance_desk_test"
@@ -80,6 +87,48 @@ describe.skipIf(!enabled)("preapproval estimate preparation on disposable Postgr
     expect(agreements.every(a => a.status === "DRAFT")).toBe(true);
     expect(await prisma.auditLog.count({ where: {
       entityId: estimate, action: "estimate.prepare_signing_drafts",
+    } })).toBe(1);
+  });
+  it("atomically adopts the same drafts on concurrent conversion without a second agreement or early invoice credit", async () => {
+    const owned = await prisma.rentalAgreement.findMany({
+      where: { sourceEstimateId: estimate }, orderBy: { id: "asc" },
+    });
+    expect(owned).toHaveLength(2);
+    const originalIds = owned.map(a => a.id).sort();
+    const f = "a".repeat(64), o = "b".repeat(64);
+    mockedQuote.mockResolvedValue({
+      status: "READY", reasons: [], permissionToCollect: false,
+      quoteFingerprint: f, orderFingerprint: o,
+      locations: owned.map(a => ({
+        agreementId: a.id, serviceAddressId: a.serviceAddressId,
+        serviceAddress: "Test service address", monthlyRentCents: 6000,
+        monthlyRentTaxCents: 0, setupFeeCents: 0,
+        setupTaxCents: 0, advanceCents: 0,
+        signingAmountCents: 0, rateVersionIds: [],
+      })),
+      totals: { monthlyRentCents: 12000, monthlyRentTaxCents: 0,
+        setupFeeCents: 0, setupTaxCents: 0, advanceCents: 0,
+        dueAtSigningCents: 0 },
+    });
+    await prisma.estimate.update({ where: { id: estimate }, data: {
+      status: "APPROVED", reviewedQuoteFingerprint: f, reviewedOrderFingerprint: o,
+      reviewedQuoteAt: new Date(),
+    } });
+    const [first, second] = await Promise.all([
+      convertEstimateToAgreements(owner, estimate, { mode: "per-property" }),
+      convertEstimateToAgreements(owner, estimate, { mode: "per-property" }),
+    ]);
+    expect(first.sort()).toEqual(originalIds);
+    expect(second.sort()).toEqual(originalIds);
+    expect(await prisma.rentalAgreement.count({ where: { sourceEstimateId: estimate } })).toBe(2);
+    expect((await prisma.estimate.findUniqueOrThrow({ where: { id: estimate } })).status).toBe("CONVERTED");
+    expect(await prisma.deposit.count({ where: { agreementId: { in: originalIds } } })).toBe(0);
+    expect(await prisma.invoice.count({ where: { agreementId: { in: originalIds } } })).toBe(0);
+    expect(await prisma.agreementSigningPayment.count({ where: { agreementId: { in: originalIds } } })).toBe(0);
+    expect(await prisma.signingDownPaymentCredit.count({ where: { agreementId: { in: originalIds } } })).toBe(0);
+    expect(await prisma.signingFirstInvoiceApplication.count({ where: { agreementId: { in: originalIds } } })).toBe(0);
+    expect(await prisma.auditLog.count({ where: {
+      entityId: estimate, action: "estimate.convert_prepared",
     } })).toBe(1);
   });
 });
