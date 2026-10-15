@@ -73,3 +73,38 @@ Preparation also detects missing/stale default Prisma client generation before
 typecheck. Appliance local quick initially failed on stale generated types after
 main/schema advanced; fixture-only generation repairs the environment, not source
 contracts or test assertions. No database connection or migration is implied.
+
+## Original-product completion and ready obligations — owner correction October 15
+
+Extend the existing bundle planner with explicit COMPLETION mode and a local
+`completion-evidence` adapter, rather than importing Google's different engineering
+ledger/finish command. Freeze whole original criteria and queue-ID mappings before
+work. Newly PASSED committed evidence must keep the original source pin, requirements,
+gates, dependencies and baseline approval. Zero code is allowed only for substantial
+new completion with an explicit reviewed exception; no old-code credit or audit filler.
+
+The owner confirms that N is additional to every other ready session obligation in
+the proper repository order. A deliberately planned substantial acceptance outcome
+can count once; all other eligible acceptance, reviews, merges, release procedures,
+cleanup and handoff remain required. No automatic release or broadened operation
+permission is introduced. Reconcile source criteria once and retain evidence; do not
+invent a new product phase merely because existing engineering is largely built.
+
+Native real-Git regressions cover zero-code acceptance, uncommitted/old/pending proof,
+changed scopes/gates/pins, baseline optional/proposed exclusions, dependency passes,
+full frozen criteria, no file/ref mutations and unchanged default engineering rules.
+Maintain all existing parallel CI families, phase budgets and product-specific gates.
+Publication is owner-authorized maintenance, zero product bundles or real acceptance.
+
+Release escalation: `release-needed` regressions distinguish confirmed missing live
+source from unknown history, provider-only gates and an already-promoted source
+awaiting deployment. Alert the owner with a prepared checked target and exact tasks;
+request independent manual-release approval, continue eligible work and reassess
+acceptance after actual serving READY/source. No release is executed or authorized.
+
+Owner's final manual-release threshold: discovering a source gap is a dependency
+record, not an approval request. First finish every independently eligible authorized
+implementation, deployed check, repair, review/merge, cleanup and status obligation.
+Ask for manual release only when none can proceed and the prepared checked release
+would enable a specific next completion task. Report any additional blockers honestly;
+keep normal scheduled release as an alternative. No automatic release is authorized.

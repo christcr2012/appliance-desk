@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { planReleaseAlert, releaseAlertLines } from './release-needed.mjs';
 
 const SHA = /^[a-f0-9]{40}$/;
 const START = '<!-- release-acceptance:start -->';
@@ -83,7 +84,7 @@ export function acceptanceSummary(plan, limit = 10) {
   const action = plan.filter(row => ['DEPLOYED_CANDIDATE_CHECK_GATES', 'RECHECK_EXTERNAL_GATE'].includes(row.disposition));
   const waiting = plan.filter(row => !['DEPLOYED_CANDIDATE_CHECK_GATES', 'RECHECK_EXTERNAL_GATE', 'RECORDED_PASS'].includes(row.disposition));
   const passed = plan.length - action.length - waiting.length;
-  const lines = [`Acceptance first: ${action.length} deployed tasks to act on/recheck; ${waiting.length} waiting/verification tasks; ${passed} recorded passes.`,
+  const lines = [`Acceptance first: ${action.length} deployed tasks to act on/recheck; ${waiting.length} waiting/verification tasks; ${passed} usable deployed passes.`,
     'Main ahead of live does not defer included checks. Listing a task is NOT executing it.',
     'Acceptance snapshot: ' + acceptanceSnapshot(plan)];
   for (const [label, rows] of [['ACT OR RECHECK GATES NOW', action], ['WAITING OR VERIFY SPECIFIC PREREQUISITE', waiting]]) {
@@ -163,7 +164,9 @@ export function run(root, args) {
     `Observed production=${observation.deployed || 'UNKNOWN'} state=${observation.deploymentState}`,
     'Fetch refs first. Independently verify production provenance; supplied observations are not attestation.',
     'Candidates need existing authorization, fixture isolation and cleanup. This command never runs provider tests or releases.'];
+  lines.push(...releaseAlertLines(planReleaseAlert(plan, observation, ancestor)));
   lines.push(...acceptanceSummary(plan, limit));
+  lines.push('Work selection after acceptance catch-up: finish confirmed gaps in original approved order; reconcile uncertain criteria once and retain exact source/test proof. If no eligible engineering remains, plan substantial NEW real-world completion using existing acceptance IDs. No production-line minimum applies to COMPLETION; old code, audits, isolated reads and reused passes count zero. Do not invent features or require an optional dependency to finish the standalone project.');
   if (flags['--acceptance-review']) {
     const raw = readFileSync(resolve(root, flags['--acceptance-review']), 'utf8');
     if (Buffer.byteLength(raw, 'utf8') > 262144) throw new Error('Acceptance review exceeds bounded size.');
@@ -174,7 +177,7 @@ export function run(root, args) {
     lines.push(`Latest observed PR: #${Number(flags['--latest-pr'])} (informational only; no session PR quota or numeric boundary).`);
   }
   lines.push('PR work unit = one whole predefined batch subsection (such as H-3 or B-5). Technical slices, functions, tools, UI wiring, guards and packet tasks do not count separately. Partial subsection = zero completed batch subsections.');
-  lines.push(`Queue: ${plan.length} total; ${plan.length - active.length} recorded passes; ${active.length} tasks to reconsider.`);
+  lines.push(`Queue: ${plan.length} total; ${rows.filter(row => row.status === 'PASSED').length} recorded passes; ${active.length} tasks require planner consideration.`);
 
   return lines.join('\n');
 }
