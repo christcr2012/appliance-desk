@@ -13,9 +13,10 @@
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Owner-requested terminology/reporting maintenance only: define PR workload as predefined batch subsections while preserving technical slices and packet tasks; no product subsection completion claimed.",
+  "workloadException": "Owner-requested research/design maintenance: nine primary-source decision areas and a concrete remaining W-22FIN integration contract; zero production-code changes or completed product subsections.",
   "evidence": [
-    "Existing session-tool tests and PR progress tests verify reporting; required exact-head Actions gates remain mandatory.",
-    "Current roadmap, packet scope, remaining engineering and external acceptance preserved; no provider, production or business gate changed."
+    "docs/research/2026-10-15-owner-decision-follow-through.md: official sources checked October 15, implementation consequences and precise unresolved professional determinations.",
+    "docs/implementation-contracts/W-22FIN-INTEGRATION.md: verified main seams, preserved concurrent PR #459, worked multi-location cents and complete acceptance/failure matrix.",
+    "Index validator, 56-subject routing checks, existing routing tests 3/3, local links, worked cents, git diff --check and check:quick passed; exact-head Actions required. First CI classification failed because this scorecard was inherited; corrected here without changing gates."
   ]
 }

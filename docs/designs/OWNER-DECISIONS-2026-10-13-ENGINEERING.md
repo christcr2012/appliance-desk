@@ -1,5 +1,11 @@
 # October 13 owner answers — engineering and acceptance contract
 
+**October 15 follow-through:** use the [primary-source research](../research/2026-10-15-owner-decision-follow-through.md)
+for applicability, dated rates and precise professional questions. The
+[W-22FIN integration contract](../implementation-contracts/W-22FIN-INTEGRATION.md)
+adds current code boundaries, complete worked money and replay/failure acceptance.
+It preserves this policy authority and the existing 56-subject routing map.
+
 **Authority:** [October 13 text/voice reconciliation](../owner-decisions/2026-10-13-text-voice-reconciliation.md), [OWNER-INPUTS](../OWNER-INPUTS.md), later dated [DECISIONS](../DECISIONS.md), and [56-subject routing map](../owner-decisions/2026-10-13-implementation-map.json). This is **implementation design**, not implementation or legal/CPA/provider acceptance. Names below describe contract boundaries, not pre-approved new tables. Check current main and reuse already implemented facilities before making migrations.
 
 ## 1. Source reconciliation and sequencing — binding on implementing agents

@@ -1,3 +1,16 @@
+### October 15 decision research and implementation-detail maintenance
+
+Owner-requested design/research only: the
+[W-22FIN integration contract](implementation-contracts/W-22FIN-INTEGRATION.md)
+adds current code seams, exact multi-location money, transaction/replay boundaries
+and a finite full-flow acceptance matrix. The
+[official-source research](research/2026-10-15-owner-decision-follow-through.md)
+maps acquisition-dependent rental tax, conditional dated RDF, local jurisdiction,
+ACH, communications, retention, postal privacy and portable accounting to existing
+work. PR #459 was open at inspection and remains separate concurrent work.
+No production behavior, completed subsection, professional approval, provider
+acceptance or release is claimed. W-22FIN remains active; K-CASH/BP remain proposed.
+
 ### Owner workflow clarification — October 14, 2026
 
 PR workload is counted in whole predefined batch subsections from the approved
