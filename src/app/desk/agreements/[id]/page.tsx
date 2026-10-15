@@ -1,3 +1,4 @@
+import { SigningBusinessReviewForm } from "./signing-business-review-form";
 import { AgreementProgress } from "@/components/desk/agreement-progress";
 import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
@@ -76,10 +77,13 @@ export default async function AgreementDetailPage({
     agreement.status === "DRAFT" ? getPreparedSigningChargeReview(agreement.id) : [],
     agreement.status === "DRAFT" ? getDraftSigningTaxReview(agreement.id) : null,
   ]);
-  const hasFrozenSigningOffer = Boolean(agreement.signature?.signingOrderFingerprint);
+  const hasFrozenSigningOffer = Boolean(agreement.signature?.signingOrderFingerprint ||
+    preparedCharges.some(row => row.frozenAt));
   const frozenOrder = hasFrozenSigningOffer
     ? await getReviewedSigningOrderReadback(agreement.id).catch(() => null)
     : null;
+  const businessReview = frozenOrder?.evidenceVersion === 2
+    ? await prisma.signingBusinessReview.findFirst({where:{agreementId:agreement.id,effectiveFromKey:{lte:localDay}},orderBy:{revision:"desc"},select:{decision:true,revision:true}}) : null;
   const locationLabels = signingPreview
     ? new Map((await prisma.serviceAddress.findMany({
       where: { id: { in: signingPreview.locations.map(row => row.serviceAddressId) } },
@@ -137,6 +141,9 @@ export default async function AgreementDetailPage({
         </p>
       )}
       {frozenOrder && <ReviewedSigningOrder order={frozenOrder} />}
+      {frozenOrder?.evidenceVersion === 2 && <SigningBusinessReviewForm agreementId={agreement.id}
+        fingerprint={frozenOrder.orderFingerprint} day={localDay} editable={session.user.role === "OWNER"}
+        current={businessReview ? `Recorded revision ${businessReview.revision}: ${businessReview.decision === "APPROVED" ? "advice received" : "review required"}` : "Review required — no owner clearance is recorded."} />}
       {signingPreview && (
         <section aria-labelledby="signing-preview-heading" className="mt-6 rounded-lg border border-border p-4">
           <h2 id="signing-preview-heading" className="font-semibold">Signing charges — planning preview</h2>

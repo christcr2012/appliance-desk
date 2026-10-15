@@ -1,3 +1,4 @@
+import { getCancellationReserveInTx } from "@/domains/billing/signing-cancellation-reserve";
 import { prisma } from "@/lib/prisma";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
@@ -12,7 +13,7 @@ async function reviewInTx(tx: Tx, agreementId: string) {
  if(!row)throw new Error("No approved refund exists for this cancellation.");
  const agreement = await tx.rentalAgreement.findUniqueOrThrow({
   where:{id:agreementId},
-  select:{status:true,firstDeliveredOn:true,customerId:true},
+  select:{status:true,firstDeliveredOn:true,customerId:true,depositCents:true},
  });
  if(agreement.status!=="CANCELLED"||agreement.firstDeliveredOn)
    throw new Error("Only an approved undelivered cancellation may be reconciled.");
@@ -23,7 +24,7 @@ async function reviewInTx(tx: Tx, agreementId: string) {
  }) : null;
  const obligation = await tx.agreementSigningPayment.findUnique({
   where:{agreementId},
-  select:{receiptId:true,status:true,orderFingerprint:true},
+
  });
  if(row.refundDueCents>0 && (!receipt||receipt.customerId!==agreement.customerId||
     receipt.amountCents!==row.signedAmountCents||obligation?.status!=="SETTLED"||
@@ -36,7 +37,8 @@ async function reviewInTx(tx: Tx, agreementId: string) {
   row.agreementId,row.receiptId,row.orderFingerprint,row.refundState,
   row.refundDueCents,row.retainedCents,row.approvedAt.toISOString(),row.refundReference,
  ])).digest("hex");
- return {row,receipt,fingerprint};
+ const reserve=row.refundState==="PENDING_EXTERNAL_REFUND" && obligation ? await getCancellationReserveInTx(tx,{...obligation,agreementDepositCents:agreement.depositCents}) : null;
+ return {row,receipt,fingerprint,reserve};
 }
 
 export async function getRefundReturnReview(agreementId:string) {
@@ -94,6 +96,17 @@ export async function recordExternallyReturnedRefund(input: {
     throw new Error("Manual confirmation cannot stand in for a Stripe readback.");
   const method=input.method;
   const newState=evidence?"RETURNED_STRIPE_TEST_VERIFIED":"RETURNED_MANUAL_RECORDED";
+  if(current.reserve){
+   // Approval alone leaves funds held. Only this independently confirmed
+   // whole cancellation return may discharge its included reserve liability.
+   if(current.row.refundDueCents<current.reserve.amountCents)
+     throw new Error("Approved return cannot cover the full refundable reserve.");
+   await tx.deposit.update({where:{id:current.reserve.id},data:{
+     refundedAt:returnedOn,refundedAmountCents:current.reserve.amountCents,
+     refundedByUserId:input.actorUserId,
+     stripeRefundId:evidence?reference:null,
+   }});
+  }
   await tx.preDeliveryCancellation.update({
    where:{agreementId:input.agreementId},
    data:{refundState:newState,returnedOn,returnedRecordedAt:new Date(),

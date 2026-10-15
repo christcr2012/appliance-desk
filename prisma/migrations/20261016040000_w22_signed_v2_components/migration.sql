@@ -9,22 +9,36 @@ DECLARE c JSONB; t JSONB; due BIGINT:=0; setup_amount BIGINT:=NULL;
   kinds TEXT[]:=ARRAY[]::TEXT[]; tax_keys TEXT[]:=ARRAY[]::TEXT[];
   category TEXT; tax_key TEXT; n BIGINT;
 BEGIN
- IF jsonb_typeof(evidence) <> 'object' OR
-    jsonb_typeof(evidence->'components') <> 'array' OR
-    jsonb_typeof(evidence->'taxLines') <> 'array' OR
+ IF jsonb_typeof(evidence) IS DISTINCT FROM 'object' OR
+    jsonb_typeof(evidence->'components') IS DISTINCT FROM 'array' OR
+    jsonb_typeof(evidence->'taxLines') IS DISTINCT FROM 'array' OR
     jsonb_array_length(evidence->'components') <> 8 OR
     jsonb_array_length(evidence->'taxLines') > 1000 THEN RETURN FALSE; END IF;
+ IF jsonb_typeof(evidence->'ownerPolicyRevision') IS DISTINCT FROM 'number' OR
+    (evidence->>'ownerPolicyRevision')::NUMERIC < 1 OR
+    (evidence->>'ownerPolicyRevision')::NUMERIC <> trunc((evidence->>'ownerPolicyRevision')::NUMERIC) OR
+    jsonb_typeof(evidence->'mandatoryReviewRevision') IS DISTINCT FROM 'number' OR
+    (evidence->>'mandatoryReviewRevision')::NUMERIC < 1 OR
+    (evidence->>'mandatoryReviewRevision')::NUMERIC <> trunc((evidence->>'mandatoryReviewRevision')::NUMERIC) OR
+    COALESCE(evidence->>'mandatoryReviewFingerprint','') !~ '^[0-9a-f]{64}$'
+    THEN RETURN FALSE; END IF;
  FOR c IN SELECT value FROM jsonb_array_elements(evidence->'components') LOOP
    category:=c->>'category';
    IF category IS NULL OR category = ANY(kinds) OR
       category <> ALL(ARRAY['ADMINISTRATIVE_SETUP','DELIVERY',
         'INSTALLATION','REMOVAL','DAMAGE_WAIVER','FIRST_MONTH_RENT_ADVANCE',
         'COMMERCIAL_RESERVE','RETAIL_DELIVERY_FEE']) OR
-      c->>'id' <> agreement||':'||category OR
-      jsonb_typeof(c->'amountCents') <> 'number' OR
+      c->>'id' IS DISTINCT FROM agreement||':'||category OR
+      jsonb_typeof(c->'amountCents') IS DISTINCT FROM 'number' OR
       c->>'disposition' IS NULL OR
       c->>'disposition' NOT IN ('DUE_NOW','NOT_APPLICABLE','BUSINESS_PAID') THEN
      RETURN FALSE; END IF;
+   IF COALESCE(c->>'sourceFingerprint','') !~ '^[0-9a-f]{64}$' OR
+      jsonb_typeof(c->'sourceRevision') IS DISTINCT FROM 'number' OR
+      (c->>'sourceRevision')::NUMERIC < 1 OR
+      (c->>'sourceRevision')::NUMERIC <> trunc((c->>'sourceRevision')::NUMERIC) OR
+      (category='COMMERCIAL_RESERVE' AND c->>'disposition'='BUSINESS_PAID')
+      THEN RETURN FALSE; END IF;
    kinds:=array_append(kinds,category);
    IF (c->>'amountCents')::NUMERIC <> trunc((c->>'amountCents')::NUMERIC)
       THEN RETURN FALSE; END IF;
@@ -32,22 +46,38 @@ BEGIN
    IF n<0 OR n>100000000000 THEN RETURN FALSE; END IF;
    IF c->>'disposition'='DUE_NOW' THEN due:=due+n;
    ELSIF n<>0 THEN RETURN FALSE; END IF;
+   IF category='COMMERCIAL_RESERVE' AND n>0 AND (
+      jsonb_typeof(evidence->'reserveTermsRevision') IS DISTINCT FROM 'number' OR
+      (evidence->>'reserveTermsRevision')::NUMERIC < 1 OR
+      (evidence->>'reserveTermsRevision')::NUMERIC <> trunc((evidence->>'reserveTermsRevision')::NUMERIC) OR
+      c->>'sourceRevision' IS DISTINCT FROM evidence->>'reserveTermsRevision' OR
+      c->>'termsReference' IS DISTINCT FROM evidence->>'reserveTermsReference' OR
+      length(trim(COALESCE(c->>'termsReference',''))) < 12
+   ) THEN RETURN FALSE; END IF;
    IF category='ADMINISTRATIVE_SETUP' THEN setup_amount:=n; END IF;
    IF category='FIRST_MONTH_RENT_ADVANCE' THEN advance_amount:=n; END IF;
  END LOOP;
  FOR t IN SELECT value FROM jsonb_array_elements(evidence->'taxLines') LOOP
    tax_key:=concat_ws('|',t->>'componentId',t->>'category',
      t->>'jurisdictionId',t->>'rateVersionId');
-   IF jsonb_typeof(t->'taxCents') <> 'number' OR
-      jsonb_typeof(t->'taxableCents') <> 'number' OR
-      jsonb_typeof(t->'exemptCents') <> 'number' OR
+   IF jsonb_typeof(t->'taxCents') IS DISTINCT FROM 'number' OR
+      jsonb_typeof(t->'taxableCents') IS DISTINCT FROM 'number' OR
+      jsonb_typeof(t->'exemptCents') IS DISTINCT FROM 'number' OR
       t->>'componentId' IS NULL OR
       t->>'category' IS NULL OR
-      t->>'jurisdictionId' IS NULL OR t->>'rateVersionId' IS NULL OR
+      COALESCE(t->>'jurisdictionId','') = '' OR COALESCE(t->>'rateVersionId','') = '' OR
+      (t->>'taxableCents')::NUMERIC < 0 OR (t->>'exemptCents')::NUMERIC < 0 OR
+      (t->>'taxableCents')::NUMERIC <> trunc((t->>'taxableCents')::NUMERIC) OR
+      (t->>'exemptCents')::NUMERIC <> trunc((t->>'exemptCents')::NUMERIC) OR
       tax_key = ANY(tax_keys) OR
       NOT EXISTS(SELECT 1 FROM jsonb_array_elements(evidence->'components') AS component
         WHERE component->>'id'=t->>'componentId'
           AND component->>'disposition'='DUE_NOW'
+          AND t->>'category'=CASE component->>'category'
+            WHEN 'FIRST_MONTH_RENT_ADVANCE' THEN 'RENTAL'
+            WHEN 'COMMERCIAL_RESERVE' THEN NULL
+            WHEN 'RETAIL_DELIVERY_FEE' THEN NULL
+            ELSE component->>'category' END
           AND ((t->>'taxableCents')::NUMERIC+(t->>'exemptCents')::NUMERIC)
               =(component->>'amountCents')::NUMERIC) THEN RETURN FALSE; END IF;
    tax_keys:=array_append(tax_keys,tax_key);
@@ -60,9 +90,9 @@ BEGIN
       setup_tax_amount:=setup_tax_amount+n;
    END IF;
  END LOOP;
- RETURN due=total AND setup_amount=setup AND
+ RETURN COALESCE(due=total AND setup_amount=setup AND
    advance_amount=advance AND setup_tax_amount=setup_tax AND
-   due>=0 AND due<=2147483647;
+   due>=0 AND due<=2147483647,FALSE);
 EXCEPTION WHEN OTHERS THEN RETURN FALSE;
 END;
 $$;

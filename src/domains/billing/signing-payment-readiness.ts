@@ -1,3 +1,4 @@
+import { assertSigningBusinessReviewsInTx } from "./signing-business-review";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { offerMatchesFrozenEvidence } from "@/domains/agreements/signing-offer-proof";
@@ -48,6 +49,7 @@ export async function getReviewedSigningPaymentInTx(
           target.v2Extension.components.find(c => c.category === "COMMERCIAL_RESERVE")?.amountCents !== agreement.depositCents)) {
       throw new Error("Customer-accepted payment proof no longer matches the frozen order.");
     }
+    await assertSigningBusinessReviewsInTx(tx, frozen.filter(row => row.agreementId === agreementId));
     const plan = buildFrozenSigningCheckoutPlan(frozen, agreementId);
     if (plan.allInCents !== signature.signingAllInCents ||
         plan.orderFingerprint !== signature.signingOrderFingerprint) {

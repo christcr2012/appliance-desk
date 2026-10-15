@@ -43,6 +43,7 @@ export const BACKUP_MODEL_POLICY = {
   SigningSetupFeeOverride: "signingSetupFeeOverride",
   // Owner-attested CPA decision history is business-critical restore evidence.
   SetupFeeTaxDecisionVersion: "setupFeeTaxDecisionVersion",
+  SigningBusinessReview: "signingBusinessReview",
   AgreementSigningPayment: "agreementSigningPayment",
   SigningPaymentAttempt: "signingPaymentAttempt",
   SigningDownPaymentCredit: "signingDownPaymentCredit",

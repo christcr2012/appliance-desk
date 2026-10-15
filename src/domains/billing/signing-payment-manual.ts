@@ -37,6 +37,8 @@ export async function recordManualSigningPayment(input: ManualSigningPaymentInpu
   const { receivedOn, reference, notes } = validate(input);
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, input.actingUserId, ["OWNER", "ADMIN"]);
+    // Match cancellation and review: agreement -> obligation -> review -> receipt/reserve.
+    await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" = ${input.agreementId} FOR UPDATE`;
     const locked = await tx.$queryRaw<Array<{ agreementId: string }>>`
       SELECT "agreementId" FROM "AgreementSigningPayment"
       WHERE "agreementId" = ${input.agreementId} FOR UPDATE

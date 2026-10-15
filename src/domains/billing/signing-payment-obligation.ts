@@ -1,3 +1,4 @@
+import { verifySigningV2Extension } from "./signing-v2-lines";
 import type { FrozenSigningEvidence } from "./signing-frozen-evidence";
 
 /** One durable payment *obligation*, not a charge, receipt, deposit or credit. */
@@ -16,6 +17,11 @@ export function signedPaymentObligation(
       !(signedAt instanceof Date) || Number.isNaN(signedAt.getTime())) {
     throw new Error("Signing obligation requires reconciled immutable accepted evidence.");
   }
+  if (line.schemaVersion === 2) verifySigningV2Extension(line.v2Extension, {
+    agreementId: line.agreementId, setupFeeCents: line.setupFeeCents,
+    setupTaxCents: line.setupTaxCents, downPaymentCents: line.downPaymentCents,
+    allInCents: line.allInCents,
+  });
   return {
     agreementId: line.agreementId,
     orderFingerprint: line.orderFingerprint,

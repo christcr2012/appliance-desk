@@ -32,6 +32,8 @@ export async function prepareSigningPaymentAttempt(
     if (method === "MANUAL") {
       await assertActiveTeamActor(tx, actingFinanceUserId!, ["OWNER", "ADMIN"]);
     }
+    // Match cancellation and review: agreement -> obligation -> review -> receipt/reserve.
+    await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" = ${agreementId} FOR UPDATE`;
     // Serialize on the same obligation row before checking active attempts:
     // READ COMMITTED ensures a waiting caller sees the first committed child.
     const locks = await tx.$queryRaw<Array<{ agreementId: string }>>`

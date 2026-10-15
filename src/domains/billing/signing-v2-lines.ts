@@ -51,7 +51,7 @@ export function verifySigningV2Extension(value: SigningV2Extension, input: {
   agreementId: string; setupFeeCents: number; downPaymentCents: number;
   setupTaxCents: number; allInCents: number;
 }): SigningV2Extension {
-  if (!input.agreementId || ![input.setupFeeCents, input.downPaymentCents,
+  if (!value || typeof value !== "object" || !input.agreementId || ![input.setupFeeCents, input.downPaymentCents,
       input.setupTaxCents, input.allInCents].every(cents) ||
       !Array.isArray(value.components) ||
       value.components.length !== SIGNING_V2_CATEGORIES.length ||
@@ -67,28 +67,47 @@ export function verifySigningV2Extension(value: SigningV2Extension, input: {
   const expected = new Set<string>(SIGNING_V2_CATEGORIES);
   const ids = new Set<string>();
   for (const item of value.components) {
-    if (!expected.delete(item.category) ||
+    if (!item || typeof item !== "object" || !expected.delete(item.category) ||
         item.id !== input.agreementId + ":" + item.category || ids.has(item.id) ||
         !cents(item.amountCents) || !sha(item.sourceFingerprint) ||
         !Number.isSafeInteger(item.sourceRevision) || item.sourceRevision < 1 ||
         !["DUE_NOW", "NOT_APPLICABLE", "BUSINESS_PAID"].includes(item.disposition) ||
         (item.disposition !== "DUE_NOW" && item.amountCents !== 0) ||
         (item.reason !== null &&
-          (typeof item.reason !== "string" || item.reason.length > 500)))
+          (typeof item.reason !== "string" || item.reason.length > 500)) ||
+        (item.termsReference !== null &&
+          (typeof item.termsReference !== "string" || item.termsReference.trim().length < 12 ||
+            item.termsReference.length > 500)))
       throw new Error("Signing V2 contains invalid or duplicated money components.");
     ids.add(item.id);
   }
   if (expected.size) throw new Error("Signing V2 omitted a mandatory category.");
   const byCategory = new Map(value.components.map(row => [row.category, row]));
+  const reserve = byCategory.get("COMMERCIAL_RESERVE")!;
+  if (reserve.amountCents > 0 && (!value.reserveTermsRevision || !value.reserveTermsReference ||
+      reserve.sourceRevision !== value.reserveTermsRevision ||
+      reserve.termsReference !== value.reserveTermsReference))
+    throw new Error("Signing V2 reserve requires the exact immutable negotiated terms.");
   if (byCategory.get("ADMINISTRATIVE_SETUP")?.amountCents !== input.setupFeeCents ||
       byCategory.get("FIRST_MONTH_RENT_ADVANCE")?.amountCents !== input.downPaymentCents ||
       byCategory.get("COMMERCIAL_RESERVE")?.disposition === "BUSINESS_PAID")
     throw new Error("Signing V2 scalar and component amounts differ.");
   const taxIds = new Set<string>();
   for (const row of value.taxLines) {
+    if (!row || typeof row !== "object")
+      throw new Error("Signing V2 tax evidence is incomplete or duplicated.");
     const id = JSON.stringify([row.componentId, row.jurisdictionId, row.rateVersionId, row.category]);
     const item = value.components.find(v => v.id === row.componentId);
-    if (!item || !row.jurisdictionId || !row.rateVersionId || !row.category ||
+    const taxCategory = item?.category === "ADMINISTRATIVE_SETUP" ? "ADMINISTRATIVE_SETUP" :
+      item?.category === "FIRST_MONTH_RENT_ADVANCE" ? "RENTAL" :
+      item?.category === "COMMERCIAL_RESERVE" ? null :
+      item?.category === "DAMAGE_WAIVER" ? "DAMAGE_WAIVER" :
+      item?.category === "DELIVERY" ? "DELIVERY" :
+      item?.category === "INSTALLATION" ? "INSTALLATION" :
+      item?.category === "REMOVAL" ? "REMOVAL" : null;
+    if (!item || !taxCategory || row.category !== taxCategory ||
+        typeof row.jurisdictionId !== "string" || !row.jurisdictionId ||
+        typeof row.rateVersionId !== "string" || !row.rateVersionId ||
         taxIds.has(id) || ![row.taxableCents, row.exemptCents, row.taxCents].every(cents) ||
         row.taxableCents + row.exemptCents !== item.amountCents ||
         item.disposition !== "DUE_NOW")
@@ -184,6 +203,8 @@ export function buildSigningV2Extension(input: {
         review.retailDelivery.handling === "PAY_MYSELF" ? "BUSINESS_PAID" :
         review.retailDelivery.status === "APPLIES" ? "DUE_NOW" : "NOT_APPLICABLE"),
   ];
+  if (sum(review.tax.lines.map(row => row.taxCents)) !== review.tax.taxCents)
+    throw new Error("Reviewed service tax total differs from its jurisdiction lines.");
   const taxLines: SigningV2TaxLine[] = [
     ...input.setupJurisdictions.map(row => ({
       componentId: input.agreementId + ":ADMINISTRATIVE_SETUP",

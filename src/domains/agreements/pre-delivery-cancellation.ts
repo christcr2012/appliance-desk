@@ -1,3 +1,4 @@
+import { getCancellationReserveInTx } from "@/domains/billing/signing-cancellation-reserve";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -84,7 +85,7 @@ async function quoteInTx(tx: Tx, agreementId: string, now: Date, policyOverride?
     where: { id: agreementId },
     select: {
       id: true, status: true, firstDeliveredOn: true, billingStartedAt: true,
-      stripeSubscriptionId: true, customerId: true,
+      stripeSubscriptionId: true, customerId: true, depositCents:true,
     },
   });
   if (!canTransitionAgreementStatus(agreement.status, "CANCELLED").ok ||
@@ -92,8 +93,7 @@ async function quoteInTx(tx: Tx, agreementId: string, now: Date, policyOverride?
     throw new Error("This is not an eligible before-delivery cancellation. Use the ending and return workflow.");
   }
   const otherPayments = await tx.payment.count({ where: { invoice: { agreementId }, status: { in: [...SUCCESSFUL_PAYMENT_STATUSES, HELD_PAYMENT_STATUS] } } });
-  const deposits = await tx.deposit.count({ where: { agreementId, amountCents: { gt: 0 }, refundedAt: null } });
-  if (otherPayments || deposits) throw new Error("Other invoice payments or refundable deposits need finance reconciliation before cancelling.");
+  if (otherPayments) throw new Error("Other invoice payments or refundable deposits need finance reconciliation before cancelling.");
   const firstInvoiceApplication = await tx.signingFirstInvoiceApplication.findUnique({
     where: { agreementId }, select: { agreementId: true },
   });
@@ -101,6 +101,11 @@ async function quoteInTx(tx: Tx, agreementId: string, now: Date, policyOverride?
     throw new Error("The first bill already used signing funds. Reconcile the invoice before cancelling.");
   }
   const obligation = await getSigningCancellationPaymentInTx(tx, agreementId, agreement.customerId);
+  const reserve = obligation ? await getCancellationReserveInTx(tx, {
+    ...obligation, agreementDepositCents:agreement.depositCents,
+  }) : null;
+  if (!obligation && await tx.deposit.count({where:{agreementId,amountCents:{gt:0}}}))
+    throw new Error("Other refundable deposits require finance reconciliation before cancelling.");
   // A new signature freezes the original order's machine count, customer
   // classification and refund window. Current mutable BusinessSettings NEVER
   // reprices that agreement. Old unsigned policy histories cannot be invented:
@@ -136,6 +141,7 @@ async function quoteInTx(tx: Tx, agreementId: string, now: Date, policyOverride?
   ])).digest("hex");
   return {
     agreementId, status: agreement.status, receiptId, signingAmountCents,
+    reserveId:reserve?.id ?? null,reserveCents:reserve?.amountCents ?? 0,
     refundableCents: amounts.refundableCents, retainedCents: amounts.retainedCents,
     setupAndTaxCents: (obligation?.setupFeeCents ?? 0) + (obligation?.setupTaxCents ?? 0),
     largeOrder: amounts.largeOrder, withinFullRefundWindow: amounts.withinWindow,
@@ -212,6 +218,7 @@ export async function approvePreDeliveryCancellation(input: {
         policy: input.policy, receiptId: quote.receiptId,
         refundDueCents: quote.refundableCents, retainedCents: quote.retainedCents,
         refundState: quote.refundState, reason,
+        reserveId:quote.reserveId,reserveCents:quote.reserveCents,
         signedPolicyVersion: quote.signedPolicyEvidence?.schemaVersion ?? null,
         signedPolicyReasons: quote.largeOrderReasons,
         fullRefundHours: quote.fullRefundHours,

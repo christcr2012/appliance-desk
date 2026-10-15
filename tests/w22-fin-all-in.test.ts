@@ -35,7 +35,7 @@ function reviewedLocation(id: string, amount: number, deposit: number, rdf: numb
       tax: {status:"VERIFIED", taxCents: amount===0?0:375,
         lines: amount===0?[]:[{
           lineKey:"mandatory:delivery",jurisdictionId:"jurisdiction-1",
-          rateVersionId:"version-1",category:"DELIVERY_FEE",
+          rateVersionId:"version-1",category:"DELIVERY",
           taxableCents:amount,exemptCents:0,taxCents:375,
         }],reasons:[]},
       retailDelivery:{event:rdf>0,status:"APPLIES",amountCents:rdf,
@@ -200,7 +200,50 @@ it("fails closed on synthetic V2 financial approval rather than enabling a live 
     jurisdictions:[setup],v2Extension:value.extension,
   };
   await expect(assertCurrentSigningPolicyInTx(
-    {} as Parameters<typeof assertCurrentSigningPolicyInTx>[0],
+    { $queryRaw: async () => [], signingBusinessReview: { findFirst:async()=>null } } as unknown as Parameters<typeof assertCurrentSigningPolicyInTx>[0],
     [frozen]
-  )).rejects.toThrow(/approved adviser evidence/);
+  )).rejects.toThrow(/owner-recorded CPA and counsel advice/);
+});
+
+it("rejects unbacked reserve terms, category-swapped tax and malformed source evidence", () => {
+  const input = {agreementId:"A",serviceAddressId:"address-A",estimateId:"estimate-1",
+    setupFeeCents:4500,downPaymentCents:6000,setupTaxCents:225,
+    setupJurisdictions:[setup],depositCents:10000,policyRevision:1,settingsUpdatedAt,
+    ...reviewedLocation("A",7500,10000,31)};
+  const {extension}=buildSigningV2Extension(input);
+  const check=(candidate:unknown)=>verifySigningV2Extension(candidate as typeof extension,
+    {agreementId:"A",setupFeeCents:4500,downPaymentCents:6000,setupTaxCents:225,allInCents:28631});
+  for(const key of ["reserveTermsRevision","reserveTermsReference"] as const){
+    const candidate=structuredClone(extension);Object.assign(candidate,{[key]:null});
+    expect(()=>check(candidate)).toThrow(/reserve/);
+  }
+  const changedTerms=structuredClone(extension);
+  changedTerms.components.find(row=>row.category==="COMMERCIAL_RESERVE")!.termsReference="Different unapproved reserve terms";
+  expect(()=>check(changedTerms)).toThrow(/reserve/);
+  const swappedTax=structuredClone(extension);
+  swappedTax.taxLines.find(row=>row.componentId.endsWith(":DELIVERY"))!.category="RENTAL";
+  expect(()=>check(swappedTax)).toThrow(/tax evidence/);
+  for(const malformed of [null,{}, {components:[null]}, {...extension,taxLines:[null]}])
+    expect(()=>check(malformed)).toThrow();
+  const history=structuredClone(input.mandatoryHistory) as unknown as Array<{
+    tax:{taxCents:number};sourceFingerprint:string}>;
+  history[0].tax.taxCents++;
+  // Recompute the original review fingerprint to prove internal arithmetic,
+  // not merely the digest, independently rejects conflicting source totals.
+  const source=history[0] as unknown as Parameters<typeof mandatoryReviewFingerprint>[0];
+  history[0].sourceFingerprint=mandatoryReviewFingerprint(source);
+  expect(()=>buildSigningV2Extension({...input,mandatoryHistory:history})).toThrow(/service tax total/);
+});
+import { mandatoryReviewFingerprint } from "@/domains/billing/mandatory-charge-review";
+import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
+it("independently checks V2 components at durable obligation creation",()=>{
+  const value=buildSigningV2Extension({agreementId:"A",serviceAddressId:"address-A",estimateId:"estimate-1",
+    setupFeeCents:4500,downPaymentCents:6000,setupTaxCents:225,setupJurisdictions:[setup],depositCents:10000,
+    policyRevision:1,settingsUpdatedAt,...reviewedLocation("A",7500,10000,31)});
+  const frozen={schemaVersion:2 as const,agreementId:"A",serviceAddressId:"address-A",agreementVersion:1,
+    sourceFingerprint:"a".repeat(64),orderFingerprint:"b".repeat(64),setupFeeCents:4500,
+    downPaymentCents:6000,setupTaxCents:225,allInCents:28631,jurisdictions:[setup],v2Extension:value.extension};
+  expect(signedPaymentObligation(frozen,date).totalCents).toBe(28631);
+  const forged=structuredClone(frozen);forged.v2Extension.components[0].amountCents++;
+  expect(()=>signedPaymentObligation(forged,date)).toThrow();
 });

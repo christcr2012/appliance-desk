@@ -1,3 +1,5 @@
+import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { assertCurrentSigningPolicyInTx } from "@/domains/billing/signing-business-use-gate";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -187,8 +189,11 @@ export async function getPreparedEstimateQuoteInTx(
         settings.oneTimeInstallationFeeCents, settings.oneTimeRemovalFeeCents],
     });
     if (coverage.length) return rejected(coverage);
-    if (frozen.evidenceVersion === 2)
-      return rejected(["V2 financial categories are technically reviewed but the mandatory adviser approval, cancellation and refund activation gates are not yet satisfied. A binding customer offer cannot be sent."]);
+    if (frozen.evidenceVersion === 2) {
+      if (estimate.lineItems.some(item => item.oneTimeFeeCents !== 0))
+        return rejected(["Classify original one-time quote amounts before binding the order."]);
+      await assertCurrentSigningPolicyInTx(tx, await getFrozenSigningOrderInTx(tx, agreementIds[0]), effectiveOn);
+    }
 
 
     const rows: EstimatePreparedQuoteLocation[] = [];

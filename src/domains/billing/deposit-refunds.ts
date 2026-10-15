@@ -88,6 +88,12 @@ export async function decideDepositRefund(
 
   const prepared = await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    // Share cancellation's agreement -> deposit lock order. The source can
+    // move only via the existing renewal workflow, so recheck after locking.
+    const scope = await tx.deposit.findUniqueOrThrow({where:{id:input.depositId},select:{agreementId:true}});
+    await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" = ${scope.agreementId} FOR UPDATE`;
+    const cancellation = await tx.preDeliveryCancellation.findUnique({where:{agreementId:scope.agreementId},select:{agreementId:true}});
+    if(cancellation) throw new Error("This reserve is included in the approved cancellation return. Reconcile that return instead of refunding the deposit again.");
     const rows = await tx.$queryRaw<
       Array<{
         id: string;
@@ -108,6 +114,7 @@ export async function decideDepositRefund(
     `;
     const deposit = rows[0];
     if (!deposit) throw new Error("Couldn't find that deposit.");
+    if(deposit.agreementId!==scope.agreementId) throw new Error("Deposit agreement changed. Refresh the refund review.");
     if (!deposit.refundable) throw new Error("This deposit is marked non-refundable.");
     if (deposit.refundedAt) throw new Error("This deposit already has a refund decision.");
     if (input.refundCents > deposit.amountCents) {

@@ -32,6 +32,8 @@ export async function processSigningCheckoutEvent(
     throw new Error("W-22 signing webhook has invalid or unapproved provider evidence.");
   }
   const agreementId = metadata.agreementId;
+  // Match cancellation and review: agreement -> obligation -> review -> receipt/reserve.
+  await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" = ${agreementId} FOR UPDATE`;
   await tx.$queryRaw`
     SELECT "agreementId" FROM "AgreementSigningPayment"
     WHERE "agreementId" = ${agreementId} FOR UPDATE

@@ -1,3 +1,5 @@
+import { effectiveMandatorySigningPolicy } from "./signing-mandatory-policy";
+import { assertSigningBusinessReviewsInTx } from "./signing-business-review";
 import type { Prisma } from "@prisma/client";
 import type { FrozenSigningEvidence } from "./signing-frozen-evidence";
 import { getEffectiveSetupTaxTreatmentInTx } from "./setup-tax-policy-version";
@@ -10,13 +12,14 @@ export async function assertCurrentSigningPolicyInTx(
   frozen: readonly FrozenSigningEvidence[],
   at = new Date(),
 ): Promise<void> {
-  // The V2 draft may encode accurate synthetic/admin review without a
-  // legally approved customer collection contract. The mandatory category
-  // professional-review field is REVIEW_REQUIRED until a separately audited
-  // owner adviser-approval record and complete refund/return integration exist.
-  // Never activate V2 customer signing from an engineering-only hash.
-  if (frozen.some(row => row.schemaVersion === 2))
-    throw new Error("V2 financial terms require approved adviser evidence and complete refund activation before real signing.");
+  await assertSigningBusinessReviewsInTx(tx, frozen, at);
+  if(frozen.some(row=>row.schemaVersion===2)){
+    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = ${"singleton"} FOR SHARE`;
+    const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{signingMandatoryPolicyVersions:true}});
+    const effective=effectiveMandatorySigningPolicy(settings?.signingMandatoryPolicyVersions,at);
+    if(frozen.some(row=>row.schemaVersion===2 && row.v2Extension.ownerPolicyRevision!==effective.revision))
+      throw new Error("Mandatory policy changed. Reprepare and review this unsigned order.");
+  }
   if (!frozen.some(row => row.setupFeeCents > 0)) return;
   await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = ${"singleton"} FOR SHARE`;
   const effective = await getEffectiveSetupTaxTreatmentInTx(tx, at);
