@@ -66,6 +66,18 @@ ending; do not mark them passed for ancestry alone.
 
 ### October 15 — owner-requested bundle guidance consistency review
 
+## Acceptance-first session tooling — October 15, 2026
+
+Owner-authorized cross-repository workflow repair: session status now presents
+per-deployment acceptance actions before roadmap work, separately lists waiting
+checks, and validates complete/stale-free temporary acceptance accounting.
+SESSION-START is authoritative for sequencing and final closeout; push checkpoints
+continue into required obligations. This maintenance completes no product bundle,
+closes no provider/deployed acceptance, changes no release/approval gate, and
+preserves concurrent roadmap work and existing evidence. Focused native script
+regressions and required exact-head CI/review must pass before merge.
+
+
 Reviewed current main 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. Aligned existing governing instructions, session
 procedure and applicable playbook/card/recipe references: cards define approved
 scope; related whole subsections form coherent bundles; PR splits need concrete
