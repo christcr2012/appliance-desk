@@ -17,8 +17,7 @@ test("W-23 owner and customer can update the same owned site; guest cannot see p
   });
   const customer = await prisma.customer.findUniqueOrThrow({
     where: { userId: user.id },
-    select: { id: true, locationContactPolicy: true, locationContactPolicyAt: true,
-      locationContactPolicyByUserId: true },
+    select: { id: true },
   });
   const address = await prisma.serviceAddress.create({ data: {
     customerId: customer.id, line1: "627 Tenant Site Browser Ave",
@@ -49,7 +48,7 @@ test("W-23 owner and customer can update the same owned site; guest cannot see p
       await expect(clientPage.getByText("W23 Tenant Browser")).toBeVisible();
       await expect(clientPage.getByRole("textbox", { name: "Private access notes" }).last())
         .toHaveValue("Keep gate locked.");
-      await clientPage.getByRole("button", { name: "Move out" }).last().click();
+      await clientPage.getByRole("button", { name: "Move out", exact: true }).last().click();
       await expect(clientPage.getByText("Moved out; billing unchanged.")).toBeVisible();
     } finally { await clientCtx.close(); }
     const visitor = await browser.newContext();
@@ -68,11 +67,5 @@ test("W-23 owner and customer can update the same owned site; guest cannot see p
     await prisma.auditLog.deleteMany({ where: { entityId: address.id } });
     await prisma.locationContact.deleteMany({ where: { serviceAddressId: address.id } });
     await prisma.serviceAddress.delete({ where: { id: address.id } });
-    // Revert account-level policy if someone changed it in the test.
-    await prisma.customer.update({ where: { id: customer.id }, data: {
-      locationContactPolicy: customer.locationContactPolicy as object,
-      locationContactPolicyAt: customer.locationContactPolicyAt,
-      locationContactPolicyByUserId: customer.locationContactPolicyByUserId,
-    } });
   }
 });
