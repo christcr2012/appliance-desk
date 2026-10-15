@@ -1,0 +1,327 @@
+import { Prisma } from "@prisma/client";
+import { z } from "zod";
+import { subMonths } from "date-fns";
+import { prisma } from "@/lib/prisma";
+
+type Tx = Prisma.TransactionClient;
+export type LocationActor = {
+  userId: string;
+  role: "OWNER" | "ADMIN" | "CUSTOMER";
+  customerId?: string;
+};
+
+export const permissionSchema = z.object({
+  deliveryPickup: z.boolean(),
+  maintenance: z.boolean(),
+  swaps: z.boolean(),
+  appointmentConfirmer: z.enum(["CLIENT", "TENANT"]),
+  copyClient: z.boolean(),
+}).strict();
+export type LocationPermission = z.infer<typeof permissionSchema>;
+export const DENIED_PERMISSION: LocationPermission = Object.freeze({
+  deliveryPickup: false, maintenance: false, swaps: false,
+  appointmentConfirmer: "CLIENT", copyClient: true,
+});
+export const siteSchema = z.object({
+  unitLabel: z.string().trim().max(80),
+  accessNotes: z.string().trim().max(2000),
+  override: permissionSchema.nullable(),
+}).strict();
+export const personSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  role: z.enum(["TENANT", "ONSITE_CONTACT"]),
+  phone: z.string().trim().max(35),
+  email: z.union([z.literal(""), z.string().email().max(200)]),
+  preferredLanguage: z.enum(["en", "es"]),
+  startedAt: z.union([z.literal(""), z.iso.date()]),
+}).strict();
+
+export function effectiveLocationPermission(account: unknown, override: unknown): LocationPermission {
+  // Corrupt/missing evidence never creates permission. An explicit site override
+  // replaces the account default, rather than combining grants implicitly.
+  const p = permissionSchema.safeParse(override === null || override === undefined ? account : override);
+  return p.success ? p.data : DENIED_PERMISSION;
+}
+export function mayContactTenant(policy: LocationPermission, topic: "deliveryPickup" | "maintenance" | "swaps") {
+  return policy[topic];
+}
+/** Client permission alone is never a tenant SMS grant. Real SMS uses COM-L independent consent. */
+export function tenantTextPermittedWithoutConsent(): false { return false; }
+
+function assertOwnCustomer(actor: LocationActor, customerId: string) {
+  if (actor.role === "CUSTOMER" && actor.customerId !== customerId)
+    throw new Error("This location is not on your account.");
+}
+async function requireCustomer(tx: Tx, actor: LocationActor, customerId: string) {
+  assertOwnCustomer(actor, customerId);
+  const owner = await tx.customer.findFirst({
+    where: { id: customerId, archivedAt: null },
+    select: { id: true },
+  });
+  if (!owner) throw new Error("Customer not available.");
+}
+async function requireAddress(tx: Tx, actor: LocationActor, customerId: string, addressId: string) {
+  await requireCustomer(tx, actor, customerId);
+  const row = await tx.serviceAddress.findFirst({
+    where: { id: addressId, customerId },
+    select: { id: true },
+  });
+  if (!row) throw new Error("This location is not on your account.");
+}
+async function event(tx: Tx, actor: LocationActor, action: string,
+  entityId: string, evidence: Prisma.InputJsonObject) {
+  await tx.auditLog.create({ data: {
+    userId: actor.userId, action, entityType: "ServiceAddress",
+    entityId, newValue: evidence,
+  } });
+}
+export async function locationWorkspace(actor: LocationActor, customerId: string) {
+  assertOwnCustomer(actor, customerId);
+  const row = await prisma.customer.findFirst({
+    where: { id: customerId, archivedAt: null },
+    select: {
+      id: true, locationContactPolicy: true, locationContactPolicyAt: true,
+      serviceAddresses: {
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: {
+          id: true, line1: true, line2: true, city: true, state: true, zip: true,
+          unitLabel: true, accessNotes: true, locationContactPolicy: true,
+          locationContactPolicyAt: true,
+          locationContacts: {
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            select: { id: true, name: true, role: true, phone: true, email: true,
+              preferredLanguage: true, startedAt: true, endedAt: true, erasedAt: true },
+          },
+        },
+      },
+    },
+  });
+  if (!row) throw new Error("Customer not available.");
+  return {
+    ...row,
+    permission: effectiveLocationPermission(row.locationContactPolicy, null),
+    serviceAddresses: row.serviceAddresses.map(site => ({
+      ...site, permission: effectiveLocationPermission(row.locationContactPolicy, site.locationContactPolicy),
+    })),
+  };
+}
+export async function saveAccountLocationPermission(actor: LocationActor, customerId: string, raw: unknown) {
+  const policy = permissionSchema.parse(raw);
+  await prisma.$transaction(async tx => {
+    await requireCustomer(tx, actor, customerId);
+    const at = new Date();
+    await tx.customer.update({ where: { id: customerId }, data: {
+      locationContactPolicy: policy, locationContactPolicyAt: at,
+      locationContactPolicyByUserId: actor.userId,
+    } });
+    await event(tx, actor, "location.permission.account", customerId,
+      { permission: policy, at: at.toISOString() });
+  });
+}
+export async function saveLocationDetails(actor: LocationActor,
+  customerId: string, addressId: string, raw: unknown) {
+  const data = siteSchema.parse(raw);
+  await prisma.$transaction(async tx => {
+    await requireAddress(tx, actor, customerId, addressId);
+    const at = new Date();
+    await tx.serviceAddress.update({ where: { id: addressId }, data: {
+      unitLabel: data.unitLabel || null, accessNotes: data.accessNotes || null,
+      locationContactPolicy: data.override === null ? Prisma.DbNull : data.override,
+      locationContactPolicyAt: at, locationContactPolicyByUserId: actor.userId,
+    } });
+    // Never store a gate code or tenant PII in an immutable audit stream.
+    await event(tx, actor, "location.details.update", addressId,
+      { hasAccessNotes: !!data.accessNotes, unitLabelChanged: true,
+        permission: data.override ?? null, at: at.toISOString() });
+  });
+}
+export async function addLocationPerson(actor: LocationActor,
+  customerId: string, addressId: string, raw: unknown) {
+  const fields = personSchema.parse(raw);
+  return prisma.$transaction(async tx => {
+    await requireAddress(tx, actor, customerId, addressId);
+    const created = await tx.locationContact.create({ data: {
+      serviceAddressId: addressId, name: fields.name, role: fields.role,
+      phone: fields.phone || null, email: fields.email || null,
+      preferredLanguage: fields.preferredLanguage,
+      startedAt: fields.startedAt ? new Date(fields.startedAt + "T00:00:00.000Z") : null,
+    } });
+    await event(tx, actor, "location.person.add", addressId,
+      { contactId: created.id, role: fields.role });
+    return created.id;
+  });
+}
+export async function moveOutLocationPerson(actor: LocationActor, customerId: string,
+  addressId: string, contactId: string, inspection: boolean) {
+  await prisma.$transaction(async tx => {
+    await requireAddress(tx, actor, customerId, addressId);
+    const existing = await tx.locationContact.findFirst({
+      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null },
+      select: { startedAt: true },
+    });
+    if (!existing || (existing.startedAt && existing.startedAt > new Date()))
+      throw new Error("This contact has already left or has an invalid tenancy start.");
+    const updated = await tx.locationContact.updateMany({
+      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null },
+      data: { endedAt: new Date(), repairTokenHash: null, repairTokenExpiresAt: null },
+    });
+    if (updated.count !== 1) throw new Error("This contact already moved out.");
+    if (inspection) {
+      // Only a To do: no rental termination, billing update, booked appointment or automatic payment.
+      await tx.staffTask.create({ data: {
+        customerId, createdByUserId: actor.userId,
+        note: "Check appliances when occupant changes at property " + addressId,
+        priority: "HIGH", sourceKey: "tenant-turnover:" + contactId,
+      } });
+    }
+    await event(tx, actor, "location.person.end", addressId,
+      { contactId, inspection });
+  });
+}
+export async function eraseExpiredTenantPII(now = new Date(), limit = 250) {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new Error("Invalid batch.");
+  const settings = await prisma.businessSettings.findUnique({
+    where: { id: "singleton" }, select: { tenantContactRetentionMonths: true },
+  });
+  const months = settings?.tenantContactRetentionMonths ?? 12;
+  if (!Number.isSafeInteger(months) || months < 1 || months > 120)
+    throw new Error("Invalid retention policy; erasure denied.");
+  const cutoff = subMonths(now, months);
+  return prisma.$transaction(async tx => {
+    const rows = await tx.locationContact.findMany({
+      where: { endedAt: { lte: cutoff }, erasedAt: null },
+      select: { id: true }, orderBy: [{ endedAt: "asc" }, { id: "asc" }], take: limit,
+    });
+    if (!rows.length) return 0;
+    const changed = await tx.locationContact.updateMany({
+      where: { id: { in: rows.map(x => x.id) }, endedAt: { lte: cutoff }, erasedAt: null },
+      data: { name: null, phone: null, email: null, preferredLanguage: "en",
+        repairTokenHash: null, repairTokenExpiresAt: null, erasedAt: now },
+    });
+    await tx.auditLog.create({ data: { action: "location.retention.erasure",
+      entityType: "LocationContact", newValue: { count: changed.count, retentionMonths: months } } });
+    return changed.count;
+  });
+}
+export async function setLocationRetention(actor: LocationActor, months: number) {
+  if (actor.role !== "OWNER") throw new Error("Owner permission required.");
+  if (!Number.isSafeInteger(months) || months < 1 || months > 120)
+    throw new Error("Use 1–120 whole months.");
+  await prisma.$transaction(async tx => {
+    const old = await tx.businessSettings.findUnique({
+      where: { id: "singleton" }, select: { tenantContactRetentionMonths: true },
+    });
+    await tx.businessSettings.upsert({
+      where: { id: "singleton" }, create: { tenantContactRetentionMonths: months },
+      update: { tenantContactRetentionMonths: months },
+    });
+    await tx.auditLog.create({ data: { userId: actor.userId,
+      action: "location.retention.change", entityType: "BusinessSettings", entityId: "singleton",
+      oldValue: { months: old?.tenantContactRetentionMonths ?? 12 }, newValue: { months } } });
+  });
+}
+
+export const IMPORT_HEADERS =
+  "street,unit,city,state,zip,unitLabel,tenantName,tenantPhone,tenantEmail,language";
+export type ImportRow = {
+  street: string; unit: string; city: string; state: string; zip: string;
+  unitLabel: string; tenantName: string; tenantPhone: string; tenantEmail: string; language: string;
+};
+/** CSV quotes, doubled quotes and newlines; reject formulas and incomplete rows. */
+export function parseLocationCsv(text: string): ImportRow[] {
+  if (text.length > 120000) throw new Error("Import too large (120 KB maximum).");
+  let quoted = false, column = "", row: string[] = [];
+  const parsed: string[][] = [];
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (quoted && text[i + 1] === '"') { column += '"'; i++; }
+      else if (quoted) quoted = false;
+      else if (!column) quoted = true;
+      else throw new Error("Invalid CSV quotes.");
+    } else if (quoted) column += char;
+    else if (char === ",") { row.push(column); column = ""; }
+    else if (char === "\n") { row.push(column); parsed.push(row); row = []; column = ""; }
+    else if (char !== "\r") column += char;
+  }
+  if (quoted) throw new Error("Unclosed CSV quote.");
+  if (column || row.length) { row.push(column); parsed.push(row); }
+  if ((parsed.shift() ?? []).join(",") !== IMPORT_HEADERS) throw new Error("Incorrect CSV columns.");
+  if (!parsed.length || parsed.length > 200) throw new Error("Supply 1–200 locations.");
+  const columns = IMPORT_HEADERS.split(",") as (keyof ImportRow)[];
+  const result: ImportRow[] = [];
+  const seen = new Set<string>();
+  for (const [i, cells] of parsed.entries()) {
+    if (cells.length !== columns.length) throw new Error("Wrong column count on row " + (i + 2));
+    const obj = Object.fromEntries(columns.map((k, pos) => [k, cells[pos].trim()])) as ImportRow;
+    if (!obj.street || !obj.city || !obj.state || !obj.zip ||
+        obj.street.length > 200 || obj.unit.length > 200 || obj.city.length > 100 ||
+        obj.unitLabel.length > 80 || !/^[A-Z]{2}$/i.test(obj.state) ||
+        !/^[0-9]{5}(-[0-9]{4})?$/.test(obj.zip))
+      throw new Error("Invalid address on row " + (i + 2));
+    if (!obj.tenantName && (obj.tenantPhone || obj.tenantEmail))
+      throw new Error("Missing tenant name on row " + (i + 2));
+    if (obj.tenantName) personSchema.parse({
+      name: obj.tenantName, role: "TENANT", phone: obj.tenantPhone,
+      email: obj.tenantEmail, preferredLanguage: obj.language || "en", startedAt: "",
+    });
+    if (Object.values(obj).some(v => /^[=+@-]/.test(v)))
+      throw new Error("Spreadsheet formula on row " + (i + 2));
+    const key = [obj.street, obj.unit, obj.city, obj.state, obj.zip].join("|").toLowerCase();
+    if (seen.has(key)) throw new Error("Duplicate property on row " + (i + 2));
+    seen.add(key);
+    result.push(obj);
+  }
+  return result;
+}
+function addressKey(row: { line1: string; line2?: string | null; city: string; state: string; zip: string }) {
+  return [row.line1, row.line2 ?? "", row.city, row.state.toUpperCase(), row.zip].join("|").toLowerCase();
+}
+export async function importLocationCsv(actor: LocationActor, customerId: string, csv: string) {
+  if (actor.role !== "OWNER" && actor.role !== "ADMIN")
+    throw new Error("Only owner/admin may approve portfolio imports.");
+  const records = parseLocationCsv(csv);
+  return prisma.$transaction(async tx => {
+    await requireCustomer(tx, actor, customerId);
+    const existing = await tx.serviceAddress.findMany({
+      where: { customerId }, select: { line1: true, line2: true, city: true, state: true, zip: true },
+    });
+    const keys = new Set(existing.map(addressKey));
+    for (const entry of records) {
+      if (keys.has(addressKey({ line1: entry.street, line2: entry.unit,
+        city: entry.city, state: entry.state, zip: entry.zip })))
+        throw new Error("An imported property already exists on this account.");
+    }
+    for (const entry of records) {
+      const site = await tx.serviceAddress.create({ data: {
+        customerId, line1: entry.street, line2: entry.unit || null,
+        city: entry.city, state: entry.state.toUpperCase(), zip: entry.zip,
+        unitLabel: entry.unitLabel || null,
+      } });
+      if (entry.tenantName) await tx.locationContact.create({ data: {
+        serviceAddressId: site.id, name: entry.tenantName, role: "TENANT",
+        phone: entry.tenantPhone || null, email: entry.tenantEmail || null,
+        preferredLanguage: entry.language || "en",
+      } });
+    }
+    await event(tx, actor, "location.import", customerId, { count: records.length });
+    return records.length;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20000 });
+}
+export async function getJobLocationPrivacy(actor: { userId: string; role: string }, jobId: string) {
+  if (!["OWNER", "ADMIN", "STAFF"].includes(actor.role)) return null;
+  const row = await prisma.job.findFirst({
+    where: { id: jobId,
+      ...(actor.role === "STAFF" ? { assignedToUserId: actor.userId,
+        status: { in: ["SCHEDULED", "IN_PROGRESS"] as const } } : {}),
+    },
+    select: { customerId: true, serviceAddress: {
+      select: { customerId: true, unitLabel: true, accessNotes: true,
+        locationContacts: { where: { endedAt: null, erasedAt: null },
+          select: { id: true, name: true, role: true, phone: true, email: true,
+            preferredLanguage: true } } },
+    } },
+  });
+  if (!row?.serviceAddress || row.customerId !== row.serviceAddress.customerId) return null;
+  return row.serviceAddress;
+}
