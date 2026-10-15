@@ -13,7 +13,8 @@
       "communication-timeline.spec.ts",
       "communication-context.spec.ts",
       "communication-launch.spec.ts",
-      "mandatory-signing-policy.spec.ts"
+      "mandatory-signing-policy.spec.ts",
+      "commercial-reserve-preapproval.spec.ts"
     ],
     "browser-b": [
       "revenue-records.spec.ts",

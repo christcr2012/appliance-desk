@@ -6,10 +6,7 @@ import type { PreparedReserveOverview } from
 import {
   saveCommercialReserveAction,
 } from "@/app/desk/estimates/[id]/commercial-reserve-action";
-// Client-safe formatter: importing the pricing domain index bundles Prisma.
-const formatCents=(cents:number)=>new Intl.NumberFormat("en-US",{
-  style:"currency",currency:"USD",
-}).format(cents/100);
+import { formatCents } from "@/domains/pricing/money";
 
 export function CommercialReserveAllocationForm({overview,owner}:{
   overview:PreparedReserveOverview;owner:boolean;

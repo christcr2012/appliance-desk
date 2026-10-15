@@ -411,3 +411,24 @@ the current branch tip and create a single reviewed tree; do not recalculate a
 new unrelated scope or discard verified source. If a stored blob cannot be read,
 rebuild only that file. Record that the branch has remained unchanged until
 a successful commit/ref update is independently confirmed.
+
+### PR #464 first-pass CI diagnosis — do not re-run without reading first error
+
+On head `79825f8`, four browser jobs initially failed because a new
+`e2e/commercial-reserve-preapproval.spec.ts` was missing from
+`e2e/shards.json`; **none of those failures proved a browser assertion**.
+An earlier build had failed because a Client Component imported
+`@/domains/pricing`, which reexports a safe formatter but also eagerly imports
+Prisma and the Node `pg` driver. Every new `"use client"` component must
+import `formatCents` directly from `@/domains/pricing/money` and must be in
+exactly one existing Playwright shard. Do not bypass the sharding validator,
+replace shared money formatting with inline division, increase browser runner
+count, or rerun the whole matrix before repairing the first failing check.
+
+Other actual first-pass failures: missing schema description in
+`docs/DATABASE.md`, unsafe canonical JSON property ordering in a new
+money fingerprint, and a new PostgreSQL trigger that accidentally restricted
+historical legacy deposit test writes. The corrected trigger only applies
+the new immutable liability policy when its version history is nonempty.
+Distinguish these test/code/docs defects from external provider acceptance,
+and preserve the original financial and approval gates.

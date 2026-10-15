@@ -58,7 +58,25 @@ function normalizedDetails(row:ReviewedMandatoryChargeRevision){
   };
 }
 export function mandatoryReviewFingerprint(input:Readonly<ReturnType<typeof normalizedDetails>>){
-  return createHash("sha256").update(JSON.stringify(input)).digest("hex");
+  // Object insertion order is not a financial identity. Reconstruct
+  // one canonical, explicit ordered projection at every read/write boundary.
+  const canonical={
+    estimateId:input.estimateId,agreementId:input.agreementId,
+    serviceAddressId:input.serviceAddressId,
+    globalPolicyRevision:input.globalPolicyRevision,
+    settingsUpdatedAt:input.settingsUpdatedAt,
+    charges:input.charges,
+    tax:{
+      ...input.tax,
+      lines:[...input.tax.lines].sort((a,b)=>
+        a.lineKey.localeCompare(b.lineKey)||
+        a.jurisdictionId.localeCompare(b.jurisdictionId)||
+        a.rateVersionId.localeCompare(b.rateVersionId)),
+    },
+    retailDelivery:input.retailDelivery,reserveCents:input.reserveCents,
+    reserveRevision:input.reserveRevision,
+  };
+  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 export function validateLocalChargeChoice(input:unknown,global:MandatoryChargeDecision):MandatoryLocationChoice{
   if(!input||typeof input!=="object"||Array.isArray(input))

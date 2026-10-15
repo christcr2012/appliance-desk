@@ -1,10 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-// Client-safe formatter: the pricing domain index also imports Prisma.
-const formatCents=(cents:number)=>new Intl.NumberFormat("en-US",{
-  style:"currency",currency:"USD",
-}).format(cents/100);
+import { formatCents } from "@/domains/pricing/money";
 import type { PreparedMandatoryChargeOverview } from
   "@/domains/estimates/mandatory-charge-allocation";
 import { saveMandatoryChargeReviewAction } from "./mandatory-charge-action";
