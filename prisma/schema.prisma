@@ -1716,6 +1716,11 @@ model Estimate {
   changesRequestedMessage String?
   declineReason           String?
   convertedAt             DateTime?
+  // W-22FIN: the exact immutable owner-reviewed preapproval amount identity.
+  // A hash alone never proves paid, signed, delivered or CPA/legal authorization.
+  reviewedQuoteFingerprint String?
+  reviewedOrderFingerprint String?
+  reviewedQuoteAt DateTime?
 
   // The OWNER/ADMIN who created this — every Estimate is staff-created,
   // never self-service.

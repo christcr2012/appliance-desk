@@ -196,7 +196,7 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
     return estimate.id;
   }
 
-  it("approval and change-request races produce exactly one terminal response", async () => {
+  it("unreviewed approval loses to a legitimate change request without a paid claim", async () => {
     const estimateId = await createEstimate("SENT");
 
     const results = await Promise.allSettled([
@@ -213,16 +213,11 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
     const stored = await prisma.estimate.findUniqueOrThrow({
       where: { id: estimateId },
     });
-    expect(["APPROVED", "CHANGES_REQUESTED"]).toContain(stored.status);
+    expect(stored.status).toBe("CHANGES_REQUESTED");
+    expect(stored.approverName).toBeNull();
+    expect(stored.reviewedQuoteFingerprint).toBeNull();
     expect(stored.respondedAt).not.toBeNull();
-    if (stored.status === "APPROVED") {
-      expect(stored.approverName).toBe("Concurrency Customer");
-      expect(stored.changesRequestedMessage).toBeNull();
-    } else {
-      expect(stored.changesRequestedMessage).toBe(
-        "Please revise the delivery timing.",
-      );
-    }
+    expect(stored.changesRequestedMessage).toBe("Please revise the delivery timing.");
   });
 
   it("concurrent estimate conversion creates one agreement/deposit/audit and both callers reconcile to it", async () => {

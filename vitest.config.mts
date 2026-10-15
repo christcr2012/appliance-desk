@@ -19,6 +19,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/settings-integration.test.ts",
   "tests/signing-charge-settings-integration.test.ts",
   "tests/signing-mandatory-policy-integration-w22fin.test.ts",
+  "tests/estimate-preapproval-prepare-integration-w22fin.test.ts",
   "tests/sms-activation-integration.test.ts",
   "tests/communication-launch-integration.test.ts", // reads seeded singleton; keep alongside serialized settings writers
   "tests/settings-terms-policy-integration.test.ts",

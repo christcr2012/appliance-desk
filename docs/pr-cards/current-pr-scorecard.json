@@ -1,22 +1,29 @@
 {
   "version": 1,
-  "kind": "maintenance",
+  "kind": "implementation",
   "parent": "W-22FIN",
-  "completedSlices": [],
+  "completedSlices": [
+    {
+      "id": "W-22FIN-APPROVAL",
+      "acceptanceEvidence": [
+        "Legacy estimate send marks incomplete prospects explicitly nonbinding, public EstimateResponseForm hides approve absent exact stored reviewed fingerprint; both approveEstimate locked transaction and checkout require verified evidence. e2e/preapproval-estimate-prepare.spec.ts asserts rejection; tests/estimate-send-email-switch.test.ts and remediation-r2-estimate-expiry-integration.test.ts preserve preliminary workflow.",
+        "Original customer-owned prepared agreements are SHA-verified against exact quote line identities, owner dated policy and current jurisdiction rental tax using getPreparedEstimateQuoteInTx; reviewedQuoteFingerprint and reviewedOrderFingerprint are stored on send and compared on approve. The converted order is adopted under Estimate/RentalAgreement row locks with scope validation in prepared-conversion.ts; tests/estimate-preapproval-quote-w22fin.test.ts and estimate-prepared-conversion-w22fin.test.ts assert forgery/revision/tenant denial.",
+        "Concurrent adopt/replay denied duplicate agreements, deposit, signing/payment obligations, invoices or early credit by tests/estimate-preapproval-prepare-integration-w22fin.test.ts; authenticated browser fixture checks preapproval denied and owner preparation; existing signing-first-invoice integration/browser suites verify separately receipt-backed application without advance credit at conversion. Genuine Stripe/provider TEST acceptance remains PENDING, not faked."
+      ]
+    }
+  ],
   "remainingEngineering": [
-    "W-22FIN-QUOTE: Persist and independently verify a complete owner-reviewed preapproval all-in offer including all tax and applicable mandatory charges; currently owner preview explicitly excludes unsettled categories.",
-    "W-22FIN-APPROVAL: Connect complete immutable quote to legacy estimate send/approve/deposit checkout without allowing provisional amounts to become binding or payable.",
-    "W-22FIN-RECOVERY: Complete provider-authoritative payment, cancellation and uncertain-state recovery acceptance without automatic money-out.",
-    "W-22FIN-DELIVERY: Verify full multi-location signed agreement through delivery and first-invoice credits with isolated real database/browser proof."
+    "W-22FIN-QUOTE: mandatory nonzero delivery, installation/removal, damage waiver, RDF and refundable deposits with verified legal/tax evidence must join reviewed all-in signing evidence before any such binding quote; no silent zero or unaudited deposits.",
+    "W-22FIN-RECOVERY: owner-permission and provider-authoritative cancellation, refund/uncertain payment paths remain to be completed or independently accepted.",
+    "W-22FIN-DELIVERY: full real multi-site acceptance through delivery and first-invoice credit still awaits real provider TEST/owner approval.",
+    "Existing project-wide signed legal, CPA tax and production/customer outreach gates remain separate and block live charges until properly cleared."
   ],
   "externalAcceptance": [
-    "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
-    "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
+    "STATUS release acceptance queue remains pending for genuine reviewed READY production revision and authenticated owner/customer/Stripe TEST checks",
+    "IN-79 CPA, IN-07 counsel, price publication, real customer communication and independent owner money-out permissions not granted"
   ],
-  "workloadException": "Owner-requested research/design maintenance: nine primary-source decision areas and a concrete remaining W-22FIN integration contract; zero production-code changes or completed product subsections.",
+  "workloadException": "Completed one predefined W-22FIN-APPROVAL subsection as part of finishing the already-started preapproval/atomic conversion workflow in the same PR. W-22FIN-QUOTE remains incomplete; unsupported mandatory charge/deposit categories always reject positive binding offers. Real provider acceptance is separately pending and never inferred from synthetic test fixtures.",
   "evidence": [
-    "docs/research/2026-10-15-owner-decision-follow-through.md: official sources checked October 15, implementation consequences and precise unresolved professional determinations.",
-    "docs/implementation-contracts/W-22FIN-INTEGRATION.md: verified main seams, preserved concurrent PR #459, worked multi-location cents and complete acceptance/failure matrix.",
-    "Index validator, 56-subject routing checks, existing routing tests 3/3, local links, worked cents, git diff --check and check:quick passed; exact-head Actions required. First CI classification failed because this scorecard was inherited; corrected here without changing gates."
+    "Source tests, database fixture and browser regression plus required exact-head CI and review; no deployment or provider evidence inferred"
   ]
 }

@@ -1,3 +1,16 @@
+## Preapproval source-of-money, preparation and explicit limits
+
+This preapproval preparation is an observable prerequisite, not a
+replacement for W-22FIN-QUOTE. It creates one owner/customer-address draft
+agreement per actual location before estimate approval. The full originally
+verified frozen order and rental packages, date-effective fee decisions, tax
+jurisdiction and exact quote digest are reconciled; stale/failing sources
+hide all binding money. New customer approval is denied without the exact
+stored reviewed quote; preliminary scope emails may still request changes.
+No money receipt, signing, delivery or production authorization is inferred.
+Mandatory nonzero service charges, damage waivers, refundable deposits and
+RDF remain unresolved engineering; quote completion is not claimed.
+
 ## Owner mandatory-charge versioning and preapproval diagnostics
 
 This policy implementation extends the existing singleton settings/audit
