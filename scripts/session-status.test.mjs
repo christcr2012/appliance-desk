@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { acceptanceSnapshot, acceptanceSummary, reviewAcceptance, readQueue, planQueue, run } from './session-status.mjs';
+import { acceptanceSnapshot, acceptanceSummary, reviewAcceptance as reviewWithAncestry, readQueue, planQueue, run } from './session-status.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +11,7 @@ const row = (id = 'READ', revision = a) => ({ id, priority: 1, requiredRevision:
 const block = rows => '<!-- release-acceptance:start -->\n```json\n' + JSON.stringify(rows) + '\n```\n<!-- release-acceptance:end -->';
 const obs = { main: c, live: b, deployed: b, deploymentState: 'READY' };
 const ancestor = (x, y) => [a, b, c].indexOf(x) <= [a, b, c].indexOf(y);
+const reviewAcceptance = (plan, observation, report) => reviewWithAncestry(plan, observation, report, ancestor);
 
 test('partial release clears older work without main/live equality', () => {
   const plan = planQueue([row('OLD', a), row('NEW', c)], obs, ancestor);
@@ -133,4 +134,15 @@ test('accounting binds the entire queue and refuses unknown deployment checkpoin
   }
   const unknownHistory = planQueue([row()], obs, () => null);
   assert.throws(() => reviewAcceptance(unknownHistory, obs, { ...report, snapshot: acceptanceSnapshot(unknownHistory) }));
+});
+
+
+test('an empty queue cannot bypass deployment/ref ancestry verification', () => {
+  const report = { snapshot: acceptanceSnapshot([]), deployed: b, deploymentState: 'READY', tasks: [] };
+  assert.match(reviewWithAncestry([], obs, report, ancestor), /accounting checked/);
+  for (const change of [{ main: null }, { live: null }, { deployed: null }, { deployed: c }])
+    assert.throws(() => reviewWithAncestry([], { ...obs, ...change }, { ...report, deployed: change.deployed === undefined ? b : change.deployed }, ancestor));
+  assert.throws(() => reviewWithAncestry([], obs, report));
+  assert.throws(() => reviewWithAncestry([], obs, report, () => null));
+  assert.throws(() => reviewWithAncestry([], obs, report, () => false));
 });

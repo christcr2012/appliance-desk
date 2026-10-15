@@ -46,13 +46,18 @@ export function readQueue(text) {
   return rows;
 }
 
+/** Deployment provenance must be checked even when there are no queue rows. */
+export function deploymentReady({ main, live, deployed, deploymentState }, isAncestor) {
+  return deploymentState === 'READY' && [main, live, deployed].every(sha => SHA.test(sha || '')) &&
+    isAncestor(live, main) === true && isAncestor(deployed, live) === true;
+}
+
 export function planQueue(rows, observation, isAncestor) {
-  const { main, live, deployed, deploymentState } = observation;
+  const { main, live, deployed } = observation;
   for (const [name, sha] of Object.entries({ main, live, deployed })) {
     if (sha !== null && sha !== undefined && !SHA.test(sha)) throw new Error(`Use an exact full ${name} SHA.`);
   }
-  const ready = deploymentState === 'READY' && main && live && deployed
-    && isAncestor(live, main) === true && isAncestor(deployed, live) === true;
+  const ready = deploymentReady(observation, isAncestor);
   const included = row => ready && isAncestor(row.requiredRevision, deployed) === true;
   return [...rows].sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id)).map(row => {
     let disposition;
@@ -91,8 +96,8 @@ export function acceptanceSummary(plan, limit = 10) {
 }
 
 /** Completeness/freshness check for a temporary handoff extract; never proof or permission. */
-export function reviewAcceptance(plan, observation, report) {
-  if (!SHA.test(observation.deployed || '') || observation.deploymentState !== 'READY' ||
+export function reviewAcceptance(plan, observation, report, isAncestor = () => null) {
+  if (!deploymentReady(observation, isAncestor) ||
       plan.some(row => row.disposition === 'VERIFY_DEPLOYMENT'))
     throw new Error('Acceptance review requires verified READY deployment data; otherwise leave an incomplete checkpoint.');
   if (!report || report.snapshot !== acceptanceSnapshot(plan) || report.deployed !== observation.deployed || report.deploymentState !== observation.deploymentState ||
@@ -162,7 +167,7 @@ export function run(root, args) {
   if (flags['--acceptance-review']) {
     const raw = readFileSync(resolve(root, flags['--acceptance-review']), 'utf8');
     if (Buffer.byteLength(raw, 'utf8') > 262144) throw new Error('Acceptance review exceeds bounded size.');
-    lines.push(reviewAcceptance(plan, observation, JSON.parse(raw)));
+    lines.push(reviewAcceptance(plan, observation, JSON.parse(raw), ancestor));
   } else lines.push('Acceptance accounting NOT CHECKED: use --acceptance-review PATH before new implementation and final handoff (or equivalent manual accounting).');
   if (flags['--latest-pr']) {
     if (!/^\d+$/.test(flags['--latest-pr'])) throw new Error('Latest PR must be an integer.');
