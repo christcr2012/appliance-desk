@@ -8,7 +8,8 @@ subsection is recounted. After verified merge, W-23 is the next engineering
 outcome; prepare its already planned card/packet at next startup. W-22 remains
 PARTIAL for genuine external acceptance. Older checkpoints below are history.
 
-Current source reconciled main `d6cc8b5b` into the existing draft. V2 preserves
+Current source reconciles main #468 `ad0d628f` into the existing draft; the original
+source baseline was #467 `d6cc8b5b`. V2 preserves
 V1 semantics while connecting exact-order received-advice clearance, current
 unsigned policy/tax checks, quote/adoption/signature/SQL obligation, same-receipt
 reserve, cancellation/independent whole return, dispatch, actual physical

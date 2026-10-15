@@ -1,3 +1,31 @@
+## October 15 already-started bundle scope reconciliation
+
+Concurrent main #468 (`ad0d628f`) introduced pre-code bundle-plan accounting
+while this same PR's implementation was already assembled at `d2535c06`.
+Merge checkpoint `205c35b7513f0661e375db061867eec396eba8c3` preserves that guidance.
+No retrospective pre-code plan or checker certificate is fabricated. The original
+five subsection IDs and every acceptance criterion remain in the existing packet;
+this reconciliation does not shrink that scope or count completed main behavior.
+
+Measured NEW production diff against actual main `ad0d628f`: **1308 added / 54
+removed lines in 42 source/migration files**, excluding tests/docs/formatting.
+Even the resumed work after draft `26c4759` adds **610 / removes 47 production
+lines in 29 files**: exact-order received-advice gate, full quote/reserve adoption,
+independent source reconstruction, receipt-backed cancellation return, current
+unsigned policy/tax checks, audited reopening and restore source dependencies.
+The original draft and resumed work are contributions to this same unmerged
+bundle; neither is a second completed bundle. Earlier merged helper work is not
+included in that measurement or recounted by the completion scorecard.
+
+Current remaining plan at `205c35b7`: resolve the documentation-only concurrent
+main conflicts, retain new accounting/session checks, run mandatory pre-push,
+then execute all required exact-head normal CI/browser/upgrade/review/merge gates.
+No additional missing production path is identified, so the honest additional
+production estimate is zero; tests and CI waiting do not create new workload.
+If a gate reveals a source defect, record its concrete remaining engineering in
+this card before the correction. W-23 stays excluded until this original complete
+outcome merges; it is a separate customer/location outcome, not padding.
+
 ## PR #466 assembled V2 implementation — verification in progress
 
 Resumed existing draft, merged current main `d6cc8b5b`, and retained all original
