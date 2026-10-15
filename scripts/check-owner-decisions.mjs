@@ -13,8 +13,8 @@ export function validateOwnerDecisionRouting(coverage, work, fileExists = path =
   const errors = [];
   const count = coverage?.entries?.length ?? -1;
   if (coverage?.version !== 1) errors.push("Invalid owner routing version");
-  if (coverage?.activeExecutionMustRemain !== "W-22FIN") errors.push("Owner decision map must retain current active batch W-22FIN");
-  if (work?.activeExecution !== "W-22FIN") errors.push("Active work changed; review roadmap sequencing and update owner decision map deliberately");
+  if (coverage?.activeExecutionMustRemain !== "W-23") errors.push("Owner decision map must retain current active batch W-23");
+  if (work?.activeExecution !== "W-23") errors.push("Active work changed; review roadmap sequencing and update owner decision map deliberately");
   const expected = {pricing:22, delivery:5, property:6, communications:11, accounting:12};
   if (JSON.stringify(coverage?.expectedGroupCounts) !== JSON.stringify(expected))
     errors.push("Owner answer source group counts changed without a reviewed map update");
