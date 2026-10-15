@@ -51,7 +51,10 @@ test("W-23 owner and customer can update the same owned site; guest cannot see p
       await clientPage.getByRole("button", { name: "Move out", exact: true }).last().click();
       await expect(clientPage.getByText("Moved out; billing unchanged.")).toBeVisible();
     } finally { await clientCtx.close(); }
-    const visitor = await browser.newContext();
+    // test.use(owner storageState) must never bleed into the negative browser case.
+    // Explicitly empty both cookies and local storage, not just the page object.
+    const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    expect(await visitor.cookies()).toEqual([]);
     try {
       const unauth = await visitor.newPage();
       await unauth.goto("/desk/customers/" + customer.id + "/locations");
