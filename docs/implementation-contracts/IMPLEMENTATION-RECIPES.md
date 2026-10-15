@@ -1,6 +1,8 @@
 # Implementation recipes — read one matching section
 
-Verified against main `9d582f5e316052ef3a28e22492723f49fab411be` (#396), 2026-10-11.
+Historical recipe baseline: main `9d582f5e316052ef3a28e22492723f49fab411be` (#396), 2026-10-11.
+W-22FIN routing refreshed against `206be373`, 2026-10-15; use its integration
+contract below for the current seams rather than treating D12 as current work.
 This is an execution aid, not a new design, queue or approval. AGENTS, approved design,
 current card, OWNER-INPUTS and DRIFT-PROTOCOL retain their authority. Refresh named
 symbols against the current base before using a recipe. **Existing** means present
@@ -16,7 +18,8 @@ Do not author distant execution cards or implement every row below at once.
 | State change/schema | Transaction and persistence | Current mutation and matching DB test |
 | Stripe/email/SMS/recovery | Provider and receipt | AI-PR-READ-FIRST; current adapter |
 | To do/portal/detail | Obligations and reads | Current DTO/query and destination page |
-| Remaining W-22 | `npm run work -- start`; current [W-22 card](../pr-cards/W-22.md) | Checked D12 packet and its existing invoice/mirror/document symbols; persistence recipe is historical discovery only |
+| Remaining W-22 | `npm run work -- start`; active [W-22FIN packet](../pr-cards/execution/W-22FIN.json) | [Concrete integration contract](W-22FIN-INTEGRATION.md): current seams, worked cents, atomic acceptance/recovery and complete-flow proof |
+| October 13 policy-dependent work | Matching entries in the [56-subject map](../owner-decisions/2026-10-13-implementation-map.json) | [Official research and consequences](../research/2026-10-15-owner-decision-follow-through.md), then existing owner engineering contract; no new approval round |
 | Later cards | Remaining-work map | One mapped row, then write that card JIT |
 
 ## Card packet

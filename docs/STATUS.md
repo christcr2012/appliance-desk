@@ -27,8 +27,21 @@ public estimate shows reviewed totals. A fingerprint changing after send
 invalidates customer approval. Unreviewed leads receive a clearly nonbinding
 preliminary email and cannot approve or pay; they may request changes.
 This completes W-22FIN-APPROVAL source-side safeguards for supported verified, zero-deposit quotes with exact frozen order adoption and safe concurrency. W-22FIN-QUOTE remains incomplete for nonzero mandatory categories and refundable deposits.
-Nonzero visit fees, waiver/RDF, deposits and full legacy conversion reconciliation
-remain approved W-22FIN engineering. Preserve CPA/counsel/owner/Stripe gates.
+Nonzero visit fees, waiver/RDF and refundable deposits remain approved
+W-22FIN engineering; legacy prepared conversion now uses the original drafts. Preserve CPA/counsel/owner/Stripe gates.
+
+### October 15 decision research and implementation-detail maintenance
+
+Owner-requested design/research only: the
+[W-22FIN integration contract](implementation-contracts/W-22FIN-INTEGRATION.md)
+adds current code seams, exact multi-location money, transaction/replay boundaries
+and a finite full-flow acceptance matrix. The
+[official-source research](research/2026-10-15-owner-decision-follow-through.md)
+maps acquisition-dependent rental tax, conditional dated RDF, local jurisdiction,
+ACH, communications, retention, postal privacy and portable accounting to existing
+work. PR #459 was open at inspection and remains separate concurrent work.
+No production behavior, completed subsection, professional approval, provider
+acceptance or release is claimed. W-22FIN remains active; K-CASH/BP remain proposed.
 
 ### Owner workflow clarification — October 14, 2026
 

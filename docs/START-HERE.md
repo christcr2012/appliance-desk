@@ -1,5 +1,13 @@
 # START HERE — Appliance Desk
 
+**October 15 research and integration detail:** after the active W-22FIN packet,
+read the [concrete integration contract](implementation-contracts/W-22FIN-INTEGRATION.md)
+for verified code seams, worked cents, atomic acceptance/recovery and completion
+tests. [Decision follow-through research](research/2026-10-15-owner-decision-follow-through.md)
+records current official tax/RDF, payments, communications, retention and accounting
+findings with implementation consequences. These are design aids; W-22FIN remains
+unfinished, existing real-use gates remain, and K-CASH/BP stay proposed.
+
 **New October 14 decision-to-implementation routing:** October 13 owner
 answers cover **56 distinct subjects** (not 56 open PRs). For the
 currently active W-22FIN or any future next approved unit, read the
