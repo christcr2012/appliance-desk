@@ -1,3 +1,12 @@
+## Implementation reconciliation — PR #466
+
+The active card now maps all five original W-22FIN subsections to the connected
+V2 implementation and its disposable DB/browser checks. The diagnosis and
+remaining-consumer descriptions below describe the historical #464 baseline;
+use them as the fixed integration/review contract. They do not reopen completed
+consumers or authorize real business use. Merge and bundle accounting still
+require exact-head CI and review; deployed/provider acceptance stays in STATUS.
+
 # W-22FIN — concrete remaining integration contract
 
 Source baseline: main `905a0fb8` (PR #464), checked 2026-10-15. Read after the existing

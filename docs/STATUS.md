@@ -1,21 +1,37 @@
-## 2026-10-15 — resumed PR #466, one connected W-22FIN bundle in verification
+## 2026-10-15 — PR #466 complete W-22FIN engineering bundle, final gates
 
-Current source main reconciled at `d6cc8b5b`; preserved/resumed the existing
-`ai/gpt6/w22fin-v2-complete-20261015` draft and resolved its two workflow-document
-merge conflicts. WIP checkpoint `cf261c23` contains the first connected clearance
-and reserve-return implementation; later assembled work adds stable nested JSONB
-hashes, V2 signature/source SQL, complete portal/dispatch projection, exact
-reserve-aware quote/adoption, blocked double estimate collection, actual delivery
-and first-invoice proof, and dependency-aware backup restore.
+One connected implementation covers the five original POLICY, QUOTE, APPROVAL,
+RECOVERY and DELIVERY subsections. Count it only after required exact-head green
+CI/browser, review disposition and merge of PR #466. The scorecard maps each
+original acceptance criterion; no helper, internal repair or earlier merged
+subsection is recounted. After verified merge, W-23 is the next engineering
+outcome; prepare its already planned card/packet at next startup. W-22 remains
+PARTIAL for genuine external acceptance. Older checkpoints below are history.
 
-Focused real disposable PostgreSQL passed complete synthetic 45606-cent flow:
-prepared owner review and stale public approval denial; exact original agreement
-adoption/replay; signatures; exact manual settlement/reserve liability; A dispatch
-and physical completion; independently confirmed B cancellation return; only A's
-6000-cent rent advance applied once to its first invoice, B uncredited/undelivered.
-Provider calls are contract-shaped simulations, never genuine Stripe TEST proof.
-Required preflight/full exact-head CI/browser/review and merge remain in progress;
-no completed bundle is claimed at this checkpoint.
+Current source reconciled main `d6cc8b5b` into the existing draft. V2 preserves
+V1 semantics while connecting exact-order received-advice clearance, current
+unsigned policy/tax checks, quote/adoption/signature/SQL obligation, same-receipt
+reserve, cancellation/independent whole return, dispatch, actual physical
+completion, rent-only first invoice, customer/owner/documents and backup restore.
+Unsigned reopening audits full old evidence and requires preparation, freeze
+and clearance again; signed snapshots cannot be reopened or repriced.
+
+Verification: typecheck/lint passed; related disposable PostgreSQL run 1250 tests
+passed (three existing allow-listed performance skips); selected DB run 52 passed
+with no skips. The synthetic $456.06 two-address flow proves stale approval
+denial, original agreement adoption/replay, concurrent single receipt/reserve,
+paid A dispatch/physical completion, independently recorded B cancellation return,
+and only A's $60 rent advance applied once on its first invoice. Actual supported
+backup restore preserves the full financial history, including reopened unsigned
+clearance. Provider calls are simulations, not genuine Stripe TEST evidence.
+
+Local browser preflight is blocked before tests: standard build and supported
+webpack/stand-in-font build were killed at this 4GB sandbox's memory limit (137);
+1536MB heap diagnosis aborted with V8 heap exhaustion (134). No local browser
+pass is claimed. Required normal Actions production build/browser suites must
+pass at the published exact head, including the new actual owner/customer form
+flow, three widths, keyboard and light/dark scoped axe checks. Reviews and full
+required CI remain merge gates; their exact-head links belong in PR #466.
 
 Production independently remains READY at `4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0`.
 Public / GET 200 and private /desk and /account/rentals 307 to login; browser
@@ -481,7 +497,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Existing SMS/customer email consent and activation gates; no sending or live activation implied",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Owner consent, IN-09 A2P and IN-51–53 activation/privacy decisions plus controlled carrier evidence. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Owner consent, IN-09 A2P and IN-51\u201353 activation/privacy decisions plus controlled carrier evidence. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "APPLIANCE-W22-PORTAL-RECEIPT",
@@ -581,6 +597,17 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authorized existing prepared estimate and scoped owner/customer identities. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented.",
     "dependsOn": [],
     "status": "PENDING"
+  },
+  {
+    "id": "W22FIN-V2-COMPLETE-ORDER",
+    "priority": 1,
+    "requiredRevision": "c5e7b7badf121fe84079bead388b4d4140a4299a",
+    "task": "After checked release, verify complete V2 all-in owner/customer quote, signing, receipt/reserve, cancellation return and rent-only first-invoice readback.",
+    "procedure": "docs/pr-cards/W-22FIN.md; use approved existing scoped owner/customer TEST records and read-only provider-authoritative evidence; no production fixtures or automatic refunds.",
+    "gates": "Checked READY deployed ancestry; separately permitted authenticated owner/customer records; genuine CPA/counsel clearance and Stripe TEST evidence; LIVE, communications and money-out remain independently gated.",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "Connected synthetic PostgreSQL source acceptance: 1250 related and 52 selected tests passed. Local browser build blocked by sandbox memory; exact-head normal Actions browser/build/review required before merge. V2 source is newer than READY live 4740313d; not deployed or genuinely provider accepted."
   }
 ]
 ```

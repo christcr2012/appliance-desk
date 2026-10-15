@@ -8,6 +8,7 @@ const target=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true"&&target.pathname==="/appliance_desk_test"&&["localhost","127.0.0.1"].includes(target.hostname);
 test.use({storageState:fs.existsSync(ownerState)?ownerState:undefined});
 test("V2 complete order clearance, customer signature, owner receipt and own-account readback",async({page,browser},info)=>{
+ test.setTimeout(60_000);
  test.skip(!enabled,"Disposable isolated database only");
  const {prisma}=await import("../src/lib/prisma");
  const user=await prisma.user.findUniqueOrThrow({where:{email:process.env.TEST_CUSTOMER_EMAIL!.toLowerCase()}});
@@ -30,7 +31,16 @@ test("V2 complete order clearance, customer signature, owner receipt and own-acc
   await clearance.getByLabel("Exact reviewed terms reference").fill("Synthetic complete signing and refund terms");
   await clearance.getByLabel("Reason for this decision").fill("Synthetic browser test of the owner attestation workflow");
   await clearance.getByRole("checkbox").check();
-  expect((await new AxeBuilder({page}).include('[aria-label="Signing business clearance"]').withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+  for(const width of [360,768,1440]){
+   await page.setViewportSize({width,height:960});
+   for(const dark of [false,true]){
+    await page.evaluate(value=>document.documentElement.classList.toggle("dark",value),dark);
+    expect((await new AxeBuilder({page}).include('[aria-label="Signing business clearance"]').withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
+   }
+  }
+  await clearance.getByLabel("Decision",{exact:true}).focus();
+  await page.keyboard.press("Tab");
+  await expect(clearance.getByLabel("Effective Colorado business day")).toBeFocused();
   await clearance.getByRole("button",{name:"Record review revision"}).click();
   await expect(clearance.getByText(/Recorded professional advice clearance/)).toBeVisible();
   await page.getByRole("button",{name:"Send for signature",exact:true}).click();
