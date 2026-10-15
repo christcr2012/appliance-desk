@@ -176,6 +176,9 @@ model Customer {
   // opt-out, as the audit trail of consent actually given/withdrawn.
   smsOptInAt DateTime?
 
+  locationContactPolicy Json @default("{}")
+  locationContactPolicyAt DateTime?
+  locationContactPolicyByUserId String?
   serviceAddresses ServiceAddress[]
   rentalAgreements RentalAgreement[]
   maintenanceRequests MaintenanceRequest[]
@@ -251,6 +254,12 @@ model ServiceAddress {
   city    String
   state   String @default("CO")
   zip     String
+  unitLabel String?
+  accessNotes String?
+  locationContactPolicy Json?
+  locationContactPolicyAt DateTime?
+  locationContactPolicyByUserId String?
+  locationContacts LocationContact[]
 
   jobs     Job[]
   maintenanceRequests MaintenanceRequest[]
@@ -264,6 +273,28 @@ model ServiceAddress {
 
   @@index([customerId])
   @@index([zip])
+}
+
+// W-23 tenant occupants do not become paying customers or login users.
+// Erasure leaves an anonymous row for visit history and compliance evidence.
+model LocationContact {
+  id String @id @default(cuid())
+  serviceAddressId String
+  serviceAddress ServiceAddress @relation(fields: [serviceAddressId], references: [id], onDelete: Cascade)
+  name String?
+  role String @default("TENANT")
+  phone String?
+  email String?
+  preferredLanguage String @default("en")
+  startedAt DateTime?
+  endedAt DateTime?
+  erasedAt DateTime?
+  repairTokenHash String? @unique
+  repairTokenExpiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([serviceAddressId, endedAt])
+  @@index([endedAt, erasedAt])
 }
 
 // ---------------------------------------------------------------------------
@@ -2563,6 +2594,7 @@ model PurchaseUseTax {
 model BusinessSettings {
   id    String @id @default("singleton")
 
+  tenantContactRetentionMonths Int @default(12)
   publicBusinessName String @default("[Company Name]")
   publicPhone        String @default("[Phone Number]")
   publicEmail        String @default("[Email Address]")
