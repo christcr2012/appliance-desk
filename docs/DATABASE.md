@@ -895,3 +895,44 @@ finance review. SQL triggers deny overwriting signed policy and reject a
 cancellation whose policy differs from the signed obligation; legitimate
 refund-return state may still be updated. No money-out, Stripe call, tax
 decision, invoice credit or real contract-term approval is performed.
+
+## W-22FIN draft commercial reserves and mandatory per-location fees (October 15, 2026)
+
+The additive migrations `20261016020000_w22_commercial_reserve_terms` and
+`20261016030000_w22_mandatory_service_review` add two JSONB arrays to
+`RentalAgreement` with default `[]` for existing contracts:
+
+- `commercialReservePolicyVersions` records successive OWNER-attributed
+  per-address negotiated refundable reserve terms, amount, original estimate
+  identity, quarterly/no replenishment choice, review reference, reason and
+  revision date. `RentalAgreement.depositCents` remains the **only stored
+  agreement reserve amount**; no duplicate deposit/receipt/revenue/credit
+  ledger is introduced. Owner preparation now initializes each draft's
+  reserve to zero instead of replicating an aggregate estimate deposit into
+  every property. The owner must allocate the full aggregate **once** across
+  the complete customer-owned prepared set before an eventual binding quote.
+- `mandatoryChargeReviewVersions` records OWNER-only, reasoned, append-only
+  per-address decisions for delivery, installation, removal and waiver,
+  versioned effective owner settings, provisional per-jurisdiction fee tax,
+  a single reviewed Colorado RDF event/rate/handling and corresponding reserve
+  revision. It is an **internal planning record**, not a separately payable
+  ledger or replacement for the original V1 frozen signing charge evidence.
+
+PostgreSQL triggers prevent editing **new versioned commercial reserve**
+amounts/terms once an agreement leaves `DRAFT`; legacy agreements with empty
+commercial reserve history preserve their existing finance-correction behavior.
+Other triggers prevent edits to non-draft mandatory review histories and
+preserve every previously stored revision on a draft. All owner mutation paths
+lock the estimate and its customer-owned agreements in a stable ID order,
+check historical signing/payment/invoice/dispatch artifacts and stale revisions,
+and write a reasoned audit. The initial migrations are additive; prior signed
+agreements continue with empty policy histories (not invented approvals).
+
+These arrays **do not satisfy** W-22FIN-QUOTE or enable nonzero deposits,
+mandatory service/RDF amounts, legally unresolved taxes or customer checkout.
+Until V2/future compatible frozen signing/receipt/cancellation/first-invoice
+consumers are fully implemented and separately verified, the existing
+preapproval quote still fails closed on unsupported mandatory categories.
+CPA IN-79, counsel IN-07, owner approval and real Stripe TEST/production
+acceptance remain independent. Never treat a `REVIEW_REQUIRED` JSON record as
+actual professional approval or an authorization to send, charge or refund.

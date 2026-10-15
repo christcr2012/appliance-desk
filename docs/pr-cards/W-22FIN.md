@@ -299,3 +299,17 @@ and it never returns money on its own. Synthetic zero-advance, policy-change,
 corrupt-evidence, SQL immutability and owner-review regressions are included
 for the checked PR gates. It is a recovery subtask, **not** a completed
 predefined batch subsection or a permission to leave W-22FIN-QUOTE.
+
+## October 15 — draft policy completion and anti-stall recovery
+
+Confirmed the GitHub REST predecessor had created only unattached blobs on the
+policy branch while `main` and branch remained `4740313d`. See
+`docs/runbooks/ANTI-STALL-RECOVERY.md` for the lease-checked ref checkpoint
+rule. Next work is the original W-22FIN-POLICY / W-22FIN-QUOTE integration,
+not a newly named countable subcard. The original estimate deposit must not be
+copied into every location: negotiated commercial reserve is allocated
+once, persisted as a versioned draft agreement policy with owner audit,
+denied to households, and kept out of receipt/credit until complete approval.
+Remaining service fee/RDF/tax, checkout, cancellation, invoice and customer
+flow must be completed with real PG/browser tests. Source or a partial PR
+does not satisfy the original full acceptance matrix.

@@ -810,6 +810,12 @@ model RentalAgreement {
   // Price snapshot — what THIS customer agreed to, frozen at signing.
   // Changing PricingRule / ApplianceType later never touches these.
   depositCents      Int @default(0)
+  // Negotiated commercial reserve terms, versioned while the order remains
+  // unbound. depositCents remains the authoritative amount; no duplicate ledger.
+  commercialReservePolicyVersions Json @default("[]")
+  // Versioned owner-only per-address service/RDF/tax review. Money still
+  // freezes through AgreementSigningCharge, never a second ledger.
+  mandatoryChargeReviewVersions Json @default("[]")
   damageWaiverCents Int @default(0)
   lateFeeGraceDays  Int @default(5)
   lateFeeCents      Int @default(0)

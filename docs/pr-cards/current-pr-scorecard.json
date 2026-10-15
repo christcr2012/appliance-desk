@@ -4,24 +4,25 @@
   "parent": "W-22FIN",
   "completedSlices": [],
   "remainingEngineering": [
-    "W-22FIN-QUOTE: Persist and independently verify complete per-location mandatory visit, tax, RDF, waiver and refundable reserve charges and a customer-visible immutable all-in offer.",
-    "W-22FIN-APPROVAL: Complete source-to-legacy estimate approval and deposit/payment checkout for the full inclusive quote; currently only supported zero-deposit categories qualify.",
-    "W-22FIN-RECOVERY: Signed cancellation size/window evidence correction is an isolated source patch; entire provider/unknown/refund/all-category cancellation and partial multi-site recovery remains unfinished.",
-    "W-22FIN-DELIVERY: Complete multi-location physical delivery and first-invoice credit/return lifecycle browser+DB evidence."
+    "W-22FIN-POLICY: Owner commercial reserve/mandatory fee policy review must pass full real DB/browser and integrate with complete review/signed snapshots before this whole subsection can be counted.",
+    "W-22FIN-QUOTE: Full fee, tax, RDF, damage waiver and commercial refundable reserve across estimate/customer/immutable signing quote and payment cannot yet be represented by the V1 frozen envelope.",
+    "W-22FIN-APPROVAL: Complete collection/checkout for the all-in estimate and prevent all legacy incomplete deposit acceptance.",
+    "W-22FIN-RECOVERY: Provider-authoritative all-category cancellation/refund and partial multi-site reconciliation unfinished.",
+    "W-22FIN-DELIVERY: Signed-payment dispatch, multi-site delivery and first invoice application end-to-end unfinished."
   ],
   "externalAcceptance": [
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Risk repair of a confirmed financial policy defect under current W-22FIN; zero complete predefined batch subsections and zero implementation bundles. PR is not counted toward the requested five bundles. No legal/provider/hosted/production acceptance implied.",
+  "workloadException": "W-22FIN safety remediation prevents multiplying the same negotiated commercial estimate deposit across prepared locations; policy implementation remains uncounted until the entire existing W-22FIN-POLICY/QUOTE acceptance is verified. No standalone new subsection or completed bundle claimed.",
   "evidence": [
     "Inspected main 20466bc50cead4d300523ee38382f34267a07f4d with zero open PRs and existing W-22FIN contract.",
     "Pure and disposable-PostgreSQL test cases added for zero-advance five-machine, business-classified, original signing window and legacy full-refund-only cases; passing results require exact-head CI evidence.",
     "New signature-bound owner policy JSON, transaction scope verification, schema migration and SQL immutability/reconciliation triggers; no LIVE Stripe/refund operation."
   ],
   "riskEvidence": [
-    "Confirmed original pre-delivery cancellation derives large order solely from positive down payment, misclassifying prepaid five-machine and business accounts with no advance; original snapshot also read mutable window settings.",
-    "Fix freezes complete tenant-scoped machine classification, customer business flags and owner window at signature and rejects legacy retention and malformed historical evidence, under database immutability and cancellation source constraints.",
-    "New pure tests/signed-cancellation-policy-w22fin.test.ts, amended pre-delivery policy tests and disposable-Postgres cancellation integration regressions cover zero advance, owner business flags, history and SQL denial; full exact-head CI/review is independently required."
+    "Observed preparation copies estimate.depositCents to every one of the created per-property agreements; multi-site negotiated commercial reserve could duplicate a customer liability.",
+    "Repair sets zero per-location draft amount until OWNER explicitly allocates the exact total across all customer-owned addresses with immutable versioned terms, source/version checks and no checkout or receipt.",
+    "Disposable PostgreSQL and browser cases cover duplicate prevention, role/tenant checks, 10000+5000 allocation, stale revisions, signed history guard and no money movement; exact-head CI required before publication."
   ]
 }
