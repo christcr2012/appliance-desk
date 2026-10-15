@@ -1,3 +1,37 @@
+### Release-needed owner escalation — October 15
+
+Owner permits manual-release requests only after every independently eligible
+authorized task is finished and release would enable a concrete next completion task.
+Record source gaps while continuing implementation, deployed acceptance, reviews,
+merges, cleanup and records; prepare the exact checked target before asking.
+The read-only planner distinguishes source absent from live, source already in live
+but not serving, and unknown provenance/history. No manual release is preauthorized;
+continue independent work and reassess acceptance after actual READY deployment.
+
+## Owner-requested product completion workflow correction — October 15
+
+The Google agent's repeated 0/1 exits exposed a shared code-only bundle assumption.
+This repository now retains normal ENGINEERING workload guides and adds explicit
+COMPLETION accounting for substantial NEW original acceptance/configuration proof,
+possibly with zero production lines. The existing card freezes complete criteria
+and exact queue IDs; committed ledger deltas must preserve source, scope and gates.
+Old code, old passes, audits, isolated probes and pending/partial outcomes count zero.
+No new phase/features or scope approval may be invented to meet a workload number.
+
+N supplements the WHOLE workflow: perform every currently ready authorized obligation
+in existing priority/dependency order even after N is reached. A planned substantial
+acceptance outcome can count once, never excuse other ready acceptance or closeout.
+Reconcile original requirements once; do not repeatedly audit already-proven code.
+A future real-operation date or external sign-off does not prevent eligible source
+work/synthetic proof. Only actual optional dependencies may be bypassed as optional.
+
+This is scoped workflow maintenance, not a product audit or declaration that this
+project is near completion. Existing roadmap, unfinished work, provider acceptance,
+owner inputs, fixture ownership, release policy and authorization limits remain.
+No queue row is marked PASSED, no provider call/release/activation/spending performed,
+and zero product bundles claimed. Full exact-head/local checks, review/merge and
+final-main verification remain required. See docs/pr-cards/SESSION-WORKFLOW.md.
+
 ## 2026-10-15 — PR #466 complete W-22FIN engineering bundle, final gates
 
 ## Owner-requested execution efficiency / parallel CI maintenance — October 15

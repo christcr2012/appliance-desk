@@ -5,6 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyFrozenPlan, assessBundleDelivery } from './bundle-plan.mjs';
+import { verifyCompletionEvidence } from './completion-evidence.mjs';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const CARD = 'docs/pr-cards/current-pr-scorecard.json';
@@ -68,7 +70,7 @@ export function mergedImplementationHistory(root, ref = 'origin/main', count = 5
 
 const nonempty = (value) => typeof value === 'string' && value.trim().length >= 10;
 export function validateScorecard(card, packet) {
-  if (!card || card.version !== 1 || !['implementation', 'maintenance', 'risk_remediation'].includes(card.kind))
+  if (!card || card.version !== 1 || !['implementation', 'maintenance', 'risk_remediation', 'completion'].includes(card.kind))
     throw new Error('Scorecard requires version 1 and a recognized PR kind');
   if (card.parent !== packet.id) throw new Error('Scorecard parent must match the active execution packet');
   if (!Array.isArray(card.completedSlices) || !Array.isArray(card.remainingEngineering)
@@ -89,6 +91,12 @@ export function validateScorecard(card, packet) {
     throw new Error('Implementation PR cannot claim zero completely accepted slices; finish a real slice before counting it');
   if (card.kind === 'maintenance' && seen.size)
     throw new Error('Maintenance PR cannot claim completed product slices');
+  if (card.kind === 'completion') {
+    if (seen.size) throw new Error('Completion evidence must not recount engineering packet tasks');
+    if (!card.completion || typeof card.completion.cardPath !== 'string' ||
+        !/^[a-f0-9]{40}$/.test(card.completion.plannedAt || '') || !card.completion.delivery)
+      throw new Error('Completion scorecard needs frozen card/planning revision and full delivery proof');
+  }
   if (card.kind === 'risk_remediation') {
     if (seen.size) throw new Error('Risk remediation must not claim completed batch subsections');
     if (!nonempty(card.workloadException) ||
@@ -124,7 +132,16 @@ export function scorecardFromRoot(root) {
   if (!entry) throw new Error('Missing active approved execution packet');
   const packet = JSON.parse(readFileSync(resolve(root, entry.path), 'utf8'));
   if (packet.id !== entry.id) throw new Error('Execution packet identity mismatch');
-  return validateScorecard(JSON.parse(readFileSync(resolve(root, CARD), 'utf8')), packet);
+  const card = JSON.parse(readFileSync(resolve(root, CARD), 'utf8'));
+  const result = validateScorecard(card, packet);
+  if (card.kind === 'completion') {
+    const { cardPath, plannedAt, delivery } = card.completion;
+    const plan = verifyFrozenPlan(root, cardPath, plannedAt);
+    if (plan.workKind !== 'COMPLETION' || assessBundleDelivery(plan, delivery).status !== 'SCOPE_ACCOUNTING_CHECKED')
+      throw new Error('Incomplete original completion outcome cannot pass the PR scorecard');
+    verifyCompletionEvidence(root, plan, plannedAt);
+  }
+  return result;
 }
 
 export function renderProgress(root, base = 'origin/main', ref = 'origin/main') {

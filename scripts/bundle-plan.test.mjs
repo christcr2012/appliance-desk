@@ -74,3 +74,21 @@ test('CLI verifies an immutable pre-code plan in real Git history and performs n
     assert.throws(() => run(root, ['--card', path, '--planned-at', git('rev-parse','HEAD'), '--report', 'report.json']), /precede implementation/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('a frozen completion plan can deliver genuine original criteria without invented code', () => {
+  const p = { ...plan(), workKind: 'COMPLETION', estimatedProductionLines: 0,
+    newEngineering: 'No new source required; perform original real-provider acceptance',
+    acceptanceTasks: ['A-1-PROVIDER', 'A-2-CONSOLE'] };
+  p.subsections = p.subsections.map(row => ({ ...row, remainingEngineering: [], remainingWork: ['Perform original full authorized real-world criteria and record sanitized evidence'] }));
+  const r = { ...delivery(p), productionAdded: 0, productionRemoved: 0,
+    newEngineering: 'No new source; newly completed original provider/console criteria',
+    decision: 'SUBSTANTIAL_EXCEPTION', exceptionEvidence: ['Full connected original provider workflow verified with readback, denial, recovery and exact cleanup; source unchanged'] };
+  r.subsections.forEach(row => { row.remainingWork = []; });
+  assert.equal(assessBundleDelivery(p, r).status, 'SCOPE_ACCOUNTING_CHECKED');
+  const remaining = structuredClone(r); remaining.subsections[1].remainingWork = ['Console walkthrough is still incomplete despite a callable checklist'];
+  assert.equal(assessBundleDelivery(p, remaining).status, 'CONTINUE_BUNDLE');
+  const noReview = { ...r, exceptionEvidence: [] };
+  assert.throws(() => assessBundleDelivery(p, noReview), /substantial-work exception/);
+  for (const change of [{ acceptanceTasks: [] }, { acceptanceTasks: ['A-1-PROVIDER','A-1-PROVIDER'] }, { workKind: 'AUDIT' }])
+    assert.throws(() => readBundlePlan(card({ ...p, ...change })));
+});

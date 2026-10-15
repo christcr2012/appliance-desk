@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { productionPath, parseNumstat, measureDiff, mergedImplementationHistory, validateScorecard, validatePRChange, renderProgress } from './pr-progress.mjs';
+import { productionPath, parseNumstat, measureDiff, mergedImplementationHistory, validateScorecard, validatePRChange, renderProgress, scorecardFromRoot } from './pr-progress.mjs';
 
 const approved = { id:'W-22FIN', slices:[
   {id:'W-22FIN-QUOTE', acceptance:['Quote reconciles', 'Missing taxes deny']},
@@ -115,4 +115,34 @@ test('PR check rejects stale scorecards and dishonest maintenance source changes
     git(root,'add','.');git(root,'commit','-qm','misclassify customer code');
     assert.throws(()=>validatePRChange(root,baseline),/production code/);
   } finally {rmSync(root,{recursive:true,force:true});}
+});
+
+test('completion scorecard permits zero-code original acceptance only with frozen NEW committed receipts',()=>{
+  const root=repo();try{
+    const queue=row=>'<!-- release-acceptance:start -->\n```json\n'+JSON.stringify([row])+'\n```\n<!-- release-acceptance:end -->';
+    const task={id:'DESK-ORIGINAL',priority:1,status:'PENDING',requiredRevision:'a'.repeat(40),task:'Original full authorized provider acceptance workflow',
+      procedure:'Original full approved card',gates:'Unchanged original approval and exact fixture cleanup',dependsOn:[],lastEvidence:'Not performed'};
+    const idx={cards:[{id:'W-22FIN',units:['W-22FIN'],status:'MERGED'}],activeExecution:'W-22FIN',executionPackets:[{id:'W-22FIN',path:'docs/pr-cards/execution/W-22FIN.json'}]};
+    write(root,'docs/pr-cards/work-index.json',JSON.stringify(idx));
+    write(root,'docs/session-policy.json',JSON.stringify({repository:'fixture/appliance',ledger:'docs/STATUS.md'}));
+    write(root,'docs/STATUS.md',queue(task));git(root,'add','.');git(root,'commit','-qm','baseline with original pending acceptance');
+    const baseline=git(root,'rev-parse','HEAD'),cardPath='docs/pr-cards/original.md';
+    const p={workKind:'COMPLETION',baseRevision:baseline,outcome:'Complete original full provider acceptance',integrationBoundary:'Deployed application, provider, readback, denial and exact cleanup',
+      newEngineering:'No source needed; original real-world acceptance remains',estimatedProductionLines:0,relatedWorkDecision:'One substantial connected original workflow, not an isolated read',
+      acceptanceTasks:[task.id],subsections:[{id:'W-22FIN',acceptance:[task.task],remainingEngineering:[],remainingWork:['Perform original full scoped provider acceptance and cleanup'],acceptanceTasks:[task.id]}]};
+    write(root,cardPath,'<!-- bundle-plan:start -->\n```json\n'+JSON.stringify(p)+'\n```\n<!-- bundle-plan:end -->');
+    git(root,'add','.');git(root,'commit','-qm','plan before real acceptance');const plannedAt=git(root,'rev-parse','HEAD');
+    const delivery={productionAdded:0,productionRemoved:0,decision:'SUBSTANTIAL_EXCEPTION',exceptionEvidence:['Substantial full original provider workflow, denial/recovery/readback and exact cleanup now verified; no inherited source counted'],
+      newEngineering:p.newEngineering,relatedWorkDecision:p.relatedWorkDecision,planComparison:'Every original criterion completed with new real provider proof',
+      subsections:[{id:'W-22FIN',remainingEngineering:[],remainingWork:[],criteria:[{criterion:task.task,evidence:'New exact deployed lifecycle, provider readback and cleanup receipt references'}]}]};
+    const completion={...card,kind:'completion',completedSlices:[],remainingEngineering:[],externalAcceptance:[],completion:{cardPath,plannedAt,delivery}};
+    assert.equal(validateScorecard(completion,approved).kind,'completion');
+    assert.throws(()=>validateScorecard({...completion,completedSlices:card.completedSlices},approved),/must not recount/);
+    assert.throws(()=>validateScorecard({...completion,completion:null},approved),/frozen/);
+    write(root,'docs/pr-cards/current-pr-scorecard.json',JSON.stringify(completion));
+    write(root,'docs/STATUS.md',queue({...task,status:'PASSED',lastEvidence:'New exact deployed provider lifecycle, denial, recovery and cleanup observed'}));
+    assert.throws(()=>scorecardFromRoot(root),/New genuine passed/);
+    git(root,'add','.');git(root,'commit','-qm','publish genuine original evidence');
+    assert.deepEqual(validatePRChange(root,baseline),{additions:0,deletions:0,files:0});
+  }finally{rmSync(root,{recursive:true,force:true});}
 });
