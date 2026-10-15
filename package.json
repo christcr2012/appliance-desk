@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "preflight": "node scripts/preflight.mjs",
-    "check:preflight": "node --test scripts/preflight.test.mjs scripts/probe-db.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs scripts/vercel-ignore-build.test.mjs scripts/work-session.test.mjs scripts/preflight-evidence.test.mjs scripts/check-secrets.test.mjs scripts/install-worktree.test.mjs && npm run check:session",
+    "check:preflight": "node --test scripts/build-recovery.test.mjs scripts/preflight.test.mjs scripts/probe-db.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs scripts/vercel-ignore-build.test.mjs scripts/work-session.test.mjs scripts/preflight-evidence.test.mjs scripts/check-secrets.test.mjs scripts/install-worktree.test.mjs && npm run check:session",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -32,9 +32,10 @@
     "work": "node scripts/work-session.mjs",
     "check:work": "node scripts/work-session.mjs check",
     "session:status": "node scripts/session-status.mjs",
-    "check:session": "node --test scripts/bundle-plan.test.mjs scripts/session-status.test.mjs scripts/pr-progress.test.mjs && node scripts/session-status.mjs && node scripts/pr-progress.mjs --check",
+    "check:session": "node --test scripts/session-prepare.test.mjs scripts/check-ci-layout.test.mjs scripts/ci-phase.test.mjs scripts/bundle-plan.test.mjs scripts/session-status.test.mjs scripts/pr-progress.test.mjs && node scripts/session-status.mjs && node scripts/pr-progress.mjs --check && node scripts/check-ci-layout.mjs",
     "pr:progress": "node scripts/pr-progress.mjs",
-    "session:bundle": "node scripts/bundle-plan.mjs"
+    "session:bundle": "node scripts/bundle-plan.mjs",
+    "session:prepare": "node scripts/session-prepare.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

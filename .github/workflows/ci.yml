@@ -199,7 +199,7 @@ jobs:
           exit "$status"
 
       - name: Every browser spec file is assigned to exactly one CI group
-        run: node scripts/e2e-shard.mjs --check
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- node scripts/e2e-shard.mjs --check
 
       - name: Publication preflight failure and evidence regressions
         run: npm run check:preflight
@@ -279,7 +279,7 @@ jobs:
         run: npm run db:seed
 
       - name: Unit and real-Postgres integration tests (shard ${{ matrix.shard }} of 3)
-        run: npx vitest run --shard=${{ matrix.shard }}/3 --reporter=default --reporter=json --outputFile.json=vitest-results.json
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- npx vitest run --shard=${{ matrix.shard }}/3 --reporter=default --reporter=json --outputFile.json=vitest-results.json
 
       - name: No test was silently skipped
         # The real-database tests skip themselves outside a throwaway CI
@@ -397,7 +397,7 @@ jobs:
             next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
 
       - name: Production build
-        run: npm run build
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- npm run build
 
       - name: Wait for browser system libraries
         shell: bash
@@ -409,7 +409,7 @@ jobs:
           if [[ "$status" != "0" ]]; then echo "::error::Installing browser system libraries failed ($status)"; exit 1; fi
 
       - name: Accessibility, security and end-to-end tests (${{ matrix.shard }})
-        run: node scripts/e2e-shard.mjs ${{ matrix.shard }}
+        run: node scripts/ci-phase.mjs --budget-seconds 180 -- node scripts/e2e-shard.mjs ${{ matrix.shard }}
 
       # Only kept when something failed.
       - name: Upload Playwright report

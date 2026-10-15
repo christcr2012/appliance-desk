@@ -126,7 +126,7 @@ export function run(command, executor = spawnSync, fresh = process.argv.includes
   const env = { ...process.env, CI: 'true', ...(fresh ? { APPLIANCE_DESK_FRESH: 'true' } : {}) };
   const result = executor(command[0], command.slice(1), { stdio: 'inherit', timeout: 600_000, env });
   if (result.error || result.signal || result.status !== 0)
-    throw new Error(`${command[0]} ${command.slice(1).join(' ')} failed${result.error ? `: ${result.error.message}` : ` (${result.signal ?? result.status})`}. No passing preflight evidence.`);
+    throw Object.assign(new Error(`${command[0]} ${command.slice(1).join(' ')} failed${result.error ? `: ${result.error.message}` : ` (${result.signal ?? result.status})`}. No passing preflight evidence.`), { status: result.status, signal: result.signal });
 }
 
 export function verifyBrowserReport(report) {

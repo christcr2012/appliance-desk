@@ -292,3 +292,16 @@ than every migration on `main` at merge time (rename only if not yet on `main`).
   design for how. Note it in STATUS and fix the doc in your PR.
 - The design can't work against the real code: don't improvise in code — record what's wrong, propose a dated
   amendment, get it reviewed, continue independent work.
+
+### Local browser resource termination recovery
+
+The existing local browser launcher records exit 134/137 or SIGABRT/SIGKILL as
+resource-like termination evidence in the checkout-local check cache, never as a
+pass. It refuses repeated unchanged build modes even with --fresh. Inspect the
+actual resource profile first; one explained diagnostic retry can set
+LOCAL_BUILD_RESOURCE_RETRY_REASON (20+ characters). Further retries require changed
+build inputs or increased available memory. This does not prove the root cause
+was memory; ordinary compiler/assertion failures still need their actual fix.
+Use the existing approved sandbox or required normal Actions production/browser
+route when local capacity is insufficient. Do not substitute a dev-server pass,
+change production build settings or reduce required browser/financial proof.

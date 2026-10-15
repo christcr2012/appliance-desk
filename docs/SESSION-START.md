@@ -130,6 +130,15 @@ status entries as new work. Verify actual main, live, the READY production revis
 open/unfinished PRs, exact-head CI and unresolved reviews. Preserve concurrent work.
 Recover your interrupted/red PR first; inspect all failures and batch their remedies.
 
+**Prepare once, then implement.** Run `npm run session:prepare` during startup to
+consolidate local Node/dependency, container-memory and disposable-Postgres route
+diagnosis. It runs no tests, installs nothing and grants no provider authority.
+Use an existing supported runner/required exact-head CI for unavailable local modes;
+missing local infrastructure blocks only that local proof. Preserve normal CI.
+Do not keep cycling production build flags, substitute a dev-server result, provision
+paid capacity, or ask the owner to perform a task the authorized runner can do.
+
+
 ## 1. Catch up released work before new implementation
 
 Fetch main/live refs and independently verify the actual serving production origin,
@@ -263,18 +272,57 @@ Use focused behavioral tests/lint at meaningful seams while developing. Local co
 are recovery points, not reasons to run the entire suite or push after every small edit.
 Before publishing the coherent tree, run all existing mandatory checks and applicable
 unit/database/provider-shape/browser gates once. File changes invalidate affected proof.
-On a shared limited runner, cap Vitest workers (for example `--maxWorkers=2`) and
+On a shared LOCAL sandbox runner, cap Vitest workers (for example `--maxWorkers=2`) and
 run at most two full suites concurrently; preserve the same test selectors/coverage.
 Batch known CI/review fixes; inspect all failed jobs before the next correction push.
 While CI waits, advance the approved immediate successor; at most two unmerged PRs.
 Follow existing REST/Sandbox fallbacks if local execution is unavailable; report actual
 Actions evidence honestly. Merge only exact-head green checks plus required reviews.
 
+
+**Parallel CI is a maintained contract.** Independent verification families run as
+sibling jobs; only actual setup/migration/seed and within-scenario state dependencies
+remain ordered. Separate SQL jobs get separate disposable databases. Local shared
+sandbox worker limits do NOT serialize isolated GitHub jobs. Preserve each existing
+required aggregate check name, all family results, immutable dependency pins,
+assertions, skip checks and read-only/no-secret rules. The CI layout guard rejects
+accidental family chains, missing aggregate inputs, collapsed/serialized matrices
+and missing/increased job timeouts. Do not add `needs` merely to save an install.
+
+Timed root test/build phases use `scripts/ci-phase.mjs` with a 180-second feedback
+budget and emit measured timing. Command failure or budget excess fails; normal
+job timeouts remain separate safety bounds, not desired feedback durations. When
+a phase grows, inspect code/fixture/runner timing and fix demonstrated slowdown or
+split independent test files/cohorts into parallel jobs/shards while proving full
+coverage and isolation. Do not raise the budget/timeout, skip assertions, loosen
+performance thresholds or rerun blindly. A measured runner anomaly can use the
+existing controlled same-head rerun policy, retaining the original failure. Compare
+critical-path wall time (parallel jobs overlap), not a sum of all runner minutes.
+
 ### First-pass validation and review
 
-Before the first publication of a coherent change, use the existing card/packet to
-name each changed boundary, its proving test/fixture and the existing command that
-checks it. Keep this compact; reuse the PR's verification section, not a new ledger.
+Use the existing selected card/packet as ONE consumer checklist throughout the
+bundle: changed symbol/contract -> actual callers -> persistence/provider -> full
+fixture -> positive/denied/recovery proof -> focused command. Resolve original
+requirements and recorded owner decisions once at the relevant revision; revisit
+only changed boundaries or new failure evidence. No repeated whole-repo audit.
+Prepare a complete realistic fixture early (identities/roles, required fields, exact
+amounts/IDs, state transitions and recovery). Exercise the smallest existing route
+through the actual handler/form control before the broad publication cycle. A
+reference fake's success does not prove the actual service adapter; validate the
+pinned boundary, method/args/receipt shape and real adapter together.
+
+At the stable local pre-publication checkpoint, run
+`npm run session:prepare -- --publish`: it fetches current main and predicts textual
+merge conflicts without moving your branch/worktree. Resolve conflicts and review
+changed shared contracts/fixtures BEFORE spending a publication CI cycle. A clean
+prediction is not semantic compatibility or permission to merge. Reconcile again
+only when main/your relevant inputs actually change, not in a status-check loop.
+Batch independent reads, collect all completed failures, make one related correction,
+and consolidate existing documentation once before publication. Use small job/status
+metadata while CI is pending; inspect failed logs after completion. Reuse valid
+evidence and record exact phases/timings where observable, with overlaps/unknown
+time explicit rather than invented coding or idle durations.
 
 - Trace inputs through the actual caller, helper/client, provider request and result.
   Verify method, path/version, scopes, query/body fields, pagination and response shape
