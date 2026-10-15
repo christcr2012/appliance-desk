@@ -14,10 +14,10 @@
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Owner explicitly requested cross-repository guidance repair and W-22FIN stall diagnosis/design; zero completed product subsections or bundles, no production-code change.",
+  "workloadException": "Owner-authorized cross-repository acceptance-first workflow tooling repair; no product production-source changes and zero completed batch subsections or bundles.",
   "evidence": [
-    "Governing bundle guidance, current W-22FIN card/packet and integration contract reconciled against main 905a0fb8; preserve source and all real-use gates.",
-    "Historical session reports no longer drive the current card; concrete V1-to-complete-evidence consumer map and finite existing acceptance rows define the next implementation.",
-    "Required documentation preflight, scorecard validation and exact-head CI/review must pass before merge."
+    "Native session-status tests prove main-ahead partial release eligibility, grouped action visibility, READY deployment requirement and complete acceptance-snapshot freshness.",
+    "npm run check:session and NODE_OPTIONS=--max-old-space-size=6144 npm run check:quick passed locally; required exact-head CI/review remains mandatory.",
+    "AGENTS, SESSION-START, PLAYBOOK and SESSION-WORKFLOW maintenance card reconcile autonomous continuation, acceptance accounting and explicit blocker escalation; concurrent W-22FIN draft PR 466 preserved."
   ]
 }
