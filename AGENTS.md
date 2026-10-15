@@ -345,6 +345,15 @@ Every safety, money-out, service autonomy, release and approval gate remains.
     the predecessor. At most two unmerged implementation PRs in a chain. If the predecessor changes, freeze the
     successor, then sync it once onto final `main` after the merge. No third PR or side project to fill CI time.
 
+**GitHub REST/connector checkpoint rule:** `create_blob` does not move a branch and
+is not saved implementation progress. After a bounded coherent set of source
+and tests (about five blobs maximum), immediately assemble a tree, commit, and
+lease-checked branch ref update; verify the remote SHA. Then finish the complete
+approved integration and exact-head publication gates. Do not make dozens of
+unreferenced blobs while the branch and PR remain unchanged. See the
+October 15 incident in the anti-stall runbook; this never makes an incomplete
+subsection count as a bundle.
+
 **When a command appears stalled, follow
 [`docs/runbooks/ANTI-STALL-RECOVERY.md`](docs/runbooks/ANTI-STALL-RECOVERY.md)
 before retrying.** In particular, preflight can silently broaden a one-file

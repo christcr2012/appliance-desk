@@ -13,6 +13,11 @@ import { ReviewedPreapprovalQuote } from "@/components/estimates/reviewed-preapp
 import { listPackagesForLines } from "@/domains/packages";
 import { getPrivateEstimateAllInReview } from "@/domains/estimates/all-in-review-reader";
 import { OwnerAllInEstimateReview } from "@/components/estimates/owner-all-in-review";
+import { getPreparedReserveOverview } from "@/domains/estimates/commercial-reserve-allocation";
+import { CommercialReserveAllocationForm } from "./commercial-reserve-allocation-form";
+import { getPreparedMandatoryChargeOverview } from
+  "@/domains/estimates/mandatory-charge-allocation";
+import { MandatoryChargeLocationReviewForm } from "./mandatory-charge-location-form";
 
 export const metadata = { title: "Estimate" };
 
@@ -23,11 +28,12 @@ export default async function EstimateDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN");
   const { id } = await params;
-  const [estimate, packages, allInReview, preparedQuote] = await Promise.all([
+  const [estimate, packages, allInReview, preparedQuote, reserve, mandatory] = await Promise.all([
     getEstimateDetail(id), listPackagesForLines(), getPrivateEstimateAllInReview(id),
-    getPreparedEstimateQuote(id),
+    getPreparedEstimateQuote(id), getPreparedReserveOverview(id),
+    getPreparedMandatoryChargeOverview(id),
   ]);
 
   if (!estimate) {
@@ -152,6 +158,10 @@ export default async function EstimateDetailPage({
         <PrepareEstimateAgreementsButton estimateId={estimate.id} eligible={!!estimate.customerId && estimate.lineItems.length > 0} />
       )}
 
+      {reserve && <CommercialReserveAllocationForm overview={reserve}
+        owner={session.user.role === "OWNER"} />}
+      {mandatory && <MandatoryChargeLocationReviewForm overview={mandatory}
+        owner={session.user.role === "OWNER"} />}
       <ReviewedPreapprovalQuote quote={preparedQuote} owner />
       {allInReview && <OwnerAllInEstimateReview preview={allInReview} />}
 

@@ -1,12 +1,34 @@
 # W-22FIN — concrete remaining integration contract
 
-Source baseline: main `206be373`, checked 2026-10-15. Read after the existing
+Source baseline: main `905a0fb8` (PR #464), checked 2026-10-15. Read after the existing
 [active packet](../pr-cards/execution/W-22FIN.json) and
 [owner engineering contract](../designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md).
 This supplies missing implementation detail within W-22; it creates no new
 countable batch subsections, approvals, runtime policies or completion claims.
 Apply [researched consequences R1–R9](../research/2026-10-15-owner-decision-follow-through.md),
 especially acquisition-dependent rental tax and conditional RDF.
+
+## 0. Why this milestone has stalled; one completion path
+
+The source still has a setup/advance-only contract, while owner policy now
+contains additional mandatory amounts. `assessEstimateQuoteCategories` in
+`src/domains/estimates/preapproval-quote.ts` explicitly rejects deposits,
+service fees, waiver and nonexempt RDF. `FrozenSigningEvidence` and the builder,
+verifier, checkout plan and obligation all require V1 with only setup + setup
+tax + rent advance. `signing-dispatch-readiness.ts` also requires version 1.
+This is an unimplemented cross-domain extension, not an external CPA/Stripe
+blocker. Warning/readback/policy PRs cannot make the complete path work.
+
+Documentation previously led with 160+ lines of older session reports, an old
+baseline and an already-merged PR described as open. The active card now starts
+with current source and a finite five-row remaining matrix; previous reports
+are archived. This diagnosis describes repository evidence, not hidden model
+reasoning. Already existing finish-first rules did not supply this consumer map.
+
+Implement §2A and the existing §5 matrix, then close the same five packet rows.
+Do not start another discovery/design session, create D19/D20 IDs or add new
+completion gates. Use the current approved owner choices; ask only a specific
+unanswered business choice, while continuing independent implementation.
 
 ## 1. Preserve merged work; reconcile the concurrent branch once
 
@@ -15,11 +37,11 @@ frozen per-agreement setup/down-payment/tax evidence, settlement/recovery guards
 customer/owner readback and signed delivery handoff. None proves a complete
 preapproval quote for every mandatory charge.
 
-At inspection, **PR #459** proposes preparing actual draft agreements before
-estimate approval and checking item/address/package/price and tax-policy
-fingerprints. It is open, not inherited implementation. Inspect its final diff,
-review and merge SHA before integrating; preserve it and avoid a parallel quote
-preparation implementation. These docs do not approve or merge that feature PR.
+PR #459 is merged: real agreements are prepared before approval and adopted
+under exact viewed quote identity. #462/#463 repaired cancellation/collection
+serialization and signed classification/window evidence. #464 added audited
+per-location commercial reserve and service/tax/RDF review. Preserve these;
+they are prerequisites, not work to rebuild or standalone completion evidence.
 
 | Verified main seam | Remaining integration responsibility |
 |---|---|
@@ -73,6 +95,108 @@ evidence. Sort arrays before hashing; include explicit schema/version semantics.
 Owner/customer estimate, sign, agreement and account views consume the same
 authorized projection with context-appropriate labels. Never expose other
 customers' addresses, provider IDs, staff-only notes or review internals.
+
+## 2A. Concrete evidence extension and mandatory consumer cutover
+
+This is engineering design inside the approved all-in outcome. Implement a
+new explicitly discriminated evidence version (V2); retain exact V1 verification,
+canonical digest and immutable historical signed/payment semantics. Do not cast
+V2 as V1, reinterpret old JSON or relax `version === 1` guards globally. Reuse
+`AgreementSigningCharge.frozenChargeEvidence` and the existing obligation/payment
+models; no second quote ledger or new generic financial framework.
+
+### Representation and reconciliation
+
+Use stable component IDs and a closed category union covering administrative
+setup, delivery, installation, removal, agreed damage waiver, rent advance,
+refundable commercial reserve and assessed retail-delivery fee. Each component
+has integer cents, source/revision identity and applicable location/coverage;
+category-specific evidence includes override reason, reserve terms revision,
+waiver consent and reviewed RDF event/handling/rate. Preserve explicit reviewed
+NOT_APPLICABLE/EXEMPT evidence; missing is never zero. UNKNOWN forbids binding.
+Recurring or future contingent fees are disclosed with period/trigger and stay
+outside due-now unless the approved owner terms actually make them due now.
+Do not silently turn recurring waiver or future removal into a signing charge.
+
+Tax lines reference component IDs plus category, jurisdiction and effective rule/
+rate evidence. Setup tax stays distinct from other service/rent tax. Compute
+with existing tax/allocation functions; sum rounded line cents exactly. Totals
+separate signing charges, tax, reserve liability, rent advance and future rent;
+due-now is the sum of due-now components and their tax, not monthly rent again.
+The synthetic §3 fixture must remain A=28631, B=16975, combined=45606.
+
+Sort locations/components/tax evidence by stable IDs before canonical hashing;
+include version, customer/agreement/address identity and reviewed source/terms
+revisions. Independently rebuild and verify against stored authoritative facts,
+not a checksum over caller JSON. Preserve the existing V1 canonical field order.
+Reviewed owner fees and reserve currently marked provisional remain provisional
+until the independent existing business-use evidence is verified. The new format
+cannot itself upgrade that status or bypass an unresolved professional gate.
+
+### Storage and SQL compatibility
+
+Audit the original migrations `20261015110000_w22_signing_charge_snapshots`,
+`20261015130000_w22_frozen_signing_evidence`,
+`20261015150000_w22_signing_payment_obligation`,
+`20261015170000_w22_signing_test_settlement` and
+`20261015180000_w22_down_payment_entitlement`, plus #463/#464 immutability
+triggers before adding ordered forward migrations. The old obligation formula
+cannot describe new categories. Persist the versioned obligation's complete
+component evidence/amounts on the existing model and enforce total/source/
+signature reconciliation for its version. Keep legacy scalar meanings exact;
+never put reserve or delivery inside `downPaymentCents` or `setupFeeCents`.
+Keep old signatures/receipts readable without manufactured new approvals.
+
+An existing frozen V1 draft must not be rewritten in place. Preserve existing
+invalidation/refreeze rules; if no safe transition exists, deny with a concrete
+owner reprepare action and implement an audited unsigned-only replacement with
+no signature, receipt or in-flight attempt. Signed V1 remains immutable. Prove
+fresh migrations and a disposable V1 signed/payment fixture upgraded to V2-
+capable schema, plus restore/rollback behavior under the existing recipe.
+
+### Update together: producer and every version-sensitive consumer
+
+All paths below are existing files; prefixes abbreviate `src/domains/`.
+These are internal integration steps, not countable new roadmap subsections.
+
+| Consumer boundary | Required change in the same connected implementation |
+|---|---|
+| `billing/signing-charge-snapshot.ts`, `signing-charge-tax-review.ts`, `signing-order-draft-contract.ts` | Load existing `mandatoryChargeReviewVersions`/`commercialReservePolicyVersions`, verify current source/customer and complete classifications, construct full draft without inventing policy |
+| `billing/signing-frozen-evidence.ts`, `signing-charge-freeze.ts`, `signing-frozen-verify.ts` | Discriminated V1/V2 construction, durable freeze and independent amount/provenance/digest verification |
+| `estimates/preapproval-quote.ts`, `preapproval-agreements.ts`, `index-base.ts` | Replace unsupported-category denials only after complete V2 verification; same projection/fingerprint at review/send/approve/convert, preserve viewed-revision and atomic-adoption guards |
+| `agreements/signing-offer-proof.ts`, `agreements/index.ts` | Exact accepted version/amount/identity at send/sign, immutable signature and one obligation; no weaker side entry point |
+| `billing/signing-order-readback.ts`, estimate/sign/account/owner DTOs and components | Same category/period/amount semantics everywhere; no independent UI sums or exposure of private review fields |
+| `billing/signing-payment-obligation.ts`, `signing-checkout-plan.ts`, `signing-payment-readiness.ts`, `signing-payment-checkout.ts` | Versioned obligation and complete checkout lines; exact existing provider operation identity/currency/source checks |
+| `billing/signing-payment-settlement.ts`, `signing-payment-manual.ts`, `signing-payment-recovery.ts` | One exact settled receipt with auditable category allocation, reserve held only after settlement; provider uncertainty cannot create new money or held liability |
+| `agreements/pre-delivery-cancellation.ts`, `signed-cancellation-policy.ts` | Use original signed policy and components; partial-location reconciliation, independent refund approval, no fabricated settlement or blanket statutory-fee reversal |
+| `billing/signing-dispatch-readiness.ts`, `signing-first-invoice-application.ts`, existing delivery billing/credit callers | Recognize verified V2 without dropping signature/payment checks; only settled rent advance applies once to its own first coverage/invoice; reserve/setup/services/RDF never become rent credit |
+| Existing PostgreSQL constraints/triggers and Prisma models | Version-aware exact sum/immutable evidence/unique settlement protections, not application-only validation |
+
+### Execution and finite finish proof
+
+1. Extend the closest existing frozen-evidence/checkout tests with the nonzero
+   §3 fixture; establish the current rejection as the failure to fix. Include
+   tampered component, duplicate tax/ID, overflow and unsupported version cases.
+2. Implement the representation, compatible storage, complete preparation/freeze
+   and verifier; connect preapproval and all payment/signature consumers above.
+   Run focused tests while editing; no full-suite cycle after every helper.
+3. Connect receipt/reserve, signed cancellation, dispatch and first-invoice
+   allocation. Keep real provider calls mocked in disposable source acceptance;
+   real Stripe TEST is a separate existing acceptance requirement.
+4. Complete the same owner → customer estimate → accept → sign → settlement →
+   real scheduled/delivered job → first invoice flow in disposable PostgreSQL and
+   browser, including the §5 denial/race/replay/partial-location cases. Extend
+   existing suites where possible; proposed packet filenames are not mandatory
+   additional test suites if equivalent complete coverage is already present.
+5. Use required exact-head CI/review on the assembled changes, then record each
+   original packet criterion with its actual test/result/merge evidence. Once
+   complete, close engineering and move to W-23 without waiting for external
+   activation; retain the existing release/owner/professional/provider queue.
+
+If a split is needed, record its concrete compatibility/migration/review reason
+and the remaining connected acceptance on the same card. A passing intermediate
+PR is a checkpoint, not permission to end an otherwise executable milestone.
+Do not leave the next agent to rediscover which V1 consumers still reject V2.
 
 ## 3. Deterministic money fixture — proposed tests, no real tax policy
 
@@ -175,9 +299,10 @@ active packet are proposals, not assumed files or passing evidence.
 | Midterm prepaid single-machine return | Credit unused actual discounted paid share; no past clawback; future unpaid single pricing only; independent money-out approval |
 | Browser owner → estimate → accept → sign → payment status → schedule → deliver → first invoice | Same amounts/fingerprint throughout; mobile/desktop/axe; second customer denied; email/SMS/providers remain test doubles |
 
-Current cancellation calculator uses positive advance to infer large order and
-retains setup+setup-tax only. Treat prepaid/reserve/delivery/RDF cases as **required
-design-to-code gaps to verify and extend**, not already supported behavior. Terms
+PR #463 now freezes machine/customer classification and original refund window;
+do not reimplement that repaired large-order detection. Reconcile the calculator
+and evidence with added reserve/delivery/RDF categories and partial locations;
+these remain **required integration gaps**, not already supported behavior. Terms
 and professional review decide real retention/tax adjustment; no blanket refund
 or automatic statutory-fee reversal. An approved cancellation can create a
 PENDING_EXTERNAL_REFUND follow-up without pretending money moved.

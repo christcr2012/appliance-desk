@@ -14,16 +14,65 @@ Dated PR-count instructions/credits below are historical to their original
 sessions, never standing quotas or credits toward the current target.
 This is explicitly requested guidance maintenance, zero product bundles; no provider
 operation or release. Required exact-head checks and review disposition govern merge.
-Current approved outcome: W-22FIN remains incomplete. Cancellation-policy repair
-#463 is already merged at 4740313d; do not reopen it from the stale checkpoint
-below. Concurrent #464 (last observed head e0850600fbf2f980978cf75a515ef895dacbc22c)
-is implementing owner service policy/commercial reserve; its branch is untouched.
-Next: reconcile that PR's actual current status and finish W-22FIN-QUOTE's complete
-per-location mandatory charges/tax/RDF/waiver/reserve and reviewed all-in offer
-under the active W-22FIN packet, followed by connected approval/recovery/delivery
-in roadmap order. Keep W-23 blocked behind W-22 and preserve IN-79/IN-07 and
-independent money-out/real-use gates. Historical checkpoints below do not supersede
-this observed source state; recheck main and concurrent work before implementation.
+Current approved outcome: W-22FIN remains incomplete. #463 and #464 are merged;
+verified source baseline is 905a0fb8 (owner reserve/service-policy review).
+The active card and W-22FIN integration contract below contain the current finite
+completion path. Historical checkpoints are evidence of their original sessions,
+not current next actions. Preserve concurrent implementation branches.
+
+## W-22FIN stall diagnosis and current finish contract — October 15
+
+Verified #464 merged at `905a0fb8`; #459/#462/#463 are also inherited source.
+The active W-22FIN card now starts with the five existing remaining engineering
+rows, and its integration contract §2A maps the V1-only frozen-money bottleneck
+through storage, quote, signatures, payments, cancellation and first invoice.
+Older card session reports are preserved in the existing history archive.
+Next implementation is that complete nonzero-money integration, not another
+policy/readiness-only PR or repeat investigation of merged work. The 45606-cent
+fixture and complete DB/browser flow define finite proof; once all existing
+criteria pass, close engineering and resume W-23 with external acceptance queued.
+This requested diagnosis/design is maintenance, not completed product engineering.
+The dated checkpoints below retain their original evidence, not current next work.
+
+### PR #464 live checkpoint — original W-22FIN owner policy, exact-head CI repair
+
+Branch `ai/gpt6/w22fin-policy-commercial-reserve-20261014` was recovered
+from unattached blobs and moved to real commits `c08e42b` and `79825f8`.
+PR #464 was opened against verified main `4740313d`; the first exact-head
+CI ran and found scoped TypeScript errors, a browser-build client import of
+the server pricing index, fixture assumptions and a too-broad trigger.
+The secret scanner itself passed but the docs-update check requested a
+`docs/DATABASE.md` migration description. Fixes are being applied together
+on the PR; they are not yet a green-gate or merge claim.
+
+The refined SQL protection applies to **new explicitly versioned commercial
+reserve histories** only. Unversioned prior agreements retain their
+documented legacy finance-update behavior. The amount still cannot be
+accepted, signed, charged or refunded through this provisional policy UI;
+new service/RDF/deposit money categories remain incompatible with V1
+frozen payment envelope until W-22FIN-QUOTE, APPROVAL, RECOVERY and DELIVERY
+are completely implemented and tested. No whole subsection or bundle is
+counted by this unverified PR; no CPA, counsel, owner provider TEST or
+checked production acceptance is claimed.
+
+### Active W-22FIN owner policy continuation — October 15 REST checkpoint
+
+After PR #463 merged at `4740313d`, checked live `main` remained that
+commit, with zero open PRs. The subsequent commercial-reserve policy branch
+existed at the same commit, but its attempted draft source lived only in
+unreferenced GitHub blob objects. This is a *checkpoint failure*, not a CI
+failure. The anti-stall runbook and AGENTS instructions now specify lease-checked
+tree/commit/ref checkpoints with actual PR/CI/merge receipts.
+
+The active W-22FIN-POLICY/QUOTE implementation now addresses real per-property
+commercial reserve allocation: no double-copy of estimate reserve into multiple
+draft agreements; OWNER-only versioned/reasoned location allocations, no
+household reserve, immutable signed history, readback and synthetic PG/browser
+tests. Mandatory service, tax and RDF review and complete signed quote/checkout
+remain unfinished unless their **connected** integration and required exact-head
+gates subsequently prove otherwise. Do not count blobs, checkpoints, PRs,
+professional review or synthetic tests as one of the requested five completed
+bundles. Keep IN-79, IN-07, actual Stripe TEST and deployment acceptance separate.
 
 ### W-22FIN active source checkpoint — signed cancellation classification (not a bundle)
 

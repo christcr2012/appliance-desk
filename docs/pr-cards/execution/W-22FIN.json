@@ -2,12 +2,17 @@
   "version": 1,
   "id": "W-22FIN",
   "parent": "W-22",
-  "baseline": "64f000b3374621f0644d11b8b34b8bb0f1fd0d4b",
+  "baseline": "905a0fb85a78cbcfc2c8ffb539d24b1078d5d811",
   "card": "docs/pr-cards/W-22FIN.md",
   "outcome": "Complete configurable W-22 all-in owner/customer offer through signing, safe failure recovery and first delivery; real business activation stays locked on review.",
   "risk": "Financial rounding, tenant access, historical signed evidence and Stripe idempotency. Reviewed tax and counsel terms govern real business use only, not engineering.",
   "next": "After substantive W-22 engineering and exact-head verification, resume highest-priority eligible W-23 and retain separate CPA/legal/Stripe TEST/customer acceptance in STATUS queue.",
   "references": [
+    {
+      "path": "docs/implementation-contracts/W-22FIN-INTEGRATION.md",
+      "anchor": "## 2A. Concrete evidence extension and mandatory consumer cutover",
+      "purpose": "Immediate V1 bottleneck repair: representation, compatible storage, every consumer and complete flow proof; do not restart merged policy work"
+    },
     {
       "path": "src/domains/billing/signing-charge-preview.ts",
       "anchor": "export async function getDraftSigningChargePreview",
@@ -63,9 +68,9 @@
     "Agreement/customer and provider IDs remain scoped; unauthorized staff/customer cannot read another customer's financial terms"
   ],
   "sequence": [
-    "Inspect current estimate and agreement DTO/access paths against approved all-in requirements; use one owner-reviewed source of amount truth",
-    "Complete per-location setup/down-payment/waiver and configured tax readiness, authorization and historical snapshots end-to-end",
-    "Expose complete truthful owner quote, eligible customer estimate, signing and portal amounts while blocking provisional payable customer actions",
+    "Reconcile actual main once; preserve merged #459/#462/#463/#464 and execute integration contract \u00a72A, beginning with the 45606-cent nonzero frozen-evidence regression",
+    "Extend complete versioned money evidence and compatible existing storage; wire every verifier, reviewed quote, signature, obligation, checkout, settlement and readback consumer listed in \u00a72A",
+    "Integrate all-category cancellation/reserve/dispatch and rent-only first-invoice allocation; complete original owner/customer path and finite \u00a75 denial/race/replay/partial-location matrix",
     "Complete failed signing payment owner follow-up, provider-checked retry and first-delivery/first-invoice reconciliation without changing D18 delivered behavior",
     "Run focused unit and disposable PostgreSQL/browser regressions; update parent acceptance and separate gated acceptance queue then exact-head CI/review"
   ],

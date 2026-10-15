@@ -97,7 +97,9 @@ export async function prepareEstimateAgreementsBeforeApproval(
     for (const address of addresses) {
       const agreement = await createDraftAgreementInTx(tx, actorId,
         { customerId: estimate.customerId, serviceAddressId: address,
-          depositCents: estimate.depositCents },
+          // The estimate amount is an aggregate, never one whole reserve per
+          // property. OWNER must explicitly allocate it across these drafts.
+          depositCents: 0 },
         { sourceEstimateId: estimateId, settings });
       created.push(agreement.id);
     }

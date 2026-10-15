@@ -4,19 +4,20 @@
   "parent": "W-22FIN",
   "completedSlices": [],
   "remainingEngineering": [
-    "W-22FIN-QUOTE: Persist and independently verify complete per-location mandatory visit, tax, RDF, waiver and refundable reserve charges and a customer-visible immutable all-in offer.",
-    "W-22FIN-APPROVAL: Complete source-to-legacy estimate approval and deposit/payment checkout for the full inclusive quote; currently only supported zero-deposit categories qualify.",
-    "W-22FIN-RECOVERY: Signed cancellation size/window evidence correction is an isolated source patch; entire provider/unknown/refund/all-category cancellation and partial multi-site recovery remains unfinished.",
-    "W-22FIN-DELIVERY: Complete multi-location physical delivery and first-invoice credit/return lifecycle browser+DB evidence."
+    "W-22FIN-POLICY: Owner commercial reserve/mandatory fee policy review must pass full real DB/browser and integrate with complete review/signed snapshots before this whole subsection can be counted.",
+    "W-22FIN-QUOTE: Full fee, tax, RDF, damage waiver and commercial refundable reserve across estimate/customer/immutable signing quote and payment cannot yet be represented by the V1 frozen envelope.",
+    "W-22FIN-APPROVAL: Complete collection/checkout for the all-in estimate and prevent all legacy incomplete deposit acceptance.",
+    "W-22FIN-RECOVERY: Provider-authoritative all-category cancellation/refund and partial multi-site reconciliation unfinished.",
+    "W-22FIN-DELIVERY: Signed-payment dispatch, multi-site delivery and first invoice application end-to-end unfinished."
   ],
   "externalAcceptance": [
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Owner explicitly requested cross-repository documentation consistency review; zero completed product subsections or bundles and zero production-code changes.",
+  "workloadException": "Owner explicitly requested cross-repository guidance repair and W-22FIN stall diagnosis/design; zero completed product subsections or bundles, no production-code change.",
   "evidence": [
-    "AGENTS/SESSION-START/PLAYBOOK/card/recipe guidance aligned to current whole-subsection bundle scope; removed stale automatic numeric/migration/risk splitting rules.",
-    "Existing work-index and marked acceptance queue unchanged; W-22FIN remains incomplete and all legal/provider/owner/CI/release gates retained.",
-    "Local check:quick documentation preflight passed; full required exact-head CI/review mandatory before merge."
+    "Governing bundle guidance, current W-22FIN card/packet and integration contract reconciled against main 905a0fb8; preserve source and all real-use gates.",
+    "Historical session reports no longer drive the current card; concrete V1-to-complete-evidence consumer map and finite existing acceptance rows define the next implementation.",
+    "Required documentation preflight, scorecard validation and exact-head CI/review must pass before merge."
   ]
 }
