@@ -1,26 +1,27 @@
-## October 15 draft PR #466 — W-22FIN not yet complete
+## PR #466 assembled V2 implementation — verification in progress
 
-Baseline main `fbbd1508`; draft branch commit `70a288c` contains the
-owner-requested anti-stall recovery and a still-incomplete V2 frozen financial
-money path. No original W-22FIN packet row is claimed completed.
+Resumed existing draft, merged current main `d6cc8b5b`, and retained all original
+W-22FIN subsection IDs. New source connects the V2 frozen order to exact-order
+owner CPA/counsel clearance, quote/approval/adoption, signature/obligation SQL,
+receipt-backed reserve, cancellation/confirmed return, dispatch, first invoice,
+portal and signed document readback. No production activation or genuine external
+acceptance is asserted. Earlier draft checkpoints are superseded by this section.
 
-- Implemented and locally checked: read-only checkpoint command, recovery
-  guide/tests, frozen V2 categories, synthetic two-address $456.06
-  source/freeze/verify/checkout, deposit liability and display work.
-- Exact-head draft CI: #466 initially failed because this card and
-  `docs/DATABASE.md` had not been changed and the scorecard was stale.
-  Do not claim the missing verified whole-subsection scorecard as passed.
-- Remains: a binding professionally approved V2 policy path and review,
-  customer estimate/acceptance/readback, signed cancellation and genuine
-  reserve/partial-delivery money reconciliation, disposable PostgreSQL and
-  browser tests, CI/review pass and merge. Current V2 binding business use is
-  intentionally gated OFF; no production/provider pass asserted.
-- Deployed acceptance: Vercel READY live `4740313d`; all eleven queued
-  revision ancestry checks are eligible and documented in `docs/STATUS.md`.
-  Authenticated/professional/provider observations remain pending.
+| Existing subsection | Assembled implementation and finite proof |
+|---|---|
+| W-22FIN-POLICY | Owner-only immutable exact-order clearance; missing/stale/future/foreign denial; independent setup-tax policy; date-effective revocation, active actor, audit and backup |
+| W-22FIN-QUOTE | Versioned category/tax/reserve sources; stable nested JSONB digest; per-address 28631/16975 and combined 45606; complete owner/customer/document DTOs |
+| W-22FIN-APPROVAL | Same reviewed identity at send/accept/convert/sign/collection; stale acceptance denied; prepared conversion reuses original agreements; standalone estimate reserve checkout cannot double collect |
+| W-22FIN-RECOVERY | Exact receipt/attempt replay; reserve created once on settlement, included once in cancellation return; generic deposit refund cannot double return; uncertainty retains original recovery rules |
+| W-22FIN-DELIVERY | Signed/paid dispatch guard supports V2; actual completion establishes delivery; first invoice uses only own settled rent advance once; other location remains undelivered/uncredited |
 
-Continue this **same PR**; do not create a separate anti-stall PR or count a
-helper, reviewed diagnostic or preliminary commit as a new bundle.
+Focused disposable Postgres has passed the connected synthetic flow, including
+actual completeJob and provider-contract-shaped simulated first invoice. This is
+source verification, not genuine Stripe/provider acceptance. Required broad
+preflight, exact-head CI, browser regression and review disposition still govern
+merge and bundle counting. Preserve IN-79, IN-07, IN-48, money-out, communication,
+Stripe LIVE and checked scheduled release gates. Active unit remains W-22FIN
+until all required engineering gates pass; no partial helper counts as a bundle.
 
 # W-22FIN — Complete configurable signing-to-delivery business workflow
 

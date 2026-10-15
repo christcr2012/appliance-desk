@@ -330,6 +330,19 @@ export async function createDepositCheckoutSessionForEstimate(
     throw new Error("This estimate isn't linked to a customer yet — can't collect a deposit.");
   }
 
+  const prepared=await prisma.rentalAgreement.findFirst({where:{sourceEstimateId:estimateId},select:{id:true}});
+  if(prepared){
+    // V2 reserve is already inside the immutable all-in signing obligation.
+    // Estimate approval must never collect it again through the old checkout.
+    const {getFrozenSigningOrderInTx}=await import("./signing-frozen-verify");
+    const frozen=await prisma.$transaction(tx=>getFrozenSigningOrderInTx(tx,prepared.id));
+    const reserves=frozen.map(row=>row.schemaVersion===2
+      ?row.v2Extension.components.find(c=>c.category==="COMMERCIAL_RESERVE")?.amountCents??-1:-1);
+    if(frozen.every(row=>row.schemaVersion===2&&row.orderFingerprint===estimate.reviewedOrderFingerprint)&&
+       reserves.every(n=>Number.isSafeInteger(n)&&n>=0)&&
+       reserves.reduce((sum,n)=>sum+n,0)===estimate.depositCents)return null;
+    throw new Error("Prepared signing reserve requires exact all-in reconciliation; separate deposit checkout is disabled.");
+  }
   const stripeCustomerId = await ensureStripeCustomer(estimate.customerId);
   const stripe = getStripeClient();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

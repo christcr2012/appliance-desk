@@ -22,7 +22,8 @@
       "accessibility-routes-public.spec.ts",
       "fleet-report.spec.ts",
       "rental-builder-recovery.spec.ts",
-      "two-factor.spec.ts"
+      "two-factor.spec.ts",
+      "w22-v2-complete-signing.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",

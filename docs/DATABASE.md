@@ -954,3 +954,31 @@ This draft migration has not completed disposable Postgres/rollback proof,
 review or live deployment. It carries no live approval; V2 signing and
 price-bearing acceptance remain blocked pending adviser approval and
 complete refund integration. Existing V1 records retain their original semantics.
+
+## W-22FIN exact-order business clearance and V2 compatibility
+
+Forward migration `20261016050000_w22_business_review` follows V2 financial
+components. `SigningBusinessReview` records immutable per-agreement revisions
+of owner-attested received CPA/counsel advice, exact reviewed terms, effective
+Colorado day and frozen order fingerprint. It cannot provide advice or imply
+real provider acceptance. Missing, revoked, foreign, future-confirmed or stale
+clearance fails closed at binding/collection boundaries. Owner revisions and
+financial reads share the order-scoped transaction lock; financial mutation lock
+order is agreement → obligation → review → receipt/reserve. The command locks and validates the active owner; SQL validates recorded identity,
+monotonic revision and exact frozen source; update/delete is forbidden. Backup
+policy includes these records and their existing agreement/user dependencies.
+
+V2 signature constraints explicitly accept version 2 while preserving historical
+V1 meaning. V2 obligation insertion checks its signature, immutable frozen amount
+and JSONB component equality. Component CHECK validation returns false for missing
+JSON rather than SQL NULL. Application and SQL independently reconcile cents,
+component identities, reserve terms, tax categories and complete source revisions.
+Nested canonical hashing is independent of PostgreSQL JSONB key order.
+
+The same original signing receipt funds the reserve liability. Cancellation
+approval does not discharge it; only independently confirmed return of the entire
+approved cancellation amount discharges the included reserve. Generic deposit
+refunds serialize with cancellation and cannot refund that reserve twice. Only
+settled rent advance can reach first-invoice credit; all other signing categories
+remain excluded. No migration, synthetic approval or test authorizes production
+money-out or LIVE collection.

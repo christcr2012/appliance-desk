@@ -755,3 +755,21 @@ reference or conflicting attempt is denied. The down payment belongs to
 this agreement's first invoice, not other properties. STAFF and
 customers have no access to this owner-only action. LIVE charges and
 refunds have separate approvals.
+
+### Review a complete signing order
+
+On the agreement, review every location and the combined frozen amount. For a
+complete V2 order, **Signing business clearance** lets only the owner record CPA
+and attorney advice actually received, the exact terms reviewed, confirmation
+and effective dates, and a reason. Keep **Review required** selected until advice
+exists. A new review revision preserves history; changing the order requires new
+review. Approval does not enable Stripe LIVE, public pricing, customer messages,
+or a refund. Administrative setup tax still needs its independent Settings
+classification and jurisdiction evidence.
+
+A negotiated refundable commercial reserve is part of the signing amount; do
+not collect a separate estimate deposit for it. Receipt readback distinguishes
+unpaid from received and shows the additional categories. For before-delivery
+cancellation, review the complete original receipt and refund terms. The reserve
+stays held until the actual approved return is separately recorded and verified;
+use that cancellation return, rather than the standalone deposit-refund button.

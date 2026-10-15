@@ -19,15 +19,15 @@ BEGIN RAISE EXCEPTION 'Professional review history is immutable; append an owner
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER "w22_business_review_immutable" BEFORE UPDATE OR DELETE ON "SigningBusinessReview"
 FOR EACH ROW EXECUTE FUNCTION "w22_business_review_immutable"();
--- Raw SQL cannot substitute a staff actor or another agreement's frozen hash.
+-- Raw SQL cannot substitute another agreement's frozen hash. Actor permission
+-- is checked under the active-team lock by the command; the FK preserves
+-- historical records after an owner later changes role or is archived.
 CREATE FUNCTION "w22_business_review_source"() RETURNS TRIGGER AS $$
 DECLARE previous INTEGER;
 BEGIN
  PERFORM 1 FROM "RentalAgreement" WHERE "id"=NEW."agreementId" FOR UPDATE;
  SELECT COALESCE(MAX("revision"),0) INTO previous FROM "SigningBusinessReview" WHERE "agreementId"=NEW."agreementId";
  IF NEW."revision"<>previous+1 OR NOT EXISTS (
-   SELECT 1 FROM "User" WHERE "id"=NEW."actorUserId" AND "role"='OWNER' AND "archivedAt" IS NULL
- ) OR NOT EXISTS (
    SELECT 1 FROM "AgreementSigningCharge" WHERE "agreementId"=NEW."agreementId"
      AND "frozenOrderFingerprint"=NEW."orderFingerprint" AND "frozenAt" IS NOT NULL
      AND "frozenChargeEvidence"->>'schemaVersion'='2'

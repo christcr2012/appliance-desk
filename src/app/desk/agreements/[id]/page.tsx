@@ -83,7 +83,7 @@ export default async function AgreementDetailPage({
     ? await getReviewedSigningOrderReadback(agreement.id).catch(() => null)
     : null;
   const businessReview = frozenOrder?.evidenceVersion === 2
-    ? await prisma.signingBusinessReview.findFirst({where:{agreementId:agreement.id,effectiveFromKey:{lte:localDay}},orderBy:{revision:"desc"},select:{decision:true,revision:true}}) : null;
+    ? await prisma.signingBusinessReview.findFirst({where:{agreementId:agreement.id,orderFingerprint:frozenOrder.orderFingerprint,effectiveFromKey:{lte:localDay},recordedAt:{lte:new Date()}},orderBy:{revision:"desc"},select:{decision:true,revision:true}}) : null;
   const locationLabels = signingPreview
     ? new Map((await prisma.serviceAddress.findMany({
       where: { id: { in: signingPreview.locations.map(row => row.serviceAddressId) } },

@@ -27,3 +27,8 @@ describe("backup restore table order", () => {
     }
   });
 });
+it("restores V2 signed and adviser proof before trigger-verified dependent records",()=>{
+ const order=deriveRestoreTableOrder(schema,BACKUP_MODEL_POLICY);
+ expect(order.indexOf("signatureRecord")).toBeLessThan(order.indexOf("agreementSigningPayment"));
+ expect(order.indexOf("agreementSigningCharge")).toBeLessThan(order.indexOf("signingBusinessReview"));
+});

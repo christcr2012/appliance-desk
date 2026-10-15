@@ -21,6 +21,9 @@ function dateKey(value: string): boolean {
     day.toISOString().slice(0,10) === value;
 }
 export function validateSigningBusinessReview(input: SigningBusinessReviewInput, at: Date) {
+  if (input.decision === "REVIEW_REQUIRED") input={...input,confirmedOnKey:businessDateKey(at),
+    taxAdviserReference:"REVIEW_REQUIRED: no advice attested",legalAdviserReference:"REVIEW_REQUIRED: no advice attested",
+    termsReference:"REVIEW_REQUIRED: exact frozen order restricted"};
   if (!text(input.agreementId, 1, 256) || !/^[a-f0-9]{64}$/.test(input.expectedOrderFingerprint) ||
       !["APPROVED", "REVIEW_REQUIRED"].includes(input.decision) ||
       !dateKey(input.effectiveFromKey) || !dateKey(input.confirmedOnKey) ||

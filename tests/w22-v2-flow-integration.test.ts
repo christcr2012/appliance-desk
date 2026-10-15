@@ -1,13 +1,26 @@
-import { getDraftSigningTaxReviewInTx } from "@/domains/billing/signing-charge-tax-review";
+import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote";
+import { sendEstimate,approveEstimate,convertEstimateToAgreements } from "@/domains/estimates";
+import { createDepositCheckoutSessionForEstimate } from "@/domains/billing/checkout";
+import type Stripe from "stripe";
+import { completeJob } from "@/domains/jobs";
+import { startRecurringBillingForAgreement } from "@/domains/billing/checkout";
+import { businessDateFromKey } from "@/lib/business-date";
+const provider=vi.hoisted(()=>({params:null as Stripe.SubscriptionCreateParams|null,calls:0}));
+vi.mock("@/lib/stripe",()=>({getStripeClient:()=>({
+ products:{create:async()=>({id:"prod_v2_synthetic"})},
+ subscriptions:{create:async(params:Stripe.SubscriptionCreateParams)=>{provider.params=params;provider.calls++;return {id:"sub_v2_synthetic",latest_invoice:"in_v2_synthetic"};}},
+ invoices:{
+  retrieve:async()=>({id:"in_v2_synthetic",livemode:false,billing_reason:"subscription_create",currency:"usd",customer:provider.params?.customer,
+   status:"open",parent:{subscription_details:{subscription:"sub_v2_synthetic"}}}),
+  listLineItems:async()=>({has_more:false,data:(provider.params?.add_invoice_items??[]).map((row,i)=>({id:"il_v2_synthetic_"+i,livemode:false,
+    invoice:"in_v2_synthetic",amount:row.price_data?.unit_amount,metadata:row.metadata}))}),
+ },
+})}));
+import { createSyntheticW22V2Order } from "./helpers/w22-v2-order";
 import { randomUUID } from "node:crypto";
 import { afterAll,beforeAll,describe,expect,it,vi } from "vitest";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { businessDateKey } from "@/lib/business-date";
-import { seedTaxReadyContext } from "./helpers/tax-ready";
-import { nextCommercialReserveRevision } from "@/domains/estimates/commercial-reserve-policy";
-import { nextMandatoryChargeReview } from "@/domains/billing/mandatory-charge-review";
-import { freezeReviewedSigningOrder } from "@/domains/billing/signing-charge-freeze";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
 import { recordSigningBusinessReview,validateSigningBusinessReview } from "@/domains/billing/signing-business-review";
 import { sendForSignature,signAgreement } from "@/domains/agreements";
@@ -24,14 +37,13 @@ vi.mock("next/headers",()=>({headers:async()=>new Headers()}));
 const url=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true"&&url.pathname==="/appliance_desk_test"&&["localhost","127.0.0.1"].includes(url.hostname);
 let owner="";
+vi.mock("@/lib/email",()=>({sendEmail:async()=>({sent:true})}));
 const tag=randomUUID().replaceAll("-","");
 const day=businessDateKey(new Date());
-let previousPolicy:Prisma.JsonValue;
-let previousElection:string;
-let taxDecisionId="";
+let cleanup:(()=>Promise<void>)|undefined;
 const ids:string[]=[];
-const cleanups:Array<()=>Promise<void>>=[];
 let orderFingerprint="";
+let estimateId="";
 const review=(agreementId=ids[0],decision:"APPROVED"|"REVIEW_REQUIRED"="APPROVED")=>({
   agreementId,expectedOrderFingerprint:orderFingerprint,decision,
   effectiveFromKey:day,confirmedOnKey:day,taxAdviserReference:"Synthetic CPA advice for isolated test only",
@@ -40,62 +52,11 @@ const review=(agreementId=ids[0],decision:"APPROVED"|"REVIEW_REQUIRED"="APPROVED
 });
 describe.skipIf(!enabled)("V2 two-address sign, settlement, reserve, cancellation and dispatch (disposable Postgres)",()=>{
  beforeAll(async()=>{
-  owner=(await prisma.user.findFirstOrThrow({where:{role:"OWNER"}})).id;
-  const settings=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
-  previousPolicy=settings.signingMandatoryPolicyVersions;previousElection=settings.shortTermLeaseElection;
-  await prisma.businessSettings.update({where:{id:"singleton"},data:{
-   signingMandatoryPolicyVersions:[{revision:1,effectiveFromKey:day,recordedAt:new Date().toISOString(),recordedByUserId:owner,
-    reason:"Synthetic isolated mandatory categories",decisions:{delivery:"REQUIRED",installation:"NOT_APPLICABLE",removal:"NOT_APPLICABLE",damageWaiver:"NOT_APPLICABLE",retailDelivery:"REQUIRED"}}],
-  }});
-  taxDecisionId=(await prisma.setupFeeTaxDecisionVersion.create({data:{treatment:"TAXABLE",effectiveFromKey:day,cpaConfirmedOnKey:day,
-   decisionNote:"Synthetic taxable setup test decision",adviserReference:"Synthetic CPA test fixture only",ownerUserId:owner}})).id;
-  const user=await prisma.user.create({data:{email:`v2-flow-${tag}@test.invalid`,role:"CUSTOMER",emailVerified:true}});
-  const customer=await prisma.customer.create({data:{userId:user.id,referralCode:`V2-${tag}`,isBusiness:true}});
-  const estimate=await prisma.estimate.create({data:{customerId:customer.id,title:"Synthetic V2 two property",createdByUserId:owner,depositCents:15000}});
-  const sources=[];
-  const now=new Date();
-  for(let i=0;i<2;i++){
-   const address=await prisma.serviceAddress.create({data:{customerId:customer.id,line1:`${i+1} Synthetic V2 Way`,city:"Greeley",zip:"80631"}});
-   const tax=await seedTaxReadyContext(address.id,{rateMilliPercent:i===0?5000:10000});cleanups.push(tax.cleanup);
-   await prisma.taxabilityRule.update({where:{jurisdictionId_category:{jurisdictionId:tax.jurisdictionId,category:"ADMINISTRATIVE_SETUP"}},data:{cpaConfirmedOn:new Date("2020-01-01T00:00:00Z"),updatedByUserId:owner}});
-   const agreement=await prisma.rentalAgreement.create({data:{customerId:customer.id,serviceAddressId:address.id,sourceEstimateId:estimate.id,
-    depositCents:i===0?10000:5000}});ids.push(agreement.id);
-   const reserve=nextCommercialReserveRevision({previous:[],estimateId:estimate.id,agreementId:agreement.id,amountCents:agreement.depositCents,
-    replenishment:"QUARTERLY",termsReference:"Synthetic negotiated reserve terms",actorUserId:owner,reason:"Synthetic reserve terms for isolated proof",recordedAt:now});
-   const rent=i===0?6000:9500;const setup=i===0?4500:2250;const delivery=i===0?7500:0;
-   await prisma.rentalLine.createMany({data:Array.from({length:i===0?2:3},(_,n)=>({agreementId:agreement.id,label:`Machine ${n+1}`,
-    monthlyPriceCents:i===0?3000:n===2?3500:3000,listPriceCents:i===0?3000:n===2?3500:3000}))});
-   sources.push({agreement,address,tax,reserve,rent,setup,delivery});
-  }
-  // All review/snapshot sources share the final singleton revision after tax fixture setup.
-  const current=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
-  for(const [i,x] of sources.entries()){
-   const mandatory=nextMandatoryChargeReview({previous:[],revision:{
-    estimateId:estimate.id,agreementId:x.agreement.id,serviceAddressId:x.address.id,actorUserId:owner,recordedAt:now.toISOString(),
-    reason:"Synthetic reviewed all-in category allocation",globalPolicyRevision:1,settingsUpdatedAt:current.updatedAt.toISOString(),
-    charges:[{kind:"delivery",amountCents:x.delivery,decision:x.delivery?"REQUIRED":"NOT_APPLICABLE",reason:null},
-     {kind:"installation",amountCents:0,decision:"NOT_APPLICABLE",reason:null},{kind:"removal",amountCents:0,decision:"NOT_APPLICABLE",reason:null},
-     {kind:"damageWaiver",amountCents:0,decision:"NOT_APPLICABLE",reason:null}],
-    tax:{status:"VERIFIED",taxCents:i===0?375:0,reasons:[],lines:i===0?[{lineKey:"mandatory:delivery",jurisdictionId:x.tax.jurisdictionId,
-     rateVersionId:x.tax.rateVersionId,category:"DELIVERY",taxableCents:7500,exemptCents:0,taxCents:375}]:[]},
-    retailDelivery:{event:i===0,status:i===0?"APPLIES":"EXEMPT",amountCents:i===0?31:0,rateId:i===0?"synthetic-rdf":null,
-     handling:"COLLECT_FROM_CUSTOMER",reason:"Synthetic single event allocation only"},reserveCents:x.agreement.depositCents,reserveRevision:1,
-   }});
-   await prisma.rentalAgreement.update({where:{id:x.agreement.id},data:{commercialReservePolicyVersions:x.reserve.versions,mandatoryChargeReviewVersions:mandatory.versions}});
-   await prisma.agreementSigningCharge.create({data:{agreementId:x.agreement.id,sourceEstimateId:estimate.id,serviceAddressId:x.address.id,
-    machineCount:i===0?2:3,firstMonthRentCents:x.rent,setupFeeCents:x.setup,downPaymentCents:x.rent,signingSubtotalCents:x.setup+x.rent,
-    setupFeeTaxTreatment:"TAXABLE",settingsUpdatedAt:current.updatedAt,sourceFingerprint:"e".repeat(64),createdByUserId:owner}});
-  }
-  const prepared=await prisma.$transaction(tx=>getDraftSigningTaxReviewInTx(tx,ids[0],new Date()));
-  expect(prepared.reasons).toEqual([]);
-  orderFingerprint=(await freezeReviewedSigningOrder(owner,ids[0])).orderFingerprint;
+  const fixture=await createSyntheticW22V2Order();
+  owner=fixture.owner;ids.push(...fixture.ids);orderFingerprint=fixture.orderFingerprint;
+  cleanup=fixture.cleanup;estimateId=fixture.estimateId;
  });
- afterAll(async()=>{
-  // Immutable financial fixtures intentionally survive until this throwaway cluster
-  // is destroyed. Restore shared policy only; never truncate another spec's rows.
-  if(previousPolicy!==undefined)await prisma.businessSettings.update({where:{id:"singleton"},data:{signingMandatoryPolicyVersions:previousPolicy as Prisma.InputJsonValue,shortTermLeaseElection:previousElection}});
-  if(taxDecisionId)await prisma.setupFeeTaxDecisionVersion.delete({where:{id:taxDecisionId}});
- });
+ afterAll(async()=>{await cleanup?.();});
  it("requires real owner records for each frozen location and refuses staff, stale and future-confirmation submissions",async()=>{
   const frozen=await prisma.$transaction(tx=>getFrozenSigningOrderInTx(tx,ids[0]));
   expect(frozen.map(row=>row.allInCents).sort((a,b)=>a-b)).toEqual([16975,28631]);
@@ -106,6 +67,15 @@ describe.skipIf(!enabled)("V2 two-address sign, settlement, reserve, cancellatio
   expect(()=>validateSigningBusinessReview({...review(),confirmedOnKey:"2999-01-01"},new Date())).toThrow();
   await recordSigningBusinessReview(owner,review());
   expect(await prisma.signingBusinessReview.count({where:{orderFingerprint}})).toBe(2);
+  const quote=await getPreparedEstimateQuote(estimateId);expect(quote.status).toBe("READY");
+  expect(quote.totals?.dueAtSigningCents).toBe(45606);expect(quote.totals?.reserveCents).toBe(15000);
+  await sendEstimate(owner,estimateId);
+  await expect(approveEstimate(estimateId,{expectedQuoteFingerprint:"f".repeat(64),approverName:"Synthetic Customer",approverEmail:"v2@test.invalid",ipAddress:null})).rejects.toThrow(/changed/);
+  await approveEstimate(estimateId,{expectedQuoteFingerprint:quote.quoteFingerprint!,approverName:"Synthetic Customer",approverEmail:"v2@test.invalid",ipAddress:null});
+  expect(await createDepositCheckoutSessionForEstimate(estimateId)).toBeNull();
+  await convertEstimateToAgreements(owner,estimateId,{mode:"per-property"});
+  expect((await convertEstimateToAgreements(owner,estimateId,{mode:"per-property"})).sort()).toEqual([...ids].sort());
+
   await expect(prisma.signingBusinessReview.updateMany({where:{orderFingerprint},data:{reason:"Cannot rewrite the prior immutable approval"}})).rejects.toThrow(/immutable/);
  });
  it("signs each location, settles exactly once, dispatches only paid A and cancels/refunds only B including reserve",async()=>{
@@ -115,13 +85,15 @@ describe.skipIf(!enabled)("V2 two-address sign, settlement, reserve, cancellatio
   for(const [i,id] of ids.entries()){
    const attempt=await prepareSigningPaymentAttempt(id,"MANUAL",owner);
    const input={agreementId:id,attemptId:attempt.id,actingUserId:owner,method:"check" as const,reference:`SYN-${tag}-${i}`,receivedOn:day,confirmedReceived:true};
-   const receipt=await recordManualSigningPayment(input);expect(receipt.amountCents).toBe(i===0?28631:16975);
+   const results=await Promise.all([recordManualSigningPayment(input),recordManualSigningPayment(input)]);
+   expect(results.map(row=>row.replayed).sort()).toEqual([false,true]);
+   const receipt=results[0];expect(receipt.amountCents).toBe(i===0?28631:16975);
    expect((await recordManualSigningPayment(input)).replayed).toBe(true);
    const deposit=await prisma.deposit.findFirstOrThrow({where:{agreementId:id}});
    expect(deposit.sourceReceiptId).toBe(receipt.receiptId);expect(deposit.refundedAt).toBeNull();
    const credit=await prisma.signingDownPaymentCredit.findUniqueOrThrow({where:{agreementId:id}});
    expect(credit.amountCents).toBe(i===0?6000:9500);
-   expect(signingFirstInvoiceItem(credit,"prod_synthetic").price_data.unit_amount).toBe(-credit.amountCents);
+   expect(signingFirstInvoiceItem(credit,"prod_synthetic").price_data!.unit_amount).toBe(-credit.amountCents);
   }
   expect((await updateJobStatus(owner,aJob.id,"IN_PROGRESS")).status).toBe("IN_PROGRESS");
   const b=ids[1];const quote=await getPreDeliveryCancellationQuote(b);expect(quote.refundableCents).toBe(16975);
@@ -133,5 +105,32 @@ describe.skipIf(!enabled)("V2 two-address sign, settlement, reserve, cancellatio
   expect((await prisma.deposit.findUniqueOrThrow({where:{id:reserve.id}})).refundedAmountCents).toBe(5000);
   expect((await prisma.deposit.findFirstOrThrow({where:{agreementId:ids[0]}})).refundedAt).toBeNull();
   expect((await getRefundReturnReview(b)).refundState).toBe("RETURNED_MANUAL_RECORDED");
+  // Real physical delivery commits before the simulated provider first invoice.
+  // No real Stripe acceptance is claimed by these synthetic provider objects.
+  const a=await prisma.rentalAgreement.findUniqueOrThrow({where:{id:ids[0]},include:{lines:true}});
+  await prisma.customer.update({where:{id:a.customerId},data:{stripeCustomerId:"cus_v2_synthetic",stripeDefaultPaymentMethodId:"pm_v2_synthetic"}});
+  const type=await prisma.applianceType.findFirstOrThrow();
+  const results=[];
+  for(let i=0;i<2;i++){
+   const line=a.lines[0];
+   const machine=await prisma.appliance.create({data:{assetNumber:`V2-${tag}-${i}`,applianceTypeId:type.id,status:"RESERVED"}});
+   await prisma.applianceAssignment.create({data:{rentalLineId:line.id,applianceId:machine.id}});
+   await prisma.jobAppliance.create({data:{jobId:aJob.id,applianceId:machine.id}});
+   results.push({applianceId:machine.id,result:"DELIVERED" as const});
+  }
+  const job=await prisma.job.findUniqueOrThrow({where:{id:aJob.id}});
+  const completion={jobId:aJob.id,expectedVersion:job.version,completionKey:`v2-complete-${tag}`,
+    performedOn:businessDateFromKey(day),completionNotes:null,results};
+  await completeJob(owner,completion);
+  expect((await prisma.rentalAgreement.findUniqueOrThrow({where:{id:a.id}})).firstDeliveredOn).not.toBeNull();
+  expect((await prisma.rentalAgreement.findUniqueOrThrow({where:{id:b}})).firstDeliveredOn).toBeNull();
+  const application=await prisma.signingFirstInvoiceApplication.findUniqueOrThrow({where:{agreementId:a.id}});
+  expect(application.amountCents).toBe(6000);
+  expect(provider.params?.add_invoice_items?.[0].price_data?.unit_amount).toBe(-6000);
+  expect(provider.calls).toBe(1);
+  expect((await completeJob(owner,completion)).replayed).toBe(true);
+  await startRecurringBillingForAgreement(a.id);expect(provider.calls).toBe(1);
+  expect(await prisma.signingFirstInvoiceApplication.count({where:{agreementId:b}})).toBe(0);
+
  });
 });

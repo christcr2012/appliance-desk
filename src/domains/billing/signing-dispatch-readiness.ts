@@ -76,6 +76,7 @@ export async function assertSigningPaymentReadyForDispatchInTx(
         signingAllInCents: true, signingEvidenceVersion: true,
       } },
       signingPaymentObligation: { select: {
+        agreementId:true,componentEvidence:true,
         setupFeeCents: true, setupTaxCents: true, downPaymentCents: true,
         totalCents: true, status: true, signedAt: true,
         orderFingerprint: true, evidenceVersion: true,

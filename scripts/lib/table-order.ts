@@ -74,7 +74,13 @@ export function deriveRestoreTableOrder(schema: string, policy: BackupPolicy): s
     .map(([model]) => model);
   const includedSet = new Set(included);
   const dependencies = new Map(included.map((model) => [model, new Set<string>()]));
-  for (const edge of relationDependencies(schema)) {
+  // Trigger-verified money and adviser records also depend on these existing
+  // sources, even though their SQL validation is stronger than a foreign key.
+  const triggerDependencies = [
+    {model:"AgreementSigningPayment",dependsOn:"SignatureRecord"},
+    {model:"SigningBusinessReview",dependsOn:"AgreementSigningCharge"},
+  ];
+  for (const edge of [...relationDependencies(schema),...triggerDependencies]) {
     if (includedSet.has(edge.model) && includedSet.has(edge.dependsOn)) {
       dependencies.get(edge.model)!.add(edge.dependsOn);
     }

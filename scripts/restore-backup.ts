@@ -280,6 +280,7 @@ async function restore(file: string, target: string): Promise<void> {
       const delegate = delegates[table];
       if (!delegate?.createMany) throw new Error(`Restore delegate "${table}" is unavailable.`);
       const data = reviveRows(table, rows, dateFields, nullableJsonFields);
+      if(table === "signingBusinessReview")data.sort((a,b)=>String(a.agreementId).localeCompare(String(b.agreementId))||Number(a.revision)-Number(b.revision));
       if (table === "appliance") {
         for (const row of data) {
           if (typeof row.acquisitionReceiptPhotoId === "string") {

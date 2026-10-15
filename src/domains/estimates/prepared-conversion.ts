@@ -42,7 +42,12 @@ export function validatePreparedConversion(
       quote.quoteFingerprint !== data.reviewedQuoteFingerprint ||
       quote.orderFingerprint !== data.reviewedOrderFingerprint)
     throw new Error("Reviewed amount or tax/terms evidence has changed. Resend a full offer before conversion.");
-  if (data.estimateDepositCents !== 0 || data.estimateDepositPaidAt)
+  const reserveAmounts=quote.locations.map(row=>row.reserveCents??0);
+  const reconciledV2Reserve=quote.evidenceVersion===2 && Number.isSafeInteger(data.estimateDepositCents) &&
+    data.estimateDepositCents>=0 && quote.totals.reserveCents===data.estimateDepositCents &&
+    reserveAmounts.every(n=>Number.isSafeInteger(n)&&n>=0) &&
+    reserveAmounts.reduce((sum,n)=>sum+n,0)===data.estimateDepositCents;
+  if ((data.estimateDepositCents !== 0 && !reconciledV2Reserve) || data.estimateDepositPaidAt)
     throw new Error("Early refundable estimate deposits require separate evidence and allocation review; conversion cannot infer funds.");
   const agreementIds = verifyPreparedEstimateScope(data.prepared,
     data.quoteAddresses, data.estimateId, data.customerId);

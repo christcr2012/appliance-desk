@@ -41,10 +41,18 @@ const sum = (values: readonly number[]) => {
 };
 export function canonicalSigningV2Extension(value: SigningV2Extension): SigningV2Extension {
   return {
-    ...value,
-    components: sort(value.components, row => row.id),
+    components: sort(value.components, row => row.id).map(row=>({
+      id:row.id,category:row.category,amountCents:row.amountCents,disposition:row.disposition,
+      sourceFingerprint:row.sourceFingerprint,sourceRevision:row.sourceRevision,reason:row.reason,termsReference:row.termsReference,
+    })),
     taxLines: sort(value.taxLines, row =>
-      JSON.stringify([row.componentId, row.jurisdictionId, row.rateVersionId, row.category])),
+      JSON.stringify([row.componentId, row.jurisdictionId, row.rateVersionId, row.category])).map(row=>({
+        componentId:row.componentId,jurisdictionId:row.jurisdictionId,rateVersionId:row.rateVersionId,
+        category:row.category,taxableCents:row.taxableCents,exemptCents:row.exemptCents,taxCents:row.taxCents,
+      })),
+    ownerPolicyRevision:value.ownerPolicyRevision,mandatoryReviewRevision:value.mandatoryReviewRevision,
+    mandatoryReviewFingerprint:value.mandatoryReviewFingerprint,reserveTermsRevision:value.reserveTermsRevision,
+    reserveTermsReference:value.reserveTermsReference,
   };
 }
 export function verifySigningV2Extension(value: SigningV2Extension, input: {
@@ -183,7 +191,9 @@ export function buildSigningV2Extension(input: {
   const setupSource = createHash("sha256").update(JSON.stringify({
     estimateId: input.estimateId, agreementId: input.agreementId,
     setupFeeCents: input.setupFeeCents, downPaymentCents: input.downPaymentCents,
-    jurisdictions: sort(input.setupJurisdictions, row => row.jurisdictionId + row.rateVersionId),
+    jurisdictions: sort(input.setupJurisdictions, row => row.jurisdictionId + row.rateVersionId)
+      .map(row=>({jurisdictionId:row.jurisdictionId,rateVersionId:row.rateVersionId,
+        taxableCents:row.taxableCents,exemptCents:row.exemptCents,taxCents:row.taxCents})),
   })).digest("hex");
   const components: SigningV2Component[] = [
     component("ADMINISTRATIVE_SETUP", input.setupFeeCents, setupSource, 1, null),
@@ -191,7 +201,13 @@ export function buildSigningV2Extension(input: {
     ...review.charges.map(charge => component(category[charge.kind], charge.amountCents,
       review.sourceFingerprint, review.revision, charge.reason)),
     component("COMMERCIAL_RESERVE", input.depositCents,
-      reserve ? createHash("sha256").update(JSON.stringify(reserve)).digest("hex") :
+      reserve ? createHash("sha256").update(JSON.stringify({
+        schemaVersion:reserve.schemaVersion,revision:reserve.revision,
+        agreementId:reserve.agreementId,estimateId:reserve.estimateId,amountCents:reserve.amountCents,
+        replenishment:reserve.replenishment,termsReference:reserve.termsReference,
+        reason:reserve.reason,approvedByUserId:reserve.approvedByUserId,
+        recordedAt:reserve.recordedAt,professionalReview:reserve.professionalReview,
+      })).digest("hex") :
         review.sourceFingerprint, reserve?.revision ?? review.revision,
       null, reserve?.termsReference ?? null),
     component("RETAIL_DELIVERY_FEE",

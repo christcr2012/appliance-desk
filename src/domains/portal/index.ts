@@ -91,6 +91,7 @@ export async function getPortalData(userId: string) {
           signature: { select: { signedAt: true } },
           signingPaymentObligation: {
             select: {
+              agreementId:true,evidenceVersion:true,componentEvidence:true,
               setupFeeCents: true, setupTaxCents: true, downPaymentCents: true,
               totalCents: true, status: true, signedAt: true,
               receipt: { select: { customerId: true, amountCents: true, receivedOn: true } },

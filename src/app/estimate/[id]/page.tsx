@@ -132,7 +132,9 @@ export default async function PublicEstimatePage({
                 Deposit of {formatCents(estimate.depositCents)} received — thank you.
               </p>
             )}
-            {estimate.depositCents > 0 && !estimate.depositPaidAt ? (
+            {reviewedQuote?.evidenceVersion===2 ? (
+              <p className="mt-1">The refundable reserve is included in the reviewed signing amount. Review and sign the agreement before paying; no separate estimate deposit is due.</p>
+            ) : estimate.depositCents > 0 && !estimate.depositPaidAt ? (
               <>
                 <p className="mt-1">
                   One more step: a deposit of {formatCents(estimate.depositCents)} is due before

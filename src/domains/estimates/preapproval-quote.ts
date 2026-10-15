@@ -30,9 +30,11 @@ export type EstimatePreparedQuoteLocation = {
   advanceCents: number;
   signingAmountCents: number;
   additionalItems?: Array<{ label: string; amountCents: number; status: string }>;
+  reserveCents?:number;
   rateVersionIds: string[];
 };
 export type EstimatePreparedQuote = {
+  evidenceVersion?:1|2;
   status: "READY" | "REVIEW_REQUIRED";
   reasons: string[];
   orderFingerprint: string | null;
@@ -45,6 +47,7 @@ export type EstimatePreparedQuote = {
     setupTaxCents: number;
     advanceCents: number;
     dueAtSigningCents: number;
+    reserveCents?:number;
   } | null;
   /** A verified technical candidate is not itself a license to transact. */
   permissionToCollect: false;
@@ -156,6 +159,7 @@ export async function getPreparedEstimateQuoteInTx(
   const agreements = await tx.rentalAgreement.findMany({
     where: { sourceEstimateId: estimateId }, orderBy: { id: "asc" },
     select: { id: true, customerId: true, sourceEstimateId: true, serviceAddressId: true, status: true,
+      depositCents:true,
       lines: { select: { packageId: true, monthlyPriceCents: true } } },
   });
   let agreementIds: string[];
@@ -190,6 +194,8 @@ export async function getPreparedEstimateQuoteInTx(
     });
     if (coverage.length) return rejected(coverage);
     if (frozen.evidenceVersion === 2) {
+      if(total(agreements.map(row=>row.depositCents))!==estimate.depositCents || estimate.depositCents<0)
+        return rejected(["Negotiated refundable reserves must reconcile exactly to the original estimate allocation."]);
       if (estimate.lineItems.some(item => item.oneTimeFeeCents !== 0))
         return rejected(["Classify original one-time quote amounts before binding the order."]);
       await assertCurrentSigningPolicyInTx(tx, await getFrozenSigningOrderInTx(tx, agreementIds[0]), effectiveOn);
@@ -225,6 +231,7 @@ export async function getPreparedEstimateQuoteInTx(
         advanceCents: frozenAddress.downPaymentCents,
         signingAmountCents: frozenAddress.signingAmountCents,
         additionalItems: frozenAddress.additionalItems,
+        ...(frozen.evidenceVersion===2?{reserveCents:agreement.depositCents}:{}),
         rateVersionIds: taxVersionIds,
       });
     }
@@ -236,6 +243,7 @@ export async function getPreparedEstimateQuoteInTx(
       setupTaxCents: total(rows.map(row => row.setupTaxCents)),
       advanceCents: total(rows.map(row => row.advanceCents)),
       dueAtSigningCents: total(rows.map(row => row.signingAmountCents)),
+      ...(frozen.evidenceVersion===2?{reserveCents:total(rows.map(row=>row.reserveCents??0))}:{}),
     };
     if (totals.setupFeeCents !== frozen.totals.setupFeeCents ||
         totals.setupTaxCents !== frozen.totals.setupTaxCents ||
@@ -250,6 +258,7 @@ export async function getPreparedEstimateQuoteInTx(
     })).digest("hex");
     return {
       status: "READY", reasons: [], quoteFingerprint,
+      ...(frozen.evidenceVersion===2?{evidenceVersion:2 as const}:{}),
       orderFingerprint: frozen.orderFingerprint, locations: rows, totals,
       permissionToCollect: false,
     };

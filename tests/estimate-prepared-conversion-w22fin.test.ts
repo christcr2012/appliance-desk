@@ -100,3 +100,11 @@ describe("W-22FIN exact prepared conversion adoption", () => {
       { estimateId:"estimate-1",customerId:"customer-1" })).toThrow();
   });
 });
+it("adopts V2 allocated reserve promises without inventing an early deposit receipt",()=>{
+ const value=fixture();value.estimateDepositCents=15000;value.quote.evidenceVersion=2;
+ value.quote.locations[0].reserveCents=10000;value.quote.locations[1].reserveCents=5000;value.quote.totals!.reserveCents=15000;
+ expect(validatePreparedConversion(value).paid).toBe(false);
+ expect(()=>validatePreparedConversion({...value,estimateDepositPaidAt:new Date()})).toThrow(/Early refundable/);
+ value.quote.locations[1].reserveCents=10000;
+ expect(()=>validatePreparedConversion(value)).toThrow(/Early refundable/);
+});

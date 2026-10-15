@@ -1,3 +1,32 @@
+## 2026-10-15 — resumed PR #466, one connected W-22FIN bundle in verification
+
+Current source main reconciled at `d6cc8b5b`; preserved/resumed the existing
+`ai/gpt6/w22fin-v2-complete-20261015` draft and resolved its two workflow-document
+merge conflicts. WIP checkpoint `cf261c23` contains the first connected clearance
+and reserve-return implementation; later assembled work adds stable nested JSONB
+hashes, V2 signature/source SQL, complete portal/dispatch projection, exact
+reserve-aware quote/adoption, blocked double estimate collection, actual delivery
+and first-invoice proof, and dependency-aware backup restore.
+
+Focused real disposable PostgreSQL passed complete synthetic 45606-cent flow:
+prepared owner review and stale public approval denial; exact original agreement
+adoption/replay; signatures; exact manual settlement/reserve liability; A dispatch
+and physical completion; independently confirmed B cancellation return; only A's
+6000-cent rent advance applied once to its first invoice, B uncredited/undelivered.
+Provider calls are contract-shaped simulations, never genuine Stripe TEST proof.
+Required preflight/full exact-head CI/browser/review and merge remain in progress;
+no completed bundle is claimed at this checkpoint.
+
+Production independently remains READY at `4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0`.
+Public / GET 200 and private /desk and /account/rentals 307 to login; browser
+/desk also displays login. All eleven existing queue sources are included in
+this deployed revision. Complete per-row acceptance accounting was checked:
+none has a current authorized authenticated fixture/session or requisite external
+provider/professional evidence here. Each exact prerequisite and next procedure
+is preserved in the existing release queue below. Do not create production
+fixtures or claim passes from ancestry/anonymous access. Main-ahead is not a
+reason to defer those existing checks. V2 requires its own future checked release.
+
 ## 2026-10-15 W-22FIN active handoff — interrupted long integration and acceptance reconciliation
 
 **Branch/worktree:** `ai/gpt6/w22fin-v2-complete-20261015` in

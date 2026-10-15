@@ -40,6 +40,7 @@ export function SigningPaymentSummary({ summary }: {
         <div className="flex justify-between gap-3"><dt>Administrative setup</dt><dd>{formatCents(summary.setupFeeCents!)}</dd></div>
         <div className="flex justify-between gap-3"><dt>Setup sales tax</dt><dd>{formatCents(summary.setupTaxCents!)}</dd></div>
         <div className="flex justify-between gap-3"><dt>First-month down payment</dt><dd>{formatCents(summary.downPaymentCents!)}</dd></div>
+        {summary.additionalCharges?.map(row=><div key={row.label} className="flex justify-between gap-3"><dt>{row.label}</dt><dd>{formatCents(row.amountCents)}</dd></div>)}
         <div className="flex justify-between gap-3 border-t border-line pt-2 font-semibold text-ink">
           <dt>Signed signing amount</dt><dd>{formatCents(summary.totalCents!)}</dd>
         </div>

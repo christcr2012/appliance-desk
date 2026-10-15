@@ -135,3 +135,32 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER "w22_immutable_v2_components"
   BEFORE UPDATE ON "AgreementSigningPayment"
   FOR EACH ROW EXECUTE FUNCTION "w22_immutable_v2_components"();
+
+-- Retain historical null signatures and exact V1 meaning; explicitly permit V2.
+ALTER TABLE "SignatureRecord" DROP CONSTRAINT "SignatureRecord_signing_evidence_complete";
+ALTER TABLE "SignatureRecord" ADD CONSTRAINT "SignatureRecord_signing_evidence_complete" CHECK (
+ ("signingOrderFingerprint" IS NULL AND "signingAllInCents" IS NULL AND "signingEvidenceVersion" IS NULL)
+ OR ("signingOrderFingerprint" IS NOT NULL AND "signingOrderFingerprint" ~ '^[0-9a-f]{64}$'
+  AND "signingAllInCents" IS NOT NULL AND "signingAllInCents">=0
+  AND "signingEvidenceVersion" IS NOT NULL AND "signingEvidenceVersion" IN (1,2))
+);
+-- New V2 obligations must use the exact accepted signature and frozen components.
+-- Historical V1 fixture/legacy semantics remain unchanged.
+CREATE FUNCTION "w22_v2_signed_source"() RETURNS TRIGGER AS $$
+BEGIN
+ IF NEW."evidenceVersion"=2 AND NOT EXISTS (
+  SELECT 1 FROM "SignatureRecord" s JOIN "AgreementSigningCharge" c ON c."agreementId"=s."agreementId"
+  WHERE s."agreementId"=NEW."agreementId" AND s."signedAt"=NEW."signedAt"
+   AND s."signingEvidenceVersion"=2 AND s."signingOrderFingerprint"=NEW."orderFingerprint"
+   AND s."signingAllInCents"=NEW."totalCents"
+   AND c."frozenOrderFingerprint"=NEW."orderFingerprint" AND c."frozenAllInCents"=NEW."totalCents"
+   AND c."setupFeeCents"=NEW."setupFeeCents" AND c."downPaymentCents"=NEW."downPaymentCents"
+   AND c."frozenSetupTaxCents"=NEW."setupTaxCents"
+   AND c."frozenChargeEvidence"->>'schemaVersion'='2'
+   AND c."frozenChargeEvidence"->'v2Extension'=NEW."componentEvidence"
+ ) THEN RAISE EXCEPTION 'V2 payment requires exact signed frozen source evidence'; END IF;
+ RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "w22_v2_signed_source" BEFORE INSERT OR UPDATE ON "AgreementSigningPayment"
+FOR EACH ROW EXECUTE FUNCTION "w22_v2_signed_source"();

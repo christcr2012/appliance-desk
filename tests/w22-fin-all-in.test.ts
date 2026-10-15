@@ -247,3 +247,26 @@ it("independently checks V2 components at durable obligation creation",()=>{
   const forged=structuredClone(frozen);forged.v2Extension.components[0].amountCents++;
   expect(()=>signedPaymentObligation(forged,date)).toThrow();
 });
+import { customerSigningSummary } from "@/domains/portal/signing-status";
+it("projects the complete V2 amount and same-account receipt without leaking private evidence",()=>{
+ const value=buildSigningV2Extension({agreementId:"A",serviceAddressId:"address-A",estimateId:"estimate-1",setupFeeCents:4500,
+   downPaymentCents:6000,setupTaxCents:225,setupJurisdictions:[setup],depositCents:10000,policyRevision:1,settingsUpdatedAt,...reviewedLocation("A",7500,10000,31)});
+ const input={agreementId:"A",evidenceVersion:2,componentEvidence:value.extension,setupFeeCents:4500,setupTaxCents:225,downPaymentCents:6000,
+   totalCents:28631,status:"SETTLED",signedAt:date,receipt:{customerId:"own",amountCents:28631,receivedOn:date}};
+ const result=customerSigningSummary(input,"own");expect(result?.status).toBe("RECEIVED");
+ expect(result?.additionalCharges?.reduce((sum,row)=>sum+row.amountCents,0)).toBe(17906);
+ expect(result).not.toHaveProperty("componentEvidence");
+ expect(customerSigningSummary(input,"foreign")?.status).toBe("REVIEW_REQUIRED");
+ expect(customerSigningSummary({...input,componentEvidence:null},"own")?.status).toBe("REVIEW_REQUIRED");
+});
+it("keeps nested JSON evidence stable after a PostgreSQL-style key reorder",()=>{
+ const reorder=(value:unknown):unknown=>Array.isArray(value)?value.map(reorder):value&&typeof value==="object"
+  ?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,item])=>[key,reorder(item)])):value;
+ const input={agreementId:"A",serviceAddressId:"address-A",estimateId:"estimate-1",setupFeeCents:4500,downPaymentCents:6000,
+  setupTaxCents:225,setupJurisdictions:[setup],depositCents:10000,policyRevision:1,settingsUpdatedAt,...reviewedLocation("A",7500,10000,31)};
+ const first=buildSigningV2Extension(input);
+ const reread=buildSigningV2Extension(reorder(input) as typeof input);
+ expect(JSON.stringify(first)).toBe(JSON.stringify(reread));
+ expect(JSON.stringify(verifySigningV2Extension(reorder(first.extension) as typeof first.extension,
+  {agreementId:"A",setupFeeCents:4500,downPaymentCents:6000,setupTaxCents:225,allInCents:28631}))).toBe(JSON.stringify(first.extension));
+});

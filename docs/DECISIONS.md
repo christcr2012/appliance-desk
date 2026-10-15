@@ -992,3 +992,15 @@ framework/browser/security CI remains required. The separate dev-only braces
 stack-exhaustion advisory has no available compatible 3.0.4 patch (verified E404);
 keep its upstream reopening condition visible instead of applying an unsupported
 major override or claiming a clean audit. No product, money, schema or release-policy change.
+
+### 2026-10-15 — W-22FIN V2 connected evidence implementation
+
+Within the approved W-22FIN integration contract, owner professional-clearance
+attestations bind the exact immutable frozen order, rather than treating a
+technical review hash as legal/tax approval. Revisions are append-only and
+separately rechecked before binding and collection; no professional answer or
+activation is invented. V2 reserve stays a separately refundable receipt-funded
+liability and is reconciled only with the independently confirmed cancellation
+return. Standalone estimate/deposit paths cannot collect/refund it twice. Existing
+signature, receipt, cancellation and first-invoice records remain authoritative;
+no second money ledger, blanket approval or V1 reinterpretation is introduced.
