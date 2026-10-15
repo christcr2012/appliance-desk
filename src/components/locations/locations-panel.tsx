@@ -76,7 +76,7 @@ function SiteEditor({ customerId, site, mutate, busy }: {
       </div>
       <label className="flex gap-2 text-sm">
         <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)} />
-        Override the client's contact permissions for this location
+        Override the client&apos;s contact permissions for this location
       </label>
       {override && <PermissionFields initial={site.permission} />}
       <button className="rounded bg-action px-3 py-2 text-sm text-on-action disabled:opacity-50" disabled={busy}>

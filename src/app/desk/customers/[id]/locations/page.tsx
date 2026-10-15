@@ -15,7 +15,7 @@ export default async function CustomerLocationsPage({ params }: { params: Promis
   });
   if (!customer) notFound();
   const [sites, settings] = await Promise.all([
-    locationWorkspace({ role: session.user.role, userId: session.user.id }, id),
+    locationWorkspace({ role: session.user.role === "OWNER" ? "OWNER" : "ADMIN", userId: session.user.id }, id),
     prisma.businessSettings.findUnique({ where: { id: "singleton" },
       select: { tenantContactRetentionMonths: true } }),
   ]);
