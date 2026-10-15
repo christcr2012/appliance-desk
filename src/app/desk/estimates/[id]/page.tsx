@@ -40,14 +40,14 @@ export default async function EstimateDetailPage({
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full min-w-0 max-w-3xl">
       <Link href="/desk/estimates" className="text-sm text-ink-soft hover:underline">
         &larr; All estimates
       </Link>
 
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">
+      <div className="mt-2 flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="break-words text-xl font-semibold [overflow-wrap:anywhere]">
             Estimate #{estimate.estimateNumber} — {estimate.title}
           </h1>
           <p className="text-sm text-ink-soft">
@@ -106,9 +106,9 @@ export default async function EstimateDetailPage({
       )}
 
       {(estimate.status === "SENT" || estimate.status === "VIEWED") && appUrl && (
-        <p className="mt-4 text-sm text-ink-soft">
+        <p className="mt-4 min-w-0 break-words text-sm text-ink-soft">
           Customer link:{" "}
-          <a href={`${appUrl}/estimate/${estimate.id}`} className="text-ink underline">
+          <a href={`${appUrl}/estimate/${estimate.id}`} className="break-all text-ink underline">
             {appUrl}/estimate/{estimate.id}
           </a>
         </p>
