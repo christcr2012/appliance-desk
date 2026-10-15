@@ -1,4 +1,26 @@
-# SESSION-START — implement, then catch up released acceptance
+# SESSION-START — reconcile, accept released work, implement, close out
+
+## Autonomous execution contract
+
+“Do N bundles” authorizes continuing the full documented process without routine
+permission stops: reconcile → perform eligible acceptance → implement → verify →
+review/merge → cleanup/handoff → next outcome until N and eligible obligations are
+satisfied. Checkpoints preserve progress; they do not end otherwise feasible work.
+
+On a terminal failure, diagnose and repair; on green CI, handle reviews and merge
+when authorized. During pending CI, do useful independent scoped work, then recheck
+at a meaningful transition. Repeated unchanged results require a different action,
+not a busy loop. Never silently stop or imply background execution after a turn ends.
+
+Before a blocker can justify stopping, identify its exact error/evidence, investigate
+its cause, check already-recorded decisions and attempt authorized remedies. Isolate
+one blocked operation and continue independently eligible work. If nothing authorized
+can proceed, explain to the owner: what is blocked, why, what was tried, what specific
+input/permission/resource or fix you believe would unblock it, and your recommended
+next action. Ask genuinely missing owner input promptly while independent work proceeds.
+An actual execution limit gets an explicit incomplete recoverable checkpoint, never
+a completion claim. Preserve every real safety, spending, release and approval gate.
+
 
 ## Bundle target and delivery boundaries — owner alignment 2026-10-15
 
@@ -47,21 +69,42 @@ Recover your interrupted/red PR first; inspect all failures and batch their reme
 
 ## 1. Catch up released work before new implementation
 
-Fetch main/live refs once. Independently verify production environment, source SHA,
-READY state and origin through trusted deployment evidence. A schedule timestamp,
-workflow success, matching branches or service self-report alone is insufficient.
-Run `npm run session:status` for the compact queue; add `-- --deployed FULL_SHA
---state READY --latest-pr NUMBER` only with freshly verified observations. The command
-is offline/read-only and never executes acceptance, releases or provider mutations.
-Without a shell use the same ledger and GitHub compare/deployment evidence manually.
+Fetch main/live refs and independently verify the actual serving production origin,
+source SHA and READY state. Workflow success, branch equality or a service self-report
+alone is insufficient. Run `npm run session:status -- --deployed FULL_SHA --state READY`
+with those observations, or use the same ledger and exact GitHub compare/deployment
+evidence manually when no shell is available. The command is read-only: it does not
+execute acceptance, release software or authorize provider operations.
 
-If main = live = READY production, catch up **every authorized pending live check**.
-If they differ, still run tasks whose required revisions are included in production.
-Missing/shallow ancestry needs an exact compare or targeted history fetch, not a guess.
-Recheck BLOCKED tasks against current owner decisions; do not request approvals again.
-A newly observed scheduled, delayed, recovery or separately authorized manual release
-uses this same procedure. Do not wait for the nominal release time or initiate a release
-just to finish a development batch. Follow the existing checked release policy.
+Evaluate EACH outstanding check against its required revision in deployed ancestry.
+Main/live equality is never a global acceptance prerequisite. Perform every currently
+eligible authorized check before selecting new implementation; recheck BLOCKED rows
+against current decisions and attempt authorized remedies. Defer only the affected
+check with its exact missing prerequisite, investigated remedy and next action.
+Missing history means fetch/compare that revision; it does not mean “not released.”
+Preserve valid evidence until relevant changes invalidate it. Reading the queue or
+observing a release is not acceptance execution. Preserve fixture and cleanup gates.
+
+Reconcile all outstanding queue rows, including rows hidden by an output limit, in
+the existing ledger/handoff. Before new implementation and final reporting, validate
+that accounting with `npm run session:status -- --deployed FULL_SHA --state READY
+--acceptance-review /tmp/acceptance-review.json`. This temporary sanitized extract
+is not a second ledger and must not contain secrets, provider bodies or private IDs.
+It contains the printed `snapshot` digest, `deployed`, `deploymentState`, and `tasks`; every outstanding task needs
+`id`, `requiredRevision`, current planner `disposition`, `outcome` and `evidence`.
+Use `PERFORMED` with `result: PASS|FAIL` (and `nextAction` for FAIL), or `DEFERRED`
+with `prerequisite`, `remedy` and `nextAction`. Existing recorded passes need no
+retyping; optional `REUSED` entries reference their evidence. The checker requires a verified READY deployed revision and rejects
+omissions or changes to any queue field via the snapshot digest; it cannot attest evidence truth or grant permission.
+Without a shell, put the same item-by-item accounting in the permanent handoff.
+Record actual results in the existing ledger; rerun the extract after ledger changes.
+An inaccessible deployment/evidence source requires investigation and a specific
+checkpoint, not fake observations or a project-wide stop.
+
+Recheck at observed releases/configuration changes, after meaningful merges, and
+before final handoff. A scheduled, delayed, recovery or separately authorized manual
+release uses the same per-check procedure. Follow the checked release policy; never
+initiate a release just to finish a development bundle.
 
 ## 1a. Choose a substantial outcome
 
@@ -245,6 +288,15 @@ misclassified as maintenance. It validates shape and approved IDs, not test
 truth; exact-head CI and human/code review still govern.
 
 ## 5. Checkpoint and finish
+
+Before reporting session completion, reconcile the acceptance queue again against
+actual deployment and finish its accounting above. Report performed checks/results,
+reused proof and each deferred check's exact prerequisite/remedy/next action, alongside
+bundle outcomes, subsection IDs, merged PRs, checks/reviews and cleanup. Update existing
+status/cards/index and the permanent merged-PR handoff. Reaching N bundles or pushing
+a checkpoint does not complete the session while eligible obligations remain.
+An actual execution limit requires an explicit incomplete, recoverable handoff.
+
 
 Keep a short progress note on interrupted branches: head, done/proof, one next action,
 CI/review state, successor and exact blocker. Diagnose and attempt authorized remedies

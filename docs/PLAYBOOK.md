@@ -7,6 +7,9 @@ Rewritten 2026-10-09 to what still applies (full previous text: `docs/archive/re
 
 ## Step 0 — Orient (minutes, not a reading session)
 
+Complete SESSION-START §§0–1 acceptance reconciliation before selecting new code.
+This recipe does not bypass the acceptance accounting or final closeout procedure.
+
 1. `git fetch origin && git status -sb`. Resume the branch/PR in `docs/STATUS.md` (and the card's
    `docs/pr-cards/<ID>.progress.md` resume note) before starting anything new. Never discard local work.
 2. Read the card. If the roadmap row says JIT (no card yet), write the card first from the approved design and the
