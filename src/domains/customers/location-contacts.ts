@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { subMonths } from "date-fns";
 import { prisma } from "@/lib/prisma";
@@ -324,4 +325,122 @@ export async function getJobLocationPrivacy(actor: { userId: string; role: strin
   });
   if (!row?.serviceAddress || row.customerId !== row.serviceAddress.customerId) return null;
   return row.serviceAddress;
+}
+
+
+/** Scoped, single-use repair intake; caller copies link manually. No message is sent. */
+export async function createTenantRepairLink(actor: LocationActor, customerId: string,
+  addressId: string, contactId: string): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  const hash = createHash("sha256").update(token).digest("hex");
+  await prisma.$transaction(async tx => {
+    await requireAddress(tx, actor, customerId, addressId);
+    const site = await tx.serviceAddress.findUniqueOrThrow({
+      where: { id: addressId },
+      select: { locationContactPolicy: true,
+        customer: { select: { locationContactPolicy: true } } },
+    });
+    const policy = effectiveLocationPermission(site.customer.locationContactPolicy, site.locationContactPolicy);
+    if (!policy.maintenance) throw new Error("Client has not authorized tenant maintenance contact at this location.");
+    const updated = await tx.locationContact.updateMany({
+      where: { id: contactId, serviceAddressId: addressId, endedAt: null, erasedAt: null },
+      data: { repairTokenHash: hash, repairTokenExpiresAt: new Date(Date.now() + 7 * 86400000) },
+    });
+    if (updated.count !== 1) throw new Error("Choose a current contact.");
+    await event(tx, actor, "location.repair_link.created", addressId, { contactId, expiresInDays: 7 });
+  });
+  return "/tenant/repair/" + token;
+}
+function repairHash(token: string): string | null {
+  if (!/^[a-zA-Z0-9_-]{32,120}$/.test(token)) return null;
+  // Hash search avoids exposing the original token in stored records.
+  return createHash("sha256").update(token).digest("hex");
+}
+export async function tenantRepairOptions(token: string) {
+  const hash = repairHash(token);
+  if (!hash) return null;
+  const person = await prisma.locationContact.findFirst({
+    where: { repairTokenHash: hash, repairTokenExpiresAt: { gt: new Date() },
+      endedAt: null, erasedAt: null },
+    select: { id: true, serviceAddress: {
+      select: { id: true, customerId: true, line1: true, city: true, unitLabel: true,
+        locationContactPolicy: true, customer: {
+          select: { archivedAt: true, locationContactPolicy: true } },
+      } },
+    },
+  });
+  const site = person?.serviceAddress;
+  if (!site || site.customer.archivedAt ||
+    !effectiveLocationPermission(site.customer.locationContactPolicy, site.locationContactPolicy).maintenance)
+    return null;
+  const agreements = await prisma.rentalAgreement.findMany({
+    where: { customerId: site.customerId, serviceAddressId: site.id, status: "ACTIVE" },
+    select: { lines: { select: { assignments: {
+      where: { unassignedAt: null },
+      select: { appliance: {
+        select: { id: true, assetNumber: true, applianceType: { select: { name: true } } },
+      } },
+    } } } },
+  });
+  const appliances = agreements.flatMap(a => a.lines.flatMap(l =>
+    l.assignments.map(x => ({
+      id: x.appliance.id,
+      label: x.appliance.applianceType.name + " · " + x.appliance.assetNumber,
+    }))));
+  return { location: [site.unitLabel, site.line1, site.city].filter(Boolean).join(" · "),
+    appliances: [...new Map(appliances.map(a => [a.id, a])).values()] };
+}
+export async function submitTenantRepair(token: string, input: { applianceId: string; problem: string }) {
+  const hash = repairHash(token);
+  if (!hash) throw new Error("This repair link is invalid.");
+  const problem = z.string().trim().min(10).max(2000).parse(input.problem);
+  const applianceId = z.string().min(1).max(100).parse(input.applianceId);
+  // Transactions + token consumption eliminate replay/double reports. Any denial rolls back.
+  return prisma.$transaction(async tx => {
+    const person = await tx.locationContact.findFirst({
+      where: { repairTokenHash: hash, repairTokenExpiresAt: { gt: new Date() },
+        endedAt: null, erasedAt: null },
+      select: { id: true, serviceAddressId: true, serviceAddress: {
+        select: { customerId: true, locationContactPolicy: true,
+          customer: { select: { archivedAt: true, locationContactPolicy: true } } },
+      } },
+    });
+    const site = person?.serviceAddress;
+    if (!person || !site || site.customer.archivedAt ||
+      !effectiveLocationPermission(site.customer.locationContactPolicy, site.locationContactPolicy).maintenance)
+      throw new Error("This repair link is no longer active.");
+    const activeRental = await tx.rentalAgreement.findFirst({
+      where: { customerId: site.customerId, serviceAddressId: person.serviceAddressId,
+        status: "ACTIVE", lines: { some: { assignments: {
+          some: { applianceId, unassignedAt: null },
+        } } } },
+      select: { id: true },
+    });
+    if (!activeRental) throw new Error("Choose a machine on this location's active rental.");
+    const consumed = await tx.locationContact.updateMany({
+      where: { id: person.id, repairTokenHash: hash, repairTokenExpiresAt: { gt: new Date() },
+        endedAt: null, erasedAt: null },
+      data: { repairTokenHash: null, repairTokenExpiresAt: null },
+    });
+    if (consumed.count !== 1) throw new Error("This repair link was already used.");
+    const request = await tx.maintenanceRequest.create({
+      data: { customerId: site.customerId, serviceAddressId: person.serviceAddressId,
+        applianceId, problem, priority: "NORMAL" },
+    });
+    // Customer notice persists regardless of outbound-email activation. No direct billing,
+    // charge, tenant login, tenant SMS, scheduled visit or provider write.
+    await tx.customerNotice.create({ data: {
+      customerId: site.customerId, kind: "TENANT_REPAIR",
+      dedupeKey: "tenant-repair:" + request.id,
+      subject: "New repair report from a tenant",
+      body: "A tenant has reported a repair at one of your properties. Review the request in your customer portal. Any chargeable damage needs your independent approval.",
+    } });
+    await tx.auditLog.create({ data: {
+      action: "location.tenant_repair.request", entityType: "MaintenanceRequest",
+      entityId: request.id, newValue: {
+        contactId: person.id, serviceAddressId: person.serviceAddressId, customerId: site.customerId,
+      },
+    } });
+    return request.id;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
