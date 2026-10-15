@@ -4,7 +4,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { locationWorkspace, LocationPermission } from "@/domains/customers/location-contacts";
 import {
-  addLocationPersonAction, commitLocationImportAction, endLocationPersonAction,
+  addLocationPersonAction, commitLocationImportAction, createTenantRepairLinkAction, endLocationPersonAction,
   previewLocationImportAction, updateLocationAccountAction,
   updateLocationSiteAction, updateTenantRetentionAction,
   type MutationState,
@@ -49,6 +49,7 @@ function SiteEditor({ customerId, site, mutate, busy }: {
   busy: boolean;
 }) {
   const [showContact, setShowContact] = useState(false);
+  const [repairLink, setRepairLink] = useState<string | null>(null);
   const [override, setOverride] = useState(site.locationContactPolicy !== null);
   return <section className="rounded-lg border border-line p-4 space-y-3">
     <h3 className="font-semibold text-ink">
@@ -89,12 +90,21 @@ function SiteEditor({ customerId, site, mutate, busy }: {
           className="text-primary underline">{showContact ? "Close" : "Add contact"}</button>
       </div>
       <p className="my-2 text-xs text-ink-soft">Tenants are never customers and cannot see account prices. Recording a phone number or client permission does not opt a tenant into SMS.</p>
+      {repairLink && <p className="rounded bg-subtle p-3 text-sm break-all">Repair link: <a href={repairLink} className="text-primary underline">{repairLink}</a> (valid for 7 days; share with this tenant only)</p>}
       <ul className="space-y-2">
         {site.locationContacts.map(person => <li key={person.id} className="rounded border border-line p-3 text-sm">
           <div className="flex flex-wrap justify-between gap-2">
             <span><strong>{person.erasedAt ? "Former occupant (details erased)" : person.name}</strong>{" "}
               · {person.role === "TENANT" ? "Tenant" : "On-site contact"} · {person.preferredLanguage}</span>
             {!person.endedAt && !person.erasedAt && <span className="flex gap-2">
+              <button type="button" disabled={busy} onClick={() => mutate("repair", async () => {
+                const link = await createTenantRepairLinkAction(customerId, site.id, person.id);
+                if (!link.ok) return { ok: false, message: link.message };
+                setRepairLink(link.path);
+                return { ok: true, message: "Copy the link manually; no message was sent." };
+              })} className="text-primary underline">
+                Create single-use repair link
+              </button>
               <button type="button" disabled={busy}
                 onClick={() => mutate(site.id + ":" + person.id,
                   () => endLocationPersonAction(customerId, site.id, person.id, false))}
@@ -162,8 +172,8 @@ export function LocationsPanel({ customerId, locations, owner, retentionMonths }
   return <div className="space-y-5">
     <form onSubmit={e => {
       e.preventDefault();
-      mutate("account", () => updateLocationAccountAction(customerId,
-        permissionFrom(new FormData(e.currentTarget))));
+      const value = permissionFrom(new FormData(e.currentTarget));
+      mutate("account", () => updateLocationAccountAction(customerId, value));
     }} className="rounded-lg border border-line p-4 space-y-3">
       <h2 className="text-lg font-semibold">Account-wide tenant contact permission</h2>
       <p className="text-sm text-ink-soft">Only the client can authorize contact topics. Location overrides take precedence. Tenant consent to automated texts is a separate requirement.</p>

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import {
-  addLocationPerson, importLocationCsv, locationWorkspace, moveOutLocationPerson,
+  addLocationPerson, createTenantRepairLink, importLocationCsv, locationWorkspace, moveOutLocationPerson,
   parseLocationCsv, saveAccountLocationPermission, saveLocationDetails,
   setLocationRetention, type LocationActor,
 } from "@/domains/customers/location-contacts";
@@ -82,4 +82,13 @@ export async function updateTenantRetentionAction(months: number) {
   } catch (error) {
     return { ok: false as const, message: error instanceof Error ? error.message : "Unable to update." };
   }
+}
+
+/** Customer or owner can create a scoped seven-day, one-use maintenance form. Nothing is sent. */
+export async function createTenantRepairLinkAction(customerId: string, siteId: string, contactId: string) {
+  const actor = await scopedActor(customerId);
+  try { return { ok: true as const,
+    path: await createTenantRepairLink(actor, customerId, siteId, contactId) }; }
+  catch (error) { return { ok: false as const,
+    message: error instanceof Error ? error.message : "Unable to create link." }; }
 }

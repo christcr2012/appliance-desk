@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getDeskJobById } from "@/domains/desk-access";
+import { getJobLocationPrivacy } from "@/domains/customers/location-contacts";
 import { JobDetailPanel } from "./job-detail-panel";
 import { JobSchedulePanel } from "./job-schedule-panel";
 import { JobPartsUsed } from "./job-parts-used";
@@ -54,6 +55,9 @@ export default async function JobDetailPage({
   if (!job) {
     notFound();
   }
+  const [privateLocation] = await Promise.all([
+    getJobLocationPrivacy({ userId: session.user.id, role: session.user.role }, job.id),
+  ]);
   const showParts = canViewFinance && job.type === "MAINTENANCE_VISIT";
   const [teamMembers, partsUsed, partOptions, completionScope, pendingDeliveries] = await Promise.all([
     canViewFinance ? getAssignableTeamMembers() : Promise.resolve([]),
@@ -90,6 +94,14 @@ export default async function JobDetailPage({
           ` · ${job.serviceAddress.line1}, ${job.serviceAddress.city}, ${job.serviceAddress.state} ${job.serviceAddress.zip}`}
       </p>
 
+      {privateLocation && <section className="mt-4 rounded-lg border border-line bg-subtle p-3 text-sm">
+        <h2 className="font-medium">Assigned-visit location details</h2>
+        {privateLocation.unitLabel && <p>Unit: {privateLocation.unitLabel}</p>}
+        {privateLocation.accessNotes && <p className="whitespace-pre-wrap">Private access notes: {privateLocation.accessNotes}</p>}
+        <ul>{privateLocation.locationContacts.map(contact => <li key={contact.id}>
+          {contact.name} ({contact.role}) · {contact.phone ?? "No phone"} · {contact.email ?? "No email"}
+        </li>)}</ul>
+      </section>}
       {job.maintenanceRequest && (
         <p className="mt-1 text-sm">
           <Link
