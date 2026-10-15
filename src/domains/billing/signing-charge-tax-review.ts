@@ -6,6 +6,8 @@ import { assessPreparedSigningCharges } from "./signing-charge-readiness";
 import { getEffectiveSetupTaxTreatmentInTx } from "./setup-tax-policy-version";
 import { reviewSigningFeeTax, type SigningFeeTaxReview } from "./signing-charge-tax-evidence";
 import { assembleSigningOrderDraft, type SigningOrderDraftContract } from "./signing-order-draft-contract";
+import { assembleSigningV2Draft } from "./signing-v2-draft";
+import { effectiveMandatorySigningPolicy } from "./signing-mandatory-policy";
 
 export type PrivateOrderTaxPreview = {
   orderReady: boolean;
@@ -40,7 +42,7 @@ export async function getDraftSigningTaxReviewInTx(
   const scope = { customerId: target.customerId,
     ...(target.sourceEstimateId ? { sourceEstimateId: target.sourceEstimateId } : { id: target.id }) };
   const agreements = await tx.rentalAgreement.findMany({ where: scope,
-    select: { id: true, status: true, serviceAddressId: true },
+    select: { id: true, status: true, serviceAddressId: true, sourceEstimateId: true, depositCents: true, mandatoryChargeReviewVersions: true, commercialReservePolicyVersions: true },
     orderBy: { id: "asc" } });
   if (agreements.length === 0 || agreements.length > 500 ||
       agreements.some((row) => row.status !== "DRAFT")) {
@@ -103,8 +105,43 @@ export async function getDraftSigningTaxReviewInTx(
   }
   if (reviewMissing) problems.push(
     "Setup-fee tax approval is missing or changed. Record the CPA evidence in Settings and refresh the draft.");
-  const orderDraft = problems.length === 0 ? assembleSigningOrderDraft({ agreements: charges, taxRows: rows }) : null;
+  let orderDraft = problems.length === 0 ? assembleSigningOrderDraft({ agreements: charges, taxRows: rows }) : null;
   if (orderDraft?.status === "BLOCKED") problems.push(...orderDraft.reasons);
+  if (orderDraft?.status === "OWNER_DRAFT_ONLY") {
+    const settings = await tx.businessSettings.findUnique({
+      where: { id: "singleton" },
+      select: { signingMandatoryPolicyVersions: true, updatedAt: true },
+    });
+    const current = effectiveMandatorySigningPolicy(
+      settings?.signingMandatoryPolicyVersions, effectiveOn);
+    const v2Required = agreements.some(row =>
+      row.depositCents > 0 ||
+      (Array.isArray(row.mandatoryChargeReviewVersions) &&
+        row.mandatoryChargeReviewVersions.length > 0)) ||
+      current.revision !== null;
+    if (v2Required) {
+      try {
+        if (!current.revision || !settings)
+          throw new Error("Owner policy and all service charge decisions must be reviewed.");
+        orderDraft = assembleSigningV2Draft({
+          draft: orderDraft,
+          sources: agreements.map(row => ({
+            agreementId: row.id, serviceAddressId: row.serviceAddressId,
+            estimateId: row.sourceEstimateId ?? "",
+            depositCents: row.depositCents,
+            mandatoryHistory: row.mandatoryChargeReviewVersions,
+            reserveHistory: row.commercialReservePolicyVersions,
+          })),
+          policyRevision: current.revision,
+          settingsUpdatedAt: settings.updatedAt.toISOString(),
+        });
+      } catch (error) {
+        problems.push(error instanceof Error ? error.message :
+          "Full location-level V2 signing evidence requires review.");
+        orderDraft = null;
+      }
+    }
+  }
   return { orderReady: problems.length === 0 && orderDraft?.status === "OWNER_DRAFT_ONLY", orderDraft, reasons: [...new Set(problems)], rows };
 }
 

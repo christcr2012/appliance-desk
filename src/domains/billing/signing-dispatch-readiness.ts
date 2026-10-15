@@ -43,7 +43,7 @@ export function signingDispatchDecision(evidence: SigningDispatchEvidence):
       signature.signingOrderFingerprint !== payment.orderFingerprint ||
       signature.signingAllInCents !== payment.totalCents ||
       signature.signingEvidenceVersion !== payment.evidenceVersion ||
-      payment.evidenceVersion !== 1 ||
+      ![1,2].includes(payment.evidenceVersion) ||
       (evidence.hasSigningCharge && evidence.frozenOrderFingerprint !== signature.signingOrderFingerprint)) {
     return blocked("This order has no matching signed payment review. Recheck the signed agreement before delivery.");
   }
@@ -76,6 +76,7 @@ export async function assertSigningPaymentReadyForDispatchInTx(
         signingAllInCents: true, signingEvidenceVersion: true,
       } },
       signingPaymentObligation: { select: {
+        agreementId:true,componentEvidence:true,
         setupFeeCents: true, setupTaxCents: true, downPaymentCents: true,
         totalCents: true, status: true, signedAt: true,
         orderFingerprint: true, evidenceVersion: true,
@@ -84,6 +85,16 @@ export async function assertSigningPaymentReadyForDispatchInTx(
     },
   });
   if (!a) throw new Error("The rental for this delivery is missing.");
+  if (a.signingPaymentObligation?.evidenceVersion === 2) {
+    // Unlike V1, V2 stores additional money categories outside the legacy
+    // scalar fields. Physical dispatch must verify every historical source.
+    const { getFrozenSigningOrderInTx } = await import("./signing-frozen-verify");
+    const verified = await getFrozenSigningOrderInTx(tx, agreementId);
+    if (!verified.some(row => row.agreementId === agreementId &&
+        row.schemaVersion === 2 &&
+        row.allInCents === a.signingPaymentObligation?.totalCents))
+      throw new Error("Complete V2 signing evidence must be verified before delivery.");
+  }
   const verdict = signingDispatchDecision({
     customerId: a.customerId,
     agreementStatus: a.status,

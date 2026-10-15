@@ -1,3 +1,4 @@
+import { assertSigningBusinessReviewsInTx } from "./signing-business-review";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { offerMatchesFrozenEvidence } from "@/domains/agreements/signing-offer-proof";
@@ -28,8 +29,7 @@ export async function getReviewedSigningPaymentInTx(
         paidInFullInAdvance: true, depositCents: true, damageWaiverCents: true },
     });
     if (!agreement || agreement.status !== "ACTIVE" ||
-        agreement.paidInFullInAdvance || agreement.depositCents !== 0 ||
-        agreement.damageWaiverCents !== 0) {
+        agreement.paidInFullInAdvance) {
       throw new Error("Signing payment is not eligible for automated collection.");
     }
     const signature = await tx.signatureRecord.findUnique({
@@ -42,9 +42,14 @@ export async function getReviewedSigningPaymentInTx(
     }
     const frozen = await getFrozenSigningOrderInTx(tx, agreementId);
     const target = frozen.find(row => row.agreementId === agreementId);
-    if (!target || !offerMatchesFrozenEvidence(signature, target)) {
+    if(target?.schemaVersion===1 && (agreement.depositCents!==0||agreement.damageWaiverCents!==0))
+      throw new Error("Signing payment is not eligible for legacy unallocated deposit or waiver collection.");
+    if (!target || !offerMatchesFrozenEvidence(signature, target) ||
+        (target.schemaVersion === 2 &&
+          target.v2Extension.components.find(c => c.category === "COMMERCIAL_RESERVE")?.amountCents !== agreement.depositCents)) {
       throw new Error("Customer-accepted payment proof no longer matches the frozen order.");
     }
+    await assertSigningBusinessReviewsInTx(tx, frozen.filter(row => row.agreementId === agreementId));
     const plan = buildFrozenSigningCheckoutPlan(frozen, agreementId);
     if (plan.allInCents !== signature.signingAllInCents ||
         plan.orderFingerprint !== signature.signingOrderFingerprint) {

@@ -1,3 +1,115 @@
+## 2026-10-15 — PR #466 complete W-22FIN engineering bundle, final gates
+
+One connected implementation covers the five original POLICY, QUOTE, APPROVAL,
+RECOVERY and DELIVERY subsections. Count it only after required exact-head green
+CI/browser, review disposition and merge of PR #466. The scorecard maps each
+original acceptance criterion; no helper, internal repair or earlier merged
+subsection is recounted. After verified merge, W-23 is the next engineering
+outcome; prepare its already planned card/packet at next startup. W-22 remains
+PARTIAL for genuine external acceptance. Older checkpoints below are history.
+
+Current source reconciles main #468 `ad0d628f` into the existing draft; the original
+source baseline was #467 `d6cc8b5b`. V2 preserves
+V1 semantics while connecting exact-order received-advice clearance, current
+unsigned policy/tax checks, quote/adoption/signature/SQL obligation, same-receipt
+reserve, cancellation/independent whole return, dispatch, actual physical
+completion, rent-only first invoice, customer/owner/documents and backup restore.
+Unsigned reopening audits full old evidence and requires preparation, freeze
+and clearance again; signed snapshots cannot be reopened or repriced.
+
+Verification: typecheck/lint passed; related disposable PostgreSQL run 1250 tests
+passed (three existing allow-listed performance skips); selected DB run 52 passed
+with no skips. The synthetic $456.06 two-address flow proves stale approval
+denial, original agreement adoption/replay, concurrent single receipt/reserve,
+paid A dispatch/physical completion, independently recorded B cancellation return,
+and only A's $60 rent advance applied once on its first invoice. Actual supported
+backup restore preserves the full financial history, including reopened unsigned
+clearance. Provider calls are simulations, not genuine Stripe TEST evidence.
+
+Local browser preflight is blocked before tests: standard build and supported
+webpack/stand-in-font build were killed at this 4GB sandbox's memory limit (137);
+1536MB heap diagnosis aborted with V8 heap exhaustion (134). No local browser
+pass is claimed. Required normal Actions production build/browser suites must
+pass at the published exact head, including the new actual owner/customer form
+flow, three widths, keyboard and light/dark scoped axe checks. Reviews and full
+required CI remain merge gates; their exact-head links belong in PR #466.
+
+Production independently remains READY at `4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0`.
+Public / GET 200 and private /desk and /account/rentals 307 to login; browser
+/desk also displays login. All eleven existing queue sources are included in
+this deployed revision. Complete per-row acceptance accounting was checked:
+none has a current authorized authenticated fixture/session or requisite external
+provider/professional evidence here. Each exact prerequisite and next procedure
+is preserved in the existing release queue below. Do not create production
+fixtures or claim passes from ancestry/anonymous access. Main-ahead is not a
+reason to defer those existing checks. V2 requires its own future checked release.
+
+## 2026-10-15 W-22FIN active handoff — interrupted long integration and acceptance reconciliation
+
+**Branch/worktree:** `ai/gpt6/w22fin-v2-complete-20261015` in
+`/vercel/appliance-desk-w22fin-v2`, based on main `fbbd1508` (#465).
+At startup there were zero open PRs; do not count this ongoing implementation
+as complete or create a *separate* anti-stall documentation PR. Preserve the
+existing branch and all working files. `npm run work -- checkpoint` prints
+current Git divergence, changed files, unresolved conflicts and recovery
+steps. Use the anti-stall loop in `docs/SESSION-START.md`. **Unmerged and
+unreviewed changes do not count as a bundle**, irrespective of passing unit tests.
+
+**Why this session stalled:** broad W-22FIN V1→V2 evidence integration acquired
+20 uncommitted changes across financial consumer boundaries. Initial unbounded
+Node typecheck exhausted its heap; some large shell-edit operations were
+rejected and had to be split. The agent diagnosed repeatedly instead of
+continuing a bounded action. Added `scripts/work-checkpoint.mjs`,
+`npm run work -- checkpoint`, unit tests and a permanent same-PR recovery rule.
+Tests `tests/work-checkpoint.test.ts` pass (three focused assertions).
+Run `NODE_OPTIONS=--max-old-space-size=3072 npm run typecheck` in this 4 GB
+sandbox, not an unbounded TypeScript retry.
+
+**Engineering in progress (W-22FIN; not yet a completed subsection):**
+explicit sorted V2 mandatory fees/reserve/RDF/service tax alongside immutable
+V1, versioned draft/freeze/reverification, reviewed quote/readback,
+checkout items, receipt-backed deposit liability, first invoice limited to
+rent advance, and document breakdown. Synthetic two-property $456.06 V2
+freeze/checkout proof passes. The exact end-to-end workflow remains
+unfinished: complete and independently verify signed professional-use gates,
+multi-location preapproval/acceptance, signed cancellation and partial-delivery
+refund/reserve handling, isolated PostgreSQL migration replay and browser
+acceptance, all original packet criteria, and exact-head CI/reviews/merge.
+Do not soften owner refund, Stripe LIVE, communication, legal/CPA or release
+approvals. A prior test environment without DATABASE_URL caused two suites
+to fail before assertions; both later passed with synthetic localhost
+DATABASE_URL/DIRECT_URL. No production DB or money changed.
+
+**Live release reconciliation (not user acceptance):** verified
+Vercel READY production `dpl_52TWf2hvNct3psyRVv3YhVqvWKbK`,
+branch `live` source `4740313d`, assigned to
+`robinsonappliancerentals.com`. Production GET / was 200; anonymous
+GET /account/rentals and /desk redirected 307 to /login.
+The **11** queued acceptance cases in the JSON below each have an
+ancestry-required commit included in this deployed revision. Main ahead of
+live is **not** a deferral. The anonymous probes are not authenticated or
+provider passes. The outstanding checks and their specific unmet prerequisites:
+
+| Queue IDs | Unmet prerequisite and next permitted action |
+|---|---|
+| DESK-W22, W22FIN-DISPATCH-RECEIPT | Authorized existing signed customer/owner TEST records and verified Stripe TEST settlement; read existing scoped records first, no live delivery start or synthetic charge |
+| DESK-COMMS | Owner consent/IN-09 A2P, IN-51–53 voice/privacy/budget choices and approved controlled carrier evidence; leave sends/activation OFF |
+| APPLIANCE-W22-PORTAL-RECEIPT, W22FIN-SIGNING-OWNER-CUSTOMER | Authorized authenticated existing customer and owner sessions, own/foreign/invalid receipt readback; do not create production records |
+| W22FIN-SIGNED-DELIVERY-VISIT | Existing approved signed delivery order with unscheduled/scheduled evidence; read-only compare customer calendar, no mutation |
+| W22FIN-MULTI-ORDER-VIEW | Authorized existing two-address frozen estimate and scoped owner/customer signing readback; confirm amounts and missing/foreign denial |
+| W22FIN-PAYMENT-RECOVERY | Authorized existing owner TEST payment attempt/receipt proving pending vs failed vs settled; no independent new charges |
+| W22FIN-FINAL-ESTIMATE-READBACK | Existing converted multi-location owner/customer estimate with independently frozen reviewed amount |
+| W22FIN-MANDATORY-OWNER-POLICY | Scoped owner authenticated policy readback and separately permitted isolated staff-denial test; counsel/CPA gate remains independent |
+| W22FIN-PREAPPROVAL-READBACK | Approved existing prepared estimate/customer link and owner identity; stale quote denial and exact V2 frozen fingerprint |
+
+**Next action:** inspect changed files and full original W-22FIN contract,
+finish all version-sensitive consumers and isolated financial rejection/replay
+tests, review current checks, commit to the **same implementation branch**,
+and open/merge the implementation PR only with all required gates green.
+Re-evaluate the 11 queued acceptance cases against the READY revision before
+ending; do not mark them passed for ancestry alone.
+
+
 ### October 15 — owner-requested bundle guidance consistency review
 
 ## Owner-requested bundle scope accounting correction — October 15
@@ -388,7 +500,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "W-22 remains partial; preserve W-23 sequencing, refunds/signatures, customer isolation and provider approval gates",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Release source 2f68599ac35d65e6c72e919475381483a7dca289 verified in READY Vercel deployment dpl_3QHctQyDoLX1a8gRFMg8isvbjEXR; source ancestry and exact-head CI now proven. Authenticated customer, Stripe TEST, carrier/provider or owner acceptance NOT executed or passed; production credentials/fixtures not used."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Existing authorized signed TEST records and provider-authoritative Stripe TEST settlement. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "DESK-COMMS",
@@ -399,7 +511,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Existing SMS/customer email consent and activation gates; no sending or live activation implied",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Release source 2f68599ac35d65e6c72e919475381483a7dca289 verified in READY Vercel deployment dpl_3QHctQyDoLX1a8gRFMg8isvbjEXR; source ancestry and exact-head CI now proven. Authenticated customer, Stripe TEST, carrier/provider or owner acceptance NOT executed or passed; production credentials/fixtures not used."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Owner consent, IN-09 A2P and IN-51\u201353 activation/privacy decisions plus controlled carrier evidence. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "APPLIANCE-W22-PORTAL-RECEIPT",
@@ -410,7 +522,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Existing authorized owner/customer test accounts only; no production fixture creation, customer charge, communication or policy activation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Source commit c0de6e7 is included in deployed 2f68599ac35d65e6c72e919475381483a7dca289 / READY Vercel production; exact-head main CI unit+browser succeeded. Customer-scoped real production authenticated readback and corrupt/foreign denial probes remain unverified: do not run live fixtures without explicit approval."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authorized authenticated own/foreign customer fixture and receipt identities. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "W22FIN-SIGNING-OWNER-CUSTOMER",
@@ -421,7 +533,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "No new live fixtures, payment, messaging, professional approval or provider activation",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "PR #450 merged; full exact-head CI, isolated database and browser tests passed. Source not independently observed in live production; real authenticated acceptance unverified."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authorized authenticated owner/customer identities and existing scoped signed receipt. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "W22FIN-SIGNED-DELIVERY-VISIT",
@@ -432,7 +544,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Read existing owner/customer records only; no production fixture, job mutation or customer notification without separate authorization",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "PR #451 merged; exact-head full CI/disposable Postgres/browser acceptance passed. Released and real-user acceptance still pending."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authorized authenticated customer and existing signed scheduled/unscheduled delivery records. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "W22FIN-DISPATCH-RECEIPT",
@@ -443,7 +555,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Never start a real production delivery for testing; no money-out or Stripe LIVE; existing approved TEST/customer acceptance only",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "PR #452 proposed; pure payment-denial cases and genuine frozen order/sign/owner-receipt disposable-Postgres suite; exact-head CI and release/provider acceptance still pending."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Existing approved signed TEST order with verified receipt or zero due. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "W22FIN-MULTI-ORDER-VIEW",
@@ -454,7 +566,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Read only, no live fixtures, payment, customer message or public pricing; professional and Stripe approvals remain independent",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "PR #453 source implemented, new isolated browser and pure tests added; required CI/release/authenticated user acceptance not yet claimed."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authorized existing two-address frozen estimate and customer signing link. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "W22FIN-PAYMENT-RECOVERY",
@@ -465,7 +577,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "No synthetic production charge/receipt/attempt mutation; read-only existing owner TEST evidence first; no autonomous money-out/Stripe LIVE/customer messages",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "PR #454 source implemented against merged #453, with exact-head tests and CI still required before claiming engineering acceptance; production not deployed."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authorized owner session and existing TEST pending/failed/settled attempts. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "W22FIN-FINAL-ESTIMATE-READBACK",
@@ -476,7 +588,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "gates": "Use existing safe read-only records, no live synthetic estimate/job/payment mutation, professional/Stripe/communication gates unchanged",
     "dependsOn": [],
     "status": "PENDING",
-    "lastEvidence": "Source PR #455 implementation commit 42a8d744b80e939e5f69dee3cdcce5ddbfd30785 prepared; exact-head CI, checked production release, and authenticated real customer/provider acceptance remain unverified."
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authorized existing converted multi-location estimate and customer link. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented."
   },
   {
     "id": "W22FIN-MANDATORY-OWNER-POLICY",
@@ -485,7 +597,7 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "task": "After checked READY production ancestry, verify owner-only mandatory-charge policy and estimate review readback; maintain unresolved financial gates.",
     "procedure": "Authenticate scoped owner; read policy revision and nonpayable per-location estimate review only. Check denied admin/staff mutation in authorized isolated acceptance; never write a production policy fixture.",
     "gates": "Requires permitted owner identity and verified READY ancestry. No real tax-dependent send, customer collection, public price, or live/provider mutation.",
-    "lastEvidence": "Source implementation and local synthetic tests only; not independently deployed or owner accepted.",
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authenticated OWNER read session and separately permitted isolated staff denial fixture. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented.",
     "dependsOn": [],
     "status": "PENDING"
   },
@@ -496,9 +608,20 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "task": "Verify authenticated owner prepared multi-property estimate quote readback and public stale-quote denial after checked READY release.",
     "procedure": "Use separately permitted owner and isolated customer read identities; inspect fully signed frozen order, matching quote hashes, denial of legacy provisional approval, and no provider mutation or live fixture creation.",
     "gates": "Checked READY revision ancestry, owner/customer permission and isolated safe fixture. Counsel/CPA/Stripe TEST and publication restrictions remain separate.",
-    "lastEvidence": "Only local pure unit tests and source review; no real deployed authenticated acceptance.",
+    "lastEvidence": "2026-10-15: Independently verified Vercel READY custom-domain source 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0 includes required revision. Public GET 200; /desk and /account/rentals 307 to login; browser /desk also displayed login. Missing prerequisite: Authorized existing prepared estimate and scoped owner/customer identities. No production fixtures, authentication credentials, provider writes, activation or acceptance passes invented.",
     "dependsOn": [],
     "status": "PENDING"
+  },
+  {
+    "id": "W22FIN-V2-COMPLETE-ORDER",
+    "priority": 1,
+    "requiredRevision": "c5e7b7badf121fe84079bead388b4d4140a4299a",
+    "task": "After checked release, verify complete V2 all-in owner/customer quote, signing, receipt/reserve, cancellation return and rent-only first-invoice readback.",
+    "procedure": "docs/pr-cards/W-22FIN.md; use approved existing scoped owner/customer TEST records and read-only provider-authoritative evidence; no production fixtures or automatic refunds.",
+    "gates": "Checked READY deployed ancestry; separately permitted authenticated owner/customer records; genuine CPA/counsel clearance and Stripe TEST evidence; LIVE, communications and money-out remain independently gated.",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "Connected synthetic PostgreSQL source acceptance: 1250 related and 52 selected tests passed. Local browser build blocked by sandbox memory; exact-head normal Actions browser/build/review required before merge. V2 source is newer than READY live 4740313d; not deployed or genuinely provider accepted."
   }
 ]
 ```

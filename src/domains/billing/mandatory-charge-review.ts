@@ -65,15 +65,16 @@ export function mandatoryReviewFingerprint(input:Readonly<ReturnType<typeof norm
     serviceAddressId:input.serviceAddressId,
     globalPolicyRevision:input.globalPolicyRevision,
     settingsUpdatedAt:input.settingsUpdatedAt,
-    charges:input.charges,
+    charges:input.charges.map(row=>({kind:row.kind,decision:row.decision,amountCents:row.amountCents,reason:row.reason})),
     tax:{
-      ...input.tax,
-      lines:[...input.tax.lines].sort((a,b)=>
+      status:input.tax.status,taxCents:input.tax.taxCents,
+      lines:input.tax.lines.map(row=>({lineKey:row.lineKey,jurisdictionId:row.jurisdictionId,rateVersionId:row.rateVersionId,category:row.category,taxableCents:row.taxableCents,exemptCents:row.exemptCents,taxCents:row.taxCents})).sort((a,b)=>
         a.lineKey.localeCompare(b.lineKey)||
         a.jurisdictionId.localeCompare(b.jurisdictionId)||
         a.rateVersionId.localeCompare(b.rateVersionId)),
+      reasons:input.tax.reasons,
     },
-    retailDelivery:input.retailDelivery,reserveCents:input.reserveCents,
+    retailDelivery:{event:input.retailDelivery.event,status:input.retailDelivery.status,amountCents:input.retailDelivery.amountCents,rateId:input.retailDelivery.rateId,handling:input.retailDelivery.handling,reason:input.retailDelivery.reason},reserveCents:input.reserveCents,
     reserveRevision:input.reserveRevision,
   };
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { SigningV2Extension } from "./signing-v2-lines";
 import type { SigningFeeTaxReview } from "./signing-charge-tax-evidence";
 
 export type SigningDraftFact = {
@@ -24,6 +25,7 @@ export type SigningOrderLineDraft = {
   downPaymentCents: number;
   setupTaxCents: number;
   allInCandidateCents: number;
+  v2Extension?: SigningV2Extension;
   jurisdictionEvidence: Array<{
     jurisdictionId: string;
     rateVersionId: string;
@@ -33,6 +35,7 @@ export type SigningOrderLineDraft = {
   }>;
 };
 export type SigningOrderDraftContract = {
+  evidenceVersion?: 2;
   status: "BLOCKED" | "OWNER_DRAFT_ONLY";
   reasons: string[];
   sourceFingerprint: string | null;

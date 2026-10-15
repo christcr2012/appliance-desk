@@ -26,12 +26,15 @@ export type SignedAgreementPayload = {
   // W-22: immutable proof included in a newly signed agreement artifact.
   // Absent only on historical pre-W-22 documents.
   frozenSigning?: {
-    schemaVersion: 1;
+    schemaVersion: 1 | 2;
     orderFingerprint: string;
     setupFeeCents: number;
     setupTaxCents: number;
     downPaymentCents: number;
     allInCents: number;
+    v2Components?: { category: string; amountCents: number;
+      disposition: string; termsReference: string | null }[];
+    v2Taxes?: { category: string; taxCents: number }[];
   };
   depositCents: number;
   damageWaiverCents: number;
@@ -136,13 +139,30 @@ export function renderSignedAgreement(payload: SignedAgreementPayload): string {
     ? `<div class="box"><h2>Automatic renewal</h2><p>${e(payload.terms.autoRenew.noticeLine)}</p><p>${e(payload.terms.autoRenew.termsText).replaceAll("\n", "<br>")}</p></div>`
     : "";
   const frozen = payload.frozenSigning;
-  if (frozen && (frozen.schemaVersion !== 1 ||
+  if (frozen && (![1, 2].includes(frozen.schemaVersion) ||
       !/^[a-f0-9]{64}$/.test(frozen.orderFingerprint) ||
       ![frozen.setupFeeCents, frozen.setupTaxCents,
         frozen.downPaymentCents, frozen.allInCents].every(n => Number.isSafeInteger(n) && n >= 0) ||
-      frozen.setupFeeCents + frozen.setupTaxCents + frozen.downPaymentCents !== frozen.allInCents))
+      (frozen.schemaVersion === 1 &&
+        frozen.setupFeeCents + frozen.setupTaxCents + frozen.downPaymentCents !== frozen.allInCents) ||
+      (frozen.schemaVersion === 2 &&
+        (!frozen.v2Components || !frozen.v2Taxes ||
+          frozen.v2Components.filter(row => row.disposition === "DUE_NOW")
+            .reduce((n, row) => n + row.amountCents, 0) +
+          frozen.v2Taxes.reduce((n, row) => n + row.taxCents, 0) !== frozen.allInCents))))
     throw new Error("Frozen signing totals do not reconcile.");
-  const frozenHtml = frozen ? `<div class="box"><h2>Reviewed signing charges</h2><p>Setup: ${e(formatCents(frozen.setupFeeCents))}</p><p>Setup tax: ${e(formatCents(frozen.setupTaxCents))}</p><p>Down payment: ${e(formatCents(frozen.downPaymentCents))}</p><p class="total">Tax-inclusive signing amount: ${e(formatCents(frozen.allInCents))}</p><p>Not a payment receipt. Any collected down payment is credited to the first delivery invoice.</p><p>Frozen order: ${e(frozen.orderFingerprint)}</p></div>` : "";
+  const v2Details = frozen?.schemaVersion === 2
+    ? [
+        ...(frozen.v2Components ?? []).map(row =>
+          '<p>' + e(row.category.replaceAll("_", " ").toLowerCase()) + ': ' +
+          e(row.disposition === "BUSINESS_PAID" ? "Paid separately by business" :
+            formatCents(row.amountCents)) +
+          (row.termsReference ? ' — ' + e(row.termsReference) : '') + '</p>'),
+        ...(frozen.v2Taxes ?? []).map(row =>
+          '<p>Tax — ' + e(row.category) + ': ' + e(formatCents(row.taxCents)) + '</p>'),
+      ].join("")
+    : "";
+  const frozenHtml = frozen ? `<div class="box"><h2>Reviewed signing charges</h2><p>Setup: ${e(formatCents(frozen.setupFeeCents))}</p><p>Setup tax: ${e(formatCents(frozen.setupTaxCents))}</p><p>Down payment: ${e(formatCents(frozen.downPaymentCents))}</p>${v2Details}<p class="total">Tax-inclusive signing amount: ${e(formatCents(frozen.allInCents))}</p><p>Not a payment receipt. Any collected down payment is credited to the first delivery invoice.</p><p>Frozen order: ${e(frozen.orderFingerprint)}</p></div>` : "";
   const fee = [
     payload.lateFeeCents > 0 ? formatCents(payload.lateFeeCents) : "",
     payload.lateFeePercent > 0 ? `${payload.lateFeePercent}%` : "",

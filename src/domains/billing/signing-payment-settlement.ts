@@ -1,3 +1,4 @@
+import { signedReserveAmount } from "./signing-reserve-liability";
 import type Stripe from "stripe";
 import type { Prisma } from "@prisma/client";
 import { idOf, type WebhookEvidence } from "./webhook-evidence";
@@ -31,13 +32,15 @@ export async function processSigningCheckoutEvent(
     throw new Error("W-22 signing webhook has invalid or unapproved provider evidence.");
   }
   const agreementId = metadata.agreementId;
+  // Match cancellation and review: agreement -> obligation -> review -> receipt/reserve.
+  await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" = ${agreementId} FOR UPDATE`;
   await tx.$queryRaw`
     SELECT "agreementId" FROM "AgreementSigningPayment"
     WHERE "agreementId" = ${agreementId} FOR UPDATE
   `;
   const obligation = await tx.agreementSigningPayment.findUnique({
     where: { agreementId },
-    include: { agreement: { select: { customerId: true } } },
+    include: { agreement: { select: { customerId: true, depositCents: true } } },
   });
   const attempt = await tx.signingPaymentAttempt.findUnique({
     where: { id: metadata.attemptId },
@@ -64,6 +67,9 @@ export async function processSigningCheckoutEvent(
     throw new Error("W-22 settlement does not match accepted signed obligation.");
   }
 
+  const reserveAmount = signedReserveAmount({
+    ...obligation, agreementDepositCents: obligation.agreement.depositCents,
+  });
   if (event.type === "checkout.session.async_payment_failed") {
     if (obligation.status !== "SETTLED" && attempt.status !== "SUCCEEDED") {
       await tx.signingPaymentAttempt.update({
@@ -123,6 +129,14 @@ export async function processSigningCheckoutEvent(
       : Boolean(entitlement)) {
       throw new Error("Signing receipt and first-invoice entitlement require reconciliation.");
     }
+    const recordedReserve = await tx.deposit.findMany({
+      where: { agreementId, sourceReceiptId: obligation.receiptId },
+      select: { amountCents: true },
+    });
+    if (reserveAmount > 0
+      ? recordedReserve.length !== 1 || recordedReserve[0].amountCents !== reserveAmount
+      : recordedReserve.length !== 0)
+      throw new Error("Settled reserve liability differs from original receipt.");
     return true; // Replay, including a distinct Stripe event ID.
   }
   if (obligation.status !== "AWAITING_PAYMENT" || obligation.receiptId ||
@@ -153,6 +167,11 @@ export async function processSigningCheckoutEvent(
     where: { agreementId },
     data: { status: "SETTLED", receiptId: receipt.id, settledAt: details.receivedOn },
   });
+  if (reserveAmount > 0)
+    await tx.deposit.create({ data: {
+      agreementId, sourceReceiptId: receipt.id,
+      amountCents: reserveAmount, refundable: true,
+    } });
   if (obligation.downPaymentCents > 0) {
     // This immutable, receipt-backed entitlement is NOT yet an invoice credit.
     // No generic customer-balance credit is created: that could be spent on

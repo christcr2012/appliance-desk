@@ -33,6 +33,7 @@ enum Role {
 }
 
 model User {
+  signingBusinessReviews SigningBusinessReview[]
   enteredRdfRates RetailDeliveryFeeRate[] @relation("RdfRateEditor")
   id            String    @id @default(cuid())
   email         String    @unique
@@ -782,6 +783,7 @@ enum RentalAgreementStatus {
 }
 
 model RentalAgreement {
+  signingBusinessReviews SigningBusinessReview[]
   rdfRecords RetailDeliveryFeeRecord[] @relation("RdfAgreement")
   outOfServicePeriods OutOfServicePeriod[]
   id         String                 @id @default(cuid())
@@ -1016,6 +1018,7 @@ model AgreementSigningPayment {
   setupTaxCents     Int
   downPaymentCents  Int
   totalCents        Int
+  componentEvidence Json?
   // NOT_DUE or AWAITING_PAYMENT until a separately reviewed settlement path exists.
   status            String
   signedAt          DateTime
@@ -1111,6 +1114,28 @@ model EarlyReturnResolution {
 }
 
 // Owner-approved pre-delivery cancellation review, NOT evidence that money was returned.
+// Immutable owner attestations, never synthetic professional approval.
+model SigningBusinessReview {
+  agreement RentalAgreement @relation(fields:[agreementId], references:[id], onDelete:Restrict)
+  actor User @relation(fields:[actorUserId], references:[id], onDelete:Restrict)
+  id String @id @default(cuid())
+  agreementId String
+  revision Int
+  orderFingerprint String
+  decision String
+  effectiveFromKey String
+  confirmedOnKey String
+  taxAdviserReference String
+  legalAdviserReference String
+  termsReference String
+  reason String
+  actorUserId String
+  recordedAt DateTime @default(now())
+
+  @@unique([agreementId, revision])
+  @@index([agreementId, effectiveFromKey, recordedAt])
+}
+
 model PreDeliveryCancellation {
   agreementId        String @id
   agreement          RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)

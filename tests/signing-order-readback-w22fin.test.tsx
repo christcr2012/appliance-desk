@@ -22,7 +22,7 @@ describe("W-22FIN frozen order cross-address readback",()=>{
     expect(result.locations).toHaveLength(2);
     expect(result.locations.map(x=>x.current)).toEqual([true,false]);
     expect(result.totals).toEqual({setupFeeCents:4500,setupTaxCents:300,
-      downPaymentCents:10000,signingAmountCents:14800});
+      downPaymentCents:10000,additionalCents:0,signingAmountCents:14800});
     const html=renderToStaticMarkup(createElement(ReviewedSigningOrder,{order:result}));
     expect(html).toContain("Combined signing amount across addresses");
     expect(html).toContain("$148");

@@ -936,3 +936,58 @@ preapproval quote still fails closed on unsupported mandatory categories.
 CPA IN-79, counsel IN-07, owner approval and real Stripe TEST/production
 acceptance remain independent. Never treat a `REVIEW_REQUIRED` JSON record as
 actual professional approval or an authorization to send, charge or refund.
+
+## W-22FIN V2 evidence migration (draft, October 15)
+
+The unmerged W-22FIN implementation adds migration
+`20261016040000_w22_signed_v2_components`: existing
+`AgreementSigningPayment.componentEvidence JSONB` is nullable for historical
+V1 records, while V2 must satisfy version-aware exact integer-cent
+components, tax and total reconciliation. The field is immutable after
+creation. No second obligation, invoice or credit ledger is introduced.
+
+A verified V2 receipt may establish a separately refundable `Deposit`
+liability with the same immutable `sourceReceiptId`. Only the rent advance,
+never a deposit or service charge, can enter the first-invoice credit.
+
+This draft migration has not completed disposable Postgres/rollback proof,
+review or live deployment. It carries no live approval; V2 signing and
+price-bearing acceptance remain blocked pending adviser approval and
+complete refund integration. Existing V1 records retain their original semantics.
+
+## W-22FIN exact-order business clearance and V2 compatibility
+
+Forward migration `20261016050000_w22_business_review` follows V2 financial
+components. `SigningBusinessReview` records immutable per-agreement revisions
+of owner-attested received CPA/counsel advice, exact reviewed terms, effective
+Colorado day and frozen order fingerprint. It cannot provide advice or imply
+real provider acceptance. Missing, revoked, foreign, future-confirmed or stale
+clearance fails closed at binding/collection boundaries. Owner revisions and
+financial reads share the order-scoped transaction lock; financial mutation lock
+order is agreement → obligation → review → receipt/reserve. The command locks and validates the active owner; SQL validates recorded identity,
+monotonic revision and exact frozen source; update/delete is forbidden. Backup
+policy includes these records and their existing agreement/user dependencies.
+
+Unsigned reopening locks the editable source estimate and every agreement,
+rejects any signature/payment/invoice/deposit/job or delivery evidence, archives
+the complete prior frozen JSON in AuditLog, then clears the mutable freeze and
+reviewed estimate identity. SQL protects accepted V2 snapshots against update or
+delete. Restore orders AuditLog before historical reviews so archived unsigned
+clearance remains restorable after reopening. Binding unsigned actions compare
+the current settings version and independently recomputed jurisdiction taxes;
+changes require a new freeze rather than silently adopting stale terms.
+
+V2 signature constraints explicitly accept version 2 while preserving historical
+V1 meaning. V2 obligation insertion checks its signature, immutable frozen amount
+and JSONB component equality. Component CHECK validation returns false for missing
+JSON rather than SQL NULL. Application and SQL independently reconcile cents,
+component identities, reserve terms, tax categories and complete source revisions.
+Nested canonical hashing is independent of PostgreSQL JSONB key order.
+
+The same original signing receipt funds the reserve liability. Cancellation
+approval does not discharge it; only independently confirmed return of the entire
+approved cancellation amount discharges the included reserve. Generic deposit
+refunds serialize with cancellation and cannot refund that reserve twice. Only
+settled rent advance can reach first-invoice credit; all other signing categories
+remain excluded. No migration, synthetic approval or test authorizes production
+money-out or LIVE collection.

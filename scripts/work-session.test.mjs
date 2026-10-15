@@ -150,7 +150,7 @@ test('drift includes unstaged, staged, untracked and predecessor changes; prompt
     assert.ok(changedFiles(f.root, f.packet.baseline).includes('src/domain.ts'));
     const prompt = continuation(f.packet, f.git('rev-parse', 'HEAD'));
     assert.ok(prompt.includes('not proof of GitHub merge or CI'));
-    assert.ok(prompt.includes('five substantive'));
+    assert.ok(prompt.includes('bundle workload'));
     assert.throws(() => continuation(f.packet, 'unknown'), /Invalid local head/);
   } finally { f.cleanup(); }
 });
