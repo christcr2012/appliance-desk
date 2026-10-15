@@ -14,10 +14,9 @@
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Owner-authorized cross-repository acceptance-first workflow tooling repair; no product production-source changes and zero completed batch subsections or bundles.",
+  "workloadException": "Owner-authorized cross-repository bundle scope accounting maintenance; zero product production-source changes, completed batch subsections or bundles.",
   "evidence": [
-    "Native session-status tests prove main-ahead partial release eligibility, grouped action visibility, READY deployment requirement and complete acceptance-snapshot freshness.",
-    "npm run check:session and NODE_OPTIONS=--max-old-space-size=6144 npm run check:quick passed locally; required exact-head CI/review remains mandatory.",
-    "AGENTS, SESSION-START, PLAYBOOK and SESSION-WORKFLOW maintenance card reconcile autonomous continuation, acceptance accounting and explicit blocker escalation; concurrent W-22FIN draft PR 466 preserved."
+    "Native bundle-plan tests cover immutable pre-code scope, missing criteria, 186-line remainder continuation and actual temporary Git history.",
+    "Existing acceptance/session accounting, outcome scorecard and required exact-head CI/review remain mandatory; no product or provider acceptance claimed."
   ]
 }

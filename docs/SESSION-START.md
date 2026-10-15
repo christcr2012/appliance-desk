@@ -22,31 +22,94 @@ An actual execution limit gets an explicit incomplete recoverable checkpoint, ne
 a completion claim. Preserve every real safety, spending, release and approval gate.
 
 
-## Bundle target and delivery boundaries — owner alignment 2026-10-15
+## Bundle target and delivery boundaries — owner correction 2026-10-15
 
-Follow the governing instructions' **Bundle, card and PR boundaries** rule.
-The current owner's N-bundle target counts coherent completed outcomes, not PRs,
-cards, helpers or repairs. Select related whole approved subsections before coding.
-Card/API/module boundaries and the number of related migrations or risk areas do
-not force separate PRs. Preserve each independent guard, permission, confirmation,
-migration-order and verification requirement. Record a concrete migration,
-dependency, safety or reviewability reason for splitting; count the bundle once
-when its whole intended outcome is implemented, verified and merged.
+The current owner's N counts substantial NEW engineering outcomes, not PRs or
+small card remainders. Normal guides remain 2–5 completed existing subsections
+and about 400–800 meaningful production lines; neither is a padding requirement,
+ceiling or automatic certificate. Previously implemented behavior, reconciliation,
+test volume, CI waiting and closeout do not make a small remainder substantial.
 
-An incidental repair or green PR is a checkpoint, not completion of the bundle
-or session target. Resume eligible implementation after it. A pending release or
-professional/provider approval gates its actual affected operation, not independent
-engineering. Before claiming no eligible work, inspect the full original acceptance
-against current code/callers/tests and record the exact remaining engineering or
-source/test proof plus external gate. Ask promptly for genuinely missing owner
-choices/authority after checking recorded decisions; continue independent work.
-If the approved scope cannot support N substantial outcomes, explain with that
-evidence while working and obtain the necessary owner scope decision. Never pad,
-recount prior work, silently downgrade the target, invent new scope or bypass gates.
-A real execution limit needs concrete evidence, a recoverable checkpoint and the
-exact resume action; generic context caution is not a routine stopping permission.
-Reuse existing verified evidence until relevant changes invalidate it; do not turn
-this into repeated whole-repo audits, extra gates or full suites after each helper.
+**Plan before code.** In the existing selected execution card, preserve one
+`bundle-plan` JSON block (schema below). Inspect actual main and record the NEW
+remaining engineering, original full acceptance for each existing approved ID,
+integration boundary, honest new-work estimate and why related adjacent approved
+work is included or excluded. Prefer a coherent group of whole related subsections.
+Run `npm run session:bundle -- --card docs/EXISTING-CARD.md`, then commit that
+card before implementation; retain the exact planning SHA. That local docs commit
+is a checkpoint in the implementation PR, never a separate plan-only PR or an
+owner approval stop. Do not copy the whole roadmap or plan distant bundles.
+
+The block is bounded by `<!-- bundle-plan:start -->` and
+`<!-- bundle-plan:end -->`, containing one fenced `json` object:
+
+```json
+{
+  "baseRevision": "EXACT_FULL_HEAD_BEFORE_PLANNING_COMMIT",
+  "outcome": "Observable coherent outcome from approved scope",
+  "integrationBoundary": "Domain, persistence, callers and failure/recovery paths",
+  "newEngineering": "Missing NEW behavior; distinguish already implemented code",
+  "estimatedProductionLines": 650,
+  "relatedWorkDecision": "Related approved work selected or concrete reason to exclude",
+  "subsections": [{
+    "id": "EXISTING-APPROVED-ID",
+    "acceptance": ["Full original criterion, repeat for every criterion"],
+    "remainingEngineering": ["Actual missing engineering at inspected baseline"]
+  }]
+}
+```
+
+**Compare before publication and completion.** Preserve the original block; record
+deviations beside it rather than rewriting it to match a small delivery. A temporary
+sanitized delivery JSON has `subsections` rows with the same `id`, `criteria`
+(each with exact `criterion` and concrete `evidence`) and `remainingEngineering`
+(empty only when complete); plus actual `productionAdded`, `productionRemoved`,
+`newEngineering`, `planComparison`, `relatedWorkDecision` and `decision`.
+Run `npm run session:bundle -- --card docs/EXISTING-CARD.md --planned-at FULL_SHA
+--report /tmp/bundle-delivery.json`. Retain the comparison in the existing PR/card
+handoff; the temporary JSON is accounting, not another roadmap or private evidence.
+
+Use `decision: "CONTINUE"` when only a small remainder is done or planned engineering
+remains. Keep it as contribution toward this same bundle and continue related
+approved work; a merged small PR is not a successful session finish. Do not recount
+old work. For a complete substantial delivery use `SUBSTANTIAL`. A delivery with
+fewer than two subsections or below 400 changed production lines instead requires
+`SUBSTANTIAL_EXCEPTION` and `exceptionEvidence`: concrete NEW workload/integration
+proof and why grouping related remaining work is unsuitable. Merely finishing a
+card, reusing extensive old implementation or passing many tests is insufficient.
+The checker flags these exceptions for substantive review; it cannot judge the
+truth or substance of prose. Its `SCOPE_ACCOUNTING_CHECKED` result is never a
+bundle certificate, CI/review pass, merge permission or real acceptance proof.
+If a planned outcome turns out small, retain that plan and delivery as a
+contribution. Plan related additional scope in its existing selected execution
+card before coding; compare each preserved plan and review the combined NEW
+workload before counting this bundle once. A contribution report may correctly
+remain CONTINUE_BUNDLE; it is not a separate bundle or a failed implementation. Never shrink away unfinished scope, pad code or
+invent approval.
+
+Use focused checks while assembling; run all required publication/CI/review gates
+on the substantial coherent tree. Split only for a concrete migration, dependency,
+safety or reviewability reason, keep all guards distinct and count the bundle once.
+If insufficient related approved engineering remains, show the inspected scope and
+ask the smallest necessary owner decision while continuing independent eligible
+work. Actual execution limits require an explicitly INCOMPLETE recoverable handoff.
+Maintenance/review-only requests (including this owner-requested workflow repair)
+claim zero product bundles and need no fabricated implementation bundle plan.
+For already-started work, preserve it, record the current baseline and plan remaining
+work now; never fabricate a pre-code plan for work already performed.
+
+**Acceptance and blockers remain additional obligations.** Test each eligible check
+against actual deployed ancestry, even when main is ahead. An unavailable TEST
+principal, original fixture ownership, runner or optional provider consent is a
+specific dependency to investigate, not a blanket acceptance deferral. Record the
+exact check, current evidence, attempted remedy, needed action/authority, responsible
+party and re-entry trigger. “Coordinate with the runner” alone is not a remedy:
+actually coordinate when authorized, or ask the owner the exact actionable question
+in the active chat. Do not copy credentials, take over another runner's rotating
+grant, recreate uncertain fixtures or bypass approval to clear that dependency.
+Continue independent engineering while it remains blocked. Final reporting includes
+checks actually performed and actionable remaining prerequisites, not merely
+“deployment-dependent checks queued.” Use existing queue/handoff records.
 
 ## Count complete predefined batch subsections
 
@@ -312,9 +375,9 @@ justify a documented exception. Never substitute line counts for functionality
 or fabricate slice subdivisions to inflate progress. Session PR count is set only by the current owner prompt.
 Do not count a passing helper as a completed outcome. After each verified
 merge, checkpoint the exact head/CI/reviews, completed slices, implementation
-and deployed/real-acceptance state, and one next action. Start another slice
-only when the remaining context can support its implementation, review, CI
-repair, merge and durable handoff; otherwise end at the clean checkpoint.
+and deployed/real-acceptance state, and one next action. Continue the planned bundle after checkpoints. A demonstrated execution limit
+requires an explicitly incomplete handoff with exact recovery action; a clean
+checkpoint or speculative context concern does not establish bundle completion.
 Persist unfinished work on its existing approved card, not only in chat.
 Report completed roadmap slices and acceptance deltas, first-pass CI failures
 and correction cycles, not PR count as a productivity metric.
