@@ -10,10 +10,20 @@ an unfinished bundle. Remaining engineering must not be hidden as external proof
 Removed a stale generic session sentence that called future work maintenance.
 All original subsection IDs, roadmap order, source/provider acceptance, independent
 approval/guard/cleanup rules, CI/review and hosting/cost gates remain unchanged.
+Dated PR-count instructions/credits below are historical to their original
+sessions, never standing quotas or credits toward the current target.
 This is explicitly requested guidance maintenance, zero product bundles; no provider
 operation or release. Required exact-head checks and review disposition govern merge.
-Preserve concurrent implementation branches; resume actual current main and the
-implementing agent's active approved outcome after reading this alignment.
+Current approved outcome: W-22FIN remains incomplete. Cancellation-policy repair
+#463 is already merged at 4740313d; do not reopen it from the stale checkpoint
+below. Concurrent #464 (last observed head e0850600fbf2f980978cf75a515ef895dacbc22c)
+is implementing owner service policy/commercial reserve; its branch is untouched.
+Next: reconcile that PR's actual current status and finish W-22FIN-QUOTE's complete
+per-location mandatory charges/tax/RDF/waiver/reserve and reviewed all-in offer
+under the active W-22FIN packet, followed by connected approval/recovery/delivery
+in roadmap order. Keep W-23 blocked behind W-22 and preserve IN-79/IN-07 and
+independent money-out/real-use gates. Historical checkpoints below do not supersede
+this observed source state; recheck main and concurrent work before implementation.
 
 ### W-22FIN active source checkpoint — signed cancellation classification (not a bundle)
 

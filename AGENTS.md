@@ -26,7 +26,9 @@ permission, confirmation and provider boundary independently enforced/tested;
 shared delivery never combines or relaxes those controls. Split delivery only
 for a concrete migration, dependency, safety or reviewability reason; record
 that reason and the unfinished integration. A bundle spanning PRs counts once
-when its intended outcome is fully implemented, verified and merged. The current
+when its intended outcome is fully implemented, verified and merged. Keep measuring the existing rolling per-substantive-PR workload averages even
+when a bundle spans PRs; explain smaller justified deliveries rather than hiding
+them in bundle totals. The current
 owner prompt sets bundle count, never a standing repository quota. These rules
 supersede older numeric/grouping restrictions in recipes or example cards.
 

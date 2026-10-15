@@ -93,7 +93,7 @@ should rewrite existing paid invoices or signed agreements to fill this feature.
    test paths and production-line budget. Mark outstanding recommendations as such.
 3. Write fixture/assertion skeleton for persistence, revision, failure and isolation;
    record initial charge/signature/audit/invoice/payment/provider-operation counts.
-4. Add one additive migration only after reviewing ownership/uniques. Update backup
+4. Add the required ordered additive migrations after reviewing ownership/uniques; record upgrade/restore proof. Update backup
    manifest, schema health, DATABASE and child-first teardown with it.
 5. Implement tx-aware preparation: load trusted facts under agreed locks, reauthorize,
    calculate, persist version + per-location/per-agreement lines + audit atomically.
