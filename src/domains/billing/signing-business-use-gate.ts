@@ -10,6 +10,13 @@ export async function assertCurrentSigningPolicyInTx(
   frozen: readonly FrozenSigningEvidence[],
   at = new Date(),
 ): Promise<void> {
+  // The V2 draft may encode accurate synthetic/admin review without a
+  // legally approved customer collection contract. The mandatory category
+  // professional-review field is REVIEW_REQUIRED until a separately audited
+  // owner adviser-approval record and complete refund/return integration exist.
+  // Never activate V2 customer signing from an engineering-only hash.
+  if (frozen.some(row => row.schemaVersion === 2))
+    throw new Error("V2 financial terms require approved adviser evidence and complete refund activation before real signing.");
   if (!frozen.some(row => row.setupFeeCents > 0)) return;
   await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = ${"singleton"} FOR SHARE`;
   const effective = await getEffectiveSetupTaxTreatmentInTx(tx, at);

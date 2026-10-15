@@ -936,3 +936,21 @@ preapproval quote still fails closed on unsupported mandatory categories.
 CPA IN-79, counsel IN-07, owner approval and real Stripe TEST/production
 acceptance remain independent. Never treat a `REVIEW_REQUIRED` JSON record as
 actual professional approval or an authorization to send, charge or refund.
+
+## W-22FIN V2 evidence migration (draft, October 15)
+
+The unmerged W-22FIN implementation adds migration
+`20261016040000_w22_signed_v2_components`: existing
+`AgreementSigningPayment.componentEvidence JSONB` is nullable for historical
+V1 records, while V2 must satisfy version-aware exact integer-cent
+components, tax and total reconciliation. The field is immutable after
+creation. No second obligation, invoice or credit ledger is introduced.
+
+A verified V2 receipt may establish a separately refundable `Deposit`
+liability with the same immutable `sourceReceiptId`. Only the rent advance,
+never a deposit or service charge, can enter the first-invoice credit.
+
+This draft migration has not completed disposable Postgres/rollback proof,
+review or live deployment. It carries no live approval; V2 signing and
+price-bearing acceptance remain blocked pending adviser approval and
+complete refund integration. Existing V1 records retain their original semantics.

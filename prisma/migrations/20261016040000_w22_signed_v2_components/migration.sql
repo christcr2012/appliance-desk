@@ -6,7 +6,8 @@ CREATE OR REPLACE FUNCTION "w22_v2_due"(
 ) RETURNS BOOLEAN LANGUAGE plpgsql IMMUTABLE AS $$
 DECLARE c JSONB; t JSONB; due BIGINT:=0; setup_amount BIGINT:=NULL;
   advance_amount BIGINT:=NULL; setup_tax_amount BIGINT:=0;
-  kinds TEXT[]:=ARRAY[]::TEXT[]; category TEXT; n BIGINT;
+  kinds TEXT[]:=ARRAY[]::TEXT[]; tax_keys TEXT[]:=ARRAY[]::TEXT[];
+  category TEXT; tax_key TEXT; n BIGINT;
 BEGIN
  IF jsonb_typeof(evidence) <> 'object' OR
     jsonb_typeof(evidence->'components') <> 'array' OR
@@ -21,9 +22,12 @@ BEGIN
         'COMMERCIAL_RESERVE','RETAIL_DELIVERY_FEE']) OR
       c->>'id' <> agreement||':'||category OR
       jsonb_typeof(c->'amountCents') <> 'number' OR
+      c->>'disposition' IS NULL OR
       c->>'disposition' NOT IN ('DUE_NOW','NOT_APPLICABLE','BUSINESS_PAID') THEN
      RETURN FALSE; END IF;
    kinds:=array_append(kinds,category);
+   IF (c->>'amountCents')::NUMERIC <> trunc((c->>'amountCents')::NUMERIC)
+      THEN RETURN FALSE; END IF;
    n:=(c->>'amountCents')::BIGINT;
    IF n<0 OR n>100000000000 THEN RETURN FALSE; END IF;
    IF c->>'disposition'='DUE_NOW' THEN due:=due+n;
@@ -32,10 +36,23 @@ BEGIN
    IF category='FIRST_MONTH_RENT_ADVANCE' THEN advance_amount:=n; END IF;
  END LOOP;
  FOR t IN SELECT value FROM jsonb_array_elements(evidence->'taxLines') LOOP
+   tax_key:=concat_ws('|',t->>'componentId',t->>'category',
+     t->>'jurisdictionId',t->>'rateVersionId');
    IF jsonb_typeof(t->'taxCents') <> 'number' OR
-      t->>'componentId' NOT LIKE agreement||':%' OR
-      t->>'jurisdictionId' IS NULL OR t->>'rateVersionId' IS NULL THEN
-      RETURN FALSE; END IF;
+      jsonb_typeof(t->'taxableCents') <> 'number' OR
+      jsonb_typeof(t->'exemptCents') <> 'number' OR
+      t->>'componentId' IS NULL OR
+      t->>'category' IS NULL OR
+      t->>'jurisdictionId' IS NULL OR t->>'rateVersionId' IS NULL OR
+      tax_key = ANY(tax_keys) OR
+      NOT EXISTS(SELECT 1 FROM jsonb_array_elements(evidence->'components') AS component
+        WHERE component->>'id'=t->>'componentId'
+          AND component->>'disposition'='DUE_NOW'
+          AND ((t->>'taxableCents')::NUMERIC+(t->>'exemptCents')::NUMERIC)
+              =(component->>'amountCents')::NUMERIC) THEN RETURN FALSE; END IF;
+   tax_keys:=array_append(tax_keys,tax_key);
+   IF (t->>'taxCents')::NUMERIC <> trunc((t->>'taxCents')::NUMERIC)
+      THEN RETURN FALSE; END IF;
    n:=(t->>'taxCents')::BIGINT;
    IF n<0 OR n>100000000000 THEN RETURN FALSE; END IF;
    due:=due+n;

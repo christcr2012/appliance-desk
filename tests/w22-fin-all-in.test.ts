@@ -163,3 +163,44 @@ it("freezes both properties in one V2 digest and independently verifies checkout
   expect(a.items.filter(i=>i.kind==="FIRST_MONTH_DOWN_PAYMENT")).toHaveLength(1);
   expect(a.items.reduce((v,i)=>v+i.amountCents,0)).toBe(28631);
 });
+import { signedReserveAmount } from "@/domains/billing/signing-reserve-liability";
+it("keeps a V2 refundable reserve outside the first invoice advance and refuses forged liabilities", () => {
+  const value = buildSigningV2Extension({
+    agreementId:"A",serviceAddressId:"address-A",estimateId:"estimate-1",
+    setupFeeCents:4500,downPaymentCents:6000,setupTaxCents:225,
+    setupJurisdictions:[setup],depositCents:10000,
+    policyRevision:1,settingsUpdatedAt,...reviewedLocation("A",7500,10000,31),
+  });
+  const input = {agreementId:"A",evidenceVersion:2,
+    componentEvidence:value.extension,setupFeeCents:4500,
+    setupTaxCents:225,downPaymentCents:6000,
+    totalCents:28631,agreementDepositCents:10000};
+  expect(signedReserveAmount(input)).toBe(10000);
+  expect(() => signedReserveAmount({...input,agreementDepositCents:5000})).toThrow();
+  expect(() => signedReserveAmount({...input,evidenceVersion:3})).toThrow();
+  expect(() => signedReserveAmount({...input,evidenceVersion:1})).toThrow();
+  expect(signedReserveAmount({...input,evidenceVersion:1,
+    componentEvidence:null,agreementDepositCents:0})).toBe(0);
+});
+
+import { assertCurrentSigningPolicyInTx } from "@/domains/billing/signing-business-use-gate";
+
+it("fails closed on synthetic V2 financial approval rather than enabling a live customer signing", async () => {
+  const value = buildSigningV2Extension({
+    agreementId:"A",serviceAddressId:"address-A",estimateId:"estimate-1",
+    setupFeeCents:4500,downPaymentCents:6000,setupTaxCents:225,
+    setupJurisdictions:[setup],depositCents:10000,
+    policyRevision:1,settingsUpdatedAt,...reviewedLocation("A",7500,10000,31),
+  });
+  const frozen = {
+    schemaVersion:2 as const, agreementId:"A",serviceAddressId:"address-A",
+    agreementVersion:1,sourceFingerprint:"a".repeat(64),
+    orderFingerprint:"b".repeat(64),setupFeeCents:4500,
+    downPaymentCents:6000,setupTaxCents:225,allInCents:28631,
+    jurisdictions:[setup],v2Extension:value.extension,
+  };
+  await expect(assertCurrentSigningPolicyInTx(
+    {} as Parameters<typeof assertCurrentSigningPolicyInTx>[0],
+    [frozen]
+  )).rejects.toThrow(/approved adviser evidence/);
+});

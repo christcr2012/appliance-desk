@@ -1,3 +1,27 @@
+## October 15 draft PR #466 — W-22FIN not yet complete
+
+Baseline main `fbbd1508`; draft branch commit `70a288c` contains the
+owner-requested anti-stall recovery and a still-incomplete V2 frozen financial
+money path. No original W-22FIN packet row is claimed completed.
+
+- Implemented and locally checked: read-only checkpoint command, recovery
+  guide/tests, frozen V2 categories, synthetic two-address $456.06
+  source/freeze/verify/checkout, deposit liability and display work.
+- Exact-head draft CI: #466 initially failed because this card and
+  `docs/DATABASE.md` had not been changed and the scorecard was stale.
+  Do not claim the missing verified whole-subsection scorecard as passed.
+- Remains: a binding professionally approved V2 policy path and review,
+  customer estimate/acceptance/readback, signed cancellation and genuine
+  reserve/partial-delivery money reconciliation, disposable PostgreSQL and
+  browser tests, CI/review pass and merge. Current V2 binding business use is
+  intentionally gated OFF; no production/provider pass asserted.
+- Deployed acceptance: Vercel READY live `4740313d`; all eleven queued
+  revision ancestry checks are eligible and documented in `docs/STATUS.md`.
+  Authenticated/professional/provider observations remain pending.
+
+Continue this **same PR**; do not create a separate anti-stall PR or count a
+helper, reviewed diagnostic or preliminary commit as a new bundle.
+
 # W-22FIN — Complete configurable signing-to-delivery business workflow
 
 **Scope:** W-22 parent card / approved Amendment B §6.2. This packet resumes

@@ -187,6 +187,9 @@ export async function getPreparedEstimateQuoteInTx(
         settings.oneTimeInstallationFeeCents, settings.oneTimeRemovalFeeCents],
     });
     if (coverage.length) return rejected(coverage);
+    if (frozen.evidenceVersion === 2)
+      return rejected(["V2 financial categories are technically reviewed but the mandatory adviser approval, cancellation and refund activation gates are not yet satisfied. A binding customer offer cannot be sent."]);
+
 
     const rows: EstimatePreparedQuoteLocation[] = [];
     for (const agreement of agreements) {

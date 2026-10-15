@@ -1,23 +1,23 @@
 {
   "version": 1,
-  "kind": "maintenance",
+  "kind": "implementation",
   "parent": "W-22FIN",
   "completedSlices": [],
   "remainingEngineering": [
-    "W-22FIN-POLICY: Owner commercial reserve/mandatory fee policy review must pass full real DB/browser and integrate with complete review/signed snapshots before this whole subsection can be counted.",
-    "W-22FIN-QUOTE: Full fee, tax, RDF, damage waiver and commercial refundable reserve across estimate/customer/immutable signing quote and payment cannot yet be represented by the V1 frozen envelope.",
-    "W-22FIN-APPROVAL: Complete collection/checkout for the all-in estimate and prevent all legacy incomplete deposit acceptance.",
-    "W-22FIN-RECOVERY: Provider-authoritative all-category cancellation/refund and partial multi-site reconciliation unfinished.",
-    "W-22FIN-DELIVERY: Signed-payment dispatch, multi-site delivery and first invoice application end-to-end unfinished."
+    "W-22FIN-POLICY: full professionally approved versioned V2 business-use activation remains unavailable; block binding sends and signatures until the independent adviser record and refund gates exist.",
+    "W-22FIN-QUOTE: complete all-in owner and customer quote identities across prepared agreement, sender, signer and customer portal require real isolated test proof.",
+    "W-22FIN-APPROVAL: complete multi-property send, acceptance and single settled receipt and reserve liability replay without pending/foreign payment leakage.",
+    "W-22FIN-RECOVERY: receipt-backed cancellation and partial-delivery refund reserve money-out with owner-only independent approval remains to be built and accepted.",
+    "W-22FIN-DELIVERY: verify signed payment dispatch, scheduled visits, first invoice credit only for the first-month rent advance, and full browser/PG replay."
   ],
   "externalAcceptance": [
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Owner explicitly requested cross-repository guidance repair and W-22FIN stall diagnosis/design; zero completed product subsections or bundles, no production-code change.",
+  "workloadException": "Draft PR #466 is a recoverable checkpoint for the unmerged W-22FIN all-in outcome. Zero approved whole subsections are complete, so this scorecard must remain a required CI blocker until full acceptance evidence exists.",
   "evidence": [
-    "Governing bundle guidance, current W-22FIN card/packet and integration contract reconciled against main 905a0fb8; preserve source and all real-use gates.",
-    "Historical session reports no longer drive the current card; concrete V1-to-complete-evidence consumer map and finite existing acceptance rows define the next implementation.",
-    "Required documentation preflight, scorecard validation and exact-head CI/review must pass before merge."
+    "Commit 70a288c on the single implementation branch introduced V2 signed categories, refundable reserve receipts and anti-stall recovery; synthetic tests pass but no entire W-22FIN acceptance row is complete.",
+    "Required draft CI failed because the current card, database docs and scorecard were stale; the current PR records all corrections rather than treating a prior green prepush as CI.",
+    "Vercel READY live 4740313d includes all eleven queue ancestry anchors; authenticated/provider acceptance is still pending, as recorded in docs/STATUS.md."
   ]
 }
