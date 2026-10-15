@@ -1,8 +1,9 @@
 ### Release-needed owner escalation — October 15
 
-Owner requests an active-chat alert when a checked release is required to advance
-approved completion, and will authorize manual releases when necessary. Prepare
-the exact checked target, affected tasks and remaining prerequisites before asking.
+Owner permits manual-release requests only after every independently eligible
+authorized task is finished and release would enable a concrete next completion task.
+Record source gaps while continuing implementation, deployed acceptance, reviews,
+merges, cleanup and records; prepare the exact checked target before asking.
 The read-only planner distinguishes source absent from live, source already in live
 but not serving, and unknown provenance/history. No manual release is preauthorized;
 continue independent work and reassess acceptance after actual READY deployment.

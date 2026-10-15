@@ -188,15 +188,25 @@ identify each check whose required source is on reviewed main but absent from li
 history requires investigation, and source already in live requires deployment/build
 follow-up rather than another release. Other permission/fixture gates remain separate.
 
-Alert the owner in the active chat when a release is needed to advance approved
-completion. Before requesting approval, prepare the exact main SHA, required green
-checks/reviews, source/live/deployed comparison, affected task IDs, remaining non-release
-prerequisites, standard checked release route and post-deployment acceptance steps.
-Explain whether the next scheduled release can clear it or a manual release would
-unblock work sooner. Request explicit approval for that concrete manual release;
-Do N bundles and permission to ask are NOT permission to release. Do not weaken
-frequency/checked promotion policy or trigger a release merely to satisfy N.
-Continue independent eligible work while waiting. After an authorized release,
+Record a confirmed release dependency when discovered, then continue ALL other
+eligible authorized project work: implementation, original-criterion reconciliation,
+checks against already-deployed behavior, repairs, reviews, safe merges, cleanup and
+required records, in their existing order. **Do not request a manual release while
+any of that can still proceed.** Reaching N or having main ahead of live is insufficient.
+
+Only when no other eligible authorized work remains, AND release would enable at
+least one concrete next completion task, request the owner's manual-release approval
+in the active chat. Prepare the exact main SHA, required green checks/reviews,
+source/live/deployed comparison, affected task IDs, any other non-release blockers,
+standard checked release route and post-deployment acceptance steps BEFORE asking.
+Explain that all independent work is exhausted, what becomes executable after release,
+and whether waiting for the scheduled release would satisfy the same dependency.
+Do not call release the sole blocker when permissions/fixtures/sign-off are also missing.
+
+Do N bundles and permission to ask are NOT release approval. Preserve frequency and
+checked promotion policy; use its authorized manual route only after explicit owner
+approval for that concrete target. Recheck new main/configuration/owner answers for
+newly eligible work rather than waiting in a loop. After an authorized release,
 verify actual serving READY/source and immediately reassess/run newly eligible
 acceptance; never stop at a green release workflow alone.
 

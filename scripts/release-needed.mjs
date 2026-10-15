@@ -22,7 +22,8 @@ export function releaseAlertLines(alert){
   const lines=[];
   if(alert.releaseTasks.length)lines.push(
     'RELEASE NEEDED for original acceptance: '+alert.releaseTasks.map(row=>row.id).join(', ')+'.',
-    'Prepare the exact checked main target '+alert.main+' and explain what release unlocks; alert the owner in the active chat and request explicit manual-release approval when needed. The scheduled release may also satisfy this prerequisite.',
+    'Record this source dependency and continue all other eligible approved work. Do not request a manual release while implementation, deployed acceptance, fixes, reviews, merges, cleanup or required records can still proceed.',
+    'Only after no other eligible authorized work remains, and a release would unblock at least one specific next completion task, prepare the exact checked main target '+alert.main+' and request explicit manual-release approval in the active chat. Report other blockers honestly; the scheduled release may also satisfy this prerequisite.',
     'No release is authorized by this diagnostic or by Do N bundles. Preserve all checks/release restrictions, other prerequisites and independent eligible work; recheck actual READY/source and acceptance after deployment.');
   if(alert.deploymentTasks.length)lines.push('DEPLOYMENT FOLLOW-UP needed: live already contains source for '+alert.deploymentTasks.map(row=>row.id).join(', ')+'. Inspect the serving/build state; do not request a redundant new release.');
   return lines;

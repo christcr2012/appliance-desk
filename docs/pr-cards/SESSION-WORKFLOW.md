@@ -101,3 +101,10 @@ source from unknown history, provider-only gates and an already-promoted source
 awaiting deployment. Alert the owner with a prepared checked target and exact tasks;
 request independent manual-release approval, continue eligible work and reassess
 acceptance after actual serving READY/source. No release is executed or authorized.
+
+Owner's final manual-release threshold: discovering a source gap is a dependency
+record, not an approval request. First finish every independently eligible authorized
+implementation, deployed check, repair, review/merge, cleanup and status obligation.
+Ask for manual release only when none can proceed and the prepared checked release
+would enable a specific next completion task. Report any additional blockers honestly;
+keep normal scheduled release as an alternative. No automatic release is authorized.

@@ -10,6 +10,8 @@ test('identify exact missing released source without global main/live equality o
  assert.equal(alert.status,'RELEASE_NEEDED');assert.deepEqual(alert.releaseTasks.map(x=>x.id),['NEW']);
  assert.match(releaseAlertLines(alert).join('\n'),/request explicit manual-release approval/);
  assert.match(releaseAlertLines(alert).join('\n'),/No release is authorized/);
+ assert.match(releaseAlertLines(alert).join('\n'),/Do not request a manual release while implementation/);
+ assert.match(releaseAlertLines(alert).join('\n'),/Only after no other eligible authorized work remains/);
 });
 test('source already in live needs deployment follow-up, not another release',()=>{
  const alert=planReleaseAlert([row('PENDING',live)],{...obs,deployed:old},ancestor);
