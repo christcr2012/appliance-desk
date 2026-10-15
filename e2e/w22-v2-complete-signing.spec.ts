@@ -24,7 +24,7 @@ test("V2 complete order clearance, customer signature, owner receipt and own-acc
   await page.getByRole("button",{name:"Send for signature",exact:true}).click();
   await expect(page.getByText(/requires current owner-recorded CPA and counsel advice/)).toBeVisible();
   const clearance=page.getByRole("region",{name:"Signing business clearance"});
-  await clearance.getByLabel("Decision",{exact:true}).selectOption("APPROVED");
+  await clearance.getByRole("combobox",{name:"Decision",exact:true}).selectOption("APPROVED");
   await clearance.getByLabel("Advice received on").fill(fixture.day);
   await clearance.getByLabel("CPA advice reference").fill("Synthetic CPA fixture advice only");
   await clearance.getByLabel("Attorney advice reference").fill("Synthetic attorney fixture advice only");
@@ -38,7 +38,7 @@ test("V2 complete order clearance, customer signature, owner receipt and own-acc
     expect((await new AxeBuilder({page}).include('[aria-label="Signing business clearance"]').withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze()).violations).toEqual([]);
    }
   }
-  await clearance.getByLabel("Decision",{exact:true}).focus();
+  await clearance.getByRole("combobox",{name:"Decision",exact:true}).focus();
   await page.keyboard.press("Tab");
   await expect(clearance.getByLabel("Effective Colorado business day")).toBeFocused();
   await clearance.getByRole("button",{name:"Record review revision"}).click();
