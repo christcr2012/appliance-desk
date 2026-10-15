@@ -1,5 +1,56 @@
 # AGENTS.md — the rules. Read this first, every session.
 
+## Session PR count comes from the current owner prompt
+
+There is no repository-default session PR count, upper quota or PR-number
+alignment target. Follow the count or scope in the current owner prompt for that
+session only; do not carry it into later sessions. If no count is specified,
+continue the approved ordered work within a safe, recoverable context budget.
+Keep checkpoints, complete coherent PRs and preserve all required gates.
+The rolling sample used for per-PR workload statistics is not a session quota.
+
+## PR workload is measured in predefined batch subsections — owner clarification 2026-10-14
+
+**The countable work unit is a predefined batch subsection** in the authoritative
+approved roadmap/design, such as H-3, H-4 or B-5 (use this repository's actual IDs).
+The target is **2–5 fully completed batch subsections per substantive PR on
+average**, alongside the existing 400–800 production-line average. Prefer the
+substantial end when related work safely supports it. This does not redefine
+“slice”: a technical slice may be a useful internal implementation step, but it
+is not the unit used to satisfy the PR workload target.
+
+**Freeze the counting boundary before coding.** List the existing batch-subsection
+IDs and their full scope/acceptance in the PR. A function, endpoint, tool, UI
+hookup, guard, helper, test or checklist item is work WITHIN that subsection.
+Internal packet tasks, new JIT cards, subcards, commits and local checkpoints do
+not create additional countable subsections. Do not subdivide, rename or relabel
+work to increase the count. A partial subsection counts as ZERO completed
+subsections; keep its remaining engineering against the same ID. Across PRs,
+count each subsection once, when its full eligible engineering and required
+pre-merge proof are complete. Keep external acceptance separately open where
+existing rules permit; never hide unfinished engineering in that queue.
+
+**Build a substantial coherent PR.** Group related whole batch subsections.
+If one whole subsection naturally requires about 600 production lines, one is
+a legitimate boundary. Larger coherent work is allowed when manageable. Never
+pad code, combine unrelated risks, or claim completion with engineering missing.
+The existing workload averages apply to these predefined subsections, not to
+smaller technical slices, packet tasks or individual functions.
+
+**Validate the assembled workload.** During implementation run focused tests
+and lint at meaningful changed seams. A local check/checkpoint is not a PR
+boundary. Assemble related subsection work before running the full required
+publication checks, security/CI/review and applicable database/browser suites
+on the coherent PR. Fix failures together; repeat checks when code changes or
+new evidence warrants it. Do not rerun every broad suite and rewrite full
+handoffs after every helper. Every existing mandatory gate remains binding.
+
+Older references to “2–5 slices” or “completed slices” as a PR workload metric
+mean **2–5 predefined batch subsections**. Technical slices and execution-packet
+tasks retain their ordinary use as internal implementation aids; their count
+does not establish completed batch subsections.
+
+
 ## Original Toolkit is reference-only — owner clarification 2026-10-14
 
 `Robinson-AI-Systems/robinsons-toolkit-mcp` is the historical capability reference,
@@ -211,8 +262,8 @@ references, ordered work, meaningful tests and scoped gates. Open other sections
 ## Roadmap-throughput and context-safe execution — owner correction 2026-10-14
 
 **Completion outranks PR count.** The goal is completed, usable, safely proven product
-functionality, not GitHub activity. Each implementation PR should **average 2–5 genuinely completed approved roadmap
-slices**, grouping adjacent small slices from the same approved parent when their
+functionality, not GitHub activity. Each implementation PR should **average 2–5 fully completed predefined batch
+subsections**, grouping adjacent small slices from the same approved parent when their
 contract, risk, callers, integration and tests belong together. One high-risk
 complete slice or a larger coherent bundle may justify an exception: explain it,
 do not rename individual helpers as slices. The **rolling target is 400–800
@@ -225,9 +276,8 @@ A shortfall requires an honest explanation and larger *legitimate* subsequent
 workloads, never unnecessary code. Avoid one-helper/one-tool PRs
 when the remaining compatible slice work can be completed safely together.
 
-**No fixed PR count or multiple-of-five boundary.** Older directions elsewhere
-requiring five or ten PRs or PR-number alignment are superseded. Do not invent
-small PRs or pad changes to satisfy a number. Spend the chat's usable context
+**Session scope follows the current owner prompt.** Do not invent small PRs
+or pad changes to satisfy a number. Spend the chat's usable context
 on complete outcomes; after each merged PR, preserve an exact recoverable
 checkpoint (branch/head, card/slice coverage, focused and CI proof, open review,
 deployed/live versus source, pending acceptance and next action). Before starting
@@ -346,7 +396,7 @@ where, and puts it on his To do list; no Today item may link to a page that does
   code, retire what no longer instructs, drift-check the next batch). Changed contracts later work inherits go in
   `docs/designs/CHANGES-SINCE-DESIGN.md`.
 - **PR size (updated 2026-10-14):** deliver cohesive, independently verifiable outcomes. Target a
-  rolling **400–800 added production lines and 2–5 fully completed approved roadmap slices
+  rolling **400–800 added production lines and 2–5 fully completed predefined batch roadmap slices
   per implementation PR on average**, without inventing work, skipping tests, or weakening review. Larger cohesive PRs
   are allowed when the selected model can implement/review/test them reliably; state the integration boundary and
   risk/validation plan before editing. Include adjacent DTO, UI, persistence and regression work needed to finish

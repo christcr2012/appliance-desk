@@ -106,6 +106,7 @@ export function run(root, args) {
     if (!/^\d+$/.test(flags['--latest-pr'])) throw new Error('Latest PR must be an integer.');
     lines.push(`Latest observed PR: #${Number(flags['--latest-pr'])} (informational only; no session PR quota or numeric boundary).`);
   }
+  lines.push('PR work unit = one whole predefined batch subsection (such as H-3 or B-5). Technical slices, functions, tools, UI wiring, guards and packet tasks do not count separately. Partial subsection = zero completed batch subsections.');
   lines.push(`Queue: ${plan.length} total; ${plan.length - active.length} recorded passes; ${active.length} tasks to reconsider.`);
   for (const row of active.slice(0, limit)) lines.push(`${row.priority}. ${row.id} ${row.disposition}: ${row.task}`, `   Procedure: ${row.procedure}; gates: ${row.gates}`, `   Last evidence: ${row.lastEvidence}`);
   if (active.length > limit) lines.push(`${active.length - limit} additional tasks are in ${policy.ledger}; use --limit ${Math.min(active.length, 1000)} or read the queue directly. Nothing is removed or marked passed.`);
