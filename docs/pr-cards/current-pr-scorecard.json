@@ -1,8 +1,17 @@
 {
   "version": 1,
-  "kind": "maintenance",
+  "kind": "implementation",
   "parent": "W-22FIN",
-  "completedSlices": [],
+  "completedSlices": [
+    {
+      "id": "W-22FIN-CANCEL-SAFETY",
+      "acceptanceEvidence": [
+        "tests/pre-delivery-cancellation-integration.test.ts: PREPARED/PENDING/SUCCEEDED denial through generic and reviewed entry points; original main failed all three new cases.",
+        "tests/pre-delivery-cancellation-integration.test.ts: actual pg_stat_activity lock wait and committed-attempt reread; ACTIVE agreement and no refund/cancellation row.",
+        "tests/signing-cancellation-readiness.test.ts and existing integration/close suites: 24 focused tests passed in disposable PostgreSQL 18; required exact-head full CI remains the merge gate."
+      ]
+    }
+  ],
   "remainingEngineering": [
     "W-22FIN-QUOTE: Persist and independently verify a complete owner-reviewed preapproval all-in offer including all tax and applicable mandatory charges; currently owner preview explicitly excludes unsettled categories.",
     "W-22FIN-APPROVAL: Connect complete immutable quote to legacy estimate send/approve/deposit checkout without allowing provisional amounts to become binding or payable.",
@@ -13,10 +22,10 @@
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Owner-requested research/design maintenance: nine primary-source decision areas and a concrete remaining W-22FIN integration contract; zero production-code changes or completed product subsections.",
+  "workloadException": "Owner-requested existing-work audit found a money-integrity hole on main. AGENTS requires an immediate isolated fix. This internal remediation task is zero completed predefined batch subsections; W-22FIN-RECOVERY and parent remain unfinished. No padding or throughput claim.",
   "evidence": [
-    "docs/research/2026-10-15-owner-decision-follow-through.md: official sources checked October 15, implementation consequences and precise unresolved professional determinations.",
-    "docs/implementation-contracts/W-22FIN-INTEGRATION.md: verified main seams, preserved concurrent PR #459, worked multi-location cents and complete acceptance/failure matrix.",
-    "Index validator, 56-subject routing checks, existing routing tests 3/3, local links, worked cents, git diff --check and check:quick passed; exact-head Actions required. First CI classification failed because this scorecard was inherited; corrected here without changing gates."
+    "Original main b4071206 plus the three regression cases failed on disposable PostgreSQL: generic cancellation incorrectly succeeded.",
+    "Fixed shared agreement-to-obligation lock guard passed 24 focused tests, including a genuine blocked database transaction; no provider, customer or production mutation.",
+    "docs/reviews/2026-10-15-existing-work-review.md records bounded coverage, fixed defects, exact concurrent quote PR revision and remaining review findings."
   ]
 }

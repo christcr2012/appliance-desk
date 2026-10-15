@@ -1,3 +1,17 @@
+### October 15 existing-work audit — cancellation payment integrity
+
+The owner requested review of implementation as well as planning.
+[Audit and findings](reviews/2026-10-15-existing-work-review.md) records two
+cancellation defects repaired with a shared obligation-locked payment guard:
+generic close bypassed pending collection, and reviewed cancellation missed
+SUCCEEDED without a reconciled receipt. Three new cases failed on original main;
+24 focused tests passed with the fix on disposable PostgreSQL, including an
+observed lock-wait race. Exact-head full CI/review/merge remain required.
+The audit also identifies missing customer-view fingerprint submission in open
+PR #459 at c2cbe80f; reconcile before accepting that implementation. Its branch
+is untouched. W-22FIN remains active and incomplete; the internal remediation
+counts zero whole predefined batch subsections. No release/provider proof claimed.
+
 ### October 15 decision research and implementation-detail maintenance
 
 Owner-requested design/research only: the

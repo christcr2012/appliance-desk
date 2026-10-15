@@ -109,7 +109,8 @@
   "checks": {
     "unit": [
       "tests/signing-charge-plan-w22.test.ts",
-      "tests/w22-fin-all-in.test.ts"
+      "tests/w22-fin-all-in.test.ts",
+      "tests/signing-cancellation-readiness.test.ts"
     ],
     "db": [
       "tests/signing-charge-settings-integration.test.ts",
@@ -165,6 +166,15 @@
         "Owner/staff schedule only a real signed customer's pending delivery without inventing appointment",
         "Physical dispatch requires verified exact signed payment and handles partial/multi-site delivery",
         "Disposable PostgreSQL/browser tests reconcile first invoice credit and denial/replay paths"
+      ]
+    },
+    {
+      "id": "W-22FIN-CANCEL-SAFETY",
+      "outcome": "Internal money-integrity remediation under W-22FIN-RECOVERY: both cancellation entry points serialize with collection and reject unreconciled signing money; not a new countable roadmap subsection.",
+      "acceptance": [
+        "Generic and owner-reviewed cancellation both reject PREPARED/PENDING provider collection and SUCCEEDED without a reconciled receipt before any close/refund write.",
+        "Real PostgreSQL proves a waiting cancellation rereads a newly committed attempt and preserves ACTIVE agreement, original receipts and absent cancellation liability.",
+        "Legacy unpaid and correctly settled owner-reviewed cancellation remain supported; focused unit/database and required exact-head CI prove the shared guard without provider calls or money-out."
       ]
     }
   ]

@@ -3,6 +3,13 @@
 If code and this document ever disagree, this document (and Chris) win.
 Update this file in the same PR that changes a rule.
 
+**Cancellation payment integrity:** an undelivered agreement cannot be cancelled
+through either generic closure or owner refund review while a signing provider
+attempt is pending/unverified, or reports success without a reconciled receipt.
+Both paths serialize on the signing obligation after locking the agreement.
+Collected money still requires independent reviewed cancellation/refund liability;
+a pending attempt is neither zero money nor proof of a returned refund.
+
 ## Pricing
 
 - Every price lives in the database (`BusinessSettings`, `ApplianceType`,
