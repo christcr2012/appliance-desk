@@ -1,3 +1,21 @@
+### W-22FIN active source checkpoint — signed cancellation classification (not a bundle)
+
+Reconciled main `20466bc5` and zero open PRs. The existing pre-delivery
+cancellation classified large orders solely by a positive first-month advance,
+which misclassifies prepaid five-machine and business accounts. Work on branch
+`ai/gpt6/w22fin-signed-cancellation-evidence-20261014` freezes a validated
+multi-location machine count, customer classification and full-refund window
+inside the atomic sign transaction, then reuses **that signed policy** for owner
+refund quote, reviewed approval and immutable audit. Legacy obligations without
+signed policy allow full refund but not automatically calculated retention;
+damaged evidence blocks review. SQL protects signed policy writes and mismatched
+cancellation records. Unit and real-Postgres tests were added; exact-head CI,
+database migration, reviewer disposition, merge and deployed acceptance must
+be verified separately before credit. This fixes one identified money rule
+inside `W-22FIN-RECOVERY` but completes **zero** whole predefined subsections
+and is not a finished W-22FIN bundle. The higher-priority full `W-22FIN-QUOTE`
+and related customer/payments/delivery integration remain required.
+
 ### October 15 existing-work audit — cancellation payment integrity
 
 The owner requested review of implementation as well as planning.

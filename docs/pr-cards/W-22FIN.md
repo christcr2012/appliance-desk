@@ -285,3 +285,17 @@ separately recorded. Use the parent card and STATUS acceptance queue rather than
 inventing a stream of single-helper D19/D20 PRs. Once the remaining safe
 engineering is complete, update the active packet to the next eligible W-23
 workflow, but retain W-22's gated real-business acceptance explicitly.
+
+## Refund-window source reconciliation (active, not W-22FIN-RECOVERY completion)
+
+The previously implemented owner cancellation logic used nonzero down payment
+as its only large-order proof and read the *current* owner refund window.
+This is unsafe for prepaid large or business orders and for changed policies.
+An additive signed policy snapshot is being integrated at signature, with
+exact-customer full frozen-order machine counts, original business classification,
+72-hour default owner window, SQL immutability and conservative legacy fallback.
+The owner must still verify original legal terms; this is not counsel approval
+and it never returns money on its own. Synthetic zero-advance, policy-change,
+corrupt-evidence, SQL immutability and owner-review regressions are included
+for the checked PR gates. It is a recovery subtask, **not** a completed
+predefined batch subsection or a permission to leave W-22FIN-QUOTE.

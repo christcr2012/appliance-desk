@@ -68,8 +68,8 @@ export function mergedImplementationHistory(root, ref = 'origin/main', count = 5
 
 const nonempty = (value) => typeof value === 'string' && value.trim().length >= 10;
 export function validateScorecard(card, packet) {
-  if (!card || card.version !== 1 || !['implementation', 'maintenance'].includes(card.kind))
-    throw new Error('Scorecard requires version 1 and implementation/maintenance kind');
+  if (!card || card.version !== 1 || !['implementation', 'maintenance', 'risk_remediation'].includes(card.kind))
+    throw new Error('Scorecard requires version 1 and a recognized PR kind');
   if (card.parent !== packet.id) throw new Error('Scorecard parent must match the active execution packet');
   if (!Array.isArray(card.completedSlices) || !Array.isArray(card.remainingEngineering)
       || !Array.isArray(card.externalAcceptance) || !card.remainingEngineering.every(nonempty)
@@ -89,6 +89,14 @@ export function validateScorecard(card, packet) {
     throw new Error('Implementation PR cannot claim zero completely accepted slices; finish a real slice before counting it');
   if (card.kind === 'maintenance' && seen.size)
     throw new Error('Maintenance PR cannot claim completed product slices');
+  if (card.kind === 'risk_remediation') {
+    if (seen.size) throw new Error('Risk remediation must not claim completed batch subsections');
+    if (!nonempty(card.workloadException) ||
+        !Array.isArray(card.riskEvidence) || card.riskEvidence.length < 3 ||
+        !card.riskEvidence.every(nonempty)) {
+      throw new Error('Risk remediation needs a detailed workload exception and at least three risk, fix and regression evidence entries');
+    }
+  }
   if (card.workloadException !== undefined && !nonempty(card.workloadException))
     throw new Error('Workload exception must state the concrete reason');
   if (card.evidence !== undefined && (!Array.isArray(card.evidence) || !card.evidence.every(nonempty)))
@@ -104,8 +112,9 @@ export function validatePRChange(root, base, head = 'HEAD') {
   const stats = measureDiff(root, base, head);
   if (card.kind === 'maintenance' && (stats.additions || stats.deletions))
     throw new Error('PR modifies production code but claims maintenance-only status');
-  if (card.kind === 'implementation' && !stats.additions && !stats.deletions)
-    throw new Error('Implementation PR has no meaningful production-code change; explain and classify legitimate maintenance separately');
+  if (['implementation', 'risk_remediation'].includes(card.kind) &&
+      !stats.additions && !stats.deletions)
+    throw new Error('A product or risk-remediation PR needs real production-source changes');
   return stats;
 }
 

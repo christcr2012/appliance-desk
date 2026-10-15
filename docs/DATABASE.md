@@ -876,3 +876,22 @@ external check/bank/cash return with a stored reference, not provider proof.
 refund evidence tied to the original charge and exact amount; provider
 money-out is never invoked. History is not backfilled or marked returned.
 Existing backup manifest for `PreDeliveryCancellation` covers new fields.
+
+### W-22FIN historical cancellation classification (source-only, not acceptance)
+
+Additive `20261016010000_w22_signed_cancellation_policy` stores optional signed
+`AgreementSigningPayment.cancellationPolicyEvidence` and reviewed
+`PreDeliveryCancellation.signedPolicyEvidence` JSON. At signature, after
+verifying every frozen order sibling belongs to the same customer, a short,
+shared policy lock freezes the original total machine count across addresses,
+business/property-manager flags, threshold, owner policy revision timestamp,
+window hours, customer/order fingerprint and actual signing instant.
+The classifier never infers order size from a first-month advance; a prepaid
+large order may have zero advance. Transaction rollback leaves no signature
+if source evidence is incomplete. Existing obligations are **not backfilled**:
+without signed classification, the reviewed cancellation only offers a full
+refund, not retention under today's settings. Invalid non-null JSON requires
+finance review. SQL triggers deny overwriting signed policy and reject a
+cancellation whose policy differs from the signed obligation; legitimate
+refund-return state may still be updated. No money-out, Stripe call, tax
+decision, invoice credit or real contract-term approval is performed.
