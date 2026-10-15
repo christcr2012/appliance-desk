@@ -36,11 +36,14 @@ the entire billing domain. Existing tax category handling starts at
 
 ## Proposed slice and interfaces — resolve in the JIT card
 
-A coherent next slice is **draft persistence + frozen price presentation**, within
-one money risk area and at most one migration. Payment, first-invoice credit,
-refund/cancellation and delivery evidence remain named successor scope. If the
-vertical slice exceeds ~800 production lines, split at a complete persisted
-capability, retaining the parent W-22 acceptance and index as incomplete.
+The draft persistence + frozen price presentation seam below is an internal
+implementation step, not a required PR/bundle boundary. Use the current W-22FIN
+packet and approved roadmap for remaining payment, first-invoice credit,
+refund/cancellation and delivery scope; this older recipe does not reschedule them.
+Related additive migrations may share the coherent outcome with explicit order
+and upgrade/restore proof. No 800-line threshold or single-risk count requires a
+split; record a concrete migration/dependency/safety/reviewability reason and keep
+the parent acceptance/index incomplete until the whole outcome is proven.
 
 Candidate new module (does not exist):
 `src/domains/billing/signing-charge-persistence.ts`. Candidate API (not exported):
@@ -90,7 +93,7 @@ should rewrite existing paid invoices or signed agreements to fill this feature.
    test paths and production-line budget. Mark outstanding recommendations as such.
 3. Write fixture/assertion skeleton for persistence, revision, failure and isolation;
    record initial charge/signature/audit/invoice/payment/provider-operation counts.
-4. Add one additive migration only after reviewing ownership/uniques. Update backup
+4. Add the required ordered additive migrations after reviewing ownership/uniques; record upgrade/restore proof. Update backup
    manifest, schema health, DATABASE and child-first teardown with it.
 5. Implement tx-aware preparation: load trusted facts under agreed locks, reauthorize,
    calculate, persist version + per-location/per-agreement lines + audit atomically.

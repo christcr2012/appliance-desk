@@ -1,5 +1,31 @@
 # SESSION-START — implement, then catch up released acceptance
 
+## Bundle target and delivery boundaries — owner alignment 2026-10-15
+
+Follow the governing instructions' **Bundle, card and PR boundaries** rule.
+The current owner's N-bundle target counts coherent completed outcomes, not PRs,
+cards, helpers or repairs. Select related whole approved subsections before coding.
+Card/API/module boundaries and the number of related migrations or risk areas do
+not force separate PRs. Preserve each independent guard, permission, confirmation,
+migration-order and verification requirement. Record a concrete migration,
+dependency, safety or reviewability reason for splitting; count the bundle once
+when its whole intended outcome is implemented, verified and merged.
+
+An incidental repair or green PR is a checkpoint, not completion of the bundle
+or session target. Resume eligible implementation after it. A pending release or
+professional/provider approval gates its actual affected operation, not independent
+engineering. Before claiming no eligible work, inspect the full original acceptance
+against current code/callers/tests and record the exact remaining engineering or
+source/test proof plus external gate. Ask promptly for genuinely missing owner
+choices/authority after checking recorded decisions; continue independent work.
+If the approved scope cannot support N substantial outcomes, explain with that
+evidence while working and obtain the necessary owner scope decision. Never pad,
+recount prior work, silently downgrade the target, invent new scope or bypass gates.
+A real execution limit needs concrete evidence, a recoverable checkpoint and the
+exact resume action; generic context caution is not a routine stopping permission.
+Reuse existing verified evidence until relevant changes invalidate it; do not turn
+this into repeated whole-repo audits, extra gates or full suites after each helper.
+
 ## Count complete predefined batch subsections
 
 The PR workload target is 2–5 whole predefined batch subsections on average,
@@ -225,8 +251,9 @@ CI/review state, successor and exact blocker. Diagnose and attempt authorized re
 before deferring; isolate the operation and continue approved independent work. Limited
 release frequency is planned queued acceptance, never a project-wide stop.
 
-Normal implementation sessions complete as many fully verified, cohesive roadmap
-slices as fit a safe, recoverable chat context. Target rolling averages of
+When the current owner specifies N bundles, continue toward that target under
+the evidence-backed blocker/limit rule above. Without a specified target, use the
+available recoverable context for complete approved outcomes. Target rolling averages of
 **400–800 production-code additions and 2–5 complete predefined batch subsections per
 implementation PR**; review risk, end-to-end behavior and context safety can
 justify a documented exception. Never substitute line counts for functionality
@@ -239,7 +266,7 @@ repair, merge and durable handoff; otherwise end at the clean checkpoint.
 Persist unfinished work on its existing approved card, not only in chat.
 Report completed roadmap slices and acceptance deltas, first-pass CI failures
 and correction cycles, not PR count as a productivity metric.
-This owner-requested repository optimization is scoped maintenance, not a product implementation batch. Preserve safety even when no further eligible work or an execution limit remains.
+Historical maintenance notes do not redefine the current owner request. Follow its actual scope/target; preserve safety and report genuine execution limits with concrete evidence.
 At completed-session end update status/cards/index, verify final main, leave a permanent
 handoff on the final merged PR and automatically give a short continuation prompt:
 repository + verified handoff + next outcome + queue pointer. Refer to the repository

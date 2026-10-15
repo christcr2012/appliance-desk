@@ -36,7 +36,7 @@ handoff. Include only changed interfaces; cite unchanged ones by path and symbol
 1. **Baseline/dependencies:** main SHA; prerequisite final PR/head; inherited review
    findings and dispositions; approved acceptance IDs; outstanding IN gates.
 2. **Touch map:** each exact existing file + symbol + caller; proposed files visibly
-   marked; one risk area, one migration owner, production-line/file estimate.
+   marked; explicit risk boundaries, migration ownership/order, production-line/file estimate.
 3. **Mapping:** submitted field → parser → domain input → persisted field → DTO/UI;
    trusted lookup source for IDs, prices, actor, customer, time and provider evidence.
 4. **Sequence:** read/authorize/lock/recheck → calculate/write/audit/commit → external

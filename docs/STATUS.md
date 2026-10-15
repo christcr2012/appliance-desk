@@ -1,3 +1,39 @@
+### October 15 — owner-requested bundle guidance consistency review
+
+Reviewed current main 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. Aligned existing governing instructions, session
+procedure and applicable playbook/card/recipe references: cards define approved
+scope; related whole subsections form coherent bundles; PR splits need concrete
+migration/dependency/safety/reviewability reasons. Removed stale numeric ceilings
+and blanket one-risk/one-migration fragmentation rules where present. Session target
+comes from the current owner, not PR count; incidental fixes/checkpoints do not end
+an unfinished bundle. Remaining engineering must not be hidden as external proof.
+Removed a stale generic session sentence that called future work maintenance.
+All original subsection IDs, roadmap order, source/provider acceptance, independent
+approval/guard/cleanup rules, CI/review and hosting/cost gates remain unchanged.
+Dated PR-count instructions/credits below are historical to their original
+sessions, never standing quotas or credits toward the current target.
+This is explicitly requested guidance maintenance, zero product bundles; no provider
+operation or release. Required exact-head checks and review disposition govern merge.
+Current approved outcome: W-22FIN remains incomplete. #463 and #464 are merged;
+verified source baseline is 905a0fb8 (owner reserve/service-policy review).
+The active card and W-22FIN integration contract below contain the current finite
+completion path. Historical checkpoints are evidence of their original sessions,
+not current next actions. Preserve concurrent implementation branches.
+
+## W-22FIN stall diagnosis and current finish contract — October 15
+
+Verified #464 merged at `905a0fb8`; #459/#462/#463 are also inherited source.
+The active W-22FIN card now starts with the five existing remaining engineering
+rows, and its integration contract §2A maps the V1-only frozen-money bottleneck
+through storage, quote, signatures, payments, cancellation and first invoice.
+Older card session reports are preserved in the existing history archive.
+Next implementation is that complete nonzero-money integration, not another
+policy/readiness-only PR or repeat investigation of merged work. The 45606-cent
+fixture and complete DB/browser flow define finite proof; once all existing
+criteria pass, close engineering and resume W-23 with external acceptance queued.
+This requested diagnosis/design is maintenance, not completed product engineering.
+The dated checkpoints below retain their original evidence, not current next work.
+
 ### PR #464 live checkpoint — original W-22FIN owner policy, exact-head CI repair
 
 Branch `ai/gpt6/w22fin-policy-commercial-reserve-20261014` was recovered

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "kind": "risk_remediation",
+  "kind": "maintenance",
   "parent": "W-22FIN",
   "completedSlices": [],
   "remainingEngineering": [
@@ -14,15 +14,10 @@
     "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
     "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "W-22FIN safety remediation prevents multiplying the same negotiated commercial estimate deposit across prepared locations; policy implementation remains uncounted until the entire existing W-22FIN-POLICY/QUOTE acceptance is verified. No standalone new subsection or completed bundle claimed.",
+  "workloadException": "Owner explicitly requested cross-repository guidance repair and W-22FIN stall diagnosis/design; zero completed product subsections or bundles, no production-code change.",
   "evidence": [
-    "Inspected main 20466bc50cead4d300523ee38382f34267a07f4d with zero open PRs and existing W-22FIN contract.",
-    "Pure and disposable-PostgreSQL test cases added for zero-advance five-machine, business-classified, original signing window and legacy full-refund-only cases; passing results require exact-head CI evidence.",
-    "New signature-bound owner policy JSON, transaction scope verification, schema migration and SQL immutability/reconciliation triggers; no LIVE Stripe/refund operation."
-  ],
-  "riskEvidence": [
-    "Observed preparation copies estimate.depositCents to every one of the created per-property agreements; multi-site negotiated commercial reserve could duplicate a customer liability.",
-    "Repair sets zero per-location draft amount until OWNER explicitly allocates the exact total across all customer-owned addresses with immutable versioned terms, source/version checks and no checkout or receipt.",
-    "Disposable PostgreSQL and browser cases cover duplicate prevention, role/tenant checks, 10000+5000 allocation, stale revisions, signed history guard and no money movement; exact-head CI required before publication."
+    "Governing bundle guidance, current W-22FIN card/packet and integration contract reconciled against main 905a0fb8; preserve source and all real-use gates.",
+    "Historical session reports no longer drive the current card; concrete V1-to-complete-evidence consumer map and finite existing acceptance rows define the next implementation.",
+    "Required documentation preflight, scorecard validation and exact-head CI/review must pass before merge."
   ]
 }
