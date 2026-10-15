@@ -1,3 +1,21 @@
+### October 15 existing-work audit — cancellation payment integrity
+
+The owner requested review of implementation as well as planning.
+[Audit and findings](reviews/2026-10-15-existing-work-review.md) records two
+cancellation defects repaired with a shared obligation-locked payment guard:
+generic close bypassed pending collection, and reviewed cancellation missed
+SUCCEEDED without a reconciled receipt. Three new cases failed on original main;
+24 focused tests passed with the fix on disposable PostgreSQL, including an
+observed lock-wait race. Exact-head full CI/review/merge remain required.
+PR #459 then merged as 5703c6ea. Reconciled that main and repaired its missing
+customer-view fingerprint submission across page/form/action/locked domain.
+Four old-view cases failed on the merged baseline; the combined repairs passed
+41 focused tests, including a concurrent old/new-tab race. Its former branch
+was untouched. The professional-review implementation contract now maps the
+current IN register to researched configurable policies and concrete proof.
+W-22FIN remains active/incomplete; internal remediation tasks count zero whole
+predefined batch subsections. No release/provider/professional proof claimed.
+
 ## Completion checkpoint — W-22FIN-APPROVAL, while W-22FIN-QUOTE remains gated
 
 Owner-prepared customer-owned agreement drafts can now be adopted by an

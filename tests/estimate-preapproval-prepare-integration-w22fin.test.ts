@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { prepareEstimateAgreementsBeforeApproval } from "@/domains/estimates/preapproval-agreements";
-import { convertEstimateToAgreements } from "@/domains/estimates";
+import { approveEstimate, convertEstimateToAgreements } from "@/domains/estimates";
 import { getPreparedEstimateQuoteInTx } from "@/domains/estimates/preapproval-quote";
 
 vi.mock("@/domains/estimates/preapproval-quote", () => ({
@@ -17,6 +17,7 @@ describe.skipIf(!enabled)("preapproval estimate preparation on disposable Postgr
   const marker = randomUUID().replaceAll("-", "");
   let owner = "", staff = "", customer = "", customerUserId = "", estimate = "";
   let addressA = "", addressB = "", packageId = "";
+  const approvalIds:string[]=[];
   beforeAll(async () => {
     const [u, staffRow, customerUser] = await Promise.all([
       prisma.user.create({ data: { email: `prep-owner-${marker}@example.test`,
@@ -54,7 +55,7 @@ describe.skipIf(!enabled)("preapproval estimate preparation on disposable Postgr
   });
   afterAll(async () => {
     await prisma.rentalAgreement.deleteMany({ where: { sourceEstimateId: estimate } });
-    await prisma.estimate.deleteMany({ where: { id: estimate } });
+    await prisma.estimate.deleteMany({ where: { id: { in: [estimate,...approvalIds] } } });
     await prisma.rentalPackage.deleteMany({ where: { id: packageId } });
     await prisma.serviceAddress.deleteMany({ where: { id: { in: [addressA, addressB] } } });
     await prisma.customer.deleteMany({ where: { id: customer } });
@@ -130,5 +131,39 @@ describe.skipIf(!enabled)("preapproval estimate preparation on disposable Postgr
     expect(await prisma.auditLog.count({ where: {
       entityId: estimate, action: "estimate.convert_prepared",
     } })).toBe(1);
+  });
+  async function replacementOffer() {
+    const fingerprint="c".repeat(64),order="d".repeat(64);
+    const row=await prisma.estimate.create({data:{customerId:customer,createdByUserId:owner,
+      status:"SENT",title:"Replacement offer",reviewedQuoteFingerprint:fingerprint,
+      reviewedOrderFingerprint:order,reviewedQuoteAt:new Date()}});
+    approvalIds.push(row.id);
+    mockedQuote.mockResolvedValue({status:"READY",reasons:[],permissionToCollect:false,
+      quoteFingerprint:fingerprint,orderFingerprint:order,locations:[],
+      totals:{monthlyRentCents:6000,monthlyRentTaxCents:0,setupFeeCents:0,
+        setupTaxCents:0,advanceCents:0,dueAtSigningCents:0}});
+    return {id:row.id,fingerprint};
+  }
+  const customerApproval=(fingerprint:string|undefined)=>({
+    expectedQuoteFingerprint:fingerprint as string,
+    approverName:"Quote viewer",approverEmail:"viewed@example.test",ipAddress:"127.0.0.1",
+  });
+  it.each([undefined,"","malformed","a".repeat(64)])("rejects missing, malformed or old viewed revision %s before approval writes",async fingerprint=>{
+    const row=await replacementOffer();
+    await expect(approveEstimate(row.id,customerApproval(fingerprint))).rejects.toThrow(/reviewed|all-in/i);
+    expect(await prisma.estimate.findUniqueOrThrow({where:{id:row.id}}))
+      .toMatchObject({status:"SENT",respondedAt:null,approverName:null,depositPaidAt:null});
+    expect(await prisma.auditLog.count({where:{entityId:row.id}})).toBe(0);
+  });
+  it("accepts only the actually viewed current offer in a concurrent old/new tab race",async()=>{
+    const row=await replacementOffer();
+    const results=await Promise.allSettled([
+      approveEstimate(row.id,customerApproval("a".repeat(64))),
+      approveEstimate(row.id,customerApproval(row.fingerprint)),
+    ]);
+    expect(results.map(r=>r.status)).toEqual(["rejected","fulfilled"]);
+    expect(await prisma.estimate.findUniqueOrThrow({where:{id:row.id}}))
+      .toMatchObject({status:"APPROVED",reviewedQuoteFingerprint:row.fingerprint,approverName:"Quote viewer"});
+    expect((await prisma.estimate.findUniqueOrThrow({where:{id:row.id}})).respondedAt).not.toBeNull();
   });
 });

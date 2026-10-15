@@ -201,6 +201,7 @@ describe.skipIf(!enabled)("agreement + estimate lifecycle concurrency", () => {
 
     const results = await Promise.allSettled([
       approveEstimate(estimateId, {
+        expectedQuoteFingerprint: "a".repeat(64),
         approverName: "Concurrency Customer",
         approverEmail: `lifecycle-${tag}@example.test`,
         ipAddress: "127.0.0.1",

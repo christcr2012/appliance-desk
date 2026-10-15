@@ -75,6 +75,56 @@ describe.skipIf(!enabled)("W-22 approved before-delivery cancellations (disposab
   await expect(getPreDeliveryCancellationQuote(id)).rejects.toThrow(/pending or unverified/);
   expect((await prisma.rentalAgreement.findUniqueOrThrow({where:{id}})).status).toBe("ACTIVE");
  });
+ it.each(["PREPARED", "PENDING", "SUCCEEDED"])("generic and reviewed cancellation both deny unreconciled %s collection",async status=>{
+  const id=await make(false,true);
+  await prisma.signingPaymentAttempt.updateMany({where:{agreementId:id},data:{status}});
+  await expect(cancelAgreement(actor,id)).rejects.toThrow(/Reconcile/);
+  await expect(getPreDeliveryCancellationQuote(id)).rejects.toThrow(/Reconcile/);
+  expect((await prisma.rentalAgreement.findUniqueOrThrow({where:{id}})).status).toBe("ACTIVE");
+  expect(await prisma.preDeliveryCancellation.count({where:{agreementId:id}})).toBe(0);
+  expect(await prisma.receipt.count({where:{customerId:customer,
+    signingPaymentObligation:{agreementId:id}}})).toBe(0);
+ });
+ it("reads an attempt committed while cancellation waits on its obligation lock",async()=>{
+  const id=await make(false);
+  let release!:()=>void;
+  let acquired!:()=>void;
+  const held=new Promise<void>(resolve=>{acquired=resolve;});
+  const unlock=new Promise<void>(resolve=>{release=resolve;});
+  const preparing=prisma.$transaction(async tx=>{
+   await tx.$queryRaw`SELECT "agreementId" FROM "AgreementSigningPayment" WHERE "agreementId" = ${id} FOR UPDATE`;
+   await tx.signingPaymentAttempt.create({data:{agreementId:id,requestKey:"race-"+id,
+    attemptNumber:1,method:"STRIPE_CHECKOUT",status:"PENDING",amountCents:10500,
+    orderFingerprint:createHash("sha256").update(id).digest("hex")}});
+   acquired();
+   await unlock;
+  });
+  await held;
+  const cancelling=cancelAgreement(actor,id);
+  let waiting=false;
+  try {
+   for(let i=0;i<50&&!waiting;i++) {
+    const [state]=await prisma.$queryRaw<Array<{waiting:boolean}>>`
+     SELECT EXISTS(SELECT 1 FROM pg_stat_activity
+      WHERE datname=current_database() AND wait_event_type='Lock'
+       AND query LIKE '%AgreementSigningPayment%' AND pid<>pg_backend_pid()) AS waiting`;
+    waiting=state.waiting;
+    if(!waiting)await new Promise(resolve=>setTimeout(resolve,20));
+   }
+  } finally { release(); }
+  const results=await Promise.allSettled([preparing,cancelling]);
+  expect(waiting).toBe(true);
+  expect(results[0].status).toBe("fulfilled");
+  expect(results[1].status).toBe("rejected");
+  expect((await prisma.rentalAgreement.findUniqueOrThrow({where:{id}})).status).toBe("ACTIVE");
+  expect(await prisma.preDeliveryCancellation.count({where:{agreementId:id}})).toBe(0);
+ });
+ it("settled signing money with an additional pending collection is not safely cancellable",async()=>{
+  const id=await make(true,true);
+  await expect(cancelAgreement(actor,id)).rejects.toThrow(/Reconcile/);
+  await expect(getPreDeliveryCancellationQuote(id)).rejects.toThrow(/Reconcile/);
+  expect(await prisma.preDeliveryCancellation.count({where:{agreementId:id}})).toBe(0);
+ });
  it("does not treat an unpaid agreement as received money",async()=>{
   const id=await make(false);
   const quote=await getPreDeliveryCancellationQuote(id);

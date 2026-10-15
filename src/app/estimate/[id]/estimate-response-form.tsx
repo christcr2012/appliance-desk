@@ -3,7 +3,9 @@
 import { useEffect, useState, useTransition } from "react";
 import { approveEstimateAction, requestEstimateChangesAction, type EstimateResponseState } from "./actions";
 
-export function EstimateResponseForm({ estimateId, allowApproval = false }: { estimateId: string; allowApproval?: boolean }) {
+export function EstimateResponseForm({ estimateId, allowApproval = false, expectedQuoteFingerprint }: {
+  estimateId: string; allowApproval?: boolean; expectedQuoteFingerprint?: string | null;
+}) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState<"choose" | "approve" | "changes">("choose");
   const [approverName, setApproverName] = useState("");
@@ -47,7 +49,7 @@ export function EstimateResponseForm({ estimateId, allowApproval = false }: { es
   function handleApprove(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      setResult(await approveEstimateAction(estimateId, { approverName, approverEmail }));
+      setResult(await approveEstimateAction(estimateId, { approverName, approverEmail, expectedQuoteFingerprint }));
     });
   }
 

@@ -11,6 +11,7 @@ import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-veri
 import { getReviewedSigningOrderReadbackInTx } from "@/domains/billing/signing-order-readback";
 import { assertCurrentSigningPolicyInTx } from "@/domains/billing/signing-business-use-gate";
 import { signedPaymentObligation } from "@/domains/billing/signing-payment-obligation";
+import { getSigningCancellationPaymentInTx } from "@/domains/billing/signing-cancellation-readiness";
 import { offerMatchesFrozenEvidence } from "./signing-offer-proof";
 import { ensureSignedDeliveryDraftInTx } from "./signed-delivery";
 import {
@@ -706,9 +707,7 @@ export async function closeAgreementInTx(
   // Generic cancellation (auto-renewals, old callers) must never silently
   // release a paid, undelivered agreement without an owner-reviewed liability.
   if (newStatus === "CANCELLED" && !agreement.firstDeliveredOn) {
-    const paid = await tx.agreementSigningPayment.findUnique({
-      where: { agreementId }, select: { status: true },
-    });
+    const paid = await getSigningCancellationPaymentInTx(tx, agreementId, agreement.customerId);
     if (paid?.status === "SETTLED") {
       const approval = await tx.preDeliveryCancellation.findUnique({
         where: { agreementId }, select: { agreementId: true },

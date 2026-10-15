@@ -16,6 +16,7 @@ export type EstimateResponseState =
   | { status: "error"; message: string };
 
 const approveSchema = z.object({
+  expectedQuoteFingerprint: z.string().regex(/^[a-f0-9]{64}$/, "Refresh the reviewed all-in offer before approving."),
   approverName: z.string().trim().min(1, "Enter your full name.").max(200),
   approverEmail: z.string().trim().email("Enter a valid email address.").max(200),
 });
@@ -56,6 +57,7 @@ export async function approveEstimateAction(
 
   try {
     await approveEstimate(estimateId, {
+      expectedQuoteFingerprint: parsed.data.expectedQuoteFingerprint,
       approverName: parsed.data.approverName,
       approverEmail: parsed.data.approverEmail,
       ipAddress,

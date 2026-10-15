@@ -18,6 +18,7 @@ describe.skipIf(!enabled)("R09 an expired estimate cannot be answered", () => {
   const leadIds: string[] = [];
 
   const input = {
+    expectedQuoteFingerprint: "a".repeat(64),
     approverName: "Pat Customer",
     approverEmail: `pat-${tag}@example.test`,
     ipAddress: "203.0.113.9",

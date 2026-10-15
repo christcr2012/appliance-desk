@@ -4,26 +4,38 @@
   "parent": "W-22FIN",
   "completedSlices": [
     {
-      "id": "W-22FIN-APPROVAL",
+      "id": "W-22FIN-CANCEL-SAFETY",
       "acceptanceEvidence": [
-        "Legacy estimate send marks incomplete prospects explicitly nonbinding, public EstimateResponseForm hides approve absent exact stored reviewed fingerprint; both approveEstimate locked transaction and checkout require verified evidence. e2e/preapproval-estimate-prepare.spec.ts asserts rejection; tests/estimate-send-email-switch.test.ts and remediation-r2-estimate-expiry-integration.test.ts preserve preliminary workflow.",
-        "Original customer-owned prepared agreements are SHA-verified against exact quote line identities, owner dated policy and current jurisdiction rental tax using getPreparedEstimateQuoteInTx; reviewedQuoteFingerprint and reviewedOrderFingerprint are stored on send and compared on approve. The converted order is adopted under Estimate/RentalAgreement row locks with scope validation in prepared-conversion.ts; tests/estimate-preapproval-quote-w22fin.test.ts and estimate-prepared-conversion-w22fin.test.ts assert forgery/revision/tenant denial.",
-        "Concurrent adopt/replay denied duplicate agreements, deposit, signing/payment obligations, invoices or early credit by tests/estimate-preapproval-prepare-integration-w22fin.test.ts; authenticated browser fixture checks preapproval denied and owner preparation; existing signing-first-invoice integration/browser suites verify separately receipt-backed application without advance credit at conversion. Genuine Stripe/provider TEST acceptance remains PENDING, not faked."
+        "tests/pre-delivery-cancellation-integration.test.ts: PREPARED/PENDING/SUCCEEDED denial through generic and reviewed entry points; original main failed all three new cases.",
+        "tests/pre-delivery-cancellation-integration.test.ts: actual pg_stat_activity lock wait and committed-attempt reread; ACTIVE agreement and no refund/cancellation row.",
+        "tests/signing-cancellation-readiness.test.ts and existing integration/close suites: 24 focused tests passed in disposable PostgreSQL 18; required exact-head full CI remains the merge gate."
+      ]
+    },
+    {
+      "id": "W-22FIN-VIEWED-QUOTE",
+      "acceptanceEvidence": [
+        "tests/estimate-viewed-quote-form.test.tsx and estimate-viewed-quote-action.test.ts: rendered revision reaches the domain unchanged; strict malformed/missing parser and no checkout on denial.",
+        "tests/estimate-preapproval-prepare-integration-w22fin.test.ts: four missing/malformed/stale cases failed against merged 5703c6ea, pass after repair with unchanged status/approval fields and no audit writes.",
+        "Real PostgreSQL old/new-tab concurrent approval plus expiry and estimate concurrency suites passed in the 41-test combined run; exact-head full CI/browser remains required."
       ]
     }
   ],
   "remainingEngineering": [
-    "W-22FIN-QUOTE: mandatory nonzero delivery, installation/removal, damage waiver, RDF and refundable deposits with verified legal/tax evidence must join reviewed all-in signing evidence before any such binding quote; no silent zero or unaudited deposits.",
-    "W-22FIN-RECOVERY: owner-permission and provider-authoritative cancellation, refund/uncertain payment paths remain to be completed or independently accepted.",
-    "W-22FIN-DELIVERY: full real multi-site acceptance through delivery and first-invoice credit still awaits real provider TEST/owner approval.",
-    "Existing project-wide signed legal, CPA tax and production/customer outreach gates remain separate and block live charges until properly cleared."
+    "W-22FIN-QUOTE: Persist and independently verify a complete owner-reviewed preapproval all-in offer including all tax and applicable mandatory charges; currently owner preview explicitly excludes unsettled categories.",
+    "W-22FIN-APPROVAL: Connect complete immutable quote to legacy estimate send/approve/deposit checkout without allowing provisional amounts to become binding or payable.",
+    "W-22FIN-RECOVERY: Complete provider-authoritative payment, cancellation and uncertain-state recovery acceptance without automatic money-out.",
+    "W-22FIN-DELIVERY: Verify full multi-location signed agreement through delivery and first-invoice credits with isolated real database/browser proof."
   ],
   "externalAcceptance": [
-    "STATUS release acceptance queue remains pending for genuine reviewed READY production revision and authenticated owner/customer/Stripe TEST checks",
-    "IN-79 CPA, IN-07 counsel, price publication, real customer communication and independent owner money-out permissions not granted"
+    "Maintain docs/STATUS.md checked-live release queue; no authentic owner/customer or Stripe TEST acceptance is claimed from this implementation.",
+    "IN-79 CPA and IN-07 counsel business-use gates remain independent; no live collection, public price publication or actual customer outreach approved."
   ],
-  "workloadException": "Completed one predefined W-22FIN-APPROVAL subsection as part of finishing the already-started preapproval/atomic conversion workflow in the same PR. W-22FIN-QUOTE remains incomplete; unsupported mandatory charge/deposit categories always reject positive binding offers. Real provider acceptance is separately pending and never inferred from synthetic test fixtures.",
+  "workloadException": "Owner-requested existing-work audit found cancellation and viewed-quote money/contract integrity holes on main. Isolated corrective PR follows AGENTS. Internal remediation tasks count zero completed predefined batch subsections; parent W-22FIN and full remaining quote/recovery/delivery outcomes stay unfinished.",
   "evidence": [
-    "Source tests, database fixture and browser regression plus required exact-head CI and review; no deployment or provider evidence inferred"
+    "Original main b4071206 plus the three regression cases failed on disposable PostgreSQL: generic cancellation incorrectly succeeded.",
+    "Fixed shared agreement-to-obligation lock guard passed 24 focused tests, including a genuine blocked database transaction; no provider, customer or production mutation.",
+    "docs/reviews/2026-10-15-existing-work-review.md records bounded coverage, fixed defects, exact concurrent quote PR revision and remaining review findings.",
+    "Reconciled merged PR #459 (5703c6ea), fixed viewed-quote approval across page/form/action/domain, and passed 41 focused tests plus typecheck/lint/quick with a 3GB Node heap.",
+    "docs/designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md maps current professional-review IN subjects to researched configurable policies, evidence and finite acceptance; no real professional approval claimed."
   ]
 }

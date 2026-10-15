@@ -52,6 +52,7 @@ test("owner can prepare actual estimate-owned agreement shells without approving
     await expect(page.getByText(/reviewed all-in offer needs to be refreshed/i)).toBeVisible();
     const { approveEstimate } = await import("../src/domains/estimates");
     await expect(approveEstimate(estimate.id, {
+      expectedQuoteFingerprint: "a".repeat(64),
       approverName: "Unauthorised incomplete estimate",
       approverEmail: "not-approved@example.test", ipAddress: "127.0.0.1",
     })).rejects.toThrow(/reviewed|all-in/i);

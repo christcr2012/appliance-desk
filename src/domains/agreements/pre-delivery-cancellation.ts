@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { SUCCESSFUL_PAYMENT_STATUSES, HELD_PAYMENT_STATUS } from "@/domains/billing/payment-status";
 import { requireRole } from "@/lib/session";
+import { getSigningCancellationPaymentInTx } from "@/domains/billing/signing-cancellation-readiness";
 import {
   lockRentalAgreementInTx,
   closeAgreementInTx,
@@ -84,29 +85,7 @@ async function quoteInTx(tx: Tx, agreementId: string, now: Date, policyOverride?
   if (firstInvoiceApplication) {
     throw new Error("The first bill already used signing funds. Reconcile the invoice before cancelling.");
   }
-  await tx.$queryRaw`SELECT "agreementId" FROM "AgreementSigningPayment" WHERE "agreementId" = ${agreementId} FOR UPDATE`;
-  const obligation = await tx.agreementSigningPayment.findUnique({
-    where: { agreementId }, include: {
-      receipt: { select: { id: true, customerId: true, amountCents: true } },
-      attempts: {
-        where: { status: { in: ["PREPARED", "PENDING"] }, method: "STRIPE_CHECKOUT" },
-        select: { status: true, method: true },
-      },
-    },
-  });
-  if (obligation?.attempts.some(attempt =>
-      attempt.method === "STRIPE_CHECKOUT" && ["PREPARED", "PENDING"].includes(attempt.status)
-    )) {
-    throw new Error("A signing card payment is still pending or unverified. Reconcile it before cancelling.");
-  }
-  if (obligation?.status === "SETTLED" &&
-      (!obligation.receipt || obligation.receipt.customerId !== agreement.customerId ||
-        obligation.receipt.amountCents !== obligation.totalCents || !obligation.receiptId)) {
-    throw new Error("The signed payment and receipt disagree. Finance reconciliation is required.");
-  }
-  if (obligation?.status !== "SETTLED" && obligation?.receiptId) {
-    throw new Error("A receipt exists without a settled obligation. Finance reconciliation is required.");
-  }
+  const obligation = await getSigningCancellationPaymentInTx(tx, agreementId, agreement.customerId);
   const settings = await tx.businessSettings.findUnique({ where: { id: "singleton" },
     select: { largeOrderCancellationFullRefundHours: true, updatedAt: true } });
   const hours = settings?.largeOrderCancellationFullRefundHours ?? 72;

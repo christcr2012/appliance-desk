@@ -167,7 +167,8 @@ export default async function PublicEstimatePage({
           </div>
         )}
         {!RESPONDED_STATUSES.has(estimate.status) && (
-          <EstimateResponseForm estimateId={estimate.id} allowApproval={!!reviewedQuote} />
+          <EstimateResponseForm estimateId={estimate.id} allowApproval={!!reviewedQuote}
+            expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint} />
         )}
       </div>
     </main>

@@ -592,6 +592,7 @@ export async function getEstimateForApproval(id: string) {
 }
 
 export type ApproveEstimateInput = {
+  expectedQuoteFingerprint: string;
   approverName: string;
   approverEmail: string;
   ipAddress: string | null;
@@ -614,6 +615,9 @@ export async function approveEstimate(
     if (await expireIfPastValidityInTx(tx, estimate)) return { expired: true as const };
     const approvedOffer = await getPreparedEstimateQuoteInTx(tx, id);
     if (approvedOffer.status !== "READY" || !approvedOffer.quoteFingerprint ||
+        typeof input.expectedQuoteFingerprint !== "string" ||
+        !/^[a-f0-9]{64}$/.test(input.expectedQuoteFingerprint) ||
+        input.expectedQuoteFingerprint !== approvedOffer.quoteFingerprint ||
         !estimate.reviewedQuoteFingerprint || !estimate.reviewedOrderFingerprint ||
         approvedOffer.quoteFingerprint !== estimate.reviewedQuoteFingerprint ||
         approvedOffer.orderFingerprint !== estimate.reviewedOrderFingerprint) {

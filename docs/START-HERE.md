@@ -1,5 +1,11 @@
 # START HERE — Appliance Desk
 
+**Professional-review engineering:** the [researched implementation contract](designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md)
+maps the professional-review IN register to configurable data, owner controls,
+evidence, failure cases and tests. Build the current approved outcome while
+affected real use awaits verification; keep planning assumptions distinct from
+genuine review. Research/design/code continue under the owner's standing rule.
+
 **October 15 research and integration detail:** after the active W-22FIN packet,
 read the [concrete integration contract](implementation-contracts/W-22FIN-INTEGRATION.md)
 for verified code seams, worked cents, atomic acceptance/recovery and completion
