@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Prisma, type ShortTermLeaseElection } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { businessDateKey } from "@/lib/business-date";
 import { seedTaxReadyContext } from "./tax-ready";
@@ -13,11 +13,10 @@ export async function createSyntheticW22V2Order(options:{customerId?:string}={})
    throw new Error("Synthetic V2 fixtures require the isolated disposable test database.");
  const tag=randomUUID().replaceAll("-","");const day=businessDateKey(new Date());
  let owner="",orderFingerprint="",taxDecisionId="";
- let previousPolicy:Prisma.JsonValue;let previousElection:ShortTermLeaseElection;
  const ids:string[]=[];const cleanups:Array<()=>Promise<void>>=[];
   owner=(await prisma.user.findFirstOrThrow({where:{role:"OWNER"}})).id;
   const settings=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
-  previousPolicy=settings.signingMandatoryPolicyVersions;previousElection=settings.shortTermLeaseElection;
+  const previousPolicy=settings.signingMandatoryPolicyVersions;const previousElection=settings.shortTermLeaseElection;
   await prisma.businessSettings.update({where:{id:"singleton"},data:{
    signingMandatoryPolicyVersions:[{revision:1,effectiveFromKey:day,recordedAt:new Date().toISOString(),recordedByUserId:owner,
     reason:"Synthetic isolated mandatory categories",decisions:{delivery:"REQUIRED",installation:"NOT_APPLICABLE",removal:"NOT_APPLICABLE",damageWaiver:"NOT_APPLICABLE",retailDelivery:"REQUIRED"}}],
