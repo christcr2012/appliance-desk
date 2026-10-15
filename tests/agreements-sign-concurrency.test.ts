@@ -44,6 +44,22 @@ function makeTx() {
 
 // This legacy concurrency suite isolates signing's atomic update from the
 // independently covered W-22 frozen-order database verification.
+// This suite isolates contract-version/concurrency behavior. Original
+// cancellation policy persistence is covered by dedicated real-DB tests.
+vi.mock("@/domains/agreements/signed-cancellation-policy", () => ({
+  getCancellationPolicyAtSigningInTx: async (
+    _tx: unknown, input: { agreementId: string; orderFingerprint: string; signedAt: Date },
+  ) => ({
+    schemaVersion: 1, agreementId: input.agreementId,
+    orderFingerprint: input.orderFingerprint, signedAt: input.signedAt.toISOString(),
+    settingsUpdatedAt: "2026-10-12T12:00:00.000Z",
+    machineThreshold: 5, fullRefundHours: 72,
+    machines: [{ agreementId: input.agreementId, count: 1 }],
+    businessCustomer: false, propertyManagerCustomer: false,
+    largeOrder: false, reasons: [],
+  }),
+}));
+
 vi.mock("@/domains/billing/signing-frozen-verify", () => ({
   getFrozenSigningOrderInTx: async (_tx: unknown, agreementId: string) => [{
     agreementId, orderFingerprint: "a".repeat(64), allInCents: 0, schemaVersion: 1, setupFeeCents: 0, setupTaxCents: 0, downPaymentCents: 0,
