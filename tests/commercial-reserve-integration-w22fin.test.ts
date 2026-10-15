@@ -5,6 +5,10 @@ import { prepareEstimateAgreementsBeforeApproval } from
   "@/domains/estimates/preapproval-agreements";
 import { getPreparedReserveOverview,savePreparedCommercialReserveAllocation } from
   "@/domains/estimates/commercial-reserve-allocation";
+import { getPreparedMandatoryChargeOverview,savePreparedMandatoryChargeReview } from
+  "@/domains/estimates/mandatory-charge-allocation";
+import { recordMandatorySigningPolicy } from
+  "@/domains/billing/signing-mandatory-policy";
 
 vi.mock("@/lib/session",()=>({
   requireRole:async()=>({user:{id:"synthetic-owner-session",role:"OWNER"}}),
@@ -151,6 +155,81 @@ describe.skipIf(!enabled)("W-22FIN commercial reserve owner workflow on disposab
     }})).rejects.toThrow();
     const current=await prisma.rentalAgreement.findUniqueOrThrow({where:{id:target.id}});
     expect(current.commercialReservePolicyVersions).toEqual(target.commercialReservePolicyVersions);
+  });
+  it("records OWNER-only per-address mandatory fee decisions with versioned tax/RDF review and no money",async()=>{
+    // Exact singleton policy is restored after the disposable fixture; every
+    // test uses customer-owned preapproval drafts, never production money.
+    const prior=(await prisma.businessSettings.findUniqueOrThrow({
+      where:{id:"singleton"},
+    })).signingMandatoryPolicyVersions;
+    try{
+      await recordMandatorySigningPolicy(owner,{
+        effectiveFromKey:"2026-10-14",
+        reason:"Synthetic internal test for all-location fee applicability",
+        decisions:{
+          delivery:"NOT_APPLICABLE",installation:"NOT_APPLICABLE",
+          removal:"NOT_APPLICABLE",damageWaiver:"NOT_APPLICABLE",
+          retailDelivery:"EXEMPT",
+        },
+      });
+      const review=await getPreparedMandatoryChargeOverview(estimateId);
+      expect(review?.locations).toHaveLength(2);
+      expect(review?.globalPolicyRevision).not.toBeNull();
+      const choices=review!.locations.map(location=>({
+        agreementId:location.agreementId,
+        decisions:{
+          delivery:"NOT_APPLICABLE" as const,
+          installation:"NOT_APPLICABLE" as const,
+          removal:"NOT_APPLICABLE" as const,
+          damageWaiver:"NOT_APPLICABLE" as const,
+        },
+        exceptionReasons:{},retailDeliveryEvent:false,
+      }));
+      const input={
+        actorUserId:staff,estimateId,
+        expectedEstimateUpdatedAt:new Date(review!.estimateUpdatedAt),
+        expectedGlobalPolicyRevision:review!.globalPolicyRevision,
+        expectedSettingsUpdatedAt:review!.settingsUpdatedAt,
+        expectedRevisions:review!.locations.map(l=>({
+          agreementId:l.agreementId,revision:l.revision,
+        })),
+        choices,reason:"Owner reviewed all local service fees as not applicable for the synthetic delivery",
+      };
+      await expect(savePreparedMandatoryChargeReview(input)).rejects.toThrow();
+      expect((await prisma.rentalAgreement.findMany({
+        where:{sourceEstimateId:estimateId},
+      })).every(a=>Array.isArray(a.mandatoryChargeReviewVersions)&&
+        a.mandatoryChargeReviewVersions.length===0)).toBe(true);
+      const result=await savePreparedMandatoryChargeReview({...input,actorUserId:owner});
+      expect(result.changedAgreementIds).toHaveLength(2);
+      const saved=await prisma.rentalAgreement.findMany({
+        where:{sourceEstimateId:estimateId},
+      });
+      for(const agreement of saved){
+        expect(agreement.mandatoryChargeReviewVersions).toHaveLength(1);
+        const row=(agreement.mandatoryChargeReviewVersions as Array<Record<string,unknown>>)[0];
+        expect(row).toMatchObject({schemaVersion:1,revision:1,
+          agreementId:agreement.id,estimateId,professionalReview:"REVIEW_REQUIRED"});
+        expect(row.tax).toMatchObject({status:"REVIEW_REQUIRED"});
+        expect(row.retailDelivery).toMatchObject({event:false});
+        expect(row.charges).toMatchObject([
+          {kind:"delivery",amountCents:0},{kind:"installation",amountCents:0},
+          {kind:"removal",amountCents:0},{kind:"damageWaiver",amountCents:0},
+        ]);
+        await expect(prisma.rentalAgreement.update({where:{id:agreement.id},
+          data:{mandatoryChargeReviewVersions:[]}})).rejects.toThrow();
+      }
+      expect(await prisma.auditLog.count({where:{
+        entityId:estimateId,action:"estimate.mandatory_location_charge_review",
+      }})).toBe(1);
+      expect(await prisma.deposit.count({where:{agreementId:{in:ids}}})).toBe(0);
+      await expect(savePreparedMandatoryChargeReview({...input,actorUserId:owner}))
+        .rejects.toThrow(/review/i);
+    }finally{
+      await prisma.businessSettings.update({where:{id:"singleton"},data:{
+        signingMandatoryPolicyVersions:prior as never,
+      }});
+    }
   });
   it("leaves an already sent agreement's refundable reserve immutable",async()=>{
     const a=ids[0];

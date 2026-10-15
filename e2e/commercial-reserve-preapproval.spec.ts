@@ -73,6 +73,11 @@ test("OWNER allocates an exact commercial reserve once across two prepared renta
     expect(await prisma.deposit.count({where:{agreementId:{in:rows.map(row=>row.id)}}})).toBe(0);
     expect((await prisma.estimate.findUniqueOrThrow({where:{id:estimate.id}})).depositPaidAt).toBeNull();
     await page.reload();
+    const requiredServices=page.locator('section[aria-labelledby="mandatory-services-title"]');
+    await expect(requiredServices).toBeVisible();
+    await expect(requiredServices.locator("fieldset")).toHaveCount(2);
+    await expect(requiredServices.getByText(/not a payable quote/i)).toHaveCount(0);
+    await expect(page.getByText(/Complete all-in offer requires review/i)).toBeVisible();
     const check=await new AxeBuilder({page}).withTags([
       "wcag2a","wcag2aa","wcag21a","wcag21aa",
     ]).analyze();

@@ -6,7 +6,7 @@ import type { PreparedReserveOverview } from
 import {
   saveCommercialReserveAction,
 } from "@/app/desk/estimates/[id]/commercial-reserve-action";
-import { formatCents } from "@/domains/pricing/money";
+import { formatCents, formatCentsAsPlainDecimal } from "@/domains/pricing/money";
 
 export function CommercialReserveAllocationForm({overview,owner}:{
   overview:PreparedReserveOverview;owner:boolean;
@@ -54,7 +54,7 @@ export function CommercialReserveAllocationForm({overview,owner}:{
             Refundable security reserve in dollars
             <input name={"amount_"+index} type="number" inputMode="decimal"
               min="0" max="1000000" step="0.01" required
-              defaultValue={(row.amountCents/100).toFixed(2)}
+              defaultValue={formatCentsAsPlainDecimal(row.amountCents)}
               disabled={!eligible||pending}
               className="w-full rounded border border-line bg-surface p-2"/>
           </label>
