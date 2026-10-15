@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "id": "W-23",
+  "parent": "W-23",
+  "baseline": "9b2717aa6df8bf9f0636f2c1e8f6f7224cf129ee",
+  "card": "docs/pr-cards/W-23.md",
+  "outcome": "Client/owner maintain per-property occupants, permission and access notes; assigned staff see current visit only, tenant reports contact the client without prices; move-out retention and bulk import are safe.",
+  "risk": "Real tenant PII, client-scoped authorization across action/URL/visit, single-use repair tokens, all-or-nothing portfolio writes and GDPR-like erasure; avoid exposing terms or triggering SMS, billing or LIVE.",
+  "next": "After W-23 exact-head checks, review, merge and recorded source acceptance, W-24 is the next planned engineering capability, subject to W-22 external acceptance queue gates.",
+  "references": [
+    {
+      "path": "src/domains/customers/location-contacts.ts",
+      "anchor": "export async function locationWorkspace",
+      "purpose": "Client-owned location contact DTO and strong authorization boundary"
+    },
+    {
+      "path": "src/domains/customers/location-contacts.ts",
+      "anchor": "export async function submitTenantRepair",
+      "purpose": "Single-use link, active machine binding and pending client notice"
+    },
+    {
+      "path": "src/app/account/properties/actions.ts",
+      "anchor": "async function scopedActor",
+      "purpose": "Server-session-derived client/customer IDs; never trust URL authority"
+    },
+    {
+      "path": "src/components/locations/locations-panel.tsx",
+      "anchor": "export function LocationsPanel",
+      "purpose": "Owner/customer site permissions/contact lifetime and atomic import preview"
+    },
+    {
+      "path": "src/app/desk/jobs/[id]/page.tsx",
+      "anchor": "const [privateLocation]",
+      "purpose": "Sensitive access/contact notes only within explicitly assigned live visit"
+    },
+    {
+      "path": "src/app/api/cron/tenant-retention/route.ts",
+      "anchor": "export async function GET",
+      "purpose": "Authenticated autonomous retention erasure, no provider writes"
+    }
+  ],
+  "proposedFiles": [
+    "prisma/migrations/20261016100000_w23_location_contacts/migration.sql",
+    "tests/location-contacts.test.ts",
+    "tests/location-contacts-integration.test.ts",
+    "src/app/tenant/repair/[token]/page.tsx"
+  ],
+  "invariants": [
+    "Clients alone remain paying/signed customers; tenants do not have login, price or billing access.",
+    "Only an authorized client's account policy or per-site override permits tenant contact topics. A client grant is not tenant COM-L SMS consent.",
+    "Customer identity comes from validated session, and edits require customerId plus serviceAddressId ownership.",
+    "Assigned STAFF see private location contact/access data only for their own active job, never unrelated sites.",
+    "Tenant repair token is single-use, time-bounded and scoped to this location's actively assigned physical machine; damage charges are never created.",
+    "Move-out leaves signed contracts/invoices unchanged; background erasure deletes former tenant PII without audit copies.",
+    "Import previews every CSV row and rejects duplicate, formula and cross-client data before atomic writes."
+  ],
+  "sequence": [
+    "Add migration, retention and consent-scoped contact schema without rewriting existing rental relations.",
+    "Implement client/owner actions and UI with inaccessible foreign-site/guest authority.",
+    "Integrate assigned-visit DTO, one-time tenant maintenance with pending notice and no automatic SMS/billable repair.",
+    "Implement turnover task, global retention and validated transaction-safe CSV import, preserve no-PII audit.",
+    "Run focused unit/disposable database and real browser tests; full exact-head CI/review, track external acceptance separately."
+  ],
+  "acceptance": [
+    "Client stays the paying and signing customer; tenant is a no-login no-prices location contact and account staff stay separate.",
+    "Every service address supports a unit label, protected access notes and current/past tenant/on-site contacts with preferred language and tenancy dates.",
+    "Client gives account-wide contact permission with per-location overrides for delivery/pickup, maintenance and swaps, who confirms appointments, and whether client receives a copy, all with attribution and timestamp.",
+    "Tenant SMS is denied absent independently recorded tenant COM-L consent; no real message before the existing activation gates.",
+    "Tenant repair reports create correctly scoped maintenance on the location machine and notify client; billable damage still requires independent client approval.",
+    "Client or owner can end tenancy and optionally request a machine-turnover check while rentals and invoices continue unchanged.",
+    "Exited tenant PII is erased after configurable retention default twelve months, leaving minimal non-identifying visit history.",
+    "Many-address import checks each row, previews errors and applies owner-authorized rows atomically after ownership and duplicate checks.",
+    "OWNER/ADMIN may edit all; assigned STAFF see contact/access detail only for their own visits; clients see/edit their own locations and cannot see another customer’s tenant via URL, action, search or export.",
+    "Real database, role/isolation, retention, import and browser positive/denied/recovery tests demonstrate full outcome with no production/provider effects."
+  ],
+  "gates": [
+    {
+      "id": "TENANT-SMS-COM-L",
+      "affected": "Any SMS to tenant phone or automatic appointment notification",
+      "source": "docs/designs/BATCH-W-AMENDMENT-B.md",
+      "remedy": "Store contact and client scope without treating it as a consent grant; do not send SMS",
+      "reopen": "Explicit tenant-specific COM-L consent plus verified carrier/owner SMS activation."
+    },
+    {
+      "id": "W23-RELEASE",
+      "affected": "Actual deployed tenant/owner/staff behavior acceptance",
+      "source": "docs/STATUS.md",
+      "remedy": "Merge only verified tested code; retain real authenticated external checks separately.",
+      "reopen": "Next checked live deployment and authorized customer/owner/assigned staff fixtures prove behavior."
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/location-contacts.test.ts"
+    ],
+    "db": [
+      "tests/location-contacts-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-23",
+      "outcome": "Complete client-governed per-site contact authority, tenant repair, move-out privacy and portfolio import",
+      "acceptance": [
+        "Client stays the paying and signing customer; tenant is a no-login no-prices location contact and account staff stay separate.",
+        "Every service address supports a unit label, protected access notes and current/past tenant/on-site contacts with preferred language and tenancy dates.",
+        "Client gives account-wide contact permission with per-location overrides for delivery/pickup, maintenance and swaps, who confirms appointments, and whether client receives a copy, all with attribution and timestamp.",
+        "Tenant SMS is denied absent independently recorded tenant COM-L consent; no real message before the existing activation gates.",
+        "Tenant repair reports create correctly scoped maintenance on the location machine and notify client; billable damage still requires independent client approval.",
+        "Client or owner can end tenancy and optionally request a machine-turnover check while rentals and invoices continue unchanged.",
+        "Exited tenant PII is erased after configurable retention default twelve months, leaving minimal non-identifying visit history.",
+        "Many-address import checks each row, previews errors and applies owner-authorized rows atomically after ownership and duplicate checks.",
+        "OWNER/ADMIN may edit all; assigned STAFF see contact/access detail only for their own visits; clients see/edit their own locations and cannot see another customer’s tenant via URL, action, search or export.",
+        "Real database, role/isolation, retention, import and browser positive/denied/recovery tests demonstrate full outcome with no production/provider effects."
+      ]
+    }
+  ]
+}

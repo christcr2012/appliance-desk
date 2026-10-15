@@ -1,3 +1,9 @@
+## W-23 tenant/site contacts schema (2026-10-15)
+
+Additive migration: `prisma/migrations/20261016100000_w23_location_contacts/migration.sql` extends Customer with account contact permission and actor/time, ServiceAddress with `unitLabel`/private `accessNotes`/site override and provenance; adds LocationContact (scoped to ServiceAddress with current/past tenancy, nullable former-tenant PII, one-use repair-link hash); BusinessSettings defaults tenantContactRetentionMonths to 12 with a 1–120 database check. Existing paying Customer, rentals, invoices and appliance assignment relations remain untouched. Tenant contact does not carry User/login or payment linkage.
+
+Migration is additive, but restoration must be tested with the existing backup + schema-health tooling on a throwaway database before publication. Never dump or log private access instructions, repair tokens or deleted former-person identifiers. Tenant retention erasure keeps only anonymous contact ID, scope and move-out timing; pending communications remain in existing customer notice tables. No SMS consent inferred from client permission.
+
 ## W-22FIN reviewed estimate fingerprint migration
 
 Migration 20261014232000_preapproval_frozen_quote_identity adds nullable

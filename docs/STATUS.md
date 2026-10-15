@@ -1,3 +1,13 @@
+## 2026-10-15 — W-23 location contact bundle PR #470 (DRAFT, exact-head verification required)
+
+Baseline was actual main 9b2717aa6df8bf9f0636f2c1e8f6f7224cf129ee (#469). Branch ai/gpt6/w23-location-contacts-20261015. The full original approved W-23 is frozen before production edits in docs/pr-cards/W-23.md at 0cb1c6a. This is one substantial business/tenant privacy outcome; never re-count underlying helpers, work fragments or W-22 engineering.
+
+Proposed code: additive per-address unit/access/contact/permission data; current and former on-site persons and client-controlled permissions; owner and client edit portals; explicitly assigned live job access readback; seven-day one-use tenant maintenance link, active appliance validation and pending client notice without SMS/charge; turnover To do with no rental/billing rewrite; daily policy-controlled PII erasure; owner-approved row-validated CSV preview/serializable import. Tests: tests/location-contacts.test.ts and tests/location-contacts-integration.test.ts. See docs/pr-cards/execution/W-23.json for finite checks.
+
+**Verification not yet complete:** PR #470 is DRAFT; code and local TypeScript/browser/DB were not executed inside the stopped Vercel sandbox. GitHub required CI, security review and exact-head remediation must pass before a merge, and external tenant/owner/customer/service/provider acceptance cannot be inferred from these code paths. Pending CustomerNotice is not accepted email delivery; tenant COM-L opt-in and SMS activation are separate. W-22 external acceptance remains OPEN. No production activation, price publication, SMS, customer charges or owner money-out was performed or approved.
+
+Next: resolve exact CI failures, inspect migration/restore and browser coverage, complete review gates and PR merge; rerun final-main verification and report original W-23 acceptance criteria separately from gated live/provider acceptance. Do not begin dependent W-24 while W-23 is unmerged.
+
 ## 2026-10-15 — PR #466 complete W-22FIN engineering bundle, final gates
 
 ## Owner-requested execution efficiency / parallel CI maintenance — October 15
