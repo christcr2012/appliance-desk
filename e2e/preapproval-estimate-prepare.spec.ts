@@ -55,7 +55,8 @@ test("owner can prepare actual estimate-owned agreement shells without approving
       approverName: "Unauthorised incomplete estimate",
       approverEmail: "not-approved@example.test", ipAddress: "127.0.0.1",
     })).rejects.toThrow(/reviewed|all-in/i);
-    expect((await prisma.estimate.findUniqueOrThrow({ where: { id: estimate.id } })).status).toBe("SENT");
+    // Opening the link legitimately records VIEWED; approval must not advance it.
+    expect((await prisma.estimate.findUniqueOrThrow({ where: { id: estimate.id } })).status).toBe("VIEWED");
     await page.goto("/desk/estimates/" + estimate.id);
     const accessibility = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
