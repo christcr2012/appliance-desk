@@ -65,6 +65,7 @@ test("complete bilingual customer routes, signing evidence and revoked-review fa
   const oldDrafts=await prisma.customerTranslationDraft.findMany();
   const marker="w26-"+randomUUID();const agreementId=marker+"-agreement",signatureId=marker+"-signature",estimateId=marker+"-estimate";
   const englishTerms="Synthetic W-26 original English ending terms.";
+  const ownerNote="Synthetic owner note with $60.50 unchanged.";
   const ownerContext=await browser.newContext({storageState:ownerFile});
   const context=await browser.newContext({storageState:customerFile,viewport:{width:390,height:844}});
   const ownerPage=await ownerContext.newPage();const page=await context.newPage();
@@ -74,7 +75,7 @@ test("complete bilingual customer routes, signing evidence and revoked-review fa
       termsSnapshot:{shape:1,termination:{feeCents:4500,feePercent:null,feeCapCents:null,noticeDays:30,unusedTerm:"CREDIT",termsText:englishTerms},autoRenew:null},
       lines:{create:{label:"Recorded W-26 washer",monthlyPriceCents:4000,listPriceCents:4000}},signature:{create:{id:signatureId,provider:"internal"}}}});
     await attachFrozenZeroOffer(prisma,agreementId,customer.serviceAddresses[0].id,signatureId);
-    await prisma.estimate.create({data:{id:estimateId,title:"Synthetic W-26 quote",customerId:customer.id,createdByUserId:owner.id,status:"SENT",sentAt:new Date(),validUntil:new Date(Date.now()+86400000),
+    await prisma.estimate.create({data:{id:estimateId,title:"Synthetic W-26 quote",clientMessage:ownerNote,customerId:customer.id,createdByUserId:owner.id,status:"SENT",sentAt:new Date(),validUntil:new Date(Date.now()+86400000),
       lineItems:{create:{description:"Recorded W-26 washer",quantity:1,monthlyPriceCents:6050,oneTimeFeeCents:4500}}}});
     await ownerPage.goto("/desk/settings?section=notifications");
     const sources=await ownerPage.locator('form:has(input[name="kind"])').evaluateAll(forms=>forms.map(form=>{
@@ -83,7 +84,7 @@ test("complete bilingual customer routes, signing evidence and revoked-review fa
     }));
     expect(sources.length).toBeGreaterThan(20);
     for(const source of sources) {
-      const spanish=source.english===englishTerms?"Condiciones informativas de finalización para la prueba W-26.":source.spanish || "Texto sintético de prueba: "+source.english;
+      const spanish=source.english===ownerNote?"Nota informativa del propietario con $60.50 sin cambios.":source.english===englishTerms?"Condiciones informativas de finalización para la prueba W-26.":source.spanish || "Texto sintético de prueba: "+source.english;
       await prisma.customerTranslationDraft.upsert({where:{sourceKind_sourceKey:{sourceKind:source.kind,sourceKey:source.key}},
         create:{sourceKind:source.kind,sourceKey:source.key,englishDigest:source.digest,spanishText:spanish,editedByUserId:owner.id},
         update:{englishDigest:source.digest,spanishText:spanish}});
@@ -103,11 +104,12 @@ test("complete bilingual customer routes, signing evidence and revoked-review fa
     }
     await page.goto("/account/billing");await expect(page.getByRole("button",{name:"Administrar método de pago y facturación"})).toBeVisible();
     await page.goto("/account/maintenance");await page.locator("#problem").fill("   ");await page.getByRole("button",{name:"Enviar solicitud"}).click();
-    await expect(page.getByRole("alert")).toContainText("Describa");
+    await expect(page.getByRole("alert").filter({hasText:"Describa su solicitud"})).toContainText("Describa");
     await page.goto("/estimate/"+estimateId);
     await expect(page.getByText("$60.50",{exact:false}).first()).toBeVisible();
     await page.getByRole("button",{name:"Español",exact:true}).click();
     await expect(page.getByRole("button",{name:"Solicitar cambios",exact:true})).toBeVisible();
+    await expect(page.getByText("Nota informativa del propietario con $60.50 sin cambios.",{exact:true})).toBeVisible();
     await page.getByRole("button",{name:"Solicitar cambios",exact:true}).click();
     await page.getByLabel("¿Qué desea cambiar?").fill("Solicitud sintética de prueba para cambiar la fecha.");
     await page.getByRole("button",{name:"Enviar solicitud",exact:true}).click();

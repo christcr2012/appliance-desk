@@ -5,7 +5,7 @@ The original subsection and counting boundary remain unchanged.
 
 | Surface | Actual consumers and invariant evidence |
 |---|---|
-| Quote and response | Public estimate page, reviewed quote/order readbacks, approve/decline/change forms, deposit/continue/account-setup controls; exact amounts and separate nonbinding warning; rendered/transactional/catalog tests |
+| Quote and response | Public estimate page and exact reviewed owner-written quote note, reviewed quote/order readbacks, approve/decline/change forms, deposit/continue/account-setup controls; exact amounts and separate nonbinding warning; rendered/transactional/catalog tests |
 | Agreement/signing | Sign page and form, fixed/renewal disclosures, exact approved informational legal counterpart beside original English; locked digest validation and immutable recorded interface/legal language; rendered/runtime/database tests |
 | Payment | Hosted signing Checkout freezes locale on its durable attempt; legacy historical parameters unchanged; billing portal locale, processing/cancel/error controls, unpaid/received/review-required distinctions; existing billing tests plus focused rendering tests |
 | Portal | Shell/mobile navigation, home, rental/end/renewal controls, maintenance/photo/priorities, property contacts/permissions, billing and historical invoice wrapper, settings/privacy/SMS consent, credential/recovery and idle warnings; actual English records remain exact |

@@ -385,11 +385,10 @@ export async function sendEstimate(userId: string, estimateId: string,
     process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
   const monthly = totalMonthlyCents(estimate.lineItems);
   const oneTime = totalOneTimeCents(estimate.lineItems);
-  const { displayCustomerLanguage } = await import("@/domains/language/review");
+  const {quoteLanguage}=await import("@/domains/language/quote-note");
   const { activeMessageCatalog } = await import("@/domains/language/runtime");
-  const language = await displayCustomerLanguage(
-    estimate.preferredLanguage === "es" ? "es" : "en",
-  );
+  const {language,note:clientMessage}=await quoteLanguage(
+    estimate.preferredLanguage === "es" ? "es" : "en",estimate.clientMessage ?? null);
   const catalog = await activeMessageCatalog(language);
   const localizedEmail = quoteEmailCopy(language, {
     businessName: settings.publicBusinessName,
@@ -398,7 +397,7 @@ export async function sendEstimate(userId: string, estimateId: string,
     monthlyCents: monthly,
     oneTimeCents: oneTime,
     fullyReviewed,
-    clientMessage: estimate.clientMessage ?? null,
+    clientMessage,
     url: `${appUrl}/estimate/${estimate.id}`,
   }, catalog);
 

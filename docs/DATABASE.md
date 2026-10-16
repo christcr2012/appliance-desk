@@ -1080,3 +1080,8 @@ original durable attempt. Retries reuse it with the original idempotency key;
 existing attempts retain NULL and omit the previously absent provider parameter.
 A withdrawn Spanish approval blocks new Spanish provider submission. Historical
 legacy Checkout parameters stay unchanged; Stripe handles its own browser locale.
+
+`QUOTE` drafts also bind independently edited owner quote notes to their exact
+English source hash. Quote pages and outgoing quote mail use the reviewed note
+or wholly English output; the stored note and monetary quote evidence are not
+rewritten. Arbitrary product/customer data and historical documents remain exact.

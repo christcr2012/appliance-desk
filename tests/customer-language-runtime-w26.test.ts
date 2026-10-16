@@ -74,3 +74,11 @@ describe("W-26 new notice language and unchanged historical evidence",()=>{
     expect(output.body).toContain("$60.50");expect(output.body).toContain("Recorded washer label");expect(output.language).toBe("es");
   });
 });
+
+import { quoteLanguage,quoteNoteKey } from "@/domains/language/quote-note";
+it("uses the exact reviewed owner quote note, or falls back the whole quote to English",async()=>{
+ const english="Owner note with unchanged $60.50.";
+ sources.push(source("QUOTE",quoteNoteKey(english),english,"Nota del propietario con $60.50 sin cambios."));approve();
+ expect(await quoteLanguage("es",english)).toMatchObject({language:"es",note:"Nota del propietario con $60.50 sin cambios."});
+ expect(await quoteLanguage("es","New owner note requiring its own review.")).toMatchObject({language:"en",note:"New owner note requiring its own review."});
+});

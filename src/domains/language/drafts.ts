@@ -2,6 +2,7 @@ import "server-only";
 import { translationDraftLimit } from "./draft-limits";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 
+import { quoteNoteSources } from "./quote-note";
 import { currentNoticeSources } from "./notice-language";
 import { NOTICE_COPY, type NoticeCopyKey } from "./notice-copy";
 import { legalTranslationSources } from "./legal";
@@ -11,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { getPublishedContent } from "@/domains/site-content";
 import { siteFieldByKey } from "@/domains/site-content/fields";
 
-export type TranslationSourceKind = "SITE" | "COMMUNICATION" | "MESSAGE" | "LEGAL" | "NOTICE";
+export type TranslationSourceKind = "SITE" | "COMMUNICATION" | "MESSAGE" | "LEGAL" | "NOTICE" | "QUOTE";
 export type TranslationSource = {
   kind: TranslationSourceKind;
   key: string;
@@ -53,6 +54,8 @@ export async function currentTranslationSource(
   } else if (kind === "NOTICE") {
     const templates = await currentNoticeSources();
     english = Object.hasOwn(templates,key) ? templates[key as NoticeCopyKey] : null;
+  } else if (kind === "QUOTE") {
+    english = (await quoteNoteSources()).get(key) ?? null;
   } else if (kind === "LEGAL") {
     english = (await legalTranslationSources()).get(key) ?? null;
   } else if (kind === "MESSAGE") {
@@ -133,7 +136,7 @@ export async function saveTranslationDraft(
 
 export async function listCurrentTranslationDrafts(): Promise<TranslationSource[]> {
   const { SITE_FIELDS } = await import("@/domains/site-content/fields");
-  const [site, templates, drafts, legal, notices] = await Promise.all([
+  const [site, templates, drafts, legal, notices, notes] = await Promise.all([
     getPublishedContent(),
     prisma.communicationTemplateRevision.findMany({
       where: { isCurrent: true },
@@ -143,12 +146,14 @@ export async function listCurrentTranslationDrafts(): Promise<TranslationSource[
     prisma.customerTranslationDraft.findMany(),
     legalTranslationSources(),
     currentNoticeSources(),
+    quoteNoteSources(),
   ]);
   const map = new Map(drafts.map(x => [x.sourceKind + ":" + x.sourceKey, x]));
   const sources: Array<{ kind: TranslationSourceKind; key: string; english: string }> = [
     ...SITE_FIELDS.filter(x => x.kind !== "url" && Boolean((site[x.key] ?? x.default).trim()))
       .map(x => ({ kind: "SITE" as const, key: x.key, english: site[x.key] ?? x.default })),
     ...Object.entries(notices).map(([key,english])=>({kind:"NOTICE" as const,key,english})),
+    ...[...notes.entries()].map(([key,english])=>({kind:"QUOTE" as const,key,english})),
     ...[...legal.entries()].map(([key,english]) => ({kind:"LEGAL" as const,key,english})),
     ...Object.entries(TRANSACTIONAL_COPY.en).map(([key,english]) => ({kind:"MESSAGE" as const,key,english})),
     ...templates.flatMap(x => [

@@ -42,7 +42,7 @@ function DraftEditor({ source }: { source: TranslationSource }) {
 export function SpanishDraftsEditor({ sources }: { sources: TranslationSource[] }) {
   const site = sources.filter(x => x.kind === "SITE");
   const legal = sources.filter(x => x.kind === "LEGAL");
-  const messages = sources.filter(x => x.kind === "COMMUNICATION" || x.kind === "MESSAGE" || x.kind === "NOTICE");
+  const messages = sources.filter(x => x.kind === "COMMUNICATION" || x.kind === "MESSAGE" || x.kind === "NOTICE" || x.kind === "QUOTE");
   return (
     <div className="space-y-2 text-sm">
       <p>Spanish copies are privately drafted alongside the current English source.

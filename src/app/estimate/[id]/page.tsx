@@ -18,7 +18,7 @@ import { readOfferedSlots } from "@/domains/orders/delivery";
 import { publicPhoneOrderPrefill } from "@/domains/orders/phone-orders";
 import { QuoteLanguageChoice } from "./language-choice";
 import { parseCustomerLanguage } from "@/domains/language/copy";
-import { displayCustomerLanguage } from "@/domains/language/review";
+import { quoteLanguage } from "@/domains/language/quote-note";
 import { estimateCopy } from "@/domains/language/estimate-copy";
 
 export const metadata = {
@@ -62,7 +62,7 @@ export default async function PublicEstimatePage({
   const reviewedQuote = quoteIsCurrent ? quoteCandidate : null;
   const monthly = estimate.lineItems.reduce((sum, l) => sum + l.monthlyPriceCents * l.quantity, 0);
   const oneTime = estimate.lineItems.reduce((sum, l) => sum + l.oneTimeFeeCents * l.quantity, 0);
-  const language = await displayCustomerLanguage(parseCustomerLanguage(estimate.preferredLanguage));
+  const {language,note:clientMessage}=await quoteLanguage(parseCustomerLanguage(estimate.preferredLanguage),estimate.clientMessage);
   const formatBusinessDate=(date:Date)=>originalBusinessDate(date,language);
   const t = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language,word);
   const tr = (key: Parameters<typeof estimateCopy>[1]) => estimateCopy(language, key);
@@ -80,8 +80,8 @@ export default async function PublicEstimatePage({
       )}
       <p className="mt-2 text-sm text-ink-soft">{tr("preparedFor")} {customerName}</p>
 
-      {estimate.clientMessage && (
-        <p className="mt-4 whitespace-pre-line text-sm text-ink-soft">{estimate.clientMessage}</p>
+      {clientMessage && (
+        <p className="mt-4 whitespace-pre-line text-sm text-ink-soft">{clientMessage}</p>
       )}
 
       <p className="mt-4 text-sm text-ink-soft" role="note">
