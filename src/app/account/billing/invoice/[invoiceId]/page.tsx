@@ -1,3 +1,5 @@
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { notFound } from "next/navigation";
 import { requireSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
@@ -22,6 +24,8 @@ export default async function AccountInvoicePage({
   params: Promise<{ invoiceId: string }>;
 }) {
   const session = await requireSession();
+  const language = await portalLanguage(session.user.id);
+  const t = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language, word);
   const { invoiceId } = await params;
   const customer = await getPortalData(session.user.id);
 
@@ -36,7 +40,7 @@ export default async function AccountInvoicePage({
   }
 
   return (
-    <div className="max-w-3xl">
+    <div lang={language} className="max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <ButtonLink href="/account/billing" variant="quiet">
           Back to billing
@@ -48,22 +52,23 @@ export default async function AccountInvoicePage({
               target="_blank"
               variant="secondary"
             >
-              View frozen invoice record
+              {t("View frozen invoice record")}
             </ButtonLink>
           )}
-          <PrintDocumentButton />
+          <PrintDocumentButton label={t("Print / save as PDF")} />
         </div>
       </div>
 
       {invoice.isLocalInvoice && invoice.balanceCents > 0 && (
         <div className="mt-4 rounded-xl border border-line bg-surface-subtle p-4 text-sm text-ink print:hidden">
-          <p className="font-semibold">Pay as arranged with Robinson Appliance Rentals.</p>
+          <p className="font-semibold">{t("Pay as arranged with Robinson Appliance Rentals.")}</p>
           <p className="mt-1 text-ink-soft">
-            This invoice is recorded in Appliance Desk, but card payment for local invoices is not enabled yet.
+            {t("This invoice is recorded in Appliance Desk, but card payment for local invoices is not enabled yet.")}
           </p>
         </div>
       )}
 
+      <p className="mt-3 text-xs text-ink-soft print:hidden">{t("The frozen invoice record remains in its original English form.")}</p>
       <div className="mt-4 print:mt-0">
         <InvoiceDocument invoice={invoice} />
       </div>
