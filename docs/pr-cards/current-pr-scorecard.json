@@ -10,6 +10,7 @@
   "evidence": [
     "e2e/communication-timeline.spec.ts now uses a newly created, unique, owned disposable Customer/User with try/finally cleanup, rather than clicking the first shared/customer-list row which disappeared mid-navigation.",
     "GitHub Actions postmerge PR #475 run 38913632260 and PR #476 run 38944298832 both failed browser-a on the same communications timeline test; saved Playwright artifact captured an HTTP 404 on the first-customer detail page. Other checks/browser shards passed.",
-    "The patch only touches one browser fixture, no production code, permissions, customer messaging, money or legal approvals. Rerun exact-head CI and browser-a before merging."
+    "The patch only touches one browser fixture, no production code, permissions, customer messaging, money or legal approvals. Rerun exact-head CI and browser-a before merging.",
+    "e2e/phone-order-one-link.spec.ts replaces 13-digit Date.now unique data with randomized UUID, preserving production PAN/CVV refusal; saved browser-b screenshot displayed the safeguard-specific error on false-positive Luhn-valid timestamp."
   ]
 }
