@@ -1,3 +1,17 @@
+## W-25 phone-entered order provenance (2026-10-16)
+
+Ordered additive migration `20261016190000_w25_phone_order` follows W-24. Estimate's
+`phoneEnteredByUserId/phoneEnteredAt` identify an OWNER/ADMIN caller's ordinary
+estimate, and `phonePreferredDelivery/phonePreferredAt` record only a **draft,
+nonbinding** delivery choice and hookup/access details. No payment, signature,
+visit, scheduling or credential state is implied. Current W-24 owner-offered
+version and effective Denver date are validated in a serializable transaction;
+the owner/client cannot use a stale option after revised offers. The normal
+Estimate and its lead/customer, reviewed all-in/tax/route proof, signing and
+provider-controlled payment remain the only monetary and contractual sources.
+The existing outbound email consent/delivery gate is the only send path.
+There is no new card, recording, telephone or messaging table.
+
 W-24: additive migration 20261016120000 adds versioned customer delivery offers and readback for estimates and standalone agreements, owner-reviewed road-route evidence and unverified origin default, receipt-only requested visit, original confirmed date, first visit no-show evidence, customer TEST saved method, and idempotent owner-only trip/relocation fee provider-operation enum. No auto activation, public pricing or LIVE billing from the migration. Provider item tax is explicitly OFF absent a separately approved written exemption with TEST-only key; any unknown/taxable disposition remains disabled.
 
 ## W-23 postmerge privacy and import provenance (2026-10-15)

@@ -159,6 +159,8 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/estimates/new", role: "OWNER", fixture: "/desk/estimates/new" },
   { path: "/desk/estimates", role: "OWNER", fixture: "/desk/estimates" },
+  { path: "/desk/phone-orders", role: "OWNER", fixture: "/desk/phone-orders" },
+  { path: "/desk/phone-orders/new", role: "OWNER", fixture: "/desk/phone-orders/new" },
   { path: "/desk/fleet", role: "OWNER", fixture: "/desk/fleet" },
   { path: "/desk/growth", role: "OWNER", fixture: "/desk/growth" },
   { path: "/desk/inventory/[id]", role: "OWNER", fixture: "/desk/inventory/ci-security-appliance" },

@@ -1,3 +1,27 @@
+W-25 premerge safety verification: first PR head 3fba86b passed all three unit and all four parallel browser shards, but secret-scan owner-decision-routing step rejected a stale W-24 marker. Reconciled approved decision map to W-25; no reclassification or release gating change. Added phone free-text card PAN/CVV refusal with isolated unit tests in this same substantive PR. Exact-head CI must rerun after combined correction, and no source test equals live/provider acceptance.
+
+W-25 sequencing reconciliation (2026-10-16): owner decision map activeExecutionMustRemain advanced explicitly from approved/merged W-24 to approved W-25 in lockstep with the work index. All 56 original decision classifications, target IDs and activation gates are unchanged; this repairs exact-head CI owner-decision routing without loosening the check.
+
+## October 16, 2026 — W-25 owner phone-order full engineering outcome (under verification)
+
+Baseline actual main 408a38d (#473). Original W-25 acceptance frozen in
+docs/pr-cards/W-25.md before source edits. One OWNER/ADMIN ordinary draft
+for an existing customer or new lead, attributed call entry, offered-slot
+and crew details, copy link and authorized send to finish reuse W-24.
+Customer still reviews prefilled, editable details, explicitly approves,
+signs immutable money, pays only through existing authorized Stripe/owner
+method, and creates their own authenticated password. No new phone card,
+verbal acceptance, outbound SMS, voicemail, Twilio spend, call recording,
+recurring provider spending or LIVE Stripe activation. External real
+support@robinsonappliancerentals.com inbound/reply and provider mail remain
+unverified; currently rely on the existing fail-closed COM email gate.
+Postmerge W-24 main CI run #38847255667 found null-orphan tax jurisdiction
+crashing an unrelated out-of-service exception view; this PR guards both
+observations and rate versions and leaves them as review-required evidence
+rather than hiding the record. W-24 remediation is not recounted as W-25.
+New source tests, exact-head CI/browser/independent review/merge and acceptance
+ledger still required; no claim of source CI as real deployed acceptance.
+
 W-24 roadmap sequencing transition: checked owner decision routing now follows the reviewed active marker in docs/owner-decisions/2026-10-13-implementation-map.json rather than permanently hard-coding W-23. W-23 predecessor and PR #472 risk remediation are merged; wrong/backward/unapproved work IDs still fail. Owner original 56 decision classifications and external gates remain unchanged.
 
 2026-10-15 W-24 original full criteria were frozen before implementation. W-23 postmerge risk repair #472 is separate and does not count toward new engineering. W-24 owner/customer quote -> signing -> paid TEST receipt -> requested delivery, manual road-miles and versioned windows, independent agreement offers, account email setup, no-show and default-OFF owner-reviewed fees are implemented as a coherent dependency unit pending exact-head checks, review and merge. Real signed LIVE/TEST acceptance, CPA/legal, fee-tax authorization and production activation remain queued; no manual release was requested.

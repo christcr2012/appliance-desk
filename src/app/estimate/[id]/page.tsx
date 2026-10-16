@@ -12,6 +12,7 @@ import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-orde
 import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote";
 import { ReviewedPreapprovalQuote } from "@/components/estimates/reviewed-preapproval-quote";
 import { readOfferedSlots } from "@/domains/orders/delivery";
+import { publicPhoneOrderPrefill } from "@/domains/orders/phone-orders";
 
 export const metadata = {
   title: "Your estimate",
@@ -186,7 +187,8 @@ export default async function PublicEstimatePage({
           <EstimateResponseForm estimateId={estimate.id} allowApproval={!!reviewedQuote}
             expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint}
             deliveryOptions={readOfferedSlots(estimate.deliveryOffer)}
-            offerVersion={estimate.deliveryOfferVersion} />
+            offerVersion={estimate.deliveryOfferVersion}
+            phonePrefill={publicPhoneOrderPrefill(estimate)} />
         )}
       </div>
     </main>

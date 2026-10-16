@@ -24,9 +24,11 @@ type Mode = "existing" | "new";
 export function NewEstimateForm({
   customers,
   initialCustomerId,
+  phoneMode = false,
 }: {
   customers: CustomerOption[];
   initialCustomerId?: string;
+  phoneMode?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState<Mode>(
@@ -61,6 +63,7 @@ export function NewEstimateForm({
         mode === "existing"
           ? await createEstimateAction({
               customerId,
+              phoneOrder:phoneMode,
               title,
               clientMessage,
               internalNotes,
@@ -70,6 +73,7 @@ export function NewEstimateForm({
           : await createEstimateForNewLeadAction({
               contactName,
               phone,
+              phoneOrder:phoneMode,
               email: leadEmail,
               companyName: leadCompanyName,
               isBusiness: leadIsBusiness,
@@ -89,6 +93,13 @@ export function NewEstimateForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-line bg-white p-5">
+      {phoneMode&&<div className="rounded border border-line p-3 text-sm text-ink-soft">
+        <p className="font-semibold">Phone-entered draft (not customer acceptance)</p>
+        Record their information and build the normal estimate. Add the actual machines,
+        service location, reviewed tax/route and offered delivery windows on the
+        next screen. The customer must review, sign and pay using their own secure link.
+        Never enter card numbers, passwords or verbal signatures here.
+      </div>}
       <div>
         <span className="block text-sm font-medium text-ink-soft">Who&apos;s this for?</span>
         <div className="mt-1 flex gap-2">

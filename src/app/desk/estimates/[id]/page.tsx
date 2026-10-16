@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { readOfferedSlots } from "@/domains/orders/delivery";
 import { DeliveryOfferPanel } from "./delivery-offer-panel";
 import { DeliveryRouteReview } from "@/components/locations/delivery-route-review";
+import { getPhoneOrder } from "@/domains/orders/phone-orders";
+import { PhoneOrderPanel } from "./phone-order-panel";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
@@ -49,6 +51,8 @@ export default async function EstimateDetailPage({
   const editable = EDITABLE.has(estimate.status);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
+  const phoneOrder = estimate.phoneEnteredAt
+    ? await getPhoneOrder(session.user.id,estimate.id) : null;
   return (
     <div className="w-full min-w-0 max-w-3xl">
       <Link href="/desk/estimates" className="text-sm text-ink-soft hover:underline">
@@ -100,6 +104,12 @@ export default async function EstimateDetailPage({
           where:{id:"singleton"},select:{drivingOriginVerifiedAt:true},
         }))?.drivingOriginVerifiedAt}
         proofExists={!!estimate.deliveryRouteProof} feeCents={null}/>
+      {phoneOrder&&<PhoneOrderPanel id={estimate.id}
+        status={estimate.status} enteredBy={phoneOrder.enteredByUserId}
+        recipient={phoneOrder.recipient} slots={phoneOrder.slots}
+        offerVersion={phoneOrder.offerVersion} initial={phoneOrder.preferred}
+        siteReady={preparedQuote.status==="READY"}
+        customerId={phoneOrder.customerId} leadId={phoneOrder.leadId}/>}
       <DeliveryOfferPanel estimateId={estimate.id}
         options={readOfferedSlots(estimate.deliveryOffer)}
         version={estimate.deliveryOfferVersion}
