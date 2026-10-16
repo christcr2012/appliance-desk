@@ -6,6 +6,7 @@ vi.mock("@/domains/language/portal",()=>({portalLanguage:async()=>m.language}));
 vi.mock("@/lib/session",()=>({getServerSession:async()=>({user:{id:"customer-user"}})}));
 vi.mock("@/domains/portal",()=>({getPortalData:m.portal}));
 vi.mock("@/lib/prisma",()=>({prisma:{}}));
+vi.mock("@/domains/language/legal",()=>({agreementLegalTexts:()=>[],agreementLanguage:async(language:"en"|"es")=>({language,translations:[]})}));
 vi.mock("@vercel/blob/client",()=>({upload:vi.fn()}));
 vi.mock("@/domains/billing",()=>({getCustomerStatement:m.statement}));
 vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn(),push:vi.fn()})}));

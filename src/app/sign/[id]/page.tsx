@@ -1,3 +1,4 @@
+import { authPageLanguage } from "@/domains/language/auth-page";
 import { portalLabel, portalStatement } from "@/domains/language/portal-copy";
 import { agreementLanguage, agreementLegalTexts } from "@/domains/language/legal";
 import { CustomerLegalText } from "@/components/customer-legal-text";
@@ -26,12 +27,12 @@ export default async function SignPage({
   const signature = await getSignatureRecordForSigning(id);
 
   if (!signature) {
+    const language=await authPageLanguage((await searchParams)?.language);
     return (
-      <main className="mx-auto max-w-lg px-6 py-16 text-center">
-        <h1 className="text-xl font-semibold">This link isn&apos;t available</h1>
+      <main lang={language} className="mx-auto max-w-lg px-6 py-16 text-center">
+        <h1 className="text-xl font-semibold">{portalLabel(language,"This link isn't available")}</h1>
         <p className="mt-3 text-ink-soft">
-          This agreement may already be signed, or the link may no longer be
-          valid. If you think this is a mistake, contact us directly.
+          {portalLabel(language,"This agreement may already be signed, or the link may no longer be valid. If you think this is a mistake, contact us directly.")}
         </p>
       </main>
     );

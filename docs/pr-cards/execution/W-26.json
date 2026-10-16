@@ -92,13 +92,18 @@
       "tests/customer-language-transactional-w26.test.ts",
       "tests/customer-language-drafts-w26.test.ts",
       "tests/customer-language-catalog-w26.test.ts",
-      "tests/customer-language-rendered-w26.test.tsx"
+      "tests/customer-language-rendered-w26.test.tsx",
+      "tests/customer-language-portal-rendered-w26.test.tsx",
+      "tests/customer-language-runtime-w26.test.ts",
+      "tests/customer-language-auth-w26.test.tsx"
     ],
     "db": [
-      "tests/customer-language-database-w26.test.ts"
+      "tests/customer-language-database-w26.test.ts",
+      "tests/backup-restore-integration.test.ts"
     ],
     "browser": [
-      "e2e/customer-language-w26.spec.ts"
+      "e2e/customer-language-w26.spec.ts",
+      "e2e/signing-waiver-presentation.spec.ts"
     ],
     "node": []
   },

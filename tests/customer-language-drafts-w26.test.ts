@@ -7,8 +7,10 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   updateMany: vi.fn(),
   audit: vi.fn(),
+  legal:vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
+vi.mock("@/domains/language/legal",()=>({legalTranslationSources:mocks.legal}));
 vi.mock("@/domains/site-content", () => ({ getPublishedContent: mocks.publicCopy }));
 vi.mock("@/domains/site-content/fields", () => ({
   siteFieldByKey: (key: string) => key === "home.headline"
@@ -39,6 +41,13 @@ describe("W-26 owner-managed Spanish drafts never publish", () => {
     mocks.existing.mockResolvedValue(null);
     mocks.create.mockResolvedValue({ id: "draft-1" });
     mocks.audit.mockResolvedValue({});
+  });
+  it("retains a complete supported legal counterpart longer than ordinary UI copy",async()=>{
+    const english="Legal wording ".repeat(350);const spanish="Traducción informativa completa ".repeat(200);
+    mocks.legal.mockResolvedValue(new Map([["a".repeat(64),english]]));
+    const source=await currentTranslationSource("LEGAL","a".repeat(64));
+    await expect(saveTranslationDraft("owner","LEGAL","a".repeat(64),source.digest,null,spanish)).resolves.toBe(1);
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({spanishText:spanish.trim()})}));
   });
   it("resolves the canonical English, not user-provided English", async () => {
     const source = await currentTranslationSource("SITE", "home.headline");

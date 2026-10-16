@@ -13,7 +13,7 @@ export default async function LoginPage({searchParams}:{searchParams:Promise<{la
   const language=await authPageLanguage((await searchParams).language);
   const t=(text:Parameters<typeof portalLabel>[1])=>portalLabel(language,text);
   return (
-    <CustomerLanguageProvider language={language}><main
+    <CustomerLanguageProvider language={language}><main lang={language}
       id="main-content"
       className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4 py-12"
     >

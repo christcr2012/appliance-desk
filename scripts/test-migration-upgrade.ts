@@ -95,6 +95,7 @@ async function main() {
       INSERT INTO "ApplianceType" (id,name,slug,"monthlyPriceCents","updatedAt") VALUES ('upgrade-type','Upgrade Washer','upgrade-washer',6000,now());
       INSERT INTO "Appliance" (id,"assetNumber","applianceTypeId","acquisitionCostCents",notes,"updatedAt") VALUES ('upgrade-appliance','UPGRADE-001','upgrade-type',25500,'Preserve condition evidence',now());
       INSERT INTO "RentalAgreement" (id,"customerId","serviceAddressId","depositCents","updatedAt") VALUES ('upgrade-agreement','upgrade-customer','upgrade-address',9000,now());
+      INSERT INTO "SignatureRecord" (id,"agreementId",provider,"signedAt","signerName") VALUES ('upgrade-signature','upgrade-agreement','internal','2026-09-26T12:00:00Z','Original English signer');
       INSERT INTO "RentalLine" (id,"agreementId",label,"monthlyPriceCents") VALUES ('upgrade-line','upgrade-agreement','Washer',6000);
       INSERT INTO "Job" (id,type,"customerId","serviceAddressId","agreementId","scheduledAt","updatedAt") VALUES ('upgrade-job','DELIVERY','upgrade-customer','upgrade-address','upgrade-agreement','2026-11-01T08:30:00Z',now());
       INSERT INTO "JobAppliance" (id,"jobId","applianceId") VALUES ('upgrade-job-appliance','upgrade-job','upgrade-appliance');
@@ -206,6 +207,9 @@ async function main() {
       rdfHandling: "UNDECIDED", rdfCpaConfirmedOn: null, rdfThresholdCrossedOn: null,
     }, "Tax migrations preserve configured business facts and leave RDF undecided");
 
+    const languageUpgrade=await fixtureClient.query(`SELECT "shownLanguage","interfaceLanguage","translationCopyDigest","informationalTerms","signerName" FROM "SignatureRecord" WHERE id='upgrade-signature'`);
+    assert.deepEqual(languageUpgrade.rows[0],{shownLanguage:null,interfaceLanguage:null,translationCopyDigest:null,informationalTerms:null,signerName:"Original English signer"},"W-26 must never invent historical translation evidence");
+    assert.equal((await fixtureClient.query(`SELECT "preferredLanguage" FROM "Customer" WHERE id='upgrade-customer'`)).rows[0].preferredLanguage,"en");
     const after = await snapshot();
     assert.deepEqual(after, { ...before, emailVerified: true });
     const unverified = await fixtureClient.query(

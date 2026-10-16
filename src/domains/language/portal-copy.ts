@@ -366,6 +366,7 @@ export const PORTAL_TRANSLATIONS = {
   "This agreement may already be signed, or the link may no longer be valid. If you think this is a mistake, contact us directly.": "Es posible que este contrato ya esté firmado o que el enlace no sea válido. Si cree que es un error, comuníquese directamente con nosotros.",
   "Sending…": "Enviando…",
   "Appliance": "Electrodoméstico",
+  "This estimate may not have been sent yet, or the link may no longer be valid. If you think this is a mistake, contact us directly.": "Es posible que este presupuesto aún no se haya enviado o que el enlace no sea válido. Si cree que es un error, comuníquese directamente con nosotros.",
 } as const;
 
 export type PortalLabel = keyof typeof PORTAL_TRANSLATIONS;

@@ -1,3 +1,4 @@
+import { authPageLanguage } from "@/domains/language/auth-page";
 import { PaymentReturnNotice } from "@/components/payment-return-notice";
 import { portalLabel } from "@/domains/language/portal-copy";
 import { getEstimateForApproval } from "@/domains/estimates";
@@ -31,20 +32,19 @@ export default async function PublicEstimatePage({
   params, searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{deposit?:string;signingPayment?:string}>;
+  searchParams?: Promise<{deposit?:string;signingPayment?:string;language?:string}>;
 }) {
   const { id } = await params;
   const payment = await searchParams;
   const estimate = await getEstimateForApproval(id);
 
   if (!estimate) {
+    const language=await authPageLanguage((await searchParams)?.language);
     return (
-      <main className="mx-auto max-w-lg px-6 py-16 text-center">
-        <h1 className="text-xl font-semibold">This link isn&apos;t available</h1>
+      <main lang={language} className="mx-auto max-w-lg px-6 py-16 text-center">
+        <h1 className="text-xl font-semibold">{portalLabel(language,"This link isn't available")}</h1>
         <p className="mt-3 text-ink-soft">
-          This estimate may not have been sent yet, or the link may no
-          longer be valid. If you think this is a mistake, contact us
-          directly.
+          {portalLabel(language,"This estimate may not have been sent yet, or the link may no longer be valid. If you think this is a mistake, contact us directly.")}
         </p>
       </main>
     );
@@ -134,7 +134,7 @@ export default async function PublicEstimatePage({
         <ReviewedSigningOrder order={reviewedOrder.order} context="estimate" language={language} />
       )}
       {estimate.status === "CONVERTED" && reviewedOrder?.status !== "FINAL_REVIEWED" && (
-        <section aria-label="Final reviewed price pending" className="mt-5 rounded-lg border border-line bg-subtle p-4 text-sm" role="status">
+        <section aria-label={tr("finalReviewTitle")} className="mt-5 rounded-lg border border-line bg-subtle p-4 text-sm" role="status">
           <h2 className="font-semibold">{tr("finalReviewTitle")}</h2>
           <p className="mt-1 text-ink-soft">
             {tr("finalReviewBody")}

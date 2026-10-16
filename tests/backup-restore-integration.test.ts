@@ -73,7 +73,13 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     }
     target = new PrismaClient({ adapter: new PrismaPg({ connectionString: restoreUrl }) });
     await prisma.user.create({ data: { id: rdfFixture.user, email: tag + "@example.test", role: "OWNER" } });
-    await prisma.customer.create({ data: { id: rdfFixture.customer, userId: rdfFixture.user, referralCode: "RESTORE-" + tag } });
+    await prisma.customer.create({ data: { id: rdfFixture.customer, userId: rdfFixture.user, preferredLanguage:"es", referralCode: "RESTORE-" + tag } });
+    await prisma.serviceAddress.create({data:{id:"w26-address-"+tag,customerId:rdfFixture.customer,line1:"Synthetic restore",city:"Greeley",zip:"80631"}});
+    await prisma.rentalAgreement.create({data:{id:"w26-agreement-"+tag,customerId:rdfFixture.customer,serviceAddressId:"w26-address-"+tag,
+      signature:{create:{id:"w26-signature-"+tag,provider:"internal",signedAt:new Date("2026-10-16T12:00:00Z"),shownLanguage:"en",interfaceLanguage:"es",translationCopyDigest:"a".repeat(64),informationalTerms:[{english:"Recorded English",spanish:"Español informativo"}]}}}});
+    await prisma.customerLanguageReview.create({data:{language:"w26-restore-"+tag,copyDigest:"a".repeat(64),reviewerName:"Synthetic only",reviewReference:"Disposable restore test",reviewedAt:new Date(),
+      events:{create:{actorUserId:rdfFixture.user,action:"FLUENT",reviewedDigest:"a".repeat(64),evidenceReference:"Synthetic only"}}}});
+    await prisma.customerTranslationDraft.create({data:{id:"w26-draft-"+tag,sourceKind:"LEGAL",sourceKey:"restore-"+tag,englishDigest:"a".repeat(64),spanishText:"Español informativo",editedByUserId:rdfFixture.user}});
     await prisma.invoice.create({ data: { id: rdfFixture.invoice, customerId: rdfFixture.customer, amountDueCents: 0 } });
     await prisma.retailDeliveryFeeRate.create({ data: { id: rdfFixture.rate,
       effectiveOn: businessDateFromKey("1900-01-01")!, amountCents: 31, enteredByUserId: rdfFixture.user } });
@@ -216,6 +222,12 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     await prisma.retailDeliveryFeeRecord.deleteMany({ where: { id: rdfFixture.record } });
     await prisma.retailDeliveryFeeRate.deleteMany({ where: { id: rdfFixture.rate } });
     await prisma.invoice.deleteMany({ where: { id: rdfFixture.invoice } });
+    await prisma.signatureRecord.deleteMany({where:{id:"w26-signature-"+tag}});
+    await prisma.rentalAgreement.deleteMany({where:{id:"w26-agreement-"+tag}});
+    await prisma.serviceAddress.deleteMany({where:{id:"w26-address-"+tag}});
+    await prisma.customerLanguageReviewEvent.deleteMany({where:{language:"w26-restore-"+tag}});
+    await prisma.customerLanguageReview.deleteMany({where:{language:"w26-restore-"+tag}});
+    await prisma.customerTranslationDraft.deleteMany({where:{id:"w26-draft-"+tag}});
     await prisma.customer.deleteMany({ where: { id: rdfFixture.customer } });
     await prisma.user.deleteMany({ where: { id: rdfFixture.user } });
     if (target) await target.$disconnect();
@@ -248,6 +260,11 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       expect(count, table).toBe(snapshot.payload.tables[table]!.length);
     }
 
+    expect(await target.customer.findUniqueOrThrow({where:{id:rdfFixture.customer}})).toMatchObject({preferredLanguage:"es"});
+    expect(await target.signatureRecord.findUniqueOrThrow({where:{id:"w26-signature-"+tag}})).toMatchObject({shownLanguage:"en",interfaceLanguage:"es",translationCopyDigest:"a".repeat(64),informationalTerms:[{english:"Recorded English",spanish:"Español informativo"}]});
+    expect(await target.customerLanguageReviewEvent.count({where:{language:"w26-restore-"+tag}})).toBe(1);
+    expect(await target.customerTranslationDraft.findUniqueOrThrow({where:{id:"w26-draft-"+tag}})).toMatchObject({sourceKind:"LEGAL",spanishText:"Español informativo",revision:1});
+    await expect(target.signatureRecord.update({where:{id:"w26-signature-"+tag},data:{interfaceLanguage:"en"}})).rejects.toThrow("Historical signed language evidence");
     expect(await target.retailDeliveryFeeRate.findUniqueOrThrow({ where: { id: rdfFixture.rate } })).toMatchObject({
       enteredByUserId: rdfFixture.user, amountCents: 31, effectiveOn: businessDateFromKey("1900-01-01"),
     });

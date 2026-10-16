@@ -61,6 +61,7 @@ ALTER TABLE "SignatureRecord" ADD CONSTRAINT "SignatureRecord_translationCopyDig
 CREATE FUNCTION "w26_protect_signed_language"() RETURNS TRIGGER AS $$
 BEGIN
   IF OLD."signedAt" IS NOT NULL AND (
+    OLD."signedAt" IS DISTINCT FROM NEW."signedAt" OR
     OLD."shownLanguage" IS DISTINCT FROM NEW."shownLanguage" OR
     OLD."interfaceLanguage" IS DISTINCT FROM NEW."interfaceLanguage" OR
     OLD."translationCopyDigest" IS DISTINCT FROM NEW."translationCopyDigest" OR

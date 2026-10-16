@@ -7,6 +7,7 @@ const mock = vi.hoisted(() => ({
   review: vi.fn(),
   transaction: vi.fn(),
   drafts: vi.fn(),
+  reviewUpdate:vi.fn(),reviewEvent:vi.fn(),
 }));
 vi.mock("@/domains/estimates", () => ({
   getEstimateForApproval: mock.quote,
@@ -19,6 +20,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 vi.mock("server-only", () => ({}));
+// Exercise an incomplete implementation independently of production source readiness.
+vi.mock("@/domains/language/readiness",()=>({allSpanishSurfacesReady:false,CUSTOMER_SPANISH_SURFACE_READINESS:{quote:false}}));
 vi.mock("@/domains/language/drafts", () => ({ listCurrentTranslationDrafts: mock.drafts }));
 
 import { chooseQuoteLanguage } from "@/app/estimate/[id]/language-actions";
@@ -32,7 +35,7 @@ describe("W-26 quote-bearer locale and reviewed-publication safety", () => {
     mock.quote.mockResolvedValue({ status: "VIEWED" });
     mock.updateMany.mockResolvedValue({ count: 1 });
     mock.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-      callback({ $queryRaw: vi.fn(), $executeRaw: vi.fn(), user: {findUnique:mock.actor}, customerLanguageReview: { findUnique: mock.review } }));
+      callback({ $queryRaw: vi.fn(), $executeRaw: vi.fn(), user: {findUnique:mock.actor}, customerLanguageReview: { findUnique: mock.review,update:mock.reviewUpdate },customerLanguageReviewEvent:{create:mock.reviewEvent} }));
   });
 
   it("denies invalid language without any read/write", async () => {
@@ -99,6 +102,13 @@ describe("W-26 quote-bearer locale and reviewed-publication safety", () => {
   });
   it("rejects an attestation for content different from the displayed fingerprint",async()=>{
     await expect(recordSpanishReview("owner-id","FLUENT",{reviewer:"Synthetic reviewer",reference:"Synthetic test reference",expectedDigest:"a".repeat(64)})).rejects.toThrow("Translation content changed");
+  });
+  it("allows disabling Spanish even when current translation sources cannot be read",async()=>{
+    mock.review.mockResolvedValue({copyDigest:"a".repeat(64),publishedAt:new Date()});
+    mock.drafts.mockRejectedValue(new Error("Content unavailable"));
+    await expect(recordSpanishReview("owner-id","DISABLE")).resolves.toBeUndefined();
+    expect(mock.drafts).not.toHaveBeenCalled();
+    expect(mock.reviewUpdate).toHaveBeenCalledWith(expect.objectContaining({data:{publishedAt:null,publishedByUserId:null}}));
   });
   it("refuses owner publication when a W-26 translated customer surface is incomplete", async () => {
     mock.review.mockResolvedValue({

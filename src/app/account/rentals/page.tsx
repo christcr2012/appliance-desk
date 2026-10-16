@@ -1,3 +1,5 @@
+import { CustomerLegalText } from "@/components/customer-legal-text";
+import { agreementLanguage, agreementLegalTexts } from "@/domains/language/legal";
 import { portalLanguage } from "@/domains/language/portal";
 import { portalLabel, portalStatement } from "@/domains/language/portal-copy";
 import { EndRental } from "./end-rental";
@@ -92,6 +94,12 @@ export default async function AccountRentalsPage({
     }
   }));
 
+  const legalReadbacks=new Map(await Promise.all(customer.rentalAgreements.map(async agreement=>{
+    const texts=agreement.termMonths===null
+      ? [monthToMonthTerms.get(agreement.id)?.termsText ?? ""].filter(Boolean)
+      : agreementLegalTexts(agreement.termsSnapshot);
+    return [agreement.id,await agreementLanguage(locale,texts)] as const;
+  })));
   return (
     <div className="max-w-4xl">
       <PageHeader
@@ -113,6 +121,7 @@ export default async function AccountRentalsPage({
       ) : (
         <div className="space-y-6">
           {customer.rentalAgreements.map((agreement) => {
+            const legalReadback=legalReadbacks.get(agreement.id)!;
             const total = agreement.lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0);
             const fixedTerms = agreement.termMonths ? describeSnapshotTerms(agreement.termsSnapshot, locale) : null;
             const lockedAutoRenew = agreement.termMonths ? snapshotAutoRenew(agreement.termsSnapshot) : null;
@@ -202,7 +211,7 @@ export default async function AccountRentalsPage({
                             <ul className="mt-1 list-disc space-y-1 pl-5 text-ink-soft">
                               {fixedTerms.ending.lines.map((line) => <li key={line}>{line}</li>)}
                             </ul>
-                            <p lang="en" className="mt-2 whitespace-pre-line text-ink-soft">{fixedTerms.ending.termsText}</p>
+                            <CustomerLegalText language={legalReadback.language} english={fixedTerms.ending.termsText} spanish={legalReadback.translations.find(row=>row.english===fixedTerms.ending!.termsText)?.spanish} />
                           </>
                         ) : (
                           <p className="mt-1 text-ink-soft">{t("Not available for this rental — contact us.")}</p>
@@ -245,7 +254,7 @@ export default async function AccountRentalsPage({
                         {fixedTerms?.autoRenew && lockedAutoRenew ? (
                           <>
                             <p className="mt-1 text-ink-soft">{fixedTerms.autoRenew.noticeLine}</p>
-                            <p lang="en" className="mt-2 whitespace-pre-line text-ink-soft">{fixedTerms.autoRenew.termsText}</p>
+                            <CustomerLegalText language={legalReadback.language} english={fixedTerms.autoRenew.termsText} spanish={legalReadback.translations.find(row=>row.english===fixedTerms.autoRenew!.termsText)?.spanish} />
                             {agreement.status === "ACTIVE" && !agreement.terminationRequestedAt && (
                               <>
                                 <p className="mt-2 text-ink-soft">
@@ -271,7 +280,7 @@ export default async function AccountRentalsPage({
                           <p className="text-ink-soft">
                             {portalStatement(locale,"mtm",{days:mtmTerms.noticeDays})}
                           </p>
-                          <p lang="en" className="mt-2 whitespace-pre-line text-ink-soft">{mtmTerms.termsText}</p>
+                          <CustomerLegalText language={legalReadback.language} english={mtmTerms.termsText} spanish={legalReadback.translations.find(row=>row.english===mtmTerms.termsText)?.spanish} />
                         </>
                       ) : (
                         <p className="text-ink-soft">{t("Not available for this rental — contact us.")}</p>

@@ -68,7 +68,7 @@ describe.skipIf(!eligible)("W-26 customer and translation persistence on isolate
     const original=await prisma.signatureRecord.findUniqueOrThrow({where:{id:signatureId}});
     expect(original.shownLanguage).toBe("en");expect(original.interfaceLanguage).toBe("es");
     expect(original.translationCopyDigest).toBe("a".repeat(64));
-    for (const data of [{shownLanguage:"es"},{interfaceLanguage:"en"},{translationCopyDigest:"b".repeat(64)},{informationalTerms:[]}]) {
+    for (const data of [{signedAt:null},{shownLanguage:"es"},{interfaceLanguage:"en"},{translationCopyDigest:"b".repeat(64)},{informationalTerms:[]}]) {
       await expect(prisma.signatureRecord.update({where:{id:signatureId},data})).rejects.toThrow("Historical signed language evidence");
     }
     expect((await prisma.signatureRecord.findUniqueOrThrow({where:{id:signatureId}})).informationalTerms).toEqual(original.informationalTerms);
