@@ -1,5 +1,6 @@
 "use client";
 import {useState,useTransition} from "react";
+import {formatMoney} from "@/lib/money-ui";
 import {useRouter} from "next/navigation";
 import {approveW24FeeAction,queueApprovedW24FeeAction} from "./w24-fee-actions";
 export function W24JobFeePanel({jobId,version,kind,configuredCents,approvedCents,eligible,alreadyQueued}:{
@@ -15,8 +16,8 @@ export function W24JobFeePanel({jobId,version,kind,configuredCents,approvedCents
     <p className="text-sm text-ink-soft">Default is OFF for missed trips ($0).
       An owner must independently review actual evidence; no service swap or automatic charge.
       Next-invoice posting requires a separate TEST-only and tax-reviewed provider gate.</p>
-    <p className="text-sm">Configured: {"$"}{(configuredCents/100).toFixed(2)}.
-      Approved: {"$"}{(approvedCents/100).toFixed(2)}.
+    <p className="text-sm">Configured: {formatMoney(configuredCents)}.
+      Approved: {formatMoney(approvedCents)}.
       {alreadyQueued?" Provider intent already recorded.":""}</p>
     {eligible&&approvedCents===0&&configuredCents>0&&<form onSubmit={e=>{
       e.preventDefault();start(async()=>{

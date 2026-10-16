@@ -1,5 +1,6 @@
 "use client";
 import {useState,useTransition} from "react";
+import {formatMoney} from "@/lib/money-ui";
 import {reviewEstimateDrivingRouteAction,verifyDeliveryOriginAction} from
   "@/app/desk/estimates/[id]/delivery-offer-actions";
 import {reviewAgreementDrivingRouteAction} from
@@ -22,7 +23,7 @@ export function DeliveryRouteReview({kind,id,origin,verified,feeCents,proofExist
       never adds a charge automatically.</p>
     <p className="text-sm">Origin: {origin} — {verified?"verified":"NOT VERIFIED"}.
       {proofExists?" Route evidence recorded.":" Route evidence required."}
-      {feeCents!==null?" Band fee: $"+(feeCents/100).toFixed(2):""}</p>
+      {feeCents!==null?" Band fee: "+formatMoney(feeCents):""}</p>
     {!verified&&<form onSubmit={e=>{e.preventDefault();start(async()=>{
       const result=await verifyDeliveryOriginAction(street,originSource);
       setMessage(result.ok?"Origin verified. Refresh the page.":result.message);
@@ -41,8 +42,8 @@ export function DeliveryRouteReview({kind,id,origin,verified,feeCents,proofExist
       const result=kind==="estimate"
         ?await reviewEstimateDrivingRouteAction(id,value,source,measuredAt,origin)
         :await reviewAgreementDrivingRouteAction(id,value,source,measuredAt,origin);
-      setMessage(result.ok?"Reviewed band "+result.band+"; $"+
-        ((result.feeCents??0)/100).toFixed(2)+
+      setMessage(result.ok?"Reviewed band "+result.band+"; "+
+        formatMoney(result.feeCents??0)+
         ". Confirm the frozen all-in charge matches before sending the agreement."
         :result.message);
     });}} className="space-y-2">
