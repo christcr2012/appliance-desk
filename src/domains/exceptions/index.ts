@@ -712,7 +712,11 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
         : [];
     }),
     ...custodyGaps.rows.map((a) =>
-      custodyUnknownException({ id: a.id, label: `${a.applianceType.name} #${a.assetNumber}`, since: a.updatedAt }),
+      custodyUnknownException({ id: a.id,
+        // Inconsistent legacy/isolated fixture data must produce an exception,
+        // not make the entire operator exception dashboard fail.
+        label: `${a.applianceType?.name ?? "Unknown appliance"} #${a.assetNumber}`,
+        since: a.updatedAt }),
     ),
     ...itemsNotDelivered.rows.map((p) =>
       itemNotDeliveredException({
