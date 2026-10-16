@@ -30,6 +30,8 @@ async function ownerIdentity(tx:Prisma.TransactionClient,userId:string){
  * treated as a recorded signer, a card authorization or a scheduled visit. */
 export async function recordPhoneOrderPreference(userId:string,estimateId:string,raw:unknown){
   const selected=deliverySelectionSchema.parse(raw);
+  const {rejectPhonePaymentCredentials}=await import("./phone-payment-data");
+  rejectPhonePaymentCredentials(selected.questions.crewNotes);
   return prisma.$transaction(async tx=>{
     await ownerIdentity(tx,userId);
     await tx.$queryRaw`SELECT "id" FROM "Estimate" WHERE "id"=${estimateId} FOR UPDATE`;

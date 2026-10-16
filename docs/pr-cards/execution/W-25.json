@@ -32,6 +32,11 @@
       "path": "src/domains/orders/phone-orders.ts",
       "anchor": "export function publicPhoneOrderPrefill",
       "purpose": "Nonbinding current offer prefill"
+    },
+    {
+      "path": "src/domains/orders/phone-payment-data.ts",
+      "anchor": "export function rejectPhonePaymentCredentials",
+      "purpose": "Fail-closed card-number/CVV note rejection in the phone order flow"
     }
   ],
   "proposedFiles": [

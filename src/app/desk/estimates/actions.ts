@@ -48,6 +48,11 @@ export async function createEstimateAction(
     };
   }
   const data = parsed.data;
+  if (data.phoneOrder) {
+    const {rejectPhonePaymentCredentials}=await import("@/domains/orders/phone-payment-data");
+    try { rejectPhonePaymentCredentials(data.title,data.clientMessage,data.internalNotes); }
+    catch(error){return{status:"error",message:error instanceof Error?error.message:"Payment data is not accepted."};}
+  }
   const validUntil = parseEstimateValidUntil(data.validUntil);
   if (!validUntil.ok) {
     return { status: "error", message: INVALID_VALID_UNTIL_MESSAGE };
@@ -108,6 +113,11 @@ export async function createEstimateForNewLeadAction(
     };
   }
   const data = parsed.data;
+  if (data.phoneOrder) {
+    const {rejectPhonePaymentCredentials}=await import("@/domains/orders/phone-payment-data");
+    try { rejectPhonePaymentCredentials(data.title,data.clientMessage,data.internalNotes); }
+    catch(error){return{status:"error",message:error instanceof Error?error.message:"Payment data is not accepted."};}
+  }
   const validUntil = parseEstimateValidUntil(data.validUntil);
   if (!validUntil.ok) {
     return { status: "error", message: INVALID_VALID_UNTIL_MESSAGE };

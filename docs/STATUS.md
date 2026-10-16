@@ -1,3 +1,7 @@
+W-25 premerge safety verification: first PR head 3fba86b passed all three unit and all four parallel browser shards, but secret-scan owner-decision-routing step rejected a stale W-24 marker. Reconciled approved decision map to W-25; no reclassification or release gating change. Added phone free-text card PAN/CVV refusal with isolated unit tests in this same substantive PR. Exact-head CI must rerun after combined correction, and no source test equals live/provider acceptance.
+
+W-25 sequencing reconciliation (2026-10-16): owner decision map activeExecutionMustRemain advanced explicitly from approved/merged W-24 to approved W-25 in lockstep with the work index. All 56 original decision classifications, target IDs and activation gates are unchanged; this repairs exact-head CI owner-decision routing without loosening the check.
+
 ## October 16, 2026 — W-25 owner phone-order full engineering outcome (under verification)
 
 Baseline actual main 408a38d (#473). Original W-25 acceptance frozen in
