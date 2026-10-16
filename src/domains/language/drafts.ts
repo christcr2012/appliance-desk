@@ -106,7 +106,7 @@ export async function listCurrentTranslationDrafts(): Promise<TranslationSource[
   const [site, templates, drafts] = await Promise.all([
     getPublishedContent(),
     prisma.communicationTemplateRevision.findMany({
-      where: { isCurrent: true }, take: 80,
+      where: { isCurrent: true },
       orderBy: [{ channel: "asc" }, { key: "asc" }],
       select: { id: true, key: true, subject: true, body: true },
     }),

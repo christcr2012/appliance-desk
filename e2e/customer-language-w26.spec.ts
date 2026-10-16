@@ -37,10 +37,10 @@ test.describe("W-26 safely stored customer language and owner draft translations
     const page = await context.newPage();
     try {
       await page.goto("/desk/settings?section=notifications");
-      await expect(page.getByText("Spanish customer language: independently reviewed activation")).toBeVisible();
+      await expect(page.getByText(/English remains the default/)).toBeVisible();
       await expect(page.getByText("Draft translations")).toBeVisible();
       await expect(page.getByRole("button", { name: "Enable reviewed Spanish" })).toBeDisabled();
-      await expect(page.getByText(/public activation is blocked/i)).toBeVisible();
+      await expect(page.getByText(/Engineering surface coverage:.*Incomplete/)).toBeVisible();
     } finally {
       await context.close();
     }

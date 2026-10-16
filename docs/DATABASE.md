@@ -1019,3 +1019,42 @@ refunds serialize with cancellation and cannot refund that reserve twice. Only
 settled rent advance can reach first-invoice credit; all other signing categories
 remain excluded. No migration, synthetic approval or test authorizes production
 money-out or LIVE collection.
+
+## W-26 — customer and quote language, controlled review, drafts (unreleased)
+
+Forward-only migration `20261016195000_w26_customer_language` introduces
+`Customer.preferredLanguage` and `Estimate.preferredLanguage` as nonnull
+`String` values defaulting to `en`, with database `en|es` CHECK constraints.
+Preexisting customers and quotes remain English. A valid public quote bearer
+may change only its own `Estimate.preferredLanguage`; a currently authenticated
+customer alone can update their `Customer.preferredLanguage`. Successful quote
+approval or winning guarded signature transaction can record the customer's
+chosen language, never an unrelated customer's preference or messaging consent.
+
+`SignatureRecord.shownLanguage` is a nullable, checked `en|es` snapshot field;
+historical signatures have NULL, while newly recorded signing evidence states
+the actual legal language shown (`en` until separately reviewed translations
+are authorized). No translation field changes frozen agreement terms, order
+amounts, Stripe receipts, refund or invoice evidence. Do not infer a Spanish
+signature from `Customer.preferredLanguage` alone.
+
+`CustomerLanguageReview` is keyed by language and binds fluency and separate
+legal evidence to the exact customer-copy SHA-256 digest. Its append-only
+`CustomerLanguageReviewEvent` child records actual owner review actions and
+evidence references. Runtime Spanish requires the reviewed digest, legal review,
+owner publication, and independent completeness coverage of **all** quoted,
+legal, signing, payment, portal, message and owner-template surfaces. The
+source-stage deliberately fails closed on completeness even if reviewer records
+exist. No reviewer actions or public Spanish activation are inferred from a
+migration or passing synthetic test.
+
+`CustomerTranslationDraft` stores private independently editable Spanish
+versions of canonical published-English website text and current communication
+templates. Its unique `(sourceKind,sourceKey)` binds `SITE` or `COMMUNICATION`
+to a SHA-256 of the actual English source; `revision` guards competing editors;
+`editedByUserId` and the existing AuditLog retain attribution. Stale drafts
+cannot silently follow changed English text and drafts neither publish
+website revisions nor send communication. Backup manifests include W-26 tables.
+The initial migration was proved on **disposable local PostgreSQL only**; no
+production migration, LIVE payment activation, customer signing or provider
+acceptance is authorized by this paragraph.

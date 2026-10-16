@@ -8,6 +8,7 @@ import { FORM_COPY } from "./estimate-form-copy";
 import { SIGNING_COPY } from "./signing-copy";
 import { PORTAL_TRANSLATIONS } from "./portal-copy";
 import { REVIEWED_MONEY_LABELS } from "./reviewed-money";
+import { listCurrentTranslationDrafts, type TranslationSource } from "./drafts";
 
 // Do not allow a fluent/legal record to activate a PARTIAL customer journey.
 // Each surface flips only after its original W-26 bilingual consumer evidence.
@@ -39,6 +40,27 @@ export function spanishCopyDigest(): string {
     .digest("hex");
 }
 
+/** Review evidence covers owner-editable copy too, not merely static TS dictionaries.
+ * Changing, deleting, replacing or stale-marking any source invalidates approval. */
+export function reviewedCopyDigest(sources: TranslationSource[]): string {
+  const canonical = sources.map(source => ({
+    kind: source.kind,
+    key: source.key,
+    englishDigest: source.digest,
+    spanish: source.spanish,
+    stale: source.stale,
+  })).sort((a,b) => (a.kind + ":" + a.key).localeCompare(b.kind + ":" + b.key));
+  return createHash("sha256").update(spanishCopyDigest()).update(JSON.stringify(canonical)).digest("hex");
+}
+
+async function currentReviewerContent() {
+  const sources = await listCurrentTranslationDrafts();
+  return {
+    digest: reviewedCopyDigest(sources),
+    complete: sources.every(source => Boolean(source.spanish?.trim()) && !source.stale),
+  };
+}
+
 export type SpanishReviewSnapshot = {
   currentDigest: string;
   reviewedDigest: string | null;
@@ -54,13 +76,13 @@ export type SpanishReviewSnapshot = {
 };
 
 export async function getSpanishReview(): Promise<SpanishReviewSnapshot> {
-  const currentDigest = spanishCopyDigest();
+  const { digest: currentDigest, complete } = await currentReviewerContent();
   const row = await prisma.customerLanguageReview.findUnique({
     where: { language: "es" },
   });
   const currentReview = Boolean(row?.reviewedAt && row.copyDigest === currentDigest);
   // Every customer-facing Spanish runtime path checks the same fail-closed gate.
-  const enabled = Boolean(allSpanishSurfacesReady && currentReview && row?.legalReviewedAt && row?.publishedAt);
+  const enabled = Boolean(allSpanishSurfacesReady && complete && currentReview && row?.legalReviewedAt && row?.publishedAt);
   return {
     currentDigest,
     reviewedDigest: row?.copyDigest ?? null,
@@ -78,6 +100,8 @@ export async function getSpanishReview(): Promise<SpanishReviewSnapshot> {
 
 export async function displayCustomerLanguage(preference: CustomerLanguage): Promise<CustomerLanguage> {
   if (preference === "en") return "en";
+  // No unreviewed user preference may trigger expensive draft reads or translation output.
+  if (!allSpanishSurfacesReady) return "en";
   const review = await getSpanishReview();
   return customerLanguageActive(preference, review.enabled);
 }
@@ -98,7 +122,7 @@ export async function recordSpanishReview(
   details: { reviewer?: string; reference?: string } = {},
 ): Promise<void> {
   const now = new Date();
-  const digest = spanishCopyDigest();
+  const { digest, complete } = await currentReviewerContent();
   const reviewer = kind === "FLUENT" || kind === "LEGAL"
     ? validateEvidence(details.reviewer ?? "", "Reviewer identity") : "";
   const reference = kind === "FLUENT" || kind === "LEGAL"
@@ -109,7 +133,7 @@ export async function recordSpanishReview(
       throw new Error("A fluent reviewer must reapprove the current bilingual content first.");
     if (kind === "DISABLE" && !old)
       throw new Error("No recorded Spanish release to disable.");
-    if (kind === "PUBLISH" && !allSpanishSurfacesReady)
+    if (kind === "PUBLISH" && (!allSpanishSurfacesReady || !complete))
       throw new Error("Complete all W-26 translated customer pages, messages and tests before activation.");
     if (kind === "PUBLISH" && !old?.legalReviewedAt)
       throw new Error("The controlling-English/legal translation review must be recorded before publication.");

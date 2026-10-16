@@ -5,6 +5,7 @@ const mock = vi.hoisted(() => ({
   updateMany: vi.fn(),
   review: vi.fn(),
   transaction: vi.fn(),
+  drafts: vi.fn(),
 }));
 vi.mock("@/domains/estimates", () => ({
   getEstimateForApproval: mock.quote,
@@ -17,13 +18,15 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 vi.mock("server-only", () => ({}));
+vi.mock("@/domains/language/drafts", () => ({ listCurrentTranslationDrafts: mock.drafts }));
 
 import { chooseQuoteLanguage } from "@/app/estimate/[id]/language-actions";
-import { allSpanishSurfacesReady, getSpanishReview, recordSpanishReview, spanishCopyDigest } from "@/domains/language/review";
+import { allSpanishSurfacesReady, getSpanishReview, recordSpanishReview, reviewedCopyDigest, spanishCopyDigest } from "@/domains/language/review";
 
 describe("W-26 quote-bearer locale and reviewed-publication safety", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mock.drafts.mockResolvedValue([]);
     mock.quote.mockResolvedValue({ status: "VIEWED" });
     mock.updateMany.mockResolvedValue({ count: 1 });
     mock.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
@@ -59,7 +62,7 @@ describe("W-26 quote-bearer locale and reviewed-publication safety", () => {
 
   it("stays disabled even with a fake fully-reviewed and published row until complete surface coverage", async () => {
     mock.review.mockResolvedValue({
-      copyDigest: spanishCopyDigest(),
+      copyDigest: reviewedCopyDigest([]),
       reviewerName: "Independent fluent reviewer",
       reviewReference: "approved copy artifact",
       reviewedAt: new Date(),
@@ -74,9 +77,21 @@ describe("W-26 quote-bearer locale and reviewed-publication safety", () => {
     expect(snapshot.enabled).toBe(false);
   });
 
+  it("invalidates previously approved Spanish after an owner template edit", async () => {
+    const source = { kind: "SITE" as const, key: "home.headline", english: "Hello",
+      digest: "c".repeat(64), spanish: "Hola", stale: false, revision: 1 };
+    mock.review.mockResolvedValue({ copyDigest: reviewedCopyDigest([source]),
+      reviewerName: "Fluent reviewer", reviewReference: "Actual evidence",
+      reviewedAt: new Date(), legalReviewedAt: new Date(), publishedAt: new Date() });
+    mock.drafts.mockResolvedValue([{ ...source, spanish: "Buenos días", revision: 2 }]);
+    const state = await getSpanishReview();
+    expect(state.currentReview).toBe(false);
+    expect(state.enabled).toBe(false);
+  });
+
   it("refuses owner publication when a W-26 translated customer surface is incomplete", async () => {
     mock.review.mockResolvedValue({
-      copyDigest: spanishCopyDigest(),
+      copyDigest: reviewedCopyDigest([]),
       reviewedAt: new Date(),
       legalReviewedAt: new Date(),
     });
@@ -84,5 +99,20 @@ describe("W-26 quote-bearer locale and reviewed-publication safety", () => {
       "Complete all W-26 translated customer pages",
     );
     expect(mock.transaction).toHaveBeenCalledOnce();
+  });
+});
+
+describe("W-26 reviewer digest includes owner-edited mutable content", () => {
+  it("rejects a prior approval whenever a Spanish draft changes", () => {
+    const old = reviewedCopyDigest([{
+      kind: "SITE", key: "home.headline", english: "Hello",
+      digest: "a".repeat(64), spanish: "Hola", stale: false, revision: 1,
+    }]);
+    const changed = reviewedCopyDigest([{
+      kind: "SITE", key: "home.headline", english: "Hello",
+      digest: "a".repeat(64), spanish: "Buenos días", stale: false, revision: 2,
+    }]);
+    expect(old).not.toBe(changed);
+    expect(spanishCopyDigest()).toMatch(/^[0-9a-f]{64}$/);
   });
 });
