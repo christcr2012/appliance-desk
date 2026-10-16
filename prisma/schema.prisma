@@ -1828,6 +1828,12 @@ model Estimate {
   deliveryRequested Json?
   deliveryRequestedAt DateTime?
   deliveryRouteProof Json?
+  // W-25 internal phone attribution and customer-selected draft preference.
+  // These facts are not the customer's own electronic acceptance.
+  phoneEnteredByUserId String?
+  phoneEnteredAt DateTime?
+  phonePreferredDelivery Json?
+  phonePreferredAt DateTime?
   // Explicit owner decision for already-prepared single-site self completion.
   customerAutoFinishEnabled Boolean @default(false)
 

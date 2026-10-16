@@ -609,7 +609,7 @@ export async function listOfficialRateAttention(
     items.push({
       kind: "SCHEDULED",
       rateVersionId: version.id,
-      jurisdictionName: version.jurisdiction.name,
+      jurisdictionName: version.jurisdiction?.name ?? "Missing tax jurisdiction — investigate rate",
       oldRateMilliPercent: previous?.rateMilliPercent ?? null,
       newRateMilliPercent: version.rateMilliPercent,
       effectiveFrom: version.effectiveFrom,
@@ -677,7 +677,7 @@ export async function listOfficialRateAttention(
     ]);
 
     const reasons: string[] = [];
-    if (latest.jurisdiction.reviewStatus !== "REVIEWED") {
+    if (latest.jurisdiction?.reviewStatus !== "REVIEWED") {
       reasons.push(OFFICIAL_RATE_REASON.JURISDICTION_NOT_REVIEWED);
     }
     if (!previous) reasons.push(OFFICIAL_RATE_REASON.NO_CURRENT_RATE);
@@ -702,7 +702,7 @@ export async function listOfficialRateAttention(
     items.push({
       kind: "REVIEW_REQUIRED",
       observationId: latest.id,
-      jurisdictionName: latest.jurisdiction.name,
+      jurisdictionName: latest.jurisdiction?.name ?? "Missing tax jurisdiction — investigate observation",
       oldRateMilliPercent: previous?.rateMilliPercent ?? null,
       newRateMilliPercent: latest.rateMilliPercent,
       effectiveFrom: latest.asOf,

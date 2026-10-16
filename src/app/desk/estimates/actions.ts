@@ -26,6 +26,7 @@ export type EstimateActionState =
   | { status: "error"; message: string };
 
 const newEstimateSchema = z.object({
+  phoneOrder: z.boolean().optional(),
   customerId: z.string().trim().min(1, "Choose a customer."),
   title: z.string().trim().min(1, "Give this estimate a short internal title.").max(200),
   clientMessage: z.string().trim().max(2000).optional().or(z.literal("")),
@@ -61,6 +62,7 @@ export async function createEstimateAction(
       internalNotes: data.internalNotes || undefined,
       depositCents: data.depositDollars ? dollarsToCents(data.depositDollars) : 0,
       validUntil: validUntil.value,
+      phoneOrder: data.phoneOrder === true,
     });
   } catch (error) {
     return {
@@ -74,6 +76,7 @@ export async function createEstimateAction(
 }
 
 const newLeadForEstimateSchema = z.object({
+  phoneOrder: z.boolean().optional(),
   contactName: z.string().trim().min(2, "Enter their name").max(200),
   phone: z.string().trim().min(7, "Enter a valid phone number").max(20),
   email: z.string().trim().email("Enter a valid email address").optional().or(z.literal("")),
@@ -128,6 +131,7 @@ export async function createEstimateForNewLeadAction(
         internalNotes: data.internalNotes || undefined,
         depositCents: data.depositDollars ? dollarsToCents(data.depositDollars) : 0,
         validUntil: validUntil.value,
+        phoneOrder: data.phoneOrder === true,
       },
     );
   } catch (error) {

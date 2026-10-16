@@ -74,6 +74,7 @@ export type NewEstimateInput = {
   internalNotes?: string;
   depositCents?: number;
   validUntil?: Date | null;
+  phoneOrder?: boolean;
 };
 
 export async function createEstimateDraft(
@@ -89,6 +90,7 @@ export async function createEstimateDraft(
       depositCents: input.depositCents ?? 0,
       validUntil: input.validUntil ?? null,
       createdByUserId: userId,
+      ...(input.phoneOrder ? {phoneEnteredByUserId:userId,phoneEnteredAt:new Date()} : {}),
     },
   });
 
@@ -121,6 +123,7 @@ export async function createEstimateDraftForNewLead(
       depositCents: estimateInput.depositCents ?? 0,
       validUntil: estimateInput.validUntil ?? null,
       createdByUserId: userId,
+      ...(estimateInput.phoneOrder ? {phoneEnteredByUserId:userId,phoneEnteredAt:new Date()} : {}),
     },
   });
 
@@ -309,7 +312,8 @@ export function totalOneTimeCents(
  * twice; a deliberate re-send of a revised estimate gets a new `sentAt` and so a new
  * identity. No email is sent inside the transaction.
  */
-export async function sendEstimate(userId: string, estimateId: string): Promise<{ emailed: boolean; outcome?: string }> {
+export async function sendEstimate(userId: string, estimateId: string,
+  options: { requireReviewed?: boolean } = {}): Promise<{ emailed: boolean; outcome?: string }> {
   const claimed = await prisma.$transaction(async (tx) => {
     const locked = await lockEstimateInTx(tx, estimateId);
     if (!EDITABLE_STATUSES.includes(locked.status)) {
@@ -334,6 +338,8 @@ export async function sendEstimate(userId: string, estimateId: string): Promise<
     const fullyReviewed = prepared.status === "READY" &&
       !!prepared.quoteFingerprint && !!prepared.orderFingerprint;
 
+    if (options.requireReviewed && !fullyReviewed)
+      throw new Error("A phone order requires a frozen, fully reviewed one-site quote before sending.");
     const recipientEmail = estimate.customer?.user.email ?? estimate.lead?.email;
     const recipientName = estimate.customer
       ? (estimate.customer.user.name ?? estimate.customer.user.email)

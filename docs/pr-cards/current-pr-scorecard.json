@@ -1,31 +1,30 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "W-24",
+  "parent": "W-25",
   "completedSlices": [
     {
-      "id": "W-24",
+      "id": "W-25",
       "acceptanceEvidence": [
-        "src/domains/orders/delivery.ts saveDeliveryOffers/saveAgreementDeliveryOffers + owner choice panels, tests/w24-order-integration.test.ts unique date/version/role tests.",
-        "src/app/estimate/[id]/estimate-response-form.tsx, src/app/sign/[id]/sign-form.tsx and server acceptance DTO; tests/w24-delivery.test.ts schema/DST/stale choice.",
-        "src/domains/orders/customer-finish.ts one prepared agreement only + signed V2 frozen tax/route policy, Stripe TEST saved customer after verified webhook; src/domains/orders/activation.ts existing Better Auth one-use email.",
-        "src/domains/orders/delivery-response.ts owner To Do on decline; src/app/desk/estimates/[id]/delivery-offer-panel.tsx exact customer link; tests/w24-order-integration.test.ts decline/replay.",
-        "src/domains/orders/settled-delivery.ts receipt-only request + To Do; src/domains/jobs/scheduling.ts conflict and Denver window first confirmation; tests/w24-order-integration.test.ts unpaid denial and tests/w24-delivery.test.ts time checks.",
-        "src/domains/jobs/scheduling.ts W24 documented no-show creates reschedule task; src/domains/orders/owner-job-fees.ts and provider-job-fees.ts per-job approval, default $0 and provider OFF; tests/w24-order-integration.test.ts.",
-        "src/domains/orders/route-evidence.ts verified manual street-route evidence and exact V2 frozen delivery fee; tests/w24-delivery.test.ts 15,30,50 mile boundary and stale evidence; owner route-review panel.",
-        "tests/w24-delivery.test.ts, tests/w24-order-integration.test.ts plus existing repo 4-shard browser, Postgres migration/typecheck/secret/release CI; real live/provider evidence not claimed."
+        "src/app/desk/phone-orders/new/page.tsx and src/app/desk/estimates/new/new-estimate-form.tsx reuse both customer and new lead routes, persist phoneEnteredByUserId; disposable DB test proves both paths.",
+        "src/domains/orders/phone-orders.ts recordPhoneOrderPreference read/owner gate and publicPhoneOrderPrefill; W25 DB tests reject customer role/stale/ordinary, no signed or paid state.",
+        "src/app/desk/estimates/[id]/phone-order-panel.tsx sends via existing sendEstimate (existing idempotency/consent) or copies the same /estimate/:id URL; server requires real fully reviewed one-site frozen quote.",
+        "src/app/estimate/[id]/estimate-response-form.tsx prefilled optional edits still require customer's own approval/signature and W24 provider gate; no phone signing/card/recording.",
+        "Existing support mailbox support@robinsonappliancerentals.com, shared Workspace alias and existing COM customer email gates reused; real inbound/reply proof remains separate unverified acceptance, not an in-app send override.",
+        "docs/pr-cards/W-25.md and existing COM/Twilio owner inputs require exact purchase/forwarding consent, private voicemail and $20 monitor before calling; neither telephony spend, recording, transcription, SMS nor verbal-sign backup is enabled.",
+        "e2e/phone-order-one-link.spec.ts mobile owner/guest/customer protected workflow. W24 postmerge tax orphan NULL guard corrected in src/domains/tax/official-rate-auto-apply.ts; separate safety maintenance."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Original W-22 Stripe TEST, CPA/counsel and owner/customer live acceptance stays queued.",
-    "Genuine owner/customer/saved method, receipt, delivery and late-trip fee on checked READY LIVE remains unverified.",
-    "Production money handling, provider routing, fee-tax exemption, LIVE/real customer and pricing publication remain independently OFF."
+    "Actual verified support@robinsonappliancerentals.com Workspace inbound/reply and provider send, customer identity/e-mail and W24 TEST paid flow pending original real fixtures; no such acceptance claimed.",
+    "Owner Twilio number, forwarding destination, provider 7-day hours/holiday, voicemail and $20 notify-only budget remain separate owner/provider prerequisite, OFF by default.",
+    "Current live READY production remains behind main; real authenticated owner/client phone order live acceptance pending checked daily release."
   ],
   "evidence": [
-    "W-24 frozen original full acceptance preserved in docs/pr-cards/W-24.md before new W-24 code.",
-    "Dedicated W-24 code, migration, DB and unit regression checks; full exact-head CI/review/merge still required.",
-    "No real provider/live acceptance inferred from source evidence."
+    "Original W-25 criteria frozen docs/pr-cards/W-25.md before first code edits; prior W-23/W-24 not recounted.",
+    "Additive migration, phone domain, owner workspace, no-verbal prefill and tests are W-25 new original implementation; exact-head full required CI/review/merge must be recorded before final acceptance.",
+    "Repair one W-24 postmerge CI null-jurisdiction reader in same substantial W-25 PR (zero added bundle). No production provider activation, spending or release."
   ]
 }

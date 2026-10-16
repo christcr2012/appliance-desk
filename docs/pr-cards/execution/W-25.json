@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "id": "W-25",
+  "parent": "W-25",
+  "baseline": "408a38d40802ee18b80040c6cda5ab707bb19f46",
+  "card": "docs/pr-cards/W-25.md",
+  "outcome": "Owner/admin enters ordinary customer/new-lead phone quote with offered delivery preference; customer receives or copies same W-24 link, checks prefilled details and independently accepts/signs/pays/sets password.",
+  "risk": "Impersonation via public quote, verbal acceptance, early charges, customer PII, card collection, stale offered windows, duplicate email, unverified support mailbox and unauthorized telephony purchases.",
+  "next": "After required exact-head CI/review/merge, continue W-26 approved Spanish customer-facing content with legal/fluency gates; perform eligible live/provider acceptance when READY and approved.",
+  "references": [
+    {
+      "path": "src/domains/orders/phone-orders.ts",
+      "anchor": "export async function recordPhoneOrderPreference",
+      "purpose": "Owner-only audited draft preference, no binding event"
+    },
+    {
+      "path": "src/domains/orders/phone-orders.ts",
+      "anchor": "export async function sendPhoneOrderToFinish",
+      "purpose": "Reuses W-24 protected existing email/send link only for prepared reviewed offer"
+    },
+    {
+      "path": "src/app/desk/phone-orders/new/page.tsx",
+      "anchor": "export default async function NewPhoneOrderPage",
+      "purpose": "Existing/new customer attributed draft creation"
+    },
+    {
+      "path": "src/app/desk/estimates/[id]/phone-order-panel.tsx",
+      "anchor": "export function PhoneOrderPanel",
+      "purpose": "Call entry plus send/copy same link"
+    },
+    {
+      "path": "src/domains/orders/phone-orders.ts",
+      "anchor": "export function publicPhoneOrderPrefill",
+      "purpose": "Nonbinding current offer prefill"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/orders/phone-orders.ts",
+    "src/app/desk/phone-orders",
+    "src/app/desk/estimates",
+    "src/app/estimate/[id]",
+    "prisma/migrations/20261016190000_w25_phone_order"
+  ],
+  "invariants": [
+    "Owner/admin only; neither a call nor owner-entered preferences are the customer's independent approval.",
+    "Same W-24 quote link for email and copy, no SMS/provider bypass.",
+    "No card, auth password or signature input collected by a phone order.",
+    "Existing signed-money and receipt-backed eligibility unchanged.",
+    "No Twilio number purchase, provider spending, LIVE message, transcriptions or recordings."
+  ],
+  "sequence": [
+    "Owner/admin creates linked phone estimate for existing customer or new lead.",
+    "Owner enters units, site, frozen taxes/route, offered dates and customer-stated preference.",
+    "Owner sends the existing secure W-24 prepared link through current customer-email gate or copies identical link.",
+    "Customer verifies editable prefilled questions and separately approves/signs, makes hosted TEST payment where authorized, and sets credentials by one-use email.",
+    "Real customer/provider/Workspace inbox reply acceptance remains separately gated."
+  ],
+  "acceptance": [
+    "OWNER/ADMIN can start a phone-entered ordinary draft for an existing customer or a new lead; the app records which owner/admin actually entered the order. Draft captures customer, site, machines, terms, deposit/fees, notes through the existing estimate and prepared W-24 quote flow. No independent competing order ledger.",
+    "Owner offers current date/AM/PM choices, records the customer's spoken preference (including dryer/washer hookups, stairs and access), shows it pre-filled on the same W-24 customer one-link review, but **never** marks acceptance or signing on a phone conversation. Customer must independently read and accept.",
+    "Owner/ADMIN has **Send to finish** and **Copy link** on the prepared order; the link is the same existing secure W-24 quote link. Email uses the existing provider-delivery/consent gate, never claims successful delivery if provider refused/disabled/unknown. Copy returns exact same link without provider call, for manually sharing by phone. No SMS provider activation, Twilio purchase or new seat.",
+    "Only the legitimate customer's secure quote approval, frozen tax/route proof, owner-prepared single-site agreement, verified signature, actual TEST settlement and password setup can complete. Idempotent send, stale choices and replays deny; no verbal fallback, no app card-number entry, no unapproved live money movement.",
+    "Support reply address stays `support@robinsonappliancerentals.com` on the verified existing Workspace mailbox. Real inbound/reply test is an explicit external acceptance prerequisite; DO NOT claim verification from code/config.",
+    "Phone routing beyond existing COM stack: selected local Twilio number/private forwarding, 7-day Denver 08:00\u201318:30 hours with holiday override, voicemail greeting and 90-day default private-held media, $20 monthly **notification-only** budget, $10/$15/$20 thresholds; no new phone purchase/voicemail/recording/transcription/SMS unless separately approved/configured. Ordinary phone recording/transcription remains OFF. No automatic provider caps. This is **not** a phone-card capture or a verbal signing substitute.",
+    "Role/foreign-customer denial, duplicate calls/sends, stale day/review, copy/send same link, email OFF, 2 customer onboarding paths, proof of owner attribution, accessible mobile owner/customer/guest browser, disposable DB, no credential leakage, no payment side effects. Full CI exact head, review, merge, ledger/handoff/acceptance queue."
+  ],
+  "gates": [
+    {
+      "id": "W25-MAILBOX",
+      "affected": "Real support mailbox inbound/reply and customer-email delivery",
+      "source": "docs/designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md",
+      "remedy": "Reuse existing Workspace mailbox and run actual protected inbound/reply acceptance; do not create a new seat",
+      "reopen": "Authenticated source, delivery/reply trace"
+    },
+    {
+      "id": "W25-TELEPHONY",
+      "affected": "Purchased Twilio number, forwarding, voicemail and budget alerts",
+      "source": "docs/designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md",
+      "remedy": "Independent owner number/forwarding approval and genuine provider hookup; recording/transcription remain off",
+      "reopen": "Approved exact owner/provider prerequisites"
+    },
+    {
+      "id": "W25-LIVE",
+      "affected": "Real customer phone-to-complete link, receipt, account and consent",
+      "source": "docs/SESSION-START.md",
+      "remedy": "Checked READY live SHA, consent/role-verified fixtures, live/provider/legal gates",
+      "reopen": "Approved real connection and evidence"
+    }
+  ],
+  "checks": {
+    "unit": [],
+    "db": [
+      "tests/w25-phone-orders-integration.test.ts",
+      "tests/out-of-service-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/phone-order-one-link.spec.ts"
+    ],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-25",
+      "outcome": "Owner-attributed phone order and one secure customer-finished W-24 checkout; no verbal/card fallback",
+      "acceptance": [
+        "OWNER/ADMIN can start a phone-entered ordinary draft for an existing customer or a new lead; the app records which owner/admin actually entered the order. Draft captures customer, site, machines, terms, deposit/fees, notes through the existing estimate and prepared W-24 quote flow. No independent competing order ledger.",
+        "Owner offers current date/AM/PM choices, records the customer's spoken preference (including dryer/washer hookups, stairs and access), shows it pre-filled on the same W-24 customer one-link review, but **never** marks acceptance or signing on a phone conversation. Customer must independently read and accept.",
+        "Owner/ADMIN has **Send to finish** and **Copy link** on the prepared order; the link is the same existing secure W-24 quote link. Email uses the existing provider-delivery/consent gate, never claims successful delivery if provider refused/disabled/unknown. Copy returns exact same link without provider call, for manually sharing by phone. No SMS provider activation, Twilio purchase or new seat.",
+        "Only the legitimate customer's secure quote approval, frozen tax/route proof, owner-prepared single-site agreement, verified signature, actual TEST settlement and password setup can complete. Idempotent send, stale choices and replays deny; no verbal fallback, no app card-number entry, no unapproved live money movement.",
+        "Support reply address stays `support@robinsonappliancerentals.com` on the verified existing Workspace mailbox. Real inbound/reply test is an explicit external acceptance prerequisite; DO NOT claim verification from code/config.",
+        "Phone routing beyond existing COM stack: selected local Twilio number/private forwarding, 7-day Denver 08:00\u201318:30 hours with holiday override, voicemail greeting and 90-day default private-held media, $20 monthly **notification-only** budget, $10/$15/$20 thresholds; no new phone purchase/voicemail/recording/transcription/SMS unless separately approved/configured. Ordinary phone recording/transcription remains OFF. No automatic provider caps. This is **not** a phone-card capture or a verbal signing substitute.",
+        "Role/foreign-customer denial, duplicate calls/sends, stale day/review, copy/send same link, email OFF, 2 customer onboarding paths, proof of owner attribution, accessible mobile owner/customer/guest browser, disposable DB, no credential leakage, no payment side effects. Full CI exact head, review, merge, ledger/handoff/acceptance queue."
+      ]
+    }
+  ]
+}

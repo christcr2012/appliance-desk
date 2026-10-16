@@ -4,21 +4,23 @@ import { useEffect, useState, useTransition } from "react";
 import { approveEstimateAction, requestEstimateChangesAction, declineEstimateAction, type EstimateResponseState } from "./actions";
 
 export function EstimateResponseForm({ estimateId, allowApproval = false,
-  expectedQuoteFingerprint, deliveryOptions = [], offerVersion = 0 }: {
+  expectedQuoteFingerprint, deliveryOptions = [], offerVersion = 0,
+  phonePrefill = null }: {
   estimateId: string; allowApproval?: boolean; expectedQuoteFingerprint?: string | null;
   deliveryOptions?: Array<{id:string;date:string;window:"AM"|"PM"}>;
   offerVersion?:number;
+  phonePrefill?:import("@/domains/orders/delivery").DeliverySelection|null;
 }) {
   const [isPending, startTransition] = useTransition();
   const [mode, setMode] = useState<"choose" | "approve" | "changes" | "decline">("choose");
   const [approverName, setApproverName] = useState("");
   const [approverEmail, setApproverEmail] = useState("");
   const [message, setMessage] = useState("");
-  const [chosen, setChosen] = useState(deliveryOptions[0]?.id??"");
-  const [dryerOutlet,setDryerOutlet]=useState<"THREE_PRONG"|"FOUR_PRONG"|"GAS"|"UNKNOWN">("UNKNOWN");
-  const [washerHookups,setWasherHookups]=useState<"YES"|"NO"|"UNKNOWN">("UNKNOWN");
-  const [stairs,setStairs]=useState(false);
-  const [crewNotes,setCrewNotes]=useState("");
+  const [chosen, setChosen] = useState(phonePrefill?.optionId??deliveryOptions[0]?.id??"");
+  const [dryerOutlet,setDryerOutlet]=useState<"THREE_PRONG"|"FOUR_PRONG"|"GAS"|"UNKNOWN">(phonePrefill?.questions.dryerOutlet??"UNKNOWN");
+  const [washerHookups,setWasherHookups]=useState<"YES"|"NO"|"UNKNOWN">(phonePrefill?.questions.washerHookups??"UNKNOWN");
+  const [stairs,setStairs]=useState(phonePrefill?.questions.stairs??false);
+  const [crewNotes,setCrewNotes]=useState(phonePrefill?.questions.crewNotes??"");
   const [result, setResult] = useState<EstimateResponseState>({ status: "idle" });
 
   // Send the browser on to Stripe Checkout for the deposit — an effect,
@@ -106,6 +108,11 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
             className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
+        {phonePrefill && <p className="text-sm text-ink-soft">
+          The requested date and installation details were entered during your
+          phone call. Please check and change anything that is inaccurate.
+          Nothing is accepted until you submit this written approval yourself.
+        </p>}
         {deliveryOptions.length > 0 && <fieldset className="space-y-3 rounded border border-line p-3">
           <legend className="font-semibold">Requested delivery (subject to owner confirmation)</legend>
           <label className="block text-sm">Choose one of our offered windows

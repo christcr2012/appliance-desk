@@ -112,6 +112,12 @@ export default async function EstimatesPage() {
         primaryAction={{ href: "/desk/estimates/new", label: "New estimate" }}
       />
 
+      <p className="mb-4 text-sm">
+        Entering an order while talking to a customer?{" "}
+        <Link href="/desk/phone-orders" className="font-semibold underline">
+          Phone orders — start, prepare, then send customer link
+        </Link>
+      </p>
       <DataList
         rows={estimates}
         columns={columns}
