@@ -1,3 +1,5 @@
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
 import Link from "next/link";
 import { getServerSession } from "@/lib/session";
@@ -27,15 +29,17 @@ function previousBusinessMonth(): string {
 
 export default async function AccountBillingPage() {
   const session = await getServerSession();
+  const locale = session ? await portalLanguage(session.user.id) : "en";
+  const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
   const customer = session ? await getPortalData(session.user.id) : null;
 
   if (!customer) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title="Billing" />
+        <PageHeader title={t("Billing")} />
         <EmptyState
-          title="No rental account attached to this login"
-          description="Contact the business if you expected to see billing history here."
+          title={t("No rental account attached to this login")}
+          description={t("Contact the business if you expected to see billing history here.")}
         />
       </div>
     );
@@ -48,8 +52,8 @@ export default async function AccountBillingPage() {
   return (
     <div className="max-w-5xl">
       <PageHeader
-        title="Billing"
-        description="Update your payment method and review your recorded invoice history."
+        title={t("Billing")}
+        description={t("Update your payment method and review your recorded invoice history.")}
         secondaryActions={
           <ButtonLink
             href={`/api/documents/statement/${statementMonth}`}
@@ -63,8 +67,8 @@ export default async function AccountBillingPage() {
 
       <div className="mb-6">
         <Card
-          title="Payment method"
-          description="Stripe opens a secure billing page for card or bank-account changes."
+          title={t("Payment method")}
+          description={t("Stripe opens a secure billing page for card or bank-account changes.")}
         >
           <ManageBillingButton />
         </Card>
@@ -87,8 +91,8 @@ export default async function AccountBillingPage() {
 
       {!statement || statement.properties.length === 0 ? (
         <EmptyState
-          title="No invoices yet"
-          description="An invoice is created automatically each time you're billed."
+          title={t("No invoices yet")}
+          description={t("An invoice is created automatically each time you're billed.")}
         />
       ) : (
         <div className="space-y-6">

@@ -7,6 +7,8 @@ import { MONTH_TO_MONTH_STARTING_DRAFTS, monthToMonthSettingsDefaults } from "@/
 import { prisma } from "@/lib/prisma";
 import { allSpanishSurfacesReady, getSpanishReview } from "@/domains/language/review";
 import { SpanishReviewForm } from "./spanish-review-form";
+import { listCurrentTranslationDrafts } from "@/domains/language/drafts";
+import { SpanishDraftsEditor } from "./spanish-drafts-editor";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
 import { getLeadScoringPolicy } from "@/domains/leads/scoring-policy";
@@ -60,6 +62,7 @@ export default async function DeskSettingsPage({
   const section = settingsSection((await searchParams).section);
   const settings = await getBusinessSettings();
   const spanishReview = section === "notifications" ? await getSpanishReview() : null;
+  const spanishDrafts = section === "notifications" ? await listCurrentTranslationDrafts() : [];
   const activeSetupTaxTreatment = section === "policies"
     ? await getEffectiveSetupTaxTreatment() : "UNDECIDED";
   const upcomingSetupPolicies = section === "policies"
@@ -359,6 +362,11 @@ export default async function DeskSettingsPage({
           </ButtonLink>
         </div>
       </Card>
+      {section === "notifications" && spanishDrafts.length > 0 && (
+        <Card title="Draft translations" description="Spanish copy alongside English source">
+          <SpanishDraftsEditor sources={spanishDrafts} />
+        </Card>
+      )}
       {section === "notifications" && spanishReview && (
         <Card title="Spanish customer language: independently reviewed activation"
           description="Owner-only review evidence. Spanish defaults off until the current copy and controlling-English legal text are verified.">

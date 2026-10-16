@@ -1,3 +1,6 @@
+import { getServerSession } from "@/lib/session";
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { getPortalHome } from "@/domains/portal/workspace";
 import { formatCents } from "@/domains/pricing/money";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
@@ -18,14 +21,17 @@ export default async function AccountHomePage({
   searchParams: Promise<{ address?: string }>;
 }) {
   const data = await getPortalHome((await searchParams).address);
+  const session = await getServerSession();
+  const locale = session ? await portalLanguage(session.user.id) : "en";
+  const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
 
   if (!data) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title="Welcome" />
+        <PageHeader title={t("Welcome")} />
         <EmptyState
-          title="No rental account attached to this login"
-          description="Contact the business if you expected to see an active rental."
+          title={t("No rental account attached to this login")}
+          description={t("Contact the business if you expected to see an active rental.")}
         />
       </div>
     );
@@ -34,8 +40,8 @@ export default async function AccountHomePage({
   return (
     <div className="max-w-5xl">
       <PageHeader
-        title="Your rental account"
-        description="Your rentals, next visit, billing and help in one place."
+        title={t("Your rental account")}
+        description={t("Your rentals, next visit, billing and help in one place.")}
         primaryAction={{
           href: "/account/maintenance",
           label: "Report a problem",
@@ -52,7 +58,7 @@ export default async function AccountHomePage({
 
       {data.properties.length > 1 && (
         <FilterBar
-          label="Account properties"
+          label={t("Account properties")}
           items={[
             {
               href: "/account",
@@ -73,7 +79,7 @@ export default async function AccountHomePage({
       <p className="mb-5"><ButtonLink href="/account/properties" variant="secondary">Manage my properties and on-site contacts</ButtonLink></p>
       <div className="grid gap-5 lg:grid-cols-2">
         <Card
-          title="What do I rent?"
+          title={t("What do I rent?")}
           description={`${data.activeRentalCount} active rental${
             data.activeRentalCount === 1 ? "" : "s"
           }${data.addressId ? " at this property" : " on this account"}.`}
@@ -120,8 +126,8 @@ export default async function AccountHomePage({
             </ul>
           ) : (
             <EmptyState
-              title="No active rentals"
-              description="An agreement awaiting signature or delivery may still be in progress."
+              title={t("No active rentals")}
+              description={t("An agreement awaiting signature or delivery may still be in progress.")}
             />
           )}
 
@@ -134,7 +140,7 @@ export default async function AccountHomePage({
         </Card>
 
         <Card
-          title="What's next?"
+          title={t("What's next?")}
           description={`${data.upcomingVisitCount} active visit${
             data.upcomingVisitCount === 1 ? "" : "s"
           }${data.addressId ? " for this property" : " on this account"}.`}
@@ -170,7 +176,7 @@ export default async function AccountHomePage({
             </div>
           ) : (
             <EmptyState
-              title="No scheduled visit"
+              title={t("No scheduled visit")}
               description={
                 data.upcomingVisitCount
                   ? "A visit is being arranged; a date has not been set yet."
@@ -181,8 +187,8 @@ export default async function AccountHomePage({
         </Card>
 
         <Card
-          title="Do I owe anything?"
-          description="Invoice amounts are separate from your rental rate and may include deposits, fees or tax."
+          title={t("Do I owe anything?")}
+          description={t("Invoice amounts are separate from your rental rate and may include deposits, fees or tax.")}
           actions={
             <ButtonLink href="/account/billing" variant="secondary">
               Open billing
@@ -227,7 +233,7 @@ export default async function AccountHomePage({
         </Card>
 
         <Card
-          title="How do I get help?"
+          title={t("How do I get help?")}
           description={`${data.openRequestCount} open service request${
             data.openRequestCount === 1 ? "" : "s"
           } on this account.`}

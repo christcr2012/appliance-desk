@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { Prisma, type EstimateStatus } from "@prisma/client";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
+import { quoteEmailCopy } from "@/domains/language/transactional-copy";
+import { displayCustomerLanguage } from "@/domains/language/review";
 import { createDraftAgreementInTx } from "@/domains/agreements";
 import { locateServiceAddress } from "@/domains/tax/locations";
 import {
@@ -384,24 +386,19 @@ export async function sendEstimate(userId: string, estimateId: string,
     process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
   const monthly = totalMonthlyCents(estimate.lineItems);
   const oneTime = totalOneTimeCents(estimate.lineItems);
-  const parts = [
-    `Hi${recipientName ? ` ${recipientName}` : ""},`,
-    `${settings.publicBusinessName} has prepared estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} for you.`,
-  ];
-  if (monthly > 0) {
-    parts.push(`Estimated recurring total: $${(monthly / 100).toFixed(2)}/month.`);
-  }
-  if (oneTime > 0) {
-    parts.push(`Estimated one-time charges: $${(oneTime / 100).toFixed(2)}.`);
-  }
-  if (!fullyReviewed) {
-    parts.push("This is preliminary, not an all-in binding offer. Setup, delivery, taxes, refundable deposits or other required charges may be missing. You cannot approve or pay from this estimate until the owner sends a verified updated offer.");
-  } else {
-    parts.push("The reviewed all-in breakdown includes each prepared service address and shows the total due at signing separately from future rent.");
-  }
-  if (estimate.clientMessage) parts.push(estimate.clientMessage);
-  parts.push("Review the full details and let us know if it works for you:");
-  parts.push(`${appUrl}/estimate/${estimate.id}`);
+  const language = await displayCustomerLanguage(
+    estimate.preferredLanguage === "es" ? "es" : "en",
+  );
+  const localizedEmail = quoteEmailCopy(language, {
+    businessName: settings.publicBusinessName,
+    estimateNumber: estimate.estimateNumber,
+    recipientName: recipientName ?? null,
+    monthlyCents: monthly,
+    oneTimeCents: oneTime,
+    fullyReviewed,
+    clientMessage: estimate.clientMessage ?? null,
+    url: `${appUrl}/estimate/${estimate.id}`,
+  });
 
   const delivery = await deliverMessage({
     idempotencyKey: `estimate-send-${estimate.id}-${sentAt.getTime()}`,
@@ -415,9 +412,9 @@ export async function sendEstimate(userId: string, estimateId: string,
     },
     subject: { type: "Estimate", id: estimate.id },
     render: () => ({
-      subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
-      text: parts.join("\n\n"),
-      actionLabel: "View & respond to estimate",
+      subject: localizedEmail.subject,
+      text: localizedEmail.text,
+      actionLabel: localizedEmail.actionLabel,
     }),
   });
   const emailed = delivery.state === "ACCEPTED" || delivery.state === "DELIVERED";

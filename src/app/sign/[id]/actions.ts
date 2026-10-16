@@ -24,6 +24,7 @@ const signSchema = z.object({
       washerHookups:z.enum(["YES","NO","UNKNOWN"]),stairs:z.boolean(),
       crewNotes:z.string().trim().max(1500)}),
   }).optional(),
+  languagePreference: z.enum(["en", "es"]).optional(),
   signerName: z.string().trim().min(1, "Enter your full name.").max(200),
   signerEmail: z.string().trim().email("Enter a valid email address.").max(200),
   agreedToTerms: z
@@ -67,6 +68,7 @@ export async function signAgreementAction(
     const agreementId = await signAgreement(signatureRecordId, {
       // The actual signed legal text is English until separately approved.
       shownLanguage: "en",
+      languagePreference: data.languagePreference ?? "en",
       signerName: data.signerName,
       signerEmail: data.signerEmail,
       ipAddress,

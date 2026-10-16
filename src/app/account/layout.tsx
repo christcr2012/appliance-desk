@@ -1,5 +1,7 @@
 import { requireSession } from "@/lib/session";
 import { AccountShell } from "@/components/account-shell";
+import { readCustomerLanguage } from "@/domains/language";
+import { displayCustomerLanguage } from "@/domains/language/review";
 import { IdleLogout } from "@/components/idle-logout";
 
 export const metadata = {
@@ -13,10 +15,12 @@ export default async function AccountLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireSession();
+  const session = await requireSession();
+  const preference = await readCustomerLanguage(session.user.id);
+  const language = await displayCustomerLanguage(preference);
 
   return (
-    <AccountShell>
+    <AccountShell language={language}>
       {children}
       <IdleLogout timeoutMinutes={30} />
     </AccountShell>

@@ -35,3 +35,17 @@ CREATE INDEX "CustomerLanguageReviewEvent_language_occurredAt_idx"
 
 ALTER TABLE "Estimate" ADD COLUMN "preferredLanguage" TEXT NOT NULL DEFAULT 'en';
 ALTER TABLE "Estimate" ADD CONSTRAINT "Estimate_preferredLanguage_check" CHECK ("preferredLanguage" IN ('en', 'es'));
+
+CREATE TABLE "CustomerTranslationDraft" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "sourceKind" TEXT NOT NULL,
+  "sourceKey" TEXT NOT NULL,
+  "englishDigest" TEXT NOT NULL,
+  "spanishText" TEXT NOT NULL,
+  "revision" INTEGER NOT NULL DEFAULT 1,
+  "editedByUserId" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL
+);
+CREATE UNIQUE INDEX "CustomerTranslationDraft_sourceKind_sourceKey_key"
+  ON "CustomerTranslationDraft"("sourceKind", "sourceKey");

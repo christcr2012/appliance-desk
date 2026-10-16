@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import { signAgreementAction } from "./actions";
 import { formatMoney } from "@/lib/money-ui";
 
-export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }: {
+export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,initialLanguage="en" }: {
   signatureRecordId: string;
+  initialLanguage?: "en" | "es";
   deliveryOptions?:Array<{id:string;date:string;window:"AM"|"PM"}>;
   offerVersion?:number;
 }) {
@@ -15,6 +16,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
   const [washerHookups,setWasherHookups]=useState<"YES"|"NO"|"UNKNOWN">("UNKNOWN");
   const [stairs,setStairs]=useState(false);
   const [crewNotes,setCrewNotes]=useState("");
+  const [languagePreference, setLanguagePreference] = useState<"en" | "es">(initialLanguage);
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -28,6 +30,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
     setError(null);
     startTransition(async () => {
       const result = await signAgreementAction(signatureRecordId, {
+        languagePreference,
         signerName,
         signerEmail,
         agreedToTerms,
@@ -90,6 +93,15 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
       onSubmit={handleSubmit}
       className="space-y-4 rounded-lg border border-line bg-surface p-5"
     >
+      <label className="block text-sm">Preferred language / Idioma preferido
+        <select value={languagePreference} onChange={(event) => setLanguagePreference(event.target.value as "en" | "es")}
+          className="mt-1 block w-full rounded border border-line bg-surface p-2">
+          <option value="en">English</option><option value="es">Español</option>
+        </select>
+        <span className="mt-1 block text-xs text-ink-soft">
+          The English agreement controls until separately reviewed Spanish legal text is approved.
+        </span>
+      </label>
       {deliveryOptions.length>0&&<fieldset className="space-y-3 rounded border border-line p-3">
         <legend className="font-semibold">Requested delivery — subject to owner confirmation</legend>
         <label className="block text-sm">Choose an offered date/window

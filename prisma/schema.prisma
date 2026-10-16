@@ -3944,3 +3944,18 @@ model CustomerLanguageReviewEvent {
   occurredAt DateTime @default(now())
   @@index([language, occurredAt])
 }
+
+// Bilingual draft, never itself a public publication or legal approval.
+// The source digest invalidates stale Spanish wording if English is edited.
+model CustomerTranslationDraft {
+  id String @id @default(cuid())
+  sourceKind String
+  sourceKey String
+  englishDigest String
+  spanishText String
+  revision Int @default(1)
+  editedByUserId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([sourceKind, sourceKey])
+}

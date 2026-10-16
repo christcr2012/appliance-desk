@@ -1,3 +1,5 @@
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { getServerSession } from "@/lib/session";
 import {
   getPortalData,
@@ -33,6 +35,8 @@ export default async function AccountMaintenancePage({
   const { applianceId, request, page: rawPage } = await searchParams;
   const page = positivePage(rawPage);
   const session = await getServerSession();
+  const locale = session ? await portalLanguage(session.user.id) : "en";
+  const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
   const [customer, applianceOptions] = session
     ? await Promise.all([
         getPortalData(session.user.id),
@@ -43,7 +47,7 @@ export default async function AccountMaintenancePage({
   if (!customer || !session) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title="Maintenance" />
+        <PageHeader title={t("Maintenance")} />
         <EmptyState
           title="No rental account found"
           description="Contact the business if you expected to see service requests here."
@@ -70,7 +74,7 @@ export default async function AccountMaintenancePage({
   return (
     <div className="max-w-4xl">
       <PageHeader
-        title="Maintenance"
+        title={t("Maintenance")}
         description="Report a problem, request a pickup, and review your service requests."
       />
 

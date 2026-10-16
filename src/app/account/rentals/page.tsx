@@ -1,3 +1,5 @@
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { EndRental } from "./end-rental";
 import { EndFixedTerm } from "./end-fixed-term";
 import { AutoRenewControl } from "./auto-renew-control";
@@ -47,12 +49,14 @@ export default async function AccountRentalsPage({
   searchParams: Promise<{ visitsPage?: string }>;
 }) {
   const session = await getServerSession();
+  const locale = session ? await portalLanguage(session.user.id) : "en";
+  const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
   const customer = session ? await getPortalData(session.user.id) : null;
 
   if (!customer || !session) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title="My rentals" />
+        <PageHeader title={t("My rentals")} />
         <EmptyState
           title="No rental account found"
           description="Contact the business if you expected to see rental details here."
@@ -89,7 +93,7 @@ export default async function AccountRentalsPage({
   return (
     <div className="max-w-4xl">
       <PageHeader
-        title="My rentals"
+        title={t("My rentals")}
         description="Review your rental items, visits, and the ending or renewal terms that belong to each agreement."
         secondaryActions={
           <ButtonLink

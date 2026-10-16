@@ -14,6 +14,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BottomTabBar, Button } from "@/components/ui";
 import { signOut } from "@/lib/auth-client";
+import type { CustomerLanguage } from "@/domains/language/copy";
 
 type AccountLink = {
   href: string;
@@ -60,8 +61,16 @@ function activeFor(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AccountShell({ children }: { children: ReactNode }) {
+export function AccountShell({ children, language = "en" }: { children: ReactNode; language?: CustomerLanguage }) {
   const pathname = usePathname();
+  const spanish = language === "es";
+  const accountLabels: Record<string, [string, string]> = {
+    "/account": ["Resumen", "Inicio"],
+    "/account/rentals": ["Mis alquileres", "Alquileres"],
+    "/account/maintenance": ["Mantenimiento", "Mantenimiento"],
+    "/account/billing": ["Facturación", "Facturas"],
+    "/account/settings": ["Configuración", "Cuenta"],
+  };
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -81,7 +90,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas" lang={language}>
       <header className="border-b border-line bg-surface print:hidden">
         <div className="mx-auto flex min-h-16 max-w-screen-2xl items-center gap-3 px-4 sm:px-6">
           <Link href="/account" className="flex min-h-11 items-center gap-3">
@@ -92,11 +101,11 @@ export function AccountShell({ children }: { children: ReactNode }) {
               height={32}
               className="h-8 w-8"
             />
-            <span className="font-semibold text-ink">My Account</span>
+            <span className="font-semibold text-ink">{spanish ? "Mi cuenta" : "My Account"}</span>
           </Link>
 
           <nav
-            aria-label="My account"
+            aria-label={spanish ? "Mi cuenta" : "My account"}
             className="ml-auto hidden items-center gap-1 md:flex"
           >
             {ACCOUNT_LINKS.map((link) => {
@@ -112,7 +121,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
                       : "text-ink hover:bg-subtle"
                   }`}
                 >
-                  {link.desktopLabel}
+                  {spanish ? accountLabels[link.href]?.[0] : link.desktopLabel}
                 </Link>
               );
             })}
@@ -126,7 +135,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
               disabled={signingOut}
               onClick={handleSignOut}
             >
-              {signingOut ? "Signing out…" : "Sign out"}
+              {spanish ? (signingOut ? "Cerrando sesión…" : "Cerrar sesión") : (signingOut ? "Signing out…" : "Sign out")}
             </Button>
           </div>
         </div>

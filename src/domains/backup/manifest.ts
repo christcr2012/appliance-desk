@@ -125,6 +125,7 @@ export const BACKUP_MODEL_POLICY = {
   CommunicationTemplateRevision: "communicationTemplateRevision",
   CustomerLanguageReview: "customerLanguageReview",
   CustomerLanguageReviewEvent: "customerLanguageReviewEvent",
+  CustomerTranslationDraft: "customerTranslationDraft",
   CallSession: "callSession",
   CallLeg: "callLeg",
   CommunicationMedia: "communicationMedia",

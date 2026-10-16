@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { displayCustomerLanguage } from "@/domains/language/review";
 import { getReviewedSigningPayment } from "./signing-payment-readiness";
 import { prepareSigningPaymentAttempt } from "./signing-payment-attempts";
 
@@ -99,11 +100,15 @@ export async function createSigningTestCheckout(
       : "/account";
     const existingCustomer=await prisma.rentalAgreement.findUniqueOrThrow({
       where:{id:agreementId},
-      select:{customer:{select:{stripeCustomerId:true}}},
+      select:{customer:{select:{stripeCustomerId:true,preferredLanguage:true}}},
     });
     const w24Setup=!!source?.sourceEstimate?.customerAutoFinishEnabled;
+    const stripeLanguage=await displayCustomerLanguage(
+      existingCustomer.customer.preferredLanguage === "es" ? "es" : "en",
+    );
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
+      locale: stripeLanguage,
       payment_method_types: ["card"],
       ...(w24Setup?(existingCustomer.customer.stripeCustomerId
         ? {customer:existingCustomer.customer.stripeCustomerId}

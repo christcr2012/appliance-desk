@@ -564,6 +564,7 @@ import { newestMonthToMonthVersionInTx } from "./month-to-month";
 export type SignAgreementInput = {
   // Server-verified language actually displayed, never a client preference guess.
   shownLanguage?: "en" | "es";
+  languagePreference?: "en" | "es";
   deliverySelection?: import("@/domains/orders/delivery").DeliverySelection;
   signerName: string;
   signerEmail: string;
@@ -645,6 +646,10 @@ export async function signAgreement(
     });
     if (signResult.count !== 1) {
       throw new Error("This agreement was already signed.");
+    }
+    if (input.languagePreference) {
+      await tx.customer.update({ where: { id: agreement.customerId },
+        data: { preferredLanguage: input.languagePreference } });
     }
 
     // Freeze the actual order size, customer type and owner window before

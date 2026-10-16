@@ -1,3 +1,5 @@
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { getServerSession } from "@/lib/session";
 import { getPortalData } from "@/domains/portal";
 import {
@@ -14,15 +16,17 @@ export const metadata = { title: "Settings" };
 
 export default async function AccountSettingsPage() {
   const session = await getServerSession();
+  const locale = session ? await portalLanguage(session.user.id) : "en";
+  const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
   const customer = session ? await getPortalData(session.user.id) : null;
 
   if (!customer) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title="Account" />
+        <PageHeader title={t("Account")} />
         <EmptyState
-          title="No rental account found"
-          description="Contact the business if you expected to manage account settings here."
+          title={t("No rental account found")}
+          description={t("Contact the business if you expected to manage account settings here.")}
         />
       </div>
     );
@@ -33,8 +37,8 @@ export default async function AccountSettingsPage() {
   return (
     <div className="max-w-3xl">
       <PageHeader
-        title="Account"
-        description="Manage communication preferences and privacy requests."
+        title={t("Account")}
+        description={t("Manage communication preferences and privacy requests.")}
       />
 
       <div className="space-y-6">
@@ -42,8 +46,8 @@ export default async function AccountSettingsPage() {
           <LanguagePreferenceForm initialLanguage={preferredLanguage} />
         </Card>
         <Card
-          title="Text message notifications"
-          description="Off by default — you only get texts if you turn this on."
+          title={t("Text message notifications")}
+          description={t("Off by default — you only get texts if you turn this on.")}
         >
           <SmsPreferenceForm
             initialOptedIn={Boolean(customer.smsOptInAt)}
@@ -52,7 +56,7 @@ export default async function AccountSettingsPage() {
         </Card>
 
         <Card
-          title="Privacy requests"
+          title={t("Privacy requests")}
           description="Request a copy of your account information or ask us to delete personal information we are allowed to remove."
           actions={
             <ButtonLink
