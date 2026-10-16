@@ -6,6 +6,8 @@ import { getDeskJobById } from "@/domains/desk-access";
 import { getJobLocationPrivacy } from "@/domains/customers/location-contacts";
 import { JobDetailPanel } from "./job-detail-panel";
 import { JobSchedulePanel } from "./job-schedule-panel";
+import { W24JobFeePanel } from "./w24-fee-panel";
+import { prisma } from "@/lib/prisma";
 import { JobPartsUsed } from "./job-parts-used";
 import { getJobPartsUsed } from "@/domains/purchasing";
 import { getAllPartRecords } from "@/domains/inventory";
@@ -73,6 +75,19 @@ export default async function JobDetailPage({
     ? new Map(await Promise.all(pendingDeliveries.filter((p) => !p.deliveredOn && !p.removedAt && !p.substituteJobId).map(async (p) => [p.id, await substituteChoices(p.id)] as const)))
     : new Map<string, Awaited<ReturnType<typeof substituteChoices>>>();
 
+  const feeData = session.user.role==="OWNER"&&job.type==="DELIVERY"
+    ? await prisma.job.findUnique({where:{id:job.id},select:{
+      type:true,status:true,version:true,noShowAt:true,noShowEvidence:true,
+      approvedTripFeeCents:true,approvedRelocationFeeCents:true,
+    }}) : null;
+  const feePolicy = feeData ? await prisma.businessSettings.findUnique({
+    where:{id:"singleton"},select:{missedTripFeeCents:true,relocationFeeCents:true},
+  }) : null;
+  const providerFees=feeData ? await prisma.providerOperation.findMany({
+    where:{subjectType:"Job",subjectId:job.id,
+      kind:{in:["TRIP_FEE_INVOICE_ITEM","RELOCATION_INVOICE_ITEM"]}},
+    select:{kind:true,status:true},
+  }) : [];
   return (
     <div className="max-w-2xl">
       <Link href="/desk/jobs" className="text-sm text-ink-soft hover:underline">
@@ -117,6 +132,18 @@ export default async function JobDetailPage({
       )}
 
       <div className="mt-6">
+        {feeData&&<div className="space-y-3">
+          <W24JobFeePanel jobId={job.id} version={feeData.version} kind="MISSED_TRIP"
+            configuredCents={feePolicy?.missedTripFeeCents??0}
+            approvedCents={feeData.approvedTripFeeCents}
+            eligible={feeData.status==="CANCELLED"&&!!feeData.noShowAt&&!!feeData.noShowEvidence}
+            alreadyQueued={providerFees.some(o=>o.kind==="TRIP_FEE_INVOICE_ITEM")}/>
+          <W24JobFeePanel jobId={job.id} version={feeData.version} kind="RELOCATION"
+            configuredCents={feePolicy?.relocationFeeCents??7500}
+            approvedCents={feeData.approvedRelocationFeeCents}
+            eligible={feeData.status!=="CANCELLED"}
+            alreadyQueued={providerFees.some(o=>o.kind==="RELOCATION_INVOICE_ITEM")}/>
+        </div>}
         <JobSchedulePanel
           jobId={job.id}
           version={job.version}

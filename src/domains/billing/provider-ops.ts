@@ -3,6 +3,8 @@ import type { Prisma } from "@prisma/client";
 
 export type ProviderOpKind =
   | "RDF_INVOICE_ITEM"
+  | "TRIP_FEE_INVOICE_ITEM"
+  | "RELOCATION_INVOICE_ITEM"
   | "CUSTOMER_CREATE"
   | "SUBSCRIPTION_CREATE"
   | "SUBSCRIPTION_CANCEL"

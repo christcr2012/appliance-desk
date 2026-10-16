@@ -97,9 +97,17 @@ export async function createSigningTestCheckout(
     const returnPath=source?.sourceEstimate?.customerAutoFinishEnabled
       ? "/estimate/"+source.sourceEstimate.id
       : "/account";
+    const existingCustomer=await prisma.rentalAgreement.findUniqueOrThrow({
+      where:{id:agreementId},
+      select:{customer:{select:{stripeCustomerId:true}}},
+    });
+    const w24Setup=!!source?.sourceEstimate?.customerAutoFinishEnabled;
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"],
+      ...(w24Setup?(existingCustomer.customer.stripeCustomerId
+        ? {customer:existingCustomer.customer.stripeCustomerId}
+        : {customer_creation:"always" as const}):{}),
       client_reference_id: agreementId,
       line_items: reviewed.plan.items.map(item => ({
         quantity: 1,
@@ -116,8 +124,10 @@ export async function createSigningTestCheckout(
         attemptId: attempt.id,
         orderFingerprint: reviewed.plan.orderFingerprint,
         evidenceVersion: String(reviewed.plan.evidenceVersion),
+        ...(w24Setup?{w24SavedMethod:"1"}:{}),
       },
       payment_intent_data: {
+        ...(w24Setup?{setup_future_usage:"off_session" as const}:{}),
         metadata: {
           agreementId,
           attemptId: attempt.id,

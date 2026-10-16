@@ -353,7 +353,7 @@ export async function markJobNoShow(userId: string, jobId: string, expectedVersi
     }
 
     const isW24Delivery = job.type === "DELIVERY" && !!job.requestedDeliveryAt;
-    if (isW24Delivery && note.length < 8)
+    if (isW24Delivery && note.length < 16)
       throw new Error("Record the actual missed-visit evidence before cancelling delivery.");
 
     const result = await tx.job.updateMany({

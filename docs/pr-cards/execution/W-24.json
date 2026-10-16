@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "id": "W-24",
+  "parent": "W-24",
+  "baseline": "6c95cdef58753aeff4ec042028205fed2ee27407",
+  "card": "docs/pr-cards/W-24.md",
+  "outcome": "One owner-reviewed approved quote link: offered local delivery windows, customer choice and hookup details, signing, receipt-backed TEST payment, secure account link, owner-confirmed delivery, safe fees.",
+  "risk": "Cross-customer signing, expired windows, unverified miles, changed all-in tax or money, false paid status, duplicate visits and invoice fees, anonymous password changes and LIVE activation.",
+  "next": "After exact-head CI/review/merge, run real deployed acceptance when READY and authorized. Continue W-25 in roadmap dependency order.",
+  "references": [
+    {
+      "path": "src/domains/orders/delivery.ts",
+      "anchor": "export async function saveDeliveryOffers",
+      "purpose": "Owner offers, date/version checks and driving bands"
+    },
+    {
+      "path": "src/domains/orders/customer-finish.ts",
+      "anchor": "export async function continueApprovedCustomerOrder",
+      "purpose": "Prepared one-site quote through existing signing"
+    },
+    {
+      "path": "src/domains/orders/settled-delivery.ts",
+      "anchor": "export async function requestPaidDeliveryInTx",
+      "purpose": "Receipt-backed requested visit and To Do"
+    },
+    {
+      "path": "src/domains/orders/provider-job-fees.ts",
+      "anchor": "export async function prepareOwnerFeeInvoiceItem",
+      "purpose": "Idempotent fee intent; default off"
+    },
+    {
+      "path": "src/domains/orders/route-evidence.ts",
+      "anchor": "export async function recordDeliveryRouteEvidence",
+      "purpose": "Verified road evidence and frozen all-in amount"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/orders",
+    "src/app/estimate/[id]",
+    "src/app/sign/[id]",
+    "src/app/desk/estimates/[id]",
+    "src/app/desk/jobs/[id]",
+    "prisma/migrations/20261016120000_w24_owner_delivery_offer"
+  ],
+  "invariants": [
+    "No customer booked visit before verified receipt and staff confirmation.",
+    "No LIVE/production payment or provider fee activation.",
+    "No inferred unverified road miles or amended frozen tax.",
+    "No duplicate account, agreement, invoice item or per-job charge.",
+    "No passwords from untrusted shared estimate links."
+  ],
+  "sequence": [
+    "Owner freezes prepared single-site all-in signing quote and offered verified road-mile fee.",
+    "Customer chooses owner-offered window or declines, with installation details.",
+    "Customer signs unchanged frozen agreement, verifies TEST checkout and saved method, sets one-use password.",
+    "Verified receipt creates one requested visit and confirm To Do; owner schedules with lock.",
+    "Missed visit creates reschedule To Do; separately reviewed nonzero fee uses idempotent provider item."
+  ],
+  "acceptance": [
+    "OWNER/ADMIN selects 1\u20134 offered local service dates with AM/PM (editable initial 08:00\u201312:00 / 12:00\u201317:00) for estimate or independently sent agreement; choices are versioned, unavailable and stale selections rejected. No customer open-calendar or auto-booking.",
+    "Customer responds to one secure quote link: views reviewed all-in terms, chooses one currently offered slot and answers dryer 3/4-prong/gas, stairs/tight access, washer hookups and crew notes.",
+    "Standard approved quote converts once into correct per-location agreement(s), checks mandatory tax/policy, launches lawful existing signing, Stripe-hosted upfront payment plus saved recurring method (or existing audited offline path), secure password creation and account landing; no card data in app. High-risk multilateral/discounted quote stays owner-reviewed. Retries cannot duplicate agreements, invoices, signatures, payments, jobs or visits.",
+    "Unsigned/rejected/declined quote states are accurate and customer can decline with optional reason; owner gets persistent attention. Owner can copy exact link, existing email sending respects activation gates.",
+    "Only verified receipt creates one Requested delivery visit with the chosen slot and a Confirm delivery To do. Authorized owner/staff confirms with conflict-safe lock; only the confirmed time starts the original delivery-date credit clock. Failed/pending provider payment stays Waiting for payment and creates retry attention, never a confirmed visit.",
+    "Missed appointment by customer/no hookup starts a Reschedule To do. Starting trip charge $0/OFF; nonzero charged only after per-visit owner approval with evidence, exactly once on next bill; no charge on service swaps or owner-reschedules.",
+    "Configurable, verified central Greeley road-route origin; a real route distance with provider evidence is required for automatic 0\u201315 miles FREE, (15\u201330] $75, (30\u201350] $125, >50 manual/OFF; never ZIP/crow-flight, implicit paid map calls or unreviewed mandatory fee. Owner-recorded distance/source is required when provider disabled or unavailable. $75 relocation applies once per job by owner approval, not per machine, and never auto re-adds $45 setup. Publish prices only by separately approved policy.",
+    "Full disposable-Postgres isolation/replay/transaction tests, DST/time-window/15-30-50 boundaries, privacy/race/deny checks, mobile owner/customer/guest browser, migration upgrade/restore, full required exact-head CI and review. Genuine provider/production/professional acceptance remains a separate checked queue."
+  ],
+  "gates": [
+    {
+      "id": "W24-TEST",
+      "affected": "True TEST checkout and saved payment method",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "TEST only, protected runner and owner-scoped identity",
+      "reopen": "Real authorized provider TEST evidence"
+    },
+    {
+      "id": "W24-FEE-TAX",
+      "affected": "Nonzero trip and relocation fee next bill",
+      "source": "docs/designs/BATCH-W-AMENDMENT-B.md",
+      "remedy": "Owner approval, written CPA/legal tax review and disabled-by-default TEST posting",
+      "reopen": "Separate owner/CPA signoff"
+    },
+    {
+      "id": "W24-LIVE",
+      "affected": "Real deployed customer/owner role acceptance",
+      "source": "docs/SESSION-START.md",
+      "remedy": "Wait for scheduled checked READY release",
+      "reopen": "Checked live SHA and original approved fixtures"
+    }
+  ],
+  "checks": [
+    "unit",
+    "db",
+    "browser",
+    "node"
+  ],
+  "slices": [
+    {
+      "id": "W-24",
+      "outcome": "Complete customer-link quote/contract/payment/requested delivery with road-fee and owner-only trip protections",
+      "acceptance": [
+        "OWNER/ADMIN selects 1\u20134 offered local service dates with AM/PM (editable initial 08:00\u201312:00 / 12:00\u201317:00) for estimate or independently sent agreement; choices are versioned, unavailable and stale selections rejected. No customer open-calendar or auto-booking.",
+        "Customer responds to one secure quote link: views reviewed all-in terms, chooses one currently offered slot and answers dryer 3/4-prong/gas, stairs/tight access, washer hookups and crew notes.",
+        "Standard approved quote converts once into correct per-location agreement(s), checks mandatory tax/policy, launches lawful existing signing, Stripe-hosted upfront payment plus saved recurring method (or existing audited offline path), secure password creation and account landing; no card data in app. High-risk multilateral/discounted quote stays owner-reviewed. Retries cannot duplicate agreements, invoices, signatures, payments, jobs or visits.",
+        "Unsigned/rejected/declined quote states are accurate and customer can decline with optional reason; owner gets persistent attention. Owner can copy exact link, existing email sending respects activation gates.",
+        "Only verified receipt creates one Requested delivery visit with the chosen slot and a Confirm delivery To do. Authorized owner/staff confirms with conflict-safe lock; only the confirmed time starts the original delivery-date credit clock. Failed/pending provider payment stays Waiting for payment and creates retry attention, never a confirmed visit.",
+        "Missed appointment by customer/no hookup starts a Reschedule To do. Starting trip charge $0/OFF; nonzero charged only after per-visit owner approval with evidence, exactly once on next bill; no charge on service swaps or owner-reschedules.",
+        "Configurable, verified central Greeley road-route origin; a real route distance with provider evidence is required for automatic 0\u201315 miles FREE, (15\u201330] $75, (30\u201350] $125, >50 manual/OFF; never ZIP/crow-flight, implicit paid map calls or unreviewed mandatory fee. Owner-recorded distance/source is required when provider disabled or unavailable. $75 relocation applies once per job by owner approval, not per machine, and never auto re-adds $45 setup. Publish prices only by separately approved policy.",
+        "Full disposable-Postgres isolation/replay/transaction tests, DST/time-window/15-30-50 boundaries, privacy/race/deny checks, mobile owner/customer/guest browser, migration upgrade/restore, full required exact-head CI and review. Genuine provider/production/professional acceptance remains a separate checked queue."
+      ]
+    }
+  ]
+}

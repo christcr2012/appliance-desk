@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { readOfferedSlots } from "@/domains/orders/delivery";
 import { DeliveryOfferPanel } from "./delivery-offer-panel";
+import { DeliveryRouteReview } from "@/components/locations/delivery-route-review";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getEstimateDetail, totalMonthlyCents, totalOneTimeCents } from "@/domains/estimates";
@@ -90,6 +92,14 @@ export default async function EstimateDetailPage({
         </div>
       )}
 
+      <DeliveryRouteReview kind="estimate" id={estimate.id}
+        origin={(await prisma.businessSettings.findUnique({
+          where:{id:"singleton"},select:{drivingOriginAddress:true},
+        }))?.drivingOriginAddress??"UNVERIFIED"}
+        verified={!!(await prisma.businessSettings.findUnique({
+          where:{id:"singleton"},select:{drivingOriginVerifiedAt:true},
+        }))?.drivingOriginVerifiedAt}
+        proofExists={!!estimate.deliveryRouteProof} feeCents={null}/>
       <DeliveryOfferPanel estimateId={estimate.id}
         options={readOfferedSlots(estimate.deliveryOffer)}
         version={estimate.deliveryOfferVersion}

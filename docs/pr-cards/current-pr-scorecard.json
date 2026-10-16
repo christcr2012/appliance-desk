@@ -1,23 +1,31 @@
 {
   "version": 1,
-  "kind": "risk_remediation",
-  "parent": "W-23",
-  "completedSlices": [],
+  "kind": "implementation",
+  "parent": "W-24",
+  "completedSlices": [
+    {
+      "id": "W-24",
+      "acceptanceEvidence": [
+        "src/domains/orders/delivery.ts saveDeliveryOffers/saveAgreementDeliveryOffers + owner choice panels, tests/w24-order-integration.test.ts unique date/version/role tests.",
+        "src/app/estimate/[id]/estimate-response-form.tsx, src/app/sign/[id]/sign-form.tsx and server acceptance DTO; tests/w24-delivery.test.ts schema/DST/stale choice.",
+        "src/domains/orders/customer-finish.ts one prepared agreement only + signed V2 frozen tax/route policy, Stripe TEST saved customer after verified webhook; src/domains/orders/activation.ts existing Better Auth one-use email.",
+        "src/domains/orders/delivery-response.ts owner To Do on decline; src/app/desk/estimates/[id]/delivery-offer-panel.tsx exact customer link; tests/w24-order-integration.test.ts decline/replay.",
+        "src/domains/orders/settled-delivery.ts receipt-only request + To Do; src/domains/jobs/scheduling.ts conflict and Denver window first confirmation; tests/w24-order-integration.test.ts unpaid denial and tests/w24-delivery.test.ts time checks.",
+        "src/domains/jobs/scheduling.ts W24 documented no-show creates reschedule task; src/domains/orders/owner-job-fees.ts and provider-job-fees.ts per-job approval, default $0 and provider OFF; tests/w24-order-integration.test.ts.",
+        "src/domains/orders/route-evidence.ts verified manual street-route evidence and exact V2 frozen delivery fee; tests/w24-delivery.test.ts 15,30,50 mile boundary and stale evidence; owner route-review panel.",
+        "tests/w24-delivery.test.ts, tests/w24-order-integration.test.ts plus existing repo 4-shard browser, Postgres migration/typecheck/secret/release CI; real live/provider evidence not claimed."
+      ]
+    }
+  ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Genuine customer/owner/assigned staff and tenant readback on the checked LIVE revision remains pending until the deployed SHA, owner-approved authenticated fixture and service interactions can be checked without production mutations.",
-    "Tenant SMS must retain its independent tenant COM-L opt-in, carrier/owner activation and message safety gates. Pending CustomerNotice is not proof of external email delivery; no LIVE, price, charges, money out or production activation authorized."
+    "Original W-22 Stripe TEST, CPA/counsel and owner/customer live acceptance stays queued.",
+    "Genuine owner/customer/saved method, receipt, delivery and late-trip fee on checked READY LIVE remains unverified.",
+    "Production money handling, provider routing, fee-tax exemption, LIVE/real customer and pricing publication remain independently OFF."
   ],
-  "workloadException": "Safety/privacy and data-integrity remediation of external postmerge W-23 P1/P2 findings, not newly completed roadmap subsection or extra engineering bundle.",
   "evidence": [
-    "Postmerge PR #470 review discussion_r4288631753, r4288631766, r4288631784, r4288631796; existing W-23 frozen original acceptance retained.",
-    "Disposable local PostgreSQL migration plus tests/location-contacts-integration.test.ts (7 tests) and no production/provider writes; full exact-head CI/review still required.",
-    "Owner-only UI/legal hold actions, status and audit records; tenant retention stays deactivated without actual privacy/legal approval and separate runtime switch."
-  ],
-  "riskEvidence": [
-    "P1 postmerge finding: tenant-retention cron previously erased PII based solely on move-out date. Now dual-disabled by default until recorded owner/adviser reference AND separate deployment enablement; legal hold and unresolved/recorded property maintenance cases excluded; approved owner preview and audit in source and tests.",
-    "P2 future-contact leak: assigned visit, repair-link issuance, options and submission check startedAt null or <=now, never future tenants; regression PostgreSQL includes assigned staff and pre-start link denial.",
-    "P2 cross-customer portfolio collision: preview and serializable commit both query every account, canonicalize address/unit and deny collisions without leaking foreign data; tests include two customers.",
-    "P2 portfolio retry: per-customer canonical SHA-256 digest durable unique LocationPortfolioImport in same serializable create transaction, returning previous committed count; no duplicate rows; backup manifest includes idempotency proof."
+    "W-24 frozen original full acceptance preserved in docs/pr-cards/W-24.md before new W-24 code.",
+    "Dedicated W-24 code, migration, DB and unit regression checks; full exact-head CI/review/merge still required.",
+    "No real provider/live acceptance inferred from source evidence."
   ]
 }

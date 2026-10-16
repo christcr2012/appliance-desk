@@ -850,6 +850,7 @@ model RentalAgreement {
   deliveryOfferActorUserId String?
   deliveryRequested Json?
   deliveryRequestedAt DateTime?
+  deliveryRouteProof Json?
 
 
   termMonths Int? // null = month-to-month
@@ -1408,6 +1409,13 @@ model Job {
   originalConfirmedDeliveryFor DateTime?
   approvedTripFeeCents Int @default(0)
   approvedTripFeeReason String?
+  tripFeeApprovedAt DateTime?
+  tripFeeApprovedByUserId String?
+  approvedRelocationFeeCents Int @default(0)
+  relocationFeeApprovedAt DateTime?
+  relocationFeeApprovedByUserId String?
+  relocationFeeEvidence String?
+
 
   // Scheduling (Batch C, P1-A). The person doing the visit; conflicts are only
   // checked between jobs with the same person. durationMinutes null = use
@@ -1819,6 +1827,7 @@ model Estimate {
   deliveryOfferVersion Int @default(0)
   deliveryRequested Json?
   deliveryRequestedAt DateTime?
+  deliveryRouteProof Json?
   // Explicit owner decision for already-prepared single-site self completion.
   customerAutoFinishEnabled Boolean @default(false)
 
@@ -2042,6 +2051,8 @@ enum UseTaxStatus {
 // Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)
 enum ProviderOperationKind {
   RDF_INVOICE_ITEM
+  TRIP_FEE_INVOICE_ITEM
+  RELOCATION_INVOICE_ITEM
   CUSTOMER_CREATE
   SUBSCRIPTION_CREATE
   SUBSCRIPTION_CANCEL
@@ -2636,7 +2647,9 @@ model BusinessSettings {
   deliveryAfternoonEndHour Int @default(17)
   relocationFeeCents Int @default(7500)
   missedTripFeeCents Int @default(0)
-  drivingOriginAddress String @default("Greeley, CO")
+  drivingOriginAddress String @default("UNVERIFIED: owner must choose central Greeley origin")
+  drivingOriginVerifiedAt DateTime?
+  drivingOriginSourceReference String?
   tenantContactRetentionMonths Int @default(12)
   // Fail closed until separate documented privacy/legal review AND operator activation.
   tenantContactPurgeApprovedAt DateTime?

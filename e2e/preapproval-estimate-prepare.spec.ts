@@ -69,3 +69,46 @@ test("owner can prepare actual estimate-owned agreement shells without approving
     await prisma.auditLog.deleteMany({ where: { entityId: estimate.id } });
   }
 });
+
+test("W-24 owner chooses future local delivery windows on mobile; guest cannot access desk or create visit",async({page,browser})=>{
+  test.skip(!enabled||!fs.existsSync(state),"Disposable authenticated CI fixture only");
+  const {prisma}=await import("../src/lib/prisma");
+  const idPart=randomUUID().replaceAll("-","");
+  const owner=await prisma.user.findFirstOrThrow({where:{role:"OWNER"}});
+  const address=await prisma.serviceAddress.findFirstOrThrow();
+  const pkg=await prisma.rentalPackage.findFirstOrThrow();
+  const quote=await prisma.estimate.create({data:{
+    title:"W-24 owner offered delivery "+idPart,
+    customerId:address.customerId,createdByUserId:owner.id,status:"DRAFT",
+    lineItems:{create:[{description:"Approved package fixture",packageId:pkg.id,
+      serviceAddressId:address.id,quantity:1,monthlyPriceCents:pkg.monthlyPriceCents,
+      oneTimeFeeCents:0}]},
+  }});
+  try{
+    await page.setViewportSize({width:390,height:844});
+    await page.goto("/desk/estimates/"+quote.id);
+    const header=page.getByRole("heading",{name:"Owner-offered delivery windows"});
+    await expect(header).toBeVisible();
+    const after=new Date(Date.now()+15*24*60*60*1000).toISOString().slice(0,10);
+    const offerPanel=header.locator('..');
+    await offerPanel.locator('input[type="date"]').first().fill(after);
+    await offerPanel.getByRole("button",{name:"Save offered windows"}).click();
+    await expect(offerPanel.getByText(/Saved; old customer choice versions are invalidated/i)).toBeVisible();
+    const found=await prisma.estimate.findUniqueOrThrow({
+      where:{id:quote.id},select:{deliveryOfferVersion:true,deliveryOffer:true}});
+    expect(found.deliveryOfferVersion).toBe(1);
+    expect(Array.isArray(found.deliveryOffer)).toBe(true);
+    expect(await prisma.job.count({where:{customerId:quote.customerId,
+      notes:{contains:idPart}}})).toBe(0);
+    const guest=await browser.newContext({storageState:{cookies:[],origins:[]}});
+    try{
+      const anon=await guest.newPage();
+      await anon.goto("/desk/estimates/"+quote.id);
+      await expect(anon).toHaveURL(/login|sign-in/i);
+      await expect(anon.getByText("Owner-offered delivery windows")).toHaveCount(0);
+    }finally{await guest.close();}
+  }finally{
+    await prisma.auditLog.deleteMany({where:{entityId:quote.id}});
+    await prisma.estimate.delete({where:{id:quote.id}});
+  }
+});

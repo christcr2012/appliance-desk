@@ -632,6 +632,17 @@ export async function approveEstimate(
     if (readOfferedSlots(estimate.deliveryOffer).length) {
       if (!input.deliverySelection)
         throw new Error("Choose an offered delivery window and provide delivery details.");
+      // W-24 cannot accept a delivery route charge that was never frozen
+      // into the exact signed all-in V2 order. No fee from ZIP/air miles.
+      const preparedAgreements=await tx.rentalAgreement.findMany({
+        where:{sourceEstimateId:id},select:{id:true},
+      });
+      if(preparedAgreements.length!==1||!estimate.deliveryRouteProof)
+        throw new Error("Owner route/fee review required for this delivery order.");
+      const { assertRouteMatchesFrozenFeeInTx } =
+        await import("@/domains/orders/route-evidence");
+      await assertRouteMatchesFrozenFeeInTx(tx,preparedAgreements[0].id,
+        estimate.deliveryRouteProof);
       await recordEstimateDeliverySelectionInTx(tx, estimate, input.deliverySelection);
     } else if (input.deliverySelection) {
       throw new Error("No current owner-offered delivery choice is available.");

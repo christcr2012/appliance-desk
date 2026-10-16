@@ -2,6 +2,7 @@ import { getSignatureRecordForSigning } from "@/domains/agreements";
 import { describeSnapshotTerms } from "@/domains/agreements/terms-snapshot";
 import { formatCents } from "@/domains/pricing";
 import { SignForm } from "./sign-form";
+import { readOfferedSlots } from "@/domains/orders/delivery";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
 
 export const metadata = {
@@ -134,7 +135,9 @@ export default async function SignPage({
       )}
 
       <div className="mt-6">
-        <SignForm signatureRecordId={signature.id} />
+        <SignForm signatureRecordId={signature.id}
+          deliveryOptions={readOfferedSlots(agreement.deliveryOffer)}
+          offerVersion={agreement.deliveryOfferVersion}/>
       </div>
     </main>
   );

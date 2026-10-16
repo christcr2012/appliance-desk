@@ -611,6 +611,11 @@ export async function signAgreement(
     if(choices.length){
       if(!input.deliverySelection)
         throw new Error("Select an offered delivery choice before signing.");
+      const { assertRouteMatchesFrozenFeeInTx } =
+        await import("@/domains/orders/route-evidence");
+      if(!agreement.deliveryRouteProof)
+        throw new Error("Owner road-route fee evidence is required before signing.");
+      await assertRouteMatchesFrozenFeeInTx(tx,agreement.id,agreement.deliveryRouteProof);
       const selected=assertAvailableDeliveryOption(agreement.deliveryOffer,
         agreement.deliveryOfferVersion,input.deliverySelection);
       await tx.rentalAgreement.update({where:{id:agreement.id},
