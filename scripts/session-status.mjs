@@ -47,6 +47,21 @@ export function readQueue(text) {
   return rows;
 }
 
+/**
+ * When the roadmap advances, older completed engineering milestones must not
+ * vanish from the permanent release-acceptance queue. This checks coverage,
+ * NOT acceptance; it creates no provider operations and never promotes PASSED.
+ * W-26 can be set active before any W-26 implementation is merged.
+ */
+export function missingRoadmapAcceptance(rows, activeExecution) {
+  const milestones = ['W-23', 'W-24', 'W-25'];
+  const active = milestones.indexOf(activeExecution);
+  const through = activeExecution === 'W-26' ? milestones.length - 1 : active;
+  if (through < 0) return [];
+  return milestones.slice(0, through + 1)
+    .filter(id => !rows.some(row => row.id.startsWith(id.replace('-', '') + '-')));
+}
+
 /** Deployment provenance must be checked even when there are no queue rows. */
 export function deploymentReady({ main, live, deployed, deploymentState }, isAncestor) {
   return deploymentState === 'READY' && [main, live, deployed].every(sha => SHA.test(sha || '')) &&
@@ -145,6 +160,12 @@ export function run(root, args) {
   const policy = JSON.parse(readFileSync(resolve(root, 'docs/session-policy.json'), 'utf8'));
   if (!/^[\w.-]+\/[\w.-]+$/.test(policy.repository) || !/^docs\/[\w/.-]+\.md$/.test(policy.ledger) || policy.ledger.includes('..')) throw new Error('Invalid repository/ledger policy.');
   const rows = readQueue(readFileSync(resolve(root, policy.ledger), 'utf8'));
+  const roadmap = JSON.parse(readFileSync(resolve(root, 'docs/pr-cards/work-index.json'), 'utf8'));
+  const missingScopes = missingRoadmapAcceptance(rows, roadmap.activeExecution);
+  if (missingScopes.length)
+    throw new Error('Missing deployed acceptance backlog for approved roadmap work: ' +
+      missingScopes.join(', ') + '. Record PENDING tasks without inventing live proof.');
+
   const observation = {
     main: git(root, 'rev-parse', '--verify', 'refs/remotes/origin/main^{commit}'),
     live: git(root, 'rev-parse', '--verify', 'refs/remotes/origin/live^{commit}'),

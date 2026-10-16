@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { acceptanceSnapshot, acceptanceSummary, reviewAcceptance as reviewWithAncestry, readQueue, planQueue, run } from './session-status.mjs';
+import { acceptanceSnapshot, acceptanceSummary, reviewAcceptance as reviewWithAncestry, readQueue, planQueue, missingRoadmapAcceptance, run } from './session-status.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -47,6 +47,19 @@ test('invalid, duplicate, missing, unknown and cyclic queue entries are refused'
   for (const text of ['none', block([]) + block([]), block([row(), row()]), block([{ ...row(), requiredRevision: 'main' }]), block([{ ...row(), dependsOn: ['MISSING'] }]), block([{ ...row(), dependsOn: ['READ'] }]), block([{ ...row(), procedure: '' }])]) assert.throws(() => readQueue(text));
   assert.deepEqual(readQueue(block([])), []);
 });
+test('advancing roadmap requires predecessor release-acceptance rows, never imagined passes', () => {
+  const rowFor = id => row(id, a);
+  assert.deepEqual(missingRoadmapAcceptance([], 'W-22FIN'), []);
+  assert.deepEqual(missingRoadmapAcceptance([], 'W-23'), ['W-23']);
+  assert.deepEqual(missingRoadmapAcceptance([rowFor('W23-UNVERIFIED')], 'W-24'), ['W-24']);
+  assert.deepEqual(missingRoadmapAcceptance([
+    rowFor('W23-UNVERIFIED'), rowFor('W24-UNVERIFIED')], 'W-25'), ['W-25']);
+  const queue = ['W23-TEST','W24-TEST','W25-TEST'].map(rowFor);
+  assert.deepEqual(missingRoadmapAcceptance(queue, 'W-25'), []);
+  assert.deepEqual(missingRoadmapAcceptance(queue, 'W-26'), []);
+  assert.deepEqual(queue.map(r => r.status), ['PENDING','PENDING','PENDING']);
+});
+
 test('PR count is informational and cannot dictate a session boundary', () => {
   assert.doesNotMatch(run.toString(), /Next session boundary/);
 });
@@ -58,6 +71,8 @@ test('real git refs and ancestry drive the offline CLI without network/mutations
     mkdirSync(join(root, 'docs')); writeFileSync(join(root, 'file'), 'first'); git('add', '.'); git('commit', '-m', 'first'); const first = git('rev-parse', 'HEAD');
     writeFileSync(join(root, 'file'), 'second'); git('add', '.'); git('commit', '-m', 'second'); const second = git('rev-parse', 'HEAD');
     git('update-ref', 'refs/remotes/origin/main', second); git('update-ref', 'refs/remotes/origin/live', first);
+    mkdirSync(join(root, 'docs/pr-cards'));
+    writeFileSync(join(root, 'docs/pr-cards/work-index.json'), JSON.stringify({ activeExecution: 'W-22FIN' }));
     writeFileSync(join(root, 'docs/session-policy.json'), JSON.stringify({ repository: 'fixture/repo', ledger: 'docs/STATUS.md', instructions: 'AGENTS.md' }));
     writeFileSync(join(root, 'docs/STATUS.md'), block([row('FIRST', first), row('SECOND', second)]));
     writeFileSync(join(root, 'acceptance.json'), JSON.stringify({ snapshot: acceptanceSnapshot(planQueue([row('FIRST', first), row('SECOND', second)], { main: second, live: first, deployed: first, deploymentState: 'READY' }, (x, y) => x === y || x === first && y === second)), deployed: first, deploymentState: 'READY', tasks: [
