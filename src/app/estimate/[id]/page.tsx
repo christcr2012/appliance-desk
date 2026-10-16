@@ -8,6 +8,7 @@ import { getFinalizedConvertedEstimateOrder } from "@/domains/estimates/finalize
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
 import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote";
 import { ReviewedPreapprovalQuote } from "@/components/estimates/reviewed-preapproval-quote";
+import { readOfferedSlots } from "@/domains/orders/delivery";
 
 export const metadata = {
   title: "Your estimate",
@@ -170,7 +171,9 @@ export default async function PublicEstimatePage({
         )}
         {!RESPONDED_STATUSES.has(estimate.status) && (
           <EstimateResponseForm estimateId={estimate.id} allowApproval={!!reviewedQuote}
-            expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint} />
+            expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint}
+            deliveryOptions={readOfferedSlots(estimate.deliveryOffer)}
+            offerVersion={estimate.deliveryOfferVersion} />
         )}
       </div>
     </main>

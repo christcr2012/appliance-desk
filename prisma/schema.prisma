@@ -1394,6 +1394,12 @@ model Job {
   type       JobType
   status     JobStatus @default(SCHEDULED)
   scheduledAt DateTime?
+  // Signed W-24 request is not scheduled until an authorized owner/staff confirms.
+  requestedDelivery Json?
+  requestedDeliveryAt DateTime?
+  confirmedDeliveryAt DateTime?
+  approvedTripFeeCents Int @default(0)
+  approvedTripFeeReason String?
 
   // Scheduling (Batch C, P1-A). The person doing the visit; conflicts are only
   // checked between jobs with the same person. durationMinutes null = use
@@ -1798,6 +1804,11 @@ model Estimate {
   reviewedQuoteFingerprint String?
   reviewedOrderFingerprint String?
   reviewedQuoteAt DateTime?
+  // W-24: owner-offered options are not confirmed bookings.
+  deliveryOffer Json @default("[]")
+  deliveryOfferVersion Int @default(0)
+  deliveryRequested Json?
+  deliveryRequestedAt DateTime?
 
   // The OWNER/ADMIN who created this — every Estimate is staff-created,
   // never self-service.
@@ -2606,6 +2617,14 @@ model PurchaseUseTax {
 model BusinessSettings {
   id    String @id @default("singleton")
 
+  // W-24 delivery windows and operator-reviewed fees (private until publication).
+  deliveryMorningStartHour Int @default(8)
+  deliveryMorningEndHour Int @default(12)
+  deliveryAfternoonStartHour Int @default(12)
+  deliveryAfternoonEndHour Int @default(17)
+  relocationFeeCents Int @default(7500)
+  missedTripFeeCents Int @default(0)
+  drivingOriginAddress String @default("Greeley, CO")
   tenantContactRetentionMonths Int @default(12)
   // Fail closed until separate documented privacy/legal review AND operator activation.
   tenantContactPurgeApprovedAt DateTime?

@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { readOfferedSlots } from "@/domains/orders/delivery";
+import { DeliveryOfferPanel } from "./delivery-offer-panel";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getEstimateDetail, totalMonthlyCents, totalOneTimeCents } from "@/domains/estimates";
@@ -87,6 +89,11 @@ export default async function EstimateDetailPage({
           </p>
         </div>
       )}
+
+      <DeliveryOfferPanel estimateId={estimate.id}
+        options={readOfferedSlots(estimate.deliveryOffer)}
+        version={estimate.deliveryOfferVersion}
+        editable={["DRAFT","CHANGES_REQUESTED","SENT","VIEWED"].includes(estimate.status)} />
 
       {estimate.status === "DECLINED" && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
