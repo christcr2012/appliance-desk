@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/session";
 import { chooseCustomerLanguage } from "@/domains/language";
 
-export type LanguageActionResult = { status: "success" | "error"; message: string };
+export type LanguageActionResult = { status: "idle" | "success" | "error"; message: string };
 export async function saveCustomerLanguage(formData: FormData): Promise<LanguageActionResult> {
   const session = await requireSession();
   const language = formData.get("language");

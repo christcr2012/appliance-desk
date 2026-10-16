@@ -1,15 +1,15 @@
 "use client";
 
 import { useActionState } from "react";
-import { saveCustomerLanguage } from "./language-actions";
+import { saveCustomerLanguage, type LanguageActionResult } from "./language-actions";
 
 export function LanguagePreferenceForm({ initialLanguage }: { initialLanguage: "en" | "es" }) {
-  const [state, action, pending] = useActionState(
-    async (_previous: { status: "idle" | "success" | "error"; message: string }, form: FormData) => {
+  const [state, action, pending] = useActionState<LanguageActionResult, FormData>(
+    async (_previous, form: FormData) => {
       const result = await saveCustomerLanguage(form);
       return result;
     },
-    { status: "idle" as const, message: "" },
+    { status: "idle", message: "" },
   );
 
   return (
