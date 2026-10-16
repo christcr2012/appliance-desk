@@ -26,7 +26,7 @@ export function W24JobFeePanel({jobId,version,kind,configuredCents,approvedCents
         if(result.ok)router.refresh();
       });
     }} className="space-y-2">
-      <label className="block text-sm">Owner's per-job documented reason
+      <label className="block text-sm">Owner&apos;s per-job documented reason
         <textarea required minLength={16} maxLength={500} value={proof}
           onChange={e=>setProof(e.target.value)} className="mt-1 w-full rounded border border-line p-2"/></label>
       <button disabled={busy} className="rounded border border-line px-3 py-2">

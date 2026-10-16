@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { claimProviderOperation, completeProviderOperation, runProviderCall } from "@/domains/billing/provider-ops";
