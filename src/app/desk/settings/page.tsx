@@ -5,6 +5,8 @@ import { EarlyReturnForm } from "./early-return-form";
 import { earlyReturnDefaults, earlyReturnSettingsFrom } from "@/domains/settings/early-return";
 import { MONTH_TO_MONTH_STARTING_DRAFTS, monthToMonthSettingsDefaults } from "@/domains/settings/month-to-month";
 import { prisma } from "@/lib/prisma";
+import { allSpanishSurfacesReady, getSpanishReview } from "@/domains/language/review";
+import { SpanishReviewForm } from "./spanish-review-form";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
 import { getLeadScoringPolicy } from "@/domains/leads/scoring-policy";
@@ -57,6 +59,7 @@ export default async function DeskSettingsPage({
   const session = await requireRole("OWNER", "ADMIN");
   const section = settingsSection((await searchParams).section);
   const settings = await getBusinessSettings();
+  const spanishReview = section === "notifications" ? await getSpanishReview() : null;
   const activeSetupTaxTreatment = section === "policies"
     ? await getEffectiveSetupTaxTreatment() : "UNDECIDED";
   const upcomingSetupPolicies = section === "policies"
@@ -356,6 +359,17 @@ export default async function DeskSettingsPage({
           </ButtonLink>
         </div>
       </Card>
+      {section === "notifications" && spanishReview && (
+        <Card title="Spanish customer language: independently reviewed activation"
+          description="Owner-only review evidence. Spanish defaults off until the current copy and controlling-English legal text are verified.">
+          <SpanishReviewForm surfacesReady={allSpanishSurfacesReady} digest={spanishReview.currentDigest}
+            currentReview={spanishReview.currentReview}
+            reviewedAt={spanishReview.reviewedAt?.toISOString() ?? null}
+            legalReviewedAt={spanishReview.legalReviewedAt?.toISOString() ?? null}
+            publishedAt={spanishReview.publishedAt?.toISOString() ?? null}
+            reviewerName={spanishReview.reviewerName} />
+        </Card>
+      )}
       {section === "notifications" && <div className="mb-4"><ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink></div>}
       {section === "notifications" && <SmsTemplatePreview />}
     </>);

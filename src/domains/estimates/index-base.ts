@@ -81,9 +81,15 @@ export async function createEstimateDraft(
   userId: string,
   input: NewEstimateInput,
 ) {
+  const recipient = await prisma.customer.findUnique({
+    where: { id: input.customerId },
+    select: { preferredLanguage: true },
+  });
+  if (!recipient) throw new Error("Customer account no longer exists.");
   const estimate = await prisma.estimate.create({
     data: {
       customerId: input.customerId,
+      preferredLanguage: recipient.preferredLanguage,
       title: input.title,
       clientMessage: input.clientMessage || null,
       internalNotes: input.internalNotes || null,
@@ -674,6 +680,16 @@ export async function approveEstimate(
         serviceAddressId = converted.serviceAddressId;
         if (converted.isNewAccount) activationEmail = converted.email;
       }
+    }
+
+    // Carry a lead's customer-selected quote language into the newly created
+    // customer at verified approval. The bearer link cannot mutate customers
+    // directly; this write occurs only in the guarded approval transaction.
+    if (customerId) {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { preferredLanguage: estimate.preferredLanguage },
+      });
     }
 
     await tx.estimate.update({

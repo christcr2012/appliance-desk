@@ -1775,6 +1775,8 @@ model Estimate {
   leadId         String?
   lead           Lead?          @relation(fields: [leadId], references: [id])
   status         EstimateStatus @default(DRAFT)
+  // Language chosen on an approved quote before an account exists.
+  preferredLanguage String @default("en")
 
   // Internal reference only, e.g. "Sunset Apartments — 12 units" — never
   // shown to the customer (the document just says "Estimate #123").
@@ -3911,4 +3913,34 @@ model ExceptionSnooze {
   updatedAt      DateTime @updatedAt
 
   @@index([snoozedUntil])
+}
+
+// W-26 reviewed Spanish copy activation: explicitly separate owner recording of
+// actual reviewer evidence from deploy, and invalidate every approval on copy changes.
+model CustomerLanguageReview {
+  language String @id
+  copyDigest String
+  reviewerName String
+  reviewReference String
+  reviewedAt DateTime
+  legalReviewerName String?
+  legalReviewReference String?
+  legalReviewedAt DateTime?
+  publishedAt DateTime?
+  publishedByUserId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events CustomerLanguageReviewEvent[]
+}
+
+model CustomerLanguageReviewEvent {
+  id String @id @default(cuid())
+  language String
+  review CustomerLanguageReview @relation(fields: [language], references: [language], onDelete: Restrict)
+  actorUserId String
+  action String
+  reviewedDigest String
+  evidenceReference String?
+  occurredAt DateTime @default(now())
+  @@index([language, occurredAt])
 }

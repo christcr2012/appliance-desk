@@ -13,6 +13,8 @@ import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote"
 import { ReviewedPreapprovalQuote } from "@/components/estimates/reviewed-preapproval-quote";
 import { readOfferedSlots } from "@/domains/orders/delivery";
 import { publicPhoneOrderPrefill } from "@/domains/orders/phone-orders";
+import { QuoteLanguageChoice } from "./language-choice";
+import { parseCustomerLanguage } from "@/domains/language/copy";
 
 export const metadata = {
   title: "Your estimate",
@@ -61,6 +63,10 @@ export default async function PublicEstimatePage({
   return (
     <main className="mx-auto max-w-lg px-6 py-16">
       <h1 className="text-xl font-semibold">Estimate #{estimate.estimateNumber}</h1>
+      {(estimate.status === "SENT" || estimate.status === "VIEWED") && (
+        <QuoteLanguageChoice estimateId={estimate.id}
+          preferredLanguage={parseCustomerLanguage(estimate.preferredLanguage)} />
+      )}
       <p className="mt-2 text-sm text-ink-soft">Prepared for {customerName}</p>
 
       {estimate.clientMessage && (
