@@ -203,13 +203,44 @@ export async function scheduleJob(
     if (locked.length !== 1) throw new Error("Couldn't find that job.");
     const before = await tx.job.findUniqueOrThrow({
       where: { id: input.jobId },
-      select: { status: true, version: true, scheduledAt: true, durationMinutes: true, assignedToUserId: true },
+      select: { status: true, version: true, scheduledAt: true,
+        durationMinutes: true, assignedToUserId: true, agreementId: true,
+        type: true, requestedDelivery: true, requestedDeliveryAt: true,
+        confirmedDeliveryAt: true, originalConfirmedDeliveryFor: true },
     });
     if (before.version !== input.expectedVersion || before.assignedToUserId !== peek.assignedToUserId) {
       throw new JobVersionError();
     }
     if (before.status !== "SCHEDULED" && before.status !== "IN_PROGRESS") {
       throw new Error("Only a job that is scheduled or in progress can be rescheduled.");
+    }
+
+    // W-24: the customer's option is a request, and receipt-backed money
+    // readiness plus owner confirmation are independent of that request.
+    let firstDeliveryConfirmation = false;
+    if (before.type === "DELIVERY" && before.requestedDeliveryAt) {
+      if (!before.agreementId) throw new Error("The requested delivery has no agreement.");
+      const { assertSigningPaymentReadyForDispatchInTx } =
+        await import("@/domains/billing/signing-dispatch-readiness");
+      await assertSigningPaymentReadyForDispatchInTx(tx, before.agreementId);
+      if (!before.confirmedDeliveryAt) {
+        const { validateDeliveryConfirmation } =
+          await import("@/domains/orders/delivery");
+        const window = await tx.businessSettings.findUnique({
+          where: { id:"singleton" }, select: {
+            deliveryMorningStartHour:true, deliveryMorningEndHour:true,
+            deliveryAfternoonStartHour:true, deliveryAfternoonEndHour:true,
+          },
+        });
+        validateDeliveryConfirmation({ requested:before.requestedDelivery,
+          scheduledAt:input.scheduledAt,
+          windows: { morningStart:window?.deliveryMorningStartHour??8,
+            morningEnd:window?.deliveryMorningEndHour??12,
+            afternoonStart:window?.deliveryAfternoonStartHour??12,
+            afternoonEnd:window?.deliveryAfternoonEndHour??17 },
+        });
+        firstDeliveryConfirmation = true;
+      }
     }
 
     const overriddenConflictJobIds = await checkConfirmedConflicts(tx, {
@@ -227,6 +258,10 @@ export async function scheduleJob(
         durationMinutes,
         assignedToUserId: input.assignedToUserId,
         version: { increment: 1 },
+        ...(firstDeliveryConfirmation ? {
+          confirmedDeliveryAt: new Date(),
+          originalConfirmedDeliveryFor: input.scheduledAt,
+        } : {}),
         // A visit moved to another Colorado day needs its day-of reminder again; a time change within the same day keeps it.
         ...(before.scheduledAt && businessDateKey(before.scheduledAt) === businessDateKey(input.scheduledAt)
           ? {}
@@ -234,6 +269,12 @@ export async function scheduleJob(
       },
     });
     if (updated.count !== 1) throw new JobVersionError();
+
+    if (firstDeliveryConfirmation) {
+      await tx.staffTask.updateMany({ where: {
+        sourceKey:"w24-confirm-delivery:"+input.jobId, completedAt:null,
+      }, data: { completedAt:new Date() } });
+    }
 
     // The account's contact preference controls the client's appointment copy.
     // No tenant SMS, login, fee or third-party provider operation is authorized.

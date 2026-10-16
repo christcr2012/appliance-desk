@@ -2,11 +2,13 @@ ALTER TABLE "Estimate"
   ADD COLUMN "deliveryOffer" JSONB NOT NULL DEFAULT '[]',
   ADD COLUMN "deliveryOfferVersion" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN "deliveryRequested" JSONB,
-  ADD COLUMN "deliveryRequestedAt" TIMESTAMP(3);
+  ADD COLUMN "deliveryRequestedAt" TIMESTAMP(3),
+  ADD COLUMN "customerAutoFinishEnabled" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "Job"
   ADD COLUMN "requestedDelivery" JSONB,
   ADD COLUMN "requestedDeliveryAt" TIMESTAMP(3),
   ADD COLUMN "confirmedDeliveryAt" TIMESTAMP(3),
+  ADD COLUMN "originalConfirmedDeliveryFor" TIMESTAMP(3),
   ADD COLUMN "approvedTripFeeCents" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN "approvedTripFeeReason" TEXT;
 ALTER TABLE "BusinessSettings"

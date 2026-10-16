@@ -1398,6 +1398,7 @@ model Job {
   requestedDelivery Json?
   requestedDeliveryAt DateTime?
   confirmedDeliveryAt DateTime?
+  originalConfirmedDeliveryFor DateTime?
   approvedTripFeeCents Int @default(0)
   approvedTripFeeReason String?
 
@@ -1809,6 +1810,8 @@ model Estimate {
   deliveryOfferVersion Int @default(0)
   deliveryRequested Json?
   deliveryRequestedAt DateTime?
+  // Explicit owner decision for already-prepared single-site self completion.
+  customerAutoFinishEnabled Boolean @default(false)
 
   // The OWNER/ADMIN who created this — every Estimate is staff-created,
   // never self-service.

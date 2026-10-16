@@ -168,3 +168,17 @@ export async function declineEstimateAction(estimateId:string,raw:unknown):Promi
     return{status:"declined"};
   }catch(error){return{status:"error",message:error instanceof Error?error.message:"Couldn't decline."};}
 }
+
+export async function continueEstimateOrderAction(estimateId: string):
+  Promise<{state:"SIGN";path:string}|{state:"WAITING"|"OWNER_REVIEW"|"ERROR";message?:string}> {
+  const ip=await getIp();
+  if(await isRateLimited("estimate-continue:"+(ip??"unknown"),RATE_LIMIT))
+    return{state:"ERROR",message:"Too many attempts. Please try later."};
+  try{
+    const {continueApprovedCustomerOrder}=await import("@/domains/orders/customer-finish");
+    return await continueApprovedCustomerOrder(estimateId);
+  }catch{
+    // Never reflect internal customer/financial data to a bearer-link caller.
+    return{state:"OWNER_REVIEW"};
+  }
+}

@@ -1,12 +1,13 @@
 "use client";
 import { useState,useTransition } from "react";
 import { setEstimateDeliveryOptionsAction } from "./delivery-offer-actions";
-export function DeliveryOfferPanel({estimateId,options,editable,version}:{
+export function DeliveryOfferPanel({estimateId,options,editable,version,autoFinishEnabled=false}:{
   estimateId:string;options:Array<{date:string;window:"AM"|"PM"}>;
-  editable:boolean;version:number;
+  editable:boolean;version:number;autoFinishEnabled?:boolean;
 }) {
   const [rows,setRows]=useState(options.map(x=>({date:x.date,window:x.window})));
   const [pending,start]=useTransition();
+  const [autoFinish,setAutoFinish]=useState(autoFinishEnabled);
   const [notice,setNotice]=useState("");
   const url = typeof window === "undefined" ? "/estimate/"+estimateId :
     window.location.origin+"/estimate/"+estimateId;
@@ -36,13 +37,19 @@ export function DeliveryOfferPanel({estimateId,options,editable,version}:{
           className="underline text-sm">Remove</button>}
       </li>)}
     </ul>
+    {editable && <label className="flex items-start gap-2 text-sm">
+      <input type="checkbox" checked={autoFinish} onChange={e=>setAutoFinish(e.target.checked)}/>
+      Authorize prepared single-property offers to continue through signing without
+      a second manual conversion. Multiple-property, unfrozen or unreviewed
+      orders still stop for explicit owner review.
+    </label>}
     {editable && <div className="flex flex-wrap gap-2">
       <button type="button" disabled={pending||rows.length>=4}
         onClick={()=>setRows(prev=>[...prev,{date:"",window:"AM"}])}
         className="rounded border border-line px-3 py-2 text-sm">Add choice</button>
       <button type="button" disabled={pending||rows.length<1||rows.some(row=>!row.date)}
         onClick={()=>start(async()=>{
-          const reply=await setEstimateDeliveryOptionsAction(estimateId,rows);
+          const reply=await setEstimateDeliveryOptionsAction(estimateId,rows,autoFinish);
           setNotice(reply.ok?"Saved; old customer choice versions are invalidated.":reply.message);
         })} className="rounded bg-action px-3 py-2 text-sm text-on-action">
         Save offered windows</button>

@@ -1,4 +1,5 @@
 import { signedReserveAmount } from "./signing-reserve-liability";
+import { requestPaidDeliveryInTx } from "@/domains/orders/settled-delivery";
 import type Stripe from "stripe";
 import type { Prisma } from "@prisma/client";
 import { idOf, type WebhookEvidence } from "./webhook-evidence";
@@ -185,5 +186,6 @@ export async function processSigningCheckoutEvent(
       },
     });
   }
+  await requestPaidDeliveryInTx(tx, agreementId);
   return true;
 }

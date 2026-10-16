@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { saveDeliveryOffers } from "@/domains/orders/delivery";
 
 export async function setEstimateDeliveryOptionsAction(estimateId: string,
-  options: Array<{date:string;window:"AM"|"PM"}>) {
+  options: Array<{date:string;window:"AM"|"PM"}>, autoFinish=false) {
   const session = await requireRole("OWNER","ADMIN");
   try {
-    const saved = await saveDeliveryOffers(session.user.id,estimateId,options);
+    const saved = await saveDeliveryOffers(session.user.id,estimateId,options,autoFinish);
     revalidatePath("/desk/estimates/"+estimateId);
     revalidatePath("/estimate/"+estimateId);
     return {ok:true as const,...saved};

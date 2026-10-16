@@ -61,16 +61,22 @@ export const drivingEvidenceSchema = z.object({
   measuredAt: z.iso.datetime(),
   origin: z.string().trim().min(5).max(300),
 }).strict();
-export function reviewedDrivingFee(raw: unknown, expectedOrigin: string) {
+export function reviewedDrivingFee(raw: unknown, expectedOrigin: string,
+  now = new Date()) {
   const evidence = drivingEvidenceSchema.parse(raw);
-  if (evidence.origin !== expectedOrigin)
-    throw new Error("Distance proof does not use the currently configured origin.");
+  if (!expectedOrigin || expectedOrigin.startsWith("UNVERIFIED:") ||
+      evidence.origin !== expectedOrigin)
+    throw new Error("Distance proof does not use a verified current origin.");
+  const measured = new Date(evidence.measuredAt).getTime();
+  if (!Number.isFinite(measured) || measured > now.getTime()+5*60*1000 ||
+      now.getTime()-measured > 7*24*60*60*1000)
+    throw new Error("Driving route proof is stale. Reverify or record a reviewed manual route.");
   const band = mileageBand(evidence.miles);
   if (!band.allowed) throw new Error("Outside automatic delivery bands. Require separate manual review.");
   return { ...band, evidence };
 }
 export async function saveDeliveryOffers(userId: string, estimateId: string,
-  input: { date: string; window: "AM" | "PM" }[]) {
+  input: { date: string; window: "AM" | "PM" }[], autoFinish=false) {
   if (!Array.isArray(input) || input.length < 1 || input.length > 4)
     throw new Error("Offer between one and four delivery choices.");
   const options = input.map(row => slotSchema.parse({ ...row, id:randomUUID() }));
@@ -93,12 +99,12 @@ export async function saveDeliveryOffers(userId: string, estimateId: string,
     // An existing linked offer must be refreshed when choices change.
     const row = await tx.estimate.update({
       where:{id:estimateId},data:{deliveryOffer:options,
-        deliveryOfferVersion:{increment:1}},
+        deliveryOfferVersion:{increment:1},customerAutoFinishEnabled:autoFinish},
       select:{deliveryOfferVersion:true},
     });
     await tx.auditLog.create({data:{userId,action:"estimate.delivery_choices",
       entityType:"Estimate",entityId:estimateId,newValue:{count:options.length,
-        version:row.deliveryOfferVersion,windows:options.map(x=>x.date+":"+x.window)}}});
+        version:row.deliveryOfferVersion,autoFinish,windows:options.map(x=>x.date+":"+x.window)}}});
     return {count:options.length,version:row.deliveryOfferVersion};
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
@@ -115,4 +121,32 @@ export async function recordEstimateDeliverySelectionInTx(
 export function isDeliveryRequested(value: {requestedDeliveryAt: Date | null;
   scheduledAt:Date | null;confirmedDeliveryAt:Date | null}) {
   return !!value.requestedDeliveryAt && !value.scheduledAt && !value.confirmedDeliveryAt;
+}
+
+/** Pure first-confirmation gate. A selected offer is not a scheduling approval. */
+export function validateDeliveryConfirmation(input: {
+  requested: unknown; scheduledAt: Date;
+  windows: { morningStart:number;morningEnd:number;afternoonStart:number;afternoonEnd:number };
+}) {
+  if (!(input.scheduledAt instanceof Date) || !Number.isFinite(input.scheduledAt.getTime()))
+    throw new Error("Invalid proposed delivery time.");
+  const evidence = z.object({ slot: slotSchema }).passthrough().safeParse(input.requested);
+  if(!evidence.success) throw new Error("No valid customer-requested delivery choice.");
+  const time = new Intl.DateTimeFormat("en-GB",{ timeZone: DENVER,
+    year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",
+    hourCycle:"h23" }).formatToParts(input.scheduledAt);
+  const val=(key:string)=>Number(time.find(x=>x.type===key)?.value);
+  const date = [String(val("year")).padStart(4,"0"),String(val("month")).padStart(2,"0"),
+    String(val("day")).padStart(2,"0")].join("-");
+  if(date!==evidence.data.slot.date)
+    throw new Error("Owner confirmation must match the offered local delivery date.");
+  const minutes=val("hour")*60+val("minute");
+  const start=(evidence.data.slot.window==="AM"?
+    input.windows.morningStart:input.windows.afternoonStart)*60;
+  const end=(evidence.data.slot.window==="AM"?
+    input.windows.morningEnd:input.windows.afternoonEnd)*60;
+  if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||
+     end>1440||start>=end||minutes<start||minutes>=end)
+    throw new Error("Scheduled time is outside the customer's offered AM/PM window.");
+  return {slot:evidence.data.slot,date,minutes};
 }

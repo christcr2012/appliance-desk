@@ -1,4 +1,5 @@
 import { signedReserveAmount } from "./signing-reserve-liability";
+import { requestPaidDeliveryInTx } from "@/domains/orders/settled-delivery";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -115,6 +116,7 @@ export async function recordManualSigningPayment(input: ManualSigningPaymentInpu
         data: { agreementId: input.agreementId, receiptId: receipt.id,
           orderFingerprint: obligation.orderFingerprint, amountCents: obligation.downPaymentCents },
       });
+    await requestPaidDeliveryInTx(tx, input.agreementId);
     await tx.auditLog.create({
       data: { userId: input.actingUserId, action: "billing.signing_manual_payment",
         entityType: "RentalAgreement", entityId: input.agreementId,

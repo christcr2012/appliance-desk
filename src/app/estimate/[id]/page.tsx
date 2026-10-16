@@ -3,6 +3,7 @@ import { estimateValidThroughKey } from "@/domains/estimates/validity";
 import { businessDateFromKey, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { EstimateResponseForm } from "./estimate-response-form";
+import { ContinueEstimateOrderButton } from "./continue-estimate-button";
 import { PayDepositButton } from "./pay-deposit-button";
 import { getFinalizedConvertedEstimateOrder } from "@/domains/estimates/finalized-order";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
@@ -128,6 +129,7 @@ export default async function PublicEstimatePage({
         {estimate.status === "APPROVED" && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
             <p className="font-medium">You approved this estimate.</p>
+            <div className="my-3"><ContinueEstimateOrderButton estimateId={estimate.id}/></div>
             {estimate.depositCents > 0 && estimate.depositPaidAt && (
               <p className="mt-1">
                 Deposit of {formatCents(estimate.depositCents)} received — thank you.

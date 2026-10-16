@@ -90,6 +90,20 @@ export async function signAgreementAction(
         signed?.signature?.signingAllInCents != null) {
       try {
         const reviewed = await getReviewedSigningPayment(agreementId);
+        // W-24 TEST can continue directly to Stripe's hosted page only with
+        // the independent signed-payment feature flag and sk_test key. The
+        // existing checkout boundary enforces both and refuses LIVE.
+        if (process.env.W22_SIGNING_TEST_CHECKOUT_ENABLED === "true" &&
+            process.env.VERCEL_ENV !== "production" &&
+            process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")) {
+          const { createSigningTestCheckout } =
+            await import("@/domains/billing/signing-payment-checkout");
+          const session = await createSigningTestCheckout(agreementId);
+          return { status: "success", agreementId,
+            checkoutUrl: session.checkoutUrl,
+            pendingSigningAmountCents: reviewed.plan.allInCents,
+            paymentNeedsReview: !session.checkoutUrl };
+        }
         return { status: "success", agreementId, checkoutUrl: null,
           pendingSigningAmountCents: reviewed.plan.allInCents };
       } catch {

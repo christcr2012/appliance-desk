@@ -93,6 +93,7 @@ export default async function EstimateDetailPage({
       <DeliveryOfferPanel estimateId={estimate.id}
         options={readOfferedSlots(estimate.deliveryOffer)}
         version={estimate.deliveryOfferVersion}
+        autoFinishEnabled={estimate.customerAutoFinishEnabled}
         editable={["DRAFT","CHANGES_REQUESTED","SENT","VIEWED"].includes(estimate.status)} />
 
       {estimate.status === "DECLINED" && (
