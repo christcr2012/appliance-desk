@@ -162,6 +162,17 @@ export const PORTAL_TRANSLATIONS = {
   "Unpaid balance": "Saldo pendiente",
   "Monthly rental": "Alquiler mensual",
   "No recorded rental": "No hay alquiler registrado",
+  "Newer visits": "Visitas más recientes",
+  "Older visits": "Visitas anteriores",
+  "No visits on this page.": "No hay visitas en esta página.",
+  "Newer requests": "Solicitudes más recientes",
+  "Older requests": "Solicitudes anteriores",
+  "Invoice amounts can include deposits, fees and tax. A required deposit is separate from your rental rate.": "Las facturas pueden incluir depósitos, cargos e impuestos. El depósito obligatorio es independiente de su alquiler.",
+  "Manage privacy requests": "Administrar solicitudes de privacidad",
+  "Billing, tax, signed-agreement and audit evidence may need to be retained even when a request is approved.": "Es posible que debamos conservar registros de facturación, impuestos, contratos firmados y auditoría aunque se apruebe una solicitud.",
+  "A pickup request is reviewed by the business; it does not cancel your agreement or change billing automatically.": "La empresa revisa la solicitud de recogida; no cancela su contrato ni cambia la facturación automáticamente.",
+  "Ending this agreement early": "Finalización anticipada de este contrato",
+  "This link isn't available": "Este enlace no está disponible",
 } as const;
 
 export type PortalLabel = keyof typeof PORTAL_TRANSLATIONS;

@@ -320,7 +320,7 @@ export default async function AccountRentalsPage({
       <div className="mt-8">
         <h2 className="font-medium text-ink">Delivery &amp; visit history</h2>
         {!visitPage || visitPage.items.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-soft">No visits on this page.</p>
+          <p className="mt-2 text-sm text-ink-soft">{t("No visits on this page.")}</p>
         ) : (
           <ul className="mt-2 divide-y divide-line rounded-card border border-line bg-surface">
             {visitPage.items.map((job) => (
