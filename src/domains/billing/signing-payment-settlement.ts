@@ -1,4 +1,5 @@
 import { signedReserveAmount } from "./signing-reserve-liability";
+import { requestPaidDeliveryInTx } from "@/domains/orders/settled-delivery";
 import type Stripe from "stripe";
 import type { Prisma } from "@prisma/client";
 import { idOf, type WebhookEvidence } from "./webhook-evidence";
@@ -76,6 +77,16 @@ export async function processSigningCheckoutEvent(
         where: { id: attempt.id },
         data: { status: "FAILED", failureCode: "STRIPE_ASYNC_PAYMENT_FAILED",
           providerObjectId: session.id },
+      });
+    }
+    if (metadata.w24SavedMethod==="1") {
+      const owner=await tx.user.findFirst({where:{role:"OWNER"},select:{id:true}});
+      if(owner)await tx.staffTask.upsert({
+        where:{sourceKey:"w24-payment-retry:"+agreementId},
+        create:{sourceKey:"w24-payment-retry:"+agreementId,
+          createdByUserId:owner.id,customerId:obligation.agreement.customerId,
+          priority:"HIGH",note:"Signing TEST payment failed. Verify provider attempt before sending another secure checkout link; do not confirm delivery."},
+        update:{completedAt:null},
       });
     }
     return true;
@@ -185,5 +196,35 @@ export async function processSigningCheckoutEvent(
       },
     });
   }
+  // W-24: only a signed, verified paid TEST checkout can attach the
+  // account's saved recurring-method provider identity. Never a redirect.
+  if (metadata.w24SavedMethod === "1") {
+    const providerCustomer=idOf(session.customer);
+    if (!providerCustomer?.startsWith("cus_"))
+      throw new Error("Paid W-24 checkout omitted its saved-method customer.");
+    const local=await tx.customer.findUniqueOrThrow({
+      where:{id:obligation.agreement.customerId},
+      select:{stripeCustomerId:true},
+    });
+    if (local.stripeCustomerId && local.stripeCustomerId!==providerCustomer)
+      throw new Error("Stripe customer changed across signed payment.");
+    if (!local.stripeCustomerId) {
+      const used=await tx.customer.findFirst({where:{stripeCustomerId:providerCustomer},
+        select:{id:true}});
+      if (used && used.id!==obligation.agreement.customerId)
+        throw new Error("Checkout provider customer belongs to a different renter.");
+      const claimed=await tx.customer.updateMany({
+        where:{id:obligation.agreement.customerId,stripeCustomerId:null},
+        data:{stripeCustomerId:providerCustomer},
+      });
+      if (claimed.count!==1)
+        throw new Error("Stripe customer assignment raced; reconcile identity.");
+    }
+  }
+  await tx.staffTask.updateMany({
+    where:{sourceKey:"w24-payment-retry:"+agreementId,completedAt:null},
+    data:{completedAt:new Date()},
+  });
+  await requestPaidDeliveryInTx(tx, agreementId);
   return true;
 }

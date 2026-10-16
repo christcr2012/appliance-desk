@@ -88,9 +88,26 @@ export async function createSigningTestCheckout(
     if (Date.now() - attemptRow.createdAt.getTime() > 6 * 60 * 60 * 1000) {
       throw new Error("Unknown old checkout attempt requires owner reconciliation.");
     }
+    // Only a one-property, owner-authorized customer-completion quote returns
+    // to its own no-login status page. A provider redirect is never paid proof.
+    const source = await prisma.rentalAgreement.findUnique({
+      where:{id:agreementId},
+      select:{sourceEstimate:{select:{id:true,customerAutoFinishEnabled:true}}},
+    });
+    const returnPath=source?.sourceEstimate?.customerAutoFinishEnabled
+      ? "/estimate/"+source.sourceEstimate.id
+      : "/account";
+    const existingCustomer=await prisma.rentalAgreement.findUniqueOrThrow({
+      where:{id:agreementId},
+      select:{customer:{select:{stripeCustomerId:true}}},
+    });
+    const w24Setup=!!source?.sourceEstimate?.customerAutoFinishEnabled;
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"],
+      ...(w24Setup?(existingCustomer.customer.stripeCustomerId
+        ? {customer:existingCustomer.customer.stripeCustomerId}
+        : {customer_creation:"always" as const}):{}),
       client_reference_id: agreementId,
       line_items: reviewed.plan.items.map(item => ({
         quantity: 1,
@@ -100,15 +117,17 @@ export async function createSigningTestCheckout(
           product_data: { name: item.description, metadata: { kind: item.kind } },
         },
       })),
-      success_url: safeReturnOrigin() + "/account?signingPayment=processing",
-      cancel_url: safeReturnOrigin() + "/account?signingPayment=cancelled",
+      success_url: safeReturnOrigin() + returnPath + "?signingPayment=processing",
+      cancel_url: safeReturnOrigin() + returnPath + "?signingPayment=cancelled",
       metadata: {
         agreementId,
         attemptId: attempt.id,
         orderFingerprint: reviewed.plan.orderFingerprint,
         evidenceVersion: String(reviewed.plan.evidenceVersion),
+        ...(w24Setup?{w24SavedMethod:"1"}:{}),
       },
       payment_intent_data: {
+        ...(w24Setup?{setup_future_usage:"off_session" as const}:{}),
         metadata: {
           agreementId,
           attemptId: attempt.id,

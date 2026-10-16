@@ -3,11 +3,15 @@ import { estimateValidThroughKey } from "@/domains/estimates/validity";
 import { businessDateFromKey, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { EstimateResponseForm } from "./estimate-response-form";
+import { ContinueEstimateOrderButton } from "./continue-estimate-button";
+import { customerOrderFinishStatus } from "@/domains/orders/activation";
+import { OrderAccountSetupButton } from "./account-setup-button";
 import { PayDepositButton } from "./pay-deposit-button";
 import { getFinalizedConvertedEstimateOrder } from "@/domains/estimates/finalized-order";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
 import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote";
 import { ReviewedPreapprovalQuote } from "@/components/estimates/reviewed-preapproval-quote";
+import { readOfferedSlots } from "@/domains/orders/delivery";
 
 export const metadata = {
   title: "Your estimate",
@@ -37,6 +41,8 @@ export default async function PublicEstimatePage({
     );
   }
 
+  const finishedState = estimate.status === "CONVERTED"
+    ? await customerOrderFinishStatus(estimate.id) : "WAITING";
   const reviewedOrder = estimate.status === "CONVERTED"
     ? await getFinalizedConvertedEstimateOrder(estimate.id) : null;
   const quoteCandidate = estimate.status !== "CONVERTED"
@@ -127,6 +133,7 @@ export default async function PublicEstimatePage({
         {estimate.status === "APPROVED" && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
             <p className="font-medium">You approved this estimate.</p>
+            <div className="my-3"><ContinueEstimateOrderButton estimateId={estimate.id}/></div>
             {estimate.depositCents > 0 && estimate.depositPaidAt && (
               <p className="mt-1">
                 Deposit of {formatCents(estimate.depositCents)} received — thank you.
@@ -166,11 +173,20 @@ export default async function PublicEstimatePage({
         {estimate.status === "CONVERTED" && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
             <p className="font-medium">This estimate was approved and is being set up.</p>
+            {finishedState === "READY_FOR_ACCOUNT" &&
+              <div className="mt-3"><p>Signing payment confirmed. You can create your account password securely.</p>
+                <OrderAccountSetupButton estimateId={estimate.id}/></div>}
+            {finishedState === "PAYMENT_PENDING" &&
+              <p className="mt-2" role="status">Your signature is recorded. Payment is still awaiting verified settlement; a redirect is not a receipt.</p>}
+            {finishedState === "SIGN" &&
+              <div className="mt-3"><ContinueEstimateOrderButton estimateId={estimate.id}/></div>}
           </div>
         )}
         {!RESPONDED_STATUSES.has(estimate.status) && (
           <EstimateResponseForm estimateId={estimate.id} allowApproval={!!reviewedQuote}
-            expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint} />
+            expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint}
+            deliveryOptions={readOfferedSlots(estimate.deliveryOffer)}
+            offerVersion={estimate.deliveryOfferVersion} />
         )}
       </div>
     </main>

@@ -39,6 +39,8 @@ export function JobSchedulePanel({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [missedCause,setMissedCause]=useState<"NOBODY_HOME"|"HOOKUPS_NOT_READY">("NOBODY_HOME");
+  const [missedEvidence,setMissedEvidence]=useState("");
   const [when, setWhen] = useState(scheduledAtLocal);
   const [durationText, setDurationText] = useState(durationMinutes ? String(durationMinutes) : "");
   const [assignee, setAssignee] = useState(assignedToUserId ?? "");
@@ -82,7 +84,7 @@ export function JobSchedulePanel({
   function noShow() {
     setMessage(null);
     startTransition(async () => {
-      const result = await markJobNoShowAction(jobId, version);
+      const result = await markJobNoShowAction(jobId, version,missedCause,missedEvidence);
       if (result.status === "error") setMessage({ kind: "error", text: result.message });
       else router.refresh();
     });
@@ -98,7 +100,21 @@ export function JobSchedulePanel({
         {durationMinutes ? ` · ${durationMinutes} minutes` : " · usual visit length"}
         {assignedLabel ? ` · ${assignedLabel}` : " · nobody assigned"}
       </p>
-      {noShowAt && <p className="text-sm text-amber-800">Marked as a no-show — nobody was there. Nothing else was changed.</p>}
+      {noShowAt && <p className="text-sm text-amber-800">Visit cancelled after missed appointment. Check rescheduling tasks; fees require owner review.</p>}
+      {canMarkNoShow && open && <div className="space-y-2 rounded border border-line p-3">
+        <label className="text-sm">Reason for missed visit
+          <select value={missedCause} onChange={e=>setMissedCause(e.target.value as typeof missedCause)}
+            className="ml-2 rounded border border-line p-2">
+            <option value="NOBODY_HOME">Nobody available at property</option>
+            <option value="HOOKUPS_NOT_READY">Hookups not ready</option>
+          </select>
+        </label>
+        <label className="block text-sm">What actually happened (required for requested deliveries)
+          <textarea value={missedEvidence} onChange={e=>setMissedEvidence(e.target.value)}
+            maxLength={500} rows={2} className="mt-1 block w-full rounded border border-line p-2"
+            placeholder="Record factual observations, not guessed customer fault"/>
+        </label>
+      </div>}
       {message && (
         <p role={message.kind === "error" ? "alert" : "status"} className={`text-sm ${message.kind === "error" ? "text-red-800" : "text-green-800"}`}>
           {message.text}

@@ -18,6 +18,12 @@ export type SignActionState =
   | { status: "error"; message: string };
 
 const signSchema = z.object({
+  deliverySelection:z.object({
+    optionId:z.string().uuid(),expectedOfferVersion:z.number().int().min(1),
+    questions:z.object({dryerOutlet:z.enum(["THREE_PRONG","FOUR_PRONG","GAS","UNKNOWN"]),
+      washerHookups:z.enum(["YES","NO","UNKNOWN"]),stairs:z.boolean(),
+      crewNotes:z.string().trim().max(1500)}),
+  }).optional(),
   signerName: z.string().trim().min(1, "Enter your full name.").max(200),
   signerEmail: z.string().trim().email("Enter a valid email address.").max(200),
   agreedToTerms: z
@@ -62,6 +68,7 @@ export async function signAgreementAction(
       signerName: data.signerName,
       signerEmail: data.signerEmail,
       ipAddress,
+      deliverySelection:data.deliverySelection,
     });
 
     let checkoutUrl: string | null = null;
@@ -90,6 +97,20 @@ export async function signAgreementAction(
         signed?.signature?.signingAllInCents != null) {
       try {
         const reviewed = await getReviewedSigningPayment(agreementId);
+        // W-24 TEST can continue directly to Stripe's hosted page only with
+        // the independent signed-payment feature flag and sk_test key. The
+        // existing checkout boundary enforces both and refuses LIVE.
+        if (process.env.W22_SIGNING_TEST_CHECKOUT_ENABLED === "true" &&
+            process.env.VERCEL_ENV !== "production" &&
+            process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")) {
+          const { createSigningTestCheckout } =
+            await import("@/domains/billing/signing-payment-checkout");
+          const session = await createSigningTestCheckout(agreementId);
+          return { status: "success", agreementId,
+            checkoutUrl: session.checkoutUrl,
+            pendingSigningAmountCents: reviewed.plan.allInCents,
+            paymentNeedsReview: !session.checkoutUrl };
+        }
         return { status: "success", agreementId, checkoutUrl: null,
           pendingSigningAmountCents: reviewed.plan.allInCents };
       } catch {

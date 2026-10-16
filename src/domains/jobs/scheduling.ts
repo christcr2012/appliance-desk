@@ -203,13 +203,44 @@ export async function scheduleJob(
     if (locked.length !== 1) throw new Error("Couldn't find that job.");
     const before = await tx.job.findUniqueOrThrow({
       where: { id: input.jobId },
-      select: { status: true, version: true, scheduledAt: true, durationMinutes: true, assignedToUserId: true },
+      select: { status: true, version: true, scheduledAt: true,
+        durationMinutes: true, assignedToUserId: true, agreementId: true,
+        type: true, requestedDelivery: true, requestedDeliveryAt: true,
+        confirmedDeliveryAt: true, originalConfirmedDeliveryFor: true },
     });
     if (before.version !== input.expectedVersion || before.assignedToUserId !== peek.assignedToUserId) {
       throw new JobVersionError();
     }
     if (before.status !== "SCHEDULED" && before.status !== "IN_PROGRESS") {
       throw new Error("Only a job that is scheduled or in progress can be rescheduled.");
+    }
+
+    // W-24: the customer's option is a request, and receipt-backed money
+    // readiness plus owner confirmation are independent of that request.
+    let firstDeliveryConfirmation = false;
+    if (before.type === "DELIVERY" && before.requestedDeliveryAt) {
+      if (!before.agreementId) throw new Error("The requested delivery has no agreement.");
+      const { assertSigningPaymentReadyForDispatchInTx } =
+        await import("@/domains/billing/signing-dispatch-readiness");
+      await assertSigningPaymentReadyForDispatchInTx(tx, before.agreementId);
+      if (!before.confirmedDeliveryAt) {
+        const { validateDeliveryConfirmation } =
+          await import("@/domains/orders/delivery");
+        const window = await tx.businessSettings.findUnique({
+          where: { id:"singleton" }, select: {
+            deliveryMorningStartHour:true, deliveryMorningEndHour:true,
+            deliveryAfternoonStartHour:true, deliveryAfternoonEndHour:true,
+          },
+        });
+        validateDeliveryConfirmation({ requested:before.requestedDelivery,
+          scheduledAt:input.scheduledAt,
+          windows: { morningStart:window?.deliveryMorningStartHour??8,
+            morningEnd:window?.deliveryMorningEndHour??12,
+            afternoonStart:window?.deliveryAfternoonStartHour??12,
+            afternoonEnd:window?.deliveryAfternoonEndHour??17 },
+        });
+        firstDeliveryConfirmation = true;
+      }
     }
 
     const overriddenConflictJobIds = await checkConfirmedConflicts(tx, {
@@ -227,6 +258,10 @@ export async function scheduleJob(
         durationMinutes,
         assignedToUserId: input.assignedToUserId,
         version: { increment: 1 },
+        ...(firstDeliveryConfirmation ? {
+          confirmedDeliveryAt: new Date(),
+          originalConfirmedDeliveryFor: input.scheduledAt,
+        } : {}),
         // A visit moved to another Colorado day needs its day-of reminder again; a time change within the same day keeps it.
         ...(before.scheduledAt && businessDateKey(before.scheduledAt) === businessDateKey(input.scheduledAt)
           ? {}
@@ -234,6 +269,12 @@ export async function scheduleJob(
       },
     });
     if (updated.count !== 1) throw new JobVersionError();
+
+    if (firstDeliveryConfirmation) {
+      await tx.staffTask.updateMany({ where: {
+        sourceKey:"w24-confirm-delivery:"+input.jobId, completedAt:null,
+      }, data: { completedAt:new Date() } });
+    }
 
     // The account's contact preference controls the client's appointment copy.
     // No tenant SMS, login, fee or third-party provider operation is authorized.
@@ -285,7 +326,11 @@ export async function scheduleJob(
  * changes nothing else: no appliance status, custody, assignment, pending delivery, credit, invoice
  * line or billing handoff. Owner/admin, or the staff member the job is assigned to.
  */
-export async function markJobNoShow(userId: string, jobId: string, expectedVersion: number): Promise<{ version: number }> {
+export async function markJobNoShow(userId: string, jobId: string, expectedVersion: number,
+  cause: "NOBODY_HOME" | "HOOKUPS_NOT_READY" = "NOBODY_HOME",
+  evidence = ""): Promise<{ version: number }> {
+  const note = evidence.trim();
+  if (note.length > 500) throw new Error("Visit evidence is too long.");
   return prisma.$transaction(async (tx) => {
     await lockUsersForScheduling(tx, [userId]);
     const actor = await assertActiveTeamActor(tx, userId);
@@ -299,21 +344,48 @@ export async function markJobNoShow(userId: string, jobId: string, expectedVersi
     if (locked.length !== 1) throw new Error("Couldn't find that job.");
     const job = await tx.job.findUniqueOrThrow({
       where: { id: jobId },
-      select: { status: true, version: true, assignedToUserId: true, type: true, maintenanceRequestId: true },
+      select: { status: true, version: true, assignedToUserId: true, type: true,
+        maintenanceRequestId: true, requestedDeliveryAt: true, customerId: true },
     });
     if (job.version !== expectedVersion) throw new JobVersionError();
     if (job.status !== "SCHEDULED" && job.status !== "IN_PROGRESS") {
       throw new Error("Only a job that is scheduled or in progress can be marked as a no-show.");
     }
 
+    const isW24Delivery = job.type === "DELIVERY" && !!job.requestedDeliveryAt;
+    if (isW24Delivery && note.length < 16)
+      throw new Error("Record the actual missed-visit evidence before cancelling delivery.");
+
     const result = await tx.job.updateMany({
       where: { id: jobId, version: expectedVersion },
-      data: { status: "CANCELLED", noShowAt: new Date(), version: { increment: 1 } },
+      data: { status: "CANCELLED", noShowAt: new Date(),
+        noShowCause: cause, noShowEvidence: note || null,
+        version: { increment: 1 } },
     });
     if (result.count !== 1) throw new JobVersionError();
     await releaseSwapReservationsInTx(tx, userId, jobId, "Swap visit was a no-show");
     if (job.maintenanceRequestId && job.type === "MAINTENANCE_VISIT") {
       await requestAfterVisitEndedInTx(tx, userId, job.maintenanceRequestId, jobId, "CANCELLED");
+    }
+
+    if (isW24Delivery && job.customerId) {
+      await tx.staffTask.upsert({ where:{sourceKey:"w24-reschedule:"+jobId},
+        create:{sourceKey:"w24-reschedule:"+jobId,
+          createdByUserId:userId,customerId:job.customerId,jobId,
+          priority:"HIGH",
+          note:"Reschedule missed delivery. Reason: "+cause+
+            ". Check site readiness, then offer new dates. Evidence: "+note},
+        update:{} });
+      const setting=await tx.businessSettings.findUnique({
+        where:{id:"singleton"},select:{missedTripFeeCents:true},
+      });
+      if ((setting?.missedTripFeeCents??0)>0) {
+        await tx.staffTask.upsert({where:{sourceKey:"w24-trip-review:"+jobId},
+          create:{sourceKey:"w24-trip-review:"+jobId,
+            createdByUserId:userId,customerId:job.customerId,jobId,priority:"NORMAL",
+            note:"Review possible missed-visit fee; default is off unless owner approves evidence and an exact charge. No automatic invoice was issued."},
+          update:{}});
+      }
     }
 
     await tx.auditLog.create({
@@ -323,7 +395,8 @@ export async function markJobNoShow(userId: string, jobId: string, expectedVersi
         entityType: "Job",
         entityId: jobId,
         oldValue: { status: job.status },
-        newValue: { status: "CANCELLED", noShow: true },
+        newValue: { status: "CANCELLED", noShow: true,
+          cause: isW24Delivery ? cause : null, evidenceRecorded: !!note },
       },
     });
     return { version: expectedVersion + 1 };

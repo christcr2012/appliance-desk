@@ -844,6 +844,14 @@ model RentalAgreement {
   // pricing or billing logic.
   sourceEstimateId String?
   sourceEstimate   Estimate? @relation(fields: [sourceEstimateId], references: [id])
+  // W-24 independent agreement owner-offered windows; never a booked visit.
+  deliveryOffer Json @default("[]")
+  deliveryOfferVersion Int @default(0)
+  deliveryOfferActorUserId String?
+  deliveryRequested Json?
+  deliveryRequestedAt DateTime?
+  deliveryRouteProof Json?
+
 
   termMonths Int? // null = month-to-month
   startDate  DateTime?
@@ -1394,6 +1402,20 @@ model Job {
   type       JobType
   status     JobStatus @default(SCHEDULED)
   scheduledAt DateTime?
+  // Signed W-24 request is not scheduled until an authorized owner/staff confirms.
+  requestedDelivery Json?
+  requestedDeliveryAt DateTime?
+  confirmedDeliveryAt DateTime?
+  originalConfirmedDeliveryFor DateTime?
+  approvedTripFeeCents Int @default(0)
+  approvedTripFeeReason String?
+  tripFeeApprovedAt DateTime?
+  tripFeeApprovedByUserId String?
+  approvedRelocationFeeCents Int @default(0)
+  relocationFeeApprovedAt DateTime?
+  relocationFeeApprovedByUserId String?
+  relocationFeeEvidence String?
+
 
   // Scheduling (Batch C, P1-A). The person doing the visit; conflicts are only
   // checked between jobs with the same person. durationMinutes null = use
@@ -1405,6 +1427,8 @@ model Job {
   durationMinutes  Int?
   version          Int       @default(1)
   noShowAt         DateTime?
+  noShowCause String?
+  noShowEvidence String?
   partMovements    PartStockMovement[]
 
   // Completion (Batch C, P2-B): COMPLETE when every appliance got its positive result, otherwise PARTIAL.
@@ -1798,6 +1822,14 @@ model Estimate {
   reviewedQuoteFingerprint String?
   reviewedOrderFingerprint String?
   reviewedQuoteAt DateTime?
+  // W-24: owner-offered options are not confirmed bookings.
+  deliveryOffer Json @default("[]")
+  deliveryOfferVersion Int @default(0)
+  deliveryRequested Json?
+  deliveryRequestedAt DateTime?
+  deliveryRouteProof Json?
+  // Explicit owner decision for already-prepared single-site self completion.
+  customerAutoFinishEnabled Boolean @default(false)
 
   // The OWNER/ADMIN who created this — every Estimate is staff-created,
   // never self-service.
@@ -2019,6 +2051,8 @@ enum UseTaxStatus {
 // Batch B — provider operations (docs/designs/BATCH-B.md D1/D2)
 enum ProviderOperationKind {
   RDF_INVOICE_ITEM
+  TRIP_FEE_INVOICE_ITEM
+  RELOCATION_INVOICE_ITEM
   CUSTOMER_CREATE
   SUBSCRIPTION_CREATE
   SUBSCRIPTION_CANCEL
@@ -2606,6 +2640,16 @@ model PurchaseUseTax {
 model BusinessSettings {
   id    String @id @default("singleton")
 
+  // W-24 delivery windows and operator-reviewed fees (private until publication).
+  deliveryMorningStartHour Int @default(8)
+  deliveryMorningEndHour Int @default(12)
+  deliveryAfternoonStartHour Int @default(12)
+  deliveryAfternoonEndHour Int @default(17)
+  relocationFeeCents Int @default(7500)
+  missedTripFeeCents Int @default(0)
+  drivingOriginAddress String @default("UNVERIFIED: owner must choose central Greeley origin")
+  drivingOriginVerifiedAt DateTime?
+  drivingOriginSourceReference String?
   tenantContactRetentionMonths Int @default(12)
   // Fail closed until separate documented privacy/legal review AND operator activation.
   tenantContactPurgeApprovedAt DateTime?

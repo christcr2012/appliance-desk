@@ -13,8 +13,14 @@ export function validateOwnerDecisionRouting(coverage, work, fileExists = path =
   const errors = [];
   const count = coverage?.entries?.length ?? -1;
   if (coverage?.version !== 1) errors.push("Invalid owner routing version");
-  if (coverage?.activeExecutionMustRemain !== "W-23") errors.push("Owner decision map must retain current active batch W-23");
-  if (work?.activeExecution !== "W-23") errors.push("Active work changed; review roadmap sequencing and update owner decision map deliberately");
+  // This marker is a reviewed, committed roadmap transition, not a
+  // permanent W-23 fixture. Future approved successors advance this source
+  // document deliberately rather than weakening the roadmap lock.
+  const allowedOrdered = ["W-23", "W-24", "W-25", "W-26"];
+  if (!allowedOrdered.includes(coverage?.activeExecutionMustRemain))
+    errors.push("Owner decision map has no approved active W successor");
+  if (work?.activeExecution !== coverage?.activeExecutionMustRemain)
+    errors.push("Active work changed; review roadmap sequencing and update owner decision map deliberately");
   const expected = {pricing:22, delivery:5, property:6, communications:11, accounting:12};
   if (JSON.stringify(coverage?.expectedGroupCounts) !== JSON.stringify(expected))
     errors.push("Owner answer source group counts changed without a reviewed map update");

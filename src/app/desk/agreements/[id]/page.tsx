@@ -26,6 +26,9 @@ import { SigningPaymentSummary } from "@/components/billing/signing-payment-summ
 import { signingPaymentRecoveryAdvice } from "@/domains/billing/signing-payment-recovery";
 import { getReviewedSigningOrderReadback } from "@/domains/billing/signing-order-readback";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
+import { AgreementDeliveryOfferPanel } from "./delivery-offer-panel";
+import { DeliveryRouteReview } from "@/components/locations/delivery-route-review";
+import { readOfferedSlots } from "@/domains/orders/delivery";
 
 export const metadata = { title: "Agreement" };
 
@@ -102,6 +105,9 @@ export default async function AgreementDetailPage({
     }
   }
 
+  const appointmentOffer = await prisma.rentalAgreement.findUnique({
+    where:{id},select:{deliveryOffer:true,deliveryOfferVersion:true,status:true},
+  });
   return (
     <div className="max-w-3xl">
       <Link
@@ -336,6 +342,20 @@ export default async function AgreementDetailPage({
         <AgreementProgress agreement={agreement} />
       </div>
       <div className="mt-6">
+        {appointmentOffer&&<DeliveryRouteReview kind="agreement" id={id}
+          origin={(await prisma.businessSettings.findUnique({
+            where:{id:"singleton"},select:{drivingOriginAddress:true},
+          }))?.drivingOriginAddress??"UNVERIFIED"}
+          verified={!!(await prisma.businessSettings.findUnique({
+            where:{id:"singleton"},select:{drivingOriginVerifiedAt:true},
+          }))?.drivingOriginVerifiedAt}
+          proofExists={!!(await prisma.rentalAgreement.findUnique({
+            where:{id},select:{deliveryRouteProof:true},
+          }))?.deliveryRouteProof} feeCents={null}/>}
+        {appointmentOffer&&<AgreementDeliveryOfferPanel agreementId={id}
+          initial={readOfferedSlots(appointmentOffer.deliveryOffer)}
+          version={appointmentOffer.deliveryOfferVersion}
+          editable={["DRAFT","AWAITING_SIGNATURE"].includes(appointmentOffer.status)}/>}
         <AgreementDetailPanel
           agreement={agreement}
           packages={packages}

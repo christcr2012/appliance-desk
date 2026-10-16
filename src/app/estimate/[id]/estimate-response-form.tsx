@@ -1,16 +1,24 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { approveEstimateAction, requestEstimateChangesAction, type EstimateResponseState } from "./actions";
+import { approveEstimateAction, requestEstimateChangesAction, declineEstimateAction, type EstimateResponseState } from "./actions";
 
-export function EstimateResponseForm({ estimateId, allowApproval = false, expectedQuoteFingerprint }: {
+export function EstimateResponseForm({ estimateId, allowApproval = false,
+  expectedQuoteFingerprint, deliveryOptions = [], offerVersion = 0 }: {
   estimateId: string; allowApproval?: boolean; expectedQuoteFingerprint?: string | null;
+  deliveryOptions?: Array<{id:string;date:string;window:"AM"|"PM"}>;
+  offerVersion?:number;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [mode, setMode] = useState<"choose" | "approve" | "changes">("choose");
+  const [mode, setMode] = useState<"choose" | "approve" | "changes" | "decline">("choose");
   const [approverName, setApproverName] = useState("");
   const [approverEmail, setApproverEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [chosen, setChosen] = useState(deliveryOptions[0]?.id??"");
+  const [dryerOutlet,setDryerOutlet]=useState<"THREE_PRONG"|"FOUR_PRONG"|"GAS"|"UNKNOWN">("UNKNOWN");
+  const [washerHookups,setWasherHookups]=useState<"YES"|"NO"|"UNKNOWN">("UNKNOWN");
+  const [stairs,setStairs]=useState(false);
+  const [crewNotes,setCrewNotes]=useState("");
   const [result, setResult] = useState<EstimateResponseState>({ status: "idle" });
 
   // Send the browser on to Stripe Checkout for the deposit — an effect,
@@ -37,6 +45,9 @@ export function EstimateResponseForm({ estimateId, allowApproval = false, expect
       </div>
     );
   }
+  if (result.status === "declined") {
+    return <p role="status" className="rounded border border-line p-4">Your decline was recorded.</p>;
+  }
   if (result.status === "changes_requested") {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
@@ -49,7 +60,12 @@ export function EstimateResponseForm({ estimateId, allowApproval = false, expect
   function handleApprove(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      setResult(await approveEstimateAction(estimateId, { approverName, approverEmail, expectedQuoteFingerprint }));
+      setResult(await approveEstimateAction(estimateId, { approverName, approverEmail, expectedQuoteFingerprint,
+        ...(deliveryOptions.length ? { deliverySelection: {
+          optionId:chosen,expectedOfferVersion:offerVersion,
+          questions:{dryerOutlet,stairs,washerHookups,crewNotes},
+        }} : {}),
+      }));
     });
   }
 
@@ -90,6 +106,38 @@ export function EstimateResponseForm({ estimateId, allowApproval = false, expect
             className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
           />
         </div>
+        {deliveryOptions.length > 0 && <fieldset className="space-y-3 rounded border border-line p-3">
+          <legend className="font-semibold">Requested delivery (subject to owner confirmation)</legend>
+          <label className="block text-sm">Choose one of our offered windows
+            <select required value={chosen} onChange={e=>setChosen(e.target.value)}
+              className="mt-1 block w-full rounded border border-line p-2">
+              {deliveryOptions.map(option=><option key={option.id} value={option.id}>
+                {option.date} · {option.window==="AM"?"Morning":"Afternoon"}
+              </option>)}
+            </select>
+          </label>
+          <label className="block text-sm">Dryer connection
+            <select value={dryerOutlet} onChange={e=>setDryerOutlet(e.target.value as typeof dryerOutlet)}
+              className="mt-1 block w-full rounded border border-line p-2">
+              <option value="UNKNOWN">Not sure</option><option value="THREE_PRONG">3-prong</option>
+              <option value="FOUR_PRONG">4-prong</option><option value="GAS">Gas</option>
+            </select>
+          </label>
+          <label className="block text-sm">Washer hookups
+            <select value={washerHookups} onChange={e=>setWasherHookups(e.target.value as typeof washerHookups)}
+              className="mt-1 block w-full rounded border border-line p-2">
+              <option value="UNKNOWN">Not sure</option><option value="YES">Present</option>
+              <option value="NO">Not present</option>
+            </select>
+          </label>
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={stairs}
+            onChange={e=>setStairs(e.target.checked)}/> Stairs or tight spaces</label>
+          <label className="block text-sm">Crew access notes (optional)
+            <textarea value={crewNotes} onChange={e=>setCrewNotes(e.target.value)} maxLength={1500}
+              className="mt-1 block w-full rounded border border-line p-2"/>
+          </label>
+          <p className="text-xs text-ink-soft">This is a request only, not a booked appointment. We will confirm the time after signing and verified payment.</p>
+        </fieldset>}
         <div className="flex gap-3">
           <button
             type="submit"
@@ -115,6 +163,16 @@ export function EstimateResponseForm({ estimateId, allowApproval = false, expect
     );
   }
 
+  if(mode==="decline")return <form className="space-y-3 rounded border border-line p-4"
+    onSubmit={e=>{e.preventDefault();startTransition(async()=>{
+      setResult(await declineEstimateAction(estimateId,{reason:message}));
+    });}}>
+    <label className="block text-sm">Reason (optional)
+      <textarea value={message} onChange={e=>setMessage(e.target.value)} maxLength={1000}
+        className="mt-1 block w-full rounded border border-line p-2"/></label>
+    <button disabled={isPending} className="rounded bg-action px-3 py-2 text-on-action">Decline estimate</button>
+    {result.status==="error"&&<p role="alert">{result.message}</p>}
+  </form>;
   if (mode === "changes") {
     return (
       <form
@@ -168,6 +226,8 @@ export function EstimateResponseForm({ estimateId, allowApproval = false, expect
       >
         Approve estimate
       </button>}
+      <button type="button" onClick={()=>setMode("decline")}
+        className="rounded border border-line p-2">Decline estimate</button>
       <button
         type="button"
         onClick={() => setMode("changes")}

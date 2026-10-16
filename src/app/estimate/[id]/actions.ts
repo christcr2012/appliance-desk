@@ -12,10 +12,19 @@ export type EstimateResponseState =
   | { status: "idle" }
   | { status: "approved" }
   | { status: "changes_requested" }
+  | { status: "declined" }
   | { status: "redirecting"; url: string }
   | { status: "error"; message: string };
 
 const approveSchema = z.object({
+  deliverySelection: z.object({
+    optionId:z.string().uuid(),expectedOfferVersion:z.number().int().min(1),
+    questions:z.object({
+      dryerOutlet:z.enum(["THREE_PRONG","FOUR_PRONG","GAS","UNKNOWN"]),
+      stairs:z.boolean(),washerHookups:z.enum(["YES","NO","UNKNOWN"]),
+      crewNotes:z.string().trim().max(1500),
+    }),
+  }).optional(),
   expectedQuoteFingerprint: z.string().regex(/^[a-f0-9]{64}$/, "Refresh the reviewed all-in offer before approving."),
   approverName: z.string().trim().min(1, "Enter your full name.").max(200),
   approverEmail: z.string().trim().email("Enter a valid email address.").max(200),
@@ -60,6 +69,7 @@ export async function approveEstimateAction(
       expectedQuoteFingerprint: parsed.data.expectedQuoteFingerprint,
       approverName: parsed.data.approverName,
       approverEmail: parsed.data.approverEmail,
+      deliverySelection: parsed.data.deliverySelection,
       ipAddress,
     });
     const checkoutUrl = await createDepositCheckoutSessionForEstimate(estimateId);
@@ -142,5 +152,33 @@ export async function requestEstimateChangesAction(
       status: "error",
       message: error instanceof Error ? error.message : "Couldn't send that.",
     };
+  }
+}
+
+const declineSchema=z.object({reason:z.string().trim().max(1000)});
+export async function declineEstimateAction(estimateId:string,raw:unknown):Promise<EstimateResponseState> {
+  const parsed=declineSchema.safeParse(raw);
+  if(!parsed.success)return{status:"error",message:"Invalid decline reason."};
+  const ip=await getIp();
+  if(await isRateLimited("estimate-decline:"+(ip??"unknown"),RATE_LIMIT))
+    return{status:"error",message:"Too many attempts; please try again later."};
+  try {
+    const { declineOfferedEstimate }=await import("@/domains/orders/delivery-response");
+    await declineOfferedEstimate(estimateId,parsed.data.reason);
+    return{status:"declined"};
+  }catch(error){return{status:"error",message:error instanceof Error?error.message:"Couldn't decline."};}
+}
+
+export async function continueEstimateOrderAction(estimateId: string):
+  Promise<{state:"SIGN";path:string}|{state:"WAITING"|"OWNER_REVIEW"|"ERROR";message?:string}> {
+  const ip=await getIp();
+  if(await isRateLimited("estimate-continue:"+(ip??"unknown"),RATE_LIMIT))
+    return{state:"ERROR",message:"Too many attempts. Please try later."};
+  try{
+    const {continueApprovedCustomerOrder}=await import("@/domains/orders/customer-finish");
+    return await continueApprovedCustomerOrder(estimateId);
+  }catch{
+    // Never reflect internal customer/financial data to a bearer-link caller.
+    return{state:"OWNER_REVIEW"};
   }
 }

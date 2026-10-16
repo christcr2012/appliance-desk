@@ -4,8 +4,17 @@ import { useState, useTransition } from "react";
 import { signAgreementAction } from "./actions";
 import { formatMoney } from "@/lib/money-ui";
 
-export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
+export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }: {
+  signatureRecordId: string;
+  deliveryOptions?:Array<{id:string;date:string;window:"AM"|"PM"}>;
+  offerVersion?:number;
+}) {
   const [isPending, startTransition] = useTransition();
+  const [selectedOption,setSelectedOption]=useState(deliveryOptions[0]?.id??"");
+  const [dryerOutlet,setDryerOutlet]=useState<"THREE_PRONG"|"FOUR_PRONG"|"GAS"|"UNKNOWN">("UNKNOWN");
+  const [washerHookups,setWasherHookups]=useState<"YES"|"NO"|"UNKNOWN">("UNKNOWN");
+  const [stairs,setStairs]=useState(false);
+  const [crewNotes,setCrewNotes]=useState("");
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -22,6 +31,10 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
         signerName,
         signerEmail,
         agreedToTerms,
+        ...(deliveryOptions.length?{deliverySelection:{
+          optionId:selectedOption,expectedOfferVersion:offerVersion,
+          questions:{dryerOutlet,washerHookups,stairs,crewNotes},
+        }}:{}),
       });
       if (result.status === "error") {
         setError(result.message);
@@ -77,6 +90,38 @@ export function SignForm({ signatureRecordId }: { signatureRecordId: string }) {
       onSubmit={handleSubmit}
       className="space-y-4 rounded-lg border border-line bg-surface p-5"
     >
+      {deliveryOptions.length>0&&<fieldset className="space-y-3 rounded border border-line p-3">
+        <legend className="font-semibold">Requested delivery — subject to owner confirmation</legend>
+        <label className="block text-sm">Choose an offered date/window
+          <select required value={selectedOption} onChange={e=>setSelectedOption(e.target.value)}
+            className="block w-full rounded border border-line p-2">
+            {deliveryOptions.map(o=><option key={o.id} value={o.id}>
+              {o.date} · {o.window==="AM"?"Morning":"Afternoon"}</option>)}
+          </select>
+        </label>
+        <label className="block text-sm">Dryer connection
+          <select value={dryerOutlet} onChange={e=>setDryerOutlet(e.target.value as typeof dryerOutlet)}
+            className="block w-full rounded border border-line p-2">
+            <option value="UNKNOWN">Not sure</option><option value="THREE_PRONG">3-prong</option>
+            <option value="FOUR_PRONG">4-prong</option><option value="GAS">Gas</option>
+          </select>
+        </label>
+        <label className="block text-sm">Washer hookups
+          <select value={washerHookups} onChange={e=>setWasherHookups(e.target.value as typeof washerHookups)}
+            className="block w-full rounded border border-line p-2">
+            <option value="UNKNOWN">Not sure</option><option value="YES">Present</option>
+            <option value="NO">Not present</option>
+          </select>
+        </label>
+        <label className="flex gap-2 text-sm"><input type="checkbox" checked={stairs}
+          onChange={e=>setStairs(e.target.checked)}/> Stairs or tight access</label>
+        <label className="block text-sm">Crew notes (optional)
+          <textarea value={crewNotes} onChange={e=>setCrewNotes(e.target.value)}
+            maxLength={1500} className="block w-full rounded border border-line p-2"/>
+        </label>
+        <p className="text-xs text-ink-soft">Signing only requests this visit; payment
+          must be verified and an authorized person must confirm the actual booking.</p>
+      </fieldset>}
       <div>
         <label htmlFor="signerName" className="block text-sm font-medium text-ink-soft">
           Your full legal name

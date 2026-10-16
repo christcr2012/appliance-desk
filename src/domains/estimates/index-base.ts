@@ -592,6 +592,7 @@ export async function getEstimateForApproval(id: string) {
 }
 
 export type ApproveEstimateInput = {
+  deliverySelection?: import("@/domains/orders/delivery").DeliverySelection;
   expectedQuoteFingerprint: string;
   approverName: string;
   approverEmail: string;
@@ -624,6 +625,28 @@ export async function approveEstimate(
       throw new Error("This estimate's verified all-in order has changed or was never reviewed. Request an updated estimate before approval.");
     }
 
+    // The offered option is validated under the same row lock as the final quote:
+    // stale/replaced options cannot be accepted and no scheduling occurs here.
+    const { readOfferedSlots, recordEstimateDeliverySelectionInTx } =
+      await import("@/domains/orders/delivery");
+    if (readOfferedSlots(estimate.deliveryOffer).length) {
+      if (!input.deliverySelection)
+        throw new Error("Choose an offered delivery window and provide delivery details.");
+      // W-24 cannot accept a delivery route charge that was never frozen
+      // into the exact signed all-in V2 order. No fee from ZIP/air miles.
+      const preparedAgreements=await tx.rentalAgreement.findMany({
+        where:{sourceEstimateId:id},select:{id:true},
+      });
+      if(preparedAgreements.length!==1||!estimate.deliveryRouteProof)
+        throw new Error("Owner route/fee review required for this delivery order.");
+      const { assertRouteMatchesFrozenFeeInTx } =
+        await import("@/domains/orders/route-evidence");
+      await assertRouteMatchesFrozenFeeInTx(tx,preparedAgreements[0].id,
+        estimate.deliveryRouteProof);
+      await recordEstimateDeliverySelectionInTx(tx, estimate, input.deliverySelection);
+    } else if (input.deliverySelection) {
+      throw new Error("No current owner-offered delivery choice is available.");
+    }
     let customerId = estimate.customerId;
     let activationEmail: string | null = null;
     let serviceAddressId: string | null = null;
