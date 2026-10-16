@@ -1,3 +1,5 @@
+W-24 roadmap sequencing transition: checked owner decision routing now follows the reviewed active marker in docs/owner-decisions/2026-10-13-implementation-map.json rather than permanently hard-coding W-23. W-23 predecessor and PR #472 risk remediation are merged; wrong/backward/unapproved work IDs still fail. Owner original 56 decision classifications and external gates remain unchanged.
+
 2026-10-15 W-24 original full criteria were frozen before implementation. W-23 postmerge risk repair #472 is separate and does not count toward new engineering. W-24 owner/customer quote -> signing -> paid TEST receipt -> requested delivery, manual road-miles and versioned windows, independent agreement offers, account email setup, no-show and default-OFF owner-reviewed fees are implemented as a coherent dependency unit pending exact-head checks, review and merge. Real signed LIVE/TEST acceptance, CPA/legal, fee-tax authorization and production activation remain queued; no manual release was requested.
 
 ## 2026-10-15 — Postmerge W-23 review risk remediation (not a new bundle)

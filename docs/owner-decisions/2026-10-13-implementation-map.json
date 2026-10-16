@@ -10,7 +10,7 @@
     "communications": 11,
     "accounting": 12
   },
-  "activeExecutionMustRemain": "W-23",
+  "activeExecutionMustRemain": "W-24",
   "entries": [
     {
       "id": "OD13-PRI-01",
@@ -271,7 +271,7 @@
       "subject": "Telephone and delivery hours separation",
       "ownerInput": "IN-51/80",
       "target": "W-24",
-      "decision": "8:00–18:30 daily is phone availability, not delivery schedule; separate owner-configurable windows",
+      "decision": "8:00\u201318:30 daily is phone availability, not delivery schedule; separate owner-configurable windows",
       "acceptance": "No phone-hour-driven automatic appointment promise",
       "activationGate": "PHONE_PROVIDER",
       "classification": "DESIGN_COVERAGE_ONLY"
@@ -425,7 +425,7 @@
       "subject": "Phone routing and seven-day hours",
       "ownerInput": "IN-51",
       "target": "COM-L7",
-      "decision": "Owner-configurable 08:00–18:30 Denver 7 days/week with holidays and private forward destination",
+      "decision": "Owner-configurable 08:00\u201318:30 Denver 7 days/week with holidays and private forward destination",
       "acceptance": "DST/holiday fallback/number owner readback; phone != delivery hours",
       "activationGate": "VOICE_LIVE",
       "classification": "DESIGN_COVERAGE_ONLY"

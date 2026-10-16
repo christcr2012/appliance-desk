@@ -5,7 +5,7 @@ export function DeliveryOfferPanel({estimateId,options,editable,version,autoFini
   estimateId:string;options:Array<{date:string;window:"AM"|"PM"}>;
   editable:boolean;version:number;autoFinishEnabled?:boolean;
 }) {
-  const [rows,setRows]=useState(options.map(x=>({date:x.date,window:x.window})));
+  const [rows,setRows]=useState(options.length ? options.map(x=>({date:x.date,window:x.window})) : [{date:"",window:"AM" as const}]);
   const [pending,start]=useTransition();
   const [autoFinish,setAutoFinish]=useState(autoFinishEnabled);
   const [notice,setNotice]=useState("");
