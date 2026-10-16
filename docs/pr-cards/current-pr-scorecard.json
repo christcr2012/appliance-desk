@@ -10,8 +10,8 @@
     "Workspace support alias/DNS read-only checks passed; real support inbox reply, phone purchase, owner and Stripe TEST evidence remain unverified and guarded."
   ],
   "evidence": [
-    "docs/STATUS.md exact authoritative acceptance queue now 22 unique scenario IDs, original 12 preserved, newest source pins grounded in actual merged W23/W24/W25 revisions.",
-    "Read-only site and READY production Vercel provenance checked; source HEAD 7df3205 ahead of READY live 4740313d, no manual release or fixture mutation.",
-    "Workspace read-only MX, SPF, Google/Resend DKIM and support@ send-as support confirmed, but no real receipt/reply claimed."
+    "scripts/session-status.mjs missingRoadmapAcceptance validates W23/W24/W25 backlog presence before workflow planning; on W26 kickoff predecessors remain required.",
+    "scripts/session-status.test.mjs 13 unit cases pass, including missing/partial/complete queue snapshots, all with no inferred live acceptance.",
+    "PR #475 separately merged the authoritative original 22-row queue. PR #476 preserves that merge, adds only the anti-omission guard, and does not recount W25 product engineering or reopen approvals."
   ]
 }
