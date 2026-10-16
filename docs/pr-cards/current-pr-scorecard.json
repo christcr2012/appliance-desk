@@ -5,6 +5,13 @@
   "completedSlices": [],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "All W-23, W-24 and W-25 real deployed checks remain PENDING until matching checked release, genuine owner/provider fixtures and independent permissions; see docs/STATUS.md release acceptance queue."
+    "12 predecessor W22/communications source-deployed rows remain pending verified provider/test/owner fixtures and release provenance.",
+    "10 additional W23/W24/W25 source-pinned pending authentic live acceptance tasks were reconciled in STATUS; no new live evidence is invented.",
+    "Workspace support alias/DNS read-only checks passed; real support inbox reply, phone purchase, owner and Stripe TEST evidence remain unverified and guarded."
+  ],
+  "evidence": [
+    "docs/STATUS.md exact authoritative acceptance queue now 22 unique scenario IDs, original 12 preserved, newest source pins grounded in actual merged W23/W24/W25 revisions.",
+    "Read-only site and READY production Vercel provenance checked; source HEAD 7df3205 ahead of READY live 4740313d, no manual release or fixture mutation.",
+    "Workspace read-only MX, SPF, Google/Resend DKIM and support@ send-as support confirmed, but no real receipt/reply claimed."
   ]
 }

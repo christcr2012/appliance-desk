@@ -1,6 +1,10 @@
-## October 16, 2026 — W-23/W-24/W-25 acceptance queue reconciled
+## October 16, 2026 — Complete deployment acceptance backlog
 
-Preserved all 12 older W22/COM/W22FIN obligations and added 10 separately pinned pending W23–W25 scenarios. Main is 7df3205, READY production and live 4740313d. Public / responds 200, owner/customer paths redirect 307 to login, pricing redirects to prelaunch. Workspace MX/SPF/DKIM/support@ send-as readback passed; true inbound/reply unverified. No source CI conflated with live, no provider/phone purchase, customer charge or release.
+Retained all twelve W-22/communications tasks; ten source-pinned W-23/W-24/W-25
+cases added, all PENDING until READY ancestry and genuine original fixture/
+provider/legal gates. Independent public site and Workspace read-only health
+succeeded, but no customer signing, Stripe TEST, tenant privacy purge, support
+reply or phone provider operation was performed. No manual release authorized.
 
 W-25 premerge safety verification: first PR head 3fba86b passed all three unit and all four parallel browser shards, but secret-scan owner-decision-routing step rejected a stale W-24 marker. Reconciled approved decision map to W-25; no reclassification or release gating change. Added phone free-text card PAN/CVV refusal with isolated unit tests in this same substantive PR. Exact-head CI must rerun after combined correction, and no source test equals live/provider acceptance.
 
@@ -717,118 +721,114 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "lastEvidence": "Connected synthetic PostgreSQL source acceptance: 1250 related and 52 selected tests passed. Local browser build blocked by sandbox memory; exact-head normal Actions browser/build/review required before merge. V2 source is newer than READY live 4740313d; not deployed or genuinely provider accepted."
   },
   {
-    "id": "W23-TENANT-RETENTION",
+    "id": "W23-TENANT-PRIVACY",
     "priority": 6,
     "requiredRevision": "6c95cdef58753aeff4ec042028205fed2ee27407",
-    "task": "Owner privacy/legal preview and claim/dispute hold protection; erasure remains OFF",
-    "procedure": "docs/pr-cards/W-23.md; docs/STATUS.md",
-    "gates": "Requires deployed W23, independent legal/privacy permission and authorized nonproduction records; no live PII deletion.",
-    "dependsOn": [],
+    "task": "Owner readback retention default OFF, hold/claim exclusions and audited release",
+    "procedure": "docs/pr-cards/W-23.md",
+    "gates": "Privacy/legal approval before erasure; owner test account only",
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Privacy/legal approval before erasure; owner test account only"
   },
   {
-    "id": "W23-CONTACT-ACCESS",
+    "id": "W23-CONTACT-ISOLATION",
     "priority": 6,
     "requiredRevision": "6c95cdef58753aeff4ec042028205fed2ee27407",
-    "task": "Owner current/future resident, staff role and one-use maintenance repair link denial",
-    "procedure": "docs/pr-cards/W-23.md; docs/STATUS.md",
-    "gates": "Deployed W23 plus approved customer/staff/tenant fixture; no cross-customer data access.",
-    "dependsOn": [],
+    "task": "Customer/staff/tenant foreign/future contact denial and one-use repair link",
+    "procedure": "docs/pr-cards/W-23.md",
+    "gates": "Consented role/tenant fixture; no real SMS or PII writes",
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Consented role/tenant fixture; no real SMS or PII writes"
   },
   {
-    "id": "W23-PORTFOLIO-IMPORT",
+    "id": "W23-PORTFOLIO-REPLAY",
     "priority": 7,
     "requiredRevision": "6c95cdef58753aeff4ec042028205fed2ee27407",
-    "task": "Owner CSV preview, cross-customer duplicate site and idempotent retry",
-    "procedure": "docs/pr-cards/W-23.md; docs/STATUS.md",
-    "gates": "Approved test portfolio, authorized owner, no real customer messages or charges.",
-    "dependsOn": [],
+    "task": "Dry-run, cross-account collision, importer replay proof",
+    "procedure": "docs/pr-cards/W-23.md",
+    "gates": "Owner-approved disposable properties; no real landlord writes",
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Owner-approved disposable properties; no real landlord writes"
   },
   {
-    "id": "W24-DRIVING-BANDS",
-    "priority": 6,
-    "requiredRevision": "408a38d40802ee18b80040c6cda5ab707bb19f46",
-    "task": "Sourced 15/30/50 driving-mile bands and signed immutable all-in route fee",
-    "procedure": "docs/pr-cards/W-24.md; docs/STATUS.md",
-    "gates": "Verified central Greeley origin and approved test route; no paid map API.",
-    "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
-  },
-  {
-    "id": "W24-SIGN-TEST-PAY",
+    "id": "W24-ONE-LINK",
     "priority": 5,
     "requiredRevision": "408a38d40802ee18b80040c6cda5ab707bb19f46",
-    "task": "Customer one-link approval, signing, real Stripe TEST receipt and secure password link",
-    "procedure": "docs/pr-cards/W-24.md; docs/STATUS.md",
-    "gates": "Approved genuine Stripe TEST, CPA/legal and customer/owner fixtures, deployed W24; no LIVE money.",
-    "dependsOn": [],
+    "task": "Signed customer quote, Stripe TEST settlement, account and portal",
+    "procedure": "docs/pr-cards/W-24.md",
+    "gates": "Real approved owner/customer TEST records; no LIVE payment",
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Real approved owner/customer TEST records; no LIVE payment"
+  },
+  {
+    "id": "W24-ROAD-PRICING",
+    "priority": 6,
+    "requiredRevision": "408a38d40802ee18b80040c6cda5ab707bb19f46",
+    "task": "Verified route origin, 15/30/50 driving miles and frozen price",
+    "procedure": "docs/pr-cards/W-24.md",
+    "gates": "Owner-approved driving proof; no paid API",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Owner-approved driving proof; no paid API"
   },
   {
     "id": "W24-DELIVERY-CONFIRM",
     "priority": 5,
     "requiredRevision": "408a38d40802ee18b80040c6cda5ab707bb19f46",
-    "task": "Requested unbooked visit, owner confirm task, conflict-free booking and missed visit",
-    "procedure": "docs/pr-cards/W-24.md; docs/STATUS.md",
-    "gates": "Approved unscheduled test job and W24 signed TEST receipt; no actual customer dispatch/SMS.",
-    "dependsOn": [
-      "W24-SIGN-TEST-PAY"
-    ],
+    "task": "Receipt-backed Requested visit/To Do, lock/no-show fee OFF",
+    "procedure": "docs/pr-cards/W-24.md",
+    "gates": "TEST paid receipt and nonproduction job; no real dispatch",
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
-  },
-  {
-    "id": "W25-PHONE-ORDER-OWNER",
-    "priority": 6,
-    "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
-    "task": "Existing/new-lead phone order, owner attribution, current offered date and copied link",
-    "procedure": "docs/pr-cards/W-25.md; docs/STATUS.md",
-    "gates": "Deployed W25 and owner/guest/customer test identities; verbal agreement never signs or pays.",
     "dependsOn": [],
-    "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. TEST paid receipt and nonproduction job; no real dispatch"
   },
   {
-    "id": "W25-PHONE-EMAIL-FINISH",
+    "id": "W25-PHONE-OWNER",
     "priority": 6,
     "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
-    "task": "Gated provider email, independent customer edit/accept/sign/TEST pay, replay denial",
-    "procedure": "docs/pr-cards/W-25.md; docs/STATUS.md",
-    "gates": "Approved recipient consent, provider evidence and W24 signed TEST fixture.",
-    "dependsOn": [
-      "W24-SIGN-TEST-PAY"
-    ],
+    "task": "Owner/admin new/existing customer phone draft, prefill, link copy and denial",
+    "procedure": "docs/pr-cards/W-25.md",
+    "gates": "Approved role and customer fixture; no verbal signing/card capture",
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Approved role and customer fixture; no verbal signing/card capture"
   },
   {
-    "id": "W25-SUPPORT-INBOUND-REPLY",
+    "id": "W25-PHONE-EMAIL",
+    "priority": 5,
+    "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
+    "task": "Existing email gate, genuine inbox, customer approval, signed TEST payment",
+    "procedure": "docs/pr-cards/W-25.md",
+    "gates": "Consented recipient and verified TEST receipt; no unsolicited message",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Consented recipient and verified TEST receipt; no unsolicited message"
+  },
+  {
+    "id": "W25-SUPPORT-INBOUND",
     "priority": 7,
     "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
-    "task": "Actual inbound and reply for support@robinsonappliancerentals.com",
-    "procedure": "docs/pr-cards/W-25.md; docs/STATUS.md",
-    "gates": "Approved test send/reply; DNS and send-as status alone do not demonstrate delivery.",
-    "dependsOn": [],
+    "task": "Actual support@ inbox receipt and authorized reply proof",
+    "procedure": "docs/pr-cards/W-25.md",
+    "gates": "Read-only MX/SPF/DKIM/send-as PASS 2026-10-16, but no real inbound/reply done",
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: Connected Workspace ops@ email-health passed MX, SPF, Google/Resend DKIM and support@ send-as. Real support inbox-and-reply remains unverified; DMARC p=none."
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Read-only MX/SPF/DKIM/send-as PASS 2026-10-16, but no real inbound/reply done"
   },
   {
-    "id": "W25-TELEPHONY-POLICY",
+    "id": "W25-PHONE-PROVIDER",
     "priority": 8,
     "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
-    "task": "COM phone hours, private voicemail, retention, forwarding and $20 notification-only thresholds",
-    "procedure": "docs/pr-cards/W-25.md; docs/STATUS.md",
-    "gates": "Twilio number, SMS, recording, transcripts, live phone cost and provider caps need separate owner approval.",
-    "dependsOn": [],
+    "task": "COM Denver seven-day routing, voicemail holds and $20 notice thresholds",
+    "procedure": "docs/pr-cards/W-25.md",
+    "gates": "Twilio purchase, forwarding and recording OFF pending explicit owner approval",
     "status": "PENDING",
-    "lastEvidence": "2026-10-16: Source merged on main; live and Vercel READY remain 4740313d34c6e8b5d7df27ff9a2b6b5dc26302d0. No authorized production fixture or real Stripe TEST/provider approval. Source CI is not live acceptance. No production writes or messages."
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Twilio purchase, forwarding and recording OFF pending explicit owner approval"
   }
 ]
 ```
