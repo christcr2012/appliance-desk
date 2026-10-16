@@ -89,12 +89,18 @@
       "reopen": "Checked live SHA and original approved fixtures"
     }
   ],
-  "checks": [
-    "unit",
-    "db",
-    "browser",
-    "node"
-  ],
+  "checks": {
+    "unit": [
+      "tests/w24-delivery.test.ts"
+    ],
+    "db": [
+      "tests/w24-order-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/preapproval-estimate-prepare.spec.ts"
+    ],
+    "node": []
+  },
   "slices": [
     {
       "id": "W-24",
