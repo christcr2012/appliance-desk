@@ -1,3 +1,5 @@
+2026-10-16 release blocker: twice-red merged-main CI browser-a communication-timeline navigation was traced to its first visible shared customer list entry disappearing before detail GET, observed as a concrete HTTP 404 in Playwright saved failure artifact. The dedicated nonproduction owned customer fixture with finally cleanup is a test-reliability repair, not a waived test or additional engineering bundle. Main release remains closed until full exact-head CI green. All 22 externally gated acceptance items retain their real PENDING statuses.
+
 ## October 16, 2026 — Complete deployment acceptance backlog
 
 Retained all twelve W-22/communications tasks; ten source-pinned W-23/W-24/W-25
