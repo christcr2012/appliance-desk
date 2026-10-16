@@ -1,3 +1,11 @@
+## October 16, 2026 — Complete deployment acceptance backlog
+
+Retained all twelve W-22/communications tasks; ten source-pinned W-23/W-24/W-25
+cases added, all PENDING until READY ancestry and genuine original fixture/
+provider/legal gates. Independent public site and Workspace read-only health
+succeeded, but no customer signing, Stripe TEST, tenant privacy purge, support
+reply or phone provider operation was performed. No manual release authorized.
+
 W-25 premerge safety verification: first PR head 3fba86b passed all three unit and all four parallel browser shards, but secret-scan owner-decision-routing step rejected a stale W-24 marker. Reconciled approved decision map to W-25; no reclassification or release gating change. Added phone free-text card PAN/CVV refusal with isolated unit tests in this same substantive PR. Exact-head CI must rerun after combined correction, and no source test equals live/provider acceptance.
 
 W-25 sequencing reconciliation (2026-10-16): owner decision map activeExecutionMustRemain advanced explicitly from approved/merged W-24 to approved W-25 in lockstep with the work index. All 56 original decision classifications, target IDs and activation gates are unchanged; this repairs exact-head CI owner-decision routing without loosening the check.
@@ -711,6 +719,116 @@ open obligations, original fixture ownership, approvals and deployment provenanc
     "status": "PENDING",
     "dependsOn": [],
     "lastEvidence": "Connected synthetic PostgreSQL source acceptance: 1250 related and 52 selected tests passed. Local browser build blocked by sandbox memory; exact-head normal Actions browser/build/review required before merge. V2 source is newer than READY live 4740313d; not deployed or genuinely provider accepted."
+  },
+  {
+    "id": "W23-TENANT-PRIVACY",
+    "priority": 6,
+    "requiredRevision": "6c95cdef58753aeff4ec042028205fed2ee27407",
+    "task": "Owner readback retention default OFF, hold/claim exclusions and audited release",
+    "procedure": "docs/pr-cards/W-23.md",
+    "gates": "Privacy/legal approval before erasure; owner test account only",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Privacy/legal approval before erasure; owner test account only"
+  },
+  {
+    "id": "W23-CONTACT-ISOLATION",
+    "priority": 6,
+    "requiredRevision": "6c95cdef58753aeff4ec042028205fed2ee27407",
+    "task": "Customer/staff/tenant foreign/future contact denial and one-use repair link",
+    "procedure": "docs/pr-cards/W-23.md",
+    "gates": "Consented role/tenant fixture; no real SMS or PII writes",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Consented role/tenant fixture; no real SMS or PII writes"
+  },
+  {
+    "id": "W23-PORTFOLIO-REPLAY",
+    "priority": 7,
+    "requiredRevision": "6c95cdef58753aeff4ec042028205fed2ee27407",
+    "task": "Dry-run, cross-account collision, importer replay proof",
+    "procedure": "docs/pr-cards/W-23.md",
+    "gates": "Owner-approved disposable properties; no real landlord writes",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Owner-approved disposable properties; no real landlord writes"
+  },
+  {
+    "id": "W24-ONE-LINK",
+    "priority": 5,
+    "requiredRevision": "408a38d40802ee18b80040c6cda5ab707bb19f46",
+    "task": "Signed customer quote, Stripe TEST settlement, account and portal",
+    "procedure": "docs/pr-cards/W-24.md",
+    "gates": "Real approved owner/customer TEST records; no LIVE payment",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Real approved owner/customer TEST records; no LIVE payment"
+  },
+  {
+    "id": "W24-ROAD-PRICING",
+    "priority": 6,
+    "requiredRevision": "408a38d40802ee18b80040c6cda5ab707bb19f46",
+    "task": "Verified route origin, 15/30/50 driving miles and frozen price",
+    "procedure": "docs/pr-cards/W-24.md",
+    "gates": "Owner-approved driving proof; no paid API",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Owner-approved driving proof; no paid API"
+  },
+  {
+    "id": "W24-DELIVERY-CONFIRM",
+    "priority": 5,
+    "requiredRevision": "408a38d40802ee18b80040c6cda5ab707bb19f46",
+    "task": "Receipt-backed Requested visit/To Do, lock/no-show fee OFF",
+    "procedure": "docs/pr-cards/W-24.md",
+    "gates": "TEST paid receipt and nonproduction job; no real dispatch",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. TEST paid receipt and nonproduction job; no real dispatch"
+  },
+  {
+    "id": "W25-PHONE-OWNER",
+    "priority": 6,
+    "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
+    "task": "Owner/admin new/existing customer phone draft, prefill, link copy and denial",
+    "procedure": "docs/pr-cards/W-25.md",
+    "gates": "Approved role and customer fixture; no verbal signing/card capture",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Approved role and customer fixture; no verbal signing/card capture"
+  },
+  {
+    "id": "W25-PHONE-EMAIL",
+    "priority": 5,
+    "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
+    "task": "Existing email gate, genuine inbox, customer approval, signed TEST payment",
+    "procedure": "docs/pr-cards/W-25.md",
+    "gates": "Consented recipient and verified TEST receipt; no unsolicited message",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Consented recipient and verified TEST receipt; no unsolicited message"
+  },
+  {
+    "id": "W25-SUPPORT-INBOUND",
+    "priority": 7,
+    "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
+    "task": "Actual support@ inbox receipt and authorized reply proof",
+    "procedure": "docs/pr-cards/W-25.md",
+    "gates": "Read-only MX/SPF/DKIM/send-as PASS 2026-10-16, but no real inbound/reply done",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Read-only MX/SPF/DKIM/send-as PASS 2026-10-16, but no real inbound/reply done"
+  },
+  {
+    "id": "W25-PHONE-PROVIDER",
+    "priority": 8,
+    "requiredRevision": "7df3205e7c0d2406a94c9df72290fd58ef553aeb",
+    "task": "COM Denver seven-day routing, voicemail holds and $20 notice thresholds",
+    "procedure": "docs/pr-cards/W-25.md",
+    "gates": "Twilio purchase, forwarding and recording OFF pending explicit owner approval",
+    "status": "PENDING",
+    "dependsOn": [],
+    "lastEvidence": "2026-10-16: source merged; READY live still 4740313d. No live/provider proof. Twilio purchase, forwarding and recording OFF pending explicit owner approval"
   }
 ]
 ```
