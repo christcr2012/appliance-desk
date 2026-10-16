@@ -42,7 +42,7 @@ export default async function AccountSettingsPage() {
       />
 
       <div className="space-y-6">
-        <Card title="Preferred language / Idioma preferido" description="Choose a preferred language without changing your legal agreement or communication consent.">
+        <Card title={t("Preferred language / Idioma preferido")} description={t("Choose a preferred language without changing your legal agreement or communication consent.")}>
           <LanguagePreferenceForm initialLanguage={preferredLanguage} />
         </Card>
         <Card
@@ -57,7 +57,7 @@ export default async function AccountSettingsPage() {
 
         <Card
           title={t("Privacy requests")}
-          description="Request a copy of your account information or ask us to delete personal information we are allowed to remove."
+          description={t("Request a copy of your account information or ask us to delete personal information we are allowed to remove.")}
           actions={
             <ButtonLink
               href="/account/settings/privacy"

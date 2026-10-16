@@ -50,7 +50,7 @@ export default async function AccountMaintenancePage({
         <PageHeader title={t("Maintenance")} />
         <EmptyState
           title="No rental account found"
-          description="Contact the business if you expected to see service requests here."
+          description={t("Contact the business if you expected to see service requests here.")}
         />
       </div>
     );
@@ -75,7 +75,7 @@ export default async function AccountMaintenancePage({
     <div className="max-w-4xl">
       <PageHeader
         title={t("Maintenance")}
-        description="Report a problem, request a pickup, and review your service requests."
+        description={t("Report a problem, request a pickup, and review your service requests.")}
       />
 
       {request === "pickup" && (
@@ -83,19 +83,17 @@ export default async function AccountMaintenancePage({
           role="status"
           className="mb-6 rounded-card border border-line bg-subtle p-4 text-sm text-ink"
         >
-          Tell us which property and appliances you want picked up, and your
-          preferred dates. This submits a request for review; it does not cancel
-          your rental or change billing automatically.
+          {t("Tell us which property and appliances you want picked up, and your preferred dates. This submits a request for review; it does not cancel your rental or change billing automatically.")}
         </p>
       )}
 
       <div className="mb-8">
         <Card
-          title={request === "pickup" ? "Request pickup" : "Report a problem"}
+          title={request === "pickup" ? t("Request pickup") : t("Report a problem")}
           description={
             request === "pickup"
-              ? "Give us the details and preferred timing. We will review the request and contact you."
-              : "Tell us what is happening and add photos if they help explain the problem."
+              ? t("Give us the details and preferred timing. We will review the request and contact you.")
+              : t("Tell us what is happening and add photos if they help explain the problem.")
           }
         >
           <NewRequestForm
@@ -104,17 +102,17 @@ export default async function AccountMaintenancePage({
             initialApplianceId={initialApplianceId}
             requestKind={request === "pickup" ? "pickup" : "maintenance"}
             requestTitle={
-              request === "pickup" ? "Request pickup" : "Report a problem"
+              request === "pickup" ? t("Request pickup") : t("Report a problem")
             }
           />
         </Card>
       </div>
 
-      <Card title="Your requests">
+      <Card title={t("Your requests")}>
         {!requestPage || requestPage.items.length === 0 ? (
           <EmptyState
-            title="No requests on this page"
-            description="New service requests will appear here after you submit them."
+            title={t("No requests on this page")}
+            description={t("New service requests will appear here after you submit them.")}
           />
         ) : (
           <ul className="divide-y divide-line">

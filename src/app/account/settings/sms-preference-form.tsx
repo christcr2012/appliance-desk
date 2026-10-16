@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Checkbox, Field } from "@/components/ui";
@@ -13,6 +14,7 @@ export function SmsPreferenceForm({
   initialOptedIn: boolean;
   initialPhone: string;
 }) {
+  const tr = useCustomerTranslation();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [optedIn, setOptedIn] = useState(initialOptedIn);
@@ -77,7 +79,7 @@ export function SmsPreferenceForm({
       )}
 
       <Button type="submit" disabled={isPending}>
-        {isPending ? "Saving…" : "Save"}
+        {isPending ? tr("Saving…") : "Save"}
       </Button>
     </form>
   );

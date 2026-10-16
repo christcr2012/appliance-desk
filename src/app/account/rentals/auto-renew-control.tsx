@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
@@ -10,6 +11,7 @@ export function AutoRenewControl(props: {
   enabled: boolean;
   termsVersion: string;
 }) {
+  const tr = useCustomerTranslation();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -23,8 +25,8 @@ export function AutoRenewControl(props: {
         disabled={pending}
         onClick={() => {
           const prompt = nextEnabled
-            ? "Turn on automatic renewal using the terms shown above?"
-            : "Turn off automatic renewal? Your rental will end on its existing end date unless you arrange something else.";
+            ? tr("Turn on automatic renewal using the terms shown above?")
+            : tr("Turn off automatic renewal? Your rental will end on its existing end date unless you arrange something else.");
           if (!window.confirm(prompt)) return;
           setError(null);
           startTransition(async () => {
@@ -39,10 +41,10 @@ export function AutoRenewControl(props: {
         }}
       >
         {pending
-          ? "Saving…"
+          ? tr("Saving…")
           : props.enabled
-            ? "Turn off automatic renewal"
-            : "Turn on automatic renewal"}
+            ? tr("Turn off automatic renewal")
+            : tr("Turn on automatic renewal")}
       </Button>
       {error && (
         <p role="alert" className="mt-2 text-sm font-semibold text-danger">

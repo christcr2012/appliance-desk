@@ -15,6 +15,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { BottomTabBar, Button } from "@/components/ui";
 import { signOut } from "@/lib/auth-client";
 import type { CustomerLanguage } from "@/domains/language/copy";
+import { CustomerLanguageProvider } from "@/domains/language/client-portal";
 
 type AccountLink = {
   href: string;
@@ -90,6 +91,7 @@ export function AccountShell({ children, language = "en" }: { children: ReactNod
   }
 
   return (
+    <CustomerLanguageProvider language={language}>
     <div className="min-h-screen bg-canvas" lang={language}>
       <header className="border-b border-line bg-surface print:hidden">
         <div className="mx-auto flex min-h-16 max-w-screen-2xl items-center gap-3 px-4 sm:px-6">
@@ -170,5 +172,6 @@ export function AccountShell({ children, language = "en" }: { children: ReactNod
         />
       </div>
     </div>
+    </CustomerLanguageProvider>
   );
 }

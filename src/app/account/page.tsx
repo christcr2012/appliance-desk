@@ -76,7 +76,7 @@ export default async function AccountHomePage({
         />
       )}
 
-      <p className="mb-5"><ButtonLink href="/account/properties" variant="secondary">Manage my properties and on-site contacts</ButtonLink></p>
+      <p className="mb-5"><ButtonLink href="/account/properties" variant="secondary">{t("Manage my properties and on-site contacts")}</ButtonLink></p>
       <div className="grid gap-5 lg:grid-cols-2">
         <Card
           title={t("What do I rent?")}

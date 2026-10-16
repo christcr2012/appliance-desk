@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createMaintenanceRequestAction } from "./actions";
@@ -31,6 +32,7 @@ export function NewRequestForm({
   requestTitle?: string;
 }) {
   const router = useRouter();
+  const tr = useCustomerTranslation();
   const [isPending, startTransition] = useTransition();
   const [problem, setProblem] = useState(initialProblem);
   const [applianceId, setApplianceId] = useState(initialApplianceId);
@@ -67,7 +69,7 @@ export function NewRequestForm({
         });
       } catch {
         setError(
-          "Your request was not confirmed. Your text and photos are still here; please try again.",
+          tr("Your request was not confirmed. Your text and photos are still here; please try again."),
         );
         return;
       }
@@ -92,11 +94,11 @@ export function NewRequestForm({
       {appliances.length > 0 && (
         <Select
           id="applianceId"
-          label="Which appliance? (optional)"
+          label={tr("Which appliance? (optional)")}
           value={applianceId}
           onChange={(event) => setApplianceId(event.target.value)}
         >
-          <option value="">Not sure / general question</option>
+          <option value="">{tr("Not sure / general question")}</option>
           {appliances.map((appliance) => (
             <option key={appliance.id} value={appliance.id}>
               {appliance.label}
@@ -107,7 +109,7 @@ export function NewRequestForm({
 
       <Textarea
         id="problem"
-        label="What's going on?"
+        label={tr("What's going on?")}
         rows={4}
         required
         value={problem}
@@ -116,7 +118,7 @@ export function NewRequestForm({
 
       <Select
         id="priority"
-        label="How urgent is this?"
+        label={tr("How urgent is this?")}
         value={priority}
         onChange={(event) => setPriority(event.target.value)}
       >
@@ -128,7 +130,7 @@ export function NewRequestForm({
       </Select>
 
       <div>
-        <p className="text-sm font-semibold text-ink">Photo (optional)</p>
+        <p className="text-sm font-semibold text-ink">{tr("Photo (optional)")}</p>
         <p className="mt-1 text-xs text-ink-soft">
           A picture of the problem — a leak, a broken part, anything that helps.
         </p>
@@ -163,7 +165,7 @@ export function NewRequestForm({
           <div className="mt-3">
             <PhotoUploadField
               pathPrefix={`maintenance-requests/${customerId}`}
-              label="Add a photo"
+              label={tr("Add a photo")}
               onUploaded={(url) => {
                 setPhotoError(null);
                 setPhotoUrls((urls) => [...urls, url]);
@@ -181,7 +183,7 @@ export function NewRequestForm({
       </div>
 
       <Button type="submit" disabled={isPending}>
-        {isPending ? "Submitting…" : "Submit request"}
+        {isPending ? tr("Submitting…") : tr("Submit request")}
       </Button>
 
       {error && (
@@ -191,7 +193,7 @@ export function NewRequestForm({
       )}
       {success && !error && (
         <p role="status" className="text-sm font-semibold text-success">
-          Got it — we&apos;ll be in touch about next steps.
+          {tr("Got it — we'll be in touch about next steps.")}
         </p>
       )}
     </form>

@@ -33,12 +33,17 @@ export async function currentTranslationSource(
     if (!field || field.kind === "url") throw new Error("Not an editable text source.");
     english = (await getPublishedContent())[key] ?? field.default;
   } else if (kind === "COMMUNICATION") {
+    const cut = key.lastIndexOf(":");
+    const revisionId = key.slice(0, cut);
+    const part = key.slice(cut + 1);
+    if (cut < 1 || (part !== "subject" && part !== "body"))
+      throw new Error("Choose the current template subject or body.");
     const row = await prisma.communicationTemplateRevision.findUnique({
-      where: { id: key },
+      where: { id: revisionId },
       select: { subject: true, body: true, isCurrent: true },
     });
     if (!row?.isCurrent) throw new Error("The communication template is no longer current.");
-    english = [row.subject, row.body].filter(Boolean).join("\n\n");
+    english = row[part];
   } else {
     throw new Error("Unsupported translation source.");
   }
@@ -116,8 +121,10 @@ export async function listCurrentTranslationDrafts(): Promise<TranslationSource[
   const sources: Array<{ kind: TranslationSourceKind; key: string; english: string }> = [
     ...SITE_FIELDS.filter(x => x.kind !== "url" && Boolean((site[x.key] ?? x.default).trim()))
       .map(x => ({ kind: "SITE" as const, key: x.key, english: site[x.key] ?? x.default })),
-    ...templates.map(x => ({kind: "COMMUNICATION" as const, key: x.id,
-      english: [x.subject, x.body].filter(Boolean).join("\n\n") })),
+    ...templates.flatMap(x => [
+      ...(x.subject ? [{kind: "COMMUNICATION" as const, key: x.id + ":subject", english: x.subject}] : []),
+      {kind: "COMMUNICATION" as const, key: x.id + ":body", english: x.body},
+    ]),
   ];
   return sources.map(source => {
     const row = map.get(source.kind + ":" + source.key);

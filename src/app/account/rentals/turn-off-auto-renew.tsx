@@ -1,11 +1,13 @@
 "use client";
 
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import { turnOffAutoRenewAction } from "./actions";
 
 export function TurnOffAutoRenew({ agreementId }: { agreementId: string }) {
+  const tr = useCustomerTranslation();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export function TurnOffAutoRenew({ agreementId }: { agreementId: string }) {
           });
         }}
       >
-        {pending ? "Saving…" : "Turn off automatic renewal"}
+        {pending ? tr("Saving…") : tr("Turn off automatic renewal")}
       </Button>
       {error && (
         <p role="alert" className="mt-2 text-sm font-semibold text-danger">

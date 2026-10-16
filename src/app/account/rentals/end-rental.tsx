@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
@@ -14,6 +15,7 @@ export function EndRental(props: {
   effectiveLabel: string;
   lastBilledLabel: string;
 }) {
+  const tr = useCustomerTranslation();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function EndRental(props: {
           });
         }}
       >
-        {pending ? "Saving…" : `End my rental on ${props.effectiveLabel}`}
+        {pending ? tr("Saving…") : `End my rental on ${props.effectiveLabel}`}
       </Button>
       {error && (
         <p role="alert" className="mt-2 text-sm font-semibold text-danger">

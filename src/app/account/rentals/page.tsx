@@ -153,7 +153,7 @@ export default async function AccountRentalsPage({
                 )}
 
                 <div className="mt-4 rounded-card bg-subtle p-3">
-                  <p className="text-sm font-medium text-ink">Next visit</p>
+                  <p className="text-sm font-medium text-ink">{t("Next visit")}</p>
                   {nextVisit?.scheduledAt ? (
                     <p className="mt-1 text-sm text-ink-soft">
                       {jobTypeLabel(nextVisit.type)} · {formatBusinessDate(nextVisit.scheduledAt)} · {formatBusinessTime(nextVisit.scheduledAt)}
@@ -164,11 +164,11 @@ export default async function AccountRentalsPage({
                       This is a request in progress, not a booked appointment.
                     </p>
                   ) : (
-                    <p className="mt-1 text-sm text-ink-soft">No visit is scheduled for this rental.</p>
+                    <p className="mt-1 text-sm text-ink-soft">{t("No visit is scheduled for this rental.")}</p>
                   )}
                 </div>
 
-                <h3 className="mt-4 text-sm font-medium text-ink">Items</h3>
+                <h3 className="mt-4 text-sm font-medium text-ink">{t("Items")}</h3>
                 <ul className="mt-2 space-y-1 text-sm text-ink-soft">
                   {agreement.lines.map((line) => (
                     <li key={line.id}>
@@ -188,18 +188,18 @@ export default async function AccountRentalsPage({
                 <p className="mt-3 text-sm font-medium text-ink">Monthly total: {formatCents(total)}</p>
                 <SigningPaymentSummary summary={agreement.signingPaymentSummary ?? null} />
                 {agreement.freeMonthGranted && (
-                  <p className="text-sm font-medium text-success">Paid in full, in advance — your first month was free.</p>
+                  <p className="text-sm font-medium text-success">{t("Paid in full, in advance — your first month was free.")}</p>
                 )}
                 {agreement.depositCents > 0 && (
                   <p className="text-sm text-ink-soft">Deposit required: {formatCents(agreement.depositCents)}</p>
                 )}
 
                 <div className="mt-5 border-t border-line pt-4">
-                  <h3 className="font-medium text-ink">Ending and renewal terms for this rental</h3>
+                  <h3 className="font-medium text-ink">{t("Ending and renewal terms for this rental")}</h3>
                   {agreement.termMonths ? (
                     <div className="mt-2 space-y-4 text-sm">
                       <div>
-                        <p className="font-medium text-ink">Ending early</p>
+                        <p className="font-medium text-ink">{t("Ending early")}</p>
                         {fixedTerms?.ending ? (
                           <>
                             <ul className="mt-1 list-disc space-y-1 pl-5 text-ink-soft">
@@ -208,14 +208,14 @@ export default async function AccountRentalsPage({
                             <p className="mt-2 whitespace-pre-line text-ink-soft">{fixedTerms.ending.termsText}</p>
                           </>
                         ) : (
-                          <p className="mt-1 text-ink-soft">Not available for this rental — contact us.</p>
+                          <p className="mt-1 text-ink-soft">{t("Not available for this rental — contact us.")}</p>
                         )}
                       </div>
 
                       {agreement.status === "ACTIVE" && !agreement.terminationRequestedAt && fixedTerms?.ending && (
                         earlyQuote ? (
                           <div className="rounded-card border border-line bg-subtle p-3">
-                            <p className="font-medium text-ink">Your ending quote</p>
+                            <p className="font-medium text-ink">{t("Your ending quote")}</p>
                             <ul className="mt-1 space-y-1 text-ink-soft">
                               <li>Ending date: {formatBusinessDate(earlyQuote.effectiveOn)}</li>
                               <li>Last billed day: {formatBusinessDate(addBusinessDays(earlyQuote.effectiveOn, -1))}</li>
@@ -241,12 +241,12 @@ export default async function AccountRentalsPage({
                             />
                           </div>
                         ) : (
-                          <p className="text-ink-soft">Ending online is not available right now — contact us.</p>
+                          <p className="text-ink-soft">{t("Ending online is not available right now — contact us.")}</p>
                         )
                       )}
 
                       <div>
-                        <p className="font-medium text-ink">Automatic renewal</p>
+                        <p className="font-medium text-ink">{t("Automatic renewal")}</p>
                         {fixedTerms?.autoRenew && lockedAutoRenew ? (
                           <>
                             <p className="mt-1 text-ink-soft">{fixedTerms.autoRenew.noticeLine}</p>
@@ -265,7 +265,7 @@ export default async function AccountRentalsPage({
                             )}
                           </>
                         ) : (
-                          <p className="mt-1 text-ink-soft">Not available for this rental — contact us.</p>
+                          <p className="mt-1 text-ink-soft">{t("Not available for this rental — contact us.")}</p>
                         )}
                       </div>
                     </div>
@@ -279,7 +279,7 @@ export default async function AccountRentalsPage({
                           <p className="mt-2 whitespace-pre-line text-ink-soft">{mtmTerms.termsText}</p>
                         </>
                       ) : (
-                        <p className="text-ink-soft">Not available for this rental — contact us.</p>
+                        <p className="text-ink-soft">{t("Not available for this rental — contact us.")}</p>
                       )}
                       {agreement.status === "ACTIVE" && !agreement.terminationRequestedAt && mtmQuote && (
                         <div className="mt-3 rounded-card border border-line bg-subtle p-3">
