@@ -5,13 +5,12 @@
   "completedSlices": [],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "12 predecessor W22/communications source-deployed rows remain pending verified provider/test/owner fixtures and release provenance.",
-    "10 additional W23/W24/W25 source-pinned pending authentic live acceptance tasks were reconciled in STATUS; no new live evidence is invented.",
-    "Workspace support alias/DNS read-only checks passed; real support inbox reply, phone purchase, owner and Stripe TEST evidence remain unverified and guarded."
+    "All 22 deployed-owner/provider W22\u2013W25 tasks remain PENDING in authoritative docs/STATUS.md. Browser fixture repair does not itself verify a live customer or provider."
   ],
   "evidence": [
-    "scripts/session-status.mjs missingRoadmapAcceptance validates W23/W24/W25 backlog presence before workflow planning; on W26 kickoff predecessors remain required.",
-    "scripts/session-status.test.mjs 13 unit cases pass, including missing/partial/complete queue snapshots, all with no inferred live acceptance.",
-    "PR #475 separately merged the authoritative original 22-row queue. PR #476 preserves that merge, adds only the anti-omission guard, and does not recount W25 product engineering or reopen approvals."
+    "e2e/communication-timeline.spec.ts now uses a newly created, unique, owned disposable Customer/User with try/finally cleanup, rather than clicking the first shared/customer-list row which disappeared mid-navigation.",
+    "GitHub Actions postmerge PR #475 run 38913632260 and PR #476 run 38944298832 both failed browser-a on the same communications timeline test; saved Playwright artifact captured an HTTP 404 on the first-customer detail page. Other checks/browser shards passed.",
+    "The patch only touches one browser fixture, no production code, permissions, customer messaging, money or legal approvals. Rerun exact-head CI and browser-a before merging.",
+    "e2e/phone-order-one-link.spec.ts replaces 13-digit Date.now unique data with randomized UUID, preserving production PAN/CVV refusal; saved browser-b screenshot displayed the safeguard-specific error on false-positive Luhn-valid timestamp."
   ]
 }

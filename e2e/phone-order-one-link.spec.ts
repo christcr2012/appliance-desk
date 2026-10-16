@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import {randomUUID} from "node:crypto";
 import path from "node:path";
 import {test,expect} from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -31,10 +32,10 @@ test.describe("W-25 owner entered order — accessible protected preparation",()
   test("new caller creates a draft, never a phone signature or payment",async({page})=>{
     await page.goto("/desk/phone-orders/new");
     await page.getByRole("button",{name:"Someone new"}).click();
-    const unique="W25 browser "+Date.now();
+    const unique="W25 browser "+randomUUID();
     await page.locator("#contactName").fill(unique);
     await page.locator("#phone").fill("3035551234");
-    await page.locator("#leadEmail").fill("browser-"+Date.now()+"@example.test");
+    await page.locator("#leadEmail").fill("browser-"+randomUUID()+"@example.test");
     await page.locator("#title").fill(unique+" washer/dryer call");
     await page.locator("form button[type=submit]").click();
     await expect(page).toHaveURL(/\/desk\/estimates\/[^/?]+/);
