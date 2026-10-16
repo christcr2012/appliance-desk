@@ -7,6 +7,8 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { SmsPreferenceForm } from "./sms-preference-form";
+import { LanguagePreferenceForm } from "./language-preference-form";
+import { readCustomerLanguage } from "@/domains/language";
 
 export const metadata = { title: "Settings" };
 
@@ -26,6 +28,8 @@ export default async function AccountSettingsPage() {
     );
   }
 
+  const preferredLanguage = await readCustomerLanguage(session!.user.id);
+
   return (
     <div className="max-w-3xl">
       <PageHeader
@@ -34,6 +38,9 @@ export default async function AccountSettingsPage() {
       />
 
       <div className="space-y-6">
+        <Card title="Preferred language / Idioma preferido" description="Choose a preferred language without changing your legal agreement or communication consent.">
+          <LanguagePreferenceForm initialLanguage={preferredLanguage} />
+        </Card>
         <Card
           title="Text message notifications"
           description="Off by default — you only get texts if you turn this on."

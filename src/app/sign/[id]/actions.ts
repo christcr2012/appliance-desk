@@ -65,6 +65,8 @@ export async function signAgreementAction(
 
   try {
     const agreementId = await signAgreement(signatureRecordId, {
+      // The actual signed legal text is English until separately approved.
+      shownLanguage: "en",
       signerName: data.signerName,
       signerEmail: data.signerEmail,
       ipAddress,

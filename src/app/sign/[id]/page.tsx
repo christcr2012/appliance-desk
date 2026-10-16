@@ -39,6 +39,7 @@ export default async function SignPage({
   return (
     <main className="mx-auto max-w-lg px-6 py-16">
       <h1 className="text-xl font-semibold">Review &amp; sign your rental agreement</h1>
+      <p className="mt-2 text-sm text-ink-soft">The signed agreement is in English. Spanish translation and legal review are pending.</p>
       <p className="mt-2 text-sm text-ink-soft">
         Prepared for {agreement.customer.user.name ?? agreement.customer.user.email}
       </p>

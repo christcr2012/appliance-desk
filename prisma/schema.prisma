@@ -145,6 +145,8 @@ model Customer {
   isBusiness      Boolean  @default(false)
   isPropertyManager Boolean @default(false)
   companyName     String?
+  // W-26: customer-owned language preference. Activation is separately reviewer gated.
+  preferredLanguage String @default("en")
 
   // Set the first time this customer is billed through Stripe (Phase 6B)
   // — one Stripe Customer per Appliance Desk customer, never recreated.
@@ -1347,6 +1349,8 @@ model SignatureRecord {
   signingOrderFingerprint String?
   signingAllInCents       Int?
   signingEvidenceVersion  Int?
+  // W-26: immutable language of the actually displayed legal document at signing.
+  shownLanguage String?
 
   createdAt DateTime @default(now())
 }

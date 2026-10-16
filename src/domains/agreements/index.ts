@@ -562,6 +562,8 @@ export async function getSignatureRecordForSigning(id: string) {
 import { newestMonthToMonthVersionInTx } from "./month-to-month";
 
 export type SignAgreementInput = {
+  // Server-verified language actually displayed, never a client preference guess.
+  shownLanguage?: "en" | "es";
   deliverySelection?: import("@/domains/orders/delivery").DeliverySelection;
   signerName: string;
   signerEmail: string;
@@ -638,6 +640,7 @@ export async function signAgreement(
         signerEmail: input.signerEmail,
         ipAddress: input.ipAddress,
         signedAt,
+        shownLanguage: input.shownLanguage ?? "en",
       },
     });
     if (signResult.count !== 1) {
