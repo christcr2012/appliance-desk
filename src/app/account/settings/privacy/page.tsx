@@ -31,9 +31,7 @@ export default async function AccountPrivacyPage({
         title={t('Privacy requests')}
         description={t('Request a copy of the personal information connected to your account or ask us to delete personal information we are allowed to remove.')}
         secondaryActions={
-          <ButtonLink href="/account/settings" variant="secondary">
-            Back to Account
-          </ButtonLink>
+          <ButtonLink href="/account/settings" variant="secondary">{t("Back to Account")}</ButtonLink>
         }
       />
 
@@ -64,17 +62,13 @@ export default async function AccountPrivacyPage({
             action={accountPrivacyRequestAction}
             className="flex flex-wrap gap-3"
           >
-            <Button type="submit" name="kind" value="EXPORT">
-              Request my data
-            </Button>
+            <Button type="submit" name="kind" value="EXPORT">{t("Request my data")}</Button>
             <Button
               type="submit"
               name="kind"
               value="DELETE"
               variant="danger"
-            >
-              Request deletion
-            </Button>
+            >{t("Request deletion")}</Button>
           </form>
         </Card>
       </div>
@@ -91,7 +85,7 @@ export default async function AccountPrivacyPage({
               <li key={request.id} className="py-4 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold text-ink">
-                    {request.kind === "EXPORT" ? "Data export" : "Deletion"}
+                    {request.kind === "EXPORT" ? t("Data export") : t("Deletion")}
                   </p>
                   <StatusPill
                     tone={
@@ -101,18 +95,16 @@ export default async function AccountPrivacyPage({
                           ? "stopped"
                           : "pending"
                     }
-                    label={request.status
-                      .toLowerCase()
-                      .replaceAll("_", " ")}
+                    label={language === "es" ? t(({ RECEIVED:"received", VERIFIED:"verified", FULFILLED:"fulfilled", REJECTED:"rejected" } as const)[request.status] ?? "pending") : request.status.toLowerCase().replaceAll("_", " ")}
                   />
                 </div>
                 <p className="mt-2 text-ink-soft">
-                  Submitted{" "}
-                  {request.createdAt.toLocaleDateString("en-US")}
+                  {t("Submitted")}{" "}
+                  {request.createdAt.toLocaleDateString(language === "es" ? "es-US" : "en-US", {timeZone:"America/Denver"})}
                 </p>
                 {request.rejectedReason && (
                   <p className="mt-1 text-ink-soft">
-                    Reason: {request.rejectedReason}
+                    {t("Reason")}: {request.rejectedReason}
                   </p>
                 )}
               </li>

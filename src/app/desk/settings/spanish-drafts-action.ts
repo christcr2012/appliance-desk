@@ -10,7 +10,7 @@ export async function saveSpanishDraftAction(
 ): Promise<SpanishDraftState> {
   const actor = await requireRole("OWNER", "ADMIN");
   const kind = form.get("kind");
-  if (kind !== "SITE" && kind !== "COMMUNICATION")
+  if (kind !== "SITE" && kind !== "COMMUNICATION" && kind !== "MESSAGE" && kind !== "LEGAL" && kind !== "NOTICE")
     return { status: "error", message: "Invalid translation category." };
   const version = String(form.get("revision") ?? "");
   const expectedRevision = version === "" ? null : Number(version);

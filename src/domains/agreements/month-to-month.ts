@@ -1,3 +1,4 @@
+import { localizeTermsNotice } from "@/domains/language/notice-language";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { addBusinessDays, billingPeriodFor, businessDaysBetween } from "@/lib/business-date";
@@ -275,7 +276,7 @@ export async function publishMonthToMonthTermsInTx(
       where: { agreementId: agreement.id, kind: "TERMS_CHANGE", status: "PENDING", dedupeKey: { not: key } },
       data: { status: "NOT_NEEDED" },
     });
-    const composed = composeTermsChangeNotice({
+    const localeInput = {
       customerName: agreement.customer.user.name ?? agreement.customer.user.email,
       noticeDays: terms.noticeDays,
       termsText: terms.termsText,
@@ -284,7 +285,8 @@ export async function publishMonthToMonthTermsInTx(
       businessPhone: settings?.publicPhone ?? "",
       businessEmail: settings?.publicEmail ?? "",
       template: settings?.termsChangeNoticeText,
-    });
+    };
+    const composed = await localizeTermsNotice(tx,agreement.customerId,localeInput,composeTermsChangeNotice(localeInput));
     const result = await createNoticeInTx(tx, {
       customerId: agreement.customerId,
       agreementId: agreement.id,
@@ -292,6 +294,7 @@ export async function publishMonthToMonthTermsInTx(
       dedupeKey: key,
       subject: composed.subject,
       body: composed.body,
+        language: composed.language, translationCopyDigest: composed.translationCopyDigest,
       earliestAt: null,
       deadlineAt: null,
     });

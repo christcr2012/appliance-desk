@@ -42,9 +42,7 @@ export default async function AccountInvoicePage({
   return (
     <div lang={language} className="max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <ButtonLink href="/account/billing" variant="quiet">
-          Back to billing
-        </ButtonLink>
+        <ButtonLink href="/account/billing" variant="quiet">{t("Back to billing")}</ButtonLink>
         <div className="flex flex-wrap items-center gap-3">
           {FINAL_INVOICE_STATUSES.has(invoice.status) && (
             <ButtonLink

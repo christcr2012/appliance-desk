@@ -9,6 +9,7 @@ export function CustomerLanguageProvider({ language, children }: {
 }) {
   return <LanguageContext.Provider value={language}>{children}</LanguageContext.Provider>;
 }
+export function useCustomerLanguage() { return useContext(LanguageContext); }
 export function useCustomerTranslation() {
   const language = useContext(LanguageContext);
   return (english: PortalLabel) => portalLabel(language, english);

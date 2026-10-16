@@ -1,9 +1,11 @@
 "use client";
 
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useActionState } from "react";
 import { saveCustomerLanguage, type LanguageActionResult } from "./language-actions";
 
 export function LanguagePreferenceForm({ initialLanguage }: { initialLanguage: "en" | "es" }) {
+  const t = useCustomerTranslation();
   const [state, action, pending] = useActionState<LanguageActionResult, FormData>(
     async (_previous, form: FormData) => {
       const result = await saveCustomerLanguage(form);
@@ -14,9 +16,7 @@ export function LanguagePreferenceForm({ initialLanguage }: { initialLanguage: "
 
   return (
     <form action={action} className="space-y-3">
-      <label htmlFor="customer-language" className="block text-sm font-medium">
-        Preferred language / Idioma preferido
-      </label>
+      <label htmlFor="customer-language" className="block text-sm font-medium">Preferred language / Idioma preferido</label>
       <select
         id="customer-language"
         name="language"
@@ -27,13 +27,12 @@ export function LanguagePreferenceForm({ initialLanguage }: { initialLanguage: "
         <option value="es">Español</option>
       </select>
       <p className="text-xs text-ink-soft">
-        Spanish documents and messages require review before activation.
-        English remains the controlling agreement.
+        {t("Spanish documents and messages require review before activation. English remains the controlling agreement.")}
       </p>
-      <button type="submit" disabled={pending} className="rounded-md bg-primary px-4 py-2 text-white disabled:opacity-50">
-        {pending ? "Saving…" : "Save language / Guardar idioma"}
+      <button type="submit" disabled={pending} className="rounded-md bg-action px-4 py-2 text-on-action disabled:opacity-50">
+        {pending ? t("Saving…") : "Save language / Guardar idioma"}
       </button>
-      <p role="status" aria-live="polite">{state.message}</p>
+      <p role="status" aria-live="polite">{state.message ? t(state.message as Parameters<typeof t>[0]) : ""}</p>
     </form>
   );
 }

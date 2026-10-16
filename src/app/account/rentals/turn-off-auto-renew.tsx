@@ -1,6 +1,6 @@
 "use client";
 
-import { useCustomerTranslation } from "@/domains/language/client-portal";
+import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
@@ -8,6 +8,7 @@ import { turnOffAutoRenewAction } from "./actions";
 
 export function TurnOffAutoRenew({ agreementId }: { agreementId: string }) {
   const tr = useCustomerTranslation();
+  const language = useCustomerLanguage();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export function TurnOffAutoRenew({ agreementId }: { agreementId: string }) {
       </Button>
       {error && (
         <p role="alert" className="mt-2 text-sm font-semibold text-danger">
-          {error}
+          {language === "es" ? tr("Your request could not be completed. Try again or contact the business.") : error}
         </p>
       )}
     </div>

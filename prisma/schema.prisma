@@ -1128,6 +1128,7 @@ model SigningPaymentAttempt {
   agreementId      String
   obligation       AgreementSigningPayment @relation(fields: [agreementId], references: [agreementId], onDelete: Restrict)
   requestKey       String @unique
+  checkoutLocale   String?
   attemptNumber    Int
   method           String
   status           String @default("PREPARED")
@@ -1351,6 +1352,9 @@ model SignatureRecord {
   signingEvidenceVersion  Int?
   // W-26: immutable language of the actually displayed legal document at signing.
   shownLanguage String?
+  interfaceLanguage String?
+  translationCopyDigest String?
+  informationalTerms Json?
 
   createdAt DateTime @default(now())
 }
@@ -2929,6 +2933,8 @@ model CustomerNotice {
   agreementId String?
   kind        String
   dedupeKey   String    @unique
+  language String @default("en")
+  translationCopyDigest String?
   subject     String
   body        String
   status      String    @default("PENDING")
@@ -3172,6 +3178,8 @@ enum MessageState {
 }
 
 model MessageDelivery {
+  contentLanguage String @default("en")
+  translationCopyDigest String?
   id                String         @id @default(cuid())
   idempotencyKey    String         @unique
   channel           MessageChannel

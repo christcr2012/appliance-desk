@@ -1,19 +1,24 @@
 "use client";
 
+import { portalLabel } from "@/domains/language/portal-copy";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { signAgreementAction } from "./actions";
 import { formatMoney } from "@/lib/money-ui";
 import { signingText, type SigningKey } from "@/domains/language/signing-copy";
 import type { CustomerLanguage } from "@/domains/language/copy";
 
-export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,initialLanguage="en",displayLanguage="en" }: {
+export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,initialLanguage="en",displayLanguage="en",translationCopyDigest }: {
   signatureRecordId: string;
+  translationCopyDigest?: string;
   initialLanguage?: "en" | "es";
   displayLanguage?: CustomerLanguage;
   deliveryOptions?:Array<{id:string;date:string;window:"AM"|"PM"}>;
   offerVersion?:number;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const tr = (word: Parameters<typeof portalLabel>[1]) => portalLabel(displayLanguage,word);
   const t = (key: SigningKey) => signingText(displayLanguage,key);
   const [selectedOption,setSelectedOption]=useState(deliveryOptions[0]?.id??"");
   const [dryerOutlet,setDryerOutlet]=useState<"THREE_PRONG"|"FOUR_PRONG"|"GAS"|"UNKNOWN">("UNKNOWN");
@@ -35,6 +40,8 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
     startTransition(async () => {
       const result = await signAgreementAction(signatureRecordId, {
         languagePreference,
+        interfaceLanguage: displayLanguage,
+        translationCopyDigest,
         signerName,
         signerEmail,
         agreedToTerms,
@@ -66,20 +73,16 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
         <p className="font-medium">{t("signed")}</p>
         {paymentNeedsReview ? (
           <p className="mt-1" role="status">
-            We need to review your payment details before collecting any funds.
-            No payment was confirmed here. We&apos;ll contact you to arrange payment and delivery.
+            {tr("We need to review your payment details before collecting any funds. No payment was confirmed here. We’ll contact you to arrange payment and delivery.")}
           </p>
         ) : pendingSigningAmountCents !== null ? (
           <div className="mt-2 space-y-1" role="status">
             <p className="font-semibold">
               {pendingSigningAmountCents > 0
-                ? `Signing amount still to pay: ${formatMoney(pendingSigningAmountCents)}`
-                : "No signing charge is due for this agreement."}
+                ? `${tr("Signing amount still to pay")}: ${formatMoney(pendingSigningAmountCents)}`
+                : tr("No signing charge is due for this agreement.")}
             </p>
-            <p>Signing does not confirm that payment was received. We&apos;ll arrange a
-              secure payment link or an owner-recorded payment if needed, then contact
-              you about delivery. Rent begins billing on delivery; down payments
-              will count toward that first invoice.</p>
+            <p>{tr("Signing does not confirm that payment was received. We’ll arrange a secure payment link or an owner-recorded payment if needed, then contact you about delivery. Rent begins billing on delivery; down payments will count toward that first invoice.")}</p>
           </div>
         ) : (
           <p className="mt-1">
@@ -96,7 +99,10 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
       className="space-y-4 rounded-lg border border-line bg-surface p-5"
     >
       <label className="block text-sm">Preferred language / Idioma preferido
-        <select value={languagePreference} onChange={(event) => setLanguagePreference(event.target.value as "en" | "es")}
+        <select value={languagePreference} onChange={(event) => {
+          setLanguagePreference(event.target.value as "en" | "es");
+          router.push(`/sign/${encodeURIComponent(signatureRecordId)}?language=${event.target.value === "es" ? "es" : "en"}`);
+        }}
           className="mt-1 block w-full rounded border border-line bg-surface p-2">
           <option value="en">English</option><option value="es">Español</option>
         </select>
@@ -181,7 +187,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
 
       {error && (
         <p role="alert" className="text-sm text-red-700">
-          {error}
+          {displayLanguage === "es" ? tr("Your request could not be completed. Try again or contact the business.") : error}
         </p>
       )}
     </form>

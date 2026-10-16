@@ -60,7 +60,7 @@ export default async function AccountBillingPage() {
             target="_blank"
             variant="secondary"
           >
-            View {statementMonth} frozen statement
+            {t("View frozen statement")} · {statementMonth}
           </ButtonLink>
         }
       />
@@ -77,17 +77,13 @@ export default async function AccountBillingPage() {
       {statement && statement.totalBalanceCents > 0 && (
         <div className="mb-6 rounded-card border border-warning-ink bg-warning-bg p-4">
           <p className="font-semibold text-warning-ink">
-            {formatCents(statement.totalBalanceCents)} currently owed
-            {hasMultipleProperties ? " across all your properties" : ""}.
+            {formatCents(statement.totalBalanceCents)} {t("currently owed")}
+            {hasMultipleProperties ? ` ${t("across all your properties")}` : ""}.
           </p>
         </div>
       )}
 
-      <p className="mb-6 text-sm text-ink-soft">
-        Invoice amounts can include deposits, fees and tax. A required deposit
-        is separate from a confirmed payment. Payment status shows the last
-        recorded update.
-      </p>
+      <p className="mb-6 text-sm text-ink-soft">{t("Invoice amounts can include deposits, fees and tax. A required deposit is separate from a confirmed payment. Payment status shows the last recorded update.")}</p>
 
       {!statement || statement.properties.length === 0 ? (
         <EmptyState
@@ -99,10 +95,10 @@ export default async function AccountBillingPage() {
           {statement.properties.map((property) => (
             <Card
               key={property.serviceAddressId ?? "no-property"}
-              title={hasMultipleProperties ? property.addressLabel : "Invoices"}
+              title={hasMultipleProperties ? property.addressLabel : t("Invoices")}
               description={
                 hasMultipleProperties
-                  ? "Invoices recorded for this property."
+                  ? t("Invoices recorded for this property.")
                   : undefined
               }
             >
@@ -117,7 +113,7 @@ export default async function AccountBillingPage() {
                         href={`/account/billing/invoice/${invoice.id}`}
                         className="font-semibold text-ink underline-offset-4 hover:underline"
                       >
-                        Invoice #{invoice.invoiceNumber}
+                        {t("Invoice")} #{invoice.invoiceNumber}
                       </Link>
                       <p className="mt-1 text-sm text-ink-soft">
                         {invoice.billingPeriodStart
@@ -127,23 +123,21 @@ export default async function AccountBillingPage() {
                       <div className="mt-2">
                         <StatusPill
                           tone={invoiceStatusTone(invoice.status)}
-                          label={invoiceStatusLabel(invoice.status)}
+                          label={invoiceStatusLabel(invoice.status, locale)}
                         />
                       </div>
                     </div>
                     <div className="text-left sm:text-right">
                       <p className="font-semibold text-ink">
-                        {formatCents(invoice.amountPaidCents)} paid
+                        {formatCents(invoice.amountPaidCents)} {t("paid")}
                       </p>
                       {invoice.balanceCents > 0 && (
                         <>
                           <p className="mt-1 text-sm font-semibold text-warning-ink">
-                            {formatCents(invoice.balanceCents)} owed
+                            {formatCents(invoice.balanceCents)} {t("owed")}
                           </p>
                           {invoice.isLocalInvoice && (
-                            <p className="mt-1 text-sm text-ink-soft">
-                              Pay as arranged with Robinson Appliance Rentals.
-                            </p>
+                            <p className="mt-1 text-sm text-ink-soft">{t("Pay as arranged with Robinson Appliance Rentals.")}</p>
                           )}
                         </>
                       )}

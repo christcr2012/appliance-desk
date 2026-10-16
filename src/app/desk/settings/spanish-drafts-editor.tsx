@@ -1,5 +1,6 @@
 "use client";
 
+import { translationDraftLimit } from "@/domains/language/draft-limits";
 import { useActionState } from "react";
 import { saveSpanishDraftAction, type SpanishDraftState } from "./spanish-drafts-action";
 import type { TranslationSource } from "@/domains/language/drafts";
@@ -21,7 +22,7 @@ function DraftEditor({ source }: { source: TranslationSource }) {
             className="mt-1 w-full rounded border border-line bg-subtle p-2" />
         </label>
         <label className="text-sm">Spanish draft (not published)
-          <textarea name="spanish" rows={3} maxLength={4000}
+          <textarea name="spanish" rows={3} maxLength={translationDraftLimit(source.kind)}
             key={source.revision ?? "new"} defaultValue={source.spanish ?? ""}
             className="mt-1 w-full rounded border border-line bg-surface p-2" />
         </label>
@@ -40,7 +41,8 @@ function DraftEditor({ source }: { source: TranslationSource }) {
 
 export function SpanishDraftsEditor({ sources }: { sources: TranslationSource[] }) {
   const site = sources.filter(x => x.kind === "SITE");
-  const messages = sources.filter(x => x.kind === "COMMUNICATION");
+  const legal = sources.filter(x => x.kind === "LEGAL");
+  const messages = sources.filter(x => x.kind === "COMMUNICATION" || x.kind === "MESSAGE" || x.kind === "NOTICE");
   return (
     <div className="space-y-2 text-sm">
       <p>Spanish copies are privately drafted alongside the current English source.
@@ -51,6 +53,10 @@ export function SpanishDraftsEditor({ sources }: { sources: TranslationSource[] 
       <details>
         <summary className="cursor-pointer font-semibold">Website wording ({site.length} fields)</summary>
         {site.map(source => <DraftEditor key={source.kind+source.key} source={source}/>)}
+      </details>
+      <details>
+        <summary className="cursor-pointer font-semibold">Informational legal translations ({legal.length}) — English controls</summary>
+        {legal.map(source => <DraftEditor key={source.kind+source.key} source={source}/>)}
       </details>
       <details>
         <summary className="cursor-pointer font-semibold">Communication templates ({messages.length})</summary>

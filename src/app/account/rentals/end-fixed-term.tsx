@@ -1,6 +1,6 @@
 "use client";
 
-import { useCustomerTranslation } from "@/domains/language/client-portal";
+import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
@@ -20,6 +20,7 @@ export function EndFixedTerm(props: {
   policyVersion: string;
 }) {
   const tr = useCustomerTranslation();
+  const language = useCustomerLanguage();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export function EndFixedTerm(props: {
         onClick={() => {
           if (
             !window.confirm(
-              `Request the ending shown above for ${props.effectiveLabel}? This does not charge your card automatically.`,
+              `${tr("Request the ending shown above for")} ${props.effectiveLabel}? ${tr("This does not charge your card automatically.")}`,
             )
           )
             return;
@@ -56,11 +57,11 @@ export function EndFixedTerm(props: {
           });
         }}
       >
-        {pending ? tr("Saving…") : `Request ending on ${props.effectiveLabel}`}
+        {pending ? tr("Saving…") : `${tr("Request ending on")} ${props.effectiveLabel}`}
       </Button>
       {error && (
         <p role="alert" className="mt-2 text-sm font-semibold text-danger">
-          {error}
+          {language === "es" ? tr("Your request could not be completed. Try again or contact the business.") : error}
         </p>
       )}
     </div>

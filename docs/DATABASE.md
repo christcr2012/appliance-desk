@@ -1058,3 +1058,25 @@ website revisions nor send communication. Backup manifests include W-26 tables.
 The initial migration was proved on **disposable local PostgreSQL only**; no
 production migration, LIVE payment activation, customer signing or provider
 acceptance is authorized by this paragraph.
+
+W-26 continuation also freezes `SignatureRecord.interfaceLanguage`,
+`translationCopyDigest` and separately informational `informationalTerms` JSON
+without changing the English governing signature. A PostgreSQL trigger rejects
+updates to these fields or `shownLanguage` once signed; prior rows are not
+translated or backfilled. `CustomerNotice` and `MessageDelivery` carry a default
+English content language and optional source fingerprint for new localized
+submissions. New notices retain the original English legal text; dispatch checks
+current approval before a new Spanish submission, while durable prior provider
+acceptance can still reconcile after approval is withdrawn. Existing history is
+never regenerated from the customer's current preference.
+
+Translation source kinds also include `MESSAGE`, `NOTICE` and exact-English
+`LEGAL` hashes. Original-message variables must be preserved. Current canonical
+English, Spanish revisions, static/dynamic customer copy and consent disclosures
+are all included in the review fingerprint; source drift invalidates publication.
+
+New `SigningPaymentAttempt.checkoutLocale` freezes the reviewed language on the
+original durable attempt. Retries reuse it with the original idempotency key;
+existing attempts retain NULL and omit the previously absent provider parameter.
+A withdrawn Spanish approval blocks new Spanish provider submission. Historical
+legacy Checkout parameters stay unchanged; Stripe handles its own browser locale.

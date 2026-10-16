@@ -1,5 +1,6 @@
 "use client";
 
+import { portalLabel } from "@/domains/language/portal-copy";
 import { useEffect, useState, useTransition } from "react";
 import { approveEstimateAction, requestEstimateChangesAction, declineEstimateAction, type EstimateResponseState } from "./actions";
 import { estimateFormText, type FormCopyKey } from "@/domains/language/estimate-form-copy";
@@ -164,7 +165,7 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
         </div>
         {result.status === "error" && (
           <p role="alert" className="text-sm text-red-700">
-            {result.message}
+            {language === "es" ? portalLabel(language,"Your request could not be completed. Try again or contact the business.") : result.message}
           </p>
         )}
       </form>
@@ -179,7 +180,7 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
       <textarea value={message} onChange={e=>setMessage(e.target.value)} maxLength={1000}
         className="mt-1 block w-full rounded border border-line p-2"/></label>
     <button disabled={isPending} className="rounded bg-action px-3 py-2 text-on-action">{t("decline")}</button>
-    {result.status==="error"&&<p role="alert">{result.message}</p>}
+    {result.status==="error"&&<p role="alert">{language === "es" ? portalLabel(language,"Your request could not be completed. Try again or contact the business.") : result.message}</p>}
   </form>;
   if (mode === "changes") {
     return (
@@ -189,7 +190,7 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
       >
         <div>
           <label htmlFor="changes-message" className="block text-sm font-medium text-ink-soft">
-            What would you like changed?
+            {t("changePrompt")}
           </label>
           <textarea
             id="changes-message"
@@ -206,7 +207,7 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
             disabled={isPending}
             className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
           >
-            {isPending ? "Sending…" : "Send request"}
+            {isPending ? t("sending") : portalLabel(language,"Send request")}
           </button>
           <button
             type="button"
@@ -218,7 +219,7 @@ export function EstimateResponseForm({ estimateId, allowApproval = false,
         </div>
         {result.status === "error" && (
           <p role="alert" className="text-sm text-red-700">
-            {result.message}
+            {language === "es" ? portalLabel(language,"Your request could not be completed. Try again or contact the business.") : result.message}
           </p>
         )}
       </form>

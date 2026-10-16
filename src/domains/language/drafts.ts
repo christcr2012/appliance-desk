@@ -1,11 +1,17 @@
 import "server-only";
+import { translationDraftLimit } from "./draft-limits";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 
+import { currentNoticeSources } from "./notice-language";
+import { NOTICE_COPY, type NoticeCopyKey } from "./notice-copy";
+import { legalTranslationSources } from "./legal";
+import { TRANSACTIONAL_COPY } from "./transactional-copy";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getPublishedContent } from "@/domains/site-content";
 import { siteFieldByKey } from "@/domains/site-content/fields";
 
-export type TranslationSourceKind = "SITE" | "COMMUNICATION";
+export type TranslationSourceKind = "SITE" | "COMMUNICATION" | "MESSAGE" | "LEGAL" | "NOTICE";
 export type TranslationSource = {
   kind: TranslationSourceKind;
   key: string;
@@ -44,6 +50,13 @@ export async function currentTranslationSource(
     });
     if (!row?.isCurrent) throw new Error("The communication template is no longer current.");
     english = row[part];
+  } else if (kind === "NOTICE") {
+    const templates = await currentNoticeSources();
+    english = Object.hasOwn(templates,key) ? templates[key as NoticeCopyKey] : null;
+  } else if (kind === "LEGAL") {
+    english = (await legalTranslationSources()).get(key) ?? null;
+  } else if (kind === "MESSAGE") {
+    english = Object.hasOwn(TRANSACTIONAL_COPY.en, key) ? TRANSACTIONAL_COPY.en[key as keyof typeof TRANSACTIONAL_COPY.en] : null;
   } else {
     throw new Error("Unsupported translation source.");
   }
@@ -61,28 +74,31 @@ export async function saveTranslationDraft(
   spanishText: string,
 ): Promise<number> {
   const value = spanishText.trim();
-  if (!value || value.length > 4000 || /[\u0000-\u0008\u000b-\u001f]/.test(value)) {
-    throw new Error("Spanish copy must be between 1 and 4,000 printable characters.");
+  const limit=translationDraftLimit(kind);
+  if (!value || value.length > limit || /[\u0000-\u0008\u000b-\u001f]/.test(value)) {
+    throw new Error(`Spanish copy must be between 1 and ${limit.toLocaleString("en-US")} printable characters.`);
   }
   if (!/^[0-9a-f]{64}$/.test(expectedEnglishDigest) ||
       (expectedRevision !== null && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1))) {
     throw new Error("Invalid translation revision.");
   }
 
-  const current = await currentTranslationSource(kind, key);
-  // The renderer substitutes exactly these source variables. A translation
-  // must retain each placeholder once; otherwise customer-specific data may
-  // disappear, or invented placeholders could leak unresolved template syntax.
-  const placeholders = (value: string) =>
-    [...value.matchAll(/\{\{\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\}\}/g)]
-      .map(match => match[1]).sort();
-  if (JSON.stringify(placeholders(current.english)) !== JSON.stringify(placeholders(value)))
-    throw new Error("Spanish text must preserve all English template variables exactly.");
-
-  if (current.digest !== expectedEnglishDigest)
-    throw new Error("The English wording changed. Reload before editing the translation.");
-
   return prisma.$transaction(async tx => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"customer-spanish-review"}, 0))`;
+    const current = await currentTranslationSource(kind, key);
+    // The renderer substitutes exactly these source variables. A translation
+    // must retain each placeholder once; otherwise customer-specific data may
+    // disappear, or invented placeholders could leak unresolved template syntax.
+    const placeholders = (value: string) =>
+      [...value.matchAll(/\{\{\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\}\}/g)]
+        .map(match => match[1]).sort();
+    if (JSON.stringify(placeholders(current.english)) !== JSON.stringify(placeholders(value)))
+      throw new Error("Spanish text must preserve all English template variables exactly.");
+
+    if (current.digest !== expectedEnglishDigest)
+      throw new Error("The English wording changed. Reload before editing the translation.");
+
     const existing = await tx.customerTranslationDraft.findUnique({
       where: { sourceKind_sourceKey: { sourceKind: kind, sourceKey: key } },
     });
@@ -117,7 +133,7 @@ export async function saveTranslationDraft(
 
 export async function listCurrentTranslationDrafts(): Promise<TranslationSource[]> {
   const { SITE_FIELDS } = await import("@/domains/site-content/fields");
-  const [site, templates, drafts] = await Promise.all([
+  const [site, templates, drafts, legal, notices] = await Promise.all([
     getPublishedContent(),
     prisma.communicationTemplateRevision.findMany({
       where: { isCurrent: true },
@@ -125,11 +141,16 @@ export async function listCurrentTranslationDrafts(): Promise<TranslationSource[
       select: { id: true, key: true, subject: true, body: true },
     }),
     prisma.customerTranslationDraft.findMany(),
+    legalTranslationSources(),
+    currentNoticeSources(),
   ]);
   const map = new Map(drafts.map(x => [x.sourceKind + ":" + x.sourceKey, x]));
   const sources: Array<{ kind: TranslationSourceKind; key: string; english: string }> = [
     ...SITE_FIELDS.filter(x => x.kind !== "url" && Boolean((site[x.key] ?? x.default).trim()))
       .map(x => ({ kind: "SITE" as const, key: x.key, english: site[x.key] ?? x.default })),
+    ...Object.entries(notices).map(([key,english])=>({kind:"NOTICE" as const,key,english})),
+    ...[...legal.entries()].map(([key,english]) => ({kind:"LEGAL" as const,key,english})),
+    ...Object.entries(TRANSACTIONAL_COPY.en).map(([key,english]) => ({kind:"MESSAGE" as const,key,english})),
     ...templates.flatMap(x => [
       ...(x.subject ? [{kind: "COMMUNICATION" as const, key: x.id + ":subject", english: x.subject}] : []),
       {kind: "COMMUNICATION" as const, key: x.id + ":body", english: x.body},
@@ -139,7 +160,7 @@ export async function listCurrentTranslationDrafts(): Promise<TranslationSource[
     const row = map.get(source.kind + ":" + source.key);
     const hash = digest(source.english);
     return { ...source, digest: hash,
-      spanish: row?.spanishText ?? null,
+      spanish: row?.spanishText ?? (source.kind === "MESSAGE" ? TRANSACTIONAL_COPY.es[source.key as keyof typeof TRANSACTIONAL_COPY.es] : source.kind === "NOTICE" && source.english === NOTICE_COPY.en[source.key as NoticeCopyKey] ? NOTICE_COPY.es[source.key as NoticeCopyKey] : null),
       revision: row?.revision ?? null,
       stale: Boolean(row && row.englishDigest !== hash) };
   });

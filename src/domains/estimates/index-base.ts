@@ -3,7 +3,6 @@ import { Prisma, type EstimateStatus } from "@prisma/client";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
 import { followUpEmailCopy, quoteEmailCopy } from "@/domains/language/transactional-copy";
-import { displayCustomerLanguage } from "@/domains/language/review";
 import { createDraftAgreementInTx } from "@/domains/agreements";
 import { locateServiceAddress } from "@/domains/tax/locations";
 import {
@@ -386,9 +385,12 @@ export async function sendEstimate(userId: string, estimateId: string,
     process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
   const monthly = totalMonthlyCents(estimate.lineItems);
   const oneTime = totalOneTimeCents(estimate.lineItems);
+  const { displayCustomerLanguage } = await import("@/domains/language/review");
+  const { activeMessageCatalog } = await import("@/domains/language/runtime");
   const language = await displayCustomerLanguage(
     estimate.preferredLanguage === "es" ? "es" : "en",
   );
+  const catalog = await activeMessageCatalog(language);
   const localizedEmail = quoteEmailCopy(language, {
     businessName: settings.publicBusinessName,
     estimateNumber: estimate.estimateNumber,
@@ -398,7 +400,7 @@ export async function sendEstimate(userId: string, estimateId: string,
     fullyReviewed,
     clientMessage: estimate.clientMessage ?? null,
     url: `${appUrl}/estimate/${estimate.id}`,
-  });
+  }, catalog);
 
   const delivery = await deliverMessage({
     idempotencyKey: `estimate-send-${estimate.id}-${sentAt.getTime()}`,
@@ -499,15 +501,18 @@ export async function sendEstimateFollowUpReminders(): Promise<{
       });
 
     try {
+      const { displayCustomerLanguage } = await import("@/domains/language/review");
+      const { activeMessageCatalog } = await import("@/domains/language/runtime");
       const followupLanguage = await displayCustomerLanguage(
         estimate.preferredLanguage === "es" ? "es" : "en",
       );
+      const catalog = await activeMessageCatalog(followupLanguage);
       const copy = followUpEmailCopy(followupLanguage, {
         name: recipientName ?? null,
         businessName: settings.publicBusinessName,
         number: estimate.estimateNumber,
         url: `${appUrl}/estimate/${estimate.id}`,
-      });
+      }, catalog);
       const delivery = await deliverMessage({
         idempotencyKey: `estimate-follow-up-${estimate.id}-${estimate.sentAt.getTime()}`,
         channel: "EMAIL",

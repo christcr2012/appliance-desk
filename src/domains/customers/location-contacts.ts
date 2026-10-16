@@ -496,7 +496,7 @@ export async function tenantRepairOptions(token: string) {
     where: { repairTokenHash: hash, repairTokenExpiresAt: { gt: new Date() },
       endedAt: null, erasedAt: null,
         OR: [{ startedAt: null }, { startedAt: { lte: new Date() } }] },
-    select: { id: true, serviceAddress: {
+    select: { id: true, preferredLanguage: true, serviceAddress: {
       select: { id: true, customerId: true, line1: true, city: true, unitLabel: true,
         locationContactPolicy: true, customer: {
           select: { archivedAt: true, locationContactPolicy: true } },
@@ -521,7 +521,7 @@ export async function tenantRepairOptions(token: string) {
       id: x.appliance.id,
       label: x.appliance.applianceType.name + " · " + x.appliance.assetNumber,
     }))));
-  return { location: [site.unitLabel, site.line1, site.city].filter(Boolean).join(" · "),
+  return { preferredLanguage: person.preferredLanguage, location: [site.unitLabel, site.line1, site.city].filter(Boolean).join(" · "),
     appliances: [...new Map(appliances.map(a => [a.id, a])).values()] };
 }
 export async function submitTenantRepair(token: string, input: { applianceId: string; problem: string }) {

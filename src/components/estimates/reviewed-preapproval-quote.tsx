@@ -1,3 +1,4 @@
+import { portalLabel } from "@/domains/language/portal-copy";
 import { formatCents } from "@/domains/pricing";
 import type { EstimatePreparedQuote } from "@/domains/estimates/preapproval-quote";
 import { moneyLabel, type MoneyLabel } from "@/domains/language/reviewed-money";
@@ -7,6 +8,7 @@ export function ReviewedPreapprovalQuote({ quote, owner = false, language = "en"
   quote: EstimatePreparedQuote;
   owner?: boolean; language?: CustomerLanguage;
 }) {
+  const tr = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language,word);
   const t = (key: MoneyLabel) => moneyLabel(language,key);
   if (quote.status !== "READY" || !quote.totals) {
     return (
@@ -55,7 +57,7 @@ export function ReviewedPreapprovalQuote({ quote, owner = false, language = "en"
                   {(row.additionalItems ?? []).map((item, index) => (
                     <p key={item.label + index} className="text-xs text-ink-soft">
                       {item.label}: {item.status === "BUSINESS_PAID" ?
-                        "Paid by business" : formatCents(item.amountCents)}
+                        tr("Paid by business") : formatCents(item.amountCents)}
                     </p>
                   ))}
                 </td>
@@ -73,16 +75,12 @@ export function ReviewedPreapprovalQuote({ quote, owner = false, language = "en"
           <dd className="font-medium">{formatCents(quote.totals.setupFeeCents)}</dd></div>
         <div><dt className="text-ink-soft">{t("oneTimeTax")}</dt>
           <dd className="font-medium">{formatCents(quote.totals.setupTaxCents)}</dd></div>
-        <div><dt className="text-ink-soft">First-month advance (credited to first invoice)</dt>
+        <div><dt className="text-ink-soft">{tr("First-month advance (credited to first invoice)")}</dt>
           <dd className="font-medium">{formatCents(quote.totals.advanceCents)}</dd></div>
-        <div><dt className="text-ink-soft">Due at signing, not yet paid</dt>
+        <div><dt className="text-ink-soft">{tr("Due at signing, not yet paid")}</dt>
           <dd className="font-semibold">{formatCents(quote.totals.dueAtSigningCents)}</dd></div>
       </dl>
-      <p className="text-xs text-ink-soft">
-        Signing funds are independently verified. The first rental invoice
-        applies any valid advance only once. No deposit checkout is automatically initiated.
-        The complete applicable terms must also receive any required legal and owner approval.
-      </p>
+      <p className="text-xs text-ink-soft">{tr("Signing funds are independently verified. The first rental invoice applies any valid advance only once. No deposit checkout is automatically initiated. The complete applicable terms must also receive any required legal and owner approval.")}</p>
       {owner && <p className="font-mono text-xs break-all">Quote fingerprint: {quote.quoteFingerprint}</p>}
     </section>
   );

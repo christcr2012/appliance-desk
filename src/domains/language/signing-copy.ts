@@ -42,7 +42,7 @@ export const SIGNING_COPY = {
     pending: "Signing…",
     payment: "Signing does not confirm that payment was received.",
     personalLegal:"Your full legal name", personalEmail:"Your email",
-    consent:"I have read the English terms above and agree to this rental agreement. Typing my name and submitting this form constitutes my electronic signature.",
+    consent:"I have read the terms above and agree to this rental agreement. Typing my name and submitting this form constitutes my electronic signature.",
     send:"Submitting…", visitOnly:"Signing only requests this visit; payment must be verified and an authorized person must confirm the actual booking.",
     legalNote:"The English agreement controls until separately reviewed Spanish legal text is approved.",
     signedNext:"We will contact you about payment and delivery scheduling. Signing does not confirm any payment. Your signature was recorded.",

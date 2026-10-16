@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useId, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 
@@ -36,6 +37,7 @@ export function PhotoUploadField({
   label = "Add a photo",
   disabled,
 }: Props) {
+  const tr = useCustomerTranslation();
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -74,7 +76,7 @@ export function PhotoUploadField({
           disabled || isUploading ? "pointer-events-none opacity-60" : ""
         }`}
       >
-        {isUploading ? "Uploading…" : label}
+        {isUploading ? tr("Uploading…") : label}
       </label>
       <input
         ref={inputRef}

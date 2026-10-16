@@ -1,5 +1,7 @@
 "use client";
 
+import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
+import { portalStatement } from "@/domains/language/portal-copy";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
@@ -37,6 +39,8 @@ const WARNING_MS = 60_000; // show the "still there?" banner this long before si
  * signed in rather than being logged out with no notice.
  */
 export function IdleLogout({ timeoutMinutes }: { timeoutMinutes: number }) {
+  const t=useCustomerTranslation();
+  const language=useCustomerLanguage();
   const timeoutMs = timeoutMinutes * 60_000;
   const router = useRouter();
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
@@ -100,7 +104,7 @@ export function IdleLogout({ timeoutMinutes }: { timeoutMinutes: number }) {
         if (signingOutRef.current) return;
         signingOutRef.current = true;
         void signOut().finally(() => {
-          router.push("/login?reason=timeout");
+          router.push(language==="es"?"/login?reason=timeout&language=es":"/login?reason=timeout");
           router.refresh();
         });
         return;
@@ -116,7 +120,7 @@ export function IdleLogout({ timeoutMinutes }: { timeoutMinutes: number }) {
       window.removeEventListener("storage", onStorage);
       window.clearInterval(interval);
     };
-  }, [timeoutMs, router]);
+  }, [timeoutMs, router, language]);
 
   if (secondsLeft === null) return null;
 
@@ -125,16 +129,15 @@ export function IdleLogout({ timeoutMinutes }: { timeoutMinutes: number }) {
       role="alertdialog"
       aria-labelledby="idle-logout-heading"
       aria-describedby="idle-logout-body"
-      className="fixed inset-x-0 bottom-0 z-[100] border-t border-line bg-white px-4 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]"
+      className="fixed inset-x-0 bottom-0 z-[100] border-t border-line bg-surface px-4 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]"
     >
       <div className="mx-auto flex max-w-3xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p id="idle-logout-heading" className="font-medium text-ink">
-            You&apos;ll be signed out soon
+            {t("You'll be signed out soon")}
           </p>
           <p id="idle-logout-body" className="text-sm text-ink-soft">
-            No activity for a while — signing out in {secondsLeft} second
-            {secondsLeft === 1 ? "" : "s"} to keep your account safe.
+            {portalStatement(language,"idle",{seconds:secondsLeft,plural:secondsLeft===1?"":"s"})}
           </p>
         </div>
         <button
@@ -146,7 +149,7 @@ export function IdleLogout({ timeoutMinutes }: { timeoutMinutes: number }) {
           }}
           className="shrink-0 rounded-md bg-action px-4 py-2 text-sm font-semibold text-on-action hover:bg-action"
         >
-          Stay signed in
+          {t("Stay signed in")}
         </button>
       </div>
     </div>

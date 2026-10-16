@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+vi.mock("next/navigation", () => ({useRouter:()=>({push:vi.fn()})}));
 vi.mock("@/app/sign/[id]/actions", () => ({ signAgreementAction: vi.fn() }));
 vi.mock("@/app/estimate/[id]/actions", () => ({
   approveEstimateAction: vi.fn(), requestEstimateChangesAction: vi.fn(),

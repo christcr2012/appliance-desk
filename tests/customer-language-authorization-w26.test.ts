@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const mock = vi.hoisted(() => ({
+  actor: vi.fn(),
   quote: vi.fn(),
   updateMany: vi.fn(),
   review: vi.fn(),
@@ -26,11 +27,12 @@ import { allSpanishSurfacesReady, getSpanishReview, recordSpanishReview, reviewe
 describe("W-26 quote-bearer locale and reviewed-publication safety", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mock.actor.mockResolvedValue({id:"owner-id",role:"OWNER",archivedAt:null});
     mock.drafts.mockResolvedValue([]);
     mock.quote.mockResolvedValue({ status: "VIEWED" });
     mock.updateMany.mockResolvedValue({ count: 1 });
     mock.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-      callback({ customerLanguageReview: { findUnique: mock.review } }));
+      callback({ $queryRaw: vi.fn(), $executeRaw: vi.fn(), user: {findUnique:mock.actor}, customerLanguageReview: { findUnique: mock.review } }));
   });
 
   it("denies invalid language without any read/write", async () => {
@@ -89,13 +91,22 @@ describe("W-26 quote-bearer locale and reviewed-publication safety", () => {
     expect(state.enabled).toBe(false);
   });
 
+  it("denies fluent/legal/publication writes from a deactivated or non-owner actor", async () => {
+    for (const actor of [null, {id:"admin",role:"ADMIN",archivedAt:null}, {id:"owner-id",role:"OWNER",archivedAt:new Date()}]) {
+      mock.actor.mockResolvedValueOnce(actor);
+      await expect(recordSpanishReview("owner-id", "PUBLISH",{expectedDigest:reviewedCopyDigest([])})).rejects.toThrow("no longer has access");
+    }
+  });
+  it("rejects an attestation for content different from the displayed fingerprint",async()=>{
+    await expect(recordSpanishReview("owner-id","FLUENT",{reviewer:"Synthetic reviewer",reference:"Synthetic test reference",expectedDigest:"a".repeat(64)})).rejects.toThrow("Translation content changed");
+  });
   it("refuses owner publication when a W-26 translated customer surface is incomplete", async () => {
     mock.review.mockResolvedValue({
       copyDigest: reviewedCopyDigest([]),
       reviewedAt: new Date(),
       legalReviewedAt: new Date(),
     });
-    await expect(recordSpanishReview("owner-id", "PUBLISH")).rejects.toThrow(
+    await expect(recordSpanishReview("owner-id", "PUBLISH",{expectedDigest:reviewedCopyDigest([])})).rejects.toThrow(
       "Complete all W-26 translated customer pages",
     );
     expect(mock.transaction).toHaveBeenCalledOnce();
@@ -115,4 +126,13 @@ describe("W-26 reviewer digest includes owner-edited mutable content", () => {
     expect(old).not.toBe(changed);
     expect(spanishCopyDigest()).toMatch(/^[0-9a-f]{64}$/);
   });
+});
+
+import { TRANSACTIONAL_COPY } from "@/domains/language/transactional-copy";
+it("invalidates reviewed content when transactional Spanish wording changes", () => {
+  const before = spanishCopyDigest();
+  const copy = TRANSACTIONAL_COPY.es as unknown as Record<string,string>;
+  const original = copy.quoteSubject;
+  try { copy.quoteSubject = original + " revisado"; expect(spanishCopyDigest()).not.toBe(before); }
+  finally { copy.quoteSubject = original; }
 });

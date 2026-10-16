@@ -43,7 +43,7 @@ export async function prepareSigningPaymentAttempt(
     if (locks.length !== 1) throw new Error("Signing obligation is missing.");
     // This rereads the actual signed evidence in the SAME serializable transaction.
     const agreement = await tx.rentalAgreement.findUnique({
-      where: { id: agreementId }, select: { status: true },
+      where: { id: agreementId }, select: { status: true, signature:{select:{interfaceLanguage:true}} },
     });
     if (!agreement || !["ACTIVE", "SCHEDULED"].includes(agreement.status)) {
       throw new Error("Cancelled or unsigned agreements cannot collect signing money.");
@@ -87,7 +87,12 @@ export async function prepareSigningPaymentAttempt(
     const requestKey = "w22-sign-" + createHash("sha256")
       .update(JSON.stringify([agreementId, obligation.orderFingerprint, method, attemptNumber]))
       .digest("hex");
+    // Locale belongs to the durable payment attempt, never a mutable retry.
+    const checkoutLocale=method==="STRIPE_CHECKOUT"
+      ? await (await import("@/domains/language/review")).displayCustomerLanguage(
+        agreement.signature?.interfaceLanguage==="es"?"es":"en") : null;
     return tx.signingPaymentAttempt.create({ data: {
+      checkoutLocale,
       agreementId,
       requestKey,
       attemptNumber,

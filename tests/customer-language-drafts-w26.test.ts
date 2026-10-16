@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
+  actor: vi.fn(),
   publicCopy: vi.fn(),
   template: vi.fn(),
   existing: vi.fn(),
@@ -24,7 +25,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: {
   },
   auditLog: { create: mocks.audit },
   $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
-    callback({ customerTranslationDraft: {
+    callback({ $queryRaw: vi.fn(), $executeRaw: vi.fn(), user: { findUnique: mocks.actor }, customerTranslationDraft: {
       findUnique: mocks.existing, create: mocks.create, updateMany: mocks.updateMany,
     }, auditLog: { create: mocks.audit } }),
 } }));
@@ -33,6 +34,7 @@ import { currentTranslationSource, saveTranslationDraft } from "@/domains/langua
 describe("W-26 owner-managed Spanish drafts never publish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.actor.mockResolvedValue({id:"owner",role:"OWNER",archivedAt:null});
     mocks.publicCopy.mockResolvedValue({ "home.headline": "English on site" });
     mocks.existing.mockResolvedValue(null);
     mocks.create.mockResolvedValue({ id: "draft-1" });
@@ -52,6 +54,14 @@ describe("W-26 owner-managed Spanish drafts never publish", () => {
     mocks.publicCopy.mockResolvedValue({ "home.headline": "Updated English" });
     await expect(saveTranslationDraft("owner", "SITE", "home.headline", digest, null, "Hola"))
       .rejects.toThrow("English wording changed");
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it("denies archived or non-staff actors at the write boundary", async () => {
+    const source = await currentTranslationSource("SITE", "home.headline");
+    for (const actor of [null, {id:"customer",role:"CUSTOMER",archivedAt:null}, {id:"owner",role:"OWNER",archivedAt:new Date()}]) {
+      mocks.actor.mockResolvedValueOnce(actor);
+      await expect(saveTranslationDraft("owner", "SITE", "home.headline", source.digest, null, "Hola")).rejects.toThrow("no longer has access");
+    }
     expect(mocks.create).not.toHaveBeenCalled();
   });
   it("inserts a private reviewed-source-bound draft, not a published website revision", async () => {

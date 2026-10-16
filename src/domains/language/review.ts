@@ -1,30 +1,25 @@
 import "server-only";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { customerStrings, customerLanguageActive, type CustomerLanguage } from "./copy";
+import { NOTICE_COPY, NOTICE_WRAPPER_COPY } from "./notice-copy";
+import { TERMS_SPANISH_COPY } from "@/domains/agreements/terms-snapshot";
+import { PORTAL_SMS_DISCLOSURE, PORTAL_SMS_DISCLOSURE_ES } from "@/domains/messaging/portal-disclosure";
+import { TRANSACTIONAL_COPY } from "./transactional-copy";
+import { SPANISH_STATUS_LABELS } from "@/lib/status-labels";
 import { ESTIMATE_COPY } from "./estimate-copy";
 import { FORM_COPY } from "./estimate-form-copy";
 import { SIGNING_COPY } from "./signing-copy";
-import { PORTAL_TRANSLATIONS } from "./portal-copy";
+import { PORTAL_TRANSLATIONS, PORTAL_DYNAMIC_COPY } from "./portal-copy";
 import { REVIEWED_MONEY_LABELS } from "./reviewed-money";
 import { listCurrentTranslationDrafts, type TranslationSource } from "./drafts";
 
 // Do not allow a fluent/legal record to activate a PARTIAL customer journey.
 // Each surface flips only after its original W-26 bilingual consumer evidence.
-export const CUSTOMER_SPANISH_SURFACE_READINESS = {
-  quote: false,
-  agreement: false,
-  signing: false,
-  payment: false,
-  portal: false,
-  messages: false,
-  ownerTemplates: false,
-} as const;
-
-export const allSpanishSurfacesReady =
-  Object.values(CUSTOMER_SPANISH_SURFACE_READINESS).every(Boolean);
-
+import { allSpanishSurfacesReady } from "./readiness";
+export { allSpanishSurfacesReady, CUSTOMER_SPANISH_SURFACE_READINESS } from "./readiness";
 
 /** The reviewed snapshot is deliberately versioned by the actual user-visible copy.
  * A deploy that changes a translated string invalidates the previous review. */
@@ -36,7 +31,14 @@ export function spanishCopyDigest(): string {
     .update(JSON.stringify(FORM_COPY))
     .update(JSON.stringify(SIGNING_COPY))
     .update(JSON.stringify(PORTAL_TRANSLATIONS))
+    .update(JSON.stringify(PORTAL_DYNAMIC_COPY))
     .update(JSON.stringify(REVIEWED_MONEY_LABELS))
+    .update(JSON.stringify(TRANSACTIONAL_COPY))
+    .update(JSON.stringify(SPANISH_STATUS_LABELS))
+    .update(JSON.stringify(TERMS_SPANISH_COPY))
+    .update(JSON.stringify(NOTICE_COPY))
+    .update(JSON.stringify(NOTICE_WRAPPER_COPY))
+    .update(JSON.stringify([PORTAL_SMS_DISCLOSURE, PORTAL_SMS_DISCLOSURE_ES]))
     .digest("hex");
 }
 
@@ -119,16 +121,23 @@ function validateEvidence(input: string, label: string): string {
 export async function recordSpanishReview(
   actorUserId: string,
   kind: "FLUENT" | "LEGAL" | "PUBLISH" | "DISABLE",
-  details: { reviewer?: string; reference?: string } = {},
+  details: { reviewer?: string; reference?: string; expectedDigest?:string } = {},
 ): Promise<void> {
   const now = new Date();
-  const { digest, complete } = await currentReviewerContent();
   const reviewer = kind === "FLUENT" || kind === "LEGAL"
     ? validateEvidence(details.reviewer ?? "", "Reviewer identity") : "";
   const reference = kind === "FLUENT" || kind === "LEGAL"
     ? validateEvidence(details.reference ?? "", "Review evidence") : "";
   await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"customer-spanish-review"}, 0))`;
     const old = await tx.customerLanguageReview.findUnique({ where: { language: "es" } });
+    // Disable never depends on translated-content availability. Every attestation
+    // is bound to the fingerprint actually displayed to the owner.
+    const content=kind==="DISABLE"?{digest:old?.copyDigest ?? "",complete:false}:await currentReviewerContent();
+    const {digest,complete}=content;
+    if(kind!=="DISABLE" && (!details.expectedDigest || details.expectedDigest!==digest))
+      throw new Error("Translation content changed. Reload and review the current fingerprint before recording approval.");
     if (kind !== "FLUENT" && kind !== "DISABLE" && (!old || old.copyDigest !== digest || !old.reviewedAt))
       throw new Error("A fluent reviewer must reapprove the current bilingual content first.");
     if (kind === "DISABLE" && !old)

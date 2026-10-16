@@ -350,7 +350,7 @@ export async function createDepositCheckoutSessionForEstimate(
   const session = await stripe.checkout.sessions.create(
     {
       mode: "payment",
-      customer: stripeCustomerId,
+        customer: stripeCustomerId,
       payment_method_types: ["card", "us_bank_account"],
       line_items: [
         {

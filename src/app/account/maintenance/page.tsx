@@ -8,7 +8,7 @@ import {
 } from "@/domains/portal";
 import { maintenanceStatusLabel } from "@/lib/status-labels";
 import { NewRequestForm } from "./new-request-form";
-import { formatBusinessDate } from "@/lib/business-date";
+import { formatBusinessDate as originalBusinessDate } from "@/lib/business-date";
 import {
   ButtonLink,
   Card,
@@ -36,6 +36,7 @@ export default async function AccountMaintenancePage({
   const page = positivePage(rawPage);
   const session = await getServerSession();
   const locale = session ? await portalLanguage(session.user.id) : "en";
+  const formatBusinessDate=(date:Date)=>originalBusinessDate(date,locale);
   const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
   const [customer, applianceOptions] = session
     ? await Promise.all([
@@ -49,7 +50,7 @@ export default async function AccountMaintenancePage({
       <div className="max-w-3xl">
         <PageHeader title={t("Maintenance")} />
         <EmptyState
-          title="No rental account found"
+          title={t("No rental account found")}
           description={t("Contact the business if you expected to see service requests here.")}
         />
       </div>
@@ -121,14 +122,14 @@ export default async function AccountMaintenancePage({
                 <p className="font-semibold text-ink">
                   {item.appliance
                     ? `${item.appliance.applianceType.name} (${item.appliance.assetNumber})`
-                    : "General"}
+                    : t("General")}
                 </p>
                 <p className="mt-1 font-medium text-ink-soft">
-                  {maintenanceStatusLabel(item.status)}
+                  {maintenanceStatusLabel(item.status, locale)}
                 </p>
                 <p className="mt-2 text-ink-soft">{item.problem}</p>
                 <p className="mt-2 text-xs text-ink-faint">
-                  Submitted {formatBusinessDate(item.openedAt)}
+                  {t("Submitted")} {formatBusinessDate(item.openedAt)}
                 </p>
               </li>
             ))}
@@ -140,17 +141,13 @@ export default async function AccountMaintenancePage({
             <ButtonLink
               href={`/account/maintenance?page=${page - 1}`}
               variant="secondary"
-            >
-              Newer requests
-            </ButtonLink>
+            >{t("Newer requests")}</ButtonLink>
           )}
           {requestPage?.hasMore && (
             <ButtonLink
               href={`/account/maintenance?page=${page + 1}`}
               variant="secondary"
-            >
-              Older requests
-            </ButtonLink>
+            >{t("Older requests")}</ButtonLink>
           )}
         </div>
       </Card>

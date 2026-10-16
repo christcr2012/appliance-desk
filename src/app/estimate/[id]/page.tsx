@@ -1,6 +1,8 @@
+import { PaymentReturnNotice } from "@/components/payment-return-notice";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { getEstimateForApproval } from "@/domains/estimates";
 import { estimateValidThroughKey } from "@/domains/estimates/validity";
-import { businessDateFromKey, formatBusinessDate } from "@/lib/business-date";
+import { businessDateFromKey, formatBusinessDate as originalBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { EstimateResponseForm } from "./estimate-response-form";
 import { ContinueEstimateOrderButton } from "./continue-estimate-button";
@@ -26,11 +28,13 @@ export const metadata = {
 const RESPONDED_STATUSES = new Set(["APPROVED", "CHANGES_REQUESTED", "DECLINED", "EXPIRED", "CONVERTED"]);
 
 export default async function PublicEstimatePage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{deposit?:string;signingPayment?:string}>;
 }) {
   const { id } = await params;
+  const payment = await searchParams;
   const estimate = await getEstimateForApproval(id);
 
   if (!estimate) {
@@ -59,6 +63,8 @@ export default async function PublicEstimatePage({
   const monthly = estimate.lineItems.reduce((sum, l) => sum + l.monthlyPriceCents * l.quantity, 0);
   const oneTime = estimate.lineItems.reduce((sum, l) => sum + l.oneTimeFeeCents * l.quantity, 0);
   const language = await displayCustomerLanguage(parseCustomerLanguage(estimate.preferredLanguage));
+  const formatBusinessDate=(date:Date)=>originalBusinessDate(date,language);
+  const t = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language,word);
   const tr = (key: Parameters<typeof estimateCopy>[1]) => estimateCopy(language, key);
   const customerName = estimate.customer
     ? (estimate.customer.user.name ?? estimate.customer.user.email)
@@ -66,6 +72,7 @@ export default async function PublicEstimatePage({
 
   return (
     <main lang={language} className="mx-auto max-w-lg px-6 py-16">
+      <PaymentReturnNotice language={language} state={payment?.signingPayment ?? payment?.deposit} />
       <h1 className="text-xl font-semibold">{tr("estimate")} #{estimate.estimateNumber}</h1>
       {(estimate.status === "SENT" || estimate.status === "VIEWED") && (
         <QuoteLanguageChoice estimateId={estimate.id}
@@ -106,13 +113,13 @@ export default async function PublicEstimatePage({
         </ul>
 
         <div className="border-t border-line pt-3 font-medium text-ink">
-          {monthly > 0 && <p>{formatCents(monthly)}/month</p>}
-          {oneTime > 0 && <p>{formatCents(oneTime)} one-time</p>}
+          {monthly > 0 && <p>{formatCents(monthly)} {tr("recurring")}</p>}
+          {oneTime > 0 && <p>{formatCents(oneTime)} {tr("oneTime")}</p>}
         </div>
-        {estimate.depositCents > 0 && <p>Deposit: {formatCents(estimate.depositCents)}</p>}
+        {estimate.depositCents > 0 && <p>{t("Deposit")}: {formatCents(estimate.depositCents)}</p>}
         {estimate.validUntil && (
           <p className="text-xs text-ink-faint">
-            Valid through {formatBusinessDate(businessDateFromKey(estimateValidThroughKey(estimate.validUntil))!)}
+            {t("Valid through")} {formatBusinessDate(businessDateFromKey(estimateValidThroughKey(estimate.validUntil))!)}
           </p>
         )}
       </div>
@@ -138,26 +145,25 @@ export default async function PublicEstimatePage({
         {estimate.status === "APPROVED" && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
             <p className="font-medium">{tr("approved")}</p>
-            <div className="my-3"><ContinueEstimateOrderButton estimateId={estimate.id}/></div>
+            <div className="my-3"><ContinueEstimateOrderButton language={language} estimateId={estimate.id}/></div>
             {estimate.depositCents > 0 && estimate.depositPaidAt && (
               <p className="mt-1">
-                Deposit of {formatCents(estimate.depositCents)} received — thank you.
+                {t("Deposit received — thank you.")} {formatCents(estimate.depositCents)}
               </p>
             )}
             {reviewedQuote?.evidenceVersion===2 ? (
-              <p className="mt-1">The refundable reserve is included in the reviewed signing amount. Review and sign the agreement before paying; no separate estimate deposit is due.</p>
+              <p className="mt-1">{tr("noSeparateDeposit")}</p>
             ) : estimate.depositCents > 0 && !estimate.depositPaidAt ? (
               <>
                 <p className="mt-1">
-                  One more step: a deposit of {formatCents(estimate.depositCents)} is due before
-                  we can move forward.
+                  {t("A deposit is due before we can move forward.")} {formatCents(estimate.depositCents)}
                 </p>
-                {reviewedQuote ? <PayDepositButton estimateId={estimate.id} /> : (
-                  <p className="mt-1">Deposit checkout requires a renewed, verified complete signing order.</p>
+                {reviewedQuote ? <PayDepositButton language={language} estimateId={estimate.id} /> : (
+                  <p className="mt-1">{tr("depositDue")}</p>
                 )}
               </>
             ) : (
-              <p className="mt-1">We&apos;ll be in touch about next steps.</p>
+              <p className="mt-1">{tr("nextSteps")}</p>
             )}
           </div>
         )}
@@ -179,12 +185,12 @@ export default async function PublicEstimatePage({
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
             <p className="font-medium">{tr("finalized")}</p>
             {finishedState === "READY_FOR_ACCOUNT" &&
-              <div className="mt-3"><p>Signing payment confirmed. You can create your account password securely.</p>
-                <OrderAccountSetupButton estimateId={estimate.id}/></div>}
+              <div className="mt-3"><p>{t("Signing payment confirmed. You can create your account password securely.")}</p>
+                <OrderAccountSetupButton language={language} estimateId={estimate.id}/></div>}
             {finishedState === "PAYMENT_PENDING" &&
-              <p className="mt-2" role="status">Your signature is recorded. Payment is still awaiting verified settlement; a redirect is not a receipt.</p>}
+              <p className="mt-2" role="status">{t("Your signature is recorded. Payment is still awaiting verified settlement; a redirect is not a receipt.")}</p>}
             {finishedState === "SIGN" &&
-              <div className="mt-3"><ContinueEstimateOrderButton estimateId={estimate.id}/></div>}
+              <div className="mt-3"><ContinueEstimateOrderButton language={language} estimateId={estimate.id}/></div>}
           </div>
         )}
         {!RESPONDED_STATUSES.has(estimate.status) && (

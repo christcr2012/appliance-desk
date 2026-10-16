@@ -1,3 +1,4 @@
+import { messageText } from "@/domains/language/transactional-copy";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
@@ -276,6 +277,11 @@ async function sendReferralRewardNotice(input: {
   reason: string;
   appliedViaStripe: boolean;
 }): Promise<void> {
+  const { customerMessageLanguage } = await import("@/domains/language/message-language");
+  const { activeMessageCatalog } = await import("@/domains/language/runtime");
+  const language = await customerMessageLanguage(input.customerId);
+  const catalog = await activeMessageCatalog(language);
+  const t = (key: Parameters<typeof messageText>[1], values?: Record<string,string>) => messageText(language,key,values,catalog);
   const delivery = await deliverMessage({
     idempotencyKey: `referral-reward-email-${input.referralId}-${input.side}`,
     channel: "EMAIL",
@@ -289,8 +295,10 @@ async function sendReferralRewardNotice(input: {
     },
     subject: { type: "Referral", id: input.referralId },
     render: () => ({
-      subject: "You've got a referral credit",
-      text: `Hi${input.name ? ` ${input.name}` : ""},\n\n${input.reason}. A ${formatCents(input.rewardCents)} credit has been added to your account${input.appliedViaStripe ? " and will automatically reduce your next payment" : ""}.\n\nThanks for being part of our referral program!`,
+      subject: t("referralSubject"),
+      text: [t("quoteHello",{name:input.name ? " "+input.name : ""}),
+        // The recorded reason is evidence supplied in English, never machine-translated.
+        input.reason, t("referralCredit",{amount:formatCents(input.rewardCents),next:input.appliedViaStripe ? t("referralNext") : ""}),t("referralThanks")].join("\n\n"),
     }),
   });
   if (delivery.state !== "ACCEPTED" && delivery.state !== "DELIVERED") {

@@ -198,8 +198,8 @@ export function addBusinessDays(date: Date, days: number): Date {
   return midnight(addCalendarDays(businessDateKey(date), days));
 }
 
-export function formatBusinessDate(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
+export function formatBusinessDate(date: Date, language: "en"|"es" = "en") {
+  return new Intl.DateTimeFormat(language==="es"?"es-US":"en-US", {
     timeZone: BUSINESS_TIME_ZONE,
     weekday: "long",
     month: "long",
@@ -208,8 +208,8 @@ export function formatBusinessDate(date: Date) {
   }).format(date);
 }
 
-export function formatBusinessTime(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
+export function formatBusinessTime(date: Date, language: "en"|"es" = "en") {
+  return new Intl.DateTimeFormat(language==="es"?"es-US":"en-US", {
     timeZone: BUSINESS_TIME_ZONE,
     hour: "numeric",
     minute: "2-digit",

@@ -20,6 +20,7 @@ export function SpanishReviewForm({ digest, currentReview, reviewedAt,
   );
   return (
     <form action={action} className="space-y-3 text-sm">
+      <input type="hidden" name="expectedDigest" value={digest} />
       <p>English remains the default. Spanish customer-facing documents, messages
         and signature screens stay disabled until a real fluent review AND a separate
         legal review of English-controlling agreement wording are documented.</p>

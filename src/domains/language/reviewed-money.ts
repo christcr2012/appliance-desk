@@ -4,7 +4,7 @@ export const REVIEWED_MONEY_LABELS = {
     order: "Complete reviewed signing order",
     property: "Property",
     rent: "Monthly rent",
-    tax: "Monthly tax",
+    tax: "Future bill tax",
     calculatedTax: "Calculated monthly tax",
     setup: "Administrative setup",
     setupTax: "Setup sales tax",

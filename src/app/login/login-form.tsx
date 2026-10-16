@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,6 +10,8 @@ import { getPostLoginDestination } from "./actions";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t=useCustomerTranslation();
+  const language=useCustomerLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +32,7 @@ export function LoginForm() {
     if (result.error) {
       setSubmitting(false);
       setError(
-        result.error.message ?? "That email and password don't match. Please try again.",
+        language==="es"?t("That email and password don't match. Please try again."):result.error.message ?? "That email and password don't match. Please try again.",
       );
       return;
     }
@@ -54,8 +57,7 @@ export function LoginForm() {
           role="status"
           className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900"
         >
-          You were signed out after a while with no activity, to help keep
-          your account safe. Log back in to continue.
+          {t("You were signed out after a while with no activity, to help keep your account safe. Log back in to continue.")}
         </p>
       )}
       {deactivated && (
@@ -63,13 +65,12 @@ export function LoginForm() {
           role="alert"
           className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-900"
         >
-          This account no longer has access. If you think that&apos;s a
-          mistake, ask the business owner to check your account.
+          {t("This account no longer has access. If you think that’s a mistake, ask the business owner to check your account.")}
         </p>
       )}
       <div className="flex flex-col gap-1">
         <label htmlFor="email" className="text-sm font-medium">
-          Email
+          {t("Email")}
         </label>
         <input
           id="email"
@@ -87,7 +88,7 @@ export function LoginForm() {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="password" className="text-sm font-medium">
-          Password
+          {t("Password")}
         </label>
         <input
           id="password"
@@ -102,10 +103,10 @@ export function LoginForm() {
           className="rounded border border-line-strong px-3 py-2"
         />
         <Link
-          href="/forgot-password"
+          href={language==="es"?"/forgot-password?language=es":"/forgot-password"}
           className="self-end text-sm text-primary hover:underline"
         >
-          Forgot password?
+          {t("Forgot password?")}
         </Link>
       </div>
 
@@ -120,7 +121,7 @@ export function LoginForm() {
         disabled={submitting}
         className="mt-2 rounded bg-primary px-4 py-2 font-medium text-on-primary hover:bg-primary-dark disabled:opacity-60"
       >
-        {submitting ? "Logging in…" : "Log in"}
+        {submitting ? t("Logging in…") : t("Log in")}
       </button>
     </form>
   );

@@ -1,3 +1,4 @@
+import type { CustomerLanguage } from "@/domains/language/copy";
 import { createHash } from "node:crypto";
 import { formatCents } from "@/domains/pricing";
 import {
@@ -174,7 +175,17 @@ function daysLabel(days: number): string {
  * from the same readers those features use, so a term that is not shown here
  * can never be relied on later.
  */
-export function describeSnapshotTerms(raw: unknown): TermsDisclosure {
+export const TERMS_SPANISH_COPY = {
+  noFee: "Finalización anticipada: sin cargo.", fee: "Cargo por finalización anticipada:",
+  remaining: "% del alquiler restante", larger: "el mayor de", or: "o", cap: "nunca más de",
+  notice: "Aviso necesario para finalizar anticipadamente:", days: "días",
+  effective: "La finalización anticipada entra en vigor en una fecha de facturación mensual, después del plazo de aviso.",
+  REFUND: "El dinero pagado por meses no utilizados se reembolsa.",
+  CREDIT: "El dinero pagado por meses no utilizados se convierte en crédito de la cuenta.",
+  RETAIN: "El dinero pagado por meses no utilizados no se reembolsa.",
+  renew: "La renovación automática es opcional y solo se activa si la habilita para su contrato. Si está habilitada, puede desactivarla con este plazo de aviso:",
+} as const;
+export function describeSnapshotTerms(raw: unknown, language: CustomerLanguage = "en"): TermsDisclosure {
   const policy = snapshotTerminationPolicy(raw);
   const termsText = asSnapshot(raw)?.termination?.termsText;
   let ending: TermsDisclosure["ending"] = null;
@@ -193,6 +204,14 @@ export function describeSnapshotTerms(raw: unknown): TermsDisclosure {
     lines.push(`Notice needed to end early: ${daysLabel(policy.noticeDays)}.`);
     lines.push("An early ending takes effect on a monthly billing date, after the notice period.");
     lines.push(UNUSED_TERM_LINE[policy.unusedTerm]);
+    if (language === "es") {
+      const es = TERMS_SPANISH_COPY;
+      const amounts = [policy.feeCents ? formatCents(policy.feeCents) : null,
+        policy.feePercent ? `${policy.feePercent}${es.remaining}` : null].filter((value): value is string => value !== null);
+      lines.splice(0, lines.length,
+        amounts.length ? `${es.fee} ${amounts.length === 2 ? `${es.larger} ${amounts[0]} ${es.or} ${amounts[1]}` : amounts[0]}${policy.feeCapCents !== null ? `, ${es.cap} ${formatCents(policy.feeCapCents)}` : ""}.` : es.noFee,
+        `${es.notice} ${policy.noticeDays} ${es.days}.`,es.effective,es[policy.unusedTerm]);
+    }
     ending = { lines, termsText };
   }
   const renew = snapshotAutoRenew(raw);
@@ -200,7 +219,7 @@ export function describeSnapshotTerms(raw: unknown): TermsDisclosure {
     ending,
     autoRenew: renew
       ? {
-          noticeLine: `Automatic renewal is optional and does not start unless it is turned on for your agreement. If it is turned on, you can turn it off with ${daysLabel(renew.noticeDays)} notice.`,
+          noticeLine: language === "es" ? `${TERMS_SPANISH_COPY.renew} ${renew.noticeDays} ${TERMS_SPANISH_COPY.days}.` : `Automatic renewal is optional and does not start unless it is turned on for your agreement. If it is turned on, you can turn it off with ${daysLabel(renew.noticeDays)} notice.`,
           termsText: renew.termsText,
         }
       : null,

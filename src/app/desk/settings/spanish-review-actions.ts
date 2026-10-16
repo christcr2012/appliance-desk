@@ -15,6 +15,7 @@ export async function saveSpanishReviewAction(
     return { status: "error", message: "Invalid review action." };
   try {
     await recordSpanishReview(owner.user.id, kind, {
+      expectedDigest: String(form.get("expectedDigest") ?? ""),
       reviewer: String(form.get("reviewer") ?? ""),
       reference: String(form.get("reference") ?? ""),
     });

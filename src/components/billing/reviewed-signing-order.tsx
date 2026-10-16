@@ -1,3 +1,4 @@
+import { portalLabel } from "@/domains/language/portal-copy";
 import { formatCents } from "@/domains/pricing";
 import type { ReviewedSigningOrderReadback } from "@/domains/billing/signing-order-readback";
 import { moneyLabel, type MoneyLabel } from "@/domains/language/reviewed-money";
@@ -7,9 +8,10 @@ import type { CustomerLanguage } from "@/domains/language/copy";
 export function ReviewedSigningOrder({ order, context = "signing", language = "en" }: {
   order: ReviewedSigningOrderReadback; context?: "signing" | "estimate"; language?: CustomerLanguage;
 }) {
+  const tr = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language,word);
   const t = (key: MoneyLabel) => moneyLabel(language,key);
   return (
-    <section aria-label="Complete reviewed signing order" className="mt-5 rounded-lg border border-line bg-surface p-4 text-sm">
+    <section aria-label={t("order")} className="mt-5 rounded-lg border border-line bg-surface p-4 text-sm">
       <h2 className="font-semibold">{t("order")}</h2>
       <p className="mt-1 text-ink-soft">
         {order.locations.length} {t(order.locations.length === 1 ? "address" : "addresses")}.
@@ -28,31 +30,28 @@ export function ReviewedSigningOrder({ order, context = "signing", language = "e
               <div className="flex justify-between gap-3"><dt>{t("first")}</dt><dd>{formatCents(location.downPaymentCents)}</dd></div>
               {location.additionalItems.map((item, index) => (
                 <div key={item.label + index} className="flex justify-between gap-3">
-                  <dt>{item.label}{item.status === "BUSINESS_PAID" ? " (paid by business)" : ""}</dt>
+                  <dt>{item.label}{item.status === "BUSINESS_PAID" ? ` (${tr("Paid by business")})` : ""}</dt>
                   <dd>{formatCents(item.amountCents)}</dd>
                 </div>
               ))}
-              <div className="flex justify-between gap-3 font-semibold text-ink"><dt>Signing amount for this address</dt><dd>{formatCents(location.signingAmountCents)}</dd></div>
+              <div className="flex justify-between gap-3 font-semibold text-ink"><dt>{tr("Signing amount for this address")}</dt><dd>{formatCents(location.signingAmountCents)}</dd></div>
             </dl>
           </div>
         ))}
       </div>
       <dl className="mt-3 space-y-1 border-t border-line pt-3">
-        <div className="flex justify-between gap-3"><dt>Combined administrative setup</dt><dd>{formatCents(order.totals.setupFeeCents)}</dd></div>
-        <div className="flex justify-between gap-3"><dt>Combined setup sales tax</dt><dd>{formatCents(order.totals.setupTaxCents)}</dd></div>
-        <div className="flex justify-between gap-3"><dt>Combined down payments</dt><dd>{formatCents(order.totals.downPaymentCents)}</dd></div>
+        <div className="flex justify-between gap-3"><dt>{tr("Combined administrative setup")}</dt><dd>{formatCents(order.totals.setupFeeCents)}</dd></div>
+        <div className="flex justify-between gap-3"><dt>{tr("Combined setup sales tax")}</dt><dd>{formatCents(order.totals.setupTaxCents)}</dd></div>
+        <div className="flex justify-between gap-3"><dt>{tr("Combined down payments")}</dt><dd>{formatCents(order.totals.downPaymentCents)}</dd></div>
         {order.totals.additionalCents > 0 && (
           <div className="flex justify-between gap-3">
-            <dt>Additional reviewed fees, service taxes and refundable reserves</dt>
+            <dt>{tr("Additional reviewed fees, service taxes and refundable reserves")}</dt>
             <dd>{formatCents(order.totals.additionalCents)}</dd>
           </div>
         )}
-        <div className="flex justify-between gap-3 font-semibold"><dt>Combined signing amount across addresses</dt><dd>{formatCents(order.totals.signingAmountCents)}</dd></div>
+        <div className="flex justify-between gap-3 font-semibold"><dt>{tr("Combined signing amount across addresses")}</dt><dd>{formatCents(order.totals.signingAmountCents)}</dd></div>
       </dl>
-      <p className="mt-2 text-ink-soft">
-        A signature is not a payment receipt. Down payments are credited against
-        a first invoice only when that invoice is issued and the credit is verified.
-      </p>
+      <p className="mt-2 text-ink-soft">{tr("A signature is not a payment receipt. Down payments are credited against a first invoice only when that invoice is issued and the credit is verified.")}</p>
     </section>
   );
 }

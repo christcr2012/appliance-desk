@@ -1,4 +1,6 @@
 "use client";
+import { portalLabel } from "@/domains/language/portal-copy";
+import type { CustomerLanguage } from "@/domains/language/copy";
 
 import { useEffect, useState, useTransition } from "react";
 import { payEstimateDepositAction, type EstimateResponseState } from "./actions";
@@ -8,7 +10,8 @@ import { payEstimateDepositAction, type EstimateResponseState } from "./actions"
  * Checkout the first time around (landed back on the cancel_url) and is
  * revisiting this same link. Lets them pick the deposit payment back up
  * without having to re-approve the estimate itself. */
-export function PayDepositButton({ estimateId }: { estimateId: string }) {
+export function PayDepositButton({ estimateId, language = "en" }: { estimateId: string; language?: CustomerLanguage }) {
+  const t = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language, word);
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<EstimateResponseState>({ status: "idle" });
 
@@ -21,7 +24,7 @@ export function PayDepositButton({ estimateId }: { estimateId: string }) {
   }, [result]);
 
   if (result.status === "redirecting") {
-    return <p className="mt-2 text-sm text-ink-soft">Taking you to a secure page to pay the deposit…</p>;
+    return <p className="mt-2 text-sm text-ink-soft">{t("Taking you to a secure page to pay the deposit…")}</p>;
   }
 
   return (
@@ -36,11 +39,11 @@ export function PayDepositButton({ estimateId }: { estimateId: string }) {
         }
         className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
-        {isPending ? "Starting…" : "Pay deposit"}
+        {isPending ? t("Starting…") : t("Pay deposit")}
       </button>
       {result.status === "error" && (
         <p role="alert" className="mt-2 text-sm text-red-700">
-          {result.message}
+          {language === "es" ? t("Your request could not be completed. Try again or contact the business.") : result.message}
         </p>
       )}
     </div>

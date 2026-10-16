@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useSyncExternalStore } from "react";
 import {
   getStoredPreference,
@@ -44,6 +45,7 @@ function getServerSnapshot(): null {
  * time someone visits.
  */
 export function ThemeToggle({ className = "" }: { className?: string }) {
+  const tr = useCustomerTranslation();
   const resolved = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   if (resolved === null) {
@@ -63,7 +65,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     <button
       type="button"
       onClick={toggle}
-      aria-label={resolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={tr(resolved === "dark" ? "Switch to light mode" : "Switch to dark mode")}
       className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-current hover:bg-black/5 dark:hover:bg-white/10 ${className}`}
     >
       {resolved === "dark" ? (

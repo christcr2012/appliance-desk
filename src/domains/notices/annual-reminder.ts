@@ -1,3 +1,4 @@
+import { localizeAnnualNotice } from "@/domains/language/notice-language";
 import { prisma } from "@/lib/prisma";
 import { addBusinessDays, billingPeriodFor, businessDateKey, businessDaysBetween, businessEndOfDay, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing/money";
@@ -134,7 +135,7 @@ export async function queueAnnualReminders(now: Date = new Date()): Promise<Annu
         run.skipped += 1;
         return;
       }
-      const composed = composeAnnualReminder({
+      const localeInput = {
         customerName: agreement.customer.user.name ?? agreement.customer.user.email,
         boundary,
         years: k,
@@ -145,7 +146,8 @@ export async function queueAnnualReminders(now: Date = new Date()): Promise<Annu
         businessPhone: settings?.publicPhone ?? "",
         businessEmail: settings?.publicEmail ?? "",
         template: settings?.annualReminderText,
-      });
+      };
+      const composed = await localizeAnnualNotice(tx,agreement.customerId,localeInput,composeAnnualReminder(localeInput));
       const notice = await createNoticeInTx(tx, {
         customerId: agreement.customerId,
         agreementId: agreement.id,
@@ -153,6 +155,7 @@ export async function queueAnnualReminders(now: Date = new Date()): Promise<Annu
         dedupeKey: annualReminderKey(root, k),
         subject: composed.subject,
         body: composed.body,
+        language: composed.language, translationCopyDigest: composed.translationCopyDigest,
         ...windowForRenewalStart(boundary),
       });
       if (!notice.created) {

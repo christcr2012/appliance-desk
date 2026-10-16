@@ -1,3 +1,5 @@
+import type { CustomerLanguage } from "@/domains/language/copy";
+
 import type { StatusTone } from "@/components/status-badge";
 
 /**
@@ -70,12 +72,49 @@ const ESTIMATE_STATUS_LABELS: Record<string, string> = {
   CONVERTED: "Approved and set up",
 };
 
-function lookup(labels: Record<string, string>, value: string): string {
-  return labels[value] ?? value;
+export const SPANISH_STATUS_LABELS: Record<string, string> = {
+  "Being set up": "En preparación",
+  "Waiting on your signature": "Pendiente de su firma",
+  "Signed, starts later": "Firmado, comienza después",
+  "Active": "Activo",
+  "Ended": "Finalizado",
+  "Cancelled": "Cancelado",
+  "Scheduled": "Programado",
+  "In progress": "En curso",
+  "Completed": "Completado",
+  "Delivery": "Entrega",
+  "Installation": "Instalación",
+  "Swap": "Intercambio",
+  "Maintenance visit": "Visita de mantenimiento",
+  "Pickup / removal": "Recogida",
+  "Submitted": "Enviado",
+  "Being reviewed": "En revisión",
+  "Resolved": "Resuelto",
+  "Closed": "Cerrado",
+  "Being prepared": "En preparación",
+  "Open": "Pendiente",
+  "Partially paid": "Pagado parcialmente",
+  "Paid": "Pagado",
+  "Payment failed": "Pago fallido",
+  "Voided": "Anulado",
+  "Past due": "Vencido",
+  "Written off": "Dado de baja",
+  "Refunded": "Reembolsado",
+  "Sent — awaiting your response": "Enviado; pendiente de su respuesta",
+  "Approved": "Aprobado",
+  "Changes requested": "Cambios solicitados",
+  "Declined": "Rechazado",
+  "Expired": "Vencido",
+  "Approved and set up": "Aprobado y preparado"
+};
+
+function lookup(labels: Record<string, string>, value: string, language: CustomerLanguage = "en"): string {
+  const english = labels[value];
+  return language === "es" ? (SPANISH_STATUS_LABELS[english] ?? "Estado no disponible") : (english ?? value);
 }
 
-export const rentalAgreementStatusLabel = (status: string) =>
-  lookup(RENTAL_AGREEMENT_STATUS_LABELS, status);
+export const rentalAgreementStatusLabel = (status: string, language: CustomerLanguage = "en") =>
+  lookup(RENTAL_AGREEMENT_STATUS_LABELS, status, language);
 
 const RENTAL_AGREEMENT_STATUS_TONE: Record<string, StatusTone> = {
   DRAFT: "pending",
@@ -89,9 +128,9 @@ const RENTAL_AGREEMENT_STATUS_TONE: Record<string, StatusTone> = {
 export const rentalAgreementStatusTone = (status: string): StatusTone =>
   RENTAL_AGREEMENT_STATUS_TONE[status] ?? "pending";
 
-export const jobStatusLabel = (status: string) => lookup(JOB_STATUS_LABELS, status);
+export const jobStatusLabel = (status: string, language: CustomerLanguage = "en") => lookup(JOB_STATUS_LABELS, status, language);
 
-export const jobTypeLabel = (type: string) => lookup(JOB_TYPE_LABELS, type);
+export const jobTypeLabel = (type: string, language: CustomerLanguage = "en") => lookup(JOB_TYPE_LABELS, type, language);
 
 const JOB_STATUS_TONE: Record<string, StatusTone> = {
   SCHEDULED: "pending",
@@ -102,12 +141,12 @@ const JOB_STATUS_TONE: Record<string, StatusTone> = {
 
 export const jobStatusTone = (status: string): StatusTone => JOB_STATUS_TONE[status] ?? "pending";
 
-export const maintenanceStatusLabel = (status: string) =>
-  lookup(MAINTENANCE_STATUS_LABELS, status);
+export const maintenanceStatusLabel = (status: string, language: CustomerLanguage = "en") =>
+  lookup(MAINTENANCE_STATUS_LABELS, status, language);
 
-export const invoiceStatusLabel = (status: string) => lookup(INVOICE_STATUS_LABELS, status);
+export const invoiceStatusLabel = (status: string, language: CustomerLanguage = "en") => lookup(INVOICE_STATUS_LABELS, status, language);
 
-export const estimateStatusLabel = (status: string) => lookup(ESTIMATE_STATUS_LABELS, status);
+export const estimateStatusLabel = (status: string, language: CustomerLanguage = "en") => lookup(ESTIMATE_STATUS_LABELS, status, language);
 
 // Which of the 5 shared status icons (src/components/status-badge.tsx)
 // each status maps to — one lookup shared by every page that shows an

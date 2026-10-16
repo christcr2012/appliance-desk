@@ -119,6 +119,15 @@ async function claimPreparedCommunication(
         observedAt: now, lastError: "ENVIRONMENT_FENCE" });
       return { kind: "BLOCKED", deliveryId } as const;
     }
+    if (delivery.contentLanguage === "es") {
+      const { getSpanishReview } = await import("@/domains/language/review");
+      const review = await getSpanishReview();
+      if (!review.enabled || review.currentDigest !== delivery.translationCopyDigest) {
+        await tx.messageAttempt.update({where:{id:delivery.currentAttempt.id},data:{state:"NOT_SENT",finishedAt:now,errorCode:"SPANISH_REVIEW_CHANGED"}});
+        await applyDeliveryObservationInTx(tx,{deliveryId,state:"NOT_SENT",observedAt:now,lastError:"Spanish content requires current review"});
+        return {kind:"BLOCKED",deliveryId} as const;
+      }
+    }
     const text = decryptCommunicationContent(delivery.renderedBody);
     // Actual frozen content, not a preview or raw JS character count,
     // determines the last-moment segment and cost ceiling.

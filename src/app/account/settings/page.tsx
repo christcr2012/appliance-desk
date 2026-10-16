@@ -62,9 +62,7 @@ export default async function AccountSettingsPage() {
             <ButtonLink
               href="/account/settings/privacy"
               variant="secondary"
-            >
-              Manage privacy requests
-            </ButtonLink>
+            >{t("Manage privacy requests")}</ButtonLink>
           }
         >
           <p className="text-sm text-ink-soft">
