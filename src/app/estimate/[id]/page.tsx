@@ -4,6 +4,8 @@ import { businessDateFromKey, formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { EstimateResponseForm } from "./estimate-response-form";
 import { ContinueEstimateOrderButton } from "./continue-estimate-button";
+import { customerOrderFinishStatus } from "@/domains/orders/activation";
+import { OrderAccountSetupButton } from "./account-setup-button";
 import { PayDepositButton } from "./pay-deposit-button";
 import { getFinalizedConvertedEstimateOrder } from "@/domains/estimates/finalized-order";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
@@ -39,6 +41,8 @@ export default async function PublicEstimatePage({
     );
   }
 
+  const finishedState = estimate.status === "CONVERTED"
+    ? await customerOrderFinishStatus(estimate.id) : "WAITING";
   const reviewedOrder = estimate.status === "CONVERTED"
     ? await getFinalizedConvertedEstimateOrder(estimate.id) : null;
   const quoteCandidate = estimate.status !== "CONVERTED"
@@ -169,6 +173,13 @@ export default async function PublicEstimatePage({
         {estimate.status === "CONVERTED" && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
             <p className="font-medium">This estimate was approved and is being set up.</p>
+            {finishedState === "READY_FOR_ACCOUNT" &&
+              <div className="mt-3"><p>Signing payment confirmed. You can create your account password securely.</p>
+                <OrderAccountSetupButton estimateId={estimate.id}/></div>}
+            {finishedState === "PAYMENT_PENDING" &&
+              <p className="mt-2" role="status">Your signature is recorded. Payment is still awaiting verified settlement; a redirect is not a receipt.</p>}
+            {finishedState === "SIGN" &&
+              <div className="mt-3"><ContinueEstimateOrderButton estimateId={estimate.id}/></div>}
           </div>
         )}
         {!RESPONDED_STATUSES.has(estimate.status) && (

@@ -18,6 +18,12 @@ export type SignActionState =
   | { status: "error"; message: string };
 
 const signSchema = z.object({
+  deliverySelection:z.object({
+    optionId:z.string().uuid(),expectedOfferVersion:z.number().int().min(1),
+    questions:z.object({dryerOutlet:z.enum(["THREE_PRONG","FOUR_PRONG","GAS","UNKNOWN"]),
+      washerHookups:z.enum(["YES","NO","UNKNOWN"]),stairs:z.boolean(),
+      crewNotes:z.string().trim().max(1500)}),
+  }).optional(),
   signerName: z.string().trim().min(1, "Enter your full name.").max(200),
   signerEmail: z.string().trim().email("Enter a valid email address.").max(200),
   agreedToTerms: z
@@ -62,6 +68,7 @@ export async function signAgreementAction(
       signerName: data.signerName,
       signerEmail: data.signerEmail,
       ipAddress,
+      deliverySelection:data.deliverySelection,
     });
 
     let checkoutUrl: string | null = null;

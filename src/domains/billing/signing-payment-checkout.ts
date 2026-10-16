@@ -88,6 +88,15 @@ export async function createSigningTestCheckout(
     if (Date.now() - attemptRow.createdAt.getTime() > 6 * 60 * 60 * 1000) {
       throw new Error("Unknown old checkout attempt requires owner reconciliation.");
     }
+    // Only a one-property, owner-authorized customer-completion quote returns
+    // to its own no-login status page. A provider redirect is never paid proof.
+    const source = await prisma.rentalAgreement.findUnique({
+      where:{id:agreementId},
+      select:{sourceEstimate:{select:{id:true,customerAutoFinishEnabled:true}}},
+    });
+    const returnPath=source?.sourceEstimate?.customerAutoFinishEnabled
+      ? "/estimate/"+source.sourceEstimate.id
+      : "/account";
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       payment_method_types: ["card"],
@@ -100,8 +109,8 @@ export async function createSigningTestCheckout(
           product_data: { name: item.description, metadata: { kind: item.kind } },
         },
       })),
-      success_url: safeReturnOrigin() + "/account?signingPayment=processing",
-      cancel_url: safeReturnOrigin() + "/account?signingPayment=cancelled",
+      success_url: safeReturnOrigin() + returnPath + "?signingPayment=processing",
+      cancel_url: safeReturnOrigin() + returnPath + "?signingPayment=cancelled",
       metadata: {
         agreementId,
         attemptId: attempt.id,

@@ -5,6 +5,8 @@ ALTER TABLE "Estimate"
   ADD COLUMN "deliveryRequestedAt" TIMESTAMP(3),
   ADD COLUMN "customerAutoFinishEnabled" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "Job"
+  ADD COLUMN "noShowCause" TEXT,
+  ADD COLUMN "noShowEvidence" TEXT,
   ADD COLUMN "requestedDelivery" JSONB,
   ADD COLUMN "requestedDeliveryAt" TIMESTAMP(3),
   ADD COLUMN "confirmedDeliveryAt" TIMESTAMP(3),
@@ -22,3 +24,9 @@ ALTER TABLE "BusinessSettings"
 ALTER TABLE "Job" ADD CONSTRAINT "W24_trip_fee_nonnegative" CHECK ("approvedTripFeeCents" >= 0);
 ALTER TABLE "BusinessSettings" ADD CONSTRAINT "W24_trip_fee_nonnegative" CHECK ("missedTripFeeCents" >= 0);
 ALTER TABLE "BusinessSettings" ADD CONSTRAINT "W24_relocation_nonnegative" CHECK ("relocationFeeCents" >= 0);
+ALTER TABLE "RentalAgreement"
+  ADD COLUMN "deliveryOffer" JSONB NOT NULL DEFAULT '[]',
+  ADD COLUMN "deliveryOfferVersion" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "deliveryOfferActorUserId" TEXT,
+  ADD COLUMN "deliveryRequested" JSONB,
+  ADD COLUMN "deliveryRequestedAt" TIMESTAMP(3);

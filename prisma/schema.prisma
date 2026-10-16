@@ -844,6 +844,13 @@ model RentalAgreement {
   // pricing or billing logic.
   sourceEstimateId String?
   sourceEstimate   Estimate? @relation(fields: [sourceEstimateId], references: [id])
+  // W-24 independent agreement owner-offered windows; never a booked visit.
+  deliveryOffer Json @default("[]")
+  deliveryOfferVersion Int @default(0)
+  deliveryOfferActorUserId String?
+  deliveryRequested Json?
+  deliveryRequestedAt DateTime?
+
 
   termMonths Int? // null = month-to-month
   startDate  DateTime?
@@ -1412,6 +1419,8 @@ model Job {
   durationMinutes  Int?
   version          Int       @default(1)
   noShowAt         DateTime?
+  noShowCause String?
+  noShowEvidence String?
   partMovements    PartStockMovement[]
 
   // Completion (Batch C, P2-B): COMPLETE when every appliance got its positive result, otherwise PARTIAL.

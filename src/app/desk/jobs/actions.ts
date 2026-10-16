@@ -503,13 +503,15 @@ export async function scheduleJobAction(raw: Record<string, unknown>): Promise<S
 }
 
 /** Nobody was there: cancel the visit and mark it as a no-show. Nothing else changes. */
-export async function markJobNoShowAction(jobId: string, expectedVersion: number): Promise<JobActionState> {
+export async function markJobNoShowAction(jobId: string, expectedVersion: number,
+  cause: "NOBODY_HOME" | "HOOKUPS_NOT_READY" = "NOBODY_HOME",
+  evidence = ""): Promise<JobActionState> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   if (typeof jobId !== "string" || jobId.length === 0 || jobId.length > 64 || !Number.isInteger(expectedVersion)) {
     return { status: "error", message: "Couldn't find that job." };
   }
   try {
-    await markJobNoShow(session.user.id, jobId, expectedVersion);
+    await markJobNoShow(session.user.id, jobId, expectedVersion, cause, evidence);
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't mark that visit." };
   }

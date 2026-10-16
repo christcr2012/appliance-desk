@@ -562,6 +562,7 @@ export async function getSignatureRecordForSigning(id: string) {
 import { newestMonthToMonthVersionInTx } from "./month-to-month";
 
 export type SignAgreementInput = {
+  deliverySelection?: import("@/domains/orders/delivery").DeliverySelection;
   signerName: string;
   signerEmail: string;
   ipAddress: string | null;
@@ -602,6 +603,21 @@ export async function signAgreement(
     // Unsent and unsigned agreements cannot bypass a subsequently revoked
     // CPA decision. Existing signed agreements keep their historical amounts.
     await assertCurrentSigningPolicyInTx(tx, frozen, new Date());
+    // The agreement's bearer signing link may choose only an owner-offered
+    // current window, never book an appointment or alter frozen money.
+    const { readOfferedSlots, assertAvailableDeliveryOption } =
+      await import("@/domains/orders/delivery");
+    const choices=readOfferedSlots(agreement.deliveryOffer);
+    if(choices.length){
+      if(!input.deliverySelection)
+        throw new Error("Select an offered delivery choice before signing.");
+      const selected=assertAvailableDeliveryOption(agreement.deliveryOffer,
+        agreement.deliveryOfferVersion,input.deliverySelection);
+      await tx.rentalAgreement.update({where:{id:agreement.id},
+        data:{deliveryRequested:selected,deliveryRequestedAt:new Date()}});
+    }else if(input.deliverySelection){
+      throw new Error("This agreement has no current offered delivery choices.");
+    }
     const signedAt = new Date();
     const signResult = await tx.signatureRecord.updateMany({
       where: {

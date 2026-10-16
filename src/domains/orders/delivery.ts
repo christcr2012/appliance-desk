@@ -150,3 +150,35 @@ export function validateDeliveryConfirmation(input: {
     throw new Error("Scheduled time is outside the customer's offered AM/PM window.");
   return {slot:evidence.data.slot,date,minutes};
 }
+
+export async function saveAgreementDeliveryOffers(userId:string, agreementId:string,
+  rows: Array<{date:string;window:"AM"|"PM"}>) {
+  if(!Array.isArray(rows)||rows.length<1||rows.length>4)
+    throw new Error("Offer one to four choices.");
+  const options=rows.map(row=>slotSchema.parse({...row,id:randomUUID()}));
+  const seen=new Set<string>();
+  for(const option of options){
+    const key=option.date+":"+option.window;
+    if(option.date<todayDenver()||seen.has(key))
+      throw new Error("Only unique future delivery choices are allowed.");
+    seen.add(key);
+  }
+  return prisma.$transaction(async tx=>{
+    const actor=await tx.user.findUnique({where:{id:userId},select:{role:true}});
+    if(!actor||!["OWNER","ADMIN"].includes(actor.role))
+      throw new Error("Owner/admin permission required.");
+    const a=await tx.rentalAgreement.findUnique({
+      where:{id:agreementId},select:{status:true,signature:{select:{signedAt:true}}}});
+    if(!a||!["DRAFT","AWAITING_SIGNATURE"].includes(a.status)||a.signature?.signedAt)
+      throw new Error("Signed agreements cannot change offered delivery options.");
+    const updated=await tx.rentalAgreement.update({where:{id:agreementId},
+      data:{deliveryOffer:options,deliveryOfferVersion:{increment:1},
+        deliveryOfferActorUserId:userId},
+      select:{deliveryOfferVersion:true}});
+    await tx.auditLog.create({data:{userId,action:"agreement.delivery_choices",
+      entityType:"RentalAgreement",entityId:agreementId,
+      newValue:{version:updated.deliveryOfferVersion,
+        windows:options.map(x=>x.date+":"+x.window)}}});
+    return updated.deliveryOfferVersion;
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+}
