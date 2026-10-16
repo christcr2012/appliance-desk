@@ -1,6 +1,6 @@
 import { getServerSession } from "@/lib/session";
 import { portalLanguage } from "@/domains/language/portal";
-import { portalLabel } from "@/domains/language/portal-copy";
+import { portalLabel, rentalCountLabel } from "@/domains/language/portal-copy";
 import { getPortalHome } from "@/domains/portal/workspace";
 import { formatCents } from "@/domains/pricing/money";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
@@ -44,14 +44,14 @@ export default async function AccountHomePage({
         description={t("Your rentals, next visit, billing and help in one place.")}
         primaryAction={{
           href: "/account/maintenance",
-          label: "Report a problem",
+          label: t("Report a problem"),
         }}
         secondaryActions={
           <ButtonLink
             href="/account/maintenance?request=pickup"
             variant="secondary"
           >
-            Request pickup
+            {t("Request pickup")}
           </ButtonLink>
         }
       />
@@ -62,7 +62,7 @@ export default async function AccountHomePage({
           items={[
             {
               href: "/account",
-              label: "All properties",
+              label: t("All properties"),
               active: !data.addressId,
             },
             ...data.properties.map((address) => ({
@@ -80,12 +80,10 @@ export default async function AccountHomePage({
       <div className="grid gap-5 lg:grid-cols-2">
         <Card
           title={t("What do I rent?")}
-          description={`${data.activeRentalCount} active rental${
-            data.activeRentalCount === 1 ? "" : "s"
-          }${data.addressId ? " at this property" : " on this account"}.`}
+          description={rentalCountLabel(locale,data.activeRentalCount,Boolean(data.addressId))}
           actions={
             <ButtonLink href="/account/rentals" variant="secondary">
-              View rentals
+              {t("View rentals")}
             </ButtonLink>
           }
         >
@@ -112,13 +110,17 @@ export default async function AccountHomePage({
                         0,
                       ),
                     )}
-                    /month
+                    {t("per month")}
                   </p>
                   {agreement.outOfServicePeriods.map((away) => (
                     <p key={away.id} className="mt-2 text-sm text-ink">
-                      Your {away.appliance.applianceType.name.toLowerCase()} has been out for repair since{" "}
-                      {formatBusinessDate(away.startedOn)}. When it is back, your next bill gets a credit for every day
-                      without it.
+                      {locale === "es" ? (
+                        <>Su {away.appliance.applianceType.name.toLowerCase()} está fuera de servicio por reparación desde{" "}
+                        {formatBusinessDate(away.startedOn)}. Cuando regrese, su próxima factura tendrá un crédito por cada día sin el equipo.</>
+                      ) : (
+                        <>Your {away.appliance.applianceType.name.toLowerCase()} has been out for repair since{" "}
+                        {formatBusinessDate(away.startedOn)}. When it is back, your next bill gets a credit for every day without it.</>
+                      )}
                     </p>
                   ))}
                 </li>

@@ -3,7 +3,7 @@ import { customerStrings } from "@/domains/language/copy";
 import { FORM_COPY } from "@/domains/language/estimate-form-copy";
 import { ESTIMATE_COPY } from "@/domains/language/estimate-copy";
 import { SIGNING_COPY } from "@/domains/language/signing-copy";
-import { PORTAL_TRANSLATIONS } from "@/domains/language/portal-copy";
+import { PORTAL_TRANSLATIONS, rentalCountLabel } from "@/domains/language/portal-copy";
 import { REVIEWED_MONEY_LABELS } from "@/domains/language/reviewed-money";
 
 const catalogs = {
@@ -38,5 +38,14 @@ describe("W-26 bilingual keyset and translation draft contract", () => {
     expect(SIGNING_COPY.es.legal).toMatch(/inglés/);
     expect(ESTIMATE_COPY.es.finalReviewBody).toContain("Ninguna cifra");
     expect(FORM_COPY.es.requestNotBooked).toContain("no una cita confirmada");
+  });
+});
+
+describe("W-26 rental count grammar", () => {
+  it("keeps property scope and number in both languages", () => {
+    expect(rentalCountLabel("en", 1, true)).toBe("1 active rental at this property.");
+    expect(rentalCountLabel("en", 2, false)).toBe("2 active rentals on this account.");
+    expect(rentalCountLabel("es", 1, true)).toBe("1 alquiler activo en esta propiedad.");
+    expect(rentalCountLabel("es", 2, false)).toBe("2 alquileres activos en esta cuenta.");
   });
 });

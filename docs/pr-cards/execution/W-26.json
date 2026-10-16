@@ -64,7 +64,7 @@
     "Prove full independent browser, DB, upgrade/restore, accessibility, code/security review and checked CI, then merge; queue independently gated real reviewer/provider/live acceptance."
   ],
   "acceptance": [
-    "Customers choose English or Español on quote, agreement, signing, payment and portal pages; preference remembered on customer and used in email and future texts.",
+    "Customers choose English or Espa\u00f1ol on quote, agreement, signing, payment and portal pages; preference remembered on customer and used in email and future texts.",
     "Draft translations receive fluent reviewer approval before Spanish is switched on; English signed text controls until counsel review.",
     "Owner desk English; owner-editable Spanish text beside English in templates and content.",
     "Both-language full customer pages have no missing text; email preference and immutable shown-language signing are tested."
@@ -91,7 +91,8 @@
       "tests/customer-language-authorization-w26.test.ts",
       "tests/customer-language-transactional-w26.test.ts",
       "tests/customer-language-drafts-w26.test.ts",
-      "tests/customer-language-catalog-w26.test.ts"
+      "tests/customer-language-catalog-w26.test.ts",
+      "tests/customer-language-rendered-w26.test.tsx"
     ],
     "db": [
       "tests/customer-language-database-w26.test.ts"
@@ -106,7 +107,7 @@
       "id": "W-26",
       "outcome": "End-to-end customer language choice and persisted bilingual quote, legal, payment and portal journey with independently gated public Spanish and immutable signing language evidence",
       "acceptance": [
-        "Customers choose English or Español on quote, agreement, signing, payment and portal pages; preference remembered on customer and used in email and future texts.",
+        "Customers choose English or Espa\u00f1ol on quote, agreement, signing, payment and portal pages; preference remembered on customer and used in email and future texts.",
         "Draft translations receive fluent reviewer approval before Spanish is switched on; English signed text controls until counsel review.",
         "Owner desk English; owner-editable Spanish text beside English in templates and content.",
         "Both-language full customer pages have no missing text; email preference and immutable shown-language signing are tested."

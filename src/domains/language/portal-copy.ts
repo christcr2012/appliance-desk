@@ -168,3 +168,10 @@ export type PortalLabel = keyof typeof PORTAL_TRANSLATIONS;
 export function portalLabel(language: CustomerLanguage, english: PortalLabel): string {
   return language === "es" ? PORTAL_TRANSLATIONS[english] : english;
 }
+
+/** Grammatical dynamic quantity; not a status or money calculation. */
+export function rentalCountLabel(language: CustomerLanguage, count: number, property: boolean) {
+  return language === "es"
+    ? `${count} ${count === 1 ? "alquiler activo" : "alquileres activos"} ${property ? "en esta propiedad" : "en esta cuenta"}.`
+    : `${count} active rental${count === 1 ? "" : "s"} ${property ? "at this property" : "on this account"}.`;
+}
