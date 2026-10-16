@@ -41,6 +41,13 @@ export const SIGNING_COPY = {
     sign: "Sign agreement",
     pending: "Signing…",
     payment: "Signing does not confirm that payment was received.",
+    personalLegal:"Your full legal name", personalEmail:"Your email",
+    consent:"I have read the English terms above and agree to this rental agreement. Typing my name and submitting this form constitutes my electronic signature.",
+    send:"Submitting…", visitOnly:"Signing only requests this visit; payment must be verified and an authorized person must confirm the actual booking.",
+    legalNote:"The English agreement controls until separately reviewed Spanish legal text is approved.",
+    signedNext:"We will contact you about payment and delivery scheduling. Signing does not confirm any payment. Your signature was recorded.",
+
+    months:"months", monthToMonth:"Month-to-month", listPrice:"list price", less:"less a", termDiscount:"term discount", firstFree:"Paid in full, in advance — your first month is free.", noReceiptDetails:"These are the frozen amounts for review, not a receipt or confirmation of payment. Regular rent is billed when delivery is completed; a down payment will be applied to the first bill.",
   },
   es: {
     title: "Revise y firme su contrato de alquiler",
@@ -82,6 +89,13 @@ export const SIGNING_COPY = {
     sign: "Firmar contrato",
     pending: "Firmando…",
     payment: "Firmar no confirma que se haya recibido el pago.",
+    personalLegal:"Su nombre legal completo", personalEmail:"Su correo electrónico",
+    consent:"He leído las condiciones en inglés anteriores y acepto este contrato de alquiler. Escribir mi nombre y enviar este formulario constituye mi firma electrónica.",
+    send:"Enviando…", visitOnly:"La firma solo solicita esta visita. Se debe verificar el pago y una persona autorizada debe confirmar la cita real.",
+    legalNote:"El contrato en inglés prevalece hasta que se apruebe por separado el texto legal en español.",
+    signedNext:"Nos comunicaremos con usted para coordinar el pago y la entrega. La firma no confirma ningún pago. Hemos registrado su firma.",
+
+    months:"meses", monthToMonth:"Mes a mes", listPrice:"precio de lista", less:"menos un", termDiscount:"descuento por plazo", firstFree:"Pagado totalmente por adelantado; el primer mes es gratis.", noReceiptDetails:"Estos son importes fijados para revisión, no un recibo ni confirmación de pago. El alquiler se factura al completarse la entrega; el anticipo se aplica a la primera factura.",
   },
 } as const;
 export type SigningKey = keyof typeof SIGNING_COPY.en;

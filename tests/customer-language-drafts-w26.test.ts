@@ -70,6 +70,17 @@ describe("W-26 owner-managed Spanish drafts never publish", () => {
       .rejects.toThrow("Another editor");
     expect(mocks.updateMany).not.toHaveBeenCalled();
   });
+  it("preserves communication placeholders without introducing invented recipient variables", async () => {
+    mocks.template.mockResolvedValue({ isCurrent: true, subject: "Hi {{firstName}}", body: "Body {{amount}}" });
+    const part = await currentTranslationSource("COMMUNICATION", "rev123:body");
+    await expect(saveTranslationDraft("owner", "COMMUNICATION", "rev123:body", part.digest, null,
+      "Texto sin el importe")).rejects.toThrow("template variables");
+    await expect(saveTranslationDraft("owner", "COMMUNICATION", "rev123:body", part.digest, null,
+      "Total {{amount}} a {{otherCustomer}}")).rejects.toThrow("template variables");
+    await expect(saveTranslationDraft("owner", "COMMUNICATION", "rev123:body", part.digest, null,
+      "Importe {{amount}}")).resolves.toBe(1);
+  });
+
   it("requires actual current templates, not deleted revisions", async () => {
     mocks.template.mockResolvedValue({ isCurrent: false, subject: "Old", body: "text" });
     await expect(currentTranslationSource("COMMUNICATION", "old-revision")).rejects.toThrow();

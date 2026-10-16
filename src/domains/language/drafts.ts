@@ -70,6 +70,15 @@ export async function saveTranslationDraft(
   }
 
   const current = await currentTranslationSource(kind, key);
+  // The renderer substitutes exactly these source variables. A translation
+  // must retain each placeholder once; otherwise customer-specific data may
+  // disappear, or invented placeholders could leak unresolved template syntax.
+  const placeholders = (value: string) =>
+    [...value.matchAll(/\{\{\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\}\}/g)]
+      .map(match => match[1]).sort();
+  if (JSON.stringify(placeholders(current.english)) !== JSON.stringify(placeholders(value)))
+    throw new Error("Spanish text must preserve all English template variables exactly.");
+
   if (current.digest !== expectedEnglishDigest)
     throw new Error("The English wording changed. Reload before editing the translation.");
 

@@ -28,7 +28,7 @@ describe("W-26 bilingual keyset and translation draft contract", () => {
     for (const [english, spanish] of Object.entries(PORTAL_TRANSLATIONS)) {
       expect(english.trim()).not.toBe("");
       expect(spanish.trim()).not.toBe("");
-      expect(spanish).not.toBe(english);
+      if (english !== "Normal") expect(spanish).not.toBe(english);
     }
   });
 

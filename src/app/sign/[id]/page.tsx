@@ -57,19 +57,19 @@ export default async function SignPage({
         </p>
         <p>
           <span className="font-medium">{t("term")}:</span>{" "}
-          {agreement.termMonths ? `${agreement.termMonths} months` : "Month-to-month"}
+          {agreement.termMonths ? `${agreement.termMonths} ${t("months")}` : t("monthToMonth")}
         </p>
         <div>
           <span className="font-medium">{t("appliances")}:</span>
           <ul className="mt-1 list-inside list-disc">
             {agreement.lines.map((l) => (
               <li key={l.id}>
-                {l.label} — {formatCents(l.monthlyPriceCents)}/month
+                {l.label} — {formatCents(l.monthlyPriceCents)} {t("monthly")}
                 {l.prepayDiscountCentsPerMonth > 0 && (
                   <span className="text-ink-soft">
                     {" "}
-                    (list price {formatCents(l.listPriceCents)}/month, less a{" "}
-                    {formatCents(l.prepayDiscountCentsPerMonth)}/month term discount)
+                    ({t("listPrice")} {formatCents(l.listPriceCents)} {t("monthly")}, {t("less")}{" "}
+                    {formatCents(l.prepayDiscountCentsPerMonth)} {t("monthly")} {t("termDiscount")})
                   </span>
                 )}
               </li>
@@ -79,7 +79,7 @@ export default async function SignPage({
         <p className="font-medium">{t("total")}: {formatCents(monthlyTotal)} {t("monthly")}</p>
         {agreement.freeMonthGranted && (
           <p className="font-medium text-green-700">
-            Paid in full, in advance — your first month is free.
+            {t("firstFree")}
           </p>
         )}
         {signature.frozenSigningLine && (
@@ -89,14 +89,14 @@ export default async function SignPage({
             <p>{t("setupTax")}: {formatCents(signature.frozenSigningLine.setupTaxCents)}</p>
             <p>{t("downPayment")}: {formatCents(signature.frozenSigningLine.downPaymentCents)}</p>
             <p className="font-semibold">{t("dueSigning")}: {formatCents(signature.frozenSigningLine.allInCents)}</p>
-            <p className="text-ink-soft">These are the frozen amounts for review, not a receipt or confirmation of payment. Regular rent is billed when delivery is completed; a down payment will be applied to the first bill.</p>
+            <p className="text-ink-soft">{t("noReceiptDetails")}</p>
           </section>
         )}
         {agreement.depositCents > 0 && (
-          <p>Deposit: {formatCents(agreement.depositCents)}</p>
+          <p>{t("deposit")}: {formatCents(agreement.depositCents)}</p>
         )}
         {agreement.damageWaiverCents > 0 && (
-          <p>Damage waiver: {formatCents(agreement.damageWaiverCents)} once at signing</p>
+          <p>{t("waiver")}: {formatCents(agreement.damageWaiverCents)} {t("once")}</p>
         )}
         {(agreement.lateFeeCents > 0 || agreement.lateFeePercent > 0) && (
           <p>

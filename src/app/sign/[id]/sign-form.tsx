@@ -83,9 +83,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
           </div>
         ) : (
           <p className="mt-1">
-            We&apos;ll be in touch about setting up payment and scheduling
-            delivery. No payment was confirmed by signing. Your signature
-            confirmation has been recorded.
+            {t("signedNext")}
           </p>
         )}
       </div>
@@ -103,7 +101,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
           <option value="en">English</option><option value="es">Español</option>
         </select>
         <span className="mt-1 block text-xs text-ink-soft">
-          The English agreement controls until separately reviewed Spanish legal text is approved.
+          {t("legalNote")}
         </span>
       </label>
       {deliveryOptions.length>0&&<fieldset className="space-y-3 rounded border border-line p-3">
@@ -112,7 +110,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
           <select required value={selectedOption} onChange={e=>setSelectedOption(e.target.value)}
             className="block w-full rounded border border-line p-2">
             {deliveryOptions.map(o=><option key={o.id} value={o.id}>
-              {o.date} · {o.window==="AM"?"Morning":"Afternoon"}</option>)}
+              {o.date} · {o.window==="AM"?t("morning"):t("afternoon")}</option>)}
           </select>
         </label>
         <label className="block text-sm">{t("dryer")}
@@ -135,12 +133,11 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
           <textarea value={crewNotes} onChange={e=>setCrewNotes(e.target.value)}
             maxLength={1500} className="block w-full rounded border border-line p-2"/>
         </label>
-        <p className="text-xs text-ink-soft">Signing only requests this visit; payment
-          must be verified and an authorized person must confirm the actual booking.</p>
+        <p className="text-xs text-ink-soft">{t("visitOnly")}</p>
       </fieldset>}
       <div>
         <label htmlFor="signerName" className="block text-sm font-medium text-ink-soft">
-          Your full legal name
+          {t("personalLegal")}
         </label>
         <input
           id="signerName"
@@ -153,7 +150,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
       </div>
       <div>
         <label htmlFor="signerEmail" className="block text-sm font-medium text-ink-soft">
-          Your email
+          {t("personalEmail")}
         </label>
         <input
           id="signerEmail"
@@ -171,8 +168,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
           checked={agreedToTerms}
           onChange={(e) => setAgreedToTerms(e.target.checked)}
         />
-        I have read the terms above and agree to this rental agreement.
-        Typing my name and submitting this form is my electronic signature.
+        {t("consent")}
       </label>
 
       <button
@@ -180,7 +176,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
         disabled={isPending}
         className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
-        {isPending ? "Submitting…" : "Sign agreement"}
+        {isPending ? t("send") : t("sign")}
       </button>
 
       {error && (
