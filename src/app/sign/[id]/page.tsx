@@ -5,6 +5,8 @@ import { SignForm } from "./sign-form";
 import { readOfferedSlots } from "@/domains/orders/delivery";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
 import { parseCustomerLanguage } from "@/domains/language/copy";
+import { displayCustomerLanguage } from "@/domains/language/review";
+import { signingText } from "@/domains/language/signing-copy";
 
 export const metadata = {
   title: "Sign your rental agreement",
@@ -32,31 +34,33 @@ export default async function SignPage({
   }
 
   const { agreement } = signature;
+  const language = await displayCustomerLanguage(parseCustomerLanguage(agreement.customer.preferredLanguage));
+  const t = (key: Parameters<typeof signingText>[1]) => signingText(language, key);
   const lockedTerms = agreement.termMonths
     ? describeSnapshotTerms(agreement.termsSnapshot)
     : { ending: null, autoRenew: null };
   const monthlyTotal = agreement.lines.reduce((sum, l) => sum + l.monthlyPriceCents, 0);
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-16">
-      <h1 className="text-xl font-semibold">Review &amp; sign your rental agreement</h1>
-      <p className="mt-2 text-sm text-ink-soft">The signed agreement is in English. Spanish translation and legal review are pending.</p>
+    <main lang={language} className="mx-auto max-w-lg px-6 py-16">
+      <h1 className="text-xl font-semibold">{t("title")}</h1>
+      <p className="mt-2 text-sm text-ink-soft">{t("legal")}</p>
       <p className="mt-2 text-sm text-ink-soft">
-        Prepared for {agreement.customer.user.name ?? agreement.customer.user.email}
+        {t("prepared")} {agreement.customer.user.name ?? agreement.customer.user.email}
       </p>
 
       <div className="mt-6 space-y-3 rounded-lg border border-line bg-surface p-5 text-sm">
         <p>
-          <span className="font-medium">Service address:</span>{" "}
+          <span className="font-medium">{t("service")}:</span>{" "}
           {agreement.serviceAddress.line1}, {agreement.serviceAddress.city},{" "}
           {agreement.serviceAddress.state} {agreement.serviceAddress.zip}
         </p>
         <p>
-          <span className="font-medium">Term:</span>{" "}
+          <span className="font-medium">{t("term")}:</span>{" "}
           {agreement.termMonths ? `${agreement.termMonths} months` : "Month-to-month"}
         </p>
         <div>
-          <span className="font-medium">Appliances:</span>
+          <span className="font-medium">{t("appliances")}:</span>
           <ul className="mt-1 list-inside list-disc">
             {agreement.lines.map((l) => (
               <li key={l.id}>
@@ -72,7 +76,7 @@ export default async function SignPage({
             ))}
           </ul>
         </div>
-        <p className="font-medium">Total: {formatCents(monthlyTotal)}/month</p>
+        <p className="font-medium">{t("total")}: {formatCents(monthlyTotal)} {t("monthly")}</p>
         {agreement.freeMonthGranted && (
           <p className="font-medium text-green-700">
             Paid in full, in advance — your first month is free.
@@ -80,11 +84,11 @@ export default async function SignPage({
         )}
         {signature.frozenSigningLine && (
           <section aria-label="Reviewed signing charges" className="space-y-1 border-t border-line pt-3">
-            <h2 className="font-medium">Signing charges for this service address</h2>
-            <p>Administrative setup: {formatCents(signature.frozenSigningLine.setupFeeCents)}</p>
-            <p>Setup sales tax: {formatCents(signature.frozenSigningLine.setupTaxCents)}</p>
-            <p>First-month down payment: {formatCents(signature.frozenSigningLine.downPaymentCents)}</p>
-            <p className="font-semibold">Tax-inclusive signing amount: {formatCents(signature.frozenSigningLine.allInCents)}</p>
+            <h2 className="font-medium">{t("charges")}</h2>
+            <p>{t("setup")}: {formatCents(signature.frozenSigningLine.setupFeeCents)}</p>
+            <p>{t("setupTax")}: {formatCents(signature.frozenSigningLine.setupTaxCents)}</p>
+            <p>{t("downPayment")}: {formatCents(signature.frozenSigningLine.downPaymentCents)}</p>
+            <p className="font-semibold">{t("dueSigning")}: {formatCents(signature.frozenSigningLine.allInCents)}</p>
             <p className="text-ink-soft">These are the frozen amounts for review, not a receipt or confirmation of payment. Regular rent is billed when delivery is completed; a down payment will be applied to the first bill.</p>
           </section>
         )}
@@ -104,7 +108,7 @@ export default async function SignPage({
         )}
       </div>
 
-      {signature.frozenOrder && <ReviewedSigningOrder order={signature.frozenOrder} />}
+      {signature.frozenOrder && <ReviewedSigningOrder order={signature.frozenOrder} language={language} />}
 
       {lockedTerms.ending && (
         <section
@@ -137,7 +141,7 @@ export default async function SignPage({
       )}
 
       <div className="mt-6">
-        <SignForm initialLanguage={parseCustomerLanguage(agreement.customer.preferredLanguage)} signatureRecordId={signature.id}
+        <SignForm displayLanguage={language} initialLanguage={parseCustomerLanguage(agreement.customer.preferredLanguage)} signatureRecordId={signature.id}
           deliveryOptions={readOfferedSlots(agreement.deliveryOffer)}
           offerVersion={agreement.deliveryOfferVersion}/>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { chooseQuoteLanguage } from "./language-actions";
 import type { CustomerLanguage } from "@/domains/language/copy";
 
@@ -8,12 +9,14 @@ export function QuoteLanguageChoice({
   estimateId, preferredLanguage,
 }: { estimateId: string; preferredLanguage: CustomerLanguage }) {
   const [language, setLanguage] = useState(preferredLanguage);
+  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   const choose = (next: CustomerLanguage) => start(async () => {
     try {
       setLanguage(await chooseQuoteLanguage(estimateId, next));
       setError("");
+      router.refresh();
     } catch {
       setError("Could not save language. / No se pudo guardar el idioma.");
     }

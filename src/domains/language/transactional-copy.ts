@@ -50,3 +50,31 @@ export function quoteEmailCopy(language: CustomerLanguage, quote: QuoteNotice) {
     ].filter(Boolean).join("\n\n"),
   };
 }
+
+export function followUpEmailCopy(
+  language: CustomerLanguage,
+  input: { name: string | null; businessName: string; number: number; url: string },
+) {
+  if (language === "es") return {
+    subject: `Seguimiento del presupuesto n.º ${input.number} de ${input.businessName}`,
+    text: [
+      `Hola${input.name ? ` ${input.name}` : ""},`,
+      `Hace unos días, ${input.businessName} le envió el presupuesto n.º ${input.number}. Queremos asegurarnos de que lo recibió.`,
+      "¿Sigue interesado? Puede revisar y responder aquí sin iniciar sesión:",
+      input.url,
+      "Si cambiaron sus planes o tiene preguntas, responda a este correo.",
+    ].join("\n\n"),
+    actionLabel: "Ver y responder al presupuesto",
+  };
+  return {
+    subject: `Estimate #${input.number} follow-up from ${input.businessName}`,
+    text: [
+      `Hi${input.name ? ` ${input.name}` : ""},`,
+      `Just checking in — ${input.businessName} sent estimate #${input.number} a few days ago.`,
+      "Still interested? Review and respond here without logging in:",
+      input.url,
+      "If your plans changed or you have questions, reply to this email.",
+    ].join("\n\n"),
+    actionLabel: "View & respond to estimate",
+  };
+}

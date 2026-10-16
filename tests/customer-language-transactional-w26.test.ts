@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quoteEmailCopy } from "@/domains/language/transactional-copy";
+import { followUpEmailCopy, quoteEmailCopy } from "@/domains/language/transactional-copy";
 
 const request = {
   businessName: "Robinson Appliance Rentals",
@@ -29,5 +29,20 @@ describe("W-26 translated quote delivery", () => {
   it("cannot omit the reviewed-order distinction", () => {
     expect(quoteEmailCopy("en", {...request, fullyReviewed:true}).text).toContain("reviewed all-in");
     expect(quoteEmailCopy("es", {...request, fullyReviewed:true}).text).toContain("desglose revisado");
+  });
+});
+
+describe("W-26 original and reminder language consistency", () => {
+  const input = { name: "Ana", businessName: "Robinson Appliance Rentals", number: 251,
+    url: "https://example.test/estimate/token" };
+  it.each(["en", "es"] as const)("preserves link, quote identifier and reply behavior for %s", language => {
+    const notice = followUpEmailCopy(language, input);
+    expect(notice.subject).toContain("251");
+    expect(notice.text).toContain(input.url);
+    expect(notice.text).toContain("Ana");
+    expect(notice.actionLabel).not.toBe("");
+  });
+  it("keeps Spanish followups informational and retains a no-login secure link", () => {
+    expect(followUpEmailCopy("es", input).text).toContain("sin iniciar sesión");
   });
 });

@@ -3,14 +3,18 @@
 import { useState, useTransition } from "react";
 import { signAgreementAction } from "./actions";
 import { formatMoney } from "@/lib/money-ui";
+import { signingText, type SigningKey } from "@/domains/language/signing-copy";
+import type { CustomerLanguage } from "@/domains/language/copy";
 
-export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,initialLanguage="en" }: {
+export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,initialLanguage="en",displayLanguage="en" }: {
   signatureRecordId: string;
   initialLanguage?: "en" | "es";
+  displayLanguage?: CustomerLanguage;
   deliveryOptions?:Array<{id:string;date:string;window:"AM"|"PM"}>;
   offerVersion?:number;
 }) {
   const [isPending, startTransition] = useTransition();
+  const t = (key: SigningKey) => signingText(displayLanguage,key);
   const [selectedOption,setSelectedOption]=useState(deliveryOptions[0]?.id??"");
   const [dryerOutlet,setDryerOutlet]=useState<"THREE_PRONG"|"FOUR_PRONG"|"GAS"|"UNKNOWN">("UNKNOWN");
   const [washerHookups,setWasherHookups]=useState<"YES"|"NO"|"UNKNOWN">("UNKNOWN");
@@ -59,7 +63,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
   if (signed) {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
-        <p className="font-medium">Thanks — your agreement is signed.</p>
+        <p className="font-medium">{t("signed")}</p>
         {paymentNeedsReview ? (
           <p className="mt-1" role="status">
             We need to review your payment details before collecting any funds.
@@ -103,31 +107,31 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,i
         </span>
       </label>
       {deliveryOptions.length>0&&<fieldset className="space-y-3 rounded border border-line p-3">
-        <legend className="font-semibold">Requested delivery — subject to owner confirmation</legend>
-        <label className="block text-sm">Choose an offered date/window
+        <legend className="font-semibold">{t("appointment")}</legend>
+        <label className="block text-sm">{t("offered")}
           <select required value={selectedOption} onChange={e=>setSelectedOption(e.target.value)}
             className="block w-full rounded border border-line p-2">
             {deliveryOptions.map(o=><option key={o.id} value={o.id}>
               {o.date} · {o.window==="AM"?"Morning":"Afternoon"}</option>)}
           </select>
         </label>
-        <label className="block text-sm">Dryer connection
+        <label className="block text-sm">{t("dryer")}
           <select value={dryerOutlet} onChange={e=>setDryerOutlet(e.target.value as typeof dryerOutlet)}
             className="block w-full rounded border border-line p-2">
-            <option value="UNKNOWN">Not sure</option><option value="THREE_PRONG">3-prong</option>
-            <option value="FOUR_PRONG">4-prong</option><option value="GAS">Gas</option>
+            <option value="UNKNOWN">{t("unsure")}</option><option value="THREE_PRONG">{t("prong3")}</option>
+            <option value="FOUR_PRONG">{t("prong4")}</option><option value="GAS">{t("gas")}</option>
           </select>
         </label>
-        <label className="block text-sm">Washer hookups
+        <label className="block text-sm">{t("washer")}
           <select value={washerHookups} onChange={e=>setWasherHookups(e.target.value as typeof washerHookups)}
             className="block w-full rounded border border-line p-2">
-            <option value="UNKNOWN">Not sure</option><option value="YES">Present</option>
-            <option value="NO">Not present</option>
+            <option value="UNKNOWN">{t("unsure")}</option><option value="YES">{t("yes")}</option>
+            <option value="NO">{t("no")}</option>
           </select>
         </label>
         <label className="flex gap-2 text-sm"><input type="checkbox" checked={stairs}
-          onChange={e=>setStairs(e.target.checked)}/> Stairs or tight access</label>
-        <label className="block text-sm">Crew notes (optional)
+          onChange={e=>setStairs(e.target.checked)}/> {t("stairs")}</label>
+        <label className="block text-sm">{t("crew")}
           <textarea value={crewNotes} onChange={e=>setCrewNotes(e.target.value)}
             maxLength={1500} className="block w-full rounded border border-line p-2"/>
         </label>

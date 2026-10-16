@@ -3,6 +3,11 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { customerStrings, customerLanguageActive, type CustomerLanguage } from "./copy";
+import { ESTIMATE_COPY } from "./estimate-copy";
+import { FORM_COPY } from "./estimate-form-copy";
+import { SIGNING_COPY } from "./signing-copy";
+import { PORTAL_TRANSLATIONS } from "./portal-copy";
+import { REVIEWED_MONEY_LABELS } from "./reviewed-money";
 
 // Do not allow a fluent/legal record to activate a PARTIAL customer journey.
 // Each surface flips only after its original W-26 bilingual consumer evidence.
@@ -26,6 +31,11 @@ export function spanishCopyDigest(): string {
   return createHash("sha256")
     .update(JSON.stringify(customerStrings.en))
     .update(JSON.stringify(customerStrings.es))
+    .update(JSON.stringify(ESTIMATE_COPY))
+    .update(JSON.stringify(FORM_COPY))
+    .update(JSON.stringify(SIGNING_COPY))
+    .update(JSON.stringify(PORTAL_TRANSLATIONS))
+    .update(JSON.stringify(REVIEWED_MONEY_LABELS))
     .digest("hex");
 }
 

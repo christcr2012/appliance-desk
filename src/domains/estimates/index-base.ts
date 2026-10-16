@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma, type EstimateStatus } from "@prisma/client";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
-import { quoteEmailCopy } from "@/domains/language/transactional-copy";
+import { followUpEmailCopy, quoteEmailCopy } from "@/domains/language/transactional-copy";
 import { displayCustomerLanguage } from "@/domains/language/review";
 import { createDraftAgreementInTx } from "@/domains/agreements";
 import { locateServiceAddress } from "@/domains/tax/locations";
@@ -499,6 +499,15 @@ export async function sendEstimateFollowUpReminders(): Promise<{
       });
 
     try {
+      const followupLanguage = await displayCustomerLanguage(
+        estimate.preferredLanguage === "es" ? "es" : "en",
+      );
+      const copy = followUpEmailCopy(followupLanguage, {
+        name: recipientName ?? null,
+        businessName: settings.publicBusinessName,
+        number: estimate.estimateNumber,
+        url: `${appUrl}/estimate/${estimate.id}`,
+      });
       const delivery = await deliverMessage({
         idempotencyKey: `estimate-follow-up-${estimate.id}-${estimate.sentAt.getTime()}`,
         channel: "EMAIL",
@@ -510,17 +519,7 @@ export async function sendEstimateFollowUpReminders(): Promise<{
           address: recipientEmail,
         },
         subject: { type: "Estimate", id: estimate.id },
-        render: () => ({
-          subject: `Following up on estimate #${estimate.estimateNumber}`,
-          text: [
-            `Hi${recipientName ? ` ${recipientName}` : ""},`,
-            `Just checking in — ${settings.publicBusinessName} sent you estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} a few days ago and wanted to make sure it didn't get lost.`,
-            "Still interested? You can review and respond right here — no login needed:",
-            `${appUrl}/estimate/${estimate.id}`,
-            "If your plans have changed or you have questions, just reply to this email.",
-          ].join("\n\n"),
-          actionLabel: "View & respond to estimate",
-        }),
+        render: () => copy,
       });
       if (delivery.state === "FAILED" || delivery.state === "NOT_SENT") {
         await release();
