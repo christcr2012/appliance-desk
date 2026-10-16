@@ -6,7 +6,10 @@ vi.mock("@/domains/language/portal",()=>({portalLanguage:async()=>m.language}));
 vi.mock("@/lib/session",()=>({getServerSession:async()=>({user:{id:"customer-user"}})}));
 vi.mock("@/domains/portal",()=>({getPortalData:m.portal}));
 vi.mock("@/lib/prisma",()=>({prisma:{}}));
-vi.mock("@/domains/language/legal",()=>({agreementLegalTexts:()=>[],agreementLanguage:async(language:"en"|"es")=>({language,translations:[]})}));
+vi.mock("@/domains/language/legal",async(importOriginal)=>({
+ ...await importOriginal<typeof import("@/domains/language/legal")>(),
+ agreementLanguage:async(language:"en"|"es",texts:string[])=>({language,translations:language==="es"?texts.map(english=>({english,spanish:"Condiciones informativas revisadas para esta prueba."})):[]}),
+}));
 vi.mock("@vercel/blob/client",()=>({upload:vi.fn()}));
 vi.mock("@/domains/billing",()=>({getCustomerStatement:m.statement}));
 vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn(),push:vi.fn()})}));
@@ -30,6 +33,17 @@ describe.each(["en","es"] as const)("W-26 actual nested customer rendering in %s
   expect(output).toContain(language==="es"?"Importe firmado al contratar":"Signed signing amount");
   expect(output).toContain(language==="es"?"pendiente de pago verificado":"awaiting verified payment");
   expect(output).not.toContain("recorded as received");
+ });
+ it("shows the reviewed legal sidecar beside exact recorded English without rewriting it",async()=>{
+  m.language=language;
+  const data=await m.portal();const english="Recorded original English ending terms.";
+  const snapshot={shape:1,termination:{feeCents:4500,feePercent:null,feeCapCents:null,noticeDays:30,unusedTerm:"CREDIT",termsText:english},autoRenew:null};
+  data.rentalAgreements[0].termsSnapshot=snapshot;m.portal.mockResolvedValue(data);
+  const output=html(await AccountRentalsPage({searchParams:Promise.resolve({})}),language);
+  expect(output).toContain(english);
+  if(language==="es")expect(output).toContain("Condiciones informativas revisadas para esta prueba.");
+  else expect(output).not.toContain("Condiciones informativas revisadas para esta prueba.");
+  expect(data.rentalAgreements[0].termsSnapshot).toEqual(snapshot);
  });
  it("renders billing balances/status while preserving invoice identity and values",async()=>{
   m.language=language;const output=html(await AccountBillingPage(),language);
