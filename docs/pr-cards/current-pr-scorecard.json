@@ -1,26 +1,43 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "W-26",
+  "parent": "W-14",
   "completedSlices": [
     {
-      "id": "W-26",
+      "id": "W-14",
       "acceptanceEvidence": [
-        "Customer/quote persistence and scoped actions, quote-note.ts, signing/portal consumers and localized outbound callers are reconciled in execution/W-26-coverage.md. customer-language-database-w26.test.ts proves new quotes inherit stored preference without rewriting old quotes; estimate-send-email-switch.test.ts proves Spanish and ACCEPTED/UNKNOWN outcomes. Actions diagnostic 38984045880 passed all four production browser shards including real bilingual preference/quote/signing flow.",
-        "review.ts, drafts.ts and runtime.ts require complete current source-bound drafts, matching separate fluent/legal evidence and explicit owner publication. Missing/stale/revoked approval falls back to English or blocks a new Spanish dispatch. runtime/drafts/authorization tests and the disposable CI browser revoke scenario pass. No real fluent/legal approval or publication occurred; English governing text is stored unchanged.",
-        "Owner/ADMIN-only versioned editor exposes independently editable Spanish website, communication subject/body, message, notice, legal and quote-note counterparts; strict variable/source/revision checks and audited authorization are covered in drafts/authorization/runtime tests. Owner desk stays English in the bilingual browser scenario. Reviewed website read API is prepared; public Spanish routing belongs to Batch V under \u00a76.6.",
-        "Full consumer matrix and dispatch classification are in execution/W-26-coverage.md. Actions 38984045880 passed all three unit/real-Postgres shards, migration upgrade, restore drill, all four production builds and all four browser shards. Both-language rendered portal/quote/sign/auth controls, exact money, errors/retries, consent and immutable legal/interface/digest evidence are covered. Final small safety additions passed 29 focused unit tests and six isolated Postgres tests; final PR-head CI remains a mandatory merge gate."
+        "src/domains/purchasing/purchases.ts recordPurchase writes the Purchase, every Appliance (own model, serial, price, purchaseId), PurchaseDocument pages and per-appliance acquisition-tax evidence in one transaction; the record-a-purchase screen (src/app/desk/purchases/new) takes the supplier or typed private seller, date, receipt number, uploads, delivery/other charges and notes; the supplier page lists purchases. tests/purchases-w14-w2-w15-integration.test.ts proves the linked 3-appliance receipt with exact totals; PDF/photo pages upload privately under purchases/.",
+        "Record a purchase replaces the old intake form and action (removed); a washer and dryer are two grid rows with their own type, manufacturer, model, serial, price, condition and color; real-Postgres test records a washer, dryer and unit on one receipt with distinct asset numbers.",
+        "purchase-math.ts splitSellerTax uses allocateAcrossLines (largest remainder) and reconcilePurchase proves prices + tax + other charges to the cent against optional typed receipt subtotal/total; the form shows the split before saving and the server recomputes it. tests/purchase-math-and-next-step.test.ts (26) and the real-DB test (101 cents over three unequal prices sums to 101) pass.",
+        "taxAnswer has no default for the owner; YES_OTHER_STATE stores a state note, calculates nothing, and creates a CPA To do (integration test 'another state's tax'); validation tests refuse taxed answers without tax and tax on no-tax answers.",
+        "Appliance.purchaseId links each machine; seller page lists purchases; recordPurchase/read pages are OWNER/ADMIN (requireRole + assertActiveTeamActor, STAFF/CUSTOMER refused for uploads and receipt reads, tests/private-photo-read-route.test.ts); operationKey+payloadHash replay and conflict tests plus a simultaneous double-submit test; updatePurchaseTaxAnswer after a filed return keeps filed rows and detectTaxFilingAmendments opens the amendment (real-DB test)."
+      ]
+    },
+    {
+      "id": "W-2",
+      "acceptanceEvidence": [
+        "src/domains/tax/next-step.ts nextPurchaseTaxStep is the single pure decision; tests/purchase-math-and-next-step.test.ts has a table per answer: full seller tax done, use tax on the covering return with the calendar's legal due date, no filing account, filed with confirmation, tax-free for rent taxed, another state CPA To do, later To do.",
+        "Later To do is due 3 days after recording and severity turns high 7 days before the covering return's legal due date (tests on Nov 12 medium / Nov 13 high); record result card, purchase page, appliance Tax proof, PO receiving page and listAcquisitionTaxAttention all render the same step object.",
+        "Due dates come only from filing-calendar/stored TaxFilingPeriod via coveringUseTaxReturn; purchase-order receiving asks the same four-way question (receipt-tax.ts, receiving panel), creates PURCHASE_ORDER_LINE use-tax rows, and the owner can answer later; real-DB test covers admin-defers/owner-answers with the To do appearing and clearing."
+      ]
+    },
+    {
+      "id": "W-15",
+      "acceptanceEvidence": [
+        "src/app/desk/inventory/[id]/tax-proof-panel.tsx (owner/admin) shows how acquired, price paid, exactly one tax outcome from nextPurchaseTaxStep, seller tax or use tax with return and confirmation, and receipt links; getApplianceTaxProof tested for the filed-return case.",
+        "src/domains/tax/tax-proof.ts buildAuditPack + /desk/tax/audit-pack printable page + /desk/tax/audit-pack/export CSV with a stable 19-column order through the shared formula-safe toCsv; both gated to OWNER/ADMIN; real-DB test checks range filter, serial, price, tax, receipt link and totals; unit test locks column order and formula escaping.",
+        "Parts deliveries join the pack line by line; recordRetentionYears defaults to 7 with an ⓘ explanation, owner-only compare-and-set audited editor (/desk/tax/record-retention); removePurchaseDocument refuses any purchase relied on by a filed return and the only page within the retention period, and PurchaseDocument.photo is ON DELETE RESTRICT (real-DB test attempts a direct photo delete)."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Fluent independent reviewer selected by owner and separate legal counsel must approve current digest before first public Spanish activation; source changes invalidate review.",
-    "Historical 22 real live/provider owner-approval acceptance items remain PENDING, including real signing, TEST payment/reconciliation, external communication and CPA/counsel evidence."
+    "IN-65: CPA answers on credits, another state's tax and delivery-charge tax; until then those cases only create a CPA To do.",
+    "IN-71: CPA confirms the record-retention period; the app starts at 7 years and the owner can change it.",
+    "Real receipts, purchases and filed returns still need owner use after the daily release."
   ],
   "evidence": [
-    "Full original W-26 source delivery; frozen planning commit 2f47535ed238329cb725dc1b776d1ed28684fba3 preserved unchanged.",
-    "Independent engineering review resolved all concrete source findings; final read-only review found no blocking findings. Automated GitHub review unavailable \u2014 waived after inspecting reviews and threads.",
-    "All seven source coverage declarations describe implemented consumers; actual fluent/legal approval and public Spanish activation remain OFF. Final exact-head PR ci and merge are still pending."
+    "Single bundle W-14 + W-2 + W-15; planning commit 420bad27bc01c4beda2be9c3a5ae7f804bd5b836 preserved.",
+    "Local: typecheck, lint, check:quick, 26 unit and 12 real-Postgres tests pass; remaining local failures match baseline. Exact-head CI still pending."
   ]
 }
