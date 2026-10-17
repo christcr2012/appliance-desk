@@ -59,6 +59,11 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       summary = "Colorado address lookup is unavailable.";
       detail = `Consecutive failures ${input.count}. Manual verification required.`;
       break;
+    case "TAX_PERIOD_MISSING":
+      count(input.count); fingerprint = "tax-period-missing"; severity = "HIGH";
+      summary = "A tax return period has no filing To do.";
+      detail = `${input.count} closed filing ${input.count === 1 ? "period has" : "periods have"} no return to file on the list. Open Taxes → Returns; the nightly job normally creates them.`;
+      break;
     case "SOURCE_PAGE_UNREACHABLE":
     case "SOURCE_PAGE_CHANGED": {
       id(input.watchId);

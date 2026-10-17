@@ -2,7 +2,13 @@
 
 Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
-## What is next — October 17 W-3 and W-4 delivery
+## What is next — October 17 W-8 and W-9 delivery
+
+W-7 is merged (#483). One PR delivers W-8 (14-entry menu, Schedule/Equipment/Money tabs, More page, plain-words check)
+and W-9 (tax filing To do with amounts, daily overdue reminders, simplified filed-and-paid, nightly missing-period
+check); exact-head CI, review and merge remain pending. W-10 is next after verified merge.
+
+### Earlier: October 17 W-3 and W-4 delivery
 
 W-3 and W-4 are merged (#481). One PR delivers W-5 and W-6 together (money and sales turning points as To do
 items; payment links and phone payment on Stripe's page; lead and quote follow-ups); exact-head CI, review and

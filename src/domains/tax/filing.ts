@@ -132,16 +132,22 @@ export async function markPeriodFiled(
   actorUserId: string,
   input: {
     periodId: string;
-    filedOn: Date;
+    /** Defaults to the paid date: "I filed and paid it" only needs the date paid and the confirmation number. */
+    filedOn?: Date;
     paidOn: Date;
     confirmationNumber: string;
-    amountPaidCents: number;
+    /** Defaults to the calculated amount; give it only when the website charged something different (then a reason is required). */
+    amountPaidCents?: number;
     amountDifferentReason?: string;
     confirmationPhotoId?: string | null;
     confirmationPhotoUrl?: string | null;
   },
 ): Promise<void> {
-  const data = normalizeEvidence(input);
+  const data = normalizeEvidence({
+    ...input,
+    filedOn: input.filedOn ?? input.paidOn,
+    amountPaidCents: input.amountPaidCents ?? 0,
+  });
   await verifyUploadedFilingPhoto(input.periodId, input.confirmationPhotoUrl);
   await prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
@@ -156,7 +162,8 @@ export async function markPeriodFiled(
     }
     const packet = current.packet;
     const expected = expectedRemittance(packet, data.filedOn, data.paidOn);
-    if (data.amountPaidCents !== expected && !data.reason) {
+    const amountPaidCents = input.amountPaidCents ?? expected;
+    if (amountPaidCents !== expected && !data.reason) {
       throw new Error("Explain why the amount paid differs from the calculated return.");
     }
     const photo = await assertFilingPhoto(tx, input.periodId, input.confirmationPhotoId, input.confirmationPhotoUrl);
@@ -187,7 +194,7 @@ export async function markPeriodFiled(
         filedOn: data.filedOn, paidOn: data.paidOn,
         confirmationNumber: data.confirmationNumber,
         confirmationPhotoId: photo,
-        amountPaidCents: data.amountPaidCents,
+        amountPaidCents,
         serviceFeeRetainedCents,
         filedByUserId: actorUserId,
         notes: data.reason,
@@ -199,7 +206,7 @@ export async function markPeriodFiled(
     });
     // A filed return is not itself proof of tax payment. Only a fully
     // remitted return can settle its mapped appliance acquisition liability.
-    if (data.amountPaidCents === expected) {
+    if (amountPaidCents === expected) {
       const filedAssets = await tx.purchaseUseTax.findMany({
         where: { filingPeriodId: input.periodId, sourceType: "APPLIANCE", status: "FILED" },
         select: { sourceId: true },
@@ -228,7 +235,7 @@ export async function markPeriodFiled(
           status: "FILED", filedOn: data.filedOn.toISOString(),
           paidOn: data.paidOn.toISOString(),
           confirmationNumber: data.confirmationNumber,
-          amountPaidCents: data.amountPaidCents, expectedCents: expected,
+          amountPaidCents, expectedCents: expected,
           reason: data.reason, hasPrivatePhoto: !!photo,
           totalRecordedTaxCents: packet.totals.taxCents,
         },

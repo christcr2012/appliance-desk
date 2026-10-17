@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "preflight": "node scripts/preflight.mjs",
-    "check:preflight": "node --test scripts/build-recovery.test.mjs scripts/preflight.test.mjs scripts/probe-db.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs scripts/vercel-ignore-build.test.mjs scripts/work-session.test.mjs scripts/preflight-evidence.test.mjs scripts/check-secrets.test.mjs scripts/install-worktree.test.mjs && npm run check:session",
+    "check:preflight": "node --test scripts/build-recovery.test.mjs scripts/preflight.test.mjs scripts/probe-db.test.mjs scripts/check-cache.test.mjs scripts/check-route-inventory.test.mjs scripts/vercel-ignore-build.test.mjs scripts/work-session.test.mjs scripts/preflight-evidence.test.mjs scripts/check-secrets.test.mjs scripts/check-owner-wording.test.mjs scripts/install-worktree.test.mjs && npm run check:session",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint && node scripts/check-e2-ui-tokens.mjs && node scripts/check-w18-money.mjs",
+    "lint": "eslint && node scripts/check-e2-ui-tokens.mjs && node scripts/check-w18-money.mjs && node scripts/check-owner-wording.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "postinstall": "prisma generate",
     "db:migrate:deploy": "prisma migrate deploy",

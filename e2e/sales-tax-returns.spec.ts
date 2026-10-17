@@ -57,7 +57,7 @@ test.describe("guided sales tax filing", () => {
       await expect(page.getByText("Test-only frozen official filing step")).toHaveCount(0);
       await expect(page.getByText(/Filed — worksheet frozen/)).toBeVisible();
       await expect(page.getByText(/T7C-TEST-CONFIRM/)).toBeVisible();
-      await expect(page.getByRole("button", { name: /Record filed and paid/ })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Save: filed and paid/ })).toHaveCount(0);
       const csv = await page.context().request.get("/desk/sales-tax/returns/" + periodId + "/csv");
       expect(csv.status()).toBe(200);
       expect(csv.headers()["content-disposition"]).toContain(periodId);

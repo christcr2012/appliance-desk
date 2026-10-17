@@ -1,3 +1,7 @@
+## W-8 menu and W-9 filing autopilot (2026-10-17)
+
+No schema change. W-9 reads existing TaxFilingAccount, TaxFilingPeriod and PurchaseUseTax rows and records through the existing `markPeriodFiled`; the new System health issue kind `TAX_PERIOD_MISSING` uses the existing system issue table.
+
 ## W-7 first-time setup checklist (2026-10-17)
 
 No schema change. The Today "Get set up" card reads existing BusinessSettings, ApplianceType, RentalPackage, TaxFilingAccount and AddressTaxLocation rows; nothing is stored or written.

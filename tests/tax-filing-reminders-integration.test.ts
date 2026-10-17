@@ -132,11 +132,11 @@ describe.skipIf(!enabled)("T-6a2 owner filing reminders (real Postgres)", () => 
     expect(deliveries.some(row => row.state === "NOT_SENT")).toBe(true);
   });
 
-  it("never sends a pre-start reminder, handles legal due dates and repeats overdue every third day", async () => {
+  it("never sends a pre-start reminder, handles legal due dates and repeats overdue every business day", async () => {
     await account("late", { firstPeriodStart: day("2026-05-01"), dueDayOfFollowingMonth: 20 });
     expect(overdueReminderDue(day("2026-06-22"), day("2026-06-22"))).toBe(false);
     expect(overdueReminderDue(day("2026-06-22"), day("2026-06-23"))).toBe(true);
-    expect(overdueReminderDue(day("2026-06-22"), day("2026-06-25"))).toBe(false);
+    expect(overdueReminderDue(day("2026-06-22"), day("2026-06-25"))).toBe(true);
     expect(overdueReminderDue(day("2026-06-22"), day("2026-06-26"))).toBe(true);
     expect(licenseReminderStage(day("2026-11-01"), day("2026-09-02"))).toBe("DUE_IN_60");
     expect(licenseReminderStage(day("2026-11-01"), day("2026-11-02"))).toBe("OVERDUE_2026-11-02");

@@ -22,8 +22,8 @@ for (const role of ["owner", "staff"] as const) {
       const mainNav = page.getByRole("navigation", { name: "Main" });
       const expectedTabs =
         role === "owner"
-          ? ["Today", "Schedule", "Customers", "Billing"]
-          : ["Today", "Schedule", "Jobs", "Inventory"];
+          ? ["Today", "Schedule", "Customers", "Money"]
+          : ["Today", "Schedule", "Equipment", "Customers"];
       for (const label of expectedTabs) {
         await expect(
           mainNav.getByRole("link", { name: label, exact: true }),
@@ -48,29 +48,29 @@ for (const role of ["owner", "staff"] as const) {
         dialog.getByRole("link", { name: "Today", exact: true }),
       ).toHaveAttribute("aria-current", "page");
       expect(await dialog.getByRole("link").count()).toBe(
-        role === "owner" ? 28 : 13,
+        role === "owner" ? 14 : 10,
       );
       await expect(
         dialog.getByRole("link", { name: "Communications", exact: true }),
       ).toHaveCount(1);
       if (role === "owner") {
         await expect(
-          dialog.getByRole("link", { name: "Privacy requests", exact: true }),
+          dialog.getByRole("link", { name: "Money", exact: true }),
         ).toHaveCount(1);
       }
       if (role === "staff") {
         await expect(
-          dialog.getByRole("link", { name: "Billing", exact: true }),
+          dialog.getByRole("link", { name: "Money", exact: true }),
         ).toHaveCount(0);
         await expect(
-          dialog.getByRole("link", { name: "Privacy requests", exact: true }),
+          dialog.getByRole("link", { name: "Settings", exact: true }),
         ).toHaveCount(0);
         await expect(
           page.getByRole("link", { name: "Create rental", exact: true }),
         ).toHaveCount(0);
       }
       await dialog
-        .getByRole("link", { name: "Activity", exact: true })
+        .getByRole("link", { name: "More", exact: true })
         .scrollIntoViewIfNeeded();
       await expect(dialog).toBeVisible();
       await page.keyboard.press("Tab");

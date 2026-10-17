@@ -16,6 +16,7 @@ const INSTRUCTIONS: Record<string, { href: string; instruction: string; role: "O
   AUTOMATION_FAILED: { href: "/desk/automations", instruction: "Review the last run and task settings before trying again.", role: "ADMIN" },
   AUTOMATION_STALE: { href: "/desk/automations", instruction: "UNKNOWN: verify the task's last successful run and expected schedule.", role: "ADMIN" },
   PROVIDER_OPERATION_STUCK: { href: "/desk/billing", instruction: "UNKNOWN provider result: reconcile the original operation before retrying. Never resend blindly.", role: "OWNER" },
+  TAX_PERIOD_MISSING: { href: "/desk/sales-tax/returns", instruction: "Open the returns list and check each closed period; file or create the missing return.", role: "OWNER" },
   TAX_LOOKUP_UNAVAILABLE: { href: "/desk/sales-tax/setup", instruction: "Verify Colorado tax locations from official evidence; do not guess.", role: "OWNER" },
   SOURCE_PAGE_UNREACHABLE: { href: "/desk/sales-tax/setup", instruction: "Check the configured official source manually before making tax changes.", role: "OWNER" },
   SOURCE_PAGE_CHANGED: { href: "/desk/sales-tax/setup", instruction: "Review the official-source change before updating rates.", role: "OWNER" },

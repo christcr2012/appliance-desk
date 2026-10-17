@@ -2,6 +2,7 @@ import { addBusinessDays, businessDateKey, businessDayBounds } from "@/lib/busin
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { legalDueOn } from "@/domains/tax/filing-calendar";
+import { loadFilingPacket } from "@/domains/tax/filing-packet";
 import {
   taxReturnDueException,
   taxLicenseRenewalException,
@@ -9,6 +10,8 @@ import {
 } from "@/domains/exceptions/rules";
 
 export const TAX_FILING_ATTENTION_CAP = 50;
+/** Totals are worked out for the first few open returns only; more than this is already a catch-up situation. */
+export const TAX_FILING_AMOUNT_CAP = 12;
 export type FilingAttentionSet = {
   returns: { rows: ExceptionItem[]; total: number };
   licenses: { rows: ExceptionItem[]; total: number };
@@ -43,7 +46,7 @@ export async function listTaxFilingAttention(
   const [returns, licenses, returnCount, licenseCount] = await Promise.all([
     activeStarts.length ? prisma.taxFilingPeriod.findMany({
       where: returnWhere,
-      include: { filingAccount: { select: { name: true, reminderDaysBefore: true } } },
+      include: { filingAccount: { select: { name: true, kind: true, reminderDaysBefore: true } } },
       orderBy: [{ periodEnd: "asc" }, { id: "asc" }],
       take: TAX_FILING_ATTENTION_CAP,
     }) : Promise.resolve([]),
@@ -56,11 +59,28 @@ export async function listTaxFilingAttention(
     prisma.taxFilingAccount.count({ where: licenseWhere }),
   ]);
 
+  const closed = returns.filter((period) => businessDateKey(now) > businessDateKey(period.periodEnd));
+  // W-9: say exactly how much to file and pay. Totals come from the same filing packet the return page
+  // uses; a period whose packet is blocked (or beyond the first few) keeps the plain "return due" wording.
+  const amounts = new Map<string, number>();
+  await Promise.all(closed.slice(0, TAX_FILING_AMOUNT_CAP).map(async (period) => {
+    try {
+      const loaded = await loadFilingPacket(period.id, now);
+      if (loaded.status !== "READY") return;
+      const packet = loaded.packet;
+      amounts.set(period.id, packet.account.kind === "RETAIL_DELIVERY_FEE_RETURN" && packet.rdf
+        ? packet.rdf.taxDueCents : packet.totals.remitCents);
+    } catch {
+      // Leave this period on the plain wording; Today must still load.
+    }
+  }));
+
   return {
     returns: {
-      rows: returns
-        .filter((period) => businessDateKey(now) > businessDateKey(period.periodEnd))
+      rows: closed
         .map((period) => taxReturnDueException({
+          amountCents: amounts.get(period.id) ?? null,
+          kind: period.filingAccount.kind,
           accountName: period.filingAccount.name,
           periodId: period.id,
           periodEnd: period.periodEnd,

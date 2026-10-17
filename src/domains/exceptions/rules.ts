@@ -4,6 +4,8 @@ import {
   businessDayBounds,
   businessDaysBetween,
 } from "@/lib/business-date";
+import { formatMoney } from "@/lib/money-ui";
+import { shortDateLabel } from "@/domains/tax/file-and-pay";
 
 // ---------------------------------------------------------------------------
 // Exception inbox (2026-09-28) — one place that surfaces anything stuck or
@@ -685,7 +687,7 @@ export function uninspectedReturnException(appliance: {
     category: "UNINSPECTED_RETURN",
     severity: "medium",
     title: `${appliance.applianceTypeName} (${appliance.assetNumber}) is back but hasn't been inspected`,
-    detail: "It's sitting AWAITING_INSPECTION — it can't go back out to another customer until it's checked over.",
+    detail: "It's waiting to be inspected — it can't go back out to another customer until it's checked over.",
     href: `/desk/inventory/${appliance.id}`,
     since: appliance.updatedAt,
   };
@@ -749,6 +751,22 @@ export function applianceMaintenanceDueException(appliance: {
 /** Oldest first within a category, but overall sorted high severity
  * first, then by how long it's been sitting. */
 /** Filing attention is computed from OPEN periods, never stored or dismissed. */
+/** "File and pay $X on SUTS by Oct 20" / "File a $0 return on SUTS by Oct 20" (D-WA1); the old wording when the total is unknown. */
+function taxReturnTitle(input: {
+  accountName: string; legalDueOn: Date; amountCents?: number | null;
+  kind?: "SALES_RETURN" | "USE_TAX_RETURN" | "RETAIL_DELIVERY_FEE_RETURN";
+}, overdue: boolean): string {
+  if (typeof input.amountCents !== "number" || !Number.isSafeInteger(input.amountCents) || input.amountCents < 0) {
+    return `${input.accountName} return ${overdue ? "overdue" : "due"}`;
+  }
+  const site = input.kind === "RETAIL_DELIVERY_FEE_RETURN" ? "Colorado Revenue Online" : "SUTS";
+  const by = shortDateLabel(businessDateKey(input.legalDueOn));
+  const what = input.amountCents === 0
+    ? `File a $0 return on ${site} by ${by}`
+    : `File and pay ${formatMoney(input.amountCents)} on ${site} by ${by}`;
+  return overdue ? `${what} (overdue)` : what;
+}
+
 export function taxReturnDueException(input: {
   accountName: string;
   periodId?: string;
@@ -759,6 +777,9 @@ export function taxReturnDueException(input: {
   zeroReturn: boolean;
   readOnly: boolean;
   now: Date;
+  /** W-9: when the period's total is known the To do says exactly what to file and pay. */
+  amountCents?: number | null;
+  kind?: "SALES_RETURN" | "USE_TAX_RETURN" | "RETAIL_DELIVERY_FEE_RETURN";
 }): ExceptionItem {
   const daysUntilLegalDue = businessDaysBetween(input.now, input.legalDueOn);
   const daysUntilBaseDue = businessDaysBetween(input.now, input.dueOn);
@@ -773,7 +794,7 @@ export function taxReturnDueException(input: {
   return {
     category: "TAX_RETURN_DUE",
     severity: urgent ? "high" : "medium",
-    title: `${input.accountName} return ${daysUntilLegalDue < 0 ? "overdue" : "due"}`,
+    title: taxReturnTitle(input, daysUntilLegalDue < 0),
     detail: `${input.zeroReturn ? "A zero return may still be required. " : ""}` +
       `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
       (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),

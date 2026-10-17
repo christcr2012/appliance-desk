@@ -24,8 +24,8 @@ function daysAfter(start: Date, now: Date): number {
   return businessDaysBetween(start, now);
 }
 export function overdueReminderDue(legalDue: Date, today: Date): boolean {
-  const days = daysAfter(legalDue, today);
-  return days > 0 && (days - 1) % 3 === 0;
+  // W-9 (D-WA1): once past the legal deadline the owner is reminded every business day until it is filed.
+  return daysAfter(legalDue, today) > 0;
 }
 export function licenseReminderStage(expiry: Date, now: Date): string | null {
   const untilExpiry = businessDaysBetween(now, expiry);

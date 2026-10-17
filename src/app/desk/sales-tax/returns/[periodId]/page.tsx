@@ -63,7 +63,7 @@ export default async function ReturnDetailPage({
           className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full min-w-[610px] text-left text-sm">
             <thead><tr className="border-b border-border">
-              <th className="p-2">Area</th><th className="p-2">Filing code</th><th className="p-2">Gross</th><th className="p-2">Taxable</th><th className="p-2">Tax</th><th className="p-2">Remit</th>
+              <th className="p-2">Area</th><th className="p-2">Filing code</th><th className="p-2">Gross</th><th className="p-2">Taxable</th><th className="p-2">Tax</th><th className="p-2">To pay</th>
             </tr></thead>
             <tbody>{result.packet.rows.map((r,i) => <tr key={r.jurisdictionId + i} className="border-b border-border">
               <td className="p-2">{r.name}</td><td className="p-2">{r.filingCode ?? "Not configured"}</td>
@@ -106,8 +106,8 @@ export default async function ReturnDetailPage({
           {r.filingCode && <FilingCopyField label={r.name+" use-tax code"} value={r.filingCode} />}
           <FilingCopyField label={r.name+" use tax"} value={money(r.useTaxCents)} />
         </div>)}
-        <FilingCopyField label="Expected on-time remittance" value={money(result.packet.totals.remitIfOnTimeCents)} />
-        <FilingCopyField label="Expected late remittance" value={money(result.packet.totals.remitIfLateCents)} />
+        <FilingCopyField label="Amount to pay if on time" value={money(result.packet.totals.remitIfOnTimeCents)} />
+        <FilingCopyField label="Amount to pay if late" value={money(result.packet.totals.remitIfLateCents)} />
         <p className="text-xs text-muted-foreground">Copying values never files a form or pays the government.</p>
       </section>}
       {period.status === "OPEN" && <section className="space-y-4">
@@ -120,18 +120,23 @@ export default async function ReturnDetailPage({
           </label>)}
           <p className="text-xs text-muted-foreground">Checkmarks do not file a return or pay the government.</p>
         </TaxActionForm> : <ol className="list-decimal space-y-2 pl-5 text-sm">{result.packet.steps.map((step,i) => <li key={i}>{step}</li>)}</ol>}
-        {owner && <TaxActionForm action={recordFiledReturnAction} title="Record an actual filing AND payment"
-          submitLabel="Record filed and paid"
+        {owner && <TaxActionForm action={recordFiledReturnAction} title="I filed and paid it"
+          submitLabel="Save: filed and paid"
           confirmText="I already filed this return and paid the government outside Appliance Desk. I understand that recording this will permanently freeze the original return and payment evidence.">
           <input type="hidden" name="periodId" value={periodId} />
-          <p className="text-sm text-muted-foreground">Only after completing both steps in the official portal: record dates, exact paid amount and confirmation. Filing freezes this original worksheet.</p>
+          <p className="text-sm text-muted-foreground">Only after you have filed the return and paid on the official website. Enter the date you paid and the confirmation number it gave you; that is all that is needed. Recording this locks the return and marks the equipment tax on it as filed.</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className={label}>Filed date<input name="filedOn" type="date" required className={control} /></label>
-            <label className={label}>Paid date<input name="paidOn" type="date" required className={control} /></label>
-            <label className={label}>Actual paid amount (USD)<input name="amountPaidDollars" inputMode="decimal" placeholder="0.00" required className={control} /></label>
-            <label className={label}>Official confirmation number<input name="confirmationNumber" maxLength={300} required className={control} /></label>
+            <label className={label}>Date paid<input name="paidOn" type="date" required className={control} /></label>
+            <label className={label}>Confirmation number from the website<input name="confirmationNumber" maxLength={300} required className={control} /></label>
           </div>
-          <label className={label}>Why the paid amount differs, if applicable<textarea name="amountDifferentReason" maxLength={1000} rows={2} className={control} /></label>
+          <details className="rounded-lg border border-border p-3 text-sm">
+            <summary className="cursor-pointer font-medium">The website showed something different? (optional)</summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className={label}>Date filed, if not the same day you paid<input name="filedOn" type="date" className={control} /></label>
+              <label className={label}>Amount you actually paid (dollars), if not the amount above<input name="amountPaidDollars" inputMode="decimal" placeholder="Leave empty to use the calculated amount" className={control} /></label>
+            </div>
+            <label className={`${label} mt-3`}>Why it differs<textarea name="amountDifferentReason" maxLength={1000} rows={2} className={control} /></label>
+          </details>
           <FilingEvidenceUpload periodId={periodId} />
         </TaxActionForm>}
       </section>}

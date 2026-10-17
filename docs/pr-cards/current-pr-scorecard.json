@@ -1,25 +1,35 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "W-7",
+  "parent": "W-8",
   "completedSlices": [
     {
-      "id": "W-7",
+      "id": "W-8",
       "acceptanceEvidence": [
-        "src/domains/setup/checklist.ts getSetupChecklist throws unless the caller is an active OWNER (read-level, not a hidden link); src/app/desk/today/page.tsx only asks for it when the role is OWNER and tolerates a failure; SetupCard returns nothing once all six are done. tests/setup-checklist-integration.test.ts (real Postgres) refuses admin, staff, customer, archived owner and unknown user; tests/today-workspace.test.tsx proves ADMIN/STAFF are never asked, the card hides when complete and a failure does not break Today.",
-        "SETUP_STEP_ORDER fixes the order; tests/setup-checklist.test.ts asserts it and tests/today-workspace.test.tsx asserts the rendered numbering 1 to 6.",
-        "Every step is computed from saved settings, prices, filing accounts and the business address (no stored tick). Done rows say \"Done ✓\"; others state the one thing missing. Every href is checked against the real route list and settings sections (tests/setup-checklist.test.ts); each transition is proven on real Postgres (setup-checklist-integration.test.ts); the link names read \"Finish this, service area\" etc. for screen readers.",
-        "src/domains/tax/setup-readiness.ts holds the one definition, now used by both the Taxes overview and the Today card. An exhaustive 7x5x4 agreement test and a real-Postgres test against getTaxWorkspaceOverview prove they cannot disagree; a mutation test (ignoring address confirmation) failed as expected.",
-        "Payments: recognized Stripe key plus sync secret, reported only as connected/not and test/live. Email: service key, sender address and customer-email switch. Tests inject the environment and assert no key value appears anywhere in the output; the integration test proves the read writes no settings or audit rows."
+        "src/lib/desk-navigation.ts now lists exactly 14 entries (Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings, More); staff get the 10 they can open with no finance words in the serialized menu, and the phone bottom bar uses the same names. tests/w8-menu-sections.test.ts, tests/desk-navigation.test.ts, tests/e2-app-shell.test.tsx and e2e/desk-workspace.spec.ts.",
+        "src/lib/desk-sections.ts and src/components/desk/section-tabs*.tsx add role-filtered tabs through small layouts (Schedule: Dispatch board, Jobs, Driver view; Equipment: Inventory, Parts, Purchases, Purchase orders; Money: Billing, Revenue, Fleet, Reports, Business overview). No address moved; DESK_NAV_ALIASES keeps the right entry highlighted, proven for every alias in tests/w8-menu-sections.test.ts and tests/w8-section-tabs.test.tsx.",
+        "src/app/desk/more/page.tsx lists Suppliers, Growth signals, Launch list, System health, Privacy requests and Activity through deskMoreLinks, filtered by role on the server (staff see Activity only); the preview storage check is in neither the menu, the tabs nor More and still returns not-found outside test storage. Covered by tests/w8-menu-sections.test.ts and tests/w8-section-tabs.test.tsx.",
+        "scripts/check-owner-wording.mjs runs with npm run lint (and in CI's static job): banned phrases with plain replacements on owner screen text and To do text, an allowlist that requires a written reason, and 18 hard words fixed (jurisdiction, remit/remittance, a raw status code). scripts/check-owner-wording.test.mjs is part of check:preflight.",
+        "tests/w8-menu-sections.test.ts checks every menu entry, tab and More link for owner, admin and staff against the e2e route inventory (/desk/more was added); the new page is also in the browser accessibility inventory."
+      ]
+    },
+    {
+      "id": "W-9",
+      "acceptanceEvidence": [
+        "src/domains/tax/filing-attention.ts works out each closed period's total with the same filing packet the return page uses and src/domains/exceptions/rules.ts titles the To do \"File and pay $X on SUTS by <date>\" or \"File a $0 return on SUTS by <date>\", adding \"(overdue)\" after the legal date; it opens the return. tests/w9-filing-autopilot-integration.test.ts (real Postgres) proves the amount, the $0 case, the overdue wording and that a filed return leaves the list.",
+        "src/domains/tax/filing-reminders.ts now emails every business day once a return is past its legal deadline (the before-due days stay the owner-editable 7 and 2, and the due day stays). tests/tax-filing-reminders-integration.test.ts asserts the new daily rule.",
+        "The return page's form is now \"I filed and paid it\": date paid and confirmation number, with filed date and a different amount in an optional section; markPeriodFiled defaults the filed date to the paid date and the amount to the calculated amount, still refuses a different amount without a reason and a blank confirmation number, locks the return and marks the equipment use tax filed. Real-Postgres tests in tests/w9-filing-autopilot-integration.test.ts and the existing tax-filing-finalization and tax-return-actions suites.",
+        "collectSystemIssueInputs compares each active account's filing calendar with its saved periods and raises the high TAX_PERIOD_MISSING issue (rendered and linked to the returns list) when a closed period has no return, clearing it once the rows exist. Real-Postgres test in tests/w9-filing-autopilot-integration.test.ts and tests/system-issue-sweep-integration.test.ts."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Real use after the daily release: the owner seeing the card on the live Today page. Payments and email steps only turn to Done once the owner adds the Stripe and email keys in hosting settings (GO-LIVE-CHECKLIST). No live Stripe, customer email or spending was used."
+    "Real use after the daily release: the owner seeing the new menu and the new filing To do on the live site, and filing a real Colorado return using the simplified form. No live Stripe, customer email, SMS or spending was used.",
+    "Browser and accessibility checks of the new menu, tabs and More page run in exact-head CI (e2e/desk-workspace.spec.ts and the route inventory)."
   ],
   "evidence": [
-    "Single bundle W-7; planning commit df688a04c5e8d3153a2818691ab45b31aaca49c4 preserved.",
-    "Local: typecheck, new unit tests (19), UI tests (7) and 9 real-Postgres tests pass; exact-head CI pending."
+    "Bundle W-8+W-9; planning commit c38f54354af6d36ea1340aef9e165e96537df72d preserved.",
+    "Local: typecheck, lint and the plain-words check pass; 8+3 menu and tab tests, 3 wording-script tests and 5 real-Postgres filing tests pass; existing tax filing, reminder, finalization, return-action and system-health suites still pass; exact-head CI pending."
   ]
 }

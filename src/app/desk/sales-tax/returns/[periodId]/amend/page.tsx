@@ -75,9 +75,9 @@ export default async function AmendmentPage({ params }: {
             label={row.name+" corrected use tax"} value={money(row.useTaxCents)} />)}
           {a.packet.corrected.rdf && <FilingCopyField label="Corrected retail delivery fee amount"
             value={money(a.packet.corrected.rdf.taxDueCents)} />}
-          <FilingCopyField label="Total corrected on-time remittance"
+          <FilingCopyField label="Total corrected amount to pay, if on time"
             value={money(a.packet.corrected.totals.remitIfOnTimeCents)} />
-          <FilingCopyField label="Total corrected late remittance"
+          <FilingCopyField label="Total corrected amount to pay, if late"
             value={money(a.packet.corrected.totals.remitIfLateCents)} />
         </section>}
         {a.status === "OPEN" && owner && <>
