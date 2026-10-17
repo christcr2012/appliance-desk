@@ -47,7 +47,7 @@ async function localize(tx: Prisma.TransactionClient, customerId:string, kind:"a
   }
 }
 export async function localizeAnnualNotice(tx:Prisma.TransactionClient,customerId:string,input:AnnualReminderInput,original:NoticeText) {
-  return localize(tx,customerId,"annual",original,input.template?.trim() ? input.template : NOTICE_COPY.en["annual:body"],{
+  return localize(tx,customerId,"annual",original,input.template?.trim() || NOTICE_COPY.en["annual:body"],{
     ...common(input),customerName:input.customerName,noticeDays:String(input.noticeDays),boundaryDate:formatBusinessDate(input.boundary,"es"),years:String(input.years),monthlyTotal:formatCents(input.monthlyTotalCents),items:input.lineLabels.join(", "),
   });
 }
@@ -57,7 +57,7 @@ export async function localizeRenewalNotice(tx:Prisma.TransactionClient,customer
   });
 }
 export async function localizeTermsNotice(tx:Prisma.TransactionClient,customerId:string,input:TermsChangeInput,original:NoticeText) {
-  return localize(tx,customerId,"change",original,input.template?.trim() ? input.template : NOTICE_COPY.en["change:body"],{
+  return localize(tx,customerId,"change",original,input.template?.trim() || NOTICE_COPY.en["change:body"],{
     ...common(input),customerName:input.customerName,noticeDays:String(input.noticeDays),terms:input.termsText.trim(),effectiveDate:NOTICE_WRAPPER_COPY.effective.replace("{{days}}",String(input.changeDays)),
   });
 }

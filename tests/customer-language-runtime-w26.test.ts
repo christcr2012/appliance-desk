@@ -70,7 +70,7 @@ describe("W-26 new notice language and unchanged historical evidence",()=>{
   });
   it("keeps annual dollar values identical and does not recalculate a billed amount",async()=>{
     noticeSources();approve();
-    const output=await localizeAnnualNotice(tx,"customer",{...input,boundary:new Date("2027-10-01T12:00:00Z"),years:1,monthlyTotalCents:6050,lineLabels:["Recorded washer label"]},original);
+    const output=await localizeAnnualNotice(tx,"customer",{...input,template:"  "+NOTICE_COPY.en["annual:body"]+"  ",boundary:new Date("2027-10-01T12:00:00Z"),years:1,monthlyTotalCents:6050,lineLabels:["Recorded washer label"]},original);
     expect(output.body).toContain("$60.50");expect(output.body).toContain("Recorded washer label");expect(output.language).toBe("es");
   });
 });

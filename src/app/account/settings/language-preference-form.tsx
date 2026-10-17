@@ -32,7 +32,7 @@ export function LanguagePreferenceForm({ initialLanguage }: { initialLanguage: "
       <button type="submit" disabled={pending} className="rounded-md bg-action px-4 py-2 text-on-action disabled:opacity-50">
         {pending ? t("Saving…") : "Save language / Guardar idioma"}
       </button>
-      <p role="status" aria-live="polite">{state.message ? t(state.message as Parameters<typeof t>[0]) : ""}</p>
+      <p role="status" aria-live="polite">{state.message ? t(state.message) : ""}</p>
     </form>
   );
 }

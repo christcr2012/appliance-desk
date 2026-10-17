@@ -93,7 +93,7 @@ Previews and test copies never send email, even with the key and the switch on (
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
 | [ ] | **Owner** — If Chris ever signs customers up at their home: attorney confirms whether the 3-day cancellation notice applies | Attorney review of agreement text | Not reviewed (phone and online orders don't trigger it) | Attorney's written answer recorded |
-| [ ] | **Owner** — Spanish translations reviewed by a fluent reviewer (IN-83) | Desk → Settings → Languages (W-26) / Website content (V) | Not reviewed; English only | Reviewer's sign-off recorded; Español switch visible |
+| [ ] | **Owner** — Spanish translations reviewed by a fluent reviewer (IN-83) | Desk → Settings → Languages (W-26) / Website content (V) | Engineering complete in PR #478, final CI/merge pending; actual review/publication OFF | All current drafts complete; actual fluent and separate legal references recorded against current digest; owner publishes; real customer acceptance verified |
 | [ ] | **Owner** — Trip fee amount for missed appointments (IN-81), if wanted | Desk → Settings → Pickups and deliveries | $0 (off) | A missed-delivery visit offers the fee |
 
 ## 7. Final launch day (in this order)

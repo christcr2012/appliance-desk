@@ -2,19 +2,25 @@
   "version": 1,
   "kind": "implementation",
   "parent": "W-26",
-  "completedSlices": [],
-  "remainingEngineering": [
-    "W-26 original outcome is still incomplete: full quote, legal, signing, payment, portal and messaging translations require nested surface coverage, both-language browser proof and independent fluent/legal review.",
-    "Finish integration of owner-maintained Spanish website and communication translations with complete source-bound runtime readiness, not a draft-only editor.",
-    "The W-26 branch is intentionally a DRAFT PR; exact-head CI may not be green or merged until whole W-26 subsection has acceptance evidence for every frozen criterion."
+  "completedSlices": [
+    {
+      "id": "W-26",
+      "acceptanceEvidence": [
+        "Customer/quote persistence and scoped actions, quote-note.ts, signing/portal consumers and localized outbound callers are reconciled in execution/W-26-coverage.md. customer-language-database-w26.test.ts proves new quotes inherit stored preference without rewriting old quotes; estimate-send-email-switch.test.ts proves Spanish and ACCEPTED/UNKNOWN outcomes. Actions diagnostic 38984045880 passed all four production browser shards including real bilingual preference/quote/signing flow.",
+        "review.ts, drafts.ts and runtime.ts require complete current source-bound drafts, matching separate fluent/legal evidence and explicit owner publication. Missing/stale/revoked approval falls back to English or blocks a new Spanish dispatch. runtime/drafts/authorization tests and the disposable CI browser revoke scenario pass. No real fluent/legal approval or publication occurred; English governing text is stored unchanged.",
+        "Owner/ADMIN-only versioned editor exposes independently editable Spanish website, communication subject/body, message, notice, legal and quote-note counterparts; strict variable/source/revision checks and audited authorization are covered in drafts/authorization/runtime tests. Owner desk stays English in the bilingual browser scenario. Reviewed website read API is prepared; public Spanish routing belongs to Batch V under \u00a76.6.",
+        "Full consumer matrix and dispatch classification are in execution/W-26-coverage.md. Actions 38984045880 passed all three unit/real-Postgres shards, migration upgrade, restore drill, all four production builds and all four browser shards. Both-language rendered portal/quote/sign/auth controls, exact money, errors/retries, consent and immutable legal/interface/digest evidence are covered. Final small safety additions passed 29 focused unit tests and six isolated Postgres tests; final PR-head CI remains a mandatory merge gate."
+      ]
+    }
   ],
+  "remainingEngineering": [],
   "externalAcceptance": [
     "Fluent independent reviewer selected by owner and separate legal counsel must approve current digest before first public Spanish activation; source changes invalidate review.",
     "Historical 22 real live/provider owner-approval acceptance items remain PENDING, including real signing, TEST payment/reconciliation, external communication and CPA/counsel evidence."
   ],
   "evidence": [
-    "Original W-26 frozen acceptance in docs/pr-cards/W-26.md and structured packet docs/pr-cards/execution/W-26.json; no completed W-26 batch subsection claimed.",
-    "Local disposable Postgres migration and four DB tests passed; 31 targeted W-26 source tests passed prior to reviewer fingerprint safety addition.",
-    "Owner-editable website/communication drafts are audited, source-hashed and unpublished; CustomerLanguageReview runtime remains all surfaces false and English legal controlling."
+    "Full original W-26 source delivery; frozen planning commit 2f47535ed238329cb725dc1b776d1ed28684fba3 preserved unchanged.",
+    "Independent engineering review resolved all concrete source findings; final read-only review found no blocking findings. Automated GitHub review unavailable \u2014 waived after inspecting reviews and threads.",
+    "All seven source coverage declarations describe implemented consumers; actual fluent/legal approval and public Spanish activation remain OFF. Final exact-head PR ci and merge are still pending."
   ]
 }

@@ -8,6 +8,7 @@ const mock = vi.hoisted(() => ({
   transaction: vi.fn(),
   drafts: vi.fn(),
   reviewUpdate:vi.fn(),reviewEvent:vi.fn(),
+  customerUpdate:vi.fn(),
 }));
 vi.mock("@/domains/estimates", () => ({
   getEstimateForApproval: mock.quote,
@@ -15,11 +16,14 @@ vi.mock("@/domains/estimates", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     estimate: { updateMany: mock.updateMany },
+    customer:{updateMany:mock.customerUpdate},
     customerLanguageReview: { findUnique: mock.review },
     $transaction: mock.transaction,
   },
 }));
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/session",()=>({requireSession:async()=>({user:{id:"customer-user"}})}));
+vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));
 // Exercise an incomplete implementation independently of production source readiness.
 vi.mock("@/domains/language/readiness",()=>({allSpanishSurfacesReady:false,CUSTOMER_SPANISH_SURFACE_READINESS:{quote:false}}));
 vi.mock("@/domains/language/drafts", () => ({ listCurrentTranslationDrafts: mock.drafts }));
@@ -145,4 +149,12 @@ it("invalidates reviewed content when transactional Spanish wording changes", ()
   const original = copy.quoteSubject;
   try { copy.quoteSubject = original + " revisado"; expect(spanishCopyDigest()).not.toBe(before); }
   finally { copy.quoteSubject = original; }
+});
+
+import {saveCustomerLanguage} from "@/app/account/settings/language-actions";
+it("returns a retryable customer-language error on database failure",async()=>{
+ mock.customerUpdate.mockRejectedValueOnce(new Error("Synthetic database outage"));
+ const form=new FormData();form.set("language","es");
+ expect(await saveCustomerLanguage(form)).toEqual({status:"error",message:"Couldn't save your preference. Try again."});
+ expect(mock.customerUpdate).toHaveBeenCalledWith({where:{userId:"customer-user"},data:{preferredLanguage:"es"}});
 });

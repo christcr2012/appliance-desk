@@ -367,6 +367,7 @@ export const PORTAL_TRANSLATIONS = {
   "Sending…": "Enviando…",
   "Appliance": "Electrodoméstico",
   "This estimate may not have been sent yet, or the link may no longer be valid. If you think this is a mistake, contact us directly.": "Es posible que este presupuesto aún no se haya enviado o que el enlace no sea válido. Si cree que es un error, comuníquese directamente con nosotros.",
+  "Couldn't save your preference. Try again.": "No se pudo guardar su preferencia. Inténtelo de nuevo.",
 } as const;
 
 export type PortalLabel = keyof typeof PORTAL_TRANSLATIONS;
@@ -376,7 +377,7 @@ export function portalLabel(language: CustomerLanguage, english: PortalLabel): s
 
 /** Grammatical dynamic quantity; not a status or money calculation. */
 export function rentalCountLabel(language: CustomerLanguage, count: number, property: boolean) {
-  return portalStatement(language,"rentalCount",{count,plural:count===1?"":"s",noun:count===1?"alquiler activo":"alquileres activos",scope:portalStatement(language,property?"property":"account")});
+  return portalStatement(language,"rentalCount",{count,plural:count===1?"":"s",noun:portalStatement(language,count===1?"rentalSingular":"rentalPlural"),scope:portalStatement(language,property?"property":"account")});
 }
 
 /** Dynamic statements share the same reviewed fingerprint as static labels. */
@@ -391,6 +392,7 @@ export const PORTAL_DYNAMIC_COPY = {
   requests: "{{count}} open service request{{plural}} on this account.",
   mtm: "This rental is month-to-month. The terms that apply to it require {{days}} days’ notice to end it, with no ending fee.",
   mtmEnd: "If you end it now, it will end on {{end}}; your last billed day will be {{last}}. There is no fee. We will arrange pickup.",
+  rentalSingular:"active rental", rentalPlural:"active rentals",
   rentalCount: "{{count}} active rental{{plural}} {{scope}}.",
   property: "at this property", account: "on this account", visitProperty: "for this property",
  },
@@ -404,6 +406,7 @@ export const PORTAL_DYNAMIC_COPY = {
   requests: "{{count}} solicitud{{plural}} de servicio abierta{{suffix}} en esta cuenta.",
   mtm: "Este alquiler es mes a mes. Se requieren {{days}} días de aviso para finalizarlo, sin cargo de finalización.",
   mtmEnd: "Si solicita finalizar ahora, terminará el {{end}}; su último día facturado será el {{last}}. No hay cargo. Organizaremos la recogida.",
+  rentalSingular:"alquiler activo", rentalPlural:"alquileres activos",
   rentalCount: "{{count}} {{noun}} {{scope}}.",
   property: "en esta propiedad", account: "en esta cuenta", visitProperty: "en esta propiedad",
  },

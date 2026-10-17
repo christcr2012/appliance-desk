@@ -73,6 +73,7 @@ const ESTIMATE_STATUS_LABELS: Record<string, string> = {
 };
 
 export const SPANISH_STATUS_LABELS: Record<string, string> = {
+  "Status unavailable":"Estado no disponible",
   "Being set up": "En preparación",
   "Waiting on your signature": "Pendiente de su firma",
   "Signed, starts later": "Firmado, comienza después",
@@ -110,7 +111,7 @@ export const SPANISH_STATUS_LABELS: Record<string, string> = {
 
 function lookup(labels: Record<string, string>, value: string, language: CustomerLanguage = "en"): string {
   const english = labels[value];
-  return language === "es" ? (SPANISH_STATUS_LABELS[english] ?? "Estado no disponible") : (english ?? value);
+  return language === "es" ? (SPANISH_STATUS_LABELS[english] ?? SPANISH_STATUS_LABELS["Status unavailable"]) : (english ?? value);
 }
 
 export const rentalAgreementStatusLabel = (status: string, language: CustomerLanguage = "en") =>

@@ -1,3 +1,7 @@
+### 2026-10-17 — W-26 customer-language contract for W-14 and Batch V
+
+PR #478 completes the original engineering; final CI/merge pending. Additive migration 20261016195000_w26_customer_language stores customer/estimate preferences, versioned source-bound drafts and separate reviewer/events, durable message/notice locale/digest, frozen new signing-attempt locale and immutable signature language/digest/informational terms. Future W-14 customer content must use the customer translation context and current review source catalog; owner desk stays English. New source copy or owner English/Spanish edits invalidate review. Batch V inherits independently editable website counterparts and the reviewed read API; public language routing/SEO remains V. No live fluent/legal approval or publication is supplied by this PR. W-14 has no card yet: inspect verified merged main at startup, preserve exact money, roles, consent and immutable historical evidence.
+
 ### 2026-10-11 — W-22A foundation, not signing activation
 
 W-22A adds configuration and a pure per-location signing-charge plan for D-WB section 6.2. It does not charge, credit, refund, schedule or amend signed documents. Tax treatment starts undecided and no fee may be charged until the outstanding IN-79 CPA question is cleared; W-22B/C still own contract lines, payment webhooks, credit-on-first-invoice idempotency and delivery/cancellation workflows. The shared singleton update is actor-checked, locked and audited. W-22 remains incomplete in the work index; finish it before W-23.

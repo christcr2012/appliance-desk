@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { createEstimateDraft } from "@/domains/estimates";
 import { chooseCustomerLanguage, readCustomerLanguage } from "@/domains/language";
 
 const address = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/disabled");
@@ -17,6 +18,7 @@ describe.skipIf(!eligible)("W-26 customer and translation persistence on isolate
   const agreementId = "w26-agreement-" + suffix;
   const serviceId = "w26-service-" + suffix;
   const signatureId = "w26-signature-" + suffix;
+  const estimates:string[]=[];
   const translationKey = "w26-fixture-" + suffix;
 
   beforeAll(async () => {
@@ -30,6 +32,8 @@ describe.skipIf(!eligible)("W-26 customer and translation persistence on isolate
     ] });
   });
   afterAll(async () => {
+    await prisma.estimate.deleteMany({where:{id:{in:estimates}}});
+    await prisma.auditLog.deleteMany({where:{entityId:{in:estimates}}});
     await prisma.customerTranslationDraft.deleteMany({ where: { sourceKey: translationKey } });
     await prisma.signatureRecord.deleteMany({where:{id:signatureId}});
     await prisma.rentalAgreement.deleteMany({where:{id:agreementId}});
@@ -42,6 +46,15 @@ describe.skipIf(!eligible)("W-26 customer and translation persistence on isolate
     expect(await readCustomerLanguage(actor)).toBe("en");
     expect(await chooseCustomerLanguage(actor, "es")).toBe(true);
     expect(await readCustomerLanguage(actor)).toBe("es");
+    expect(await readCustomerLanguage(foreign)).toBe("en");
+  });
+  it("inherits the actual customer's language into a new quote without changing old quotes",async()=>{
+    await chooseCustomerLanguage(actor,"es");
+    const owner=await prisma.user.findFirstOrThrow({where:{role:"OWNER",archivedAt:null}});
+    const draft=await createEstimateDraft(owner.id,{customerId,title:"Synthetic W-26 saved language"});estimates.push(draft.id);
+    expect(draft.preferredLanguage).toBe("es");
+    await chooseCustomerLanguage(actor,"en");
+    expect((await prisma.estimate.findUniqueOrThrow({where:{id:draft.id}})).preferredLanguage).toBe("es");
     expect(await readCustomerLanguage(foreign)).toBe("en");
   });
   it("scopes updates to authenticated user and refuses unknown identities", async () => {

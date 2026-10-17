@@ -1,6 +1,6 @@
 # W-26 customer-language consumer reconciliation
 
-Candidate source coverage; final exact-head CI/browser acceptance is still pending.
+Complete source coverage; diagnostic 38984045880 passed all unit/database and production browser shards. Final PR-head CI and merge remain pending.
 The original subsection and counting boundary remain unchanged.
 
 | Surface | Actual consumers and invariant evidence |
