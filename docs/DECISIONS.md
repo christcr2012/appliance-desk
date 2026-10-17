@@ -1070,3 +1070,8 @@ tax-evidence model. Choices made here, within the approved designs:
 - **Send needs the customer-email switch; Copy link does not.** OWNER/ADMIN only; only the OWNER edits wording (`BusinessSettings.paymentLinkTemplates`, validated: 30 to 1500 characters, must keep {link}, known words only).
 - **Lead response time** is `BusinessSettings.leadResponseDays` (0 = same day, 0 to 14, owner-only, audited). `Lead.nextFollowUpOn` holds the chosen follow-up date; any status other than Contacted clears it. Migration `20261017130000_w5_w6_payment_link_and_lead_response` is additive.
 
+## 2026-10-17 — W-7 first-time setup checklist
+- **Computed, never ticked.** Each step's state is read from saved data; there is no stored "done" flag. Only the OWNER can read it (checked in `getSetupChecklist`).
+- **One definition of "tax setup is in place"** in `src/domains/tax/setup-readiness.ts`, used by both the Taxes overview and the Today card, so they cannot disagree.
+- **Done rules:** business details = four public details filled and not "[...]" placeholders; service area = at least one city or ZIP; prices = at least one active appliance or set above $0 a month; payments = recognized Stripe key plus sync secret (test mode described as no real money); email = service key, sender address and customer-email switch.
+- **No schema change; skip-a-step deferred** to ROADMAP. W-8 stays a separate bundle.

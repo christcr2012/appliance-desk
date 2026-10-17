@@ -1,3 +1,20 @@
+## October 17 — W-7 first-time setup checklist delivered, CI and merge pending
+
+W-5 and W-6 are merged (#482). This PR delivers **W-7**: the owner sees a "Get set up" card at the top of Today
+with six steps in order (business details, service area, prices, tax setup, payments, email). Each shows
+"Done ✓" or the one thing missing and opens the exact screen that fixes it; the card disappears once all six
+are done. Admins and staff never get it (refused where the data is read, not just hidden). Everything is worked
+out from saved data, so it can't drift; tax setup uses the same definition as Taxes → Setup (shared code, tested
+to agree). Payments and email say only whether they are connected and test or live, never a key, and the card
+changes nothing. No database change.
+
+Verified locally: typecheck, 19 unit tests, 7 Today-page tests, 9 real-Postgres tests, and two deliberate
+rule-breaking checks that the tests caught. Not yet done: exact-head CI (including the browser accessibility run),
+review, merge. Payments and email stay "not done" until the owner adds the Stripe and email keys in hosting
+settings (GO-LIVE-CHECKLIST). Skip-a-step is recorded in ROADMAP. Nothing is released; no live Stripe, email, SMS,
+spending or production data touched. W-8 (simpler menu and Schedule screen) is next after verified merge.
+Plan and frozen acceptance: `docs/pr-cards/W-7.md`.
+
 ## October 17 — W-5 and W-6 delivered as one bundle, CI and merge pending
 
 W-3 and W-4 are merged (#481). This PR delivers two whole approved subsections:

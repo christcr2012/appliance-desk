@@ -4,6 +4,11 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import type { ExceptionItem } from "@/domains/exceptions/rules";
 import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
 import { TAX_CHARGE_CATEGORIES } from "@/domains/tax/categories";
+import {
+  allFilingStartsRecorded,
+  hasCompleteSalesAccount,
+  areUseTaxAccountsLinked,
+} from "@/domains/tax/setup-readiness";
 
 export type TaxSetupStepDTO = {
   key: string; title: string; complete: boolean; detail: string; href: string;
@@ -135,11 +140,9 @@ export async function getTaxWorkspaceOverview(
         }),
       ]);
     const taxabilityComplete = hasCompleteTaxabilityMatrix(taxRules, liveAreas);
-    const accountComplete = accounts.some(account =>
-      account.kind === "SALES_RETURN" && account.accountNumber &&
-      account.portalUrl && account.firstPeriodStart && account.basis !== "UNDECIDED");
-    const allStartsRecorded = activeAccountCount > 0 &&
-      configuredStarts.length === activeAccountCount;
+    // One shared definition (also used by the first-time setup checklist on Today).
+    const accountComplete = hasCompleteSalesAccount(accounts);
+    const allStartsRecorded = allFilingStartsRecorded(activeAccountCount, configuredStarts.length);
     const setup: TaxSetupStepDTO[] = [
       { key: "lease", title: "Short-term rental tax treatment",
         complete: Boolean(settings && settings.shortTermLeaseElection !== "UNDECIDED"),
@@ -158,9 +161,7 @@ export async function getTaxWorkspaceOverview(
           "Enter the official sales-tax account number, portal, reporting basis and first period in Setup.",
         href: "/desk/sales-tax/setup" },
       { key: "use-accounts", title: "Use-tax filing accounts linked",
-        complete: Boolean(businessAreas?.status === "VERIFIED" &&
-          businessAreas.jurisdictions.length &&
-          businessAreas.jurisdictions.every(area => area.jurisdiction.useTaxFilingAccountId)),
+        complete: areUseTaxAccountsLinked(businessAreas),
         detail: "Link every business tax area to a use-tax filing account, so purchase tax has a return and due date.",
         href: "/desk/sales-tax/setup#accounts" },
       { key: "periods", title: "Filing calendar", complete: allStartsRecorded,

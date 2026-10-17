@@ -220,7 +220,7 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 - [x] W-4: Signing creates a draft delivery visit + To do; a rental ending in 30 days asks renew / month-to-month / pickup; a decided ending creates a draft pickup visit; drafts never send or charge anything.
 - [ ] Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.
 - [ ] A new lead appears as "Contact <name>" (same day by default); "contacted" asks for the next follow-up date; an approved quote creates a To do.
-- [ ] A first-time setup checklist on Today (owner) until complete.
+- [x] A first-time setup checklist on Today (owner) until complete. (W-7: code-complete and locally proven; CI/merge pending, real keys are a go-live step.)
 - [ ] About 14 menu entries; Dispatch, Jobs and Driver view are one Schedule screen; the plain-words check runs in CI.
 - [ ] W-9 (Amendment A): every filing period creates "File and pay $X on <site> by <date>" on To do the day it closes ($0 returns included), reminds on schedule, captures confirmation number and date paid, and a nightly check proves no closed period is left without a filing item.
 - [ ] W-10: the use-tax return page has a "File now" panel (opens Revenue Online, each value in screen order with a copy button) and prints the official DR 0252 filled in.

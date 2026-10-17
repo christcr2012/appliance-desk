@@ -1,3 +1,7 @@
+## W-7 first-time setup checklist (2026-10-17)
+
+No schema change. The Today "Get set up" card reads existing BusinessSettings, ApplianceType, RentalPackage, TaxFilingAccount and AddressTaxLocation rows; nothing is stored or written.
+
 ## W-14 / W-2 / W-15 purchase records (2026-10-17)
 
 Additive migration `20261017130000_w5_w6_payment_link_and_lead_response` (W-5/W-6) adds `BusinessSettings.paymentLinkTemplates` (JSON, owner wording per reason, NULL = recommended), `BusinessSettings.leadResponseDays` (default 0, CHECK 0 to 14) and `Lead.nextFollowUpOn` (nullable date). No new table; all are covered by the existing BusinessSettings and Lead backups.

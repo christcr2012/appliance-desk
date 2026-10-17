@@ -707,3 +707,5 @@ needs no new payment path, and is shown in the quote total under Colorado's all-
 
 Each setup-fee consumables kit (cord, vent hose, braided hoses) used on a delivery could lower parts stock automatically, so the
 consumables price can be checked against what the parts really cost. Not in W-22; needs its own card if Chris wants it.
+
+- 2026-10-17 (W-7): let the owner mark a setup step "not needed" (for example a business that will never take card payments) so the Get set up card can finish. Not built; needs an owner decision on whether skipping should be allowed.

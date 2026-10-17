@@ -1,0 +1,41 @@
+{
+  "subsections": [
+    {
+      "id": "W-7",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "A \"Get set up\" card appears on Today for the owner, and only the owner, until every setup step is done; admins and staff never receive the checklist, and that is enforced where the data is read, not by hiding the card.",
+          "evidence": "src/domains/setup/checklist.ts getSetupChecklist throws unless the caller is an active OWNER (read-level, not a hidden link); src/app/desk/today/page.tsx only asks for it when the role is OWNER and tolerates a failure; SetupCard returns nothing once all six are done. tests/setup-checklist-integration.test.ts (real Postgres) refuses admin, staff, customer, archived owner and unknown user; tests/today-workspace.test.tsx proves ADMIN/STAFF are never asked, the card hides when complete and a failure does not break Today."
+        },
+        {
+          "criterion": "The steps run in this order: business details, service area, prices, tax setup, payments, email.",
+          "evidence": "SETUP_STEP_ORDER fixes the order; tests/setup-checklist.test.ts asserts it and tests/today-workspace.test.tsx asserts the rendered numbering 1 to 6."
+        },
+        {
+          "criterion": "Each step shows \"Done ✓\" or the one thing still missing, in plain words, worked out from what is actually saved (never from a tick box), and opens the exact existing screen where it is fixed.",
+          "evidence": "Every step is computed from saved settings, prices, filing accounts and the business address (no stored tick). Done rows say \"Done ✓\"; others state the one thing missing. Every href is checked against the real route list and settings sections (tests/setup-checklist.test.ts); each transition is proven on real Postgres (setup-checklist-integration.test.ts); the link names read \"Finish this, service area\" etc. for screen readers."
+        },
+        {
+          "criterion": "Tax setup is done only when the sales tax account number, how often you file, the first filing period, the business address and the use-tax accounts for Colorado and Greeley are all in place, using the same answers as Taxes → Setup.",
+          "evidence": "src/domains/tax/setup-readiness.ts holds the one definition, now used by both the Taxes overview and the Today card. An exhaustive 7x5x4 agreement test and a real-Postgres test against getTaxWorkspaceOverview prove they cannot disagree; a mutation test (ignoring address confirmation) failed as expected."
+        },
+        {
+          "criterion": "Payments and email report what is truly connected (test or live payment key, payment-sync secret, email service, sender address, customer-email switch); the card never turns anything on, sends or charges anything, and never shows a secret.",
+          "evidence": "Payments: recognized Stripe key plus sync secret, reported only as connected/not and test/live. Email: service key, sender address and customer-email switch. Tests inject the environment and assert no key value appears anywhere in the output; the integration test proves the read writes no settings or audit rows."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 435,
+  "productionRemoved": 8,
+  "planComparison": "Actual production change (about +435/-8 across 5 source files) matches the 400-line estimate; the shared tax-setup definition was extracted rather than duplicated. No schema change. W-8 was not started.",
+  "newEngineering": "Owner-only setup checklist read, shared tax-setup readiness definition, Today 'Get set up' card, payments/email connection reporting without secrets",
+  "relatedWorkDecision": "W-7 is the next item in approved order and is a single whole subsection of about 435 production lines; it was not padded or combined with W-8, which moves routes and carries its own risk.",
+  "decision": "SUBSTANTIAL_EXCEPTION",
+  "exceptionEvidence": [
+    "One whole approved subsection (W-7) with about 443 changed production lines, above the 400-line guide; the only shortfall is the subsection count, and the next eligible unit W-8 is a route-moving menu/Schedule change with its own risk that the frozen plan deliberately keeps separate.",
+    "New engineering beyond a card: an owner-only read model with six data-driven steps, a refactor that moves the tax-setup definition into shared code now used by the Taxes overview and the Today card, and provider-connection reporting that never exposes a secret.",
+    "New permanent evidence: 35 new tests (19 unit, 7 Today-page, 9 on real Postgres including owner-only refusal and tax agreement with the Taxes screen), plus two deliberate rule-breaking checks that the tests caught."
+  ]
+}
