@@ -2,10 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { businessDateFromKey, parseOptionalBusinessDate } from "@/lib/business-date";
+import { businessDateFromKey } from "@/lib/business-date";
 import { requireRole } from "@/lib/session";
 import {
-  createApplianceUnits,
   updateApplianceStatus,
   updateApplianceDetails,
   createPartRecord,
@@ -20,7 +19,6 @@ import {
   stageSwap,
   recordApplianceInspection,
 } from "@/domains/inventory/guided-actions";
-import { dollarsToCents } from "@/domains/pricing";
 import type { ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
 
@@ -39,85 +37,6 @@ function splitList(value: string): string[] {
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean);
-}
-
-const newApplianceUnitSchema = z.object({
-  applianceTypeId: z.string().trim().min(1, "Choose an appliance type."),
-  quantity: z.coerce.number().int().min(1).max(50),
-  manufacturer: z.string().trim().max(200).optional().or(z.literal("")),
-  model: z.string().trim().max(200).optional().or(z.literal("")),
-  serialNumber: z.string().trim().max(200).optional().or(z.literal("")),
-  color: z.string().trim().max(100).optional().or(z.literal("")),
-  features: z.string().trim().max(1000).optional().or(z.literal("")),
-  condition: z.string().trim().max(200).optional().or(z.literal("")),
-  purchaseDate: z.string().trim().optional().or(z.literal("")),
-  acquisitionCostDollars: z.coerce.number().min(0).max(1000000).optional(),
-  purchaseTaxChoice: z.enum(["SELLER_CHARGED", "NONE_CHARGED", "LESSOR_PERMISSION", "LATER"]).optional(),
-  vendorTaxDollars: z.coerce.number().min(0).max(1000000).optional(),
-  sellerTaxNote: z.string().trim().max(500).optional(),
-  currentLocation: z.string().trim().max(300).optional().or(z.literal("")),
-  notes: z.string().trim().max(2000).optional().or(z.literal("")),
-});
-
-export async function createApplianceUnitsAction(
-  raw: Record<string, unknown>,
-): Promise<InventoryActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
-
-  const parsed = newApplianceUnitSchema.safeParse(raw);
-  if (!parsed.success) {
-    return {
-      status: "error",
-      message: parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
-    };
-  }
-
-  const data = parsed.data;
-  if (data.purchaseTaxChoice && session.user.role !== "OWNER") {
-    return { status: "error", message: "Only the owner can record purchase-tax evidence." };
-  }
-  const purchaseDate = parseOptionalBusinessDate(data.purchaseDate);
-  if (!purchaseDate.ok) {
-    return {
-      status: "error",
-      message: "Enter the purchase date as a real calendar date, or leave it blank.",
-    };
-  }
-
-  try {
-    await createApplianceUnits(session.user.id, {
-      applianceTypeId: data.applianceTypeId,
-      quantity: data.quantity,
-      manufacturer: data.manufacturer || null,
-      model: data.model || null,
-      serialNumber: data.serialNumber || null,
-      color: data.color || null,
-      features: data.features ? splitList(data.features) : [],
-      condition: data.condition || null,
-      purchaseDate: purchaseDate.value,
-      acquisitionCostCents:
-        data.acquisitionCostDollars !== undefined
-          ? dollarsToCents(data.acquisitionCostDollars)
-          : null,
-      purchaseTax: data.purchaseTaxChoice ? {
-        choice: data.purchaseTaxChoice,
-        vendorTaxCents: data.vendorTaxDollars !== undefined ? dollarsToCents(data.vendorTaxDollars) : 0,
-        sellerNote: data.sellerTaxNote || undefined,
-      } : undefined,
-      currentLocation: data.currentLocation || null,
-      notes: data.notes || null,
-    });
-  } catch (error) {
-    return {
-      status: "error",
-      message: error instanceof Error ? error.message : "Couldn't add that appliance.",
-    };
-  }
-
-  revalidatePath("/desk/inventory");
-  revalidatePath("/desk/dashboard");
-
-  return { status: "success" };
 }
 
 export async function updateApplianceStatusAction(

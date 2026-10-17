@@ -2,6 +2,8 @@ import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { OperationalAppliance } from "./operational-appliance";
 import { AppliancePurchaseTaxPanel } from "./appliance-purchase-tax-panel";
+import { TaxProofPanel } from "./tax-proof-panel";
+import { getApplianceTaxProof } from "@/domains/tax/tax-proof";
 import Link from "next/link";
 import {
   getApplianceById,
@@ -60,6 +62,7 @@ export default async function ApplianceDetailPage({
   const pendingTax = appliance.acquisitionTaxStatus === "UNKNOWN"
     ? await prisma.$transaction(tx => explainPendingPurchaseTax(tx, id))
     : null;
+  const taxProof = session.user.role === "OWNER" || session.user.role === "ADMIN" ? await getApplianceTaxProof(id) : null;
   const custodyAddress = openCustody?.serviceAddressId
     ? await prisma.serviceAddress.findUnique({ where: { id: openCustody.serviceAddressId }, select: { line1: true, city: true } })
     : null;
@@ -134,6 +137,7 @@ export default async function ApplianceDetailPage({
           status={appliance.status}
           inspectionChecklist={inspectionChecklist}
         />
+        {taxProof && <TaxProofPanel proof={taxProof} />}
         {session.user.role === "OWNER" && (
           <AppliancePurchaseTaxPanel appliance={{
             id: appliance.id,

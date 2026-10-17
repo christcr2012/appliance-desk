@@ -4,6 +4,7 @@ const getServerSession = vi.fn();
 const photoFindUnique = vi.fn();
 const blobGet = vi.fn();
 const filingPhotoFindFirst = vi.fn();
+const purchaseDocumentFindFirst = vi.fn();
 
 vi.mock("@/lib/session", () => ({
   getServerSession: (...args: unknown[]) => getServerSession(...args),
@@ -13,6 +14,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     photo: { findUnique: (...args: unknown[]) => photoFindUnique(...args) },
     taxFilingPeriod: { findFirst: (...args: unknown[]) => filingPhotoFindFirst(...args) },
+    purchaseDocument: { findFirst: (...args: unknown[]) => purchaseDocumentFindFirst(...args) },
   },
 }));
 
@@ -79,6 +81,7 @@ describe("GET /api/photos/[id]", () => {
     getServerSession.mockReset();
     photoFindUnique.mockReset();
     filingPhotoFindFirst.mockReset().mockResolvedValue(null);
+    purchaseDocumentFindFirst.mockReset().mockResolvedValue(null);
     blobGet.mockReset();
   });
 
@@ -155,6 +158,30 @@ describe("GET /api/photos/[id]", () => {
     filingPhotoFindFirst.mockResolvedValue({ id: "period-legacy" });
     expect((await requestPhoto()).status).toBe(404);
     expect(blobGet).not.toHaveBeenCalled();
+  });
+
+  it.each(["STAFF", "CUSTOMER"] as const)(
+    "denies %s a purchase receipt, by its folder and by its purchase link",
+    async role => {
+      getServerSession.mockResolvedValue({ user: { id: role.toLowerCase(), role } });
+      photoFindUnique.mockResolvedValue(photoRow({
+        url: "https://teststore.private.blob.vercel-storage.com/purchases/form-abc12345/receipt.pdf", jobId: null,
+      }));
+      expect((await requestPhoto()).status).toBe(404);
+      photoFindUnique.mockResolvedValue(photoRow());
+      purchaseDocumentFindFirst.mockResolvedValue({ id: "doc-1" });
+      expect((await requestPhoto()).status).toBe(404);
+      expect(blobGet).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["OWNER", "ADMIN"] as const)("allows %s to read a purchase receipt", async role => {
+    getServerSession.mockResolvedValue({ user: { id: role.toLowerCase(), role } });
+    photoFindUnique.mockResolvedValue(photoRow({
+      url: "https://teststore.private.blob.vercel-storage.com/purchases/form-abc12345/receipt.pdf", jobId: null,
+    }));
+    successfulBlob();
+    expect((await requestPhoto()).status).toBe(200);
   });
 
   it("allows a customer to read only evidence attached to their own maintenance request", async () => {

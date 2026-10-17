@@ -224,6 +224,15 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason:
       "Purchase-order detail requires a generated order and mutable lifecycle state; dedicated purchasing browser tests cover it.",
   },
+  {
+    path: "/desk/purchases/[id]",
+    role: "OWNER",
+    fixture: "A generated purchase id",
+    manualOnlyReason:
+      "Purchase detail needs a recorded purchase; real-Postgres purchase tests and the record-a-purchase browser test cover it.",
+  },
+  { path: "/desk/purchases/new", role: "OWNER", fixture: "/desk/purchases/new" },
+  { path: "/desk/purchases", role: "OWNER", fixture: "/desk/purchases" },
   { path: "/desk/purchase-orders/new", role: "OWNER", fixture: "/desk/purchase-orders/new" },
   { path: "/desk/purchase-orders", role: "OWNER", fixture: "/desk/purchase-orders" },
   { path: "/desk/reports", role: "OWNER", fixture: "/desk/reports" },
@@ -271,6 +280,8 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason:
       "An account editor needs a real private filing account id; static page inventory cannot assume an account exists.",
   },
+  { path: "/desk/tax/audit-pack", role: "OWNER", fixture: "/desk/tax/audit-pack" },
+  { path: "/desk/tax/record-retention", role: "OWNER", fixture: "/desk/tax/record-retention" },
   { path: "/desk/tax/use-tax-settings", role: "OWNER", fixture: "/desk/tax/use-tax-settings" },
   { path: "/desk/tax/use-tax-worksheets", role: "OWNER", fixture: "/desk/tax/use-tax-worksheets" },
   {

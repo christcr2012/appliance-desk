@@ -27,6 +27,8 @@ type Props = {
   onError?: (message: string) => void;
   label?: string;
   disabled?: boolean;
+  /** File types the picker offers; the server still decides what each folder accepts. */
+  accept?: string;
 };
 
 export function PhotoUploadField({
@@ -36,6 +38,7 @@ export function PhotoUploadField({
   onError,
   label = "Add a photo",
   disabled,
+  accept = "image/*",
 }: Props) {
   const tr = useCustomerTranslation();
   const inputId = useId();
@@ -82,7 +85,7 @@ export function PhotoUploadField({
         ref={inputRef}
         id={inputId}
         type="file"
-        accept="image/*"
+        accept={accept}
         disabled={disabled || isUploading}
         onChange={handleFileChange}
         className="sr-only"

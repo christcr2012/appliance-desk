@@ -3056,12 +3056,17 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W.md",
-        "src/app/desk/inventory/new-appliance-form.tsx",
-        "src/domains/tax/acquisition.ts"
+        "src/domains/tax/acquisition.ts",
+        "src/domains/purchasing/purchases.ts",
+        "src/domains/tax/next-step.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-2.md"
+      "tests": [
+        "tests/purchase-math-and-next-step.test.ts",
+        "tests/purchases-w14-w2-w15-integration.test.ts"
+      ],
+      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "plannedCard": "docs/pr-cards/W-2.md",
+      "card": "docs/pr-cards/W-14.md"
     },
     {
       "id": "W-3",
@@ -3436,7 +3441,7 @@
       "dependencies": [
         "W-25"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "customer_language",
       "budget": 500,
       "units": [
@@ -3456,7 +3461,7 @@
         "tests/customer-language-catalog-w26.test.ts",
         "e2e/customer-language-w26.spec.ts"
       ],
-      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "readiness": "MERGED_ENGINEERING_COMPLETE (#478)",
       "plannedCard": "docs/pr-cards/W-26.md",
       "card": "docs/pr-cards/W-26.md"
     },
@@ -3476,11 +3481,16 @@
       "evidence": [
         "docs/designs/BATCH-W-AMENDMENT-B.md",
         "src/domains/inventory/index.ts",
-        "src/app/desk/inventory/new-appliance-form.tsx"
+        "src/domains/purchasing/purchases.ts",
+        "src/domains/tax/next-step.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-14.md"
+      "tests": [
+        "tests/purchase-math-and-next-step.test.ts",
+        "tests/purchases-w14-w2-w15-integration.test.ts"
+      ],
+      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "plannedCard": "docs/pr-cards/W-14.md",
+      "card": "docs/pr-cards/W-14.md"
     },
     {
       "id": "W-15",
@@ -3497,11 +3507,17 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W-AMENDMENT-B.md",
-        "src/domains/tax/acquisition.ts"
+        "src/domains/tax/acquisition.ts",
+        "src/domains/purchasing/purchases.ts",
+        "src/domains/tax/tax-proof.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-15.md"
+      "tests": [
+        "tests/purchase-math-and-next-step.test.ts",
+        "tests/purchases-w14-w2-w15-integration.test.ts"
+      ],
+      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "plannedCard": "docs/pr-cards/W-15.md",
+      "card": "docs/pr-cards/W-14.md"
     },
     {
       "id": "W-16A",
@@ -3682,7 +3698,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-26",
+  "activeExecution": "W-14",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3731,6 +3747,10 @@
     {
       "id": "W-26",
       "path": "docs/pr-cards/execution/W-26.json"
+    },
+    {
+      "id": "W-14",
+      "path": "docs/pr-cards/execution/W-14.json"
     }
   ]
 }

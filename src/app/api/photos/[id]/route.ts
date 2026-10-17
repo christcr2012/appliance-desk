@@ -62,6 +62,10 @@ export async function GET(
   // photos. A STAFF user who learns the Photo id cannot read the blob.
   const privatePath = privatePhotoPathFromUrl(photo.url, store.storeId);
   const taxFilingPhoto = privatePath?.startsWith("tax-filings/") ||
+    privatePath?.startsWith("purchases/") ||
+    (await prisma.purchaseDocument.findFirst({
+      where: { photoId: photo.id }, select: { id: true },
+    })) !== null ||
     (await prisma.taxFilingPeriod.findFirst({
       where: { confirmationPhotoId: photo.id }, select: { id: true },
     })) !== null;

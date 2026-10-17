@@ -1015,3 +1015,33 @@ liability and is reconciled only with the independently confirmed cancellation
 return. Standalone estimate/deposit paths cannot collect/refund it twice. Existing
 signature, receipt, cancellation and first-invoice records remain authoritative;
 no second money ledger, blanket approval or V1 reinterpretation is introduced.
+
+### 2026-10-17 — W-14 + W-2 + W-15 purchase records, one next tax step, tax proof and audit pack
+
+Built as one bundle because the three approved subsections share one purchase and
+tax-evidence model. Choices made here, within the approved designs:
+
+- **Cost is the item price only.** Delivery and other charges stay on the purchase, are
+  shown beside the receipt reconciliation, and are not added to machine cost or the
+  use-tax base. Whether they are taxable is a CPA question (listed with IN-65); the app
+  never guesses it.
+- **Only the owner saves a tax answer** (the existing intake rule). An admin records a
+  purchase as "I'll check the receipt later"; that lands on the owner's To do.
+- **No default tax answer.** The question starts empty for the owner. Another state's
+  tax is stored as "later" with a state note and an ask-your-CPA To do until IN-65.
+- **One To do per purchase.** Appliances bought together share one dated tax step, so a
+  three-machine receipt is one item, not three. Part deliveries get one per delivery.
+- **"3 days" is calendar days in Colorado time**, starting when the answer was recorded;
+  the item turns high 7 days before the covering use-tax return's legal due date, taken
+  from the filing calendar, never hard-coded.
+- **Receipts are private finance evidence** (`purchases/` folder, OWNER and ADMIN only,
+  PDF allowed for this folder only). No AI receipt reading (IN-64 stays deferred).
+- **Record keeping (IN-71).** Starting value 7 years, owner-editable with an explanation.
+  A receipt page is never removable once a filed return relies on the purchase, and the
+  only remaining page of a purchase is kept for the whole period. The database also
+  refuses to delete a receipt photo a purchase points to. Whether 7 years is right for
+  this business is the CPA's answer; the setting restricts nothing else.
+- **Appliance intake is replaced.** The one-at-a-time "Add appliances" form and its
+  server action are removed; every appliance purchase goes through Record a purchase.
+  The earlier `createApplianceUnits` domain function remains for tests and seeds.
+

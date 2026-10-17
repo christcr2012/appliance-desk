@@ -88,6 +88,10 @@ export const BACKUP_MODEL_POLICY = {
   TaxFilingPeriod: "taxFilingPeriod",
   TaxFilingAmendment: "taxFilingAmendment",
   PurchaseUseTax: "purchaseUseTax",
+  // W-14/W-2: purchase records, their receipt pages and the parts-receipt tax answer are tax evidence.
+  Purchase: "purchase",
+  PurchaseDocument: "purchaseDocument",
+  PurchaseOrderReceiptTax: "purchaseOrderReceiptTax",
   RetailDeliveryFeeRate: "retailDeliveryFeeRate",
   RetailDeliveryFeeRecord: "retailDeliveryFeeRecord",
   BusinessSettings: "businessSettings",

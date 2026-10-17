@@ -35,6 +35,7 @@ const groups = [
       ["inventory", "Inventory"],
       ["fleet", "Fleet", "finance"],
       ["parts", "Parts"],
+      ["purchases", "Purchases", "finance"],
       ["purchase-orders", "Purchase orders", "finance"],
       ["suppliers", "Suppliers", "finance"],
     ],

@@ -38,6 +38,9 @@ export async function canUploadPhoto(
       })) !== null
     );
   }
+  // Purchase receipts: the folder is the form's random draft key (new purchase) or an existing
+  // purchase id (pages added later). Verified again against storage when the purchase is saved.
+  if (segments[0] === "purchases") return manager && id.length >= 8 && id.length <= 100;
   if (segments[0] === "tax-filings" && user.role === "OWNER") {
     return (
       (await prisma.taxFilingPeriod.findFirst({

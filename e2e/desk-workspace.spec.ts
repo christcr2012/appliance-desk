@@ -48,7 +48,7 @@ for (const role of ["owner", "staff"] as const) {
         dialog.getByRole("link", { name: "Today", exact: true }),
       ).toHaveAttribute("aria-current", "page");
       expect(await dialog.getByRole("link").count()).toBe(
-        role === "owner" ? 27 : 13,
+        role === "owner" ? 28 : 13,
       );
       await expect(
         dialog.getByRole("link", { name: "Communications", exact: true }),

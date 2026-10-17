@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "id": "W-14",
+  "parent": "W-14",
+  "baseline": "ede03cb4f48a701731f46259bbd1defba6aebabf",
+  "card": "docs/pr-cards/W-14.md",
+  "outcome": "Record one purchase receipt with many appliances, a tax split by price, one shared next tax step everywhere, per-appliance tax proof, an audit pack and protected retention of receipts",
+  "risk": "Wrong cents in a tax split, a tax answer saved by the wrong role, duplicate purchases from a double submit, a receipt a filed return relies on being deleted, or different screens giving different tax instructions.",
+  "next": "All three subsections are implemented in one PR; remaining work is exact-head CI, review dispositions and merge, then real CPA answers IN-65 and IN-71.",
+  "references": [
+    {
+      "path": "src/domains/purchasing/purchases.ts",
+      "anchor": "export async function recordPurchase",
+      "purpose": "Atomic, replay-safe purchase + appliance + document + tax-evidence write"
+    },
+    {
+      "path": "src/domains/purchasing/purchase-math.ts",
+      "anchor": "export function splitSellerTax",
+      "purpose": "Largest-remainder seller-tax split and receipt reconciliation"
+    },
+    {
+      "path": "src/domains/tax/next-step.ts",
+      "anchor": "export function nextPurchaseTaxStep",
+      "purpose": "Single next-step decision shared by every screen and To do"
+    },
+    {
+      "path": "src/domains/tax/tax-proof.ts",
+      "anchor": "export async function buildAuditPack",
+      "purpose": "Audit pack query, CSV columns, per-appliance proof"
+    },
+    {
+      "path": "src/domains/tax/retention.ts",
+      "anchor": "export async function saveRecordRetentionYears",
+      "purpose": "Owner-only audited retention setting"
+    },
+    {
+      "path": "src/domains/purchasing/receipt-tax.ts",
+      "anchor": "export async function",
+      "purpose": "Part-delivery tax answer on purchase orders"
+    }
+  ],
+  "proposedFiles": [
+    "prisma/schema.prisma",
+    "src/domains/purchasing",
+    "src/domains/tax",
+    "src/app/desk/purchases",
+    "src/app/desk/inventory/[id]",
+    "src/app/desk/purchase-orders/[id]",
+    "src/app/desk/tax/audit-pack",
+    "src/app/desk/tax/record-retention"
+  ],
+  "invariants": [
+    "Money is integer cents through allocateAcrossLines; dates are Denver business dates.",
+    "Only OWNER saves a tax answer; ADMIN may record a purchase with a later answer.",
+    "Receipts are private finance evidence, OWNER/ADMIN only.",
+    "A receipt a filed return relies on, or the only page inside the retention period, is never deleted.",
+    "Unknown rules such as another state's tax create a CPA To do and calculate nothing."
+  ],
+  "sequence": [
+    "Additive migration for Purchase, PurchaseDocument, PurchaseOrderReceiptTax and retention setting.",
+    "Purchase math and atomic record-a-purchase.",
+    "Shared next step and To do integration, purchase-order receiving question.",
+    "Tax proof panel, audit pack page and spreadsheet, retention editor and receipt protection.",
+    "Real-Postgres, unit and navigation tests, docs, then one push and exact-head CI."
+  ],
+  "acceptance": [
+    "One purchase records seller (existing supplier or typed private seller), date, optional receipt number, receipt photo or PDF pages, subtotal, seller tax as printed with its kind, delivery or other charges and notes.",
+    "Record a purchase replaces appliance intake: a grid row per appliance with type, manufacturer, model, serial, price, condition and color; a washer and dryer bought together are two rows.",
+    "Seller tax is split across the appliances by price with largest remainder, shown before saving, and subtotal plus tax plus other charges reconcile to the receipt to the cent.",
+    "The tax question has no default; another state's tax is saved as later with a note and creates a CPA To do until IN-65 is answered.",
+    "Each appliance links to its purchase, the seller page lists purchases, only OWNER and ADMIN can record or read them, a repeated save replays safely, and editing a tax answer after a return was filed produces the amendment To do.",
+    "nextPurchaseTaxStep gives every answer exactly one next step: full tax done, partial or none use tax on the right return with its legal due date, tax-free for rent rent taxed, another state's tax a CPA To do until IN-65, later a To do in 3 days.",
+    "The later To do turns high 7 days before the return covering the purchase closes, and the intake card, appliance page, purchase-order receiving and To do all show the same step.",
+    "Due dates come from the filing calendar, never hard-coded, and purchase-order receiving asks the same plain tax question.",
+    "Every appliance page shows a Tax proof panel with how it was acquired, the price and exactly one tax outcome.",
+    "An audit pack for any date range lists every appliance and part bought with serial, seller, date, price, tax paid or use tax reported, the return and confirmation number and receipt links, as a printable page and a spreadsheet with stable columns, for OWNER and ADMIN only.",
+    "Parts purchases join the purchase records and the audit pack, the retention setting starts at 7 years with an explanation, and a receipt that a filed return relies on is never deleted."
+  ],
+  "gates": [
+    {
+      "id": "IN-65",
+      "affected": "Real use of credit and another-state tax rules",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "CPA answers; owner records them",
+      "reopen": "CPA answer recorded"
+    },
+    {
+      "id": "IN-71",
+      "affected": "Real record-retention period beyond the 7-year starting value",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "CPA confirms period; owner edits setting",
+      "reopen": "CPA answer recorded"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/purchase-math-and-next-step.test.ts",
+      "tests/remediation-r2-purchase-date.test.ts",
+      "tests/desk-navigation.test.ts",
+      "tests/private-photo-read-route.test.ts"
+    ],
+    "db": [
+      "tests/purchases-w14-w2-w15-integration.test.ts",
+      "tests/backup-restore-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-14",
+      "outcome": "W-14",
+      "acceptance": [
+        "One purchase records seller (existing supplier or typed private seller), date, optional receipt number, receipt photo or PDF pages, subtotal, seller tax as printed with its kind, delivery or other charges and notes.",
+        "Record a purchase replaces appliance intake: a grid row per appliance with type, manufacturer, model, serial, price, condition and color; a washer and dryer bought together are two rows.",
+        "Seller tax is split across the appliances by price with largest remainder, shown before saving, and subtotal plus tax plus other charges reconcile to the receipt to the cent.",
+        "The tax question has no default; another state's tax is saved as later with a note and creates a CPA To do until IN-65 is answered.",
+        "Each appliance links to its purchase, the seller page lists purchases, only OWNER and ADMIN can record or read them, a repeated save replays safely, and editing a tax answer after a return was filed produces the amendment To do."
+      ]
+    },
+    {
+      "id": "W-2",
+      "outcome": "W-2",
+      "acceptance": [
+        "nextPurchaseTaxStep gives every answer exactly one next step: full tax done, partial or none use tax on the right return with its legal due date, tax-free for rent rent taxed, another state's tax a CPA To do until IN-65, later a To do in 3 days.",
+        "The later To do turns high 7 days before the return covering the purchase closes, and the intake card, appliance page, purchase-order receiving and To do all show the same step.",
+        "Due dates come from the filing calendar, never hard-coded, and purchase-order receiving asks the same plain tax question."
+      ]
+    },
+    {
+      "id": "W-15",
+      "outcome": "W-15",
+      "acceptance": [
+        "Every appliance page shows a Tax proof panel with how it was acquired, the price and exactly one tax outcome.",
+        "An audit pack for any date range lists every appliance and part bought with serial, seller, date, price, tax paid or use tax reported, the return and confirmation number and receipt links, as a printable page and a spreadsheet with stable columns, for OWNER and ADMIN only.",
+        "Parts purchases join the purchase records and the audit pack, the retention setting starts at 7 years with an explanation, and a receipt that a filed return relies on is never deleted."
+      ]
+    }
+  ]
+}

@@ -14,6 +14,12 @@ function possibleHrefs(node: ts.Expression): string[] {
   if (ts.isParenthesizedExpression(node)) return possibleHrefs(node.expression);
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken)
     return possibleHrefs(node.right);
+  // "/desk/purchases/" + id: the static prefix plus a placeholder segment, checked like a template.
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken)
+    return possibleHrefs(node.left).map(left => left + "test-id");
+  // Values read from another object (step.subject.href) are built where they are created; those
+  // files are scanned below, so this expression adds no new literal to check.
+  if (ts.isPropertyAccessExpression(node) || ts.isIdentifier(node)) return [];
   throw new Error("Unhandled Today link: " + node.getText());
 }
 
@@ -48,6 +54,16 @@ describe("Today items lead to existing pages", () => {
   it("checks the purchase-use-tax and retail-delivery-fee destinations", () => {
     const links = hrefsIn(path.join(process.cwd(), "src/domains/tax/acquisition-attention.ts"));
     expect(links).toContain("/desk/sales-tax/delivery-fees");
+    for (const href of links) expect(routeMatches(href), href).toBe(true);
+  });
+  it("checks the purchase, appliance and purchase-order destinations of the shared tax step", () => {
+    const links = [
+      ...hrefsIn(path.join(process.cwd(), "src/domains/tax/acquisition-attention.ts")),
+      ...hrefsIn(path.join(process.cwd(), "src/domains/tax/next-step.ts")),
+      ...hrefsIn(path.join(process.cwd(), "src/domains/purchasing/receipt-tax.ts")),
+    ];
+    expect(links).toContain("/desk/purchases/test-id");
+    expect(links).toContain("/desk/inventory/test-id");
     for (const href of links) expect(routeMatches(href), href).toBe(true);
   });
 });

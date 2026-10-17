@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { recordReceiptTaxInTx, validateReceiptTax, type ReceiptTaxInput } from "./receipt-tax";
 import {
   applyPartMovementsInTx,
   lastKnownPurchaseCostCents,
@@ -206,6 +207,8 @@ export type ReceiveLinesInput = {
   /** A random id the screen creates when the form opens; a retry with the same id changes nothing. */
   operationKey: string;
   lines: { lineId: string; quantity: number; unitCostCents: number | null }[];
+  /** W-2: what the seller charged on this delivery's parts. Only the owner may give a non-"later" answer. */
+  tax?: ReceiptTaxInput;
 };
 
 /**
@@ -225,7 +228,13 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
   if (new Set(lineIds).size !== lineIds.length) throw new Error("A line can appear only once in one receipt.");
 
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    const actor = await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    if (input.tax) {
+      validateReceiptTax(input.tax);
+      if (input.tax.answer !== "LATER" && actor.role !== "OWNER") {
+        throw new Error("Only the owner can record purchase-tax evidence. Choose “I’ll check the receipt later” and the owner can answer it.");
+      }
+    }
     const locked = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT "id" FROM "PurchaseOrder" WHERE "id" = ${input.purchaseOrderId} FOR UPDATE
     `;
@@ -238,10 +247,11 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
     // R16: claim this request's identity before anything else. The claim and the receipt commit
     // together, so a failed receipt leaves no claim and can safely be retried. A conflict is read
     // back (never caught as an error inside the aborted transaction).
-    const payloadHash = receiptPayloadHash(order.id, input.lines);
+    const payloadHash = receiptPayloadHash(order.id, input.lines, input.tax);
+    const receiptOperationId = randomUUID();
     const claimed = await tx.$queryRaw<Array<{ id: string }>>`
       INSERT INTO "PurchaseOrderReceiptOperation" ("id", "operationKey", "purchaseOrderId", "payloadHash")
-      VALUES (${randomUUID()}, ${input.operationKey}, ${order.id}, ${payloadHash})
+      VALUES (${receiptOperationId}, ${input.operationKey}, ${order.id}, ${payloadHash})
       ON CONFLICT ("operationKey") DO NOTHING
       RETURNING "id"
     `;
@@ -301,6 +311,17 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
       });
     }
 
+    if (input.tax) {
+      await recordReceiptTaxInTx(tx, userId, {
+        receiptOperationId, purchaseOrderId: order.id, tax: input.tax,
+        lines: input.lines.map((line) => {
+          const row = byId.get(line.lineId)!;
+          return { lineId: row.id, description: row.description, quantity: line.quantity,
+            costCents: line.unitCostCents ?? (row.unitCostKnown ? row.unitCostCents : null) };
+        }),
+      }, new Date());
+    }
+
     const after = await tx.purchaseOrderLineItem.findMany({ where: { purchaseOrderId: order.id }, select: { quantity: true, receivedQuantity: true } });
     const complete = after.every((l) => l.receivedQuantity >= l.quantity);
     if (complete) {
@@ -327,11 +348,16 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
 export function receiptPayloadHash(
   purchaseOrderId: string,
   lines: ReadonlyArray<{ lineId: string; quantity: number; unitCostCents: number | null }>,
+  tax?: ReceiptTaxInput,
 ): string {
   const canonical = [...lines]
     .sort((a, b) => (a.lineId < b.lineId ? -1 : a.lineId > b.lineId ? 1 : 0))
     .map((l) => [l.lineId, l.quantity, l.unitCostCents === null ? "unknown" : l.unitCostCents]);
-  return createHash("sha256").update(JSON.stringify({ purchaseOrderId, lines: canonical })).digest("hex");
+  // A request without a tax answer hashes exactly as before this field existed, so old retries still replay.
+  const body = tax
+    ? { purchaseOrderId, lines: canonical, tax: [tax.answer, tax.sellerTaxCents, tax.otherState?.trim() || null] }
+    : { purchaseOrderId, lines: canonical };
+  return createHash("sha256").update(JSON.stringify(body)).digest("hex");
 }
 
 /** On a retry: re-run each line's movement under the same key so a changed payload is still refused. */

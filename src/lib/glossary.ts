@@ -17,6 +17,10 @@ export const GLOSSARY = {
     description: "This amount helps determine filing frequency from use tax owed during the year, not purchase prices. Confirm filing rules with a tax adviser.",
   },
   "rate-change": { title: "Maximum automatic rate change", description: "This limits which reviewed official rate updates may apply automatically. Larger changes need owner review." },
+  "record-retention": {
+    title: "How long to keep purchase records",
+    description: "Receipts and tax records for a purchase are kept this many years. The starting value is 7 years, a cautious general-purpose choice; ask your CPA what applies to you. A receipt that a filed return relies on can never be removed, whatever this says.",
+  },
   "use-tax": { title: "Use tax", description: "Use tax may be owed on purchases without enough seller sales tax. Purchase evidence and filings stay separately traceable." },
   "set-price": { title: "Set price", description: "A washer and dryer set groups two individually tracked machines. It is not one inventory appliance." },
   "prepaid-discount": { title: "Prepaid discount", description: "An approved reduction for paying a longer rental term in advance. The signed agreement controls each customer's amount." },
