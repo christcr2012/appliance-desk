@@ -35,7 +35,10 @@ export function ContactForm({
   applianceTypes,
   packages = [],
   copy,
+  prefill,
 }: {
+  /** A street address and ZIP code to start with (from the home page's address check). */
+  prefill?: { addressLine1: string; zip: string };
   /** The words on the form, from the website content (V-C3). */
   copy: Record<string, string>;
   applianceTypes: ApplianceTypeOption[];
@@ -57,6 +60,8 @@ export function ContactForm({
     defaultValues: {
       accountType: "individual",
       isPropertyManager: false,
+      ...(prefill?.addressLine1 ? { addressLine1: prefill.addressLine1 } : {}),
+      ...(prefill?.zip ? { zip: prefill.zip } : {}),
       quantity: 1,
       desiredTerm: "month-to-month",
       applianceTypeIds: [],

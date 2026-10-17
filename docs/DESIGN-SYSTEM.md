@@ -182,6 +182,17 @@ legacy dark-mode specs remain additional regression coverage.
 
 
 
+### Signature layer (V-1, 2026-10-17)
+
+All values live in `src/app/globals.css`; pages use the names, never raw numbers.
+- **Type scale:** `text-display` (hero), `text-h2`, `text-h3`, `text-lede`, `text-eyebrow`, `text-price`; each carries its own line height, letter spacing and weight. Headings use balanced wrapping.
+- **Colours:** `hairline` (thin rules, a mix of the strong line and canvas) and `tint` (the offset panel behind the hero photo). Both are mixes of existing tokens, and `tests/theme-contrast.test.ts` checks the text pairs on them at 4.5:1.
+- **Cut corners:** `cut-corner-sm` (buttons), `cut-corner-md` (cards), `cut-corner-photo`, `cut-band` (full-width bands). The clip is removed while an element or something inside it has keyboard focus, so the focus ring is never cut off.
+- **Highlight:** a fresh-green band behind part of a heading (lower 38% in light mode; solid with on-accent text in dark mode).
+- **Shadow:** one raised shadow, `shadow-raise`, light and dark values.
+- **Motion:** `signature-rise` (12px, 320ms) and `signature-lift`; both switch off under reduced motion.
+- **Ledger rows** (hairline-separated lists) replace boxed benefit cards; numbered steps use CSS counters so numerals are not page words.
+
 ### Batch E2 visual tokens
 
 E2 extends the final Batch E Evergreen tokens with brand-kit-only visual primitives: `rounded-control` = 8px, `rounded-card` = 16px, and semantic owner-navigation colors (`nav-bg`, `nav-ink`, `nav-current-bg`, `nav-current-ink`). Values remain defined only in `src/app/globals.css` and are exported through Tailwind's `@theme inline` block.

@@ -1130,3 +1130,11 @@ tax-evidence model. Choices made here, within the approved designs:
 - **The contract is typed by hand** so the check cannot agree with itself; changing a slot fails a test until the fingerprint (and the template version, if the layout changed) is updated on purpose. Retired content is kept aside, never deleted; content of the wrong kind stops for a person.
 - **Known limits:** the preview shows the current opening mode; items of kind "list" have no editor yet because no item uses one.
 
+## 2026-10-17 — V-1 and V-2 decisions
+- **Tokens, not one-off styles.** The look is a small named set in `globals.css` (type scale, hairline, tint, one shadow, cut shapes, highlight); pages use the names. The brand palette is unchanged.
+- **Cut corners never hide focus.** Each clip is removed while the element or anything inside it has keyboard focus, so the ring is complete; a test enforces it.
+- **Address check is a pure rule with no storage.** It uses only the owner's ZIPs (cities only if no ZIPs), no outside call, the shared limiter (20 per 10 minutes per visitor), a hidden honeypot, and no logging. The link to the quote form carries the address and is built in the link only. It is shown only when ZIPs and a quote link exist, so a half-configured site never shows a check that cannot answer.
+- **Numerals and the FAQ plus sign are CSS**, so the "every word is editable or a declared fact" test stays honest.
+- **The 4th "included" benefit was not added** (the business has not confirmed what it would promise); the three existing items became the ledger.
+- **Gate S-V3 stays open.** The owner accepts the look from screenshots; the PR merges only after that.
+

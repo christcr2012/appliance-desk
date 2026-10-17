@@ -79,7 +79,7 @@ d("versioned website content and pictures", () => {
     const draft = await saveDraft(ids.owner, { fields: { "home.hero.heading": "New heading" } });
     const row = await prisma.siteContentRevision.findUniqueOrThrow({ where: { id: draft.draftId } });
     expect(row.contentSchemaVersion).toBe(2);
-    expect(row.templateVersion).toBe("classic-1");
+    expect(row.templateVersion).toBe("signature-1");
     const editor = await getEditorState();
     expect(editor.published?.stored["home.hero.heading"]).toBe("Old heading kept");
     expect(editor.draft?.stored["home.hero.heading"]).toBe("New heading");

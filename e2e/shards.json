@@ -26,7 +26,8 @@
       "w22-v2-complete-signing.spec.ts",
       "location-contacts.spec.ts",
       "phone-order-one-link.spec.ts",
-      "website-editor.spec.ts"
+      "website-editor.spec.ts",
+      "signature-home.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",

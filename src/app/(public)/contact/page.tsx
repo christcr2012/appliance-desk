@@ -9,6 +9,7 @@ import { getSiteForRequest } from "@/domains/site-content/request";
 import { siteCopy, siteFacts } from "@/domains/site-content/facts";
 import { Card } from "@/components/ui";
 import { ContactForm } from "./contact-form";
+import { normalizeZip } from "@/domains/site-content/service-area-check";
 
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getPublishedContent();
@@ -18,13 +19,20 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ContactPage({
   searchParams,
 }: {
-  searchParams: Promise<{ revision?: string | string[] }>;
+  searchParams: Promise<{ revision?: string | string[]; address?: string | string[]; zip?: string | string[] }>;
 }) {
+  const params = await searchParams;
   const [catalog, site, settings] = await Promise.all([
     getPublishedCatalog(),
-    searchParams.then(getSiteForRequest),
+    getSiteForRequest(params),
     getBusinessSettings(),
   ]);
+  // The home page's address check can send the visitor here with their address filled in. It only pre-fills the form on
+  // screen; nothing is saved until they send the request.
+  const prefill = {
+    addressLine1: typeof params.address === "string" ? params.address.replace(/\s+/g, " ").trim().slice(0, 200) : "",
+    zip: typeof params.zip === "string" ? (normalizeZip(params.zip) ?? "") : "",
+  };
   const content = site.text;
   const c = siteCopy(content, siteFacts(settings));
 
@@ -55,6 +63,7 @@ export default async function ContactPage({
         <div className="mt-10">
           <ContactForm
             copy={content}
+            prefill={prefill}
             applianceTypes={catalog
               .filter((item) => item.kind === "type")
               .map((t) => ({ id: t.id, name: t.name }))}
