@@ -21,12 +21,20 @@ import { Button, ButtonLink } from "@/components/ui";
  * hidden via display:none tricks) so it's reachable by keyboard and
  * screen readers alike.
  */
+export type HeaderCta = { label: string; href: string; rel?: string };
+
 export function Header({
   businessName,
   prelaunch = false,
+  text,
+  cta,
 }: {
   businessName: string;
   prelaunch?: boolean;
+  /** Website words for the menu (V-C3). */
+  text: Record<string, string>;
+  /** The menu button, already resolved to its words and address (V-C3). */
+  cta: HeaderCta | null;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -149,7 +157,7 @@ export function Header({
 
         {/* Desktop nav */}
         <nav aria-label="Primary" className="hidden items-center gap-8 md:flex">
-          {publicNavLinks(prelaunch).filter((l) => l.href !== "/contact").map((link) => (
+          {publicNavLinks(prelaunch, text).filter((l) => l.href !== "/contact").map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -162,11 +170,13 @@ export function Header({
             href="/login"
             className="text-sm font-medium text-ink-soft transition-colors hover:text-primary"
           >
-            Log in
+            {text["header.login"]}
           </Link>
-          <ButtonLink href={prelaunch ? "/launch" : "/contact"}>
-            {prelaunch ? "Join launch list" : "Get a Quote"}
-          </ButtonLink>
+          {cta && (
+            <ButtonLink href={cta.href} rel={cta.rel}>
+              {cta.label}
+            </ButtonLink>
+          )}
           <ThemeToggle />
         </nav>
 
@@ -224,7 +234,7 @@ export function Header({
           className="max-h-[70dvh] overflow-y-auto overscroll-contain border-t border-line bg-surface md:hidden"
         >
           <Container className="flex flex-col gap-1 py-4">
-            {publicNavLinks(prelaunch).filter((l) => l.href !== "/contact").map((link) => (
+            {publicNavLinks(prelaunch, text).filter((l) => l.href !== "/contact").map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -237,14 +247,13 @@ export function Header({
               href="/login"
               className="rounded-control px-2 py-3 text-base font-medium text-ink hover:bg-subtle"
             >
-              Log in
+              {text["header.login"]}
             </Link>
-            <ButtonLink
-              href={prelaunch ? "/launch" : "/contact"}
-              className="mt-2"
-            >
-              {prelaunch ? "Join launch list" : "Get a Quote"}
-            </ButtonLink>
+            {cta && (
+              <ButtonLink href={cta.href} rel={cta.rel} className="mt-2">
+                {cta.label}
+              </ButtonLink>
+            )}
           </Container>
         </nav>
       )}

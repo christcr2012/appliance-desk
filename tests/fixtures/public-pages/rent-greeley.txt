@@ -1,0 +1,65 @@
+[a href] /
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+[nav aria-label] Primary
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /login
+Log in
+[a href] /contact
+Get a Quote
+[button aria-label] Open menu
+Appliance rental in Greeley, Colorado
+Fixture Rentals Co delivers, installs, and services washers and dryers for Greeley renters and homeowners — no purchase, no long-term commitment required, and repairs are covered by us for as long as you rent.
+[a href] /contact
+Get a quote for Greeley
+Washer
+$35
+/ month
+Washer + Dryer Set
+$60
+/ month
+1 washer + 1 dryer — save $10 a month
+Serving Greeley and the surrounding area
+Not sure if your exact address is covered yet? Ask on the quote form and we'll tell you honestly — we're growing our service area over time.
+Call us at (970) 555-0142
+[a href] /contact
+Check your address in Greeley
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+Straightforward appliance rentals for Colorado homes and properties — delivered, installed, and serviced by a real local business.
+Explore
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /contact
+Get a Quote
+Contact
+[a href] tel:9705550142
+(970) 555-0142
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+12 Fixture Way, Greeley, CO 80631
+Hours (Colorado time)
+Mon–Tue: 9 am – 5 pm
+Sat: Closed
+Upcoming closures
+Dec 25, 2099 — Christmas Day
+[ul aria-label] Find us online
+[a href] https://facebook.example/fixture
+Facebook
+© YEAR Fixture Rentals Co. All rights reserved.
+[nav aria-label] Legal
+[a href] /accessibility
+Accessibility

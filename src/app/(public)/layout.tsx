@@ -3,9 +3,8 @@ import {
   isLegalPageApproved,
   LEGAL_PAGE_VERSIONS,
 } from "@/domains/settings/legal-approvals";
-import { Header } from "@/components/site/header";
-import { Footer } from "@/components/site/footer";
-import Link from "next/link";
+import { PublicChrome } from "@/components/site/public-chrome";
+import { getSiteForRequest } from "@/domains/site-content/request";
 import { MetricoolTracker } from "@/components/site/metricool-tracker";
 import { metricoolConfig } from "@/lib/metricool";
 import { getLaunchSettings } from "@/domains/launch";
@@ -20,9 +19,10 @@ export default async function PublicLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [settings, launch] = await Promise.all([
+  const [settings, launch, site] = await Promise.all([
     getBusinessSettings(),
     getLaunchSettings(),
+    getSiteForRequest(),
   ]);
   const serviceArea = parseServiceArea(settings);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -67,34 +67,15 @@ export default async function PublicLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <Header
-        businessName={settings.publicBusinessName}
+      <PublicChrome
+        site={site}
+        settings={settings}
         prelaunch={launch.prelaunchMode}
-      />
-      {launch.prelaunchMode && (
-        <p className="bg-primary-soft px-4 py-3 text-center text-sm text-primary-dark">
-          We&apos;re preparing to launch in Greeley and the surrounding area.{" "}
-          <Link href="/launch" className="font-semibold underline">
-            Join for updates
-          </Link>
-          .
-        </p>
-      )}
-      <main id="main-content" className="flex-1">
-        {children}
-      </main>
-      <Footer
-        prelaunch={launch.prelaunchMode}
-        businessName={settings.publicBusinessName}
-        phone={settings.publicPhone}
-        email={settings.publicEmail}
-        address={settings.publicAddress}
-        hours={settings.hours}
-        holidayClosures={settings.holidayClosures}
-        socialLinks={settings.socialLinks}
         privacyApproved={privacyApproved}
         termsApproved={termsApproved}
-      />
+      >
+        {children}
+      </PublicChrome>
     </>
   );
 }

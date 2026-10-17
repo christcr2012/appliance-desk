@@ -1111,3 +1111,12 @@ tax-evidence model. Choices made here, within the approved designs:
 - **Promotion happens inside the publish/restore transaction** with the pointer locked: referenced pictures must exist and not be retired, then DRAFT becomes PUBLIC. A catalog photo save also makes its uploaded picture public (it is live immediately). Retire is refused for anything used by the live version, the open draft or a catalog photo.
 - **`sharp` declared as a direct dependency** (it was already installed through Next); no other dependency change.
 - **Open:** website picture bytes are not yet in the daily recovery media copy; cleanup is manual until the owner approves a schedule.
+
+## 2026-10-17 — V-C3 decisions
+- **Facts have one owner.** Editable sentences hold only declared `{placeholders}`; they are filled from Settings, the price list or the service area when the page is shown. Unknown names are refused at save and publish. Prices, phone, email, address, hours, fees and cities are never editable text.
+- **Inline links are a bounded syntax** (`[words](/known-page)` or `[words](https://…)`), valid only in items marked as allowing links; anything that looks like a link but does not parse is refused, never kept silently. A bad link already stored shows as plain words, never as a live link.
+- **Buttons are link items**; phone and email destinations resolve from the business profile and show nothing if the profile has none. Menu/footer/legal destinations are fixed in code, words editable and required.
+- **Promotions are judged per request** from stored UTC instants (no job); Colorado wall-clock entry is converted with DST awareness (a time that does not exist is refused; an ambiguous fall-back time means the earlier instant). Priced-offer links are refused until an offer source exists.
+- **Preview is one reader.** `getSiteForRequest` honours `?revision=` and `?previewAt=` only for an active owner/admin; the shared layout reads the live version (it stays static; owner preview of the frame arrives with the V-C4 preview route using `PublicChrome`).
+- **Coverage is proven at runtime**, not by searching code: every route and variant renders with markers; leftover words must be declared owner facts or named exceptions (contract terms, interest choices, launch consent wording, landmark names).
+- **Honest small changes:** the launch page uses the configured business name; page titles in search come from items with the same starting words; deprecated announcement-banner settings are left untouched.

@@ -4,6 +4,8 @@ import Script from "next/script";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getBusinessSettings } from "@/domains/settings";
 import { getLaunchSettings } from "@/domains/launch";
+import { getPublishedContent } from "@/domains/site-content";
+import { siteCopy, siteFacts, stripInlineLinks } from "@/domains/site-content/facts";
 import "./globals.css";
 
 // Brand kit v2.0 ("Evergreen," 2026-09-29 — see docs/DECISIONS.md) uses
@@ -31,19 +33,20 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 // after Chris entered the real business name, because this used to be a
 // static `export const metadata` object rather than a dynamic function.
 export async function generateMetadata(): Promise<Metadata> {
-  const [settings, launch] = await Promise.all([
+  const [settings, launch, content] = await Promise.all([
     getBusinessSettings(),
     getLaunchSettings(),
+    getPublishedContent(),
   ]);
   const businessName = settings.publicBusinessName;
-  const description = launch.prelaunchMode
-    ? "Family-owned washer and dryer rentals preparing to launch in Greeley and surrounding areas. Maintenance included. Join for launch updates."
-    : "Rent a washer and dryer in Colorado with simple month-to-month pricing, fast delivery, and no long-term commitment.";
+  const c = siteCopy(content, siteFacts(settings));
+  const description = stripInlineLinks(launch.prelaunchMode ? c("seo.site.prelaunch") : c("seo.site.description"));
+  const siteTitle = stripInlineLinks(c("seo.site.title"));
 
   return {
     metadataBase: new URL(siteUrl),
     title: {
-      default: `${businessName} — Appliance Rentals in Colorado`,
+      default: siteTitle,
       template: `%s — ${businessName}`,
     },
     description,
@@ -54,7 +57,7 @@ export async function generateMetadata(): Promise<Metadata> {
     // a "worth revisiting once a dedicated image exists" item; it now
     // does).
     openGraph: {
-      title: `${businessName} — Appliance Rentals in Colorado`,
+      title: siteTitle,
       description,
       url: siteUrl,
       siteName: businessName,
@@ -64,7 +67,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: `${businessName} — Appliance Rentals in Colorado`,
+      title: siteTitle,
       description,
       images: ["/brand/social-share.png"],
     },

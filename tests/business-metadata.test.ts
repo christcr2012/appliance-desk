@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({ settings: vi.fn(), launch: vi.fn() }));
 vi.mock("@/domains/settings", () => ({ getBusinessSettings: m.settings }));
 vi.mock("@/domains/launch", () => ({ getLaunchSettings: m.launch }));
+vi.mock("@/domains/site-content", async () => ({ getPublishedContent: async () => (await import("@/domains/site-content/fields")).siteDefaults() }));
 vi.mock("next/font/google", () => ({ Manrope: () => ({ variable: "test-font" }) }));
 import { generateMetadata } from "@/app/layout";
 beforeEach(() => { vi.clearAllMocks(); m.launch.mockResolvedValue({ prelaunchMode: true }); });

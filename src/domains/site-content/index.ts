@@ -2,7 +2,7 @@ import { cache } from "react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { SITE_FIELDS, sanitizeSiteFields, siteDefaults, siteFieldByKey } from "./fields";
+import { SITE_FIELDS, sanitizeSiteFields, siteDefaultTypedValues, siteDefaults, siteFieldByKey } from "./fields";
 import { promoteReferencedAssets } from "./assets";
 import { decodeOrThrow, encodeContentValues, legacyTextToValues, valueToPlainText } from "./codec";
 import { CONTENT_SCHEMA_VERSION_TYPED, SITE_TEMPLATE_VERSION, SiteContentError, type SiteValue } from "./types";
@@ -41,7 +41,7 @@ function withDefaults(values: Record<string, SiteValue>): Record<string, string>
 export function siteDefaultValues(): Record<string, SiteValue> {
   const out: Record<string, SiteValue> = {};
   for (const field of SITE_FIELDS) if ((field.valueKind ?? "text") === "text") out[field.key] = { kind: "text", text: field.default };
-  return out;
+  return { ...out, ...siteDefaultTypedValues() };
 }
 
 /** What the public site shows: today's text unless a published revision changes it. Read once per request. */
@@ -74,6 +74,16 @@ export async function getRevisionContent(revisionId: string): Promise<Record<str
   });
   if (!revision) return getPublishedContent();
   return withDefaults(valuesOf(revision));
+}
+
+/** V-C3: one specific revision as typed values (starting values filled in), for the owner's draft or old-version preview. */
+export async function getRevisionValues(revisionId: string): Promise<Record<string, SiteValue>> {
+  const revision = await prisma.siteContentRevision.findUnique({
+    where: { id: revisionId },
+    select: { fields: true, contentSchemaVersion: true },
+  });
+  if (!revision) return getPublishedValues();
+  return { ...siteDefaultValues(), ...valuesOf(revision) };
 }
 
 /** The values the editor form starts from: the open draft if there is one, otherwise what is live. */

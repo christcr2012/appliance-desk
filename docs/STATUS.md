@@ -1,3 +1,31 @@
+## October 17 — V-C3 delivered (every public page bound to editable website content), CI and merge pending
+
+V-C1 and V-C2 are merged (#487). This PR delivers the whole approved subsection **V-C3**: no marketing word, button, link or photo on a public page is
+hard-coded any more. About 175 items (menu, notice bar, footer, home page opened and preparing-to-launch, pricing, contact page and form, how it works,
+service area, launch page and form, city pages, search titles and descriptions) are now website items with their starting text equal to today's words,
+read through one request reader (`getSiteForRequest`) that also serves the owner's draft or old-version preview (active owner/admin only; everyone else
+always gets the live version and the real time). Facts stay with their owner: a sentence holds `{businessName}`, `{phone}`, `{email}`, `{city}`,
+`{graceDays}`, `{contents}`, `{amount}`, `{year}` or `{serviceCities}`, filled when the page is shown, so wording can never disagree with Settings or the
+price list. Sentences may hold checked links written `[words](/page)` or `[words](https://…)`; an unknown page, a non-https address, a malformed link or an
+unknown `{fact}` is refused when saving and again when publishing. Buttons are link items (words + a destination chosen from known pages, an https address,
+or your own phone/email). Menu and footer destinations stay fixed in code; only their words are editable. The home photo uses the website picture when one
+is set (description, decorative choice, focus point) and the built-in photo otherwise; a draft picture is never served to a visitor. A site-wide banner and a
+home page featured box each hold a promotion (title, text, optional picture and button, on/off, optional Colorado start and end); both are off until set up,
+are judged on every page view (no scheduled job), and an ended or not-yet-started one simply disappears. A promotion linked to a priced offer is refused
+until a priced-offer source exists. Legal page bodies (privacy, terms, accessibility) stay tied to their legal-approval versions; only their menu and footer
+frame is editable. No migration, no new dependency.
+Small honest changes: the launch page now says the configured business name (it used to say "Robinson Appliance Rentals" in code); the page titles shown in
+search now come from the website items (same starting words); the root page title/description use the new `seo.site.*` items.
+Proof: 13 saved before/after page texts (`tests/fixtures/public-pages/*.txt`) match exactly except the launch page business-name line; a render test replaces
+every editable item with a unique marker on every route and variant (empty price list, no cities, photos, legal approved, before-opening) and fails if any
+visible word is neither a marker, a declared owner fact nor a named exception, and if any item never shows; real form tests cover the words that appear only
+after an action (company name, sending, thank-you); unit tests cover links, facts, spring-forward/fall-back promotion times and preview access; four
+real-Postgres tests cover publishing, preview limits, draft pictures and refusal at save and publish.
+Named exceptions (not website words): contract-term choices (Month-to-month, 6 months, 12 months), launch-list interest choices, the launch-list email
+consent sentence (versioned legal wording), and accessibility landmark names.
+Not done here: the owner editor screens (V-C4), template contract and CI coverage wiring (V-C5), the visual redesign (V-1…V-4). Exact-head CI (browser and
+accessibility), review and merge are pending. No live Stripe, email, SMS, spending or production data touched.
+
 ## October 17 — V-C1 and V-C2 delivered as one bundle, CI and merge pending
 
 W-17 and W-20 are merged (#486). This PR delivers two whole approved subsections of the website-content control work:

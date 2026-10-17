@@ -2812,7 +2812,7 @@
         "tests/vc2-website-assets.test.ts",
         "tests/vc1-vc2-content-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/V-C1.md",
       "risk": "schema",
       "card": "docs/pr-cards/V-C1.md"
@@ -2838,7 +2838,7 @@
         "tests/vc2-website-assets.test.ts",
         "tests/vc1-vc2-content-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/V-C1.md",
       "risk": "media",
       "card": "docs/pr-cards/V-C1.md"
@@ -2859,10 +2859,15 @@
       "evidence": [
         "docs/designs/BATCH-V.md"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/vc3-public-bindings.test.ts",
+        "tests/public-pages-render.test.tsx",
+        "tests/vc3-public-content-integration.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
       "plannedCard": "docs/pr-cards/V-C3.md",
-      "risk": "content"
+      "risk": "content",
+      "card": "docs/pr-cards/V-C3.md"
     },
     {
       "id": "V-C4",
@@ -3764,7 +3769,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "V-C1",
+  "activeExecution": "V-C3",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3845,6 +3850,10 @@
     {
       "id": "V-C1",
       "path": "docs/pr-cards/execution/V-C1.json"
+    },
+    {
+      "id": "V-C3",
+      "path": "docs/pr-cards/execution/V-C3.json"
     }
   ]
 }

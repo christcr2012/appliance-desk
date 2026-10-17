@@ -1,0 +1,68 @@
+[a href] /
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+[nav aria-label] Primary
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /login
+Log in
+[a href] /contact
+Get a Quote
+[button aria-label] Open menu
+Accessibility Statement
+Last updated: 2026-09-26
+Our commitment
+Fixture Rentals Co wants this website to be usable by everyone, including people who use screen readers, keyboard-only navigation, voice control, or browser zoom. We build to the Web Content Accessibility Guidelines (WCAG) 2.1 level AA, and every page is checked automatically for common issues (missing labels, poor color contrast, keyboard traps) before it goes live.
+What we've done
+Full keyboard navigation with a visible focus indicator.
+Labeled form fields, with errors announced to screen readers.
+Sufficient color contrast, and no information conveyed by color alone.
+Respect for your operating system's reduced-motion setting.
+A layout that works at 200% browser zoom and on phones.
+Known limitations
+Automated checks catch a lot, but not everything — a full manual screen-reader and keyboard review is planned before this site is considered fully launched. If you find something that doesn't work well for you, please tell us — see below.
+Report a problem
+If any part of this site is difficult to use with assistive technology, contact us and we'll work to fix it and help you directly in the meantime:
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+·
+[a href] tel:9705550142
+(970) 555-0142
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+Straightforward appliance rentals for Colorado homes and properties — delivered, installed, and serviced by a real local business.
+Explore
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /contact
+Get a Quote
+Contact
+[a href] tel:9705550142
+(970) 555-0142
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+12 Fixture Way, Greeley, CO 80631
+Hours (Colorado time)
+Mon–Tue: 9 am – 5 pm
+Sat: Closed
+Upcoming closures
+Dec 25, 2099 — Christmas Day
+[ul aria-label] Find us online
+[a href] https://facebook.example/fixture
+Facebook
+© YEAR Fixture Rentals Co. All rights reserved.
+[nav aria-label] Legal
+[a href] /accessibility
+Accessibility

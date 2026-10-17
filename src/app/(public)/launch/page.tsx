@@ -1,25 +1,37 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
 import { getLaunchSettings } from "@/domains/launch";
-import { ButtonLink, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { RichText } from "@/components/site/rich-text";
+import { SiteCta } from "@/components/site/site-cta";
+import { getBusinessSettings } from "@/domains/settings";
+import { getPublishedContent } from "@/domains/site-content";
+import { getSiteForRequest } from "@/domains/site-content/request";
+import { siteCopy, siteFacts, siteLinkValue, stripInlineLinks } from "@/domains/site-content/facts";
 import { SignupForm } from "./signup-form";
 
-export const metadata = {
-  title: "Greeley appliance rentals — launch interest list",
-  description:
-    "A family-owned washer and dryer rental business preparing to serve Greeley and surrounding areas. Join for launch news. Maintenance included.",
-  alternates: { canonical: "/launch" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await getPublishedContent();
+  return {
+    title: stripInlineLinks(content["seo.launch.title"] ?? ""),
+    description: stripInlineLinks(content["seo.launch.description"] ?? ""),
+    alternates: { canonical: "/launch" },
+  };
+}
 
 export default async function LaunchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ utm_source?: string | string[] }>;
+  searchParams: Promise<{ utm_source?: string | string[]; revision?: string | string[] }>;
 }) {
-  const [settings, params] = await Promise.all([
+  const [settings, business, params] = await Promise.all([
     getLaunchSettings(),
+    getBusinessSettings(),
     searchParams,
   ]);
+  const site = await getSiteForRequest(params);
+  const facts = siteFacts(business);
+  const c = siteCopy(site.text, facts);
   const source =
     typeof params.utm_source === "string"
       ? params.utm_source.slice(0, 100)
@@ -28,47 +40,35 @@ export default async function LaunchPage({
     <Container className="grid gap-12 py-16 md:grid-cols-2 md:py-20">
       <div>
         <p className="font-semibold text-primary">
-          Greeley, Colorado + surrounding areas
+          {c("launch.eyebrow")}
         </p>
         <h1 className="mt-4 font-display text-4xl font-semibold text-ink">
-          Make room for everyday.
+          {c("launch.heading")}
         </h1>
         <p className="mt-5 text-lg text-ink-soft">
-          We&apos;re Robinson Appliance Rentals, a small family business
-          building a local option for washer and dryer rentals.
+          {c("launch.intro")}
         </p>
         <ul className="mt-6 list-disc space-y-3 pl-5 text-ink-soft">
-          <li>Maintenance is always included.</li>
-          <li>
-            Delivery and installation are available. Requirements and any fees
-            depend on your situation.
-          </li>
-          <li>For local households, landlords, and property managers.</li>
+          {[1, 2, 3].map((n) => (
+            <li key={n}>{c(`launch.point.${n}`)}</li>
+          ))}
         </ul>
         <p className="mt-6 text-ink-soft">
-          {settings.prelaunchMode
-            ? "We're still preparing to open. Join for launch news and a short introduction to how we plan to help. Our opening date is not yet confirmed."
-            : "Our prelaunch list is closed. Contact us to discuss your rental needs."}
+          {settings.prelaunchMode ? c("launch.status.open") : c("launch.status.closed")}
         </p>
         <p className="mt-4 text-sm text-ink-soft">
-          Already have a specific question?{" "}
-          <Link href="/contact" className="underline">
-            Contact us
-          </Link>
-          .
+          <RichText text={c("launch.question")} />
         </p>
       </div>
-      <Card
-        title={
-          settings.prelaunchMode
-            ? "Be part of our local launch"
-            : "Let's talk about your needs"
-        }
-      >
+      <Card title={settings.prelaunchMode ? c("launch.card.open") : c("launch.card.closed")}>
         {settings.prelaunchMode ? (
-          <SignupForm source={source} />
+          <SignupForm source={source} copy={site.text} />
         ) : (
-          <ButtonLink href="/contact">Request information</ButtonLink>
+          <SiteCta
+            value={siteLinkValue(site.values, "launch.card.cta")}
+            profile={{ phone: business.publicPhone, email: business.publicEmail }}
+            facts={facts}
+          />
         )}
       </Card>
     </Container>

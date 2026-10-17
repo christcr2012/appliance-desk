@@ -1,0 +1,95 @@
+[a href] /
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+[nav aria-label] Primary
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /login
+Log in
+[a href] /contact
+Get a Quote
+[button aria-label] Open menu
+Get a free quote
+Tell us a bit about what you need. There's no obligation, and we never charge anything until you've signed a rental agreement.
+Hours (Colorado time)
+Mon–Tue: 9 am – 5 pm
+Sat: Closed
+Upcoming closures
+Dec 25, 2099 — Christmas Day
+Leave this field blank
+About you
+Are you renting for yourself or a business/property?
+Myself
+Business / property
+I'm a landlord, property manager, or apartment operator
+Your name
+Phone number
+Email
+Optional, but recommended
+Best time to reach you
+[input placeholder] e.g. weekday afternoons
+What you need
+Appliances you're interested in
+Washer + Dryer Set (1 washer + 1 dryer)
+Washer
+Quantity
+Desired term
+Month-to-month
+6 months
+12 months
+Desired start date
+Where
+Service address
+City
+ZIP code
+Anything else
+How did you hear about us?
+Notes
+Referral code (optional)
+[input placeholder] Got a code from a friend? Enter it here
+I agree to the
+[a href] /privacy
+privacy policy
+and
+[a href] /terms
+terms
+.
+Request a quote
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+Straightforward appliance rentals for Colorado homes and properties — delivered, installed, and serviced by a real local business.
+Explore
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /contact
+Get a Quote
+Contact
+[a href] tel:9705550142
+(970) 555-0142
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+12 Fixture Way, Greeley, CO 80631
+Hours (Colorado time)
+Mon–Tue: 9 am – 5 pm
+Sat: Closed
+Upcoming closures
+Dec 25, 2099 — Christmas Day
+[ul aria-label] Find us online
+[a href] https://facebook.example/fixture
+Facebook
+© YEAR Fixture Rentals Co. All rights reserved.
+[nav aria-label] Legal
+[a href] /accessibility
+Accessibility

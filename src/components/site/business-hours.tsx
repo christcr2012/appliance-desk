@@ -6,7 +6,12 @@ export function BusinessHours({
   holidayClosures,
   headingLevel: Heading = "h2",
   className = "",
+  hoursHeading,
+  closuresHeading,
 }: {
+  /** Website words for the two headings (V-C3). */
+  hoursHeading: string;
+  closuresHeading: string;
   hours: unknown;
   holidayClosures: unknown;
   headingLevel?: "h2" | "h3";
@@ -19,7 +24,7 @@ export function BusinessHours({
     <div className={className}>
       {lines.length > 0 && (
         <>
-          <Heading className="text-sm font-semibold uppercase tracking-wide text-ink-faint">Hours (Colorado time)</Heading>
+          <Heading className="text-sm font-semibold uppercase tracking-wide text-ink-faint">{hoursHeading}</Heading>
           <ul className="mt-2 space-y-1 text-sm text-ink-soft">
             {lines.map((line) => (
               <li key={line}>{line}</li>
@@ -29,7 +34,7 @@ export function BusinessHours({
       )}
       {closures.length > 0 && (
         <>
-          <Heading className="mt-4 text-sm font-semibold uppercase tracking-wide text-ink-faint">Upcoming closures</Heading>
+          <Heading className="mt-4 text-sm font-semibold uppercase tracking-wide text-ink-faint">{closuresHeading}</Heading>
           <ul className="mt-2 space-y-1 text-sm text-ink-soft">
             {closures.slice(0, 6).map((c) => (
               <li key={c.date}>{c.text}</li>

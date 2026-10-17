@@ -8,8 +8,14 @@
  * `{name}` (the appliance's name, in picture descriptions).
  */
 
-import type { FieldValueKind } from "./types";
+import type { FieldValueKind, SiteValue } from "./types";
+import { PUBLIC_FIELDS } from "./fields-public";
+import { checkInlineLinks } from "./richtext";
 import type { ValueRules } from "./values";
+
+/** The facts a sentence may mention by name. Each is filled in from its owner (Settings) when the page is shown. */
+export type SitePlaceholder = "businessName" | "name" | "phone" | "email" | "city" | "graceDays" | "serviceCities" | "contents" | "amount" | "year";
+export const SITE_PLACEHOLDERS: ReadonlyArray<SitePlaceholder> = ["businessName", "name", "phone", "email", "city", "graceDays", "serviceCities", "contents", "amount", "year"];
 
 export type SiteFieldKind = "short" | "paragraph" | "url" | "alt" | "meta";
 
@@ -36,7 +42,11 @@ export type SiteField = {
   /** V-C1: the part of the page the editor scrolls to in the preview. When not stated, made from the key. */
   anchor?: string;
   /** V-C1: the only {placeholders} allowed. When not stated: {businessName} and {name}. */
-  placeholders?: ReadonlyArray<"businessName" | "name">;
+  placeholders?: ReadonlyArray<SitePlaceholder>;
+  /** V-C3: the text may hold `[words](/page)` links. */
+  links?: boolean;
+  /** V-C3: for a link, picture or promotion field, the value shown until the owner sets one. */
+  defaultValue?: SiteValue;
   /** V-C1: for a list field, the most entries it may hold. */
   maxItems?: number;
 };
@@ -135,7 +145,7 @@ function howFields(): SiteField[] {
   return out;
 }
 
-export const SITE_FIELDS: ReadonlyArray<SiteField> = [
+const CORE_FIELDS: ReadonlyArray<SiteField> = [
   {
     key: "home.hero.image",
     label: "Main photo",
@@ -340,6 +350,9 @@ export const SITE_FIELDS: ReadonlyArray<SiteField> = [
   },
 ];
 
+/** Everything the owner may change on the public website: the core fields above plus every other visible item (V-C3). */
+export const SITE_FIELDS: ReadonlyArray<SiteField> = [...CORE_FIELDS, ...PUBLIC_FIELDS];
+
 /**
  * Keys that used to exist under another name map to today's key, so a renamed field never loses the owner's words.
  * Empty today: every key has kept its name. A redesign (V-C5) adds the old name here when it renames one.
@@ -373,6 +386,7 @@ export function describeSiteField(field: SiteField): SiteFieldSpec {
     singleLine: field.kind !== "paragraph",
     httpsOnly: field.kind === "url",
     placeholders,
+    ...(field.links ? { links: true } : {}),
     ...(field.maxItems ? { maxItems: field.maxItems } : {}),
   };
   return {
@@ -420,6 +434,13 @@ export function isKnownSiteKey(key: string): boolean {
   return BY_KEY.has(canonicalSiteKey(key));
 }
 
+/** The starting value of every link, picture and promotion field (the text fields use siteDefaults). */
+export function siteDefaultTypedValues(): Record<string, SiteValue> {
+  const out: Record<string, SiteValue> = {};
+  for (const f of SITE_FIELDS) if ((f.valueKind ?? "text") !== "text" && f.defaultValue) out[f.key] = f.defaultValue;
+  return out;
+}
+
 export function siteDefaults(): Record<string, string> {
   return Object.fromEntries(SITE_FIELDS.filter((f) => (f.valueKind ?? "text") === "text").map((f) => [f.key, f.default]));
 }
@@ -454,16 +475,29 @@ export function sanitizeSiteFields(input: unknown): SanitizeResult {
     if (field.kind !== "paragraph" && value.includes("\n")) {
       return { ok: false, message: `${field.label} must be on one line.` };
     }
+    if (field.links) {
+      const problem = checkInlineLinks(value);
+      if (problem) return { ok: false, message: `${field.label}: ${problem}` };
+    }
+    const allowed: ReadonlyArray<string> = field.placeholders ?? ["businessName", "name"];
+    for (const match of value.matchAll(/\{(\w+)\}/g)) {
+      if (!allowed.includes(match[1])) {
+        return { ok: false, message: `${field.label} uses {${match[1]}}, which is not available here.` };
+      }
+    }
     out[key] = value;
   }
   return { ok: true, fields: out };
 }
 
-/** Replace the two placeholders. Unknown placeholders are left as typed. */
-export function fillSiteText(text: string, values: { businessName?: string; name?: string }): string {
-  return text
-    .replace(/\{businessName\}/g, values.businessName ?? "{businessName}")
-    .replace(/\{name\}/g, values.name ?? "{name}");
+export type SiteTextFacts = Partial<Record<SitePlaceholder, string>>;
+
+/** Replace the placeholders. Unknown placeholders, and facts the page does not have, are left as typed. */
+export function fillSiteText(text: string, values: SiteTextFacts): string {
+  return text.replace(/\{(\w+)\}/g, (whole, name: string) => {
+    const value = (values as Record<string, string | undefined>)[name];
+    return (SITE_PLACEHOLDERS as ReadonlyArray<string>).includes(name) && value !== undefined ? value : whole;
+  });
 }
 
 /** The picture description for an appliance photo: the owner's text for that picture, or the standard sentence. */

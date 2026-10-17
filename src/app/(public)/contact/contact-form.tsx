@@ -15,6 +15,7 @@ import {
   leadFormSchemaForCatalog,
   type LeadFormInput,
 } from "@/domains/leads/schema";
+import { RichText } from "@/components/site/rich-text";
 import { submitLead } from "./actions";
 
 type ApplianceTypeOption = {
@@ -33,7 +34,10 @@ type PackageOption = ApplianceTypeOption & { contents: string };
 export function ContactForm({
   applianceTypes,
   packages = [],
+  copy,
 }: {
+  /** The words on the form, from the website content (V-C3). */
+  copy: Record<string, string>;
   applianceTypes: ApplianceTypeOption[];
   packages?: PackageOption[];
 }) {
@@ -78,12 +82,11 @@ export function ContactForm({
     return (
       <div role="status">
         <Card
-          title="Thanks — we've got your request."
+          title={copy["contact.thanks.title"]}
           className="text-center"
         >
           <p className="text-ink-soft">
-            We&apos;ll follow up soon, usually the same day, to confirm details
-            and get you a firm quote.
+            {copy["contact.thanks.body"]}
           </p>
         </Card>
       </div>
@@ -114,7 +117,7 @@ export function ContactForm({
 
       <fieldset className="space-y-5">
         <legend className="font-display text-xl font-semibold text-ink">
-          About you
+          {copy["contact.form.about"]}
         </legend>
 
         <div>
@@ -122,7 +125,7 @@ export function ContactForm({
             id={`${formId}-account-type-label`}
             className="mb-2 block text-sm font-semibold text-ink"
           >
-            Are you renting for yourself or a business/property?
+            {copy["contact.form.accountType"]}
           </span>
           <div
             role="radiogroup"
@@ -136,7 +139,7 @@ export function ContactForm({
                 {...register("accountType")}
                 className="h-5 w-5"
               />
-              Myself
+              {copy["contact.form.individual"]}
             </label>
             <label className="flex min-h-11 items-center gap-2 text-sm text-ink">
               <input
@@ -145,7 +148,7 @@ export function ContactForm({
                 {...register("accountType")}
                 className="h-5 w-5"
               />
-              Business / property
+              {copy["contact.form.business"]}
             </label>
           </div>
         </div>
@@ -153,21 +156,21 @@ export function ContactForm({
         {accountType === "business" && (
           <Field
             id={`${formId}-companyName`}
-            label="Company name"
+            label={copy["contact.form.companyName"]}
             error={errors.companyName?.message}
             {...register("companyName")}
           />
         )}
 
         <Checkbox
-          label="I'm a landlord, property manager, or apartment operator"
+          label={copy["contact.form.propertyManager"]}
           {...register("isPropertyManager")}
         />
 
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             id={`${formId}-contactName`}
-            label="Your name"
+            label={copy["contact.form.contactName"]}
             autoComplete="name"
             required
             error={errors.contactName?.message}
@@ -175,7 +178,7 @@ export function ContactForm({
           />
           <Field
             id={`${formId}-phone`}
-            label="Phone number"
+            label={copy["contact.form.phone"]}
             type="tel"
             autoComplete="tel"
             required
@@ -184,17 +187,17 @@ export function ContactForm({
           />
           <Field
             id={`${formId}-email`}
-            label="Email"
+            label={copy["contact.form.email"]}
             type="email"
             autoComplete="email"
-            help="Optional, but recommended"
+            help={copy["contact.form.emailHelp"]}
             error={errors.email?.message}
             {...register("email")}
           />
           <Field
             id={`${formId}-bestTimeToContact`}
-            label="Best time to reach you"
-            placeholder="e.g. weekday afternoons"
+            label={copy["contact.form.bestTime"]}
+            placeholder={copy["contact.form.bestTimeExample"]}
             error={errors.bestTimeToContact?.message}
             {...register("bestTimeToContact")}
           />
@@ -203,17 +206,16 @@ export function ContactForm({
 
       <fieldset className="space-y-5">
         <legend className="font-display text-xl font-semibold text-ink">
-          What you need
+          {copy["contact.form.need"]}
         </legend>
 
         <div>
           <span className="mb-2 block text-sm font-semibold text-ink">
-            Appliances you&apos;re interested in
+            {copy["contact.form.appliances"]}
           </span>
           {applianceTypes.length + packages.length === 0 && (
             <p className="text-sm text-ink-soft">
-              No appliance options are listed yet. Tell us what you need in the
-              notes below.
+              {copy["contact.form.noAppliances"]}
             </p>
           )}
           <div className="grid gap-2 sm:grid-cols-2">
@@ -252,7 +254,7 @@ export function ContactForm({
         <div className="grid gap-5 sm:grid-cols-3">
           <Field
             id={`${formId}-quantity`}
-            label="Quantity"
+            label={copy["contact.form.quantity"]}
             type="number"
             min={1}
             max={50}
@@ -261,7 +263,7 @@ export function ContactForm({
           />
           <Select
             id={`${formId}-desiredTerm`}
-            label="Desired term"
+            label={copy["contact.form.term"]}
             error={errors.desiredTerm?.message}
             {...register("desiredTerm")}
           >
@@ -273,7 +275,7 @@ export function ContactForm({
           </Select>
           <Field
             id={`${formId}-desiredStartDate`}
-            label="Desired start date"
+            label={copy["contact.form.startDate"]}
             type="date"
             error={errors.desiredStartDate?.message}
             {...register("desiredStartDate")}
@@ -283,13 +285,13 @@ export function ContactForm({
 
       <fieldset className="space-y-5">
         <legend className="font-display text-xl font-semibold text-ink">
-          Where
+          {copy["contact.form.where"]}
         </legend>
         <div className="grid gap-5 sm:grid-cols-3">
           <div className="sm:col-span-3">
             <Field
               id={`${formId}-addressLine1`}
-              label="Service address"
+              label={copy["contact.form.address"]}
               autoComplete="address-line1"
               error={errors.addressLine1?.message}
               {...register("addressLine1")}
@@ -297,14 +299,14 @@ export function ContactForm({
           </div>
           <Field
             id={`${formId}-city`}
-            label="City"
+            label={copy["contact.form.city"]}
             autoComplete="address-level2"
             error={errors.city?.message}
             {...register("city")}
           />
           <Field
             id={`${formId}-zip`}
-            label="ZIP code"
+            label={copy["contact.form.zip"]}
             inputMode="numeric"
             autoComplete="postal-code"
             error={errors.zip?.message}
@@ -315,25 +317,25 @@ export function ContactForm({
 
       <fieldset className="space-y-5">
         <legend className="font-display text-xl font-semibold text-ink">
-          Anything else
+          {copy["contact.form.more"]}
         </legend>
         <Field
           id={`${formId}-howHeard`}
-          label="How did you hear about us?"
+          label={copy["contact.form.howHeard"]}
           error={errors.howHeard?.message}
           {...register("howHeard")}
         />
         <Textarea
           id={`${formId}-notes`}
-          label="Notes"
+          label={copy["contact.form.notes"]}
           rows={4}
           error={errors.notes?.message}
           {...register("notes")}
         />
         <Field
           id={`${formId}-referralCode`}
-          label="Referral code (optional)"
-          placeholder="Got a code from a friend? Enter it here"
+          label={copy["contact.form.referral"]}
+          placeholder={copy["contact.form.referralExample"]}
           error={errors.referralCode?.message}
           {...register("referralCode")}
         />
@@ -351,15 +353,7 @@ export function ContactForm({
             className="mt-1 h-5 w-5 rounded-control border border-control bg-surface"
           />
           <span>
-            I agree to the{" "}
-            <a href="/privacy" className="underline hover:text-primary">
-              privacy policy
-            </a>{" "}
-            and{" "}
-            <a href="/terms" className="underline hover:text-primary">
-              terms
-            </a>
-            .
+            <RichText text={copy["contact.form.consent"] ?? ""} />
           </span>
         </label>
         {errors.consent && (
@@ -374,7 +368,7 @@ export function ContactForm({
       </div>
 
       <Button type="submit" size="lg" disabled={isSubmitting}>
-        {isSubmitting ? "Sending…" : "Request a quote"}
+        {isSubmitting ? copy["contact.form.sending"] : copy["contact.form.submit"]}
       </Button>
     </form>
   );

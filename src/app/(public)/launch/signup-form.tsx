@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { Button, Card, Checkbox, Field, Select } from "@/components/ui";
+import { RichText } from "@/components/site/rich-text";
 import { submitLaunchSignup } from "./actions";
 import { LAUNCH_CONSENT, type LaunchFormState } from "@/domains/launch/schema";
 
 const initial: LaunchFormState = { status: "idle" };
 
-export function SignupForm({ source }: { source: string }) {
+export function SignupForm({ source, copy }: { source: string; copy: Record<string, string> }) {
   const [state, action, pending] = useActionState(submitLaunchSignup, initial);
   function error(name: string) {
     return state.errors?.[name]?.[0];
@@ -40,7 +40,7 @@ export function SignupForm({ source }: { source: string }) {
       <Field
         id="launch-name"
         name="name"
-        label="Name"
+        label={copy["launch.form.name"]}
         type="text"
         autoComplete="name"
         maxLength={100}
@@ -50,7 +50,7 @@ export function SignupForm({ source }: { source: string }) {
       <Field
         id="launch-email"
         name="email"
-        label="Email"
+        label={copy["launch.form.email"]}
         type="email"
         autoComplete="email"
         maxLength={254}
@@ -60,7 +60,7 @@ export function SignupForm({ source }: { source: string }) {
       <Field
         id="launch-city"
         name="city"
-        label="City"
+        label={copy["launch.form.city"]}
         type="text"
         autoComplete="address-level2"
         maxLength={100}
@@ -70,7 +70,7 @@ export function SignupForm({ source }: { source: string }) {
       <Select
         id="launch-interest"
         name="interest"
-        label="What are you interested in?"
+        label={copy["launch.form.interest"]}
         defaultValue="Washer and dryer"
         error={error("interest")}
       >
@@ -93,11 +93,7 @@ export function SignupForm({ source }: { source: string }) {
       />
 
       <p className="text-sm text-ink-soft">
-        Read our{" "}
-        <Link href="/privacy" className="underline hover:text-primary">
-          privacy policy
-        </Link>
-        . No payment, rental commitment, or phone number required.
+        <RichText text={copy["launch.form.privacy"] ?? ""} />
       </p>
       {state.status === "error" && (
         <p role="alert" className="text-sm font-semibold text-danger">
@@ -105,7 +101,7 @@ export function SignupForm({ source }: { source: string }) {
         </p>
       )}
       <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Join the interest list"}
+        {pending ? copy["launch.form.saving"] : copy["launch.form.submit"]}
       </Button>
     </form>
   );

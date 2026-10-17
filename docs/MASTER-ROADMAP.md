@@ -1,8 +1,6 @@
-## What is next — October 17 V-C1 and V-C2 delivery
+## What is next — October 17 V-C3 delivery
 
-W-17 and W-20 are merged (#486). One PR delivers V-C1 (typed website values, versioned storage, link rules, registry metadata) and V-C2 (owner/admin
-website pictures: upload, private draft preview, public serving, publish-time promotion, retire, cleanup, catalog setter hardening); exact-head CI, review
-and merge remain pending. V-C3 (bind every public content item) is next, then V-C4 (owner editor), V-C5 (template contract and coverage proof), then V-1…V-4.
+V-C1 and V-C2 are merged (#487). One PR delivers V-C3: every public page, the menu, footer, notice bar, forms and page titles read from editable website content (starting text equals today's words), with checked links, named facts, scheduled promotions, the website photo on the home page, and a runtime marker test proving coverage; exact-head CI, review and merge remain pending. V-C4 (owner editor with preview, publish and restore) and V-C5 (template contract and coverage proof) are next, then V-1…V-4.
 
 # MASTER ROADMAP — scope and ordered work coverage
 
