@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
 import { getLaunchSettings } from "@/domains/launch";
@@ -22,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function LaunchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ utm_source?: string | string[]; revision?: string | string[]; previewAt?: string | string[]; select?: string | string[] }>;
+  searchParams: Promise<{ utm_source?: string | string[]; revision?: string | string[] }>;
 }) {
   const [settings, business, params] = await Promise.all([
     getLaunchSettings(),
@@ -37,6 +38,8 @@ export default async function LaunchPage({
       ? params.utm_source.slice(0, 100)
       : "website";
   return (
+    <>
+      <SelectBridge site={site} />
     <Container className="grid gap-12 py-16 md:grid-cols-2 md:py-20">
       <div>
         <p className="font-semibold text-primary">
@@ -72,5 +75,6 @@ export default async function LaunchPage({
         )}
       </Card>
     </Container>
+    </>
   );
 }

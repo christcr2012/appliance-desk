@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { SITE_PAGE_PATHS } from "@/domains/site-content/links";
+import { getLaunchSettings } from "@/domains/launch";
 
 /**
  * V-C4: the door the Website screen's preview goes through. Only a signed-in owner or admin gets past it; anyone else
@@ -25,7 +26,11 @@ export async function GET(request: NextRequest) {
   const at = params.get("previewAt");
   if (at && !INSTANT.test(at)) return new NextResponse("That date cannot be previewed.", { status: 400, headers: { "Cache-Control": "no-store" } });
 
-  const target = new URL(path, request.nextUrl.origin);
+  // While the website is "preparing to launch", visitors are sent from pricing and city pages to the launch page, so that
+  // is what the preview has to show too (the editor says so next to those pages).
+  const hidden = path === "/pricing" || path.startsWith("/rent/");
+  const shown = hidden && (await getLaunchSettings()).prelaunchMode ? "/launch" : path;
+  const target = new URL(shown, request.nextUrl.origin);
   if (revision) target.searchParams.set("revision", revision);
   if (at) target.searchParams.set("previewAt", at);
   target.searchParams.set("select", "1");

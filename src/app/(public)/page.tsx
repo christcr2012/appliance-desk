@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import { Container } from "@/components/site/container";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { Card } from "@/components/ui";
@@ -48,6 +49,7 @@ export default async function HomePage({
   if (showPrelaunchHome) {
     return (
       <>
+        <SelectBridge site={site} />
         <section className="bg-canvas">
           <Container className="grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
             <div>
@@ -103,6 +105,7 @@ export default async function HomePage({
 
   return (
     <>
+      <SelectBridge site={site} />
       <section className="bg-canvas">
         <Container className="grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
           <div>

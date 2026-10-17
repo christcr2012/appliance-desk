@@ -77,9 +77,11 @@ test.describe("website editor (owner)", () => {
     const frame = page.frameLocator('iframe[title^="Preview of"]');
     await expect(frame.locator("main")).toContainText(edited);
     expect(await publicSeen()).not.toContain(edited);
-    // No hidden marks reach the visible page text or the public site.
-    expect(await frame.locator("main").innerText()).not.toMatch(/[-]/);
+    // The preview carries invisible select-to-edit marks; the public website never does.
+    expect(await publicSeen()).not.toMatch(/[\uE000-\uF8FF]/);
 
+    // Once the preview has started up it has removed its invisible marks from the visible words.
+    await expect(frame.locator("main")).not.toContainText(/[\uE000-\uF8FF]/);
     // Click the page title in the preview: the editor jumps to that item.
     await frame.locator("main h1").click();
     await expect(page.getByRole("textbox", { name: "Heading", exact: true })).toHaveValue("How it works");

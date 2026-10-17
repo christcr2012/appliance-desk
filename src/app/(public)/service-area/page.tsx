@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/site/container";
@@ -29,6 +30,7 @@ export default async function ServiceAreaPage({
 
   return (
     <>
+      <SelectBridge site={site} />
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">

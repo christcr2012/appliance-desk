@@ -18,10 +18,12 @@ export type WebsitePage = {
   beforeOpeningOnly?: boolean;
   /** The page is a city page: the preview uses the first city in the service area. */
   cityPage?: boolean;
+  /** Shown beside the preview when it cannot show this page's changes before they are published. */
+  previewNote?: string;
 };
 
 export const WEBSITE_PAGES: ReadonlyArray<WebsitePage> = [
-  { id: "all", name: "Menu, footer and banner", about: "The top menu, the notice bar, the footer and the site-wide banner shown on every page.", registryPages: ["Every page"], previewPath: "/" },
+  { id: "all", name: "Menu, footer and banner", about: "The top menu, the notice bar, the footer and the site-wide banner shown on every page.", registryPages: ["Every page"], previewPath: "/", previewNote: "The menu, footer and banner appear on every page. The preview shows them as they are live now; your changes show there after you publish." },
   { id: "home", name: "Home page", about: "The first page visitors see once you are open for business.", registryPages: ["Home page"], previewPath: "/" },
   { id: "home-pre", name: "Home page (before opening)", about: "The home page while the site is set to “preparing to launch”.", registryPages: ["Home page (before opening)"], previewPath: "/", beforeOpeningOnly: true },
   { id: "pricing", name: "Pricing", about: "The price cards, fees and “good to know” notes. The prices themselves come from your price list.", registryPages: ["Pricing", "Price cards"], previewPath: "/pricing" },

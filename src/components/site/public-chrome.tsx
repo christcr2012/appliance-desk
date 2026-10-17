@@ -2,8 +2,6 @@ import { Header, type HeaderCta } from "./header";
 import { Footer } from "./footer";
 import { RichText } from "./rich-text";
 import { PromotionBanner } from "./promotion-banner";
-import { PreviewBridge } from "./preview-bridge";
-import { SITE_KEYS } from "@/domains/site-content/preview-markers";
 import { siteFacts, siteLinkValue } from "@/domains/site-content/facts";
 import { fillSiteText } from "@/domains/site-content/fields";
 import { linkRel, resolveLinkHref } from "@/domains/site-content/links";
@@ -48,7 +46,6 @@ export function PublicChrome({
 
   return (
     <>
-      {site.selectable && site.revisionId ? <PreviewBridge keys={SITE_KEYS} revisionId={site.revisionId} /> : null}
       <PromotionBanner value={site.values["site.banner.promotion"]} now={site.now} profile={profile} facts={facts} />
       <Header businessName={settings.publicBusinessName} prelaunch={prelaunch} text={site.text} cta={cta} />
       {prelaunch && notice ? (

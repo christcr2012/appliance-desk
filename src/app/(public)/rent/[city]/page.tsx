@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import { redirect } from "next/navigation";
 import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
@@ -10,7 +11,6 @@ import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
 import { getSiteForRequest } from "@/domains/site-content/request";
-import { launchPath } from "@/domains/site-content/launch-path";
 import { siteCopy, siteFacts, siteLinkValue, stripInlineLinks } from "@/domains/site-content/facts";
 
 // ---------------------------------------------------------------------------
@@ -64,9 +64,9 @@ export default async function CityLandingPage({
   searchParams,
 }: {
   params: Promise<{ city: string }>;
-  searchParams: Promise<{ revision?: string | string[]; previewAt?: string | string[]; select?: string | string[] }>;
+  searchParams: Promise<{ revision?: string | string[] }>;
 }) {
-  if ((await getLaunchSettings()).prelaunchMode) redirect(launchPath(await searchParams));
+  if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
   const { city: citySlug } = await params;
   const city = await findCity(citySlug);
   if (!city) {
@@ -84,6 +84,7 @@ export default async function CityLandingPage({
 
   return (
     <>
+      <SelectBridge site={site} />
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">

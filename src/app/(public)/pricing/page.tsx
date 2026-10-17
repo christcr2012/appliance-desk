@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import { redirect } from "next/navigation";
 import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
@@ -10,7 +11,6 @@ import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
 import { getSiteForRequest } from "@/domains/site-content/request";
-import { launchPath } from "@/domains/site-content/launch-path";
 import { siteCopy, siteFacts, siteLinkValue } from "@/domains/site-content/facts";
 import { catalogAlt } from "@/domains/site-content/fields";
 
@@ -25,9 +25,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ revision?: string | string[]; previewAt?: string | string[]; select?: string | string[] }>;
+  searchParams: Promise<{ revision?: string | string[] }>;
 }) {
-  if ((await getLaunchSettings()).prelaunchMode) redirect(launchPath(await searchParams));
+  if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
   const [settings, applianceTypes, site] = await Promise.all([
     getBusinessSettings(),
     getPublishedCatalog(),
@@ -49,6 +49,7 @@ export default async function PricingPage({
 
   return (
     <>
+      <SelectBridge site={site} />
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">

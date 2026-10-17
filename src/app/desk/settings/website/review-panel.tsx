@@ -18,7 +18,10 @@ export type ReviewData = {
 };
 
 /** Everything that will change, in plain words, with the publish button. Publishing is refused if anything moved. */
-export function ReviewPanel({ review, nowIso, pagePaths }: { review: ReviewData; nowIso: string; pagePaths: Record<string, string | null> }) {
+export function ReviewPanel({ review: reviewed, nowIso, pagePaths }: { review: ReviewData; nowIso: string; pagePaths: Record<string, string | null> }) {
+  // What was reviewed stays on screen until the result arrives: publishing refreshes the page behind us, and a second
+  // quick click must never land on whatever the refreshed (now empty) page would show.
+  const [review] = useState(reviewed);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ version: number; alreadyLive: boolean } | null>(null);
   const [error, setError] = useState<{ text: string; stale: boolean } | null>(null);
@@ -122,7 +125,7 @@ export function ReviewPanel({ review, nowIso, pagePaths }: { review: ReviewData;
 
       <div className="flex flex-wrap items-center gap-3">
         <Button size="lg" disabled={busy || review.problems.length > 0} onClick={() => void publish()}>{busy ? "Publishing…" : `Publish ${review.changes.length} ${review.changes.length === 1 ? "change" : "changes"} to the live website`}</Button>
-        <Link className="underline" href="/desk/settings/website?view=edit">Keep editing</Link>
+        <Link className="underline" href="/desk/settings/website?view=edit" aria-disabled={busy || undefined} onClick={(event) => { if (busy || lock.current) event.preventDefault(); }}>Keep editing</Link>
       </div>
       <p className="text-xs text-ink-soft">Publishing is checked against the live website you reviewed. If someone else changes it first, nothing is published and you will be asked to review again.</p>
     </div>

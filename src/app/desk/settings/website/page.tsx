@@ -37,7 +37,7 @@ export default async function WebsitePage({ searchParams }: { searchParams: Prom
     about: p.about,
     previewPath: p.cityPage ? cityPath : p.previewPath,
     beforeOpeningOnly: p.beforeOpeningOnly === true,
-    note: p.beforeOpeningOnly ? "This page shows only while the website is set to “preparing to launch”, so the preview may show the other home page." : p.cityPage ? "The preview shows your first city." : null,
+    note: p.previewNote ?? (p.beforeOpeningOnly ? "This page shows only while the website is set to “preparing to launch”, so the preview may show the other home page." : p.cityPage ? "The preview shows your first city." : null),
   }));
   const pagePaths = Object.fromEntries(pages.map((p) => [p.id, p.previewPath]));
 

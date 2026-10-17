@@ -25,7 +25,10 @@ Proof: 16 unit tests (permissions, review diff, markers, Colorado time, preview 
 simultaneous publish, restore-to-draft, discard, removed picture, staff and deactivated owner refused), a browser test for the whole edit-preview-select-publish
 path and accessibility scans at 360/768/1440 in light and dark, and an updated old end-to-end editor test. Exact-head CI (browser and accessibility) is pending.
 Open items: the Website menu entry sits in More (the W-8 menu keeps its 14 main entries; owner may prefer a main entry); the preview shows the site's current
-opening mode, so the "before opening" home variant is visible only while the site is in prelaunch mode; website picture bytes are still not in the daily recovery
+opening mode, so the "before opening" home variant is visible only while the site is in prelaunch mode (and pricing/city previews show the launch page then, as visitors see);
+the menu, footer, notice bar and banner words cannot be previewed before publishing, because the shared page frame cannot read the preview version without making every public page
+slower to serve (the editor says so beside that page; the wording shows live after publish). The Website screen skips the browser's "upgrade to https" rule only when the app
+is served over plain http on this computer or the CI test site (a real address is always https and keeps the full policy); website picture bytes are still not in the daily recovery
 copy; picture cleanup is not scheduled; pictures need the private picture store configured in production. Not done: the visual redesign (V-1…V-4), which needs
 the owner's before/after screenshot acceptance. No live Stripe, email, SMS, spending or production data touched.
 
