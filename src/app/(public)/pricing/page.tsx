@@ -9,7 +9,8 @@ import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
-import { getSiteForRequest, launchPath } from "@/domains/site-content/request";
+import { getSiteForRequest } from "@/domains/site-content/request";
+import { launchPath } from "@/domains/site-content/launch-path";
 import { siteCopy, siteFacts, siteLinkValue } from "@/domains/site-content/facts";
 import { catalogAlt } from "@/domains/site-content/fields";
 
