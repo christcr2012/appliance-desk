@@ -51,7 +51,7 @@ export function MetricStat({
     <div className={`rounded-lg border p-5 ${toneClass}`}>
       <p className="text-sm text-ink-soft">
         {def.label}
-        {def.kind === "ESTIMATE" && <span className="ml-2 rounded-full bg-canvas-alt px-2 py-0.5 text-xs text-ink-soft">Estimate</span>}
+        <span className="ml-2 rounded-full bg-canvas-alt px-2 py-0.5 text-xs text-ink-soft">{def.kind === "ESTIMATE" ? "Estimate" : "Actual"}</span>
       </p>
       <p className={`mt-1 text-2xl font-semibold ${tone === "good" ? "text-primary-dark" : "text-ink"}`}>{value}</p>
       <MetricHelp metric={metric} params={params} />

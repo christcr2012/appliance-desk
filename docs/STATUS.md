@@ -1,3 +1,21 @@
+## October 17 — V-3 and V-4 delivered (the bolder look for every public page, Today and the portal home), CI pending, owner look decision OPEN
+
+V-1 and V-2 are merged (#490); the owner accepted the home page ("better, not as big a change as hoped") and asked for a bolder step, which this PR takes.
+**V-3** a shared page hero (a full-width evergreen cut band, dark surface in dark mode, one h1 at the display size) now opens pricing, how it works, service area, contact, launch and the city pages.
+Pricing features the first set on the evergreen cut card with the other appliances as plain cards and the fees and good-to-know lists as thin-rule ledgers; how it works is a large numbered sequence
+(CSS counters); service area lists cities as large linked rows and ZIP codes as a quiet list; contact (with the address prefill), launch (with its form) and the city pages keep their behaviour under the new hero.
+No wording changed or was added (the saved page text is identical and every item is still editable); the legal pages keep their fixed text.
+**V-4** Today gets the cut-corner headline card and a day timeline (wide screens): visits placed by scheduled time on an 8 am to 7 pm axis (each as long as its recorded length or the Settings default, overlaps side by side, a Now marker, words Done / In progress / Next / time),
+visits with no time or outside the axis listed beneath, phones keep the visit list; attention items carry a stripe and the word Urgent (high) or Soon (medium); money tiles are tagged Actual or Estimate from the metric's kind;
+the desk search box reads "Search or jump to…" with a Cmd K / Ctrl K hint and key (it focuses the same search; no new search); the portal "How do I get help?" card is the evergreen card with the fresh Report a problem button.
+Beyond the one visit-length column and default-length setting, no new data is read; no permissions, routes, prices or statuses changed, no migration, no new dependency.
+Honest notes: the design called for three severity words (Urgent / Today / Soon) but the data has two levels, so only Urgent and Soon exist; Today has no money tiles of its own, so the Actual/Estimate tag is on the METRICS-driven money tiles that exist (Actual is new, Estimate already existed);
+Visit lengths: the owner approved (2026-10-17) using each visit's recorded length, else the default in Settings; Today now reads that one extra column and the default setting, and a test covers both cases.
+Proof: unit tests for the hero, the timeline placement (overlap, untimed, out-of-range, last-half-hour, Colorado clock across both daylight-saving changes), severity words, tags and the search key; the public page render test (unchanged text) and copy-scan;
+browser specs `e2e/signature-public.spec.ts` and `e2e/signature-focus.spec.ts` plus the existing generated accessibility scans of every public route, Today and the portal in light and dark; exact-head CI is pending.
+**ACCEPTED 2026-10-17:** the owner reviewed the before/after screenshots (Today, Pricing, How it works) and answered yes to accepting the bolder look and yes to real visit lengths. The PR merges only when exact-head ci is green.
+Next: F2-A (integrated scenarios) is the next roadmap item after the owner accepts. Nothing is live; no Stripe, email, SMS, spending or production data touched.
+
 ## October 17 — V-1 and V-2 delivered (the new "Evergreen Signature" look for the home page, and a private address check), CI pending, owner look decision (S-V3) OPEN
 
 V-C4 and V-C5 are merged (#489). This PR delivers two whole approved subsections.

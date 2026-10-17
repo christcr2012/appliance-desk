@@ -62,7 +62,9 @@
       "accessibility-routes-desk-b.spec.ts",
       "communications-calls.spec.ts",
       "signing-multilocation-order.spec.ts",
-      "preapproval-estimate-prepare.spec.ts"
+      "preapproval-estimate-prepare.spec.ts",
+      "signature-public.spec.ts",
+      "signature-focus.spec.ts"
     ]
   }
 }

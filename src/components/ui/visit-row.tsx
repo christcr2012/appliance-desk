@@ -12,7 +12,7 @@ import {
   jobTypeLabel,
 } from "@/lib/status-labels";
 
-function JobTypeIcon({
+export function JobTypeIcon({
   type,
   className = "",
 }: {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  settings: vi.fn(),
   requireRole: vi.fn(),
   agreement: vi.fn(),
   invoice: vi.fn(),
@@ -70,6 +71,7 @@ vi.mock("@/lib/prisma", () => ({
     rentalAgreement: { findMany: mocks.agreement },
     invoice: { findMany: mocks.invoice },
     job: { findMany: mocks.job },
+    businessSettings: { findUnique: mocks.settings },
     maintenanceRequest: { findMany: mocks.request },
     appliance: { findMany: mocks.appliance },
     customerNotice: { findMany: mocks.notice },
@@ -104,6 +106,7 @@ import { getExceptions, getTodaysJobs } from "@/domains/exceptions";
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.requireRole.mockResolvedValue({ user: { role: "STAFF" } });
+  mocks.settings.mockResolvedValue({ defaultJobDurationMinutes: 90 });
   for (const fn of [
     mocks.agreement,
     mocks.invoice,
@@ -230,6 +233,15 @@ describe("Today server-side visibility", () => {
     }
   });
 
+  it("gives each visit its own length, else the business default", async () => {
+    mocks.job.mockResolvedValueOnce([
+      { id: "a", durationMinutes: 45 },
+      { id: "b", durationMinutes: null },
+    ]);
+    const jobs = await getTodaysJobs();
+    expect(jobs.map((j) => j.durationMinutes)).toEqual([45, 90]);
+  });
+
   it("selects a bounded schedule DTO without job costs or customer finance", async () => {
     await getTodaysJobs();
     expect(mocks.job.mock.calls[0][0].select).toEqual({
@@ -237,6 +249,7 @@ describe("Today server-side visibility", () => {
       type: true,
       status: true,
       scheduledAt: true,
+      durationMinutes: true,
       customer: { select: { user: { select: { name: true, email: true } } } },
       serviceAddress: { select: { line1: true, city: true } },
     });

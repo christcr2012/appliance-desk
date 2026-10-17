@@ -9,6 +9,11 @@ export type AttentionGroup = {
   items: ExceptionItem[];
 };
 
+/** The word shown beside an item's stripe, from the item's existing severity. Never colour alone. */
+export function severityWord(severity: ExceptionItem["severity"]): "Urgent" | "Soon" {
+  return severity === "high" ? "Urgent" : "Soon";
+}
+
 export function AttentionList({
   groups,
   acknowledgeTaxSourceAction,
@@ -52,12 +57,15 @@ export function AttentionList({
               {group.items.map((item) => (
                 <li
                   key={`${item.category}:${item.title}:${item.href}:${item.since.toISOString()}`}
-                  className="py-3"
+                  className={`border-l-4 py-3 pl-4 ${item.severity === "high" ? "border-danger" : "border-warning-ink"}`}
                 >
                   <Link
                     href={item.href}
                     className="block min-h-11 hover:bg-subtle"
                   >
+                    <span className={`block text-eyebrow uppercase ${item.severity === "high" ? "text-danger" : "text-warning-ink"}`}>
+                      {severityWord(item.severity)}
+                    </span>
                     <span className="font-medium text-ink">{item.title}</span>
                     <span className="mt-1 block text-sm text-ink-soft">
                       {item.detail}

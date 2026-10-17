@@ -1,6 +1,6 @@
 ## What is next — October 17 V-C4 and V-C5 delivery
 
-V-C4 and V-C5 are merged (#489). V-1 and V-2 (signature tokens, the new home page and the private address check) are planned in `docs/pr-cards/V-1.md` and in progress; V-3 and V-4 follow the owner's before/after screenshot decision (gate S-V3).
+V-1 and V-2 (signature tokens, the new home page and the private address check) are merged (#490); the owner accepted the look and asked for a bolder step. V-3 and V-4 (every public page, Today and the portal home) are planned in `docs/pr-cards/V-3.md` and in progress.
 
 # MASTER ROADMAP — scope and ordered work coverage
 

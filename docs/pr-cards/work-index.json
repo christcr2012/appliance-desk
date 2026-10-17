@@ -470,22 +470,27 @@
       ],
       "status": "APPROVED",
       "migration": "none",
-      "budget": 480,
+      "budget": 450,
       "units": [
         "V-3"
       ],
       "evidence": [
         "docs/designs/BATCH-V.md",
+        "docs/pr-cards/V-3.md",
+        "src/app/globals.css",
         "src/domains/site-content/fields.ts",
-        "src/lib/desk-navigation.ts",
-        "src/app/globals.css"
+        "src/lib/desk-navigation.ts"
       ],
       "tests": [
-        "tests/public-copy-from-settings.test.ts",
-        "e2e/signature-public.spec.ts"
+        "tests/page-hero.test.tsx",
+        "tests/day-timeline.test.tsx",
+        "tests/desk-signature-components.test.tsx",
+        "e2e/signature-public.spec.ts",
+        "e2e/signature-focus.spec.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/V-3.md"
+      "plannedCard": "docs/pr-cards/V-3.md",
+      "card": "docs/pr-cards/V-3.md"
     },
     {
       "id": "V-4",
@@ -502,16 +507,21 @@
       ],
       "evidence": [
         "docs/designs/BATCH-V.md",
+        "docs/pr-cards/V-3.md",
+        "src/app/globals.css",
         "src/domains/site-content/fields.ts",
-        "src/lib/desk-navigation.ts",
-        "src/app/globals.css"
+        "src/lib/desk-navigation.ts"
       ],
       "tests": [
+        "tests/page-hero.test.tsx",
         "tests/day-timeline.test.tsx",
+        "tests/desk-signature-components.test.tsx",
+        "e2e/signature-public.spec.ts",
         "e2e/signature-focus.spec.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/V-4.md"
+      "plannedCard": "docs/pr-cards/V-3.md",
+      "card": "docs/pr-cards/V-3.md"
     },
     {
       "id": "F2-A",
@@ -3791,7 +3801,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "V-1",
+  "activeExecution": "V-3",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3884,6 +3894,10 @@
     {
       "id": "V-1",
       "path": "docs/pr-cards/execution/V-1.json"
+    },
+    {
+      "id": "V-3",
+      "path": "docs/pr-cards/execution/V-3.json"
     }
   ]
 }

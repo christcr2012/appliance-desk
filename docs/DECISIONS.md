@@ -1138,3 +1138,11 @@ tax-evidence model. Choices made here, within the approved designs:
 - **The 4th "included" benefit was not added** (the business has not confirmed what it would promise); the three existing items became the ledger.
 - **Gate S-V3 stays open.** The owner accepts the look from screenshots; the PR merges only after that.
 
+## 2026-10-17 — V-3 and V-4 decisions
+- **One hero for the inner pages.** A shared band component, not per-page markup, so the look changes in one place and adds no words.
+- **Two severity words, not three.** The exception data has high and medium, so the list says Urgent and Soon; a third word would be invented.
+- **The timeline sizes each visit from its own length.** The owner approved this on 2026-10-17 (S-V1): each visit uses its recorded length, else the Settings default job length. One extra column and the one setting are read; nothing is hidden, untimed and out-of-range visits are listed.
+- **Search shortcut only focuses the existing search.** No new search, no new data.
+- **Actual and Estimate tags live on the METRICS money tiles**, since Today has none; Estimate already existed and Actual is added so neither is unlabelled.
+- **Owner look gate stays open** for these screens; the PR waits for his answer.
+

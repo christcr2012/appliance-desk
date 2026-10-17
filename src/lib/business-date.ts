@@ -208,6 +208,20 @@ export function formatBusinessDate(date: Date, language: "en"|"es" = "en") {
   }).format(date);
 }
 
+const clockParts = new Intl.DateTimeFormat("en-US", {
+  timeZone: BUSINESS_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Minutes after midnight, Colorado time, for an instant (0 to 1439). Used to place a visit on the day timeline. */
+export function businessMinuteOfDay(date: Date): number {
+  const parts = clockParts.formatToParts(date);
+  const part = (type: string) => Number(parts.find((p) => p.type === type)!.value);
+  return (part("hour") % 24) * 60 + part("minute");
+}
+
 export function formatBusinessTime(date: Date, language: "en"|"es" = "en") {
   return new Intl.DateTimeFormat(language==="es"?"es-US":"en-US", {
     timeZone: BUSINESS_TIME_ZONE,

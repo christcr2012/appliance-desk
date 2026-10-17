@@ -1,3 +1,4 @@
+import { readDefaultJobMinutes } from "@/domains/jobs/scheduling";
 import { todoAction, todoDeadlineLabel, todoKey } from "./todo";
 import { businessDateKey, businessDayBounds, businessDaysBetween } from "@/lib/business-date";
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
@@ -1278,13 +1279,16 @@ export async function getTodaysJobs(now = new Date()) {
   await requireRole("OWNER", "ADMIN", "STAFF");
   const { start: startOfDay, end: startOfTomorrow } = businessDayBounds(now);
 
-  return prisma.job.findMany({
+  const defaultMinutes = await readDefaultJobMinutes(prisma);
+  const jobs = await prisma.job.findMany({
     where: { scheduledAt: { gte: startOfDay, lt: startOfTomorrow } },
     select: {
-      id: true, type: true, status: true, scheduledAt: true,
+      id: true, type: true, status: true, scheduledAt: true, durationMinutes: true,
       customer: { select: { user: { select: { name: true, email: true } } } },
       serviceAddress: { select: { line1: true, city: true } },
     },
     orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
   });
+  // Each visit's own recorded length, else the business default (Settings → job scheduling).
+  return jobs.map((job) => ({ ...job, durationMinutes: job.durationMinutes ?? defaultMinutes }));
 }

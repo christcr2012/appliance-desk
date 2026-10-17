@@ -1,6 +1,7 @@
 import { SelectBridge } from "@/components/site/select-bridge";
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
+import { PageHero } from "@/components/site/page-hero";
 import { getPublishedCatalog } from "@/domains/pricing";
 import { getBusinessSettings } from "@/domains/settings";
 import { BusinessHours } from "@/components/site/business-hours";
@@ -39,16 +40,10 @@ export default async function ContactPage({
   return (
     <>
       <SelectBridge site={site} />
-    <section className="py-16 md:py-20">
+      <PageHero heading={c("contact.heading")} lede={c("contact.intro")} />
+    <section className="py-10 md:py-14">
       <Container className="max-w-2xl">
-        <h1 className="font-display text-4xl font-semibold text-ink">
-          {c("contact.heading")}
-        </h1>
-        <p className="mt-4 text-ink-soft">
-          {c("contact.intro")}
-        </p>
-
-        <div className="mt-6">
+        <div>
           <Card>
             <BusinessHours
               hours={settings.hours}

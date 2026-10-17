@@ -2,6 +2,7 @@ import { SelectBridge } from "@/components/site/select-bridge";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/site/container";
+import { PageHero } from "@/components/site/page-hero";
 import { SiteCta } from "@/components/site/site-cta";
 import { RichText } from "@/components/site/rich-text";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
@@ -31,33 +32,23 @@ export default async function ServiceAreaPage({
   return (
     <>
       <SelectBridge site={site} />
-      <section className="border-b border-line bg-surface">
-        <Container className="py-16 text-center md:py-20">
-          <h1 className="font-display text-4xl font-semibold text-ink">
-            {c("area.heading")}
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-ink-soft">
-            {c("area.intro")}
-          </p>
-        </Container>
-      </section>
+      <PageHero heading={c("area.heading")} lede={c("area.intro")} />
 
       <Container className="py-16 md:py-20">
         {cities.length > 0 || zips.length > 0 ? (
           <div className="grid gap-10 md:grid-cols-2">
             {cities.length > 0 && (
               <div>
-                <h2 className="font-display text-xl font-semibold text-ink">
-                  {c("area.cities.heading")}
-                </h2>
-                <ul className="mt-4 flex flex-wrap gap-2">
+                <h2 className="text-h2 text-ink">{c("area.cities.heading")}</h2>
+                <ul className="mt-6 divide-y divide-hairline border-y border-hairline">
                   {cities.map((city) => (
                     <li key={city}>
                       <Link
                         href={`/rent/${slugifyCity(city)}`}
-                        className="block rounded-control bg-primary-soft px-4 py-2 text-sm font-semibold text-primary-dark hover:bg-subtle"
+                        className="flex min-h-14 items-center justify-between gap-4 py-3 text-h3 text-ink hover:text-primary"
                       >
                         {city}
+                        <span aria-hidden="true" className="text-primary after:content-['→']" />
                       </Link>
                     </li>
                   ))}
@@ -66,14 +57,12 @@ export default async function ServiceAreaPage({
             )}
             {zips.length > 0 && (
               <div>
-                <h2 className="font-display text-xl font-semibold text-ink">
-                  {c("area.zips.heading")}
-                </h2>
-                <ul className="mt-4 flex flex-wrap gap-2">
+                <h2 className="text-h2 text-ink">{c("area.zips.heading")}</h2>
+                <ul className="mt-6 flex flex-wrap gap-2">
                   {zips.map((zip) => (
                     <li
                       key={zip}
-                      className="rounded-control bg-accent-soft px-4 py-2 text-sm font-semibold text-accent-dark"
+                      className="rounded-full border border-hairline bg-surface px-4 py-2 text-sm font-semibold tabular-nums text-ink"
                     >
                       {zip}
                     </li>

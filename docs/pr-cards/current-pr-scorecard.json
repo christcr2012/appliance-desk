@@ -1,32 +1,35 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "V-1",
+  "parent": "V-3",
   "completedSlices": [
     {
-      "id": "V-1",
+      "id": "V-3",
       "acceptanceEvidence": [
-        "src/app/globals.css defines the type scale (--text-display/h2/h3/lede/eyebrow/price with line height, spacing, weight), --color-hairline, --color-tint, --shadow-raise (evergreen-tinted light, black dark), the cut-corner-sm/md/photo and cut-band utilities (clip-path removed on :focus-visible and :has(:focus-visible)), highlight, signature-rise/lift with reduced-motion overrides; palette unchanged (asserted in tests/theme-contrast.test.ts).",
-        "tests/theme-contrast.test.ts keeps the existing AA pair list (ink on ivory, muted on ivory/white, evergreen on fresh, white on evergreen, ivory on night, dark muted, success, danger, warning, both button pairs) and adds the tint panel, highlight, band and sage pairs in light and dark plus token and focus-exception checks.",
-        "fields-public.ts registers home.hero.highlight and nine home.check/ticket items with starting wording; template-contract.ts has the matching slots and CONTRACT_FINGERPRINT 25c8de38; SITE_TEMPLATE_VERSION signature-1; tests/vc5-template-contract.test.ts and tests/public-pages-render.test.tsx (every editable item renders, no stray words) pass; tests/public-copy-from-settings.test.ts scans public pages for the old hard-coded sentences."
+        "src/components/site/page-hero.tsx is the evergreen cut band (bg-primary, dark:bg-surface, cut-band) holding the one h1 at text-display with an optional eyebrow and lede and no words of its own; pricing, how-it-works, service-area, contact, launch and rent/[city] pages use it with their existing site-content keys (tests/page-hero.test.tsx; tests/public-pages-render.test.tsx unchanged text proves no word was added or lost); legal pages untouched.",
+        "src/app/(public)/pricing/page.tsx features the first package on the cut-corner-md evergreen card, others plain, price at text-price tabular, fees and good-to-know as hairline ledgers, all from getPublishedCatalog, settings and the existing items; no money math added.",
+        "how-it-works uses CSS-counter numerals, service-area lists cities as large linked rows and ZIPs as a quiet list, launch keeps SignupForm and its card, contact keeps ContactForm and the prefill (render tests cover all routes and variants), and rent/[city] reuses the hero with the city heading.",
+        "tests/public-pages-render.test.tsx (39 tests, saved page text unchanged) proves every editable item appears and no stray words; tests/public-copy-from-settings.test.ts scans src/app/(public) and src/components/site including the new component; tests/page-hero.test.tsx proves heading level, band shape and dark surface.",
+        "e2e/signature-public.spec.ts (registered in e2e/shards.json) checks no sideways scrolling at 360/768/1440 in light and dark, the band and single h1 on how it works, service area, contact and launch, and the lifted clip when focus is inside the band; the existing generated accessibility scans cover every public route in light and dark. Runs locally (see STATUS) and in exact-head CI."
       ]
     },
     {
-      "id": "V-2",
+      "id": "V-4",
       "acceptanceEvidence": [
-        "src/app/(public)/page.tsx composes both variants (eyebrow with first city, display heading with optional highlight via splitHighlight, lede, address check or the usual button, cut-frame photo over offset tint with floating price ticket from the first published set price, hairline ledger, featured set card, CSS-counter steps, band, two-column FAQ, closing call); tests/public-pages-render.test.tsx snapshots and checks both variants.",
-        "service-area-check.ts is the pure SERVED/NOT_YET/INVALID rule (tests/service-area-check.test.ts); check-address-actions.ts applies the shared limiter, a honeypot and stores or logs nothing (tests/check-address-action.test.ts); the contact page and form prefill address and ZIP from the link only (page render tests); wording comes from website content.",
-        "e2e/signature-home.spec.ts (registered in e2e/shards.json) runs axe at 360/768/1440 in light and dark, checks for sideways scrolling, one cut control keeps a complete focus ring, and reduced motion removes the entrance animation; runs in exact-head CI. NOT covered by an automated test: tabbing through every header and price control, the address check inside a real browser (test site has no ZIPs), and a measured layout-shift figure.",
-        "Screenshots at 360/768/1440, light and dark, both opening modes, are produced and sent to the owner; owner acceptance S-V3 is recorded OPEN and is not claimed."
+        "src/components/ui/day-timeline.tsx places the visits Today loads (each sized by its recorded length or the Settings default) on an 8 am to 7 pm axis (layoutDayVisits), side by side when overlapping, with a Now marker and the words Done, In progress, Next or the time; untimed and out-of-range visits are listed beneath; src/app/desk/today/page.tsx shows it on md and up and keeps the VisitRow list below md; StatCard headline has cut-corner-md; no new query (tests/day-timeline.test.tsx incl. Denver clock across both daylight-saving changes). NOTE: each visit is drawn one hour because Today does not load the recorded length (held for the owner's approval), and 'In progress' is added to the design's Done/Next/time words.",
+        "src/components/ui/attention-list.tsx adds a stripe (border-danger or border-warning-ink) and the word Urgent (high) or Soon (medium) from the existing severity (the data has two levels, so no 'Today' word); src/components/desk/metric-stat.tsx tags Actual or Estimate from the METRICS kind (tests/desk-signature-components.test.tsx); DataList and tabular figures unchanged.",
+        "src/components/global-search-box.tsx shows 'Search or jump to\u2026' and the key hint, src/components/search-shortcut.tsx focuses the same input on Cmd K or Ctrl K (tests prove one form, the focus and that plain K is ignored); src/app/account/page.tsx makes the four questions' last card the evergreen cut card with the fresh Report a problem button, the same four cards in the same order, no data change.",
+        "tests/day-timeline.test.tsx and tests/desk-signature-components.test.tsx cover placement, words, severity, tags and the shortcut; e2e/signature-focus.spec.ts (registered in e2e/shards.json) covers Today (no sideways scrolling, cut headline card, timeline on wide and hidden on phone, Ctrl K, focus ring on card and search) and the portal (no sideways scrolling, help card focus ring); existing generated scans cover Today and the portal.",
+        "Before and after screenshots for the public pages, Today and the portal home at 360, 768 and 1440 in light and dark are produced and sent to the owner; docs/DESIGN-SYSTEM.md, OWNER-GUIDE.md, STATUS.md and DECISIONS.md describe the merged behaviour; owner acceptance of the bolder look is requested and recorded OPEN, never claimed."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Owner acceptance of the new look (gate S-V3) from before/after screenshots is OPEN; this PR waits for it. Browser and accessibility checks run in exact-head CI. Real use of the address check needs the owner's ZIP list in Settings."
+    "Owner acceptance of the bolder look from before/after screenshots is OPEN; this PR waits for it. Browser and accessibility checks run in exact-head CI."
   ],
   "evidence": [
-    "Bundle V-1+V-2; planning commit bf00a12 preserved.",
-    "Local: typecheck, lint, plain-words check pass; full unit run 3398 passed, 1 known local-only Denver-time failure in custody-integration (passes in CI)."
+    "Bundle V-3+V-4; planning commit d47ed781d0cfb18f4dc9749ac7e44bcbdfc36a2a preserved.",
+    "Local: typecheck, lint, new and related unit tests pass."
   ]
 }
