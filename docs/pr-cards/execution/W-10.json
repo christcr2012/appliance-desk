@@ -36,9 +36,11 @@
   ],
   "proposedFiles": [
     "src/domains/tax/use-tax-file-now.ts",
+    "src/domains/tax/dr0252-form.ts",
     "src/app/desk/sales-tax/use-tax/[periodId]/file-now-panel.tsx",
-    "docs/runbooks/colorado-filing-channels.md",
-    "src/domains/agreements/unsigned-follow-up.ts"
+    "src/domains/agreements/unsigned-follow-up.ts",
+    "src/domains/agreements/pickup-needed.ts",
+    "docs/runbooks/colorado-filing-channels.md"
   ],
   "invariants": [
     "The app never files or pays a return.",
@@ -72,7 +74,10 @@
   "gates": [],
   "checks": {
     "unit": [
-      "tests/w10-use-tax-file-now.test.ts"
+      "tests/w10-use-tax-file-now.test.ts",
+      "tests/w19-flow-rules.test.ts",
+      "tests/today-role-access.test.ts",
+      "tests/agreement-progress.test.ts"
     ],
     "db": [
       "tests/w19-flow-gaps-integration.test.ts"

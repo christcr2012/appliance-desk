@@ -297,6 +297,7 @@ export const PORTAL_TRANSLATIONS = {
   "Signing does not confirm that payment was received. We’ll arrange a secure payment link or an owner-recorded payment if needed, then contact you about delivery. Rent begins billing on delivery; down payments will count toward that first invoice.": "Firmar no confirma que se haya recibido el pago. Coordinaremos un enlace seguro o un pago registrado por el propietario si es necesario y luego la entrega. El alquiler se factura desde la entrega; los anticipos se aplican a la primera factura.",
   "Billing, tax, signed-agreement and audit evidence may need to be retained even when a deletion request is fulfilled.": "Es posible que debamos conservar los registros de facturación, impuestos, contratos firmados y auditoría aunque se cumpla una solicitud de eliminación.",
   "Low — whenever's convenient": "Baja — cuando sea conveniente",
+  "Got it — we'll call you within one business day to schedule your pickup.": "Listo: le llamaremos en un día hábil para programar la recogida.",
   "Please describe your request, including pickup details if applicable.": "Describa su solicitud, incluidos los detalles de recogida si corresponde.",
   "Photos uploaded securely.": "Fotos cargadas de forma segura.",
   "Could not upload that photo. Try again.": "No se pudo cargar la foto. Inténtelo de nuevo.",

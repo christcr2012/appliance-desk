@@ -3268,6 +3268,7 @@
       ],
       "tests": [
         "tests/w10-use-tax-file-now.test.ts",
+        "tests/w19-flow-rules.test.ts",
         "tests/w19-flow-gaps-integration.test.ts"
       ],
       "readiness": "IN_PROGRESS",
@@ -3648,6 +3649,7 @@
       ],
       "tests": [
         "tests/w10-use-tax-file-now.test.ts",
+        "tests/w19-flow-rules.test.ts",
         "tests/w19-flow-gaps-integration.test.ts"
       ],
       "readiness": "IN_PROGRESS",

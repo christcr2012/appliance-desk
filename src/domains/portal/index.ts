@@ -341,3 +341,42 @@ export async function updateSmsPreference(
 
   return { phone: updated.phone, smsOptInAt: updated.smsOptInAt };
 }
+
+
+/**
+ * A customer asking for appliances to be picked up. This is its own kind of request, not a repair: it becomes one draft
+ * pickup visit (no date, no technician) that lands on the owner's To do list as "Schedule <name>'s pickup".
+ * The customer's identity comes only from their own session. Nothing is sent, dispatched or charged.
+ */
+export async function createPickupRequestForUser(
+  userId: string,
+  input: { note: string; applianceId?: string | null },
+): Promise<{ jobId: string; created: boolean }> {
+  const { ensurePickupDraftInTx } = await import("@/domains/agreements/pickup-draft");
+  const note = input.note.trim().slice(0, 1000);
+  return prisma.$transaction(async (tx) => {
+    const customer = await tx.customer.findUnique({ where: { userId }, select: { id: true } });
+    if (!customer) throw new Error("No customer account found for this login.");
+    const held = await tx.applianceCustodyEpisode.findMany({
+      where: { customerId: customer.id, endedOn: null, agreementId: { not: null },
+        ...(input.applianceId ? { applianceId: input.applianceId } : {}) },
+      select: { agreementId: true, appliance: { select: { assetNumber: true } } },
+    });
+    if (input.applianceId && held.length === 0) throw new Error("That appliance isn't on one of your active rentals.");
+    const agreementIds = [...new Set(held.map((h) => h.agreementId as string))];
+    if (agreementIds.length === 0) throw new Error("We couldn't find a current rental to pick appliances up from.");
+    if (agreementIds.length > 1) throw new Error("Please choose which appliance you want picked up.");
+    const agreementId = agreementIds[0];
+    const agreement = await tx.rentalAgreement.findUnique({ where: { id: agreementId }, select: { status: true } });
+    if (agreement?.status !== "ACTIVE" && agreement?.status !== "ENDED") throw new Error("We couldn't find a current rental to pick appliances up from.");
+    const label = input.applianceId ? ` (appliance ${held[0].appliance.assetNumber})` : "";
+    const line = `Customer asked for a pickup${label}: ${note}`;
+    const before = await tx.job.findFirst({ where: { agreementId, type: "REMOVAL", status: { not: "CANCELLED" } }, select: { id: true, notes: true } });
+    const jobId = await ensurePickupDraftInTx(tx, agreementId, { notes: line });
+    if (!jobId) throw new Error("We couldn't find a current rental to pick appliances up from.");
+    if (before) await tx.job.update({ where: { id: jobId }, data: { notes: [before.notes, line].filter(Boolean).join("\n") } });
+    await tx.auditLog.create({ data: { userId, action: "portal.pickup_request", entityType: "Job", entityId: jobId,
+      newValue: { agreementId, created: !before } } });
+    return { jobId, created: !before };
+  });
+}

@@ -8,6 +8,8 @@ No schema change. The Today "Get set up" card reads existing BusinessSettings, A
 
 ## W-14 / W-2 / W-15 purchase records (2026-10-17)
 
+Additive migration `20261017150000_w19_unsigned_follow_up` (W-19) adds `BusinessSettings.unsignedFollowUpDays` (default 3, CHECK 1 to 30). No new table.
+
 Additive migration `20261017130000_w5_w6_payment_link_and_lead_response` (W-5/W-6) adds `BusinessSettings.paymentLinkTemplates` (JSON, owner wording per reason, NULL = recommended), `BusinessSettings.leadResponseDays` (default 0, CHECK 0 to 14) and `Lead.nextFollowUpOn` (nullable date). No new table; all are covered by the existing BusinessSettings and Lead backups.
 
 Additive migration `20261017120000_w4_rental_ending_notice` (W-4) adds `BusinessSettings.rentalEndingNoticeDays` (default 30, CHECK 1 to 365): the owner-editable number of days before a fixed-term rental ends that the Renew / Month-to-month / Pickup To do appears. No new table; the setting is covered by the existing BusinessSettings backup.

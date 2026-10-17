@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getRentalEndingNoticeDays } from "@/domains/agreements/ending-notice";
+import { agreementIdsNeedingPickup } from "@/domains/agreements/pickup-needed";
 import type { ExceptionItem } from "./rules";
 
 type Rows = { rows: ExceptionItem[]; total: number };
@@ -49,16 +50,23 @@ export async function listPickupUnscheduled(limit: number): Promise<Rows> {
       agreement: { select: { terminationEffectiveOn: true, endDate: true } } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: limit,
   });
+  // E1 safety net: a rental that is over or ending with appliances still out but no pickup visit at all.
+  const missingVisit = await agreementIdsNeedingPickup(new Date(), limit);
+  const missingRows = missingVisit.map((a): ExceptionItem => ({
+    category: "PICKUP_UNSCHEDULED", severity: "medium", title: "Schedule " + a.name + "'s pickup",
+    detail: "This rental is over or ending and appliances are still at the customer's. Open it and press Schedule the pickup.",
+    href: "/desk/agreements/" + encodeURIComponent(a.id), since: a.since, ...(a.dueOn ? { dueOn: a.dueOn } : {}),
+  }));
   return {
-    rows: jobs.map((j): ExceptionItem => {
+    rows: [...missingRows, ...jobs.map((j): ExceptionItem => {
       const needed = j.agreement?.terminationEffectiveOn ?? j.agreement?.endDate ?? undefined;
       return {
         category: "PICKUP_UNSCHEDULED", severity: "medium", title: "Schedule " + nameOf(j.customer) + "'s pickup",
         detail: "This rental is ending. A draft pickup visit exists with no date. Nothing is sent to the customer until you schedule it.",
         href: "/desk/jobs/" + encodeURIComponent(j.id), since: j.createdAt, ...(needed ? { dueOn: needed } : {}),
       };
-    }),
-    total: jobs.length < limit ? jobs.length : await prisma.job.count({ where }),
+    })].slice(0, limit),
+    total: (jobs.length < limit ? jobs.length : await prisma.job.count({ where })) + missingVisit.length,
   };
 }
 

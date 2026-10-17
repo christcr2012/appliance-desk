@@ -1,35 +1,37 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "W-8",
+  "parent": "W-10",
   "completedSlices": [
     {
-      "id": "W-8",
+      "id": "W-10",
       "acceptanceEvidence": [
-        "src/lib/desk-navigation.ts now lists exactly 14 entries (Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings, More); staff get the 10 they can open with no finance words in the serialized menu, and the phone bottom bar uses the same names. tests/w8-menu-sections.test.ts, tests/desk-navigation.test.ts, tests/e2-app-shell.test.tsx and e2e/desk-workspace.spec.ts.",
-        "src/lib/desk-sections.ts and src/components/desk/section-tabs*.tsx add role-filtered tabs through small layouts (Schedule: Dispatch board, Jobs, Driver view; Equipment: Inventory, Parts, Purchases, Purchase orders; Money: Billing, Revenue, Fleet, Reports, Business overview). No address moved; DESK_NAV_ALIASES keeps the right entry highlighted, proven for every alias in tests/w8-menu-sections.test.ts and tests/w8-section-tabs.test.tsx.",
-        "src/app/desk/more/page.tsx lists Suppliers, Growth signals, Launch list, System health, Privacy requests and Activity through deskMoreLinks, filtered by role on the server (staff see Activity only); the preview storage check is in neither the menu, the tabs nor More and still returns not-found outside test storage. Covered by tests/w8-menu-sections.test.ts and tests/w8-section-tabs.test.tsx.",
-        "scripts/check-owner-wording.mjs runs with npm run lint (and in CI's static job): banned phrases with plain replacements on owner screen text and To do text, an allowlist that requires a written reason, and 18 hard words fixed (jurisdiction, remit/remittance, a raw status code). scripts/check-owner-wording.test.mjs is part of check:preflight.",
-        "tests/w8-menu-sections.test.ts checks every menu entry, tab and More link for owner, admin and staff against the e2e route inventory (/desk/more was added); the new page is also in the browser accessibility inventory."
+        "src/app/desk/sales-tax/use-tax/[periodId]/file-now-panel.tsx (wired into the page) has the Open Revenue Online button (new tab, noopener), the numbers in DR 0252 line order from src/domains/tax/use-tax-file-now.ts each with the existing Copy field, and a link to the 'I filed and paid it' return page. tests/w10-use-tax-file-now.test.ts checks the order, values and labels.",
+        "src/domains/tax/dr0252-form.ts fills the owner-supplied official 2026 form (src/domains/tax/forms/DR0252_2026.pdf) through GET /desk/sales-tax/use-tax/[periodId]/form (owner and admin only); the form is picked by the period's year, a redesigned layout is refused, and System health asks for next year's form from December. Tests read the filled PDF back field by field; the output was also inspected as an image.",
+        "docs/runbooks/colorado-filing-channels.md records where each Colorado return is filed and paid, the DR 0252 line order, the official source URLs and the dates they were checked (2026-10-16 and 2026-10-17).",
+        "The File now steps are built only from the saved filing packet (tests/w10-use-tax-file-now.test.ts compares them to a packet); the page and the form route both call requireRole OWNER/ADMIN; the panel contains no submit or pay control, only a link to the state's site and a link back to the owner's own recording form."
       ]
     },
     {
-      "id": "W-9",
+      "id": "W-19",
       "acceptanceEvidence": [
-        "src/domains/tax/filing-attention.ts works out each closed period's total with the same filing packet the return page uses and src/domains/exceptions/rules.ts titles the To do \"File and pay $X on SUTS by <date>\" or \"File a $0 return on SUTS by <date>\", adding \"(overdue)\" after the legal date; it opens the return. tests/w9-filing-autopilot-integration.test.ts (real Postgres) proves the amount, the $0 case, the overdue wording and that a filed return leaves the list.",
-        "src/domains/tax/filing-reminders.ts now emails every business day once a return is past its legal deadline (the before-due days stay the owner-editable 7 and 2, and the due day stays). tests/tax-filing-reminders-integration.test.ts asserts the new daily rule.",
-        "The return page's form is now \"I filed and paid it\": date paid and confirmation number, with filed date and a different amount in an optional section; markPeriodFiled defaults the filed date to the paid date and the amount to the calculated amount, still refuses a different amount without a reason and a blank confirmation number, locks the return and marks the equipment use tax filed. Real-Postgres tests in tests/w9-filing-autopilot-integration.test.ts and the existing tax-filing-finalization and tax-return-actions suites.",
-        "collectSystemIssueInputs compares each active account's filing calendar with its saved periods and raises the high TAX_PERIOD_MISSING issue (rendered and linked to the returns list) when a closed period has no return, clearing it once the rows exist. Real-Postgres test in tests/w9-filing-autopilot-integration.test.ts and tests/system-issue-sweep-integration.test.ts."
+        "src/app/desk/leads/[id]/lead-actions-panel.tsx shows Create quote and Start agreement (and Go to their customer page) after conversion, including after a refresh, using the lead's saved convertedCustomerId; both open existing pages (/desk/estimates/new and /desk/agreements/new with the customer).",
+        "src/app/desk/estimates/[id]/convert-estimate-panel.tsx opens the single new draft agreement (or the agreements list when several were made) instead of only refreshing.",
+        "src/domains/agreements/unsigned-follow-up.ts and the owner screen /desk/settings/unsigned-follow-up (explanation, starting 3, restore button, audited, owner only, stale-save protection); src/domains/exceptions/unsigned-agreements.ts raises 'Follow up: <name> hasn't signed' linking to the agreement and clears when signed or cancelled. Proven in tests/w19-flow-gaps-integration.test.ts on real PostgreSQL.",
+        "UNREVIEWED_MAINTENANCE_REQUEST_DAYS is now 0 and the title is 'Review <name>'s repair request' (tests/w19-flow-rules.test.ts); the existing Today assembly query then lists a request as soon as it is submitted.",
+        "src/domains/portal/index.ts createPickupRequestForUser, called by the portal request form for the pickup kind, creates or reuses exactly one draft pickup visit with the customer's note and creates no repair request; it refuses another customer's appliance and ambiguous choices. The customer sees 'we'll call you within one business day' (with Spanish). Proven in tests/w19-flow-gaps-integration.test.ts.",
+        "closeAgreementInTx now creates the draft pickup visit when a rental ends with appliances still out; src/domains/agreements/pickup-needed.ts feeds a 'Schedule <name>'s pickup' Today item for ended or ending rentals with none, and the agreement page has a 'Schedule the pickup' button (owner/admin only, safe to repeat). Proven in tests/w19-flow-gaps-integration.test.ts.",
+        "src/domains/agreements/progress.ts returns a button for every unfinished step (signature, deposit, equipment, delivery, billing) and src/components/desk/agreement-progress.tsx renders them; every target is an existing /desk page. tests/w19-flow-rules.test.ts."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Real use after the daily release: the owner seeing the new menu and the new filing To do on the live site, and filing a real Colorado return using the simplified form. No live Stripe, customer email, SMS or spending was used.",
-    "Browser and accessibility checks of the new menu, tabs and More page run in exact-head CI (e2e/desk-workspace.spec.ts and the route inventory)."
+    "Real use after the daily release: the owner filing a real Colorado use tax return with the File now panel (confirming Revenue Online's screen order, which needs a sign-in and could not be read here) and printing the filled-in form for a real period; the owner reading the new To do items on the live site. No live Stripe, customer email, SMS or spending was used.",
+    "Browser and accessibility checks of the new pages run in exact-head CI (route inventory, settings screen, use tax page)."
   ],
   "evidence": [
-    "Bundle W-8+W-9; planning commit c38f54354af6d36ea1340aef9e165e96537df72d preserved.",
-    "Local: typecheck, lint and the plain-words check pass; 8+3 menu and tab tests, 3 wording-script tests and 5 real-Postgres filing tests pass; existing tax filing, reminder, finalization, return-action and system-health suites still pass; exact-head CI pending."
+    "Bundle W-10+W-19; planning commit bbd1090caf666ba98e3bd8ea2d72447660a9c524 preserved.",
+    "Local: typecheck, lint and the plain-words check pass; 9 File now and form tests (the real 2026 PDF is filled and read back, a redesigned form is refused), 4 flow-rule tests and 6 real-Postgres flow tests pass; existing Today, agreement progress, system health, filing and ending suites still pass; the filled form was also viewed as an image; exact-head CI pending."
   ]
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/session";
-import { createMaintenanceRequestForUser } from "@/domains/portal";
+import { createMaintenanceRequestForUser, createPickupRequestForUser } from "@/domains/portal";
 
 export type MaintenanceRequestActionState =
   | { status: "idle" }
@@ -16,6 +16,8 @@ const newRequestSchema = z.object({
       "Please describe your request, including pickup details if applicable."),
   applianceId: z.string().trim().optional().or(z.literal("")),
   priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).optional(),
+  /** A pickup is its own kind of request, never a repair (D-WB4 M2). */
+  kind: z.enum(["pickup", "maintenance"]).optional(),
   // Blob URLs already uploaded client-side via PhotoUploadField — see
   // src/app/api/uploads/photo/route.ts. Not a free-text URL a customer
   // types in, so no "must start with https://" validation is needed the
@@ -43,7 +45,12 @@ export async function createMaintenanceRequestAction(
   const data = parsed.data;
 
   try {
-    await createMaintenanceRequestForUser(session.user.id, {
+    if (data.kind === "pickup") {
+      await createPickupRequestForUser(session.user.id, {
+        note: data.problem.replace(/^pickup request:\s*/i, ""),
+        applianceId: data.applianceId || null,
+      });
+    } else await createMaintenanceRequestForUser(session.user.id, {
       problem: data.problem,
       applianceId: data.applianceId || null,
       priority: data.priority,
@@ -60,5 +67,6 @@ export async function createMaintenanceRequestAction(
   revalidatePath("/account/maintenance");
   revalidatePath("/account");
   revalidatePath("/desk/maintenance");
+  revalidatePath("/desk/today");
   return { status: "success" };
 }

@@ -43,6 +43,7 @@ export type ExceptionCategory =
   | "LEAD_FOLLOW_UP"
   | "APPROVED_QUOTE"
   | "SIGNING_PAYMENT_DUE"
+  | "UNSIGNED_AGREEMENT"
   | "CANCELLATION_REFUND_DUE"
   | "SIGNED_DELIVERY_UNSCHEDULED"
   | "RENTAL_ENDING_SOON"
@@ -115,7 +116,7 @@ export type ExceptionItem = {
 // like this: no hidden math, a number Chris could recite back). Not tied
 // to BusinessSettings since these are about Chris's own workflow, not a
 // customer-facing policy like lateFeeGraceDays.
-export const UNREVIEWED_MAINTENANCE_REQUEST_DAYS = 2;
+export const UNREVIEWED_MAINTENANCE_REQUEST_DAYS = 0;
 export const UNINSPECTED_RETURN_DAYS = 3;
 // How long a rental whose early return was settled by the owner's standard choices stays on Today for a second look.
 export const EARLY_RETURN_DEFAULTS_REVIEW_DAYS = 14;
@@ -670,7 +671,7 @@ export function unreviewedMaintenanceRequestException(request: {
   return {
     category: "UNREVIEWED_MAINTENANCE_REQUEST",
     severity: "medium",
-    title: `${request.customerName}'s repair request hasn't been reviewed`,
+    title: `Review ${request.customerName}'s repair request`,
     detail: request.problem,
     href: `/desk/maintenance/${request.id}`,
     since: request.openedAt,

@@ -1084,3 +1084,12 @@ tax-evidence model. Choices made here, within the approved designs:
 - **Overdue reminder emails are daily (business days)**; before-due days remain the owner-editable per-account setting (starting 7 and 2).
 - **"I filed and paid it"**: filed date defaults to date paid, amount defaults to the calculated amount, a different amount needs a reason, confirmation number always required. The app still never files or pays (D-WA2).
 - **Nightly missing-period check** is a System health issue (`TAX_PERIOD_MISSING`), not a new table.
+
+## 2026-10-17 — W-10 and W-19 decisions
+- **File now follows the DR 0252 form's line order** because Revenue Online needs a sign-in and its screens could not be read; the first real filing confirms it. The app never files or pays (D-WA2).
+- **One official form per tax year**, `src/domains/tax/forms/DR0252_<year>.pdf`, chosen by the year the period ends in; never a different year's layout. Fill checks every field name first and refuses a redesigned form. System health asks for next year's form from December. Chosen over downloading from colorado.gov at run time so nothing unvetted is ever filled.
+- **Only the State column of DR 0252 is filled**, in whole dollars as the paper form prints them; CD, RTD and ECD columns, signature, tax IDs and address stay blank.
+- **Portal pickup requests need no new table**: a pickup request is the draft pickup visit itself (notes say the customer asked), so it shows as "Schedule <name>'s pickup" and cannot be counted as a repair. The customer sees "we'll call you within one business day".
+- **Pickup after any ending**: a rental closed while appliances are still at the customer's creates its draft visit in the same step; a read-only To do plus an agreement-page button catch terminated or term-expired rentals that never got one.
+- **Unsigned follow-up days** is an owner setting (start 3, 1 to 30, audited, restore button); "unsigned for N days" means N or more days since the signing link was created.
+- **Repair requests are on To do immediately** (the 2-day wait is removed).

@@ -1,4 +1,5 @@
 import { draftRequestId } from "./draft-request";
+import { ensurePickupDraftInTx } from "./pickup-draft";
 import { buildTermsSnapshot } from "./terms-snapshot";
 import { requireRole } from "@/lib/session";
 import { fixedTermEndDate } from "@/lib/business-date";
@@ -842,6 +843,9 @@ export async function closeAgreementInTx(
       }
     }
   }
+
+  // E1: a rental that ends while appliances are still at the customer's gets one draft pickup visit (never sent or charged).
+  if (newStatus === "ENDED") await ensurePickupDraftInTx(tx, agreementId);
 
   // A cancelled automatic renewal's reminder no longer needs to go out: withdrawn in the same transaction.
   if (newStatus === "CANCELLED" && agreement.createdByAutoRenew && agreement.renewedFromAgreementId) {

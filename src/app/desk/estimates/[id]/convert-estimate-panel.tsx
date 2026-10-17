@@ -48,8 +48,11 @@ export function ConvertEstimatePanel({
       const result = await convertEstimateAction(estimateId, raw);
       if (result.status === "error") {
         setError(result.message);
+      } else if (result.agreementIds.length === 1) {
+        // The new draft is the next thing to work on, so open it.
+        router.push(`/desk/agreements/${result.agreementIds[0]}`);
       } else {
-        router.refresh();
+        router.push("/desk/agreements");
       }
     });
   }

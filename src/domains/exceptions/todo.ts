@@ -18,6 +18,7 @@ const ACTION_LABEL: Record<string, string> = {
   LEAD_FOLLOW_UP: "Follow up",
   APPROVED_QUOTE: "Make rental",
   SIGNING_PAYMENT_DUE: "Review signing payment",
+  UNSIGNED_AGREEMENT: "Follow up",
   OVERDUE_JOB: "Open visit",
   EARLY_ENDING_NOT_DONE: "Schedule pickup",
   TAX_RETURN_DUE: "File return",

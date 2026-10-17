@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { loadFilingPacket } from "@/domains/tax/filing-packet";
 import { buildUseTaxWorksheet } from "@/domains/tax/dr0252-worksheet";
 import { businessDateKey } from "@/lib/business-date";
+import { buildUseTaxFileNow } from "@/domains/tax/use-tax-file-now";
 import { FileAndPayHeadline } from "../../file-and-pay-headline";
+import { FileNowPanel } from "./file-now-panel";
+import { availableDr0252Years, dr0252YearFor } from "@/domains/tax/dr0252-form";
 
 export const metadata = { title: "Consumer use-tax worksheet", robots: { index: false, follow: false } };
 
@@ -50,6 +53,8 @@ export default async function UseTaxWorksheetPage({
             />
             <Link href={`/desk/sales-tax/returns/${periodId}`} className="text-sm underline">Open the guided return to copy each value and record that you filed and paid</Link>
           </div>
+          <FileNowPanel steps={buildUseTaxFileNow(result.packet)} periodId={periodId} filed={period.status === "FILED"}
+            formYear={dr0252YearFor(result.packet.periodEnd, availableDr0252Years())} />
           <p className="rounded-md border p-3 text-sm">
             {worksheet!.warning}
           </p>

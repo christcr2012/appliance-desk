@@ -89,6 +89,8 @@ const cspHeader = `
   .trim();
 
 const nextConfig: NextConfig = {
+  // The bundled official Colorado forms are read from disk at run time (DR 0252 filled-in print and the yearly check).
+  outputFileTracingIncludes: { "/*": ["src/domains/tax/forms/*.pdf"] },
   // Lets next/image optimize the photos Chris and customers upload
   // (appliance photos, job/condition photos, maintenance photos) —
   // added 2026-09-29 as part of the mobile performance investigation
