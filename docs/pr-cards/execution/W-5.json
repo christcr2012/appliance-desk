@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "id": "W-5",
+  "parent": "W-5",
+  "baseline": "9b05902e34b5c61258fafcad7fe2ae82b7fdc828",
+  "card": "docs/pr-cards/W-5.md",
+  "outcome": "Money and sales follow-ups appear as dated To do items with working buttons, and any unpaid invoice can be sent to the customer as a secure Stripe payment link or paid over the phone on Stripe's own page",
+  "risk": "A To do linking to a missing page, a payment link sent when customer email is off, a link for a bill that is already paid or whose Stripe amount differs, a payment recorded other than by Stripe's confirmation, card data stored, or a staff user using the owner-only tools.",
+  "next": "Both subsections are implemented in one PR; remaining work is exact-head CI, review disposition and merge. W-7 (first-time setup checklist) is the next bundle.",
+  "references": [
+    {
+      "path": "src/domains/exceptions/money-turning-points.ts",
+      "anchor": "export async function listHeldPaymentAttention",
+      "purpose": "Held-payment and deposit To do rows"
+    },
+    {
+      "path": "src/domains/billing/payment-link.ts",
+      "anchor": "export async function sendPaymentLink",
+      "purpose": "Preview, send, copy, wording and phone payment"
+    },
+    {
+      "path": "src/domains/billing/payment-link-message.ts",
+      "anchor": "export function composePaymentLinkMessage",
+      "purpose": "Pure message wording"
+    },
+    {
+      "path": "src/domains/exceptions/lead-turning-points.ts",
+      "anchor": "export async function listNewLeadContact",
+      "purpose": "New-lead, follow-up and approved-quote To do rows"
+    },
+    {
+      "path": "src/domains/leads/follow-up.ts",
+      "anchor": "export async function saveLeadResponseDays",
+      "purpose": "Response-time setting and follow-up date"
+    }
+  ],
+  "proposedFiles": [
+    "prisma/schema.prisma",
+    "src/domains/billing",
+    "src/domains/exceptions",
+    "src/domains/leads",
+    "src/app/desk/billing",
+    "src/app/desk/leads",
+    "src/app/desk/settings/payment-links",
+    "src/app/desk/settings/lead-response"
+  ],
+  "invariants": [
+    "Nothing is sent when customer email is off; Copy link still works.",
+    "A payment is recorded only by Stripe's confirmation through the existing webhook.",
+    "No card data enters any table or log.",
+    "Only OWNER/ADMIN use payment links; only OWNER edits wording and the response time."
+  ],
+  "sequence": [
+    "Money To do rows.",
+    "Payment-link message, domain and templates.",
+    "Invoice page panel and phone payment.",
+    "Lead response time, follow-up date, approved-quote To do.",
+    "Tests, docs, one push and exact-head CI."
+  ],
+  "acceptance": [
+    "A failed payment puts one To do \"<name>'s payment failed \u2014 $X\" on the list the same day, and a held payment and a deposit decision each put one To do on the list; every one opens the screen where the decision is made (Retry or record a payment, send a reminder, or the held-payment and deposit buttons).",
+    "Every unpaid invoice that has a Stripe payment page shows \"Send payment link\" and \"Copy link\" (hidden once paid, cancelled or written off). The message is filled in from the invoice: what the bill is for, the amount due, the due date, days overdue and any late fee, the account's total balance when other bills are open, and the reason it is sent (reminder, failed payment, balance after a partial payment, or asked for by phone). The owner sees the exact message and can add a short note before sending; the wording is an owner-editable template per reason with a restore button. It sends only through the existing customer-email switch (off: send is refused, Copy link still works), the sent text is kept in the customer's history, only OWNER and ADMIN can use it, and there is no public pay-any-bill page.",
+    "\"Take payment by phone\" (owner decision 2026-10-16: simple version) opens Stripe's own secure invoice page for that one bill in the owner's browser; the payment is recorded only by Stripe's confirmation through the existing payment recording; the person who took it is audited; a \"customer gave permission to save the card\" tick records who, when and the script read, with the card default left to Stripe's behavior; OWNER and ADMIN only; no card data enters any Appliance Desk table or log. Spreading one payment over several bills is not part of this version.",
+    "A new lead puts a To do \"Contact <name>\" on the list, due within the owner's response-time setting (starting value: the same day).",
+    "Marking a lead contacted asks \"Next follow-up date?\" prefilled two days out, and that date becomes a dated To do.",
+    "A quote the customer approves puts a To do \"Turn <name>'s approved quote into a rental\" due today."
+  ],
+  "gates": [
+    {
+      "id": "GO-LIVE-STRIPE-PHONE",
+      "affected": "Real staff-typed card payments on Stripe's invoice page",
+      "source": "docs/GO-LIVE-CHECKLIST.md",
+      "remedy": "Confirm with Stripe that card-not-present entry by staff is allowed on the live account",
+      "reopen": "Before the first real phone payment"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/payment-link-message.test.ts",
+      "tests/today-role-access.test.ts",
+      "tests/today-href-routes.test.ts"
+    ],
+    "db": [
+      "tests/w5-w6-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-5",
+      "outcome": "W-5",
+      "acceptance": [
+        "A failed payment puts one To do \"<name>'s payment failed \u2014 $X\" on the list the same day, and a held payment and a deposit decision each put one To do on the list; every one opens the screen where the decision is made (Retry or record a payment, send a reminder, or the held-payment and deposit buttons).",
+        "Every unpaid invoice that has a Stripe payment page shows \"Send payment link\" and \"Copy link\" (hidden once paid, cancelled or written off). The message is filled in from the invoice: what the bill is for, the amount due, the due date, days overdue and any late fee, the account's total balance when other bills are open, and the reason it is sent (reminder, failed payment, balance after a partial payment, or asked for by phone). The owner sees the exact message and can add a short note before sending; the wording is an owner-editable template per reason with a restore button. It sends only through the existing customer-email switch (off: send is refused, Copy link still works), the sent text is kept in the customer's history, only OWNER and ADMIN can use it, and there is no public pay-any-bill page.",
+        "\"Take payment by phone\" (owner decision 2026-10-16: simple version) opens Stripe's own secure invoice page for that one bill in the owner's browser; the payment is recorded only by Stripe's confirmation through the existing payment recording; the person who took it is audited; a \"customer gave permission to save the card\" tick records who, when and the script read, with the card default left to Stripe's behavior; OWNER and ADMIN only; no card data enters any Appliance Desk table or log. Spreading one payment over several bills is not part of this version."
+      ]
+    },
+    {
+      "id": "W-6",
+      "outcome": "W-6",
+      "acceptance": [
+        "A new lead puts a To do \"Contact <name>\" on the list, due within the owner's response-time setting (starting value: the same day).",
+        "Marking a lead contacted asks \"Next follow-up date?\" prefilled two days out, and that date becomes a dated To do.",
+        "A quote the customer approves puts a To do \"Turn <name>'s approved quote into a rental\" due today."
+      ]
+    }
+  ]
+}

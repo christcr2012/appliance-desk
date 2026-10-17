@@ -46,6 +46,15 @@ vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/money-turning-points", () => ({
+  listHeldPaymentAttention: vi.fn(async () => ({ rows: [], total: 0 })),
+  listDepositDecisionAttention: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/lead-turning-points", () => ({
+  listNewLeadContact: vi.fn(async () => ({ rows: [], total: 0 })),
+  listLeadFollowUps: vi.fn(async () => ({ rows: [], total: 0 })),
+  listApprovedQuoteToRental: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
 vi.mock("@/domains/exceptions/turning-points-attention", () => ({
   listRentalEndingSoon: vi.fn(async () => ({ rows: [], total: 0 })),
   listPickupUnscheduled: vi.fn(async () => ({ rows: [], total: 0 })),

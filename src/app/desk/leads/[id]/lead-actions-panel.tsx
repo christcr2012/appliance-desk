@@ -32,15 +32,21 @@ export function LeadActionsPanel({
   leadId,
   status,
   hasEmail,
+  defaultFollowUp,
+  currentFollowUp,
 }: {
   leadId: string;
   status: LeadStatus;
   hasEmail: boolean;
+  defaultFollowUp: string;
+  currentFollowUp?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
   const [showLostForm, setShowLostForm] = useState(false);
+  const [showContacted, setShowContacted] = useState(false);
+  const [followUp, setFollowUp] = useState(currentFollowUp ?? defaultFollowUp);
   const [lostReason, setLostReason] = useState("");
   const [lostReasonOther, setLostReasonOther] = useState("");
   const [message, setMessage] = useState<
@@ -86,12 +92,16 @@ export function LeadActionsPanel({
             key={s.value}
             type="button"
             disabled={isPending}
-            onClick={() =>
+            onClick={() => {
+              if (s.value === "CONTACTED") {
+                setShowContacted((v) => !v);
+                return;
+              }
               startTransition(async () => {
                 const result = await updateLeadStatusAction(leadId, s.value);
                 handleResult(result);
-              })
-            }
+              });
+            }}
             className="rounded-md border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong disabled:opacity-50"
           >
             {s.label}
@@ -128,6 +138,36 @@ export function LeadActionsPanel({
           Convert to customer
         </button>
       </div>
+
+      {showContacted && (
+        <form
+          className="rounded-md border border-line p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            startTransition(async () => {
+              const result = await updateLeadStatusAction(leadId, "CONTACTED", undefined, followUp);
+              handleResult(result);
+              if (result.status !== "error") setShowContacted(false);
+            });
+          }}
+        >
+          <label htmlFor={`lead-follow-up-${leadId}`} className="block text-sm font-medium text-ink-soft">
+            Next follow-up date?
+          </label>
+          <p className="text-xs text-ink-soft">This date becomes a To do on your list. We start you at two days from today.</p>
+          <input
+            id={`lead-follow-up-${leadId}`}
+            type="date"
+            required
+            value={followUp}
+            onChange={(e) => setFollowUp(e.target.value)}
+            className="mt-2 rounded-md border border-line-strong px-3 py-2"
+          />
+          <button type="submit" disabled={isPending || !followUp} className="ml-2 min-h-11 rounded-md bg-action px-3 py-2 text-sm font-medium text-on-action disabled:opacity-50">
+            Save as contacted
+          </button>
+        </form>
+      )}
 
       {!hasEmail && (
         <form onSubmit={e => {

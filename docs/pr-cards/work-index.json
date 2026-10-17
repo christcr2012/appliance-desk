@@ -3089,7 +3089,7 @@
       "tests": [
         "tests/taxes-in-one-place-w3.test.ts"
       ],
-      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-3.md",
       "card": "docs/pr-cards/W-3.md"
     },
@@ -3114,7 +3114,7 @@
       "tests": [
         "tests/rental-turning-points-w4-integration.test.ts"
       ],
-      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-4.md",
       "card": "docs/pr-cards/W-3.md"
     },
@@ -3126,7 +3126,7 @@
         "W-4"
       ],
       "status": "APPROVED",
-      "migration": "none",
+      "migration": "w5_w6_payment_link_and_lead_response",
       "budget": 450,
       "units": [
         "W-5"
@@ -3136,9 +3136,12 @@
         "src/domains/exceptions/rules.ts",
         "src/app/desk/billing/page.tsx"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-5.md"
+      "tests": [
+        "tests/w5-w6-integration.test.ts"
+      ],
+      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "plannedCard": "docs/pr-cards/W-5.md",
+      "card": "docs/pr-cards/W-5.md"
     },
     {
       "id": "W-6",
@@ -3148,7 +3151,7 @@
         "W-5"
       ],
       "status": "APPROVED",
-      "migration": "none",
+      "migration": "w5_w6_payment_link_and_lead_response",
       "budget": 450,
       "units": [
         "W-6"
@@ -3158,9 +3161,12 @@
         "src/domains/leads/index.ts",
         "src/app/desk/leads/[id]/lead-actions-panel.tsx"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-6.md"
+      "tests": [
+        "tests/w5-w6-integration.test.ts"
+      ],
+      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "plannedCard": "docs/pr-cards/W-6.md",
+      "card": "docs/pr-cards/W-5.md"
     },
     {
       "id": "W-7",
@@ -3704,7 +3710,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-3",
+  "activeExecution": "W-5",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3761,6 +3767,10 @@
     {
       "id": "W-3",
       "path": "docs/pr-cards/execution/W-3.json"
+    },
+    {
+      "id": "W-5",
+      "path": "docs/pr-cards/execution/W-5.json"
     }
   ]
 }

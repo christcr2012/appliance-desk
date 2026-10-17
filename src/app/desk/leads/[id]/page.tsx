@@ -11,6 +11,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLeadById } from "@/domains/leads";
 import { getTasksForLead } from "@/domains/tasks";
+import { defaultFollowUpKey } from "@/domains/leads/follow-up";
+import { businessDateKey } from "@/lib/business-date";
 import { LeadActionsPanel } from "./lead-actions-panel";
 import { AddLeadNoteForm } from "./add-lead-note-form";
 import { LinkedTasksPanel } from "@/components/linked-tasks-panel";
@@ -124,6 +126,8 @@ export default async function LeadDetailPage({
           leadId={lead.id}
           status={lead.status}
           hasEmail={Boolean(lead.email)}
+          defaultFollowUp={defaultFollowUpKey(new Date())}
+          currentFollowUp={lead.nextFollowUpOn ? businessDateKey(lead.nextFollowUpOn) : undefined}
         />
       </div>
 

@@ -7,6 +7,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/w22-v2-flow-integration.test.ts",
   "tests/purchases-w14-w2-w15-integration.test.ts", // Purchase tax answers use the shared tax settings and filing calendar.
   "tests/rental-turning-points-w4-integration.test.ts", // Changes and restores the shared rental-ending reminder setting.
+  "tests/w5-w6-integration.test.ts", // Changes and restores the shared lead response time and payment-link wording settings.
   // Tax-ready fixtures also write/restore BusinessSettings.singleton through their helper.
   "tests/billing-webhooks.test.ts",
   "tests/pickup-billing-end-integration.test.ts",

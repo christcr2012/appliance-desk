@@ -1,0 +1,46 @@
+{
+  "subsections": [
+    {
+      "id": "W-5",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "A failed payment puts one To do \"<name>'s payment failed \u2014 $X\" on the list the same day, and a held payment and a deposit decision each put one To do on the list; every one opens the screen where the decision is made (Retry or record a payment, send a reminder, or the held-payment and deposit buttons).",
+          "evidence": "Held payments and deposit decisions: src/domains/exceptions/money-turning-points.ts adds one To do per held payment (opens /desk/billing/held-payments, button Decide) and per ended-rental deposit (opens the deposit screen); the failed-payment To do in rules.ts is now titled \"<name>'s payment failed \u2014 $X\" and opens the invoice. tests/payment-link-message.test.ts and tests/w5-w6-integration.test.ts (real Postgres) prove the titles, links and button."
+        },
+        {
+          "criterion": "Every unpaid invoice that has a Stripe payment page shows \"Send payment link\" and \"Copy link\" (hidden once paid, cancelled or written off). The message is filled in from the invoice: what the bill is for, the amount due, the due date, days overdue and any late fee, the account's total balance when other bills are open, and the reason it is sent (reminder, failed payment, balance after a partial payment, or asked for by phone). The owner sees the exact message and can add a short note before sending; the wording is an owner-editable template per reason with a restore button. It sends only through the existing customer-email switch (off: send is refused, Copy link still works), the sent text is kept in the customer's history, only OWNER and ADMIN can use it, and there is no public pay-any-bill page.",
+          "evidence": "src/domains/billing/payment-link.ts + payment-link-message.ts + src/components/desk/payment-link-panel.tsx on the invoice page: Send payment link and Copy link only when the invoice is open with a Stripe page (Stripe is asked live; paid, closed, no-page and amount-mismatch are refused); message filled from the invoice (what, amount, due date, days overdue, late fee, total balance, reason); preview and short note; owner-editable wording per reason at /desk/settings/payment-links with restore, validated and audited; send is refused when the customer-email switch is off while Copy link works; the text is kept in message history by deliverMessage; OWNER/ADMIN only (STAFF refused in tests); no public pay page. Real-Postgres and unit tests cover each."
+        },
+        {
+          "criterion": "\"Take payment by phone\" (owner decision 2026-10-16: simple version) opens Stripe's own secure invoice page for that one bill in the owner's browser; the payment is recorded only by Stripe's confirmation through the existing payment recording; the person who took it is audited; a \"customer gave permission to save the card\" tick records who, when and the script read, with the card default left to Stripe's behavior; OWNER and ADMIN only; no card data enters any Appliance Desk table or log. Spreading one payment over several bills is not part of this version.",
+          "evidence": "startPhonePayment opens Stripe's own invoice page for one bill; the payment is recorded only by the existing invoice.paid webhook; the actor, amount, card-permission tick and the script read are audited (billing.phone_payment_started); no payment row or card data is written (tested). OWNER/ADMIN only. Spreading over several bills is not included (owner decision 2026-10-16)."
+        }
+      ]
+    },
+    {
+      "id": "W-6",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "A new lead puts a To do \"Contact <name>\" on the list, due within the owner's response-time setting (starting value: the same day).",
+          "evidence": "BusinessSettings.leadResponseDays (default 0 = same day, CHECK 0 to 14) with an owner-only audited compare-and-set editor at /desk/settings/lead-response (explanation, starting value, restore button); listNewLeadContact gives \"Contact <name>\" for NEW leads, date-only, due the response-time days after arrival; a contacted lead leaves the list. Real-Postgres test with 0 and 3 days."
+        },
+        {
+          "criterion": "Marking a lead contacted asks \"Next follow-up date?\" prefilled two days out, and that date becomes a dated To do.",
+          "evidence": "Marking a lead contacted opens \"Next follow-up date?\" prefilled two days out; Lead.nextFollowUpOn stores the chosen date (audited, past dates refused, cleared on any other status); listLeadFollowUps shows \"Follow up with <name>\" once that date arrives. Real-Postgres test."
+        },
+        {
+          "criterion": "A quote the customer approves puts a To do \"Turn <name>'s approved quote into a rental\" due today.",
+          "evidence": "listApprovedQuoteToRental gives \"Turn <name>'s approved quote into a rental\" for APPROVED quotes, due today, opening the estimate page where the rental is made; it disappears once converted. Real-Postgres test."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 816,
+  "productionRemoved": 6,
+  "planComparison": "Actual production change (+816/-6 across 22 files) is below the 1,100-line estimate because the existing Stripe invoice settlement, message delivery, exception engine, lead status and estimate conversion were reused rather than rebuilt; both subsections, their boundaries and all frozen acceptance are unchanged and fully delivered. W-7 was not started.",
+  "newEngineering": "Held-payment and deposit-decision To do rows, failed-payment To do wording and links, payment-link domain with owner-editable reason templates and preview/send/copy, take-payment-by-phone action with audit and card-permission record, lead response-time setting and new-lead To do, contacted follow-up date, approved-quote To do",
+  "relatedWorkDecision": "W-5 and W-6 are the next two items in approved order and share To do wiring; the Stripe-facing parts reuse existing invoice settlement so no new money-recording path is built. The full-checkout phone payment (spread over bills) was declined by the owner on 2026-10-16.",
+  "decision": "SUBSTANTIAL"
+}

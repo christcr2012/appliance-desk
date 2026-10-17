@@ -1,5 +1,6 @@
 "use server";
 
+import { setLeadFollowUp, parseFollowUpKey } from "@/domains/leads/follow-up";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -34,6 +35,7 @@ export async function updateLeadStatusAction(
   leadId: string,
   status: string,
   lostReason?: string,
+  followUpKey?: string,
 ): Promise<LeadActionState> {
   const session = await requireRole("OWNER", "ADMIN");
 
@@ -44,12 +46,20 @@ export async function updateLeadStatusAction(
   }
 
   try {
+    // W-6: check the follow-up date first so a bad date never leaves the lead half-updated.
+    const followUpOn = status === "CONTACTED" && followUpKey ? parseFollowUpKey(followUpKey, new Date()) : null;
     await updateLeadStatus(
       session.user.id,
       leadId,
       status as Exclude<LeadStatus, "CONVERTED">,
       lostReason,
     );
+    // Only "Contacted" carries a follow-up date; every other status clears it.
+    if (followUpOn) {
+      await setLeadFollowUp(session.user.id, leadId, followUpOn);
+    } else {
+      await setLeadFollowUp(session.user.id, leadId, null);
+    }
   } catch (error) {
     return {
       status: "error",

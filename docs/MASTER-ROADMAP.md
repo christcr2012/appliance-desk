@@ -4,9 +4,9 @@ Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds cu
 
 ## What is next — October 17 W-3 and W-4 delivery
 
-W-14, W-2 and W-15 are merged (#480). One PR delivers W-3 and W-4 together (one Taxes menu with
-the file-and-pay headline; rental turning points with draft pickups and dated To do items);
-exact-head CI, review and merge remain pending. W-5 is next after verified merge. The 22 existing
+W-3 and W-4 are merged (#481). One PR delivers W-5 and W-6 together (money and sales turning points as To do
+items; payment links and phone payment on Stripe's page; lead and quote follow-ups); exact-head CI, review and
+merge remain pending. W-7 is next after verified merge. The 22 existing
 live/provider/owner acceptance obligations remain separately PENDING; source completion does not
 supply their missing gates. READY production remains 4740313d; no manual release is authorized.
 

@@ -35,6 +35,11 @@ export type ExceptionCategory =
   | "RETAIL_DELIVERY_FEE"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
+  | "HELD_PAYMENT_DECISION"
+  | "DEPOSIT_DECISION"
+  | "NEW_LEAD_CONTACT"
+  | "LEAD_FOLLOW_UP"
+  | "APPROVED_QUOTE"
   | "SIGNING_PAYMENT_DUE"
   | "CANCELLATION_REFUND_DUE"
   | "SIGNED_DELIVERY_UNSCHEDULED"
@@ -625,7 +630,9 @@ export function pastDueInvoiceException(invoice: {
   return {
     category: "PAST_DUE_INVOICE",
     severity: "high",
-    title: `${invoice.customerName}: ${reason.toLowerCase()}`,
+    title: status === "DELINQUENT"
+      ? `${invoice.customerName}'s payment failed — $${(owedCents / 100).toFixed(2)}`
+      : `${invoice.customerName}: ${reason.toLowerCase()}`,
     detail: `$${(owedCents / 100).toFixed(2)} still owed${dateDetail}.`,
     href: `/desk/billing/customer/${invoice.customerId}/invoice/${invoice.id}`,
     dueOn: invoice.dueDate ?? undefined,

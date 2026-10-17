@@ -1,3 +1,23 @@
+## October 17 — W-5 and W-6 delivered as one bundle, CI and merge pending
+
+W-3 and W-4 are merged (#481). This PR delivers two whole approved subsections:
+**W-5** held payments and deposit decisions each put a To do on the list, the failed-payment To do now reads
+"<name>'s payment failed — $X", every open invoice with a Stripe payment page has "Send payment link" (previewed,
+sent only when customer email is on) and "Copy link", wording is owner-editable per reason at Settings → Payment
+link wording, and "Take payment by phone" opens Stripe's own invoice page for that one bill (simple version, owner
+decision 2026-10-16: no spreading over bills; the payment is recorded only by Stripe's confirmation; the card-save
+permission is recorded with who, when and the script);
+**W-6** a new lead puts "Contact <name>" on the list due per the owner's response-time setting (starts at the same
+day), marking a lead contacted asks "Next follow-up date?" (two days out) and that date becomes a To do, and a
+customer-approved quote puts "Turn <name>'s approved quote into a rental" on the list due today.
+Plan and frozen acceptance: `docs/pr-cards/W-5.md`; proof per criterion: `current-pr-scorecard.json` and
+`execution/W-5-delivery.json`.
+
+Verified locally on a throwaway Postgres: typecheck, new unit tests and 11 new real-Postgres tests. Exact-head CI,
+review and merge are pending. No live Stripe, customer email, SMS, spending or production data was touched. Still
+open for real use: Stripe confirming that staff-typed card payments are allowed on the live account
+(GO-LIVE-CHECKLIST). W-7 (first-time setup checklist) is next after verified merge.
+
 ## October 17 — W-3 and W-4 delivered as one bundle, CI and merge pending
 
 W-14, W-2 and W-15 are merged (#480). This PR delivers two whole approved subsections:

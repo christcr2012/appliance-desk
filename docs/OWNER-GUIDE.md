@@ -6,6 +6,10 @@ Every return page now starts with one plain line: **"File and pay $X on Colorado
 
 **Signing a rental** creates a draft delivery visit and a To do, "Schedule <name>'s delivery", due the next day. Nothing is sent or charged.
 
+**Unpaid bill** — open the invoice and use **Send payment link** (you see the exact message first and can add a note) or **Copy link** to text it yourself. Sending needs customer email turned on; copying always works. **Take payment by phone** opens Stripe's own page for that one bill so you can type the card the customer reads out; the payment shows up only after Stripe confirms it. Change the wording in Settings → Payment link wording.
+
+**New leads** add a To do "Contact (name)" (change how soon in Settings → Lead response time). When you mark a lead contacted you pick the next follow-up date, and that day it returns to your list. A quote the customer approves adds "Turn (name)'s approved quote into a rental".
+
 **A rental ending soon** (30 days before by default; change it in Settings → Pickups and deliveries → "Rental ending reminder") adds one To do. Open it to choose **Renew**, **Month-to-month** or **Pickup**. Renew and Month-to-month only start a draft for you to review.
 
 **Deciding an ending** (choosing Pickup, or setting a month-to-month or early ending) creates one draft pickup visit and a To do, "Schedule <name>'s pickup". Doing it twice never makes a second visit. A visit due within 2 days with nobody assigned, or a pickup needed within 2 days with no time, gets a To do, "Assign / set a time".
