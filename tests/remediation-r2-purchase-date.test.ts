@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const m = vi.hoisted(() => ({ create: vi.fn() }));
+const m = vi.hoisted(() => ({ record: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/session", () => ({
   requireRole: vi.fn().mockResolvedValue({ user: { id: "owner-1" } }),
 }));
-vi.mock("@/domains/inventory", async (importOriginal) => ({
+vi.mock("@/domains/purchasing/purchases", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  createApplianceUnits: (...a: unknown[]) => m.create(...a),
+  recordPurchase: (...a: unknown[]) => m.record(...a),
 }));
 
-import { createApplianceUnitsAction } from "@/app/desk/inventory/actions";
+import { recordPurchaseAction } from "@/app/desk/purchases/actions";
 import { parseOptionalBusinessDate } from "@/lib/business-date";
 
 describe("R11 purchase date is a strict Colorado business date", () => {
@@ -33,20 +33,27 @@ describe("R11 purchase date is a strict Colorado business date", () => {
     expect(parseOptionalBusinessDate("")).toEqual({ ok: true, value: null });
   });
 
-  describe("through the add-appliances action", () => {
-    const base = { applianceTypeId: "type-1", quantity: 1 };
-    beforeEach(() => m.create.mockReset().mockResolvedValue(undefined));
+  describe("through the record-a-purchase action", () => {
+    const base = {
+      operationKey: "form-key-12345", sellerName: "Private seller", reference: "", taxAnswer: "NO",
+      sellerTax: "", otherState: "", otherCharges: "", receiptSubtotal: "", receiptTotal: "", notes: "",
+      documents: [], appliances: [{ applianceTypeId: "type-1", price: "100.00" }],
+    };
+    beforeEach(() => m.record.mockReset().mockResolvedValue({
+      purchaseId: "p1", purchasedOn: new Date(), appliances: [],
+    }));
 
-    it("refuses an impossible date and creates nothing", async () => {
-      const result = await createApplianceUnitsAction({ ...base, purchaseDate: "2026-02-30" });
+    it("refuses an impossible date and records nothing", async () => {
+      const result = await recordPurchaseAction({ ...base, purchasedOn: "2026-02-30" });
       expect(result.status).toBe("error");
-      expect(m.create).not.toHaveBeenCalled();
+      expect(m.record).not.toHaveBeenCalled();
     });
 
     it("passes a valid date as Colorado midnight, never midnight UTC", async () => {
-      await createApplianceUnitsAction({ ...base, purchaseDate: "2026-07-15" });
-      const input = m.create.mock.calls[0]![1] as { purchaseDate: Date };
-      expect(input.purchaseDate.toISOString()).toBe("2026-07-15T06:00:00.000Z");
+      await recordPurchaseAction({ ...base, purchasedOn: "2026-07-15" });
+      const input = m.record.mock.calls[0]![1] as { purchasedOn: Date; appliances: { priceCents: number }[] };
+      expect(input.purchasedOn.toISOString()).toBe("2026-07-15T06:00:00.000Z");
+      expect(input.appliances[0]!.priceCents).toBe(10000);
     });
   });
 });

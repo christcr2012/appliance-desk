@@ -3,7 +3,7 @@ import { moneyInputValue } from "@/lib/money-ui";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Field } from "@/components/ui";
+import { Button, Card, Field, Select } from "@/components/ui";
 import {
   markPurchaseOrderOrderedAction,
   receivePurchaseOrderLinesAction,
@@ -23,10 +23,12 @@ export function PurchaseOrderActionsPanel({
   purchaseOrderId,
   status,
   lines = [],
+  isOwner = false,
 }: {
   purchaseOrderId: string;
   status: "DRAFT" | "ORDERED";
   lines?: ReceivableLine[];
+  isOwner?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -41,6 +43,11 @@ export function PurchaseOrderActionsPanel({
     ),
   );
   const [prices, setPrices] = useState<Record<string, string>>({});
+  // No default for the owner: the tax question must be answered on purpose. An admin always defers it.
+  const [taxAnswer, setTaxAnswer] = useState(isOwner ? "" : "LATER");
+  const [sellerTax, setSellerTax] = useState("");
+  const [otherState, setOtherState] = useState("");
+  const taxed = taxAnswer === "YES_COLORADO" || taxAnswer === "YES_OTHER_STATE";
 
   function receive() {
     setError(null);
@@ -59,10 +66,18 @@ export function PurchaseOrderActionsPanel({
       return;
     }
 
+    if (!taxAnswer) {
+      setError("Answer the tax question before recording the delivery.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await receivePurchaseOrderLinesAction({
         purchaseOrderId,
         operationKey,
+        taxAnswer,
+        sellerTax: taxed ? sellerTax : "",
+        otherState: taxAnswer === "YES_OTHER_STATE" ? otherState : "",
         lines: chosen.map((item) => ({
           lineId: item.line.id,
           quantity: item.quantity,
@@ -184,6 +199,22 @@ export function PurchaseOrderActionsPanel({
               </div>
             </div>
           ))}
+
+          {isOwner ? (
+            <div className="space-y-3 rounded-card border border-line p-4">
+              <Select id="receipt-tax-answer" label="Did the seller charge sales tax on these parts?" value={taxAnswer} onChange={(e) => setTaxAnswer(e.target.value)}>
+                <option value="" disabled>Choose one…</option>
+                <option value="YES_COLORADO">Yes — Colorado sales tax</option>
+                <option value="YES_OTHER_STATE">Yes — another state&apos;s tax</option>
+                <option value="NO">No tax was charged</option>
+                <option value="LATER">I&apos;ll check the receipt later</option>
+              </Select>
+              {taxed && <Field id="receipt-seller-tax" label="Total tax printed on the receipt ($)" inputMode="decimal" value={sellerTax} onChange={(e) => setSellerTax(e.target.value)} />}
+              {taxAnswer === "YES_OTHER_STATE" && <Field id="receipt-other-state" label="Which state?" value={otherState} onChange={(e) => setOtherState(e.target.value)} />}
+            </div>
+          ) : (
+            <p className="text-sm text-ink-soft">Only the owner can answer the tax question. This delivery will be saved as “check the receipt later” and appear on the owner&apos;s To do list.</p>
+          )}
 
           <Button type="button" disabled={isPending} onClick={receive}>
             Record what arrived

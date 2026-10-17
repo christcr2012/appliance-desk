@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { getSupplierById } from "@/domains/purchasing";
+import { listPurchases } from "@/domains/purchasing/purchases";
+import { formatBusinessDate } from "@/lib/business-date";
+import { formatMoney } from "@/lib/money-ui";
 import { formatCents } from "@/domains/pricing";
 import {
   ButtonLink,
@@ -26,6 +29,7 @@ export default async function SupplierDetailPage({
   await requireRole("OWNER", "ADMIN");
   const { id } = await params;
   const supplier = await getSupplierById(id);
+  const purchases = supplier ? await listPurchases({ supplierId: supplier.id, take: 50 }) : [];
 
   if (!supplier) {
     notFound();
@@ -107,6 +111,24 @@ export default async function SupplierDetailPage({
           supplierId={supplier.id}
           archived={supplier.archivedAt !== null}
         />
+
+        <section aria-labelledby="supplier-purchases">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 id="supplier-purchases" className="text-lg font-semibold text-ink">Purchases</h2>
+            <ButtonLink href="/desk/purchases/new" variant="secondary">Record a purchase</ButtonLink>
+          </div>
+          <DataList
+            rows={purchases}
+            caption="Supplier purchases"
+            columns={[
+              { key: "date", header: "Date", primary: true, cell: (p) => (
+                <Link href={`/desk/purchases/${p.id}`} className="font-semibold underline-offset-4 hover:underline">{formatBusinessDate(p.purchasedOn)}</Link>) },
+              { key: "appliances", header: "Appliances", cell: (p) => String(p._count.appliances) },
+              { key: "total", header: "Receipt total", cell: (p) => formatMoney(p.subtotalCents + p.sellerTaxCents + p.otherChargesCents) },
+            ]}
+            empty={<EmptyState title="No recorded purchases" description="Receipts you record from this supplier appear here." />}
+          />
+        </section>
 
         <section aria-labelledby="supplier-purchase-orders">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

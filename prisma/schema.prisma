@@ -543,6 +543,9 @@ model Appliance {
   acquisitionTaxChoice String?
   acquisitionTaxRecordedAt DateTime?
   acquisitionTaxRecordedByUserId String?
+  // W-14: the purchase (one receipt, many appliances) this machine came from. Older machines have none.
+  purchaseId String?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
   status           ApplianceStatus @default(AVAILABLE)
   currentLocation  String?
   notes            String?
@@ -573,6 +576,7 @@ model Appliance {
 
   @@index([status])
   @@index([applianceTypeId])
+  @@index([purchaseId])
 }
 
 // One return inspection of a physical appliance (2026-09-28, rental
@@ -695,6 +699,7 @@ model Supplier {
   archivedAt DateTime?
 
   purchaseOrders PurchaseOrder[]
+  purchases      Purchase[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -744,6 +749,30 @@ model PurchaseOrderReceiptOperation {
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   payloadHash     String
   createdAt       DateTime      @default(now())
+  tax             PurchaseOrderReceiptTax?
+
+  @@index([purchaseOrderId])
+}
+
+// W-2: the plain tax answer for the parts that arrived in one receipt. Recorded by the owner when the
+// receipt is entered (or later); the amounts and use-tax rows come from the received, priced lines.
+model PurchaseOrderReceiptTax {
+  id                  String   @id @default(cuid())
+  receiptOperationId  String   @unique
+  receiptOperation    PurchaseOrderReceiptOperation @relation(fields: [receiptOperationId], references: [id], onDelete: Cascade)
+  purchaseOrderId     String
+  // SELLER_CHARGED | NONE_CHARGED | LATER (the same plain question as an appliance purchase).
+  answer              String
+  sellerTaxKind       PurchaseSellerTaxKind
+  sellerTaxCents      Int      @default(0)
+  sellerTaxState      String?
+  receivedAmountCents Int
+  // The priced lines this answer covers: [{ lineId, description, quantity, costCents|null }].
+  lines               Json
+  revisionAt          DateTime
+  recordedByUserId    String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([purchaseOrderId])
 }
@@ -2629,6 +2658,65 @@ model TaxFilingAmendment {
   @@index([status, detectedAt])
 }
 
+enum PurchaseSellerTaxKind {
+  COLORADO
+  OTHER_STATE
+  NONE
+  UNKNOWN
+}
+
+enum PurchaseDocumentKind {
+  RECEIPT
+  INVOICE
+  OTHER
+}
+
+// W-14: one seller, one date, one receipt, many appliances. Money is integer cents. The tax is exactly what
+// the receipt printed; the split across machines is stored on each Appliance (acquisitionTaxPaidCents).
+// Other charges (delivery etc.) stay here and are never added to a machine's cost or use-tax base.
+model Purchase {
+  id                String   @id @default(cuid())
+  // One random key per "Record a purchase" form: a repeated save returns the first result.
+  operationKey      String   @unique
+  payloadHash       String
+  supplierId        String?
+  supplier          Supplier? @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  sellerName        String?
+  purchasedOn       DateTime
+  reference         String?
+  subtotalCents     Int
+  sellerTaxCents    Int      @default(0)
+  sellerTaxKind     PurchaseSellerTaxKind
+  sellerTaxState    String?
+  otherChargesCents Int      @default(0)
+  notes             String?
+  createdByUserId   String
+  // Monotonic revision of the tax answer so two people never overwrite each other silently.
+  taxRevisionAt     DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  appliances Appliance[]
+  documents  PurchaseDocument[]
+
+  @@index([supplierId])
+  @@index([purchasedOn])
+}
+
+// A receipt or invoice page. The file itself is a private upload (Photo row, owner/admin only).
+model PurchaseDocument {
+  id         String               @id @default(cuid())
+  purchaseId String
+  purchase   Purchase             @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  photoId    String               @unique
+  photo      Photo                @relation(fields: [photoId], references: [id], onDelete: Restrict)
+  kind       PurchaseDocumentKind @default(RECEIPT)
+  pageOrder  Int
+  createdAt  DateTime             @default(now())
+
+  @@unique([purchaseId, pageOrder])
+}
+
 model PurchaseUseTax {
   id                  String           @id @default(cuid())
   sourceType          String
@@ -2655,6 +2743,9 @@ model PurchaseUseTax {
 
 model BusinessSettings {
   id    String @id @default("singleton")
+
+  // W-15 (IN-71): keep purchase receipts and tax records this many years after the machine leaves the fleet.
+  recordRetentionYears Int @default(7)
 
   // W-24 delivery windows and operator-reviewed fees (private until publication).
   deliveryMorningStartHour Int @default(8)
@@ -2911,6 +3002,7 @@ model SiteContent {
 model Photo {
   id      String   @id @default(cuid())
   acquisitionReceiptFor Appliance? @relation("AcquisitionReceipt")
+  purchaseDocument PurchaseDocument?
   url     String
   altText String?
 

@@ -24,10 +24,22 @@ export async function explainPendingPurchaseTax(
   if (!a.purchaseDate || a.acquisitionCostCents === null)
     return { reason: "PURCHASE_DATE_OR_COST_MISSING", fixHref: href,
       fixLabel: "Enter purchase date and cost" };
+  const context = await explainTaxContext(tx, a.purchaseDate);
+  if (context) return context;
+  return { reason: null, fixHref: href, fixLabel: "Review purchase tax" };
+}
+
+/**
+ * The business setup a use-tax calculation needs (election, verified business address, reviewed rates
+ * for the purchase date). Returns the first thing missing, or null when the calculation can run.
+ */
+export async function explainTaxContext(
+  tx: Prisma.TransactionClient, purchasedOn: Date, options: { requireElection?: boolean } = {},
+): Promise<PendingPurchaseTaxExplanation | null> {
   const settings = await tx.businessSettings.findUnique({
     where: { id: "singleton" }, select: { shortTermLeaseElection: true },
   });
-  if (!settings || settings.shortTermLeaseElection === "UNDECIDED")
+  if ((options.requireElection ?? true) && (!settings || settings.shortTermLeaseElection === "UNDECIDED"))
     return { reason: "ELECTION_UNDECIDED", fixHref: "/desk/sales-tax/setup#decisions",
       fixLabel: "Choose tax treatment" };
   const location = await tx.addressTaxLocation.findFirst({
@@ -35,7 +47,7 @@ export async function explainPendingPurchaseTax(
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     include: { jurisdictions: { include: { jurisdiction: { include: {
       rates: {
-        where: { effectiveFrom: { lte: a.purchaseDate }, autoAppliedUndoneAt: null },
+        where: { effectiveFrom: { lte: purchasedOn }, autoAppliedUndoneAt: null },
         orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }], take: 1,
       },
     } } } } },
@@ -47,5 +59,5 @@ export async function explainPendingPurchaseTax(
     row.jurisdiction.reviewStatus !== "REVIEWED" || row.jurisdiction.rates.length !== 1))
     return { reason: "RATES_UNREVIEWED", fixHref: "/desk/sales-tax/areas#rates",
       fixLabel: "Review area tax rates" };
-  return { reason: null, fixHref: href, fixLabel: "Review purchase tax" };
+  return null;
 }

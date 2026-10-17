@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/session";
 import type { ExceptionItem } from "@/domains/exceptions/rules";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { explainPendingPurchaseTax } from "@/domains/tax/purchase-tax-explain";
+import { loadApplianceTaxSteps, type PurchaseTaxStep } from "@/domains/tax/next-step";
+import { loadReceiptTaxSteps } from "@/domains/purchasing/receipt-tax";
 
 /** Two summary rows on Today, not one alert per appliance or purchase line. */
 export async function listAcquisitionTaxAttention(
@@ -44,10 +46,51 @@ export async function listAcquisitionTaxAttention(
     const items = await prisma.appliance.findMany({
       where: { acquisitionTaxStatus: "UNKNOWN" },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      select: { id: true }, take: 60,
+      select: { id: true, createdAt: true, purchaseId: true,
+        purchase: { select: { sellerName: true, supplier: { select: { name: true } } } } },
+      take: 60,
     });
+    // W-2: one shared next step per appliance. Dated steps (check the receipt, ask the CPA) become one
+    // To do per purchase; everything else stays in the setup summary below.
+    const steps = await loadApplianceTaxSteps(prisma, items.map((a) => a.id), now);
+    const dated = new Map<string, { href: string; seller: string | null; since: Date; steps: PurchaseTaxStep[] }>();
+    const summarized: typeof items = [];
+    for (const appliance of items) {
+      const step = steps.get(appliance.id);
+      if (!step?.todo) { summarized.push(appliance); continue; }
+      const key = appliance.purchaseId ? "purchase:" + appliance.purchaseId + ":" + step.kind : "appliance:" + appliance.id;
+      const group = dated.get(key) ?? {
+        href: appliance.purchaseId ? "/desk/purchases/" + appliance.purchaseId : step.todo.primaryAction.href,
+        seller: appliance.purchase ? appliance.purchase.supplier?.name ?? appliance.purchase.sellerName : null,
+        since: appliance.createdAt, steps: [],
+      };
+      group.steps.push(step);
+      dated.set(key, group);
+    }
+    const datedItems: ExceptionItem[] = [];
+    for (const group of dated.values()) {
+      const first = group.steps[0]!;
+      const todo = first.todo!;
+      const many = group.steps.length > 1;
+      const title = many
+        ? first.kind === "CPA_OTHER_STATE"
+          ? "Ask your CPA about tax paid to another state on " + group.steps.length + " appliances" + (group.seller ? " from " + group.seller : "")
+          : "Check the receipt for " + group.steps.length + " appliances" + (group.seller ? " from " + group.seller : "") + ": did the seller charge tax?"
+        : todo.title;
+      datedItems.push({
+        category: "ACQUISITION_TAX_REVIEW",
+        severity: group.steps.some((step) => step.todo?.severity === "high") ? "high" : todo.severity,
+        title, detail: first.headline + " " + first.detail,
+        href: group.href,
+        dueOn: todo.dueOn ?? undefined, dueDateOnly: todo.dueOn ? true : undefined,
+        primaryAction: { label: todo.primaryAction.label, href: group.href },
+        since: group.since,
+      });
+    }
+    const unsummarizedCount = unknownCount - (items.length - summarized.length);
+    if (summarized.length > 0 || unknownCount > items.length) {
     const explanations = await prisma.$transaction(tx =>
-      Promise.all(items.map(a => explainPendingPurchaseTax(tx, a.id))));
+      Promise.all(summarized.map(a => explainPendingPurchaseTax(tx, a.id))));
     const reasons = new Map<string, { count: number; href: string; label: string }>();
     const wording: Record<string, string> = {
       ANSWER_LATER: "still need a purchase-tax answer",
@@ -70,13 +113,39 @@ export async function listAcquisitionTaxAttention(
     if (unknownCount > items.length)
       groups.push(`And ${unknownCount - items.length} more appliances need review.`);
     const first = [...reasons.values()][0];
+    if (groups.length > 0) {
     result.push({
       category: "ACQUISITION_TAX_REVIEW",
       severity: "medium",
-      title: `${unknownCount} appliance${unknownCount === 1 ? "" : "s"} need purchase-tax review`,
+      title: `${unsummarizedCount} appliance${unsummarizedCount === 1 ? "" : "s"} need purchase-tax review`,
       detail: groups.join(" "),
       href: first?.href ?? "/desk/inventory?taxStatus=UNKNOWN",
-      since: oldestUnknown?.createdAt ?? now,
+      since: summarized[0]?.createdAt ?? oldestUnknown?.createdAt ?? now,
+    });
+    }
+    }
+    result.push(...datedItems);
+  }
+  // Parts delivered on purchase orders: one To do per delivery whose tax answer is still open.
+  const openReceipts = await prisma.purchaseOrderReceiptTax.findMany({
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true }, take: 200,
+  });
+  for (const step of await loadReceiptTaxSteps(prisma, openReceipts.map((r) => r.id), now)) {
+    if (!step.todo && step.kind === "NEEDS_SETUP") {
+      result.push({
+        category: "ACQUISITION_TAX_REVIEW", severity: "medium",
+        title: "Finish tax setup for parts received", detail: step.subject.label + ". " + step.headline + " " + step.detail,
+        href: step.subject.blockedHref ?? step.subject.href, since: step.subject.recordedAt ?? now,
+      });
+      continue;
+    }
+    if (!step.todo) continue;
+    result.push({
+      category: "ACQUISITION_TAX_REVIEW", severity: step.todo.severity,
+      title: step.todo.title, detail: step.headline + " " + step.detail,
+      href: step.subject.href, dueOn: step.todo.dueOn ?? undefined, dueDateOnly: step.todo.dueOn ? true : undefined,
+      primaryAction: step.todo.primaryAction, since: step.subject.recordedAt ?? now,
     });
   }
   const dueCents = due._sum.useTaxDueCents ?? 0;

@@ -5,8 +5,6 @@ import {
   getAppliancesCount,
   getApplianceCountsByStatus,
 } from "@/domains/inventory";
-import { getAllApplianceTypes } from "@/domains/settings";
-import { NewApplianceForm } from "./new-appliance-form";
 import { InventoryList } from "./inventory-list";
 import type { ApplianceStatus, AcquisitionTaxStatus } from "@prisma/client";
 import {
@@ -17,7 +15,7 @@ import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 import { ExportCsvLink } from "@/components/export-csv-link";
 import { FilterBar } from "@/components/desk/workspace";
-import { Card, EmptyState, PageHeader } from "@/components/ui";
+import { ButtonLink, Card, EmptyState, PageHeader } from "@/components/ui";
 
 export const metadata = { title: "Inventory" };
 
@@ -58,10 +56,9 @@ export default async function InventoryPage({
     ? rawTaxStatus as AcquisitionTaxStatus : undefined;
   const filter = status || taxStatus ? { ...(status ? { status } : {}), ...(taxStatus ? { taxStatus } : {}) } : undefined;
 
-  const [totalCount, counts, applianceTypes] = await Promise.all([
+  const [totalCount, counts] = await Promise.all([
     getAppliancesCount(filter),
     getApplianceCountsByStatus(),
-    getAllApplianceTypes(),
   ]);
   const meta = paginationMeta(totalCount, parsePage(rawPage));
   const appliances = await getAppliancesPage(
@@ -69,8 +66,6 @@ export default async function InventoryPage({
     meta.skip,
     meta.pageSize,
   );
-
-  const activeTypes = applianceTypes.filter((type) => type.isActive);
 
   function tabHref(value: ApplianceStatus | "ALL"): string {
     const params = new URLSearchParams();
@@ -116,16 +111,10 @@ export default async function InventoryPage({
       {canManage && (
         <div className="mb-6">
           <Card
-            title="Add appliances you've obtained"
-            description="Add one unit or several identical units, then complete unit-specific details from each appliance record."
+            title="Bought appliances? Record the purchase"
+            description="Enter the receipt once: the seller, the date, the tax and every appliance on it. Each appliance gets its own record."
           >
-            <NewApplianceForm
-              canRecordTax={session.user.role === "OWNER"}
-              applianceTypes={activeTypes.map((type) => ({
-                id: type.id,
-                name: type.name,
-              }))}
-            />
+            <ButtonLink href="/desk/purchases/new">Record a purchase</ButtonLink>
           </Card>
         </div>
       )}
@@ -171,7 +160,7 @@ export default async function InventoryPage({
             status
               ? "Choose another status to review different inventory."
               : canManage
-                ? "Add your first appliance above as you obtain it."
+                ? "Record your first purchase above as you buy appliances."
                 : "Inventory will appear here once appliances are added."
           }
         />

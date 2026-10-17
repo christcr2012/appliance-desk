@@ -2,8 +2,8 @@ import { expect, it } from "vitest";
 import { activeDeskHref, deskNavigation } from "@/lib/desk-navigation";
 
 it.each([
-  ["OWNER", 27],
-  ["ADMIN", 26],
+  ["OWNER", 28],
+  ["ADMIN", 27],
 ] as const)(
   "keeps %s role-appropriate destinations discoverable with count %i",
   (role, expectedCount) => {

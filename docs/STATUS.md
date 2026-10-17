@@ -1,3 +1,24 @@
+## October 17 — W-14, W-2 and W-15 delivered as one bundle, CI and merge pending
+
+W-26 is merged (#478). This single PR delivers three whole approved subsections:
+**W-14** one purchase = one receipt, one seller, many serialized appliances with the
+seller tax split by price to the cent; **W-2** one shared `nextPurchaseTaxStep` that the
+record result, purchase page, appliance page, purchase-order receiving and To do all
+show; **W-15** a per-appliance Tax proof panel, a printable and spreadsheet audit pack
+(owner and admin only, parts included) and the owner-editable record-keeping period.
+Frozen acceptance and the plan are in `docs/pr-cards/W-14.md`; proof per criterion is in
+`current-pr-scorecard.json` and `execution/W-14-delivery.json`.
+
+Verified locally on a throwaway Postgres: typecheck, lint, `check:quick`, the new unit
+tests (26), the new real-database test (12: atomic and replay-safe recording, exact tax
+split, owner-only answers, filed-return amendment, parts receiving, audit pack, receipt
+protection, retention), the backup/restore drill with the three new tables, and the
+related existing tests. Not yet done: exact-head GitHub CI, independent review, merge.
+Nothing is released; production still serves the previous READY revision. No live Stripe,
+SMS or email, no spending and no production data was touched. Open owner/CPA answers that
+restrict only their named real use: IN-65 (credit for another state's tax and delivery
+charges) and IN-71 (record-keeping period). W-3 is next after verified merge.
+
 ## October 17 — complete W-26 engineering, final CI/merge pending
 
 W-25 is merged. W-26 in PR #478 now completes the original customer-language

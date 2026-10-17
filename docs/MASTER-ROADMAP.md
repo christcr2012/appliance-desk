@@ -2,14 +2,13 @@
 
 Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
-## What is next — October 17 W-26 delivery
+## What is next — October 17 W-14, W-2 and W-15 delivery
 
-W-23, W-24 and W-25 prerequisites are merged. PR #478 completes original W-26
-engineering; final exact-head CI and merge remain pending. W-14 is next after
-verified merge. Spanish activation still requires actual fluent/legal approval
-and owner publication. The 22 existing live/provider/owner acceptance obligations
-remain separately PENDING; source completion does not supply their missing gates.
-READY production remains 4740313d; no manual release is authorized.
+W-26 is merged (#478). One PR delivers W-14, W-2 and W-15 together (purchase records,
+one shared next tax step, tax proof and audit pack); exact-head CI, review and merge
+remain pending. W-3 is next after verified merge. The 22 existing live/provider/owner
+acceptance obligations remain separately PENDING; source completion does not supply
+their missing gates. READY production remains 4740313d; no manual release is authorized.
 
 **New required implementer reading:** October 13
 [56-subject owner-answer mapping](owner-decisions/2026-10-13-implementation-map.json)

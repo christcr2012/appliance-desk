@@ -12,6 +12,14 @@ import {
 } from "@/components/ui";
 import type { StatusTone } from "@/components/status-badge";
 import { PurchaseOrderActionsPanel } from "./purchase-order-actions-panel";
+import { loadReceiptTaxSteps } from "@/domains/purchasing/receipt-tax";
+import { prisma } from "@/lib/prisma";
+import { ReceiptTaxForm } from "./receipt-tax-form";
+
+async function loadReceiptTaxStepsForOrder(orderId: string) {
+  const ids = await prisma.purchaseOrderReceiptTax.findMany({ where: { purchaseOrderId: orderId }, select: { id: true } });
+  return loadReceiptTaxSteps(prisma, ids.map((row) => row.id));
+}
 
 export const metadata = { title: "Purchase order" };
 
@@ -32,9 +40,10 @@ export default async function PurchaseOrderDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN");
   const { id } = await params;
   const order = await getPurchaseOrderById(id);
+  const receiptSteps = order ? await loadReceiptTaxStepsForOrder(order.id) : [];
 
   if (!order) {
     notFound();
@@ -159,9 +168,29 @@ export default async function PurchaseOrderDetailPage({
         </Card>
       </div>
 
+      {receiptSteps.length > 0 && (
+        <div className="mt-6">
+          <Card title="Tax on the parts received">
+            <ul className="space-y-4">
+              {receiptSteps.map((step) => (
+                <li key={step.receiptTaxId} className="space-y-2 text-sm">
+                  <p className="font-semibold">{step.subject.label}</p>
+                  <p className="font-semibold">{step.headline}</p>
+                  <p className="text-ink-soft">{step.detail}</p>
+                  {session.user.role === "OWNER" && !step.done && (
+                    <ReceiptTaxForm receiptTaxId={step.receiptTaxId} purchaseOrderId={order.id} revisionAt={step.revisionAt.toISOString()} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
+      )}
+
       {(order.status === "DRAFT" || order.status === "ORDERED") && (
         <div className="mt-6">
           <PurchaseOrderActionsPanel
+            isOwner={session.user.role === "OWNER"}
             purchaseOrderId={order.id}
             status={order.status}
             lines={order.lines.map((line) => ({

@@ -1,3 +1,13 @@
+## Recording purchases, tax steps and the audit pack (W-14, W-2, W-15)
+
+**Record a purchase** (Equipment → Purchases → Record a purchase, or the button on Inventory) replaces adding appliances one at a time. Enter the receipt once: who you bought from (a supplier, or type a private seller), the date, the receipt number, photos or PDFs of every page, then one row per machine with its model, serial number and price. A washer and dryer bought together are two rows. If the seller charged tax, type the total printed on the receipt; the app splits it across the machines by price, down to the cent, and shows you the split before you save. Add delivery or other charges separately; they are kept on the purchase and are not added to a machine's cost.
+
+**The tax question has no default.** Only the owner can answer it. If you are not sure, choose "I'll check the receipt later" and a To do appears three days later, turning urgent a week before the return it belongs on is due. Another state's tax is saved with a note and a To do to ask your CPA; nothing is guessed. Every screen shows the same next step for a purchase.
+
+**Tax proof and audit pack.** Each appliance page shows how it was acquired, what you paid, its single tax outcome and its receipt. Purchases → Audit pack lists everything you bought in any date range (printable, or as a spreadsheet) with the return and confirmation number once filed. Parts you receive on purchase orders are included and ask the same tax question when you record the delivery.
+
+**How long to keep records** is under Purchases → Record keeping. It starts at 7 years, which is a cautious general choice; ask your CPA what applies to you. A receipt that a filed tax return relies on can never be removed, whatever the number says.
+
 ## Customer language and Spanish review (W-26)
 
 After the checked W-26 release, customers can save English or Español in their account and use the same choice through quotes and signing. English remains the governing signed agreement. Historical documents keep their recorded content.

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
+import { updateReceiptTaxAnswer } from "@/domains/purchasing/receipt-tax";
 import {
   createSupplier,
   updateSupplier,
@@ -201,7 +202,18 @@ const receiveLinesSchema = z.object({
       }),
     )
     .min(1, "Enter how many arrived on at least one line."),
+  taxAnswer: z.enum(["YES_COLORADO", "YES_OTHER_STATE", "NO", "LATER"], { message: "Answer the tax question." }),
+  sellerTax: z.string().trim().max(14).optional(),
+  otherState: z.string().trim().max(60).optional(),
 });
+
+function taxCents(text: string | undefined): number {
+  const value = (text ?? "").replace(/^\$/, "").replace(/,/g, "").trim();
+  if (value === "") return 0;
+  const match = /^(\d{1,8})(?:\.(\d{1,2}))?$/.exec(value);
+  if (!match) throw new Error("Tax: enter dollars and cents, like 12.50.");
+  return Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
+}
 
 /** Record what actually arrived (all or part of an order). A blank price keeps the ordered price, or stays unknown. */
 export async function receivePurchaseOrderLinesAction(raw: unknown): Promise<PurchasingActionState & { replayed?: boolean }> {
@@ -226,7 +238,14 @@ export async function receivePurchaseOrderLinesAction(raw: unknown): Promise<Pur
       purchaseOrderId: parsed.data.purchaseOrderId,
       operationKey: parsed.data.operationKey,
       lines,
+      tax: {
+        answer: parsed.data.taxAnswer,
+        sellerTaxCents: parsed.data.taxAnswer === "YES_COLORADO" || parsed.data.taxAnswer === "YES_OTHER_STATE" ? taxCents(parsed.data.sellerTax) : 0,
+        otherState: parsed.data.taxAnswer === "YES_OTHER_STATE" ? parsed.data.otherState : null,
+      },
     });
+    revalidatePath("/desk/tasks");
+    revalidatePath("/desk/today");
     revalidatePath(`/desk/purchase-orders/${parsed.data.purchaseOrderId}`);
     revalidatePath("/desk/purchase-orders");
     revalidatePath("/desk/parts");
@@ -275,4 +294,34 @@ export async function reversePartMovementAction(movementId: string, operationKey
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't undo that." };
   }
+}
+
+const receiptTaxSchema = z.object({
+  receiptTaxId: z.string().trim().min(1).max(64),
+  purchaseOrderId: z.string().trim().min(1).max(64),
+  expectedRevisionAt: z.string().min(1, "Reload the page and try again."),
+  taxAnswer: z.enum(["YES_COLORADO", "YES_OTHER_STATE", "NO", "LATER"], { message: "Answer the tax question." }),
+  sellerTax: z.string().trim().max(14).optional(),
+  otherState: z.string().trim().max(60).optional(),
+});
+
+/** Owner only: answer (or change the answer to) the tax question for one delivery's parts. */
+export async function updateReceiptTaxAction(raw: unknown): Promise<PurchasingActionState> {
+  const session = await requireRole("OWNER");
+  const parsed = receiptTaxSchema.safeParse(raw);
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  const revision = new Date(parsed.data.expectedRevisionAt);
+  if (!Number.isFinite(revision.getTime())) return { status: "error", message: "Reload the page and try again." };
+  try {
+    const taxed = parsed.data.taxAnswer === "YES_COLORADO" || parsed.data.taxAnswer === "YES_OTHER_STATE";
+    await updateReceiptTaxAnswer(session.user.id, {
+      receiptTaxId: parsed.data.receiptTaxId, expectedRevisionAt: revision,
+      tax: { answer: parsed.data.taxAnswer, sellerTaxCents: taxed ? taxCents(parsed.data.sellerTax) : 0,
+        otherState: parsed.data.taxAnswer === "YES_OTHER_STATE" ? parsed.data.otherState : null },
+    });
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't save the tax answer." };
+  }
+  for (const path of [`/desk/purchase-orders/${parsed.data.purchaseOrderId}`, "/desk/tasks", "/desk/today", "/desk/tax"]) revalidatePath(path);
+  return { status: "success" };
 }
