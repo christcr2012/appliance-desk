@@ -16,6 +16,7 @@ import { ApplianceDetailPanel } from "./appliance-detail-panel";
 import { PartsSection } from "./parts-section";
 import { GuidedActionsPanel } from "./guided-actions-panel";
 import { HistoryTimeline } from "./history-timeline";
+import { CleaningPanel } from "./cleaning-panel";
 import { ApplianceEarningsSummary } from "@/components/desk/appliance-earnings-summary";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
 import { getOpenCustody } from "@/domains/inventory/custody";
@@ -25,6 +26,7 @@ import { explainPendingPurchaseTax } from "@/domains/tax/purchase-tax-explain";
 import { formatBusinessDate } from "@/lib/business-date";
 import { CustodyPanel } from "./custody-panel";
 import { OLD_SET_TYPE_SLUG } from "@/domains/packages/pricing";
+import { RecordConnections } from "@/components/desk/record-connections";
 
 export const metadata = { title: "Appliance" };
 
@@ -132,6 +134,7 @@ export default async function ApplianceDetailPage({
             serviceAddresses: c.serviceAddresses.map((a) => ({ id: a.id, label: `${a.line1}, ${a.city}` })),
           }))}
         />
+        <CleaningPanel applianceId={id} status={appliance.status} />
         <GuidedActionsPanel
           applianceId={id}
           status={appliance.status}
@@ -172,6 +175,7 @@ export default async function ApplianceDetailPage({
         />
         <HistoryTimeline entries={history} />
       </div>
+      <RecordConnections kind="appliance" id={id} showHistory={false} />
     </div>
   );
 }

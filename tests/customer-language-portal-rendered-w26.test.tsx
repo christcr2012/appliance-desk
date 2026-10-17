@@ -12,6 +12,7 @@ vi.mock("@/domains/language/legal",async(importOriginal)=>({
 }));
 vi.mock("@vercel/blob/client",()=>({upload:vi.fn()}));
 vi.mock("@/domains/billing",()=>({getCustomerStatement:m.statement}));
+vi.mock("@/domains/portal/next-bill",()=>({getNextBills:async()=>[]}));
 vi.mock("next/navigation",()=>({useRouter:()=>({refresh:vi.fn(),push:vi.fn()})}));
 import AccountRentalsPage from "@/app/account/rentals/page";
 import AccountBillingPage from "@/app/account/billing/page";

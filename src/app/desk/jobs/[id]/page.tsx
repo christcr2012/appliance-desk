@@ -20,6 +20,7 @@ import { substituteChoices } from "@/domains/jobs/substitution";
 import { businessDateKey } from "@/lib/business-date";
 import { LateReturnWaiverForm } from "./late-return-waiver-form";
 import { getLateReturnWaiverState } from "@/domains/billing/late-return-waiver";
+import { RecordConnections } from "@/components/desk/record-connections";
 
 export const metadata = { title: "Job" };
 
@@ -210,6 +211,7 @@ export default async function JobDetailPage({
         }} canViewFinance={canViewFinance} />
       </div>
       <ContextCommunicationPanel kind="Job" id={job.id} />
+      {canViewFinance && <RecordConnections kind="visit" id={job.id} />}
     </div>
   );
 }

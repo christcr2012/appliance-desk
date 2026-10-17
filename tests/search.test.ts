@@ -8,6 +8,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const customerFindMany = vi.fn();
 const applianceFindMany = vi.fn();
 const leadFindMany = vi.fn();
+const purchaseFindMany = vi.fn();
+const supplierFindMany = vi.fn();
 
 vi.mock("@/lib/session", () => ({ requireRole: vi.fn().mockResolvedValue({ user: { role: "OWNER" } }) }));
 
@@ -16,6 +18,8 @@ vi.mock("@/lib/prisma", () => ({
     customer: { findMany: (...args: unknown[]) => customerFindMany(...args) },
     appliance: { findMany: (...args: unknown[]) => applianceFindMany(...args) },
     lead: { findMany: (...args: unknown[]) => leadFindMany(...args) },
+    purchase: { findMany: (...args: unknown[]) => purchaseFindMany(...args) },
+    supplier: { findMany: (...args: unknown[]) => supplierFindMany(...args) },
   },
 }));
 
@@ -42,14 +46,18 @@ describe("searchAll", () => {
     customerFindMany.mockReset().mockResolvedValue([]);
     applianceFindMany.mockReset().mockResolvedValue([]);
     leadFindMany.mockReset().mockResolvedValue([]);
+    purchaseFindMany.mockReset().mockResolvedValue([]);
+    supplierFindMany.mockReset().mockResolvedValue([]);
   });
 
   it("short-circuits on a blank query without touching the database", async () => {
     const result = await searchAll("   ");
-    expect(result).toEqual({ query: "", customers: [], appliances: [], leads: [] });
+    expect(result).toEqual({ query: "", customers: [], appliances: [], leads: [], purchases: [], sellers: [] });
     expect(customerFindMany).not.toHaveBeenCalled();
     expect(applianceFindMany).not.toHaveBeenCalled();
     expect(leadFindMany).not.toHaveBeenCalled();
+    expect(purchaseFindMany).not.toHaveBeenCalled();
+    expect(supplierFindMany).not.toHaveBeenCalled();
   });
 
   it("trims the query before searching and echoes it back", async () => {

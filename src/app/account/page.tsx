@@ -13,6 +13,9 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { FilterBar } from "@/components/desk/workspace";
+import { describeRentalLine } from "@/domains/portal/line-display";
+import { NextBillCard } from "@/components/portal/next-bill-card";
+import { OpenVisits } from "@/components/portal/open-visits";
 
 export const metadata = { title: "My account" };
 
@@ -106,7 +109,7 @@ export default async function AccountHomePage({
                     , {agreement.serviceAddress.city}
                   </p>
                   <p className="mt-1 text-sm text-ink-soft">
-                    {agreement.lines.map((line) => line.label).join(", ")}
+                    {agreement.lines.map((line) => describeRentalLine(line)).join(", ")}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-ink">
                     {formatCents(
@@ -178,6 +181,10 @@ export default async function AccountHomePage({
             />
           )}
         </Card>
+
+        <NextBillCard bills={data.nextBills} locale={locale} />
+
+        {data.openVisits.length > 0 && <OpenVisits visits={data.openVisits} locale={locale} />}
 
         <Card
           title={t("Do I owe anything?")}

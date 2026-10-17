@@ -1,3 +1,24 @@
+## October 17 — W-17 and W-20 delivered as one bundle, CI and merge pending
+
+W-10 and W-19 are merged (#485). This PR delivers two whole approved subsections:
+**W-17** the seven main record pages (appliance, customer, rental agreement, purchase, seller, visit, invoice) show **Related**
+(plain links to connected pages) and **History** (who did what, when, newest first, no raw codes) for owner and admin only;
+search finds purchases (seller name or receipt number) and sellers (owner/admin only) as well as serial and model numbers;
+a machine that passes inspection becomes **Being cleaned**, shows on Today as "Clean (machine)", and only **Cleaning done**
+makes it Available; a failed inspection drafts exactly one undated repair visit shown on Today as "Schedule the repair".
+**W-20** the customer account shows "Your next bill" (rent, date, tax and credits are on the bill), a Requested / Scheduled /
+Done list for each open visit, a what-happens-next note after a pickup request, problem report or ending a rental (English and
+Spanish), package lines as sets ("Washer + Dryer Set (washer #A12, dryer #B07)"), and **Pay now** on a past-due bill that
+opens that bill's Stripe payment page (own bills only; paid, closed and local bills show nothing). One additive migration
+(`CLEANING` status). Plan and frozen acceptance: `docs/pr-cards/W-17.md`; proof per criterion: `current-pr-scorecard.json`.
+
+A real bug was found and fixed on the way: without a rule, a machine still recorded as with a customer could have been passed
+into the cleaning status; custody now treats cleaning as "in the shop".
+Verified locally: typecheck, lint and wording check, unit tests (`w17-connections`, `w20-portal`), five real-Postgres tests
+(`w17-connections-integration`), and the full test run. Not yet done: exact-head CI (including the browser/accessibility run),
+review, merge. Pay now was tested with Stripe stubbed; it needs your real Stripe keys to open a real payment page.
+Open items: none new. Nothing is released; no live Stripe, email, SMS, spending or production data touched.
+
 ## October 17 — W-10 and W-19 delivered as one bundle, CI and merge pending
 
 W-8 and W-9 are merged (#484). This PR delivers two whole approved subsections:

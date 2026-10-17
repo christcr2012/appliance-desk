@@ -29,7 +29,8 @@ export function HistoryTimeline({ entries }: { entries: ApplianceHistoryEntry[] 
               </p>
               {entry.detail && <p className="text-ink-soft">{entry.detail}</p>}
               <p className="text-xs text-ink-faint">
-                {new Date(entry.createdAt).toLocaleString()}
+                {entry.who ? entry.who + " · " : ""}
+                {new Date(entry.createdAt).toLocaleString("en-US", { timeZone: "America/Denver" })}
               </p>
             </li>
           ))}

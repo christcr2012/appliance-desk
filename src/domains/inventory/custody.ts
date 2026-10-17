@@ -84,18 +84,18 @@ export async function closeCustodyEpisodeInTx(
 
 /**
  * The two one-way custody rules for a hand-made status change: "rented" or "awaiting pickup" needs a recorded
- * holder, and "available", "reserved" or "retired" can't keep one. Deliveries and pickups go through job completion,
+ * holder, and "available", "being cleaned", "reserved" or "retired" can't keep one. Deliveries and pickups go through job completion,
  * which opens and closes the stay itself, so a hand change must not skip it.
  */
 export async function assertStatusChangeKeepsCustody(tx: Prisma.TransactionClient, applianceId: string, newStatus: ApplianceStatus): Promise<void> {
-  if (newStatus !== "RENTED" && newStatus !== "AWAITING_PICKUP" && newStatus !== "AVAILABLE" && newStatus !== "RESERVED" && newStatus !== "RETIRED") return;
+  if (newStatus !== "RENTED" && newStatus !== "AWAITING_PICKUP" && newStatus !== "AVAILABLE" && newStatus !== "CLEANING" && newStatus !== "RESERVED" && newStatus !== "RETIRED") return;
   // Hold the appliance row first, so a custody write cannot slip in between this check and the status write.
   await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
   const open = await getOpenCustody(tx, applianceId);
   if ((newStatus === "RENTED" || newStatus === "AWAITING_PICKUP") && !open) {
     throw new CustodyConflictError("This appliance has no customer recorded, so it can't be marked as out with a customer. Complete a delivery job for it, or record who has it on this page first.");
   }
-  if ((newStatus === "AVAILABLE" || newStatus === "RESERVED" || newStatus === "RETIRED") && open) {
+  if ((newStatus === "AVAILABLE" || newStatus === "CLEANING" || newStatus === "RESERVED" || newStatus === "RETIRED") && open) {
     throw new CustodyConflictError("This appliance is recorded as being with a customer. Complete a pickup job for it before changing it to this status.");
   }
 }
@@ -114,7 +114,7 @@ export async function findCustodyGaps(client: Reader): Promise<Array<{ appliance
 export async function findCustodyInvariantViolations(client: Reader): Promise<Array<{ applianceId: string; status: ApplianceStatus; open: boolean }>> {
   const withoutOpen = await findCustodyGaps(client);
   const withOpen = await client.appliance.findMany({
-    where: { status: { in: ["AVAILABLE", "RESERVED", "RETIRED"] }, custodyEpisodes: { some: { closedAt: null } } },
+    where: { status: { in: ["AVAILABLE", "CLEANING", "RESERVED", "RETIRED"] }, custodyEpisodes: { some: { closedAt: null } } },
     select: { id: true, status: true },
     orderBy: { id: "asc" },
   });
@@ -136,8 +136,8 @@ export async function recordManualCustody(
     await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${input.applianceId} FOR UPDATE`;
     const appliance = await tx.appliance.findUnique({ where: { id: input.applianceId }, select: { status: true } });
     if (!appliance) throw new Error("Couldn't find that appliance.");
-    if (appliance.status === "AVAILABLE" || appliance.status === "RESERVED" || appliance.status === "RETIRED") {
-      throw new Error("An appliance that is available, reserved or retired is in the shop, so it can't be with a customer.");
+    if (appliance.status === "AVAILABLE" || appliance.status === "CLEANING" || appliance.status === "RESERVED" || appliance.status === "RETIRED") {
+      throw new Error("An appliance that is available, being cleaned, reserved or retired is in the shop, so it can't be with a customer.");
     }
     if (await getOpenCustody(tx, input.applianceId)) throw new CustodyConflictError("This appliance already has a customer recorded.");
     const customer = await tx.customer.findFirst({ where: { id: input.customerId, archivedAt: null }, select: { id: true } });

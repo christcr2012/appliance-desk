@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { formatCents } from "@/domains/pricing";
 import { PaymentLinkPanel } from "@/components/desk/payment-link-panel";
 import { suggestPaymentLinkReason } from "@/domains/billing/payment-link-message";
+import { RecordConnections } from "@/components/desk/record-connections";
 
 export const metadata = { title: "Invoice" };
 
@@ -172,6 +173,7 @@ export default async function DeskInvoicePage({
         )}
       </section>
       <ContextCommunicationPanel kind="Invoice" id={invoiceId} />
+      <RecordConnections kind="invoice" id={invoiceId} />
     </div>
   );
 }

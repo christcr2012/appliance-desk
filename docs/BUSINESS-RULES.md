@@ -438,7 +438,7 @@ silently touched.
 ## Inventory & status rules
 
 Appliance statuses — `AVAILABLE`, `RESERVED`, `RENTED`,
-`AWAITING_PICKUP`, `AWAITING_INSPECTION`, `MAINTENANCE`, `RETIRED` —
+`AWAITING_PICKUP`, `AWAITING_INSPECTION`, `CLEANING`, `MAINTENANCE`, `RETIRED` —
 live in one central enum with clear rules for which transitions are
 allowed, enforced server-side (`canTransitionApplianceStatus` in
 `src/domains/inventory/lifecycle.ts`) — `RETIRED` is terminal, and
@@ -456,8 +456,8 @@ the system even though they aren't (see `docs/DECISIONS.md`'s
 `AVAILABLE` → (assigned to a draft agreement) `RESERVED` →
 (delivery/installation job marked **Completed**) `RENTED` →
 (agreement ends) `AWAITING_PICKUP` → (removal job marked
-**Completed**) `AWAITING_INSPECTION` → (Chris inspects it) back to
-`AVAILABLE`, or to `MAINTENANCE` if it failed inspection.
+**Completed**) `AWAITING_INSPECTION` → (Chris inspects it) `CLEANING`
+(**Cleaning done** → `AVAILABLE`), or `MAINTENANCE` if it failed inspection.
 
 Concretely:
 
@@ -475,8 +475,11 @@ Concretely:
 - **Completing a removal (pickup) job** moves it to
   `AWAITING_INSPECTION` — back at the shop, but not yet checked over.
 - **Chris records an inspection** (checklist, `ApplianceInspection`)
-  to move it the rest of the way: passed → `AVAILABLE`, failed →
-  `MAINTENANCE`. `BusinessSettings.inspectionChecklist` holds the
+  to move it the rest of the way: passed → `CLEANING` (W-17; only
+  **Cleaning done** by an owner or admin makes it `AVAILABLE`, and a machine
+  being cleaned can't be with a customer), failed → `MAINTENANCE` plus one
+  draft, undated repair visit (reused if an unfinished repair visit for that
+  machine already exists). `BusinessSettings.inspectionChecklist` holds the
   reusable checklist items Chris can customize.
 - Maintenance visits and swaps are still Chris's own call — the job
   page suggests a next status but never moves an appliance

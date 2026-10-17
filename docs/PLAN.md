@@ -241,7 +241,7 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 - [x] W-15: every appliance shows its tax proof; an audit pack for any date range lists every serial with seller tax or use tax reported (return + confirmation) and its receipt.
 - [x] W-16A/B (#360, #362, early-return part #366; tests `rental-packages*`, `rental-package-lines*`, `set-machine-done-integration`): appliance types are single machines only; rental packages (e.g. Washer + Dryer Set) with set price and shown saving; package lines take one machine per part; early return of one part → single-machine price from the day after pickup with an exact partial-period credit; swaps change nothing; old "set" appliances are split with history kept.
 - [x] W-21 (#365; `tests/out-of-service-integration.test.ts`): a machine taken for repair without a replacement (any line, set or single) earns a credit on the next bill for exactly the days without it, never more than billed; the portal and bill explain it in dollars.
-- [ ] W-17/W-19/W-20 (W-19 delivered in the W-10/W-19 PR; W-17 and W-20 remain): every record page has Related and History; every ★ flow row in Amendment B D-WB4 creates exactly one To do with a working button; the portal shows next steps, status timelines and Pay now on overdue invoices.
+- [x] W-17/W-19/W-20 (W-19 in the W-10/W-19 PR; W-17 and W-20 in the W-17/W-20 PR; CI and merge pending when written): every record page has Related and History; every ★ flow row in Amendment B D-WB4 creates exactly one To do with a working button; the portal shows next steps, status timelines and Pay now on overdue invoices.
 - [ ] Every item in "Rules that apply to every batch".
 
 ---

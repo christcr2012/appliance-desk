@@ -19,6 +19,7 @@ import {
   stageSwap,
   recordApplianceInspection,
 } from "@/domains/inventory/guided-actions";
+import { markCleaningDone } from "@/domains/inventory/cleaning";
 import type { ApplianceStatus } from "@prisma/client";
 import { ALL_APPLIANCE_STATUSES } from "@/domains/inventory/lifecycle";
 
@@ -492,6 +493,20 @@ export async function recordManualCustodyAction(
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't record that." };
   }
   revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath("/desk/today");
+  return { status: "success" };
+}
+
+/** "Cleaning done": the appliance is Available again. Owner or admin. */
+export async function markCleaningDoneAction(applianceId: string): Promise<InventoryActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    await markCleaningDone(session.user.id, applianceId);
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't update this appliance." };
+  }
+  revalidatePath(`/desk/inventory/${applianceId}`);
+  revalidatePath("/desk/inventory");
   revalidatePath("/desk/today");
   return { status: "success" };
 }

@@ -20,13 +20,15 @@ export default async function SearchPage({
   const totalFound =
     results.customers.length +
     results.appliances.length +
-    results.leads.length;
+    results.leads.length +
+    results.purchases.length +
+    results.sellers.length;
 
   return (
     <div className="max-w-3xl">
       <PageHeader
         title="Search"
-        description="Find customers, appliances, and leads from one place."
+        description="Find customers, appliances, leads, purchases and sellers from one place."
       />
 
       <form
@@ -99,6 +101,48 @@ export default async function SearchPage({
                           {appliance.manufacturer}
                         </span>
                       )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {results.purchases.length > 0 && (
+            <Card title="Purchases">
+              <ul className="divide-y divide-line">
+                {results.purchases.map((purchase) => (
+                  <li key={purchase.id}>
+                    <Link
+                      href={`/desk/purchases/${purchase.id}`}
+                      className="block min-h-11 rounded-control px-3 py-3 text-sm hover:bg-subtle"
+                    >
+                      <span className="font-medium text-ink">{purchase.seller}</span>
+                      {purchase.reference && (
+                        <span className="text-ink-faint">{" · receipt "}{purchase.reference}</span>
+                      )}
+                      <span className="text-ink-faint">
+                        {" · "}
+                        {purchase.purchasedOn.toLocaleDateString("en-US", { timeZone: "America/Denver" })}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {results.sellers.length > 0 && (
+            <Card title="Sellers">
+              <ul className="divide-y divide-line">
+                {results.sellers.map((seller) => (
+                  <li key={seller.id}>
+                    <Link
+                      href={`/desk/suppliers/${seller.id}`}
+                      className="block min-h-11 rounded-control px-3 py-3 text-sm hover:bg-subtle"
+                    >
+                      <span className="font-medium text-ink">{seller.name}</span>
+                      {seller.contactName && <span className="text-ink-faint">{" · "}{seller.contactName}</span>}
                     </Link>
                   </li>
                 ))}

@@ -18,6 +18,7 @@ import { getPortalData, getPortalJobsPage } from "@/domains/portal";
 import { formatCents } from "@/domains/pricing/money";
 import { SigningPaymentSummary } from "@/components/billing/signing-payment-summary";
 import { prisma } from "@/lib/prisma";
+import { describeRentalLine } from "@/domains/portal/line-display";
 import {
   rentalAgreementStatusLabel,
   rentalAgreementStatusTone,
@@ -157,6 +158,7 @@ export default async function AccountRentalsPage({
                 {agreement.terminationRequestedAt && agreement.terminationEffectiveOn && endingLastBilledDay && (
                   <p className="mt-3 rounded-card border border-line bg-subtle p-3 text-sm text-ink">
                     {t("Ends on")} {formatBusinessDate(agreement.terminationEffectiveOn)} — {t("Last billed day")} {formatBusinessDate(endingLastBilledDay)}. {t("We will contact you to arrange pickup.")}
+                    <span className="mt-2 block text-ink-soft">{t("Your request to end the rental was recorded. We will arrange pickup and confirm the final day. The final bill is shown in Billing.")}</span>
                   </p>
                 )}
 
@@ -177,13 +179,13 @@ export default async function AccountRentalsPage({
                 <ul className="mt-2 space-y-1 text-sm text-ink-soft">
                   {agreement.lines.map((line) => (
                     <li key={line.id}>
-                      {line.label} — {formatCents(line.monthlyPriceCents)} {t("per month")}
+                      {describeRentalLine(line)} — {formatCents(line.monthlyPriceCents)} {t("per month")}
                       {line.prepayDiscountCentsPerMonth > 0 && (
                         <span className="text-ink-faint">
                           {" "}({t("list price")} {formatCents(line.listPriceCents)}, {t("includes a")} {formatCents(line.prepayDiscountCentsPerMonth)} {t("per month")} {t("term discount")})
                         </span>
                       )}
-                      {line.assignments.length > 0 && (
+                      {!line.packageId && line.assignments.length > 0 && (
                         <> · {line.assignments.map((assignment) => `${assignment.appliance.applianceType.name} ${assignment.appliance.assetNumber}`).join(", ")}</>
                       )}
                     </li>

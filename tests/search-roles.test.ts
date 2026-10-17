@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   customers: vi.fn(),
   appliances: vi.fn(),
   leads: vi.fn(),
+  purchases: vi.fn(),
+  suppliers: vi.fn(),
 }));
 
 vi.mock("@/lib/session", () => ({
@@ -15,6 +17,8 @@ vi.mock("@/lib/prisma", () => ({
     customer: { findMany: (...args: unknown[]) => mocks.customers(...args) },
     appliance: { findMany: (...args: unknown[]) => mocks.appliances(...args) },
     lead: { findMany: (...args: unknown[]) => mocks.leads(...args) },
+    purchase: { findMany: (...args: unknown[]) => mocks.purchases(...args) },
+    supplier: { findMany: (...args: unknown[]) => mocks.suppliers(...args) },
   },
 }));
 
@@ -24,6 +28,8 @@ describe("role-aware global search", () => {
   beforeEach(() => {
     mocks.customers.mockReset().mockResolvedValue([]);
     mocks.appliances.mockReset().mockResolvedValue([]);
+    mocks.purchases.mockReset().mockResolvedValue([]);
+    mocks.suppliers.mockReset().mockResolvedValue([]);
     mocks.leads.mockReset().mockResolvedValue([
       { id: "lead-1", contactName: "Private Lead", email: "private@example.com", status: "NEW" },
     ]);

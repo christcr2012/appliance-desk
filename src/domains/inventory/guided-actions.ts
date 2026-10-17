@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/business-date";
-import type { Prisma } from "@prisma/client";
+import type { ApplianceStatus, Prisma } from "@prisma/client";
 import { assertStatusChangeKeepsCustody, getOpenCustody } from "./custody";
 import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
 import { assertJobScopeInTx } from "@/domains/jobs/scope";
 import { createHash } from "node:crypto";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { lockRentalAgreementInTx } from "@/domains/agreements";
-import { canTransitionApplianceStatus, applianceStatusAfterInspection } from "./lifecycle";
+import { canTransitionApplianceStatus, applianceStatusAfterInspection, APPLIANCE_STATUS_LABELS } from "./lifecycle";
+import { plainAction } from "@/domains/connections";
+import { ensureRepairDraftInTx } from "./cleaning";
 
 // ---------------------------------------------------------------------------
 // Appliance guided actions (2026-09-28) — the multi-step things Chris
@@ -404,6 +406,11 @@ export async function recordApplianceInspection(
         newValue: { status: nextStatus, reason: overridden ? "Inspection passed by override" : passed ? "Inspection passed" : "Inspection failed" },
       },
     });
+    // E3: a failed inspection drafts exactly one repair visit (no date) for the owner to schedule.
+    if (!passed) {
+      const repairJobId = await ensureRepairDraftInTx(tx, applianceId, "Failed return inspection. Owner: choose a repair date and assign a technician.");
+      await tx.auditLog.create({ data: { userId, action: "appliance.repair_visit_drafted", entityType: "Appliance", entityId: applianceId, newValue: { jobId: repairJobId, inspectionId: inspection.id } } });
+    }
     if (overridden) {
       await tx.auditLog.create({
         data: {
@@ -442,6 +449,8 @@ export type ApplianceHistoryEntry = {
   summary: string;
   detail: string | null;
   createdAt: Date;
+  /** Who did it, when the activity log knows (W-17). */
+  who?: string | null;
 };
 
 /** One chronological history for an appliance's own page: every status
@@ -451,6 +460,7 @@ export async function getApplianceHistory(applianceId: string): Promise<Applianc
   const [auditEntries, jobLinks, inspections, custody] = await Promise.all([
     prisma.auditLog.findMany({
       where: { entityType: "Appliance", entityId: applianceId },
+      include: { user: { select: { name: true, email: true } } },
       orderBy: [{ createdAt: "desc" }],
       take: 100,
     }),
@@ -499,9 +509,12 @@ export async function getApplianceHistory(applianceId: string): Promise<Applianc
     return {
       id: `audit-${entry.id}`,
       kind: "status_change",
-      summary: newValue.status ? `Status changed to ${newValue.status}` : entry.action,
+      summary: newValue.status
+        ? `Status changed to ${APPLIANCE_STATUS_LABELS[newValue.status as ApplianceStatus] ?? newValue.status.replace(/_/g, " ").toLowerCase()}`
+        : plainAction(entry.action),
       detail: newValue.reason ?? null,
       createdAt: entry.createdAt,
+      who: entry.user ? (entry.user.name ?? entry.user.email) : "The system",
     };
   });
 

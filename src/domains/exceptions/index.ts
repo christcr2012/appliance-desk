@@ -12,7 +12,7 @@ import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
 import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
 import { listUnsignedAgreements } from "./unsigned-agreements";
-import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment } from "./turning-points-attention";
+import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment, listCleaningNeeded } from "./turning-points-attention";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
 import {
@@ -1033,6 +1033,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const rentalEndingSoon = canViewFinance ? await listRentalEndingSoon(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const unsignedAgreements = canViewFinance ? await listUnsignedAgreements(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const pickupUnscheduled = canViewFinance ? await listPickupUnscheduled(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
+  const cleaningNeeded = canViewFinance ? await listCleaningNeeded(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const visitNeedsAssignment = canViewFinance ? await listVisitNeedsAssignment(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
@@ -1066,6 +1067,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...unsignedAgreements.rows,
     ...pickupUnscheduled.rows,
     ...visitNeedsAssignment.rows,
+    ...cleaningNeeded.rows,
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
@@ -1113,6 +1115,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["UNSIGNED_AGREEMENT", unsignedAgreements],
       ["PICKUP_UNSCHEDULED", pickupUnscheduled],
       ["VISIT_NEEDS_ASSIGNMENT", visitNeedsAssignment],
+      ["CLEANING_NEEDED", cleaningNeeded],
       ["OVERDUE_JOB", overdueJobs],
       ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
       ["UNINSPECTED_RETURN", uninspectedAppliances],

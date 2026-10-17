@@ -194,7 +194,7 @@ export function NewRequestForm({
         <p role="status" className="text-sm font-semibold text-success">
           {requestKind === "pickup"
             ? tr("Got it — we'll call you within one business day to schedule your pickup.")
-            : tr("Got it — we'll be in touch about next steps.")}
+            : tr("We received your problem report. We will review it and contact you to arrange a repair visit. Nothing is charged for reporting a problem.")}
         </p>
       )}
     </form>

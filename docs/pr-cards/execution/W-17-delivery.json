@@ -1,0 +1,62 @@
+{
+  "subsections": [
+    {
+      "id": "W-17",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "The owner/admin pages for an appliance, customer, rental agreement, purchase, seller, visit and invoice each show a Related panel listing the connected records (for example an appliance's purchase, seller, rentals, visits and repair requests) as plain-worded links to pages that exist.",
+          "evidence": "src/domains/connections/index.ts (getRecordConnections, owner/admin only) and src/components/desk/record-connections.tsx are on the appliance, customer, agreement, purchase, seller, visit and invoice pages; tests/w17-connections-integration.test.ts checks the links for all seven kinds and that staff are refused."
+        },
+        {
+          "criterion": "The same seven pages show a History timeline, newest first, built from the activity log, saying what happened, who did it and when in plain words with no raw codes.",
+          "evidence": "The same component shows History from the activity log, newest first, with who, when and a plain-words action (plainAction never shows a raw code); the appliance page keeps its fuller timeline and now shows who; tests/w17-connections.test.ts and the integration test check the wording and the order."
+        },
+        {
+          "criterion": "Search finds purchases by seller name or receipt number and sellers by name for owner and admin only (never for staff), and keeps finding appliances by serial number and model.",
+          "evidence": "src/domains/search/index.ts adds purchases (seller name, receipt number, seller) and sellers for owner/admin only; tests/w17-connections.test.ts proves staff never run those queries and the integration test proves serial-number search still works."
+        },
+        {
+          "criterion": "A passed inspection moves the appliance to a new Cleaning status instead of straight to Available, Cleaning shows on Today as a To do with a working button, and \"Cleaning done\" makes it Available.",
+          "evidence": "ApplianceStatus gains CLEANING (migration 20261017170000), a passed inspection goes there, listCleaningNeeded puts 'Clean (machine)' on Today linking to the appliance, and markCleaningDone (owner/admin, locked, audited, repeat-safe) makes it Available; proven in tests/w17-connections-integration.test.ts and tests/lifecycle.test.ts."
+        },
+        {
+          "criterion": "A failed inspection drafts exactly one unscheduled repair visit for that appliance and moves it to In repair, and a repeat creates no second visit.",
+          "evidence": "recordApplianceInspection calls ensureRepairDraftInTx on a fail: one undated repair visit, reused on a repeat, shown on Today as 'Schedule the repair'; proven by the second integration test (a second failed inspection leaves exactly one)."
+        }
+      ]
+    },
+    {
+      "id": "W-20",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "Portal home and Billing show \"Your next bill\" for each current rental: the rent for the appliances now on it, the date, and a plain note that tax and credits are shown on the bill itself, in English and Spanish.",
+          "evidence": "src/domains/portal/next-bill.ts sums the rent of each current rental with its next billing date, shown by NextBillCard on portal home and Billing with the tax-and-credits note in English and Spanish; tests/w20-portal.test.ts checks the total and the Spanish text."
+        },
+        {
+          "criterion": "An overdue, unpaid invoice that has a Stripe payment page shows a \"Pay now\" button on the customer's invoice page and in the billing list that opens that invoice's own Stripe-hosted page; only the signed-in customer's own invoices work, nothing is offered for paid or closed invoices, and local invoices keep \"Pay as arranged\".",
+          "evidence": "src/domains/portal/pay-now.ts and the POST route /account/billing/invoice/[invoiceId]/pay open the invoice's own Stripe page only for the signed-in customer's overdue payable Stripe invoice; the Pay now button is on the invoice page and the billing list; tests/w20-portal.test.ts and the integration test prove someone else's, paid and local invoices get nothing."
+        },
+        {
+          "criterion": "The customer's open delivery, pickup and repair visits each show a short status timeline in plain words (requested, scheduled for a date, done) on the portal home.",
+          "evidence": "OpenVisits on portal home shows Requested, Scheduled (date or 'Not scheduled yet') and Done for each open visit from getPortalHome; labels have Spanish text checked in tests/w20-portal.test.ts."
+        },
+        {
+          "criterion": "After the customer asks for a pickup, reports a problem or ends a rental, the page says in plain words what happens next, in English and Spanish.",
+          "evidence": "The problem-report confirmation, the ending-a-rental note on My rentals and the existing pickup confirmation say what happens next, in English and Spanish (portal-copy.ts; tests/w20-portal.test.ts checks the new Spanish entries)."
+        },
+        {
+          "criterion": "A package line shows as a set, for example \"Washer + Dryer Set (washer #A12, dryer #B07)\", on portal home and My rentals.",
+          "evidence": "src/domains/portal/line-display.ts shows a package line as 'Washer + Dryer Set (washer #A12, dryer #B07)' on portal home and My rentals; tests/w20-portal.test.ts checks the exact wording."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 715,
+  "productionRemoved": 25,
+  "planComparison": "Actual production change is about +715/-25 lines, inside the 900-line estimate and the 400-800 guide. Both subsections, their boundaries and all frozen acceptance are unchanged and fully delivered. One extra rule was needed and is covered by an existing test: the custody rules now treat the new Cleaning status as 'in the shop'. Visual redesign work was not started.",
+  "newEngineering": "Connected-records domain and panel on seven pages, appliance history with who and plain wording, purchase and seller search, Cleaning status (additive migration), Cleaning done action and To do, failed-inspection single repair draft and its To do, custody rule for Cleaning, portal next bill, Pay now rules and POST route, visit timelines, package set display, next-step notes with Spanish copy, 19 new tests and 3 updated tests",
+  "relatedWorkDecision": "W-17 and W-20 are the last two items of Batch W in approved order. The portal work reads the same records W-17 connects, so they share one review. Pay now only opens Stripe's own hosted page for an invoice the signed-in customer owns; it moves no money in this app.",
+  "decision": "SUBSTANTIAL"
+}

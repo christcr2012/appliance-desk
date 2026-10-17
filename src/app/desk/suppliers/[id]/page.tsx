@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { SupplierDetailClient } from "./supplier-detail-client";
 import { SupplierArchiveButton } from "./supplier-archive-button";
+import { RecordConnections } from "@/components/desk/record-connections";
 
 export const metadata = { title: "Supplier" };
 
@@ -159,6 +160,7 @@ export default async function SupplierDetailPage({
           />
         </section>
       </div>
+      <RecordConnections kind="seller" id={id} />
     </div>
   );
 }

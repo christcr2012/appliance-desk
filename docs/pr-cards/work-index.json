@@ -3271,7 +3271,7 @@
         "tests/w19-flow-rules.test.ts",
         "tests/w19-flow-gaps-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-10.md",
       "card": "docs/pr-cards/W-10.md"
     },
@@ -3652,7 +3652,7 @@
         "tests/w19-flow-rules.test.ts",
         "tests/w19-flow-gaps-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-10.md",
       "card": "docs/pr-cards/W-10.md"
     },
@@ -3671,12 +3671,19 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W-AMENDMENT-B.md",
+        "real-Postgres tests",
         "src/domains/activity/index.ts",
-        "src/domains/inventory/lifecycle.ts"
+        "src/domains/inventory/lifecycle.ts",
+        "unit tests"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-17.md"
+      "tests": [
+        "tests/w17-connections.test.ts",
+        "tests/w17-connections-integration.test.ts",
+        "tests/w20-portal.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/W-17.md",
+      "card": "docs/pr-cards/W-17.md"
     },
     {
       "id": "W-20",
@@ -3693,11 +3700,18 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W-AMENDMENT-B.md",
-        "src/app/account/billing/page.tsx"
+        "real-Postgres tests",
+        "src/app/account/billing/page.tsx",
+        "unit tests"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-20.md"
+      "tests": [
+        "tests/w17-connections.test.ts",
+        "tests/w17-connections-integration.test.ts",
+        "tests/w20-portal.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/W-17.md",
+      "card": "docs/pr-cards/W-17.md"
     }
   ],
   "enhancements": [
@@ -3740,7 +3754,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-10",
+  "activeExecution": "W-17",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3813,6 +3827,10 @@
     {
       "id": "W-10",
       "path": "docs/pr-cards/execution/W-10.json"
+    },
+    {
+      "id": "W-17",
+      "path": "docs/pr-cards/execution/W-17.json"
     }
   ]
 }

@@ -30,6 +30,7 @@ import { PickupVisitPanel } from "./pickup-visit-panel";
 import { AgreementDeliveryOfferPanel } from "./delivery-offer-panel";
 import { DeliveryRouteReview } from "@/components/locations/delivery-route-review";
 import { readOfferedSlots } from "@/domains/orders/delivery";
+import { RecordConnections } from "@/components/desk/record-connections";
 
 export const metadata = { title: "Agreement" };
 
@@ -385,6 +386,7 @@ export default async function AgreementDetailPage({
           earlierOptions={earlierOptions}
         />
       )}
+      <RecordConnections kind="agreement" id={id} />
     </div>
   );
 }
