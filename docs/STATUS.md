@@ -1,3 +1,30 @@
+## October 17 — V-1 and V-2 delivered (the new "Evergreen Signature" look for the home page, and a private address check), CI pending, owner look decision (S-V3) OPEN
+
+V-C4 and V-C5 are merged (#489). This PR delivers two whole approved subsections.
+**V-1** shared design tokens in `globals.css` for light and dark: a type scale (display, heading 2, heading 3, lede, eyebrow, price), thin-rule and tint colours,
+one raised shadow, cut-corner shapes (button, card, photo, band) that drop their clip while something inside has keyboard focus so the focus ring is never cut,
+a highlighted-words style, and a gentle entrance that switches off for reduced motion. The brand colours are unchanged. New home wording is owner-editable:
+ten website items (highlighted phrase, address-check labels and four answers, price-ticket label) with today's-style starting wording, in the editor, the template
+contract and fixtures (fingerprint updated, template version `signature-1`). `tests/theme-contrast.test.ts` now also proves the text pairs on the new tint and band
+meet 4.5:1 in light and dark and that every cut shape keeps its focus exception; `tests/public-copy-from-settings.test.ts` fails if old hard-coded marketing
+sentences return to public pages.
+**V-2** the home page is recomposed in both variants (opened, and preparing to launch): eyebrow with the first service-area city, big heading with an optional
+highlighted phrase, lede, the address check as the main action (shown only when Settings lists service-area ZIPs and a quote link exists; otherwise the usual button), the photo
+in a cut frame over an offset panel with a price ticket from the first published set price, a thin-rule benefits ledger, pricing with the set card featured,
+numbered steps, a household and property-manager band, a two-column FAQ and the closing call to action. **Address check:** a small public form that answers
+"we deliver / not yet / check the address" from the owner's ZIP codes (cities only if no ZIPs are listed), makes no outside call, is limited to 20 tries per 10 minutes per visitor,
+and stores and logs nothing; "yes" opens the quote form with the address and ZIP already filled in from the link (nothing is saved until the visitor sends the form), "not yet" links to the launch list.
+No migration, no new dependency, no change to routes, permissions or prices. Other public pages are unchanged (V-3).
+Proof: unit tests for the pure rule, the action (limit, honeypot, nothing stored), highlight, answers and links in the page render test, and the home page snapshot;
+full unit run 3398 passed (the one local failure, a Denver-time date check in `custody-integration`, is the known local-machine difference and passes in CI);
+typecheck, lint and the plain-words check pass. Browser/accessibility proof (`e2e/signature-home.spec.ts` at 360/768/1440 in light and dark, sideways scrolling, focus ring on cut shapes, reduced motion)
+is in exact-head CI.
+Not proven by an automated test: the address-check answers inside a real browser (the browser test site starts in prelaunch mode without service-area ZIPs, so the check does not show there); the
+tab-through of every header/price control; the "no layout shift from the price ticket" claim is a design property, not measured.
+**OPEN, owner decision S-V3:** Chris must accept or reject the new look from before/after screenshots (360/768/1440, light and dark, both opening modes). Nothing here claims acceptance, and
+this PR is not merged until he answers. If he rejects the direction, work stops rather than being iterated blindly.
+Next: V-3 (the remaining public pages) and V-4 (desk and portal polish), after the look is accepted. Nothing is live; no Stripe, email, SMS, spending or production data touched.
+
 ## October 17 — V-C4 and V-C5 delivered (the owner Website editor, and the redesign safety contract), CI and merge pending
 
 V-C3 is merged (#488). This PR delivers two whole approved subsections.

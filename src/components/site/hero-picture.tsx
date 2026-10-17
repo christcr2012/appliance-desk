@@ -20,7 +20,7 @@ export function HeroPicture({
   /** The owner's select-to-edit preview: lets a click on the photo find its item. */
   selectable?: boolean;
 }) {
-  const className = "h-auto w-full rounded-control object-cover";
+  const className = "h-auto w-full object-cover";
   if (value?.kind === "image") {
     return (
       <Image

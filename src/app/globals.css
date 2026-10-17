@@ -83,6 +83,12 @@
   --radius-control: 8px;
   --radius-card: 16px;
 
+  /* V-1 "Evergreen Signature": a hairline between ledger rows, a quiet tint behind offset panels, and one raised shadow
+     tinted toward evergreen. Mixed in srgb on purpose (oklch gave a pink cast). */
+  --color-hairline: color-mix(in srgb, var(--color-line-strong) 55%, var(--color-canvas));
+  --color-tint: color-mix(in srgb, var(--color-canvas-alt) 60%, var(--color-canvas));
+  --shadow-raise: 0 1px 0 rgb(18 60 45 / 0.06), 0 18px 40px -22px rgb(18 60 45 / 0.35);
+
   --font-display: var(--font-manrope);
   --font-sans: var(--font-manrope);
 
@@ -131,6 +137,35 @@
 
   --radius-control: var(--radius-control);
   --radius-card: var(--radius-card);
+
+  --color-hairline: var(--color-hairline);
+  --color-tint: var(--color-tint);
+  --shadow-raise: var(--shadow-raise);
+
+  /* The signature type scale. These are the only sizes for these roles (display, section heading, card heading,
+     lede, eyebrow, price); headings balance their lines. */
+  --text-display: clamp(2.5rem, 5.6vw, 4.6rem);
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.045em;
+  --text-display--font-weight: 800;
+  --text-h2: clamp(2rem, 3.6vw, 3rem);
+  --text-h2--line-height: 1.02;
+  --text-h2--letter-spacing: -0.035em;
+  --text-h2--font-weight: 800;
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.25;
+  --text-h3--letter-spacing: -0.015em;
+  --text-h3--font-weight: 800;
+  --text-lede: 1.1875rem;
+  --text-lede--line-height: 1.55;
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.12em;
+  --text-eyebrow--font-weight: 700;
+  --text-price: 2.75rem;
+  --text-price--line-height: 1;
+  --text-price--letter-spacing: -0.045em;
+  --text-price--font-weight: 800;
 
   --font-display: var(--font-display);
   --font-sans: var(--font-sans);
@@ -221,6 +256,8 @@
   --color-nav-ink: #f7f5ec;
   --color-nav-current-bg: #b9e66b;
   --color-nav-current-ink: #123c2d;
+
+  --shadow-raise: 0 18px 40px -24px rgb(0 0 0 / 0.7);
 
   color-scheme: dark;
 }
@@ -422,6 +459,87 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+/* V-1 signature shapes. The "cut" is the Split-R mark's 45-degree diagonal: a photo loses its bottom-left corner, a
+   primary button its bottom-right, a feature card and a band a bigger corner. A clip also clips a focus ring, so an
+   element that is (or holds) the keyboard focus drops its cut while focused and the ring is always complete. */
+@utility cut-corner-sm {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  &:focus-visible,
+  &:has(:focus-visible) {
+    clip-path: none;
+  }
+}
+@utility cut-corner-md {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 32px), calc(100% - 32px) 100%, 0 100%);
+  &:focus-visible,
+  &:has(:focus-visible) {
+    clip-path: none;
+  }
+}
+@utility cut-corner-photo {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 40px 100%, 0 calc(100% - 40px));
+  &:focus-visible,
+  &:has(:focus-visible) {
+    clip-path: none;
+  }
+}
+@utility cut-band {
+  clip-path: polygon(48px 0, 100% 0, 100% 100%, 0 100%, 0 48px);
+  &:focus-visible,
+  &:has(:focus-visible) {
+    clip-path: none;
+  }
+}
+
+/* The one highlight per page: a fresh-green band behind the lower part of one phrase. Fresh is a filled shape with
+   evergreen text on it, never text or a thin line on ivory. In dark mode the whole phrase sits on the band. */
+@utility highlight {
+  background: linear-gradient(transparent 62%, var(--color-accent) 62%);
+  padding-inline: 0.08em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  .dark & {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+}
+
+/* The one moment of motion: the hero headline and photo rise 12px over 320ms on first paint. Content is visible at
+   rest; the animation only enhances. A button lifts 1px on hover. Both are off under reduced motion. */
+@keyframes signature-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility signature-rise {
+  animation: signature-rise 320ms ease-out both;
+}
+@utility signature-lift {
+  transition: transform 120ms ease-out;
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .signature-rise {
+    animation: none;
+  }
+  .signature-lift:hover {
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -103,6 +103,16 @@ const home: SiteField[] = [
   text(HOME, "Top of the page", "home.hero.eyebrow", "Small line above the heading", "short", "Now renting in {city}", { placeholders: ["city", "businessName"], help: "The small tag above the main heading. {city} is the first city in your service area." }),
   link(HOME, "Top of the page", "home.hero.cta.primary", "Main button", "Check your address", page("/contact")),
   link(HOME, "Top of the page", "home.hero.cta.secondary", "Second link", "See prices", page("/pricing")),
+  text(HOME, "Top of the page", "home.hero.highlight", "Phrase to highlight in the heading", "short", "", { optional: true, help: "One phrase from the main heading to mark with a green highlight. Copy it exactly from the heading; if it is not part of the heading, or you leave this empty, nothing is highlighted." }),
+  text(HOME, "Address check", "home.check.address.label", "Street address box: label", "short", "Street address", { help: "The label above the street address box in the address check at the top of the home page." }),
+  text(HOME, "Address check", "home.check.zip.label", "ZIP code box: label", "short", "ZIP code", { help: "The label above the ZIP code box in the address check." }),
+  text(HOME, "Address check", "home.check.served", "Answer when you deliver there", "short", "Good news: we deliver to your area.", { help: "Shown when the ZIP code or city is in your service area (Settings). Promise nothing else here, such as dates or prices." }),
+  text(HOME, "Address check", "home.check.served.cta", "Link after a yes", "short", "Tell us what you need", { help: "The link shown after a yes. It opens the quote page with the address filled in; where it goes is the Main button's destination in “Top of the page”." }),
+  text(HOME, "Address check", "home.check.notyet", "Answer when you do not deliver there yet", "short", "We don't deliver to that area yet.", { help: "Shown when the ZIP code and city are not in your service area." }),
+  text(HOME, "Address check", "home.check.notyet.cta", "Link after a no", "short", "Join the launch list", { help: "The link shown after a no. It opens the launch list sign-up page." }),
+  text(HOME, "Address check", "home.check.limited", "Message when someone checks too often", "short", "Too many checks just now. Please wait a few minutes, or call us.", { help: "Shown if the same visitor asks for many checks in a short time." }),
+  text(HOME, "Address check", "home.check.invalid", "Message when the address is incomplete", "short", "Enter your street address and a five-digit ZIP code.", { help: "Shown when the street address is empty or the ZIP code is not five digits." }),
+  text(HOME, "Top of the page", "home.ticket.label", "Small line on the price tag", "short", "Starting at", { help: "The small words above the price on the floating price tag by the main picture. The tag shows your published set price and only appears when you have one." }),
   ...[1, 2, 3].flatMap((n) => [
     text(HOME, "Three reasons", `home.benefit.${n}.title`, `Reason ${n}: title`, "short", ["No long-term contract", "Delivered & installed", "We fix it, fast"][n - 1]),
     text(HOME, "Three reasons", `home.benefit.${n}.body`, `Reason ${n}: text`, "paragraph", [

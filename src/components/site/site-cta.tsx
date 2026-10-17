@@ -39,7 +39,7 @@ export function SiteCta({
     );
   }
   return (
-    <ButtonLink href={href} rel={rel} variant={variant} size={size} className={className}>
+    <ButtonLink href={href} rel={rel} variant={variant} size={size} className={`signature-lift ${variant === "primary" ? "cut-corner-sm" : ""} ${className}`.trim()}>
       {label}
     </ButtonLink>
   );

@@ -1,0 +1,50 @@
+{
+  "subsections": [
+    {
+      "id": "V-1",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "The signature design tokens exist in src/app/globals.css for light and dark: the type scale (display, heading 2, heading 3, lede, eyebrow, price) with balanced headings and tabular money, the hairline and tint colours, one raised shadow (tinted toward evergreen, black in dark), and the cut-corner utilities (small and medium cut, photo cut, band cut) built with clip-path; reduced motion switches every animation and lift off; the colour palette itself is unchanged.",
+          "evidence": "src/app/globals.css defines the type scale (--text-display/h2/h3/lede/eyebrow/price with line height, spacing, weight), --color-hairline, --color-tint, --shadow-raise (evergreen-tinted light, black dark), the cut-corner-sm/md/photo and cut-band utilities (clip-path removed on :focus-visible and :has(:focus-visible)), highlight, signature-rise/lift with reduced-motion overrides; palette unchanged (asserted in tests/theme-contrast.test.ts)."
+        },
+        {
+          "criterion": "A test (tests/theme-contrast.test.ts) reads the token blocks and proves the text and shape pairs the design lists meet their contrast minimums in light and dark (ink on ivory, muted on ivory and white, evergreen on fresh, white on evergreen, ivory on night, dark muted on dark surface, dark success, danger and warning on the dark surface, and both button colour pairs).",
+          "evidence": "tests/theme-contrast.test.ts keeps the existing AA pair list (ink on ivory, muted on ivory/white, evergreen on fresh, white on evergreen, ivory on night, dark muted, success, danger, warning, both button pairs) and adds the tint panel, highlight, band and sage pairs in light and dark plus token and focus-exception checks."
+        },
+        {
+          "criterion": "The new home-page wording is owner-editable and bound to the shared registry, not hard-coded: the highlighted phrase, the address-check label, button and its three answers, are registered with plain help, limits and today's wording as default, appear in the Website editor and in the template contract and its saved fixtures, and a scan test (tests/public-copy-from-settings.test.ts) fails if the old hard-coded marketing sentences return to the public pages.",
+          "evidence": "fields-public.ts registers home.hero.highlight and nine home.check/ticket items with starting wording; template-contract.ts has the matching slots and CONTRACT_FINGERPRINT 25c8de38; SITE_TEMPLATE_VERSION signature-1; tests/vc5-template-contract.test.ts and tests/public-pages-render.test.tsx (every editable item renders, no stray words) pass; tests/public-copy-from-settings.test.ts scans public pages for the old hard-coded sentences."
+        }
+      ]
+    },
+    {
+      "id": "V-2",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "The home page is recomposed on the new tokens in both its opening and its before-opening variants, keeping their existing logic and editable content: eyebrow with the first service-area city, a display heading with at most one highlighted phrase (only when it is a part of the heading), lede, the address check as the main action with a See prices link, the photo in a cut frame over an offset tint panel, a floating price ticket from the published set price (omitted when none; its space is reserved so nothing jumps), a hairline benefits ledger, pricing with the set card featured, a numbered how-it-works sequence, a household and property-manager band, a two-column FAQ and the closing call to action; before opening, prices stay hidden and the address check is replaced by the launch-list call to action.",
+          "evidence": "src/app/(public)/page.tsx composes both variants (eyebrow with first city, display heading with optional highlight via splitHighlight, lede, address check or the usual button, cut-frame photo over offset tint with floating price ticket from the first published set price, hairline ledger, featured set card, CSS-counter steps, band, two-column FAQ, closing call); tests/public-pages-render.test.tsx snapshots and checks both variants."
+        },
+        {
+          "criterion": "The address check is a small public action with a pure rule: it answers SERVED, NOT_YET or INVALID using only the owner's service-area ZIP codes and cities from Settings, makes no outside call, is limited per visitor with the shared rate limiter, and stores and logs no address; SERVED links to the quote form with the address and ZIP filled in from the link (nothing is saved before the visitor sends the form) and NOT_YET links to the launch list; its wording comes from the website content.",
+          "evidence": "service-area-check.ts is the pure SERVED/NOT_YET/INVALID rule (tests/service-area-check.test.ts); check-address-actions.ts applies the shared limiter, a honeypot and stores or logs nothing (tests/check-address-action.test.ts); the contact page and form prefill address and ZIP from the link only (page render tests); wording comes from website content."
+        },
+        {
+          "criterion": "The new home page passes the automated accessibility check in light and dark at 360, 768 and 1440 pixels with no sideways scrolling, every cut element shows a complete keyboard focus ring (the check tabs through the header, address check, price buttons and links), animation is off under reduced motion and only the one first-paint fade exists otherwise, and the hero photo is the priority image with no layout shift from the price ticket.",
+          "evidence": "e2e/signature-home.spec.ts (registered in e2e/shards.json) runs axe at 360/768/1440 in light and dark, checks for sideways scrolling, one cut control keeps a complete focus ring, and reduced motion removes the entrance animation; runs in exact-head CI. NOT covered by an automated test: tabbing through every header and price control, the address check inside a real browser (test site has no ZIPs), and a measured layout-shift figure."
+        },
+        {
+          "criterion": "Before and after screenshots at 360, 768 and 1440 pixels in light and dark, in both opening modes, are produced for the owner. Owner acceptance of the new look (gate S-V3) is requested with those screenshots and is recorded as open until the owner says so; nothing here claims it.",
+          "evidence": "Screenshots at 360/768/1440, light and dark, both opening modes, are produced and sent to the owner; owner acceptance S-V3 is recorded OPEN and is not claimed."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 478,
+  "productionRemoved": 160,
+  "planComparison": "Actual production change is about +478/-160 lines against the 900-line estimate (333 added in existing files, 145 in four new files). Both subsections, their boundary and all seven frozen acceptance items are delivered; the estimate was high because the home page recomposition replaced existing markup rather than adding to it, and the tokens are compact CSS. Deliberate differences: numerals and the FAQ plus sign are CSS so the every-word-is-editable test stays honest; the address check shows only when Settings lists service-area ZIPs and a quote link exists; the browser spec covers accessibility, sideways scrolling, one cut control's focus ring and reduced motion, but not the address-check answers in a real browser (the test site has no ZIPs) nor a measured layout shift, and STATUS says so. Gate S-V3 (owner acceptance of the look) stays open.",
+  "newEngineering": "Type scale, hairline, tint, shadow, cut and highlight tokens with reduced-motion rules; contrast and token tests; home recomposition for both variants; ledger, numbered steps, price ticket, featured set card and FAQ; pure address check, public action with the shared limiter and honeypot, check component; quote form prefill from the link; ten new registry items with contract, fingerprint, template version and fixtures; copy-scan test; render, unit and browser tests; rollback, design and owner docs.",
+  "relatedWorkDecision": "V-1 (tokens and wording) and V-2 (home and address check) are one PR because the tokens have no visible effect without the home page that uses them and the owner's S-V3 look decision needs the real page; V-3 and V-4 follow after that decision.",
+  "decision": "SUBSTANTIAL"
+}

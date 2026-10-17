@@ -101,6 +101,16 @@ export const CONTENT_SLOTS: ReadonlyArray<ContentSlot> = [
   ["home.hero.eyebrow", "text", 120],
   ["home.hero.cta.primary", "link", 120],
   ["home.hero.cta.secondary", "link", 120],
+  ["home.hero.highlight", "text", 120, true],
+  ["home.check.address.label", "text", 120],
+  ["home.check.zip.label", "text", 120],
+  ["home.check.served", "text", 120],
+  ["home.check.served.cta", "text", 120],
+  ["home.check.notyet", "text", 120],
+  ["home.check.notyet.cta", "text", 120],
+  ["home.check.limited", "text", 120],
+  ["home.check.invalid", "text", 120],
+  ["home.ticket.label", "text", 120],
   ["home.benefit.1.title", "text", 120],
   ["home.benefit.1.body", "text", 2000],
   ["home.benefit.2.title", "text", 120],
@@ -276,7 +286,7 @@ export function contractFingerprint(slots: ReadonlyArray<ContentSlot> = CONTENT_
   }
   return hash.toString(16).padStart(8, "0");
 }
-export const CONTRACT_FINGERPRINT = "46008aac";
+export const CONTRACT_FINGERPRINT = "25c8de38";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Compatibility plan: what happens to the owner's content when the layout changes (or is rolled back).

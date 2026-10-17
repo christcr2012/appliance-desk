@@ -31,6 +31,16 @@ The written agreement between the two is `src/domains/site-content/template-cont
 4. Run `npx vitest run tests/vc5-template-contract.test.ts tests/public-pages-render.test.tsx` and the normal checks.
 5. Merge to `main`. Nothing reaches visitors until the daily release; no manual release.
 
+## Carry-over: classic-1 → signature-1 (V-1/V-2, 2026-10-17)
+
+- The home page was recomposed (address check, highlighted heading words, numbered steps, price ticket, two-column FAQ).
+- **Added, nothing renamed or removed:** ten home items, all with starting wording — `home.hero.highlight` (optional, starts
+  empty), the address-check labels and answers (`home.check.*`) and `home.ticket.label`. Every published revision from
+  classic-1 therefore still shows in full; the new items show their starting wording until the owner edits them.
+- Nothing stored was rewritten. The content format (schema) is unchanged.
+- Rolling back is the "Layout only" case below: revert the PR. The ten added items become unused and stay in history.
+- The address check stores nothing and sends nothing; reverting it leaves no data behind.
+
 ## Rolling back
 
 - **Layout only (content format unchanged):** revert the layout change on `main` (a new PR that reverses it). The owner's

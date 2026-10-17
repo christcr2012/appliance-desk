@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FIXTURE_CATALOG, FIXTURE_SETTINGS, visibleLines } from "./helpers/public-pages";
 
-const state = vi.hoisted(() => ({ legal: false, photos: false, lead: null as null | ((v: unknown) => Promise<unknown>), launch: null as null | ((s: unknown, f: unknown) => Promise<unknown>), prelaunch: false, emptyCatalog: false, noCities: false, content: {} as Record<string, string>, values: {} as Record<string, unknown> }));
+const state = vi.hoisted(() => ({ legal: false, photos: false, lead: null as null | ((v: unknown) => Promise<unknown>), check: null as null | ((f: FormData) => unknown), launch: null as null | ((s: unknown, f: unknown) => Promise<unknown>), prelaunch: false, emptyCatalog: false, noCities: false, content: {} as Record<string, string>, values: {} as Record<string, unknown> }));
 
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => { throw new Error(`REDIRECT ${to}`); },
@@ -26,6 +26,7 @@ vi.mock("@/lib/auth", () => ({ auth: {} }));
 vi.mock("@vercel/blob", () => ({}));
 vi.mock("@/app/(public)/contact/actions", () => ({ submitLead: (v: unknown) => (state.lead ? state.lead(v) : Promise.resolve({})), submitContactLead: async () => ({}) }));
 vi.mock("@/app/(public)/launch/actions", () => ({ submitLaunchSignup: (st: unknown, f: unknown) => (state.launch ? state.launch(st, f) : Promise.resolve({ status: "idle" })) }));
+vi.mock("@/app/(public)/check-address-actions", () => ({ checkServiceAddress: async (prev: unknown, form: FormData) => (state.check ? state.check(form) : { status: "idle" }) }));
 vi.mock("@/lib/metricool", () => ({ metricoolConfig: () => null }));
 
 import { SITE_FIELDS, siteDefaults, siteDefaultTypedValues } from "@/domains/site-content/fields";
@@ -191,6 +192,50 @@ describe("form words that appear after the visitor acts", () => {
     await waitFor(() => expect(screen.getByText(MARK("contact.thanks.title"))).toBeInTheDocument());
     expect(screen.getByText(MARK("contact.thanks.body"))).toBeInTheDocument();
     noteMarkers(document.body.textContent ?? "");
+  });
+
+  it("home address check: the answers, the link words and the highlighted phrase come from the website items", async () => {
+    const { AddressCheck } = await import("@/components/site/address-check");
+    const text = marked();
+    const copy = {
+      addressLabel: text["home.check.address.label"], zipLabel: text["home.check.zip.label"], button: "Go",
+      served: text["home.check.served"], servedLink: text["home.check.served.cta"], notYet: text["home.check.notyet"],
+      notYetLink: text["home.check.notyet.cta"], invalid: text["home.check.invalid"], limited: text["home.check.limited"],
+    };
+    rtlRender(<AddressCheck copy={copy} quoteHref="/contact" launchHref="/launch" />);
+    const answers: Array<[unknown, string[]]> = [
+      [{ status: "SERVED", zip: "80634", line1: "1 Main St" }, ["home.check.served", "home.check.served.cta"]],
+      [{ status: "NOT_YET", zip: "80202", line1: "1 Main St" }, ["home.check.notyet", "home.check.notyet.cta"]],
+      [{ status: "INVALID" }, ["home.check.invalid"]],
+      [{ status: "LIMITED" }, ["home.check.limited"]],
+    ];
+    for (const [answer, keys] of answers) {
+      state.check = () => answer;
+      fireEvent.change(screen.getByLabelText(new RegExp(MARK("home.check.address.label"))), { target: { value: "1 Main St" } });
+      fireEvent.change(screen.getByLabelText(new RegExp(MARK("home.check.zip.label"))), { target: { value: "80634" } });
+      fireEvent.click(screen.getByRole("button", { name: "Go" }));
+      for (const key of keys) await waitFor(() => expect(screen.getByText(new RegExp(MARK(key).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))).toBeInTheDocument());
+      noteMarkers(document.body.textContent ?? "");
+    }
+    // A yes carries the typed address in the link only.
+    state.check = () => ({ status: "SERVED", zip: "80634", line1: "1 Main St" });
+    fireEvent.click(screen.getByRole("button", { name: "Go" }));
+    await waitFor(() => expect(screen.getByRole("link", { name: MARK("home.check.served.cta") }).getAttribute("href")).toBe("/contact?address=1+Main+St&zip=80634"));
+  });
+
+  it("home page: one phrase of the heading is highlighted only when it is part of the heading", async () => {
+    state.prelaunch = false;
+    state.emptyCatalog = false;
+    const text = { ...siteDefaults(), ...markedState().text, "home.hero.heading": `A clean ${MARK("home.hero.highlight")} home`, "home.hero.highlight": MARK("home.hero.highlight") };
+    state.content = text;
+    state.values = markedState().values;
+    const { container } = rtlRender(await HomePage({ searchParams: sp }) as React.ReactElement);
+    expect(container.querySelector("h1 .highlight")?.textContent).toBe(MARK("home.hero.highlight"));
+    noteMarkers(container.textContent ?? "");
+    cleanup();
+    state.content = { ...text, "home.hero.highlight": "not in the heading" };
+    const again = rtlRender(await HomePage({ searchParams: sp }) as React.ReactElement);
+    expect(again.container.querySelector(".highlight")).toBeNull();
   });
 
   it("launch sign-up: the saving words come from the website item", async () => {

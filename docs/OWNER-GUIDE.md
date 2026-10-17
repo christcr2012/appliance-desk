@@ -8,6 +8,13 @@ Open **More → Website** (owners and admins only).
 - **History.** *Put in draft* copies an older version into your draft so you can look at it first; it never goes live by itself. *Discard the draft* throws away unpublished changes without touching the live website.
 - **Pictures** need the private picture store to be switched on for the real website; until then uploads are refused with a plain message.
 
+## The new home page and "Do we deliver to you?" (V-1, V-2)
+- **A new look for the home page** (the other public pages follow next). The wording is still yours: open **More → Website → Home**.
+- **Highlighted words.** Type a word or phrase from your heading into *Highlight in the heading* and it gets the fresh-green band. Leave it empty for none. If the phrase is not in the heading, nothing is highlighted.
+- **Address check.** When your service area lists ZIP codes, visitors can type a street address and ZIP and get an instant yes or not-yet. It **stores nothing and sends nothing**; "yes" takes them to the quote form with the address filled in, "not yet" invites them to the launch list. Every answer's wording is a Website item (`Home → Address check`), and the ZIP list stays in Settings.
+- **Price ticket.** The small card on the photo shows the first set price from your price list; only the label ("Starting at") is yours to change.
+- **Nothing is live until you publish and the daily release runs.** Header, footer and banner words cannot yet be previewed before publishing.
+
 ## Every public page now reads from your website content (V-C3)
 - **Nothing looks different yet.** Every word, button, link and the home photo on the public site is now a website item with today's words as the starting text. The screens to change them (the website editor) come next (V-C4); until then the site looks and reads exactly as before.
 - **Facts stay where they live.** Your phone, email, address, hours, prices, fees and cities come from Settings and the price list. In a sentence you will write them as `{phone}`, `{email}`, `{businessName}`, `{city}` and so on, so a sentence can never disagree with the real number or price.
