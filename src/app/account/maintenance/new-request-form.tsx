@@ -67,6 +67,7 @@ export function NewRequestForm({
           applianceId,
           priority,
           photoUrls,
+          kind: requestKind,
         });
       } catch {
         setError(
@@ -191,7 +192,9 @@ export function NewRequestForm({
       )}
       {success && !error && (
         <p role="status" className="text-sm font-semibold text-success">
-          {tr("Got it — we'll be in touch about next steps.")}
+          {requestKind === "pickup"
+            ? tr("Got it — we'll call you within one business day to schedule your pickup.")
+            : tr("Got it — we'll be in touch about next steps.")}
         </p>
       )}
     </form>

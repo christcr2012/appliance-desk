@@ -341,3 +341,57 @@ export async function updateSmsPreference(
 
   return { phone: updated.phone, smsOptInAt: updated.smsOptInAt };
 }
+
+
+/**
+ * A customer asking for appliances to be picked up. This is its own kind of request, not a repair: it becomes one draft
+ * pickup visit (no date, no technician) that lands on the owner's To do list as "Schedule <name>'s pickup".
+ * The customer's identity comes only from their own session. Nothing is sent, dispatched or charged.
+ */
+export async function createPickupRequestForUser(
+  userId: string,
+  input: { note: string; applianceId?: string | null },
+): Promise<{ jobId: string; created: boolean } | null> {
+  const { ensurePickupDraftInTx } = await import("@/domains/agreements/pickup-draft");
+  const note = input.note.trim().slice(0, 1000);
+  return prisma.$transaction(async (tx) => {
+    const customer = await tx.customer.findUnique({ where: { userId }, select: { id: true } });
+    if (!customer) throw new Error("No customer account found for this login.");
+    const held = await tx.applianceCustodyEpisode.findMany({
+      where: { customerId: customer.id, endedOn: null, agreementId: { not: null },
+        ...(input.applianceId ? { applianceId: input.applianceId } : {}) },
+      select: { agreementId: true, appliance: { select: { assetNumber: true } } },
+    });
+    if (input.applianceId && held.length === 0) throw new Error("That appliance isn't on one of your active rentals.");
+    const agreementIds = [...new Set(held.map((h) => h.agreementId as string))];
+    // Not exactly one rental with appliances out: the caller files an ordinary review request for the owner instead.
+    if (agreementIds.length !== 1) return null;
+    const agreementId = agreementIds[0];
+    const agreement = await tx.rentalAgreement.findUnique({ where: { id: agreementId }, select: { status: true } });
+    if (agreement?.status !== "ACTIVE" && agreement?.status !== "ENDED") return null;
+    const label = input.applianceId ? ` (appliance ${held[0].appliance.assetNumber})` : "";
+    const line = `Customer asked for a pickup${label}: ${note}`;
+    const before = await tx.job.findFirst({ where: { agreementId, type: "REMOVAL", status: { not: "CANCELLED" } }, select: { id: true, notes: true } });
+    const jobId = await ensurePickupDraftInTx(tx, agreementId, { notes: line });
+    if (!jobId) return null;
+    if (before) await tx.job.update({ where: { id: jobId }, data: { notes: [before.notes, line].filter(Boolean).join("\n") } });
+    await tx.auditLog.create({ data: { userId, action: "portal.pickup_request", entityType: "Job", entityId: jobId,
+      newValue: { agreementId, created: !before } } });
+    return { jobId, created: !before };
+  });
+}
+
+/** The customer's own open pickup visits, for the "Your pickup requests" list. Dates only; never staff notes beyond what they typed. */
+export async function getPortalPickupRequests(userId: string): Promise<{ id: string; text: string; scheduledAt: Date | null; createdAt: Date }[]> {
+  const customerId = await portalCustomerId(userId);
+  if (!customerId) return [];
+  const jobs = await prisma.job.findMany({
+    where: { customerId, type: "REMOVAL", status: { in: ["SCHEDULED", "IN_PROGRESS"] }, agreementId: { not: null } },
+    select: { id: true, notes: true, scheduledAt: true, createdAt: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 20,
+  });
+  return jobs.flatMap((job) => {
+    const match = /^Customer asked for a pickup(?: \([^)]*\))?: (.*)$/m.exec(job.notes ?? "");
+    return match ? [{ id: job.id, text: "Pickup request: " + match[1], scheduledAt: job.scheduledAt, createdAt: job.createdAt }] : [];
+  });
+}

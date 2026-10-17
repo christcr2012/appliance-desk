@@ -34,9 +34,12 @@ function makeTx() {
       findUniqueOrThrow: mocks.rentalAgreementFindUniqueOrThrow,
       // closeAgreement checks for a signed renewal waiting to start: none here.
       findFirst: async () => null,
+      // Ending also looks for appliances still out (E1 pickup draft): this ended rental has none.
+      findUnique: async () => ({ id: "agr-1", customerId: "c1", serviceAddressId: "a1", status: "ENDED" }),
     },
+    applianceCustodyEpisode: { findMany: async () => [] },
     // Ending an agreement also cancels a swap still waiting for it: none here.
-    job: { findMany: async () => [] },
+    job: { findMany: async () => [], findFirst: async () => null },
     auditLog: { create: mocks.auditLogCreate },
   };
 }

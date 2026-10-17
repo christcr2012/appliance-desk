@@ -381,7 +381,7 @@ export default async function DeskSettingsPage({
             reviewerName={spanishReview.reviewerName} />
         </Card>
       )}
-      {section === "notifications" && <div className="mb-4 flex flex-wrap gap-3"><ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink><ButtonLink href="/desk/settings/payment-links" variant="secondary">Payment link wording</ButtonLink><ButtonLink href="/desk/settings/lead-response" variant="secondary">Lead response time</ButtonLink></div>}
+      {section === "notifications" && <div className="mb-4 flex flex-wrap gap-3"><ButtonLink href="/desk/settings/telecom" variant="secondary">Phone, SMS and provider costs</ButtonLink><ButtonLink href="/desk/settings/payment-links" variant="secondary">Payment link wording</ButtonLink><ButtonLink href="/desk/settings/lead-response" variant="secondary">Lead response time</ButtonLink><ButtonLink href="/desk/settings/unsigned-follow-up" variant="secondary">Unsigned agreement reminder</ButtonLink></div>}
       {section === "notifications" && <SmsTemplatePreview />}
     </>);
   } else {

@@ -34,12 +34,15 @@ export function LeadActionsPanel({
   hasEmail,
   defaultFollowUp,
   currentFollowUp,
+  convertedCustomerId,
 }: {
   leadId: string;
   status: LeadStatus;
   hasEmail: boolean;
   defaultFollowUp: string;
   currentFollowUp?: string;
+  /** Set once the lead is a customer, so the next-step buttons survive a page refresh. */
+  convertedCustomerId?: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -78,9 +81,12 @@ export function LeadActionsPanel({
 
   if (status === "CONVERTED") {
     return (
-      <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-        This lead has already been converted to a customer.
-      </p>
+      <div className="space-y-3">
+        <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          This lead has already been converted to a customer.
+        </p>
+        {convertedCustomerId && <NextStepLinks customerId={convertedCustomerId} />}
+      </div>
     );
   }
 
@@ -282,15 +288,28 @@ export function LeadActionsPanel({
             >
               Go to their customer page
             </Link>
-            <Link
-              href={`/desk/agreements/new?customerId=${message.customerId}`}
-              className="rounded-md border border-line-strong bg-white px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong"
-            >
-              Start an agreement
-            </Link>
+            <NextStepLinks customerId={message.customerId} bare />
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** The two things that normally come next for a new customer. */
+function NextStepLinks({ customerId, bare = false }: { customerId: string; bare?: boolean }) {
+  const secondary = "rounded-md border border-line-strong bg-white px-3 py-1.5 text-sm text-ink-soft hover:border-line-strong";
+  const links = (
+    <>
+      <Link href={`/desk/estimates/new?customerId=${customerId}`} className={secondary}>Create quote</Link>
+      <Link href={`/desk/agreements/new?customerId=${customerId}`} className={secondary}>Start agreement</Link>
+    </>
+  );
+  if (bare) return links;
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Link href={`/desk/customers/${customerId}`} className="rounded-md bg-action px-3 py-1.5 text-sm font-medium text-on-action hover:bg-action">Go to their customer page</Link>
+      {links}
     </div>
   );
 }

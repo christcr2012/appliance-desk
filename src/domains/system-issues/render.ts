@@ -59,6 +59,12 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       summary = "Colorado address lookup is unavailable.";
       detail = `Consecutive failures ${input.count}. Manual verification required.`;
       break;
+    case "USE_TAX_FORM_MISSING":
+      if (input.years.length === 0 || input.years.some((y) => !Number.isInteger(y))) throw new Error("Years required");
+      fingerprint = "use-tax-form-missing"; severity = "MEDIUM";
+      summary = `The ${input.years.join(" and ")} use tax form (DR 0252) is not loaded.`;
+      detail = "Colorado's official consumer use tax form for this year is not in the app yet, so it can't be printed filled in. Filing still works from the numbers on the use tax page.";
+      break;
     case "TAX_PERIOD_MISSING":
       count(input.count); fingerprint = "tax-period-missing"; severity = "HIGH";
       summary = "A tax return period has no filing To do.";

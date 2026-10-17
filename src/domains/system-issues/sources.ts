@@ -3,6 +3,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { AUTOMATION_RULES } from "@/domains/automation/health";
 import { periodsFor } from "@/domains/tax/filing-calendar";
+import { missingDr0252Years } from "@/domains/tax/dr0252-form";
 import { collectTelecomAttention } from "@/domains/messaging/telecom-health";
 import { recordSystemIssue, resolveSystemIssue, type SystemIssueInput } from ".";
 
@@ -173,6 +174,11 @@ export async function collectSystemIssueInputs(
     }
     if (missingPeriods > 0) issues.push({ kind: "TAX_PERIOD_MISSING", count: missingPeriods });
     else cleared.add("tax-period-missing");
+
+    // The printable DR 0252 needs that year's official blank form (the next year's from December on).
+    const missingForms = missingDr0252Years(businessDateKey(now));
+    if (missingForms.length > 0) issues.push({ kind: "USE_TAX_FORM_MISSING", years: missingForms });
+    else cleared.add("use-tax-form-missing");
 
     const uncertainWhere = {
       state: "UNKNOWN" as const,

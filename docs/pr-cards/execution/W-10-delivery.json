@@ -1,0 +1,66 @@
+{
+  "subsections": [
+    {
+      "id": "W-10",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "The use-tax return page has a \"File now\" panel with a button that opens Revenue Online in a new tab and, beside it, the DR 0252 lines in form order, each value with a Copy button, ending with a link to \"I filed and paid it\"; the app never submits or pays anything.",
+          "evidence": "src/app/desk/sales-tax/use-tax/[periodId]/file-now-panel.tsx (wired into the page) has the Open Revenue Online button (new tab, noopener), the numbers in DR 0252 line order from src/domains/tax/use-tax-file-now.ts each with the existing Copy field, and a link to the 'I filed and paid it' return page. tests/w10-use-tax-file-now.test.ts checks the order, values and labels."
+        },
+        {
+          "criterion": "\"Print the filled-in form\" produces the current official DR 0252 PDF with the return's numbers filled in; until the official blank form file is supplied it is recorded as a scoped outside dependency and the page prints the line-by-line numbers instead.",
+          "evidence": "src/domains/tax/dr0252-form.ts fills the owner-supplied official 2026 form (src/domains/tax/forms/DR0252_2026.pdf) through GET /desk/sales-tax/use-tax/[periodId]/form (owner and admin only); the form is picked by the period's year, a redesigned layout is refused, and System health asks for next year's form from December. Tests read the filled PDF back field by field; the output was also inspected as an image."
+        },
+        {
+          "criterion": "A runbook, docs/runbooks/colorado-filing-channels.md, records where each Colorado return is filed and paid, the DR 0252 line order and the official source URLs with the date they were checked.",
+          "evidence": "docs/runbooks/colorado-filing-channels.md records where each Colorado return is filed and paid, the DR 0252 line order, the official source URLs and the dates they were checked (2026-10-16 and 2026-10-17)."
+        },
+        {
+          "criterion": "The panel's numbers come only from the saved filing packet for that period (purchases, tax per area, total), are checked by a test against that packet, and are shown only to owner and admin.",
+          "evidence": "The File now steps are built only from the saved filing packet (tests/w10-use-tax-file-now.test.ts compares them to a packet); the page and the form route both call requireRole OWNER/ADMIN; the panel contains no submit or pay control, only a link to the state's site and a link back to the owner's own recording form."
+        }
+      ]
+    },
+    {
+      "id": "W-19",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "After a lead is converted, the lead page shows \"Create quote\" and \"Start agreement\" buttons that open the new quote or agreement for that customer.",
+          "evidence": "src/app/desk/leads/[id]/lead-actions-panel.tsx shows Create quote and Start agreement (and Go to their customer page) after conversion, including after a refresh, using the lead's saved convertedCustomerId; both open existing pages (/desk/estimates/new and /desk/agreements/new with the customer)."
+        },
+        {
+          "criterion": "Converting a quote to a rental opens the new draft agreement.",
+          "evidence": "src/app/desk/estimates/[id]/convert-estimate-panel.tsx opens the single new draft agreement (or the agreements list when several were made) instead of only refreshing."
+        },
+        {
+          "criterion": "An agreement waiting for signature for more days than an owner setting (starting at 3, explained on the screen, with a restore button) puts \"Follow up: <name> hasn't signed\" on Today with a link to that agreement, and clears when it is signed or cancelled.",
+          "evidence": "src/domains/agreements/unsigned-follow-up.ts and the owner screen /desk/settings/unsigned-follow-up (explanation, starting 3, restore button, audited, owner only, stale-save protection); src/domains/exceptions/unsigned-agreements.ts raises 'Follow up: <name> hasn't signed' linking to the agreement and clears when signed or cancelled. Proven in tests/w19-flow-gaps-integration.test.ts on real PostgreSQL."
+        },
+        {
+          "criterion": "A customer's repair request appears on Today at once as \"Review <name>'s repair request\".",
+          "evidence": "UNREVIEWED_MAINTENANCE_REQUEST_DAYS is now 0 and the title is 'Review <name>'s repair request' (tests/w19-flow-rules.test.ts); the existing Today assembly query then lists a request as soon as it is submitted."
+        },
+        {
+          "criterion": "A customer can ask for a pickup in the portal; it arrives as a pickup request (not a repair) with a draft pickup visit, and the customer is told what happens next.",
+          "evidence": "src/domains/portal/index.ts createPickupRequestForUser, called by the portal request form for the pickup kind, creates or reuses exactly one draft pickup visit with the customer's note and creates no repair request; it refuses another customer's appliance, and when it cannot tell which single rental is meant it falls back to an ordinary request for the owner to review (nothing is lost); the customer's open pickups are listed in 'Your pickup requests' in the portal. The customer sees 'we'll call you within one business day' (with Spanish). Proven in tests/w19-flow-gaps-integration.test.ts."
+        },
+        {
+          "criterion": "A rental that ended any way (term, early return, termination) gets a draft pickup visit and a Today item \"Schedule <name>'s pickup\" that opens it, plus a button on the agreement page.",
+          "evidence": "closeAgreementInTx now creates the draft pickup visit when a rental ends with appliances still out; src/domains/agreements/pickup-needed.ts feeds a 'Schedule <name>'s pickup' Today item for ended or ending rentals with none, and the agreement page has a 'Schedule the pickup' button (owner/admin only, safe to repeat). Proven in tests/w19-flow-gaps-integration.test.ts."
+        },
+        {
+          "criterion": "Every step of the agreement progress card has a button that opens the page where that step is done.",
+          "evidence": "src/domains/agreements/progress.ts returns a button for every unfinished step (signature, deposit, equipment, delivery, billing) and src/components/desk/agreement-progress.tsx renders them; every target is an existing /desk page. tests/w19-flow-rules.test.ts."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 610,
+  "productionRemoved": 23,
+  "planComparison": "Actual production change is about +610/-23 lines, inside the 700-line estimate. Both subsections, their boundaries and all frozen acceptance are unchanged and fully delivered; the filled-form step was possible because the owner supplied the 2026 official DR 0252 during the session. W-17 and W-20 were not started.",
+  "newEngineering": "File now steps builder and panel, official DR 0252 filler with per-year form selection and layout check, December missing-form System health issue, filing runbook, conversion buttons, unsigned follow-up setting with migration and To do, immediate repair To do, portal pickup request path, pickup after any ending with safety-net To do and agreement-page button, progress-card buttons, 19 new tests",
+  "relatedWorkDecision": "W-10 and W-19 are the next two items in approved order and both change owner flows without moving money or sending anything to a customer, so they share one review. W-17 and W-20 are the following bundle.",
+  "decision": "SUBSTANTIAL"
+}

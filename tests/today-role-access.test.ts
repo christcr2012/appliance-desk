@@ -55,6 +55,9 @@ vi.mock("@/domains/exceptions/lead-turning-points", () => ({
   listLeadFollowUps: vi.fn(async () => ({ rows: [], total: 0 })),
   listApprovedQuoteToRental: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/unsigned-agreements", () => ({
+  listUnsignedAgreements: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
 vi.mock("@/domains/exceptions/turning-points-attention", () => ({
   listRentalEndingSoon: vi.fn(async () => ({ rows: [], total: 0 })),
   listPickupUnscheduled: vi.fn(async () => ({ rows: [], total: 0 })),

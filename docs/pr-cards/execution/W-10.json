@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "id": "W-10",
+  "parent": "W-10",
+  "baseline": "c38352b4c4b5a0ff7800bea7d65c8dcec616eaef",
+  "card": "docs/pr-cards/W-10.md",
+  "outcome": "The owner can file the consumer use tax return from a guided File now panel with the official form numbers and, from a lead to a finished rental, every step creates its next To do with a working button, including unsigned agreements, instant repair requests, portal pickup requests and pickups after any ending",
+  "risk": "A wrong number in the File now panel, a panel shown to staff, an unsigned or pickup To do that links to a missing page, a pickup request treated as a repair, or a migration that breaks existing requests.",
+  "next": "Plan frozen; implementation, tests and docs follow. W-17 and W-20 are the next bundle after verified merge.",
+  "references": [
+    {
+      "path": "src/domains/tax/dr0252-worksheet.ts",
+      "anchor": "export function buildUseTaxWorksheet",
+      "purpose": "Existing unofficial use-tax worksheet"
+    },
+    {
+      "path": "src/app/desk/sales-tax/use-tax/[periodId]/page.tsx",
+      "anchor": "export default",
+      "purpose": "Use-tax return page"
+    },
+    {
+      "path": "src/app/desk/leads/[id]/lead-actions-panel.tsx",
+      "anchor": "export",
+      "purpose": "Lead conversion buttons"
+    },
+    {
+      "path": "src/domains/exceptions/rules.ts",
+      "anchor": "UNREVIEWED_MAINTENANCE_REQUEST_DAYS",
+      "purpose": "Repair request To do rule"
+    },
+    {
+      "path": "src/domains/portal/index.ts",
+      "anchor": "createMaintenanceRequestForUser",
+      "purpose": "Portal requests"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/tax/use-tax-file-now.ts",
+    "src/domains/tax/dr0252-form.ts",
+    "src/app/desk/sales-tax/use-tax/[periodId]/file-now-panel.tsx",
+    "src/domains/agreements/unsigned-follow-up.ts",
+    "src/domains/agreements/pickup-needed.ts",
+    "docs/runbooks/colorado-filing-channels.md"
+  ],
+  "invariants": [
+    "The app never files or pays a return.",
+    "File now numbers come only from the saved packet and only owner and admin see them.",
+    "Nothing is sent to a customer.",
+    "A pickup request is never counted as a repair.",
+    "Migrations are additive."
+  ],
+  "sequence": [
+    "File now panel and runbook",
+    "Conversion buttons",
+    "Unsigned follow-up and instant repair To do",
+    "Pickup requests and pickup after ending",
+    "Progress buttons",
+    "Tests",
+    "Docs, one push and exact-head CI"
+  ],
+  "acceptance": [
+    "The use-tax return page has a \"File now\" panel with a button that opens Revenue Online in a new tab and, beside it, the DR 0252 lines in form order, each value with a Copy button, ending with a link to \"I filed and paid it\"; the app never submits or pays anything.",
+    "\"Print the filled-in form\" produces the current official DR 0252 PDF with the return's numbers filled in; until the official blank form file is supplied it is recorded as a scoped outside dependency and the page prints the line-by-line numbers instead.",
+    "A runbook, docs/runbooks/colorado-filing-channels.md, records where each Colorado return is filed and paid, the DR 0252 line order and the official source URLs with the date they were checked.",
+    "The panel's numbers come only from the saved filing packet for that period (purchases, tax per area, total), are checked by a test against that packet, and are shown only to owner and admin.",
+    "After a lead is converted, the lead page shows \"Create quote\" and \"Start agreement\" buttons that open the new quote or agreement for that customer.",
+    "Converting a quote to a rental opens the new draft agreement.",
+    "An agreement waiting for signature for more days than an owner setting (starting at 3, explained on the screen, with a restore button) puts \"Follow up: <name> hasn't signed\" on Today with a link to that agreement, and clears when it is signed or cancelled.",
+    "A customer's repair request appears on Today at once as \"Review <name>'s repair request\".",
+    "A customer can ask for a pickup in the portal; it arrives as a pickup request (not a repair) with a draft pickup visit, and the customer is told what happens next.",
+    "A rental that ended any way (term, early return, termination) gets a draft pickup visit and a Today item \"Schedule <name>'s pickup\" that opens it, plus a button on the agreement page.",
+    "Every step of the agreement progress card has a button that opens the page where that step is done."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/w10-use-tax-file-now.test.ts",
+      "tests/w19-flow-rules.test.ts",
+      "tests/today-role-access.test.ts",
+      "tests/agreement-progress.test.ts"
+    ],
+    "db": [
+      "tests/w19-flow-gaps-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-10",
+      "outcome": "W-10",
+      "acceptance": [
+        "The use-tax return page has a \"File now\" panel with a button that opens Revenue Online in a new tab and, beside it, the DR 0252 lines in form order, each value with a Copy button, ending with a link to \"I filed and paid it\"; the app never submits or pays anything.",
+        "\"Print the filled-in form\" produces the current official DR 0252 PDF with the return's numbers filled in; until the official blank form file is supplied it is recorded as a scoped outside dependency and the page prints the line-by-line numbers instead.",
+        "A runbook, docs/runbooks/colorado-filing-channels.md, records where each Colorado return is filed and paid, the DR 0252 line order and the official source URLs with the date they were checked.",
+        "The panel's numbers come only from the saved filing packet for that period (purchases, tax per area, total), are checked by a test against that packet, and are shown only to owner and admin."
+      ]
+    },
+    {
+      "id": "W-19",
+      "outcome": "W-19",
+      "acceptance": [
+        "After a lead is converted, the lead page shows \"Create quote\" and \"Start agreement\" buttons that open the new quote or agreement for that customer.",
+        "Converting a quote to a rental opens the new draft agreement.",
+        "An agreement waiting for signature for more days than an owner setting (starting at 3, explained on the screen, with a restore button) puts \"Follow up: <name> hasn't signed\" on Today with a link to that agreement, and clears when it is signed or cancelled.",
+        "A customer's repair request appears on Today at once as \"Review <name>'s repair request\".",
+        "A customer can ask for a pickup in the portal; it arrives as a pickup request (not a repair) with a draft pickup visit, and the customer is told what happens next.",
+        "A rental that ended any way (term, early return, termination) gets a draft pickup visit and a Today item \"Schedule <name>'s pickup\" that opens it, plus a button on the agreement page.",
+        "Every step of the agreement progress card has a button that opens the page where that step is done."
+      ]
+    }
+  ]
+}

@@ -31,6 +31,11 @@ export function AgreementProgress({
           <div key={m.label}>
             <dt className="text-sm font-semibold text-ink">{m.label}</dt>
             <dd className="mt-1 text-sm text-ink-soft">{m.state}</dd>
+            {data.actions[m.label] && (
+              <dd className="mt-2">
+                <ButtonLink variant="secondary" href={data.actions[m.label].href}>{data.actions[m.label].label}</ButtonLink>
+              </dd>
+            )}
           </div>
         ))}
       </dl>

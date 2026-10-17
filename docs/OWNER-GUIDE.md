@@ -1,3 +1,11 @@
+## Filing use tax from the File now panel, and the connected steps (W-10, W-19)
+- **Use tax return page → File now.** Press "Open Revenue Online", then copy each number into the matching line, in the order shown (it follows Colorado's DR 0252 form). Submit and pay on the website yourself, then press "I filed and paid it" and enter the date and confirmation number. "Print the filled-in official form" gives the real DR 0252 with the State column filled in; sign it yourself and attach the purchase list from the audit pack if you file on paper.
+- **Next year's form.** From December, System health says if next year's DR 0252 isn't loaded. Send the new official PDF (named like DR0252_2027.pdf) and it is added; until then the page shows the numbers to type.
+- **Leads and quotes.** After you convert a lead, "Create quote" and "Start agreement" are on the lead page. Converting a quote opens the new draft agreement.
+- **Unsigned agreements.** If an agreement has waited for a signature longer than the number of days in Settings → Notifications → Unsigned agreement reminder (starts at 3), Today shows "Follow up: (name) hasn't signed". It clears when they sign or you cancel.
+- **Repair and pickup requests.** A customer's repair request shows on Today at once. A pickup request from the customer's account becomes a draft pickup visit, shown as "Schedule (name)'s pickup". A rental that ends with appliances still out gets the same; if it somehow didn't, open the agreement and press "Schedule the pickup".
+- **Agreement progress card.** Each unfinished step (signature, deposit, equipment, delivery, billing) has a button that opens the page where you do it.
+
 ## Taxes in one place and rental turning points (W-3, W-4)
 
 **Taxes** is now one menu entry (Money → Taxes) with four tabs: **To file** (returns), **Use tax**, **Rates & areas**, and **Setup**. Setup holds "Customers who don't pay tax", "What gets taxed", the use-tax settings, the audit pack and record keeping. Old bookmarks to the earlier tax pages still work and forward you here.

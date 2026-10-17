@@ -11,6 +11,7 @@ import { listCancellationRefundAttention } from "./cancellation-refund-attention
 import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
 import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
+import { listUnsignedAgreements } from "./unsigned-agreements";
 import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment } from "./turning-points-attention";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
@@ -1030,6 +1031,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const leadFollowUps = canViewFinance ? await listLeadFollowUps(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const approvedQuotes = canViewFinance ? await listApprovedQuoteToRental(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const rentalEndingSoon = canViewFinance ? await listRentalEndingSoon(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const unsignedAgreements = canViewFinance ? await listUnsignedAgreements(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const pickupUnscheduled = canViewFinance ? await listPickupUnscheduled(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const visitNeedsAssignment = canViewFinance ? await listVisitNeedsAssignment(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const salesTaxItems = items
@@ -1061,6 +1063,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...approvedQuotes.rows,
     ...depositDecisions.rows,
     ...rentalEndingSoon.rows,
+    ...unsignedAgreements.rows,
     ...pickupUnscheduled.rows,
     ...visitNeedsAssignment.rows,
     ...cappedSalesTaxItems,
@@ -1107,6 +1110,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["LEAD_FOLLOW_UP", leadFollowUps],
       ["APPROVED_QUOTE", approvedQuotes],
       ["RENTAL_ENDING_SOON", rentalEndingSoon],
+      ["UNSIGNED_AGREEMENT", unsignedAgreements],
       ["PICKUP_UNSCHEDULED", pickupUnscheduled],
       ["VISIT_NEEDS_ASSIGNMENT", visitNeedsAssignment],
       ["OVERDUE_JOB", overdueJobs],

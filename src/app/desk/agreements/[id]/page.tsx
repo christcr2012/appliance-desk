@@ -26,6 +26,7 @@ import { SigningPaymentSummary } from "@/components/billing/signing-payment-summ
 import { signingPaymentRecoveryAdvice } from "@/domains/billing/signing-payment-recovery";
 import { getReviewedSigningOrderReadback } from "@/domains/billing/signing-order-readback";
 import { ReviewedSigningOrder } from "@/components/billing/reviewed-signing-order";
+import { PickupVisitPanel } from "./pickup-visit-panel";
 import { AgreementDeliveryOfferPanel } from "./delivery-offer-panel";
 import { DeliveryRouteReview } from "@/components/locations/delivery-route-review";
 import { readOfferedSlots } from "@/domains/orders/delivery";
@@ -341,6 +342,7 @@ export default async function AgreementDetailPage({
       <div className="mt-6">
         <AgreementProgress agreement={agreement} />
       </div>
+      <PickupVisitPanel agreementId={agreement.id} />
       <div className="mt-6">
         {appointmentOffer&&<DeliveryRouteReview kind="agreement" id={id}
           origin={(await prisma.businessSettings.findUnique({

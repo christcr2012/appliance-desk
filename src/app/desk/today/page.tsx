@@ -98,6 +98,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   LEAD_FOLLOW_UP: "Lead follow-up",
   APPROVED_QUOTE: "Approved quote — make rental",
   SIGNING_PAYMENT_DUE: "Signing payment to collect",
+  UNSIGNED_AGREEMENT: "Agreement not signed yet",
   CANCELLATION_REFUND_DUE: "Cancellation refund owed",
   SIGNED_DELIVERY_UNSCHEDULED: "Signed rental — schedule delivery",
   RENTAL_ENDING_SOON: "Rental ending soon — decide what happens next",

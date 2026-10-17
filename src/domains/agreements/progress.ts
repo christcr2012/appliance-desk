@@ -110,5 +110,26 @@ export function agreementProgress(a: ProgressInput) {
                   label: "Review rental details and customer billing history.",
                   href: null,
                 };
-  return { milestones, next };
+  // One button per step, each opening a page where that step is done. A step with nothing left to do has none.
+  const actions: Record<string, { label: string; href: string }> = {};
+  if (!closed && a.status !== "SCHEDULED") {
+    if (!signed && !a.createdByAutoRenew) {
+      actions["Signature"] = a.status === "AWAITING_SIGNATURE"
+        ? { label: "Follow up with the customer", href: "/desk/communications" }
+        : { label: "Review and send for signature", href: `/desk/agreements/new?draftId=${a.id}` };
+    }
+    if (a.depositCents > 0) actions["Payment requirement"] = { label: "Check the deposit in Money", href: "/desk/billing" };
+    if (!assignmentCount && !delivery) {
+      actions["Equipment"] = a.status === "DRAFT"
+        ? { label: "Pick appliances in the builder", href: `/desk/agreements/new?draftId=${a.id}` }
+        : { label: "Pick appliances from Equipment", href: "/desk/inventory" };
+    }
+    if (!delivery) {
+      actions["Delivery"] = scheduledDelivery
+        ? { label: "Open the delivery visit", href: `/desk/jobs/${scheduledDelivery.id}` }
+        : { label: "Arrange delivery", href: `/desk/jobs/new?agreementId=${a.id}` };
+    }
+    if (!a.billingStartedAt) actions["Billing"] = { label: "Open Money to check billing", href: "/desk/billing" };
+  }
+  return { milestones, next, actions };
 }

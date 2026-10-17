@@ -10,6 +10,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/w5-w6-integration.test.ts", // Changes and restores the shared lead response time and payment-link wording settings.
   "tests/setup-checklist-integration.test.ts", // W-7 blanks and restores shared settings, prices, filing accounts and the business address.
   "tests/w9-filing-autopilot-integration.test.ts", // W-9 creates Colorado filing accounts and periods that the whole-database filing list and health check read.
+  "tests/w19-flow-gaps-integration.test.ts", // W-19 changes and restores the shared unsigned-agreement reminder setting.
   // Tax-ready fixtures also write/restore BusinessSettings.singleton through their helper.
   "tests/billing-webhooks.test.ts",
   "tests/pickup-billing-end-integration.test.ts",

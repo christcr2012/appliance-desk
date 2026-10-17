@@ -1,3 +1,37 @@
+## October 17 — W-10 and W-19 delivered as one bundle, CI and merge pending
+
+W-8 and W-9 are merged (#484). This PR delivers two whole approved subsections:
+**W-10** the use-tax return page has a **File now** panel: a button that opens Colorado's Revenue Online in a new tab,
+and every number to type in the order of the state's DR 0252 form, each with a Copy button, ending with a link to "I filed and
+paid it" (the app never submits or pays). **Print the filled-in official form** fills the real DR 0252 PDF you supplied
+(State column, whole dollars; your signature, tax ID numbers and address stay blank for you; the invoice list is on page 2 to
+attach from the audit pack). The form is chosen by the year the return's period ends in; old years stay so a late return
+still has its own year's form. From December, System health warns "the next year's DR 0252 form isn't loaded" until the
+new year's PDF is added to `src/domains/tax/forms/` (see its README), and until then the page shows the numbers
+only. If Colorado ever redesigns the form the app refuses to fill it rather than put numbers in the wrong boxes. The
+filing runbook is `docs/runbooks/colorado-filing-channels.md`. Revenue Online needs a sign-in, so its exact screen
+order could not be read; the panel follows the form, and the first real filing should confirm it (open item below).
+**W-19** a converted lead shows "Create quote" and "Start agreement" (and keeps them after a refresh); converting a quote
+opens the new draft agreement; an agreement waiting for signature longer than a new owner setting (Settings →
+Notifications → Unsigned agreement reminder, starting 3 days, with explanation and restore) puts "Follow up: <name>
+hasn't signed" on Today; a customer's repair request is on Today at once as "Review <name>'s repair request"; a
+customer's pickup request in the portal now becomes a draft pickup visit (not a repair) and the customer is told "we'll
+call you within one business day"; a rental that ends with appliances still out gets a draft pickup visit and "Schedule
+<name>'s pickup" on Today, with a "Schedule the pickup" button on the agreement page as a safety net; every unfinished step
+of the agreement progress card has a button. One additive migration (`unsignedFollowUpDays`). Nothing is sent to a customer.
+Plan and frozen acceptance: `docs/pr-cards/W-10.md`; proof per criterion: `current-pr-scorecard.json`.
+
+Verified locally: typecheck, lint and wording check, 9 unit tests for the File now steps and the form (the real 2026 PDF is
+filled and read back; a redesigned form is refused), 4 flow-rule tests, 6 real-Postgres flow tests, and the existing
+Today, system-health, ending and filing suites; I also looked at the filled-in form as an image. Not yet done:
+exact-head CI (including the browser/accessibility run), review, merge. The browser spec
+`commercial-reserve-preapproval` (page-width check) failed once on #484's CI and passed on identical code; it looks
+timing-sensitive and is recorded here rather than hidden.
+CI fixes before merge: the portal pickup list, three tests written for the old behavior (a stand-in database, a cleanup, the pickup form), and a pickup that cannot be pinned to one rental now files a normal review request. The date check in tests/custody-integration.test.ts fails the same way on main before this PR, so it is not part of this bundle.
+Open items: confirm Revenue Online's screen order on the first real filing; the CD, RTD and ECD columns of the form are
+left blank (they apply only to those districts; local city and county use tax is filed with the city, not on this form).
+Nothing is released; no live Stripe, email, SMS, spending or production data touched. W-17 and W-20 are next.
+
 ## October 17 — W-8 and W-9 delivered as one bundle, CI and merge pending
 
 W-7 is merged (#483). This PR delivers two whole approved subsections:

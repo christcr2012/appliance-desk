@@ -3217,7 +3217,7 @@
         "tests/w8-menu-sections.test.ts",
         "tests/w9-filing-autopilot-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-8.md",
       "card": "docs/pr-cards/W-8.md"
     },
@@ -3243,7 +3243,7 @@
         "tests/w8-menu-sections.test.ts",
         "tests/w9-filing-autopilot-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-8.md",
       "card": "docs/pr-cards/W-8.md"
     },
@@ -3262,11 +3262,18 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W.md",
-        "src/domains/tax/dr0252-worksheet.ts"
+        "real-Postgres tests",
+        "src/domains/tax/dr0252-worksheet.ts",
+        "unit tests"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-10.md"
+      "tests": [
+        "tests/w10-use-tax-file-now.test.ts",
+        "tests/w19-flow-rules.test.ts",
+        "tests/w19-flow-gaps-integration.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/W-10.md",
+      "card": "docs/pr-cards/W-10.md"
     },
     {
       "id": "W-11",
@@ -3636,11 +3643,18 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W-AMENDMENT-B.md",
-        "src/domains/agreements/progress.ts"
+        "real-Postgres tests",
+        "src/domains/agreements/progress.ts",
+        "unit tests"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-19.md"
+      "tests": [
+        "tests/w10-use-tax-file-now.test.ts",
+        "tests/w19-flow-rules.test.ts",
+        "tests/w19-flow-gaps-integration.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/W-10.md",
+      "card": "docs/pr-cards/W-10.md"
     },
     {
       "id": "W-17",
@@ -3726,7 +3740,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-8",
+  "activeExecution": "W-10",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3795,6 +3809,10 @@
     {
       "id": "W-8",
       "path": "docs/pr-cards/execution/W-8.json"
+    },
+    {
+      "id": "W-10",
+      "path": "docs/pr-cards/execution/W-10.json"
     }
   ]
 }

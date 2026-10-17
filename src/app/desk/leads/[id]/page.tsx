@@ -126,6 +126,7 @@ export default async function LeadDetailPage({
           leadId={lead.id}
           status={lead.status}
           hasEmail={Boolean(lead.email)}
+          convertedCustomerId={lead.convertedCustomerId}
           defaultFollowUp={defaultFollowUpKey(new Date())}
           currentFollowUp={lead.nextFollowUpOn ? businessDateKey(lead.nextFollowUpOn) : undefined}
         />
