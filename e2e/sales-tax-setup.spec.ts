@@ -25,7 +25,7 @@ test.describe("sales tax setup shell and owner decisions", () => {
   test("owner taxability matrix is editable without activating billing", async ({ page }) => {
     test.skip(!fs.existsSync(owner), "Authenticated owner state required");
     await page.goto("/desk/sales-tax/taxability");
-    await expect(page.getByRole("heading", { name: "What's taxed?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "What gets taxed" })).toBeVisible();
     await expect(page.getByRole("button", { name: /save tax rule/i })).toBeVisible();
   });
 });

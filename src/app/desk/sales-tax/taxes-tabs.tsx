@@ -13,7 +13,7 @@ export function TaxesTabs() {
           href={tab.href}
           aria-current={active === tab.key ? "page" : undefined}
           className={`rounded-lg border px-3 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring ${
-            active === tab.key ? "border-primary bg-accent text-foreground" : "border-border bg-card hover:bg-accent"
+            active === tab.key ? "border-action bg-action text-on-action" : "border-border bg-card hover:bg-accent"
           }`}
         >
           {tab.label}

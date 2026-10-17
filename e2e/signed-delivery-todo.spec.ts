@@ -40,14 +40,14 @@ test("owner can schedule a signed delivery draft; staff finance To do stays priv
   await page.goto("/desk/today");
   const jobLink=page.locator("a[href='/desk/jobs/"+job.id+"']").first();
   await expect(jobLink).toBeVisible();
-  await expect(page.getByText("Schedule delivery for",{exact:false}).first()).toBeVisible();
+  await expect(page.getByText(/Schedule .+'s delivery/).first()).toBeVisible();
   await jobLink.click();
   await expect(page).toHaveURL(new RegExp("/desk/jobs/"+job.id));
   if(fs.existsSync(staff)){
    const context=await browser.newContext({storageState:staff});
    const staffPage=await context.newPage();
    await staffPage.goto("/desk/today");
-   await expect(staffPage.getByText("Schedule delivery for",{exact:false})).toHaveCount(0);
+   await expect(staffPage.getByText(/Schedule .+'s delivery/)).toHaveCount(0);
    await context.close();
   }
  }finally{
