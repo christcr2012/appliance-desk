@@ -83,7 +83,7 @@ describe.each(["light", "dark"] as const)("E2 AppShell in %s mode", (mode) => {
 
     const mainNav = screen.getByRole("navigation", { name: "Main" });
     expect(mainNav.getAttribute("aria-label")).toBe("Main");
-    for (const label of ["Today", "Schedule", "Customers", "Billing"]) {
+    for (const label of ["Today", "Schedule", "Customers", "Money"]) {
       expect(
         mainNav.querySelector(`a[href]${label === "Today" ? '[aria-current="page"]' : ""}`),
       ).toBeTruthy();
@@ -106,7 +106,7 @@ describe.each(["light", "dark"] as const)("E2 AppShell in %s mode", (mode) => {
     );
 
     const mainNav = screen.getByRole("navigation", { name: "Main" });
-    for (const label of ["Today", "Schedule", "Jobs", "Inventory"]) {
+    for (const label of ["Today", "Schedule", "Equipment", "Customers"]) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
     expect(mainNav.textContent).not.toContain("Billing");

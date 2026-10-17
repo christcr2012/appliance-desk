@@ -104,12 +104,12 @@ export default async function TaxSetupPage() {
         <p className="text-sm text-muted-foreground">Look up and confirm again after changing the address. Purchase tax waits until the location is confirmed.</p>}
       {businessLocation?.reviewNote && <p className="text-sm">{businessLocation.reviewNote}</p>}
       <p className="text-sm text-muted-foreground">Use the saved private business address above. Verify the areas before confirming; a lookup is not legal approval.</p>
-      <TaxActionForm action={lookUpBusinessTaxAreasAction} title="Find the area's jurisdictions" submitLabel="Look up tax areas">
+      <TaxActionForm action={lookUpBusinessTaxAreasAction} title="Find the tax areas for this address" submitLabel="Look up tax areas">
         <p className="text-sm">Look up areas for this business location using the configured source.</p>
       </TaxActionForm>
       <TaxActionForm action={confirmBusinessTaxAreasAction} title="Confirm these tax areas" submitLabel="Confirm these tax areas">
         <fieldset className="grid gap-2">
-          <legend className="text-sm">Choose the jurisdictions applying to your business address.</legend>
+          <legend className="text-sm">Choose the tax areas that apply to your business address.</legend>
           {knownAreas.map(area => <label key={area.id} className="flex gap-2 text-sm items-start">
             <input type="checkbox" name="jurisdictionIds" value={area.id}
               defaultChecked={businessLocation?.jurisdictions.some(j => j.jurisdictionId === area.id) ?? false}/>

@@ -31,10 +31,10 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
   if (areas.nextCursor) next.set("cursor", areas.nextCursor);
   return <main className="space-y-8">
     <h2 className="text-xl font-semibold">Tax areas and official rate sources</h2>
-    <p className="text-sm text-muted-foreground">Current service-address tax matches and owner-reviewed jurisdiction rules. If a provider cannot confirm an address or a rate, keep it in review instead of treating an unknown result as verified.</p>
+    <p className="text-sm text-muted-foreground">Current service-address tax matches and owner-reviewed tax-area rules. If a provider cannot confirm an address or a rate, keep it in review instead of treating an unknown result as verified.</p>
     <nav className="flex flex-wrap gap-3 text-sm underline" aria-label="Tax areas sections">
       <a href="#addresses">Address review</a><a href="#rates">Rate decisions</a>
-      <a href="#sources">Source status</a><a href="#jurisdictions">Jurisdictions</a>
+      <a href="#sources">Source status</a><a href="#jurisdictions">Tax areas</a>
     </nav>
     <section id="addresses" className="space-y-3">
       <h3 className="font-semibold">Service-address tax review</h3>
@@ -54,7 +54,7 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
           <div className="space-y-3">
             <Link className="block text-sm underline" href={`/desk/customers/${row.customerId}`}>Open customer</Link>
             {row.status !== "VERIFIED" && <TaxActionForm action={confirmAddressAction}
-              title="Verify tax jurisdictions for this address" submitLabel="Confirm address areas">
+              title="Verify the tax areas for this address" submitLabel="Confirm address areas">
               <input type="hidden" name="serviceAddressId" value={row.serviceAddressId} />
               <label className="block space-y-1 text-sm">
                 <span>Select all matching reviewed tax areas (multiple choices)</span>
@@ -113,7 +113,7 @@ export default async function TaxAreasPage({ searchParams }: { searchParams: Pro
       </ul>
     </section>
     <section id="jurisdictions" className="space-y-3">
-      <h3 className="font-semibold">Tax jurisdictions and recorded rates</h3>
+      <h3 className="font-semibold">Tax areas and recorded rates</h3>
       <ul className="divide-y divide-border rounded border border-border">
         {jurisdictions.map(j => <li key={j.id} className="p-3 text-sm">
           <b>{j.name}</b> — {j.reviewStatus} · {j.rates[0] ? `${formatRate(j.rates[0].rateMilliPercent)} (since ${j.rates[0].effectiveFrom.toISOString().slice(0, 10)}, ${j.rates[0].source})` : "No rate recorded"}

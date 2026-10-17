@@ -473,6 +473,8 @@ glance.
 A few more pages worth knowing exist, each answering one specific
 question:
 
+- **The menu** has 14 entries. **Schedule** holds the dispatch board, Jobs and the Driver view as three tabs; **Equipment** holds Inventory, Parts, Purchases and Purchase orders; **Money** holds Billing, Revenue, Fleet, Reports and the Business overview. **More** lists the rarely used screens (Suppliers, Growth signals, Launch list, System health, Privacy requests, Activity).
+- **Filing a tax return** — Today shows "File and pay $X on SUTS by <date>" (or "File a $0 return…") the day a period closes, and reminds you every business day once it is overdue. Open it, file and pay on the official website yourself, then press **I filed and paid it** and enter the date you paid and the confirmation number. If the website charged a different amount, open the optional section and say why.
 - **Get set up (owner only, top of Today)** — until the business is ready, a card lists six steps in order: business details, service area, prices, tax setup, payments and email. Each says "Done ✓" or the one thing still missing, and the button opens the screen that fixes it. It only looks; it never turns anything on. Payments and email become Done only after the Stripe and email keys are added in your hosting settings (see the go-live checklist). The card disappears when all six are done.
 - **Today** — everything that actually needs your attention right
   now (overdue rentals, appliances due for maintenance, and today's

@@ -1,3 +1,27 @@
+## October 17 — W-8 and W-9 delivered as one bundle, CI and merge pending
+
+W-7 is merged (#483). This PR delivers two whole approved subsections:
+**W-8** the desk menu is 14 plain entries (Today, Tasks, Leads, Customers, Quotes, Communications, Rentals,
+Schedule, Repairs, Equipment, Money, Taxes, Settings, More). Dispatch, Jobs and Driver view are one Schedule entry
+with three views; Parts, Purchases and Purchase orders are tabs under Equipment; Revenue, Fleet, Reports and
+Business overview are tabs under Money; Suppliers, Growth, Launch list, System health, Privacy requests and
+Activity are on a new More page (each role sees only what it may open). No screen address moved, so every old link
+works. A plain-words check now runs with lint and refuses hard words (jurisdiction, remit, election, "cents", raw
+status codes) on owner screens; the 18 it found are fixed;
+**W-9** each closed tax filing period shows on Today as "File and pay $X on SUTS by <date>" (or "File a $0
+return…"), "(overdue)" after the legal date; reminder emails now repeat every business day once overdue; the return
+page's form is "I filed and paid it" and needs only the date paid and the confirmation number (a different
+amount still needs a reason); and a nightly check raises a high System health issue if a closed period has no
+return on the list. The app still never files or pays; you press Submit and pay on the official site.
+Plan and frozen acceptance: `docs/pr-cards/W-8.md`; proof per criterion: `current-pr-scorecard.json` and
+`execution/W-8-delivery.json`.
+
+Verified locally: typecheck, lint and the wording check, menu and tab tests, wording-script tests, 5 new
+real-Postgres filing tests, and the existing tax filing, reminder, finalization, return-action and system-health
+suites. Not yet done: exact-head CI (which includes the browser/accessibility run of the new menu), review, merge.
+Nothing is released; no live Stripe, email, SMS, spending or production data touched. W-10 (File now panel and
+the filled DR 0252 form) is next after verified merge.
+
 ## October 17 — W-7 first-time setup checklist delivered, CI and merge pending
 
 W-5 and W-6 are merged (#482). This PR delivers **W-7**: the owner sees a "Get set up" card at the top of Today

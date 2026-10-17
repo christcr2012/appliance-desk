@@ -1075,3 +1075,12 @@ tax-evidence model. Choices made here, within the approved designs:
 - **One definition of "tax setup is in place"** in `src/domains/tax/setup-readiness.ts`, used by both the Taxes overview and the Today card, so they cannot disagree.
 - **Done rules:** business details = four public details filled and not "[...]" placeholders; service area = at least one city or ZIP; prices = at least one active appliance or set above $0 a month; payments = recognized Stripe key plus sync secret (test mode described as no real money); email = service key, sender address and customer-email switch.
 - **No schema change; skip-a-step deferred** to ROADMAP. W-8 stays a separate bundle.
+
+## 2026-10-17 — W-8 menu and plain-words check, W-9 filing autopilot
+- **Tabs, not moves.** Schedule, Equipment and Money are menu entries whose related screens are tabs in small layouts; no address changed, so bookmarks, links and the 28 older entries' pages all still open. `DESK_NAV_ALIASES` only keeps the right entry highlighted.
+- **Role limits live in the lists** (`deskNavigation`, `deskSectionTabs`, `deskMoreLinks`) and again on each page; staff never receive finance destinations.
+- **Plain-words check** (`scripts/check-owner-wording.mjs`) is part of `npm run lint`; its allowlist needs a written reason per entry.
+- **Filing To do shows the amount** from the same filing packet as the return page (first 12 open returns); if a packet cannot be worked out the older "<account> return due" wording stays so Today always loads.
+- **Overdue reminder emails are daily (business days)**; before-due days remain the owner-editable per-account setting (starting 7 and 2).
+- **"I filed and paid it"**: filed date defaults to date paid, amount defaults to the calculated amount, a different amount needs a reason, confirmation number always required. The app still never files or pays (D-WA2).
+- **Nightly missing-period check** is a System health issue (`TAX_PERIOD_MISSING`), not a new table.

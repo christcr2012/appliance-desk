@@ -2,6 +2,7 @@ import { ProviderOperationKind } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { AUTOMATION_RULES } from "@/domains/automation/health";
+import { periodsFor } from "@/domains/tax/filing-calendar";
 import { collectTelecomAttention } from "@/domains/messaging/telecom-health";
 import { recordSystemIssue, resolveSystemIssue, type SystemIssueInput } from ".";
 
@@ -153,6 +154,25 @@ export async function collectSystemIssueInputs(
     } else if (recentDays.every((dayKey) => daily.get(dayKey) === "UNAVAILABLE")) {
       issues.push({ kind: "TAX_LOOKUP_UNAVAILABLE", count: 3 });
     }
+
+    // W-9 (D-WA1): a closed filing period must always have its return on the list. The nightly job creates
+    // the period rows; if any closed period has no row, say so loudly instead of leaving it silently unfiled.
+    const filingAccounts = await prisma.taxFilingAccount.findMany({
+      where: { active: true, firstPeriodStart: { not: null } },
+      select: { id: true, frequency: true, firstPeriodStart: true },
+      take: 200,
+    });
+    let missingPeriods = 0;
+    for (const account of filingAccounts) {
+      const periods = await prisma.taxFilingPeriod.findMany({
+        where: { filingAccountId: account.id }, select: { periodStart: true, periodEnd: true },
+      });
+      missingPeriods += periodsFor(account, now).filter((range) =>
+        businessDateKey(range.end) < businessDateKey(now) &&
+        !periods.some((period) => range.start <= period.periodEnd && range.end >= period.periodStart)).length;
+    }
+    if (missingPeriods > 0) issues.push({ kind: "TAX_PERIOD_MISSING", count: missingPeriods });
+    else cleared.add("tax-period-missing");
 
     const uncertainWhere = {
       state: "UNKNOWN" as const,

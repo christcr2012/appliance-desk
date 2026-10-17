@@ -22,7 +22,7 @@ export function SigningChargeForm({ settings, editable, activeTaxTreatment, upco
     <section aria-label="Setup fee CPA approval status" className="space-y-2 rounded border border-line p-3 text-sm">
       <p role="status" className="font-semibold">{taxApproved ? "CPA-supported setup-fee policy recorded" : "Setup-fee tax decision: review required — affected real customer transactions stay blocked"}</p>
       <p>Current research-based planning setting: {settings.setupFeeTaxPlanningTreatment === "NOT_TAXABLE" ? "not taxable" : "taxable"}. It is editable below but cannot bypass CPA confirmation, enable Stripe or publish pricing.</p>
-      <p>The fee rule is only one part of clearance. Also confirm each jurisdiction&apos;s taxability and rates on <Link className="underline" href="/desk/sales-tax/taxability">Money → Sales tax → What&apos;s taxed?</Link> and verify the customer address on <Link className="underline" href="/desk/sales-tax/areas">Tax areas</Link>. Each unresolved gate still blocks the affected business transaction.</p>
+      <p>The fee rule is only one part of clearance. Also confirm each tax area&apos;s taxability and rates on <Link className="underline" href="/desk/sales-tax/taxability">Money → Sales tax → What&apos;s taxed?</Link> and verify the customer address on <Link className="underline" href="/desk/sales-tax/areas">Tax areas</Link>. Each unresolved gate still blocks the affected business transaction.</p>
       {taxApproved && <p>Effective policy today: {activeTaxTreatment === "TAXABLE" ? "taxable" : "not taxable"}. Previous signed amounts are unchanged.</p>}
       {upcomingPolicies.length > 0 && <div>
         <p className="font-semibold">Scheduled changes (not active yet)</p>

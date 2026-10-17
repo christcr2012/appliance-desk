@@ -189,7 +189,7 @@ function TaxExemptionForm({
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-ink">Jurisdiction scope</legend>
+        <legend className="text-sm font-medium text-ink">Which tax areas it covers</legend>
         <label className="flex min-h-11 items-center gap-2 text-sm text-ink">
           <input
             type="checkbox"

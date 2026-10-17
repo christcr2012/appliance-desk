@@ -3191,7 +3191,7 @@
         "tests/setup-checklist.test.ts",
         "tests/setup-checklist-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-7.md",
       "card": "docs/pr-cards/W-7.md"
     },
@@ -3210,11 +3210,16 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W.md",
+        "src/domains/tax/filing-reminders.ts",
         "src/lib/desk-navigation.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-8.md"
+      "tests": [
+        "tests/w8-menu-sections.test.ts",
+        "tests/w9-filing-autopilot-integration.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/W-8.md",
+      "card": "docs/pr-cards/W-8.md"
     },
     {
       "id": "W-9",
@@ -3231,11 +3236,16 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W.md",
-        "src/domains/tax/filing-reminders.ts"
+        "src/domains/tax/filing-reminders.ts",
+        "src/lib/desk-navigation.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-9.md"
+      "tests": [
+        "tests/w8-menu-sections.test.ts",
+        "tests/w9-filing-autopilot-integration.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/W-8.md",
+      "card": "docs/pr-cards/W-8.md"
     },
     {
       "id": "W-10",
@@ -3716,7 +3726,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-7",
+  "activeExecution": "W-8",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3781,6 +3791,10 @@
     {
       "id": "W-7",
       "path": "docs/pr-cards/execution/W-7.json"
+    },
+    {
+      "id": "W-8",
+      "path": "docs/pr-cards/execution/W-8.json"
     }
   ]
 }

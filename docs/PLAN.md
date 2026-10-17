@@ -221,8 +221,8 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 - [ ] Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.
 - [ ] A new lead appears as "Contact <name>" (same day by default); "contacted" asks for the next follow-up date; an approved quote creates a To do.
 - [x] A first-time setup checklist on Today (owner) until complete. (W-7: code-complete and locally proven; CI/merge pending, real keys are a go-live step.)
-- [ ] About 14 menu entries; Dispatch, Jobs and Driver view are one Schedule screen; the plain-words check runs in CI.
-- [ ] W-9 (Amendment A): every filing period creates "File and pay $X on <site> by <date>" on To do the day it closes ($0 returns included), reminds on schedule, captures confirmation number and date paid, and a nightly check proves no closed period is left without a filing item.
+- [x] About 14 menu entries; Dispatch, Jobs and Driver view are one Schedule screen; the plain-words check runs in CI. (W-8: code-complete and locally proven; CI/merge and owner look-over pending.)
+- [x] W-9 (Amendment A): every filing period creates "File and pay $X on <site> by <date>" on To do the day it closes ($0 returns included), reminds on schedule, captures confirmation number and date paid, and a nightly check proves no closed period is left without a filing item. (W-9: code-complete and locally proven; CI/merge pending; a real Colorado filing is owner acceptance.)
 - [ ] W-10: the use-tax return page has a "File now" panel (opens Revenue Online, each value in screen order with a copy button) and prints the official DR 0252 filled in.
 - [ ] W-11 (after IN-61): new and existing addresses get Colorado's rates automatically from the GIS API; unmatched addresses and a broken key become To do items; billing never uses an unconfirmed rate.
 - [ ] W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided.

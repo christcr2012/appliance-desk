@@ -79,7 +79,7 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
         <label className="flex gap-2 text-sm"><input type="checkbox" name="confirmSetupToday" />I checked these details against SUTS today</label>
       </fieldset>
       {account.kind !== "RETAIL_DELIVERY_FEE_RETURN" && <fieldset className="space-y-3 rounded border border-border p-3">
-        <legend className="font-semibold">Jurisdictions on this return</legend>
+        <legend className="font-semibold">Tax areas on this return</legend>
         <p className="text-sm text-muted-foreground">Assign the areas shown on your filing screen and record their exact code, screen order and service-fee rate (milli-percent). Existing filed returns stay frozen; changing their assignments requires a separate review.</p>
         <input name="jurisdictionIdsPresent" type="hidden" value="yes" />
         <div className="space-y-3">{areas.map(row => {

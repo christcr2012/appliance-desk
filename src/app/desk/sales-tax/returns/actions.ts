@@ -70,9 +70,9 @@ export async function recordFiledReturnAction(
     const periodId = val(form, "periodId");
     await markPeriodFiled(session.user.id, {
       periodId,
-      filedOn: date(val(form, "filedOn"), "filed"),
+      filedOn: val(form, "filedOn") ? date(val(form, "filedOn"), "filed") : undefined,
       paidOn: date(val(form, "paidOn"), "paid"),
-      amountPaidCents: amount(val(form, "amountPaidDollars")),
+      amountPaidCents: val(form, "amountPaidDollars") ? amount(val(form, "amountPaidDollars")) : undefined,
       confirmationNumber: val(form, "confirmationNumber"),
       amountDifferentReason: val(form, "amountDifferentReason") || undefined,
       confirmationPhotoUrl: val(form, "confirmationPhotoUrl") || null,

@@ -22,13 +22,13 @@ export default async function TaxabilityMatrixPage() {
   });
   return <main className="space-y-5">
     <h2 className="text-xl font-semibold">What gets taxed</h2>
-    <p className="text-sm text-muted-foreground">The CPA-confirmed treatment for each charge and jurisdiction. Undecided items stay undecided; no automatic filing or billing bypass is implied.</p>
+    <p className="text-sm text-muted-foreground">The CPA-confirmed treatment for each charge and tax area. Undecided items stay undecided; no automatic filing or billing bypass is implied.</p>
     {session.user.role === "OWNER" ? <TaxActionForm
       title="Record a CPA-confirmed tax rule" action={saveTaxCellAction} submitLabel="Save tax rule">
       <div className="grid gap-3 md:grid-cols-2">
         <label className={label}>Tax area
           <select name="jurisdictionId" required className={css}>
-            <option value="">Choose a jurisdiction</option>
+            <option value="">Choose a tax area</option>
             <option value="__DEFAULT_STATE__">All state-collected areas (default rules)</option>
             {jurisdictions.map(j => <option value={j.id} key={j.id}>{j.name} ({j.level})</option>)}
           </select>
@@ -75,7 +75,7 @@ export default async function TaxabilityMatrixPage() {
       <h3 className="font-semibold">Reviewed area matrix</h3>
       <div tabIndex={0} role="region" aria-label="Taxability rule matrix" className="overflow-x-auto rounded border border-border">
         <table className="min-w-full divide-y divide-border text-left text-sm">
-          <thead className="bg-muted"><tr><th className="p-3">Jurisdiction</th><th className="p-3">Category</th><th className="p-3">Status</th><th className="p-3">CPA date</th></tr></thead>
+          <thead className="bg-muted"><tr><th className="p-3">Tax area</th><th className="p-3">Category</th><th className="p-3">Status</th><th className="p-3">CPA date</th></tr></thead>
           <tbody>{defaults.map(r => <tr key={r.id} className="border-t border-border">
             <td className="p-3">All state-collected areas (default)</td>
             <td className="p-3">{r.category.replaceAll("_", " ")}</td>
