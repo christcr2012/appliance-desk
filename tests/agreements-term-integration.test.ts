@@ -209,6 +209,8 @@ describe.skipIf(!enabled)("fixed-term termination, renewal and auto-renew in dis
       expect(quote.effectiveOn.toISOString()).toBe("2026-11-08T07:00:00.000Z"); // 30 days' notice, not 90
       await requestEarlyTermination(owner, agreement.id, quote, { now: requestedOn });
       expect((await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreement.id } })).terminationFeeCents).toBe(5000);
+      // W-4: deciding the early ending created one unscheduled draft pickup.
+      expect(await prisma.job.count({ where: { agreementId: agreement.id, type: "REMOVAL", scheduledAt: null, status: "SCHEDULED" } })).toBe(1);
     });
 
     it("a per-customer override beats the system-wide terms and is what gets locked", async () => {

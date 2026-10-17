@@ -189,6 +189,9 @@ export default async function DeskSettingsPage({
         description="What a customer is charged when an appliance comes back late, credited when one is delivered late, and whether the pickup day counts."
       >
         <PickupBillingForm defaultValues={pickupBillingDefaults(pickupBillingSettingsFrom(settings))} />
+        <p className="mt-4 text-sm">
+          <ButtonLink href="/desk/settings/rental-endings" variant="secondary">Rental ending reminder (days before a rental ends)</ButtonLink>
+        </p>
       </Card>
     );
   } else if (section === "jobs") {

@@ -216,8 +216,8 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 - [ ] Saving an appliance (or receiving parts) with no seller tax shows what is owed, to whom and by when, and adds it to To do; "I'll check later" creates a dated To do.
 - [x] W-2 (D-WA6): `nextPurchaseTaxStep` gives every answer exactly one next step (full tax → done; partial or none → use tax on the right return with its legal due date; tax-free for rent → rent taxed; another state's tax → CPA To do until IN-65; later → To do in 3 days that turns high 7 days before the covering return closes); intake card, appliance page, PO receiving and To do all show the same step (tests per row); due dates come from the filing calendar, never hard-coded.
 - [ ] W-13 (only if IN-64 is yes): a receipt photo pre-fills price and seller tax marked "check it"; nothing saves without Chris confirming.
-- [ ] Taxes live in one menu entry; use tax is inside it; the return page starts with "File and pay $X on <site> by <date>"; money is typed in dollars.
-- [ ] Signing creates a draft delivery visit + To do; a rental ending in 30 days asks renew / month-to-month / pickup; a decided ending creates a draft pickup visit; drafts never send or charge anything.
+- [x] W-3: Taxes live in one menu entry; use tax is inside it; the return page starts with "File and pay $X on <site> by <date>"; money is typed in dollars.
+- [x] W-4: Signing creates a draft delivery visit + To do; a rental ending in 30 days asks renew / month-to-month / pickup; a decided ending creates a draft pickup visit; drafts never send or charge anything.
 - [ ] Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.
 - [ ] A new lead appears as "Contact <name>" (same day by default); "contacted" asks for the next follow-up date; an approved quote creates a To do.
 - [ ] A first-time setup checklist on Today (owner) until complete.

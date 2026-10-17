@@ -1045,3 +1045,21 @@ tax-evidence model. Choices made here, within the approved designs:
   server action are removed; every appliance purchase goes through Record a purchase.
   The earlier `createApplianceUnits` domain function remains for tests and seeds.
 
+
+## 2026-10-17 — W-3 Taxes in one place and W-4 rental turning points
+
+- **One Taxes area at `/desk/sales-tax`** (menu entry "Taxes", OWNER and ADMIN) with four tabs: To file,
+  Use tax, Rates & areas, Setup. Use tax, the audit pack and record keeping moved under it; every old
+  `/desk/tax/...` address forwards permanently from `next.config.ts`. Exemptions and What's taxed keep their
+  addresses but are named "Customers who don't pay tax" and "What gets taxed" and live under Setup.
+- **The app never files or pays.** Each return page leads with "File and pay $X on Colorado's sales tax
+  website (SUTS) by <date>" and an Open SUTS link (source: tax.colorado.gov/SUTS-info, login URL checked
+  2026-10-16). A stored https filing address overrides the link; anything else is ignored.
+- **Ending reminder is an owner setting** (`rentalEndingNoticeDays`, 30, 1 to 365, owner-only, audited,
+  compare-and-set). One To do per active fixed-term rental inside the window with no decision or renewal.
+- **Deciding an ending creates one draft pickup visit** (unscheduled REMOVAL, linked to the machines the
+  customer holds) inside the same transaction as the month-to-month end request, the early-ending request
+  and the Pickup choice; a repeat returns the existing visit. Drafts never send, dispatch or charge.
+- **Renew / Month-to-month / Pickup live on a decision page** the To do opens, rather than as buttons on the
+  To do row, so each choice can explain itself; Renew and Month-to-month only create a draft renewal.
+- **W-5 stays a separate bundle**: Stripe payment links and phone payment are a distinct provider boundary.

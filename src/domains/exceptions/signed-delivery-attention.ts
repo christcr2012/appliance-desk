@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import type { ExceptionItem } from "./rules";
+import { businessDateKey } from "@/lib/business-date";
+
+/** The business day after signing, as a date-only deadline. */
+export function dayAfterSigning(signedAt: Date): Date {
+ const d = new Date(businessDateKey(signedAt) + "T00:00:00Z");
+ d.setUTCDate(d.getUTCDate() + 1);
+ return d;
+}
 
 /** Each unscheduled real delivery job stays visible until owner sets a date. */
 export async function listSignedDeliveryAttention(limit:number):Promise<{rows:ExceptionItem[];total:number}> {
@@ -13,13 +21,14 @@ export async function listSignedDeliveryAttention(limit:number):Promise<{rows:Ex
  };
  const jobs=await prisma.job.findMany({where,select:{
   id:true,createdAt:true,
-  agreement:{select:{customer:{select:{user:{select:{name:true,email:true}}}}}},
+  agreement:{select:{signature:{select:{signedAt:true}},customer:{select:{user:{select:{name:true,email:true}}}}}},
  },orderBy:[{createdAt:"asc"},{id:"asc"}],take:limit});
  return {rows:jobs.map(job=>({
   category:"SIGNED_DELIVERY_UNSCHEDULED",severity:"high",
-  title:"Schedule delivery for "+(job.agreement!.customer.user.name??job.agreement!.customer.user.email),
+  title:"Schedule "+(job.agreement!.customer.user.name??job.agreement!.customer.user.email)+"'s delivery",
   detail:"This rental was signed. A draft delivery visit exists but has no scheduled date. Confirm signing payment status before dispatch.",
   href:"/desk/jobs/"+encodeURIComponent(job.id),since:job.createdAt,
+  ...(job.agreement!.signature?.signedAt?{dueOn:dayAfterSigning(job.agreement!.signature.signedAt),dueDateOnly:true}:{}),
   primaryAction:{href:"/desk/jobs/"+encodeURIComponent(job.id),label:"Schedule delivery"},
  })),total:jobs.length<limit?jobs.length:await prisma.job.count({where})};
 }

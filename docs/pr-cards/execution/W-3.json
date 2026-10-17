@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "id": "W-3",
+  "parent": "W-3",
+  "baseline": "d77bcf2aa16b9aa1bf3af85ef017d25b7d03cf05",
+  "card": "docs/pr-cards/W-3.md",
+  "outcome": "All tax screens live under one Taxes menu entry with a plain 'file and pay' headline, and rental turning points (signing, a rental nearing its end, a decided ending, untimed visits) create draft visits and dated To do items with working buttons",
+  "risk": "A broken or missing link after the tax pages move, a To do that duplicates or links to a page that does not exist, a second pickup visit created by a repeat, or a draft that sends or charges something.",
+  "next": "Both subsections are implemented in one PR; remaining work is exact-head CI, review dispositions and merge. W-5 (payment links and phone payment) is the next bundle.",
+  "references": [
+    {
+      "path": "src/lib/taxes-tabs.ts",
+      "anchor": "export function activeTaxesTab",
+      "purpose": "Four Taxes tabs and Setup list"
+    },
+    {
+      "path": "src/lib/tax-route-redirects.ts",
+      "anchor": "export const TAX_ROUTE_REDIRECTS",
+      "purpose": "Old /desk/tax addresses forward into Taxes"
+    },
+    {
+      "path": "src/domains/tax/file-and-pay.ts",
+      "anchor": "export function fileAndPayLine",
+      "purpose": "File-and-pay headline and SUTS link"
+    },
+    {
+      "path": "src/domains/agreements/pickup-draft.ts",
+      "anchor": "export async function ensurePickupDraftInTx",
+      "purpose": "Idempotent unscheduled pickup visit"
+    },
+    {
+      "path": "src/domains/exceptions/turning-points-attention.ts",
+      "anchor": "export async function listRentalEndingSoon",
+      "purpose": "Ending-soon, pickup and untimed-visit To do rows"
+    },
+    {
+      "path": "src/domains/agreements/ending-notice.ts",
+      "anchor": "export async function saveRentalEndingNoticeDays",
+      "purpose": "Owner-only audited ending-reminder setting"
+    }
+  ],
+  "proposedFiles": [
+    "prisma/schema.prisma",
+    "src/lib/taxes-tabs.ts",
+    "src/app/desk/sales-tax",
+    "src/domains/agreements",
+    "src/domains/exceptions",
+    "src/app/desk/agreements/[id]/ending-decision",
+    "src/app/desk/settings/rental-endings"
+  ],
+  "invariants": [
+    "Drafts never send, charge or dispatch anything.",
+    "Only OWNER/ADMIN decide an ending; only OWNER changes the reminder setting.",
+    "A repeated ending decision never creates a second pickup visit.",
+    "Dates are Denver business dates; due dates for tax come from the filing calendar."
+  ],
+  "sequence": [
+    "Taxes layout, tabs, moved pages and redirects.",
+    "File-and-pay headline.",
+    "Ending-notice setting and migration.",
+    "Draft pickup visit and To do rows.",
+    "Tests, docs, one push and exact-head CI."
+  ],
+  "acceptance": [
+    "The desk menu has one \"Taxes\" entry (replacing \"Sales tax\") whose tabs are To file, Use tax, Rates & areas and Setup; Exemptions and What's taxed live under Setup as \"Customers who don't pay tax\" and \"What gets taxed\", and the audit pack and record keeping are reachable from Setup.",
+    "Use-tax screens live inside Taxes, the old /desk/tax/use-tax-* addresses redirect there, and every link in the app points to the new place.",
+    "The sales tax return page and the use tax return page start with one line \"File and pay $X on Colorado's sales tax website (SUTS) by <date>\" with an Open SUTS link (state and Greeley amounts separate for use tax), then the numbers to copy, then \"I filed and paid it\"; SUTS and use tax carry plain-words tooltips.",
+    "Every money input on the tax screens is typed in dollars, never cents.",
+    "Signing creates a draft delivery visit and a To do \"Schedule <name>'s delivery\" due the next day; nothing is sent, charged or dispatched.",
+    "A rental ending within the owner's setting (starting at 30 days) puts one To do on the list with Renew, Month-to-month and Pickup buttons; Renew and Month-to-month only create a draft renewal.",
+    "Deciding an ending (pickup chosen, month-to-month end set, or early ending set) creates exactly one draft pickup visit and a To do \"Schedule <name>'s pickup\"; the draft never sends or charges anything and a repeat creates no second visit.",
+    "A visit with no technician or no time 2 days before it is needed gets a To do \"Assign / set a time\"."
+  ],
+  "gates": [
+    {
+      "id": "IN-58",
+      "affected": "Real use of draft visits on live rentals",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Owner already answered yes; verify after release",
+      "reopen": "First real rental signed after release"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/taxes-in-one-place-w3.test.ts",
+      "tests/desk-navigation.test.ts",
+      "tests/today-href-routes.test.ts"
+    ],
+    "db": [
+      "tests/rental-turning-points-w4-integration.test.ts",
+      "tests/month-to-month-end-integration.test.ts",
+      "tests/agreements-term-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-3",
+      "outcome": "W-3",
+      "acceptance": [
+        "The desk menu has one \"Taxes\" entry (replacing \"Sales tax\") whose tabs are To file, Use tax, Rates & areas and Setup; Exemptions and What's taxed live under Setup as \"Customers who don't pay tax\" and \"What gets taxed\", and the audit pack and record keeping are reachable from Setup.",
+        "Use-tax screens live inside Taxes, the old /desk/tax/use-tax-* addresses redirect there, and every link in the app points to the new place.",
+        "The sales tax return page and the use tax return page start with one line \"File and pay $X on Colorado's sales tax website (SUTS) by <date>\" with an Open SUTS link (state and Greeley amounts separate for use tax), then the numbers to copy, then \"I filed and paid it\"; SUTS and use tax carry plain-words tooltips.",
+        "Every money input on the tax screens is typed in dollars, never cents."
+      ]
+    },
+    {
+      "id": "W-4",
+      "outcome": "W-4",
+      "acceptance": [
+        "Signing creates a draft delivery visit and a To do \"Schedule <name>'s delivery\" due the next day; nothing is sent, charged or dispatched.",
+        "A rental ending within the owner's setting (starting at 30 days) puts one To do on the list with Renew, Month-to-month and Pickup buttons; Renew and Month-to-month only create a draft renewal.",
+        "Deciding an ending (pickup chosen, month-to-month end set, or early ending set) creates exactly one draft pickup visit and a To do \"Schedule <name>'s pickup\"; the draft never sends or charges anything and a repeat creates no second visit.",
+        "A visit with no technician or no time 2 days before it is needed gets a To do \"Assign / set a time\"."
+      ]
+    }
+  ]
+}

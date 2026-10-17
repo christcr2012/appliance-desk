@@ -2747,6 +2747,9 @@ model BusinessSettings {
   // W-15 (IN-71): keep purchase receipts and tax records this many years after the machine leaves the fleet.
   recordRetentionYears Int @default(7)
 
+  // W-4: how many days before a rental ends the owner gets a Renew / Month-to-month / Pickup To do.
+  rentalEndingNoticeDays Int @default(30)
+
   // W-24 delivery windows and operator-reviewed fees (private until publication).
   deliveryMorningStartHour Int @default(8)
   deliveryMorningEndHour Int @default(12)

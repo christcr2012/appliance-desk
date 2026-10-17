@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { ensurePickupDraftInTx } from "./pickup-draft";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import {
@@ -285,6 +286,8 @@ export async function requestEarlyTermination(
         },
       },
     });
+    // W-4: deciding the ending creates one draft pickup visit (never sent, dispatched or charged).
+    await ensurePickupDraftInTx(tx, agreementId);
     return recomputeForAgreementInTx(tx, agreementId);
   });
 

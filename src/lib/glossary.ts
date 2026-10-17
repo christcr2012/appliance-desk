@@ -21,6 +21,7 @@ export const GLOSSARY = {
     title: "How long to keep purchase records",
     description: "Receipts and tax records for a purchase are kept this many years. The starting value is 7 years, a cautious general-purpose choice; ask your CPA what applies to you. A receipt that a filed return relies on can never be removed, whatever this says.",
   },
+  "rental-ending-reminder": { title: "Rental ending reminder", description: "How many days before a fixed-term rental ends you get a To do to renew it, move it to month-to-month, or schedule a pickup. The starting value is 30 days. The reminder never sends or charges anything." },
   "suts": { title: "SUTS", description: "Colorado's Sales & Use Tax System, the state website where you file sales and use tax returns and pay what you owe. Appliance Desk shows the numbers to type in; it never files or pays for you." },
   "use-tax": { title: "Use tax", description: "Use tax may be owed on purchases without enough seller sales tax. Purchase evidence and filings stay separately traceable." },
   "set-price": { title: "Set price", description: "A washer and dryer set groups two individually tracked machines. It is not one inventory appliance." },

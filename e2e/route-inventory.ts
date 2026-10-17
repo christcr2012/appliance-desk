@@ -104,6 +104,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason:
       "The seeded agreement id is generated per run; agreement presentation and behavior have dedicated browser/integration coverage.",
   },
+  { path: "/desk/agreements/[id]/ending-decision", role: "OWNER", fixture: "Active fixed-term agreement ending within the notice window in a disposable database", manualOnlyReason: "Needs an active fixed-term agreement; the W-4 database test supplies it and the page redirects to a draft on each choice." },
   { path: "/desk/agreements/[id]/refund", role: "OWNER", fixture: "Approved cancellation in a disposable database", manualOnlyReason: "An owner-only verified refund liability is required; dedicated DB/browser tests supply this fixture." },
   { path: "/desk/agreements/new", role: "OWNER", fixture: "/desk/agreements/new" },
   { path: "/desk/agreements", role: "OWNER", fixture: "/desk/agreements" },
@@ -240,6 +241,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/search", role: "OWNER", fixture: "/desk/search?q=washer" },
   { path: "/desk/security/setup", role: "OWNER", fixture: "/desk/security/setup" },
   { path: "/desk/settings", role: "OWNER", fixture: "/desk/settings" },
+  { path: "/desk/settings/rental-endings", role: "OWNER", fixture: "/desk/settings/rental-endings" },
   { path: "/desk/settings/policies", role: "OWNER", fixture: "/desk/settings/policies" },
   { path: "/desk/settings/preview-storage", role: "OWNER", fixture: "/desk/settings/preview-storage" },
   { path: "/desk/settings/telecom", role: "OWNER", fixture: "/desk/settings/telecom" },

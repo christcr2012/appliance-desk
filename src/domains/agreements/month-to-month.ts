@@ -1,4 +1,5 @@
 import { localizeTermsNotice } from "@/domains/language/notice-language";
+import { ensurePickupDraftInTx } from "./pickup-draft";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { addBusinessDays, billingPeriodFor, businessDaysBetween } from "@/lib/business-date";
@@ -230,6 +231,8 @@ export async function requestMonthToMonthEnd(
         },
       },
     });
+    // W-4: deciding the ending creates one draft pickup visit (never sent, dispatched or charged).
+    await ensurePickupDraftInTx(tx, agreementId);
     return recomputeForAgreementInTx(tx, agreementId);
   });
 

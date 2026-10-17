@@ -1,3 +1,15 @@
+## Taxes in one place and rental turning points (W-3, W-4)
+
+**Taxes** is now one menu entry (Money → Taxes) with four tabs: **To file** (returns), **Use tax**, **Rates & areas**, and **Setup**. Setup holds "Customers who don't pay tax", "What gets taxed", the use-tax settings, the audit pack and record keeping. Old bookmarks to the earlier tax pages still work and forward you here.
+
+Every return page now starts with one plain line: **"File and pay $X on Colorado's sales tax website (SUTS) by <date>"** with an Open SUTS button. Below it are the numbers to copy into the website, then the button **"I filed and paid it"** once you have. Appliance Desk never files or pays for you. State and Greeley use tax are listed separately.
+
+**Signing a rental** creates a draft delivery visit and a To do, "Schedule <name>'s delivery", due the next day. Nothing is sent or charged.
+
+**A rental ending soon** (30 days before by default; change it in Settings → Pickups and deliveries → "Rental ending reminder") adds one To do. Open it to choose **Renew**, **Month-to-month** or **Pickup**. Renew and Month-to-month only start a draft for you to review.
+
+**Deciding an ending** (choosing Pickup, or setting a month-to-month or early ending) creates one draft pickup visit and a To do, "Schedule <name>'s pickup". Doing it twice never makes a second visit. A visit due within 2 days with nobody assigned, or a pickup needed within 2 days with no time, gets a To do, "Assign / set a time".
+
 ## Recording purchases, tax steps and the audit pack (W-14, W-2, W-15)
 
 **Record a purchase** (Equipment → Purchases → Record a purchase, or the button on Inventory) replaces adding appliances one at a time. Enter the receipt once: who you bought from (a supplier, or type a private seller), the date, the receipt number, photos or PDFs of every page, then one row per machine with its model, serial number and price. A washer and dryer bought together are two rows. If the seller charged tax, type the total printed on the receipt; the app splits it across the machines by price, down to the cent, and shows you the split before you save. Add delivery or other charges separately; they are kept on the purchase and are not added to a machine's cost.
