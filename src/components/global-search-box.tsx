@@ -1,11 +1,14 @@
+import { SearchShortcut } from "./search-shortcut";
+
 /** Desk-wide search — a plain GET form to /desk/search, no JS required.
- * See src/domains/search for what it looks across. */
+ * See src/domains/search for what it looks across. The shortcut hint and the Cmd K / Ctrl K key only focus this same
+ * box; there is no other search. */
 export function GlobalSearchBox() {
   return (
     <form
       action="/desk/search"
       method="get"
-      className="w-full max-w-sm min-w-0"
+      className="relative w-full max-w-sm min-w-0"
     >
       <label htmlFor="global-search" className="sr-only">
         Search customers, appliances, and leads
@@ -14,9 +17,11 @@ export function GlobalSearchBox() {
         id="global-search"
         name="q"
         type="search"
-        placeholder="Search customers, appliances, leads…"
-        className="min-h-11 w-full rounded-lg border border-control bg-surface px-3 py-2 text-sm text-ink"
+        placeholder="Search or jump to…"
+        aria-keyshortcuts="Control+K Meta+K"
+        className="min-h-11 w-full rounded-lg border border-control bg-surface py-2 pl-3 pr-16 text-sm text-ink"
       />
+      <SearchShortcut />
     </form>
   );
 }

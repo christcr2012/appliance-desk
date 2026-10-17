@@ -15,6 +15,15 @@ Open **More → Website** (owners and admins only).
 - **Price ticket.** The small card on the photo shows the first set price from your price list; only the label ("Starting at") is yours to change.
 - **Nothing is live until you publish and the daily release runs.** Header, footer and banner words cannot yet be previewed before publishing.
 
+## The bolder look on every public page, Today and the customer portal (V-3, V-4)
+- **Public pages** (pricing, how it works, service area, contact, launch, and each city page) now open with a bold evergreen band. The words are the same website items you already edit; nothing new to set up. The privacy, terms and accessibility pages keep their legal wording.
+- **Pricing** features your first set on the evergreen card; fees and "good to know" read as clean lists.
+- **Today** (desk): on a computer, today's visits sit on a day timeline from 8 am to 7 pm with a "Now" line. For now each visit shows as one hour starting at its time, even if you recorded a different length; ask if you want the real lengths used. Visits with no time, or outside 8 am to 7 pm, are listed under the timeline. On a phone you still get the simple list.
+- **Needs your attention** items now say **Urgent** or **Soon** next to the coloured edge.
+- **Money numbers** are tagged **Actual** (recorded facts) or **Estimate** (worked out).
+- **Search:** press **Cmd K** (Mac) or **Ctrl K** (Windows) to jump to the search box in the desk menu.
+- **Customer portal:** the "How do I get help?" card is the evergreen card with the green Report a problem button.
+
 ## Every public page now reads from your website content (V-C3)
 - **Nothing looks different yet.** Every word, button, link and the home photo on the public site is now a website item with today's words as the starting text. The screens to change them (the website editor) come next (V-C4); until then the site looks and reads exactly as before.
 - **Facts stay where they live.** Your phone, email, address, hours, prices, fees and cities come from Settings and the price list. In a sentence you will write them as `{phone}`, `{email}`, `{businessName}`, `{city}` and so on, so a sentence can never disagree with the real number or price.

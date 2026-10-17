@@ -16,6 +16,7 @@ import {
   businessDateKey,
   formatBusinessDate,
   formatBusinessTime,
+  businessMinuteOfDay,
 } from "@/lib/business-date";
 import { jobTypeLabel } from "@/lib/status-labels";
 import { revalidatePath } from "next/cache";
@@ -27,6 +28,7 @@ import {
   PageHeader,
   StatCard,
   VisitRow,
+  DayTimeline,
 } from "@/components/ui";
 import { TaskRow } from "../tasks/task-row";
 import { getSetupChecklist } from "@/domains/setup/checklist";
@@ -276,31 +278,48 @@ export default async function TodayPage() {
           }
         >
           {visits.length ? (
-            <ul>
-              {visits.map((job) => (
-                <VisitRow
-                  key={job.id}
-                  time={
-                    job.scheduledAt
-                      ? formatBusinessTime(job.scheduledAt)
-                      : "Time not set"
-                  }
-                  customer={
-                    job.customer?.user.name ??
-                    job.customer?.user.email ??
-                    "Internal job"
-                  }
-                  address={
-                    job.serviceAddress
-                      ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}`
-                      : "Address not set"
-                  }
-                  type={job.type}
-                  status={job.status}
-                  href={`/desk/jobs/${job.id}`}
+            <>
+              <div className="hidden md:block">
+                <DayTimeline
+                  nextId={next?.id ?? null}
+                  nowMinutes={businessMinuteOfDay(now)}
+                  visits={visits.map((job) => ({
+                    id: job.id,
+                    minutes: job.scheduledAt ? businessMinuteOfDay(job.scheduledAt) : null,
+                    timeLabel: job.scheduledAt ? formatBusinessTime(job.scheduledAt) : "Time not set",
+                    customer: job.customer?.user.name ?? job.customer?.user.email ?? "Internal job",
+                    type: job.type,
+                    status: job.status,
+                    href: `/desk/jobs/${job.id}`,
+                  }))}
                 />
-              ))}
-            </ul>
+              </div>
+              <ul className="md:hidden">
+                {visits.map((job) => (
+                  <VisitRow
+                    key={job.id}
+                    time={
+                      job.scheduledAt
+                        ? formatBusinessTime(job.scheduledAt)
+                        : "Time not set"
+                    }
+                    customer={
+                      job.customer?.user.name ??
+                      job.customer?.user.email ??
+                      "Internal job"
+                    }
+                    address={
+                      job.serviceAddress
+                        ? `${job.serviceAddress.line1}, ${job.serviceAddress.city}`
+                        : "Address not set"
+                    }
+                    type={job.type}
+                    status={job.status}
+                    href={`/desk/jobs/${job.id}`}
+                  />
+                ))}
+              </ul>
+            </>
           ) : (
             <EmptyState
               title="No visits today"

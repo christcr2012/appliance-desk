@@ -193,6 +193,16 @@ All values live in `src/app/globals.css`; pages use the names, never raw numbers
 - **Motion:** `signature-rise` (12px, 320ms) and `signature-lift`; both switch off under reduced motion.
 - **Ledger rows** (hairline-separated lists) replace boxed benefit cards; numbered steps use CSS counters so numerals are not page words.
 
+### Signature layer, inner pages and the desk (V-3, V-4, 2026-10-17)
+
+- **Page hero** (`src/components/site/page-hero.tsx`): the full-width evergreen cut band that opens pricing, how it works, service area, contact, launch and the city pages (dark surface in dark mode). It holds the page's one h1 at the display size and an optional lede or eyebrow, and adds no words of its own. The legal pages keep their fixed text and are not restyled.
+- **Featured price card:** the first published set is the evergreen cut card on pricing as on the home page; other appliances are plain cards; fees and "good to know" are hairline ledgers.
+- **Day timeline** (`src/components/ui/day-timeline.tsx`, Today, wide screens only): visits placed by scheduled time on an 8 am to 7 pm axis, one hour each for now (Today does not load each visit's recorded length; using it needs the owner's approval of that extra read), overlapping visits side by side, a Now marker, and words Done / In progress / Next / the time. Visits with no time or outside the axis are listed beneath it; phones keep the VisitRow list. It reads only what Today already loads.
+- **Severity:** attention items show a stripe and a word, Urgent (high) or Soon (medium), from the existing severity; never colour alone.
+- **Money tiles** show an Actual or Estimate tag from the METRICS kind.
+- **Search shortcut:** the one desk search box says "Search or jump to…", shows its key (Cmd K or Ctrl K) and the key focuses it; there is no other search.
+- **Portal home:** the "How do I get help?" card is the evergreen cut card with the fresh Report a problem button.
+
 ### Batch E2 visual tokens
 
 E2 extends the final Batch E Evergreen tokens with brand-kit-only visual primitives: `rounded-control` = 8px, `rounded-card` = 16px, and semantic owner-navigation colors (`nav-bg`, `nav-ink`, `nav-current-bg`, `nav-current-ink`). Values remain defined only in `src/app/globals.css` and are exported through Tailwind's `@theme inline` block.

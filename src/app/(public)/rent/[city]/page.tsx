@@ -4,6 +4,7 @@ import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/site/container";
+import { PageHero } from "@/components/site/page-hero";
 import { Card } from "@/components/ui";
 import { SiteCta } from "@/components/site/site-cta";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
@@ -85,21 +86,12 @@ export default async function CityLandingPage({
   return (
     <>
       <SelectBridge site={site} />
-      <section className="border-b border-line bg-surface">
-        <Container className="py-16 text-center md:py-20">
-          <h1 className="font-display text-4xl font-semibold text-ink">
-            {c("rent.heading")}
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-ink-soft">
-            {c("rent.intro")}
-          </p>
-          <div className="mt-8">
-            <SiteCta value={siteLinkValue(site.values, "rent.cta.top")} profile={profile} facts={facts} />
-          </div>
-        </Container>
-      </section>
+      <PageHero heading={c("rent.heading")} lede={c("rent.intro")} />
+      <Container className="pt-10 md:pt-14">
+        <SiteCta value={siteLinkValue(site.values, "rent.cta.top")} profile={profile} facts={facts} />
+      </Container>
 
-      <Container className="py-16 md:py-20">
+      <Container className="py-12 md:py-16">
         {applianceTypes.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {applianceTypes.map((type) => (

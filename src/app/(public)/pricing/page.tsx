@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
-import { Card } from "@/components/ui";
+import { PageHero } from "@/components/site/page-hero";
 import { SiteCta } from "@/components/site/site-cta";
 import { RichText } from "@/components/site/rich-text";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
@@ -37,6 +37,7 @@ export default async function PricingPage({
   const facts = siteFacts(settings);
   const c = siteCopy(content, facts);
   const profile = { phone: settings.publicPhone, email: settings.publicEmail };
+  const featured = applianceTypes.find((item) => item.kind === "package") ?? null;
 
   const fees = [
     { label: c("pricing.fee.delivery"), cents: settings.oneTimeDeliveryFeeCents },
@@ -50,52 +51,54 @@ export default async function PricingPage({
   return (
     <>
       <SelectBridge site={site} />
-      <section className="border-b border-line bg-surface">
-        <Container className="py-16 text-center md:py-20">
-          <h1 className="font-display text-4xl font-semibold text-ink">
-            {c("pricing.heading")}
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-ink-soft">
-            <RichText text={c("pricing.intro")} />
-          </p>
-        </Container>
-      </section>
+      <PageHero heading={c("pricing.heading")} lede={<RichText text={c("pricing.intro")} />} />
 
       <Container className="py-16 md:py-20">
         {applianceTypes.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {applianceTypes.map((type) => (
-              <Card key={`${type.kind}-${type.id}`} className="flex flex-col">
-                <ApplianceMedia
-                  photoUrl={type.photoUrl}
-                  name={type.name}
-                  alt={catalogAlt(content, type.slug, type.name)}
-                  className="h-40 w-full rounded-control object-cover"
-                  iconClassName="h-16 w-auto text-primary"
-                />
-                <h2 className="mt-5 font-display text-xl font-semibold text-ink">
-                  {type.name}
-                </h2>
-                <p className="mt-2 text-3xl font-semibold text-ink">
-                  {formatCents(type.monthlyPriceCents)}
-                  <span className="text-base font-normal text-ink-faint">
-                    {" "}
-                    {c("price.perMonth")}
-                  </span>
-                </p>
-                {type.contents && (
-                  <p className="mt-2 text-sm text-ink-soft">{c("pricing.card.includes", { contents: type.contents })}</p>
-                )}
-                {type.savingCents ? (
-                  <p className="mt-2 text-sm font-medium text-accent-dark">
-                    {c("pricing.card.saving", { amount: formatCents(type.savingCents) })}
+            {applianceTypes.map((type) => {
+              const isFeatured = featured !== null && type.kind === featured.kind && type.id === featured.id;
+              return (
+                <div
+                  key={`${type.kind}-${type.id}`}
+                  className={`flex flex-col p-5 ${
+                    isFeatured
+                      ? "cut-corner-md bg-primary text-on-primary dark:border-2 dark:border-primary dark:bg-surface dark:text-ink"
+                      : "rounded-card border border-hairline bg-surface text-ink"
+                  }`}
+                >
+                  <ApplianceMedia
+                    photoUrl={type.photoUrl}
+                    name={type.name}
+                    alt={catalogAlt(content, type.slug, type.name)}
+                    className="h-44 w-full rounded-control bg-surface object-cover"
+                    iconClassName="h-16 w-auto text-primary"
+                  />
+                  <h2 className="mt-5 text-h3">{type.name}</h2>
+                  <p className="mt-2 text-price tabular-nums">
+                    {formatCents(type.monthlyPriceCents)}
+                    <span className="text-sm font-normal tracking-normal opacity-80"> {c("price.perMonth")}</span>
                   </p>
-                ) : null}
-                <div className="mt-6">
-                  <SiteCta value={siteLinkValue(site.values, "pricing.card.cta")} profile={profile} facts={facts} variant="secondary" className="w-full" />
+                  {type.contents && (
+                    <p className="mt-2 text-sm opacity-90">{c("pricing.card.includes", { contents: type.contents })}</p>
+                  )}
+                  {type.savingCents ? (
+                    <p className="mt-2 text-sm font-semibold">
+                      {c("pricing.card.saving", { amount: formatCents(type.savingCents) })}
+                    </p>
+                  ) : null}
+                  <div className="mt-6">
+                    <SiteCta
+                      value={siteLinkValue(site.values, "pricing.card.cta")}
+                      profile={profile}
+                      facts={facts}
+                      variant="secondary"
+                      className="w-full"
+                    />
+                  </div>
                 </div>
-              </Card>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-ink-soft">
@@ -109,27 +112,27 @@ export default async function PricingPage({
 
         <div className="mt-16 grid gap-10 md:grid-cols-2">
           <div>
-            <h2 className="font-display text-2xl font-semibold text-ink">
+            <h2 className="text-h2 text-ink">
               {c("pricing.fees.heading")}
             </h2>
-            <dl className="mt-4 divide-y divide-line rounded-card border border-line bg-surface">
+            <dl className="mt-6 divide-y divide-hairline border-y border-hairline">
               {fees.map((fee) => (
                 <div
                   key={fee.label}
-                  className="flex items-center justify-between px-5 py-4"
+                  className="flex items-center justify-between py-4"
                 >
                   <dt className="text-ink-soft">{fee.label}</dt>
-                  <dd className="font-semibold text-ink">{fee.value}</dd>
+                  <dd className="text-h3 tabular-nums text-ink">{fee.value}</dd>
                 </div>
               ))}
             </dl>
           </div>
 
           <div>
-            <h2 className="font-display text-2xl font-semibold text-ink">
+            <h2 className="text-h2 text-ink">
               {c("pricing.good.heading")}
             </h2>
-            <ul className="mt-4 space-y-3 text-sm text-ink-soft">
+            <ul className="mt-6 divide-y divide-hairline border-y border-hairline text-ink-soft [&>li]:py-4">
               <li>
                 <span className="font-medium text-ink">{c("pricing.good.terms.label")}</span>{" "}
                 {c("pricing.good.terms.text")}

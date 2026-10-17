@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PaymentReturnNotice } from "@/components/payment-return-notice";
 import { getServerSession } from "@/lib/session";
 import { portalLanguage } from "@/domains/language/portal";
@@ -227,19 +228,24 @@ export default async function AccountHomePage({
           )}
         </Card>
 
-        <Card
-          title={t("How do I get help?")}
-          description={requestCountLabel(locale,data.openRequestCount)}
+        <section
+          aria-labelledby="portal-help-heading"
+          className="cut-corner-md bg-primary p-6 text-on-primary dark:border-2 dark:border-primary dark:bg-surface dark:text-ink lg:col-span-2"
         >
-          <div className="flex flex-wrap gap-3">
-            <ButtonLink href="/account/maintenance">{t("Report a problem")}</ButtonLink>
+          <h2 id="portal-help-heading" className="text-h3">{t("How do I get help?")}</h2>
+          <p className="mt-1 text-sm opacity-90">{requestCountLabel(locale,data.openRequestCount)}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/account/maintenance"
+              className="signature-lift cut-corner-sm inline-flex min-h-11 items-center justify-center bg-accent px-5 py-2 text-sm font-semibold text-on-accent"
+            >{t("Report a problem")}</Link>
             <ButtonLink
               href="/account/maintenance?request=pickup"
               variant="secondary"
             >{t("Request pickup")}</ButtonLink>
           </div>
-          <p className="mt-3 text-sm text-ink-soft">{t("Requests are reviewed by the business. A pickup request does not automatically cancel a rental or change billing.")}</p>
-        </Card>
+          <p className="mt-4 text-sm opacity-90">{t("Requests are reviewed by the business. A pickup request does not automatically cancel a rental or change billing.")}</p>
+        </section>
       </div>
     </div>
   );

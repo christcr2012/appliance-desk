@@ -1,6 +1,7 @@
 import { SelectBridge } from "@/components/site/select-bridge";
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
+import { PageHero } from "@/components/site/page-hero";
 import { getLaunchSettings } from "@/domains/launch";
 import { Card } from "@/components/ui";
 import { RichText } from "@/components/site/rich-text";
@@ -40,18 +41,10 @@ export default async function LaunchPage({
   return (
     <>
       <SelectBridge site={site} />
-    <Container className="grid gap-12 py-16 md:grid-cols-2 md:py-20">
+    <PageHero eyebrow={c("launch.eyebrow")} heading={c("launch.heading")} lede={c("launch.intro")} />
+    <Container className="grid gap-12 py-12 md:grid-cols-2 md:py-16">
       <div>
-        <p className="font-semibold text-primary">
-          {c("launch.eyebrow")}
-        </p>
-        <h1 className="mt-4 font-display text-4xl font-semibold text-ink">
-          {c("launch.heading")}
-        </h1>
-        <p className="mt-5 text-lg text-ink-soft">
-          {c("launch.intro")}
-        </p>
-        <ul className="mt-6 list-disc space-y-3 pl-5 text-ink-soft">
+        <ul className="divide-y divide-hairline border-y border-hairline text-ink-soft [&>li]:py-4">
           {[1, 2, 3].map((n) => (
             <li key={n}>{c(`launch.point.${n}`)}</li>
           ))}

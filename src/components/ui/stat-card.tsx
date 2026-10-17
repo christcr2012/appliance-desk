@@ -42,10 +42,10 @@ export function StatCard({
   tone?: "headline" | "plain";
 }) {
   const headline = tone === "headline";
-  const className = `block min-w-0 rounded-card border p-5 ${
+  const className = `block min-w-0 border p-5 ${
     headline
-      ? "stat-card-headline border-nav-bg"
-      : "border-line bg-surface hover:bg-subtle"
+      ? "cut-corner-md border-nav-bg bg-nav-bg"
+      : "rounded-card border-line bg-surface hover:bg-subtle"
   }`;
   const content = <Content label={label} value={value} detail={detail} headline={headline} />;
   return href ? <Link href={href} className={className}>{content}</Link> : <div className={className}>{content}</div>;
