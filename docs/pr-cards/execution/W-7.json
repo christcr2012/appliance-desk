@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "id": "W-7",
+  "parent": "W-7",
+  "baseline": "2a1dec20f00dc185eab164563bec5b8ce780900a",
+  "card": "docs/pr-cards/W-7.md",
+  "outcome": "The owner sees an ordered, truthful Get set up card on Today until business details, service area, prices, tax setup, payments and email are really in place, each step opening the exact screen that fixes it",
+  "risk": "A step shown Done when it is not, a step that opens a missing page, an admin or staff user receiving the checklist, a secret or key value shown on screen, the card turning on payments or email, or the tax step disagreeing with Taxes → Setup.",
+  "next": "Plan frozen; implementation, tests and docs follow. W-8 (menu, Schedule screen, plain-words check) is the next bundle after verified merge.",
+  "references": [
+    {
+      "path": "src/app/desk/today/page.tsx",
+      "anchor": "export default async function TodayPage",
+      "purpose": "Where the owner-only card is placed"
+    },
+    {
+      "path": "src/domains/tax/workspace-overview.ts",
+      "anchor": "export async function getTaxWorkspaceOverview",
+      "purpose": "Existing tax setup answers the checklist must agree with"
+    },
+    {
+      "path": "src/domains/settings/provider-status.ts",
+      "anchor": "export function providerStatus",
+      "purpose": "Existing connection wording (read only)"
+    },
+    {
+      "path": "src/domains/settings/section-config.ts",
+      "anchor": "export const SETTINGS_SECTIONS",
+      "purpose": "The focused Settings screens each step links to"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/setup",
+    "src/domains/tax/setup-readiness.ts",
+    "src/app/desk/today/setup-card.tsx"
+  ],
+  "invariants": [
+    "Only OWNER can read the checklist; the query itself refuses anyone else.",
+    "Step state comes from saved data only; nothing is stored as a tick.",
+    "No secret or key value ever reaches the page; only connected or not, and test or live.",
+    "The card never changes a setting, sends a message or starts a payment.",
+    "Every step link opens a page that exists."
+  ],
+  "sequence": [
+    "Shared tax-setup predicates, used by the Taxes overview and the checklist.",
+    "Setup readiness domain with six steps and owner-only enforcement.",
+    "Get set up card on Today.",
+    "Unit and real-Postgres tests, route test, browser check.",
+    "Docs, one push and exact-head CI."
+  ],
+  "acceptance": [
+    "A \"Get set up\" card appears on Today for the owner, and only the owner, until every setup step is done; admins and staff never receive the checklist, and that is enforced where the data is read, not by hiding the card.",
+    "The steps run in this order: business details, service area, prices, tax setup, payments, email.",
+    "Each step shows \"Done ✓\" or the one thing still missing, in plain words, worked out from what is actually saved (never from a tick box), and opens the exact existing screen where it is fixed.",
+    "Tax setup is done only when the sales tax account number, how often you file, the first filing period, the business address and the use-tax accounts for Colorado and Greeley are all in place, using the same answers as Taxes → Setup.",
+    "Payments and email report what is truly connected (test or live payment key, payment-sync secret, email service, sender address, customer-email switch); the card never turns anything on, sends or charges anything, and never shows a secret."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/setup-checklist.test.ts",
+      "tests/today-workspace.test.tsx",
+      "tests/today-href-routes.test.ts"
+    ],
+    "db": [
+      "tests/setup-checklist-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-7",
+      "outcome": "W-7",
+      "acceptance": [
+        "A \"Get set up\" card appears on Today for the owner, and only the owner, until every setup step is done; admins and staff never receive the checklist, and that is enforced where the data is read, not by hiding the card.",
+        "The steps run in this order: business details, service area, prices, tax setup, payments, email.",
+        "Each step shows \"Done ✓\" or the one thing still missing, in plain words, worked out from what is actually saved (never from a tick box), and opens the exact existing screen where it is fixed.",
+        "Tax setup is done only when the sales tax account number, how often you file, the first filing period, the business address and the use-tax accounts for Colorado and Greeley are all in place, using the same answers as Taxes → Setup.",
+        "Payments and email report what is truly connected (test or live payment key, payment-sync secret, email service, sender address, customer-email switch); the card never turns anything on, sends or charges anything, and never shows a secret."
+      ]
+    }
+  ]
+}

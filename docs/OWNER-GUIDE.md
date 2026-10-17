@@ -473,6 +473,7 @@ glance.
 A few more pages worth knowing exist, each answering one specific
 question:
 
+- **Get set up (owner only, top of Today)** — until the business is ready, a card lists six steps in order: business details, service area, prices, tax setup, payments and email. Each says "Done ✓" or the one thing still missing, and the button opens the screen that fixes it. It only looks; it never turns anything on. Payments and email become Done only after the Stripe and email keys are added in your hosting settings (see the go-live checklist). The card disappears when all six are done.
 - **Today** — everything that actually needs your attention right
   now (overdue rentals, appliances due for maintenance, and today's
   scheduled jobs) in one place, so you don't have to go check several

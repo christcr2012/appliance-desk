@@ -1,32 +1,25 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "W-5",
+  "parent": "W-7",
   "completedSlices": [
     {
-      "id": "W-5",
+      "id": "W-7",
       "acceptanceEvidence": [
-        "Held payments and deposit decisions: src/domains/exceptions/money-turning-points.ts adds one To do per held payment (opens /desk/billing/held-payments, button Decide) and per ended-rental deposit (opens the deposit screen); the failed-payment To do in rules.ts is now titled \"<name>'s payment failed \u2014 $X\" and opens the invoice. tests/payment-link-message.test.ts and tests/w5-w6-integration.test.ts (real Postgres) prove the titles, links and button.",
-        "src/domains/billing/payment-link.ts + payment-link-message.ts + src/components/desk/payment-link-panel.tsx on the invoice page: Send payment link and Copy link only when the invoice is open with a Stripe page (Stripe is asked live; paid, closed, no-page and amount-mismatch are refused); message filled from the invoice (what, amount, due date, days overdue, late fee, total balance, reason); preview and short note; owner-editable wording per reason at /desk/settings/payment-links with restore, validated and audited; send is refused when the customer-email switch is off while Copy link works; the text is kept in message history by deliverMessage; OWNER/ADMIN only (STAFF refused in tests); no public pay page. Real-Postgres and unit tests cover each.",
-        "startPhonePayment opens Stripe's own invoice page for one bill; the payment is recorded only by the existing invoice.paid webhook; the actor, amount, card-permission tick and the script read are audited (billing.phone_payment_started); no payment row or card data is written (tested). OWNER/ADMIN only. Spreading over several bills is not included (owner decision 2026-10-16)."
-      ]
-    },
-    {
-      "id": "W-6",
-      "acceptanceEvidence": [
-        "BusinessSettings.leadResponseDays (default 0 = same day, CHECK 0 to 14) with an owner-only audited compare-and-set editor at /desk/settings/lead-response (explanation, starting value, restore button); listNewLeadContact gives \"Contact <name>\" for NEW leads, date-only, due the response-time days after arrival; a contacted lead leaves the list. Real-Postgres test with 0 and 3 days.",
-        "Marking a lead contacted opens \"Next follow-up date?\" prefilled two days out; Lead.nextFollowUpOn stores the chosen date (audited, past dates refused, cleared on any other status); listLeadFollowUps shows \"Follow up with <name>\" once that date arrives. Real-Postgres test.",
-        "listApprovedQuoteToRental gives \"Turn <name>'s approved quote into a rental\" for APPROVED quotes, due today, opening the estimate page where the rental is made; it disappears once converted. Real-Postgres test."
+        "src/domains/setup/checklist.ts getSetupChecklist throws unless the caller is an active OWNER (read-level, not a hidden link); src/app/desk/today/page.tsx only asks for it when the role is OWNER and tolerates a failure; SetupCard returns nothing once all six are done. tests/setup-checklist-integration.test.ts (real Postgres) refuses admin, staff, customer, archived owner and unknown user; tests/today-workspace.test.tsx proves ADMIN/STAFF are never asked, the card hides when complete and a failure does not break Today.",
+        "SETUP_STEP_ORDER fixes the order; tests/setup-checklist.test.ts asserts it and tests/today-workspace.test.tsx asserts the rendered numbering 1 to 6.",
+        "Every step is computed from saved settings, prices, filing accounts and the business address (no stored tick). Done rows say \"Done ✓\"; others state the one thing missing. Every href is checked against the real route list and settings sections (tests/setup-checklist.test.ts); each transition is proven on real Postgres (setup-checklist-integration.test.ts); the link names read \"Finish this, service area\" etc. for screen readers.",
+        "src/domains/tax/setup-readiness.ts holds the one definition, now used by both the Taxes overview and the Today card. An exhaustive 7x5x4 agreement test and a real-Postgres test against getTaxWorkspaceOverview prove they cannot disagree; a mutation test (ignoring address confirmation) failed as expected.",
+        "Payments: recognized Stripe key plus sync secret, reported only as connected/not and test/live. Email: service key, sender address and customer-email switch. Tests inject the environment and assert no key value appears anywhere in the output; the integration test proves the read writes no settings or audit rows."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Real use after the daily release: the owner sending a real payment link and taking a real phone payment on Stripe's page.",
-    "Stripe confirmation that staff-typed card-not-present payments are allowed on the live account (GO-LIVE item). No live Stripe, customer email or spending was used."
+    "Real use after the daily release: the owner seeing the card on the live Today page. Payments and email steps only turn to Done once the owner adds the Stripe and email keys in hosting settings (GO-LIVE-CHECKLIST). No live Stripe, customer email or spending was used."
   ],
   "evidence": [
-    "Single bundle W-5 + W-6; planning commit e1485fd56228730f871f44d395360782e1ff1c0a preserved.",
-    "Local: typecheck, new unit tests and 11 real-Postgres tests pass; exact-head CI pending."
+    "Single bundle W-7; planning commit df688a04c5e8d3153a2818691ab45b31aaca49c4 preserved.",
+    "Local: typecheck, new unit tests (19), UI tests (7) and 9 real-Postgres tests pass; exact-head CI pending."
   ]
 }

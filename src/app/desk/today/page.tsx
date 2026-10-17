@@ -29,6 +29,8 @@ import {
   VisitRow,
 } from "@/components/ui";
 import { TaskRow } from "../tasks/task-row";
+import { getSetupChecklist } from "@/domains/setup/checklist";
+import { SetupCard } from "./setup-card";
 
 export const metadata = { title: "Today" };
 
@@ -149,6 +151,15 @@ export default async function TodayPage() {
   const canCreateVisit = role === "OWNER" || role === "ADMIN";
   const now = new Date();
 
+  // The first-time setup checklist is for the owner only. getSetupChecklist refuses anyone else itself;
+  // the role test here just avoids asking. A failure must never take Today down, so it only hides the card.
+  const setupChecklist = role === "OWNER"
+    ? await getSetupChecklist(session.user.id).catch((error: unknown) => {
+        console.error("Setup checklist unavailable:", error instanceof Error ? error.message : "unknown error");
+        return null;
+      })
+    : null;
+
   const [{ items: exceptions, snoozed, truncated }, jobs, followUps, openRequests] =
     await Promise.all([
       getExceptionOverview(),
@@ -223,6 +234,8 @@ export default async function TodayPage() {
           </ButtonLink>
         }
       />
+
+      {setupChecklist ? <SetupCard checklist={setupChecklist} /> : null}
 
       <div className="mb-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard

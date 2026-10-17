@@ -9,6 +9,8 @@ Each line says what it is, where it gets switched on, and what state it is in to
 Legend: **Owner** = only Chris can do it · **Agent** = Claude can do it once you say go.
 
 ## 1. Money (Stripe)
+
+> The owner's "Get set up" card on Today turns Payments and Email to "Done ✓" only once the keys below are added in hosting settings (W-7); use it as a quick check.
 | Done | Item | Where / how | Today | How you know it worked |
 |---|---|---|---|---|
 | [ ] | Stripe account verified for live payments (business details, bank account) | Stripe dashboard (Owner) | Test mode only | Stripe shows "Live payments enabled" |
