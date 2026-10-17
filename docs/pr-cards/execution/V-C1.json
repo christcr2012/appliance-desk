@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "id": "V-C1",
+  "parent": "V-C1",
+  "baseline": "05d50606230885d3bf3b6fd48997d4be1dcf5a59",
+  "card": "docs/pr-cards/V-C1.md",
+  "outcome": "The website content registry describes every kind of content with typed, validated values and a compatibility reader for old text revisions, and website pictures can be uploaded, cleaned, kept private as drafts, published together with the revision that uses them, retired and served safely.",
+  "risk": "A picture that is public before the owner publishes it, a customer photo reachable as a website picture, a disguised or oversize upload that is stored or crashes decoding, an old revision that reads differently after the migration, a link that runs script, or publishing that exposes more pictures than the revision uses.",
+  "next": "Plan frozen; implementation, tests and docs follow. V-C3 and V-C4 (public bindings and the owner editor) are the next bundle after verified merge.",
+  "references": [
+    {
+      "path": "src/domains/site-content/index.ts",
+      "anchor": "export async function publishDraft",
+      "purpose": "Publish and pointer lock"
+    },
+    {
+      "path": "src/domains/site-content/fields.ts",
+      "anchor": "export function sanitizeSiteFields",
+      "purpose": "Field registry and validation"
+    },
+    {
+      "path": "src/lib/photo-storage.ts",
+      "anchor": "export function getPrivatePhotoStore",
+      "purpose": "Private storage selector"
+    },
+    {
+      "path": "src/domains/settings/index.ts",
+      "anchor": "export async function setAppliancePhotoUrl",
+      "purpose": "Catalog photo setter"
+    },
+    {
+      "path": "src/app/desk/settings/website/actions.ts",
+      "anchor": "export async function saveWebsiteDraftAction",
+      "purpose": "Editor actions"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/site-content/types.ts",
+    "src/domains/site-content/links.ts",
+    "src/domains/site-content/codec.ts",
+    "src/domains/site-content/assets.ts",
+    "src/domains/site-content/image-processing.ts",
+    "src/domains/site-content/asset-store.ts",
+    "src/app/api/site-media/[assetId]/route.ts",
+    "src/app/api/desk/site-media/[assetId]/route.ts",
+    "src/app/api/desk/website-assets/route.ts"
+  ],
+  "invariants": [
+    "Draft pictures and draft content are never reachable without an active owner or admin.",
+    "A website picture id never resolves to a customer, receipt or job photo.",
+    "Stored bytes are always the server's own re-encoded WebP, never the upload.",
+    "Old revisions are never rewritten; version 1 and version 2 read through one reader.",
+    "Publishing promotes only the pictures the published revision uses, in the pointer transaction.",
+    "Migrations are additive."
+  ],
+  "sequence": [
+    "Revision migration, types, links and codec",
+    "Registry metadata and adapter",
+    "Asset migration and domain",
+    "Image processing and storage interface",
+    "Routes",
+    "Publish promotion, retire, cleanup",
+    "Catalog setter",
+    "Tests",
+    "Docs, one push and exact-head CI"
+  ],
+  "acceptance": [
+    "An additive migration gives every website revision a content version (starting at 1) and an optional template version, every existing revision keeps working unchanged, and a populated-upgrade test proves old revisions read the same after the migration.",
+    "A typed value set exists for text, link, image, list and promotion content plus an explicit hidden value, with strict validation: plain text only, one level of list nesting, picture focus points as whole numbers 0 to 100, UTC start and end times with the end after the start, and a known value of the wrong type is an explicit error rather than text such as [object Object].",
+    "Links use an explicit target set (a known page on this site with a permitted anchor, an HTTPS web address, or a phone number or email bound to the verified business profile); credentials in a link, protocol-relative, script, data and other schemes are refused, and outside links carry safe rel attributes.",
+    "The registry describes every field with a stable key, plain label and help, page and section, where it appears, value kind, starting text, required or optional, limits, allowed placeholders, a preview anchor and source ownership, keeps every existing key through a compatibility mapping, and declares phone, email, address, hours and prices as coming from their existing owner screens rather than editable website text.",
+    "A content reader decodes version 1 (plain text) and version 2 (typed) revisions, treats a missing field as its starting value, an intentionally empty optional field as different from missing, and hidden as explicit, keeps unknown or retired keys in history without showing them, and refuses new unknown keys when saving or publishing.",
+    "Existing readers (published content, revision preview, editor state, the public pages) return exactly the same text through a version adapter, new drafts are saved as version 2, and old or published revisions are never rewritten.",
+    "An additive migration creates the website picture table with a draft, public or retired state, content hash, type, size, who and when, picture ids resolve only in that table, and a customer, receipt or job photo (or any storage path) can never be used as a website picture.",
+    "Only an active owner or admin can upload; the file must really be a JPEG, PNG or WebP by its content (not its name), at most 10 MB and 24 megapixels; metadata is removed and a deterministic WebP is stored at a server-chosen name; SVG, HTML, disguised or oversize files and remote addresses are refused with plain messages and nothing is stored.",
+    "A draft picture is served only to an active owner or admin by a no-store preview route; a public picture is served by the public media route with the verified content type, no sniffing, a long immutable cache and no token; draft, retired and unknown pictures are never served publicly and the routes reveal nothing about other pictures.",
+    "Publishing a website revision marks exactly the pictures it uses as public in the same transaction that moves the live pointer, after checking each picture exists and is stored; a missing, retired or unknown picture blocks publishing with a plain message naming the field, and a repeat or stale publish never exposes extra pictures.",
+    "Retiring a picture stops new selection but never deletes bytes that a kept or restorable revision uses, and a bounded maintenance step removes only old unreferenced draft uploads, never public or referenced pictures.",
+    "When private picture storage is not configured the owner is told plainly what is missing (no purchase, no fallback to production storage), built-in pictures stay selectable, and a picture's description, decorative choice and focus point are stored with it and shown in a crop preview.",
+    "The catalog photo setter now checks the signed-in owner or admin in the domain (not only in the form), accepts only an HTTPS address or a public website picture, and records the change in the activity log in the same transaction."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/vc1-content-values.test.ts",
+      "tests/vc2-website-assets.test.ts"
+    ],
+    "db": [
+      "tests/vc1-vc2-content-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "V-C1",
+      "outcome": "V-C1",
+      "acceptance": [
+        "An additive migration gives every website revision a content version (starting at 1) and an optional template version, every existing revision keeps working unchanged, and a populated-upgrade test proves old revisions read the same after the migration.",
+        "A typed value set exists for text, link, image, list and promotion content plus an explicit hidden value, with strict validation: plain text only, one level of list nesting, picture focus points as whole numbers 0 to 100, UTC start and end times with the end after the start, and a known value of the wrong type is an explicit error rather than text such as [object Object].",
+        "Links use an explicit target set (a known page on this site with a permitted anchor, an HTTPS web address, or a phone number or email bound to the verified business profile); credentials in a link, protocol-relative, script, data and other schemes are refused, and outside links carry safe rel attributes.",
+        "The registry describes every field with a stable key, plain label and help, page and section, where it appears, value kind, starting text, required or optional, limits, allowed placeholders, a preview anchor and source ownership, keeps every existing key through a compatibility mapping, and declares phone, email, address, hours and prices as coming from their existing owner screens rather than editable website text.",
+        "A content reader decodes version 1 (plain text) and version 2 (typed) revisions, treats a missing field as its starting value, an intentionally empty optional field as different from missing, and hidden as explicit, keeps unknown or retired keys in history without showing them, and refuses new unknown keys when saving or publishing.",
+        "Existing readers (published content, revision preview, editor state, the public pages) return exactly the same text through a version adapter, new drafts are saved as version 2, and old or published revisions are never rewritten."
+      ]
+    },
+    {
+      "id": "V-C2",
+      "outcome": "V-C2",
+      "acceptance": [
+        "An additive migration creates the website picture table with a draft, public or retired state, content hash, type, size, who and when, picture ids resolve only in that table, and a customer, receipt or job photo (or any storage path) can never be used as a website picture.",
+        "Only an active owner or admin can upload; the file must really be a JPEG, PNG or WebP by its content (not its name), at most 10 MB and 24 megapixels; metadata is removed and a deterministic WebP is stored at a server-chosen name; SVG, HTML, disguised or oversize files and remote addresses are refused with plain messages and nothing is stored.",
+        "A draft picture is served only to an active owner or admin by a no-store preview route; a public picture is served by the public media route with the verified content type, no sniffing, a long immutable cache and no token; draft, retired and unknown pictures are never served publicly and the routes reveal nothing about other pictures.",
+        "Publishing a website revision marks exactly the pictures it uses as public in the same transaction that moves the live pointer, after checking each picture exists and is stored; a missing, retired or unknown picture blocks publishing with a plain message naming the field, and a repeat or stale publish never exposes extra pictures.",
+        "Retiring a picture stops new selection but never deletes bytes that a kept or restorable revision uses, and a bounded maintenance step removes only old unreferenced draft uploads, never public or referenced pictures.",
+        "When private picture storage is not configured the owner is told plainly what is missing (no purchase, no fallback to production storage), built-in pictures stay selectable, and a picture's description, decorative choice and focus point are stored with it and shown in a crop preview.",
+        "The catalog photo setter now checks the signed-in owner or admin in the domain (not only in the form), accepts only an HTTPS address or a public website picture, and records the change in the activity log in the same transaction."
+      ]
+    }
+  ]
+}

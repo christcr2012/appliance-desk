@@ -2807,10 +2807,15 @@
       "evidence": [
         "docs/designs/BATCH-V.md"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/vc1-content-values.test.ts",
+        "tests/vc2-website-assets.test.ts",
+        "tests/vc1-vc2-content-integration.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
       "plannedCard": "docs/pr-cards/V-C1.md",
-      "risk": "schema"
+      "risk": "schema",
+      "card": "docs/pr-cards/V-C1.md"
     },
     {
       "id": "V-C2",
@@ -2828,10 +2833,15 @@
       "evidence": [
         "docs/designs/BATCH-V.md"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/V-C2.md",
-      "risk": "media"
+      "tests": [
+        "tests/vc1-content-values.test.ts",
+        "tests/vc2-website-assets.test.ts",
+        "tests/vc1-vc2-content-integration.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/V-C1.md",
+      "risk": "media",
+      "card": "docs/pr-cards/V-C1.md"
     },
     {
       "id": "V-C3",
@@ -3681,7 +3691,7 @@
         "tests/w17-connections-integration.test.ts",
         "tests/w20-portal.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-17.md",
       "card": "docs/pr-cards/W-17.md"
     },
@@ -3709,7 +3719,7 @@
         "tests/w17-connections-integration.test.ts",
         "tests/w20-portal.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-17.md",
       "card": "docs/pr-cards/W-17.md"
     }
@@ -3754,7 +3764,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-17",
+  "activeExecution": "V-C1",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3831,6 +3841,10 @@
     {
       "id": "W-17",
       "path": "docs/pr-cards/execution/W-17.json"
+    },
+    {
+      "id": "V-C1",
+      "path": "docs/pr-cards/execution/V-C1.json"
     }
   ]
 }

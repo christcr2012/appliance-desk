@@ -1,5 +1,6 @@
 "use server";
 
+import { SiteContentError } from "@/domains/site-content/types";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { publishDraft, restoreRevision, saveDraft } from "@/domains/site-content";
@@ -23,6 +24,7 @@ function messageOf(error: unknown): string {
     "no longer has access",
     "could not be read",
   ];
+  if (error instanceof SiteContentError) return text;
   return known.some((k) => text.includes(k)) ? text : "That could not be saved. Your changes are still on the screen; please try again.";
 }
 

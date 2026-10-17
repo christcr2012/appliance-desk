@@ -1,3 +1,9 @@
+## What is next — October 17 V-C1 and V-C2 delivery
+
+W-17 and W-20 are merged (#486). One PR delivers V-C1 (typed website values, versioned storage, link rules, registry metadata) and V-C2 (owner/admin
+website pictures: upload, private draft preview, public serving, publish-time promotion, retire, cleanup, catalog setter hardening); exact-head CI, review
+and merge remain pending. V-C3 (bind every public content item) is next, then V-C4 (owner editor), V-C5 (template contract and coverage proof), then V-1…V-4.
+
 # MASTER ROADMAP — scope and ordered work coverage
 
 Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.

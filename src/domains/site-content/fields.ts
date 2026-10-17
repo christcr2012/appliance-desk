@@ -8,6 +8,9 @@
  * `{name}` (the appliance's name, in picture descriptions).
  */
 
+import type { FieldValueKind } from "./types";
+import type { ValueRules } from "./values";
+
 export type SiteFieldKind = "short" | "paragraph" | "url" | "alt" | "meta";
 
 export type SiteField = {
@@ -24,6 +27,25 @@ export type SiteField = {
   ownerInput?: "IN-05" | "IN-06" | "IN-11";
   /** Exactly the text the page shows today. Empty means "the section is hidden until you write something". */
   default: string;
+  /** V-C1: the kind of value. Text when not stated. */
+  valueKind?: FieldValueKind;
+  /** V-C1: may be intentionally empty or hidden. When not stated, a field is optional if its starting text is empty. */
+  optional?: boolean;
+  /** V-C1: a plain sentence saying where it appears. When not stated: "<page>, <section>". */
+  where?: string;
+  /** V-C1: the part of the page the editor scrolls to in the preview. When not stated, made from the key. */
+  anchor?: string;
+  /** V-C1: the only {placeholders} allowed. When not stated: {businessName} and {name}. */
+  placeholders?: ReadonlyArray<"businessName" | "name">;
+  /** V-C1: for a list field, the most entries it may hold. */
+  maxItems?: number;
+};
+
+/** What every field must say about itself (V-C1). Built from the field plus plain defaults. */
+export type SiteFieldSpec = Required<Pick<SiteField, "key" | "label" | "help" | "kind" | "page" | "section" | "default" | "valueKind" | "optional" | "where" | "anchor">> & {
+  placeholders: ReadonlyArray<string>;
+  rules: ValueRules;
+  ownerInput?: SiteField["ownerInput"];
 };
 
 export const SITE_FIELD_MAX: Record<SiteFieldKind, number> = {
@@ -114,6 +136,19 @@ function howFields(): SiteField[] {
 }
 
 export const SITE_FIELDS: ReadonlyArray<SiteField> = [
+  {
+    key: "home.hero.image",
+    label: "Main photo",
+    help: "The big photo at the top of the home page. Leave it empty to keep the standard photo.",
+    kind: "alt",
+    valueKind: "image",
+    optional: true,
+    page: "Home page",
+    section: "Top of the page",
+    where: "The big photo beside the headline on the home page",
+    anchor: "home-hero",
+    default: "",
+  },
   {
     key: "home.hero.heading",
     label: "Main heading",
@@ -305,14 +340,88 @@ export const SITE_FIELDS: ReadonlyArray<SiteField> = [
   },
 ];
 
+/**
+ * Keys that used to exist under another name map to today's key, so a renamed field never loses the owner's words.
+ * Empty today: every key has kept its name. A redesign (V-C5) adds the old name here when it renames one.
+ */
+export const SITE_KEY_ALIASES: Readonly<Record<string, string>> = {};
+
+export function canonicalSiteKey(key: string): string {
+  return SITE_KEY_ALIASES[key] ?? key;
+}
+
 const BY_KEY = new Map(SITE_FIELDS.map((f) => [f.key, f]));
 
 export function siteFieldByKey(key: string): SiteField | undefined {
   return BY_KEY.get(key);
 }
 
+function slugOf(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+/** The complete description of one field, with every plain default filled in (V-C1). */
+export function describeSiteField(field: SiteField): SiteFieldSpec {
+  const valueKind = field.valueKind ?? "text";
+  const optional = field.optional ?? field.default === "";
+  const placeholders = field.placeholders ?? ["businessName", "name"];
+  const rules: ValueRules = {
+    label: field.label,
+    valueKind,
+    optional,
+    maxLength: SITE_FIELD_MAX[field.kind],
+    singleLine: field.kind !== "paragraph",
+    httpsOnly: field.kind === "url",
+    placeholders,
+    ...(field.maxItems ? { maxItems: field.maxItems } : {}),
+  };
+  return {
+    key: field.key, label: field.label, help: field.help, kind: field.kind, page: field.page, section: field.section,
+    default: field.default, valueKind, optional,
+    where: field.where ?? `${field.page}, ${field.section.toLowerCase()}`,
+    anchor: field.anchor ?? (slugOf(field.key.split(".").slice(0, -1).join("-")) || slugOf(field.key)),
+    placeholders, rules, ownerInput: field.ownerInput,
+  };
+}
+
+const SPEC_BY_KEY = new Map(SITE_FIELDS.map((f) => [f.key, describeSiteField(f)]));
+
+export function siteFieldSpec(key: string): SiteFieldSpec | undefined {
+  return SPEC_BY_KEY.get(key);
+}
+
+/**
+ * Facts that appear on the website but are owned somewhere else (V-C1). The website shows them; it never stores a copy
+ * that could disagree, and changing website words never changes a charged amount or a signed agreement.
+ */
+export type SiteFactSource = {
+  key: string;
+  domain: "profile" | "pricing" | "catalog" | "policy";
+  label: string;
+  /** The owner screen where it is changed. */
+  editHref: string;
+  /** Plain sentence shown next to it in the website editor. */
+  usedOn: string;
+};
+
+export const SITE_FACT_SOURCES: ReadonlyArray<SiteFactSource> = [
+  { key: "profile.publicPhone", domain: "profile", label: "Phone number", editHref: "/desk/settings", usedOn: "Used on the website, in quotes and in messages to customers." },
+  { key: "profile.publicEmail", domain: "profile", label: "Email address", editHref: "/desk/settings", usedOn: "Used on the website, in quotes and in messages to customers." },
+  { key: "profile.address", domain: "profile", label: "Business address", editHref: "/desk/settings", usedOn: "Used on the website and on customer documents." },
+  { key: "profile.hours", domain: "profile", label: "Business hours", editHref: "/desk/settings", usedOn: "Used on the website and in the contact page." },
+  { key: "profile.serviceArea", domain: "profile", label: "Cities and ZIP codes you serve", editHref: "/desk/settings", usedOn: "Used on the website, the address check and city pages." },
+  { key: "pricing.monthlyRent", domain: "pricing", label: "Monthly rent for each appliance and set", editHref: "/desk/settings", usedOn: "Used on the website and in quotes. Changing a price here does not change signed agreements." },
+  { key: "catalog.photos", domain: "catalog", label: "Appliance photos on the price cards", editHref: "/desk/settings", usedOn: "Used on every page that shows that appliance." },
+  { key: "policy.terms", domain: "policy", label: "Rental terms and policies", editHref: "/desk/settings", usedOn: "Used on the website and in agreements. Signed agreements keep the terms they were signed with." },
+];
+
+/** A key that is allowed in a revision: today's registry, plus the compatibility mapping for old names. */
+export function isKnownSiteKey(key: string): boolean {
+  return BY_KEY.has(canonicalSiteKey(key));
+}
+
 export function siteDefaults(): Record<string, string> {
-  return Object.fromEntries(SITE_FIELDS.map((f) => [f.key, f.default]));
+  return Object.fromEntries(SITE_FIELDS.filter((f) => (f.valueKind ?? "text") === "text").map((f) => [f.key, f.default]));
 }
 
 export type SanitizeResult =
@@ -331,6 +440,7 @@ export function sanitizeSiteFields(input: unknown): SanitizeResult {
   for (const [key, raw] of Object.entries(input as Record<string, unknown>)) {
     const field = BY_KEY.get(key);
     if (!field) return { ok: false, message: "One of those fields is not something you can change." };
+    if ((field.valueKind ?? "text") !== "text") return { ok: false, message: `${field.label} must be text.` };
     if (typeof raw !== "string") return { ok: false, message: `${field.label} must be text.` };
     const value = raw.replace(/[<>]/g, "").replace(/\r\n?/g, "\n").trim();
     if (!value) continue;

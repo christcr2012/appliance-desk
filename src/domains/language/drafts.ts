@@ -150,7 +150,7 @@ export async function listCurrentTranslationDrafts(): Promise<TranslationSource[
   ]);
   const map = new Map(drafts.map(x => [x.sourceKind + ":" + x.sourceKey, x]));
   const sources: Array<{ kind: TranslationSourceKind; key: string; english: string }> = [
-    ...SITE_FIELDS.filter(x => x.kind !== "url" && Boolean((site[x.key] ?? x.default).trim()))
+    ...SITE_FIELDS.filter(x => (x.valueKind ?? "text") === "text" && x.kind !== "url" && Boolean((site[x.key] ?? x.default).trim()))
       .map(x => ({ kind: "SITE" as const, key: x.key, english: site[x.key] ?? x.default })),
     ...Object.entries(notices).map(([key,english])=>({kind:"NOTICE" as const,key,english})),
     ...[...notes.entries()].map(([key,english])=>({kind:"QUOTE" as const,key,english})),
