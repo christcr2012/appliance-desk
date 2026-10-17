@@ -59,12 +59,18 @@ test.describe("owner Today", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/desk/today", { waitUntil: "load" });
     const card = page.locator("a.cut-corner-md.bg-nav-bg").first();
-    await card.focus();
-    await expect(card).toBeFocused();
+    // Focus is retried: a re-render while the page finishes loading can drop focus set a moment too early.
+    await expect(async () => {
+      await card.focus();
+      await expect(card).toBeFocused({ timeout: 1000 });
+    }).toPass({ timeout: 10000 });
     expect(await card.evaluate((el) => getComputedStyle(el).clipPath)).toBe("none");
     expect(await card.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
     const search = page.getByRole("searchbox", { name: "Search customers, appliances, and leads" });
-    await search.focus();
+    await expect(async () => {
+      await search.focus();
+      await expect(search).toBeFocused({ timeout: 1000 });
+    }).toPass({ timeout: 10000 });
     expect(await search.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
   });
 });
@@ -82,8 +88,10 @@ test.describe("customer portal home", () => {
     const help = page.getByRole("region", { name: "How do I get help?" });
     await expect(help).toBeVisible();
     const report = help.getByRole("link", { name: "Report a problem" });
-    await report.focus();
-    await expect(report).toBeFocused();
+    await expect(async () => {
+      await report.focus();
+      await expect(report).toBeFocused({ timeout: 1000 });
+    }).toPass({ timeout: 10000 });
     expect(await report.evaluate((el) => getComputedStyle(el).clipPath)).toBe("none");
     expect(await report.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
   });
