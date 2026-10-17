@@ -1141,7 +1141,7 @@ tax-evidence model. Choices made here, within the approved designs:
 ## 2026-10-17 — V-3 and V-4 decisions
 - **One hero for the inner pages.** A shared band component, not per-page markup, so the look changes in one place and adds no words.
 - **Two severity words, not three.** The exception data has high and medium, so the list says Urgent and Soon; a third word would be invented.
-- **The timeline draws one hour per visit for now.** Visits do record a length (or use the Settings default), but Today does not load it and reading it is a data read the design (S-V1) reserves for the owner; nothing is hidden, untimed and out-of-range visits are listed. Asked of the owner: use the real lengths?
+- **The timeline sizes each visit from its own length.** The owner approved this on 2026-10-17 (S-V1): each visit uses its recorded length, else the Settings default job length. One extra column and the one setting are read; nothing is hidden, untimed and out-of-range visits are listed.
 - **Search shortcut only focuses the existing search.** No new search, no new data.
 - **Actual and Estimate tags live on the METRICS money tiles**, since Today has none; Estimate already existed and Actual is added so neither is unlabelled.
 - **Owner look gate stays open** for these screens; the PR waits for his answer.

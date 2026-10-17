@@ -291,6 +291,7 @@ export default async function TodayPage() {
                     type: job.type,
                     status: job.status,
                     href: `/desk/jobs/${job.id}`,
+                    durationMinutes: job.durationMinutes,
                   }))}
                 />
               </div>

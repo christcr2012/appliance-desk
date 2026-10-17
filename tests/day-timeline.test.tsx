@@ -24,6 +24,20 @@ const visit = (id: string, minutes: number | null, over: Partial<TimelineVisit> 
   ...over,
 });
 
+describe("V-4 visit lengths", () => {
+  it("sizes a block from the visit's own length and keeps one hour when none is given", () => {
+    const { placed } = layoutDayVisits([visit("long", 9 * 60, { durationMinutes: 180 }), visit("short", 14 * 60, { durationMinutes: 45 }), visit("none", 16 * 60)]);
+    const h = (id: string) => placed.find((p) => p.visit.id === id)?.height;
+    expect(h("long")).toBe(180);
+    expect(h("short")).toBe(45);
+    expect(h("none")).toBe(60);
+  });
+  it("never lets a long late visit run past the axis", () => {
+    const { placed } = layoutDayVisits([visit("late", 18 * 60 + 30, { durationMinutes: 240 })]);
+    expect(placed[0].top + placed[0].height).toBeLessThanOrEqual(TIMELINE_END_MINUTES - TIMELINE_START_MINUTES + MIN_BLOCK_MINUTES);
+  });
+});
+
 describe("V-4 day timeline placement", () => {
   it("places visits by time on the 8 am to 7 pm axis", () => {
     const { placed, outside } = layoutDayVisits([visit("b", 13 * 60), visit("a", 9 * 60 + 30)]);

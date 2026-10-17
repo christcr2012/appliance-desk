@@ -17,6 +17,8 @@ export type TimelineVisit = {
   type: JobType;
   status: JobStatus;
   href: string;
+  /** The visit's own length in minutes (its recorded length, else the business default); one hour when not given. */
+  durationMinutes?: number;
 };
 
 export const TIMELINE_START_MINUTES = 8 * 60;
@@ -57,7 +59,7 @@ export function layoutDayVisits(visits: TimelineVisit[]): { placed: PlacedVisit[
     const start = visit.minutes as number;
     if (start >= clusterEnd && cluster.length > 0) closeCluster();
     // A visit that starts in the last half hour keeps a readable block; the axis has room beneath 7 pm for it.
-    const height = Math.max(MIN_BLOCK_MINUTES, Math.min(BLOCK_MINUTES, TIMELINE_END_MINUTES + MIN_BLOCK_MINUTES - start));
+    const height = Math.max(MIN_BLOCK_MINUTES, Math.min(visit.durationMinutes ?? BLOCK_MINUTES, TIMELINE_END_MINUTES + MIN_BLOCK_MINUTES - start));
     let lane = laneEnds.findIndex((end) => end <= start);
     if (lane === -1) lane = laneEnds.length;
     laneEnds[lane] = start + height;

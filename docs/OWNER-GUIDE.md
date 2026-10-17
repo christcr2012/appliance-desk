@@ -18,7 +18,7 @@ Open **More → Website** (owners and admins only).
 ## The bolder look on every public page, Today and the customer portal (V-3, V-4)
 - **Public pages** (pricing, how it works, service area, contact, launch, and each city page) now open with a bold evergreen band. The words are the same website items you already edit; nothing new to set up. The privacy, terms and accessibility pages keep their legal wording.
 - **Pricing** features your first set on the evergreen card; fees and "good to know" read as clean lists.
-- **Today** (desk): on a computer, today's visits sit on a day timeline from 8 am to 7 pm with a "Now" line. For now each visit shows as one hour starting at its time, even if you recorded a different length; ask if you want the real lengths used. Visits with no time, or outside 8 am to 7 pm, are listed under the timeline. On a phone you still get the simple list.
+- **Today** (desk): on a computer, today's visits sit on a day timeline from 8 am to 7 pm with a "Now" line. Each visit's block is as long as its recorded length, or your default job length in Settings if none was recorded. Visits with no time, or outside 8 am to 7 pm, are listed under the timeline. On a phone you still get the simple list.
 - **Needs your attention** items now say **Urgent** or **Soon** next to the coloured edge.
 - **Money numbers** are tagged **Actual** (recorded facts) or **Estimate** (worked out).
 - **Search:** press **Cmd K** (Mac) or **Ctrl K** (Windows) to jump to the search box in the desk menu.
