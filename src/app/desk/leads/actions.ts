@@ -46,15 +46,17 @@ export async function updateLeadStatusAction(
   }
 
   try {
+    // W-6: check the follow-up date first so a bad date never leaves the lead half-updated.
+    const followUpOn = status === "CONTACTED" && followUpKey ? parseFollowUpKey(followUpKey, new Date()) : null;
     await updateLeadStatus(
       session.user.id,
       leadId,
       status as Exclude<LeadStatus, "CONVERTED">,
       lostReason,
     );
-    // W-6: only "Contacted" carries a follow-up date; every other status clears it.
-    if (status === "CONTACTED" && followUpKey) {
-      await setLeadFollowUp(session.user.id, leadId, parseFollowUpKey(followUpKey, new Date()));
+    // Only "Contacted" carries a follow-up date; every other status clears it.
+    if (followUpOn) {
+      await setLeadFollowUp(session.user.id, leadId, followUpOn);
     } else {
       await setLeadFollowUp(session.user.id, leadId, null);
     }
