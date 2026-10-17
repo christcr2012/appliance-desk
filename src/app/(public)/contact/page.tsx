@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
 import { getPublishedCatalog } from "@/domains/pricing";
@@ -28,6 +29,8 @@ export default async function ContactPage({
   const c = siteCopy(content, siteFacts(settings));
 
   return (
+    <>
+      <SelectBridge site={site} />
     <section className="py-16 md:py-20">
       <Container className="max-w-2xl">
         <h1 className="font-display text-4xl font-semibold text-ink">
@@ -62,5 +65,6 @@ export default async function ContactPage({
         </div>
       </Container>
     </section>
+    </>
   );
 }

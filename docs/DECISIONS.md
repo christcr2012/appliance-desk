@@ -1120,3 +1120,13 @@ tax-evidence model. Choices made here, within the approved designs:
 - **Preview is one reader.** `getSiteForRequest` honours `?revision=` and `?previewAt=` only for an active owner/admin; the shared layout reads the live version (it stays static; owner preview of the frame arrives with the V-C4 preview route using `PublicChrome`).
 - **Coverage is proven at runtime**, not by searching code: every route and variant renders with markers; leftover words must be declared owner facts or named exceptions (contract terms, interest choices, launch consent wording, landmark names).
 - **Honest small changes:** the launch page uses the configured business name; page titles in search come from items with the same starting words; deprecated announcement-banner settings are left untouched.
+
+## 2026-10-17 — V-C4 and V-C5 decisions
+- **Website entry in More.** The W-8 menu keeps its 14 main entries; "Website" is in the More list for owners and admins (the Settings link stays). The owner may prefer a main entry.
+- **Preview is the real public page.** The editor frames the actual public page through a signed-in door (`/website-preview`, 404 for everyone else) that checks the page and version and redirects with `?select=1`. Only public pages opened with `?select=1` may be framed, and only by this website; draft words are shown to an active owner/admin only whatever the parameters.
+- **Select-to-edit uses invisible private-use marks** around words (and a data attribute on the home photo), removed by a small script after load and never wrapping page structure; the click message goes to this website's own address only and carries the previewed version, which the editor checks. A keyboard list reaches every item too. The public site never creates marks.
+- **Publish needs two versions.** The draft version and the live version the owner reviewed. If either moved, nothing is published. Publishing the draft that is already live (a double click) succeeds without changing anything.
+- **Restore goes to the draft.** It replaces an open draft only when the screen knew about it; a version needing a removed picture is blocked with a message; discard needs the draft version.
+- **The contract is typed by hand** so the check cannot agree with itself; changing a slot fails a test until the fingerprint (and the template version, if the layout changed) is updated on purpose. Retired content is kept aside, never deleted; content of the wrong kind stops for a person.
+- **Known limits:** the preview shows the current opening mode; items of kind "list" have no editor yet because no item uses one.
+

@@ -1,3 +1,13 @@
+## Change your website yourself (V-C4)
+Open **More → Website** (owners and admins only).
+- **Edit a page.** Pick a page, then a section, then the item. On a phone you move one step at a time and switch between Edit and Preview; on a computer you see the list, the editor and the real page side by side. You can also click words, a button or the home photo inside the preview to jump straight to it, or use the search box.
+- **Nothing is live until you publish.** *Save draft* keeps your work private. Visitors keep seeing the live website. The bar at the bottom always says whether you have unsaved changes.
+- **Business facts stay in Settings.** Type `{phone}`, `{email}` and similar and the website fills in your real details. Prices come from your price list.
+- **Photos and promotions.** Upload a picture, say what it shows (or mark it decoration only), pick the part that must stay visible, and check the wide / square / phone crops. A promotion has an on/off switch and optional start and end times in Colorado time; the screen tells you whether it is visible now.
+- **Review & publish.** You see each change before and after, where every link goes, which business facts are used and which pages are affected. If someone else changed the live website while you were reviewing, nothing is published and you are asked to review again.
+- **History.** *Put in draft* copies an older version into your draft so you can look at it first; it never goes live by itself. *Discard the draft* throws away unpublished changes without touching the live website.
+- **Pictures** need the private picture store to be switched on for the real website; until then uploads are refused with a plain message.
+
 ## Every public page now reads from your website content (V-C3)
 - **Nothing looks different yet.** Every word, button, link and the home photo on the public site is now a website item with today's words as the starting text. The screens to change them (the website editor) come next (V-C4); until then the site looks and reads exactly as before.
 - **Facts stay where they live.** Your phone, email, address, hours, prices, fees and cities come from Settings and the price list. In a sentence you will write them as `{phone}`, `{email}`, `{businessName}`, `{city}` and so on, so a sentence can never disagree with the real number or price.

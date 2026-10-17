@@ -66,6 +66,7 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["growth", "Growth signals", "Early signs of where demand is heading.", "finance"],
   ["launch", "Launch list", "What is left before you open to real customers.", "finance"],
   ["automations", "System health", "Whether the background jobs and connections are running.", "finance"],
+  ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
   ["privacy", "Privacy requests", "Customers asking to see or delete their information.", "owner"],
   ["activity", "Activity", "Who changed what, and when.", undefined],
 ];

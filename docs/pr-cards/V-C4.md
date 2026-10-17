@@ -1,0 +1,68 @@
+# V-C4 and V-C5 — the owner's Website editor with preview, safe publish and restore, and the redesign compatibility contract (approved original subsections)
+Source: docs/designs/BATCH-V.md D-VC4 and D-VC5 (2026-10-08 amendment, authorized by the owner's request for complete website control). Prerequisite V-C3 merged (#488).
+One coherent outcome: the owner can see the real site, pick any word, button, picture or promotion in it, change it as a draft, review exactly what will change, publish it safely or put an older version back for review; and any future redesign is bound to a tested contract that keeps customized content.
+
+## Frozen original complete acceptance
+### V-C4
+- A Website destination appears for owners and admins only (in the More list of the desk menu, with the Settings link kept), and /desk/settings/website opens on an overview showing the live version and when it went live, whether a draft exists and how many changes it holds, and four tasks: Edit a page, Photos, Contact & prices, Review & publish; staff, customers and signed-out visitors are refused at the page and at every action, not only hidden.
+- Edit a page lists the public pages by familiar names with how many items each holds, and search finds a phrase or a label across all items without showing a wall of inputs; on a phone the flow is Page, then Section, then Edit with an Edit/Preview switch, and on a wide screen the page list, the real page preview and the selected item sit side by side, with no sideways scrolling at 360, 768 and 1440 pixels.
+- Selecting an item shows where it appears, the live value or picture, the proposed value, the other places that share it, and when a change takes effect; words show a counter and their limit; a button or link shows its words and its destination as separate controls (known page, https address, your phone, your email); a picture is chosen from the photo library or uploaded, with its description or a decorative choice and a focus point shown in wide, square and tall crops; a promotion shows on/off and Colorado start and end with a plain sentence saying whether it is visible now; every value is saved only if it passes the same rules publishing uses.
+- Preview shows the real page through a signed-in, same-origin preview route for owners and admins only, for any public page, from the saved draft or an old version and at a chosen moment; Select this content to edit works inside it: clicking marked words selects that item once the message passes origin, revision and known-item checks, and a matching keyboard list does the same; the public site renders no edit markers, owner data or editable endpoints, proved by a test.
+- The action bar offers Save draft, Preview and Review N changes, says Saving, Saved or the error honestly and never suggests a saved draft is published; a failed save keeps what was typed; leaving a changed form asks first; pressing Save twice quickly saves once; a draft changed somewhere else is refused with a plain message and the typed values are kept.
+- Review & publish shows plain before and after words, picture thumbnails and crops, link destinations, the facts the changed words use with their current owner values, problems that block publishing, and the pages affected; Publish changes only the reviewed draft, requires the draft version and the live version the owner looked at, refuses if either moved, publishes once on a double click, and success links to the live pages.
+- History lists published versions and Restore puts an older version into the draft for review instead of making it live, warning that it replaces the current draft; restoring a version that needs a retired picture is blocked with a message; the draft can be discarded; saving, publishing, restoring and discarding are recorded with who and when.
+- Every part of the editor can be used with the keyboard, has labelled controls and an error summary, and passes the automated accessibility check on the overview, editor, review and history screens at phone, tablet and desktop widths in light and dark themes in CI.
+### V-C5
+- src/domains/site-content/template-contract.ts declares the current template version, every content key and kind it supports and each slot's bounds (length, link kinds, picture focus); a test proves it matches the registry in both directions and that every public slot is registry-owned, bound to a single domain source, or explicitly non-content.
+- A pure, versioned compatibility plan maps old keys to new locations for a template change, keeps unmapped values in history, reports keys retired, renamed or newly required, applies defaults only to new or unset items and never overwrites customized live text or pictures; it never edits a published row; tested on customized and untouched content.
+- A small saved fixture for each supported content version (text per key, typed values) is kept; tests show both read identically through the codec, customized content survives a simulated template change, and the last published content still renders after a code rollback.
+- A release rule is enforced in CI: if the template declares it cannot render the last supported content version, the check fails and names the missing compatible release or content migration; the rollback runbook states the owner-proof restore steps.
+- No anonymous draft data: tests show public pages and the preview route ignore revision and moment parameters for visitors, staff and customers, that draft-only text and ids never appear in public output, and that the preview route is refused to anyone who is not an active owner or admin.
+
+<!-- bundle-plan:start -->
+```json
+{
+  "workKind": "ENGINEERING",
+  "baseRevision": "c1c03e5c207a97bb059f301865db8dc1b9f6f0a6",
+  "outcome": "The owner edits every website item from a clear Website screen with real-page preview and select-to-edit, saves drafts, reviews exact changes, publishes with stale-change protection and restores old versions for review, and a template contract with fixtures and a CI check protects customized content from any later redesign.",
+  "integrationBoundary": "The site-content domain (draft review and diff, publish and restore signatures with stale-live protection, discard), a signed-in preview route that reuses the public page components, preview-only selection markers and bridge, the owner Website screens, server actions and upload wiring, the More list entry, frame headers for the preview path only, the new template contract and fixtures, tests (unit, real-Postgres, browser and accessibility in CI) and docs. No migration, no new dependency, no public-site visual change, no redesign.",
+  "newEngineering": "Draft review and diff reader; publish with expected live version; restore to draft; discard; selection markers and bridge; preview route; overview, page list, search, field panels for words, links, pictures and promotions; review and history screens; action bar with honest save state and dirty-form guard; responsive phone flow; template contract, compatibility plan, saved fixtures and CI check; unit, real-Postgres and browser tests; docs",
+  "estimatedProductionLines": 2800,
+  "relatedWorkDecision": "V-C4 and V-C5 are delivered together because the contract (V-C5) is the registry-and-editor completeness proof for what the editor (V-C4) exposes, and both change the same publish and restore signatures once; V-C4 alone leaves the redesign unprotected and V-C5 alone has nothing to protect. The visual redesign (V-1 to V-4) follows.",
+  "subsections": [
+    {
+      "id": "V-C4",
+      "acceptance": [
+        "A Website destination appears for owners and admins only (in the More list of the desk menu, with the Settings link kept), and /desk/settings/website opens on an overview showing the live version and when it went live, whether a draft exists and how many changes it holds, and four tasks: Edit a page, Photos, Contact & prices, Review & publish; staff, customers and signed-out visitors are refused at the page and at every action, not only hidden.",
+        "Edit a page lists the public pages by familiar names with how many items each holds, and search finds a phrase or a label across all items without showing a wall of inputs; on a phone the flow is Page, then Section, then Edit with an Edit/Preview switch, and on a wide screen the page list, the real page preview and the selected item sit side by side, with no sideways scrolling at 360, 768 and 1440 pixels.",
+        "Selecting an item shows where it appears, the live value or picture, the proposed value, the other places that share it, and when a change takes effect; words show a counter and their limit; a button or link shows its words and its destination as separate controls (known page, https address, your phone, your email); a picture is chosen from the photo library or uploaded, with its description or a decorative choice and a focus point shown in wide, square and tall crops; a promotion shows on/off and Colorado start and end with a plain sentence saying whether it is visible now; every value is saved only if it passes the same rules publishing uses.",
+        "Preview shows the real page through a signed-in, same-origin preview route for owners and admins only, for any public page, from the saved draft or an old version and at a chosen moment; Select this content to edit works inside it: clicking marked words selects that item once the message passes origin, revision and known-item checks, and a matching keyboard list does the same; the public site renders no edit markers, owner data or editable endpoints, proved by a test.",
+        "The action bar offers Save draft, Preview and Review N changes, says Saving, Saved or the error honestly and never suggests a saved draft is published; a failed save keeps what was typed; leaving a changed form asks first; pressing Save twice quickly saves once; a draft changed somewhere else is refused with a plain message and the typed values are kept.",
+        "Review & publish shows plain before and after words, picture thumbnails and crops, link destinations, the facts the changed words use with their current owner values, problems that block publishing, and the pages affected; Publish changes only the reviewed draft, requires the draft version and the live version the owner looked at, refuses if either moved, publishes once on a double click, and success links to the live pages.",
+        "History lists published versions and Restore puts an older version into the draft for review instead of making it live, warning that it replaces the current draft; restoring a version that needs a retired picture is blocked with a message; the draft can be discarded; saving, publishing, restoring and discarding are recorded with who and when.",
+        "Every part of the editor can be used with the keyboard, has labelled controls and an error summary, and passes the automated accessibility check on the overview, editor, review and history screens at phone, tablet and desktop widths in light and dark themes in CI."
+      ],
+      "remainingEngineering": [
+        "Draft review and diff, publish and restore signatures, selection markers and bridge, preview route, Website screens (overview, pages, search, field panels, review, history), action bar and guards, tests, docs"
+      ]
+    },
+    {
+      "id": "V-C5",
+      "acceptance": [
+        "src/domains/site-content/template-contract.ts declares the current template version, every content key and kind it supports and each slot's bounds (length, link kinds, picture focus); a test proves it matches the registry in both directions and that every public slot is registry-owned, bound to a single domain source, or explicitly non-content.",
+        "A pure, versioned compatibility plan maps old keys to new locations for a template change, keeps unmapped values in history, reports keys retired, renamed or newly required, applies defaults only to new or unset items and never overwrites customized live text or pictures; it never edits a published row; tested on customized and untouched content.",
+        "A small saved fixture for each supported content version (text per key, typed values) is kept; tests show both read identically through the codec, customized content survives a simulated template change, and the last published content still renders after a code rollback.",
+        "A release rule is enforced in CI: if the template declares it cannot render the last supported content version, the check fails and names the missing compatible release or content migration; the rollback runbook states the owner-proof restore steps.",
+        "No anonymous draft data: tests show public pages and the preview route ignore revision and moment parameters for visitors, staff and customers, that draft-only text and ids never appear in public output, and that the preview route is refused to anyone who is not an active owner or admin."
+      ],
+      "remainingEngineering": [
+        "Template contract, compatibility plan, saved fixtures, CI release check, anonymous-draft tests, rollback runbook, docs"
+      ]
+    }
+  ]
+}
+```
+<!-- bundle-plan:end -->
+
+## Gates and exclusions
+No Stripe LIVE, customer email, SMS, spending or production storage. No migration and no new dependency. Public-site look is unchanged. The Website entry sits in the More list to keep the W-8 menu at 14 entries; moving it into the main menu is an owner choice. The preview route is the only place framing is allowed (same origin, signed-in owners and admins). The visual redesign is V-1 to V-4 and keeps the owner's before/after acceptance gate.

@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
 import { SiteCta } from "@/components/site/site-cta";
@@ -25,6 +26,7 @@ export default async function HowItWorksPage({
   }));
   return (
     <>
+      <SelectBridge site={site} />
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">

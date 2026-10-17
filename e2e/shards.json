@@ -25,7 +25,8 @@
       "two-factor.spec.ts",
       "w22-v2-complete-signing.spec.ts",
       "location-contacts.spec.ts",
-      "phone-order-one-link.spec.ts"
+      "phone-order-one-link.spec.ts",
+      "website-editor.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",

@@ -1,3 +1,37 @@
+## October 17 — V-C4 and V-C5 delivered (the owner Website editor, and the redesign safety contract), CI and merge pending
+
+V-C3 is merged (#488). This PR delivers two whole approved subsections.
+**V-C4** a new **Website** screen for owners and admins (in the desk menu's More list; staff and customers are refused at the page and at every action).
+It opens on an overview (live version and when, how many draft changes, four tasks: Edit a page, Photos, Contact & prices, Review & publish). Edit a page:
+choose a page, then a section, then an item (a phone shows one step at a time with an Edit/Preview switch; a wide screen shows list, editor and live preview
+together); search finds an item by words. Each item shows where it appears, what is live and what you propose, other places that share it, when it takes effect,
+a character counter, the business facts it may use (`{phone}` shows your real number), a Hide/Switch off button for optional items and **Restore recommended**.
+Links keep their words and destination separate (page, another website, your phone, your email); pictures come from the picture library or a new upload with a
+description (or "decoration only"), focus point and wide/square/tall crop previews; promotions have on/off, title, text, optional button and picture, and
+Colorado start/end boxes with a plain "visible now / not yet / ended" sentence. The preview is the real public page inside the screen through a signed-in
+door (`/website-preview`); clicking words, a button or the home photo inside it opens that item (a keyboard list does the same). The action bar saves drafts
+honestly (a failed save keeps what you typed, a double click saves once, a draft changed elsewhere is refused with a reload button, leaving with unsaved changes
+asks first). **Review & publish** shows each change before/after, link destinations, pictures, the business facts used, pages affected and anything that blocks
+publishing; publishing requires the draft version and the live version you reviewed, refuses if either moved, and a double click publishes once. **History**
+restores an older version into the draft (never straight to live, and blocked when the version needs a removed picture) and can discard the draft.
+**V-C5** `template-contract.ts` lists the 204 places the layout shows owner content (kind, length, optional), plus the facts owned elsewhere and the
+non-content structure; a test proves it equals the editor both ways, every placeholder has one owner, and a committed fingerprint fails until a slot change is
+made on purpose. A pure `planCompatibility()` reports renamed/retired/new/unconvertible content and keeps retired content aside; saved examples of both content
+formats must still read; customized content survives a change and a rollback in tests. Anonymous-draft tests prove visitors, staff and customers never get draft
+words or the preview door. Rollback runbook: `docs/runbooks/WEBSITE-TEMPLATE-ROLLBACK.md`.
+No migration, no new dependency. Header change: only a public page opened with `?select=1` may be framed, and only by this website; the desk, portal and APIs keep
+the deny-all rule (browser header test added). Old text-only editor and its actions are removed.
+Proof: 16 unit tests (permissions, review diff, markers, Colorado time, preview door), 10 contract tests, 7 real-Postgres tests (stale live version, repeat and
+simultaneous publish, restore-to-draft, discard, removed picture, staff and deactivated owner refused), a browser test for the whole edit-preview-select-publish
+path and accessibility scans at 360/768/1440 in light and dark, and an updated old end-to-end editor test. Exact-head CI (browser and accessibility) is pending.
+Open items: the Website menu entry sits in More (the W-8 menu keeps its 14 main entries; owner may prefer a main entry); the preview shows the site's current
+opening mode, so the "before opening" home variant is visible only while the site is in prelaunch mode (and pricing/city previews show the launch page then, as visitors see);
+the menu, footer, notice bar and banner words cannot be previewed before publishing, because the shared page frame cannot read the preview version without making every public page
+slower to serve (the editor says so beside that page; the wording shows live after publish). The Website screen skips the browser's "upgrade to https" rule only when the app
+is served over plain http on this computer or the CI test site (a real address is always https and keeps the full policy); website picture bytes are still not in the daily recovery
+copy; picture cleanup is not scheduled; pictures need the private picture store configured in production. Not done: the visual redesign (V-1…V-4), which needs
+the owner's before/after screenshot acceptance. No live Stripe, email, SMS, spending or production data touched.
+
 ## October 17 — V-C3 delivered (every public page bound to editable website content), CI and merge pending
 
 V-C1 and V-C2 are merged (#487). This PR delivers the whole approved subsection **V-C3**: no marketing word, button, link or photo on a public page is
