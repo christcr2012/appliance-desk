@@ -65,7 +65,7 @@ it("preserves pickup text after failure and confirms only a successful existing 
   await waitFor(() => expect(screen.getByRole("button", { name: "Submit request" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
   await waitFor(() =>
-    expect(screen.getByRole("status").textContent).toContain("next steps"),
+    expect(screen.getByRole("status").textContent).toContain("problem report"),
   );
   expect(m.save).toHaveBeenLastCalledWith({
     problem: text,

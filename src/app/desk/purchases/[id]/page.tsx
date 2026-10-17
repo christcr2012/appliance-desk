@@ -8,6 +8,7 @@ import { privatePhotoReadPath } from "@/lib/photo-storage";
 import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { PurchaseTaxForm } from "./purchase-tax-form";
 import { AddReceipt, RemoveReceiptPage } from "./add-receipt";
+import { RecordConnections } from "@/components/desk/record-connections";
 
 export const metadata = { title: "Purchase" };
 
@@ -76,6 +77,7 @@ export default async function PurchasePage({ params }: { params: Promise<{ id: s
       ) : (
         <p className="text-sm text-ink-soft">Only the owner can change the sales tax answer.</p>
       )}
+      <RecordConnections kind="purchase" id={purchase.id} />
     </div>
   );
 }

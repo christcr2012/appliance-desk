@@ -51,6 +51,10 @@ describe.skipIf(!enabled)("inspections", () => {
       prisma.$executeRawUnsafe('ALTER TABLE "ApplianceInspection" ENABLE TRIGGER "ApplianceInspection_append_only"'),
     ]);
     await prisma.auditLog.deleteMany({ where: { OR: [{ userId: { in: [ownerId, adminId, staffId] } }, { entityType: "Appliance", entityId: { in: applianceIds } }] } });
+    // A failed inspection drafts a repair visit (W-17); remove those before the appliances.
+    const repairJobs = await prisma.job.findMany({ where: { appliances: { some: { applianceId: { in: applianceIds } } } }, select: { id: true } });
+    await prisma.jobAppliance.deleteMany({ where: { jobId: { in: repairJobs.map((j) => j.id) } } });
+    await prisma.job.deleteMany({ where: { id: { in: repairJobs.map((j) => j.id) } } });
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.applianceType.deleteMany({ where: { id: typeId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, adminId, staffId] } } });
@@ -94,12 +98,12 @@ describe.skipIf(!enabled)("inspections", () => {
     await expect(publishChecklistVersion(ownerId, ["Duplicate item", "Duplicate item"])).rejects.toThrow(/unique/);
   });
 
-  it("inspection-pass: every item checked passes, goes to Available and stores the checklist it was answered against", async () => {
+  it("inspection-pass: every item checked passes, goes to Cleaning (W-17) and stores the checklist it was answered against", async () => {
     const current = await getInspectionChecklist();
     const unit = await waiting();
     const result = await recordApplianceInspection(ownerId, unit, { expectedChecklistVersionId: current.versionId, answers: current.items.map(() => true), notes: " fine ", condition: "Good" });
     expect(result).toMatchObject({ passed: true, overridden: false });
-    expect(await statusOf(unit)).toBe("AVAILABLE");
+    expect(await statusOf(unit)).toBe("CLEANING");
     const saved = await prisma.applianceInspection.findUniqueOrThrow({ where: { id: result.inspectionId } });
     expect(saved).toMatchObject({ passed: true, checklistVersionId: current.versionId, notes: "fine", overrideReason: null, overriddenByUserId: null, inspectedById: ownerId });
     expect(saved.checklistDefinition).toEqual(current.items);
@@ -149,7 +153,7 @@ describe.skipIf(!enabled)("inspections", () => {
     const unit = await waiting();
     const result = await recordApplianceInspection(adminId, unit, { expectedChecklistVersionId: current.versionId, answers, overrideReason: "  Cosmetic only  " });
     expect(result).toMatchObject({ passed: true, overridden: true });
-    expect(await statusOf(unit)).toBe("AVAILABLE");
+    expect(await statusOf(unit)).toBe("CLEANING");
     expect(await prisma.applianceInspection.findUniqueOrThrow({ where: { id: result.inspectionId } })).toMatchObject({ overrideReason: "Cosmetic only", overriddenByUserId: adminId, passed: true });
     expect(await prisma.auditLog.count({ where: { action: "inspection.override", entityId: result.inspectionId, userId: adminId } })).toBe(1);
 

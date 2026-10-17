@@ -6,7 +6,8 @@ import { getPortalData } from "@/domains/portal";
 import { getInvoiceDetail } from "@/domains/billing/invoice-detail";
 import { InvoiceDocument } from "@/components/billing/invoice-document";
 import { PrintDocumentButton } from "@/components/print-document-button";
-import { ButtonLink } from "@/components/ui";
+import { Button, ButtonLink } from "@/components/ui";
+import { isPayNowEligible } from "@/domains/portal/pay-now";
 
 export const metadata = { title: "Invoice" };
 
@@ -20,8 +21,10 @@ const FINAL_INVOICE_STATUSES = new Set(["PAID", "VOID", "WRITTEN_OFF", "REFUNDED
  * (see tests/customer-isolation.test.ts). */
 export default async function AccountInvoicePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ invoiceId: string }>;
+  searchParams: Promise<{ payError?: string }>;
 }) {
   const session = await requireSession();
   const language = await portalLanguage(session.user.id);
@@ -56,6 +59,20 @@ export default async function AccountInvoicePage({
           <PrintDocumentButton label={t("Print / save as PDF")} />
         </div>
       </div>
+
+      {isPayNowEligible(invoice, new Date()) && (
+        <div className="mt-4 rounded-xl border border-line bg-surface-subtle p-4 text-sm text-ink print:hidden">
+          <p className="font-semibold">{t("This bill is past due. You can pay it securely on Stripe's payment page.")}</p>
+          <form method="post" action={`/account/billing/invoice/${invoiceId}/pay`} className="mt-3">
+            <Button type="submit">{t("Pay now")}</Button>
+          </form>
+        </div>
+      )}
+      {(await searchParams).payError && (
+        <p role="alert" className="mt-4 text-sm font-semibold text-danger print:hidden">
+          {t("We couldn't open the payment page. Please try again shortly or contact us.")}
+        </p>
+      )}
 
       {invoice.isLocalInvoice && invoice.balanceCents > 0 && (
         <div className="mt-4 rounded-xl border border-line bg-surface-subtle p-4 text-sm text-ink print:hidden">

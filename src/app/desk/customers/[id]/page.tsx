@@ -36,6 +36,7 @@ import { BillingContext } from "./billing-context";
 import { PropertyServiceContext } from "@/components/desk/property-service-context";
 import { getMessageHistory } from "@/domains/messaging/history";
 import { MessageHistoryPanel } from "@/components/desk/message-history-panel";
+import { RecordConnections } from "@/components/desk/record-connections";
 
 export const metadata = { title: "Customer" };
 type Search = {
@@ -402,6 +403,7 @@ export default async function CustomerDetailPage({
       <div className="mt-6">
         <MessageHistoryPanel rows={messages} />
       </div>
+      <RecordConnections kind="customer" id={id} />
     </div>
   );
 }

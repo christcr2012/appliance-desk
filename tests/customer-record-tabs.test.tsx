@@ -10,6 +10,7 @@ const m = vi.hoisted(() => ({
   timeline: vi.fn(),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: m.role }));
+vi.mock("@/components/desk/record-connections", () => ({ RecordConnections: () => null })); // W-17: has its own tests (w17-connections)
 vi.mock("@/domains/customers/workspace", () => ({
   CUSTOMER_TABS: [
     "overview",

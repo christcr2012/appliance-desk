@@ -8,6 +8,9 @@ export type SearchResults = {
   customers: { id: string; name: string; email: string; companyName: string | null }[];
   appliances: { id: string; assetNumber: string; typeName: string; manufacturer: string | null }[];
   leads: { id: string; contactName: string; email: string | null; status: string }[];
+  /** W-17: owner/admin only; always empty for staff. */
+  purchases: { id: string; seller: string; reference: string | null; purchasedOn: Date }[];
+  sellers: { id: string; name: string; contactName: string | null }[];
 };
 
 /**
@@ -20,7 +23,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const query = rawQuery.trim();
   if (!query) {
-    return { query: "", customers: [], appliances: [], leads: [] };
+    return { query: "", customers: [], appliances: [], leads: [], purchases: [], sellers: [] };
   }
 
   const [customers, appliances] = await Promise.all([
@@ -68,6 +71,36 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
         })
       : [];
 
+  // Purchases and sellers carry money and seller details: never queried for staff.
+  const isOwnerOrAdmin = session.user.role === "OWNER" || session.user.role === "ADMIN";
+  const purchases = isOwnerOrAdmin
+    ? await prisma.purchase.findMany({
+        where: {
+          OR: [
+            { sellerName: { contains: query, mode: "insensitive" } },
+            { reference: { contains: query, mode: "insensitive" } },
+            { supplier: { name: { contains: query, mode: "insensitive" } } },
+          ],
+        },
+        select: { id: true, sellerName: true, reference: true, purchasedOn: true, supplier: { select: { name: true } } },
+        orderBy: [{ purchasedOn: "desc" }, { id: "desc" }],
+        take: RESULT_LIMIT,
+      })
+    : [];
+  const sellers = isOwnerOrAdmin
+    ? await prisma.supplier.findMany({
+        where: {
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { contactName: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        select: { id: true, name: true, contactName: true },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        take: RESULT_LIMIT,
+      })
+    : [];
+
   return {
     query,
     customers: customers.map((c) => ({
@@ -82,6 +115,13 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
       typeName: a.applianceType.name,
       manufacturer: a.manufacturer,
     })),
+    purchases: purchases.map((p) => ({
+      id: p.id,
+      seller: p.supplier?.name ?? p.sellerName ?? "Seller not named",
+      reference: p.reference,
+      purchasedOn: p.purchasedOn,
+    })),
+    sellers,
     leads: leads.map((l) => ({
       id: l.id,
       contactName: l.contactName,

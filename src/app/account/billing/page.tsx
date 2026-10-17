@@ -11,6 +11,7 @@ import {
   invoiceStatusTone,
 } from "@/lib/status-labels";
 import {
+  Button,
   ButtonLink,
   Card,
   EmptyState,
@@ -18,6 +19,9 @@ import {
   StatusPill,
 } from "@/components/ui";
 import { ManageBillingButton } from "./manage-billing-button";
+import { NextBillCard } from "@/components/portal/next-bill-card";
+import { getNextBills } from "@/domains/portal/next-bill";
+import { isPayNowEligible } from "@/domains/portal/pay-now";
 
 export const metadata = { title: "Billing" };
 
@@ -73,6 +77,8 @@ export default async function AccountBillingPage() {
           <ManageBillingButton />
         </Card>
       </div>
+
+      <div className="mb-6 max-w-md"><NextBillCard bills={await getNextBills(customer.id)} locale={locale} /></div>
 
       {statement && statement.totalBalanceCents > 0 && (
         <div className="mb-6 rounded-card border border-warning-ink bg-warning-bg p-4">
@@ -138,6 +144,11 @@ export default async function AccountBillingPage() {
                           </p>
                           {invoice.isLocalInvoice && (
                             <p className="mt-1 text-sm text-ink-soft">{t("Pay as arranged with Robinson Appliance Rentals.")}</p>
+                          )}
+                          {isPayNowEligible(invoice, new Date()) && (
+                            <form method="post" action={`/account/billing/invoice/${invoice.id}/pay`} className="mt-2">
+                              <Button type="submit">{t("Pay now")}</Button>
+                            </form>
                           )}
                         </>
                       )}

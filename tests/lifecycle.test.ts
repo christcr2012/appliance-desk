@@ -100,7 +100,7 @@ describe("applianceStatusOnJobCompleted", () => {
 
 describe("applianceStatusAfterInspection", () => {
   it("clears a passed machine to rent again, sends a failed one to repair", () => {
-    expect(applianceStatusAfterInspection(true)).toBe("AVAILABLE");
+    expect(applianceStatusAfterInspection(true)).toBe("CLEANING");
     expect(applianceStatusAfterInspection(false)).toBe("MAINTENANCE");
     expect(canTransitionApplianceStatus("AWAITING_INSPECTION", "AVAILABLE").ok).toBe(true);
     expect(canTransitionApplianceStatus("AWAITING_INSPECTION", "MAINTENANCE").ok).toBe(true);

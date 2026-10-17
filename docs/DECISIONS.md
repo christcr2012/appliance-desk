@@ -1093,3 +1093,12 @@ tax-evidence model. Choices made here, within the approved designs:
 - **Pickup after any ending**: a rental closed while appliances are still at the customer's creates its draft visit in the same step; a read-only To do plus an agreement-page button catch terminated or term-expired rentals that never got one.
 - **Unsigned follow-up days** is an owner setting (start 3, 1 to 30, audited, restore button); "unsigned for N days" means N or more days since the signing link was created.
 - **Repair requests are on To do immediately** (the 2-day wait is removed).
+
+## 2026-10-17 — W-17 and W-20 decisions
+- **Cleaning is a real status**, not a flag: a passed inspection goes to `CLEANING`, only an owner/admin **Cleaning done** makes it `AVAILABLE`, and custody rules treat it as "in the shop" (found by the existing custody test: without this a customer-held unit could be passed into cleaning).
+- **Failed inspection drafts a repair visit** (`MAINTENANCE_VISIT`, no date) in the same transaction, reusing an unfinished repair visit for that machine so repeats never double-draft. It reaches Today through the existing "visit needs assignment" list.
+- **Related and History are one owner/admin component** (`RecordConnections`) over one domain (`src/domains/connections`), role-checked in the domain as well as on each page. History comes from the activity log with a plain-words map and a readable fallback (never a raw code); the appliance page keeps its richer timeline (jobs, inspections, custody) and now also shows who did each step.
+- **Search**: purchases and sellers are queried only for owner/admin; staff get empty lists.
+- **Next bill = rent only** (sum of the lines' monthly prices), with the date from the agreement's next billing date and a note that tax and credits appear on the bill. It never invents tax.
+- **Pay now is a POST route** that looks the invoice up through the signed-in customer (someone else's bill looks like a missing one), requires overdue + payable + a Stripe invoice, and redirects to the bill's own Stripe-hosted page for exactly the amount owed. Local invoices keep "Pay as arranged". Tests mock Stripe; nothing live was touched.
+- **Visit timelines** are a fixed Requested / Scheduled / Done list from the visit's own dates; no new table.

@@ -102,6 +102,7 @@ export async function getPortalData(userId: string) {
             select: {
               id: true,
               label: true,
+              packageId: true,
               monthlyPriceCents: true,
               listPriceCents: true,
               prepayDiscountCentsPerMonth: true,

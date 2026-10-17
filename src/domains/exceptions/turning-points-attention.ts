@@ -88,13 +88,49 @@ export async function listVisitNeedsAssignment(limit: number, now: Date): Promis
       customer: { select: { user: { select: { name: true, email: true } } } } },
     orderBy: [{ scheduledAt: "asc" }, { id: "asc" }], take: limit,
   });
+  // W-17 (E3): a repair visit drafted by a failed inspection has no date yet.
+  const repairWhere = { type: "MAINTENANCE_VISIT" as const, status: "SCHEDULED" as const, scheduledAt: null };
+  const drafts = await prisma.job.findMany({
+    where: repairWhere, select: { id: true, createdAt: true, appliances: { select: { appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } } }, take: 1 } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: limit,
+  });
+  const draftRows = drafts.map((j): ExceptionItem => {
+    const a = j.appliances[0]?.appliance;
+    return {
+      category: "VISIT_NEEDS_ASSIGNMENT", severity: "medium",
+      title: "Schedule the repair" + (a ? " — " + a.applianceType.name + " (" + a.assetNumber + ")" : ""),
+      detail: "A repair visit was drafted and has no date or technician yet. Nothing is sent to a customer.",
+      href: "/desk/jobs/" + encodeURIComponent(j.id), since: j.createdAt,
+    };
+  });
+  const draftTotal = drafts.length < limit ? drafts.length : await prisma.job.count({ where: repairWhere });
   return {
-    rows: jobs.map((j): ExceptionItem => ({
+    rows: [...draftRows, ...jobs.map((j): ExceptionItem => ({
       category: "VISIT_NEEDS_ASSIGNMENT", severity: "high",
       title: "Assign / set a time — " + nameOf(j.customer),
       detail: j.scheduledAt ? "This visit is within 2 days and nobody is assigned." : "This pickup is needed within 2 days and has no time yet.",
       href: "/desk/jobs/" + encodeURIComponent(j.id), since: j.createdAt, ...(j.scheduledAt ? { dueOn: j.scheduledAt } : {}),
+    }))].slice(0, limit),
+    total: (jobs.length < limit ? jobs.length : await prisma.job.count({ where })) + draftTotal,
+  };
+}
+
+/** W-17: appliances that passed inspection and are waiting for "Cleaning done". Oldest first; opens the appliance. */
+export async function listCleaningNeeded(limit: number): Promise<Rows> {
+  await requireRole("OWNER", "ADMIN");
+  bounded(limit);
+  const where = { status: "CLEANING" as const };
+  const rows = await prisma.appliance.findMany({
+    where, select: { id: true, assetNumber: true, updatedAt: true, applianceType: { select: { name: true } } },
+    orderBy: [{ updatedAt: "asc" }, { id: "asc" }], take: limit,
+  });
+  return {
+    rows: rows.map((a): ExceptionItem => ({
+      category: "CLEANING_NEEDED", severity: "medium",
+      title: "Clean " + a.applianceType.name + " (" + a.assetNumber + ")",
+      detail: "It passed inspection. Press Cleaning done on its page when it is clean; it can't be rented before that.",
+      href: "/desk/inventory/" + encodeURIComponent(a.id), since: a.updatedAt,
     })),
-    total: jobs.length < limit ? jobs.length : await prisma.job.count({ where }),
+    total: rows.length < limit ? rows.length : await prisma.appliance.count({ where }),
   };
 }

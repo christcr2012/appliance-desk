@@ -10,7 +10,7 @@ import type { ApplianceStatus, JobType } from "@prisma/client";
 //            → RENTED (delivery/installation job completed — NOT at signing)
 //            → AWAITING_PICKUP (agreement ended, machine still at the customer's)
 //            → AWAITING_INSPECTION (removal job completed, machine back in the shop)
-//            → AVAILABLE (inspection passed) or MAINTENANCE (inspection failed)
+//            → CLEANING (inspection passed) → AVAILABLE (cleaning done), or MAINTENANCE (inspection failed)
 //
 // Why this exists: a code review (docs/reviews/2026-09-27-astra-code-review.md)
 // correctly pointed out that signing used to mark machines RENTED before
@@ -25,6 +25,7 @@ export const ALL_APPLIANCE_STATUSES: ApplianceStatus[] = [
   "RENTED",
   "AWAITING_PICKUP",
   "AWAITING_INSPECTION",
+  "CLEANING",
   "MAINTENANCE",
   "RETIRED",
 ];
@@ -35,6 +36,7 @@ export const APPLIANCE_STATUS_LABELS: Record<ApplianceStatus, string> = {
   RENTED: "Rented",
   AWAITING_PICKUP: "Awaiting pickup",
   AWAITING_INSPECTION: "Awaiting inspection",
+  CLEANING: "Being cleaned",
   MAINTENANCE: "In repair",
   RETIRED: "Retired",
 };
@@ -52,7 +54,9 @@ export const ALLOWED_APPLIANCE_TRANSITIONS: Record<ApplianceStatus, ApplianceSta
   RESERVED: ["AVAILABLE", "RENTED", "MAINTENANCE", "RETIRED"],
   RENTED: ["AWAITING_PICKUP", "AWAITING_INSPECTION", "MAINTENANCE", "RETIRED"],
   AWAITING_PICKUP: ["AWAITING_INSPECTION", "RETIRED"],
-  AWAITING_INSPECTION: ["AVAILABLE", "MAINTENANCE", "RETIRED"],
+  AWAITING_INSPECTION: ["CLEANING", "AVAILABLE", "MAINTENANCE", "RETIRED"],
+  // W-17: cleaned (back to Available), found a problem while cleaning (repair), or retired.
+  CLEANING: ["AVAILABLE", "MAINTENANCE", "RETIRED"],
   // A repair can finish either in the shop (back to AVAILABLE, or through
   // inspection first) or on-site at a renting customer's home (back to
   // RENTED).
@@ -115,7 +119,7 @@ export function applianceStatusOnJobCompleted(
 /** An inspection either clears a returned machine to be rented again, or
  * sends it for repair. */
 export function applianceStatusAfterInspection(passed: boolean): ApplianceStatus {
-  return passed ? "AVAILABLE" : "MAINTENANCE";
+  return passed ? "CLEANING" : "MAINTENANCE";
 }
 
 /** The default return-inspection checklist, used until Chris edits his

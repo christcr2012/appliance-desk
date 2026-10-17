@@ -11,6 +11,7 @@ const ACTION_LABEL: Record<string, string> = {
   RENTAL_ENDING_SOON: "Decide",
   PICKUP_UNSCHEDULED: "Schedule pickup",
   VISIT_NEEDS_ASSIGNMENT: "Assign / set a time",
+  CLEANING_NEEDED: "Open appliance",
   PAST_DUE_INVOICE: "Review unpaid invoice",
   HELD_PAYMENT_DECISION: "Decide",
   DEPOSIT_DECISION: "Decide",

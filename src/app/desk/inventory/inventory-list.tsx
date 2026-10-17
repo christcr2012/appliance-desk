@@ -34,6 +34,7 @@ const STATUS_TONE: Record<ApplianceStatus, StatusTone> = {
   RENTED: "progress",
   AWAITING_PICKUP: "pending",
   AWAITING_INSPECTION: "pending",
+  CLEANING: "pending",
   MAINTENANCE: "attention",
   RETIRED: "stopped",
 };

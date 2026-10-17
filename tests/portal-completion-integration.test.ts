@@ -171,6 +171,7 @@ describe("Batch D customer portal completion", () => {
       "label",
       "listPriceCents",
       "monthlyPriceCents",
+      "packageId",
       "prepayDiscountCentsPerMonth",
     ].sort());
 

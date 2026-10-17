@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "@/lib/session";
+import { ACTIVE_ASSIGNMENT_WHERE } from "@/domains/agreements/active-appliances";
+import { getNextBills } from "@/domains/portal/next-bill";
 /** Session identity is resolved here; URL property filters can only narrow
  * the signed-in customer's own records. Only customer-visible DTOs are read. */
 export async function getPortalHome(rawAddressId?: string) {
@@ -40,6 +42,8 @@ export async function getPortalHome(rawAddressId?: string) {
     rentals,
     invoice,
     openRequestCount,
+    openVisits,
+    nextBills,
   ] = await Promise.all([
     prisma.rentalAgreement.count({ where: rentalWhere }),
     prisma.job.count({ where: jobWhere }),
@@ -61,7 +65,13 @@ export async function getPortalHome(rawAddressId?: string) {
         id: true,
         status: true,
         serviceAddress: { select: { line1: true, line2: true, city: true } },
-        lines: { select: { label: true, monthlyPriceCents: true } },
+        lines: {
+          select: {
+            label: true, monthlyPriceCents: true, packageId: true,
+            assignments: { where: ACTIVE_ASSIGNMENT_WHERE, select: { appliance: { select: { assetNumber: true, applianceType: { select: { name: true } } } } } },
+          },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        },
         // W-21A: machines away for repair with no replacement yet, so the customer knows a credit is coming.
         outOfServicePeriods: {
           where: { endedOn: null },
@@ -91,6 +101,13 @@ export async function getPortalHome(rawAddressId?: string) {
         status: { in: ["SUBMITTED", "REVIEWING", "SCHEDULED", "IN_PROGRESS"] },
       },
     }),
+    // W-20: a short requested -> scheduled -> done picture for each open visit.
+    prisma.job.findMany({
+      where: jobWhere, take: 5,
+      orderBy: [{ scheduledAt: { sort: "asc", nulls: "first" } }, { id: "asc" }],
+      select: { id: true, type: true, status: true, createdAt: true, scheduledAt: true },
+    }),
+    getNextBills(customer.id, addressId),
   ]);
   return {
     customerId: customer.id,
@@ -102,5 +119,7 @@ export async function getPortalHome(rawAddressId?: string) {
     rentals,
     invoice,
     openRequestCount,
+    openVisits,
+    nextBills,
   };
 }

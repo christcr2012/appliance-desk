@@ -261,7 +261,8 @@ describe("getApplianceHistory", () => {
 
     expect(history.map((h) => h.id)).toEqual(["job-job-1", "audit-audit-1", "inspection-insp-1"]);
     expect(history[0].summary).toBe("maintenance visit job — completed");
-    expect(history[1].summary).toBe("Status changed to MAINTENANCE");
+    expect(history[1].summary).toBe("Status changed to In repair");
+    expect(history[1].who).toBe("The system");
     expect(history[2].summary).toBe("Inspection passed");
   });
 });

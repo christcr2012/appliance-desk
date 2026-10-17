@@ -522,6 +522,8 @@ enum ApplianceStatus {
   RENTED
   AWAITING_PICKUP
   AWAITING_INSPECTION
+  // W-17: passed inspection, being cleaned before it can be rented again.
+  CLEANING
   MAINTENANCE
   RETIRED
 }

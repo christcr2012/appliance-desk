@@ -1,37 +1,36 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "W-10",
+  "parent": "W-17",
   "completedSlices": [
     {
-      "id": "W-10",
+      "id": "W-17",
       "acceptanceEvidence": [
-        "src/app/desk/sales-tax/use-tax/[periodId]/file-now-panel.tsx (wired into the page) has the Open Revenue Online button (new tab, noopener), the numbers in DR 0252 line order from src/domains/tax/use-tax-file-now.ts each with the existing Copy field, and a link to the 'I filed and paid it' return page. tests/w10-use-tax-file-now.test.ts checks the order, values and labels.",
-        "src/domains/tax/dr0252-form.ts fills the owner-supplied official 2026 form (src/domains/tax/forms/DR0252_2026.pdf) through GET /desk/sales-tax/use-tax/[periodId]/form (owner and admin only); the form is picked by the period's year, a redesigned layout is refused, and System health asks for next year's form from December. Tests read the filled PDF back field by field; the output was also inspected as an image.",
-        "docs/runbooks/colorado-filing-channels.md records where each Colorado return is filed and paid, the DR 0252 line order, the official source URLs and the dates they were checked (2026-10-16 and 2026-10-17).",
-        "The File now steps are built only from the saved filing packet (tests/w10-use-tax-file-now.test.ts compares them to a packet); the page and the form route both call requireRole OWNER/ADMIN; the panel contains no submit or pay control, only a link to the state's site and a link back to the owner's own recording form."
+        "src/domains/connections/index.ts (getRecordConnections, owner/admin only) and src/components/desk/record-connections.tsx are on the appliance, customer, agreement, purchase, seller, visit and invoice pages; tests/w17-connections-integration.test.ts checks the links for all seven kinds and that staff are refused.",
+        "The same component shows History from the activity log, newest first, with who, when and a plain-words action (plainAction never shows a raw code); the appliance page keeps its fuller timeline and now shows who; tests/w17-connections.test.ts and the integration test check the wording and the order.",
+        "src/domains/search/index.ts adds purchases (seller name, receipt number, seller) and sellers for owner/admin only; tests/w17-connections.test.ts proves staff never run those queries and the integration test proves serial-number search still works.",
+        "ApplianceStatus gains CLEANING (migration 20261017170000), a passed inspection goes there, listCleaningNeeded puts 'Clean (machine)' on Today linking to the appliance, and markCleaningDone (owner/admin, locked, audited, repeat-safe) makes it Available; proven in tests/w17-connections-integration.test.ts and tests/lifecycle.test.ts.",
+        "recordApplianceInspection calls ensureRepairDraftInTx on a fail: one undated repair visit, reused on a repeat, shown on Today as 'Schedule the repair'; proven by the second integration test (a second failed inspection leaves exactly one)."
       ]
     },
     {
-      "id": "W-19",
+      "id": "W-20",
       "acceptanceEvidence": [
-        "src/app/desk/leads/[id]/lead-actions-panel.tsx shows Create quote and Start agreement (and Go to their customer page) after conversion, including after a refresh, using the lead's saved convertedCustomerId; both open existing pages (/desk/estimates/new and /desk/agreements/new with the customer).",
-        "src/app/desk/estimates/[id]/convert-estimate-panel.tsx opens the single new draft agreement (or the agreements list when several were made) instead of only refreshing.",
-        "src/domains/agreements/unsigned-follow-up.ts and the owner screen /desk/settings/unsigned-follow-up (explanation, starting 3, restore button, audited, owner only, stale-save protection); src/domains/exceptions/unsigned-agreements.ts raises 'Follow up: <name> hasn't signed' linking to the agreement and clears when signed or cancelled. Proven in tests/w19-flow-gaps-integration.test.ts on real PostgreSQL.",
-        "UNREVIEWED_MAINTENANCE_REQUEST_DAYS is now 0 and the title is 'Review <name>'s repair request' (tests/w19-flow-rules.test.ts); the existing Today assembly query then lists a request as soon as it is submitted.",
-        "src/domains/portal/index.ts createPickupRequestForUser, called by the portal request form for the pickup kind, creates or reuses exactly one draft pickup visit with the customer's note and creates no repair request; it refuses another customer's appliance, and when it cannot tell which single rental is meant it falls back to an ordinary request for the owner to review (nothing is lost); the customer's open pickups are listed in 'Your pickup requests' in the portal. The customer sees 'we'll call you within one business day' (with Spanish). Proven in tests/w19-flow-gaps-integration.test.ts.",
-        "closeAgreementInTx now creates the draft pickup visit when a rental ends with appliances still out; src/domains/agreements/pickup-needed.ts feeds a 'Schedule <name>'s pickup' Today item for ended or ending rentals with none, and the agreement page has a 'Schedule the pickup' button (owner/admin only, safe to repeat). Proven in tests/w19-flow-gaps-integration.test.ts.",
-        "src/domains/agreements/progress.ts returns a button for every unfinished step (signature, deposit, equipment, delivery, billing) and src/components/desk/agreement-progress.tsx renders them; every target is an existing /desk page. tests/w19-flow-rules.test.ts."
+        "src/domains/portal/next-bill.ts sums the rent of each current rental with its next billing date, shown by NextBillCard on portal home and Billing with the tax-and-credits note in English and Spanish; tests/w20-portal.test.ts checks the total and the Spanish text.",
+        "src/domains/portal/pay-now.ts and the POST route /account/billing/invoice/[invoiceId]/pay open the invoice's own Stripe page only for the signed-in customer's overdue payable Stripe invoice; the Pay now button is on the invoice page and the billing list; tests/w20-portal.test.ts and the integration test prove someone else's, paid and local invoices get nothing.",
+        "OpenVisits on portal home shows Requested, Scheduled (date or 'Not scheduled yet') and Done for each open visit from getPortalHome; labels have Spanish text checked in tests/w20-portal.test.ts.",
+        "The problem-report confirmation, the ending-a-rental note on My rentals and the existing pickup confirmation say what happens next, in English and Spanish (portal-copy.ts; tests/w20-portal.test.ts checks the new Spanish entries).",
+        "src/domains/portal/line-display.ts shows a package line as 'Washer + Dryer Set (washer #A12, dryer #B07)' on portal home and My rentals; tests/w20-portal.test.ts checks the exact wording."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Real use after the daily release: the owner filing a real Colorado use tax return with the File now panel (confirming Revenue Online's screen order, which needs a sign-in and could not be read here) and printing the filled-in form for a real period; the owner reading the new To do items on the live site. No live Stripe, customer email, SMS or spending was used.",
-    "Browser and accessibility checks of the new pages run in exact-head CI (route inventory, settings screen, use tax page)."
+    "Real use after the daily release: the owner using Related and History, the Cleaning step and the repair draft on real machines, and a real customer seeing next bill and visit timelines. Pay now opening a real Stripe payment page needs the owner's real Stripe keys, which were not used. No live Stripe, customer email, SMS or spending was used.",
+    "Browser and accessibility checks of the changed pages run in exact-head CI."
   ],
   "evidence": [
-    "Bundle W-10+W-19; planning commit bbd1090caf666ba98e3bd8ea2d72447660a9c524 preserved.",
-    "Local: typecheck, lint and the plain-words check pass; 9 File now and form tests (the real 2026 PDF is filled and read back, a redesigned form is refused), 4 flow-rule tests and 6 real-Postgres flow tests pass; existing Today, agreement progress, system health, filing and ending suites still pass; the filled form was also viewed as an image; exact-head CI pending."
+    "Bundle W-17+W-20; planning commit da6bc7ed397c01ab8d1c645875fe8c7fbacd06e0 preserved.",
+    "Local: typecheck, lint and the plain-words check pass; 13 unit tests (plain history wording, owner/admin-only access, staff never searched for purchases or sellers, Cleaning rules, package set wording, next-bill total, Pay now rules and the pay route, Spanish copy) and 5 real-Postgres tests (cleaning flow, one repair draft however often it fails, Related and History on all seven kinds with staff refused, search roles, Pay now ownership) pass; the existing inspection, custody, Today and search suites were updated or still pass; exact-head CI pending."
   ]
 }

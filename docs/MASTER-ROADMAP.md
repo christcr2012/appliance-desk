@@ -2,7 +2,13 @@
 
 Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
-## What is next — October 17 W-10 and W-19 delivery
+## What is next — October 17 W-17 and W-20 delivery
+
+W-10 and W-19 are merged (#485). One PR delivers W-17 (Related and History on seven record pages, purchase and seller search, the
+Cleaning step and the failed-inspection repair draft) and W-20 (next bill, Pay now, visit timelines, next-step notes, package sets);
+exact-head CI, review and merge remain pending. The visual redesign content bundle (V-C1…V-C5) is next.
+
+### Earlier: October 17 W-10 and W-19 delivery
 
 W-8 and W-9 are merged (#484). One PR delivers W-10 (File now panel and filled DR 0252 PDF with yearly form selection) and
 W-19 (conversion buttons, unsigned follow-up setting, instant repair To do, portal pickup requests, pickup after any ending,

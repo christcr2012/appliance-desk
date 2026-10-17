@@ -3,7 +3,7 @@ const m = vi.hoisted(() => ({
   session: vi.fn(),
   customer: { findUnique: vi.fn() },
   rentalAgreement: { count: vi.fn(), findMany: vi.fn() },
-  job: { count: vi.fn(), findFirst: vi.fn() },
+  job: { count: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
   invoice: { findFirst: vi.fn() },
   maintenanceRequest: { count: vi.fn() },
 }));
@@ -24,6 +24,7 @@ beforeEach(() => {
   m.rentalAgreement.findMany.mockResolvedValue([]);
   m.job.count.mockResolvedValue(1);
   m.job.findFirst.mockResolvedValue(null);
+  m.job.findMany.mockResolvedValue([]);
   m.invoice.findFirst.mockResolvedValue(null);
   m.maintenanceRequest.count.mockResolvedValue(2);
 });
