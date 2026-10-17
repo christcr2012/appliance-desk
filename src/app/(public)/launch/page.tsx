@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function LaunchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ utm_source?: string | string[]; revision?: string | string[] }>;
+  searchParams: Promise<{ utm_source?: string | string[]; revision?: string | string[]; previewAt?: string | string[]; select?: string | string[] }>;
 }) {
   const [settings, business, params] = await Promise.all([
     getLaunchSettings(),

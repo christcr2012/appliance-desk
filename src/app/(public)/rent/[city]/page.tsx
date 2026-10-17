@@ -9,7 +9,7 @@ import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
-import { getSiteForRequest } from "@/domains/site-content/request";
+import { getSiteForRequest, launchPath } from "@/domains/site-content/request";
 import { siteCopy, siteFacts, siteLinkValue, stripInlineLinks } from "@/domains/site-content/facts";
 
 // ---------------------------------------------------------------------------
@@ -63,9 +63,9 @@ export default async function CityLandingPage({
   searchParams,
 }: {
   params: Promise<{ city: string }>;
-  searchParams: Promise<{ revision?: string | string[] }>;
+  searchParams: Promise<{ revision?: string | string[]; previewAt?: string | string[]; select?: string | string[] }>;
 }) {
-  if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
+  if ((await getLaunchSettings()).prelaunchMode) redirect(launchPath(await searchParams));
   const { city: citySlug } = await params;
   const city = await findCity(citySlug);
   if (!city) {

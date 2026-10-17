@@ -136,8 +136,10 @@ test.describe("website editor (owner)", () => {
     try {
       const page = await context.newPage();
       const response = await page.goto("/desk/settings/website");
-      expect(page.url()).not.toContain("/desk/settings/website");
       expect(response?.status()).toBeLessThan(500);
+      // The refusal can arrive as a redirect after the first bytes, so wait for it instead of reading the address once.
+      await expect(page).not.toHaveURL(/\/desk\/settings\/website/);
+      await expect(page.getByRole("heading", { name: "Website", exact: true })).toHaveCount(0);
     } finally {
       await context.close();
     }

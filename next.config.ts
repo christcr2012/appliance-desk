@@ -151,7 +151,7 @@ const nextConfig: NextConfig = {
       // with ?select=1 may be framed, and only by this same website (never the desk, the portal or any API). Visitors
       // never get draft words either way: a draft is shown to a signed-in owner or admin only. Everything else keeps the
       // deny-all baseline above.
-      ...["/", "/(pricing|how-it-works|service-area|contact|launch|privacy|terms|accessibility)", "/rent/:path*"].map((source) => ({
+      ...["/", "/pricing", "/how-it-works", "/service-area", "/contact", "/launch", "/privacy", "/terms", "/accessibility", "/rent/:path*"].map((source) => ({
         source,
         has: [{ type: "query" as const, key: "select", value: "1" }],
         headers: [

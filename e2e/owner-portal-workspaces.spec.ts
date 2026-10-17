@@ -236,7 +236,8 @@ for (const role of ["owner", "customer"] as const) {
             await intro.fill(original);
             await page.getByRole("button", { name: "Save draft" }).click();
             await expect(page.getByRole("status").first()).toContainText("Draft saved");
-            await publishFromEditor();
+            // Nothing to publish when the live words never changed (the draft then matches the live website).
+            if (await page.getByRole("button", { name: /^Review \d+ changes?$/ }).isEnabled()) await publishFromEditor();
           }
         }
         expect(await publicSeen()).toContain(original);

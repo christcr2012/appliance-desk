@@ -9,7 +9,7 @@ import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
-import { getSiteForRequest } from "@/domains/site-content/request";
+import { getSiteForRequest, launchPath } from "@/domains/site-content/request";
 import { siteCopy, siteFacts, siteLinkValue } from "@/domains/site-content/facts";
 import { catalogAlt } from "@/domains/site-content/fields";
 
@@ -24,9 +24,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ revision?: string | string[] }>;
+  searchParams: Promise<{ revision?: string | string[]; previewAt?: string | string[]; select?: string | string[] }>;
 }) {
-  if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
+  if ((await getLaunchSettings()).prelaunchMode) redirect(launchPath(await searchParams));
   const [settings, applianceTypes, site] = await Promise.all([
     getBusinessSettings(),
     getPublishedCatalog(),

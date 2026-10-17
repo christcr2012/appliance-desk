@@ -58,10 +58,10 @@ test("a client transition from privacy to how-it-works retains public tracker im
 
 test("only a public page opened for the owner's select-to-edit preview may be framed, and only by this website", async ({ request }) => {
   for (const path of ["/", "/pricing", "/how-it-works", "/rent/greeley"]) {
-    const normal = await request.get(path);
+    const normal = await request.get(path, { maxRedirects: 0 });
     expect(normal.headers()["x-frame-options"], path).toBe("DENY");
     expect(normal.headers()["content-security-policy"], path).toContain("frame-ancestors 'none'");
-    const preview = await request.get(`${path}?select=1`);
+    const preview = await request.get(`${path}?select=1`, { maxRedirects: 0 });
     expect(preview.headers()["x-frame-options"], path).toBe("SAMEORIGIN");
     expect(preview.headers()["content-security-policy"], path).toContain("frame-ancestors 'self'");
   }
