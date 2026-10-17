@@ -125,8 +125,8 @@ describe.skipIf(!enabled)("W-4 rental turning points on real PostgreSQL", () => 
     const a = await agreement();
     const type = await prisma.applianceType.findFirst({ select: { id: true } });
     if (!type) return;
-    const appliance = await prisma.appliance.create({ data: { applianceTypeId: type.id, serialNumber: "W4-" + tag } as never });
-    await prisma.applianceCustodyEpisode.create({ data: { applianceId: appliance.id, customerId, agreementId: a.id, startedOn: now, startEvidence: "DELIVERY_JOB" as never } as never });
+    const appliance = await prisma.appliance.create({ data: { applianceTypeId: type.id, serialNumber: "W4-" + tag, assetNumber: "W4A-" + tag.slice(0, 12) } as never });
+    await prisma.applianceCustodyEpisode.create({ data: { applianceId: appliance.id, customerId, agreementId: a.id, startedOn: now, startEvidence: "MANUAL" } as never });
     const id = await prisma.$transaction((tx) => ensurePickupDraftInTx(tx, a.id));
     expect((await prisma.jobAppliance.findMany({ where: { jobId: id! } })).map((j) => j.applianceId)).toEqual([appliance.id]);
     await prisma.jobAppliance.deleteMany({ where: { jobId: id! } });
