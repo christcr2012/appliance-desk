@@ -27,6 +27,7 @@ Today, system-health, ending and filing suites; I also looked at the filled-in f
 exact-head CI (including the browser/accessibility run), review, merge. The browser spec
 `commercial-reserve-preapproval` (page-width check) failed once on #484's CI and passed on identical code; it looks
 timing-sensitive and is recorded here rather than hidden.
+CI fixes before merge: the portal pickup list, three tests written for the old behavior (a stand-in database, a cleanup, the pickup form), and a pickup that cannot be pinned to one rental now files a normal review request. The date check in tests/custody-integration.test.ts fails the same way on main before this PR, so it is not part of this bundle.
 Open items: confirm Revenue Online's screen order on the first real filing; the CD, RTD and ECD columns of the form are
 left blank (they apply only to those districts; local city and county use tax is filed with the city, not on this form).
 Nothing is released; no live Stripe, email, SMS, spending or production data touched. W-17 and W-20 are next.

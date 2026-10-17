@@ -137,6 +137,8 @@ describe.skipIf(!enabled)("a signed renewal starts on its start date and hands e
     await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.deposit.deleteMany({ where: { agreementId: { in: agreementIds } } });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: applianceIds } } });
+    await prisma.jobAppliance.deleteMany({ where: { applianceId: { in: applianceIds } } });
+    await prisma.job.deleteMany({ where: { agreementId: { in: agreementIds } } });
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: agreementIds } } });
     await prisma.rentalAgreement.deleteMany({ where: { renewedFromAgreementId: { in: agreementIds } } });

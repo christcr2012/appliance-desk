@@ -5,6 +5,7 @@ import {
   getPortalData,
   getPortalApplianceOptions,
   getPortalMaintenancePage,
+  getPortalPickupRequests,
 } from "@/domains/portal";
 import { maintenanceStatusLabel } from "@/lib/status-labels";
 import { NewRequestForm } from "./new-request-form";
@@ -38,12 +39,13 @@ export default async function AccountMaintenancePage({
   const locale = session ? await portalLanguage(session.user.id) : "en";
   const formatBusinessDate=(date:Date)=>originalBusinessDate(date,locale);
   const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
-  const [customer, applianceOptions] = session
+  const [customer, applianceOptions, pickupRequests] = session
     ? await Promise.all([
         getPortalData(session.user.id),
         getPortalApplianceOptions(session.user.id),
+        getPortalPickupRequests(session.user.id),
       ])
-    : [null, []];
+    : [null, [], []];
 
   if (!customer || !session) {
     return (
@@ -108,6 +110,22 @@ export default async function AccountMaintenancePage({
           />
         </Card>
       </div>
+
+      {pickupRequests.length > 0 && (
+        <Card title={t("Your pickup requests")}>
+          <ul className="divide-y divide-line">
+            {pickupRequests.map((item) => (
+              <li key={item.id} className="py-4 text-sm">
+                <p className="font-medium text-ink-soft">
+                  {item.scheduledAt ? `${t("Pickup scheduled")} ${formatBusinessDate(item.scheduledAt)}` : t("Waiting for us to schedule it")}
+                </p>
+                <p className="mt-2 text-ink-soft">{item.text}</p>
+                <p className="mt-2 text-xs text-ink-faint">{t("Submitted")} {formatBusinessDate(item.createdAt)}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card title={t("Your requests")}>
         {!requestPage || requestPage.items.length === 0 ? (

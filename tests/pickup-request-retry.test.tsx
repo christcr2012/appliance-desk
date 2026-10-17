@@ -72,5 +72,6 @@ it("preserves pickup text after failure and confirms only a successful existing 
     applianceId: "",
     priority: "NORMAL",
     photoUrls: [],
+    kind: "maintenance",
   });
 });

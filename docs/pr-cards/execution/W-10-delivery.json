@@ -44,7 +44,7 @@
         },
         {
           "criterion": "A customer can ask for a pickup in the portal; it arrives as a pickup request (not a repair) with a draft pickup visit, and the customer is told what happens next.",
-          "evidence": "src/domains/portal/index.ts createPickupRequestForUser, called by the portal request form for the pickup kind, creates or reuses exactly one draft pickup visit with the customer's note and creates no repair request; it refuses another customer's appliance and ambiguous choices. The customer sees 'we'll call you within one business day' (with Spanish). Proven in tests/w19-flow-gaps-integration.test.ts."
+          "evidence": "src/domains/portal/index.ts createPickupRequestForUser, called by the portal request form for the pickup kind, creates or reuses exactly one draft pickup visit with the customer's note and creates no repair request; it refuses another customer's appliance, and when it cannot tell which single rental is meant it falls back to an ordinary request for the owner to review (nothing is lost); the customer's open pickups are listed in 'Your pickup requests' in the portal. The customer sees 'we'll call you within one business day' (with Spanish). Proven in tests/w19-flow-gaps-integration.test.ts."
         },
         {
           "criterion": "A rental that ended any way (term, early return, termination) gets a draft pickup visit and a Today item \"Schedule <name>'s pickup\" that opens it, plus a button on the agreement page.",

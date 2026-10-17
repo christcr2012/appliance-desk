@@ -7,7 +7,7 @@ import { listUnsignedAgreements } from "@/domains/exceptions/unsigned-agreements
 import { createPickupVisitForAgreement } from "@/domains/agreements/pickup-draft";
 import { agreementIdsNeedingPickup } from "@/domains/agreements/pickup-needed";
 import { listPickupUnscheduled } from "@/domains/exceptions/turning-points-attention";
-import { createPickupRequestForUser } from "@/domains/portal";
+import { createPickupRequestForUser, getPortalPickupRequests } from "@/domains/portal";
 import { closeAgreementInTx } from "@/domains/agreements";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -135,7 +135,7 @@ describe.skipIf(!enabled)("W-19 flow gaps on real PostgreSQL", () => {
     const a = await agreement();
     const applianceId = await heldAppliance(a.id);
     const before = await prisma.maintenanceRequest.count({ where: { customerId } });
-    const result = await createPickupRequestForUser(custUserId, { note: "Moving out Friday", applianceId });
+    const result = (await createPickupRequestForUser(custUserId, { note: "Moving out Friday", applianceId }))!;
     expect(result.created).toBe(true);
     expect(await prisma.maintenanceRequest.count({ where: { customerId } })).toBe(before);
     const job = await prisma.job.findUniqueOrThrow({ where: { id: result.jobId } });
@@ -143,8 +143,11 @@ describe.skipIf(!enabled)("W-19 flow gaps on real PostgreSQL", () => {
     expect(job.notes).toContain("Customer asked for a pickup");
     expect(job.notes).toContain("Moving out Friday");
     const again = await createPickupRequestForUser(custUserId, { note: "Also the dryer", applianceId });
+    expect(await getPortalPickupRequests(custUserId)).toEqual([expect.objectContaining({ id: result.jobId, text: "Pickup request: Moving out Friday" })]);
     expect(again).toEqual({ jobId: result.jobId, created: false });
     expect((await prisma.job.findUniqueOrThrow({ where: { id: result.jobId } })).notes).toContain("Also the dryer");
+    // Several rentals have appliances out, so it cannot pick one: the caller files an ordinary request for review instead.
+    expect(await createPickupRequestForUser(custUserId, { note: "which one?" })).toBeNull();
     await expect(createPickupRequestForUser(staffId, { note: "x" })).rejects.toThrow(/No customer account/);
     await expect(createPickupRequestForUser(custUserId, { note: "x", applianceId: "not-mine" })).rejects.toThrow(/isn't on one of your active rentals/);
   });

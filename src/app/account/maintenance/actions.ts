@@ -45,13 +45,15 @@ export async function createMaintenanceRequestAction(
   const data = parsed.data;
 
   try {
-    if (data.kind === "pickup") {
-      await createPickupRequestForUser(session.user.id, {
-        note: data.problem.replace(/^pickup request:\s*/i, ""),
-        applianceId: data.applianceId || null,
-      });
-    } else await createMaintenanceRequestForUser(session.user.id, {
-      problem: data.problem,
+    const pickup = data.kind === "pickup"
+      ? await createPickupRequestForUser(session.user.id, {
+          note: data.problem.replace(/^pickup request:\s*/i, ""),
+          applianceId: data.applianceId || null,
+        })
+      : null;
+    // A pickup we can't pin to one rental still reaches the owner as a request to review (never lost).
+    if (!pickup) await createMaintenanceRequestForUser(session.user.id, {
+      problem: data.kind === "pickup" && !/^pickup request:/i.test(data.problem) ? `Pickup request: ${data.problem}` : data.problem,
       applianceId: data.applianceId || null,
       priority: data.priority,
       photoUrls: data.photoUrls,
