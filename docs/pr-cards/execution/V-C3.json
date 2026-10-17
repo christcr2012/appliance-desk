@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "id": "V-C3",
+  "parent": "V-C3",
+  "baseline": "f92d1ace5b056776a2f8cb5ab94130a5de545621",
+  "card": "docs/pr-cards/V-C3.md",
+  "outcome": "Owners can change any marketing word, button, link, hero photo or promotion on the public site through stored website content, defaults reproduce today's pages exactly, facts stay single-sourced, and a runtime test proves coverage.",
+  "risk": "A default page that reads differently from today, a fact copied into editable text that later disagrees with its owner, a link that runs script or leaves the site unmarked, an expired promotion that hides other content, a draft picture or draft text shown to a visitor, or a page left hard-coded so a redesign would lose it.",
+  "next": "Plan frozen; implementation, tests and docs follow. V-C4 (owner editor, preview, publish and restore safety) and V-C5 (template contract and coverage in CI) are the next bundle after verified merge.",
+  "references": [
+    {
+      "path": "src/domains/site-content/fields.ts",
+      "anchor": "export const SITE_FIELDS",
+      "purpose": "Registry to extend"
+    },
+    {
+      "path": "src/domains/site-content/request.ts",
+      "anchor": "export async function getContentForRequest",
+      "purpose": "Request reader"
+    },
+    {
+      "path": "src/app/(public)/page.tsx",
+      "anchor": "export default async function HomePage",
+      "purpose": "Home page binding"
+    },
+    {
+      "path": "src/app/(public)/layout.tsx",
+      "anchor": "export default async function PublicLayout",
+      "purpose": "Shared chrome and banner"
+    },
+    {
+      "path": "src/components/site/header.tsx",
+      "anchor": "export function Header",
+      "purpose": "Header words and call to action"
+    },
+    {
+      "path": "src/components/site/footer.tsx",
+      "anchor": "export function Footer",
+      "purpose": "Footer words"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/site-content/fields-public.ts",
+    "src/domains/site-content/richtext.ts",
+    "src/domains/site-content/promotions.ts",
+    "src/components/site/rich-text.tsx",
+    "src/components/site/site-cta.tsx",
+    "src/components/site/promotion-banner.tsx"
+  ],
+  "invariants": [
+    "Defaults reproduce today's pages word for word.",
+    "Facts have one owner and are never copied into editable text.",
+    "Links are only known pages, https addresses or the profile's phone or email.",
+    "A draft or ended promotion or picture is never shown to a visitor.",
+    "Legal page bodies stay tied to legal-approval versions."
+  ],
+  "sequence": [
+    "Rich text, placeholders and promotion rules",
+    "Registry additions",
+    "Shared components and request reader",
+    "Header, footer and layout",
+    "Home, pricing, contact, how it works, service area, launch, city pages",
+    "Before/after and marker tests",
+    "Docs, one push and exact-head CI"
+  ],
+  "acceptance": [
+    "Every visible marketing item on the shared header, footer and launch notice, the home page (opened and preparing-to-launch), pricing, contact (page and form words and messages), how it works, service area, launch (open and closed, page and form) and every city page, plus their page titles and search descriptions, is either an editable website item (words, link or picture) or declared as coming from one named owner source (business profile, price list, catalog, service area, launch settings) or as a named non-content exception; the legal pages are declared as coming from their legal-approval versions, not casual text.",
+    "With nothing changed, each of those pages and variants shows exactly the same words, links and pictures it showed before this work, proved by comparing the saved visible text of every route and variant before and after.",
+    "A runtime coverage test renders every route and variant with every editable text replaced by a unique marker and proves each editable item shows its marker and that no other visible words appear except declared owner-source facts and named exceptions; it does not rely on searching the code.",
+    "Sentences may hold checked links written [words](/page) or [words](https://...) and named facts ({businessName}, {phone}, {email}, {city}, {graceDays} and similar) that are filled from their owner at render; an unknown fact name, a link to an unknown page or a non-https address is refused when saving and publishing; phone, email, address, hours, prices, fees and service area come only from their one owner source and a test proves the page text equals that source.",
+    "Buttons and calls to action are link items (words plus a destination chosen from known pages, an https address, or the profile's phone or email); the header and footer navigation, accessibility and legal links keep their fixed destinations with editable words and cannot be removed; link words and destination are shown separately.",
+    "The home page photo uses the website photo library picture with its description, decorative choice and focus point when one is set and the built-in photo otherwise; a draft picture is never shown to a visitor, and the draft preview shows it only to an active owner or admin.",
+    "A site-wide banner and a home page featured slot each hold a promotion (title, text, optional picture and button, on or off, optional Colorado start and end), default off, shown or hidden on each page view from the stored times with no schedule job; an ended or not-yet-started promotion disappears without hiding any other content; the schedule is tested across the spring-forward and fall-back changes; a promotion linked to a priced offer is refused until a priced-offer source exists.",
+    "Every public page, including service area and city pages, reads the draft or old-version preview content through the same request reader, so the owner's preview can show any page, while anonymous visitors only ever get live content."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/vc3-public-bindings.test.ts",
+      "tests/public-pages-render.test.tsx"
+    ],
+    "db": [
+      "tests/vc3-public-content-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "V-C3",
+      "outcome": "V-C3",
+      "acceptance": [
+        "Every visible marketing item on the shared header, footer and launch notice, the home page (opened and preparing-to-launch), pricing, contact (page and form words and messages), how it works, service area, launch (open and closed, page and form) and every city page, plus their page titles and search descriptions, is either an editable website item (words, link or picture) or declared as coming from one named owner source (business profile, price list, catalog, service area, launch settings) or as a named non-content exception; the legal pages are declared as coming from their legal-approval versions, not casual text.",
+        "With nothing changed, each of those pages and variants shows exactly the same words, links and pictures it showed before this work, proved by comparing the saved visible text of every route and variant before and after.",
+        "A runtime coverage test renders every route and variant with every editable text replaced by a unique marker and proves each editable item shows its marker and that no other visible words appear except declared owner-source facts and named exceptions; it does not rely on searching the code.",
+        "Sentences may hold checked links written [words](/page) or [words](https://...) and named facts ({businessName}, {phone}, {email}, {city}, {graceDays} and similar) that are filled from their owner at render; an unknown fact name, a link to an unknown page or a non-https address is refused when saving and publishing; phone, email, address, hours, prices, fees and service area come only from their one owner source and a test proves the page text equals that source.",
+        "Buttons and calls to action are link items (words plus a destination chosen from known pages, an https address, or the profile's phone or email); the header and footer navigation, accessibility and legal links keep their fixed destinations with editable words and cannot be removed; link words and destination are shown separately.",
+        "The home page photo uses the website photo library picture with its description, decorative choice and focus point when one is set and the built-in photo otherwise; a draft picture is never shown to a visitor, and the draft preview shows it only to an active owner or admin.",
+        "A site-wide banner and a home page featured slot each hold a promotion (title, text, optional picture and button, on or off, optional Colorado start and end), default off, shown or hidden on each page view from the stored times with no schedule job; an ended or not-yet-started promotion disappears without hiding any other content; the schedule is tested across the spring-forward and fall-back changes; a promotion linked to a priced offer is refused until a priced-offer source exists.",
+        "Every public page, including service area and city pages, reads the draft or old-version preview content through the same request reader, so the owner's preview can show any page, while anonymous visitors only ever get live content."
+      ]
+    }
+  ]
+}
