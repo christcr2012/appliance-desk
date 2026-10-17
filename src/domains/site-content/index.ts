@@ -3,7 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { SITE_FIELDS, sanitizeSiteFields, siteDefaultTypedValues, siteDefaults, siteFieldByKey } from "./fields";
-import { promoteReferencedAssets } from "./assets";
+import { checkReferencedAssets, promoteReferencedAssets } from "./assets";
+import { diffValues, pagesAffected, factsUsed, type PageEffect, type ReviewChange, type FactUse } from "./review";
 import { decodeOrThrow, encodeContentValues, legacyTextToValues, valueToPlainText } from "./codec";
 import { CONTENT_SCHEMA_VERSION_TYPED, SITE_TEMPLATE_VERSION, SiteContentError, type SiteValue } from "./types";
 
@@ -14,6 +15,7 @@ import { CONTENT_SCHEMA_VERSION_TYPED, SITE_TEMPLATE_VERSION, SiteContentError, 
  */
 
 export const STALE_DRAFT_MESSAGE = "Someone else changed this draft. Reload to see their changes.";
+export const STALE_LIVE_MESSAGE = "The live website changed after you started reviewing. Reload and review the changes again before publishing.";
 const TEAM = ["OWNER", "ADMIN"] as const;
 
 type StoredRevision = { fields: unknown; contentSchemaVersion: number };
@@ -229,17 +231,29 @@ export async function saveDraft(
 }
 
 /** Make the draft the live website text. The previous live revision is kept in history. */
+/**
+ * Make the reviewed draft live. `expectedLiveRevisionId` is the live version the owner was looking at when they
+ * reviewed (null = nothing published yet); when given, a publish is refused if the live version has moved since. A
+ * second publish of the very draft that is already live (a double click) changes nothing and succeeds.
+ */
 export async function publishDraft(
   userId: string,
   draftId: string,
   expectedVersion: number,
-): Promise<{ revisionId: string; version: number }> {
+  expectedLiveRevisionId?: string | null,
+): Promise<{ revisionId: string; version: number; alreadyLive?: true }> {
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, TEAM);
     const previousId = await lockPointer(tx);
     const draft = await tx.siteContentRevision.findUnique({ where: { id: draftId } });
+    if (draft && draft.status === "PUBLISHED" && previousId === draft.id && draft.version === expectedVersion) {
+      return { revisionId: draft.id, version: draft.version, alreadyLive: true as const };
+    }
     if (!draft || draft.status !== "DRAFT" || draft.version !== expectedVersion) {
       throw new Error(STALE_DRAFT_MESSAGE);
+    }
+    if (expectedLiveRevisionId !== undefined && (previousId ?? null) !== expectedLiveRevisionId) {
+      throw new Error(STALE_LIVE_MESSAGE);
     }
     // Every picture the draft uses must exist and be usable; draft pictures become public in this same transaction.
     const decoded = decodeOrThrow(draft.contentSchemaVersion, draft.fields);
@@ -313,6 +327,125 @@ export async function restoreRevision(userId: string, revisionId: string): Promi
     });
     return { newRevisionId: created.id };
   });
+}
+
+/** V-C4: put an older published version into the draft for review. It is NOT made live. */
+export async function restoreRevisionToDraft(
+  userId: string,
+  revisionId: string,
+  expected: { draftId?: string; draftVersion?: number } = {},
+): Promise<{ draftId: string; version: number; replacedDraft: boolean }> {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, TEAM);
+    await lockPointer(tx);
+    const source = await tx.siteContentRevision.findUnique({ where: { id: revisionId } });
+    if (!source || !source.publishedAt) throw new Error("That version was never published, so it cannot be restored.");
+    const values = valuesOf(source);
+    await checkReferencedAssets(tx, values); // a version that needs a removed picture is blocked with a plain message
+    const open = await tx.siteContentRevision.findFirst({ where: { status: "DRAFT" }, orderBy: { version: "desc" } });
+    if (open) {
+      if (!expected.draftId || expected.draftId !== open.id || expected.draftVersion !== open.version) throw new Error(STALE_DRAFT_MESSAGE);
+      await tx.siteContentRevision.delete({ where: { id: open.id } });
+    } else if (expected.draftId) {
+      throw new Error(STALE_DRAFT_MESSAGE);
+    }
+    const version = await nextVersion(tx);
+    const created = await tx.siteContentRevision.create({
+      data: {
+        status: "DRAFT", version, fields: values as object, contentSchemaVersion: CONTENT_SCHEMA_VERSION_TYPED, templateVersion: SITE_TEMPLATE_VERSION,
+        note: `Restored from version ${source.version} (not yet published)`, createdByUserId: userId, restoredFromId: source.id,
+      },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId, action: "site_content.restored_to_draft", entityType: "SiteContentRevision", entityId: created.id,
+        oldValue: { replacedDraftId: open?.id ?? null },
+        newValue: { version, restoredFromId: source.id, restoredFromVersion: source.version },
+      },
+    });
+    return { draftId: created.id, version, replacedDraft: !!open };
+  });
+}
+
+/** V-C4: throw the open draft away. The live website is untouched. */
+export async function discardDraft(userId: string, draftId: string, expectedVersion: number): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, TEAM);
+    await lockPointer(tx);
+    const draft = await tx.siteContentRevision.findUnique({ where: { id: draftId } });
+    if (!draft || draft.status !== "DRAFT" || draft.version !== expectedVersion) throw new Error(STALE_DRAFT_MESSAGE);
+    await tx.siteContentRevision.delete({ where: { id: draft.id } });
+    await tx.auditLog.create({
+      data: { userId, action: "site_content.draft_discarded", entityType: "SiteContentRevision", entityId: draft.id, oldValue: { version: draft.version }, newValue: {} },
+    });
+  });
+}
+
+export type WebsiteOverview = {
+  live: { id: string; version: number; publishedAt: Date | null; publishedBy: string | null } | null;
+  draft: { id: string; version: number; savedAt: Date; note: string | null; changeCount: number } | null;
+  versionsPublished: number;
+};
+
+/** V-C4: the overview the Website screen opens on. */
+export async function getWebsiteOverview(): Promise<WebsiteOverview> {
+  const state = await getEditorValueState();
+  const [history, count] = await Promise.all([
+    state.published ? prisma.siteContentRevision.findUnique({ where: { id: state.published.id }, select: { publishedByUserId: true } }) : null,
+    prisma.siteContentRevision.count({ where: { publishedAt: { not: null } } }),
+  ]);
+  const publisher = history?.publishedByUserId
+    ? await prisma.user.findUnique({ where: { id: history.publishedByUserId }, select: { name: true, email: true } })
+    : null;
+  let draft: WebsiteOverview["draft"] = null;
+  if (state.draft) {
+    const row = await prisma.siteContentRevision.findUnique({ where: { id: state.draft.id }, select: { updatedAt: true } });
+    const live = { ...siteDefaultValues(), ...(state.published?.values ?? {}) };
+    const proposed = { ...siteDefaultValues(), ...state.draft.values };
+    draft = { id: state.draft.id, version: state.draft.version, savedAt: row?.updatedAt ?? new Date(), note: state.draft.note, changeCount: diffValues(live, proposed).length };
+  }
+  return {
+    live: state.published ? { id: state.published.id, version: state.published.version, publishedAt: state.published.publishedAt, publishedBy: publisher ? publisher.name || publisher.email : null } : null,
+    draft,
+    versionsPublished: count,
+  };
+}
+
+export type DraftReview = {
+  draft: { id: string; version: number } | null;
+  liveRevisionId: string | null;
+  changes: ReviewChange[];
+  pages: PageEffect[];
+  facts: FactUse[];
+  /** Plain sentences naming what stops this draft from being published. Empty means it can be. */
+  problems: string[];
+};
+
+/**
+ * V-C4: exactly what publishing the open draft would change, against what is live right now. `currentFacts` are the
+ * values the facts in the changed words have today in their owners (Settings).
+ */
+export async function getDraftReview(currentFacts: Parameters<typeof factsUsed>[1]): Promise<DraftReview> {
+  const state = await getEditorValueState();
+  if (!state.draft) return { draft: null, liveRevisionId: state.published?.id ?? null, changes: [], pages: [], facts: [], problems: [] };
+  const live = { ...siteDefaultValues(), ...(state.published?.values ?? {}) };
+  const proposed = { ...siteDefaultValues(), ...state.draft.values };
+  const changes = diffValues(live, proposed);
+  const problems: string[] = [];
+  try {
+    await checkReferencedAssets(prisma, state.draft.values);
+  } catch (error) {
+    if (error instanceof SiteContentError) problems.push(error.message);
+    else throw error;
+  }
+  return {
+    draft: { id: state.draft.id, version: state.draft.version },
+    liveRevisionId: state.published?.id ?? null,
+    changes,
+    pages: pagesAffected(changes),
+    facts: factsUsed(changes, currentFacts),
+    problems,
+  };
 }
 
 /** W-26 prepares reviewed owner fields; Batch V owns public Spanish routes. */

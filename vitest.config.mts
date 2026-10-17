@@ -6,6 +6,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/site-content-integration.test.ts", // The website pointer and every revision exist once for the whole database.
   "tests/vc1-vc2-content-integration.test.ts", // V-C1/V-C2 publish, restore and clean the same single website pointer.
   "tests/vc3-public-content-integration.test.ts", // V-C3 publishes and cleans the same single website pointer.
+  "tests/vc4-website-editor-integration.test.ts", // V-C4 publishes, restores and cleans the same single website pointer.
   "tests/location-contacts-integration.test.ts", // W-23 retention policy is global and restored after testing.
   "tests/w22-v2-flow-integration.test.ts",
   "tests/purchases-w14-w2-w15-integration.test.ts", // Purchase tax answers use the shared tax settings and filing calendar.

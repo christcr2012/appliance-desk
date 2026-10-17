@@ -13,7 +13,7 @@ import { SiteContentError, type SiteValue } from "./types";
 
 const TEAM = ["OWNER", "ADMIN"] as const;
 export { assetIdFromPublicPath, draftAssetPath, publicAssetPath } from "./asset-paths";
-import { assetIdFromPublicPath } from "./asset-paths";
+import { assetIdFromPublicPath, draftAssetPath } from "./asset-paths";
 
 export type UploadedAsset = { id: string; width: number; height: number; byteSize: number; reused: boolean };
 
@@ -66,7 +66,21 @@ export async function findServableAsset(assetId: string, audience: "public" | "p
 export async function promoteReferencedAssets(tx: Prisma.TransactionClient, values: Record<string, SiteValue>): Promise<string[]> {
   const ids = collectAssetIds(values);
   if (ids.length === 0) return [];
-  const rows = await tx.websiteAsset.findMany({ where: { id: { in: ids } } });
+  const byId = await checkReferencedAssets(tx, values);
+  const toPromote = ids.filter((id) => byId.get(id)!.state === "DRAFT");
+  if (toPromote.length) {
+    await tx.websiteAsset.updateMany({ where: { id: { in: toPromote }, state: "DRAFT" }, data: { state: "PUBLIC", publishedAt: new Date() } });
+  }
+  return toPromote;
+}
+
+/**
+ * V-C4: the same checks publishing makes, without changing anything: every picture the values use must exist, not be
+ * retired and have its file stored. Throws a plain-words block that names the item. Returns the picture rows by id.
+ */
+export async function checkReferencedAssets(tx: Prisma.TransactionClient | typeof prisma, values: Record<string, SiteValue>) {
+  const ids = collectAssetIds(values);
+  const rows = ids.length ? await tx.websiteAsset.findMany({ where: { id: { in: ids } } }) : [];
   const byId = new Map(rows.map((row) => [row.id, row]));
   const checkStore = websiteStorageConfigured();
   for (const [key, value] of Object.entries(values)) {
@@ -82,11 +96,13 @@ export async function promoteReferencedAssets(tx: Prisma.TransactionClient, valu
       }
     }
   }
-  const toPromote = ids.filter((id) => byId.get(id)!.state === "DRAFT");
-  if (toPromote.length) {
-    await tx.websiteAsset.updateMany({ where: { id: { in: toPromote }, state: "DRAFT" }, data: { state: "PUBLIC", publishedAt: new Date() } });
-  }
-  return toPromote;
+  return byId;
+}
+
+/** V-C4: the photo library the editor offers (newest first). Retired pictures are not offered. */
+export async function listWebsiteAssets(take = 80): Promise<{ id: string; state: "DRAFT" | "PUBLIC"; width: number; height: number; createdAt: Date; previewPath: string }[]> {
+  const rows = await prisma.websiteAsset.findMany({ where: { state: { not: "RETIRED" } }, orderBy: { createdAt: "desc" }, take });
+  return rows.map((row) => ({ id: row.id, state: row.state as "DRAFT" | "PUBLIC", width: row.width, height: row.height, createdAt: row.createdAt, previewPath: draftAssetPath(row.id) }));
 }
 
 async function revisionAssetIds(statusWhere: Prisma.SiteContentRevisionWhereInput, tx: Prisma.TransactionClient | typeof prisma = prisma): Promise<Set<string>> {

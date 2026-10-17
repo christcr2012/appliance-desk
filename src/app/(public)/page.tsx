@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import { Container } from "@/components/site/container";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { Card } from "@/components/ui";
@@ -48,6 +49,7 @@ export default async function HomePage({
   if (showPrelaunchHome) {
     return (
       <>
+        <SelectBridge site={site} />
         <section className="bg-canvas">
           <Container className="grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
             <div>
@@ -69,7 +71,7 @@ export default async function HomePage({
               </p>
             </div>
             <div className="overflow-hidden rounded-card border border-line bg-surface p-2">
-              <HeroPicture value={site.values["home.hero.image"]} defaultAlt={c("image.hero.alt")} preview={site.preview} />
+              <HeroPicture value={site.values["home.hero.image"]} defaultAlt={c("image.hero.alt")} preview={site.preview} selectable={site.selectable} />
             </div>
           </Container>
         </section>
@@ -103,6 +105,7 @@ export default async function HomePage({
 
   return (
     <>
+      <SelectBridge site={site} />
       <section className="bg-canvas">
         <Container className="grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
           <div>
@@ -122,7 +125,7 @@ export default async function HomePage({
           </div>
 
           <div className="overflow-hidden rounded-card border border-line bg-surface p-2">
-            <HeroPicture value={site.values["home.hero.image"]} defaultAlt={c("image.hero.alt")} preview={site.preview} />
+            <HeroPicture value={site.values["home.hero.image"]} defaultAlt={c("image.hero.alt")} preview={site.preview} selectable={site.selectable} />
           </div>
         </Container>
       </section>

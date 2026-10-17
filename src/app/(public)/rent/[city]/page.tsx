@@ -1,3 +1,4 @@
+import { SelectBridge } from "@/components/site/select-bridge";
 import { redirect } from "next/navigation";
 import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
@@ -83,6 +84,7 @@ export default async function CityLandingPage({
 
   return (
     <>
+      <SelectBridge site={site} />
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">

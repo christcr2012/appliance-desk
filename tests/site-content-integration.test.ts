@@ -175,9 +175,13 @@ d("website text revisions", () => {
       publishDraft(ids.owner, a.draftId, a.version),
       publishDraft(ids.admin, a.draftId, a.version),
     ]);
-    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-    const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
-    expect(String(rejected.reason)).toContain(STALE_DRAFT_MESSAGE);
+    // V-C4: the second request for the very draft that just went live (a double click) succeeds without publishing
+    // again, so exactly one of them is the real publish and the other reports "already live".
+    expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+    const fulfilled = results.filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof publishDraft>>> => r.status === "fulfilled");
+    expect(fulfilled.filter((r) => r.value.alreadyLive).length).toBe(1);
+    // A different, older draft is still refused: only the draft that is live is treated as already published.
+    await expect(publishDraft(ids.owner, "no-such-draft", 1)).rejects.toThrow(STALE_DRAFT_MESSAGE);
     const live = await prisma.siteContentRevision.findMany({ where: { status: "PUBLISHED" } });
     const pointer = await prisma.siteContentPointer.findUniqueOrThrow({ where: { id: "published" } });
     expect(live).toHaveLength(1);

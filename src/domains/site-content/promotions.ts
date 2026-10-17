@@ -53,3 +53,11 @@ export function denverLocalToUtc(date: string, time: string): string | null {
   }
   return null; // a time that does not exist (spring-forward gap)
 }
+
+/** The Colorado wall-clock date and time an instant reads as, for the editor's two boxes ("2026-11-01", "00:00"). */
+export function utcToDenverLocal(iso: string | undefined): { date: string; time: string } {
+  if (!iso || Number.isNaN(Date.parse(iso))) return { date: "", time: "" };
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TIME_ZONE, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+}

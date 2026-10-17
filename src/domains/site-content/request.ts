@@ -1,8 +1,9 @@
 import { getServerSession } from "@/lib/session";
 import { getPublishedContent, getPublishedValues, getRevisionContent, getRevisionValues } from "./index";
+import { markContent } from "./preview-markers";
 import type { SiteValue } from "./types";
 
-type RequestParams = { revision?: string | string[]; previewAt?: string | string[] } | undefined;
+type RequestParams = { revision?: string | string[]; previewAt?: string | string[]; select?: string | string[] } | undefined;
 
 /**
  * The website text for this page view. `?revision=<id>` previews a draft or an old version, but ONLY for a signed-in
@@ -29,6 +30,10 @@ export type SiteRequest = {
   preview: boolean;
   /** The moment promotions are judged against. A preview may look at a future moment with `?previewAt=`. */
   now: Date;
+  /** The revision being previewed (owner/admin preview only). */
+  revisionId?: string;
+  /** True only in the owner's signed-in select-to-edit preview: words carry invisible marks the preview script reads. */
+  selectable: boolean;
 };
 
 /**
@@ -45,9 +50,11 @@ export async function getSiteForRequest(searchParams?: RequestParams): Promise<S
       const rawAt = searchParams?.previewAt;
       const parsed = typeof rawAt === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z$/.test(rawAt) ? new Date(rawAt) : null;
       const [text, values] = await Promise.all([getRevisionContent(revisionId), getRevisionValues(revisionId)]);
-      return { text, values, preview: true, now: parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date() };
+      const selectable = searchParams?.select === "1";
+      const marked = selectable ? markContent(text, values) : { text, values };
+      return { ...marked, preview: true, selectable, revisionId, now: parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date() };
     }
   }
   const [text, values] = await Promise.all([getPublishedContent(), getPublishedValues()]);
-  return { text, values, preview: false, now: new Date() };
+  return { text, values, preview: false, selectable: false, now: new Date() };
 }

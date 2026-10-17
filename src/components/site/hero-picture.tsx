@@ -11,11 +11,14 @@ export function HeroPicture({
   value,
   defaultAlt,
   preview,
+  selectable = false,
 }: {
   value: SiteValue | undefined;
   defaultAlt: string;
   /** A signed-in owner's preview of a draft: uses the draft picture route, which visitors cannot reach. */
   preview: boolean;
+  /** The owner's select-to-edit preview: lets a click on the photo find its item. */
+  selectable?: boolean;
 }) {
   const className = "h-auto w-full rounded-control object-cover";
   if (value?.kind === "image") {
@@ -29,8 +32,9 @@ export function HeroPicture({
         className={`${className} aspect-[1408/768]`}
         style={{ objectPosition: `${value.focalX}% ${value.focalY}%` }}
         priority
+        {...(selectable ? { "data-site-key": "home.hero.image" } : {})}
       />
     );
   }
-  return <Image src="/appliances/hero-lineup.jpg" alt={defaultAlt} width={1408} height={768} className={className} priority />;
+  return <Image src="/appliances/hero-lineup.jpg" alt={defaultAlt} width={1408} height={768} className={className} priority {...(selectable ? { "data-site-key": "home.hero.image" } : {})} />;
 }

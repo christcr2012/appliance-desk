@@ -190,12 +190,13 @@ for (const role of ["owner", "customer"] as const) {
           await expect(page.getByRole("status")).toHaveText("Settings saved.");
         }
       });
-      test("website text: draft is private, preview shows it, publish updates the public page", async ({
+      test("website editor: draft is private, preview shows it, review and publish update the public page", async ({
         page,
         browser,
       }) => {
         test.setTimeout(120_000);
-        const intro = page.locator('[id="f-how.intro"]');
+        const editUrl = "/desk/settings/website?view=edit&page=how&key=how.intro";
+        const intro = page.getByRole("textbox", { name: "Introduction" });
         const original = "No app to download, no self-checkout — a real person reviews and handles every step.";
         const edited = "CI draft intro text for the website editor";
         const publicSeen = async () => {
@@ -208,39 +209,35 @@ for (const role of ["owner", "customer"] as const) {
             await visitor.close();
           }
         };
+        const publishFromEditor = async () => {
+          await page.getByRole("button", { name: /^Review \d+ changes?$/ }).click();
+          await expect(page.getByRole("heading", { name: "Review and publish" })).toBeVisible();
+          await page.getByRole("button", { name: /^Publish \d+ changes? to the live website$/ }).click();
+          await expect(page.getByRole("status").first()).toContainText("now live");
+        };
         try {
-          await page.goto("/desk/settings/website");
+          await page.goto(editUrl);
           await expect(intro).toHaveValue(original);
           await intro.fill(edited);
           await page.getByRole("button", { name: "Save draft" }).click();
-          await expect(page.getByRole("status")).toContainText("Draft saved");
+          await expect(page.getByRole("status").first()).toContainText("Draft saved");
           // The preview shows the draft...
-          const previewHref = await page
-            .getByRole("link", { name: /Preview how it works/i })
-            .getAttribute("href");
-          await page.goto(previewHref!);
-          await expect(page.locator("main")).toContainText(edited);
+          await page.getByRole("button", { name: "Preview", exact: true }).first().click();
+          await expect(page.frameLocator('iframe[title^="Preview of"]').locator("main")).toContainText(edited);
           // ...but a visitor still sees the old text.
           expect(await publicSeen()).toContain(original);
           expect(await publicSeen()).not.toContain(edited);
-          // Publish with confirmation.
-          await page.goto("/desk/settings/website");
-          await page.getByRole("button", { name: "Publish…" }).click();
-          await expect(page.getByRole("group", { name: "Confirm publishing" })).toContainText("How it works");
-          await page.getByRole("button", { name: "Publish now" }).click();
-          await expect(page.getByRole("status")).toContainText("Published");
+          await publishFromEditor();
           expect(await publicSeen()).toContain(edited);
         } finally {
           // Put the starting text back and publish it, so later tests see the original page.
-          await page.goto("/desk/settings/website");
-          const field = page.locator('[id="f-how.intro"]');
-          if ((await field.inputValue()) !== original) {
-            await field.fill(original);
+          await page.goto(editUrl);
+          if ((await intro.inputValue()) !== original) {
+            await intro.fill(original);
             await page.getByRole("button", { name: "Save draft" }).click();
-            await expect(page.getByRole("status")).toContainText("Draft saved");
-            await page.getByRole("button", { name: "Publish…" }).click();
-            await page.getByRole("button", { name: "Publish now" }).click();
-            await expect(page.getByRole("status")).toContainText("Published");
+            await expect(page.getByRole("status").first()).toContainText("Draft saved");
+            // Nothing to publish when the live words never changed (the draft then matches the live website).
+            if (await page.getByRole("button", { name: /^Review \d+ changes?$/ }).isEnabled()) await publishFromEditor();
           }
         }
         expect(await publicSeen()).toContain(original);

@@ -1,3 +1,7 @@
+## V-C4 and V-C5 website editor (2026-10-17)
+
+No schema change and no migration. V-C4 adds publish/restore/discard rules over the existing `SiteContentRevision` and `SiteContentPointer` tables: publish takes the pointer lock and compares the live revision the owner reviewed; restore-to-draft creates a DRAFT revision with `restoredFromId`; discard deletes only an open DRAFT. Audit actions added: `site_content.restored_to_draft`, `site_content.draft_discarded`. V-C5 adds code and test fixtures only.
+
 ## V-C3 public website bindings (2026-10-17)
 
 No schema change and no migration. Typed website values (version 2 revisions) already hold links, pictures and promotions; V-C3 only adds registry items (`src/domains/site-content/fields-public.ts`) and readers. Existing revisions read unchanged: items they do not mention fall back to the starting text or starting value.

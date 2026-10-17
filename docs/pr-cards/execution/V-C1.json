@@ -30,7 +30,7 @@
     },
     {
       "path": "src/app/desk/settings/website/actions.ts",
-      "anchor": "export async function saveWebsiteDraftAction",
+      "anchor": "export async function saveWebsiteValuesAction",
       "purpose": "Editor actions"
     }
   ],

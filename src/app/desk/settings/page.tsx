@@ -227,7 +227,7 @@ export default async function DeskSettingsPage({
       >
         <div className="flex flex-wrap gap-2">
           <ButtonLink href="/desk/settings/website" variant="secondary">
-            Edit website text
+            Edit the website
           </ButtonLink>
           <ButtonLink href="/desk/launch" variant="secondary">
             Launch signup and announcement controls
@@ -242,7 +242,7 @@ export default async function DeskSettingsPage({
           </ButtonLink>
         </div>
         <p className="mt-4 text-sm text-ink-soft">
-          Use Edit website text for the wording on your pages. Use Business
+          Use Edit the website for the wording on your pages. Use Business
           profile, Service area, and Products and pricing for contact details,
           where you work and prices.
         </p>
