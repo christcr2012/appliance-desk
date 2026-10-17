@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { loadFilingPacket } from "@/domains/tax/filing-packet";
 import { buildUseTaxWorksheet } from "@/domains/tax/dr0252-worksheet";
+import { businessDateKey } from "@/lib/business-date";
+import { FileAndPayHeadline } from "../../file-and-pay-headline";
 
 export const metadata = { title: "Consumer use-tax worksheet", robots: { index: false, follow: false } };
 
@@ -16,26 +18,38 @@ export default async function UseTaxWorksheetPage({
   // Check account ownership/type before asking the packet loader to read or change data.
   const period = await prisma.taxFilingPeriod.findUnique({
     where: { id: periodId },
-    select: { filingAccount: { select: { kind: true } } },
+    select: { status: true, filingAccount: { select: { kind: true } } },
   });
   if (!period || period.filingAccount.kind !== "USE_TAX_RETURN") {
-    return <main><h1>Use-tax worksheet unavailable</h1><p>No consumer use-tax period was found.</p></main>;
+    return <main><h2 className="text-xl font-semibold">Use-tax worksheet unavailable</h2><p>No consumer use-tax period was found.</p></main>;
   }
   const result = await loadFilingPacket(periodId);
   const worksheet = result.status === "READY" ? buildUseTaxWorksheet(result.packet) : null;
   return (
     <main className="mx-auto max-w-3xl space-y-5 print:max-w-none">
       <nav className="print:hidden">
-        <Link href="/desk/tax/use-tax-worksheets" className="text-sm underline">Back to use-tax periods</Link>
+        <Link href="/desk/sales-tax/use-tax" className="text-sm underline">Back to use-tax periods</Link>
       </nav>
       {result.status === "BLOCKED" ? (
         <section>
-          <h1 className="text-xl font-semibold">Worksheet needs review</h1>
+          <h2 className="text-xl font-semibold">Worksheet needs review</h2>
           <ul className="list-disc pl-6">{result.problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>
         </section>
       ) : (
         <section className="space-y-4">
-          <h1 className="text-xl font-semibold">{worksheet!.heading}</h1>
+          <h2 className="text-xl font-semibold">{worksheet!.heading}</h2>
+          <div className="print:hidden space-y-2">
+            <FileAndPayHeadline
+              kind="USE_TAX_RETURN"
+              amountCents={result.packet.totals.remitCents}
+              legalDueOn={result.packet.legalDueOn}
+              todayKey={businessDateKey(new Date())}
+              filed={period.status === "FILED"}
+              portalUrl={result.packet.account.portalUrl}
+              useTax={result.packet.useTax.map((row) => ({ name: row.name, useTaxCents: row.useTaxCents }))}
+            />
+            <Link href={`/desk/sales-tax/returns/${periodId}`} className="text-sm underline">Open the guided return to copy each value and record that you filed and paid</Link>
+          </div>
           <p className="rounded-md border p-3 text-sm">
             {worksheet!.warning}
           </p>

@@ -1,0 +1,54 @@
+{
+  "subsections": [
+    {
+      "id": "W-3",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "The desk menu has one \"Taxes\" entry (replacing \"Sales tax\") whose tabs are To file, Use tax, Rates & areas and Setup; Exemptions and What's taxed live under Setup as \"Customers who don't pay tax\" and \"What gets taxed\", and the audit pack and record keeping are reachable from Setup.",
+          "evidence": "src/lib/taxes-tabs.ts defines the four tabs (To file, Use tax, Rates & areas, Setup) and the Setup list; src/app/desk/sales-tax/layout.tsx renders them for every page under /desk/sales-tax; the menu entry in src/lib/desk-navigation.ts is now 'Taxes' (OWNER/ADMIN only). Exemptions and What's taxed are headed 'Customers who don't pay tax' and 'What gets taxed' and listed in Setup with Use-tax settings, the audit pack and record keeping. tests/taxes-in-one-place-w3.test.ts (tab mapping table, Setup links point to real pages, menu entry) and tests/desk-navigation.test.ts pass; e2e sales-tax specs updated."
+        },
+        {
+          "criterion": "Use-tax screens live inside Taxes, the old /desk/tax/use-tax-* addresses redirect there, and every link in the app points to the new place.",
+          "evidence": "Use-tax, audit-pack and record-retention pages moved under /desk/sales-tax; src/lib/tax-route-redirects.ts + next.config.ts redirect every old /desk/tax address permanently; tests/taxes-in-one-place-w3.test.ts proves each destination page exists, no old page remains, and no src file still links to /desk/tax/; tests/today-href-routes.test.ts and the route inventory check pass."
+        },
+        {
+          "criterion": "The sales tax return page and the use tax return page start with one line \"File and pay $X on Colorado's sales tax website (SUTS) by <date>\" with an Open SUTS link (state and Greeley amounts separate for use tax), then the numbers to copy, then \"I filed and paid it\"; SUTS and use tax carry plain-words tooltips.",
+          "evidence": "src/domains/tax/file-and-pay.ts fileAndPayLine builds 'File and pay $X on Colorado's sales tax website (SUTS) by <date>' with the Open SUTS link, $0, late and filed wording, state and Greeley use tax listed separately, and refuses non-https stored links; src/app/desk/sales-tax/file-and-pay-headline.tsx shows it above the numbers on the return page and the use-tax worksheet, followed by the copy fields and the existing 'I filed and paid it' step; glossary entries 'suts' and 'use-tax' feed the tooltips. Unit tests cover each wording and the link rules."
+        },
+        {
+          "criterion": "Every money input on the tax screens is typed in dollars, never cents.",
+          "evidence": "Audit of src/app/desk/sales-tax and purchases: the only inputs are dollar fields (moneyInputValue / 'enter dollars and cents, like 125.50'); the only 'cents' inputs found are hidden compare-and-set fields, not typed by the owner; tests/plain-money checks (npm run check:quick W-18 plain money check) pass."
+        }
+      ]
+    },
+    {
+      "id": "W-4",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "Signing creates a draft delivery visit and a To do \"Schedule <name>'s delivery\" due the next day; nothing is sent, charged or dispatched.",
+          "evidence": "src/domains/exceptions/signed-delivery-attention.ts now titles the To do 'Schedule <name>'s delivery' and sets a date-only due date of the business day after signing (dayAfterSigning); the draft visit comes from ensureSignedDeliveryDraftInTx, which creates only an unscheduled job. tests/rental-turning-points-w4-integration.test.ts proves the title and due date against real Postgres."
+        },
+        {
+          "criterion": "A rental ending within the owner's setting (starting at 30 days) puts one To do on the list with Renew, Month-to-month and Pickup buttons; Renew and Month-to-month only create a draft renewal.",
+          "evidence": "BusinessSettings.rentalEndingNoticeDays (default 30, CHECK 1 to 365; migration 20261017120000_w4_rental_ending_notice) with an owner-only audited compare-and-set editor at /desk/settings/rental-endings (explanation, starting value, restore button); listRentalEndingSoon gives one To do per active fixed-term rental inside the window with no decision or renewal; /desk/agreements/[id]/ending-decision offers Renew, Month-to-month and Pickup, where Renew and Month-to-month call renewAgreement and only create a draft. The three choices are on the decision page the To do opens, not on the To do row itself. Real-Postgres tests cover in-window, outside, already ending, renewed and a changed setting."
+        },
+        {
+          "criterion": "Deciding an ending (pickup chosen, month-to-month end set, or early ending set) creates exactly one draft pickup visit and a To do \"Schedule <name>'s pickup\"; the draft never sends or charges anything and a repeat creates no second visit.",
+          "evidence": "ensurePickupDraftInTx (idempotent unscheduled REMOVAL visit linked to the machines the customer holds) runs inside the same transaction as requestMonthToMonthEnd and requestEarlyTermination and in decideEndingPickup for the Pickup choice; listPickupUnscheduled shows 'Schedule <name>'s pickup'. Existing integration tests were extended: the month-to-month end test asserts exactly one unscheduled REMOVAL (including after a simultaneous repeat), the early-termination test asserts one, and the new test proves a repeated Pickup choice creates no second visit, no invoice and one audit row."
+        },
+        {
+          "criterion": "A visit with no technician or no time 2 days before it is needed gets a To do \"Assign / set a time\".",
+          "evidence": "listVisitNeedsAssignment shows 'Assign / set a time — <name>' for a scheduled visit within 2 days with no technician and for a pickup whose needed date is within 2 days with no time; assigned and far-off visits are not listed (real-Postgres test)."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 568,
+  "productionRemoved": 46,
+  "planComparison": "Actual production change (+568/-46 across 39 files) is below the 900-line estimate because the existing draft-delivery creation, renewal and term functions, tax return pages and exception engine were reused rather than rebuilt; both subsections, their boundaries and all frozen acceptance are unchanged and fully delivered. W-5 and W-6 were not started.",
+  "newEngineering": "Taxes layout with tabs and moved pages with redirects, return headline and SUTS link, owner setting for the ending-notice window, ending-soon To do with decision page, draft pickup visit created idempotently when an ending is decided, due date on the signed-delivery To do, untimed-visit To do",
+  "relatedWorkDecision": "W-3 and W-4 are the next two items in approved order and share To do and navigation wiring. W-5 (Stripe payment links and phone payments) is a separate provider boundary and gets its own bundle; W-6 depends on W-5 and follows it.",
+  "decision": "SUBSTANTIAL"
+}

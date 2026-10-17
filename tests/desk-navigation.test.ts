@@ -21,7 +21,7 @@ it.each([
       label: "System health",
     });
     expect(links).toContainEqual({
-      href: "/desk/sales-tax", label: "Sales tax",
+      href: "/desk/sales-tax", label: "Taxes",
     });
     if (role === "OWNER") {
       expect(links).toContainEqual({

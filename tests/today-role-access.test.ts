@@ -46,6 +46,11 @@ vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/turning-points-attention", () => ({
+  listRentalEndingSoon: vi.fn(async () => ({ rows: [], total: 0 })),
+  listPickupUnscheduled: vi.fn(async () => ({ rows: [], total: 0 })),
+  listVisitNeedsAssignment: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {

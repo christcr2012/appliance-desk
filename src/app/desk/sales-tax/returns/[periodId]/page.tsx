@@ -7,6 +7,8 @@ import { FilingEvidenceUpload } from "../filing-evidence-upload";
 import { FilingCopyField } from "../filing-copy-field";
 import { filingStepKeys } from "@/domains/tax/filing-step-keys";
 import { saveReturnProgressAction, recordFiledReturnAction } from "../actions";
+import { businessDateKey } from "@/lib/business-date";
+import { FileAndPayHeadline } from "../../file-and-pay-headline";
 
 const money = (value: number) => moneyInputValue(value);
 const label = "block space-y-1 text-sm font-medium";
@@ -38,6 +40,15 @@ export default async function ReturnDetailPage({
       {period.amendments.some(a => a.status === "OPEN") && <Link className="text-sm underline" href={"/desk/sales-tax/returns/" + periodId + "/amend"}>Review outstanding amendment</Link>}
       {!owner && <p className="text-sm text-muted-foreground">Read-only for administrators. Ask the owner to file, pay or mark checklist steps.</p>}
     </header>
+    {result.status === "READY" && <FileAndPayHeadline
+      kind={result.packet.account.kind}
+      amountCents={result.packet.account.kind === "RETAIL_DELIVERY_FEE_RETURN" && result.packet.rdf ? result.packet.rdf.taxDueCents : result.packet.totals.remitCents}
+      legalDueOn={result.packet.legalDueOn}
+      todayKey={businessDateKey(new Date())}
+      filed={period.status === "FILED"}
+      portalUrl={result.packet.account.portalUrl}
+      useTax={result.packet.useTax.map(row => ({ name: row.name, useTaxCents: row.useTaxCents }))}
+    />}
     {result.status === "BLOCKED" ? <section className="space-y-2 rounded-lg border border-destructive p-4">
       <h3 className="font-semibold">Not ready to file</h3>
       <ul className="list-disc space-y-1 pl-5 text-sm">{result.problems.map((p,i) => <li key={i}>{p}</li>)}</ul>

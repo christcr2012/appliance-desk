@@ -45,7 +45,7 @@ const groups = [
     links: [
       ["dashboard", "Business overview", "finance"],
       ["billing", "Billing", "finance"],
-      ["sales-tax", "Sales tax", "finance"],
+      ["sales-tax", "Taxes", "finance"],
       ["revenue", "Revenue", "finance"],
       ["reports", "Reports", "finance"],
     ],

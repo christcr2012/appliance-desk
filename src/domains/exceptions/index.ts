@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
 import { listSignedDeliveryAttention } from "./signed-delivery-attention";
+import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment } from "./turning-points-attention";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
 import {
@@ -1020,6 +1021,10 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
 
   const cancellationRefundAttention = canViewFinance ? await listCancellationRefundAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const signedDeliveryAttention = canViewFinance ? await listSignedDeliveryAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
+  const noTurningPoints = { rows: [] as ExceptionItem[], total: 0 };
+  const rentalEndingSoon = canViewFinance ? await listRentalEndingSoon(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const pickupUnscheduled = canViewFinance ? await listPickupUnscheduled(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
+  const visitNeedsAssignment = canViewFinance ? await listVisitNeedsAssignment(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -1043,6 +1048,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...signingPaymentAttention.rows,
     ...cancellationRefundAttention.rows,
     ...signedDeliveryAttention.rows,
+    ...rentalEndingSoon.rows,
+    ...pickupUnscheduled.rows,
+    ...visitNeedsAssignment.rows,
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
@@ -1081,6 +1089,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["SIGNING_PAYMENT_DUE", signingPaymentAttention],
       ["CANCELLATION_REFUND_DUE", cancellationRefundAttention],
       ["SIGNED_DELIVERY_UNSCHEDULED", signedDeliveryAttention],
+      ["RENTAL_ENDING_SOON", rentalEndingSoon],
+      ["PICKUP_UNSCHEDULED", pickupUnscheduled],
+      ["VISIT_NEEDS_ASSIGNMENT", visitNeedsAssignment],
       ["OVERDUE_JOB", overdueJobs],
       ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
       ["UNINSPECTED_RETURN", uninspectedAppliances],

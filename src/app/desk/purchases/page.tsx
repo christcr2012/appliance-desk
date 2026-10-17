@@ -31,8 +31,8 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
         primaryAction={<ButtonLink href="/desk/purchases/new">Record a purchase</ButtonLink>}
         secondaryActions={
           <>
-            <ButtonLink href="/desk/tax/audit-pack" variant="secondary">Audit pack</ButtonLink>
-            {session.user.role === "OWNER" && <ButtonLink href="/desk/tax/record-retention" variant="secondary">Record keeping</ButtonLink>}
+            <ButtonLink href="/desk/sales-tax/audit-pack" variant="secondary">Audit pack</ButtonLink>
+            {session.user.role === "OWNER" && <ButtonLink href="/desk/sales-tax/record-retention" variant="secondary">Record keeping</ButtonLink>}
           </>
         }
       />

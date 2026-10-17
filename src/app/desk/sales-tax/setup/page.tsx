@@ -4,6 +4,7 @@ import { InfoTip } from "@/components/ui/info-tip";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "./forms";
+import { TAXES_SETUP_LINKS } from "@/lib/taxes-tabs";
 import { addRdfRateAction, saveTaxAccountAction, saveTaxSettingsAction, lookUpBusinessTaxAreasAction, confirmBusinessTaxAreasAction } from "./actions";
 const css = "w-full rounded border border-input bg-background p-2 text-sm";
 const field = "grid gap-1 text-sm font-medium";
@@ -34,6 +35,15 @@ export default async function TaxSetupPage() {
     !Array.isArray(settings.businessTaxAddress) ? settings.businessTaxAddress as Record<string,unknown> : {};
   return <main className="space-y-7">
     {!owner && <p role="status" className="rounded border border-border p-3">Read only. Ask the owner to approve changes to tax setup.</p>}
+    <section aria-labelledby="more-setup" className="space-y-2">
+      <h2 id="more-setup" className="text-lg font-semibold">All tax setup in one list</h2>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {TAXES_SETUP_LINKS.filter(item => !item.href.endsWith("/setup")).map(item => <li key={item.href} className="rounded-lg border border-border bg-card p-3 text-sm">
+          <Link href={item.href} className="font-semibold underline">{item.label}</Link>
+          <p className="text-muted-foreground">{item.detail}</p>
+        </li>)}
+      </ul>
+    </section>
     <nav aria-label="Setup sections" className="flex flex-wrap gap-3 text-sm underline">
       <a href="#decisions">Tax decisions</a><a href="#fee">Delivery fee</a>
       <a href="#accounts">Filing accounts</a><a href="#sources">Official sources</a>

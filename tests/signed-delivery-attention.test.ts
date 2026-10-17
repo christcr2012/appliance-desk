@@ -9,7 +9,7 @@ describe("signed agreement delivery To do",()=>{
   mock.role.mockReset().mockResolvedValue({user:{id:"owner"}});
   mock.findMany.mockReset().mockResolvedValue([{
    id:"job-delivery-1",createdAt:new Date("2026-10-14T10:00:00Z"),
-   agreement:{customer:{user:{name:"Customer A",email:"customer@example.test"}}},
+   agreement:{signature:{signedAt:new Date("2026-10-14T16:30:00Z")},customer:{user:{name:"Customer A",email:"customer@example.test"}}},
   }]);
   mock.count.mockReset().mockResolvedValue(1);
  });
@@ -18,7 +18,8 @@ describe("signed agreement delivery To do",()=>{
   expect(result.total).toBe(1);
   expect(result.rows).toMatchObject([{
    category:"SIGNED_DELIVERY_UNSCHEDULED",
-   title:"Schedule delivery for Customer A",
+   title:"Schedule Customer A's delivery",
+   dueOn:new Date("2026-10-15T00:00:00Z"),dueDateOnly:true,
    href:"/desk/jobs/job-delivery-1",
    primaryAction:{href:"/desk/jobs/job-delivery-1",label:"Schedule delivery"},
   }]);

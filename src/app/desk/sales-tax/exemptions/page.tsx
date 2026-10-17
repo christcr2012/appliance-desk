@@ -8,7 +8,7 @@ export default async function TaxExemptionsPage({
   const cursor = (await searchParams).cursor;
   const records = await getTaxExemptionsPage(session.user.id, { cursor, limit: 25 });
   return <main className="space-y-5">
-    <h2 className="text-xl font-semibold">Exemption certificates</h2>
+    <h2 className="text-xl font-semibold">Customers who don&apos;t pay tax</h2>
     <p className="text-sm text-muted-foreground">
       Certificates and verification history stay private. To add, replace, revoke or verify one,
       open the existing customer tax exemptions panel; this list never creates a second certificate record.

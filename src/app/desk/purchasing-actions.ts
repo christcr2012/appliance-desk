@@ -322,6 +322,6 @@ export async function updateReceiptTaxAction(raw: unknown): Promise<PurchasingAc
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't save the tax answer." };
   }
-  for (const path of [`/desk/purchase-orders/${parsed.data.purchaseOrderId}`, "/desk/tasks", "/desk/today", "/desk/tax"]) revalidatePath(path);
+  for (const path of [`/desk/purchase-orders/${parsed.data.purchaseOrderId}`, "/desk/tasks", "/desk/today", "/desk/sales-tax"]) revalidatePath(path);
   return { status: "success" };
 }

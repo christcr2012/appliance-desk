@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs/config";
+import { TAX_ROUTE_REDIRECTS } from "./src/lib/tax-route-redirects";
 
 // Content-Security-Policy (added 2026-09-29, part of a proactive
 // scaling/hardening pass — see docs/DECISIONS.md). This is the header
@@ -107,6 +108,10 @@ const nextConfig: NextConfig = {
         hostname: "*.public.blob.vercel-storage.com",
       },
     ],
+  },
+  // W-3: old tax addresses forward to the single Taxes area.
+  async redirects() {
+    return TAX_ROUTE_REDIRECTS.map((rule) => ({ ...rule }));
   },
   async headers() {
     return [

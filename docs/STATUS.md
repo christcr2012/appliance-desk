@@ -1,3 +1,21 @@
+## October 17 — W-3 and W-4 delivered as one bundle, CI and merge pending
+
+W-14, W-2 and W-15 are merged (#480). This PR delivers two whole approved subsections:
+**W-3** one "Taxes" menu entry with four tabs, use tax and audit pack moved inside with the old
+addresses forwarding, and a "File and pay $X on SUTS by <date>" headline on the return pages;
+**W-4** the rental turning points: the signed-delivery To do now names the customer and is due the
+next day, a new owner setting (30 days) puts a Renew / Month-to-month / Pickup decision on the To do
+list, deciding an ending creates exactly one draft pickup visit and a To do, and visits with no
+technician or time within 2 days get "Assign / set a time". Plan and frozen acceptance:
+`docs/pr-cards/W-3.md`; proof per criterion: `current-pr-scorecard.json` and `execution/W-3-delivery.json`.
+
+Verified locally on a throwaway Postgres: typecheck, lint, route inventory, new unit tests and 7 new
+real-database tests, plus the existing month-to-month and early-ending suites (extended to assert the
+single draft pickup). Not yet done: exact-head GitHub CI, independent review, merge. The Renew /
+Month-to-month / Pickup buttons are on the decision page the To do opens, not on the To do row itself.
+Nothing is released; no live Stripe, SMS or email, no spending, no production data touched.
+W-5 (Stripe payment links and phone payment) is next after verified merge.
+
 ## October 17 — W-14, W-2 and W-15 delivered as one bundle, CI and merge pending
 
 W-26 is merged (#478). This single PR delivers three whole approved subsections:

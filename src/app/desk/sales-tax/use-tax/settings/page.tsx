@@ -41,7 +41,7 @@ async function saveUseTaxThreshold(form: FormData) {
       },
     });
   });
-  revalidatePath("/desk/tax/use-tax-settings");
+  revalidatePath("/desk/sales-tax/use-tax/settings");
 }
 
 export default async function UseTaxThresholdPage() {
@@ -54,7 +54,7 @@ export default async function UseTaxThresholdPage() {
   return (
     <main className="mx-auto max-w-2xl space-y-5">
       <Link href="/desk/inventory" className="text-sm underline">Back to inventory</Link>
-      <h1 className="text-xl font-semibold">Consumer use-tax reporting threshold</h1>
+      <h2 className="text-xl font-semibold">Use-tax threshold</h2>
       <p className="text-sm text-ink-soft">
         Owner-only setting. The annual-to-monthly decision uses cumulative yearly
         use tax due, not the purchase value. Changes apply prospectively; filed
@@ -80,7 +80,7 @@ export default async function UseTaxThresholdPage() {
           </button>
         </div>
       </form>
-      <Link href="/desk/tax/use-tax-worksheets" className="underline">
+      <Link href="/desk/sales-tax/use-tax" className="underline">
         View private use-tax worksheets
       </Link>
     </main>

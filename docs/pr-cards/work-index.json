@@ -3048,7 +3048,7 @@
       "dependencies": [
         "W-14"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3064,7 +3064,7 @@
         "tests/purchase-math-and-next-step.test.ts",
         "tests/purchases-w14-w2-w15-integration.test.ts"
       ],
-      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "readiness": "MERGED_ENGINEERING_COMPLETE (#480)",
       "plannedCard": "docs/pr-cards/W-2.md",
       "card": "docs/pr-cards/W-14.md"
     },
@@ -3083,12 +3083,15 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W.md",
-        "src/app/desk/sales-tax/layout.tsx",
-        "src/app/desk/tax/use-tax-worksheets/page.tsx"
+        "src/lib/taxes-tabs.ts",
+        "src/domains/tax/file-and-pay.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-3.md"
+      "tests": [
+        "tests/taxes-in-one-place-w3.test.ts"
+      ],
+      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "plannedCard": "docs/pr-cards/W-3.md",
+      "card": "docs/pr-cards/W-3.md"
     },
     {
       "id": "W-4",
@@ -3098,19 +3101,22 @@
         "W-3"
       ],
       "status": "APPROVED",
-      "migration": "none",
+      "migration": "rental_ending_notice",
       "budget": 450,
       "units": [
         "W-4"
       ],
       "evidence": [
         "docs/designs/BATCH-W.md",
-        "src/domains/agreements/index.ts",
-        "src/domains/agreements/progress.ts"
+        "src/domains/agreements/pickup-draft.ts",
+        "src/domains/exceptions/turning-points-attention.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-4.md"
+      "tests": [
+        "tests/rental-turning-points-w4-integration.test.ts"
+      ],
+      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "plannedCard": "docs/pr-cards/W-4.md",
+      "card": "docs/pr-cards/W-3.md"
     },
     {
       "id": "W-5",
@@ -3472,7 +3478,7 @@
       "dependencies": [
         "W-26"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "purchase_records",
       "budget": 500,
       "units": [
@@ -3488,7 +3494,7 @@
         "tests/purchase-math-and-next-step.test.ts",
         "tests/purchases-w14-w2-w15-integration.test.ts"
       ],
-      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "readiness": "MERGED_ENGINEERING_COMPLETE (#480)",
       "plannedCard": "docs/pr-cards/W-14.md",
       "card": "docs/pr-cards/W-14.md"
     },
@@ -3499,7 +3505,7 @@
       "dependencies": [
         "W-2"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3515,7 +3521,7 @@
         "tests/purchase-math-and-next-step.test.ts",
         "tests/purchases-w14-w2-w15-integration.test.ts"
       ],
-      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "readiness": "MERGED_ENGINEERING_COMPLETE (#480)",
       "plannedCard": "docs/pr-cards/W-15.md",
       "card": "docs/pr-cards/W-14.md"
     },
@@ -3698,7 +3704,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-14",
+  "activeExecution": "W-3",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3751,6 +3757,10 @@
     {
       "id": "W-14",
       "path": "docs/pr-cards/execution/W-14.json"
+    },
+    {
+      "id": "W-3",
+      "path": "docs/pr-cards/execution/W-3.json"
     }
   ]
 }

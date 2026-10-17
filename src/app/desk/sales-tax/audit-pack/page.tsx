@@ -27,7 +27,7 @@ export default async function AuditPackPage({ searchParams }: { searchParams: Pr
         <Field id="from" name="from" label="From" type="date" defaultValue={from} required />
         <Field id="to" name="to" label="To" type="date" defaultValue={to} required />
         <Button type="submit">Show</Button>
-        {pack && <a className="underline" href={`/desk/tax/audit-pack/export?from=${pack.from}&to=${pack.to}`}>Download spreadsheet</a>}
+        {pack && <a className="underline" href={`/desk/sales-tax/audit-pack/export?from=${pack.from}&to=${pack.to}`}>Download spreadsheet</a>}
       </form>
       {"error" in range && <p role="alert" className="text-sm font-semibold text-danger">{range.error}</p>}
       {pack && (

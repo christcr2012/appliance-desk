@@ -126,6 +126,7 @@ describe.skipIf(!enabled)("a month-to-month rental can be ended online", () => {
     await prisma.invoice.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.consentRecord.deleteMany({ where: { customerId: { in: [A.customer, B.customer] } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: ids } } });
+    await prisma.job.deleteMany({ where: { agreementId: { in: ids } } });
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: ids } } });
     await prisma.serviceAddress.deleteMany({ where: { id: { in: [A.address, B.address] } } });
     await prisma.customer.deleteMany({ where: { id: { in: [A.customer, B.customer] } } });
@@ -146,6 +147,8 @@ describe.skipIf(!enabled)("a month-to-month rental can be ended online", () => {
     expect(requested.terminationPolicyVersion).toBe(`mtm-v${version}`);
     expect(stripeMock.state.get(a.stripeSubscriptionId!)).toBe(Math.floor(effective.getTime() / 1000) - 1);
     expect(await prisma.consentRecord.count({ where: { customerId: A.customer, kind: "rental_end_request" } })).toBeGreaterThan(0);
+    // W-4: the ending decision created exactly one unscheduled draft pickup (and the concurrent repeat none).
+    expect(await prisma.job.findMany({ where: { agreementId: a.id, type: "REMOVAL" }, select: { status: true, scheduledAt: true } })).toEqual([{ status: "SCHEDULED", scheduledAt: null }]);
 
     const before = await runDueTerminations(new Date("2027-04-07T12:00:00Z"));
     expect(before.needsReview.filter((n) => n.agreementId === a.id)).toEqual([]);

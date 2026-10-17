@@ -17,8 +17,9 @@ test.describe("sales tax areas and exemption navigation", () => {
     await page.goto("/desk/sales-tax/areas");
     await expect(page.getByRole("heading", { name: "Tax areas and official rate sources" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Official rate review and undo" })).toBeVisible();
-    await page.getByRole("navigation", { name: "Sales tax sections" }).getByRole("link", { name: "Exemptions" }).click();
-    await expect(page.getByRole("heading", { name: "Exemption certificates" })).toBeVisible();
+    await page.getByRole("navigation", { name: "Taxes sections" }).getByRole("link", { name: "Setup" }).click();
+    await page.getByRole("link", { name: "Customers who don't pay tax" }).click();
+    await expect(page.getByRole("heading", { name: "Customers who don't pay tax" })).toBeVisible();
     await expect(page.getByText(/existing customer tax exemptions panel/i)).toBeVisible();
   });
   test("official provider failure is visible and never shown as verified", async ({ page }) => {
