@@ -14,7 +14,7 @@ async function saveRetention(form: FormData) {
   const raw = form.get("years");
   const years = restore ? RECOMMENDED_RETENTION_YEARS : Number(typeof raw === "string" ? raw : "");
   await saveRecordRetentionYears(session.user.id, years, Number(form.get("expectedYears")));
-  revalidatePath("/desk/tax/record-retention");
+  revalidatePath("/desk/sales-tax/record-retention");
 }
 
 export default async function RecordRetentionPage() {
@@ -24,7 +24,7 @@ export default async function RecordRetentionPage() {
   return (
     <main className="mx-auto max-w-2xl space-y-5">
       <Link href="/desk/purchases" className="text-sm underline">Back to purchases</Link>
-      <h1 className="text-xl font-semibold">How long to keep purchase records</h1>
+      <h2 className="text-xl font-semibold">How long to keep purchase records</h2>
       <p className="text-sm text-ink-soft">
         Owner-only setting. Receipts for appliances and parts are kept at least this long. A receipt that a filed tax
         return relies on can never be removed, whatever you choose here. Ask your CPA what period fits your situation.

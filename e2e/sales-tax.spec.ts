@@ -23,18 +23,24 @@ test.describe("sales tax overview and resolved Today routing", () => {
     expect(results.violations).toEqual([]);
   });
 
-  test("six tax tabs have working navigation at phone width and dark mode", async ({ page }) => {
+  test("four tax tabs have working navigation at phone width and dark mode", async ({ page }) => {
     test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
     await page.setViewportSize({ width: 360, height: 780 });
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/desk/sales-tax");
     await expect(page.getByRole("heading", { name: "Tax overview" })).toBeVisible();
-    const nav = page.getByRole("navigation", { name: "Sales tax sections" });
-    for (const name of ["Overview", "Returns", "Areas", "Exemptions", "What's taxed", "Setup"]) {
+    const nav = page.getByRole("navigation", { name: "Taxes sections" });
+    for (const name of ["To file", "Use tax", "Rates & areas", "Setup"]) {
       await expect(nav.getByRole("link", { name })).toBeVisible();
     }
-    await nav.getByRole("link", { name: "Returns" }).click();
+    await expect(nav.getByRole("link", { name: "To file" })).toHaveAttribute("aria-current", "page");
+    await page.getByRole("link", { name: "All returns and filing history" }).click();
     await expect(page.getByRole("heading", { name: "Tax filing returns" })).toBeVisible();
+    await nav.getByRole("link", { name: "Use tax" }).click();
+    await expect(nav.getByRole("link", { name: "Use tax" })).toHaveAttribute("aria-current", "page");
+    // The old addresses forward into the one Taxes area.
+    await page.goto("/desk/tax/use-tax-worksheets");
+    await expect(page).toHaveURL(/\/desk\/sales-tax\/use-tax$/);
   });
 
   test("Today tax item opens the actual filing work instead of looping to Today", async ({ page }) => {

@@ -103,8 +103,8 @@ export default async function InventoryPage({
 
       {session.user.role === "OWNER" && (
         <nav aria-label="Inventory purchase tax" className="mb-4 flex flex-wrap gap-4 text-sm">
-          <Link href="/desk/tax/use-tax-settings" className="underline">Use-tax threshold</Link>
-          <Link href="/desk/tax/use-tax-worksheets" className="underline">Private filing worksheets</Link>
+          <Link href="/desk/sales-tax/use-tax/settings" className="underline">Use-tax threshold</Link>
+          <Link href="/desk/sales-tax/use-tax" className="underline">Private filing worksheets</Link>
         </nav>
       )}
 

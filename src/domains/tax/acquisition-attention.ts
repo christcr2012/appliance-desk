@@ -160,7 +160,7 @@ export async function listAcquisitionTaxAttention(
         (overdueCents > 0
           ? ` $${(overdueCents / 100).toFixed(2)} is linked to filing periods with past due dates as of ${businessDateKey(now)}.`
           : " Verify the filing deadline for each period."),
-      href: "/desk/tax/use-tax-worksheets",
+      href: "/desk/sales-tax/use-tax",
       since: now,
     });
   }

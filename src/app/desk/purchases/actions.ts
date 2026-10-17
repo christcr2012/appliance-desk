@@ -133,7 +133,7 @@ export async function updatePurchaseTaxAction(raw: unknown): Promise<PurchaseAct
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't save the tax answer." };
   }
-  for (const path of ["/desk/purchases", `/desk/purchases/${data.purchaseId}`, "/desk/inventory", "/desk/tasks", "/desk/today", "/desk/tax"]) revalidatePath(path);
+  for (const path of ["/desk/purchases", `/desk/purchases/${data.purchaseId}`, "/desk/inventory", "/desk/tasks", "/desk/today", "/desk/sales-tax"]) revalidatePath(path);
   return { status: "success", purchaseId: data.purchaseId };
 }
 

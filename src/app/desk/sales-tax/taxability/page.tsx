@@ -21,7 +21,7 @@ export default async function TaxabilityMatrixPage() {
     orderBy: [{ level: "asc" }, { name: "asc" }], take: 75,
   });
   return <main className="space-y-5">
-    <h2 className="text-xl font-semibold">What&apos;s taxed?</h2>
+    <h2 className="text-xl font-semibold">What gets taxed</h2>
     <p className="text-sm text-muted-foreground">The CPA-confirmed treatment for each charge and jurisdiction. Undecided items stay undecided; no automatic filing or billing bypass is implied.</p>
     {session.user.role === "OWNER" ? <TaxActionForm
       title="Record a CPA-confirmed tax rule" action={saveTaxCellAction} submitLabel="Save tax rule">

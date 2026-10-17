@@ -13,7 +13,7 @@ test.describe("sales tax setup shell and owner decisions", () => {
     await page.setViewportSize({ width: 360, height: 780 });
     await page.goto("/desk/sales-tax/setup");
     await expect(page.getByRole("heading", { name: /tax decisions and owner setup/i })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Sales tax sections" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Taxes sections" })).toBeVisible();
     await expect(page.getByLabel("Short-term lease election")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Filing accounts" })).toBeVisible();
     const light = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();

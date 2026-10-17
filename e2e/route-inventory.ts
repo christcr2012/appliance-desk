@@ -280,12 +280,12 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason:
       "An account editor needs a real private filing account id; static page inventory cannot assume an account exists.",
   },
-  { path: "/desk/tax/audit-pack", role: "OWNER", fixture: "/desk/tax/audit-pack" },
-  { path: "/desk/tax/record-retention", role: "OWNER", fixture: "/desk/tax/record-retention" },
-  { path: "/desk/tax/use-tax-settings", role: "OWNER", fixture: "/desk/tax/use-tax-settings" },
-  { path: "/desk/tax/use-tax-worksheets", role: "OWNER", fixture: "/desk/tax/use-tax-worksheets" },
+  { path: "/desk/sales-tax/audit-pack", role: "OWNER", fixture: "/desk/sales-tax/audit-pack" },
+  { path: "/desk/sales-tax/record-retention", role: "OWNER", fixture: "/desk/sales-tax/record-retention" },
+  { path: "/desk/sales-tax/use-tax/settings", role: "OWNER", fixture: "/desk/sales-tax/use-tax/settings" },
+  { path: "/desk/sales-tax/use-tax", role: "OWNER", fixture: "/desk/sales-tax/use-tax" },
   {
-    path: "/desk/tax/use-tax-worksheets/[periodId]",
+    path: "/desk/sales-tax/use-tax/[periodId]",
     role: "OWNER",
     fixture: "A generated consumer-use-tax filing period with a valid state account",
     manualOnlyReason:
