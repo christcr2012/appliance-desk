@@ -2864,7 +2864,7 @@
         "tests/public-pages-render.test.tsx",
         "tests/vc3-public-content-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/V-C3.md",
       "risk": "content",
       "card": "docs/pr-cards/V-C3.md"
@@ -2883,12 +2883,19 @@
         "V-C4"
       ],
       "evidence": [
-        "docs/designs/BATCH-V.md"
+        "docs/designs/BATCH-V.md",
+        "docs/pr-cards/V-C4.md"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/vc4-website-editor.test.ts",
+        "tests/vc5-template-contract.test.ts",
+        "tests/vc4-website-editor-integration.test.ts",
+        "e2e/website-editor.spec.ts"
+      ],
+      "readiness": "IN_PROGRESS",
       "plannedCard": "docs/pr-cards/V-C4.md",
-      "risk": "screens"
+      "risk": "screens",
+      "card": "docs/pr-cards/V-C4.md"
     },
     {
       "id": "V-C5",
@@ -2904,12 +2911,19 @@
         "V-C5"
       ],
       "evidence": [
-        "docs/designs/BATCH-V.md"
+        "docs/designs/BATCH-V.md",
+        "docs/pr-cards/V-C4.md"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/V-C5.md",
-      "risk": "verification"
+      "tests": [
+        "tests/vc4-website-editor.test.ts",
+        "tests/vc5-template-contract.test.ts",
+        "tests/vc4-website-editor-integration.test.ts",
+        "e2e/website-editor.spec.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/V-C4.md",
+      "risk": "verification",
+      "card": "docs/pr-cards/V-C4.md"
     },
     {
       "id": "O-6",
@@ -3769,7 +3783,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "V-C3",
+  "activeExecution": "V-C4",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3854,6 +3868,10 @@
     {
       "id": "V-C3",
       "path": "docs/pr-cards/execution/V-C3.json"
+    },
+    {
+      "id": "V-C4",
+      "path": "docs/pr-cards/execution/V-C4.json"
     }
   ]
 }
