@@ -147,6 +147,21 @@ const nextConfig: NextConfig = {
         source: "/",
         headers: [{ key: "Content-Security-Policy", value: cspHeader.replace("img-src 'self';", "img-src 'self' https://tracker.metricool.com;") }],
       },
+      // V-C4: the owner's select-to-edit preview shows a public page inside the Website screen. Only a PUBLIC page opened
+      // with ?select=1 may be framed, and only by this same website (never the desk, the portal or any API). Visitors
+      // never get draft words either way: a draft is shown to a signed-in owner or admin only. Everything else keeps the
+      // deny-all baseline above.
+      ...["/", "/(pricing|how-it-works|service-area|contact|launch|privacy|terms|accessibility)", "/rent/:path*"].map((source) => ({
+        source,
+        has: [{ type: "query" as const, key: "select", value: "1" }],
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          {
+            key: "Content-Security-Policy",
+            value: cspHeader.replace("img-src 'self';", "img-src 'self' https://tracker.metricool.com;").replace("frame-ancestors 'none';", "frame-ancestors 'self';"),
+          },
+        ],
+      })),
       {
         // Keep the admin desk, customer portal, and per-customer signing
         // links out of search engines.

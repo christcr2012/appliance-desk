@@ -1,0 +1,74 @@
+{
+  "subsections": [
+    {
+      "id": "V-C4",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "A Website destination appears for owners and admins only (in the More list of the desk menu, with the Settings link kept), and /desk/settings/website opens on an overview showing the live version and when it went live, whether a draft exists and how many changes it holds, and four tasks: Edit a page, Photos, Contact & prices, Review & publish; staff, customers and signed-out visitors are refused at the page and at every action, not only hidden.",
+          "evidence": "src/lib/desk-navigation.ts adds Website to the More list for owner and admin only (tests/vc4-website-editor.test.ts proves STAFF, CUSTOMER and signed-out get no entry; tests/w8-menu-sections.test.ts updated); src/app/desk/settings/website/page.tsx opens on an overview with the live version and time, the draft change count and the four tasks; requireRole(\"OWNER\",\"ADMIN\") guards the page and every action, proven for staff, customers and signed-out in tests/vc4-website-editor.test.ts and, at the domain, in tests/vc4-website-editor-integration.test.ts (staff, deactivated owner, unknown user)."
+        },
+        {
+          "criterion": "Edit a page lists the public pages by familiar names with how many items each holds, and search finds a phrase or a label across all items without showing a wall of inputs; on a phone the flow is Page, then Section, then Edit with an Edit/Preview switch, and on a wide screen the page list, the real page preview and the selected item sit side by side, with no sideways scrolling at 360, 768 and 1440 pixels.",
+          "evidence": "workspace.tsx lists pages by familiar names (pages.ts) with changed counts and a search box over every item; phone flow is page, then section, then edit with an Edit/Preview switch (hidden/xl classes), side by side from the xl width; tests/vc4-website-editor-ui.test.tsx covers search and navigation; e2e/website-editor.spec.ts scans overview, editor, photos, review and history at 360/768/1440 in light and dark for sideways scrolling and accessibility (runs in CI)."
+        },
+        {
+          "criterion": "Selecting an item shows where it appears, the live value or picture, the proposed value, the other places that share it, and when a change takes effect; words show a counter and their limit; a button or link shows its words and its destination as separate controls (known page, https address, your phone, your email); a picture is chosen from the photo library or uploaded, with its description or a decorative choice and a focus point shown in wide, square and tall crops; a promotion shows on/off and Colorado start and end with a plain sentence saying whether it is visible now; every value is saved only if it passes the same rules publishing uses.",
+          "evidence": "field-editor.tsx shows where an item appears, what is live and what is proposed, shared places, when it takes effect, the counter and limit, the facts a sentence may use, separate link words and destination, the picture library with upload, description, decorative choice, focus sliders and crop previews, and promotion on/off with Colorado start and end and a visible-now sentence; values are validated by the same rules at save (tests/vc4-website-editor-ui.test.tsx, tests/vc4-website-editor.test.ts for Colorado time round trips)."
+        },
+        {
+          "criterion": "Preview shows the real page through a signed-in, same-origin preview route for owners and admins only, for any public page, from the saved draft or an old version and at a chosen moment; Select this content to edit works inside it: clicking marked words selects that item once the message passes origin, revision and known-item checks, and a matching keyboard list does the same; the public site renders no edit markers, owner data or editable endpoints, proved by a test.",
+          "evidence": "src/app/website-preview/route.ts (404 for anyone but an active owner/admin, validated page, version and moment, redirect to the public page with ?select=1), request.ts (marks words only for owner/admin who asked), preview-markers.ts and preview-bridge.tsx (marks removed after load, click reports the item to this website's origin and previewed version only), HeroPicture data-site-key for the home photo, the workspace message handler (origin, version and key checked) and a keyboard list; tests/vc4-website-editor.test.ts, tests/vc4-preview-bridge.test.tsx and tests/vc4-website-editor-ui.test.tsx prove these; no marks exist on the public site (e2e checks the preview text for marks; visitors always get selectable false)."
+        },
+        {
+          "criterion": "The action bar offers Save draft, Preview and Review N changes, says Saving, Saved or the error honestly and never suggests a saved draft is published; a failed save keeps what was typed; leaving a changed form asks first; pressing Save twice quickly saves once; a draft changed somewhere else is refused with a plain message and the typed values are kept.",
+          "evidence": "The action bar in workspace.tsx offers Save draft, Preview and Review N changes with honest states; a failed save keeps what was typed and shows the error (component test), a double press saves once (component test), a changed-elsewhere draft is refused with a reload button (STALE_DRAFT_MESSAGE, tested at the domain and in the browser spec), leaving with unsaved changes asks via the browser prompt and an in-screen confirm."
+        },
+        {
+          "criterion": "Review & publish shows plain before and after words, picture thumbnails and crops, link destinations, the facts the changed words use with their current owner values, problems that block publishing, and the pages affected; Publish changes only the reviewed draft, requires the draft version and the live version the owner looked at, refuses if either moved, publishes once on a double click, and success links to the live pages.",
+          "evidence": "review-panel.tsx shows before and after for every change with link destinations and picture thumbnails, the business facts used with their current values, blocking problems and pages affected (getDraftReview, tests/vc4-website-editor-integration.test.ts); publishDraft needs the draft version and the live version reviewed, refuses if either moved, and a repeat or simultaneous publish succeeds as already live without publishing twice (real-Postgres tests, component test for the double press); after publishing it links to the live pages."
+        },
+        {
+          "criterion": "History lists published versions and Restore puts an older version into the draft for review instead of making it live, warning that it replaces the current draft; restoring a version that needs a retired picture is blocked with a message; the draft can be discarded; saving, publishing, restoring and discarding are recorded with who and when.",
+          "evidence": "history-panel.tsx lists versions; restoreRevisionToDraft puts a version in the draft (never live), replaces an open draft only when the screen knew about it, and is blocked with a plain message for a removed picture; discardDraft needs the draft version; all are audited (tests/vc4-website-editor-integration.test.ts, tests/vc4-website-editor-ui.test.tsx for the replace warning and confirmations)."
+        },
+        {
+          "criterion": "Every part of the editor can be used with the keyboard, has labelled controls and an error summary, and passes the automated accessibility check on the overview, editor, review and history screens at phone, tablet and desktop widths in light and dark themes in CI.",
+          "evidence": "Controls are labelled, lists and buttons are keyboard operable, errors appear in an alert region that takes focus, and the component tests run the automated accessibility scan on every field kind, review and history; e2e/website-editor.spec.ts runs the full scan at phone, tablet and desktop widths in light and dark in exact-head CI."
+        }
+      ]
+    },
+    {
+      "id": "V-C5",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "src/domains/site-content/template-contract.ts declares the current template version, every content key and kind it supports and each slot's bounds (length, link kinds, picture focus); a test proves it matches the registry in both directions and that every public slot is registry-owned, bound to a single domain source, or explicitly non-content.",
+          "evidence": "src/domains/site-content/template-contract.ts lists 204 content slots (key, kind, longest text, optional), 14 facts owned elsewhere and 5 structure slots, typed by hand; tests/vc5-template-contract.test.ts proves it equals the editor in both directions (kind, limit, optional), that every slot has exactly one owner, that each fact placeholder has exactly one other owner, and that the committed fingerprint and the template version must be updated on purpose."
+        },
+        {
+          "criterion": "A pure, versioned compatibility plan maps old keys to new locations for a template change, keeps unmapped values in history, reports keys retired, renamed or newly required, applies defaults only to new or unset items and never overwrites customized live text or pictures; it never edits a published row; tested on customized and untouched content.",
+          "evidence": "planCompatibility() in template-contract.ts is pure: it maps renamed keys, reports retired, renamed, newly required and unconvertible items, keeps retired content aside, fills nothing over written content and never edits a stored revision (tests/vc5-template-contract.test.ts)."
+        },
+        {
+          "criterion": "A small saved fixture for each supported content version (text per key, typed values) is kept; tests show both read identically through the codec, customized content survives a simulated template change, and the last published content still renders after a code rollback.",
+          "evidence": "tests/fixtures/site-content/schema-v1.json and schema-v2.json are saved examples of each content format; the tests read both through the codec, check every slot resolves, and show customized content surviving a layout change and a rollback (identical values after change and back)."
+        },
+        {
+          "criterion": "A release rule is enforced in CI: if the template declares it cannot render the last supported content version, the check fails and names the missing compatible release or content migration; the rollback runbook states the owner-proof restore steps.",
+          "evidence": "The same test file is the release rule in the normal CI unit run: it fails if the layout cannot show the last supported content format or a slot changed without the fingerprint and version being updated; docs/runbooks/WEBSITE-TEMPLATE-ROLLBACK.md gives the owner-proof change and rollback steps."
+        },
+        {
+          "criterion": "No anonymous draft data: tests show public pages and the preview route ignore revision and moment parameters for visitors, staff and customers, that draft-only text and ids never appear in public output, and that the preview route is refused to anyone who is not an active owner or admin.",
+          "evidence": "tests/vc4-website-editor.test.ts proves visitors, staff and customers always get the live words and the real time whatever revision, previewAt or select they send (the draft reader is never called), that marks appear only for an owner/admin who asked, and that the preview door returns 404 with no draft wording for everyone else; e2e/security-response-headers.spec.ts adds that only public pages opened for select-to-edit may be framed and the door is 404 for a visitor."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 1973,
+  "productionRemoved": 600,
+  "planComparison": "Actual production change is about +1973/-600 lines against the 2800-line estimate. The two subsections, their boundary and all thirteen frozen acceptance items are unchanged and delivered. Deliberate differences: the preview door is a small route handler (src/app/website-preview/route.ts) that checks the page and version and redirects to the real public page opened with ?select=1, rather than a separate page that re-renders the public components, so the owner sees exactly what visitors will see and nothing is duplicated; only public pages opened with ?select=1 may be framed (header rule), never the desk, portal or APIs; the Website entry sits in the More list (the W-8 menu keeps its 14 main entries); list-type items have no editor because no item uses one yet. The visual redesign (V-1 to V-4) was not started.",
+  "newEngineering": "Page and section map; draft review and diff with facts used and pages affected; publish that needs the draft version and the live version reviewed and is idempotent; restore to draft; discard; overview reader; a non-mutating picture check; invisible selection marks and the preview script; the signed-in preview door and its framing rule; the overview, page list, search, item panels for words, links, pictures and promotions, action bar, review, history and discard screens; Colorado time helper; navigation entry; template contract, compatibility plan, two saved content-format examples and a fingerprint release rule; unit, component, real-Postgres and browser tests; runbook and docs.",
+  "relatedWorkDecision": "V-C4 and V-C5 are delivered together because the contract (V-C5) is the registry-and-editor completeness proof for what the editor (V-C4) exposes, both change the same publish and restore signatures once, and the anonymous-draft proof covers the editor's preview door. V-C4 alone leaves the coming redesign unprotected; V-C5 alone has no editor to protect.",
+  "decision": "SUBSTANTIAL"
+}

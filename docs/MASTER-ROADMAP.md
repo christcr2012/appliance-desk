@@ -1,6 +1,6 @@
-## What is next — October 17 V-C3 delivery
+## What is next — October 17 V-C4 and V-C5 delivery
 
-V-C1 and V-C2 are merged (#487). One PR delivers V-C3: every public page, the menu, footer, notice bar, forms and page titles read from editable website content (starting text equals today's words), with checked links, named facts, scheduled promotions, the website photo on the home page, and a runtime marker test proving coverage; exact-head CI, review and merge remain pending. V-C4 (owner editor with preview, publish and restore) and V-C5 (template contract and coverage proof) are next, then V-1…V-4.
+V-C3 is merged (#488). One PR delivers V-C4 (the owner Website screen: pages, search, item panels, real-page preview with click-to-edit, honest save, review and publish with stale-change protection, history, restore-to-draft, discard) and V-C5 (template contract, compatibility plan, saved fixtures, release rule, rollback runbook, anonymous-draft tests); exact-head CI, review and merge remain pending. The visual redesign V-1…V-4 is next and ends at the owner's before/after screenshot acceptance (gate S-V3).
 
 # MASTER ROADMAP — scope and ordered work coverage
 

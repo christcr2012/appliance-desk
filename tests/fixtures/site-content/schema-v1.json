@@ -1,0 +1,10 @@
+{
+  "_about": "A saved website revision in content format 1 (plain text per key). One retired key is included on purpose: it must be kept, never shown.",
+  "contentSchemaVersion": 1,
+  "fields": {
+    "how.intro": "Our own words for how it works. Ask {businessName} anything.",
+    "home.hero.heading": "Appliances for the month, not the mortgage",
+    "pricing.intro": "",
+    "retired.example.key": "Text from a field that no longer exists"
+  }
+}

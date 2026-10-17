@@ -55,3 +55,22 @@ test("a client transition from privacy to how-it-works retains public tracker im
   });
   await sent;
 });
+
+test("only a public page opened for the owner's select-to-edit preview may be framed, and only by this website", async ({ request }) => {
+  for (const path of ["/", "/pricing", "/how-it-works", "/rent/greeley"]) {
+    const normal = await request.get(path);
+    expect(normal.headers()["x-frame-options"], path).toBe("DENY");
+    expect(normal.headers()["content-security-policy"], path).toContain("frame-ancestors 'none'");
+    const preview = await request.get(`${path}?select=1`);
+    expect(preview.headers()["x-frame-options"], path).toBe("SAMEORIGIN");
+    expect(preview.headers()["content-security-policy"], path).toContain("frame-ancestors 'self'");
+  }
+  for (const path of ["/login", "/desk", "/desk/settings/website", "/account", "/api/uploads/photo"]) {
+    const response = await request.get(`${path}?select=1`, { maxRedirects: 0 });
+    expect(response.headers()["x-frame-options"], path).toBe("DENY");
+    expect(response.headers()["content-security-policy"] ?? "", path).not.toContain("frame-ancestors 'self'");
+  }
+  // A visitor can ask for a draft preview but is only ever shown the live website, and the preview door is not there for them.
+  const door = await request.get("/website-preview?path=/&revision=abcdefgh1234", { maxRedirects: 0 });
+  expect(door.status()).toBe(404);
+});

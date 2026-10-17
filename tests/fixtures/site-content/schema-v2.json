@@ -1,0 +1,13 @@
+{
+  "_about": "A saved website revision in content format 2 (typed values). Covers text, a link, a picture, a promotion and a hidden item.",
+  "contentSchemaVersion": 2,
+  "fields": {
+    "how.intro": { "kind": "text", "text": "Our own words for how it works. Ask {businessName} anything." },
+    "home.hero.heading": { "kind": "text", "text": "Appliances for the month, not the mortgage" },
+    "header.cta.live": { "kind": "link", "label": "Get a quote", "target": { "type": "page", "path": "/contact" } },
+    "home.hero.cta.primary": { "kind": "link", "label": "Call us", "target": { "type": "phone" } },
+    "home.hero.image": { "kind": "image", "assetId": "fixtureasset0001", "alt": "A washer and dryer in a bright laundry room", "decorative": false, "focalX": 40, "focalY": 60 },
+    "site.banner.promotion": { "kind": "promotion", "title": "Fall special", "body": "Ask about our fall offer.", "enabled": true, "startsAtUtc": "2026-10-01T06:00:00.000Z", "endsAtUtc": "2026-11-01T05:59:00.000Z" },
+    "home.feature.promotion": { "kind": "hidden" }
+  }
+}

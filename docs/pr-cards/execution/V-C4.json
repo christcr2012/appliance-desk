@@ -10,12 +10,12 @@
   "references": [
     {
       "path": "src/app/desk/settings/website/page.tsx",
-      "anchor": "export default async function WebsiteTextPage",
+      "anchor": "export default async function WebsitePage",
       "purpose": "Current website screen to replace"
     },
     {
       "path": "src/app/desk/settings/website/actions.ts",
-      "anchor": "export async function saveWebsiteDraftAction",
+      "anchor": "export async function saveWebsiteValuesAction",
       "purpose": "Server actions"
     },
     {
@@ -49,11 +49,21 @@
     "src/domains/site-content/template-contract.ts",
     "src/domains/site-content/preview-markers.ts",
     "src/components/site/preview-bridge.tsx",
-    "src/app/desk/settings/website/preview/page.tsx",
+    "src/app/website-preview/route.ts",
     "tests/vc4-website-editor.test.ts",
     "tests/vc4-website-editor-integration.test.ts",
     "tests/vc5-template-contract.test.ts",
-    "e2e/website-editor.spec.ts"
+    "e2e/website-editor.spec.ts",
+    "src/domains/site-content/pages.ts",
+    "src/domains/site-content/editor-fields.ts",
+    "src/app/desk/settings/website/workspace.tsx",
+    "src/app/desk/settings/website/field-editor.tsx",
+    "src/app/desk/settings/website/review-panel.tsx",
+    "src/app/desk/settings/website/history-panel.tsx",
+    "src/app/desk/settings/website/value-view.tsx",
+    "tests/fixtures/site-content/schema-v1.json",
+    "tests/fixtures/site-content/schema-v2.json",
+    "docs/runbooks/WEBSITE-TEMPLATE-ROLLBACK.md"
   ],
   "invariants": [
     "Publish and restore never change a version the owner did not review.",

@@ -160,7 +160,7 @@ Design: `docs/designs/BATCH-V.md`; work coverage and prerequisites: work-index.
 
 ### Website content control acceptance — V-C1…V-C5
 
-_Progress: V-C1 and V-C2 are merged (#487). V-C3 (every public page bound to editable content, scheduled promotions, runtime coverage test) is built and tested locally, awaiting exact-head CI and merge; V-C4 and V-C5 are open, so no box below is checked._
+_Progress: V-C1…V-C3 are merged (#487, #488). V-C4 (owner Website screen, preview with click-to-edit, review/publish, history) and V-C5 (template contract and compatibility proof) are built and tested locally, awaiting exact-head CI and merge; no box below is checked until that evidence passes._
 
 - [ ] Every public content item (all routes/variants, header/footer, metadata,
   form labels/messages, photos, links, descriptions, introductions and supported
