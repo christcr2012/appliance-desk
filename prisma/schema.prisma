@@ -145,6 +145,8 @@ model Customer {
   isBusiness      Boolean  @default(false)
   isPropertyManager Boolean @default(false)
   companyName     String?
+  // W-26: customer-owned language preference. Activation is separately reviewer gated.
+  preferredLanguage String @default("en")
 
   // Set the first time this customer is billed through Stripe (Phase 6B)
   // — one Stripe Customer per Appliance Desk customer, never recreated.
@@ -1126,6 +1128,7 @@ model SigningPaymentAttempt {
   agreementId      String
   obligation       AgreementSigningPayment @relation(fields: [agreementId], references: [agreementId], onDelete: Restrict)
   requestKey       String @unique
+  checkoutLocale   String?
   attemptNumber    Int
   method           String
   status           String @default("PREPARED")
@@ -1347,6 +1350,11 @@ model SignatureRecord {
   signingOrderFingerprint String?
   signingAllInCents       Int?
   signingEvidenceVersion  Int?
+  // W-26: immutable language of the actually displayed legal document at signing.
+  shownLanguage String?
+  interfaceLanguage String?
+  translationCopyDigest String?
+  informationalTerms Json?
 
   createdAt DateTime @default(now())
 }
@@ -1771,6 +1779,8 @@ model Estimate {
   leadId         String?
   lead           Lead?          @relation(fields: [leadId], references: [id])
   status         EstimateStatus @default(DRAFT)
+  // Language chosen on an approved quote before an account exists.
+  preferredLanguage String @default("en")
 
   // Internal reference only, e.g. "Sunset Apartments — 12 units" — never
   // shown to the customer (the document just says "Estimate #123").
@@ -2923,6 +2933,8 @@ model CustomerNotice {
   agreementId String?
   kind        String
   dedupeKey   String    @unique
+  language String @default("en")
+  translationCopyDigest String?
   subject     String
   body        String
   status      String    @default("PENDING")
@@ -3166,6 +3178,8 @@ enum MessageState {
 }
 
 model MessageDelivery {
+  contentLanguage String @default("en")
+  translationCopyDigest String?
   id                String         @id @default(cuid())
   idempotencyKey    String         @unique
   channel           MessageChannel
@@ -3907,4 +3921,49 @@ model ExceptionSnooze {
   updatedAt      DateTime @updatedAt
 
   @@index([snoozedUntil])
+}
+
+// W-26 reviewed Spanish copy activation: explicitly separate owner recording of
+// actual reviewer evidence from deploy, and invalidate every approval on copy changes.
+model CustomerLanguageReview {
+  language String @id
+  copyDigest String
+  reviewerName String
+  reviewReference String
+  reviewedAt DateTime
+  legalReviewerName String?
+  legalReviewReference String?
+  legalReviewedAt DateTime?
+  publishedAt DateTime?
+  publishedByUserId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events CustomerLanguageReviewEvent[]
+}
+
+model CustomerLanguageReviewEvent {
+  id String @id @default(cuid())
+  language String
+  review CustomerLanguageReview @relation(fields: [language], references: [language], onDelete: Restrict)
+  actorUserId String
+  action String
+  reviewedDigest String
+  evidenceReference String?
+  occurredAt DateTime @default(now())
+  @@index([language, occurredAt])
+}
+
+// Bilingual draft, never itself a public publication or legal approval.
+// The source digest invalidates stale Spanish wording if English is edited.
+model CustomerTranslationDraft {
+  id String @id @default(cuid())
+  sourceKind String
+  sourceKey String
+  englishDigest String
+  spanishText String
+  revision Int @default(1)
+  editedByUserId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([sourceKind, sourceKey])
 }

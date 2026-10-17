@@ -74,7 +74,7 @@ export async function createSigningTestCheckout(
   const stripe = getStripeClient();
   const attemptRow = await prisma.signingPaymentAttempt.findUniqueOrThrow({
     where: { id: attempt.id },
-    select: { providerObjectId: true, createdAt: true, status: true },
+    select: { providerObjectId: true, createdAt: true, status: true, checkoutLocale:true },
   });
   if (!["PREPARED", "PENDING"].includes(attemptRow.status)) {
     throw new Error("Signing attempt cannot be retried automatically.");
@@ -99,11 +99,16 @@ export async function createSigningTestCheckout(
       : "/account";
     const existingCustomer=await prisma.rentalAgreement.findUniqueOrThrow({
       where:{id:agreementId},
-      select:{customer:{select:{stripeCustomerId:true}}},
+      select:{customer:{select:{stripeCustomerId:true,preferredLanguage:true}}},
     });
     const w24Setup=!!source?.sourceEstimate?.customerAutoFinishEnabled;
+    if(attemptRow.checkoutLocale==="es") {
+      const {getSpanishReview}=await import("@/domains/language/review");
+      if(!(await getSpanishReview()).enabled) throw new Error("Spanish payment requires current review before provider submission.");
+    }
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
+      ...(attemptRow.checkoutLocale?{locale:attemptRow.checkoutLocale as "en"|"es"}:{}),
       payment_method_types: ["card"],
       ...(w24Setup?(existingCustomer.customer.stripeCustomerId
         ? {customer:existingCustomer.customer.stripeCustomerId}

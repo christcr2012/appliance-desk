@@ -1,0 +1,37 @@
+{
+  "subsections": [
+    {
+      "id": "W-26",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "Customers choose English or Espa\u00f1ol on quote, agreement, signing, payment and portal pages; preference remembered on customer and used in email and future texts.",
+          "evidence": "Customer/quote persistence and scoped actions, quote-note.ts, signing/portal consumers and localized outbound callers are reconciled in execution/W-26-coverage.md. customer-language-database-w26.test.ts proves new quotes inherit stored preference without rewriting old quotes; estimate-send-email-switch.test.ts proves Spanish and ACCEPTED/UNKNOWN outcomes. Actions diagnostic 38984045880 passed all four production browser shards including real bilingual preference/quote/signing flow."
+        },
+        {
+          "criterion": "Draft translations receive fluent reviewer approval before Spanish is switched on; English signed text controls until counsel review.",
+          "evidence": "review.ts, drafts.ts and runtime.ts require complete current source-bound drafts, matching separate fluent/legal evidence and explicit owner publication. Missing/stale/revoked approval falls back to English or blocks a new Spanish dispatch. runtime/drafts/authorization tests and the disposable CI browser revoke scenario pass. No real fluent/legal approval or publication occurred; English governing text is stored unchanged."
+        },
+        {
+          "criterion": "Owner desk English; owner-editable Spanish text beside English in templates and content.",
+          "evidence": "Owner/ADMIN-only versioned editor exposes independently editable Spanish website, communication subject/body, message, notice, legal and quote-note counterparts; strict variable/source/revision checks and audited authorization are covered in drafts/authorization/runtime tests. Owner desk stays English in the bilingual browser scenario. Reviewed website read API is prepared; public Spanish routing belongs to Batch V under \u00a76.6."
+        },
+        {
+          "criterion": "Both-language full customer pages have no missing text; email preference and immutable shown-language signing are tested.",
+          "evidence": "Full consumer matrix and dispatch classification are in execution/W-26-coverage.md. Actions 38984045880 passed all three unit/real-Postgres shards, migration upgrade, restore drill, all four production builds and all four browser shards. Both-language rendered portal/quote/sign/auth controls, exact money, errors/retries, consent and immutable legal/interface/digest evidence are covered. Final small safety additions passed 29 focused unit tests and six isolated Postgres tests; final PR-head CI remains a mandatory merge gate."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 3147,
+  "productionRemoved": 752,
+  "planComparison": "The original 900-line estimate understated complete nested portal, credential, legal/notice, provider and owner-template runtime coverage; original acceptance and boundaries are unchanged.",
+  "newEngineering": "Complete persisted bilingual customer journey, versioned source-bound owner translations, fail-closed review/publication, immutable signing evidence and durable checkout locale; existing providers and money calculations preserved.",
+  "relatedWorkDecision": "Finish the one original large W-26 subsection rather than split technical helpers or begin dependent W-14. Existing external activation and live acceptance gates remain separate.",
+  "decision": "SUBSTANTIAL_EXCEPTION",
+  "exceptionEvidence": [
+    "One whole original approved subsection spans every customer route and dispatch class; source matrix demonstrates integrated consumer delivery.",
+    "Production change measured against inspected main using whitespace-insensitive numstat; new runtime coverage is substantial beyond the original estimate.",
+    "Independent engineering review found no remaining blockers; diagnostic real DB, production build and all browser shards passed; final exact-head CI remains required."
+  ]
+}

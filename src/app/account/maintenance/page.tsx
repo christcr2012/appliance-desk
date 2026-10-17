@@ -1,3 +1,5 @@
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { getServerSession } from "@/lib/session";
 import {
   getPortalData,
@@ -6,7 +8,7 @@ import {
 } from "@/domains/portal";
 import { maintenanceStatusLabel } from "@/lib/status-labels";
 import { NewRequestForm } from "./new-request-form";
-import { formatBusinessDate } from "@/lib/business-date";
+import { formatBusinessDate as originalBusinessDate } from "@/lib/business-date";
 import {
   ButtonLink,
   Card,
@@ -33,6 +35,9 @@ export default async function AccountMaintenancePage({
   const { applianceId, request, page: rawPage } = await searchParams;
   const page = positivePage(rawPage);
   const session = await getServerSession();
+  const locale = session ? await portalLanguage(session.user.id) : "en";
+  const formatBusinessDate=(date:Date)=>originalBusinessDate(date,locale);
+  const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
   const [customer, applianceOptions] = session
     ? await Promise.all([
         getPortalData(session.user.id),
@@ -43,10 +48,10 @@ export default async function AccountMaintenancePage({
   if (!customer || !session) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title="Maintenance" />
+        <PageHeader title={t("Maintenance")} />
         <EmptyState
-          title="No rental account found"
-          description="Contact the business if you expected to see service requests here."
+          title={t("No rental account found")}
+          description={t("Contact the business if you expected to see service requests here.")}
         />
       </div>
     );
@@ -70,8 +75,8 @@ export default async function AccountMaintenancePage({
   return (
     <div className="max-w-4xl">
       <PageHeader
-        title="Maintenance"
-        description="Report a problem, request a pickup, and review your service requests."
+        title={t("Maintenance")}
+        description={t("Report a problem, request a pickup, and review your service requests.")}
       />
 
       {request === "pickup" && (
@@ -79,19 +84,17 @@ export default async function AccountMaintenancePage({
           role="status"
           className="mb-6 rounded-card border border-line bg-subtle p-4 text-sm text-ink"
         >
-          Tell us which property and appliances you want picked up, and your
-          preferred dates. This submits a request for review; it does not cancel
-          your rental or change billing automatically.
+          {t("Tell us which property and appliances you want picked up, and your preferred dates. This submits a request for review; it does not cancel your rental or change billing automatically.")}
         </p>
       )}
 
       <div className="mb-8">
         <Card
-          title={request === "pickup" ? "Request pickup" : "Report a problem"}
+          title={request === "pickup" ? t("Request pickup") : t("Report a problem")}
           description={
             request === "pickup"
-              ? "Give us the details and preferred timing. We will review the request and contact you."
-              : "Tell us what is happening and add photos if they help explain the problem."
+              ? t("Give us the details and preferred timing. We will review the request and contact you.")
+              : t("Tell us what is happening and add photos if they help explain the problem.")
           }
         >
           <NewRequestForm
@@ -100,17 +103,17 @@ export default async function AccountMaintenancePage({
             initialApplianceId={initialApplianceId}
             requestKind={request === "pickup" ? "pickup" : "maintenance"}
             requestTitle={
-              request === "pickup" ? "Request pickup" : "Report a problem"
+              request === "pickup" ? t("Request pickup") : t("Report a problem")
             }
           />
         </Card>
       </div>
 
-      <Card title="Your requests">
+      <Card title={t("Your requests")}>
         {!requestPage || requestPage.items.length === 0 ? (
           <EmptyState
-            title="No requests on this page"
-            description="New service requests will appear here after you submit them."
+            title={t("No requests on this page")}
+            description={t("New service requests will appear here after you submit them.")}
           />
         ) : (
           <ul className="divide-y divide-line">
@@ -119,14 +122,14 @@ export default async function AccountMaintenancePage({
                 <p className="font-semibold text-ink">
                   {item.appliance
                     ? `${item.appliance.applianceType.name} (${item.appliance.assetNumber})`
-                    : "General"}
+                    : t("General")}
                 </p>
                 <p className="mt-1 font-medium text-ink-soft">
-                  {maintenanceStatusLabel(item.status)}
+                  {maintenanceStatusLabel(item.status, locale)}
                 </p>
                 <p className="mt-2 text-ink-soft">{item.problem}</p>
                 <p className="mt-2 text-xs text-ink-faint">
-                  Submitted {formatBusinessDate(item.openedAt)}
+                  {t("Submitted")} {formatBusinessDate(item.openedAt)}
                 </p>
               </li>
             ))}
@@ -138,17 +141,13 @@ export default async function AccountMaintenancePage({
             <ButtonLink
               href={`/account/maintenance?page=${page - 1}`}
               variant="secondary"
-            >
-              Newer requests
-            </ButtonLink>
+            >{t("Newer requests")}</ButtonLink>
           )}
           {requestPage?.hasMore && (
             <ButtonLink
               href={`/account/maintenance?page=${page + 1}`}
               variant="secondary"
-            >
-              Older requests
-            </ButtonLink>
+            >{t("Older requests")}</ButtonLink>
           )}
         </div>
       </Card>

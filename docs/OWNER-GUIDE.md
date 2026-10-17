@@ -1,3 +1,9 @@
+## Customer language and Spanish review (W-26)
+
+After the checked W-26 release, customers can save English or Español in their account and use the same choice through quotes and signing. English remains the governing signed agreement. Historical documents keep their recorded content.
+
+In Desk → Settings → Languages, edit Spanish counterparts beside their English sources, including separate communication subjects and bodies. Preserve every template variable. Complete all current drafts, have your chosen fluent reviewer and separate legal reviewer approve the exact displayed version, then explicitly publish. Editing either language invalidates that approval. Missing or outdated content keeps the customer journey in English. These steps do not send a message, grant SMS consent or enable live payments. Engineering is complete in PR #478; final CI/merge and actual release/reviews are still pending.
+
 # Owner's guide (for Chris — plain English, no code)
 
 This explains how to actually run Robinson Appliance Rentals day to day

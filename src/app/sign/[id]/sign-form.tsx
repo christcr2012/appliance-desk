@@ -1,20 +1,31 @@
 "use client";
 
+import { portalLabel } from "@/domains/language/portal-copy";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { signAgreementAction } from "./actions";
 import { formatMoney } from "@/lib/money-ui";
+import { signingText, type SigningKey } from "@/domains/language/signing-copy";
+import type { CustomerLanguage } from "@/domains/language/copy";
 
-export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }: {
+export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0,initialLanguage="en",displayLanguage="en",translationCopyDigest }: {
   signatureRecordId: string;
+  translationCopyDigest?: string;
+  initialLanguage?: "en" | "es";
+  displayLanguage?: CustomerLanguage;
   deliveryOptions?:Array<{id:string;date:string;window:"AM"|"PM"}>;
   offerVersion?:number;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const tr = (word: Parameters<typeof portalLabel>[1]) => portalLabel(displayLanguage,word);
+  const t = (key: SigningKey) => signingText(displayLanguage,key);
   const [selectedOption,setSelectedOption]=useState(deliveryOptions[0]?.id??"");
   const [dryerOutlet,setDryerOutlet]=useState<"THREE_PRONG"|"FOUR_PRONG"|"GAS"|"UNKNOWN">("UNKNOWN");
   const [washerHookups,setWasherHookups]=useState<"YES"|"NO"|"UNKNOWN">("UNKNOWN");
   const [stairs,setStairs]=useState(false);
   const [crewNotes,setCrewNotes]=useState("");
+  const [languagePreference, setLanguagePreference] = useState<"en" | "es">(initialLanguage);
   const [signerName, setSignerName] = useState("");
   const [signerEmail, setSignerEmail] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -28,6 +39,9 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
     setError(null);
     startTransition(async () => {
       const result = await signAgreementAction(signatureRecordId, {
+        languagePreference,
+        interfaceLanguage: displayLanguage,
+        translationCopyDigest,
         signerName,
         signerEmail,
         agreedToTerms,
@@ -56,29 +70,23 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
   if (signed) {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
-        <p className="font-medium">Thanks — your agreement is signed.</p>
+        <p className="font-medium">{t("signed")}</p>
         {paymentNeedsReview ? (
           <p className="mt-1" role="status">
-            We need to review your payment details before collecting any funds.
-            No payment was confirmed here. We&apos;ll contact you to arrange payment and delivery.
+            {tr("We need to review your payment details before collecting any funds. No payment was confirmed here. We’ll contact you to arrange payment and delivery.")}
           </p>
         ) : pendingSigningAmountCents !== null ? (
           <div className="mt-2 space-y-1" role="status">
             <p className="font-semibold">
               {pendingSigningAmountCents > 0
-                ? `Signing amount still to pay: ${formatMoney(pendingSigningAmountCents)}`
-                : "No signing charge is due for this agreement."}
+                ? `${tr("Signing amount still to pay")}: ${formatMoney(pendingSigningAmountCents)}`
+                : tr("No signing charge is due for this agreement.")}
             </p>
-            <p>Signing does not confirm that payment was received. We&apos;ll arrange a
-              secure payment link or an owner-recorded payment if needed, then contact
-              you about delivery. Rent begins billing on delivery; down payments
-              will count toward that first invoice.</p>
+            <p>{tr("Signing does not confirm that payment was received. We’ll arrange a secure payment link or an owner-recorded payment if needed, then contact you about delivery. Rent begins billing on delivery; down payments will count toward that first invoice.")}</p>
           </div>
         ) : (
           <p className="mt-1">
-            We&apos;ll be in touch about setting up payment and scheduling
-            delivery. No payment was confirmed by signing. Your signature
-            confirmation has been recorded.
+            {t("signedNext")}
           </p>
         )}
       </div>
@@ -90,41 +98,52 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
       onSubmit={handleSubmit}
       className="space-y-4 rounded-lg border border-line bg-surface p-5"
     >
+      <label className="block text-sm">Preferred language / Idioma preferido
+        <select value={languagePreference} onChange={(event) => {
+          setLanguagePreference(event.target.value as "en" | "es");
+          router.push(`/sign/${encodeURIComponent(signatureRecordId)}?language=${event.target.value === "es" ? "es" : "en"}`);
+        }}
+          className="mt-1 block w-full rounded border border-line bg-surface p-2">
+          <option value="en">English</option><option value="es">Español</option>
+        </select>
+        <span className="mt-1 block text-xs text-ink-soft">
+          {t("legalNote")}
+        </span>
+      </label>
       {deliveryOptions.length>0&&<fieldset className="space-y-3 rounded border border-line p-3">
-        <legend className="font-semibold">Requested delivery — subject to owner confirmation</legend>
-        <label className="block text-sm">Choose an offered date/window
+        <legend className="font-semibold">{t("appointment")}</legend>
+        <label className="block text-sm">{t("offered")}
           <select required value={selectedOption} onChange={e=>setSelectedOption(e.target.value)}
             className="block w-full rounded border border-line p-2">
             {deliveryOptions.map(o=><option key={o.id} value={o.id}>
-              {o.date} · {o.window==="AM"?"Morning":"Afternoon"}</option>)}
+              {o.date} · {o.window==="AM"?t("morning"):t("afternoon")}</option>)}
           </select>
         </label>
-        <label className="block text-sm">Dryer connection
+        <label className="block text-sm">{t("dryer")}
           <select value={dryerOutlet} onChange={e=>setDryerOutlet(e.target.value as typeof dryerOutlet)}
             className="block w-full rounded border border-line p-2">
-            <option value="UNKNOWN">Not sure</option><option value="THREE_PRONG">3-prong</option>
-            <option value="FOUR_PRONG">4-prong</option><option value="GAS">Gas</option>
+            <option value="UNKNOWN">{t("unsure")}</option><option value="THREE_PRONG">{t("prong3")}</option>
+            <option value="FOUR_PRONG">{t("prong4")}</option><option value="GAS">{t("gas")}</option>
           </select>
         </label>
-        <label className="block text-sm">Washer hookups
+        <label className="block text-sm">{t("washer")}
           <select value={washerHookups} onChange={e=>setWasherHookups(e.target.value as typeof washerHookups)}
             className="block w-full rounded border border-line p-2">
-            <option value="UNKNOWN">Not sure</option><option value="YES">Present</option>
-            <option value="NO">Not present</option>
+            <option value="UNKNOWN">{t("unsure")}</option><option value="YES">{t("yes")}</option>
+            <option value="NO">{t("no")}</option>
           </select>
         </label>
         <label className="flex gap-2 text-sm"><input type="checkbox" checked={stairs}
-          onChange={e=>setStairs(e.target.checked)}/> Stairs or tight access</label>
-        <label className="block text-sm">Crew notes (optional)
+          onChange={e=>setStairs(e.target.checked)}/> {t("stairs")}</label>
+        <label className="block text-sm">{t("crew")}
           <textarea value={crewNotes} onChange={e=>setCrewNotes(e.target.value)}
             maxLength={1500} className="block w-full rounded border border-line p-2"/>
         </label>
-        <p className="text-xs text-ink-soft">Signing only requests this visit; payment
-          must be verified and an authorized person must confirm the actual booking.</p>
+        <p className="text-xs text-ink-soft">{t("visitOnly")}</p>
       </fieldset>}
       <div>
         <label htmlFor="signerName" className="block text-sm font-medium text-ink-soft">
-          Your full legal name
+          {t("personalLegal")}
         </label>
         <input
           id="signerName"
@@ -137,7 +156,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
       </div>
       <div>
         <label htmlFor="signerEmail" className="block text-sm font-medium text-ink-soft">
-          Your email
+          {t("personalEmail")}
         </label>
         <input
           id="signerEmail"
@@ -155,8 +174,7 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
           checked={agreedToTerms}
           onChange={(e) => setAgreedToTerms(e.target.checked)}
         />
-        I have read the terms above and agree to this rental agreement.
-        Typing my name and submitting this form is my electronic signature.
+        {t("consent")}
       </label>
 
       <button
@@ -164,12 +182,12 @@ export function SignForm({ signatureRecordId,deliveryOptions=[],offerVersion=0 }
         disabled={isPending}
         className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action disabled:opacity-50"
       >
-        {isPending ? "Submitting…" : "Sign agreement"}
+        {isPending ? t("send") : t("sign")}
       </button>
 
       {error && (
         <p role="alert" className="text-sm text-red-700">
-          {error}
+          {displayLanguage === "es" ? tr("Your request could not be completed. Try again or contact the business.") : error}
         </p>
       )}
     </form>

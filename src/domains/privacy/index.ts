@@ -1,3 +1,4 @@
+import { messageText } from "@/domains/language/transactional-copy";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -104,6 +105,11 @@ export async function openPrivacyRequest(input: {
     return { requestId: request.id, verification: "OWNER_WILL_CALL" };
   }
 
+  const { customerMessageLanguage } = await import("@/domains/language/message-language");
+  const { activeMessageCatalog } = await import("@/domains/language/runtime");
+  const language = await customerMessageLanguage(customer.id);
+  const catalog = await activeMessageCatalog(language);
+  const t = (key: Parameters<typeof messageText>[1]) => messageText(language,key,{},catalog);
   const verifyUrl = `${publicOrigin()}/privacy/verify?request=${encodeURIComponent(request.id)}&token=${encodeURIComponent(token)}`;
   const delivery = await deliverMessage({
     idempotencyKey: `privacy-verification-${request.id}`,
@@ -114,9 +120,9 @@ export async function openPrivacyRequest(input: {
     recipient: { type: "Customer", id: customer.id, address: email },
     subject: { type: "PrivacyRequest", id: request.id },
     render: () => ({
-      subject: "Verify your privacy request",
-      text: `We received a request about your personal information. Use the link below within 48 hours to verify that request.\n\n${verifyUrl}\n\nIf you did not make this request, you can ignore this message.`,
-      actionLabel: "Verify privacy request",
+      subject: t("privacySubject"),
+      text: [t("privacyIntro"),verifyUrl,t("privacyIgnore")].join("\n\n"),
+      actionLabel: t("privacyAction"),
     }),
   });
 

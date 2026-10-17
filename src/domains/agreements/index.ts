@@ -562,6 +562,11 @@ export async function getSignatureRecordForSigning(id: string) {
 import { newestMonthToMonthVersionInTx } from "./month-to-month";
 
 export type SignAgreementInput = {
+  // Server-verified language actually displayed, never a client preference guess.
+  shownLanguage?: "en" | "es";
+  interfaceLanguage?: "en" | "es";
+  translationCopyDigest?: string;
+  languagePreference?: "en" | "es";
   deliverySelection?: import("@/domains/orders/delivery").DeliverySelection;
   signerName: string;
   signerEmail: string;
@@ -572,6 +577,9 @@ export async function signAgreement(
   signatureRecordId: string,
   input: SignAgreementInput,
 ) {
+  if (input.shownLanguage && input.shownLanguage !== "en")
+    throw new Error("The governing signed document must remain English.");
+  let translationCopyDigest: string | null = null;
   const signatureRef = await prisma.signatureRecord.findUnique({
     where: { id: signatureRecordId },
     select: { agreementId: true },
@@ -623,6 +631,15 @@ export async function signAgreement(
     }else if(input.deliverySelection){
       throw new Error("This agreement has no current offered delivery choices.");
     }
+    let informationalTerms: Array<{english:string;spanish:string}> = [];
+    if (input.interfaceLanguage === "es") {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"customer-spanish-review"}, 0))`;
+      const { agreementLanguage, agreementLegalTexts } = await import("@/domains/language/legal");
+      const content = await agreementLanguage("es", agreementLegalTexts(agreement.termsSnapshot));
+      if (content.language !== "es" || !content.digest || content.digest !== input.translationCopyDigest) throw new Error("Spanish legal translation changed. Refresh before signing.");
+      translationCopyDigest = content.digest;
+      informationalTerms = content.translations;
+    }
     const signedAt = new Date();
     const signResult = await tx.signatureRecord.updateMany({
       where: {
@@ -638,10 +655,18 @@ export async function signAgreement(
         signerEmail: input.signerEmail,
         ipAddress: input.ipAddress,
         signedAt,
+        shownLanguage: "en",
+        interfaceLanguage: input.interfaceLanguage ?? "en",
+        translationCopyDigest,
+        ...(input.interfaceLanguage === "es" ? {informationalTerms} : {}),
       },
     });
     if (signResult.count !== 1) {
       throw new Error("This agreement was already signed.");
+    }
+    if (input.languagePreference) {
+      await tx.customer.update({ where: { id: agreement.customerId },
+        data: { preferredLanguage: input.languagePreference } });
     }
 
     // Freeze the actual order size, customer type and owner window before

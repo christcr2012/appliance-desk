@@ -40,7 +40,7 @@
     },
     {
       "path": "src/app/sign/[id]/page.tsx",
-      "anchor": "Signing charges for this service address",
+      "anchor": "signature.frozenSigningLine.setupFeeCents",
       "purpose": "Existing frozen signing tax/fee evidence read-only customer presentation"
     },
     {

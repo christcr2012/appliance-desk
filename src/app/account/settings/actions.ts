@@ -1,5 +1,6 @@
 "use server";
 
+import { portalLanguage } from "@/domains/language/portal";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/session";
@@ -12,6 +13,7 @@ export type SmsPreferenceActionState =
 
 const smsPreferenceSchema = z.object({
   optedIn: z.coerce.boolean(),
+  disclosureLanguage: z.enum(["en", "es"]).optional(),
   phone: z.string().trim().max(20).optional().or(z.literal("")),
 });
 
@@ -30,8 +32,12 @@ export async function updateSmsPreferenceAction(
   }
 
   try {
+    const displayed = parsed.data.optedIn ? await portalLanguage(session.user.id) : (parsed.data.disclosureLanguage ?? "en");
+    if (parsed.data.optedIn && (parsed.data.disclosureLanguage ?? "en") !== displayed)
+      return { status: "error", message: "Language changed. Refresh before changing consent." };
     await updateSmsPreference(session.user.id, {
       optedIn: parsed.data.optedIn,
+      disclosureLanguage: displayed,
       phone: parsed.data.phone || null,
     });
   } catch (error) {

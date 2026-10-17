@@ -1,16 +1,26 @@
 {
   "version": 1,
-  "kind": "maintenance",
-  "parent": "W-25",
-  "completedSlices": [],
+  "kind": "implementation",
+  "parent": "W-26",
+  "completedSlices": [
+    {
+      "id": "W-26",
+      "acceptanceEvidence": [
+        "Customer/quote persistence and scoped actions, quote-note.ts, signing/portal consumers and localized outbound callers are reconciled in execution/W-26-coverage.md. customer-language-database-w26.test.ts proves new quotes inherit stored preference without rewriting old quotes; estimate-send-email-switch.test.ts proves Spanish and ACCEPTED/UNKNOWN outcomes. Actions diagnostic 38984045880 passed all four production browser shards including real bilingual preference/quote/signing flow.",
+        "review.ts, drafts.ts and runtime.ts require complete current source-bound drafts, matching separate fluent/legal evidence and explicit owner publication. Missing/stale/revoked approval falls back to English or blocks a new Spanish dispatch. runtime/drafts/authorization tests and the disposable CI browser revoke scenario pass. No real fluent/legal approval or publication occurred; English governing text is stored unchanged.",
+        "Owner/ADMIN-only versioned editor exposes independently editable Spanish website, communication subject/body, message, notice, legal and quote-note counterparts; strict variable/source/revision checks and audited authorization are covered in drafts/authorization/runtime tests. Owner desk stays English in the bilingual browser scenario. Reviewed website read API is prepared; public Spanish routing belongs to Batch V under \u00a76.6.",
+        "Full consumer matrix and dispatch classification are in execution/W-26-coverage.md. Actions 38984045880 passed all three unit/real-Postgres shards, migration upgrade, restore drill, all four production builds and all four browser shards. Both-language rendered portal/quote/sign/auth controls, exact money, errors/retries, consent and immutable legal/interface/digest evidence are covered. Final small safety additions passed 29 focused unit tests and six isolated Postgres tests; final PR-head CI remains a mandatory merge gate."
+      ]
+    }
+  ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "All 22 deployed-owner/provider W22\u2013W25 tasks remain PENDING in authoritative docs/STATUS.md. Browser fixture repair does not itself verify a live customer or provider."
+    "Fluent independent reviewer selected by owner and separate legal counsel must approve current digest before first public Spanish activation; source changes invalidate review.",
+    "Historical 22 real live/provider owner-approval acceptance items remain PENDING, including real signing, TEST payment/reconciliation, external communication and CPA/counsel evidence."
   ],
   "evidence": [
-    "e2e/communication-timeline.spec.ts now uses a newly created, unique, owned disposable Customer/User with try/finally cleanup, rather than clicking the first shared/customer-list row which disappeared mid-navigation.",
-    "GitHub Actions postmerge PR #475 run 38913632260 and PR #476 run 38944298832 both failed browser-a on the same communications timeline test; saved Playwright artifact captured an HTTP 404 on the first-customer detail page. Other checks/browser shards passed.",
-    "The patch only touches one browser fixture, no production code, permissions, customer messaging, money or legal approvals. Rerun exact-head CI and browser-a before merging.",
-    "e2e/phone-order-one-link.spec.ts replaces 13-digit Date.now unique data with randomized UUID, preserving production PAN/CVV refusal; saved browser-b screenshot displayed the safeguard-specific error on false-positive Luhn-valid timestamp."
+    "Full original W-26 source delivery; frozen planning commit 2f47535ed238329cb725dc1b776d1ed28684fba3 preserved unchanged.",
+    "Independent engineering review resolved all concrete source findings; final read-only review found no blocking findings. Automated GitHub review unavailable \u2014 waived after inspecting reviews and threads.",
+    "All seven source coverage declarations describe implemented consumers; actual fluent/legal approval and public Spanish activation remain OFF. Final exact-head PR ci and merge are still pending."
   ]
 }

@@ -45,6 +45,8 @@ export async function createNoticeInTx(
     dedupeKey: string;
     subject: string;
     body: string;
+    language?: "en" | "es";
+    translationCopyDigest?: string;
     /** The first and last moment the notice may be sent. Empty means no limit. */
     earliestAt?: Date | null;
     deadlineAt?: Date | null;
@@ -82,6 +84,7 @@ export async function createNoticeInTx(
       dedupeKey: input.dedupeKey,
       subject: input.subject,
       body: input.body,
+      language: input.language ?? "en", translationCopyDigest: input.translationCopyDigest ?? null,
       earliestAt: input.earliestAt ?? null,
       deadlineAt: input.deadlineAt ?? null,
     },
@@ -108,12 +111,15 @@ type NoticeRow = {
   deadlineAt: Date | null;
   sentToAddress: string | null;
   lastAttemptAt: Date | null;
+  language?: string;
+  translationCopyDigest?: string | null;
   customer: { user: { email: string } };
 };
 
 const NOTICE_SELECT = {
   id: true,
   kind: true,
+  language: true, translationCopyDigest: true,
   agreementId: true,
   subject: true,
   body: true,
@@ -167,7 +173,7 @@ type DeliverOutcome = "SENT" | "WAITING" | "REJECTED" | "FAILED" | "UNCERTAIN" |
  * result, or an older PENDING ledger row left by an interrupted worker, goes to owner review instead of being resent.
  */
 async function deliverClaimedNotice(
-  notice: Pick<NoticeRow, "id" | "subject" | "body" | "attempts">,
+  notice: Pick<NoticeRow, "id" | "subject" | "body" | "attempts" | "language" | "translationCopyDigest">,
   to: string,
   token: string,
   now: Date,
@@ -176,6 +182,20 @@ async function deliverClaimedNotice(
 
   let result: Awaited<ReturnType<typeof deliverMessage>>;
   try {
+    if (notice.language === "es") {
+      const previous = await prisma.messageDelivery.findUnique({where:{idempotencyKey:`customer-notice-${notice.id}`}});
+      // A durable prior claim is reconciled, never sent again. A revoked review
+      // blocks only a new/retryable provider submission, not accepted evidence.
+      const reconcileOnly = previous && !["FAILED","NOT_SENT"].includes(previous.state);
+      if (!reconcileOnly) {
+        const { getSpanishReview } = await import("@/domains/language/review");
+        const review = await getSpanishReview();
+        if (!review.enabled || review.currentDigest !== notice.translationCopyDigest) {
+          await prisma.customerNotice.updateMany({where:owned,data:{status:"PENDING",claimToken:null,lastError:"Spanish notice requires current review"}});
+          return "WAITING";
+        }
+      }
+    }
     result = await deliverMessage({
       idempotencyKey: `customer-notice-${notice.id}`,
       channel: "EMAIL",

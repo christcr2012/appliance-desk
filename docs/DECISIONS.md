@@ -1,5 +1,16 @@
 # Decisions log — current
 
+## 2026-10-17 — W-26 engineering and activation remain separate
+
+Complete the original bilingual customer journey as one W-26 delivery. Source
+coverage does not authorize Spanish publication: exact source-bound translations,
+owner-selected fluent review, independent legal review and owner publication are
+all required. English governs signing; preserve immutable financial/legal history
+and durable Stripe idempotency parameters. Website Spanish field editing and the
+reviewed read API are W-26; public language routing/SEO remains approved Batch V.
+No new spending, release, provider or legal authorization is granted.
+
+
 This is the **current** decisions log. Keep it short and useful: dated entries,
 newest first, for decisions made from 2026-10-03 forward.
 

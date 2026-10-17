@@ -1,3 +1,5 @@
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { requireSession } from "@/lib/session";
 import { listPrivacyRequestsForCustomer } from "@/domains/privacy";
 import {
@@ -18,24 +20,23 @@ export default async function AccountPrivacyPage({
   searchParams: Promise<{ requested?: string; error?: string }>;
 }) {
   const session = await requireSession();
+  const language = await portalLanguage(session.user.id);
+  const t = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language, word);
   const requests = await listPrivacyRequestsForCustomer(session.user.id);
   const params = await searchParams;
 
   return (
     <div className="max-w-3xl">
       <PageHeader
-        title="Privacy requests"
-        description="Request a copy of the personal information connected to your account or ask us to delete personal information we are allowed to remove."
+        title={t('Privacy requests')}
+        description={t('Request a copy of the personal information connected to your account or ask us to delete personal information we are allowed to remove.')}
         secondaryActions={
-          <ButtonLink href="/account/settings" variant="secondary">
-            Back to Account
-          </ButtonLink>
+          <ButtonLink href="/account/settings" variant="secondary">{t("Back to Account")}</ButtonLink>
         }
       />
 
       <p className="mb-6 text-sm text-ink-soft">
-        Billing, tax, signed-agreement and audit evidence may need to be
-        retained.
+        {t("Billing, tax, signed-agreement and audit evidence may need to be retained.")}
       </p>
 
       {params.requested === "1" && (
@@ -43,45 +44,40 @@ export default async function AccountPrivacyPage({
           role="status"
           className="mb-6 rounded-card border border-line bg-subtle p-4 text-sm text-ink"
         >
-          Your request was recorded and your signed-in session verified your
-          identity. The owner will process it.
+          {t("Your request was recorded and your signed-in session verified your identity. The owner will process it.")}
         </p>
       )}
       {params.error === "1" && (
         <p role="alert" className="mb-6 text-sm font-semibold text-danger">
-          That request could not be recorded.
+          {t("That request could not be recorded.")}
         </p>
       )}
 
       <div className="mb-6">
         <Card
-          title="Make a privacy request"
-          description="Choose the request you want the owner to review."
+          title={t('Make a privacy request')}
+          description={t('Choose the request you want the owner to review.')}
         >
           <form
             action={accountPrivacyRequestAction}
             className="flex flex-wrap gap-3"
           >
-            <Button type="submit" name="kind" value="EXPORT">
-              Request my data
-            </Button>
+            <Button type="submit" name="kind" value="EXPORT">{t("Request my data")}</Button>
             <Button
               type="submit"
               name="kind"
               value="DELETE"
               variant="danger"
-            >
-              Request deletion
-            </Button>
+            >{t("Request deletion")}</Button>
           </form>
         </Card>
       </div>
 
-      <Card title="Your requests">
+      <Card title={t('Your requests')}>
         {requests.length === 0 ? (
           <EmptyState
-            title="No privacy requests yet"
-            description="Requests you submit will appear here with their current status."
+            title={t('No privacy requests yet')}
+            description={t('Requests you submit will appear here with their current status.')}
           />
         ) : (
           <ul className="divide-y divide-line">
@@ -89,7 +85,7 @@ export default async function AccountPrivacyPage({
               <li key={request.id} className="py-4 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold text-ink">
-                    {request.kind === "EXPORT" ? "Data export" : "Deletion"}
+                    {request.kind === "EXPORT" ? t("Data export") : t("Deletion")}
                   </p>
                   <StatusPill
                     tone={
@@ -99,18 +95,16 @@ export default async function AccountPrivacyPage({
                           ? "stopped"
                           : "pending"
                     }
-                    label={request.status
-                      .toLowerCase()
-                      .replaceAll("_", " ")}
+                    label={language === "es" ? t(({ RECEIVED:"received", VERIFIED:"verified", FULFILLED:"fulfilled", REJECTED:"rejected" } as const)[request.status] ?? "pending") : request.status.toLowerCase().replaceAll("_", " ")}
                   />
                 </div>
                 <p className="mt-2 text-ink-soft">
-                  Submitted{" "}
-                  {request.createdAt.toLocaleDateString("en-US")}
+                  {t("Submitted")}{" "}
+                  {request.createdAt.toLocaleDateString(language === "es" ? "es-US" : "en-US", {timeZone:"America/Denver"})}
                 </p>
                 {request.rejectedReason && (
                   <p className="mt-1 text-ink-soft">
-                    Reason: {request.rejectedReason}
+                    {t("Reason")}: {request.rejectedReason}
                   </p>
                 )}
               </li>

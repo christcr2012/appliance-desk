@@ -1019,3 +1019,69 @@ refunds serialize with cancellation and cannot refund that reserve twice. Only
 settled rent advance can reach first-invoice credit; all other signing categories
 remain excluded. No migration, synthetic approval or test authorizes production
 money-out or LIVE collection.
+
+## W-26 — customer and quote language, controlled review, drafts (unreleased)
+
+Forward-only migration `20261016195000_w26_customer_language` introduces
+`Customer.preferredLanguage` and `Estimate.preferredLanguage` as nonnull
+`String` values defaulting to `en`, with database `en|es` CHECK constraints.
+Preexisting customers and quotes remain English. A valid public quote bearer
+may change only its own `Estimate.preferredLanguage`; a currently authenticated
+customer alone can update their `Customer.preferredLanguage`. Successful quote
+approval or winning guarded signature transaction can record the customer's
+chosen language, never an unrelated customer's preference or messaging consent.
+
+`SignatureRecord.shownLanguage` is a nullable, checked `en|es` snapshot field;
+historical signatures have NULL, while newly recorded signing evidence states
+the actual legal language shown (`en` until separately reviewed translations
+are authorized). No translation field changes frozen agreement terms, order
+amounts, Stripe receipts, refund or invoice evidence. Do not infer a Spanish
+signature from `Customer.preferredLanguage` alone.
+
+`CustomerLanguageReview` is keyed by language and binds fluency and separate
+legal evidence to the exact customer-copy SHA-256 digest. Its append-only
+`CustomerLanguageReviewEvent` child records actual owner review actions and
+evidence references. Runtime Spanish requires the reviewed digest, legal review,
+owner publication, and independent completeness coverage of **all** quoted,
+legal, signing, payment, portal, message and owner-template surfaces. The
+source-stage deliberately fails closed on completeness even if reviewer records
+exist. No reviewer actions or public Spanish activation are inferred from a
+migration or passing synthetic test.
+
+`CustomerTranslationDraft` stores private independently editable Spanish
+versions of canonical published-English website text and current communication
+templates. Its unique `(sourceKind,sourceKey)` binds `SITE` or `COMMUNICATION`
+to a SHA-256 of the actual English source; `revision` guards competing editors;
+`editedByUserId` and the existing AuditLog retain attribution. Stale drafts
+cannot silently follow changed English text and drafts neither publish
+website revisions nor send communication. Backup manifests include W-26 tables.
+The initial migration was proved on **disposable local PostgreSQL only**; no
+production migration, LIVE payment activation, customer signing or provider
+acceptance is authorized by this paragraph.
+
+W-26 continuation also freezes `SignatureRecord.interfaceLanguage`,
+`translationCopyDigest` and separately informational `informationalTerms` JSON
+without changing the English governing signature. A PostgreSQL trigger rejects
+updates to these fields or `shownLanguage` once signed; prior rows are not
+translated or backfilled. `CustomerNotice` and `MessageDelivery` carry a default
+English content language and optional source fingerprint for new localized
+submissions. New notices retain the original English legal text; dispatch checks
+current approval before a new Spanish submission, while durable prior provider
+acceptance can still reconcile after approval is withdrawn. Existing history is
+never regenerated from the customer's current preference.
+
+Translation source kinds also include `MESSAGE`, `NOTICE` and exact-English
+`LEGAL` hashes. Original-message variables must be preserved. Current canonical
+English, Spanish revisions, static/dynamic customer copy and consent disclosures
+are all included in the review fingerprint; source drift invalidates publication.
+
+New `SigningPaymentAttempt.checkoutLocale` freezes the reviewed language on the
+original durable attempt. Retries reuse it with the original idempotency key;
+existing attempts retain NULL and omit the previously absent provider parameter.
+A withdrawn Spanish approval blocks new Spanish provider submission. Historical
+legacy Checkout parameters stay unchanged; Stripe handles its own browser locale.
+
+`QUOTE` drafts also bind independently edited owner quote notes to their exact
+English source hash. Quote pages and outgoing quote mail use the reviewed note
+or wholly English output; the stored note and monetary quote evidence are not
+rewritten. Arbitrary product/customer data and historical documents remain exact.

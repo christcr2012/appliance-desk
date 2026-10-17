@@ -1,3 +1,4 @@
+import { messageText } from "@/domains/language/transactional-copy";
 import { prisma } from "@/lib/prisma";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { formatCents } from "@/domains/pricing";
@@ -75,13 +76,19 @@ export async function sendUpcomingBillingReminders(): Promise<{
       });
 
     const approxAmountCents = agreement.invoices[0]?.amountDueCents ?? null;
-    const dateLabel = agreement.nextBillingDate.toLocaleDateString("en-US", {
+    try {
+      const { customerMessageLanguage } = await import("@/domains/language/message-language");
+  const { activeMessageCatalog } = await import("@/domains/language/runtime");
+  const language = await customerMessageLanguage(agreement.customer.id);
+      const catalog = await activeMessageCatalog(language);
+  const t = (key: Parameters<typeof messageText>[1], values?: Record<string,string>) => messageText(language,key,values,catalog);
+      const dateLabel = agreement.nextBillingDate.toLocaleDateString(language === "es" ? "es-US" : "en-US", {
+      timeZone: "America/Denver",
       weekday: "long",
       month: "long",
       day: "numeric",
     });
 
-    try {
       const delivery = await deliverMessage({
         idempotencyKey: `billing-reminder-${agreement.id}-${agreement.nextBillingDate.getTime()}`,
         channel: "EMAIL",
@@ -95,8 +102,10 @@ export async function sendUpcomingBillingReminders(): Promise<{
         },
         subject: { type: "RentalAgreement", id: agreement.id },
         render: () => ({
-          subject: "Your upcoming payment",
-          text: `Hi${agreement.customer.user.name ? ` ${agreement.customer.user.name}` : ""},\n\nJust a heads-up: your next rental payment is scheduled for ${dateLabel}${approxAmountCents !== null ? ` for approximately ${formatCents(approxAmountCents)}` : ""}. No action is needed — this will be charged automatically to the payment method on file.\n\nIf anything about your rental has changed, or you have questions, just reply to this email.`,
+          subject: t("billingSubject"),
+          text: [t("quoteHello", {name: agreement.customer.user.name ? " "+agreement.customer.user.name : ""}),
+            t("billingIntro",{date:dateLabel,amount:approxAmountCents !== null ? t("billingApprox",{amount:formatCents(approxAmountCents)}) : ""}),
+            t("billingReply")].join("\n\n"),
         }),
       });
 

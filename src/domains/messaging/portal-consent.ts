@@ -9,7 +9,7 @@ import { normalizeSmsAddress } from "./suppression";
  * change requires a new disclosure version, ensuring an audit can recover the
  * exact words a customer chose. It never authorizes marketing.
  */
-import { PORTAL_SMS_DISCLOSURE, PORTAL_SMS_DISCLOSURE_VERSION } from "./portal-disclosure";
+import { PORTAL_SMS_DISCLOSURE, PORTAL_SMS_DISCLOSURE_ES, PORTAL_SMS_DISCLOSURE_VERSION } from "./portal-disclosure";
 export const PORTAL_SMS_DISCLOSURE_HASH =
   createHash("sha256").update(PORTAL_SMS_DISCLOSURE, "utf8").digest("hex");
 
@@ -23,9 +23,13 @@ export async function recordPortalSmsChoice(
     priorPhone: string | null;
     nextPhone: string | null;
     optedIn: boolean;
+    disclosureLanguage?: "en" | "es";
     at: Date;
   },
 ): Promise<void> {
+  const disclosure = input.disclosureLanguage === "es" ? PORTAL_SMS_DISCLOSURE_ES : PORTAL_SMS_DISCLOSURE;
+  const disclosureVersion = input.disclosureLanguage === "es" ? PORTAL_SMS_DISCLOSURE_VERSION + "-es" : PORTAL_SMS_DISCLOSURE_VERSION;
+  const disclosureHash = createHash("sha256").update(disclosure,"utf8").digest("hex");
   const current = input.nextPhone ? normalizeSmsAddress(input.nextPhone) : null;
   let prior: string | null = null;
   try { prior = input.priorPhone ? normalizeSmsAddress(input.priorPhone) : null; }
@@ -81,10 +85,10 @@ export async function recordPortalSmsChoice(
         kind: "sms_portal_preference",
         action: grant ? "GRANT" as const : "REVOKE" as const,
         purpose, source: "PORTAL" as const, occurredAt: input.at,
-        disclosureVersion: grant ? PORTAL_SMS_DISCLOSURE_VERSION : null,
-        textHash: grant ? PORTAL_SMS_DISCLOSURE_HASH : null,
-        details: { disclosure: grant ? PORTAL_SMS_DISCLOSURE : null,
-          choice: grant ? "transactional_only" : "opted_out" },
+        disclosureVersion: grant ? disclosureVersion : null,
+        textHash: grant ? disclosureHash : null,
+        details: { disclosure: grant ? disclosure : null,
+          language: input.disclosureLanguage ?? "en", choice: grant ? "transactional_only" : "opted_out" },
         scope: { businessNumberId: grant ? eligibleSenderId : senderId,
           channel: "SMS", purpose },
       })),

@@ -1,3 +1,6 @@
+import { reviewedCopyDigest } from "@/domains/language/review";
+import { approvedSpanishSources, translationFromSnapshot } from "@/domains/language/runtime";
+import type { TranslationSource } from "@/domains/language/drafts";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -34,9 +37,9 @@ function isValidInput(input: RequestCommunicationInput): boolean {
 }
 
 type PreparedText = { text: string; purpose: "TRANSACTIONAL" | "MARKETING" | "CONVERSATIONAL";
-  revisionId: string | null; templateKey: string };
+  revisionId: string | null; templateKey: string; contentLanguage?: "en" | "es"; translationCopyDigest?: string };
 
-async function preparedText(tx: Prisma.TransactionClient, input: RequestCommunicationInput):
+async function preparedText(tx: Prisma.TransactionClient, input: RequestCommunicationInput, spanishSources: TranslationSource[]):
   Promise<PreparedText | null> {
   if (input.templateRevisionId) {
     const template = await tx.communicationTemplateRevision.findUnique({
@@ -48,10 +51,20 @@ async function preparedText(tx: Prisma.TransactionClient, input: RequestCommunic
       const raw = template.variables;
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
       const rules = raw as VariableRules;
-      const text = renderSmsTemplate(template.body, rules, input.variables ?? {});
+      let body = template.body;
+      let contentLanguage: "en" | "es" = "en";
+      if (spanishSources.length) {
+        const thread = await tx.communicationThread.findUnique({where:{id:input.threadId},select:{customer:{select:{preferredLanguage:true,archivedAt:true}}}});
+        if (thread?.customer?.preferredLanguage === "es" && !thread.customer.archivedAt) {
+          body = translationFromSnapshot(spanishSources,"COMMUNICATION",template.id+":body",template.body);
+          contentLanguage = "es";
+        }
+      }
+      const text = renderSmsTemplate(body, rules, input.variables ?? {});
       if (!text.trim() || text.length > 1600) return null;
       return { text, purpose: template.purpose,
-        revisionId: template.id, templateKey: template.key };
+        revisionId: template.id, templateKey: template.key, contentLanguage,
+        translationCopyDigest: contentLanguage === "es" ? reviewedCopyDigest(spanishSources) : undefined };
     } catch { return null; }
   }
   const body = input.body?.trim();
@@ -69,6 +82,8 @@ export async function requestCommunication(
   input: RequestCommunicationInput,
 ): Promise<RequestCommunicationResult> {
   if (!isValidInput(input)) return { kind: "CONFLICT" };
+
+  const spanishSources = input.templateRevisionId ? await approvedSpanishSources() : [];
 
   // Key availability is required even if currently blocked. No plaintext fallback.
   const key = "com:v1:" + input.operationKey;
@@ -116,7 +131,7 @@ export async function requestCommunication(
       select: { customerSmsEnabled: true, communicationsPolicy: true,
         communicationsPolicyVersion: true },
     });
-    const template = await preparedText(tx, input);
+    const template = await preparedText(tx, input, spanishSources);
     if (!template) return { kind: "CONFLICT" } as const;
 
     // The current address-specific consent evidence is read while holding its
@@ -152,6 +167,7 @@ export async function requestCommunication(
     const encrypted = encryptCommunicationContent(body);
     const delivery = await tx.messageDelivery.create({ data: {
       idempotencyKey: key, channel: "SMS", purpose: template.purpose,
+      contentLanguage: template.contentLanguage ?? "en", translationCopyDigest: template.translationCopyDigest,
       templateKey: template.templateKey, templateRevisionId: template.revisionId,
       recipientType: "ContactPoint", recipientId: thread.externalContactPointId,
       recipientAddress: thread.externalContactPoint.address,

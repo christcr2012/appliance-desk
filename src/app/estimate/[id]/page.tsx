@@ -1,6 +1,9 @@
+import { authPageLanguage } from "@/domains/language/auth-page";
+import { PaymentReturnNotice } from "@/components/payment-return-notice";
+import { portalLabel } from "@/domains/language/portal-copy";
 import { getEstimateForApproval } from "@/domains/estimates";
 import { estimateValidThroughKey } from "@/domains/estimates/validity";
-import { businessDateFromKey, formatBusinessDate } from "@/lib/business-date";
+import { businessDateFromKey, formatBusinessDate as originalBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
 import { EstimateResponseForm } from "./estimate-response-form";
 import { ContinueEstimateOrderButton } from "./continue-estimate-button";
@@ -13,6 +16,10 @@ import { getPreparedEstimateQuote } from "@/domains/estimates/preapproval-quote"
 import { ReviewedPreapprovalQuote } from "@/components/estimates/reviewed-preapproval-quote";
 import { readOfferedSlots } from "@/domains/orders/delivery";
 import { publicPhoneOrderPrefill } from "@/domains/orders/phone-orders";
+import { QuoteLanguageChoice } from "./language-choice";
+import { parseCustomerLanguage } from "@/domains/language/copy";
+import { quoteLanguage } from "@/domains/language/quote-note";
+import { estimateCopy } from "@/domains/language/estimate-copy";
 
 export const metadata = {
   title: "Your estimate",
@@ -22,21 +29,22 @@ export const metadata = {
 const RESPONDED_STATUSES = new Set(["APPROVED", "CHANGES_REQUESTED", "DECLINED", "EXPIRED", "CONVERTED"]);
 
 export default async function PublicEstimatePage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{deposit?:string;signingPayment?:string;language?:string}>;
 }) {
   const { id } = await params;
+  const payment = await searchParams;
   const estimate = await getEstimateForApproval(id);
 
   if (!estimate) {
+    const language=await authPageLanguage((await searchParams)?.language);
     return (
-      <main className="mx-auto max-w-lg px-6 py-16 text-center">
-        <h1 className="text-xl font-semibold">This link isn&apos;t available</h1>
+      <main lang={language} className="mx-auto max-w-lg px-6 py-16 text-center">
+        <h1 className="text-xl font-semibold">{portalLabel(language,"This link isn't available")}</h1>
         <p className="mt-3 text-ink-soft">
-          This estimate may not have been sent yet, or the link may no
-          longer be valid. If you think this is a mistake, contact us
-          directly.
+          {portalLabel(language,"This estimate may not have been sent yet, or the link may no longer be valid. If you think this is a mistake, contact us directly.")}
         </p>
       </main>
     );
@@ -54,24 +62,30 @@ export default async function PublicEstimatePage({
   const reviewedQuote = quoteIsCurrent ? quoteCandidate : null;
   const monthly = estimate.lineItems.reduce((sum, l) => sum + l.monthlyPriceCents * l.quantity, 0);
   const oneTime = estimate.lineItems.reduce((sum, l) => sum + l.oneTimeFeeCents * l.quantity, 0);
+  const {language,note:clientMessage}=await quoteLanguage(parseCustomerLanguage(estimate.preferredLanguage),estimate.clientMessage);
+  const formatBusinessDate=(date:Date)=>originalBusinessDate(date,language);
+  const t = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language,word);
+  const tr = (key: Parameters<typeof estimateCopy>[1]) => estimateCopy(language, key);
   const customerName = estimate.customer
     ? (estimate.customer.user.name ?? estimate.customer.user.email)
     : estimate.lead?.contactName;
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-16">
-      <h1 className="text-xl font-semibold">Estimate #{estimate.estimateNumber}</h1>
-      <p className="mt-2 text-sm text-ink-soft">Prepared for {customerName}</p>
+    <main lang={language} className="mx-auto max-w-lg px-6 py-16">
+      <PaymentReturnNotice language={language} state={payment?.signingPayment ?? payment?.deposit} />
+      <h1 className="text-xl font-semibold">{tr("estimate")} #{estimate.estimateNumber}</h1>
+      {(estimate.status === "SENT" || estimate.status === "VIEWED") && (
+        <QuoteLanguageChoice estimateId={estimate.id}
+          preferredLanguage={parseCustomerLanguage(estimate.preferredLanguage)} />
+      )}
+      <p className="mt-2 text-sm text-ink-soft">{tr("preparedFor")} {customerName}</p>
 
-      {estimate.clientMessage && (
-        <p className="mt-4 whitespace-pre-line text-sm text-ink-soft">{estimate.clientMessage}</p>
+      {clientMessage && (
+        <p className="mt-4 whitespace-pre-line text-sm text-ink-soft">{clientMessage}</p>
       )}
 
       <p className="mt-4 text-sm text-ink-soft" role="note">
-        These estimate line items are preliminary rental and one-time figures,
-        not a finalized all-in signing price. Mandatory setup charges, location taxes,
-        down payments and other applicable fees must be reviewed separately before
-        a binding rental agreement is signed.
+        {tr("disclaimer")}
       </p>
       <div className="mt-6 space-y-3 rounded-lg border border-line bg-surface p-5 text-sm">
         <ul className="divide-y divide-line">
@@ -90,8 +104,8 @@ export default async function PublicEstimatePage({
                   )}
                 </div>
                 <div className="text-right text-ink-soft">
-                  {line.monthlyPriceCents > 0 && <p>{formatCents(line.monthlyPriceCents)}/mo</p>}
-                  {line.oneTimeFeeCents > 0 && <p>{formatCents(line.oneTimeFeeCents)} one-time</p>}
+                  {line.monthlyPriceCents > 0 && <p>{formatCents(line.monthlyPriceCents)} {tr("recurring")}</p>}
+                  {line.oneTimeFeeCents > 0 && <p>{formatCents(line.oneTimeFeeCents)} {tr("oneTime")}</p>}
                 </div>
               </div>
             </li>
@@ -99,92 +113,88 @@ export default async function PublicEstimatePage({
         </ul>
 
         <div className="border-t border-line pt-3 font-medium text-ink">
-          {monthly > 0 && <p>{formatCents(monthly)}/month</p>}
-          {oneTime > 0 && <p>{formatCents(oneTime)} one-time</p>}
+          {monthly > 0 && <p>{formatCents(monthly)} {tr("recurring")}</p>}
+          {oneTime > 0 && <p>{formatCents(oneTime)} {tr("oneTime")}</p>}
         </div>
-        {estimate.depositCents > 0 && <p>Deposit: {formatCents(estimate.depositCents)}</p>}
+        {estimate.depositCents > 0 && <p>{t("Deposit")}: {formatCents(estimate.depositCents)}</p>}
         {estimate.validUntil && (
           <p className="text-xs text-ink-faint">
-            Valid through {formatBusinessDate(businessDateFromKey(estimateValidThroughKey(estimate.validUntil))!)}
+            {t("Valid through")} {formatBusinessDate(businessDateFromKey(estimateValidThroughKey(estimate.validUntil))!)}
           </p>
         )}
       </div>
 
-      {reviewedQuote && <ReviewedPreapprovalQuote quote={reviewedQuote} />}
+      {reviewedQuote && <ReviewedPreapprovalQuote quote={reviewedQuote} language={language} />}
       {(estimate.status === "SENT" || estimate.status === "VIEWED") && !reviewedQuote && (
         <section className="mt-4 rounded border border-amber-400 p-4 text-sm" role="alert">
-          The reviewed all-in offer needs to be refreshed before you can approve it.
-          Please request changes or contact the business. Preliminary figures are not binding.
+          {tr("approvalUnavailable")}
         </section>
       )}
       {reviewedOrder?.status === "FINAL_REVIEWED" && (
-        <ReviewedSigningOrder order={reviewedOrder.order} context="estimate" />
+        <ReviewedSigningOrder order={reviewedOrder.order} context="estimate" language={language} />
       )}
       {estimate.status === "CONVERTED" && reviewedOrder?.status !== "FINAL_REVIEWED" && (
-        <section aria-label="Final reviewed price pending" className="mt-5 rounded-lg border border-line bg-subtle p-4 text-sm" role="status">
-          <h2 className="font-semibold">Your complete order price is being reviewed</h2>
+        <section aria-label={tr("finalReviewTitle")} className="mt-5 rounded-lg border border-line bg-subtle p-4 text-sm" role="status">
+          <h2 className="font-semibold">{tr("finalReviewTitle")}</h2>
           <p className="mt-1 text-ink-soft">
-            An all-in signing total is not yet available for every service address.
-            Contact the business before treating these preliminary figures as final.
-            No amount on this page proves payment or a confirmed delivery appointment.
+            {tr("finalReviewBody")}
           </p>
         </section>
       )}
       <div className="mt-6">
         {estimate.status === "APPROVED" && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-5 text-sm text-green-900">
-            <p className="font-medium">You approved this estimate.</p>
-            <div className="my-3"><ContinueEstimateOrderButton estimateId={estimate.id}/></div>
+            <p className="font-medium">{tr("approved")}</p>
+            <div className="my-3"><ContinueEstimateOrderButton language={language} estimateId={estimate.id}/></div>
             {estimate.depositCents > 0 && estimate.depositPaidAt && (
               <p className="mt-1">
-                Deposit of {formatCents(estimate.depositCents)} received — thank you.
+                {t("Deposit received — thank you.")} {formatCents(estimate.depositCents)}
               </p>
             )}
             {reviewedQuote?.evidenceVersion===2 ? (
-              <p className="mt-1">The refundable reserve is included in the reviewed signing amount. Review and sign the agreement before paying; no separate estimate deposit is due.</p>
+              <p className="mt-1">{tr("noSeparateDeposit")}</p>
             ) : estimate.depositCents > 0 && !estimate.depositPaidAt ? (
               <>
                 <p className="mt-1">
-                  One more step: a deposit of {formatCents(estimate.depositCents)} is due before
-                  we can move forward.
+                  {t("A deposit is due before we can move forward.")} {formatCents(estimate.depositCents)}
                 </p>
-                {reviewedQuote ? <PayDepositButton estimateId={estimate.id} /> : (
-                  <p className="mt-1">Deposit checkout requires a renewed, verified complete signing order.</p>
+                {reviewedQuote ? <PayDepositButton language={language} estimateId={estimate.id} /> : (
+                  <p className="mt-1">{tr("depositDue")}</p>
                 )}
               </>
             ) : (
-              <p className="mt-1">We&apos;ll be in touch about next steps.</p>
+              <p className="mt-1">{tr("nextSteps")}</p>
             )}
           </div>
         )}
         {estimate.status === "CHANGES_REQUESTED" && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-            <p className="font-medium">We got your request for changes.</p>
-            <p className="mt-1">We&apos;ll follow up with a revised estimate.</p>
+            <p className="font-medium">{tr("requestedChanges")}</p>
+            <p className="mt-1">{tr("changesFollowup")}</p>
           </div>
         )}
         {estimate.status === "DECLINED" && (
-          <p className="text-sm text-ink-soft">This estimate was declined.</p>
+          <p className="text-sm text-ink-soft">{tr("declined")}</p>
         )}
         {estimate.status === "EXPIRED" && (
           <p className="text-sm text-ink-soft">
-            This estimate has expired — contact us if you&apos;d still like to move forward.
+            {tr("expired")}
           </p>
         )}
         {estimate.status === "CONVERTED" && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
-            <p className="font-medium">This estimate was approved and is being set up.</p>
+            <p className="font-medium">{tr("finalized")}</p>
             {finishedState === "READY_FOR_ACCOUNT" &&
-              <div className="mt-3"><p>Signing payment confirmed. You can create your account password securely.</p>
-                <OrderAccountSetupButton estimateId={estimate.id}/></div>}
+              <div className="mt-3"><p>{t("Signing payment confirmed. You can create your account password securely.")}</p>
+                <OrderAccountSetupButton language={language} estimateId={estimate.id}/></div>}
             {finishedState === "PAYMENT_PENDING" &&
-              <p className="mt-2" role="status">Your signature is recorded. Payment is still awaiting verified settlement; a redirect is not a receipt.</p>}
+              <p className="mt-2" role="status">{t("Your signature is recorded. Payment is still awaiting verified settlement; a redirect is not a receipt.")}</p>}
             {finishedState === "SIGN" &&
-              <div className="mt-3"><ContinueEstimateOrderButton estimateId={estimate.id}/></div>}
+              <div className="mt-3"><ContinueEstimateOrderButton language={language} estimateId={estimate.id}/></div>}
           </div>
         )}
         {!RESPONDED_STATUSES.has(estimate.status) && (
-          <EstimateResponseForm estimateId={estimate.id} allowApproval={!!reviewedQuote}
+          <EstimateResponseForm language={language} estimateId={estimate.id} allowApproval={!!reviewedQuote}
             expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint}
             deliveryOptions={readOfferedSlots(estimate.deliveryOffer)}
             offerVersion={estimate.deliveryOfferVersion}

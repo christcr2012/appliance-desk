@@ -221,3 +221,19 @@ export async function restoreRevision(userId: string, revisionId: string): Promi
     return { newRevisionId: created.id };
   });
 }
+
+/** W-26 prepares reviewed owner fields; Batch V owns public Spanish routes. */
+export async function getReviewedSiteContent(language: "en" | "es"): Promise<{language:"en"|"es";fields:Record<string,string>}> {
+  const fields = await getPublishedContent();
+  if (language === "en") return {language,fields};
+  const { approvedSpanishSources, translationFromSnapshot } = await import("@/domains/language/runtime");
+  const sources = await approvedSpanishSources();
+  const translated = {...fields};
+  try {
+    for (const [key,english] of Object.entries(fields)) {
+      if (siteFieldByKey(key)?.kind !== "url" && english.trim())
+        translated[key] = translationFromSnapshot(sources,"SITE",key,english);
+    }
+    return {language:"es",fields:translated};
+  } catch { return {language:"en",fields}; }
+}

@@ -6,6 +6,7 @@ const deliver = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    customer:{findUnique:vi.fn().mockResolvedValue({preferredLanguage:"en",archivedAt:null})},
     rentalAgreement: {
       findMany: (...args: unknown[]) => findMany(...args),
       updateMany: (...args: unknown[]) => updateMany(...args),

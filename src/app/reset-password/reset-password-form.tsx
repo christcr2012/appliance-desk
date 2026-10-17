@@ -1,5 +1,6 @@
 "use client";
 
+import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,6 +9,8 @@ import { authClient } from "@/lib/auth-client";
 const MIN_PASSWORD_LENGTH = 10; // must match src/lib/auth.ts's emailAndPassword.minPasswordLength
 
 export function ResetPasswordForm() {
+  const t=useCustomerTranslation();
+  const language=useCustomerLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -23,12 +26,11 @@ export function ResetPasswordForm() {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <p>
-          This link is missing, expired, or already used — password reset
-          links only work once and expire after an hour.
+          {t("This link is missing, expired, or already used — password reset links only work once and expire after an hour.")}
         </p>
         <p className="mt-2">
-          <Link href="/forgot-password" className="text-primary hover:underline">
-            Request a new link
+          <Link href={language==="es"?"/forgot-password?language=es":"/forgot-password"} className="text-primary hover:underline">
+            {t("Request a new link")}
           </Link>
         </p>
       </div>
@@ -38,10 +40,10 @@ export function ResetPasswordForm() {
   if (done) {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
-        <p>Your password has been set.</p>
+        <p>{t("Your password has been set.")}</p>
         <p className="mt-2">
-          <Link href="/login" className="text-primary hover:underline">
-            Log in now
+          <Link href={language==="es"?"/login?language=es":"/login"} className="text-primary hover:underline">
+            {t("Log in now")}
           </Link>
         </p>
       </div>
@@ -53,11 +55,11 @@ export function ResetPasswordForm() {
     setError(null);
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      setError(t("Password must be at least 10 characters."));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Those passwords don't match.");
+      setError(t("Those passwords don't match."));
       return;
     }
 
@@ -70,7 +72,7 @@ export function ResetPasswordForm() {
 
     if (resetError) {
       setError(
-        resetError.message ??
+        language==="es"?t("Couldn't set your password — the link may have expired. Request a new one."):resetError.message ??
           "Couldn't set your password — the link may have expired. Request a new one.",
       );
       return;
@@ -84,7 +86,7 @@ export function ResetPasswordForm() {
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <label htmlFor="password" className="text-sm font-medium">
-          New password
+          {t("New password")}
         </label>
         <input
           id="password"
@@ -103,7 +105,7 @@ export function ResetPasswordForm() {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="confirmPassword" className="text-sm font-medium">
-          Confirm new password
+          {t("Confirm new password")}
         </label>
         <input
           id="confirmPassword"
@@ -131,7 +133,7 @@ export function ResetPasswordForm() {
         disabled={submitting}
         className="mt-2 rounded bg-primary px-4 py-2 font-medium text-on-primary hover:bg-primary-dark disabled:opacity-60"
       >
-        {submitting ? "Saving…" : "Set password"}
+        {submitting ? t("Saving…") : t("Set password")}
       </button>
     </form>
   );

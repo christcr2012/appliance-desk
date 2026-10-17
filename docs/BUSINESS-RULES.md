@@ -1,3 +1,7 @@
+## W-26 customer language and evidence
+
+Customer language is an authorized preference, independent of consent, acceptance, payment authority and settlement. Spanish rendering and new Spanish dispatch require complete current source-bound translations, separate fluent/legal review and explicit publication; English is the safe default and governs signed agreements. Record the actual interface language, governing language, source digest and informational legal counterpart at signing; never derive historical evidence from a mutable profile. Preserve old invoices/signatures and existing provider idempotency parameters. Owner/admin interfaces remain English. W-26 engineering in PR #478 does not imply release or actual external approval.
+
 # Business rules — the one source of truth
 
 If code and this document ever disagree, this document (and Chris) win.

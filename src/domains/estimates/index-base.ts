@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma, type EstimateStatus } from "@prisma/client";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
+import { followUpEmailCopy, quoteEmailCopy } from "@/domains/language/transactional-copy";
 import { createDraftAgreementInTx } from "@/domains/agreements";
 import { locateServiceAddress } from "@/domains/tax/locations";
 import {
@@ -81,9 +82,15 @@ export async function createEstimateDraft(
   userId: string,
   input: NewEstimateInput,
 ) {
+  const recipient = await prisma.customer.findUnique({
+    where: { id: input.customerId },
+    select: { preferredLanguage: true },
+  });
+  if (!recipient) throw new Error("Customer account no longer exists.");
   const estimate = await prisma.estimate.create({
     data: {
       customerId: input.customerId,
+      preferredLanguage: recipient.preferredLanguage,
       title: input.title,
       clientMessage: input.clientMessage || null,
       internalNotes: input.internalNotes || null,
@@ -378,24 +385,21 @@ export async function sendEstimate(userId: string, estimateId: string,
     process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
   const monthly = totalMonthlyCents(estimate.lineItems);
   const oneTime = totalOneTimeCents(estimate.lineItems);
-  const parts = [
-    `Hi${recipientName ? ` ${recipientName}` : ""},`,
-    `${settings.publicBusinessName} has prepared estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} for you.`,
-  ];
-  if (monthly > 0) {
-    parts.push(`Estimated recurring total: $${(monthly / 100).toFixed(2)}/month.`);
-  }
-  if (oneTime > 0) {
-    parts.push(`Estimated one-time charges: $${(oneTime / 100).toFixed(2)}.`);
-  }
-  if (!fullyReviewed) {
-    parts.push("This is preliminary, not an all-in binding offer. Setup, delivery, taxes, refundable deposits or other required charges may be missing. You cannot approve or pay from this estimate until the owner sends a verified updated offer.");
-  } else {
-    parts.push("The reviewed all-in breakdown includes each prepared service address and shows the total due at signing separately from future rent.");
-  }
-  if (estimate.clientMessage) parts.push(estimate.clientMessage);
-  parts.push("Review the full details and let us know if it works for you:");
-  parts.push(`${appUrl}/estimate/${estimate.id}`);
+  const {quoteLanguage}=await import("@/domains/language/quote-note");
+  const { activeMessageCatalog } = await import("@/domains/language/runtime");
+  const {language,note:clientMessage}=await quoteLanguage(
+    estimate.preferredLanguage === "es" ? "es" : "en",estimate.clientMessage ?? null);
+  const catalog = await activeMessageCatalog(language);
+  const localizedEmail = quoteEmailCopy(language, {
+    businessName: settings.publicBusinessName,
+    estimateNumber: estimate.estimateNumber,
+    recipientName: recipientName ?? null,
+    monthlyCents: monthly,
+    oneTimeCents: oneTime,
+    fullyReviewed,
+    clientMessage,
+    url: `${appUrl}/estimate/${estimate.id}`,
+  }, catalog);
 
   const delivery = await deliverMessage({
     idempotencyKey: `estimate-send-${estimate.id}-${sentAt.getTime()}`,
@@ -409,9 +413,9 @@ export async function sendEstimate(userId: string, estimateId: string,
     },
     subject: { type: "Estimate", id: estimate.id },
     render: () => ({
-      subject: `Estimate #${estimate.estimateNumber} from ${settings.publicBusinessName}`,
-      text: parts.join("\n\n"),
-      actionLabel: "View & respond to estimate",
+      subject: localizedEmail.subject,
+      text: localizedEmail.text,
+      actionLabel: localizedEmail.actionLabel,
     }),
   });
   const emailed = delivery.state === "ACCEPTED" || delivery.state === "DELIVERED";
@@ -496,6 +500,18 @@ export async function sendEstimateFollowUpReminders(): Promise<{
       });
 
     try {
+      const { displayCustomerLanguage } = await import("@/domains/language/review");
+      const { activeMessageCatalog } = await import("@/domains/language/runtime");
+      const followupLanguage = await displayCustomerLanguage(
+        estimate.preferredLanguage === "es" ? "es" : "en",
+      );
+      const catalog = await activeMessageCatalog(followupLanguage);
+      const copy = followUpEmailCopy(followupLanguage, {
+        name: recipientName ?? null,
+        businessName: settings.publicBusinessName,
+        number: estimate.estimateNumber,
+        url: `${appUrl}/estimate/${estimate.id}`,
+      }, catalog);
       const delivery = await deliverMessage({
         idempotencyKey: `estimate-follow-up-${estimate.id}-${estimate.sentAt.getTime()}`,
         channel: "EMAIL",
@@ -507,17 +523,7 @@ export async function sendEstimateFollowUpReminders(): Promise<{
           address: recipientEmail,
         },
         subject: { type: "Estimate", id: estimate.id },
-        render: () => ({
-          subject: `Following up on estimate #${estimate.estimateNumber}`,
-          text: [
-            `Hi${recipientName ? ` ${recipientName}` : ""},`,
-            `Just checking in — ${settings.publicBusinessName} sent you estimate #${estimate.estimateNumber}${estimate.title ? ` (${estimate.title})` : ""} a few days ago and wanted to make sure it didn't get lost.`,
-            "Still interested? You can review and respond right here — no login needed:",
-            `${appUrl}/estimate/${estimate.id}`,
-            "If your plans have changed or you have questions, just reply to this email.",
-          ].join("\n\n"),
-          actionLabel: "View & respond to estimate",
-        }),
+        render: () => copy,
       });
       if (delivery.state === "FAILED" || delivery.state === "NOT_SENT") {
         await release();
@@ -674,6 +680,16 @@ export async function approveEstimate(
         serviceAddressId = converted.serviceAddressId;
         if (converted.isNewAccount) activationEmail = converted.email;
       }
+    }
+
+    // Carry a lead's customer-selected quote language into the newly created
+    // customer at verified approval. The bearer link cannot mutate customers
+    // directly; this write occurs only in the guarded approval transaction.
+    if (customerId) {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { preferredLanguage: estimate.preferredLanguage },
+      });
     }
 
     await tx.estimate.update({

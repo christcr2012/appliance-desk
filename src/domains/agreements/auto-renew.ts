@@ -1,3 +1,4 @@
+import { localizeRenewalNotice } from "@/domains/language/notice-language";
 import { prisma } from "@/lib/prisma";
 import { isAutoRenewEnabled } from "@/domains/settings/auto-renew-switch";
 import { businessDaysBetween } from "@/lib/business-date";
@@ -101,7 +102,7 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
         select: { user: { select: { name: true, email: true } } },
       }),
     ]);
-    const reminder = composeRenewalReminder({
+    const localeInput = {
       customerName: customer.user.name ?? customer.user.email,
       termMonths: old.termMonths,
       termEndDate: old.endDate,
@@ -112,7 +113,8 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
       businessName: settings?.publicBusinessName ?? "Robinson Appliance Rentals",
       businessPhone: settings?.publicPhone ?? "",
       businessEmail: settings?.publicEmail ?? "",
-    });
+    };
+    const reminder = await localizeRenewalNotice(tx,old.customerId,localeInput,composeRenewalReminder(localeInput));
     await createNoticeInTx(tx, {
       customerId: old.customerId,
       agreementId: old.id,
@@ -120,6 +122,7 @@ async function createAutoRenewal(agreementId: string, now: Date): Promise<Create
       dedupeKey: renewalReminderKey(old.id, old.endDate),
       subject: reminder.subject,
       body: reminder.body,
+        language: reminder.language, translationCopyDigest: reminder.translationCopyDigest,
       // Colorado: the reminder must reach the customer 25 to 40 days before the renewal starts.
       ...windowForRenewalStart(created.startDate ?? old.endDate),
     });

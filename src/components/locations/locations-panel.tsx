@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useRouter } from "next/navigation";
 import type { locationWorkspace, LocationPermission } from "@/domains/customers/location-contacts";
 import {
@@ -29,15 +30,15 @@ function permissionFrom(form: FormData): LocationPermission {
   };
 }
 function PermissionFields({ initial }: { initial: LocationPermission }) {
+  const t = useCustomerTranslation();
   return <div className="grid gap-2 rounded-md bg-subtle p-3">
     {fields.map(field => <label key={field.key} className="flex gap-2 text-sm">
       <input className="accent-primary" name={field.key} type="checkbox" defaultChecked={initial[field.key]} />
-      <span>{field.label}</span>
+      <span>{t(field.label)}</span>
     </label>)}
-    <label className="text-sm">Who confirms appointments?
-      <select name="appointmentConfirmer" defaultValue={initial.appointmentConfirmer}
+    <label className="text-sm">{t("Who confirms appointments?")}<select name="appointmentConfirmer" defaultValue={initial.appointmentConfirmer}
         className="ml-2 rounded border border-line p-2">
-        <option value="CLIENT">Client</option><option value="TENANT">Tenant (if permitted)</option>
+        <option value="CLIENT">{t("Client")}</option><option value="TENANT">{t("Tenant (if permitted)")}</option>
       </select>
     </label>
   </div>;
@@ -49,6 +50,7 @@ function SiteEditor({ customerId, site, mutate, busy, owner }: {
   customerId: string; site: Site; mutate: (key: string, task: () => Promise<MutationState>) => void;
   busy: boolean; owner: boolean;
 }) {
+  const t = useCustomerTranslation();
   const [showContact, setShowContact] = useState(false);
   const [holdReason, setHoldReason] = useState("");
   const [repairLink, setRepairLink] = useState<string | null>(null);
@@ -66,55 +68,47 @@ function SiteEditor({ customerId, site, mutate, busy, owner }: {
       }));
     }}>
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="text-sm">Unit label (optional)
-          <input name="unitLabel" aria-label="Unit label" defaultValue={site.unitLabel ?? ""}
-            maxLength={80} className="block w-full rounded border border-line p-2" placeholder="Unit 4B" />
+        <label className="text-sm">{t("Unit label (optional)")}<input name="unitLabel" aria-label={t("Unit label")} defaultValue={site.unitLabel ?? ""}
+            maxLength={80} className="block w-full rounded border border-line p-2" placeholder={t("Unit 4B")} />
         </label>
-        <label className="text-sm">Private access notes (only assigned visit staff)
-          <textarea name="accessNotes" aria-label="Private access notes" defaultValue={site.accessNotes ?? ""}
+        <label className="text-sm">{t("Private access notes (only assigned visit staff)")}<textarea name="accessNotes" aria-label={t("Private access notes")} defaultValue={site.accessNotes ?? ""}
             maxLength={2000} rows={2} className="block w-full rounded border border-line p-2"
-            placeholder="Parking, pets, gate instructions" />
+            placeholder={t("Parking, pets, gate instructions")} />
         </label>
       </div>
       <label className="flex gap-2 text-sm">
-        <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)} />
-        Override the client&apos;s contact permissions for this location
-      </label>
+        <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)} />{t("Override the client's contact permissions for this location")}</label>
       {override && <PermissionFields initial={site.permission} />}
-      <button className="rounded bg-action px-3 py-2 text-sm text-on-action disabled:opacity-50" disabled={busy}>
-        Save site details and permission
-      </button>
+      <button className="rounded bg-action px-3 py-2 text-sm text-on-action disabled:opacity-50" disabled={busy}>{t("Save site details and permission")}</button>
     </form>
     <div className="border-t border-line pt-3">
       <div className="flex justify-between items-center gap-2">
-        <h4 className="font-medium">Tenant / on-site contacts</h4>
+        <h4 className="font-medium">{t("Tenant / on-site contacts")}</h4>
         <button type="button" onClick={() => setShowContact(x => !x)}
-          className="text-primary underline">{showContact ? "Close" : "Add contact"}</button>
+          className="text-primary underline">{showContact ? t("Close") : t("Add contact")}</button>
       </div>
-      <p className="my-2 text-xs text-ink-soft">Tenants are never customers and cannot see account prices. Recording a phone number or client permission does not opt a tenant into SMS.</p>
-      {repairLink && <p className="rounded bg-subtle p-3 text-sm break-all">Repair link: <a href={repairLink} className="text-primary underline">{repairLink}</a> (valid for 7 days; share with this tenant only)</p>}
+      <p className="my-2 text-xs text-ink-soft">{t("Tenants are never customers and cannot see account prices. Recording a phone number or client permission does not opt a tenant into SMS.")}</p>
+      {repairLink && <p className="rounded bg-subtle p-3 text-sm break-all">{t("Repair link")}: <a href={repairLink} className="text-primary underline">{repairLink}</a>{t("(valid for 7 days; share with this tenant only)")}</p>}
       <ul className="space-y-2">
         {site.locationContacts.map(person => <li key={person.id} className="rounded border border-line p-3 text-sm">
           <div className="flex flex-wrap justify-between gap-2">
-            <span><strong>{person.erasedAt ? "Former occupant (details erased)" : person.name}</strong>{" "}
-              · {person.role === "TENANT" ? "Tenant" : "On-site contact"} · {person.preferredLanguage}</span>
+            <span><strong>{person.erasedAt ? t("Former occupant (details erased)") : person.name}</strong>{" "}
+              · {person.role === "TENANT" ? t("Tenant") : t("On-site contact")} · {person.preferredLanguage}</span>
             {!person.endedAt && !person.erasedAt && <span className="flex gap-2">
               <button type="button" disabled={busy} onClick={() => mutate("repair", async () => {
                 const link = await createTenantRepairLinkAction(customerId, site.id, person.id);
                 if (!link.ok) return { ok: false, message: link.message };
                 setRepairLink(link.path);
                 return { ok: true, message: "Copy the link manually; no message was sent." };
-              })} className="text-primary underline">
-                Create single-use repair link
-              </button>
+              })} className="text-primary underline">{t("Create single-use repair link")}</button>
               <button type="button" disabled={busy}
                 onClick={() => mutate(site.id + ":" + person.id,
                   () => endLocationPersonAction(customerId, site.id, person.id, false))}
-                className="text-primary underline">Move out</button>
+                className="text-primary underline">{t("Move out")}</button>
               <button type="button" disabled={busy}
                 onClick={() => mutate(site.id + ":" + person.id,
                   () => endLocationPersonAction(customerId, site.id, person.id, true))}
-                className="text-primary underline">Move out + inspection To do</button>
+                className="text-primary underline">{t("Move out + inspection To do")}</button>
             </span>}
           </div>
           {owner && !person.erasedAt && <div className="mt-2 space-y-2 text-sm">
@@ -138,11 +132,11 @@ function SiteEditor({ customerId, site, mutate, busy, owner }: {
               </button>
             </form>
           </div>}
-          {!person.erasedAt && <p className="text-ink-soft">{person.phone || "No phone"} · {person.email || "No email"}
-            {person.endedAt ? " · Moved out " + dateLabel(person.endedAt) : " · Current"}
+          {!person.erasedAt && <p className="text-ink-soft">{person.phone || t("No phone")} · {person.email || t("No email")}
+            {person.endedAt ? " · " + t("Moved out") + " " + dateLabel(person.endedAt) : " · " + t("Current")}
           </p>}
         </li>)}
-        {!site.locationContacts.length && <li className="text-ink-soft text-sm">No on-site contacts recorded.</li>}
+        {!site.locationContacts.length && <li className="text-ink-soft text-sm">{t("No on-site contacts recorded.")}</li>}
       </ul>
       {showContact && <form className="mt-3 grid gap-2 sm:grid-cols-2"
         onSubmit={e => {
@@ -154,23 +148,22 @@ function SiteEditor({ customerId, site, mutate, busy, owner }: {
             startedAt: String(form.get("startedAt") ?? ""),
           }));
         }}>
-        <label className="text-sm">Name <input name="name" required maxLength={160}
+        <label className="text-sm">{t("Name")}<input name="name" required maxLength={160}
           className="block w-full rounded border border-line p-2" /></label>
-        <label className="text-sm">Role <select name="role" className="block w-full rounded border border-line p-2">
-          <option value="TENANT">Tenant</option><option value="ONSITE_CONTACT">On-site contact</option>
+        <label className="text-sm">{t("Role")}<select name="role" className="block w-full rounded border border-line p-2">
+          <option value="TENANT">{t("Tenant")}</option><option value="ONSITE_CONTACT">{t("On-site contact")}</option>
         </select></label>
-        <label className="text-sm">Phone <input name="phone" maxLength={35}
+        <label className="text-sm">{t("Phone")}<input name="phone" maxLength={35}
           className="block w-full rounded border border-line p-2" /></label>
-        <label className="text-sm">Email <input name="email" type="email" maxLength={200}
+        <label className="text-sm">{t("Email")}<input name="email" type="email" maxLength={200}
           className="block w-full rounded border border-line p-2" /></label>
-        <label className="text-sm">Preferred language <select name="preferredLanguage"
+        <label className="text-sm">{t("Preferred language")}<select name="preferredLanguage"
           className="block w-full rounded border border-line p-2">
           <option value="en">English</option><option value="es">Español</option>
         </select></label>
-        <label className="text-sm">Move-in date (optional) <input name="startedAt" type="date"
+        <label className="text-sm">{t("Move-in date (optional)")}<input name="startedAt" type="date"
           className="block w-full rounded border border-line p-2" /></label>
-        <button disabled={busy} className="rounded bg-action px-3 py-2 text-on-action disabled:opacity-50">
-          Add location contact</button>
+        <button disabled={busy} className="rounded bg-action px-3 py-2 text-on-action disabled:opacity-50">{t("Add location contact")}</button>
       </form>}
     </div>
   </section>;
@@ -178,6 +171,8 @@ function SiteEditor({ customerId, site, mutate, busy, owner }: {
 export function LocationsPanel({ customerId, locations, owner, retentionMonths }: {
   customerId: string; locations: Workspace; owner: boolean; retentionMonths: number | null;
 }) {
+  const t = useCustomerTranslation();
+  const language = useCustomerLanguage();
   const router = useRouter();
   const [busy, startTransition] = useTransition();
   const [message, setMessage] = useState("");
@@ -190,7 +185,7 @@ export function LocationsPanel({ customerId, locations, owner, retentionMonths }
   function mutate(_key: string, task: () => Promise<MutationState>) {
     startTransition(async () => {
       const result = await task();
-      setMessage(result.message);
+      setMessage(language === "en" ? result.message : t(result.ok ? "Changes saved." : "Unable to save changes. Please try again or contact the business."));
       if (result.ok) router.refresh();
     });
   }
@@ -200,16 +195,15 @@ export function LocationsPanel({ customerId, locations, owner, retentionMonths }
       const value = permissionFrom(new FormData(e.currentTarget));
       mutate("account", () => updateLocationAccountAction(customerId, value));
     }} className="rounded-lg border border-line p-4 space-y-3">
-      <h2 className="text-lg font-semibold">Account-wide tenant contact permission</h2>
-      <p className="text-sm text-ink-soft">Only the client can authorize contact topics. Location overrides take precedence. Tenant consent to automated texts is a separate requirement.</p>
+      <h2 className="text-lg font-semibold">{t("Account-wide tenant contact permission")}</h2>
+      <p className="text-sm text-ink-soft">{t("Only the client can authorize contact topics. Location overrides take precedence. Tenant consent to automated texts is a separate requirement.")}</p>
       <PermissionFields initial={locations.permission} />
-      <button disabled={busy} className="rounded bg-action px-3 py-2 text-on-action disabled:opacity-50">
-        Save account permissions</button>
+      <button disabled={busy} className="rounded bg-action px-3 py-2 text-on-action disabled:opacity-50">{t("Save account permissions")}</button>
     </form>
-    <h2 className="text-xl font-semibold">Locations</h2>
+    <h2 className="text-xl font-semibold">{t("Locations")}</h2>
     {locations.serviceAddresses.map(site =>
       <SiteEditor key={site.id} customerId={customerId} site={site} mutate={mutate} busy={busy} owner={owner} />)}
-    {!locations.serviceAddresses.length && <p>No locations on this account.</p>}
+    {!locations.serviceAddresses.length && <p>{t("No locations on this account.")}</p>}
     {owner && <section className="rounded-lg border border-line p-4 space-y-3">
       <h2 className="text-lg font-semibold">Bulk property and tenant import</h2>
       <p className="text-sm text-ink-soft">Paste a CSV with columns street,unit,city,state,zip,unitLabel,tenantName,tenantPhone,tenantEmail,language. Preview validates every row; commit is atomic. No tenant is invited or messaged.</p>

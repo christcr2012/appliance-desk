@@ -289,7 +289,7 @@ export async function createMaintenanceRequestForUser(
 
 export async function updateSmsPreference(
   userId: string,
-  input: { optedIn: boolean; phone: string | null },
+  input: { optedIn: boolean; phone: string | null; disclosureLanguage?: "en" | "es" },
 ): Promise<{ phone: string | null; smsOptInAt: Date | null }> {
   const customer = await prisma.customer.findUniqueOrThrow({
     where: { userId }, select: { id: true, phone: true },
@@ -323,7 +323,7 @@ export async function updateSmsPreference(
     const at = new Date();
     await recordPortalSmsChoice(tx, {
       customerId: customer.id, priorPhone: current.phone, nextPhone: phone,
-      optedIn: input.optedIn, at,
+      optedIn: input.optedIn, at, disclosureLanguage: input.disclosureLanguage,
     });
     const row = await tx.customer.update({
       where: { id: customer.id },

@@ -66,13 +66,16 @@ export async function createBillingPortalSession(
 ): Promise<string | null> {
   const customer = await prisma.customer.findUniqueOrThrow({
     where: { id: customerId },
-    select: { stripeCustomerId: true },
+    select: { stripeCustomerId: true, preferredLanguage: true },
   });
   if (!customer.stripeCustomerId) return null;
 
   const stripe = getStripeClient();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { displayCustomerLanguage } = await import("@/domains/language/review");
+  const locale = await displayCustomerLanguage(customer.preferredLanguage === "es" ? "es" : "en");
   const session = await stripe.billingPortal.sessions.create({
+    locale,
     customer: customer.stripeCustomerId,
     return_url: `${appUrl}/account`,
   });

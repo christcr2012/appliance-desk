@@ -1,9 +1,12 @@
 "use client";
 
+import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 export function ForgotPasswordForm() {
+  const t=useCustomerTranslation();
+  const language=useCustomerLanguage();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   // Deliberately the same message whether or not the email exists in our
@@ -20,13 +23,13 @@ export function ForgotPasswordForm() {
 
     const { error: requestError } = await authClient.requestPasswordReset({
       email,
-      redirectTo: "/reset-password",
+      redirectTo: language==="es"?"/reset-password?language=es":"/reset-password",
     });
 
     setSubmitting(false);
     if (requestError) {
       setError(
-        requestError.message ?? "Something went wrong. Please try again.",
+        language==="es"?t("Something went wrong. Please try again."):requestError.message ?? "Something went wrong. Please try again.",
       );
       return;
     }
@@ -36,8 +39,7 @@ export function ForgotPasswordForm() {
   if (sent) {
     return (
       <p role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
-        If that email has an account, a reset link is on its way — check your
-        inbox (and spam folder) in a few minutes.
+        {t("If that email has an account, a reset link is on its way — check your inbox (and spam folder) in a few minutes.")}
       </p>
     );
   }
@@ -46,7 +48,7 @@ export function ForgotPasswordForm() {
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <label htmlFor="email" className="text-sm font-medium">
-          Email
+          {t("Email")}
         </label>
         <input
           id="email"
@@ -73,7 +75,7 @@ export function ForgotPasswordForm() {
         disabled={submitting}
         className="mt-2 rounded bg-primary px-4 py-2 font-medium text-on-primary hover:bg-primary-dark disabled:opacity-60"
       >
-        {submitting ? "Sending…" : "Send reset link"}
+        {submitting ? t("Sending…") : t("Send reset link")}
       </button>
     </form>
   );

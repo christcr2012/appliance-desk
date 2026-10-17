@@ -2,20 +2,14 @@
 
 Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
-## What is next — October 15 W-22FIN completion reconciliation
+## What is next — October 17 W-26 delivery
 
-PR #466 contains the complete remaining W-22FIN engineering across POLICY,
-QUOTE, APPROVAL, RECOVERY and DELIVERY. Count that one bundle only after required
-exact-head CI/browser/review and merge. Then W-23 is next for engineering: write
-its existing planned card/packet from the approved location/tenant contract at
-startup. Preserve W-22 PARTIAL for genuine external acceptance in STATUS; do not
-repeat completed consumers or count helpers and PR numbers as new bundles.
-
-Current reconciled main is `d6cc8b5b`; checked READY production remains live
-`4740313d`. The eleven older acceptance sources are deployed; V2 requires a
-future checked scheduled release. All twelve per-row prerequisites and next
-procedures are in STATUS. Professional/provider tests and scoped owner/customer
-acceptance are separate from source completeness and simulated provider proof.
+W-23, W-24 and W-25 prerequisites are merged. PR #478 completes original W-26
+engineering; final exact-head CI and merge remain pending. W-14 is next after
+verified merge. Spanish activation still requires actual fluent/legal approval
+and owner publication. The 22 existing live/provider/owner acceptance obligations
+remain separately PENDING; source completion does not supply their missing gates.
+READY production remains 4740313d; no manual release is authorized.
 
 **New required implementer reading:** October 13
 [56-subject owner-answer mapping](owner-decisions/2026-10-13-implementation-map.json)

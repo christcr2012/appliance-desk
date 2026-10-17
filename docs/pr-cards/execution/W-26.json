@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "id": "W-26",
+  "parent": "W-26",
+  "baseline": "1b41264d51065908c1f8c0d97008422ccc2f03ba",
+  "card": "docs/pr-cards/W-26.md",
+  "outcome": "End-to-end customer language choice and persisted bilingual quote, legal, payment and portal journey with independently gated public Spanish and immutable signing language evidence",
+  "risk": "Unreviewed Spanish changes the legal promise or billed amount, an unauthenticated quote link updates another customer, missing email text, stale translations, cross-account preferences, duplicate provider sends, or nonreproducible language at signing.",
+  "next": "Finish all W-26 bilingual quote, agreement, signing, payment, portal, message and owner-template callers and validation before dependent W-14; subsequently catch up eligible source-pinned live acceptance.",
+  "references": [
+    {
+      "path": "src/domains/language/index.ts",
+      "anchor": "export async function chooseCustomerLanguage",
+      "purpose": "Customer-scoped immutable preference boundary"
+    },
+    {
+      "path": "src/domains/language/review.ts",
+      "anchor": "export async function getSpanishReview",
+      "purpose": "Enforce reviewer and completeness gate"
+    },
+    {
+      "path": "src/domains/language/drafts.ts",
+      "anchor": "export async function saveTranslationDraft",
+      "purpose": "Owner-side stale source and revision protected Spanish draft"
+    },
+    {
+      "path": "src/app/estimate/[id]/page.tsx",
+      "anchor": "export default async function PublicEstimatePage",
+      "purpose": "Quote bearer/customer locale, real frozen dollar readback"
+    },
+    {
+      "path": "src/app/sign/[id]/page.tsx",
+      "anchor": "export default async function SignPage",
+      "purpose": "Recorded English-controlling terms and shown-language evidence"
+    },
+    {
+      "path": "src/components/account-shell.tsx",
+      "anchor": "export function AccountShell",
+      "purpose": "Customer-portal bilingual navigation, still owner desk English"
+    }
+  ],
+  "proposedFiles": [
+    "prisma/schema.prisma",
+    "src/domains/language",
+    "src/app/estimate/[id]",
+    "src/app/sign/[id]",
+    "src/app/account",
+    "src/domains/estimates",
+    "src/domains/billing",
+    "src/app/desk/settings"
+  ],
+  "invariants": [
+    "Source builds and synthetic tests are permitted before fluent/legal review; binding real Spanish copy is OFF unless all original customer surfaces, current reviewer evidence and controlling-English legal approval pass.",
+    "Customer language is not communication consent, a credit-card permission, an acceptance, a signed document, an appointment or a payment receipt.",
+    "Quote bearer link changes only its nonbinding quote locale; original owner/customer authorization, frozen amount and signature compare-and-set remain enforced.",
+    "The actually viewed signing language is auditable/immutable and must match the legal snapshot; English controls until a separately verified legal revision.",
+    "Owner/ADMIN editing English/Spanish templates cannot send/publish a message or alter an already billed or signed contract."
+  ],
+  "sequence": [
+    "Plan original W-26 once against merged W-25 and existing IN-83 reviewer/legal gates.",
+    "Implement persisted customer/quote language and update only after authenticated setting or valid bearer signing/approval.",
+    "Render whole customer quote/agreement/sign/payment and actual provider language with unchanged frozen money and denied/recovery cases.",
+    "Render every customer portal and communications path with complete bilingual keys, owner-editable Spanish versions next to English, and stale-template safeguards.",
+    "Prove full independent browser, DB, upgrade/restore, accessibility, code/security review and checked CI, then merge; queue independently gated real reviewer/provider/live acceptance."
+  ],
+  "acceptance": [
+    "Customers choose English or Espa\u00f1ol on quote, agreement, signing, payment and portal pages; preference remembered on customer and used in email and future texts.",
+    "Draft translations receive fluent reviewer approval before Spanish is switched on; English signed text controls until counsel review.",
+    "Owner desk English; owner-editable Spanish text beside English in templates and content.",
+    "Both-language full customer pages have no missing text; email preference and immutable shown-language signing are tested."
+  ],
+  "gates": [
+    {
+      "id": "IN-83",
+      "affected": "Public Spanish legal language, binding content, live customer translations",
+      "source": "docs/OWNER-INPUTS.md",
+      "remedy": "Owner-selected fluent reviewer confirms draft; attorney independently reviews governing English/legal terms; record actual references in owner-facing settings",
+      "reopen": "Verified signed-off translated content and reviewed source fingerprint"
+    },
+    {
+      "id": "W26-LIVE",
+      "affected": "Real owner/customer signed Spanish transaction, email/SMS and payment provider proof",
+      "source": "docs/SESSION-START.md",
+      "remedy": "After checked READY serving deploy, run consent/role-verified authentic fixtures; no unapproved LIVE card or SMS activation",
+      "reopen": "Eligible source ancestry, safe identities and real provider acceptance"
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/customer-language-w26.test.ts",
+      "tests/customer-language-authorization-w26.test.ts",
+      "tests/customer-language-transactional-w26.test.ts",
+      "tests/customer-language-drafts-w26.test.ts",
+      "tests/customer-language-catalog-w26.test.ts",
+      "tests/customer-language-rendered-w26.test.tsx",
+      "tests/customer-language-portal-rendered-w26.test.tsx",
+      "tests/customer-language-runtime-w26.test.ts",
+      "tests/customer-language-auth-w26.test.tsx",
+      "tests/estimate-send-email-switch.test.ts"
+    ],
+    "db": [
+      "tests/customer-language-database-w26.test.ts",
+      "tests/backup-restore-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/customer-language-w26.spec.ts",
+      "e2e/signing-waiver-presentation.spec.ts"
+    ],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-26",
+      "outcome": "End-to-end customer language choice and persisted bilingual quote, legal, payment and portal journey with independently gated public Spanish and immutable signing language evidence",
+      "acceptance": [
+        "Customers choose English or Espa\u00f1ol on quote, agreement, signing, payment and portal pages; preference remembered on customer and used in email and future texts.",
+        "Draft translations receive fluent reviewer approval before Spanish is switched on; English signed text controls until counsel review.",
+        "Owner desk English; owner-editable Spanish text beside English in templates and content.",
+        "Both-language full customer pages have no missing text; email preference and immutable shown-language signing are tested."
+      ]
+    }
+  ]
+}

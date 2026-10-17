@@ -1,12 +1,15 @@
+"use client";
+import { useCustomerTranslation } from "@/domains/language/client-portal";
 /**
  * Shown while an /account/** page's data is loading. See
  * src/app/desk/loading.tsx's comment for why this exists.
  */
 export default function AccountLoading() {
+  const tr = useCustomerTranslation();
   return (
     <div className="max-w-2xl">
       <p role="status" className="sr-only">
-        Loading…
+        {tr("Loading…")}
       </p>
       <div className="animate-pulse" aria-hidden="true">
         <div className="h-6 w-40 rounded-control bg-canvas-alt" />

@@ -1,3 +1,7 @@
+import { CustomerLegalText } from "@/components/customer-legal-text";
+import { agreementLanguage, agreementLegalTexts } from "@/domains/language/legal";
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel, portalStatement } from "@/domains/language/portal-copy";
 import { EndRental } from "./end-rental";
 import { EndFixedTerm } from "./end-fixed-term";
 import { AutoRenewControl } from "./auto-renew-control";
@@ -8,7 +12,7 @@ import {
 } from "@/domains/agreements/month-to-month";
 import { getEarlyTerminationQuote } from "@/domains/agreements/term";
 import { describeSnapshotTerms, snapshotAutoRenew } from "@/domains/agreements/terms-snapshot";
-import { addBusinessDays, formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
+import { addBusinessDays, formatBusinessDate as originalBusinessDate, formatBusinessTime as originalBusinessTime } from "@/lib/business-date";
 import { getServerSession } from "@/lib/session";
 import { getPortalData, getPortalJobsPage } from "@/domains/portal";
 import { formatCents } from "@/domains/pricing/money";
@@ -47,15 +51,19 @@ export default async function AccountRentalsPage({
   searchParams: Promise<{ visitsPage?: string }>;
 }) {
   const session = await getServerSession();
+  const locale = session ? await portalLanguage(session.user.id) : "en";
+  const formatBusinessDate=(date:Date)=>originalBusinessDate(date,locale);
+  const formatBusinessTime=(date:Date)=>originalBusinessTime(date,locale);
+  const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
   const customer = session ? await getPortalData(session.user.id) : null;
 
   if (!customer || !session) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title="My rentals" />
+        <PageHeader title={t("My rentals")} />
         <EmptyState
-          title="No rental account found"
-          description="Contact the business if you expected to see rental details here."
+          title={t("No rental account found")}
+          description={t("Contact the business if you expected to see rental details here.")}
         />
       </div>
     );
@@ -86,31 +94,36 @@ export default async function AccountRentalsPage({
     }
   }));
 
+  const legalReadbacks=new Map(await Promise.all(customer.rentalAgreements.map(async agreement=>{
+    const texts=agreement.termMonths===null
+      ? [monthToMonthTerms.get(agreement.id)?.termsText ?? ""].filter(Boolean)
+      : agreementLegalTexts(agreement.termsSnapshot);
+    return [agreement.id,await agreementLanguage(locale,texts)] as const;
+  })));
   return (
     <div className="max-w-4xl">
       <PageHeader
-        title="My rentals"
-        description="Review your rental items, visits, and the ending or renewal terms that belong to each agreement."
+        title={t("My rentals")}
+        description={t("Review your rental items, visits, and the ending or renewal terms that belong to each agreement.")}
         secondaryActions={
           <ButtonLink
             href="/account/maintenance?request=pickup"
             variant="secondary"
-          >
-            Request pickup
-          </ButtonLink>
+          >{t("Request pickup")}</ButtonLink>
         }
       />
 
       {customer.rentalAgreements.length === 0 ? (
         <EmptyState
-          title="You don't have any rentals yet"
-          description="Signed and active rental details will appear here."
+          title={t("You don't have any rentals yet")}
+          description={t("Signed and active rental details will appear here.")}
         />
       ) : (
         <div className="space-y-6">
           {customer.rentalAgreements.map((agreement) => {
+            const legalReadback=legalReadbacks.get(agreement.id)!;
             const total = agreement.lines.reduce((sum, line) => sum + line.monthlyPriceCents, 0);
-            const fixedTerms = agreement.termMonths ? describeSnapshotTerms(agreement.termsSnapshot) : null;
+            const fixedTerms = agreement.termMonths ? describeSnapshotTerms(agreement.termsSnapshot, locale) : null;
             const lockedAutoRenew = agreement.termMonths ? snapshotAutoRenew(agreement.termsSnapshot) : null;
             const mtmTerms = monthToMonthTerms.get(agreement.id) ?? null;
             const mtmQuote = monthToMonthEndQuotes.get(agreement.id) ?? null;
@@ -126,16 +139,16 @@ export default async function AccountRentalsPage({
                 title={`${agreement.serviceAddress.line1}, ${agreement.serviceAddress.city}`}
                 description={
                   agreement.termMonths
-                    ? `${agreement.termMonths}-month term`
-                    : "Month-to-month"
+                    ? portalStatement(locale,"term",{months:agreement.termMonths})
+                    : t("Month-to-month")
                 }
                 actions={
                   <StatusPill
                     tone={rentalAgreementStatusTone(agreement.status)}
                     label={
                       agreement.status === "SCHEDULED" && agreement.startDate
-                        ? `Renewal starts on ${formatBusinessDate(agreement.startDate)}`
-                        : rentalAgreementStatusLabel(agreement.status)
+                        ? `${t("Renewal starts on")} ${formatBusinessDate(agreement.startDate)}`
+                        : rentalAgreementStatusLabel(agreement.status, locale)
                     }
                   />
                 }
@@ -143,35 +156,31 @@ export default async function AccountRentalsPage({
 
                 {agreement.terminationRequestedAt && agreement.terminationEffectiveOn && endingLastBilledDay && (
                   <p className="mt-3 rounded-card border border-line bg-subtle p-3 text-sm text-ink">
-                    Ends on {formatBusinessDate(agreement.terminationEffectiveOn)} — last billed day {formatBusinessDate(endingLastBilledDay)}.
-                    We will contact you to arrange pickup.
+                    {t("Ends on")} {formatBusinessDate(agreement.terminationEffectiveOn)} — {t("Last billed day")} {formatBusinessDate(endingLastBilledDay)}. {t("We will contact you to arrange pickup.")}
                   </p>
                 )}
 
                 <div className="mt-4 rounded-card bg-subtle p-3">
-                  <p className="text-sm font-medium text-ink">Next visit</p>
+                  <p className="text-sm font-medium text-ink">{t("Next visit")}</p>
                   {nextVisit?.scheduledAt ? (
                     <p className="mt-1 text-sm text-ink-soft">
-                      {jobTypeLabel(nextVisit.type)} · {formatBusinessDate(nextVisit.scheduledAt)} · {formatBusinessTime(nextVisit.scheduledAt)}
+                      {jobTypeLabel(nextVisit.type, locale)} · {formatBusinessDate(nextVisit.scheduledAt)} · {formatBusinessTime(nextVisit.scheduledAt)}
                     </p>
                   ) : nextVisit?.type === "DELIVERY" ? (
-                    <p className="mt-1 text-sm text-ink-soft">
-                      Delivery is being arranged. The business has not confirmed a date or time yet.
-                      This is a request in progress, not a booked appointment.
-                    </p>
+                    <p className="mt-1 text-sm text-ink-soft">{t("Delivery is being arranged. The business has not confirmed a date or time yet. This is a request in progress, not a booked appointment.")}</p>
                   ) : (
-                    <p className="mt-1 text-sm text-ink-soft">No visit is scheduled for this rental.</p>
+                    <p className="mt-1 text-sm text-ink-soft">{t("No visit is scheduled for this rental.")}</p>
                   )}
                 </div>
 
-                <h3 className="mt-4 text-sm font-medium text-ink">Items</h3>
+                <h3 className="mt-4 text-sm font-medium text-ink">{t("Items")}</h3>
                 <ul className="mt-2 space-y-1 text-sm text-ink-soft">
                   {agreement.lines.map((line) => (
                     <li key={line.id}>
-                      {line.label} — {formatCents(line.monthlyPriceCents)}/month
+                      {line.label} — {formatCents(line.monthlyPriceCents)} {t("per month")}
                       {line.prepayDiscountCentsPerMonth > 0 && (
                         <span className="text-ink-faint">
-                          {" "}(list price {formatCents(line.listPriceCents)}, includes a {formatCents(line.prepayDiscountCentsPerMonth)}/month term discount)
+                          {" "}({t("list price")} {formatCents(line.listPriceCents)}, {t("includes a")} {formatCents(line.prepayDiscountCentsPerMonth)} {t("per month")} {t("term discount")})
                         </span>
                       )}
                       {line.assignments.length > 0 && (
@@ -181,47 +190,46 @@ export default async function AccountRentalsPage({
                   ))}
                 </ul>
 
-                <p className="mt-3 text-sm font-medium text-ink">Monthly total: {formatCents(total)}</p>
-                <SigningPaymentSummary summary={agreement.signingPaymentSummary ?? null} />
+                <p className="mt-3 text-sm font-medium text-ink">{t("Monthly total")}: {formatCents(total)}</p>
+                <SigningPaymentSummary language={locale} summary={agreement.signingPaymentSummary ?? null} />
                 {agreement.freeMonthGranted && (
-                  <p className="text-sm font-medium text-success">Paid in full, in advance — your first month was free.</p>
+                  <p className="text-sm font-medium text-success">{t("Paid in full, in advance — your first month was free.")}</p>
                 )}
                 {agreement.depositCents > 0 && (
-                  <p className="text-sm text-ink-soft">Deposit required: {formatCents(agreement.depositCents)}</p>
+                  <p className="text-sm text-ink-soft">{t("Deposit required")}: {formatCents(agreement.depositCents)}</p>
                 )}
 
                 <div className="mt-5 border-t border-line pt-4">
-                  <h3 className="font-medium text-ink">Ending and renewal terms for this rental</h3>
+                  <h3 className="font-medium text-ink">{t("Ending and renewal terms for this rental")}</h3>
+                  {locale === "es" && <p className="mt-2 text-sm">{t("The recorded English terms below control this agreement.")}</p>}
                   {agreement.termMonths ? (
                     <div className="mt-2 space-y-4 text-sm">
                       <div>
-                        <p className="font-medium text-ink">Ending early</p>
+                        <p className="font-medium text-ink">{t("Ending early")}</p>
                         {fixedTerms?.ending ? (
                           <>
                             <ul className="mt-1 list-disc space-y-1 pl-5 text-ink-soft">
                               {fixedTerms.ending.lines.map((line) => <li key={line}>{line}</li>)}
                             </ul>
-                            <p className="mt-2 whitespace-pre-line text-ink-soft">{fixedTerms.ending.termsText}</p>
+                            <CustomerLegalText language={legalReadback.language} english={fixedTerms.ending.termsText} spanish={legalReadback.translations.find(row=>row.english===fixedTerms.ending!.termsText)?.spanish} />
                           </>
                         ) : (
-                          <p className="mt-1 text-ink-soft">Not available for this rental — contact us.</p>
+                          <p className="mt-1 text-ink-soft">{t("Not available for this rental — contact us.")}</p>
                         )}
                       </div>
 
                       {agreement.status === "ACTIVE" && !agreement.terminationRequestedAt && fixedTerms?.ending && (
                         earlyQuote ? (
                           <div className="rounded-card border border-line bg-subtle p-3">
-                            <p className="font-medium text-ink">Your ending quote</p>
+                            <p className="font-medium text-ink">{t("Your ending quote")}</p>
                             <ul className="mt-1 space-y-1 text-ink-soft">
-                              <li>Ending date: {formatBusinessDate(earlyQuote.effectiveOn)}</li>
-                              <li>Last billed day: {formatBusinessDate(addBusinessDays(earlyQuote.effectiveOn, -1))}</li>
-                              <li>Early-ending fee: {formatCents(earlyQuote.feeCents)}</li>
-                              <li>Unused prepaid amount: {formatCents(earlyQuote.unusedTermCents)} — {unusedTreatmentLabel(earlyQuote.unusedTermTreatment)}</li>
-                              {earlyQuote.unpaidBalanceCents > 0 && <li>Existing unpaid balance: {formatCents(earlyQuote.unpaidBalanceCents)}</li>}
+                              <li>{t("Ending date")}: {formatBusinessDate(earlyQuote.effectiveOn)}</li>
+                              <li>{t("Last billed day")}: {formatBusinessDate(addBusinessDays(earlyQuote.effectiveOn, -1))}</li>
+                              <li>{t("Early-ending fee")}: {formatCents(earlyQuote.feeCents)}</li>
+                              <li>{t("Unused prepaid amount")}: {formatCents(earlyQuote.unusedTermCents)} — {t(unusedTreatmentLabel(earlyQuote.unusedTermTreatment) as "refunded" | "left as account credit" | "not refunded")}</li>
+                              {earlyQuote.unpaidBalanceCents > 0 && <li>{t("Existing unpaid balance")}: {formatCents(earlyQuote.unpaidBalanceCents)}</li>}
                             </ul>
-                            <p className="mt-2 text-ink-soft">
-                              The business settles any prepaid refund or credit and arranges pickup. Nothing here automatically charges your card.
-                            </p>
+                            <p className="mt-2 text-ink-soft">{t("The business settles any prepaid refund or credit and arranges pickup. Nothing here automatically charges your card.")}</p>
                             <EndFixedTerm
                               agreementId={agreement.id}
                               effectiveOn={earlyQuote.effectiveOn.toISOString()}
@@ -237,20 +245,20 @@ export default async function AccountRentalsPage({
                             />
                           </div>
                         ) : (
-                          <p className="text-ink-soft">Ending online is not available right now — contact us.</p>
+                          <p className="text-ink-soft">{t("Ending online is not available right now — contact us.")}</p>
                         )
                       )}
 
                       <div>
-                        <p className="font-medium text-ink">Automatic renewal</p>
+                        <p className="font-medium text-ink">{t("Automatic renewal")}</p>
                         {fixedTerms?.autoRenew && lockedAutoRenew ? (
                           <>
                             <p className="mt-1 text-ink-soft">{fixedTerms.autoRenew.noticeLine}</p>
-                            <p className="mt-2 whitespace-pre-line text-ink-soft">{fixedTerms.autoRenew.termsText}</p>
+                            <CustomerLegalText language={legalReadback.language} english={fixedTerms.autoRenew.termsText} spanish={legalReadback.translations.find(row=>row.english===fixedTerms.autoRenew!.termsText)?.spanish} />
                             {agreement.status === "ACTIVE" && !agreement.terminationRequestedAt && (
                               <>
                                 <p className="mt-2 text-ink-soft">
-                                  Current choice: {agreement.renewalPreference === "AUTO_RENEW" ? "automatic renewal is on" : "automatic renewal is off"}.
+                                  {t("Current choice")}: {t(agreement.renewalPreference === "AUTO_RENEW" ? "automatic renewal is on" : "automatic renewal is off")}.
                                 </p>
                                 <AutoRenewControl
                                   agreementId={agreement.id}
@@ -261,7 +269,7 @@ export default async function AccountRentalsPage({
                             )}
                           </>
                         ) : (
-                          <p className="mt-1 text-ink-soft">Not available for this rental — contact us.</p>
+                          <p className="mt-1 text-ink-soft">{t("Not available for this rental — contact us.")}</p>
                         )}
                       </div>
                     </div>
@@ -270,17 +278,17 @@ export default async function AccountRentalsPage({
                       {mtmTerms ? (
                         <>
                           <p className="text-ink-soft">
-                            This rental is month-to-month. The terms that apply to it require {mtmTerms.noticeDays} days&apos; notice to end it, with no ending fee.
+                            {portalStatement(locale,"mtm",{days:mtmTerms.noticeDays})}
                           </p>
-                          <p className="mt-2 whitespace-pre-line text-ink-soft">{mtmTerms.termsText}</p>
+                          <CustomerLegalText language={legalReadback.language} english={mtmTerms.termsText} spanish={legalReadback.translations.find(row=>row.english===mtmTerms.termsText)?.spanish} />
                         </>
                       ) : (
-                        <p className="text-ink-soft">Not available for this rental — contact us.</p>
+                        <p className="text-ink-soft">{t("Not available for this rental — contact us.")}</p>
                       )}
                       {agreement.status === "ACTIVE" && !agreement.terminationRequestedAt && mtmQuote && (
                         <div className="mt-3 rounded-card border border-line bg-subtle p-3">
                           <p className="text-ink">
-                            If you end it now, it will end on {formatBusinessDate(mtmQuote.effectiveOn)}; your last billed day will be {formatBusinessDate(mtmQuote.lastBilledDay)}. There is no fee. We will arrange pickup.
+                            {portalStatement(locale,"mtmEnd",{end:formatBusinessDate(mtmQuote.effectiveOn),last:formatBusinessDate(mtmQuote.lastBilledDay)})}
                           </p>
                           <EndRental
                             agreementId={agreement.id}
@@ -306,24 +314,20 @@ export default async function AccountRentalsPage({
         href="/account/maintenance?request=pickup"
         variant="secondary"
         className="mt-6"
-      >
-        Request pickup
-      </ButtonLink>
-      <p className="mt-2 text-sm text-ink-soft">
-        A pickup request is reviewed by the business; it does not cancel your agreement or change billing automatically.
-      </p>
+      >{t("Request pickup")}</ButtonLink>
+      <p className="mt-2 text-sm text-ink-soft">{t("A pickup request is reviewed by the business; it does not cancel your agreement or change billing automatically.")}</p>
 
       <div className="mt-8">
-        <h2 className="font-medium text-ink">Delivery &amp; visit history</h2>
+        <h2 className="font-medium text-ink">{t("Delivery & visit history")}</h2>
         {!visitPage || visitPage.items.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-soft">No visits on this page.</p>
+          <p className="mt-2 text-sm text-ink-soft">{t("No visits on this page.")}</p>
         ) : (
           <ul className="mt-2 divide-y divide-line rounded-card border border-line bg-surface">
             {visitPage.items.map((job) => (
               <li key={job.id} className="px-4 py-3 text-sm">
-                <p className="font-medium text-ink">{jobTypeLabel(job.type)}</p>
+                <p className="font-medium text-ink">{jobTypeLabel(job.type, locale)}</p>
                 <p className="text-ink-soft">
-                  {jobStatusLabel(job.status)}
+                  {jobStatusLabel(job.status, locale)}
                   {job.scheduledAt && ` · ${formatBusinessDate(job.scheduledAt)} · ${formatBusinessTime(job.scheduledAt)}`}
                 </p>
               </li>
@@ -335,17 +339,13 @@ export default async function AccountRentalsPage({
             <ButtonLink
               href={`/account/rentals?visitsPage=${visitsPage - 1}`}
               variant="secondary"
-            >
-              Newer visits
-            </ButtonLink>
+            >{t("Newer visits")}</ButtonLink>
           )}
           {visitPage?.hasMore && (
             <ButtonLink
               href={`/account/rentals?visitsPage=${visitsPage + 1}`}
               variant="secondary"
-            >
-              Older visits
-            </ButtonLink>
+            >{t("Older visits")}</ButtonLink>
           )}
         </div>
       </div>

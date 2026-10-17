@@ -1,6 +1,23 @@
-2026-10-16 supplemental CI finding: in PR #477 browser-a passed after isolating the communications customer. Browser-b revealed that its generated W25 phone order title contained a 13-digit Date.now() identifier, which happened to satisfy the card PAN Luhn checksum; the intentional card-by-phone guard correctly denied form submission. The test now uses nonnumeric UUID identifiers and leaves the production no-card guard fully intact. No suppression, timeout increase or gate removal. Required exact-head CI pending.
+## October 17 — complete W-26 engineering, final CI/merge pending
 
-2026-10-16 release blocker: twice-red merged-main CI browser-a communication-timeline navigation was traced to its first visible shared customer list entry disappearing before detail GET, observed as a concrete HTTP 404 in Playwright saved failure artifact. The dedicated nonproduction owned customer fixture with finally cleanup is a test-reliability repair, not a waived test or additional engineering bundle. Main release remains closed until full exact-head CI green. All 22 externally gated acceptance items retain their real PENDING statuses.
+W-25 is merged. W-26 in PR #478 now completes the original customer-language
+engineering outcome across quote, agreement/signing, payment, portal, customer
+messages and owner-editable translations. All seven coverage declarations represent
+implemented consumers. Actual Spanish remains OFF until complete current drafts,
+owner-selected fluent review, separate counsel evidence and owner publication.
+English governs signed agreements; historical invoices/signatures are unchanged.
+
+Diagnostic Actions run 38984045880 passed all three unit/real-Postgres shards,
+schema upgrade/restore, all four production builds and browser shards, including
+the full gated bilingual journey. Independent engineering review has no remaining
+blockers. Final PR-head CI and merge remain pending; do not infer deployed or
+provider acceptance from source tests. See W-26 card, consumer matrix, scorecard
+and permanent PR handoff for final verified revisions and checks.
+
+Main was 1b41264d; READY production serves 4740313d. The 22 existing live/provider/
+owner acceptance rows remain PENDING after individual prerequisite reconciliation.
+No production release, LIVE send/charge or real Spanish approval occurred. W-14
+is the next approved engineering capability after verified W-26 merge.
 
 ## October 16, 2026 — Complete deployment acceptance backlog
 

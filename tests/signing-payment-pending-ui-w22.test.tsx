@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const mock = vi.hoisted(() => ({ sign: vi.fn() }));
+vi.mock("next/navigation",()=>({useRouter:()=>({push:vi.fn()})}));
 vi.mock("@/app/sign/[id]/actions", () => ({ signAgreementAction: (...args: unknown[]) => mock.sign(...args) }));
 import { SignForm } from "@/app/sign/[id]/sign-form";
 

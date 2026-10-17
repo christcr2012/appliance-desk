@@ -1,6 +1,10 @@
+import { PaymentReturnNotice } from "@/components/payment-return-notice";
+import { getServerSession } from "@/lib/session";
+import { portalLanguage } from "@/domains/language/portal";
+import { portalLabel, rentalCountLabel, portalStatement, visitCountLabel, requestCountLabel } from "@/domains/language/portal-copy";
 import { getPortalHome } from "@/domains/portal/workspace";
 import { formatCents } from "@/domains/pricing/money";
-import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
+import { formatBusinessDate as originalBusinessDate, formatBusinessTime as originalBusinessTime } from "@/lib/business-date";
 import { jobTypeLabel } from "@/lib/status-labels";
 import {
   ButtonLink,
@@ -15,17 +19,23 @@ export const metadata = { title: "My account" };
 export default async function AccountHomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ address?: string }>;
+  searchParams: Promise<{ address?: string; billing?: string; signingPayment?: string }>;
 }) {
-  const data = await getPortalHome((await searchParams).address);
+  const params = await searchParams;
+  const data = await getPortalHome(params.address);
+  const session = await getServerSession();
+  const locale = session ? await portalLanguage(session.user.id) : "en";
+  const formatBusinessDate=(date:Date)=>originalBusinessDate(date,locale);
+  const formatBusinessTime=(date:Date)=>originalBusinessTime(date,locale);
+  const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(locale, text);
 
   if (!data) {
     return (
       <div className="max-w-3xl">
-        <PageHeader title="Welcome" />
+        <PageHeader title={t("Welcome")} />
         <EmptyState
-          title="No rental account attached to this login"
-          description="Contact the business if you expected to see an active rental."
+          title={t("No rental account attached to this login")}
+          description={t("Contact the business if you expected to see an active rental.")}
         />
       </div>
     );
@@ -33,30 +43,31 @@ export default async function AccountHomePage({
 
   return (
     <div className="max-w-5xl">
+      <PaymentReturnNotice language={locale} state={params.signingPayment ?? params.billing} />
       <PageHeader
-        title="Your rental account"
-        description="Your rentals, next visit, billing and help in one place."
+        title={t("Your rental account")}
+        description={t("Your rentals, next visit, billing and help in one place.")}
         primaryAction={{
           href: "/account/maintenance",
-          label: "Report a problem",
+          label: t("Report a problem"),
         }}
         secondaryActions={
           <ButtonLink
             href="/account/maintenance?request=pickup"
             variant="secondary"
           >
-            Request pickup
+            {t("Request pickup")}
           </ButtonLink>
         }
       />
 
       {data.properties.length > 1 && (
         <FilterBar
-          label="Account properties"
+          label={t("Account properties")}
           items={[
             {
               href: "/account",
-              label: "All properties",
+              label: t("All properties"),
               active: !data.addressId,
             },
             ...data.properties.map((address) => ({
@@ -70,16 +81,14 @@ export default async function AccountHomePage({
         />
       )}
 
-      <p className="mb-5"><ButtonLink href="/account/properties" variant="secondary">Manage my properties and on-site contacts</ButtonLink></p>
+      <p className="mb-5"><ButtonLink href="/account/properties" variant="secondary">{t("Manage my properties and on-site contacts")}</ButtonLink></p>
       <div className="grid gap-5 lg:grid-cols-2">
         <Card
-          title="What do I rent?"
-          description={`${data.activeRentalCount} active rental${
-            data.activeRentalCount === 1 ? "" : "s"
-          }${data.addressId ? " at this property" : " on this account"}.`}
+          title={t("What do I rent?")}
+          description={rentalCountLabel(locale,data.activeRentalCount,Boolean(data.addressId))}
           actions={
             <ButtonLink href="/account/rentals" variant="secondary">
-              View rentals
+              {t("View rentals")}
             </ButtonLink>
           }
         >
@@ -106,13 +115,11 @@ export default async function AccountHomePage({
                         0,
                       ),
                     )}
-                    /month
+                    {t("per month")}
                   </p>
                   {agreement.outOfServicePeriods.map((away) => (
                     <p key={away.id} className="mt-2 text-sm text-ink">
-                      Your {away.appliance.applianceType.name.toLowerCase()} has been out for repair since{" "}
-                      {formatBusinessDate(away.startedOn)}. When it is back, your next bill gets a credit for every day
-                      without it.
+                      {portalStatement(locale,"repair",{appliance:away.appliance.applianceType.name.toLowerCase(),date:formatBusinessDate(away.startedOn)})}
                     </p>
                   ))}
                 </li>
@@ -120,44 +127,36 @@ export default async function AccountHomePage({
             </ul>
           ) : (
             <EmptyState
-              title="No active rentals"
-              description="An agreement awaiting signature or delivery may still be in progress."
+              title={t("No active rentals")}
+              description={t("An agreement awaiting signature or delivery may still be in progress.")}
             />
           )}
 
           {data.activeRentalCount > data.rentals.length && (
             <p className="mt-3 text-sm text-ink-soft">
-              Showing {data.rentals.length} of {data.activeRentalCount} active
-              rentals.
+              {t("Showing")} {data.rentals.length} {t("of")} {rentalCountLabel(locale, data.activeRentalCount, Boolean(data.addressId))}
             </p>
           )}
         </Card>
 
         <Card
-          title="What's next?"
-          description={`${data.upcomingVisitCount} active visit${
-            data.upcomingVisitCount === 1 ? "" : "s"
-          }${data.addressId ? " for this property" : " on this account"}.`}
+          title={t("What's next?")}
+          description={visitCountLabel(locale,data.upcomingVisitCount,Boolean(data.addressId))}
           actions={
-            <ButtonLink href="/account/rentals" variant="secondary">
-              Visit history
-            </ButtonLink>
+            <ButtonLink href="/account/rentals" variant="secondary">{t("Visit history")}</ButtonLink>
           }
         >
           {data.nextVisit ? (
             <div>
               <p className="font-semibold text-ink">
-                {jobTypeLabel(data.nextVisit.type)}
+                {jobTypeLabel(data.nextVisit.type, locale)}
               </p>
               <p className="mt-1 text-ink">
                 {formatBusinessDate(data.nextVisit.scheduledAt!)} ·{" "}
                 {formatBusinessTime(data.nextVisit.scheduledAt!)}
               </p>
               {data.nextVisit.scheduledAt! < new Date() && (
-                <p className="mt-2 text-sm text-ink-soft">
-                  This is the recorded visit time. Contact the business if you
-                  need an updated arrival time.
-                </p>
+                <p className="mt-2 text-sm text-ink-soft">{t("This is the recorded visit time. Contact the business if you need an updated arrival time.")}</p>
               )}
               {data.nextVisit.serviceAddress && (
                 <p className="mt-2 text-sm text-ink-soft">
@@ -170,29 +169,27 @@ export default async function AccountHomePage({
             </div>
           ) : (
             <EmptyState
-              title="No scheduled visit"
+              title={t("No scheduled visit")}
               description={
                 data.upcomingVisitCount
-                  ? "A visit is being arranged; a date has not been set yet."
-                  : "New visit details will appear once the business schedules them."
+                  ? t("A visit is being arranged; a date has not been set yet.")
+                  : t("New visit details will appear once the business schedules them.")
               }
             />
           )}
         </Card>
 
         <Card
-          title="Do I owe anything?"
-          description="Invoice amounts are separate from your rental rate and may include deposits, fees or tax."
+          title={t("Do I owe anything?")}
+          description={t("Invoice amounts are separate from your rental rate and may include deposits, fees or tax.")}
           actions={
-            <ButtonLink href="/account/billing" variant="secondary">
-              Open billing
-            </ButtonLink>
+            <ButtonLink href="/account/billing" variant="secondary">{t("Open billing")}</ButtonLink>
           }
         >
           {data.invoice ? (
             <div>
               <p className="font-semibold text-ink">
-                Invoice #{data.invoice.invoiceNumber}
+                {t("Invoice")} #{data.invoice.invoiceNumber}
               </p>
               <p className="mt-1 text-2xl font-semibold text-ink">
                 {formatCents(
@@ -202,51 +199,39 @@ export default async function AccountHomePage({
                       data.invoice.amountPaidCents,
                   ),
                 )}{" "}
-                remaining
+                {t("remaining")}
               </p>
               <p className="mt-2 text-sm text-ink-soft">
                 {data.invoice.status === "FAILED"
-                  ? "Payment needs attention."
-                  : "Open invoice."}{" "}
-                Billing shows your full history.
+                  ? t("Payment needs attention.")
+                  : t("Open invoice.")}{" "}
+                {t("Billing shows your full history.")}
               </p>
               <ButtonLink
                 href={`/account/billing/invoice/${data.invoice.id}`}
                 variant="quiet"
                 className="mt-3"
-              >
-                View invoice
-              </ButtonLink>
+              >{t("View invoice")}</ButtonLink>
             </div>
           ) : (
             <p className="text-sm text-ink-soft">
-              No open invoice found
-              {data.addressId ? " for this property" : ""}.
+              {t("No open invoice found")} {data.addressId ? t("for this property") : ""}.
             </p>
           )}
         </Card>
 
         <Card
-          title="How do I get help?"
-          description={`${data.openRequestCount} open service request${
-            data.openRequestCount === 1 ? "" : "s"
-          } on this account.`}
+          title={t("How do I get help?")}
+          description={requestCountLabel(locale,data.openRequestCount)}
         >
           <div className="flex flex-wrap gap-3">
-            <ButtonLink href="/account/maintenance">
-              Report a problem
-            </ButtonLink>
+            <ButtonLink href="/account/maintenance">{t("Report a problem")}</ButtonLink>
             <ButtonLink
               href="/account/maintenance?request=pickup"
               variant="secondary"
-            >
-              Request pickup
-            </ButtonLink>
+            >{t("Request pickup")}</ButtonLink>
           </div>
-          <p className="mt-3 text-sm text-ink-soft">
-            Requests are reviewed by the business. A pickup request does not
-            automatically cancel a rental or change billing.
-          </p>
+          <p className="mt-3 text-sm text-ink-soft">{t("Requests are reviewed by the business. A pickup request does not automatically cancel a rental or change billing.")}</p>
         </Card>
       </div>
     </div>
