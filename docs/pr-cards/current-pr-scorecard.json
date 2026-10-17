@@ -1,26 +1,17 @@
 {
   "version": 1,
-  "kind": "implementation",
+  "kind": "maintenance",
   "parent": "W-26",
-  "completedSlices": [
-    {
-      "id": "W-26",
-      "acceptanceEvidence": [
-        "Customer/quote persistence and scoped actions, quote-note.ts, signing/portal consumers and localized outbound callers are reconciled in execution/W-26-coverage.md. customer-language-database-w26.test.ts proves new quotes inherit stored preference without rewriting old quotes; estimate-send-email-switch.test.ts proves Spanish and ACCEPTED/UNKNOWN outcomes. Actions diagnostic 38984045880 passed all four production browser shards including real bilingual preference/quote/signing flow.",
-        "review.ts, drafts.ts and runtime.ts require complete current source-bound drafts, matching separate fluent/legal evidence and explicit owner publication. Missing/stale/revoked approval falls back to English or blocks a new Spanish dispatch. runtime/drafts/authorization tests and the disposable CI browser revoke scenario pass. No real fluent/legal approval or publication occurred; English governing text is stored unchanged.",
-        "Owner/ADMIN-only versioned editor exposes independently editable Spanish website, communication subject/body, message, notice, legal and quote-note counterparts; strict variable/source/revision checks and audited authorization are covered in drafts/authorization/runtime tests. Owner desk stays English in the bilingual browser scenario. Reviewed website read API is prepared; public Spanish routing belongs to Batch V under \u00a76.6.",
-        "Full consumer matrix and dispatch classification are in execution/W-26-coverage.md. Actions 38984045880 passed all three unit/real-Postgres shards, migration upgrade, restore drill, all four production builds and all four browser shards. Both-language rendered portal/quote/sign/auth controls, exact money, errors/retries, consent and immutable legal/interface/digest evidence are covered. Final small safety additions passed 29 focused unit tests and six isolated Postgres tests; final PR-head CI remains a mandatory merge gate."
-      ]
-    }
-  ],
+  "completedSlices": [],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Fluent independent reviewer selected by owner and separate legal counsel must approve current digest before first public Spanish activation; source changes invalidate review.",
-    "Historical 22 real live/provider owner-approval acceptance items remain PENDING, including real signing, TEST payment/reconciliation, external communication and CPA/counsel evidence."
+    "This policy PR does not close W-26 external owner/fluent/legal or live/provider acceptance requirements; their existing ledger remains authoritative.",
+    "A separate implementation audit must verify developer-only controls were not mistakenly imposed on Appliance Desk customers and owner/staff roles; no runtime behavior is changed here."
   ],
   "evidence": [
-    "Full original W-26 source delivery; frozen planning commit 2f47535ed238329cb725dc1b776d1ed28684fba3 preserved unchanged.",
-    "Independent engineering review resolved all concrete source findings; final read-only review found no blocking findings. Automated GitHub review unavailable \u2014 waived after inspecting reviews and threads.",
-    "All seven source coverage declarations describe implemented consumers; actual fluent/legal approval and public Spanish activation remain OFF. Final exact-head PR ci and merge are still pending."
-  ]
+    "AGENTS.md governing entry points to docs/END-USER-AUTHORITY.md, explicitly preserving business owner, staff and tenant/customer role boundaries.",
+    "The changed PR contains only AGENTS.md, docs/END-USER-AUTHORITY.md and this maintenance scorecard, with no runtime/source change or claim that live acceptance passed.",
+    "CI classify changes must recognize this as owner-requested maintenance without recounting the completed W-26 roadmap subsection."
+  ],
+  "workloadException": "Owner-requested cross-repository clarification is documentation-only maintenance, not a W-26 implementation bundle; no product subsections are claimed."
 }

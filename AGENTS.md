@@ -1,5 +1,10 @@
 # AGENTS.md — the rules. Read this first, every session.
 
+## End-user product authority versus developer operating limits — owner decision 2026-10-16
+
+Read [docs/END-USER-AUTHORITY.md](docs/END-USER-AUTHORITY.md). Rules restricting **our coding/acceptance agents** (autonomous $0 spend, no unauthorized LIVE/production work, special owner permission and release constraints) do **not** restrict the product's fully authorized end users or their coding agents. Build the complete feasible provider capability; show financial/security/destructive notices, honor provider scope and user-chosen delegation policies, and permit actual execution. No developer restriction may silently become a permanent "guide-only" or outright refusal in the product. This clarification does not waive development authorization, CI, review or release gates.
+
+
 ## Session entry and authority
 
 “Do N bundles” starts the complete procedure in [docs/SESSION-START.md](docs/SESSION-START.md).
