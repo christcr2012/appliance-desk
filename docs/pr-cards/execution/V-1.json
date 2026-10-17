@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "id": "V-1",
+  "parent": "V-1",
+  "baseline": "b6eefcf196ac32fc545e98339cf8493e98c93916",
+  "card": "docs/pr-cards/V-1.md",
+  "outcome": "The public home page gets the Evergreen Signature look on new shared design tokens, with owner-editable wording and a safe, private address check, ready for the owner's before/after screenshot acceptance.",
+  "risk": "A clipped shape hiding a keyboard focus ring, low contrast on the new surfaces, an address check that stores or leaks an address or can be hammered, hard-coded sentences the owner cannot edit, price-ticket layout shift, or a redesign that drops customized content.",
+  "next": "Plan frozen; implementation, tests and docs follow. V-3 and V-4 follow the owner's S-V3 decision.",
+  "references": [
+    {
+      "path": "src/app/(public)/page.tsx",
+      "anchor": "export default async function HomePage",
+      "purpose": "Home page to recompose"
+    },
+    {
+      "path": "src/app/globals.css",
+      "anchor": "@theme inline",
+      "purpose": "Token layer"
+    },
+    {
+      "path": "src/domains/site-content/fields.ts",
+      "anchor": "export const SITE_FIELDS",
+      "purpose": "Registry for new fields"
+    },
+    {
+      "path": "src/domains/site-content/template-contract.ts",
+      "anchor": "export const CONTRACT_FINGERPRINT",
+      "purpose": "Contract to extend"
+    },
+    {
+      "path": "src/app/(public)/contact/actions.ts",
+      "anchor": "export async function submitLead",
+      "purpose": "Rate limit key shape"
+    },
+    {
+      "path": "src/domains/settings/index.ts",
+      "anchor": "export function parseServiceArea",
+      "purpose": "Service area source"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/site-content/service-area-check.ts",
+    "src/app/(public)/check-address-actions.ts",
+    "src/components/site/address-check.tsx",
+    "tests/theme-contrast.test.ts",
+    "tests/public-copy-from-settings.test.ts",
+    "tests/service-area-check.test.ts",
+    "tests/check-address-action.test.ts",
+    "e2e/signature-home.spec.ts"
+  ],
+  "invariants": [
+    "Brand colours and routes do not change.",
+    "No address is stored or logged by the check.",
+    "Fresh green is never text or a thin line on ivory.",
+    "Every new sentence is owner-editable.",
+    "Customized live content survives the redesign."
+  ],
+  "sequence": [
+    "Tokens and contrast test",
+    "Registry fields, contract and fixtures",
+    "Pure check, action and rate limit",
+    "Home composition and components",
+    "Prefill and tests",
+    "Browser spec, screenshots, docs, one push and exact-head CI"
+  ],
+  "acceptance": [
+    "The signature design tokens exist in src/app/globals.css for light and dark: the type scale (display, heading 2, heading 3, lede, eyebrow, price) with balanced headings and tabular money, the hairline and tint colours, one raised shadow (tinted toward evergreen, black in dark), and the cut-corner utilities (small and medium cut, photo cut, band cut) built with clip-path; reduced motion switches every animation and lift off; the colour palette itself is unchanged.",
+    "A test (tests/theme-contrast.test.ts) reads the token blocks and proves the text and shape pairs the design lists meet their contrast minimums in light and dark (ink on ivory, muted on ivory and white, evergreen on fresh, white on evergreen, ivory on night, dark muted on dark surface, dark success, danger and warning on the dark surface, and both button colour pairs).",
+    "The new home-page wording is owner-editable and bound to the shared registry, not hard-coded: the highlighted phrase, the address-check label, button and its three answers, are registered with plain help, limits and today's wording as default, appear in the Website editor and in the template contract and its saved fixtures, and a scan test (tests/public-copy-from-settings.test.ts) fails if the old hard-coded marketing sentences return to the public pages.",
+    "The home page is recomposed on the new tokens in both its opening and its before-opening variants, keeping their existing logic and editable content: eyebrow with the first service-area city, a display heading with at most one highlighted phrase (only when it is a part of the heading), lede, the address check as the main action with a See prices link, the photo in a cut frame over an offset tint panel, a floating price ticket from the published set price (omitted when none; its space is reserved so nothing jumps), a hairline benefits ledger, pricing with the set card featured, a numbered how-it-works sequence, a household and property-manager band, a two-column FAQ and the closing call to action; before opening, prices stay hidden and the address check is replaced by the launch-list call to action.",
+    "The address check is a small public action with a pure rule: it answers SERVED, NOT_YET or INVALID using only the owner's service-area ZIP codes and cities from Settings, makes no outside call, is limited per visitor with the shared rate limiter, and stores and logs no address; SERVED links to the quote form with the address and ZIP filled in from the link (nothing is saved before the visitor sends the form) and NOT_YET links to the launch list; its wording comes from the website content.",
+    "The new home page passes the automated accessibility check in light and dark at 360, 768 and 1440 pixels with no sideways scrolling, every cut element shows a complete keyboard focus ring (the check tabs through the header, address check, price buttons and links), animation is off under reduced motion and only the one first-paint fade exists otherwise, and the hero photo is the priority image with no layout shift from the price ticket.",
+    "Before and after screenshots at 360, 768 and 1440 pixels in light and dark, in both opening modes, are produced for the owner. Owner acceptance of the new look (gate S-V3) is requested with those screenshots and is recorded as open until the owner says so; nothing here claims it."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/theme-contrast.test.ts",
+      "tests/public-copy-from-settings.test.ts",
+      "tests/service-area-check.test.ts",
+      "tests/check-address-action.test.ts"
+    ],
+    "db": [],
+    "browser": [
+      "e2e/signature-home.spec.ts"
+    ],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "V-1",
+      "outcome": "V-1",
+      "acceptance": [
+        "The signature design tokens exist in src/app/globals.css for light and dark: the type scale (display, heading 2, heading 3, lede, eyebrow, price) with balanced headings and tabular money, the hairline and tint colours, one raised shadow (tinted toward evergreen, black in dark), and the cut-corner utilities (small and medium cut, photo cut, band cut) built with clip-path; reduced motion switches every animation and lift off; the colour palette itself is unchanged.",
+        "A test (tests/theme-contrast.test.ts) reads the token blocks and proves the text and shape pairs the design lists meet their contrast minimums in light and dark (ink on ivory, muted on ivory and white, evergreen on fresh, white on evergreen, ivory on night, dark muted on dark surface, dark success, danger and warning on the dark surface, and both button colour pairs).",
+        "The new home-page wording is owner-editable and bound to the shared registry, not hard-coded: the highlighted phrase, the address-check label, button and its three answers, are registered with plain help, limits and today's wording as default, appear in the Website editor and in the template contract and its saved fixtures, and a scan test (tests/public-copy-from-settings.test.ts) fails if the old hard-coded marketing sentences return to the public pages."
+      ]
+    },
+    {
+      "id": "V-2",
+      "outcome": "V-2",
+      "acceptance": [
+        "The home page is recomposed on the new tokens in both its opening and its before-opening variants, keeping their existing logic and editable content: eyebrow with the first service-area city, a display heading with at most one highlighted phrase (only when it is a part of the heading), lede, the address check as the main action with a See prices link, the photo in a cut frame over an offset tint panel, a floating price ticket from the published set price (omitted when none; its space is reserved so nothing jumps), a hairline benefits ledger, pricing with the set card featured, a numbered how-it-works sequence, a household and property-manager band, a two-column FAQ and the closing call to action; before opening, prices stay hidden and the address check is replaced by the launch-list call to action.",
+        "The address check is a small public action with a pure rule: it answers SERVED, NOT_YET or INVALID using only the owner's service-area ZIP codes and cities from Settings, makes no outside call, is limited per visitor with the shared rate limiter, and stores and logs no address; SERVED links to the quote form with the address and ZIP filled in from the link (nothing is saved before the visitor sends the form) and NOT_YET links to the launch list; its wording comes from the website content.",
+        "The new home page passes the automated accessibility check in light and dark at 360, 768 and 1440 pixels with no sideways scrolling, every cut element shows a complete keyboard focus ring (the check tabs through the header, address check, price buttons and links), animation is off under reduced motion and only the one first-paint fade exists otherwise, and the hero photo is the priority image with no layout shift from the price ticket.",
+        "Before and after screenshots at 360, 768 and 1440 pixels in light and dark, in both opening modes, are produced for the owner. Owner acceptance of the new look (gate S-V3) is requested with those screenshots and is recorded as open until the owner says so; nothing here claims it."
+      ]
+    }
+  ]
+}

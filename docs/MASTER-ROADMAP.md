@@ -1,6 +1,6 @@
 ## What is next — October 17 V-C4 and V-C5 delivery
 
-V-C3 is merged (#488). One PR delivers V-C4 (the owner Website screen: pages, search, item panels, real-page preview with click-to-edit, honest save, review and publish with stale-change protection, history, restore-to-draft, discard) and V-C5 (template contract, compatibility plan, saved fixtures, release rule, rollback runbook, anonymous-draft tests); exact-head CI, review and merge remain pending. The visual redesign V-1…V-4 is next and ends at the owner's before/after screenshot acceptance (gate S-V3).
+V-C4 and V-C5 are merged (#489). V-1 and V-2 (signature tokens, the new home page and the private address check) are planned in `docs/pr-cards/V-1.md` and in progress; V-3 and V-4 follow the owner's before/after screenshot decision (gate S-V3).
 
 # MASTER ROADMAP — scope and ordered work coverage
 
