@@ -1,0 +1,96 @@
+[a href] /
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+[nav aria-label] Primary
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /login
+Log in
+[a href] /contact
+Get a Quote
+[button aria-label] Open menu
+Privacy Policy
+Last updated: 2026-10-09
+Draft — pending legal review.
+This page is a good-faith starting point, not final legal advice. It will be reviewed by a lawyer before launch (see the launch checklist in this project's internal handoff notes).
+Who we are
+Fixture Rentals Co ("we," "us") operates this website and provides appliance rental services in Colorado. This policy explains what personal information we collect, why, and the choices you have — written for U.S. residents, with attention to Colorado and California (CCPA/CPRA-style) privacy rights rather than the EU's GDPR, since we operate only in the U.S.
+What we collect
+Launch interest list:
+your name, email, city, appliance interest, signup-source label, and a record of your email consent and subscription preferences.
+Quote requests:
+your name, phone number, email (if given), service address, what you're interested in renting, and any notes you add.
+Account & rental information:
+if you become a customer, your rental agreement, billing, and service-history details.
+Basic technical data:
+standard web server logs (e.g. IP address, browser type) generated automatically by visiting the site.
+How we use it
+To follow up on quote requests, deliver and service rented appliances, bill accurately, comply with the law, and improve the site. We do not sell your personal information, and we do not share it with third parties for their own marketing.
+Website visit statistics
+We use Metricool to understand visits to our public marketing pages and which campaigns bring visitors to our site. Metricool receives the public page address, fixed campaign labels, browser-window size, referring website domain, and the IP address needed to receive the visit request. This tracking does not use cookies. We exclude account, staff, signing, estimate, and privacy-request pages, and remove other query values and referring-page paths. This Metricool tracking honors browser Do Not Track and Global Privacy Control signals. Form entries are not included in these visit requests.
+Text messages
+We only send text messages to numbers that have explicitly opted in, per the Telephone Consumer Protection Act (TCPA). You can opt out at any time by replying STOP, or by contacting us directly.
+Launch emails
+If you join our launch interest list, we use your information to send launch news and appliance-rental information. Our email provider processes your email address and message content to send these messages. Every launch email includes an unsubscribe link. Joining does not create a customer account, reserve an appliance, or opt you into text messages. We keep a minimal suppression record after you unsubscribe so a repeated signup does not restart your emails. You can contact us to request correction or deletion of your information.
+Your rights
+You can ask us to tell you what personal information we hold about you, correct it, or delete it, and you can opt out of any future communications. Signed-in customers can also request this directly from their account. To make a request, use the form below, contact us at
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+or
+[a href] tel:9705550142
+(970) 555-0142
+. We will not discriminate against you for exercising these rights.
+Make a privacy request
+Ask for a copy of the personal information connected to your customer account, or ask us to delete personal information we are allowed to remove. We keep records that must remain for billing, tax, signed agreements and audit purposes.
+Email address
+Request my data
+Request deletion
+How long we keep it
+We keep quote and rental records for as long as needed to run the business and meet our legal and tax obligations, then delete or anonymize them.
+Security
+We use reasonable technical and organizational measures to protect your information, including encrypted connections and access controls limiting who at our business can see it.
+Children
+Our services are intended for adults entering into a rental agreement. We do not knowingly collect personal information from children.
+Contact us
+Questions about this policy? Reach us at
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+.
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+Straightforward appliance rentals for Colorado homes and properties — delivered, installed, and serviced by a real local business.
+Explore
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /contact
+Get a Quote
+Contact
+[a href] tel:9705550142
+(970) 555-0142
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+12 Fixture Way, Greeley, CO 80631
+Hours (Colorado time)
+Mon–Tue: 9 am – 5 pm
+Sat: Closed
+Upcoming closures
+Dec 25, 2099 — Christmas Day
+[ul aria-label] Find us online
+[a href] https://facebook.example/fixture
+Facebook
+© YEAR Fixture Rentals Co. All rights reserved.
+[nav aria-label] Legal
+[a href] /accessibility
+Accessibility

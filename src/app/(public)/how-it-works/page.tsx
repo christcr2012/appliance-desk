@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/site/container";
-import { ButtonLink } from "@/components/ui";
+import { SiteCta } from "@/components/site/site-cta";
+import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedContent } from "@/domains/site-content";
-import { getContentForRequest } from "@/domains/site-content/request";
+import { getSiteForRequest } from "@/domains/site-content/request";
+import { siteCopy, siteFacts, siteLinkValue } from "@/domains/site-content/facts";
 
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getPublishedContent();
@@ -14,20 +16,22 @@ export default async function HowItWorksPage({
 }: {
   searchParams: Promise<{ revision?: string | string[] }>;
 }) {
-  const content = await getContentForRequest(await searchParams);
+  const [site, settings] = await Promise.all([getSiteForRequest(await searchParams), getBusinessSettings()]);
+  const content = site.text;
+  const c = siteCopy(content, siteFacts(settings));
   const STEPS = [1, 2, 3, 4, 5].map((n) => ({
-    title: content[`how.${n}.title`],
-    body: content[`how.${n}.body`],
+    title: c(`how.${n}.title`),
+    body: c(`how.${n}.body`),
   }));
   return (
     <>
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">
-            How it works
+            {c("how.heading")}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-ink-soft">
-            {content["how.intro"]}
+            {c("how.intro")}
           </p>
         </Container>
       </section>
@@ -45,9 +49,11 @@ export default async function HowItWorksPage({
         </ol>
 
         <div className="mt-16 text-center">
-          <ButtonLink href="/contact" variant="primary">
-            Get a free quote
-          </ButtonLink>
+          <SiteCta
+            value={siteLinkValue(site.values, "how.cta")}
+            profile={{ phone: settings.publicPhone, email: settings.publicEmail }}
+            facts={siteFacts(settings)}
+          />
         </div>
       </Container>
     </>

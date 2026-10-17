@@ -91,8 +91,9 @@ it("client and server catalog schemas agree on empty selection", () => {
 });
 // The rendered client uses its real resolver and the real mocked-DB action.
 import { ContactForm } from "@/app/(public)/contact/contact-form";
+import { siteDefaults } from "@/domains/site-content/fields";
 it("submits the empty-catalog form through the real client resolver", async () => {
-  render(<ContactForm applianceTypes={[]} />);
+  render(<ContactForm applianceTypes={[]} copy={siteDefaults()} />);
   expect(
     screen.getByText(/No appliance options are listed/),
   ).toBeInTheDocument();

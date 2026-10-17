@@ -3,10 +3,14 @@ import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/site/container";
-import { ButtonLink, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { SiteCta } from "@/components/site/site-cta";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
+import { getPublishedContent } from "@/domains/site-content";
+import { getSiteForRequest } from "@/domains/site-content/request";
+import { siteCopy, siteFacts, siteLinkValue, stripInlineLinks } from "@/domains/site-content/facts";
 
 // ---------------------------------------------------------------------------
 // Simple local-search landing pages (2026-09-28, Task #46 — see
@@ -46,17 +50,20 @@ export async function generateMetadata({
   if (!city) {
     return { title: "Service Area" };
   }
-  const settings = await getBusinessSettings();
+  const [settings, content] = await Promise.all([getBusinessSettings(), getPublishedContent()]);
+  const c = siteCopy(content, siteFacts(settings, { city }));
   return {
-    title: `Appliance Rental in ${city}, CO`,
-    description: `Washer and dryer rentals in ${city}, Colorado from ${settings.publicBusinessName} — delivery, installation, and repairs included.`,
+    title: stripInlineLinks(c("seo.rent.title")),
+    description: stripInlineLinks(c("seo.rent.description")),
   };
 }
 
 export default async function CityLandingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ city: string }>;
+  searchParams: Promise<{ revision?: string | string[] }>;
 }) {
   if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
   const { city: citySlug } = await params;
@@ -65,28 +72,27 @@ export default async function CityLandingPage({
     notFound();
   }
 
-  const [settings, applianceTypes] = await Promise.all([
+  const [settings, applianceTypes, site] = await Promise.all([
     getBusinessSettings(),
     getPublishedCatalog(),
+    searchParams.then(getSiteForRequest),
   ]);
+  const facts = siteFacts(settings, { city });
+  const c = siteCopy(site.text, facts);
+  const profile = { phone: settings.publicPhone, email: settings.publicEmail };
 
   return (
     <>
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">
-            Appliance rental in {city}, Colorado
+            {c("rent.heading")}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-ink-soft">
-            {settings.publicBusinessName} delivers, installs, and services
-            washers and dryers for {city} renters and homeowners — no
-            purchase, no long-term commitment required, and repairs are
-            covered by us for as long as you rent.
+            {c("rent.intro")}
           </p>
           <div className="mt-8">
-            <ButtonLink href="/contact" variant="primary">
-              Get a quote for {city}
-            </ButtonLink>
+            <SiteCta value={siteLinkValue(site.values, "rent.cta.top")} profile={profile} facts={facts} />
           </div>
         </Container>
       </section>
@@ -109,12 +115,12 @@ export default async function CityLandingPage({
                   {formatCents(type.monthlyPriceCents)}
                   <span className="text-base font-normal text-ink-faint">
                     {" "}
-                    / month
+                    {c("price.perMonth")}
                   </span>
                 </p>
                 {type.savingCents ? (
                   <p className="mt-2 text-sm font-medium text-accent-dark">
-                    {type.contents} — save {formatCents(type.savingCents)} a month
+                    {c("price.saving", { contents: type.contents ?? "", amount: formatCents(type.savingCents) })}
                   </p>
                 ) : null}
               </Card>
@@ -122,28 +128,23 @@ export default async function CityLandingPage({
           </div>
         ) : (
           <p className="text-ink-soft">
-            Pricing is being finalized — send us your address on the quote
-            form and we&apos;ll confirm what&apos;s available in {city}.
+            {c("rent.empty")}
           </p>
         )}
 
         <div className="mt-16">
           <Card className="text-center">
           <h2 className="font-display text-xl font-semibold text-ink">
-            Serving {city} and the surrounding area
+            {c("rent.serving.heading")}
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-ink-soft">
-            Not sure if your exact address is covered yet? Ask on the quote
-            form and we&apos;ll tell you honestly — we&apos;re growing our
-            service area over time.
+            {c("rent.serving.body")}
           </p>
           {settings.publicPhone && !settings.publicPhone.startsWith("[") && (
-            <p className="mt-4 text-ink-soft">Call us at {settings.publicPhone}</p>
+            <p className="mt-4 text-ink-soft">{c("rent.call")}</p>
           )}
           <div className="mt-6">
-            <ButtonLink href="/contact">
-              Check your address in {city}
-            </ButtonLink>
+            <SiteCta value={siteLinkValue(site.values, "rent.cta.bottom")} profile={profile} facts={facts} />
           </div>
           </Card>
         </div>

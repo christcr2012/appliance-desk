@@ -1,5 +1,8 @@
 import { getServerSession } from "@/lib/session";
-import { getPublishedContent, getRevisionContent } from "./index";
+import { getPublishedContent, getPublishedValues, getRevisionContent, getRevisionValues } from "./index";
+import type { SiteValue } from "./types";
+
+type RequestParams = { revision?: string | string[]; previewAt?: string | string[] } | undefined;
 
 /**
  * The website text for this page view. `?revision=<id>` previews a draft or an old version, but ONLY for a signed-in
@@ -15,4 +18,36 @@ export async function getContentForRequest(
   const role = session?.user.role;
   if (role === "OWNER" || role === "ADMIN") return getRevisionContent(revisionId);
   return getPublishedContent();
+}
+
+export type SiteRequest = {
+  /** Words, with starting text filled in. */
+  text: Record<string, string>;
+  /** Links, pictures and promotions (and the typed form of everything), with starting values filled in. */
+  values: Record<string, SiteValue>;
+  /** True only for a signed-in owner or admin looking at a draft or old version. Visitors always get false. */
+  preview: boolean;
+  /** The moment promotions are judged against. A preview may look at a future moment with `?previewAt=`. */
+  now: Date;
+};
+
+/**
+ * V-C3: everything a public page needs from the website content, in one read. Anyone who is not an active owner or
+ * admin gets the live version and the real time: `revision` and `previewAt` are ignored for them.
+ */
+export async function getSiteForRequest(searchParams?: RequestParams): Promise<SiteRequest> {
+  const rawRevision = searchParams?.revision;
+  const revisionId = typeof rawRevision === "string" ? rawRevision : undefined;
+  if (revisionId) {
+    const session = await getServerSession();
+    const role = session?.user.role;
+    if (role === "OWNER" || role === "ADMIN") {
+      const rawAt = searchParams?.previewAt;
+      const parsed = typeof rawAt === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z$/.test(rawAt) ? new Date(rawAt) : null;
+      const [text, values] = await Promise.all([getRevisionContent(revisionId), getRevisionValues(revisionId)]);
+      return { text, values, preview: true, now: parsed && !Number.isNaN(parsed.getTime()) ? parsed : new Date() };
+    }
+  }
+  const [text, values] = await Promise.all([getPublishedContent(), getPublishedValues()]);
+  return { text, values, preview: false, now: new Date() };
 }

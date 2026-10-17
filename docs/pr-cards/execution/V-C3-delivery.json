@@ -1,0 +1,52 @@
+{
+  "subsections": [
+    {
+      "id": "V-C3",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "Every visible marketing item on the shared header, footer and launch notice, the home page (opened and preparing-to-launch), pricing, contact (page and form words and messages), how it works, service area, launch (open and closed, page and form) and every city page, plus their page titles and search descriptions, is either an editable website item (words, link or picture) or declared as coming from one named owner source (business profile, price list, catalog, service area, launch settings) or as a named non-content exception; the legal pages are declared as coming from their legal-approval versions, not casual text.",
+          "evidence": "src/domains/site-content/fields-public.ts adds about 175 items covering the menu, notice bar, footer, home (opened and before opening), pricing, contact page and form, how it works, service area, launch page and form, city pages and their search titles; each has page, section and plain label; the legal pages and the contract-term, interest and consent wording are declared exceptions in tests/public-pages-render.test.tsx and the legal bodies stay tied to their approval versions; the marker test proves every item shows up and nothing else is left."
+        },
+        {
+          "criterion": "With nothing changed, each of those pages and variants shows exactly the same words, links and pictures it showed before this work, proved by comparing the saved visible text of every route and variant before and after.",
+          "evidence": "tests/fixtures/public-pages/*.txt hold the visible words, links, picture addresses and alt text of 13 routes captured from the original code; tests/public-pages-render.test.tsx renders every route with starting content and compares to the saved text with no update flag; the only difference is the launch page business-name line, changed on purpose."
+        },
+        {
+          "criterion": "A runtime coverage test renders every route and variant with every editable text replaced by a unique marker and proves each editable item shows its marker and that no other visible words appear except declared owner-source facts and named exceptions; it does not rely on searching the code.",
+          "evidence": "tests/public-pages-render.test.tsx replaces every editable text and button with a unique marker, renders all 13 routes plus 8 variants and a real-form interaction test, requires each item to show its marker and each leftover visible line to be a marker, a declared fact (business name, phone, email, address, hours, closures, social, cities, ZIPs, catalog names, prices, fees) or a named exception; this is a runtime render, not a code search."
+        },
+        {
+          "criterion": "Sentences may hold checked links written [words](/page) or [words](https://...) and named facts ({businessName}, {phone}, {email}, {city}, {graceDays} and similar) that are filled from their owner at render; an unknown fact name, a link to an unknown page or a non-https address is refused when saving and publishing; phone, email, address, hours, prices, fees and service area come only from their one owner source and a test proves the page text equals that source.",
+          "evidence": "src/domains/site-content/richtext.ts and fields.ts fill and check inline links and fact names: tests/vc3-public-bindings.test.ts proves unknown pages, http, javascript, credentials, protocol-relative and malformed links and unknown {facts} are refused on save (older text path, typed path and button words) and tests/vc3-public-content-integration.test.ts proves publishing refuses a stored bad value; the late-fee days come from Settings and a test proves starting texts hold no price, phone or email; hours, closures, prices, fees and cities render from Settings in the marker test."
+        },
+        {
+          "criterion": "Buttons and calls to action are link items (words plus a destination chosen from known pages, an https address, or the profile's phone or email); the header and footer navigation, accessibility and legal links keep their fixed destinations with editable words and cannot be removed; link words and destination are shown separately.",
+          "evidence": "SiteCta resolves each button from a link item (known page, https address, or the profile's phone or email, nothing shown if the profile has none); nav-links.ts keeps header and footer destinations in code with editable required words (test: words change, destinations do not, pricing hidden before opening); fields cannot be emptied (test on menu, footer, login and legal words); the saved link item holds words and destination separately."
+        },
+        {
+          "criterion": "The home page photo uses the website photo library picture with its description, decorative choice and focus point when one is set and the built-in photo otherwise; a draft picture is never shown to a visitor, and the draft preview shows it only to an active owner or admin.",
+          "evidence": "HeroPicture shows the website picture with its description, decorative choice and focus point when set and the built-in photo otherwise; tests/vc3-public-content-integration.test.ts proves a draft picture is not servable to the public until publish and is served to the preview, and that only an active owner or admin gets the draft preview while visitors and customers get live content; the marker test covers the default picture and tests keep the original alt text."
+        },
+        {
+          "criterion": "A site-wide banner and a home page featured slot each hold a promotion (title, text, optional picture and button, on or off, optional Colorado start and end), default off, shown or hidden on each page view from the stored times with no schedule job; an ended or not-yet-started promotion disappears without hiding any other content; the schedule is tested across the spring-forward and fall-back changes; a promotion linked to a priced offer is refused until a priced-offer source exists.",
+          "evidence": "promotions.ts judges a banner and a home box per page view from stored UTC times in Colorado terms (default off; scheduled, live, ended); tests/vc3-public-bindings.test.ts covers off, before, start, last second, end and the 2026-11-01 fall-back and 2027-03-14 spring-forward conversions (non-existent time refused, ambiguous time takes the earlier instant); the integration test shows an ended or not-started box disappears while other content stays; values.ts now refuses any priced-offer link."
+        },
+        {
+          "criterion": "Every public page, including service area and city pages, reads the draft or old-version preview content through the same request reader, so the owner's preview can show any page, while anonymous visitors only ever get live content.",
+          "evidence": "getSiteForRequest in src/domains/site-content/request.ts is the one reader every public page and form uses (home, pricing, contact, how it works, service area, launch, city pages, layout chrome); unit and real-Postgres tests prove an owner or admin may read a draft, an old version and a future moment while staff, customers and visitors always get live content and the real time."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 1128,
+  "productionRemoved": 392,
+  "planComparison": "Actual production change is about +1128/-392 lines (plus about 1,000 lines of tests and saved page text) against the 2300-line estimate. The subsection, its boundary and all eight frozen acceptance items are unchanged and delivered; the estimate was high because most rewiring replaced hard-coded words with item lookups (392 lines removed) and the 175 registry items are compact. Deliberate differences: the launch page now shows the configured business name instead of a name typed in code (the saved launch page text was updated for that one line); the shared layout reads the live version only (owner preview of the frame arrives with the V-C4 preview route, which reuses the new PublicChrome component); contract-term choices, launch interest choices, the launch email consent sentence and accessibility landmark names are declared exceptions. The owner editor (V-C4), the template contract (V-C5) and the redesign (V-1 to V-4) were not started.",
+  "newEngineering": "About 175 registry items with plain labels and starting text equal to today's words (fields-public.ts); declared fact placeholders and a filler; inline link syntax with strict checking; promotion rules in Colorado time (spring-forward and fall-back); one request reader serving live, draft and old-version content with owner/admin-only preview; shared components (rich text, call-to-action, hero picture, featured promotion, promotion banner, public chrome); every public page, form, header, footer, layout and root titles rewired; a placeholder and link check on the older text save path and on link words; priced-offer promotions refused; 13 saved before/after page texts, a marker coverage render test, form interaction tests, unit tests and a real-Postgres test; docs.",
+  "relatedWorkDecision": "These are one subsection because the marker coverage proof only holds when every page is bound at once: any page left hard-coded would be flagged by the same test. The owner editor that exposes all of this is V-C4 and the template contract is V-C5.",
+  "decision": "SUBSTANTIAL_EXCEPTION",
+  "exceptionEvidence": [
+    "One whole approved subsection (V-C3) is the delivery: binding every public page to editable content cannot be split because the coverage proof (every route and variant rendered with markers) is only true when every page is bound together; any page left hard-coded would fail the same test.",
+    "The workload is well above the 400 to 800 line guide: about 1128 production lines added and 392 replaced, across 40 source files, with about 1,000 lines of new tests and 13 saved page texts."
+  ]
+}

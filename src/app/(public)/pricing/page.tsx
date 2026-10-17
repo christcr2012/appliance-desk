@@ -1,14 +1,16 @@
 import { redirect } from "next/navigation";
 import { getLaunchSettings } from "@/domains/launch";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Container } from "@/components/site/container";
-import { ButtonLink, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { SiteCta } from "@/components/site/site-cta";
+import { RichText } from "@/components/site/rich-text";
 import { ApplianceMedia } from "@/components/site/appliance-icon";
 import { getBusinessSettings } from "@/domains/settings";
 import { getPublishedCatalog, formatCents } from "@/domains/pricing";
 import { getPublishedContent } from "@/domains/site-content";
-import { getContentForRequest } from "@/domains/site-content/request";
+import { getSiteForRequest } from "@/domains/site-content/request";
+import { siteCopy, siteFacts, siteLinkValue } from "@/domains/site-content/facts";
 import { catalogAlt } from "@/domains/site-content/fields";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,19 +27,23 @@ export default async function PricingPage({
   searchParams: Promise<{ revision?: string | string[] }>;
 }) {
   if ((await getLaunchSettings()).prelaunchMode) redirect("/launch");
-  const [settings, applianceTypes, content] = await Promise.all([
+  const [settings, applianceTypes, site] = await Promise.all([
     getBusinessSettings(),
     getPublishedCatalog(),
-    searchParams.then(getContentForRequest),
+    searchParams.then(getSiteForRequest),
   ]);
+  const content = site.text;
+  const facts = siteFacts(settings);
+  const c = siteCopy(content, facts);
+  const profile = { phone: settings.publicPhone, email: settings.publicEmail };
 
   const fees = [
-    { label: "Delivery", cents: settings.oneTimeDeliveryFeeCents },
-    { label: "Installation", cents: settings.oneTimeInstallationFeeCents },
-    { label: "Pickup / removal", cents: settings.oneTimeRemovalFeeCents },
+    { label: c("pricing.fee.delivery"), cents: settings.oneTimeDeliveryFeeCents },
+    { label: c("pricing.fee.installation"), cents: settings.oneTimeInstallationFeeCents },
+    { label: c("pricing.fee.removal"), cents: settings.oneTimeRemovalFeeCents },
   ].map((fee) => ({
     label: fee.label,
-    value: fee.cents > 0 ? formatCents(fee.cents) : "No charge",
+    value: fee.cents > 0 ? formatCents(fee.cents) : c("pricing.fee.none"),
   }));
 
   return (
@@ -45,12 +51,10 @@ export default async function PricingPage({
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">
-            Pricing
+            {c("pricing.heading")}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-ink-soft">
-            Every price below is what {settings.publicBusinessName} actually
-            charges — nothing hidden, and it&apos;s locked in for you the day
-            you sign, even if prices change later for new customers.
+            <RichText text={c("pricing.intro")} />
           </p>
         </Container>
       </section>
@@ -74,44 +78,37 @@ export default async function PricingPage({
                   {formatCents(type.monthlyPriceCents)}
                   <span className="text-base font-normal text-ink-faint">
                     {" "}
-                    / month
+                    {c("price.perMonth")}
                   </span>
                 </p>
                 {type.contents && (
-                  <p className="mt-2 text-sm text-ink-soft">Includes: {type.contents}</p>
+                  <p className="mt-2 text-sm text-ink-soft">{c("pricing.card.includes", { contents: type.contents })}</p>
                 )}
                 {type.savingCents ? (
                   <p className="mt-2 text-sm font-medium text-accent-dark">
-                    Save {formatCents(type.savingCents)} a month compared with renting them separately
+                    {c("pricing.card.saving", { amount: formatCents(type.savingCents) })}
                   </p>
                 ) : null}
                 <div className="mt-6">
-                  <ButtonLink href="/contact" variant="secondary" className="w-full">
-                    Get this one
-                  </ButtonLink>
+                  <SiteCta value={siteLinkValue(site.values, "pricing.card.cta")} profile={profile} facts={facts} variant="secondary" className="w-full" />
                 </div>
               </Card>
             ))}
           </div>
         ) : (
           <p className="text-ink-soft">
-            Pricing is being finalized —{" "}
-            <Link href="/contact" className="underline hover:text-primary">
-              reach out
-            </Link>{" "}
-            and we&apos;ll quote you directly.
+            <RichText text={c("pricing.empty")} />
           </p>
         )}
 
         <p className="mt-8 text-sm text-ink-faint">
-          Illustrations are generic and for reference only — the actual
-          appliance you receive may vary in brand, model, and color.
+          {c("price.illustrationNote")}
         </p>
 
         <div className="mt-16 grid gap-10 md:grid-cols-2">
           <div>
             <h2 className="font-display text-2xl font-semibold text-ink">
-              One-time fees
+              {c("pricing.fees.heading")}
             </h2>
             <dl className="mt-4 divide-y divide-line rounded-card border border-line bg-surface">
               {fees.map((fee) => (
@@ -128,47 +125,43 @@ export default async function PricingPage({
 
           <div>
             <h2 className="font-display text-2xl font-semibold text-ink">
-              Good to know
+              {c("pricing.good.heading")}
             </h2>
             <ul className="mt-4 space-y-3 text-sm text-ink-soft">
               <li>
-                <span className="font-medium text-ink">Terms:</span>{" "}
-                month-to-month, 6-month, or 12-month — you choose at signup.
+                <span className="font-medium text-ink">{c("pricing.good.terms.label")}</span>{" "}
+                {c("pricing.good.terms.text")}
               </li>
               {settings.depositEnabled && (
                 <li>
                   <span className="font-medium text-ink">
-                    Refundable security deposit:
+                    {c("pricing.good.deposit.label")}
                   </span>{" "}
-                  required, refunded when the appliance is returned in good
-                  condition.
+                  {c("pricing.good.deposit.text")}
                 </li>
               )}
               {settings.damageWaiverEnabled && (
                 <li>
                   <span className="font-medium text-ink">
-                    Optional damage waiver:
+                    {c("pricing.good.waiver.label")}
                   </span>{" "}
-                  available if you&apos;d rather not put down a deposit.
+                  {c("pricing.good.waiver.text")}
                 </li>
               )}
               <li>
-                <span className="font-medium text-ink">Sales tax:</span>{" "}
-                plus sales tax for your service address, shown on your invoice.
+                <span className="font-medium text-ink">{c("pricing.good.tax.label")}</span>{" "}
+                {c("pricing.good.tax.text")}
               </li>
               <li>
-                <span className="font-medium text-ink">Late fee:</span> a
-                grace period of {settings.lateFeeGraceDays} days applies
-                before any late fee.
+                <span className="font-medium text-ink">{c("pricing.good.late.label")}</span>{" "}
+                {c("pricing.good.late.text")}
               </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-16 text-center">
-          <ButtonLink href="/contact" variant="primary">
-            Get a free quote
-          </ButtonLink>
+          <SiteCta value={siteLinkValue(site.values, "pricing.cta")} profile={profile} facts={facts} />
         </div>
       </Container>
     </>

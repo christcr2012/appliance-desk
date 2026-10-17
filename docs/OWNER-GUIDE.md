@@ -1,3 +1,12 @@
+## Every public page now reads from your website content (V-C3)
+- **Nothing looks different yet.** Every word, button, link and the home photo on the public site is now a website item with today's words as the starting text. The screens to change them (the website editor) come next (V-C4); until then the site looks and reads exactly as before.
+- **Facts stay where they live.** Your phone, email, address, hours, prices, fees and cities come from Settings and the price list. In a sentence you will write them as `{phone}`, `{email}`, `{businessName}`, `{city}` and so on, so a sentence can never disagree with the real number or price.
+- **Links inside sentences** are written `[words to click](/pricing)` or `[words](https://example.com)`. Only pages on the site and `https://` addresses are accepted; a broken link is refused with a plain message when you save and again when you publish.
+- **Buttons** have their words and where they go chosen separately. A button can go to a page, an `https://` address, or call/email using your business profile. The menu and footer links keep their pages; you can change their words.
+- **Promotions.** A banner across the top of every page and a highlighted box on the home page can each carry a title, text, optional picture and button, with an optional start and end in Colorado time. Both are off until you set them up, appear and disappear on their own at the times you set, and never hide anything else. A promotion cannot yet be tied to a priced offer.
+- **Legal pages** (privacy, terms, accessibility) keep their approved wording; only the menu and footer around them can be edited.
+- The launch page now says your configured business name instead of a name typed into the code.
+
 ## Website pictures and richer website content (V-C1, V-C2)
 - **Nothing looks different on the website yet.** This release adds the foundation: the website can now hold pictures, links, lists and promotions, with checks so a broken link or a picture without a description cannot go live. The screens to use them come next (the website editor, V-C4).
 - **Pictures.** Owners and admins can upload a JPEG, PNG or WebP (up to 10 MB). The system re-saves it, removes location and camera information, and keeps it private until you publish a website version that uses it. A picture needs a short description for people who can't see it, or must be marked decorative.

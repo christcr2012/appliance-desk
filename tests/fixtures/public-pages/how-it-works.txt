@@ -1,0 +1,63 @@
+[a href] /
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+[nav aria-label] Primary
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /login
+Log in
+[a href] /contact
+Get a Quote
+[button aria-label] Open menu
+How it works
+No app to download, no self-checkout — a real person reviews and handles every step.
+1. Tell us what you need
+Fill out the quote form with what you're looking to rent, your address, and your preferred term. It takes about two minutes.
+2. We follow up personally
+Chris reviews every request himself and calls or texts you back — usually the same day — to confirm details and answer questions.
+3. Sign your rental agreement
+Once everything's confirmed, you'll sign a straightforward rental agreement electronically. Your price is locked in from that point on.
+4. Delivery & installation
+We schedule a delivery window that works for you, bring the appliance, install it, and haul away your old one if you need that.
+5. Ongoing service
+If anything ever needs attention, you contact us directly — not a national warranty line. We track every request until it's resolved.
+[a href] /contact
+Get a free quote
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+Straightforward appliance rentals for Colorado homes and properties — delivered, installed, and serviced by a real local business.
+Explore
+[a href] /pricing
+Pricing
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /contact
+Get a Quote
+Contact
+[a href] tel:9705550142
+(970) 555-0142
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+12 Fixture Way, Greeley, CO 80631
+Hours (Colorado time)
+Mon–Tue: 9 am – 5 pm
+Sat: Closed
+Upcoming closures
+Dec 25, 2099 — Christmas Day
+[ul aria-label] Find us online
+[a href] https://facebook.example/fixture
+Facebook
+© YEAR Fixture Rentals Co. All rights reserved.
+[nav aria-label] Legal
+[a href] /accessibility
+Accessibility

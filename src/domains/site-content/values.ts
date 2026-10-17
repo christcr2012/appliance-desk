@@ -1,3 +1,4 @@
+import { checkInlineLinks } from "./richtext";
 import { parseLinkTarget } from "./links";
 import type { FieldValueKind, ImageValue, ItemsValue, LinkValue, PromotionValue, SiteValue, TextValue } from "./types";
 
@@ -23,6 +24,8 @@ export type ValueRules = {
   httpsOnly?: boolean;
   /** For `text`: the only {placeholders} the text may contain. Others would show up as typed. */
   placeholders?: ReadonlyArray<string>;
+  /** For `text`: `[words](/page)` links inside the sentence are allowed (and checked). */
+  links?: boolean;
 };
 
 export type ValueCheck = { ok: true; value: SiteValue } | { ok: false; message: string };
@@ -53,6 +56,10 @@ function checkText(rules: ValueRules, v: Record<string, unknown>): ValueCheck {
   if (!text && !rules.optional) return fail(`${rules.label} cannot be empty. Use the recommended text instead.`);
   if (text.length > rules.maxLength) return fail(`${rules.label} is too long: ${rules.maxLength} characters at most.`);
   if (text && rules.httpsOnly && !text.startsWith("https://")) return fail(`${rules.label} must start with https://`);
+  if (rules.links) {
+    const problem = checkInlineLinks(text);
+    if (problem) return fail(`${rules.label}: ${problem}`);
+  }
   if (rules.placeholders) {
     for (const match of text.matchAll(/\{(\w+)\}/g)) {
       if (!rules.placeholders.includes(match[1])) return fail(`${rules.label} uses {${match[1]}}, which is not available here.`);
@@ -66,6 +73,11 @@ function checkLink(rules: ValueRules, v: Record<string, unknown>): ValueCheck {
   const label = cleanPlainText(v.label, true);
   if (!label) return fail(`${rules.label}: the link needs words to click.`);
   if (label.length > Math.min(rules.maxLength, 120)) return fail(`${rules.label}: the link words are too long.`);
+  if (rules.placeholders) {
+    for (const match of label.matchAll(/\{(\w+)\}/g)) {
+      if (!rules.placeholders.includes(match[1])) return fail(`${rules.label}: the link words use {${match[1]}}, which is not available here.`);
+    }
+  }
   const target = parseLinkTarget(v.target);
   if (!target.ok) return fail(`${rules.label}: ${target.message}`);
   return { ok: true, value: { kind: "link", label, target: target.target } satisfies LinkValue };
@@ -134,10 +146,8 @@ function checkPromotion(rules: ValueRules, v: Record<string, unknown>): ValueChe
   const out: PromotionValue = { kind: "promotion", title, body, enabled: v.enabled };
   if (starts) out.startsAtUtc = starts;
   if (ends) out.endsAtUtc = ends;
-  if (v.offerVersionId !== undefined) {
-    if (typeof v.offerVersionId !== "string" || !ITEM_ID.test(v.offerVersionId)) return fail(`${rules.label}: the linked offer could not be read.`);
-    out.offerVersionId = v.offerVersionId;
-  }
+  // A promotion may not claim a price until an offer source exists to own that price (priced offers are a later batch).
+  if (v.offerVersionId !== undefined) return fail(`${rules.label}: linking a promotion to a priced offer is not available yet. Describe the offer in words instead.`);
   if (v.image !== undefined) {
     const image = checkImage(rules, v.image as Record<string, unknown>);
     if (!image.ok) return image;

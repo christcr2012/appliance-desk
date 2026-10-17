@@ -1,0 +1,69 @@
+[a href] /
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+[nav aria-label] Primary
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /login
+Log in
+[a href] /launch
+Join launch list
+[button aria-label] Open menu
+We're preparing to launch in Greeley and the surrounding area.
+[a href] /launch
+Join for updates
+.
+Preparing to launch · Greeley, Colorado
+Make room for everyday.
+Family-owned washer and dryer rentals for Greeley and the surrounding area. A local option for households and property managers, with maintenance always included.
+[a href] /launch
+Join the launch interest list
+[a href] /contact
+Ask a question
+No payment or rental commitment. Our opening date is still being finalized.
+[img alt] A washer, dryer, range, and refrigerator — the kinds of appliances we rent
+[img src] /appliances/hero-lineup.jpg
+Maintenance included
+Maintenance is always part of your rental.
+Delivery & installation
+Available based on your location and setup. We confirm requirements and any fees before you commit.
+Local households & properties
+Planning for renters, homeowners, landlords, and property managers in Greeley and the surrounding area.
+Help us get ready for your neighborhood.
+Tell us your city and which appliances interest you. We'll send launch news and a short introduction to our business.
+[a href] /launch
+Keep me updated
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-light.svg
+[img alt] Fixture Rentals Co
+[img src] /brand/logo-dark.svg
+Straightforward appliance rentals for Colorado homes and properties — delivered, installed, and serviced by a real local business.
+Explore
+[a href] /how-it-works
+How It Works
+[a href] /service-area
+Service Area
+[a href] /contact
+Get a Quote
+Contact
+[a href] tel:9705550142
+(970) 555-0142
+[a href] mailto:hello@fixture.example
+hello@fixture.example
+12 Fixture Way, Greeley, CO 80631
+Hours (Colorado time)
+Mon–Tue: 9 am – 5 pm
+Sat: Closed
+Upcoming closures
+Dec 25, 2099 — Christmas Day
+[ul aria-label] Find us online
+[a href] https://facebook.example/fixture
+Facebook
+© YEAR Fixture Rentals Co. All rights reserved.
+[nav aria-label] Legal
+[a href] /accessibility
+Accessibility

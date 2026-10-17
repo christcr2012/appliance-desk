@@ -1,3 +1,7 @@
+## V-C3 public website bindings (2026-10-17)
+
+No schema change and no migration. Typed website values (version 2 revisions) already hold links, pictures and promotions; V-C3 only adds registry items (`src/domains/site-content/fields-public.ts`) and readers. Existing revisions read unchanged: items they do not mention fall back to the starting text or starting value.
+
 ## W-8 menu and W-9 filing autopilot (2026-10-17)
 
 No schema change. W-9 reads existing TaxFilingAccount, TaxFilingPeriod and PurchaseUseTax rows and records through the existing `markPeriodFiled`; the new System health issue kind `TAX_PERIOD_MISSING` uses the existing system issue table.

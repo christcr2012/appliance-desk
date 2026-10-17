@@ -4,7 +4,8 @@ import { getPublishedCatalog } from "@/domains/pricing";
 import { getBusinessSettings } from "@/domains/settings";
 import { BusinessHours } from "@/components/site/business-hours";
 import { getPublishedContent } from "@/domains/site-content";
-import { getContentForRequest } from "@/domains/site-content/request";
+import { getSiteForRequest } from "@/domains/site-content/request";
+import { siteCopy, siteFacts } from "@/domains/site-content/facts";
 import { Card } from "@/components/ui";
 import { ContactForm } from "./contact-form";
 
@@ -18,20 +19,22 @@ export default async function ContactPage({
 }: {
   searchParams: Promise<{ revision?: string | string[] }>;
 }) {
-  const [catalog, content, settings] = await Promise.all([
+  const [catalog, site, settings] = await Promise.all([
     getPublishedCatalog(),
-    searchParams.then(getContentForRequest),
+    searchParams.then(getSiteForRequest),
     getBusinessSettings(),
   ]);
+  const content = site.text;
+  const c = siteCopy(content, siteFacts(settings));
 
   return (
     <section className="py-16 md:py-20">
       <Container className="max-w-2xl">
         <h1 className="font-display text-4xl font-semibold text-ink">
-          Get a free quote
+          {c("contact.heading")}
         </h1>
         <p className="mt-4 text-ink-soft">
-          {content["contact.intro"]}
+          {c("contact.intro")}
         </p>
 
         <div className="mt-6">
@@ -40,12 +43,15 @@ export default async function ContactPage({
               hours={settings.hours}
               holidayClosures={settings.holidayClosures}
               headingLevel="h2"
+              hoursHeading={c("footer.hours.heading")}
+              closuresHeading={c("footer.closures.heading")}
             />
           </Card>
         </div>
 
         <div className="mt-10">
           <ContactForm
+            copy={content}
             applianceTypes={catalog
               .filter((item) => item.kind === "type")
               .map((t) => ({ id: t.id, name: t.name }))}

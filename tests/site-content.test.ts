@@ -32,7 +32,11 @@ describe("website text fields", () => {
 
   it("never offers prices, phone, email, address or service area as editable text", () => {
     for (const f of SITE_FIELDS) {
-      expect(f.key).not.toMatch(/price|phone|email|address|area\.cities|zip/i);
+      // Headings and wording around a fact are editable; the fact itself (an amount, number, address, city list) is not.
+      expect(f.key).not.toMatch(/^(phone|email|address|zip|serviceArea|price\.amount)(\.|$)/i);
+    }
+    for (const [key, text] of Object.entries(siteDefaults())) {
+      expect(text, key).not.toMatch(/\$\s?\d|\(\d{3}\)\s?\d{3}|\d{3}[-.]\d{3}[-.]\d{4}|@[a-z0-9-]+\.[a-z]{2,}/i);
     }
   });
 

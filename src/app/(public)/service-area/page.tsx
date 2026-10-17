@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/site/container";
-import { ButtonLink } from "@/components/ui";
+import { SiteCta } from "@/components/site/site-cta";
+import { RichText } from "@/components/site/rich-text";
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { getPublishedContent } from "@/domains/site-content";
+import { getSiteForRequest } from "@/domains/site-content/request";
+import { siteCopy, siteFacts, siteLinkValue } from "@/domains/site-content/facts";
 
 function slugifyCity(city: string): string {
   return city.trim().toLowerCase().replace(/\s+/g, "-");
@@ -14,8 +17,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: content["seo.service-area.title"], description: content["seo.service-area.description"] };
 }
 
-export default async function ServiceAreaPage() {
-  const settings = await getBusinessSettings();
+export default async function ServiceAreaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ revision?: string | string[] }>;
+}) {
+  const [settings, site] = await Promise.all([getBusinessSettings(), searchParams.then(getSiteForRequest)]);
+  const facts = siteFacts(settings);
+  const c = siteCopy(site.text, facts);
   const { cities, zips } = parseServiceArea(settings);
 
   return (
@@ -23,11 +32,10 @@ export default async function ServiceAreaPage() {
       <section className="border-b border-line bg-surface">
         <Container className="py-16 text-center md:py-20">
           <h1 className="font-display text-4xl font-semibold text-ink">
-            Service area
+            {c("area.heading")}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-ink-soft">
-            We&apos;re growing — not sure if we cover your address yet? Ask
-            us on the quote form and we&apos;ll tell you honestly.
+            {c("area.intro")}
           </p>
         </Container>
       </section>
@@ -38,7 +46,7 @@ export default async function ServiceAreaPage() {
             {cities.length > 0 && (
               <div>
                 <h2 className="font-display text-xl font-semibold text-ink">
-                  Cities we serve
+                  {c("area.cities.heading")}
                 </h2>
                 <ul className="mt-4 flex flex-wrap gap-2">
                   {cities.map((city) => (
@@ -57,7 +65,7 @@ export default async function ServiceAreaPage() {
             {zips.length > 0 && (
               <div>
                 <h2 className="font-display text-xl font-semibold text-ink">
-                  ZIP codes we serve
+                  {c("area.zips.heading")}
                 </h2>
                 <ul className="mt-4 flex flex-wrap gap-2">
                   {zips.map((zip) => (
@@ -74,16 +82,16 @@ export default async function ServiceAreaPage() {
           </div>
         ) : (
           <p className="text-ink-soft">
-            The service area list is being finalized. Send us your address on
-            the quote form and we&apos;ll confirm whether we can deliver to
-            you.
+            <RichText text={c("area.empty")} />
           </p>
         )}
 
         <div className="mt-16 text-center">
-          <ButtonLink href="/contact" variant="primary">
-            Check your address
-          </ButtonLink>
+          <SiteCta
+            value={siteLinkValue(site.values, "area.cta")}
+            profile={{ phone: settings.publicPhone, email: settings.publicEmail }}
+            facts={facts}
+          />
         </div>
       </Container>
     </>
