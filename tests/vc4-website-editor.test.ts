@@ -9,6 +9,8 @@ vi.mock("@/lib/session", () => ({
   },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const launch = vi.hoisted(() => ({ prelaunchMode: false }));
+vi.mock("@/domains/launch", () => ({ getLaunchSettings: async () => ({ prelaunchMode: launch.prelaunchMode }) }));
 const domain = vi.hoisted(() => ({
   saveDraft: vi.fn(), publishDraft: vi.fn(), restoreRevisionToDraft: vi.fn(), discardDraft: vi.fn(),
 }));
@@ -207,5 +209,19 @@ describe("the preview door", () => {
     expect((await call("path=/&revision=../../etc")).status).toBe(400);
     expect((await call("path=/&previewAt=tomorrow")).status).toBe(400);
     expect((await call("path=/rent/greeley&revision=draftrevision1")).status).toBe(307);
+  });
+  it("shows the launch page for pricing and city pages while the site is preparing to launch, as visitors see", async () => {
+    session.role = "ADMIN";
+    launch.prelaunchMode = true;
+    try {
+      for (const path of ["/pricing", "/rent/greeley"]) {
+        const target = new URL((await call(`path=${path}&revision=draftrevision1`)).headers.get("location")!);
+        expect(target.pathname).toBe("/launch");
+        expect(target.searchParams.get("select")).toBe("1");
+      }
+      expect(new URL((await call("path=/how-it-works&revision=draftrevision1")).headers.get("location")!).pathname).toBe("/how-it-works");
+    } finally {
+      launch.prelaunchMode = false;
+    }
   });
 });
