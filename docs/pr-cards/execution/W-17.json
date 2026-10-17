@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "id": "W-17",
+  "parent": "W-17",
+  "baseline": "4aece1211202c1415a539e7360ccbc0630ba5eb0",
+  "card": "docs/pr-cards/W-17.md",
+  "outcome": "Every main owner record page shows what it is connected to and its history, search finds purchases and sellers, a returned appliance goes through cleaning and a failed inspection drafts its repair visit, and the customer portal shows next bill, a timeline for each visit, what happens next after each request, sets as sets, and Pay now on overdue invoices",
+  "risk": "A Related or History panel that shows finance data to a role that cannot open it, a customer reaching another customer's invoice through Pay now, a cleaning status that strands machines or blocks rentals wrongly, a failed inspection that drafts two repair visits, or a migration that breaks existing statuses.",
+  "next": "Plan frozen; implementation, tests and docs follow. V-C1 (content registry) is the next bundle after verified merge.",
+  "references": [
+    {
+      "path": "src/domains/inventory/guided-actions.ts",
+      "anchor": "export async function recordApplianceInspection",
+      "purpose": "Inspection result and status"
+    },
+    {
+      "path": "src/domains/search/index.ts",
+      "anchor": "export async function searchAll",
+      "purpose": "Desk search"
+    },
+    {
+      "path": "src/domains/billing/payment-link.ts",
+      "anchor": "export async function getHostedPaymentUrl",
+      "purpose": "Stripe hosted page for an invoice"
+    },
+    {
+      "path": "src/domains/portal/index.ts",
+      "anchor": "export async function getPortalData",
+      "purpose": "Portal data reader"
+    },
+    {
+      "path": "src/app/account/page.tsx",
+      "anchor": "export default",
+      "purpose": "Portal home"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/connections/index.ts",
+    "src/components/desk/record-connections.tsx",
+    "src/domains/inventory/cleaning.ts",
+    "src/app/account/billing/invoice/[invoiceId]/pay/route.ts",
+    "src/domains/portal/next-bill.ts"
+  ],
+  "invariants": [
+    "Related and History only show what the signed-in role may open.",
+    "A customer can reach only their own invoice's payment page.",
+    "The app never charges or stores card details.",
+    "A cleaning appliance is never rentable until marked done.",
+    "A repeat of a failed inspection never creates a second repair visit.",
+    "Migrations are additive."
+  ],
+  "sequence": [
+    "Cleaning status migration and inspection logic",
+    "Connected-records domain and panels on seven pages",
+    "Search",
+    "Portal next bill, sets, timelines, messages",
+    "Pay now",
+    "Tests",
+    "Docs, one push and exact-head CI"
+  ],
+  "acceptance": [
+    "The owner/admin pages for an appliance, customer, rental agreement, purchase, seller, visit and invoice each show a Related panel listing the connected records (for example an appliance's purchase, seller, rentals, visits and repair requests) as plain-worded links to pages that exist.",
+    "The same seven pages show a History timeline, newest first, built from the activity log, saying what happened, who did it and when in plain words with no raw codes.",
+    "Search finds purchases by seller name or receipt number and sellers by name for owner and admin only (never for staff), and keeps finding appliances by serial number and model.",
+    "A passed inspection moves the appliance to a new Cleaning status instead of straight to Available, Cleaning shows on Today as a To do with a working button, and \"Cleaning done\" makes it Available.",
+    "A failed inspection drafts exactly one unscheduled repair visit for that appliance and moves it to In repair, and a repeat creates no second visit.",
+    "Portal home and Billing show \"Your next bill\" for each current rental: the rent for the appliances now on it, the date, and a plain note that tax and credits are shown on the bill itself, in English and Spanish.",
+    "An overdue, unpaid invoice that has a Stripe payment page shows a \"Pay now\" button on the customer's invoice page and in the billing list that opens that invoice's own Stripe-hosted page; only the signed-in customer's own invoices work, nothing is offered for paid or closed invoices, and local invoices keep \"Pay as arranged\".",
+    "The customer's open delivery, pickup and repair visits each show a short status timeline in plain words (requested, scheduled for a date, done) on the portal home.",
+    "After the customer asks for a pickup, reports a problem or ends a rental, the page says in plain words what happens next, in English and Spanish.",
+    "A package line shows as a set, for example \"Washer + Dryer Set (washer #A12, dryer #B07)\", on portal home and My rentals."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/w17-connections.test.ts",
+      "tests/w20-portal.test.ts"
+    ],
+    "db": [
+      "tests/w17-connections-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "W-17",
+      "outcome": "W-17",
+      "acceptance": [
+        "The owner/admin pages for an appliance, customer, rental agreement, purchase, seller, visit and invoice each show a Related panel listing the connected records (for example an appliance's purchase, seller, rentals, visits and repair requests) as plain-worded links to pages that exist.",
+        "The same seven pages show a History timeline, newest first, built from the activity log, saying what happened, who did it and when in plain words with no raw codes.",
+        "Search finds purchases by seller name or receipt number and sellers by name for owner and admin only (never for staff), and keeps finding appliances by serial number and model.",
+        "A passed inspection moves the appliance to a new Cleaning status instead of straight to Available, Cleaning shows on Today as a To do with a working button, and \"Cleaning done\" makes it Available.",
+        "A failed inspection drafts exactly one unscheduled repair visit for that appliance and moves it to In repair, and a repeat creates no second visit."
+      ]
+    },
+    {
+      "id": "W-20",
+      "outcome": "W-20",
+      "acceptance": [
+        "Portal home and Billing show \"Your next bill\" for each current rental: the rent for the appliances now on it, the date, and a plain note that tax and credits are shown on the bill itself, in English and Spanish.",
+        "An overdue, unpaid invoice that has a Stripe payment page shows a \"Pay now\" button on the customer's invoice page and in the billing list that opens that invoice's own Stripe-hosted page; only the signed-in customer's own invoices work, nothing is offered for paid or closed invoices, and local invoices keep \"Pay as arranged\".",
+        "The customer's open delivery, pickup and repair visits each show a short status timeline in plain words (requested, scheduled for a date, done) on the portal home.",
+        "After the customer asks for a pickup, reports a problem or ends a rental, the page says in plain words what happens next, in English and Spanish.",
+        "A package line shows as a set, for example \"Washer + Dryer Set (washer #A12, dryer #B07)\", on portal home and My rentals."
+      ]
+    }
+  ]
+}
