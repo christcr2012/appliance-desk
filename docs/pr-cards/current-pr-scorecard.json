@@ -1,36 +1,40 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "W-17",
+  "parent": "V-C1",
   "completedSlices": [
     {
-      "id": "W-17",
+      "id": "V-C1",
       "acceptanceEvidence": [
-        "src/domains/connections/index.ts (getRecordConnections, owner/admin only) and src/components/desk/record-connections.tsx are on the appliance, customer, agreement, purchase, seller, visit and invoice pages; tests/w17-connections-integration.test.ts checks the links for all seven kinds and that staff are refused.",
-        "The same component shows History from the activity log, newest first, with who, when and a plain-words action (plainAction never shows a raw code); the appliance page keeps its fuller timeline and now shows who; tests/w17-connections.test.ts and the integration test check the wording and the order.",
-        "src/domains/search/index.ts adds purchases (seller name, receipt number, seller) and sellers for owner/admin only; tests/w17-connections.test.ts proves staff never run those queries and the integration test proves serial-number search still works.",
-        "ApplianceStatus gains CLEANING (migration 20261017170000), a passed inspection goes there, listCleaningNeeded puts 'Clean (machine)' on Today linking to the appliance, and markCleaningDone (owner/admin, locked, audited, repeat-safe) makes it Available; proven in tests/w17-connections-integration.test.ts and tests/lifecycle.test.ts.",
-        "recordApplianceInspection calls ensureRepairDraftInTx on a fail: one undated repair visit, reused on a repeat, shown on Today as 'Schedule the repair'; proven by the second integration test (a second failed inspection leaves exactly one)."
+        "Migration 20261017190000 adds contentSchemaVersion (default 1) and nullable templateVersion; tests/vc1-vc2-content-integration.test.ts inserts a populated version-1 revision, points the live site at it and proves identical text, unknown key hidden, row unchanged after a new save.",
+        "src/domains/site-content/types.ts and values.ts define text, link, image, list, promotion and hidden with strict checks; tests/vc1-content-values.test.ts covers plain text, one nesting level, whole-number focus 0 to 100, UTC times with end after start, and a wrong kind as an explicit error.",
+        "src/domains/site-content/links.ts allows only known pages and anchors, https addresses, and phone/email from the business profile, adds noopener noreferrer to outside links; tests cover credentials, protocol-relative, javascript and data refusals.",
+        "src/domains/site-content/fields.ts describes every field (label, help, page, section, where, kind, starting text, optional, limits, placeholders, anchor) and declares eight business facts with their owner screens in SITE_FACT_SOURCES; the registry test checks every existing key maps to itself and has complete metadata.",
+        "src/domains/site-content/codec.ts reads versions 1 and 2, treats missing as the starting text, intentional empty and hidden as different, keeps unknown keys out of view, and refuses unknown keys on save; publish also refuses a draft carrying unknown keys; covered by the unit and integration tests.",
+        "src/domains/site-content/index.ts reads through the codec (published content, revision preview, editor state) so text readers get identical strings; new drafts are written as version 2 with template classic-1; the integration test proves old rows are never rewritten and the existing site-content integration tests still pass."
       ]
     },
     {
-      "id": "W-20",
+      "id": "V-C2",
       "acceptanceEvidence": [
-        "src/domains/portal/next-bill.ts sums the rent of each current rental with its next billing date, shown by NextBillCard on portal home and Billing with the tax-and-credits note in English and Spanish; tests/w20-portal.test.ts checks the total and the Spanish text.",
-        "src/domains/portal/pay-now.ts and the POST route /account/billing/invoice/[invoiceId]/pay open the invoice's own Stripe page only for the signed-in customer's overdue payable Stripe invoice; the Pay now button is on the invoice page and the billing list; tests/w20-portal.test.ts and the integration test prove someone else's, paid and local invoices get nothing.",
-        "OpenVisits on portal home shows Requested, Scheduled (date or 'Not scheduled yet') and Done for each open visit from getPortalHome; labels have Spanish text checked in tests/w20-portal.test.ts.",
-        "The problem-report confirmation, the ending-a-rental note on My rentals and the existing pickup confirmation say what happens next, in English and Spanish (portal-copy.ts; tests/w20-portal.test.ts checks the new Spanish entries).",
-        "src/domains/portal/line-display.ts shows a package line as 'Washer + Dryer Set (washer #A12, dryer #B07)' on portal home and My rentals; tests/w20-portal.test.ts checks the exact wording."
+        "Migration 20261017200000 creates WebsiteAsset with DRAFT/PUBLIC/RETIRED, hash, type, size, who and when; pictures resolve only in that table; the integration test shows a job/customer photo id and a storage path cannot be published or saved as a website picture.",
+        "uploadWebsiteAsset requires an active owner/admin, sniffs the real type, limits 10 MB and 24 megapixels, removes metadata, writes a deterministic WebP at a server-made key; tests refuse SVG, HTML, a remote address, empty, disguised and oversize files and prove nothing is stored.",
+        "/api/desk/site-media/[assetId] needs an active owner/admin and is private no-store; /api/site-media/[assetId] serves only PUBLIC with image/webp, nosniff, immutable cache and no token; draft, retired and unknown give the same 404; covered in tests/vc2-website-assets.test.ts.",
+        "publishDraft and restoreRevision call promoteReferencedAssets inside the pointer-locked transaction: only referenced pictures become public, and a missing, retired or unstored picture blocks with a message naming the field and changes nothing; integration tests prove the spare picture stays private.",
+        "retireWebsiteAsset refuses anything used by the live version, the open draft or a catalog photo and never deletes bytes; restoring a version that needs a retired picture is blocked; cleanupStaleDraftAssets removes only old unused drafts; integration test covers old, in-use, fresh and public pictures.",
+        "Without configured private storage uploads answer a plain message and nothing falls back to production storage (getPrivatePhotoStore is the only source); the catalog setter keeps bundled pictures selectable; ImageCropPreview shows wide, square and tall crops from the stored focus point and decorative choice (tests/vc2-crop-preview.test.tsx); the owner screen that edits them is V-C4.",
+        "setAppliancePhotoUrl now checks an active owner/admin inside a transaction, accepts https, the bundled /appliances pictures already in use, or an uploaded website picture (made public on save), and writes the audit record in the same transaction; integration test covers staff refusal, bad addresses, promotion and audit count."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Real use after the daily release: the owner using Related and History, the Cleaning step and the repair draft on real machines, and a real customer seeing next bill and visit timelines. Pay now opening a real Stripe payment page needs the owner's real Stripe keys, which were not used. No live Stripe, customer email, SMS or spending was used.",
-    "Browser and accessibility checks of the changed pages run in exact-head CI."
+    "Real use after the daily release: the owner uploading a real picture needs the private picture store configured in production (the same private store used for photos); with it missing the owner sees a plain message and the live site is unchanged. The owner screens that use pictures arrive in V-C4.",
+    "Browser and accessibility checks of the changed pages run in exact-head CI.",
+    "Website picture bytes are not yet in the daily recovery media copy (rows are in the database backup); noted in STATUS and the runbook."
   ],
   "evidence": [
-    "Bundle W-17+W-20; planning commit da6bc7ed397c01ab8d1c645875fe8c7fbacd06e0 preserved.",
-    "Local: typecheck, lint and the plain-words check pass; 13 unit tests (plain history wording, owner/admin-only access, staff never searched for purchases or sellers, Cleaning rules, package set wording, next-bill total, Pay now rules and the pay route, Spanish copy) and 5 real-Postgres tests (cleaning flow, one repair draft however often it fails, Related and History on all seven kinds with staff refused, search roles, Pay now ownership) pass; the existing inspection, custody, Today and search suites were updated or still pass; exact-head CI pending."
+    "Bundle V-C1+V-C2; planning commit f3d08616942aa08b7ff921d9efc052de01d0be39 preserved.",
+    "Local: typecheck and lint pass; 16 unit tests of the value, link, version-reading and registry rules (vc1-content-values), 13 unit tests of image cleaning, storage paths, the three routes and their access rules (vc2-website-assets), a crop-preview render test, and 10 real-Postgres tests (populated upgrade, upload roles and reuse, publish promotion, text-only saves keep pictures, blocked publish for missing/retired/unstored/foreign ids, retire and restore rules, cleanup, catalog setter) pass; the older site-content tests were updated for the new storage shape; the full run passes apart from one earlier date test (custody backfill, Denver midnight) that failed before this work; exact-head CI pending."
   ]
 }

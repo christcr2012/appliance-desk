@@ -185,7 +185,7 @@ const photoUrlSchema = z
   .string()
   .trim()
   .max(2000)
-  .refine((v) => v === "" || /^https?:\/\//i.test(v), {
+  .refine((v) => v === "" || /^https:\/\//i.test(v) || /^\/(api\/site-media|appliances)\/[A-Za-z0-9._-]+$/.test(v), {
     message: "Enter a full image URL starting with https://, or leave blank.",
   });
 
@@ -203,11 +203,15 @@ export async function setAppliancePhotoUrlAction(
     };
   }
 
-  await setAppliancePhotoUrl(
-    session.user.id,
-    applianceTypeId,
-    parsed.data === "" ? null : parsed.data,
-  );
+  try {
+    await setAppliancePhotoUrl(
+      session.user.id,
+      applianceTypeId,
+      parsed.data === "" ? null : parsed.data,
+    );
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "The picture could not be saved." };
+  }
 
   revalidatePath("/", "layout");
   revalidatePath("/desk/settings");

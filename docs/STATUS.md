@@ -1,3 +1,24 @@
+## October 17 — V-C1 and V-C2 delivered as one bundle, CI and merge pending
+
+W-17 and W-20 are merged (#486). This PR delivers two whole approved subsections of the website-content control work:
+**V-C1** the website can now hold more than plain text: pictures, links, short lists and scheduled promotions, each with its own checked rules
+(a picture needs a description or must be marked decorative; a link goes to a known page, an `https://` address, or your own phone/email from your business
+profile, never typed in; a promotion ends after it starts). Every saved website version records which format it is in. Old versions read exactly as before
+(empty still means "use the recommended text"); a value that cannot be read is an error, never odd text on a page; keys the site no longer knows are kept in
+history but never shown. Every website field now has a plain "where it appears" description, and the facts that come from elsewhere (phone, email, address,
+hours, service area, monthly rent, catalog photos, terms) are declared with the screen that owns them.
+**V-C2** owner/admin picture upload: real JPEG/PNG/WebP only (not by name), at most 10 MB and 24 megapixels, location/camera data removed, stored as WebP;
+SVG, HTML and animated files are refused. A picture is private until a published website version that uses it (or a saved catalog photo) makes it public
+in the same database step; publishing or restoring a version whose picture is missing or removed is blocked with a plain message and changes nothing.
+Retire is refused while a picture is in use; a bounded cleanup removes only old unused drafts. A crop preview component shows wide / square / tall crops with
+the chosen focus point. The catalog photo setting now checks who is saving, accepts only `https://`, our own pictures or an uploaded picture, and writes its
+audit record in the same step. Two additive migrations: `20261017190000_vc1_revision_content_version`, `20261017200000_vc2_website_assets`; `sharp` is now a
+declared dependency (it was already installed through Next).
+Nothing on the public website changes yet: the home page is not bound to the new picture field until V-C3, and the owner editor for pictures is V-C4.
+Plan and frozen acceptance: `docs/pr-cards/V-C1.md`; proof per criterion: `current-pr-scorecard.json`; cleanup runbook: `docs/runbooks/WEBSITE-ASSET-CLEANUP.md`.
+Open items: the daily media copy does not yet include website pictures (rows are in the database backup, bytes are not copied to the recovery area);
+cleanup is not scheduled. Exact-head CI, including browser/accessibility, review and merge are pending. No live Stripe, email, SMS, spending or production data touched.
+
 ## October 17 — W-17 and W-20 delivered as one bundle, CI and merge pending
 
 W-10 and W-19 are merged (#485). This PR delivers two whole approved subsections:

@@ -2,6 +2,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assetIdFromPublicPath } from "@/domains/site-content/asset-paths";
+import { checkExternalUrl } from "@/domains/site-content/links";
 
 // The single BusinessSettings row's defaults, matching prisma/schema.prisma
 // exactly. Used only if the singleton row is somehow missing (it's created
@@ -289,23 +291,35 @@ export async function setAppliancePhotoUrl(
   photoUrl: string | null,
 ) {
   const normalized = photoUrl && photoUrl.trim() ? photoUrl.trim() : null;
+  // V-C2: only an https address, one of our own bundled pictures, or an uploaded website picture is accepted.
+  const siteAssetId = normalized ? assetIdFromPublicPath(normalized) : null;
+  if (normalized && !siteAssetId && !/^\/appliances\/[A-Za-z0-9._-]+$/.test(normalized) && !checkExternalUrl(normalized).ok) {
+    throw new Error("Enter a full image address starting with https://, or choose an uploaded picture.");
+  }
 
-  const updated = await prisma.applianceType.update({
-    where: { id: applianceTypeId },
-    data: { photoUrl: normalized },
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    if (siteAssetId) {
+      // A catalog picture is live as soon as it is saved, so an uploaded picture becomes public here.
+      const asset = await tx.websiteAsset.findUnique({ where: { id: siteAssetId } });
+      if (!asset || asset.state === "RETIRED") throw new Error("That uploaded picture is not available. Upload it again.");
+      if (asset.state === "DRAFT") await tx.websiteAsset.update({ where: { id: siteAssetId }, data: { state: "PUBLIC", publishedAt: new Date() } });
+    }
+    const updated = await tx.applianceType.update({
+      where: { id: applianceTypeId },
+      data: { photoUrl: normalized },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "appliance.photo",
+        entityType: "ApplianceType",
+        entityId: applianceTypeId,
+        newValue: { photoUrl: normalized },
+      },
+    });
+    return updated;
   });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "appliance.photo",
-      entityType: "ApplianceType",
-      entityId: applianceTypeId,
-      newValue: { photoUrl: normalized },
-    },
-  });
-
-  return updated;
 }
 
 /** Toggles whether an appliance type appears on the public pricing page. */

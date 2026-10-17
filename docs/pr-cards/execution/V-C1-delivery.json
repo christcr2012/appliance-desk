@@ -1,0 +1,74 @@
+{
+  "subsections": [
+    {
+      "id": "V-C1",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "An additive migration gives every website revision a content version (starting at 1) and an optional template version, every existing revision keeps working unchanged, and a populated-upgrade test proves old revisions read the same after the migration.",
+          "evidence": "Migration 20261017190000 adds contentSchemaVersion (default 1) and nullable templateVersion; tests/vc1-vc2-content-integration.test.ts inserts a populated version-1 revision, points the live site at it and proves identical text, unknown key hidden, row unchanged after a new save."
+        },
+        {
+          "criterion": "A typed value set exists for text, link, image, list and promotion content plus an explicit hidden value, with strict validation: plain text only, one level of list nesting, picture focus points as whole numbers 0 to 100, UTC start and end times with the end after the start, and a known value of the wrong type is an explicit error rather than text such as [object Object].",
+          "evidence": "src/domains/site-content/types.ts and values.ts define text, link, image, list, promotion and hidden with strict checks; tests/vc1-content-values.test.ts covers plain text, one nesting level, whole-number focus 0 to 100, UTC times with end after start, and a wrong kind as an explicit error."
+        },
+        {
+          "criterion": "Links use an explicit target set (a known page on this site with a permitted anchor, an HTTPS web address, or a phone number or email bound to the verified business profile); credentials in a link, protocol-relative, script, data and other schemes are refused, and outside links carry safe rel attributes.",
+          "evidence": "src/domains/site-content/links.ts allows only known pages and anchors, https addresses, and phone/email from the business profile, adds noopener noreferrer to outside links; tests cover credentials, protocol-relative, javascript and data refusals."
+        },
+        {
+          "criterion": "The registry describes every field with a stable key, plain label and help, page and section, where it appears, value kind, starting text, required or optional, limits, allowed placeholders, a preview anchor and source ownership, keeps every existing key through a compatibility mapping, and declares phone, email, address, hours and prices as coming from their existing owner screens rather than editable website text.",
+          "evidence": "src/domains/site-content/fields.ts describes every field (label, help, page, section, where, kind, starting text, optional, limits, placeholders, anchor) and declares eight business facts with their owner screens in SITE_FACT_SOURCES; the registry test checks every existing key maps to itself and has complete metadata."
+        },
+        {
+          "criterion": "A content reader decodes version 1 (plain text) and version 2 (typed) revisions, treats a missing field as its starting value, an intentionally empty optional field as different from missing, and hidden as explicit, keeps unknown or retired keys in history without showing them, and refuses new unknown keys when saving or publishing.",
+          "evidence": "src/domains/site-content/codec.ts reads versions 1 and 2, treats missing as the starting text, intentional empty and hidden as different, keeps unknown keys out of view, and refuses unknown keys on save; publish also refuses a draft carrying unknown keys; covered by the unit and integration tests."
+        },
+        {
+          "criterion": "Existing readers (published content, revision preview, editor state, the public pages) return exactly the same text through a version adapter, new drafts are saved as version 2, and old or published revisions are never rewritten.",
+          "evidence": "src/domains/site-content/index.ts reads through the codec (published content, revision preview, editor state) so text readers get identical strings; new drafts are written as version 2 with template classic-1; the integration test proves old rows are never rewritten and the existing site-content integration tests still pass."
+        }
+      ]
+    },
+    {
+      "id": "V-C2",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "An additive migration creates the website picture table with a draft, public or retired state, content hash, type, size, who and when, picture ids resolve only in that table, and a customer, receipt or job photo (or any storage path) can never be used as a website picture.",
+          "evidence": "Migration 20261017200000 creates WebsiteAsset with DRAFT/PUBLIC/RETIRED, hash, type, size, who and when; pictures resolve only in that table; the integration test shows a job/customer photo id and a storage path cannot be published or saved as a website picture."
+        },
+        {
+          "criterion": "Only an active owner or admin can upload; the file must really be a JPEG, PNG or WebP by its content (not its name), at most 10 MB and 24 megapixels; metadata is removed and a deterministic WebP is stored at a server-chosen name; SVG, HTML, disguised or oversize files and remote addresses are refused with plain messages and nothing is stored.",
+          "evidence": "uploadWebsiteAsset requires an active owner/admin, sniffs the real type, limits 10 MB and 24 megapixels, removes metadata, writes a deterministic WebP at a server-made key; tests refuse SVG, HTML, a remote address, empty, disguised and oversize files and prove nothing is stored."
+        },
+        {
+          "criterion": "A draft picture is served only to an active owner or admin by a no-store preview route; a public picture is served by the public media route with the verified content type, no sniffing, a long immutable cache and no token; draft, retired and unknown pictures are never served publicly and the routes reveal nothing about other pictures.",
+          "evidence": "/api/desk/site-media/[assetId] needs an active owner/admin and is private no-store; /api/site-media/[assetId] serves only PUBLIC with image/webp, nosniff, immutable cache and no token; draft, retired and unknown give the same 404; covered in tests/vc2-website-assets.test.ts."
+        },
+        {
+          "criterion": "Publishing a website revision marks exactly the pictures it uses as public in the same transaction that moves the live pointer, after checking each picture exists and is stored; a missing, retired or unknown picture blocks publishing with a plain message naming the field, and a repeat or stale publish never exposes extra pictures.",
+          "evidence": "publishDraft and restoreRevision call promoteReferencedAssets inside the pointer-locked transaction: only referenced pictures become public, and a missing, retired or unstored picture blocks with a message naming the field and changes nothing; integration tests prove the spare picture stays private."
+        },
+        {
+          "criterion": "Retiring a picture stops new selection but never deletes bytes that a kept or restorable revision uses, and a bounded maintenance step removes only old unreferenced draft uploads, never public or referenced pictures.",
+          "evidence": "retireWebsiteAsset refuses anything used by the live version, the open draft or a catalog photo and never deletes bytes; restoring a version that needs a retired picture is blocked; cleanupStaleDraftAssets removes only old unused drafts; integration test covers old, in-use, fresh and public pictures."
+        },
+        {
+          "criterion": "When private picture storage is not configured the owner is told plainly what is missing (no purchase, no fallback to production storage), built-in pictures stay selectable, and a picture's description, decorative choice and focus point are stored with it and shown in a crop preview.",
+          "evidence": "Without configured private storage uploads answer a plain message and nothing falls back to production storage (getPrivatePhotoStore is the only source); the catalog setter keeps bundled pictures selectable; ImageCropPreview shows wide, square and tall crops from the stored focus point and decorative choice (tests/vc2-crop-preview.test.tsx); the owner screen that edits them is V-C4."
+        },
+        {
+          "criterion": "The catalog photo setter now checks the signed-in owner or admin in the domain (not only in the form), accepts only an HTTPS address or a public website picture, and records the change in the activity log in the same transaction.",
+          "evidence": "setAppliancePhotoUrl now checks an active owner/admin inside a transaction, accepts https, the bundled /appliances pictures already in use, or an uploaded website picture (made public on save), and writes the audit record in the same transaction; integration test covers staff refusal, bad addresses, promotion and audit count."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 1198,
+  "productionRemoved": 47,
+  "planComparison": "Actual production change is about +1198/-47 lines against the 1250-line estimate. Both subsections, their boundaries and all frozen acceptance are unchanged and delivered. Two small, deliberate differences: the catalog photo setter also keeps accepting the bundled /appliances/ pictures that the seed data already uses (so existing catalogs do not break), and publish checks that the picture file exists in storage as well as in the table. The visual redesign and the owner editor screens (V-C3, V-C4) were not started.",
+  "newEngineering": "Versioned content storage (additive migration), typed values with strict rules, link rules, registry metadata and fact sources, a codec for versions 1 and 2, the version adapter in the site-content domain, a picture table (additive migration), image cleaning with sharp, a private-store layer with a test store, upload/preview/public routes, publish-time and restore-time picture promotion, retire and bounded cleanup, catalog setter hardening, crop preview, backup manifest entry, a runbook, 4 new test files and 2 updated.",
+  "relatedWorkDecision": "V-C1 and V-C2 share one review because pictures are one of V-C1's value types and publish must promote them in the same transaction that moves the website pointer. The public website is unchanged: no page reads the new picture field until V-C3.",
+  "decision": "SUBSTANTIAL"
+}

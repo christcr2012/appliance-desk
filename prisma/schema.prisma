@@ -2941,6 +2941,10 @@ model SiteContentRevision {
   publishedAt       DateTime?
   publishedByUserId String?
   restoredFromId    String?
+  // V-C1: 1 = plain text values (the original format), 2 = typed values. Old rows are never rewritten.
+  contentSchemaVersion Int       @default(1)
+  // Which website layout the content was written for (V-C5); null for revisions that predate it.
+  templateVersion   String?
 
   @@index([status, publishedAt])
 }
@@ -2949,6 +2953,32 @@ model SiteContentPointer {
   id                  String   @id @default("published")
   publishedRevisionId String?
   updatedAt           DateTime @updatedAt
+}
+
+/// V-C2: a picture the owner uploaded for the public website. Bytes live in the private store under a
+/// server-made key; the public reads them only through /api/site-media/<id>, and only once PUBLIC.
+enum WebsiteAssetState {
+  DRAFT
+  PUBLIC
+  RETIRED
+}
+
+model WebsiteAsset {
+  id              String            @id @default(cuid())
+  storageKey      String            @unique
+  state           WebsiteAssetState @default(DRAFT)
+  sha256          String
+  mimeType        String
+  width           Int
+  height          Int
+  byteSize        Int
+  createdByUserId String
+  createdAt       DateTime          @default(now())
+  publishedAt     DateTime?
+  retiredAt       DateTime?
+
+  @@index([state, createdAt, id])
+  @@index([sha256])
 }
 
 enum DocumentArtifactKind {

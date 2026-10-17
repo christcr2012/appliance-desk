@@ -84,7 +84,7 @@ d("website text revisions", () => {
     await clean();
     const draft = await saveDraft(ids.owner, { fields: { "home.hero.heading": "A <b>bold</b> claim" } });
     const row = await prisma.siteContentRevision.findUniqueOrThrow({ where: { id: draft.draftId } });
-    expect((row.fields as Record<string, string>)["home.hero.heading"]).toBe("A bbold/b claim");
+    expect((row.fields as Record<string, { text: string }>)["home.hero.heading"].text).toBe("A bbold/b claim");
   });
 
   it("publishes: moves the live pointer, archives the old one, records who and when", async () => {

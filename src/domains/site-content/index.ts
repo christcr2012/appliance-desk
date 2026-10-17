@@ -2,7 +2,10 @@ import { cache } from "react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { sanitizeSiteFields, siteDefaults, siteFieldByKey } from "./fields";
+import { SITE_FIELDS, sanitizeSiteFields, siteDefaults, siteFieldByKey } from "./fields";
+import { promoteReferencedAssets } from "./assets";
+import { decodeOrThrow, encodeContentValues, legacyTextToValues, valueToPlainText } from "./codec";
+import { CONTENT_SCHEMA_VERSION_TYPED, SITE_TEMPLATE_VERSION, SiteContentError, type SiteValue } from "./types";
 
 /**
  * Website text in linear revisions (docs/archive/designs-completed/BATCH-D.md D1). The public site reads exactly one PUBLISHED revision
@@ -13,18 +16,32 @@ import { sanitizeSiteFields, siteDefaults, siteFieldByKey } from "./fields";
 export const STALE_DRAFT_MESSAGE = "Someone else changed this draft. Reload to see their changes.";
 const TEAM = ["OWNER", "ADMIN"] as const;
 
-/** Keep only whitelisted string values from stored JSON, so a bad row can never show unknown text. */
-function cleanStored(raw: unknown): Record<string, string> {
+type StoredRevision = { fields: unknown; contentSchemaVersion: number };
+
+/** Typed values of one stored revision. A value that cannot be read is an explicit error, never odd text on a page. */
+function valuesOf(row: StoredRevision): Record<string, SiteValue> {
+  return decodeOrThrow(row.contentSchemaVersion, row.fields).values;
+}
+
+/** The plain text a text-only reader sees. Pictures, links and lists have their own readers. */
+function stringsOf(values: Record<string, SiteValue>): Record<string, string> {
   const out: Record<string, string> = {};
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
-  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (siteFieldByKey(key) && typeof value === "string" && value.trim()) out[key] = value;
+  for (const [key, value] of Object.entries(values)) {
+    const text = valueToPlainText(value);
+    if (text !== undefined) out[key] = text;
   }
   return out;
 }
 
-function withDefaults(stored: Record<string, string>): Record<string, string> {
-  return { ...siteDefaults(), ...stored };
+function withDefaults(values: Record<string, SiteValue>): Record<string, string> {
+  return { ...siteDefaults(), ...stringsOf(values) };
+}
+
+/** The starting value of every text field, as typed values. */
+export function siteDefaultValues(): Record<string, SiteValue> {
+  const out: Record<string, SiteValue> = {};
+  for (const field of SITE_FIELDS) if ((field.valueKind ?? "text") === "text") out[field.key] = { kind: "text", text: field.default };
+  return out;
 }
 
 /** What the public site shows: today's text unless a published revision changes it. Read once per request. */
@@ -33,19 +50,30 @@ export const getPublishedContent = cache(async (): Promise<Record<string, string
   if (!pointer?.publishedRevisionId) return siteDefaults();
   const revision = await prisma.siteContentRevision.findFirst({
     where: { id: pointer.publishedRevisionId, status: "PUBLISHED" },
-    select: { fields: true },
+    select: { fields: true, contentSchemaVersion: true },
   });
-  return withDefaults(cleanStored(revision?.fields));
+  return withDefaults(revision ? valuesOf(revision) : {});
+});
+
+/** V-C1: what the public site shows as typed values (text, links, pictures, lists, promotions), starting values included. */
+export const getPublishedValues = cache(async (): Promise<Record<string, SiteValue>> => {
+  const pointer = await prisma.siteContentPointer.findUnique({ where: { id: "published" } });
+  if (!pointer?.publishedRevisionId) return siteDefaultValues();
+  const revision = await prisma.siteContentRevision.findFirst({
+    where: { id: pointer.publishedRevisionId, status: "PUBLISHED" },
+    select: { fields: true, contentSchemaVersion: true },
+  });
+  return { ...siteDefaultValues(), ...(revision ? valuesOf(revision) : {}) };
 });
 
 /** Preview of any revision (draft or old). The caller must already have checked the viewer is an owner or admin. */
 export async function getRevisionContent(revisionId: string): Promise<Record<string, string>> {
   const revision = await prisma.siteContentRevision.findUnique({
     where: { id: revisionId },
-    select: { fields: true },
+    select: { fields: true, contentSchemaVersion: true },
   });
   if (!revision) return getPublishedContent();
-  return withDefaults(cleanStored(revision.fields));
+  return withDefaults(valuesOf(revision));
 }
 
 /** The values the editor form starts from: the open draft if there is one, otherwise what is live. */
@@ -61,10 +89,28 @@ export async function getEditorState(): Promise<{
     ? await prisma.siteContentRevision.findUnique({ where: { id: pointer.publishedRevisionId } })
     : null;
   return {
-    draft: draft ? { id: draft.id, version: draft.version, note: draft.note, stored: cleanStored(draft.fields) } : null,
+    draft: draft ? { id: draft.id, version: draft.version, note: draft.note, stored: stringsOf(valuesOf(draft)) } : null,
     published: published
-      ? { id: published.id, version: published.version, publishedAt: published.publishedAt, stored: cleanStored(published.fields) }
+      ? { id: published.id, version: published.version, publishedAt: published.publishedAt, stored: stringsOf(valuesOf(published)) }
       : null,
+  };
+}
+
+/** V-C1: the open draft and the live revision as typed values (for the editor that handles more than text). */
+export async function getEditorValueState(): Promise<{
+  draft: { id: string; version: number; note: string | null; values: Record<string, SiteValue> } | null;
+  published: { id: string; version: number; publishedAt: Date | null; values: Record<string, SiteValue> } | null;
+}> {
+  const [draft, pointer] = await Promise.all([
+    prisma.siteContentRevision.findFirst({ where: { status: "DRAFT" }, orderBy: { version: "desc" } }),
+    prisma.siteContentPointer.findUnique({ where: { id: "published" } }),
+  ]);
+  const published = pointer?.publishedRevisionId
+    ? await prisma.siteContentRevision.findUnique({ where: { id: pointer.publishedRevisionId } })
+    : null;
+  return {
+    draft: draft ? { id: draft.id, version: draft.version, note: draft.note, values: valuesOf(draft) } : null,
+    published: published ? { id: published.id, version: published.version, publishedAt: published.publishedAt, values: valuesOf(published) } : null,
   };
 }
 
@@ -107,15 +153,33 @@ async function nextVersion(tx: Prisma.TransactionClient): Promise<number> {
  */
 export async function saveDraft(
   userId: string,
-  input: { draftId?: string; expectedVersion?: number; fields: Record<string, string>; note?: string },
+  input: {
+    draftId?: string;
+    expectedVersion?: number;
+    /** The text the editor has always sent. Empty text means "not set". Pictures, links and lists already in the draft are kept. */
+    fields?: Record<string, string>;
+    /** V-C1: typed values, for content other than plain text. Replaces the whole draft. */
+    values?: Record<string, unknown>;
+    note?: string;
+  },
 ): Promise<{ draftId: string; version: number }> {
-  const cleaned = sanitizeSiteFields(input.fields);
-  if (!cleaned.ok) throw new Error(cleaned.message);
+  if (input.values !== undefined && input.fields !== undefined) throw new Error("Those website changes could not be read.");
+  let typed: Record<string, SiteValue> | null = null;
+  let legacy: Record<string, SiteValue> | null = null;
+  if (input.values !== undefined) {
+    const encoded = encodeContentValues(input.values);
+    if (!encoded.ok) throw new Error(encoded.message);
+    typed = encoded.stored;
+  } else {
+    const cleaned = sanitizeSiteFields(input.fields ?? {});
+    if (!cleaned.ok) throw new Error(cleaned.message);
+    legacy = legacyTextToValues(cleaned.fields);
+  }
   const note = input.note?.replace(/[<>]/g, "").trim().slice(0, 300) || null;
 
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, TEAM);
-    await lockPointer(tx);
+    const publishedId = await lockPointer(tx);
     const open = await tx.siteContentRevision.findFirst({ where: { status: "DRAFT" }, orderBy: { version: "desc" } });
     if (open) {
       if (!input.draftId || input.draftId !== open.id || input.expectedVersion !== open.version) {
@@ -125,9 +189,21 @@ export async function saveDraft(
     } else if (input.draftId) {
       throw new Error(STALE_DRAFT_MESSAGE);
     }
+    let stored: Record<string, SiteValue>;
+    if (typed) stored = typed;
+    else {
+      // A text-only save must not lose pictures or links already in the draft (or live): keep every non-text value.
+      const baseRow = open ?? (publishedId ? await tx.siteContentRevision.findUnique({ where: { id: publishedId } }) : null);
+      const base = baseRow ? valuesOf(baseRow) : {};
+      const kept = Object.fromEntries(Object.entries(base).filter(([, value]) => value.kind !== "text" && value.kind !== "hidden"));
+      stored = { ...kept, ...legacy! };
+    }
     const version = await nextVersion(tx);
     const created = await tx.siteContentRevision.create({
-      data: { status: "DRAFT", version, fields: cleaned.fields, note, createdByUserId: userId },
+      data: {
+        status: "DRAFT", version, fields: stored as object, note, createdByUserId: userId,
+        contentSchemaVersion: CONTENT_SCHEMA_VERSION_TYPED, templateVersion: SITE_TEMPLATE_VERSION,
+      },
     });
     await tx.auditLog.create({
       data: {
@@ -135,7 +211,7 @@ export async function saveDraft(
         action: "site_content.draft_saved",
         entityType: "SiteContentRevision",
         entityId: created.id,
-        newValue: { version, fieldCount: Object.keys(cleaned.fields).length },
+        newValue: { version, fieldCount: Object.keys(stored).length, contentSchemaVersion: CONTENT_SCHEMA_VERSION_TYPED },
       },
     });
     return { draftId: created.id, version };
@@ -155,6 +231,10 @@ export async function publishDraft(
     if (!draft || draft.status !== "DRAFT" || draft.version !== expectedVersion) {
       throw new Error(STALE_DRAFT_MESSAGE);
     }
+    // Every picture the draft uses must exist and be usable; draft pictures become public in this same transaction.
+    const decoded = decodeOrThrow(draft.contentSchemaVersion, draft.fields);
+    if (Object.keys(decoded.retired).length) throw new SiteContentError("This draft contains something the website no longer has a place for. Save it again from the editor, then publish.");
+    const promoted = await promoteReferencedAssets(tx, decoded.values);
     if (previousId) {
       await tx.siteContentRevision.updateMany({
         where: { id: previousId, status: "PUBLISHED" },
@@ -174,7 +254,7 @@ export async function publishDraft(
         entityType: "SiteContentRevision",
         entityId: draft.id,
         oldValue: { previousRevisionId: previousId },
-        newValue: { version: draft.version },
+        newValue: { version: draft.version, picturesMadePublic: promoted.length },
       },
     });
     return { revisionId: draft.id, version: draft.version };
@@ -188,6 +268,7 @@ export async function restoreRevision(userId: string, revisionId: string): Promi
     const previousId = await lockPointer(tx);
     const source = await tx.siteContentRevision.findUnique({ where: { id: revisionId } });
     if (!source || !source.publishedAt) throw new Error("That version was never published, so it cannot be restored.");
+    await promoteReferencedAssets(tx, valuesOf(source));
     if (previousId) {
       await tx.siteContentRevision.updateMany({
         where: { id: previousId, status: "PUBLISHED" },
@@ -199,7 +280,9 @@ export async function restoreRevision(userId: string, revisionId: string): Promi
       data: {
         status: "PUBLISHED",
         version,
-        fields: cleanStored(source.fields),
+        fields: valuesOf(source) as object,
+        contentSchemaVersion: CONTENT_SCHEMA_VERSION_TYPED,
+        templateVersion: SITE_TEMPLATE_VERSION,
         note: `Restored version ${source.version}`,
         createdByUserId: userId,
         publishedAt: new Date(),

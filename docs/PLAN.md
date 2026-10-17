@@ -160,6 +160,8 @@ Design: `docs/designs/BATCH-V.md`; work coverage and prerequisites: work-index.
 
 ### Website content control acceptance — V-C1…V-C5
 
+_Progress: V-C1 (typed values/versioned storage) and V-C2 (website pictures) are built and tested, awaiting merge; V-C3…V-C5 are open, so no box below is checked._
+
 - [ ] Every public content item (all routes/variants, header/footer, metadata,
   form labels/messages, photos, links, descriptions, introductions and supported
   ad slots) has an editable content binding or one explicit source ownership.

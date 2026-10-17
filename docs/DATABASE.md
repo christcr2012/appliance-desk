@@ -8,7 +8,7 @@ No schema change. The Today "Get set up" card reads existing BusinessSettings, A
 
 ## W-14 / W-2 / W-15 purchase records (2026-10-17)
 
-Additive migration `20261017170000_w17_cleaning_status` (W-17) adds the `CLEANING` value to `ApplianceStatus` (no new table; existing rows are unchanged). Additive migration `20261017150000_w19_unsigned_follow_up` (W-19) adds `BusinessSettings.unsignedFollowUpDays` (default 3, CHECK 1 to 30). No new table.
+Additive migrations `20261017190000_vc1_revision_content_version` (V-C1: `SiteContentRevision.contentSchemaVersion` default 1, `templateVersion` nullable; existing rows read as version 1) and `20261017200000_vc2_website_assets` (V-C2: `WebsiteAssetState` enum and `WebsiteAsset` table). Additive migration `20261017170000_w17_cleaning_status` (W-17) adds the `CLEANING` value to `ApplianceStatus` (no new table; existing rows are unchanged). Additive migration `20261017150000_w19_unsigned_follow_up` (W-19) adds `BusinessSettings.unsignedFollowUpDays` (default 3, CHECK 1 to 30). No new table.
 
 Additive migration `20261017130000_w5_w6_payment_link_and_lead_response` (W-5/W-6) adds `BusinessSettings.paymentLinkTemplates` (JSON, owner wording per reason, NULL = recommended), `BusinessSettings.leadResponseDays` (default 0, CHECK 0 to 14) and `Lead.nextFollowUpOn` (nullable date). No new table; all are covered by the existing BusinessSettings and Lead backups.
 

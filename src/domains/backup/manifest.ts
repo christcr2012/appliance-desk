@@ -99,6 +99,7 @@ export const BACKUP_MODEL_POLICY = {
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",
   SiteContentPointer: "siteContentPointer",
+  WebsiteAsset: "websiteAsset",
   DocumentArtifact: "documentArtifact",
   PrivacyRequest: "privacyRequest",
   Photo: "photo",

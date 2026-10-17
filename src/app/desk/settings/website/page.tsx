@@ -23,7 +23,7 @@ export default async function WebsiteTextPage() {
     listPublishedHistory(),
   ]);
   const defaults = Object.fromEntries(
-    SITE_FIELDS.map((field) => [field.key, field.default]),
+    SITE_FIELDS.filter((field) => (field.valueKind ?? "text") === "text").map((field) => [field.key, field.default]),
   );
   const live = { ...defaults, ...(state.published?.stored ?? {}) };
   const start = { ...live, ...(state.draft?.stored ?? {}) };
@@ -65,7 +65,7 @@ export default async function WebsiteTextPage() {
       </Card>
 
       <WebsiteEditor
-        fields={SITE_FIELDS.map((field) => ({ ...field }))}
+        fields={SITE_FIELDS.filter((field) => (field.valueKind ?? "text") === "text").map((field) => ({ ...field }))}
         defaults={defaults}
         live={live}
         start={start}

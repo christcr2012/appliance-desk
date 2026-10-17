@@ -1,3 +1,10 @@
+## Website pictures and richer website content (V-C1, V-C2)
+- **Nothing looks different on the website yet.** This release adds the foundation: the website can now hold pictures, links, lists and promotions, with checks so a broken link or a picture without a description cannot go live. The screens to use them come next (the website editor, V-C4).
+- **Pictures.** Owners and admins can upload a JPEG, PNG or WebP (up to 10 MB). The system re-saves it, removes location and camera information, and keeps it private until you publish a website version that uses it. A picture needs a short description for people who can't see it, or must be marked decorative.
+- **Catalog photos** (Settings → appliance prices) now accept an uploaded picture, an `https://` address, or blank. Anything else is refused with a message.
+- **If pictures can't be uploaded** you'll see "Picture storage is not set up in this environment yet." The live website keeps its current pictures.
+- **Phone and email links** on the website will always use the phone and email in your business profile, so they can't drift.
+
 ## Connected records, cleaning, and what customers now see (W-17, W-20)
 - **Related and History.** Every main record page (appliance, customer, rental agreement, purchase, seller, visit, invoice) has a "Related" box with links to the connected pages and a "History" box saying who did what and when, newest first, in plain words. Staff do not see these boxes.
 - **Search** now also finds purchases (by the seller's name or the receipt number) and sellers (by name). Staff never see purchases or sellers in search. Serial and model numbers still find appliances.
