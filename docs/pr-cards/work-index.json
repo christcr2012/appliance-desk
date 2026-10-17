@@ -3139,7 +3139,7 @@
       "tests": [
         "tests/w5-w6-integration.test.ts"
       ],
-      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-5.md",
       "card": "docs/pr-cards/W-5.md"
     },
@@ -3164,7 +3164,7 @@
       "tests": [
         "tests/w5-w6-integration.test.ts"
       ],
-      "readiness": "SOURCE_COMPLETE_PENDING_CI_MERGE",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-6.md",
       "card": "docs/pr-cards/W-5.md"
     },
@@ -3183,11 +3183,17 @@
       ],
       "evidence": [
         "docs/designs/BATCH-W.md",
-        "src/app/desk/today/page.tsx"
+        "src/app/desk/today/page.tsx",
+        "src/domains/tax/workspace-overview.ts",
+        "src/domains/settings/provider-status.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/W-7.md"
+      "tests": [
+        "tests/setup-checklist.test.ts",
+        "tests/setup-checklist-integration.test.ts"
+      ],
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/W-7.md",
+      "card": "docs/pr-cards/W-7.md"
     },
     {
       "id": "W-8",
@@ -3710,7 +3716,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "W-5",
+  "activeExecution": "W-7",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3771,6 +3777,10 @@
     {
       "id": "W-5",
       "path": "docs/pr-cards/execution/W-5.json"
+    },
+    {
+      "id": "W-7",
+      "path": "docs/pr-cards/execution/W-7.json"
     }
   ]
 }
