@@ -9,6 +9,8 @@ import { prisma } from "@/lib/prisma";
 import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
 import { listSignedDeliveryAttention } from "./signed-delivery-attention";
+import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
+import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
 import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment } from "./turning-points-attention";
 import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
@@ -1022,6 +1024,11 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const cancellationRefundAttention = canViewFinance ? await listCancellationRefundAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const signedDeliveryAttention = canViewFinance ? await listSignedDeliveryAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const noTurningPoints = { rows: [] as ExceptionItem[], total: 0 };
+  const heldPayments = canViewFinance ? await listHeldPaymentAttention(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
+  const depositDecisions = canViewFinance ? await listDepositDecisionAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const newLeadContact = canViewFinance ? await listNewLeadContact(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
+  const leadFollowUps = canViewFinance ? await listLeadFollowUps(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const approvedQuotes = canViewFinance ? await listApprovedQuoteToRental(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const rentalEndingSoon = canViewFinance ? await listRentalEndingSoon(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const pickupUnscheduled = canViewFinance ? await listPickupUnscheduled(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const visitNeedsAssignment = canViewFinance ? await listVisitNeedsAssignment(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
@@ -1048,6 +1055,11 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...signingPaymentAttention.rows,
     ...cancellationRefundAttention.rows,
     ...signedDeliveryAttention.rows,
+    ...heldPayments.rows,
+    ...newLeadContact.rows,
+    ...leadFollowUps.rows,
+    ...approvedQuotes.rows,
+    ...depositDecisions.rows,
     ...rentalEndingSoon.rows,
     ...pickupUnscheduled.rows,
     ...visitNeedsAssignment.rows,
@@ -1089,6 +1101,11 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["SIGNING_PAYMENT_DUE", signingPaymentAttention],
       ["CANCELLATION_REFUND_DUE", cancellationRefundAttention],
       ["SIGNED_DELIVERY_UNSCHEDULED", signedDeliveryAttention],
+      ["HELD_PAYMENT_DECISION", heldPayments],
+      ["DEPOSIT_DECISION", depositDecisions],
+      ["NEW_LEAD_CONTACT", newLeadContact],
+      ["LEAD_FOLLOW_UP", leadFollowUps],
+      ["APPROVED_QUOTE", approvedQuotes],
       ["RENTAL_ENDING_SOON", rentalEndingSoon],
       ["PICKUP_UNSCHEDULED", pickupUnscheduled],
       ["VISIT_NEEDS_ASSIGNMENT", visitNeedsAssignment],

@@ -1,34 +1,32 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "W-3",
+  "parent": "W-5",
   "completedSlices": [
     {
-      "id": "W-3",
+      "id": "W-5",
       "acceptanceEvidence": [
-        "src/lib/taxes-tabs.ts defines the four tabs (To file, Use tax, Rates & areas, Setup) and the Setup list; src/app/desk/sales-tax/layout.tsx renders them for every page under /desk/sales-tax; the menu entry in src/lib/desk-navigation.ts is now 'Taxes' (OWNER/ADMIN only). Exemptions and What's taxed are headed 'Customers who don't pay tax' and 'What gets taxed' and listed in Setup with Use-tax settings, the audit pack and record keeping. tests/taxes-in-one-place-w3.test.ts (tab mapping table, Setup links point to real pages, menu entry) and tests/desk-navigation.test.ts pass; e2e sales-tax specs updated.",
-        "Use-tax, audit-pack and record-retention pages moved under /desk/sales-tax; src/lib/tax-route-redirects.ts + next.config.ts redirect every old /desk/tax address permanently; tests/taxes-in-one-place-w3.test.ts proves each destination page exists, no old page remains, and no src file still links to /desk/tax/; tests/today-href-routes.test.ts and the route inventory check pass.",
-        "src/domains/tax/file-and-pay.ts fileAndPayLine builds 'File and pay $X on Colorado's sales tax website (SUTS) by <date>' with the Open SUTS link, $0, late and filed wording, state and Greeley use tax listed separately, and refuses non-https stored links; src/app/desk/sales-tax/file-and-pay-headline.tsx shows it above the numbers on the return page and the use-tax worksheet, followed by the copy fields and the existing 'I filed and paid it' step; glossary entries 'suts' and 'use-tax' feed the tooltips. Unit tests cover each wording and the link rules.",
-        "Audit of src/app/desk/sales-tax and purchases: the only inputs are dollar fields (moneyInputValue / 'enter dollars and cents, like 125.50'); the only 'cents' inputs found are hidden compare-and-set fields, not typed by the owner; tests/plain-money checks (npm run check:quick W-18 plain money check) pass."
+        "Held payments and deposit decisions: src/domains/exceptions/money-turning-points.ts adds one To do per held payment (opens /desk/billing/held-payments, button Decide) and per ended-rental deposit (opens the deposit screen); the failed-payment To do in rules.ts is now titled \"<name>'s payment failed \u2014 $X\" and opens the invoice. tests/payment-link-message.test.ts and tests/w5-w6-integration.test.ts (real Postgres) prove the titles, links and button.",
+        "src/domains/billing/payment-link.ts + payment-link-message.ts + src/components/desk/payment-link-panel.tsx on the invoice page: Send payment link and Copy link only when the invoice is open with a Stripe page (Stripe is asked live; paid, closed, no-page and amount-mismatch are refused); message filled from the invoice (what, amount, due date, days overdue, late fee, total balance, reason); preview and short note; owner-editable wording per reason at /desk/settings/payment-links with restore, validated and audited; send is refused when the customer-email switch is off while Copy link works; the text is kept in message history by deliverMessage; OWNER/ADMIN only (STAFF refused in tests); no public pay page. Real-Postgres and unit tests cover each.",
+        "startPhonePayment opens Stripe's own invoice page for one bill; the payment is recorded only by the existing invoice.paid webhook; the actor, amount, card-permission tick and the script read are audited (billing.phone_payment_started); no payment row or card data is written (tested). OWNER/ADMIN only. Spreading over several bills is not included (owner decision 2026-10-16)."
       ]
     },
     {
-      "id": "W-4",
+      "id": "W-6",
       "acceptanceEvidence": [
-        "src/domains/exceptions/signed-delivery-attention.ts now titles the To do 'Schedule <name>'s delivery' and sets a date-only due date of the business day after signing (dayAfterSigning); the draft visit comes from ensureSignedDeliveryDraftInTx, which creates only an unscheduled job. tests/rental-turning-points-w4-integration.test.ts proves the title and due date against real Postgres.",
-        "BusinessSettings.rentalEndingNoticeDays (default 30, CHECK 1 to 365; migration 20261017120000_w4_rental_ending_notice) with an owner-only audited compare-and-set editor at /desk/settings/rental-endings (explanation, starting value, restore button); listRentalEndingSoon gives one To do per active fixed-term rental inside the window with no decision or renewal; /desk/agreements/[id]/ending-decision offers Renew, Month-to-month and Pickup, where Renew and Month-to-month call renewAgreement and only create a draft. The three choices are on the decision page the To do opens, not on the To do row itself. Real-Postgres tests cover in-window, outside, already ending, renewed and a changed setting.",
-        "ensurePickupDraftInTx (idempotent unscheduled REMOVAL visit linked to the machines the customer holds) runs inside the same transaction as requestMonthToMonthEnd and requestEarlyTermination and in decideEndingPickup for the Pickup choice; listPickupUnscheduled shows 'Schedule <name>'s pickup'. Existing integration tests were extended: the month-to-month end test asserts exactly one unscheduled REMOVAL (including after a simultaneous repeat), the early-termination test asserts one, and the new test proves a repeated Pickup choice creates no second visit, no invoice and one audit row.",
-        "listVisitNeedsAssignment shows 'Assign / set a time — <name>' for a scheduled visit within 2 days with no technician and for a pickup whose needed date is within 2 days with no time; assigned and far-off visits are not listed (real-Postgres test)."
+        "BusinessSettings.leadResponseDays (default 0 = same day, CHECK 0 to 14) with an owner-only audited compare-and-set editor at /desk/settings/lead-response (explanation, starting value, restore button); listNewLeadContact gives \"Contact <name>\" for NEW leads, date-only, due the response-time days after arrival; a contacted lead leaves the list. Real-Postgres test with 0 and 3 days.",
+        "Marking a lead contacted opens \"Next follow-up date?\" prefilled two days out; Lead.nextFollowUpOn stores the chosen date (audited, past dates refused, cleared on any other status); listLeadFollowUps shows \"Follow up with <name>\" once that date arrives. Real-Postgres test.",
+        "listApprovedQuoteToRental gives \"Turn <name>'s approved quote into a rental\" for APPROVED quotes, due today, opening the estimate page where the rental is made; it disappears once converted. Real-Postgres test."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Real use after the daily release: the owner opening the new Taxes menu, filing on the real SUTS site and seeing the new To do items on real rentals.",
-    "The app never files or pays; SUTS filing remains the owner's own step."
+    "Real use after the daily release: the owner sending a real payment link and taking a real phone payment on Stripe's page.",
+    "Stripe confirmation that staff-typed card-not-present payments are allowed on the live account (GO-LIVE item). No live Stripe, customer email or spending was used."
   ],
   "evidence": [
-    "Single bundle W-3 + W-4; planning commit 9b327a562468b0ef31be118c2091e3d47fdc0aa9 preserved.",
-    "Local: typecheck, lint, route inventory, new unit tests and 7 real-Postgres tests pass; exact-head CI pending."
+    "Single bundle W-5 + W-6; planning commit e1485fd56228730f871f44d395360782e1ff1c0a preserved.",
+    "Local: typecheck, new unit tests and 11 real-Postgres tests pass; exact-head CI pending."
   ]
 }

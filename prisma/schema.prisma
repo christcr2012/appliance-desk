@@ -387,6 +387,9 @@ model Lead {
   // it, so a future new reason never needs a migration.
   lostReason String?
 
+  // W-6: the date the owner chose for the next follow-up (Colorado midnight). Null = none chosen.
+  nextFollowUpOn DateTime?
+
   notesLog LeadNote[]
   tasks    StaffTask[]
 
@@ -2749,6 +2752,12 @@ model BusinessSettings {
 
   // W-4: how many days before a rental ends the owner gets a Renew / Month-to-month / Pickup To do.
   rentalEndingNoticeDays Int @default(30)
+
+  // W-5: owner-edited wording for the "Send payment link" message, one entry per reason. Null = recommended wording.
+  paymentLinkTemplates Json?
+
+  // W-6: days after a new lead arrives that its "Contact <name>" To do is due (0 = the same day).
+  leadResponseDays Int @default(0)
 
   // W-24 delivery windows and operator-reviewed fees (private until publication).
   deliveryMorningStartHour Int @default(8)

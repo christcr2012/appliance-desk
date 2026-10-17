@@ -242,6 +242,8 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/security/setup", role: "OWNER", fixture: "/desk/security/setup" },
   { path: "/desk/settings", role: "OWNER", fixture: "/desk/settings" },
   { path: "/desk/settings/rental-endings", role: "OWNER", fixture: "/desk/settings/rental-endings" },
+  { path: "/desk/settings/payment-links", role: "OWNER", fixture: "/desk/settings/payment-links" },
+  { path: "/desk/settings/lead-response", role: "OWNER", fixture: "/desk/settings/lead-response" },
   { path: "/desk/settings/policies", role: "OWNER", fixture: "/desk/settings/policies" },
   { path: "/desk/settings/preview-storage", role: "OWNER", fixture: "/desk/settings/preview-storage" },
   { path: "/desk/settings/telecom", role: "OWNER", fixture: "/desk/settings/telecom" },

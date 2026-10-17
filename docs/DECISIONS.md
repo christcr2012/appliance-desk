@@ -1063,3 +1063,10 @@ tax-evidence model. Choices made here, within the approved designs:
 - **Renew / Month-to-month / Pickup live on a decision page** the To do opens, rather than as buttons on the
   To do row, so each choice can explain itself; Renew and Month-to-month only create a draft renewal.
 - **W-5 stays a separate bundle**: Stripe payment links and phone payment are a distinct provider boundary.
+
+## 2026-10-17 — W-5 payment links, phone payment and W-6 lead/quote follow-ups
+- **Take payment by phone is the simple version** (owner, 2026-10-16): Stripe's own invoice page for one bill. The payment is recorded only by the existing `invoice.paid` webhook; no new money path. The card-save tick records who, when and the script read in the audit log; whether the card becomes the default is left to Stripe.
+- **No new tables.** Phone-payment history, link sends/copies and wording changes live in AuditLog; the sent message text lives in `MessageDelivery` (customer history). Stripe is asked live before every link so a paid, closed or mismatched bill never gets one.
+- **Send needs the customer-email switch; Copy link does not.** OWNER/ADMIN only; only the OWNER edits wording (`BusinessSettings.paymentLinkTemplates`, validated: 30 to 1500 characters, must keep {link}, known words only).
+- **Lead response time** is `BusinessSettings.leadResponseDays` (0 = same day, 0 to 14, owner-only, audited). `Lead.nextFollowUpOn` holds the chosen follow-up date; any status other than Contacted clears it. Migration `20261017130000_w5_w6_payment_link_and_lead_response` is additive.
+

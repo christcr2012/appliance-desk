@@ -11,6 +11,8 @@ import { MoneyDecisionForm } from "@/components/desk/money-decision-form";
 import { applyCreditAction, recalculateInvoiceTaxAction, refundInvoiceAction } from "@/app/desk/billing/money-actions";
 import { Button } from "@/components/ui/button";
 import { formatCents } from "@/domains/pricing";
+import { PaymentLinkPanel } from "@/components/desk/payment-link-panel";
+import { suggestPaymentLinkReason } from "@/domains/billing/payment-link-message";
 
 export const metadata = { title: "Invoice" };
 
@@ -36,11 +38,17 @@ export default async function DeskInvoicePage({
 
   const money = await prisma.invoice.findUnique({
     where: { id: invoiceId },
-    select: { status: true, amountDueCents: true, amountPaidCents: true, refunds: { select: { amountCents: true } } },
+    select: { status: true, stripeInvoiceId: true, amountDueCents: true, amountPaidCents: true, refunds: { select: { amountCents: true } } },
   });
   const refundable = money ? money.amountPaidCents - money.refunds.reduce((sum, r) => sum + r.amountCents, 0) : 0;
   const outstanding = money ? Math.max(0, money.amountDueCents - money.amountPaidCents) : 0;
   const isOpen = money ? ["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(money.status) : false;
+  const canAskForPayment = isOpen && outstanding > 0 && Boolean(money?.stripeInvoiceId);
+  const phoneHistory = await prisma.auditLog.findMany({
+    where: { entityType: "Invoice", entityId: invoiceId, action: "billing.phone_payment_started" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 5,
+    select: { createdAt: true, user: { select: { name: true, email: true } } },
+  });
   const credits = isOpen && outstanding > 0 ? await getSpendableCredits(id) : [];
   const taxBlock =
     money?.status === "DRAFT"
@@ -74,6 +82,17 @@ export default async function DeskInvoicePage({
           <PrintDocumentButton />
         </div>
       </div>
+
+      {canAskForPayment && money && (
+        <div className="mt-4 print:hidden">
+          <PaymentLinkPanel invoiceId={invoiceId} suggestedReason={suggestPaymentLinkReason(money)} />
+        </div>
+      )}
+      {phoneHistory.length > 0 && (
+        <p className="mt-2 text-sm text-ink-soft print:hidden">
+          Phone payment page opened by {phoneHistory.map((h) => (h.user?.name ?? h.user?.email ?? "staff") + " on " + h.createdAt.toLocaleDateString("en-US", { timeZone: "America/Denver" })).join("; ")}.
+        </p>
+      )}
 
       {money?.status === "DRAFT" && taxBlock && (
         <section
