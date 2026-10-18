@@ -302,3 +302,17 @@ policy engine. All runtime additions remain to implement; this PR designs them.
 Keep mandatory Today work visible and preserve signed facts/activation gates.
 
 Removed 2026-10-09 (withdrawn forecast and dated scope notes; the K-CASH section above is current): [snapshot](archive/reset-2026-10-09/MASTER-ROADMAP.md).
+
+## Owner-requested Appliance Desk MCP architecture — October 17, 2026
+
+The new [MCP design](mcp/README.md) and [ordered subsystem roadmap](mcp/ROADMAP.md)
+cover MCP-1…MCP-11, including private reporter feedback and agent-assisted repair.
+This is documented planned scope, no implemented or accepted MCP capability. The
+first [MCP-1/MCP-2 card](pr-cards/MCP-1.md) starts with health/backup evidence;
+subsequent work adds direct connection, delegated recovery, feedback, monitoring,
+optimization and optional RTC/Hub interoperability. Direct service use needs no Hub.
+Do not replace or edit an in-flight F2 card/packet. On activation register this new
+batch and its original acceptance with work-index and the pinned validator in one
+reviewed change; preserve every existing required unit. Source engineering, merged,
+released and real acceptance remain separate. Design does not authorize production
+configuration changes, live effects, paid infrastructure or manual release.

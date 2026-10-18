@@ -409,3 +409,22 @@ authorizes launch.
   and scoped drill-down explain payback/profitability.
 - [ ] ENH-O / O-1: pure impact preview, revision conflict and authorized undo preserve
   signed facts and existing approval/activation gates.
+
+## Owner-requested MCP and user feedback design — October 17, 2026
+
+Design entry: [MCP README](mcp/README.md); complete original requirements and order:
+[MCP roadmap](mcp/ROADMAP.md); evidence status: [MCP acceptance](mcp/acceptance.json).
+All eleven original subsections are planned/not implemented. Runtime activation
+requires the repository workflow and each action's actual authorization. This
+planning addition neither waives nor relabels existing F2/provider/professional
+acceptance. The [feedback extension](mcp/FEEDBACK.md) includes private reporting,
+AI opt-in, triage/reply, sanitized engineering linkage and verified resolution.
+
+- [ ] MCP-1/MCP-2: accurate safe health and independently verified backup/media evidence.
+- [ ] MCP-3/MCP-4: standard authenticated direct MCP, bounded authorized diagnostics and compatible connection updates.
+- [ ] MCP-5/MCP-6: journaled authorized recovery and evidence-bound engineering repair.
+- [ ] MCP-10/MCP-11: private in-app user reports/suggestions and agent-assisted support-to-repair workflow.
+- [ ] MCP-7/MCP-8: accountable monitoring, configurable delegation and measured optimization.
+- [ ] MCP-9: RTC conformance and individually proven client/optional Hub routes.
+
+Checkboxes summarize, never replace the complete M1–M11 criteria or evidence ledger.

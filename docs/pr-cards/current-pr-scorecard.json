@@ -1,19 +1,16 @@
 {
   "version": 1,
-  "kind": "risk_remediation",
+  "kind": "maintenance",
   "parent": "F2-A",
   "completedSlices": [],
-  "workloadException": "A single missing audit-trail entry found by the F2-B privacy scenario and approved by the owner on 2026-10-17: fulfilling a privacy deletion changed the request row but wrote no audit-log row. The fix is one small write inside the existing transaction, so it is deliberately far below the usual workload and claims no completed batch subsection.",
-  "riskEvidence": [
-    "Risk: an owner-fulfilled privacy deletion left no audit-log row, so the history of who erased a customer's data was incomplete (found by tests/scenarios/08-privacy-request-retention.test.ts in PR #492).",
-    "Fix: fulfillPrivacyDeletion in src/domains/privacy/index.ts writes one privacy.deletion_fulfilled audit row inside the same transaction, holding only the actor, request id, customer id and photo count (no personal data).",
-    "Regression: scenario 08 asserts exactly one such row after a fulfilment (actor and customer id checked) and still exactly one after a repeat fulfilment; the privacy request tests continue to pass."
+  "remainingEngineering": [
+    "All MCP-1 through MCP-11 runtime engineering remains planned and unimplemented; no original product subsection claimed complete."
   ],
-  "remainingEngineering": [],
   "externalAcceptance": [
-    "Real provider acceptance (Stripe, email, SMS, Blob storage, a production-sized restore) stays OPEN: every scenario here fakes the provider at its client boundary. The owner-workflow browser spec runs again in exact-head CI."
+    "Actual backup root cause, private store configuration, real restore, agent-client compatibility, monitoring worker and optional Hub routes remain unverified."
   ],
   "evidence": [
-    "PR #493 exact-head CI and the scenario 08 test on the throwaway Postgres."
+    "Owner-requested architecture and repository planning in docs/mcp/README.md and related contracts.",
+    "Planning integrity is checked by python3 docs/mcp/validate-plan.py and existing documentation/secret checks; exact-head CI and review remain separate."
   ]
 }

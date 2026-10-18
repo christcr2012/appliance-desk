@@ -1114,7 +1114,7 @@ tax-evidence model. Choices made here, within the approved designs:
 
 ## 2026-10-17 — V-C3 decisions
 - **Facts have one owner.** Editable sentences hold only declared `{placeholders}`; they are filled from Settings, the price list or the service area when the page is shown. Unknown names are refused at save and publish. Prices, phone, email, address, hours, fees and cities are never editable text.
-- **Inline links are a bounded syntax** (`[words](/known-page)` or `[words](https://…)`), valid only in items marked as allowing links; anything that looks like a link but does not parse is refused, never kept silently. A bad link already stored shows as plain words, never as a live link.
+- **Inline links are a bounded syntax** (`[words]` followed immediately by `(/known-page)` or `[words](https://…)`), valid only in items marked as allowing links; anything that looks like a link but does not parse is refused, never kept silently. A bad link already stored shows as plain words, never as a live link.
 - **Buttons are link items**; phone and email destinations resolve from the business profile and show nothing if the profile has none. Menu/footer/legal destinations are fixed in code, words editable and required.
 - **Promotions are judged per request** from stored UTC instants (no job); Colorado wall-clock entry is converted with DST awareness (a time that does not exist is refused; an ambiguous fall-back time means the earlier instant). Priced-offer links are refused until an offer source exists.
 - **Preview is one reader.** `getSiteForRequest` honours `?revision=` and `?previewAt=` only for an active owner/admin; the shared layout reads the live version (it stays static; owner preview of the frame arrives with the V-C4 preview route using `PublicChrome`).
@@ -1156,3 +1156,18 @@ tax-evidence model. Choices made here, within the approved designs:
 
 ## 2026-10-17 — Privacy deletion audit entry
 - **Owner approved** recording a separate audit-log entry when a privacy deletion is fulfilled (previously only the request row showed who and when). Ids and counts only, never personal data.
+
+## 2026-10-17 — Appliance Desk MCP and private user feedback architecture
+
+Owner requested robust MCP architecture and repository planning for implementation
+by Sol 5.6 low/medium, then added in-app problem reports and improvement suggestions.
+[Design](mcp/README.md) selects a standalone network MCP module inside the existing
+repository/hosting boundary, reusing native domain authority and avoiding a second
+provider integration stack. Direct OAuth works independently of optional RTC Hub.
+Owner-selected delegation permits supported real execution; developer restrictions
+remain developer rules. Operation journals preserve uncertainty/idempotency and
+independent evidence. Feedback is private, role-scoped, AI opt-in and linked to
+sanitized cases; report text cannot authorize actions or leak into public PRs.
+Eleven original planned subsections have finite criteria; active F2 work is untouched.
+No runtime, spending, schedule, credential, production write or release authorized
+by this design change. Existing approval/review/CI/release rules remain binding.

@@ -1,0 +1,509 @@
+{
+  "version": 1,
+  "designBaseline": "ef8af2cdd2e7dcd1322ff0163b32ca6ab34c42fe",
+  "state": "PLANNED_NOT_IMPLEMENTED",
+  "scopeAuthority": "Owner planning request October 17, 2026, including in-app feedback extension. No live activation authority.",
+  "units": [
+    {
+      "id": "MCP-1",
+      "dependsOn": [],
+      "roadmapAcceptance": [
+        "M1"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-1-A1",
+          "requirement": "Exhaustive health states render with explicit warning tone and words.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-1-A2",
+          "requirement": "Calendar-aware freshness distinguishes stale, paused, never-run and failure.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-1-A3",
+          "requirement": "Bounded history queries and typed diagnostics preserve useful cause without secret or personal data.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/automation-health.test.ts",
+        "tests/system-issues-integration.test.ts",
+        "tests/ops-redaction.test.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-2",
+      "dependsOn": [
+        "MCP-1"
+      ],
+      "roadmapAcceptance": [
+        "M2"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-2-A1",
+          "requirement": "Backup capture, upload, integrity, pruning and media outcomes have distinct persisted evidence.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-2-A2",
+          "requirement": "Private store readiness and linked media copies are verified without exposing credentials.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-2-A3",
+          "requirement": "Safe retention, retry and tombstone behavior survive a disposable real restore.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/backup-export.test.ts",
+        "tests/backup-restore-integration.test.ts",
+        "tests/media-inventory.test.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-3",
+      "dependsOn": [
+        "MCP-1",
+        "MCP-2"
+      ],
+      "roadmapAcceptance": [
+        "M3"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-3-A1",
+          "requirement": "Standard OAuth PKCE connection and refresh preserve selected authority.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-3-A2",
+          "requirement": "Revocation, downgrade, token replay and metadata SSRF attacks are refused.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-3-A3",
+          "requirement": "Existing login and account isolation remain intact; auth secrets excluded from recovery.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/mcp-auth-integration.test.ts",
+        "tests/mcp-oauth-security.test.ts",
+        "e2e/mcp-connections.spec.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-4",
+      "dependsOn": [
+        "MCP-3"
+      ],
+      "roadmapAcceptance": [
+        "M4"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-4-A1",
+          "requirement": "Direct SDK transport can discover and call safe diagnostic tools with consistent guards.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-4-A2",
+          "requirement": "Bounded result handles isolate callers and recheck revoked authority.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-4-A3",
+          "requirement": "Compatible server upgrade preserves connection; catalog budget and schema-version errors are tested.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/mcp-dispatch.test.ts",
+        "tests/mcp-transport-integration.test.ts",
+        "tests/mcp-results-integration.test.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-5",
+      "dependsOn": [
+        "MCP-4",
+        "MCP-2"
+      ],
+      "roadmapAcceptance": [
+        "M5"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-5-A1",
+          "requirement": "Preview and actual execution enforce current delegation, target versions and optional approval.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-5-A2",
+          "requirement": "Concurrent replay, target conflict, budget reservation and fenced workers produce one authorized effect.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-5-A3",
+          "requirement": "Crash and uncertain provider results reconcile without blind duplicate execution; readback is honest.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/mcp-operations-integration.test.ts",
+        "tests/mcp-recovery-integration.test.ts",
+        "e2e/mcp-recovery.spec.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-6",
+      "dependsOn": [
+        "MCP-5"
+      ],
+      "roadmapAcceptance": [
+        "M6"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-6-A1",
+          "requirement": "Repair cases preserve source issue, expected result and sanitized evidence.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-6-A2",
+          "requirement": "Foreign/fabricated engineering evidence is rejected; PR, merge, deploy and verification stay separate.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-6-A3",
+          "requirement": "Issue resolution follows actual verification and preserves rollback/domain restrictions.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/mcp-repair-cases-integration.test.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-10",
+      "dependsOn": [
+        "MCP-3",
+        "MCP-5"
+      ],
+      "roadmapAcceptance": [
+        "M10"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-10-A1",
+          "requirement": "Signed-in reporters submit and track private bug or improvement reports without cross-account access.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-10-A2",
+          "requirement": "Screenshot/context pipeline strips sensitive metadata and enforces safe upload authorization and limits.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-10-A3",
+          "requirement": "AI opt-in, withdrawal, privacy export/deletion and restore suppression cover all report content.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/feedback-integration.test.ts",
+        "tests/feedback-media.test.ts",
+        "e2e/feedback.spec.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-11",
+      "dependsOn": [
+        "MCP-10",
+        "MCP-6",
+        "MCP-4"
+      ],
+      "roadmapAcceptance": [
+        "M11"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-11-A1",
+          "requirement": "Agent tools enforce support scopes, report AI permission and internal/reporter separation.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-11-A2",
+          "requirement": "Reports support private conversation, duplicate/case links, evidence-backed resolution and reporter reopen.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-11-A3",
+          "requirement": "Prompt injection and withdrawn consent cannot authorize new actions or leak derived private content.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/mcp-feedback-integration.test.ts",
+        "tests/feedback-workflow-integration.test.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-7",
+      "dependsOn": [
+        "MCP-5",
+        "MCP-6"
+      ],
+      "roadmapAcceptance": [
+        "M7"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-7-A1",
+          "requirement": "Stored schedules, leases, cursors, cooldown and outbox survive restart and overlapping workers.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-7-A2",
+          "requirement": "Owner-selected delegation permits supported actions and revocation stops queued execution.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-7-A3",
+          "requirement": "Heartbeat and external-worker status are truthful; notification retry does not duplicate or recurse.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/mcp-monitoring-integration.test.ts",
+        "tests/mcp-monitoring-policy.test.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-8",
+      "dependsOn": [
+        "MCP-7"
+      ],
+      "roadmapAcceptance": [
+        "M8"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-8-A1",
+          "requirement": "Bounded aggregate observations carry baseline, sample and provenance without sensitive dimensions.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-8-A2",
+          "requirement": "Improvement proposals include verification, risk and rollback without silently executing changes.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-8-A3",
+          "requirement": "All in-scope maintenance/settings controls have tested tools or a genuine provider-required handoff.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/mcp-observations.test.ts",
+        "tests/mcp-control-coverage.test.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    },
+    {
+      "id": "MCP-9",
+      "dependsOn": [
+        "MCP-4",
+        "MCP-5",
+        "MCP-6",
+        "MCP-7",
+        "MCP-8",
+        "MCP-10",
+        "MCP-11"
+      ],
+      "roadmapAcceptance": [
+        "M9"
+      ],
+      "status": "NOT_STARTED",
+      "criteria": [
+        {
+          "id": "MCP-9-A1",
+          "requirement": "RTC doors conform to pinned upstream contract and use the same native authorization as direct MCP.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-9-A2",
+          "requirement": "Two-process shared-database limits, pass lifecycle, result ownership and leak probes pass.",
+          "status": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "id": "MCP-9-A3",
+          "requirement": "Declared clients, compatible redeploy and optional Hub routes have truthful individually recorded evidence.",
+          "status": "NOT_RUN",
+          "evidence": []
+        }
+      ],
+      "testPaths": [
+        "tests/mcp-rtc-integration.test.ts",
+        "tests/mcp-two-instance-limits.test.ts",
+        "tests/mcp-client-contract.test.ts"
+      ],
+      "testPathsArePlanned": true,
+      "sourceRevision": null,
+      "pr": null,
+      "ci": null,
+      "deployedRevision": null
+    }
+  ],
+  "externalAcceptance": [
+    {
+      "id": "REAL-BACKUP",
+      "status": "NOT_RUN",
+      "requiredRevision": null,
+      "responsible": "Authorized implementing agent; owner only for credentials, consent or resources it cannot provide",
+      "prerequisite": "Authorized private logs, verified destination settings, explicit storage-write authority and deployed required code",
+      "nextAction": "Correlate failing stage; verify real artifact and integrity without customer data in evidence.",
+      "evidence": []
+    },
+    {
+      "id": "REAL-RESTORE",
+      "status": "NOT_RUN",
+      "requiredRevision": null,
+      "responsible": "Authorized implementing agent; owner only for credentials, consent or resources it cannot provide",
+      "prerequisite": "Approved isolated restore target, permitted source data handling, capacity and cleanup authority",
+      "nextAction": "Restore to disposable target; verify rows/media/tombstones; destroy only recorded disposable objects.",
+      "evidence": []
+    },
+    {
+      "id": "DIRECT-CLIENTS",
+      "status": "NOT_RUN",
+      "requiredRevision": null,
+      "responsible": "Authorized implementing agent; owner only for credentials, consent or resources it cannot provide",
+      "prerequisite": "Deployed OAuth/discovery and actual supported client setup",
+      "nextAction": "Record each actual host/version, connect/read/refresh/redeploy/revoke and exact source.",
+      "evidence": []
+    },
+    {
+      "id": "EXTERNAL-WORKER",
+      "status": "NOT_RUN",
+      "requiredRevision": null,
+      "responsible": "Authorized implementing agent; owner only for credentials, consent or resources it cannot provide",
+      "prerequisite": "Owner-selected scheduler/AI provider and explicit deployment/cost/data delegation",
+      "nextAction": "Enable only selected schedule; observe actual heartbeat, one check and revocation.",
+      "evidence": []
+    },
+    {
+      "id": "OPTIONAL-HUB",
+      "status": "NOT_RUN",
+      "requiredRevision": null,
+      "responsible": "Authorized implementing agent; owner only for credentials, consent or resources it cannot provide",
+      "prerequisite": "Service RTC conformance, deployed Hub and owner-created scoped pass",
+      "nextAction": "Route discovery/read/result then revoke; direct MCP completion does not wait for this optional route.",
+      "evidence": []
+    },
+    {
+      "id": "FEEDBACK-REAL",
+      "status": "NOT_RUN",
+      "requiredRevision": null,
+      "responsible": "Authorized implementing agent; owner only for credentials, consent or resources it cannot provide",
+      "prerequisite": "Deployed feedback UI plus test actors/private upload storage and synthetic-report authorization",
+      "nextAction": "Submit synthetic report, permission-controlled review, reply, repair linkage, verification and cleanup.",
+      "evidence": []
+    }
+  ]
+}
