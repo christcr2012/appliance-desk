@@ -39,7 +39,8 @@
       "desk-workspace.spec.ts",
       "staff-security.spec.ts",
       "system-health-keys.spec.ts",
-      "customer-language-w26.spec.ts"
+      "customer-language-w26.spec.ts",
+      "owner-guide-screenshots.spec.ts"
     ],
     "browser-d": [
       "accessibility.spec.ts",

@@ -69,6 +69,7 @@ Previews and test copies never send email, even with the key and the switch on (
 | [x] | Preview database isolated from production | Existing `vercel-preview-2` guard/proof | Verified | One fresh Neon branch per individual preview remains optional post-launch hardening, not a launch gate |
 | [ ] | Photo storage (private) set for production | Vercel Blob tokens (`PRIVATE_PHOTO_BLOB_*`, `BLOB_READ_WRITE_TOKEN`) | Set per environment | Photo upload works in production only |
 | [ ] | Public sign-up stays disabled | Already enforced in code | Disabled | Nothing to do |
+| [ ] | Rollback rehearsed once: Chris finds Vercel Instant Rollback and the previous production deployment, per `docs/runbooks/ROLLBACK.md` (do not actually roll back production) | Vercel dashboard (Owner) | Not drilled | You can point to the button and the last good deployment |
 
 | [ ] | Decide your standard "When equipment comes back early" choices (Settings → Ending and renewing rentals) and whether to apply them automatically | Chris (Owner) | Ask me each time | Today shows "Returned early" items after a test pickup |
 | [ ] | Counsel confirms the month-to-month wording, the yearly reminder and what counts as delivering a notice (IN-31) | Chris + attorney | Deferred | Written approval before automatic renewals or live customer email are turned on |

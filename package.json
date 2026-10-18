@@ -35,7 +35,8 @@
     "check:session": "node --test scripts/session-prepare.test.mjs scripts/check-ci-layout.test.mjs scripts/ci-phase.test.mjs scripts/bundle-plan.test.mjs scripts/completion-evidence.test.mjs scripts/release-needed.test.mjs scripts/session-status.test.mjs scripts/pr-progress.test.mjs && node scripts/session-status.mjs && node scripts/pr-progress.mjs --check && node scripts/check-ci-layout.mjs",
     "pr:progress": "node scripts/pr-progress.mjs",
     "session:bundle": "node scripts/bundle-plan.mjs",
-    "session:prepare": "node scripts/session-prepare.mjs"
+    "session:prepare": "node scripts/session-prepare.mjs",
+    "ledger": "node scripts/launch-ledger.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
