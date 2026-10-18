@@ -8,7 +8,7 @@ A line is **PROVEN** only when it is ticked and names its evidence. Anything wit
 
 - Integrated scenarios proven by a committed test file: 17 of 17
 - Plan acceptance items proven with named evidence: 7 of 149; OPEN: 142
-- Old review findings: 81 resolved, 10 OPEN
+- Old review findings: 83 resolved, 8 OPEN
 - Go-live switches and checks still waiting on Chris: 88
 
 ## Integrated scenarios (F2-A, F2-B)
@@ -43,8 +43,6 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 - OPEN: pr57-r4123169727: Same as the earlier earnings finding: actual earnings include more than rent while estimated earnings are rent only (src/domains/reports/earnings.ts).
 - OPEN: pr58-r4123386805: Ordinary removal or replacement of a stored photo does not delete the stored file; only privacy deletion removes media (src/domains/backup/media-deletion.ts, tests/scena...
 - OPEN: pr58-r4123386818: The upload route accepts HEIC and HEIF (src/app/api/uploads/photo/route.ts) but does not convert them, so some browsers cannot show them.
-- OPEN: pr58-r4123386822: Not re-verified: no test checks the visible keyboard focus on the hidden file input.
-- OPEN: pr58-r4123386834: Not re-verified: no test checks that an upload failure is announced to a screen reader in appliance settings.
 - OPEN: pr59-r4123799792: Same as the earlier stored-file clean-up finding: replacing or removing a photo leaves the old stored file.
 - OPEN: pr60-r4124170420: Same as the earlier stored-file clean-up finding for customer-removed photos.
 

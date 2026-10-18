@@ -14,7 +14,7 @@
     {
       "id": "F2-D",
       "acceptanceEvidence": [
-        "docs/reviews/dispositions/reconciliation-2026-10-01.json holds 91 records (36 fixed, 32 already-fixed, 13 superseded, 10 open) each with an evidence sentence naming a file, test or PR; the 42 formerly Pending rows were each checked against current main; the table is updated; tests/review-dispositions.test.ts passes (4 tests) including no Pending row and every open record shown as OPEN.",
+        "docs/reviews/dispositions/reconciliation-2026-10-01.json holds 91 records (37 fixed, 33 already-fixed, 13 superseded, 8 open) each with an evidence sentence naming a file, test or PR; the 42 formerly Pending rows were each checked against current main; the table is updated; tests/review-dispositions.test.ts passes (4 tests) including no Pending row and every open record shown as OPEN.",
         "scripts/launch-ledger.mjs generates docs/LAUNCH-LEDGER.md; tests/launch-ledger.test.ts passes (7 tests): no evidence renders OPEN, owner gates render as decisions, the file ends with the owner-gates list and a blank Owner authorization line, 17 scenario files are listed, and the committed ledger equals a fresh generation.",
         "docs/runbooks/ROLLBACK.md written with decide, back out, Instant Rollback, database and check sections and a Drill; tests/launch-ledger.test.ts asserts it never suggests a destructive step; the revert step was rehearsed on a scratch branch (reverting the merge of #493 applied cleanly) and the undrilled Vercel step is a new open line in docs/GO-LIVE-CHECKLIST.md.",
         "tests/scenarios/07b-estimate-approval-notification.test.ts passes twice in a row with scenario 07 (7 tests): a thrown sender, a switched-off sender and a successful send each leave one account and no agreement, a repeat approval is refused without creating anything, and the email can be re-sent; the sender's own error handling (src/lib/password-email.ts requestInvitationEmail) means no defect, so no production change and no new outbox."
@@ -23,11 +23,11 @@
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Ten old review findings remain OPEN and listed in docs/LAUNCH-LEDGER.md; each needs its own fix or a decision (stored photo file clean-up, HEIC conversion, the earnings comparison, billing-estimate check, narrow-width layout, two upload accessibility checks).",
+    "Eight old review findings remain OPEN and listed in docs/LAUNCH-LEDGER.md; each needs its own fix or a decision (stored photo file clean-up in three findings, HEIC conversion, the earnings comparison in two findings, a billing-estimate check, narrow-width layout).",
     "Real provider acceptance (Stripe, email, SMS, Blob storage, a production-sized restore), the Vercel Instant Rollback drill and every go-live switch stay with Chris; the ledger lists them as decisions.",
     "Exact-head CI and the daily release remain pending at the time of writing."
   ],
   "evidence": [
-    "PR for branch ai/claude/f2-completion-20261017 exact-head CI; local run of all scenarios plus the new tests (56 tests, 22 files); screenshot spec 11 passed locally."
+    "PR for branch ai/claude/f2-completion-20261017 exact-head CI; local run of all scenarios plus the new tests (58 tests, 23 files); screenshot spec 11 passed locally."
   ]
 }

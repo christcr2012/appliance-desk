@@ -301,14 +301,14 @@
  },
  {
   "findingId": "pr58-r4123386822",
-  "status": "open",
-  "evidence": "Not re-verified: no test checks the visible keyboard focus on the hidden file input.",
-  "pr": 58
+  "status": "fixed",
+  "evidence": "src/components/photo-upload-field.tsx now draws a focus ring around the whole upload control when the hidden file input has keyboard focus; tests/photo-upload-field.test.tsx (this PR).",
+  "pr": 494
  },
  {
   "findingId": "pr58-r4123386834",
-  "status": "open",
-  "evidence": "Not re-verified: no test checks that an upload failure is announced to a screen reader in appliance settings.",
+  "status": "already-fixed",
+  "evidence": "src/app/desk/settings/appliance-pricing-table.tsx renders the upload failure in a role=\"alert\" region (photoMessage), and tests/photo-upload-field.test.tsx proves the component reports a failed upload to its caller.",
   "pr": 58
  },
  {
