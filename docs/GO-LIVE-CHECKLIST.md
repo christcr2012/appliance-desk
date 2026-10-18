@@ -1,3 +1,9 @@
+## K-5 accounting export trial acceptance — 2026-10-18 (not completed)
+
+- [ ] Once K-5 is released, owner/bookkeeper confirms account mappings and generates a month of QBO or Xero export. **Trial-company import, balance and duplicate checks are required before real external accounting use**; a green CI CSV test is not a provider-accepted import.
+- [ ] Xero: confirm actual organization tax-rate names, codes and any holding-account mapping required for bank/system accounts; the manual-journal date is `yyyy/mm/dd` per current provider documentation (even U.S. organizations). QuickBooks: use exact account/subaccount names and import-column mapping.
+- [ ] Keep original export files and SHA-256 archival provenance; never silently re-export changed history to cover a failed trial.
+
 ## K-3 Stripe accounting provider activation (added October 18, 2026)
 
 - [ ] Independently approve and configure `BOOKS_STRIPE_SYNC_ENABLED=true` for the intended environment only **after** verifying the production books opening date/bank/Stripe balances, Stripe credential mode, migrations and backups. Engineering CI and a merged PR do not supply this approval.
