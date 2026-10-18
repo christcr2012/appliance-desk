@@ -41,11 +41,14 @@
       ]
     }
   ],
-  "productionAdded": 0,
-  "productionRemoved": 0,
-  "planComparison": "",
+  "productionAdded": 3,
+  "productionRemoved": 1,
+  "planComparison": "Plan estimated about 220 lines of tooling and documents with production code only if checking a Pending finding proved a real defect. Actual production change is +3/-1 lines in one file (src/components/photo-upload-field.tsx, the keyboard focus ring found while dispositioning the old upload findings, with tests/photo-upload-field.test.tsx). Everything else is permanent evidence and tooling: the rewritten owner guide, eleven screenshots and their spec, scripts/launch-ledger.mjs and its generated ledger, 91 disposition records, the rollback runbook and scenario 07b. Deliberate difference: dispositions are one file keyed by pull-request thread instead of one file per batch.",
   "newEngineering": "The guide rewrite and archive move, a screenshot spec with eleven real screenshots, the guide coverage test, 42 finding checks with 91 disposition records and their test, the launch-ledger generator, generated ledger and its test, the rollback runbook, the ENH-F scenario 07b and the docs that record the evidence.",
   "relatedWorkDecision": "F2-C and F2-D ship together on the owner's request (2026-10-17) to finish engineering quickly: the ledger links to the guide and the scenarios, the guide's failure sections point at the runbooks, and the dispositions feed the ledger.",
   "decision": "SUBSTANTIAL_EXCEPTION",
-  "exceptionEvidence": []
+  "exceptionEvidence": [
+    "Two whole approved subsections (F2-C and F2-D, seven frozen acceptance items) are delivered; the production-line count is small by design because the work is launch evidence and documents, not features, and the frozen plan estimated no production defect in advance.",
+    "New engineering beyond a document rewrite: a generator whose output is checked against the committed ledger by a test, 91 evidence-backed finding dispositions with a validating test, a screenshot spec that really ran in a browser, a direct proof of the post-commit notification path, and one real accessibility defect fixed with a regression test."
+  ]
 }
