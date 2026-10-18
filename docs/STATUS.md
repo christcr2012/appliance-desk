@@ -1,3 +1,21 @@
+## October 18 — PR #498 Books landmark fix
+
+Corrected the Books page nested-main accessibility violation reported by the final browser shard: the existing desk layout already owns the main landmark, so the page root is now a normal div while retaining all headings and controls. The earlier color contrast issue is green in CI. All unit shards and the other three browser shards passed on the prior head; the full final-head rerun and merge still require verification.
+
+## October 18 — PR #498 financial review fixes, next exact-head CI required
+
+Five automated code-review findings (four P1, one P2) were corrected in a single batch: use canonical successful payment statuses, correctly classify RECEIPT_OVERPAYMENT credits, avoid double-subtracting applied credits from write-offs, include invoices with post-start issue/void/write-off dates, and select bounded candidates per source before chronological ranking. Added synthetic real-Postgres regressions; 10/10 local books tests pass. First PR CI found missing literal Books path in owner guide and insufficient accessible button contrast; both fixed; owner-guide test now passes. Previous browser-a schedule-save failure was on an unchanged workflow and will be checked against the next CI run; it has not been dismissed or quarantined. Exact-head CI and merge still pending. No production or real-money operations.
+
+## October 18 — PR #498 CI correction
+
+First exact-head CI found owner guide route omission and inadequate contrast on the newly added Books buttons; both were corrected without weakening tests. An existing scenario-10 schedule-save browser assertion also failed, alongside stream closure errors, despite no schedule code changes in the K bundle. Its next exact-head rerun is required; do not claim browser CI green or the PR merged until proven.
+
+## October 18 — K-2A + K-2B journal and owner Books (review branch, CI pending)
+
+Baseline merged main b171510; no open PR at session start. Planning-only commit 6e7b761, frozen full K-2A/K-2B criteria. Implemented bounded chronological financial backfill using source/event uniqueness, balanced journals, Colorado month placement, month advisory locks, a one-time owner-attested opening balance and owner-only month closing/reopening with an audit trail. Added OWNER/ADMIN Books screen with journal browser, balances, account mapping, review CSV and manual posting; STAFF/CUSTOMER are denied. Incomplete source evidence gives a sanitized deduplicated system-issue card without a partial journal. Added K-2 migration extending the SystemIssue known-kind check; old rows untouched.
+
+Verified: Typecheck passes; 7 disposable PostgreSQL tests pass including 8 simultaneous attempts, invalid evidence, source idempotency, month-end/late entry, owner/role protection, Stripe fee and audit. Browser/CI/review not yet verified. Original invoice/payment source rows remain unchanged. No live payment, production data change, schedule, customer messaging or spending. Provider reconciliation and formal exports remain in K-3 and K-5; asset retirement K-6; owner production setup/CPA decision separately open.
+
 ## October 17 — K-1A + K-1B accounting foundation (branch ai/gpt6/k1-accounting-foundation; CI pending)
 
 Current main reconciled at ef16a14; no open PR at session start. Frozen plan committed at 3d784053 before code. New additive Batch K ledger/expense/period/export schema and migration, immutable seeded system-role chart, 16 initial expense categories and filing-account liabilities, invoice-kind mapping including later admin and Colorado RDF fee kinds, and pure balanced plans for receipts, payments, refunds, tax, Stripe, expenses, assets, depreciation, opening balances and reversals. Every new table has explicit recovery policy. K-6 retirement and disposition mapping deliberately refuses; no asset loss is guessed. K-2A/B will add transaction poster and owner interface; new schema is inactive until that work and proper activation.

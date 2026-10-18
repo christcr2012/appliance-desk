@@ -1185,3 +1185,11 @@ by this design change. Existing approval/review/CI/release rules remain binding.
 ## 2026-10-17 — Map later invoice fee types in K-1B without treating state charges as revenue
 
 The approved K design predates ADMIN_SETUP_FEE and RETAIL_DELIVERY_FEE. The administrative setup fee maps to OTHER_INCOME for books while retaining its separate ADMINISTRATIVE_SETUP tax classification. State retail delivery fees collected from customers map to a dedicated RETAIL_DELIVERY_FEE_PAYABLE liability, not income or sales tax. The K-1A migration seeds that role. No taxability determination, revenue figure, Stripe production action or CPA approval is implied. Retirement/disposition rules with unresolved K-6 balances refuse instead of inventing a sale gain/loss.
+
+## 2026-10-18 — Owner-controlled accounting evidence and late-month policy
+
+Owner must attest initial bank, Stripe and card balances once. A month cannot close until existing journals are included in a saved review export. Month changes and posting use the same transactional PostgreSQL lock. The system does not invent missing receipt provenance, taxed refund allocation, missing Stripe finalized dates or unsupported asset-disposition proceeds. Such incomplete evidence is a private, deduplicated review issue. Owner custom ledger accounts retain immutable IDs and audit changes. The review CSV is not a K-5 QuickBooks/Xero import. Live provider sync and cron remain separate.
+
+## 2026-10-18 — Books source provenance correction after independent review
+
+Use the shared successful-payment status predicate in both the source adapter and backlog selector; current billing uses lowercase succeeded. A CustomerCredit with sourceType RECEIPT_OVERPAYMENT must release UNAPPLIED_RECEIPTS, not create goodwill expense. Invoice.amountPaidCents already includes applied credits, so bad-debt write-offs use amountDueCents minus amountPaidCents. Historical draft creation times alone do not determine accounting eligibility: issued, billing, void and write-off evidence is eligible for source inspection. Backfill selects each source type within independent bounded quotas, then processes globally by original business date. These corrections prevent overstated receivables and starvation without changing existing billing records.

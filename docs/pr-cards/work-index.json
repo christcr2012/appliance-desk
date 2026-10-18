@@ -658,7 +658,7 @@
       "dependencies": [
         "F2-D"
       ],
-      "status": "IN_REVIEW",
+      "status": "IMPLEMENTED",
       "migration": "batch_k_books",
       "budget": 490,
       "units": [
@@ -685,7 +685,7 @@
       "dependencies": [
         "K-1A"
       ],
-      "status": "IN_REVIEW",
+      "status": "IMPLEMENTED",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -712,7 +712,7 @@
       "dependencies": [
         "K-1B"
       ],
-      "status": "APPROVED",
+      "status": "IN_REVIEW",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -728,8 +728,9 @@
       "tests": [
         "tests/books-poster-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-2A.md"
+      "readiness": "IMPLEMENTED_PENDING_CI",
+      "plannedCard": "docs/pr-cards/K-2A.md",
+      "card": "docs/pr-cards/K-2A.md"
     },
     {
       "id": "K-2B",
@@ -738,7 +739,7 @@
       "dependencies": [
         "K-2A"
       ],
-      "status": "APPROVED",
+      "status": "IN_REVIEW",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -755,8 +756,9 @@
         "tests/books-setup-integration.test.ts",
         "e2e/books-setup.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-2B.md"
+      "readiness": "IMPLEMENTED_PENDING_CI",
+      "plannedCard": "docs/pr-cards/K-2B.md",
+      "card": "docs/pr-cards/K-2A.md"
     },
     {
       "id": "K-3",
@@ -3823,7 +3825,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-1A",
+  "activeExecution": "K-2A",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3932,6 +3934,10 @@
     {
       "id": "K-1A",
       "path": "docs/pr-cards/execution/K-1A.json"
+    },
+    {
+      "id": "K-2A",
+      "path": "docs/pr-cards/execution/K-2A.json"
     }
   ]
 }

@@ -40,7 +40,7 @@ describe("W-8 simpler menu", () => {
 
   it("shows Money and Equipment tabs only to people who can open them", () => {
     expect(deskSectionTabs("money", "OWNER").map((tab) => tab.label)).toEqual(
-      ["Billing", "Revenue", "Fleet", "Reports", "Business overview"]);
+      ["Billing", "Revenue", "Books", "Fleet", "Reports", "Business overview"]);
     expect(deskSectionTabs("money", "STAFF")).toEqual([]);
     expect(deskSectionTabs("equipment", "STAFF").map((tab) => tab.label)).toEqual(["Inventory", "Parts"]);
     expect(deskSectionTabs("equipment", "ADMIN").map((tab) => tab.label)).toEqual(

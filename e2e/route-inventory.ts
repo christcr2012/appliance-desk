@@ -239,6 +239,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/purchase-orders", role: "OWNER", fixture: "/desk/purchase-orders" },
   { path: "/desk/reports", role: "OWNER", fixture: "/desk/reports" },
   { path: "/desk/revenue", role: "OWNER", fixture: "/desk/revenue" },
+  { path: "/desk/books", role: "OWNER", fixture: "/desk/books" },
   { path: "/desk/search", role: "OWNER", fixture: "/desk/search?q=washer" },
   { path: "/desk/security/setup", role: "OWNER", fixture: "/desk/security/setup" },
   { path: "/desk/settings", role: "OWNER", fixture: "/desk/settings" },

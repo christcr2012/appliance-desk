@@ -43,7 +43,11 @@ export async function accountIdForRole(tx: AccountLookup, role: string): Promise
   if (!cache) { cache = new Map(); perTransaction.set(tx, cache); }
   const cached = cache.get(role);
   if (cached) return cached;
-  const account = await tx.ledgerAccount.findUnique({ where: { systemRole: role }, select: { id: true, active: true } });
+  // Owner-created account IDs are passed explicitly; never mistake a name for a stable account identity.
+  const customId = role.startsWith("ID:") ? role.slice(3) : null;
+  const account = customId
+    ? await tx.ledgerAccount.findUnique({where:{id:customId},select:{id:true,active:true}})
+    : await tx.ledgerAccount.findUnique({where:{systemRole:role},select:{id:true,active:true}});
   if (!account?.active) throw new Error("Missing or inactive ledger account role: " + role);
   cache.set(role, account.id);
   return account.id;

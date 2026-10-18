@@ -28,7 +28,8 @@
       "location-contacts.spec.ts",
       "phone-order-one-link.spec.ts",
       "website-editor.spec.ts",
-      "signature-home.spec.ts"
+      "signature-home.spec.ts",
+      "books-workspace.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",

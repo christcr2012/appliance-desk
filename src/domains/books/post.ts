@@ -1,0 +1,387 @@
+import { Prisma, type JournalSourceType } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { recordSystemIssue } from "@/domains/system-issues";
+import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
+import { businessDateKey, businessDateFromKey } from "@/lib/business-date";
+import { accountIdForRole, ensureTaxLiabilityAccounts } from "./accounts";
+import {
+  type PostingPlan, PostingEvidenceError, invoiceRecognition, invoiceVoided,
+  receiptReceived, paymentApplied, creditIssued, creditApplied, refundIssued,
+  depositFunded, depositRefunded, depositRetained, expensePosted, expenseVoided,
+  useTaxAccrued as planUseTaxAccrual, stripeBalancePlans, applianceContributed, taxFiled, balancedPlan, invoiceWrittenOff,
+} from "./posting-rules";
+
+export type BooksProblem = { sourceType: string; sourceId: string; message: string };
+export type BooksResult = { posted: number; problems: BooksProblem[] };
+type Tx = Prisma.TransactionClient;
+type Event = { eventKind: string; plan: PostingPlan };
+type Subject = { customerId?: string | null; applianceId?: string | null };
+const isUnique = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+const cents = (value: number) => {
+  if (!Number.isSafeInteger(value) || value < 0) throw new PostingEvidenceError("Source contains invalid amount cents.");
+  return value;
+};
+
+/** Find first available month without modifying a closed period. */
+export async function journalPlacement(tx: Tx, sourceDate: Date) {
+  const originalBusinessDate = businessDateKey(sourceDate);
+  let key = originalBusinessDate.slice(0,7);
+  for (let months = 0; months < 240; months++) {
+    // Serialize the posting/closing decision for the same accounting month.
+    await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext(${"books-period:"+key}))) AS guard`;
+    const period = await tx.accountingPeriod.findUnique({ where: { periodKey: key }, select: { status: true } });
+    if (period?.status !== "CLOSED") {
+      const newDate = months === 0 ? businessDateFromKey(originalBusinessDate)! :
+        businessDateFromKey(key + "-01")!;
+      return { entryDate: newDate, periodKey: key, lateForDate: months === 0 ? null : businessDateFromKey(originalBusinessDate)! };
+    }
+    const [year, month] = key.split("-").map(Number);
+    key = new Date(Date.UTC(year, month, 1)).toISOString().slice(0,7);
+  }
+  throw new PostingEvidenceError("No open accounting month within 20 years.");
+}
+
+/** Single transaction holds evidence read, account mapping, closed-month check and journal insert. */
+export async function writeJournal(tx: Tx, sourceType: JournalSourceType, sourceId: string,
+  eventKind: string, plan: PostingPlan, extra: Subject = {}) {
+  const exists = await tx.journalEntry.findUnique({
+    where: { sourceType_sourceId_eventKind: { sourceType, sourceId, eventKind } }, select: { id: true },
+  });
+  if (exists) return false;
+  const place = await journalPlacement(tx, plan.entryDate);
+  const resolved = await Promise.all(plan.lines.map(async line => ({
+    ledgerAccountId: await accountIdForRole(tx, line.role), debitCents: line.debitCents, creditCents: line.creditCents,
+  })));
+  const debit = resolved.reduce((sum, line) => sum + line.debitCents,0);
+  const credit = resolved.reduce((sum, line) => sum + line.creditCents,0);
+  if (debit !== credit || !Number.isSafeInteger(debit) || !debit || resolved.length < 2)
+    throw new PostingEvidenceError("Refusing unbalanced or empty journal.");
+  const memo = place.lateForDate ? `Late entry for ${businessDateKey(place.lateForDate)}: ${plan.memo}` : plan.memo;
+  await tx.journalEntry.create({
+    data: { sourceType, sourceId, eventKind, ...extra, ...place, memo: memo.slice(0, 500), lines: { create: resolved } },
+  });
+  return true;
+}
+
+export async function sourceEvents(tx: Tx, sourceType: JournalSourceType, sourceId: string):
+Promise<{ events: Event[]; extra: Subject }> {
+  switch (sourceType) {
+    case "INVOICE": {
+      const x = await tx.invoice.findUnique({ where: { id: sourceId },
+        include: { lineItems: { select: { kind: true, amountCents: true } },
+          taxLines: { select: { taxCents: true, jurisdiction: { select: { filingAccountId: true } } } } } });
+      if (!x) return { events: [], extra: {} };
+      if (x.status === "DRAFT") return { events: [], extra: {} };
+      if (x.stripeInvoiceId && !x.issuedAt)
+        throw new PostingEvidenceError("Stripe invoice is missing signed finalized date evidence.");
+      const snapshot = {status: x.status === "VOID" ? "VOID" as const : "OPEN" as const,
+        createdAt: x.issuedAt ?? x.createdAt, billingPeriodStart: x.billingPeriodStart,
+        voidedAt: x.cancelledAt, amountDueCents: x.amountDueCents,
+        items: x.lineItems, taxes: x.taxLines.map(t => ({taxCents:t.taxCents,filingAccountId:t.jurisdiction.filingAccountId})) };
+      const recognized = invoiceRecognition(snapshot);
+      const reversed = x.status === "VOID" ? invoiceVoided(snapshot) : null;
+      const events:Event[] = [
+        ...(recognized ? [{eventKind:"INVOICE_RECOGNIZED",plan:recognized}] : []),
+        ...(reversed ? [{eventKind:"INVOICE_VOIDED",plan:reversed}] : []),
+      ];
+      if(x.writtenOffAt) {
+        // Credited invoice allocations are already included in amountPaidCents.
+        const open=cents(x.amountDueCents-x.amountPaidCents);
+        const policy=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{badDebtTaxRecovery:true}});
+        if(policy?.badDebtTaxRecovery==="UNDECIDED")throw new PostingEvidenceError("Bad debt tax recovery policy awaits owner/CPA approval.");
+        if(policy?.badDebtTaxRecovery==="YES"&&x.taxLines.some(t=>t.taxCents>0))
+          throw new PostingEvidenceError("Bad debt tax recovery must be apportioned to open tax lines before posting.");
+        const written=invoiceWrittenOff({date:x.writtenOffAt,amountCents:open,taxRecoveryApproved:false,tax:[]});
+        if(written)events.push({eventKind:"INVOICE_WRITTEN_OFF",plan:written});
+      }
+      return { events, extra: {customerId: x.customerId} };
+    }
+    case "RECEIPT": {
+      const x = await tx.receipt.findUnique({ where: { id:sourceId } });
+      return { events: x ? [{eventKind:"RECEIPT_RECEIVED",
+        plan:receiptReceived({ date:x.receivedOn,amountCents:cents(x.amountCents),method:x.source })!}] : [],
+        extra: {customerId:x?.customerId} };
+    }
+    case "PAYMENT": {
+      const x = await tx.payment.findUnique({ where: { id:sourceId },include:{invoice:{select:{customerId:true}}} });
+      if (!x) return { events:[], extra:{} };
+      const settled = isSuccessfulPaymentStatus(x.status);
+      if (!settled) return {events:[],extra:{customerId:x.invoice.customerId}};
+      const plan=paymentApplied({date:x.createdAt,amountCents:cents(x.amountCents),receiptId:x.receiptId,moneyArrived:true});
+      return {events:plan?[{eventKind:"PAYMENT_APPLIED",plan}]:[],extra:{customerId:x.invoice.customerId}};
+    }
+    case "DEPOSIT": {
+      const x=await tx.deposit.findUnique({where:{id:sourceId},include:{agreement:{select:{customerId:true}},sourceReceipt:{select:{receivedOn:true}}}});
+      if (!x) return {events:[],extra:{}};
+      const events:Event[]=[];
+      if(x.amountCents>0&&!x.sourceReceiptId)throw new PostingEvidenceError("Deposit has no immutable source receipt.");
+      const funded=depositFunded({date:x.sourceReceipt?.receivedOn ?? new Date(0),amountCents:cents(x.amountCents),sourceReceiptId:x.sourceReceiptId});
+      if(funded)events.push({eventKind:"DEPOSIT_FUNDED",plan:funded});
+      if(x.refundedAt) {
+        const refunded = cents(x.refundedAmountCents??0);
+        if(refunded > x.amountCents)throw new PostingEvidenceError("Deposit refund exceeds funding.");
+        const returned=depositRefunded({date:x.refundedAt,amountCents:refunded,stripeRefundId:x.stripeRefundId});
+        if(returned)events.push({eventKind:"DEPOSIT_REFUNDED",plan:returned});
+        const kept=depositRetained({date:x.refundedAt,amountCents:x.amountCents-refunded});
+        if(kept)events.push({eventKind:"DEPOSIT_RETAINED",plan:kept});
+      }
+      return {events,extra:{customerId:x.agreement.customerId}};
+    }
+    case "CUSTOMER_CREDIT": {
+      const x=await tx.customerCredit.findUnique({where:{id:sourceId}});
+      if(!x)return {events:[],extra:{}};
+      const type=x.sourceType?.toUpperCase() === "RECEIPT_OVERPAYMENT" ? "RECEIPT_OVERPAYMENT" :
+        x.reason.toUpperCase().includes("REFUND") ? "REFUND_TO_CREDIT" : "GOODWILL";
+      const plan=creditIssued({date:x.createdAt,amountCents:cents(x.amountCents),source:type});
+      return {events:plan?[{eventKind:type==="RECEIPT_OVERPAYMENT"?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED",plan}]:[],extra:{customerId:x.customerId}};
+    }
+    case "CREDIT_APPLICATION": {
+      const x=await tx.creditApplication.findUnique({where:{id:sourceId},include:{credit:{select:{customerId:true}}}});
+      const plan=x&&creditApplied({date:x.createdAt,amountCents:cents(x.amountCents)});
+      return {events:plan?[{eventKind:"CREDIT_APPLIED",plan}]:[],extra:{customerId:x?.credit.customerId}};
+    }
+    case "REFUND": {
+      const x=await tx.refund.findUnique({where:{id:sourceId},include:{invoice:{select:{customerId:true}}}});
+      if(!x)return {events:[],extra:{}};
+      // There is no per-refund tax attribution stored yet. Never invent tax-recovery allocation.
+      // A refund against a taxed bill is held for K-2 exception and owner/CPA evidence.
+      const tax=await tx.invoiceTaxLine.count({where:{invoiceId:x.invoiceId,taxCents:{gt:0}}});
+      if(tax)throw new PostingEvidenceError("Taxed refund lacks an immutable refund tax allocation.");
+      const plan=refundIssued({date:x.createdAt,amountCents:cents(x.amountCents),stripeRefundId:x.stripeRefundId,tax:[]});
+      return {events:plan?[{eventKind:"REFUND_ISSUED",plan}]:[],extra:{customerId:x.invoice.customerId}};
+    }
+    case "EXPENSE": {
+      const x=await tx.expense.findUnique({where:{id:sourceId},include:{category:{include:{}}}});
+      if(!x||x.status==="DRAFT"||x.status==="SUBMITTED")return {events:[],extra:{}};
+      if(!x.postedAt)throw new PostingEvidenceError("Expense lacks approved posting evidence.");
+      const account=await tx.ledgerAccount.findUnique({where:{id:x.category.ledgerAccountId},select:{systemRole:true}});
+      const paid=await tx.ledgerAccount.findUnique({where:{id:x.paidFromAccountId},select:{systemRole:true}});
+      if(!account||!paid)throw new PostingEvidenceError("Expense has a missing ledger account.");
+      const posted=expensePosted({date:x.spentOn,amountCents:cents(x.amountCents),
+        accountRole:account.systemRole??"ID:"+x.category.ledgerAccountId,
+        paidFromRole:paid.systemRole??"ID:"+x.paidFromAccountId,
+        capitalize:x.capitalizeToAppliance});
+      if(!posted)return {events:[],extra:{applianceId:x.applianceId}};
+      const events:Event[]=[{eventKind:"EXPENSE_POSTED",plan:posted}];
+      if(x.status==="VOID"&&x.voidedAt)events.push({eventKind:"EXPENSE_VOIDED",plan:expenseVoided(posted,x.voidedAt)});
+      return {events,extra:{applianceId:x.applianceId}};
+    }
+    case "USE_TAX": {
+      const x=await tx.purchaseUseTax.findUnique({where:{id:sourceId},include:{jurisdiction:{select:{useTaxFilingAccountId:true}}}});
+      if(!x||x.useTaxDueCents<=0)return {events:[],extra:{}};
+      if(!x.jurisdiction.useTaxFilingAccountId)throw new PostingEvidenceError("Use tax has no filing account.");
+      const plan=planUseTaxAccrual({date:x.purchasedOn,amountCents:cents(x.useTaxDueCents),filingAccountId:x.jurisdiction.useTaxFilingAccountId});
+      return {events:plan?[{eventKind:"USE_TAX_ACCRUED",plan}]:[],extra:{}};
+    }
+    case "STRIPE_BALANCE_TXN": {
+      const x=await tx.stripeBalanceTransaction.findUnique({where:{id:sourceId}});
+      if(!x)return {events:[],extra:{}};
+      const events=stripeBalancePlans({type:x.type,reportingCategory:x.reportingCategory,
+        date:x.createdAtStripe,amountCents:x.amountCents,feeCents:x.feeCents});
+      const ordinary=new Set(["charge","payment","refund","payment_refund","transfer"]);
+      if(!events.length&&!ordinary.has(x.type)&&
+        (x.amountCents!==0||x.feeCents!==0))
+        throw new PostingEvidenceError("Unknown Stripe balance transaction type; review before booking.");
+      return {events,extra:{}};
+    }
+    case "APPLIANCE": {
+      const x=await tx.appliance.findUnique({where:{id:sourceId}});
+      if(!x||!x.acquisitionCostCents)return {events:[],extra:{}};
+      const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}});
+      if(!settings?.booksStartDate)return {events:[],extra:{}};
+      const alreadyCapitalized=await tx.expense.count({where:{applianceId:x.id,capitalizeToAppliance:true,status:"POSTED"}});
+      const plan=applianceContributed({date:x.purchaseDate??x.createdAt,amountCents:cents(x.acquisitionCostCents),
+        booksStartDate:settings.booksStartDate,capitalizedExpenseExists:alreadyCapitalized>0});
+      return {events:plan?[{eventKind:"APPLIANCE_CONTRIBUTED",plan}]:[],extra:{applianceId:x.id}};
+    }
+    case "TAX_FILING": {
+      const x=await tx.taxFilingPeriod.findUnique({where:{id:sourceId}});
+      if(!x||x.status!=="FILED")return {events:[],extra:{}};
+      if(!x.filedOn||!Number.isSafeInteger(x.amountPaidCents)||!x.worksheet)
+        throw new PostingEvidenceError("Filed return lacks immutable payment and worksheet evidence.");
+      const sheet=x.worksheet;
+      if(typeof sheet!=="object"||Array.isArray(sheet)||!("totals" in sheet)||!("account" in sheet))
+        throw new PostingEvidenceError("Filed worksheet has an unknown structure; no booking.");
+      const totals=sheet.totals,account=sheet.account;
+      if(!totals||typeof totals!=="object"||Array.isArray(totals)||
+        !account||typeof account!=="object"||Array.isArray(account)||
+        account.id!==x.filingAccountId||typeof account.kind!=="string")
+        throw new PostingEvidenceError("Filing account/worksheet mismatch.");
+      const numbers=totals as Record<string,unknown>;
+      if(!Number.isSafeInteger(numbers.taxCents)||!Number.isSafeInteger(x.amountPaidCents))
+        throw new PostingEvidenceError("Filing worksheet tax cents missing.");
+      const kind=account.kind;
+      const fee=cents(x.serviceFeeRetainedCents??0);
+      let plan:PostingPlan|null=null;
+      if(kind==="RETAIL_DELIVERY_FEE_RETURN") {
+        const rdf=cents(numbers.taxCents as number);
+        const diff=rdf-x.amountPaidCents!-fee;
+        plan=balancedPlan(x.filedOn,"Colorado retail delivery fees filed",[
+          {role:"RETAIL_DELIVERY_FEE_PAYABLE",debitCents:rdf,creditCents:0},
+          {role:"BANK",debitCents:0,creditCents:cents(x.amountPaidCents!)},
+          {role:"TAX_SERVICE_FEE_INCOME",debitCents:0,creditCents:fee},
+          ...(diff>0?[{role:"TAX_ADJUSTMENTS",debitCents:0,creditCents:diff}]:
+            diff<0?[{role:"TAX_ADJUSTMENTS",debitCents:-diff,creditCents:0}]:[]),
+        ]);
+      } else {
+        const tax=cents(numbers.taxCents as number);
+        if(kind!=="SALES_RETURN"&&kind!=="USE_TAX_RETURN")
+          throw new PostingEvidenceError("Unknown filing-account type.");
+        // Use tax is included in the frozen sales return total; do not book it twice as sales tax.
+        const useRows=Array.isArray(sheet.useTax)?sheet.useTax:[];
+        const useTotal=useRows.reduce<number>((sum,row)=>{
+          if(!row||typeof row!=="object"||Array.isArray(row)||
+            !("useTaxCents" in row)||!Number.isSafeInteger(row.useTaxCents))
+            throw new PostingEvidenceError("Filed use tax row has invalid cents.");
+          return sum+(row.useTaxCents as number);
+        },0);
+        if(useTotal>tax||useTotal<0)throw new PostingEvidenceError("Frozen use tax exceeds the total.");
+        const use=kind==="USE_TAX_RETURN"?tax:useTotal;
+        const sales=kind==="SALES_RETURN"?tax-use:0;
+        plan=taxFiled({date:x.filedOn,filingAccountId:x.filingAccountId,salesTaxCents:sales,
+          useTaxCents:use,paidCents:cents(x.amountPaidCents!),serviceFeeRetainedCents:fee});
+      }
+      return {events:plan?[{eventKind:"TAX_FILED",plan}]:[],extra:{}};
+    }
+    case "OPENING": {
+      const settings=await tx.businessSettings.findFirst({select:{booksStartDate:true}});
+      if(!settings?.booksStartDate||businessDateKey(settings.booksStartDate)!==sourceId)return {events:[],extra:{}};
+      const already=await tx.journalEntry.findUnique({
+        where:{sourceType_sourceId_eventKind:{sourceType:"OPENING",sourceId,eventKind:"OPENING_BALANCE"}},include:{lines:true}});
+      if(already)return {events:[],extra:{}};
+      // Opening source must be owner-attested and stored; no inferred bank/provider balance.
+      throw new PostingEvidenceError("Opening balances not approved; use owner Books setup.");
+    }
+    default: throw new PostingEvidenceError("Source type not yet supported: "+sourceType);
+  }
+}
+export async function postForSource(tx: Tx, sourceType: JournalSourceType, sourceId: string): Promise<void> {
+  const settings = await tx.businessSettings.findFirst({select:{booksStartDate:true}});
+  if(!settings?.booksStartDate)return;
+  await ensureTaxLiabilityAccounts(tx);
+  const {events,extra}=await sourceEvents(tx,sourceType,sourceId);
+  for(const {eventKind,plan} of events) {
+    if(plan.entryDate<settings.booksStartDate)continue;
+    await writeJournal(tx,sourceType,sourceId,eventKind,plan,extra);
+  }
+}
+function stripeExpectedEvents(x:{type:string;reportingCategory:string;feeCents:number}):string[] {
+  const feeType=["stripe_fee","tax_fee","application_fee"].includes(x.type);
+  const kinds:string[]=[];
+  if(x.feeCents&&!feeType)kinds.push("STRIPE_FEE");
+  if(feeType)kinds.push("STRIPE_SERVICE_FEE");
+  if(x.type==="adjustment"&&["dispute","dispute_reversal"].includes(x.reportingCategory))kinds.push("STRIPE_DISPUTE");
+  if(x.type==="payout"||x.type==="payout_failure")kinds.push("STRIPE_PAYOUT");
+  if(!kinds.length&&!["charge","payment","refund","payment_refund","transfer"].includes(x.type))kinds.push("STRIPE_UNMAPPED");
+  return kinds;
+}
+export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
+  const settings=await prisma.businessSettings.findFirst({select:{booksStartDate:true}});
+  if(!settings?.booksStartDate)return {posted:0,problems:[]};
+  const limit=Math.max(1,Math.min(500,opts?.limit??500));
+  const since=settings.booksStartDate;
+  type Candidate = {type: JournalSourceType; id: string; at: Date; required: string[]};
+  const querySources: { type: JournalSourceType; load: (skip:number,take:number)=>Promise<Candidate[]> }[] = [
+    {type:"INVOICE",load:async(skip,take)=>(await prisma.invoice.findMany({
+      where:{status:{not:"DRAFT"},OR:[
+        {createdAt:{gte:since}},{issuedAt:{gte:since}},
+        {billingPeriodStart:{gte:since}},{cancelledAt:{gte:since}},
+        {writtenOffAt:{gte:since}},
+      ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true},
+      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"INVOICE",id:x.id,
+      at:x.billingPeriodStart??x.issuedAt??x.createdAt,
+      required:["INVOICE_RECOGNIZED",...(x.status==="VOID"?["INVOICE_VOIDED"]:[]),
+        ...(x.writtenOffAt?["INVOICE_WRITTEN_OFF"]:[])]}))},
+    {type:"RECEIPT",load:async(skip,take)=>(await prisma.receipt.findMany({
+      where:{receivedOn:{gte:since}},select:{id:true,receivedOn:true},
+      orderBy:[{receivedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"RECEIPT",id:x.id,at:x.receivedOn,required:["RECEIPT_RECEIVED"]}))},
+    {type:"PAYMENT",load:async(skip,take)=>(await prisma.payment.findMany({
+      where:{createdAt:{gte:since},status:{in:[...SUCCESSFUL_PAYMENT_STATUSES]}},
+      select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
+      .map(x=>({type:"PAYMENT",id:x.id,at:x.createdAt,required:["PAYMENT_APPLIED"]}))},
+    {type:"DEPOSIT",load:async(skip,take)=>(await prisma.deposit.findMany({
+      where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceReceiptId:true,amountCents:true,refundedAt:true,refundedAmountCents:true},
+      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"DEPOSIT",id:x.id,at:x.createdAt,
+      required:[...(x.sourceReceiptId?["DEPOSIT_FUNDED"]:["DEPOSIT_FUNDED"]),
+        ...(x.refundedAt&&((x.refundedAmountCents??0)>0)?["DEPOSIT_REFUNDED"]:[]),
+        ...(x.refundedAt&&(x.amountCents-(x.refundedAmountCents??0))>0?["DEPOSIT_RETAINED"]:[])]}))},
+    {type:"CUSTOMER_CREDIT",load:async(skip,take)=>(await prisma.customerCredit.findMany({
+      where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceType:true},
+      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"CUSTOMER_CREDIT",id:x.id,at:x.createdAt,
+      required:[x.sourceType?.toUpperCase()==="RECEIPT_OVERPAYMENT"?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED"]}))},
+    {type:"CREDIT_APPLICATION",load:async(skip,take)=>(await prisma.creditApplication.findMany({
+      where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
+      .map(x=>({type:"CREDIT_APPLICATION",id:x.id,at:x.createdAt,required:["CREDIT_APPLIED"]}))},
+    {type:"REFUND",load:async(skip,take)=>(await prisma.refund.findMany({
+      where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
+      .map(x=>({type:"REFUND",id:x.id,at:x.createdAt,required:["REFUND_ISSUED"]}))},
+    {type:"EXPENSE",load:async(skip,take)=>(await prisma.expense.findMany({
+      where:{spentOn:{gte:since},status:{in:["POSTED","VOID"]}},select:{id:true,spentOn:true,status:true},
+      orderBy:[{spentOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"EXPENSE",id:x.id,at:x.spentOn,
+      required:x.status==="VOID"?["EXPENSE_POSTED","EXPENSE_VOIDED"]:["EXPENSE_POSTED"]}))},
+    {type:"USE_TAX",load:async(skip,take)=>(await prisma.purchaseUseTax.findMany({
+      where:{purchasedOn:{gte:since},useTaxDueCents:{gt:0}},select:{id:true,purchasedOn:true},
+      orderBy:[{purchasedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"USE_TAX",id:x.id,at:x.purchasedOn,required:["USE_TAX_ACCRUED"]}))},
+    {type:"APPLIANCE",load:async(skip,take)=>(await prisma.appliance.findMany({
+      where:{acquisitionCostCents:{gt:0}},select:{id:true,createdAt:true,purchaseDate:true},
+      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"APPLIANCE",id:x.id,
+      at:x.purchaseDate??x.createdAt,required:["APPLIANCE_CONTRIBUTED"]}))},
+    {type:"TAX_FILING",load:async(skip,take)=>(await prisma.taxFilingPeriod.findMany({
+      where:{status:"FILED",filedOn:{gte:since}},select:{id:true,filedOn:true},
+      orderBy:[{filedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"TAX_FILING",id:x.id,
+      at:x.filedOn!,required:["TAX_FILED"]}))},
+    {type:"STRIPE_BALANCE_TXN",load:async(skip,take)=>(await prisma.stripeBalanceTransaction.findMany({
+      where:{createdAtStripe:{gte:since}},select:{id:true,createdAtStripe:true,type:true,reportingCategory:true,amountCents:true,feeCents:true},
+      orderBy:[{createdAtStripe:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"STRIPE_BALANCE_TXN",id:x.id,at:x.createdAtStripe,
+      required:stripeExpectedEvents(x)}))},
+  ];
+  const sources:Candidate[]=[];
+  const problems:BooksProblem[]=[];
+  // A bounded anti-join scans past already posted rows instead of always replaying
+  // the first 500 and starving later invoices. Never materialize the full table.
+  for(const source of querySources) {
+    let scanned=0, queuedForSource=0;
+    // Keep each source type independently bounded. The global oldest-first
+    // ranking must not be defeated by invoices filling the whole limit.
+    while(scanned<10000 && queuedForSource<limit) {
+      const page=await source.load(scanned,Math.min(200,10000-scanned));
+      if(!page.length)break;
+      scanned+=page.length;
+      const existing=await prisma.journalEntry.findMany({where:{sourceType:source.type,sourceId:{in:page.map(x=>x.id)}},
+        select:{sourceId:true,eventKind:true}});
+      const byId=new Map<string,Set<string>>();
+      for(const row of existing) {
+        if(!byId.has(row.sourceId))byId.set(row.sourceId,new Set());
+        byId.get(row.sourceId)!.add(row.eventKind);
+      }
+      for(const candidate of page) {
+        if(candidate.required.length&&!candidate.required.every(kind=>byId.get(candidate.id)?.has(kind))) {
+          sources.push(candidate);
+          queuedForSource++;
+          if(queuedForSource>=limit)break;
+        }
+      }
+      if(page.length<200)break;
+    }
+    if(scanned>=10000)problems.push({sourceType:source.type,sourceId:"backlog",
+      message:"Accounting backlog scan cap reached; continue the next bounded run."});
+  }
+  sources.sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
+  let posted=0;
+  for(const x of sources.slice(0,limit)) {
+    try {
+      const result=await prisma.$transaction(async tx=>{
+        const before=await tx.journalEntry.count({where:{sourceType:x.type,sourceId:x.id}});
+        await postForSource(tx,x.type,x.id);
+        const after=await tx.journalEntry.count({where:{sourceType:x.type,sourceId:x.id}});
+        return after-before;
+      },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:15000});
+      posted+=result;
+    } catch(e) {
+      if(isUnique(e)||e instanceof Prisma.PrismaClientKnownRequestError&&e.code==="P2034")continue;
+      problems.push({sourceType:x.type,sourceId:x.id,message:e instanceof Error?e.message:"Unrecognized books problem"});
+      await recordSystemIssue({kind:"BOOKS_POSTING_FAILURE",sourceType:x.type,sourceId:x.id});
+    }
+  }
+  return {posted,problems};
+}

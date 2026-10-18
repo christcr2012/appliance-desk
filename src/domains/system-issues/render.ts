@@ -123,6 +123,14 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       summary = "Customer communications need follow-up.";
       detail = `Unresolved threads ${input.threadCount}; missed calls without threads ${input.unlinkedMissedCalls}. Review the private inbox.`;
       break;
+    case "BOOKS_POSTING_FAILURE": {
+      id(input.sourceType); id(input.sourceId);
+      fingerprint = "books-post:" + input.sourceType + ":" + input.sourceId;
+      severity = "HIGH";
+      summary = "An accounting source could not be posted.";
+      detail = "Source " + input.sourceType + " (" + input.sourceId + ") needs owner review of its financial evidence in Books. No journal was recorded for the failed event.";
+      break;
+    }
     case "CONFIGURATION_MISSING": {
       id(input.ruleKey);
       const rule = AUTOMATION_RULES.find((item) => item.ruleKey === input.ruleKey);
