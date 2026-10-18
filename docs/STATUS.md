@@ -1,3 +1,21 @@
+## October 17 owner-requested MCP architecture and user feedback — documentation only
+
+New [MCP design and implementation entry](mcp/README.md) defines a directly connectable
+service in this repository, the required health/backup/application upgrades, actual
+authorized recovery, private in-app reports/improvement suggestions and agent repair
+tracking. Eleven original subsections have finite acceptance and ordered dependencies;
+all remain NOT_STARTED in [the planning ledger](mcp/acceptance.json). The first
+[execution card](pr-cards/MCP-1.md) has checked existing anchors and test fixtures for
+Sol 5.6 low/medium effort. Future packets are written JIT, not pre-certified.
+F2 PR #494 merged during planning; this branch was reconciled with main
+`02b84cff` without changing its application code or active execution packet. This
+planning work changes no runtime, credential, provider, schedule or release.
+Next MCP engineering: reconcile current F2/main; register original MCP batch/index
+coverage together; MCP-1/MCP-2 improve health and backup evidence first. Actual
+production backup root cause and photo-store configuration remain unverified/open.
+Planning validation and exact-head PR CI/review are required before merge; no MCP
+runtime, client compatibility or recovery acceptance is claimed by this design.
+
 ## October 17 — F2-C and F2-D delivered (owner guide with real screenshots, every old review finding dispositioned, launch ledger, rollback plan), CI pending
 
 The privacy-deletion audit entry is merged (#493). This PR delivers two whole approved subsections from `docs/pr-cards/F2-C.md` and finishes the Batch F engineering.
@@ -118,7 +136,7 @@ service area, launch page and form, city pages, search titles and descriptions) 
 read through one request reader (`getSiteForRequest`) that also serves the owner's draft or old-version preview (active owner/admin only; everyone else
 always gets the live version and the real time). Facts stay with their owner: a sentence holds `{businessName}`, `{phone}`, `{email}`, `{city}`,
 `{graceDays}`, `{contents}`, `{amount}`, `{year}` or `{serviceCities}`, filled when the page is shown, so wording can never disagree with Settings or the
-price list. Sentences may hold checked links written `[words](/page)` or `[words](https://…)`; an unknown page, a non-https address, a malformed link or an
+price list. Sentences may hold checked links written `[words]` followed immediately by `(/page)` or `[words](https://…)`; an unknown page, a non-https address, a malformed link or an
 unknown `{fact}` is refused when saving and again when publishing. Buttons are link items (words + a destination chosen from known pages, an https address,
 or your own phone/email). Menu and footer destinations stay fixed in code; only their words are editable. The home photo uses the website picture when one
 is set (description, decorative choice, focus point) and the built-in photo otherwise; a draft picture is never served to a visitor. A site-wide banner and a

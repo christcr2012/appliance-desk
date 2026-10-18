@@ -1,33 +1,16 @@
 {
   "version": 1,
-  "kind": "implementation",
+  "kind": "maintenance",
   "parent": "F2-C",
-  "completedSlices": [
-    {
-      "id": "F2-C",
-      "acceptanceEvidence": [
-        "docs/OWNER-GUIDE.md rewritten (235 lines) with 18 per-screen sections each stating what it is for, what can be changed without code and what a failure looks like; the old note stack is archived at docs/archive/OWNER-GUIDE-before-2026-10-17.md and tests/owner-guide-coverage.test.ts asserts it carries no superseded release or handoff instructions.",
-        "tests/owner-guide-coverage.test.ts passes (5 tests): every desk section in pageRoutes() is named, every embedded picture exists with alt text, all 18 screen sections have their parts, and negative cases report a missing screen, picture, section and failure guidance.",
-        "e2e/owner-guide-screenshots.spec.ts is registered in browser-c of e2e/shards.json, skips unless OWNER_GUIDE_SHOTS=1, and its real local run passed 11 of 11; the 11 PNGs under docs/owner-guide/screenshots/ come from that run on the throwaway database and are embedded with alt text."
-      ]
-    },
-    {
-      "id": "F2-D",
-      "acceptanceEvidence": [
-        "docs/reviews/dispositions/reconciliation-2026-10-01.json holds 91 records (37 fixed, 33 already-fixed, 13 superseded, 8 open) each with an evidence sentence naming a file, test or PR; the 42 formerly Pending rows were each checked against current main; the table is updated; tests/review-dispositions.test.ts passes (4 tests) including no Pending row and every open record shown as OPEN.",
-        "scripts/launch-ledger.mjs generates docs/LAUNCH-LEDGER.md; tests/launch-ledger.test.ts passes (7 tests): no evidence renders OPEN, owner gates render as decisions, the file ends with the owner-gates list and a blank Owner authorization line, 17 scenario files are listed, and the committed ledger equals a fresh generation.",
-        "docs/runbooks/ROLLBACK.md written with decide, back out, Instant Rollback, database and check sections and a Drill; tests/launch-ledger.test.ts asserts it never suggests a destructive step; the revert step was rehearsed on a scratch branch (reverting the merge of #493 applied cleanly) and the undrilled Vercel step is a new open line in docs/GO-LIVE-CHECKLIST.md.",
-        "tests/scenarios/07b-estimate-approval-notification.test.ts passes twice in a row with scenario 07 (7 tests): a thrown sender, a switched-off sender and a successful send each leave one account and no agreement, a repeat approval is refused without creating anything, and the email can be re-sent; the sender's own error handling (src/lib/password-email.ts requestInvitationEmail) means no defect, so no production change and no new outbox."
-      ]
-    }
+  "completedSlices": [],
+  "remainingEngineering": [
+    "All MCP-1 through MCP-11 runtime engineering remains planned and unimplemented; no original product subsection claimed complete."
   ],
-  "remainingEngineering": [],
   "externalAcceptance": [
-    "Eight old review findings remain OPEN and listed in docs/LAUNCH-LEDGER.md; each needs its own fix or a decision (stored photo file clean-up in three findings, HEIC conversion, the earnings comparison in two findings, a billing-estimate check, narrow-width layout).",
-    "Real provider acceptance (Stripe, email, SMS, Blob storage, a production-sized restore), the Vercel Instant Rollback drill and every go-live switch stay with Chris; the ledger lists them as decisions.",
-    "Exact-head CI and the daily release remain pending at the time of writing."
+    "Actual backup root cause, private store configuration, real restore, agent-client compatibility, monitoring worker and optional Hub routes remain unverified."
   ],
   "evidence": [
-    "PR for branch ai/claude/f2-completion-20261017 exact-head CI; local run of all scenarios plus the new tests (58 tests, 23 files); screenshot spec 11 passed locally."
+    "Owner-requested architecture and repository planning in docs/mcp/README.md and related contracts.",
+    "Planning integrity is checked by python3 docs/mcp/validate-plan.py and existing documentation/secret checks; exact-head CI and review remain separate."
   ]
 }
