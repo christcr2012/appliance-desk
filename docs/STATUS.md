@@ -1,3 +1,7 @@
+## October 18 — PR #498 Books landmark fix
+
+Corrected the Books page nested-main accessibility violation reported by the final browser shard: the existing desk layout already owns the main landmark, so the page root is now a normal div while retaining all headings and controls. The earlier color contrast issue is green in CI. All unit shards and the other three browser shards passed on the prior head; the full final-head rerun and merge still require verification.
+
 ## October 18 — PR #498 financial review fixes, next exact-head CI required
 
 Five automated code-review findings (four P1, one P2) were corrected in a single batch: use canonical successful payment statuses, correctly classify RECEIPT_OVERPAYMENT credits, avoid double-subtracting applied credits from write-offs, include invoices with post-start issue/void/write-off dates, and select bounded candidates per source before chronological ranking. Added synthetic real-Postgres regressions; 10/10 local books tests pass. First PR CI found missing literal Books path in owner guide and insufficient accessible button contrast; both fixed; owner-guide test now passes. Previous browser-a schedule-save failure was on an unchanged workflow and will be checked against the next CI run; it has not been dismissed or quarantined. Exact-head CI and merge still pending. No production or real-money operations.

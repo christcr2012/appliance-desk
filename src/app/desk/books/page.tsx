@@ -20,7 +20,7 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
   });
   const selected=params.month??new Date().toISOString().slice(0,7);
   const notice=params.notice?.slice(0,200);
-  return <main className="space-y-6">
+  return <div className="space-y-6">
     <header className="space-y-2">
       <h1 className="text-2xl font-bold">Books and journal</h1>
       <p className="text-muted-foreground">Account balances and source-backed double-entry records. No payment is sent from this screen.</p>
@@ -106,5 +106,5 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
         <button type="submit" className={button}>Add account</button>
       </form>}
     </section>
-  </main>;
+  </div>;
 }
