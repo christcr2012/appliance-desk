@@ -50,7 +50,7 @@ Every definition includes input/output schemas, area, role policy, profiles, wri
 | `appliance_recovery_execute_action` | action, targetRef, mutation fields | Durable operation, policy/approval outcome / selected `ops:maintain`, native role |
 | `appliance_operation_get` | operationId | State, result refs, uncertainty/reconcile next step / own grant or permitted owner history |
 | `appliance_repair_create_case` | issueId or feedbackId, evidenceRefs[], expectedBehavior≤2000 | Non-public sanitized case / `repairs:write`, OWNER/ADMIN |
-| `appliance_repair_link_evidence` | caseId, evidenceType, repoPrNumber?, commitSha?, receiptRef? | Validated stage transition; no arbitrary URL fetch / `repairs:write`, OWNER/ADMIN |
+| `appliance_repair_link_evidence` | caseId, evidenceType, repoPrNumber?, commitSha?, receiptRef? | Candidate reference plus independently verified stage transition; no arbitrary URL fetch / `repairs:write`, OWNER/ADMIN |
 | `appliance_optimization_get_observations` | window enum, metric enum | Aggregate baseline/window/sample count / `ops:read`, OWNER/ADMIN |
 | `appliance_optimization_create_proposal` | observations[], benefit, risk, verification, rollback | Reviewable proposal; no silent action / `repairs:write`, OWNER/ADMIN |
 | `appliance_feedback_list_reports` | filters, page fields | Sanitized support triage, no private attachment URLs / `feedback:triage`, OWNER/ADMIN |
