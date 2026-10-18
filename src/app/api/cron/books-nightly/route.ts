@@ -19,7 +19,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     budgetSeconds: 60,
     work: async () => {
       const answer = await runStripeBooksNightly();
-      if (answer.clearing.state === "UNKNOWN" && answer.sync.state === "SYNCED" && "problems" in answer && answer.problems) {
+      if (answer.sync.state === "NOT_INITIALIZED")
+        throw new Error("Owner must initialize books before nightly reconciliation.");
+      if (answer.clearing.state === "UNKNOWN" && "problems" in answer && answer.problems) {
         // The owner can inspect the typed posting exceptions; never mark this pass reconciled.
         throw new Error("Some source evidence could not be posted; see the private Books exceptions.");
       }

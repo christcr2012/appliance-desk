@@ -70,12 +70,13 @@ function decodeTransaction(row: Stripe.BalanceTransaction) {
  * Do not call in a production environment until separately authorized by owner.
  */
 export async function syncStripeBalanceTransactions(
-  client: StripeBooksClient = getStripeClient(),
+  client?: StripeBooksClient,
 ): Promise<StripeSyncResult> {
   const settings = await prisma.businessSettings.findUnique({
     where: { id: "singleton" }, select: { booksStartDate: true },
   });
   if (!settings?.booksStartDate) return { state: "NOT_INITIALIZED", pages: 0, transactions: 0, cursor: null };
+  const stripe = client ?? getStripeClient();
   const prior = await prisma.integrationCursor.findUnique({ where: { key: CURSOR_KEY } });
   const parsed = prior ? Number(prior.value) : null;
   if (prior && (!Number.isSafeInteger(parsed) || parsed! < 0))
@@ -90,7 +91,7 @@ export async function syncStripeBalanceTransactions(
   for (; pages < MAX_PAGES; ) {
     let page: Stripe.ApiList<Stripe.BalanceTransaction>;
     try {
-      page = await client.balanceTransactions.list({
+      page = await stripe.balanceTransactions.list({
         created: { gte: from }, limit: PAGE_SIZE,
         ...(lastId ? { starting_after: lastId } : {}),
       });
