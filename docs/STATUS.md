@@ -1,3 +1,8 @@
+## October 17 — Privacy deletions now leave an audit-trail entry (owner said yes), CI pending
+
+Fulfilling a customer privacy deletion now also writes one audit-log entry (`privacy.deletion_fulfilled`, who did it, the request and customer ids and the number of photos removed; no personal data). A repeat adds no second entry. Scenario 08 asserts it. Nothing else changes; nothing is live.
+Next: F2-C (owner guide and reproducible screenshots), then F2-D.
+
 ## October 17 — F2-A and F2-B delivered (every connected business flow proved by a real test), CI pending
 
 V-3 and V-4 are merged (#491). This PR delivers two whole approved subsections as launch evidence: **F2-A** (scenarios 1–5) and **F2-B** (scenarios 6–9, 11–17, the owner-workflow browser test and the link check).
