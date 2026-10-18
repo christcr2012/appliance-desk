@@ -1,0 +1,54 @@
+{
+  "subsections": [
+    {
+      "id": "F2-C",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "docs/OWNER-GUIDE.md is rewritten as one current guide organized per screen (Today and To do, Leads, Customers, Rentals and agreements, Billing and deposits, Inventory and cleaning, Dispatch and visits, Taxes, Settings, Website editor, Notices and messages, Backup and restore, the customer portal, and the public site), in plain English, each section stating what the owner can change without code and what a failed save or automation looks like and what to do; the old dated change-note stack moves to docs/archive/ so the guide no longer carries superseded instructions.",
+          "evidence": "docs/OWNER-GUIDE.md rewritten (235 lines) with 18 per-screen sections each stating what it is for, what can be changed without code and what a failure looks like; the old note stack is archived at docs/archive/OWNER-GUIDE-before-2026-10-17.md and tests/owner-guide-coverage.test.ts asserts it carries no superseded release or handoff instructions."
+        },
+        {
+          "criterion": "tests/owner-guide-coverage.test.ts passes: every top-level desk section that exists in the route inventory (pageRoutes() from scripts/check-route-inventory.mjs) is named in the guide, every image the guide embeds exists on disk, every required per-screen heading is present, and a negative case proves a guide missing a section or a picture is reported.",
+          "evidence": "tests/owner-guide-coverage.test.ts passes (5 tests): every desk section in pageRoutes() is named, every embedded picture exists with alt text, all 18 screen sections have their parts, and negative cases report a missing screen, picture, section and failure guidance."
+        },
+        {
+          "criterion": "e2e/owner-guide-screenshots.spec.ts exists, is registered in the lightest group of e2e/shards.json, skips unless OWNER_GUIDE_SHOTS=1, and when run signs in as the throwaway owner and writes one PNG per listed screen to docs/owner-guide/screenshots/; the committed PNGs come from a real local run of that spec and the guide embeds them with alt text.",
+          "evidence": "e2e/owner-guide-screenshots.spec.ts is registered in browser-c of e2e/shards.json, skips unless OWNER_GUIDE_SHOTS=1, and its real local run passed 11 of 11; the 11 PNGs under docs/owner-guide/screenshots/ come from that run on the throwaway database and are embedded with alt text."
+        }
+      ]
+    },
+    {
+      "id": "F2-D",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "docs/reviews/dispositions/reconciliation-2026-10-01.json records one entry {findingId, status, evidence, pr} for every one of the 91 findings in docs/reviews/2026-10-01-review-reconciliation.md, status being fixed, already-fixed, superseded or open; each of the 42 findings that were Pending is checked against current code, tests or docs on main and given a concrete evidence string (file and test or doc named), and anything not actually resolved stays open and is listed in the ledger; the reconciliation table is updated to match, and tests/review-dispositions.test.ts proves every table row has exactly one valid disposition and no Pending row remains.",
+          "evidence": "docs/reviews/dispositions/reconciliation-2026-10-01.json holds 91 records (37 fixed, 33 already-fixed, 13 superseded, 8 open) each with an evidence sentence naming a file, test or PR; the 42 formerly Pending rows were each checked against current main; the table is updated; tests/review-dispositions.test.ts passes (4 tests) including no Pending row and every open record shown as OPEN."
+        },
+        {
+          "criterion": "scripts/launch-ledger.mjs generates docs/LAUNCH-LEDGER.md (committed) from the PLAN acceptance checklist, the 17 integrated scenarios, the review dispositions, the open GO-LIVE-CHECKLIST lines and the owner gates; an item without evidence renders OPEN, owner gates render as decisions for Chris, and the file ends with the explicit owner-gates list and a blank 'Owner authorization: ____' line that only Chris fills in; tests/launch-ledger.test.ts proves the OPEN rule, the decision rendering, the blank authorization line, and that the committed ledger equals a fresh generation.",
+          "evidence": "scripts/launch-ledger.mjs generates docs/LAUNCH-LEDGER.md; tests/launch-ledger.test.ts passes (7 tests): no evidence renders OPEN, owner gates render as decisions, the file ends with the owner-gates list and a blank Owner authorization line, 17 scenario files are listed, and the committed ledger equals a fresh generation."
+        },
+        {
+          "criterion": "docs/runbooks/ROLLBACK.md gives numbered steps to revert the interface commit on failure without any destructive database rollback (additive tables stay), what to check afterwards from the scenarios and ledger, and a Drill section with a last-drilled date; it follows the shape of the existing runbooks.",
+          "evidence": "docs/runbooks/ROLLBACK.md written with decide, back out, Instant Rollback, database and check sections and a Drill; tests/launch-ledger.test.ts asserts it never suggests a destructive step; the revert step was rehearsed on a scratch branch (reverting the merge of #493 applied cleanly) and the undrilled Vercel step is a new open line in docs/GO-LIVE-CHECKLIST.md."
+        },
+        {
+          "criterion": "ENH-F: the post-commit notification path of estimate approval is inspected at its real error contract and proved by scenario 07 (and a targeted addition if a case is missing): a thrown sender after the durable approval, a disabled sender and a successful send each leave exactly one account and one agreement, a retry after the commit creates no second account or agreement, and the customer is told approval succeeded with the notice pending; if already proved the regression is cited with no duplicate implementation and no new outbox.",
+          "evidence": "tests/scenarios/07b-estimate-approval-notification.test.ts passes twice in a row with scenario 07 (7 tests): a thrown sender, a switched-off sender and a successful send each leave one account and no agreement, a repeat approval is refused without creating anything, and the email can be re-sent; the sender's own error handling (src/lib/password-email.ts requestInvitationEmail) means no defect, so no production change and no new outbox."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 3,
+  "productionRemoved": 1,
+  "planComparison": "Plan estimated about 220 lines of tooling and documents with production code only if checking a Pending finding proved a real defect. Actual production change is +3/-1 lines in one file (src/components/photo-upload-field.tsx, the keyboard focus ring found while dispositioning the old upload findings, with tests/photo-upload-field.test.tsx). Everything else is permanent evidence and tooling: the rewritten owner guide, eleven screenshots and their spec, scripts/launch-ledger.mjs and its generated ledger, 91 disposition records, the rollback runbook and scenario 07b. Deliberate difference: dispositions are one file keyed by pull-request thread instead of one file per batch.",
+  "newEngineering": "The guide rewrite and archive move, a screenshot spec with eleven real screenshots, the guide coverage test, 42 finding checks with 91 disposition records and their test, the launch-ledger generator, generated ledger and its test, the rollback runbook, the ENH-F scenario 07b and the docs that record the evidence.",
+  "relatedWorkDecision": "F2-C and F2-D ship together on the owner's request (2026-10-17) to finish engineering quickly: the ledger links to the guide and the scenarios, the guide's failure sections point at the runbooks, and the dispositions feed the ledger.",
+  "decision": "SUBSTANTIAL_EXCEPTION",
+  "exceptionEvidence": [
+    "Two whole approved subsections (F2-C and F2-D, seven frozen acceptance items) are delivered; the production-line count is small by design because the work is launch evidence and documents, not features, and the frozen plan estimated no production defect in advance.",
+    "New engineering beyond a document rewrite: a generator whose output is checked against the committed ledger by a test, 91 evidence-backed finding dispositions with a validating test, a screenshot spec that really ran in a browser, a direct proof of the post-commit notification path, and one real accessibility defect fixed with a regression test."
+  ]
+}

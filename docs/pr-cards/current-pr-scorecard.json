@@ -1,7 +1,7 @@
 {
   "version": 1,
   "kind": "maintenance",
-  "parent": "F2-A",
+  "parent": "F2-C",
   "completedSlices": [],
   "remainingEngineering": [
     "All MCP-1 through MCP-11 runtime engineering remains planned and unimplemented; no original product subsection claimed complete."
