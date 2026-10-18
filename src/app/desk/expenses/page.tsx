@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
-import { formatMoney } from "@/lib/money-ui";
+import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { getExpenses } from "@/domains/books/expenses";
 import { createExpenseAction, postExpenseAction, voidExpenseAction, saveRecurringAction } from "./actions";
 import { ExpenseReceiptUpload } from "./receipt-upload";
@@ -102,7 +102,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
             <input type="hidden" name="id" value={t.id}/>
             <label>Template name<input className={field} name="name" defaultValue={t.name} required/></label>
             <label>Vendor<input className={field} name="vendor" defaultValue={t.vendorName} required/></label>
-            <label>Monthly amount ($)<input className={field} name="amount" defaultValue={(t.amountCents/100).toFixed(2)} required/></label>
+            <label>Monthly amount ($)<input className={field} name="amount" defaultValue={moneyInputValue(t.amountCents)} required/></label>
             <label>Day of month<input className={field} name="day" type="number" min={1} max={28} defaultValue={t.dayOfMonth} required/></label>
             <label>Category<select name="categoryId" className={field} defaultValue={t.categoryId} required>
               {data.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
@@ -114,7 +114,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         </details>
         <form action={saveRecurringAction} className="flex gap-2 items-end flex-wrap">
           <input type="hidden" name="id" value={t.id}/><input type="hidden" name="name" value={t.name}/>
-          <input type="hidden" name="vendor" value={t.vendorName}/><input type="hidden" name="amount" value={(t.amountCents/100).toFixed(2)}/>
+          <input type="hidden" name="vendor" value={t.vendorName}/><input type="hidden" name="amount" value={moneyInputValue(t.amountCents)}/>
           <input type="hidden" name="day" value={t.dayOfMonth}/><input type="hidden" name="categoryId" value={t.categoryId}/>
           <input type="hidden" name="paidFromAccountId" value={t.paidFromAccountId}/>
           <input type="hidden" name="active" value={t.active ? "off" : "on"}/>

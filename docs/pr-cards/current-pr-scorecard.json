@@ -38,6 +38,7 @@
     "Source, screen, private Blob verification, independently guarded draft cron and disposable DB/browser tests authored; CI and independent review not yet verified.",
     "No production data or customer messaging/provider money calls, no live Stripe activation, no paid infrastructure.",
     "Initial PR #500 exact-head CI: all four browser/a11y shards, secret, policy and shard 1 green; others found route inventories, test lint and missing books-init posting guard. Corrected all in one branch patch; exact-head rerun and independent review still required.",
-    "First independent PR #500 review reported five P1 issues in tax reversal, existing asset contribution/cost and missed recurring month handling; source corrections and finance PostgreSQL regressions added together. Exact-head CI after this patch still pending."
+    "First independent PR #500 review reported five P1 issues in tax reversal, existing asset contribution/cost and missed recurring month handling; source corrections and finance PostgreSQL regressions added together. Exact-head CI after this patch still pending.",
+    "PR #500 correction head cf50e5f passed all 3 unit/DB shards and all 4 browser/accessibility shards, while the type/lint/repo check failed only shared-cents input format guidance at two page fields; corrected both using moneyInputValue, final exact-head CI required. Capacity baselines failed (non-gating)."
   ]
 }
