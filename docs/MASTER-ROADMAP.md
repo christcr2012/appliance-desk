@@ -1,6 +1,6 @@
 ## What is next — October 17 V-C4 and V-C5 delivery
 
-V-1 and V-2 (signature tokens, the new home page and the private address check) are merged (#490); the owner accepted the look and asked for a bolder step. V-3 and V-4 (every public page, Today and the portal home) are planned in `docs/pr-cards/V-3.md` and in progress.
+V-1 to V-4 (the signature look: home, every public page, Today and the portal home) are merged (#490, #491); the owner accepted the look and real visit lengths. F2-A and F2-B (all integrated scenarios, the owner-workflow browser spec and the link check) are delivered together from `docs/pr-cards/F2-A.md` (CI pending at the exact head); F2-C (owner guide and screenshots) and F2-D (review discharge, launch ledger, rollback) follow.
 
 # MASTER ROADMAP — scope and ordered work coverage
 

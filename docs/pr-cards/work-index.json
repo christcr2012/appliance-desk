@@ -539,17 +539,33 @@
       "evidence": [
         "docs/designs/BATCH-F.md",
         "tests/helpers/tax-ready.ts",
-        "docs/AI-PR-READ-FIRST.md"
+        "docs/AI-PR-READ-FIRST.md",
+        "docs/pr-cards/F2-A.md",
+        "docs/designs/BATCH-W-AMENDMENT-B.md"
       ],
       "tests": [
         "tests/scenarios/01-lead-to-recurring-billing.test.ts",
         "tests/scenarios/02-provider-failure-retry.test.ts",
         "tests/scenarios/03-maintenance-to-inspection.test.ts",
         "tests/scenarios/04-manual-payment-overpayment-refund-statement.test.ts",
-        "tests/scenarios/05-term-end-renew-terminate-autorenew.test.ts"
+        "tests/scenarios/05-term-end-renew-terminate-autorenew.test.ts",
+        "tests/scenarios/06-staff-lifecycle-inflight.test.ts",
+        "tests/scenarios/07-message-send-failure-reconcile.test.ts",
+        "tests/scenarios/08-privacy-request-retention.test.ts",
+        "tests/scenarios/09-restore-and-media-recovery.test.ts",
+        "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts",
+        "tests/scenarios/12-late-pickup-company-waiver.test.ts",
+        "tests/scenarios/13-purchase-to-audit.test.ts",
+        "tests/scenarios/14-set-lifecycle.test.ts",
+        "tests/scenarios/15-ending-to-ready.test.ts",
+        "tests/scenarios/16-failed-charge-to-recovery.test.ts",
+        "tests/scenarios/17-portal-journeys.test.ts",
+        "tests/connection-check.test.ts",
+        "e2e/scenario-10-owner-workflow.spec.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/F2-A.md"
+      "plannedCard": "docs/pr-cards/F2-A.md",
+      "card": "docs/pr-cards/F2-A.md"
     },
     {
       "id": "F2-B",
@@ -576,10 +592,11 @@
         "tests/scenarios/09-restore-and-media-recovery.test.ts",
         "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts",
         "tests/scenarios/12-late-pickup-company-waiver.test.ts",
-        "e2e/scenarios/10-owner-workflow.spec.ts"
+        "e2e/scenario-10-owner-workflow.spec.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/F2-B.md"
+      "plannedCard": "docs/pr-cards/F2-A.md",
+      "card": "docs/pr-cards/F2-A.md"
     },
     {
       "id": "F2-C",
@@ -3801,7 +3818,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "V-3",
+  "activeExecution": "F2-A",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3898,6 +3915,10 @@
     {
       "id": "V-3",
       "path": "docs/pr-cards/execution/V-3.json"
+    },
+    {
+      "id": "F2-A",
+      "path": "docs/pr-cards/execution/F2-A.json"
     }
   ]
 }
