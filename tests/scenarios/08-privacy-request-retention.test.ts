@@ -154,6 +154,10 @@ describe.skipIf(!enabled)("scenario 8: privacy export and deletion with retentio
     expect(done.fulfilledAt).toBeInstanceOf(Date);
     expect(done.requesterEmail).toBe(`deleted-${userA}@invalid`);
     await expect(fulfillPrivacyDeletion(ownerId, opened.requestId, "DELETE")).resolves.toEqual(result);
+    // The completed deletion is on the audit trail once (ids only), and the repeat did not add a second row.
+    const trail = await prisma.auditLog.findMany({ where: { entityId: opened.requestId, action: "privacy.deletion_fulfilled" } });
+    expect(trail).toHaveLength(1);
+    expect(trail[0]).toMatchObject({ userId: ownerId, newValue: { customerId: customerA } });
     expect(await prisma.invoice.count({ where: { customerId: customerB } })).toBe(before.other);
     expect(await prisma.user.findUniqueOrThrow({ where: { id: userB } })).toMatchObject({ email: emailB, name: `Person B ${tag}` });
     expect((await prisma.serviceAddress.findUniqueOrThrow({ where: { id: addressB } })).line1).toBe(`222 B ${tag}`);

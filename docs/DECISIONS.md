@@ -1153,3 +1153,6 @@ tax-evidence model. Choices made here, within the approved designs:
 - **The privacy-deletion audit gap is reported, not changed.** Deleting writes no audit-log row (the request row records who and when); adding one is an owner policy call, so it is listed as a finding.
 - **The link check reads source, not rendered pages.** It matches every literal To do and Related link against the real page and download list and proves a bad link fails; walking every record page with live data is left to the browser suites.
 - **The owner-workflow browser spec lives at the top level of `e2e/`** because the shard registration only accepts top-level spec files.
+
+## 2026-10-17 — Privacy deletion audit entry
+- **Owner approved** recording a separate audit-log entry when a privacy deletion is fulfilled (previously only the request row showed who and when). Ids and counts only, never personal data.

@@ -518,6 +518,16 @@ export async function fulfillPrivacyDeletion(
         notes: `Personal fields pseudonymized. ${claim.photoIds.length} maintenance-request-only photo(s) deleted. Financial, signature, document, notice and audit evidence retained.`,
       },
     });
+    // The owner's action is on the audit trail too (ids and counts only, no personal data).
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "privacy.deletion_fulfilled",
+        entityType: "PrivacyRequest",
+        entityId: requestId,
+        newValue: { customerId: customer.id, photosDeleted: claim.photoIds.length },
+      },
+    });
 
     return { pseudonymized: [...PSEUDONYMIZED], retained: [...RETAINED] };
   });

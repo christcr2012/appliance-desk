@@ -79,3 +79,6 @@ No schema, price, permission or status change; no Stripe LIVE, customer email, S
 }
 ```
 <!-- bundle-plan:end -->
+
+## Follow-up 2026-10-17 (owner approved)
+Fulfilling a privacy deletion now also writes a `privacy.deletion_fulfilled` audit-log row (ids and counts only, never personal data). Covered by scenario 08. Closes the finding raised while delivering F2-B.
