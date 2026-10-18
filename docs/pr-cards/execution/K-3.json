@@ -66,15 +66,29 @@
   "gates": [],
   "checks": {
     "unit": [
-      "tests/books-posting-rules.test.ts"
+      "tests/books-posting-rules.test.ts",
+      "tests/books-nightly-route.test.ts",
+      "tests/owner-guide-coverage.test.ts"
     ],
     "db": [
       "tests/books-stripe-sync-integration.test.ts",
       "tests/books-poster-integration.test.ts"
     ],
     "browser": [],
-    "node": [
-      "tests/owner-guide-coverage.test.ts"
-    ]
-  }
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "K-3",
+      "outcome": "Stripe balance evidence is imported and posted idempotently and its clearing difference is reviewable by owner.",
+      "acceptance": [
+        "A bounded Stripe Balance Transactions importer pages the provider's transaction history with a persisted cursor, three-day overlap, stable-id upserts and safe reruns; cursor never skips an incomplete page or failed import.",
+        "Source-backed, integer-cent transaction evidence is recorded with currency, dates, fee, net, reporting category, source and payout identity; wrong currency or unknown types never produce guessed journal entries.",
+        "The existing balanced source rules and K-2 poster book fees, Stripe service charges, disputes and payouts exactly once; Stripe charge, refund and payment rows do not duplicate their existing receipt/refund journals; replay/concurrency and absent opening evidence fail safely.",
+        "A cutoff-based clearing check compares the journal's clearing balance through the same yesterday-end Colorado timestamp with the verified owner's opening Stripe balance plus the net of imported transactions through that timestamp; an actual one-cent mismatch creates an owner-visible deduplicated exception; a later payment does not make yesterday look wrong. Missing/incomplete provider coverage is UNKNOWN, not a false match or mismatch.",
+        "The daily books-nightly automation runs after database backup, reconciles imported evidence, posts pending journals and checks clearing with bounded effort, checked CRON authentication, durable run results and safe retries; no customer messaging, transfers, refunds, live charges or payments are initiated.",
+        "Synthetic provider pages and disposable PostgreSQL tests prove pagination, overlap, provider faults, concurrent repeats, posting categories, unknowns, permission/credential failures, yesterday cutoff and one-cent detection. CI/build/security/browser and checked real-world acceptance remain independent."
+      ]
+    }
+  ]
 }
