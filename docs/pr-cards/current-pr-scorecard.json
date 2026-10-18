@@ -1,44 +1,32 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-4A",
+  "parent": "K-5",
   "completedSlices": [
     {
-      "id": "K-4A",
+      "id": "K-5",
       "acceptanceEvidence": [
-        "Code: checked expense cents, seller tax, references and active submitter roles in src/domains/books/expenses.ts; real-Postgres regression authored, CI pending.",
-        "Code: live-role Serializable lock, original source journal and immutable version guard in postExpense; parallel Postgres regression authored, CI pending.",
-        "Code: void requires reason and version and uses exact K-2 reversal under same transaction; use-tax filed controls reused; PostgreSQL regression authored, CI pending.",
-        "Code: appliance purchase amount cannot conflict and recordUseTaxForPurchase retains local verified-rate/filed-period rules; invalid-acquisition regression authored, CI pending.",
-        "Code: private expenses/id scoped Blob token, stored Photo association and owner/staff-source check in photo reads; upload route regression authored, CI pending.",
-        "Auth/finance PostgreSQL tests written in tests/books-expenses-integration.test.ts and upload boundary tests; browser tests registered; exact-head CI pending."
-      ]
-    },
-    {
-      "id": "K-4B",
-      "acceptanceEvidence": [
-        "Source: /desk/expenses role-gated, scoped getExpenses query and staff own submitted expense forms; OWNER/ADMIN show reviews, CI pending.",
-        "UI: responsive labeled form, private receipt uploader, post and void buttons with revision version, server actions and per-item notices; Playwright axe authored, CI pending.",
-        "Source: recurring templates validate day 1–28, support create/edit/pause and owner-only controls; independent cron uses review-only drafts.",
-        "Source: per-template FOR UPDATE plus lastCreatedFor; bounded 250 due templates, retries safe and durable runAutomation; PostgreSQL regression authored, CI pending.",
-        "Docs: Owner Guide, DATABASE, STORAGE, STATUS, decisions and active packet describe implemented behavior and pending owner activation; route appears under More and Books.",
-        "Source/tests include expense concurrency, ownership and recurrence regression, Blob token mock, staff/owner Playwright page and axe; exact-head CI not yet verified."
+        "Export domain: live database OWNER/ADMIN role, valid Colorado date span, bounded postPending and no API writes; matched unit and real-DB tests authored, CI pending.",
+        "Export domain: opening-date gate, checked posting exceptions, mapping validation and per-entry balanced integer cents; integrity tests authored, CI pending.",
+        "Formatters: four target-specific headers, numeric decimals, safe toCsv text, US QBO and provider-current Xero dates, daily/cash splits; unit tests authored, CI pending.",
+        "Export transaction: target-specific Stripe payout policy, journal date/number order, per-target new-only query, single-day net balance; Postgres/formatter tests authored, CI pending.",
+        "Export DB: advisory lock, immutable bytes/SHA256/provenance, deduplication and protected unchanged historical readback; real PostgreSQL concurrency fixture authored, CI pending.",
+        "UI/routes: owner/admin target/mode/date forms, blocked message, history re-download; existing month review stays intact, browser/axe test authored, CI pending.",
+        "Regression and docs: pure/real-DB/browser tests, route-shard inventory, owner guide, official provider format cross-check, status and owner real-world trial import remain distinct; exact-head CI/review pending."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "All engineering verification remains pending: exact-head CI, serial real PostgreSQL, browser/a11y and independent review; do not count complete before proof.",
-    "Real private Blob upload/readback and real owner tax setup are separate release/provider acceptance.",
-    "K-3 source is merged but production live revision remains behind main until approved daily promotion."
+    "Source and tests have been authored but local preflight and exact-head CI, Postgres, accessibility and independent code review are not yet witnessed.",
+    "Owner trial import into actual QBO/Xero sandbox/trial company, provider chart mapping and bank/system holding account attestations require owner/provider validation after checked deployment.",
+    "Source K-4A/B merged through #500; live remains behind main and production provider/CPA activation untouched."
   ],
-  "workloadException": "Two whole approved connected K-4A/K-4B expense subsections are bundled together; this matches the 2–5 subsection intent without combining money-out or third-party provider activation.",
+  "workloadException": "K-5 is one substantial existing whole subsection involving four file formatters, transactionally immutable source data, privacy, account mappings, protected UI and full tests; splitting it would leave unusable exports.",
   "evidence": [
-    "Pre-code frozen acceptance plan committed at 0b2ce3aa8209aeb6f519065cd83ea30a78885e99; original full scope retained.",
-    "Source, screen, private Blob verification, independently guarded draft cron and disposable DB/browser tests authored; CI and independent review not yet verified.",
-    "No production data or customer messaging/provider money calls, no live Stripe activation, no paid infrastructure.",
-    "Initial PR #500 exact-head CI: all four browser/a11y shards, secret, policy and shard 1 green; others found route inventories, test lint and missing books-init posting guard. Corrected all in one branch patch; exact-head rerun and independent review still required.",
-    "First independent PR #500 review reported five P1 issues in tax reversal, existing asset contribution/cost and missed recurring month handling; source corrections and finance PostgreSQL regressions added together. Exact-head CI after this patch still pending.",
-    "PR #500 correction head cf50e5f passed all 3 unit/DB shards and all 4 browser/accessibility shards, while the type/lint/repo check failed only shared-cents input format guidance at two page fields; corrected both using moneyInputValue, final exact-head CI required. Capacity baselines failed (non-gating)."
+    "Frozen full original K-5 subsection acceptance plan committed at e3489535773e1470cc0f8bd671d946367bca2ee5, before code.",
+    "K-4A/B merge #500 3dd2dfca validated exact-head ci green, including all three unit DB and four browser shards; five reviewed finance P1 findings fixed/resolved.",
+    "K-5 source, unit, disposable-PostgreSQL and browser test files authored after frozen plan; do not claim tests passed until exact-head evidence.",
+    "No live money write, customer notifications, external accounting provider API or production fixture."
   ]
 }

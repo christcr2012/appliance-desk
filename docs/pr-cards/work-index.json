@@ -795,7 +795,7 @@
       "dependencies": [
         "K-3"
       ],
-      "status": "IN_PROGRESS",
+      "status": "IMPLEMENTED",
       "migration": "batch_k_expense_photo_scope_if_needed",
       "budget": 470,
       "units": [
@@ -814,7 +814,7 @@
         "tests/uploads-photo-route.test.ts",
         "e2e/books-expenses.spec.ts"
       ],
-      "readiness": "ENGINEERING_IN_PROGRESS",
+      "readiness": "ENGINEERING_MERGED_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-4A.md",
       "card": "docs/pr-cards/K-4A.md"
     },
@@ -825,7 +825,7 @@
       "dependencies": [
         "K-4A"
       ],
-      "status": "IN_PROGRESS",
+      "status": "IMPLEMENTED",
       "migration": "batch_k_recurring_expense_identity",
       "budget": 450,
       "units": [
@@ -844,7 +844,7 @@
         "tests/uploads-photo-route.test.ts",
         "e2e/books-expenses.spec.ts"
       ],
-      "readiness": "ENGINEERING_IN_PROGRESS",
+      "readiness": "ENGINEERING_MERGED_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-4B.md",
       "card": "docs/pr-cards/K-4B.md"
     },
@@ -855,25 +855,27 @@
       "dependencies": [
         "K-4B"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "batch_k_export_provenance",
       "budget": 470,
       "units": [
         "K-5"
       ],
       "evidence": [
-        "docs/designs/BATCH-K.md",
-        "prisma/schema.prisma",
-        "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts",
-        "docs/designs/BATCH-K-CASH.md"
+        "src/domains/books/exports/index.ts",
+        "src/domains/books/exports/formatters.ts",
+        "src/app/desk/books/exports/page.tsx",
+        "src/lib/csv.ts",
+        "docs/designs/BATCH-K.md"
       ],
       "tests": [
         "tests/books-exports.test.ts",
+        "tests/books-exports-integration.test.ts",
         "e2e/books-export.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-5.md"
+      "readiness": "ENGINEERING_IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/K-5.md",
+      "card": "docs/pr-cards/K-5.md"
     },
     {
       "id": "K-6",
@@ -3834,7 +3836,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-4A",
+  "activeExecution": "K-5",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3955,6 +3957,10 @@
     {
       "id": "K-4A",
       "path": "docs/pr-cards/execution/K-4A.json"
+    },
+    {
+      "id": "K-5",
+      "path": "docs/pr-cards/execution/K-5.json"
     }
   ]
 }
