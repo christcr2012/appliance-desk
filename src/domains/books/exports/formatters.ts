@@ -27,7 +27,8 @@ function checked(entry: ExportEntry): void {
     throw new ExportIntegrityError("Journal entry identity or lines missing.");
   let debit = 0, credit = 0;
   for (const line of entry.lines) {
-    if (amount(line.debitCents) && amount(line.creditCents))
+    const left=amount(line.debitCents), right=amount(line.creditCents);
+    if (left && right)
       throw new ExportIntegrityError("Journal line has both debit and credit.");
     debit += line.debitCents; credit += line.creditCents;
     if (!Number.isSafeInteger(debit) || !Number.isSafeInteger(credit))
@@ -38,6 +39,8 @@ function checked(entry: ExportEntry): void {
 }
 const iso = (entry: ExportEntry) => businessDateKey(entry.entryDate);
 const us = (value: string) => value.slice(5,7)+"/"+value.slice(8,10)+"/"+value.slice(0,4);
+// Official Xero manual-journal imports accept yyyy/mm/dd or dd/mm/yyyy, even for US organisations.
+const xero = (value: string) => value.replaceAll("-","/");
 /** Only a code-created checked numeric decimal may bypass text/formula sanitization.
  * toCsv still handles every vendor name, memo, account and description as unsafe text. */
 function decimal(cents: number): { toString(): string } {
@@ -121,7 +124,7 @@ export function formatBookExport(target: ExportTarget, mode: ExportMode, entries
   if(target==="XERO_JOURNAL_CSV")return toCsv(
     [{key:"narration",header:"*Narration"},{key:"date",header:"*Date"},{key:"description",header:"Description"},
       {key:"account",header:"*AccountCode"},{key:"tax",header:"*TaxRate"},{key:"amount",header:"*Amount"}],
-    rows.map(r=>({narration:r.memo,date:us(r.date),description:r.source,account:r.account,
+    rows.map(r=>({narration:r.journalNo+" / "+r.memo,date:xero(r.date),description:r.source,account:r.account,
       tax:r.taxRate,amount:decimal(r.debit-r.credit)})),
   );
   return toCsv(

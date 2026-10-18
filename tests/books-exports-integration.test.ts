@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 
-const postPending=vi.fn(async()=>({posted:0,problems:[]}));
+const {postPending}=vi.hoisted(()=>({postPending:vi.fn(async()=>({posted:0,problems:[]}))}));
 vi.mock("@/domains/books/post",()=>({postPending:(args:unknown)=>postPending(args)}));
 import { runExport, getBookExportHistory, readBookExport } from "@/domains/books/exports";
 

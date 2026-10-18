@@ -25,6 +25,8 @@ describe("K-5 immutable provider CSV formatters",()=>{
  it("writes Xero's manual-journal schema with numeric negative credits",()=>{
   const text=csv("XERO_JOURNAL_CSV");
   expect(text.startsWith("*Narration,*Date,Description,*AccountCode,*TaxRate,*Amount\r\n")).toBe(true);
+  expect(text).toContain("AD-71 / Synthetic");
+  expect(text).toContain("2026/10/16");
   expect(text).toContain("1000,Tax Exempt,100.00");
   expect(text).toContain("4000,Tax Exempt,-100.00");
   expect(text).not.toContain("'-100.00");
