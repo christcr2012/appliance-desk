@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "id": "F2-A",
+  "parent": "F2-A",
+  "baseline": "204dd7959061f69c52dae4e0fc45ffa5b9ebd58c",
+  "card": "docs/pr-cards/F2-A.md",
+  "outcome": "The whole business is proven to work as connected flows: the five rental and financial scenarios, then the security, messaging, privacy, restore and continuing-rental scenarios, the owner workflow in the browser, the connected-flow scenarios 13 to 17 and an automated link check, all on a throwaway database with every provider faked, so the launch ledger can cite real evidence instead of per-feature tests.",
+  "risk": "A scenario that passes only because it fakes the thing under test, a fake provider that hides a real double-charge or duplicate-record bug, a test that touches a non-local database, real customer data or secrets in a fixture, flaky ordering between files that share the throwaway database, a scenario bent to pass over a real defect, or evidence overclaimed as real provider acceptance.",
+  "next": "Plan frozen; scenarios, any proven fixes and docs follow.",
+  "references": [
+    {
+      "path": "tests/helpers/w22-v2-order.ts",
+      "anchor": "export async function createSyntheticW22V2Order",
+      "purpose": "Synthetic signed-order fixture reused by scenario 1"
+    },
+    {
+      "path": "tests/helpers/tax-ready.ts",
+      "anchor": "export async function seedTaxReadyContext",
+      "purpose": "Tax-ready address fixture"
+    },
+    {
+      "path": "src/domains/leads/index.ts",
+      "anchor": "export async function createLead(",
+      "purpose": "Lead creation for scenario 1"
+    },
+    {
+      "path": "src/domains/leads/index.ts",
+      "anchor": "export async function convertLeadToCustomer(",
+      "purpose": "Lead conversion"
+    },
+    {
+      "path": "src/domains/billing/provider-ops.ts",
+      "anchor": "export async function claimProviderOperation",
+      "purpose": "Provider operation claim and retry rules (scenario 2)"
+    },
+    {
+      "path": "src/domains/billing/manual-payments.ts",
+      "anchor": "export async function recordManualPayment",
+      "purpose": "Manual payment (scenario 4)"
+    },
+    {
+      "path": "src/domains/maintenance/index.ts",
+      "anchor": "export async function scheduleMaintenanceRequest",
+      "purpose": "Maintenance scheduling (scenario 3)"
+    },
+    {
+      "path": "src/domains/agreements/auto-renew.ts",
+      "anchor": "export async function runAutoRenewals",
+      "purpose": "Auto-renew run (scenario 5)"
+    },
+    {
+      "path": "src/domains/agreements/termination-execution.ts",
+      "anchor": "export async function runDueTerminations",
+      "purpose": "Due terminations (scenario 5)"
+    },
+    {
+      "path": "src/domains/agreements/index.ts",
+      "anchor": "export async function signAgreement",
+      "purpose": "Signing used across scenarios"
+    },
+    {
+      "path": "src/domains/backup/index.ts",
+      "anchor": "export async function exportDatabaseBackup",
+      "purpose": "Backup export (scenario 9)"
+    }
+  ],
+  "proposedFiles": [
+    "tests/scenarios/01-lead-to-recurring-billing.test.ts",
+    "tests/scenarios/02-provider-failure-retry.test.ts",
+    "tests/scenarios/03-maintenance-to-inspection.test.ts",
+    "tests/scenarios/04-manual-payment-overpayment-refund-statement.test.ts",
+    "tests/scenarios/05-term-end-renew-terminate-autorenew.test.ts",
+    "tests/scenarios/06-staff-lifecycle-inflight.test.ts",
+    "tests/scenarios/07-message-send-failure-reconcile.test.ts",
+    "tests/scenarios/08-privacy-request-retention.test.ts",
+    "tests/scenarios/09-restore-and-media-recovery.test.ts",
+    "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts",
+    "tests/scenarios/12-late-pickup-company-waiver.test.ts",
+    "tests/scenarios/13-purchase-to-audit.test.ts",
+    "tests/scenarios/14-set-lifecycle.test.ts",
+    "tests/scenarios/15-ending-to-ready.test.ts",
+    "tests/scenarios/16-failed-charge-to-recovery.test.ts",
+    "tests/scenarios/17-portal-journeys.test.ts",
+    "tests/connection-check.test.ts",
+    "e2e/scenarios/10-owner-workflow.spec.ts"
+  ],
+  "invariants": [
+    "Throwaway local Postgres only; never Neon, production or real customer data.",
+    "Stripe, email and SMS are faked at the client boundary; no live provider call.",
+    "No schema, price, permission or status change.",
+    "Money stays integer cents through existing functions.",
+    "A defect a scenario proves is fixed with its own regression test or recorded as an open finding; scenarios are never bent to pass."
+  ],
+  "sequence": [
+    "Shared scenario helper and scenario 1",
+    "Scenarios 2 to 5",
+    "Scenarios 6 to 9, 11 and 12",
+    "Scenarios 13 to 17 and the link check",
+    "Owner-workflow browser spec",
+    "Docs, one push and exact-head CI"
+  ],
+  "acceptance": [
+    "tests/scenarios/01-lead-to-recurring-billing.test.ts: a real lead is created and converted to a customer, an order for that customer is reviewed, signed and paid by a recorded check, the delivery is completed, and recurring billing starts exactly once; it asserts the signed totals, the receipt, the deposit/reserve record, the signing credit applied to the first invoice, the custody (appliance assignment) and the audit rows, using the real domain functions on a throwaway Postgres with Stripe, email and SMS faked at their client boundary.",
+    "tests/scenarios/02-provider-failure-retry.test.ts: a Stripe failure while starting recurring billing is recorded as a provider operation that is never treated as success, a retry after the failure creates exactly one subscription, a retry after success creates none, an uncertain outcome is not blindly repeated, and the stored error text never contains a secret; asserts ProviderOperation states, the call counts on the fake, and the owner-visible To do or issue.",
+    "tests/scenarios/03-maintenance-to-inspection.test.ts: a customer's maintenance request is scheduled, a visit is started and finished, the request status follows the visit, and the appliance moves through the inspection step to available or out of service as the existing rules say; asserts statuses, job and request links, custody and audit rows, and that a customer cannot reach another customer's request.",
+    "tests/scenarios/04-manual-payment-overpayment-refund-statement.test.ts: a manual payment is recorded against an invoice, an overpayment is held as a credit (not lost and not double-counted), a refund is decided and recorded once, and the customer's statement and the owner's invoice view agree to the cent; asserts invoice, receipt, credit and refund totals in integer cents, idempotent replays, and the audit rows.",
+    "tests/scenarios/05-term-end-renew-terminate-autorenew.test.ts: with the Automatic renewals switch turned on only inside the test, a fixed-term agreement reaches its term end and renews, a customer termination and an auto-renew opt-out are honored on the right dates, an opt-out racing the extension leaves the old end date in the fake Stripe (the B2 ordering rule), and reminders, notices and billing-end rows are asserted at each step.",
+    "tests/scenarios/06-staff-lifecycle-inflight.test.ts: a staff member is created, given in-flight work (a scheduled job and an assigned task), then deactivated; their sessions and access stop at once, in-flight work stays visible and reassignable to the owner, nothing is deleted, and role checks (OWNER, ADMIN, STAFF, CUSTOMER) still hold at the query boundary; asserts audit rows and that a deactivated actor cannot write.",
+    "tests/scenarios/07-message-send-failure-reconcile.test.ts: a customer email send fails after the durable business change (for example an estimate approval), the business change is reported as done with the notice pending, a retry does not create a second account or agreement, an uncertain delivery is marked UNCERTAIN or MISSED and reconciled, and a disabled sender is distinct from a thrown one; asserts MessageDelivery and CustomerNotice states and account/agreement counts, with the sender faked.",
+    "tests/scenarios/08-privacy-request-retention.test.ts: a privacy request (export and deletion) is opened for a customer, retention rules keep what the law or open money requires, deletable data is removed or anonymized only where allowed, another customer's data never appears in the export, and the request records who did what; asserts counts, retained-versus-removed tables and audit rows on the throwaway database only.",
+    "tests/scenarios/09-restore-and-media-recovery.test.ts: a backup export taken from the scenario database is restored into a separate disposable database by the real restore path, row counts and key totals match, provider-state tables are restored, credentials are not, and a media inventory sample re-reads with matching hashes; it refuses any non-local target.",
+    "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts: a fixed term ends into month-to-month, billing continues without a second agreement, the customer ends it online with the required notice, the end date and pickup are created, and billing stops at the right date; asserts agreement status and dates, the subscription end intent, the pickup job and the notices.",
+    "tests/scenarios/12-late-pickup-company-waiver.test.ts: when the company causes a late pickup the owner records the company-delay waiver, rent and late fees for the delay are waived exactly as the waiver says, a pickup that is the customer's fault still charges, and replaying the waiver changes nothing; asserts invoice lines, waiver record and audit rows in integer cents.",
+    "e2e/scenarios/10-owner-workflow.spec.ts: using only the owner's screens (no code or database help), the owner changes a price, publishes site copy, schedules a delivery, records a check payment and decides a deposit refund; the spec is registered in e2e/shards.json and every step shows its saved result and its To do or notice.",
+    "tests/scenarios/13-purchase-to-audit.test.ts: a purchase receipt with four appliances records use tax, the period closes, File now produces a confirmation, and the audit pack lists every serial; asserts the totals in integer cents, the tax proof and that the audit pack matches the purchase.",
+    "tests/scenarios/14-set-lifecycle.test.ts: a package quote becomes an agreement with a washer and a dryer, one returns early, repricing follows the owner's rules, then pickup, inspection, cleaning and available; asserts line prices, the repricing result, custody episodes and the ending chain.",
+    "tests/scenarios/15-ending-to-ready.test.ts: each ending path (term end, early return, termination, cancellation) creates the pickup, inspection and cleaning or repair chain and ends with the appliance available or out of service; asserts the same chain exists for every path and none is skipped.",
+    "tests/scenarios/16-failed-charge-to-recovery.test.ts: an automatic charge fails, a To do appears for the owner, the customer pays now in the portal, the payment applies once and the To do clears; asserts invoice status, To do creation and clearing, and no duplicate charge on replay.",
+    "tests/scenarios/17-portal-journeys.test.ts: a signed-in customer requests a pickup, reports a problem, sees the status of each and pays an open bill, only for their own records; asserts each created record, its status wording source, and that another customer receives no data from any of these paths.",
+    "The connection check (scripts and tests/connection-check.test.ts, extending the route inventory): an automated walk of every record page's Related panel links and every To do item's button asserts each resolves to a real page that exists in the route inventory; a link to a missing page fails the test."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [],
+    "db": [
+      "tests/scenarios/01-lead-to-recurring-billing.test.ts"
+    ],
+    "browser": [
+      "e2e/scenarios/10-owner-workflow.spec.ts"
+    ],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "F2-A",
+      "outcome": "F2-A",
+      "acceptance": [
+        "tests/scenarios/01-lead-to-recurring-billing.test.ts: a real lead is created and converted to a customer, an order for that customer is reviewed, signed and paid by a recorded check, the delivery is completed, and recurring billing starts exactly once; it asserts the signed totals, the receipt, the deposit/reserve record, the signing credit applied to the first invoice, the custody (appliance assignment) and the audit rows, using the real domain functions on a throwaway Postgres with Stripe, email and SMS faked at their client boundary.",
+        "tests/scenarios/02-provider-failure-retry.test.ts: a Stripe failure while starting recurring billing is recorded as a provider operation that is never treated as success, a retry after the failure creates exactly one subscription, a retry after success creates none, an uncertain outcome is not blindly repeated, and the stored error text never contains a secret; asserts ProviderOperation states, the call counts on the fake, and the owner-visible To do or issue.",
+        "tests/scenarios/03-maintenance-to-inspection.test.ts: a customer's maintenance request is scheduled, a visit is started and finished, the request status follows the visit, and the appliance moves through the inspection step to available or out of service as the existing rules say; asserts statuses, job and request links, custody and audit rows, and that a customer cannot reach another customer's request.",
+        "tests/scenarios/04-manual-payment-overpayment-refund-statement.test.ts: a manual payment is recorded against an invoice, an overpayment is held as a credit (not lost and not double-counted), a refund is decided and recorded once, and the customer's statement and the owner's invoice view agree to the cent; asserts invoice, receipt, credit and refund totals in integer cents, idempotent replays, and the audit rows.",
+        "tests/scenarios/05-term-end-renew-terminate-autorenew.test.ts: with the Automatic renewals switch turned on only inside the test, a fixed-term agreement reaches its term end and renews, a customer termination and an auto-renew opt-out are honored on the right dates, an opt-out racing the extension leaves the old end date in the fake Stripe (the B2 ordering rule), and reminders, notices and billing-end rows are asserted at each step."
+      ]
+    },
+    {
+      "id": "F2-B",
+      "outcome": "F2-B",
+      "acceptance": [
+        "tests/scenarios/06-staff-lifecycle-inflight.test.ts: a staff member is created, given in-flight work (a scheduled job and an assigned task), then deactivated; their sessions and access stop at once, in-flight work stays visible and reassignable to the owner, nothing is deleted, and role checks (OWNER, ADMIN, STAFF, CUSTOMER) still hold at the query boundary; asserts audit rows and that a deactivated actor cannot write.",
+        "tests/scenarios/07-message-send-failure-reconcile.test.ts: a customer email send fails after the durable business change (for example an estimate approval), the business change is reported as done with the notice pending, a retry does not create a second account or agreement, an uncertain delivery is marked UNCERTAIN or MISSED and reconciled, and a disabled sender is distinct from a thrown one; asserts MessageDelivery and CustomerNotice states and account/agreement counts, with the sender faked.",
+        "tests/scenarios/08-privacy-request-retention.test.ts: a privacy request (export and deletion) is opened for a customer, retention rules keep what the law or open money requires, deletable data is removed or anonymized only where allowed, another customer's data never appears in the export, and the request records who did what; asserts counts, retained-versus-removed tables and audit rows on the throwaway database only.",
+        "tests/scenarios/09-restore-and-media-recovery.test.ts: a backup export taken from the scenario database is restored into a separate disposable database by the real restore path, row counts and key totals match, provider-state tables are restored, credentials are not, and a media inventory sample re-reads with matching hashes; it refuses any non-local target.",
+        "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts: a fixed term ends into month-to-month, billing continues without a second agreement, the customer ends it online with the required notice, the end date and pickup are created, and billing stops at the right date; asserts agreement status and dates, the subscription end intent, the pickup job and the notices.",
+        "tests/scenarios/12-late-pickup-company-waiver.test.ts: when the company causes a late pickup the owner records the company-delay waiver, rent and late fees for the delay are waived exactly as the waiver says, a pickup that is the customer's fault still charges, and replaying the waiver changes nothing; asserts invoice lines, waiver record and audit rows in integer cents.",
+        "e2e/scenarios/10-owner-workflow.spec.ts: using only the owner's screens (no code or database help), the owner changes a price, publishes site copy, schedules a delivery, records a check payment and decides a deposit refund; the spec is registered in e2e/shards.json and every step shows its saved result and its To do or notice.",
+        "tests/scenarios/13-purchase-to-audit.test.ts: a purchase receipt with four appliances records use tax, the period closes, File now produces a confirmation, and the audit pack lists every serial; asserts the totals in integer cents, the tax proof and that the audit pack matches the purchase.",
+        "tests/scenarios/14-set-lifecycle.test.ts: a package quote becomes an agreement with a washer and a dryer, one returns early, repricing follows the owner's rules, then pickup, inspection, cleaning and available; asserts line prices, the repricing result, custody episodes and the ending chain.",
+        "tests/scenarios/15-ending-to-ready.test.ts: each ending path (term end, early return, termination, cancellation) creates the pickup, inspection and cleaning or repair chain and ends with the appliance available or out of service; asserts the same chain exists for every path and none is skipped.",
+        "tests/scenarios/16-failed-charge-to-recovery.test.ts: an automatic charge fails, a To do appears for the owner, the customer pays now in the portal, the payment applies once and the To do clears; asserts invoice status, To do creation and clearing, and no duplicate charge on replay.",
+        "tests/scenarios/17-portal-journeys.test.ts: a signed-in customer requests a pickup, reports a problem, sees the status of each and pays an open bill, only for their own records; asserts each created record, its status wording source, and that another customer receives no data from any of these paths.",
+        "The connection check (scripts and tests/connection-check.test.ts, extending the route inventory): an automated walk of every record page's Related panel links and every To do item's button asserts each resolves to a real page that exists in the route inventory; a link to a missing page fails the test."
+      ]
+    }
+  ]
+}
