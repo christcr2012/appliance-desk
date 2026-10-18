@@ -3,8 +3,22 @@
   "kind": "implementation",
   "parent": "K-1A",
   "completedSlices": [
-    "K-1A",
-    "K-1B"
+    {
+      "id": "K-1A",
+      "acceptanceEvidence": [
+        "tests/books-schema-integration.test.ts: Add exactly the approved additive Batch K books schema, settings and check constraints without rewriting historical billing records. Verified by implemented source, disposable schema checks and focused tests.",
+        "tests/books-schema-integration.test.ts: Seed the complete immutable system-role chart and expense categories with stable keys, safe reruns and filing-account mapping, with no duplicate financial accounts. Verified by implemented source, disposable schema checks and focused tests.",
+        "tests/books-schema-integration.test.ts: Prove populated-schema upgrade, original rows intact, role and tenant boundaries, schema health and disposable backup/restore coverage. Verified by implemented source, disposable schema checks and focused tests."
+      ]
+    },
+    {
+      "id": "K-1B",
+      "acceptanceEvidence": [
+        "tests/books-posting-rules.test.ts: Provide a fail-closed account-role resolver and approved InvoiceLineItemKind mapping, preserving negative/contra and tax filing account distinctions. Verified by implemented source, disposable schema checks and focused tests.",
+        "tests/books-posting-rules.test.ts: Implement pure balanced journal posting plans for all source events in Batch K section 3.2, including reversals, refunds, deposits, credits, Stripe, expenses, assets, depreciation and tax events. Verified by implemented source, disposable schema checks and focused tests.",
+        "tests/books-posting-rules.test.ts: Every rule uses integer cents, bounded source snapshots, Colorado accounting dates, and null or explicit refusal for ineligible/incomplete source events; prove balanced and idempotent planning in tests. Verified by implemented source, disposable schema checks and focused tests."
+      ]
+    }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
