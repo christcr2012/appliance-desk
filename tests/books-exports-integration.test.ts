@@ -129,6 +129,52 @@ describe.skipIf(!enabled)("K-5 immutable exports in disposable PostgreSQL",()=>{
    await prisma.journalEntry.delete({where:{id:payout.id}});
   }
  });
+ it("never reuses identical daily CSV bytes for different journal-source IDs",async()=>{
+  const syntheticIds:string[]=[];
+  const archived:string[]=[];
+  const input={...period,target:"GENERIC_JOURNAL_CSV" as const,
+    mode:"DAILY_SUMMARY" as const,onlyNotYetExported:true};
+  try{
+   const a=await prisma.journalEntry.create({data:{
+    sourceType:"OPENING",sourceId:source+"-repeat-a",eventKind:"K5_DAILY_A",
+    periodKey:"2026-10",entryDate:date,memo:"Identical synthetic day",
+    lines:{create:[{ledgerAccountId:bank,debitCents:101},
+      {ledgerAccountId:income,creditCents:101}]},
+   }});
+   syntheticIds.push(a.id);
+   const first=await runExport(owner,input);
+   expect("batchId" in first).toBe(true);
+   if(!("batchId" in first))throw new Error("First export was unexpectedly blocked.");
+   archived.push(first.batchId);
+   const firstStored=await prisma.exportBatch.findUniqueOrThrow({where:{id:first.batchId},
+    include:{entries:true}});
+   expect(firstStored.entries.map(e=>e.journalEntryId)).toEqual([a.id]);
+   const b=await prisma.journalEntry.create({data:{
+    sourceType:"OPENING",sourceId:source+"-repeat-b",eventKind:"K5_DAILY_B",
+    periodKey:"2026-10",entryDate:date,memo:"Identical synthetic day",
+    lines:{create:[{ledgerAccountId:bank,debitCents:101},
+      {ledgerAccountId:income,creditCents:101}]},
+   }});
+   syntheticIds.push(b.id);
+   const second=await runExport(owner,input);
+   expect("batchId" in second).toBe(true);
+   if(!("batchId" in second))throw new Error("Second export was unexpectedly blocked.");
+   archived.push(second.batchId);
+   expect(second.batchId).not.toBe(first.batchId);
+   const secondStored=await prisma.exportBatch.findUniqueOrThrow({where:{id:second.batchId},
+    include:{entries:true}});
+   expect(secondStored.content).toBe(firstStored.content);
+   expect(secondStored.contentSha256).toBe(firstStored.contentSha256);
+   expect(secondStored.entries.map(e=>e.journalEntryId)).toEqual([b.id]);
+   const replay=await runExport(owner,input);
+   expect(replay).toEqual({batchId:second.batchId});
+  } finally {
+   await prisma.exportBatchEntry.deleteMany({where:{exportBatchId:{in:archived}}});
+   await prisma.exportBatch.deleteMany({where:{id:{in:archived}}});
+   await prisma.journalLine.deleteMany({where:{entryId:{in:syntheticIds}}});
+   await prisma.journalEntry.deleteMany({where:{id:{in:syntheticIds}}});
+  }
+ });
  it("leaves old bytes immutable when account mappings change",async()=>{
   const batch=await prisma.exportBatch.findFirstOrThrow({where:{createdByUserId:owner,target:"QBO_JOURNAL_CSV"}});
   await prisma.accountExportMapping.update({where:{ledgerAccountId_target:{
