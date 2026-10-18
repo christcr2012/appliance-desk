@@ -16,11 +16,11 @@ export const STEPS = (base) => [
   { name: "scorecard", cmd: ["node", "scripts/pr-progress.mjs", "--check", "--require-changed", "--base", base, "--ref", "HEAD"], hint: "Edit docs/pr-cards/current-pr-scorecard.json. kind 'implementation' needs completed slices with one evidence line per acceptance item AND real changes under src/ or prisma/; 'maintenance' needs no src/ changes and no slices; 'risk_remediation' needs 3+ riskEvidence lines and a workloadException." },
 ];
 
-export function cardBundleCheck(card, plannedAt) {
+export function cardBundleCheck(card, plannedAt, report) {
   if (!card) return null;
   const cmd = ["node", "scripts/bundle-plan.mjs", "--card", card];
-  if (plannedAt) cmd.push("--planned-at", plannedAt);
-  return { name: "frozen bundle plan", cmd, hint: "The card's bundle-plan block is missing or the planning commit (docs-only, made BEFORE coding) is not the one you passed. Pass the full 40-character planning SHA." };
+  if (plannedAt && report) cmd.push("--planned-at", plannedAt, "--report", report);
+  return { name: "frozen bundle plan", cmd, hint: "The card's bundle-plan block is missing or the planning commit (docs-only, made BEFORE coding) is not the one you passed. Pass the full 40-character planning SHA and a complete --report /tmp/delivery.json." };
 }
 
 export function findPlaceholders(text) {
@@ -48,7 +48,8 @@ function main() {
   const get = (flag) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined);
   const base = get("--base") ?? execFileSync("git", ["merge-base", "origin/main", "HEAD"], { encoding: "utf8" }).trim();
   const steps = STEPS(base);
-  const extra = cardBundleCheck(get("--card"), get("--planned-at"));
+  if (get("--planned-at") && !get("--report")) { console.error("A frozen delivery needs both --planned-at FULL_SHA and --report PATH. See docs/AGENT-QUICKSTART.md."); process.exitCode = 1; return; }
+  const extra = cardBundleCheck(get("--card"), get("--planned-at"), get("--report"));
   if (extra) steps.push(extra);
   const results = run(steps);
   for (const r of results) {
