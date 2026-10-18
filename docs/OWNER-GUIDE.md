@@ -46,7 +46,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Customer portal | `/account` | What your customers see after signing in |
 | Sign in | `/login` | Everyone's sign-in page |
 
-The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them; they never see prices, billing, reports or Settings.
+The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Books, Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them; they never see prices, billing, reports or Settings.
 
 ## Signing in and staying safe
 
@@ -235,3 +235,11 @@ To clear practice leads, customers, agreements, visits, invoices and payments fr
 ## What is still not live
 
 Real card payments (Stripe is in test mode), customer email, texting (waiting on the carrier registration), automatic renewals, calling and voicemail, and combining a property manager's properties into one charge. The full list of what needs your decision, with the exact steps, is `docs/LAUNCH-LEDGER.md`.
+
+## Books — journal and accounting months
+
+**What it's for.** Open Money > Books. The owner enters a checked accounting start day plus bank, Stripe and card balances once; this creates a journal, not a new payment. OWNER and ADMIN can inspect source-linked balanced journal entries, source dates, accounts, and the unposted-source issue list. The accounting journal may be brought up to date with an explicit button.
+
+**Change without code.** The owner can rename chart labels, add payment-source/expense accounts, map external account names, export a month for review, close a month only after export, and reopen with an audit reason. Late entries stay linked to the original date but post in the next open month. Staff and customers have no access; admins may review and post but cannot reset opening balances or close periods.
+
+**If it fails.** If an invoice, refund or tax item lacks sufficient evidence, the journal refuses it and Books shows an item requiring review. Investigate the actual upstream record before retrying; never make up tax allocation or duplicate a payment. If a month cannot close, review/export each journal entry first. Review CSV is not the final K-5 QuickBooks/Xero import and the page enables no live Stripe or background schedule.

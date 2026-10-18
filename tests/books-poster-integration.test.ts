@@ -1,0 +1,141 @@
+import { randomUUID } from "node:crypto";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { postForSource, postPending, journalPlacement } from "@/domains/books/post";
+import { getBooksWorkspace, initializeBooks, closeAccountingMonth, reopenAccountingMonth,
+  exportMonthReview, renameAccount, addCustomAccount, mapExportAccount, BooksPermissionError } from "@/domains/books/management";
+
+const tag=randomUUID().slice(0,12),ownerId="books-owner-"+tag,customerId="books-customer-"+tag;
+const invoiceId="books-invoice-"+tag,receiptId="books-receipt-"+tag,paymentId="books-payment-"+tag;
+const invalidInvoiceId="books-bad-invoice-"+tag;
+const lateReceiptId="books-late-receipt-"+tag, stripeId="books-stripe-"+tag;
+const actor={id:ownerId,role:"OWNER" as const},staff={id:ownerId,role:"STAFF" as const},guest={id:ownerId,role:"CUSTOMER" as const};
+const start="2026-01-01";
+let savedStart:Date|null=null, extraAccount:string|null=null;
+const month="2026-10";
+beforeAll(async()=>{
+  const settings=await prisma.businessSettings.findUnique({where:{id:"singleton"}});
+  savedStart=settings?.booksStartDate??null;
+  await prisma.user.create({data:{id:ownerId,email:tag+"@example.test",role:"OWNER"}});
+  await prisma.customer.create({data:{id:customerId,userId:ownerId,referralCode:"BOOKS-"+tag}});
+  await prisma.businessSettings.upsert({where:{id:"singleton"},create:{id:"singleton",booksStartDate:null},update:{booksStartDate:null}});
+});
+afterAll(async()=>{
+  await prisma.exportBatchEntry.deleteMany({where:{batch:{createdByUserId:ownerId}}});
+  await prisma.exportBatch.deleteMany({where:{createdByUserId:ownerId}});
+  await prisma.journalLine.deleteMany({where:{entry:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,start]}}}});
+  await prisma.journalEntry.deleteMany({where:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,start]}}});
+  await prisma.payment.deleteMany({where:{id:paymentId}});
+  await prisma.invoiceLineItem.deleteMany({where:{invoiceId:{in:[invoiceId,invalidInvoiceId]}}});
+  await prisma.invoice.deleteMany({where:{id:{in:[invoiceId,invalidInvoiceId]}}});
+  await prisma.receipt.deleteMany({where:{id:{in:[receiptId,lateReceiptId]}}});
+  await prisma.stripeBalanceTransaction.deleteMany({where:{id:stripeId}});
+  await prisma.accountExportMapping.deleteMany({where:{ledgerAccountId:extraAccount??"none"}});
+  if(extraAccount)await prisma.ledgerAccount.deleteMany({where:{id:extraAccount}});
+  await prisma.accountingPeriod.deleteMany({where:{periodKey:month}});
+  await prisma.auditLog.deleteMany({where:{userId:ownerId}});
+  await prisma.systemIssue.deleteMany({where:{fingerprint:"books-post:INVOICE:"+invalidInvoiceId}});
+  await prisma.businessSettings.update({where:{id:"singleton"},data:{booksStartDate:savedStart}});
+  await prisma.customer.deleteMany({where:{id:customerId}});
+  await prisma.user.deleteMany({where:{id:ownerId}});
+});
+describe("K-2A+K-2B source to immutable books",()=>{
+  it("rejects unauthorized setup/read; initializes owner-attested opening once",async()=>{
+    await expect(initializeBooks(staff,{startDate:start,bankCents:100,stripeCents:500,cardCents:0})).rejects.toBeInstanceOf(BooksPermissionError);
+    await expect(getBooksWorkspace(guest)).rejects.toBeInstanceOf(BooksPermissionError);
+    const priorEntries=await prisma.journalEntry.count();
+    if(priorEntries===0) {
+      await initializeBooks(actor,{startDate:start,bankCents:100,stripeCents:500,cardCents:0});
+      expect(await prisma.journalEntry.count({where:{sourceType:"OPENING",sourceId:start}})).toBe(1);
+    } else {
+      // Other real-DB fixture files may already have immutable journals. Never
+      // delete their evidence just to make this test pass; prove the fail-closed rule.
+      await expect(initializeBooks(actor,{startDate:start,bankCents:100,stripeCents:500,cardCents:0})).rejects.toThrow(/already initialized/);
+      await prisma.businessSettings.update({where:{id:"singleton"},data:{booksStartDate:new Date("2026-01-01T07:00:00Z")}});
+    }
+    await expect(initializeBooks(actor,{startDate:start,bankCents:100,stripeCents:500,cardCents:0})).rejects.toThrow(/already initialized/);
+  });
+  it("posts receipt, invoice and settled allocation as distinct balanced unique events",async()=>{
+    await prisma.invoice.create({data:{id:invoiceId,customerId,status:"OPEN",amountDueCents:2500,
+      lineItems:{create:{kind:"RENTAL",description:"Synthetic rental",amountCents:2500}}}});
+    await prisma.receipt.create({data:{id:receiptId,customerId,source:"MANUAL",method:"CHECK",
+      amountCents:2500,receivedOn:new Date("2026-10-17T18:00:00Z")}});
+    await prisma.payment.create({data:{id:paymentId,invoiceId,receiptId,amountCents:2500,status:"SUCCEEDED"}});
+    const attempt=()=>prisma.$transaction(tx=>postForSource(tx,"INVOICE",invoiceId),
+      {isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+    await Promise.allSettled(Array.from({length:8},attempt));
+    expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:invoiceId}})).toBe(1);
+    await prisma.$transaction(tx=>postForSource(tx,"INVOICE",invoiceId));
+    await prisma.$transaction(tx=>postForSource(tx,"RECEIPT",receiptId));
+    await prisma.$transaction(tx=>postForSource(tx,"PAYMENT",paymentId));
+    expect(await prisma.journalEntry.count({where:{sourceId:{in:[invoiceId,receiptId,paymentId]}}})).toBe(3);
+    const journal=await prisma.journalEntry.findMany({where:{sourceId:{in:[invoiceId,receiptId,paymentId]}},include:{lines:true}});
+    for(const row of journal)expect(row.lines.reduce((n,x)=>n+x.debitCents-x.creditCents,0)).toBe(0);
+    expect(journal.map(x=>x.eventKind).sort()).toEqual(["INVOICE_RECOGNIZED","PAYMENT_APPLIED","RECEIPT_RECEIVED"]);
+    expect(journal.map(x=>x.periodKey)).toContain(month);
+    expect((await getBooksWorkspace(actor,{month})).entries.length).toBeGreaterThan(0);
+  });
+  it("requires export before closing, shifts late events, records reason before reopen",async()=>{
+    await expect(closeAccountingMonth(staff,month)).rejects.toBeInstanceOf(BooksPermissionError);
+    await expect(closeAccountingMonth(actor,month)).rejects.toThrow(/Export every entry/);
+    const exported=await exportMonthReview(actor,month);
+    expect(exported.csv).toContain("Invoice recognized");
+    await closeAccountingMonth(actor,month);
+    const placed=await prisma.$transaction(tx=>journalPlacement(tx,new Date("2026-10-14T18:00:00Z")));
+    expect(placed.periodKey).toBe("2026-11");
+    expect(placed.lateForDate).not.toBeNull();
+    await prisma.receipt.create({data:{id:lateReceiptId,customerId,source:"MANUAL",
+      amountCents:117,method:"CASH",receivedOn:new Date("2026-10-14T18:00:00Z")}});
+    await prisma.$transaction(tx=>postForSource(tx,"RECEIPT",lateReceiptId));
+    const late=await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"RECEIPT",sourceId:lateReceiptId}});
+    expect(late.periodKey).toBe("2026-11");
+    expect(late.memo).toMatch(/Late entry for 2026-10-14/);
+    expect(late.lateForDate).not.toBeNull();
+    await expect(reopenAccountingMonth(staff,month,"staff attempt")).rejects.toBeInstanceOf(BooksPermissionError);
+    await expect(reopenAccountingMonth(actor,month,"")).rejects.toThrow(/nonempty/);
+    await reopenAccountingMonth(actor,month,"Recorded correction to monthly accruals");
+    expect((await prisma.accountingPeriod.findUnique({where:{periodKey:month}}))?.reopenedReason)
+      .toBe("Recorded correction to monthly accruals");
+  });
+  it("allows owner changes with audit and protects owner accounts from staff",async()=>{
+    await expect(addCustomAccount(staff,{name:"Vehicle",description:"For spending",type:"EXPENSE",isPaymentSource:false}))
+      .rejects.toBeInstanceOf(BooksPermissionError);
+    extraAccount=await addCustomAccount(actor,{name:"Travel expenses",description:"Owner-created expense",type:"EXPENSE",isPaymentSource:false});
+    await renameAccount(actor,extraAccount,"Mileage costs");
+    await mapExportAccount(actor,{accountId:extraAccount,target:"QBO_JOURNAL_CSV",externalName:"Vehicle:Travel"});
+    const record=await prisma.ledgerAccount.findUnique({where:{id:extraAccount},include:{mappings:true}});
+    expect(record?.name).toBe("Mileage costs");
+    expect(record?.mappings[0]?.externalName).toBe("Vehicle:Travel");
+    expect(await prisma.auditLog.count({where:{userId:ownerId,action:{startsWith:"books."}}})).toBeGreaterThan(2);
+  });
+  it("persists deduplicated exceptions for invalid money, without any partial journal",async()=>{
+    await prisma.invoice.create({data:{
+      id:invalidInvoiceId,customerId,status:"OPEN",amountDueCents:2600,
+      lineItems:{create:{kind:"RENTAL",description:"Incomplete evidence",amountCents:2500}},
+    }});
+    const run=await postPending({limit:500});
+    expect(run.problems.some(x=>x.sourceType==="INVOICE"&&x.sourceId===invalidInvoiceId)).toBe(true);
+    expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:invalidInvoiceId}})).toBe(0);
+    const issue=await prisma.systemIssue.findUnique({where:{fingerprint:"books-post:INVOICE:"+invalidInvoiceId}});
+    expect(issue?.status).toBe("OPEN");
+    expect(issue?.detail).not.toContain("Incomplete evidence");
+  });
+  it("reconciles recorded Stripe fees without treating provider charges as a second receipt",async()=>{
+    const at=new Date("2026-10-15T18:00:00Z");
+    await prisma.stripeBalanceTransaction.create({data:{
+      id:stripeId,type:"charge",reportingCategory:"charge",amountCents:1000,feeCents:36,
+      netCents:964,currency:"usd",createdAtStripe:at,availableOn:at,
+    }});
+    await prisma.$transaction(tx=>postForSource(tx,"STRIPE_BALANCE_TXN",stripeId));
+    const journals=await prisma.journalEntry.findMany({where:{sourceType:"STRIPE_BALANCE_TXN",sourceId:stripeId},
+      include:{lines:true}});
+    expect(journals.map(j=>j.eventKind)).toEqual(["STRIPE_FEE"]);
+    expect(journals[0].lines.reduce((sum,line)=>sum+line.debitCents-line.creditCents,0)).toBe(0);
+  });
+  it("bounded backfill never double-applies settled source events",async()=>{
+    const out=await postPending({limit:12});
+    expect(out.posted).toBeGreaterThanOrEqual(0);
+    expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:invoiceId}})).toBe(1);
+  });
+});

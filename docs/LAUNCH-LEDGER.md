@@ -9,7 +9,7 @@ A line is **PROVEN** only when it is ticked and names its evidence. Anything wit
 - Integrated scenarios proven by a committed test file: 17 of 17
 - Plan acceptance items proven with named evidence: 7 of 155; OPEN: 148
 - Old review findings: 83 resolved, 8 OPEN
-- Go-live switches and checks still waiting on Chris: 88
+- Go-live switches and checks still waiting on Chris: 89
 
 ## Integrated scenarios (F2-A, F2-B)
 
@@ -356,6 +356,7 @@ Each line is a real-world step (accounts, keys, wording, approvals). Nothing her
 - DECISION (Chris): Confirm exact-head existing application CI and release-policy pass; development PRs never require a paid Vercel preview. Apply live-only Git rules to any nested Vercel root configuration.
 - DECISION (Chris): Verify the first scheduled daily promotion and its live-promotion date tag; validate the resulting production deployment from live. Keep all existing access, spending and activation gates.
 - DECISION (Chris): Before the first real phone payment: confirm with Stripe that staff-typing a customer's card into Stripe's hosted invoice page is allowed on the live account. Then send one real payment l...
+- DECISION (Chris): Books activation (owner, post-release): inspect actual bank/Stripe/card statements before confirming a permanent books start date in Desk > Money > Books. Inspect source exceptions before...
 
 ## Human / owner gates that stay explicit
 

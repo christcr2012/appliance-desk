@@ -1,36 +1,34 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-1A",
+  "parent": "K-2A",
   "completedSlices": [
     {
-      "id": "K-1A",
+      "id": "K-2A",
       "acceptanceEvidence": [
-        "tests/books-schema-integration.test.ts: Add exactly the approved additive Batch K books schema, settings and check constraints without rewriting historical billing records. Verified by implemented source, disposable schema checks and focused tests.",
-        "tests/books-schema-integration.test.ts: Seed the complete immutable system-role chart and expense categories with stable keys, safe reruns and filing-account mapping, with no duplicate financial accounts. Verified by implemented source, disposable schema checks and focused tests.",
-        "tests/books-schema-integration.test.ts: Prove populated-schema upgrade, original rows intact, role and tenant boundaries, schema health and disposable backup/restore coverage. Verified by implemented source, disposable schema checks and focused tests."
+        "test: one-time books start and no posting before start",
+        "test: source adapters with receipt/invoice/payment/credit/deposit/tax/Stripe transaction and bounded anti-join",
+        "test: concurrent posting unique and bad invoice produces issue with no journal",
+        "test: late receipt posted in next month, close/export/reopen authorized and audited"
       ]
     },
     {
-      "id": "K-1B",
+      "id": "K-2B",
       "acceptanceEvidence": [
-        "tests/books-posting-rules.test.ts: Provide a fail-closed account-role resolver and approved InvoiceLineItemKind mapping, preserving negative/contra and tax filing account distinctions. Verified by implemented source, disposable schema checks and focused tests.",
-        "tests/books-posting-rules.test.ts: Implement pure balanced journal posting plans for all source events in Batch K section 3.2, including reversals, refunds, deposits, credits, Stripe, expenses, assets, depreciation and tax events. Verified by implemented source, disposable schema checks and focused tests.",
-        "tests/books-posting-rules.test.ts: Every rule uses integer cents, bounded source snapshots, Colorado accounting dates, and null or explicit refusal for ineligible/incomplete source events; prove balanced and idempotent planning in tests. Verified by implemented source, disposable schema checks and focused tests."
+        "test: OWNER sets attested opening once, ADMIN/STAFF denied",
+        "test: owner account creation, renaming, export mapping audited with staff denied",
+        "code/browser: Books page, money tab, journal/period filters, balances and owner actions"
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Actual paid-provider Stripe balances and CPA treatment are not yet accepted; K-3, K-6 and financial activation remain gated.",
-    "K-6 owns post-retirement/disposition gain/loss mapping; K-1B refuses to invent it."
+    "Real owner-activated books start and financial account balances are unverified on production; this is an engineering-only delivery.",
+    "Stripe LIVE balance sync, formal accounting import exports and automatic scheduled posting are future separately accepted work."
   ],
   "evidence": [
-    "K-1A: new ledger/source/expense/export/period tables, system account and expense category seed, and new tax-account idempotent synchronizer; additive migration and historical data remain intact.",
-    "K-1A: eight concurrent attempts produce one source journal; SQL checks reject negative/both-sided line values in tests/books-schema-integration.test.ts.",
-    "K-1A: all 12 new models have backup policy and targeted schema/backup tests; disposable migrated restore checked using backup-restore-integration.test.ts.",
-    "K-1B: role-mapped invoice kinds including 2026 additional admin and RDF fees with distinct tax liability, return-safe account mapping and immutable source evidence.",
-    "K-1B: pure entries/reversals for billing, receipts, credits, refunds, deposits, Stripe, expenses, appliances, depreciation, use tax, filing and opening balances; 9 focused tests pass.",
-    "K-1B: invalid or incomplete money evidence refuses, including deferred K-6 dispositions; K-2A poster and screens not represented as complete."
+    "K-2A and K-2B implemented across Books page, posting domain and tests; money writes are transactional.",
+    "Seven local disposable Postgres tests passed for money, roles, concurrency, exceptions and closed periods.",
+    "Browser, exact-head CI, independent review and production acceptance not yet verified."
   ]
 }

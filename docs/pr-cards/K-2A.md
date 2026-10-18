@@ -62,3 +62,11 @@ K-3 real Stripe balance sync, K-4 expense capture forms, K-5 export formats, K-6
 }
 ```
 <!-- bundle-plan:end -->
+
+## Delivery evidence (the frozen plan above is unchanged)
+- Posting source adapters, unique journals, source anti-join, closed-month placement: src/domains/books/post.ts.
+- Owner/ADMIN management and review screens: src/domains/books/management.ts, src/app/desk/books.
+- Seven disposable PostgreSQL tests passed in development: tests/books-poster-integration.test.ts.
+- Browser spec e2e/books-workspace.spec.ts is in browser-b; exact-head browser/CI and review still pending.
+- Typed SystemIssue category migration preserves prior allowed issue types; no real data changed.
+- Automatic scheduling, K-3 live Stripe sync, K-5 formal exports and K-6 retirement gain/loss still not implemented.

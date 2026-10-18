@@ -181,3 +181,5 @@ payment smoke test.
 - [ ] Confirm exact-head existing application CI and release-policy pass; development PRs never require a paid Vercel preview. Apply live-only Git rules to any nested Vercel root configuration.
 - [ ] Verify the first scheduled daily promotion and its live-promotion date tag; validate the resulting production deployment from live. Keep all existing access, spending and activation gates.
 - [ ] Before the first real phone payment: confirm with Stripe that staff-typing a customer's card into Stripe's hosted invoice page is allowed on the live account. Then send one real payment link to yourself and pay it to see the To do clear. (W-5; nothing is live until the owner does this.)
+
+- [ ] Books activation (owner, post-release): inspect actual bank/Stripe/card statements before confirming a permanent books start date in Desk > Money > Books. Inspect source exceptions before posting any real journal. This engineering work alone does not authorize production writes or enable automatic posting/Stripe sync.
