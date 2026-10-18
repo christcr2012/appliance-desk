@@ -122,6 +122,28 @@ describe("K-3 provider evidence to Stripe clearing", () => {
     expect((await prisma.systemIssue.findUnique({ where: { fingerprint: "books-stripe-clearing:2026-10-17" } }))?.status)
       .toBe("RESOLVED");
   });
+  it("posts Stripe fees, service charges, disputes and payouts only once under replay", async () => {
+    const fee = transaction("fee", 1000, 25);
+    const service = transaction("service", -12, 0, beforeCutoff, "stripe_fee", "stripe_fee");
+    const dispute = transaction("dispute", -60, 0, beforeCutoff, "adjustment", "dispute");
+    const payout = transaction("payout", -400, 0, beforeCutoff, "payout", "payout");
+    const refunded = transaction("refund", -50, 0, beforeCutoff, "refund", "refund");
+    await syncStripeBalanceTransactions(fake([[fee, service, dispute, payout, refunded]]).client);
+    await Promise.allSettled([postPending({ limit: 500 }), postPending({ limit: 500 })]);
+    await postPending({ limit: 500 });
+    const rows = await prisma.journalEntry.findMany({ where: {
+      sourceType: "STRIPE_BALANCE_TXN",
+      sourceId: { in: [fee.id, service.id, dispute.id, payout.id, refunded.id] },
+    }, include: { lines: true } });
+    expect(rows.map(x => x.eventKind).sort()).toEqual([
+      "STRIPE_DISPUTE", "STRIPE_FEE", "STRIPE_PAYOUT", "STRIPE_SERVICE_FEE",
+    ]);
+    for (const row of rows)
+      expect(row.lines.reduce((sum, line) => sum + line.debitCents - line.creditCents, 0)).toBe(0);
+    expect(await prisma.journalEntry.count({ where: {
+      sourceType: "STRIPE_BALANCE_TXN", sourceId: refunded.id,
+    } })).toBe(0);
+  });
   it("does not invent unknown Stripe accounting postings", async () => {
     const row = transaction("unknown", 85, 0, beforeCutoff, "unrecognized_kind", "other");
     await syncStripeBalanceTransactions(fake([[row]]).client);
