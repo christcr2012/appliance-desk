@@ -1,6 +1,6 @@
 # Sources, pins and reconciliation
 
-Inspected October 18, 2026 UTC (owner request October 17 America/Denver). Recheck compatible SDK/plugin releases at the engineering boundary; documentation URLs are evidence, not a dependency version lock.
+Inspected October 18, 2026 UTC (owner request October 17 America/Denver). Hub contract checkout: `22ae5485621423ad822f77b4a300c7d548d5aea7`. Appliance design reconciled after F2 merge to main `02b84cff` (runtime paths unchanged by this planning PR). Recheck compatible SDK/plugin releases at the engineering boundary; documentation URLs are evidence, not a dependency version lock.
 
 | Source | Design use |
 |---|---|

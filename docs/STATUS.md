@@ -7,8 +7,9 @@ tracking. Eleven original subsections have finite acceptance and ordered depende
 all remain NOT_STARTED in [the planning ledger](mcp/acceptance.json). The first
 [execution card](pr-cards/MCP-1.md) has checked existing anchors and test fixtures for
 Sol 5.6 low/medium effort. Future packets are written JIT, not pre-certified.
-This planning work does not supersede active F2 completion or PR #494; it changes
-no runtime, shared active execution packet, credential, provider, schedule or release.
+F2 PR #494 merged during planning; this branch was reconciled with main
+`02b84cff` without changing its application code or active execution packet. This
+planning work changes no runtime, credential, provider, schedule or release.
 Next MCP engineering: reconcile current F2/main; register original MCP batch/index
 coverage together; MCP-1/MCP-2 improve health and backup evidence first. Actual
 production backup root cause and photo-store configuration remain unverified/open.
