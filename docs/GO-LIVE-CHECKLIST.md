@@ -1,3 +1,9 @@
+## K-3 Stripe accounting provider activation (added October 18, 2026)
+
+- [ ] Independently approve and configure `BOOKS_STRIPE_SYNC_ENABLED=true` for the intended environment only **after** verifying the production books opening date/bank/Stripe balances, Stripe credential mode, migrations and backups. Engineering CI and a merged PR do not supply this approval.
+- [ ] Read the first complete Stripe transaction import and daily Colorado-cutoff clearing report in OWNER Books. Investigate UNKNOWN coverage, unsupported transaction types and any one-cent difference before closing a month or claiming financial acceptance.
+- [ ] Preserve the separate Stripe LIVE payments and CPA/accounting-setup signoffs. The nightly job uses read-only Stripe balance endpoints; it must never make charges, payouts, refunds, or customer communications.
+
 # Go-live checklist — everything that must be switched on for real customers
 
 Written for Chris (not a developer). Rule of the project: **everything is built and working in the code as we go.**

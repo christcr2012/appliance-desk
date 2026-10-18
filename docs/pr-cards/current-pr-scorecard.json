@@ -1,35 +1,31 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-2A",
+  "parent": "K-3",
   "completedSlices": [
     {
-      "id": "K-2A",
+      "id": "K-3",
       "acceptanceEvidence": [
-        "test: one-time books start and no posting before start",
-        "test: source adapters with receipt/invoice/payment/credit/deposit/tax/Stripe transaction and bounded anti-join",
-        "test: concurrent posting unique and bad invoice produces issue with no journal",
-        "test: late receipt posted in next month, close/export/reopen authorized and audited"
-      ]
-    },
-    {
-      "id": "K-2B",
-      "acceptanceEvidence": [
-        "test: OWNER sets attested opening once, ADMIN/STAFF denied",
-        "test: owner account creation, renaming, export mapping audited with staff denied",
-        "code/browser: Books page, money tab, journal/period filters, balances and owner actions"
+        "Source: src/domains/books/stripe-balance.ts paginates 100 at a time, overlaps 3 days and advances IntegrationCursor only on full traversal; real DB replay regression authored in tests/books-stripe-sync-integration.test.ts, CI unverified.",
+        "Source: decodeTransaction checks USD and exact amount minus fee equals net; upsert persists provider identity, times and cents; foreign/malformed provider regression authored in tests/books-stripe-sync-integration.test.ts, CI unverified.",
+        "Source: src/domains/books/post.ts refuses suspect Stripe types and reuses stripeBalancePlans and unique event journals; concurrent fee, payout, dispute and refund replay regressions authored, CI unverified.",
+        "Source: checkStripeClearing uses businessDayBounds for yesterday, owner opening JournalEntry, imported net and journal clearing; typed one-cent issue and day-after-cutoff regressions authored, CI unverified.",
+        "Source: /api/cron/books-nightly authenticated and owner-gated; vercel.json 09:40 UTC schedule after 09:00 backup; runAutomation retains run outcomes, no Stripe money methods; guard regression authored, CI unverified.",
+        "Regression files tests/books-stripe-sync-integration.test.ts and tests/books-nightly-route.test.ts written; K-2 posting and owner-guide tests retained, new test serialized in vitest.config.mts. Disposable PostgreSQL and exact-head CI run remain outstanding."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Real owner-activated books start and financial account balances are unverified on production; this is an engineering-only delivery.",
-    "Stripe LIVE balance sync, formal accounting import exports and automatic scheduled posting are future separately accepted work."
+    "Exact-head typecheck, disposable PostgreSQL finance/regression suites, owner-guide, browser and security CI are pending; source is not certified until these gates pass.",
+    "Owner has not enabled BOOKS_STRIPE_SYNC_ENABLED nor attested real production Stripe clearing, books start, accountant signoff or provider balance history.",
+    "K-2A/B source merged but remains behind live until checked daily release; no real-provider acceptance or production data modification performed."
   ],
+  "workloadException": "K-3 is one whole substantial Stripe provider integration with bounded importer, journal reconciliation, owner issue, cron and Postgres tests; K-4A/B involves private receipt/photo provider and must not be bundled across that boundary.",
   "evidence": [
-    "K-2A and K-2B implemented across Books page, posting domain and tests; money writes are transactional.",
-    "Seven local disposable Postgres tests passed for money, roles, concurrency, exceptions and closed periods.",
-    "Browser, exact-head CI, independent review and production acceptance not yet verified.",
-    "Independent review: all five actionable Codex PR #498 findings addressed together with real database regression coverage, 10 books tests passed; exact-head browser CI remains pending."
+    "Frozen full K-3 acceptance plan committed at 335cc521c6c0d4bde42933d2c55234b974ff1887 before implementation.",
+    "Provider/importer and SQL typed issue integration plus guarded scheduled job authored in same branch; no production or live-money operation.",
+    "Tests authored for pagination failure, cursor overlap, invalid money, previous-day gap, fee categories, concurrency and disabled cron; not yet executed or represented as passed.",
+    "First exact-head PR #499 CI: type/lint/repo, secret, release policy, two unit shards and four browser shards passed; shard 3 failed one new test because an earlier Stripe fixture remained unposted before cutoff (1097/1098 passed). Corrected fixture date, added successful-replay issue resolution, made every unknown nightly clearing state fail closed; new exact-head CI pending."
   ]
 }

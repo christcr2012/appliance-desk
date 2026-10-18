@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/books-stripe-sync-integration.test.ts", // K-3 fixture temporarily changes the shared books start and Stripe import cursor.
   "tests/site-content-integration.test.ts", // The website pointer and every revision exist once for the whole database.
   "tests/vc1-vc2-content-integration.test.ts", // V-C1/V-C2 publish, restore and clean the same single website pointer.
   "tests/vc3-public-content-integration.test.ts", // V-C3 publishes and cleans the same single website pointer.

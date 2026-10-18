@@ -1,3 +1,7 @@
+## 2026-10-18 — K-3 Stripe books sync activation versus engineering availability
+
+The approved Batch K design uses the existing provider credentials for a **read-only** balance transaction import and a private daily clearing comparison. The deployment variable `BOOKS_STRIPE_SYNC_ENABLED` defaults OFF while production opening balances, source coverage and accountant acceptance are unverified. Enabling it is a separate owner operational decision, not a permanent tool/end-user functional restriction. This source work must not be confused with permission to turn on Stripe LIVE money movement, modify production records, send customer messages or override the daily checked release rule. Reused provider API: `src/lib/stripe.ts`; new import: `src/domains/books/stripe-balance.ts`. No owner activation is claimed.
+
 # Decisions log — current
 
 ## 2026-10-17 — Paperwork is checked by a command, not by memory

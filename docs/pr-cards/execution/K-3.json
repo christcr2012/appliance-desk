@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "id": "K-3",
+  "parent": "K-3",
+  "baseline": "d96098cca7a8776bf11ee81aea9242c1cc451cfa",
+  "card": "docs/pr-cards/K-3.md",
+  "outcome": "Stripe transactions import without duplication and accounting clearing agrees through the same Colorado cutoff, or produces an owner-facing exception.",
+  "risk": "Provider read-only, stored financial evidence durable, no direct money API, owner-only activation, fail closed on uncertain cents or pages.",
+  "next": "Verify all six K-3 acceptance criteria in synthetic Postgres, typecheck, browser/CI; then K-4A/B expense workflow after approved merge.",
+  "references": [
+    {
+      "path": "src/domains/books/post.ts",
+      "anchor": "export async function postPending",
+      "purpose": "Reuse bounded finance poster and source idempotency."
+    },
+    {
+      "path": "src/domains/books/posting-rules.ts",
+      "anchor": "export function stripeBalancePlans",
+      "purpose": "Reuse tested pure balanced Stripe journal plans."
+    },
+    {
+      "path": "src/lib/stripe.ts",
+      "anchor": "export function getStripeClient",
+      "purpose": "Use guarded provider client without a second connection."
+    },
+    {
+      "path": "docs/designs/BATCH-K.md",
+      "anchor": "### 3.4 Stripe sync",
+      "purpose": "Approved provider cursor and cutoff semantics."
+    },
+    {
+      "path": "src/domains/automation/runs.ts",
+      "anchor": "export async function runAutomation",
+      "purpose": "Existing idempotent daily automation runner."
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/books/stripe-balance.ts",
+    "src/app/api/cron/books-nightly/route.ts",
+    "tests/books-stripe-sync-integration.test.ts",
+    "prisma/migrations/20261018180000_books_stripe_clearing_issue/migration.sql"
+  ],
+  "invariants": [
+    "No live Stripe money writes or customer messaging",
+    "A cursor never skips an incomplete Stripe import",
+    "No non-USD or invalid-cent journal entry",
+    "A daily cutoff compares identical Colorado periods",
+    "No activation without owner's separate operational gate"
+  ],
+  "sequence": [
+    "Validate and upsert Stripe evidence with overlap and full paging",
+    "Use K-2 posting rules for unique balanced journal",
+    "Compare clearing against owner opening through one cutoff",
+    "Show typed issue on the owner Books screen",
+    "Run guarded nightly after backup",
+    "Prove with disposable Postgres and CI"
+  ],
+  "acceptance": [
+    "A bounded Stripe Balance Transactions importer pages the provider's transaction history with a persisted cursor, three-day overlap, stable-id upserts and safe reruns; cursor never skips an incomplete page or failed import.",
+    "Source-backed, integer-cent transaction evidence is recorded with currency, dates, fee, net, reporting category, source and payout identity; wrong currency or unknown types never produce guessed journal entries.",
+    "The existing balanced source rules and K-2 poster book fees, Stripe service charges, disputes and payouts exactly once; Stripe charge, refund and payment rows do not duplicate their existing receipt/refund journals; replay/concurrency and absent opening evidence fail safely.",
+    "A cutoff-based clearing check compares the journal's clearing balance through the same yesterday-end Colorado timestamp with the verified owner's opening Stripe balance plus the net of imported transactions through that timestamp; an actual one-cent mismatch creates an owner-visible deduplicated exception; a later payment does not make yesterday look wrong. Missing/incomplete provider coverage is UNKNOWN, not a false match or mismatch.",
+    "The daily books-nightly automation runs after database backup, reconciles imported evidence, posts pending journals and checks clearing with bounded effort, checked CRON authentication, durable run results and safe retries; no customer messaging, transfers, refunds, live charges or payments are initiated.",
+    "Synthetic provider pages and disposable PostgreSQL tests prove pagination, overlap, provider faults, concurrent repeats, posting categories, unknowns, permission/credential failures, yesterday cutoff and one-cent detection. CI/build/security/browser and checked real-world acceptance remain independent."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/books-posting-rules.test.ts",
+      "tests/books-nightly-route.test.ts",
+      "tests/owner-guide-coverage.test.ts"
+    ],
+    "db": [
+      "tests/books-stripe-sync-integration.test.ts",
+      "tests/books-poster-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "K-3",
+      "outcome": "Stripe balance evidence is imported and posted idempotently and its clearing difference is reviewable by owner.",
+      "acceptance": [
+        "A bounded Stripe Balance Transactions importer pages the provider's transaction history with a persisted cursor, three-day overlap, stable-id upserts and safe reruns; cursor never skips an incomplete page or failed import.",
+        "Source-backed, integer-cent transaction evidence is recorded with currency, dates, fee, net, reporting category, source and payout identity; wrong currency or unknown types never produce guessed journal entries.",
+        "The existing balanced source rules and K-2 poster book fees, Stripe service charges, disputes and payouts exactly once; Stripe charge, refund and payment rows do not duplicate their existing receipt/refund journals; replay/concurrency and absent opening evidence fail safely.",
+        "A cutoff-based clearing check compares the journal's clearing balance through the same yesterday-end Colorado timestamp with the verified owner's opening Stripe balance plus the net of imported transactions through that timestamp; an actual one-cent mismatch creates an owner-visible deduplicated exception; a later payment does not make yesterday look wrong. Missing/incomplete provider coverage is UNKNOWN, not a false match or mismatch.",
+        "The daily books-nightly automation runs after database backup, reconciles imported evidence, posts pending journals and checks clearing with bounded effort, checked CRON authentication, durable run results and safe retries; no customer messaging, transfers, refunds, live charges or payments are initiated.",
+        "Synthetic provider pages and disposable PostgreSQL tests prove pagination, overlap, provider faults, concurrent repeats, posting categories, unknowns, permission/credential failures, yesterday cutoff and one-cent detection. CI/build/security/browser and checked real-world acceptance remain independent."
+      ]
+    }
+  ]
+}

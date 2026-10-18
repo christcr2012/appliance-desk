@@ -14,5 +14,6 @@ export type SystemIssueInput =
   | { kind: "TELECOM_STATEMENT_DIFFERENCE"; scope: string; period: string }
   | { kind: "TELECOM_CONTACTS_UNRESOLVED"; threadCount: number; unlinkedMissedCalls: number }
   | { kind: "CONFIGURATION_MISSING"; ruleKey: string; missingVariableNames: string[] }
-  | { kind: "BOOKS_POSTING_FAILURE"; sourceType: string; sourceId: string };
+  | { kind: "BOOKS_POSTING_FAILURE"; sourceType: string; sourceId: string }
+  | { kind: "BOOKS_STRIPE_CLEARING_DIFFERENCE"; period: string; differenceCents: number };
 export type SystemIssueResolution = "SOURCE_SUCCEEDED" | "NO_STUCK_ITEMS" | "OWNER_REVIEWED";

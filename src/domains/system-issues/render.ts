@@ -131,6 +131,17 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       detail = "Source " + input.sourceType + " (" + input.sourceId + ") needs owner review of its financial evidence in Books. No journal was recorded for the failed event.";
       break;
     }
+    case "BOOKS_STRIPE_CLEARING_DIFFERENCE": {
+      if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(input.period) ||
+          !Number.isSafeInteger(input.differenceCents) || input.differenceCents === 0)
+        throw new Error("Invalid clearing evidence");
+      fingerprint = "books-stripe-clearing:" + input.period;
+      severity = "HIGH";
+      summary = "Stripe balance and the accounting journal do not match.";
+      detail = "At the end of " + input.period + " (Colorado), the clearing account differed by " +
+        Math.abs(input.differenceCents) + " cents. Review imported Stripe transactions and Books before closing.";
+      break;
+    }
     case "CONFIGURATION_MISSING": {
       id(input.ruleKey);
       const rule = AUTOMATION_RULES.find((item) => item.ruleKey === input.ruleKey);

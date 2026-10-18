@@ -1,6 +1,6 @@
 import { Prisma, type JournalSourceType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { recordSystemIssue } from "@/domains/system-issues";
+import { recordSystemIssue, resolveSystemIssue } from "@/domains/system-issues";
 import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { businessDateKey, businessDateFromKey } from "@/lib/business-date";
 import { accountIdForRole, ensureTaxLiabilityAccounts } from "./accounts";
@@ -176,6 +176,11 @@ Promise<{ events: Event[]; extra: Subject }> {
     case "STRIPE_BALANCE_TXN": {
       const x=await tx.stripeBalanceTransaction.findUnique({where:{id:sourceId}});
       if(!x)return {events:[],extra:{}};
+      if(x.currency.toLowerCase()!=="usd" || !Number.isSafeInteger(x.amountCents) ||
+        !Number.isSafeInteger(x.feeCents) || x.amountCents-x.feeCents!==x.netCents)
+        throw new PostingEvidenceError("Stripe financial evidence has inconsistent currency or amount.");
+      if(x.type==="adjustment"&&!["dispute","dispute_reversal"].includes(x.reportingCategory)&&x.amountCents!==0)
+        throw new PostingEvidenceError("Unclassified Stripe adjustment needs owner review before booking.");
       const events=stripeBalancePlans({type:x.type,reportingCategory:x.reportingCategory,
         date:x.createdAtStripe,amountCents:x.amountCents,feeCents:x.feeCents});
       const ordinary=new Set(["charge","payment","refund","payment_refund","transfer"]);
@@ -377,6 +382,8 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
         return after-before;
       },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:15000});
       posted+=result;
+      if (x.type === "STRIPE_BALANCE_TXN")
+        await resolveSystemIssue("books-post:STRIPE_BALANCE_TXN:" + x.id, "SOURCE_SUCCEEDED");
     } catch(e) {
       if(isUnique(e)||e instanceof Prisma.PrismaClientKnownRequestError&&e.code==="P2034")continue;
       problems.push({sourceType:x.type,sourceId:x.id,message:e instanceof Error?e.message:"Unrecognized books problem"});
