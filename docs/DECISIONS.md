@@ -1,5 +1,9 @@
 # Decisions log — current
 
+## 2026-10-17 — Paperwork is checked by a command, not by memory
+
+Weaker agents repeatedly failed CI on paperwork (scorecard, docs-updated, shard list, owner-decision map) rather than code. Decision: one resolved page (`docs/AGENT-QUICKSTART.md`), one local checker (`npm run bundle:preflight`) and one scaffold (`npm run bundle:new`); AGENTS.md states the precedence rule (later-dated owner amendment wins, safer rule at equal dates). The generated launch ledger is no longer an exact-match test because it would block unrelated PRs; it is a warning and a shape check.
+
 ## 2026-10-17 — W-26 engineering and activation remain separate
 
 Complete the original bilingual customer journey as one W-26 delivery. Source
@@ -1160,7 +1164,7 @@ tax-evidence model. Choices made here, within the approved designs:
 ## 2026-10-17 — F2-C/F2-D: dispositions in one file, guide structure, ledger rules
 - The design asked for one disposition file per batch, but the 91 old findings are keyed by pull-request thread, not by batch, so they live in one file, `docs/reviews/dispositions/reconciliation-2026-10-01.json`, with a test that every table row has exactly one record. A finding is closed only with openable evidence; 8 stay open and appear on the ledger.
 - The owner guide is organized per screen with three fixed parts (what it is for, change without code, what a failure looks like). The old dated change notes are archived, not deleted.
-- The launch ledger counts a line as PROVEN only when it is ticked and names a file, test, pull request or CI run; owner switches are always shown as decisions for Chris. A stale committed ledger fails a test.
+- The launch ledger counts a line as PROVEN only when it is ticked and names a file, test, pull request or CI run; owner switches are always shown as decisions for Chris. A stale committed ledger only produces a warning in `npm run bundle:preflight` (an exact-match test would block unrelated pull requests that edit the plan).
 - Rollback never touches the database; the one rehearsed step is reverting a merge commit; Instant Rollback is an owner dashboard step listed as open.
 
 ## 2026-10-17 — Appliance Desk MCP and private user feedback architecture

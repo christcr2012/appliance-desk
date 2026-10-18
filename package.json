@@ -36,7 +36,9 @@
     "pr:progress": "node scripts/pr-progress.mjs",
     "session:bundle": "node scripts/bundle-plan.mjs",
     "session:prepare": "node scripts/session-prepare.mjs",
-    "ledger": "node scripts/launch-ledger.mjs"
+    "ledger": "node scripts/launch-ledger.mjs",
+    "bundle:preflight": "node scripts/bundle-preflight.mjs",
+    "bundle:new": "node scripts/bundle-new.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
