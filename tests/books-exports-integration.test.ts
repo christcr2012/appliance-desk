@@ -97,6 +97,32 @@ describe.skipIf(!enabled)("K-5 immutable exports in disposable PostgreSQL",()=>{
   expect("batchId" in other).toBe(true);
   expect(await prisma.exportBatch.count({where:{createdByUserId:owner}})).toBe(2);
  });
+ it("honors target-specific payout exclusion without mutating prior exports",async()=>{
+  const payout=await prisma.journalEntry.create({data:{
+   sourceType:"STRIPE_BALANCE_TXN",sourceId:source+"-payout",eventKind:"STRIPE_PAYOUT",
+   periodKey:"2026-10",entryDate:date,memo:"Synthetic clearing transfer",
+   lines:{create:[{ledgerAccountId:bank,debitCents:100},{ledgerAccountId:income,creditCents:100}]},
+  }});
+  const old=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{exportPayoutLines:true}});
+  const input={...period,target:"QBO_JOURNAL_CSV" as const,mode:"DETAIL" as const,onlyNotYetExported:false};
+  try{
+   await prisma.businessSettings.update({where:{id:"singleton"},data:{exportPayoutLines:{"QBO_JOURNAL_CSV":false}}});
+   const skipped=await runExport(owner,input);
+   expect("batchId" in skipped).toBe(true);
+   const before=await prisma.exportBatch.findUniqueOrThrow({where:{id:(skipped as {batchId:string}).batchId}});
+   expect(before.content).not.toContain("Synthetic clearing transfer");
+   await prisma.businessSettings.update({where:{id:"singleton"},data:{exportPayoutLines:{"QBO_JOURNAL_CSV":true}}});
+   const included=await runExport(owner,input);
+   expect("batchId" in included).toBe(true);
+   const after=await prisma.exportBatch.findUniqueOrThrow({where:{id:(included as {batchId:string}).batchId}});
+   expect(after.content).toContain("Synthetic clearing transfer");
+   expect(after.contentSha256).not.toBe(before.contentSha256);
+  }finally{
+   await prisma.businessSettings.update({where:{id:"singleton"},data:{exportPayoutLines:old.exportPayoutLines as never}});
+   await prisma.journalLine.deleteMany({where:{entryId:payout.id}});
+   await prisma.journalEntry.delete({where:{id:payout.id}});
+  }
+ });
  it("leaves old bytes immutable when account mappings change",async()=>{
   const batch=await prisma.exportBatch.findFirstOrThrow({where:{createdByUserId:owner,target:"QBO_JOURNAL_CSV"}});
   await prisma.accountExportMapping.update({where:{ledgerAccountId_target:{
