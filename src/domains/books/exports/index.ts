@@ -103,10 +103,18 @@ export async function runExport(userId:string,input:ExportInput):Promise<{batchI
     if(missing.size)return {blocked:[...missing].sort().map(name=>"Map an active account for "+input.target+": "+name)};
     const content=formatBookExport(input.target,input.mode,entries);
     const hash=digest(content);
-    const old=await tx.exportBatch.findFirst({where:{
+    // Equal rendered daily-summary bytes do NOT imply equal underlying journals.
+    // Reuse an archive only when its exact journal-source set matches.
+    const candidateBatches=await tx.exportBatch.findMany({where:{
       target:input.target,mode:input.mode,periodFrom:interval.from,periodTo:interval.to,contentSha256:hash,
-    },orderBy:{createdAt:"desc"},select:{id:true,entryCount:true}});
-    if(old && old.entryCount===entries.length)return {batchId:old.id};
+    },orderBy:{createdAt:"desc"},take:100,select:{
+      id:true,entryCount:true,entries:{select:{journalEntryId:true}},
+    }});
+    const sourceIds=new Set(entries.map(entry=>entry.id));
+    const old=candidateBatches.find(batch=>batch.entryCount===sourceIds.size &&
+      batch.entries.length===sourceIds.size &&
+      batch.entries.every(link=>sourceIds.has(link.journalEntryId)));
+    if(old)return {batchId:old.id};
     const batch=await tx.exportBatch.create({data:{
       target:input.target,mode:input.mode,periodFrom:interval.from,periodTo:interval.to,
       fileName:safeFilename(input.target,input.mode,input.from,input.to),

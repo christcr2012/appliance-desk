@@ -29,6 +29,8 @@ describe("K-5 immutable provider CSV formatters",()=>{
   expect(text).toContain("2026/10/16");
   expect(text).toContain("1000,Tax Exempt,100.00");
   expect(text).toContain("4000,Tax Exempt,-100.00");
+  const blank=csv("XERO_JOURNAL_CSV","DETAIL",[{...base,lines:base.lines.map(l=>({...l,externalTaxRate:""}))}]);
+  expect(blank).toContain(",Tax Exempt,-100.00");
   expect(text).not.toContain("'-100.00");
  });
  it("writes generic entry, ISO date, mapped accounts and debit/credit columns",()=>{

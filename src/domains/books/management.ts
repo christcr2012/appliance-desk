@@ -84,7 +84,9 @@ export async function mapExportAccount(actor:BooksActor,input:{
 }) {
   allow(actor,"OWNER");
   const name=safeText(input.externalName,160);
-  if (input.externalTaxRate && input.target!=="XERO_JOURNAL_CSV")
+  const taxName=input.externalTaxRate?.trim()||"Tax Exempt";
+  if(taxName.length>120)throw new BooksInputError("Xero tax rate name is too long.");
+  if (input.externalTaxRate?.trim() && input.target!=="XERO_JOURNAL_CSV")
     throw new BooksInputError("Only Xero export mappings accept a tax rate.");
   return prisma.$transaction(async tx=>{
     const account=await tx.ledgerAccount.findUnique({where:{id:input.accountId}});
@@ -93,8 +95,8 @@ export async function mapExportAccount(actor:BooksActor,input:{
       ledgerAccountId:input.accountId,target:input.target}}});
     await tx.accountExportMapping.upsert({where:{ledgerAccountId_target:{ledgerAccountId:input.accountId,target:input.target}},
       create:{ledgerAccountId:input.accountId,target:input.target,externalName:name,
-        externalTaxRate:input.target==="XERO_JOURNAL_CSV" ? input.externalTaxRate??"Tax Exempt":null},
-      update:{externalName:name,externalTaxRate:input.target==="XERO_JOURNAL_CSV"?input.externalTaxRate??"Tax Exempt":null}});
+        externalTaxRate:input.target==="XERO_JOURNAL_CSV" ? taxName:null},
+      update:{externalName:name,externalTaxRate:input.target==="XERO_JOURNAL_CSV"?taxName:null}});
     await tx.auditLog.create({data:{userId:actor.id,action:"books.mapping.update",entityType:"LedgerAccount",
       entityId:input.accountId,oldValue:current?{name:current.externalName}:{},newValue:{target:input.target,name}}});
   });

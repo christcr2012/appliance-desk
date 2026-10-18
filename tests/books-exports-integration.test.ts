@@ -4,7 +4,7 @@ import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 
 const {postPending}=vi.hoisted(()=>({postPending:vi.fn(async()=>({posted:0,problems:[]}))}));
-vi.mock("@/domains/books/post",()=>({postPending:(args:unknown)=>postPending(args)}));
+vi.mock("@/domains/books/post",()=>({postPending:()=>postPending()}));
 import { runExport, getBookExportHistory, readBookExport } from "@/domains/books/exports";
 
 const db=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
@@ -119,6 +119,12 @@ describe.skipIf(!enabled)("K-5 immutable exports in disposable PostgreSQL",()=>{
    expect(after.contentSha256).not.toBe(before.contentSha256);
   }finally{
    await prisma.businessSettings.update({where:{id:"singleton"},data:{exportPayoutLines:old.exportPayoutLines as never}});
+   // Fixture archives are immutable in product logic, but disposable test
+   // cleanup must unlink each archived journal before deleting synthetic rows.
+   const linked=await prisma.exportBatchEntry.findMany({where:{journalEntryId:payout.id},select:{exportBatchId:true}});
+   const batchIds=linked.map(x=>x.exportBatchId);
+   await prisma.exportBatchEntry.deleteMany({where:{exportBatchId:{in:batchIds}}});
+   await prisma.exportBatch.deleteMany({where:{id:{in:batchIds}}});
    await prisma.journalLine.deleteMany({where:{entryId:payout.id}});
    await prisma.journalEntry.delete({where:{id:payout.id}});
   }

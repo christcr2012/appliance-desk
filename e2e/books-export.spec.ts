@@ -19,6 +19,7 @@ for(const width of [360,1280]) {
 test("Books links to its provider-mapped CSV export",async({page})=>{
  await page.goto("/desk/books");
  await expect(page.getByRole("link",{name:/Export to QuickBooks/})).toHaveAttribute("href","/desk/books/exports");
+ await expect(page.locator('select[name="target"] option[value="CASH_MOVEMENTS_CSV"]').first()).toHaveCount(1);
 });
 test("STAFF cannot see owner accounting exports",async({browser})=>{
  const context=await browser.newContext({storageState:"e2e/.auth/staff.json"});

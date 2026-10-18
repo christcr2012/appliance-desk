@@ -50,7 +50,7 @@ function decimal(cents: number): { toString(): string } {
 function detail(entries: ExportEntry[]): Flat[] {
   return entries.flatMap(e=>e.lines.filter(l=>l.debitCents||l.creditCents).map(l=>({
     date:iso(e), journalNo:"AD-"+e.entryNumber, account:l.externalName,
-    taxRate:l.externalTaxRate ?? "Tax Exempt",
+    taxRate:l.externalTaxRate?.trim() || "Tax Exempt",
     debit:l.debitCents, credit:l.creditCents, memo:e.memo,
     source:e.sourceType+":"+e.eventKind,
   })));
@@ -62,7 +62,7 @@ function daily(entries: ExportEntry[]): Flat[] {
     const prev=groups.get(key);
     const net=(prev?.net??0)+l.debitCents-l.creditCents;
     if (!Number.isSafeInteger(net)) throw new ExportIntegrityError("Daily summary exceeds safe cents.");
-    groups.set(key,{day,account:l.externalName,taxRate:l.externalTaxRate??"Tax Exempt",net});
+    groups.set(key,{day,account:l.externalName,taxRate:l.externalTaxRate?.trim() || "Tax Exempt",net});
   }
   const rows=[...groups.values()].filter(g=>g.net!==0)
     .sort((a,b)=>a.day.localeCompare(b.day)||a.account.localeCompare(b.account));
