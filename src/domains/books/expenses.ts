@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
-import { postForSource } from "./post";
+import { postForSource, writeJournal } from "./post";
 import { recordUseTaxForPurchase } from "@/domains/tax/use-tax";
 
 export class ExpenseInputError extends Error {}
@@ -108,16 +108,25 @@ export async function postExpense(userId: string, id: string, expectedVersion: n
       memo: expense.memo, applianceId: expense.applianceId, jobId: expense.jobId,
       purchaseOrderId: expense.purchaseOrderId, capitalizeToAppliance: expense.capitalizeToAppliance,
     });
+    let acquisitionCostAssigned = false;
     if (expense.capitalizeToAppliance && expense.applianceId) {
+      await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${expense.applianceId} FOR UPDATE`;
       const unit = await tx.appliance.findUniqueOrThrow({ where: { id: expense.applianceId } });
+      const existingContribution = await tx.journalEntry.findUnique({ where: { sourceType_sourceId_eventKind: {
+        sourceType: "APPLIANCE", sourceId: unit.id, eventKind: "APPLIANCE_CONTRIBUTED",
+      } }, select: { id: true } });
+      if (existingContribution)
+        throw new ExpenseInputError("An appliance contribution was already booked; owner must reconcile before capitalizing an expense.");
       if (unit.acquisitionCostCents !== null && unit.acquisitionCostCents !== expense.amountCents)
         throw new ExpenseInputError("Rental appliance already has a different purchase cost; owner review required.");
       const already = await tx.expense.count({ where: {
         applianceId: unit.id, capitalizeToAppliance: true, status: "POSTED", id: { not: id },
       } });
       if (already) throw new ExpenseInputError("Another posted expense already capitalized this appliance.");
-      if (unit.acquisitionCostCents === null)
+      if (unit.acquisitionCostCents === null) {
         await tx.appliance.update({ where: { id: unit.id }, data: { acquisitionCostCents: expense.amountCents } });
+        acquisitionCostAssigned = true;
+      }
     }
     await recordUseTaxForPurchase(tx, {
       sourceType: "EXPENSE", sourceId: id, purchasedOn: expense.spentOn,
@@ -128,7 +137,7 @@ export async function postExpense(userId: string, id: string, expectedVersion: n
       status: "POSTED", postedByUserId: userId, postedAt: new Date(), version: { increment: 1 },
     } });
     await postForSource(tx, "EXPENSE", id);
-    await audit(tx, userId, id, "books.expense.post", { version: expectedVersion, amountCents: expense.amountCents });
+    await audit(tx, userId, id, "books.expense.post", { version: expectedVersion, amountCents: expense.amountCents, acquisitionCostAssigned });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 25_000 });
 }
 export async function voidExpense(userId: string, id: string, expectedVersion: number, reason: string) {
@@ -152,9 +161,35 @@ export async function voidExpense(userId: string, id: string, expectedVersion: n
       sourceType: "EXPENSE", sourceId: id, purchasedOn: row.spentOn,
       amountCents: 0, vendorTaxCents: 0, isRentalInventory: row.capitalizeToAppliance,
     });
+    // A filed return already fails in recordUseTaxForPurchase. For an open period,
+    // cancel any previously accrued journal with a NEW immutable reversing event.
+    const taxRows = await tx.purchaseUseTax.findMany({ where: { sourceType: "EXPENSE", sourceId: id },
+      select: { id: true } });
+    for (const taxRow of taxRows) {
+      const priorTax = await tx.journalEntry.findUnique({ where: { sourceType_sourceId_eventKind: {
+        sourceType: "USE_TAX", sourceId: taxRow.id, eventKind: "USE_TAX_ACCRUED",
+      } }, include: { lines: { include: { ledgerAccount: { select: { systemRole: true } } } } } });
+      if (!priorTax) continue;
+      await writeJournal(tx, "USE_TAX", taxRow.id, "USE_TAX_VOIDED", {
+        entryDate: new Date(), memo: "Expense voided — accrued use tax reversed",
+        lines: priorTax.lines.map(line => ({
+          role: line.ledgerAccount.systemRole ?? "ID:" + line.ledgerAccountId,
+          debitCents: line.creditCents, creditCents: line.debitCents,
+        })),
+      });
+    }
     if (row.capitalizeToAppliance && row.applianceId) {
+      await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${row.applianceId} FOR UPDATE`;
       const unit = await tx.appliance.findUniqueOrThrow({ where: { id: row.applianceId } });
-      if (unit.acquisitionCostCents === row.amountCents)
+      const record = await tx.auditLog.findFirst({ where: {
+        entityType: "Expense", entityId: id, action: "books.expense.post",
+      }, orderBy: { createdAt: "desc" }, select: { newValue: true } });
+      const details = record?.newValue;
+      const costCreated = !!details && typeof details === "object" && !Array.isArray(details) &&
+        details.acquisitionCostAssigned === true;
+      // Never erase a pre-existing appliance purchase cost merely because it
+      // happens to equal the expense. Delete only the value this post created.
+      if (costCreated && unit.acquisitionCostCents === row.amountCents)
         await tx.appliance.update({ where: { id: unit.id }, data: { acquisitionCostCents: null } });
     }
     await audit(tx, userId, id, "books.expense.void", { version: expectedVersion, reason: why });
@@ -235,11 +270,11 @@ export async function saveRecurringExpense(userId: string, input: RecurringField
   });
 }
 export async function createDueRecurringExpenses(now = new Date()): Promise<number> {
-  const key = businessDateKey(now), month = key.slice(0, 7), day = Number(key.slice(-2));
+  const key = businessDateKey(now), month = key.slice(0, 7);
   const owner = await prisma.user.findFirst({ where: { role: "OWNER", archivedAt: null }, select: { id: true } });
   if (!owner) throw new ExpenseInputError("Cannot create recurring drafts without an active owner.");
   let count = 0;
-  const rows = await prisma.recurringExpense.findMany({ where: { active: true, dayOfMonth: { lte: day } },
+  const rows = await prisma.recurringExpense.findMany({ where: { active: true },
     orderBy: { id: "asc" }, take: 251 });
   if (rows.length > 250) throw new ExpenseInputError("More than 250 active templates are due; investigate before advancing the month.");
   for (const row of rows) {
@@ -247,20 +282,36 @@ export async function createDueRecurringExpenses(now = new Date()): Promise<numb
       await assertActiveTeamActor(tx, owner.id, ["OWNER"]);
       await tx.$queryRaw`SELECT "id" FROM "RecurringExpense" WHERE "id" = ${row.id} FOR UPDATE`;
       const current = await tx.recurringExpense.findUnique({ where: { id: row.id } });
-      if (!current?.active || current.dayOfMonth > day || (current.lastCreatedFor && current.lastCreatedFor >= month))
-        return false;
-      const date = businessDateFromKey(month + "-" + String(current.dayOfMonth).padStart(2, "0"))!;
-      await tx.expense.create({ data: {
-        status: "DRAFT", spentOn: date, amountCents: current.amountCents, vendorTaxCents: 0,
-        vendorName: current.vendorName, categoryId: current.categoryId,
-        paidFromAccountId: current.paidFromAccountId, submittedByUserId: owner.id,
-        recurringExpenseId: current.id, memo: "Recurring expense — confirm before posting",
-      } });
-      await tx.recurringExpense.update({ where: { id: row.id }, data: { lastCreatedFor: month } });
-      await audit(tx, owner.id, row.id, "books.recurring.draft", { month });
-      return true;
+      if (!current?.active) return 0;
+      const next = (value: string) => {
+        const [year, mon] = value.split("-").map(Number);
+        return new Date(Date.UTC(year, mon, 1)).toISOString().slice(0, 7);
+      };
+      let cursor = current.lastCreatedFor ? next(current.lastCreatedFor) : businessDateKey(current.createdAt).slice(0, 7);
+      let made = 0, latest: string | null = null;
+      // Bounded catch-up: do not discard drafts missed during an outage spanning
+      // one or more whole Colorado months. The checkpoint advances with the rows.
+      while (cursor <= month && made < 12) {
+        const dateKey = cursor + "-" + String(current.dayOfMonth).padStart(2, "0");
+        if (dateKey > key) break;
+        const date = businessDateFromKey(dateKey)!;
+        await tx.expense.create({ data: {
+          status: "DRAFT", spentOn: date, amountCents: current.amountCents, vendorTaxCents: 0,
+          vendorName: current.vendorName, categoryId: current.categoryId,
+          paidFromAccountId: current.paidFromAccountId, submittedByUserId: owner.id,
+          recurringExpenseId: current.id, memo: "Recurring expense — confirm before posting",
+        } });
+        latest = cursor;
+        cursor = next(cursor);
+        made++;
+      }
+      if (latest) {
+        await tx.recurringExpense.update({ where: { id: row.id }, data: { lastCreatedFor: latest } });
+        await audit(tx, owner.id, row.id, "books.recurring.draft", { month: latest, drafts: made });
+      }
+      return made;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    if (made) count++;
+    count += made;
   }
   return count;
 }
