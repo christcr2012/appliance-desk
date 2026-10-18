@@ -10,7 +10,7 @@
     "communications": 11,
     "accounting": 12
   },
-  "activeExecutionMustRemain": "F2-A",
+  "activeExecutionMustRemain": "F2-C",
   "entries": [
     {
       "id": "OD13-PRI-01",

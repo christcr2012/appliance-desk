@@ -1156,3 +1156,9 @@ tax-evidence model. Choices made here, within the approved designs:
 
 ## 2026-10-17 — Privacy deletion audit entry
 - **Owner approved** recording a separate audit-log entry when a privacy deletion is fulfilled (previously only the request row showed who and when). Ids and counts only, never personal data.
+
+## 2026-10-17 — F2-C/F2-D: dispositions in one file, guide structure, ledger rules
+- The design asked for one disposition file per batch, but the 91 old findings are keyed by pull-request thread, not by batch, so they live in one file, `docs/reviews/dispositions/reconciliation-2026-10-01.json`, with a test that every table row has exactly one record. A finding is closed only with openable evidence; 8 stay open and appear on the ledger.
+- The owner guide is organized per screen with three fixed parts (what it is for, change without code, what a failure looks like). The old dated change notes are archived, not deleted.
+- The launch ledger counts a line as PROVEN only when it is ticked and names a file, test, pull request or CI run; owner switches are always shown as decisions for Chris. A stale committed ledger fails a test.
+- Rollback never touches the database; the one rehearsed step is reverting a merge commit; Instant Rollback is an owner dashboard step listed as open.

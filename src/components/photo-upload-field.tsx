@@ -72,7 +72,9 @@ export function PhotoUploadField({
   }
 
   return (
-    <div className="inline-block">
+    // The real file input is visually hidden, so the keyboard focus ring is drawn around the whole control (the visible
+    // label) whenever the hidden input has keyboard focus.
+    <div className="inline-block rounded-md has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring">
       <label
         htmlFor={inputId}
         className={`inline-flex cursor-pointer items-center gap-2 rounded-md border border-line-strong px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-line-strong ${

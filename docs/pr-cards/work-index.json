@@ -621,7 +621,8 @@
         "e2e/owner-guide-screenshots.spec.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/F2-C.md"
+      "plannedCard": "docs/pr-cards/F2-C.md",
+      "card": "docs/pr-cards/F2-C.md"
     },
     {
       "id": "F2-D",
@@ -643,10 +644,12 @@
         "docs/AI-PR-READ-FIRST.md"
       ],
       "tests": [
+        "tests/review-dispositions.test.ts",
         "tests/launch-ledger.test.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/F2-D.md"
+      "plannedCard": "docs/pr-cards/F2-C.md",
+      "card": "docs/pr-cards/F2-C.md"
     },
     {
       "id": "K-1A",
@@ -3818,7 +3821,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "F2-A",
+  "activeExecution": "F2-C",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3919,6 +3922,10 @@
     {
       "id": "F2-A",
       "path": "docs/pr-cards/execution/F2-A.json"
+    },
+    {
+      "id": "F2-C",
+      "path": "docs/pr-cards/execution/F2-C.json"
     }
   ]
 }

@@ -335,12 +335,7 @@ section with a date.
   adds the nullable `Job.maintenanceRequestId` column) — same as every
   other migration in this project, Chris needs to run this SQL in
   Neon's console before or alongside deploying/merging.
-- **Photo attachments on a maintenance request itself** (the customer
-  attaching a photo of the problem when they submit it) — the schema
-  already supports it (`Photo.maintenanceRequestId`), just not wired
-  into the portal's submission form yet. Left out of this slice to keep
-  it shippable; add if Chris finds himself needing photos from
-  customers up front.
+- ~~**Photo attachments on a maintenance request itself**~~ — **done, 2026-09-28** (see the entry above: customer-portal maintenance-request photos use the same upload component; DECISIONS.md "Customer-submitted photos on maintenance requests").
 - **Email notification to Chris on a new maintenance request** — **done
   (2026-09-26)**, mirrors the lead-notification pattern from Phase 2:
   emails `MAINTENANCE_NOTIFICATION_EMAIL` (falling back to

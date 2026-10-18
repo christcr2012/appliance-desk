@@ -73,6 +73,10 @@ function reportDurations(group) {
 // Several specs call `test.skip(!fixtureExists, ...)` so they are harmless
 // outside CI. In CI the fixtures always exist, so a skip means the setup broke;
 // fail loudly instead of reporting a green run that tested less.
+// Specs that are skipped on purpose in CI because they only write files when asked (never a missing fixture).
+// owner-guide-screenshots.spec.ts retakes the owner guide pictures and runs only with OWNER_GUIDE_SHOTS=1.
+const INTENTIONALLY_SKIPPED = ["owner-guide-screenshots.spec.ts"];
+
 function checkNothingSkipped() {
   if (!existsSync(resultsFile)) {
     console.error("::error title=Skipped-test check::playwright-results.json was not written.");
@@ -82,6 +86,7 @@ function checkNothingSkipped() {
   const skipped = [];
   const walk = (suite) => {
     for (const spec of suite.specs ?? []) {
+      if (INTENTIONALLY_SKIPPED.includes(path.basename(spec.file ?? ""))) continue;
       for (const t of spec.tests ?? []) {
         if (t.status === "skipped") skipped.push(`${spec.file} > ${spec.title}`);
       }

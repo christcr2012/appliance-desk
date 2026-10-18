@@ -1,0 +1,548 @@
+[
+ {
+  "findingId": "pr1-r4112148766",
+  "status": "already-fixed",
+  "evidence": "tests/business-metadata.test.ts covers settings-backed titles.",
+  "pr": 1
+ },
+ {
+  "findingId": "pr1-r4112148769",
+  "status": "already-fixed",
+  "evidence": "src/domains/settings/index.ts updateAppliancePrice writes a PricingRule row (old and new value, who) plus an audit row in one transaction; tests/rental-packages-integration.test.ts reads PricingRule rows.",
+  "pr": 1
+ },
+ {
+  "findingId": "pr1-r4112148772",
+  "status": "fixed",
+  "evidence": "Verified/merged #121; CI 36861119917 (830 tests/134 browser checks) + Vercel; resolved",
+  "pr": 1
+ },
+ {
+  "findingId": "pr1-r4112148774",
+  "status": "already-fixed",
+  "evidence": "e2e/appliance-price-save-feedback.spec.ts covers error versus saved feedback on the price form.",
+  "pr": 1
+ },
+ {
+  "findingId": "pr1-r4112148776",
+  "status": "fixed",
+  "evidence": "Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved",
+  "pr": 1
+ },
+ {
+  "findingId": "pr2-r4112288147",
+  "status": "superseded",
+  "evidence": "Delivery follow-up is now the recorded message ledger with UNCERTAIN and MISSED states and a runbook: docs/runbooks/MESSAGE-DELIVERY.md; tests/scenarios/07-message-send-failure-reconcile.test.ts.",
+  "pr": 2
+ },
+ {
+  "findingId": "pr14-r4113000933",
+  "status": "already-fixed",
+  "evidence": "Verified existing two-customer real-Postgres portal/maintenance/invoice isolation; #120 CI 36858585089; resolved",
+  "pr": 14
+ },
+ {
+  "findingId": "pr14-r4113000937",
+  "status": "fixed",
+  "evidence": "Verified/merged #125; CI 36870323155 (860 tests/138 browser checks), exact 16 blobs/Vercel; prepaid protected, waiver reconciled to later one-time contract; resolved",
+  "pr": 125
+ },
+ {
+  "findingId": "pr14-r4113000939",
+  "status": "fixed",
+  "evidence": "Verified/merged #129; CI 36882411929 (878/138), eight real DB eligibility/submission cases, exact four blobs/main tree/Vercel; resolved",
+  "pr": 129
+ },
+ {
+  "findingId": "pr14-r4113000942",
+  "status": "fixed",
+  "evidence": "Verified/merged #129; CI 36882411929 (878/138), three actual server-page render cases, exact four blobs/main tree/Vercel; resolved",
+  "pr": 129
+ },
+ {
+  "findingId": "pr28-r4114120283",
+  "status": "already-fixed",
+  "evidence": "tests/business-metadata.test.ts.",
+  "pr": 28
+ },
+ {
+  "findingId": "pr29-r4116481229",
+  "status": "already-fixed",
+  "evidence": "docs/GO-LIVE-CHECKLIST.md section 2 lists the staff alert addresses as 'Not set' and unticked.",
+  "pr": 29
+ },
+ {
+  "findingId": "pr29-r4116481236",
+  "status": "already-fixed",
+  "evidence": "docs/GO-LIVE-CHECKLIST.md section 2 lists the Resend domain as 'Not live' and unticked.",
+  "pr": 29
+ },
+ {
+  "findingId": "pr30-r4116857380",
+  "status": "already-fixed",
+  "evidence": "e2e/security-response-headers.spec.ts covers the response headers including HSTS.",
+  "pr": 30
+ },
+ {
+  "findingId": "pr30-r4116857382",
+  "status": "already-fixed",
+  "evidence": "The dependency audit runs in CI; the advisory review was recorded in docs/DECISIONS.md.",
+  "pr": 30
+ },
+ {
+  "findingId": "pr30-r4116857387",
+  "status": "superseded",
+  "evidence": "HANDOFF.md was retired; docs/STATUS.md and docs/DECISIONS.md are the record.",
+  "pr": 30
+ },
+ {
+  "findingId": "pr31-r4117061551",
+  "status": "superseded",
+  "evidence": "HANDOFF.md was retired (docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md); docs/STATUS.md is the single current record.",
+  "pr": 31
+ },
+ {
+  "findingId": "pr32-r4117202521",
+  "status": "already-fixed",
+  "evidence": "Verified existing pending/settled/failed ACH real-Postgres regressions; #120 CI 36858585089; resolved",
+  "pr": 32
+ },
+ {
+  "findingId": "pr32-r4117202524",
+  "status": "already-fixed",
+  "evidence": "Verified existing failed-to-paid same-invoice real-Postgres recovery; #120 CI 36858585089; resolved",
+  "pr": 32
+ },
+ {
+  "findingId": "pr32-r4117202529",
+  "status": "fixed",
+  "evidence": "Verified/merged #125; CI 36870323155 (860 tests/138 browser checks), exact 16 blobs/Vercel; prepaid protected, waiver reconciled to later one-time contract; resolved",
+  "pr": 125
+ },
+ {
+  "findingId": "pr32-r4117202535",
+  "status": "fixed",
+  "evidence": "Verified/merged #125; CI 36870323155 (860 tests/138 browser checks), exact 16 blobs/Vercel; prepaid protected, waiver reconciled to later one-time contract; resolved",
+  "pr": 125
+ },
+ {
+  "findingId": "pr32-r4117202542",
+  "status": "already-fixed",
+  "evidence": "A customer resumes payment of an open bill from the portal 'Pay now' link (src/domains/portal/pay-now.ts); tests/scenarios/16-failed-charge-to-recovery.test.ts proves it, one payment only.",
+  "pr": 32
+ },
+ {
+  "findingId": "pr37-r4118009218",
+  "status": "already-fixed",
+  "evidence": "docs/ARCHITECTURE.md records the registered Stripe endpoint /api/webhooks/stripe as done 2026-09-27 (and the Resend and Twilio endpoints).",
+  "pr": 37
+ },
+ {
+  "findingId": "pr38-r4118039254",
+  "status": "superseded",
+  "evidence": "Local fixtures now run through npm run test:db, which builds its own disposable database and never reads an existing DATABASE_URL (docs/PLAYBOOK.md step 4b).",
+  "pr": 38
+ },
+ {
+  "findingId": "pr39-r4118271829",
+  "status": "already-fixed",
+  "evidence": "tests/status-labels.test.ts covers the status label functions for estimates, invoices, jobs, maintenance and agreements.",
+  "pr": 39
+ },
+ {
+  "findingId": "pr39-r4118271833",
+  "status": "open",
+  "evidence": "The desk shell was rebuilt since; no test checks that wide content cannot push the page sideways on a phone. Needs a narrow-width browser check.",
+  "pr": 39
+ },
+ {
+  "findingId": "pr52-r4119608648",
+  "status": "fixed",
+  "evidence": "Verified/merged #124; CI 36867157292 (854 tests/137 browser checks), all 15 blobs + Vercel; resolved",
+  "pr": 124
+ },
+ {
+  "findingId": "pr52-r4119608655",
+  "status": "already-fixed",
+  "evidence": "Every status writer uses the one audit action appliance.unit.status (src/domains/inventory/index.ts, guarded-status.ts, cleaning.ts, guided-actions.ts and src/domains/jobs/completion.ts); tests/scenarios/14-set-lifecycle.test.ts and 15 assert the status trail.",
+  "pr": 52
+ },
+ {
+  "findingId": "pr52-r4119608659",
+  "status": "already-fixed",
+  "evidence": "Pickup completion, cancellation and cleaning transitions write appliance.unit.status rows; tests/scenarios/15-ending-to-ready.test.ts asserts the chain for every ending path.",
+  "pr": 52
+ },
+ {
+  "findingId": "pr53-r4119719016",
+  "status": "fixed",
+  "evidence": "Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved",
+  "pr": 123
+ },
+ {
+  "findingId": "pr53-r4119719027",
+  "status": "fixed",
+  "evidence": "Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved",
+  "pr": 123
+ },
+ {
+  "findingId": "pr53-r4119719038",
+  "status": "fixed",
+  "evidence": "Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved",
+  "pr": 123
+ },
+ {
+  "findingId": "pr53-r4119719046",
+  "status": "fixed",
+  "evidence": "Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved",
+  "pr": 123
+ },
+ {
+  "findingId": "pr54-r4119814097",
+  "status": "superseded",
+  "evidence": "The builder now saves a draft checkpoint and says 'To use different terms, open a separate draft' (src/app/desk/agreements/new/rental-wizard.tsx); tests/rental-builder-recovery.test.tsx.",
+  "pr": 54
+ },
+ {
+  "findingId": "pr54-r4119814104",
+  "status": "already-fixed",
+  "evidence": "The server stores the discounted line price (calculatePrepayDiscountCentsPerMonth in src/domains/agreements/index.ts) and the review total sums stored line prices; tests/agreement-builder-actions.test.ts 'returns the stored discounted cents'.",
+  "pr": 54
+ },
+ {
+  "findingId": "pr54-r4119814111",
+  "status": "fixed",
+  "evidence": "Verified/merged #121; CI 36861119917 phone keyboard/axe/address persistence + Vercel; resolved",
+  "pr": 121
+ },
+ {
+  "findingId": "pr54-r4119814118",
+  "status": "fixed",
+  "evidence": "Verified/merged #119; CI 36858433312 + Vercel; automated review waived; resolved",
+  "pr": 119
+ },
+ {
+  "findingId": "pr55-r4119945202",
+  "status": "fixed",
+  "evidence": "Verified/merged #120; CI 36858585089 + Vercel; automated review waived; resolved",
+  "pr": 120
+ },
+ {
+  "findingId": "pr55-r4119945208",
+  "status": "fixed",
+  "evidence": "Verified/merged #122; CI 36862952621 real Postgres 60-job pagination + Vercel; resolved",
+  "pr": 122
+ },
+ {
+  "findingId": "pr55-r4119945212",
+  "status": "fixed",
+  "evidence": "Verified/merged #122; CI 36862952621 real action/UI + phone bulk/axe/persistence + Vercel; resolved",
+  "pr": 122
+ },
+ {
+  "findingId": "pr56-r4120027259",
+  "status": "open",
+  "evidence": "src/domains/reports/index.ts still adds all paid invoices less refunds as 'actual' earnings, which is not limited to recurring rent receipts. Needs a decision on what the report should compare.",
+  "pr": 56
+ },
+ {
+  "findingId": "pr56-r4120027266",
+  "status": "open",
+  "evidence": "Not re-verified against the current estimate calculation for calendar-month anniversary billing; needs a focused test.",
+  "pr": 56
+ },
+ {
+  "findingId": "pr57-r4123169719",
+  "status": "superseded",
+  "evidence": "Same as the earlier builder finding: the saved-draft checkpoint replaced going back to edit; tests/rental-builder-recovery.test.tsx.",
+  "pr": 57
+ },
+ {
+  "findingId": "pr57-r4123169721",
+  "status": "already-fixed",
+  "evidence": "Same fix as the earlier discount finding: tests/agreement-builder-actions.test.ts.",
+  "pr": 57
+ },
+ {
+  "findingId": "pr57-r4123169727",
+  "status": "open",
+  "evidence": "Same as the earlier earnings finding: actual earnings include more than rent while estimated earnings are rent only (src/domains/reports/earnings.ts).",
+  "pr": 57
+ },
+ {
+  "findingId": "pr57-r4123169735",
+  "status": "fixed",
+  "evidence": "Verified/merged #123; CI 36864737390 (842 tests/136 browser checks), all 14 blobs + Vercel; resolved",
+  "pr": 123
+ },
+ {
+  "findingId": "pr57-r4123169741",
+  "status": "fixed",
+  "evidence": "Verified/merged #120; CI 36858585089 + Vercel; automated review waived; resolved",
+  "pr": 120
+ },
+ {
+  "findingId": "pr57-r4123169747",
+  "status": "superseded",
+  "evidence": "The docs gate scripts/check-docs-updated.mjs now fails any PR that changes prisma/schema.prisma without docs/DATABASE.md.",
+  "pr": 57
+ },
+ {
+  "findingId": "pr58-r4123386805",
+  "status": "open",
+  "evidence": "Ordinary removal or replacement of a stored photo does not delete the stored file; only privacy deletion removes media (src/domains/backup/media-deletion.ts, tests/scenarios/08). Needs a decision and a clean-up job.",
+  "pr": 58
+ },
+ {
+  "findingId": "pr58-r4123386818",
+  "status": "open",
+  "evidence": "The upload route accepts HEIC and HEIF (src/app/api/uploads/photo/route.ts) but does not convert them, so some browsers cannot show them.",
+  "pr": 58
+ },
+ {
+  "findingId": "pr58-r4123386822",
+  "status": "fixed",
+  "evidence": "src/components/photo-upload-field.tsx now draws a focus ring around the whole upload control when the hidden file input has keyboard focus; tests/photo-upload-field.test.tsx (this PR).",
+  "pr": 494
+ },
+ {
+  "findingId": "pr58-r4123386834",
+  "status": "already-fixed",
+  "evidence": "src/app/desk/settings/appliance-pricing-table.tsx renders the upload failure in a role=\"alert\" region (photoMessage), and tests/photo-upload-field.test.tsx proves the component reports a failed upload to its caller.",
+  "pr": 58
+ },
+ {
+  "findingId": "pr59-r4123799792",
+  "status": "open",
+  "evidence": "Same as the earlier stored-file clean-up finding: replacing or removing a photo leaves the old stored file.",
+  "pr": 59
+ },
+ {
+  "findingId": "pr60-r4124170402",
+  "status": "superseded",
+  "evidence": "HANDOFF.md was retired; docs/STATUS.md is the current record.",
+  "pr": 60
+ },
+ {
+  "findingId": "pr60-r4124170420",
+  "status": "open",
+  "evidence": "Same as the earlier stored-file clean-up finding for customer-removed photos.",
+  "pr": 60
+ },
+ {
+  "findingId": "pr60-r4124170433",
+  "status": "already-fixed",
+  "evidence": "privatePhotoPathFromUrl in src/lib/photo-storage.ts accepts only https URLs on the store's own private host with no credentials or port; used by the photo routes and privacy deletion.",
+  "pr": 60
+ },
+ {
+  "findingId": "pr60-r4124170447",
+  "status": "fixed",
+  "evidence": "docs/ROADMAP.md: the contradictory 'not wired yet' maintenance-photo entry is struck through and points to the done entry (this PR).",
+  "pr": 494
+ },
+ {
+  "findingId": "pr61-r4124590917",
+  "status": "superseded",
+  "evidence": "docs/runbooks/RESTORE.md was rewritten for the real restore path with Neon branch verification; the restore is proved by tests/scenarios/09-restore-and-media-recovery.test.ts.",
+  "pr": 61
+ },
+ {
+  "findingId": "pr62-r4125549128",
+  "status": "already-fixed",
+  "evidence": "Verified existing #105 role guards/projections; current #123 CI real staff payload/route checks; resolved",
+  "pr": 62
+ },
+ {
+  "findingId": "pr62-r4125549136",
+  "status": "fixed",
+  "evidence": "Verified/merged #119; CI 36858433312 + Vercel; automated review waived; resolved",
+  "pr": 119
+ },
+ {
+  "findingId": "pr62-r4125549141",
+  "status": "fixed",
+  "evidence": "Verified/merged #124; CI 36867157292 (854 tests/137 browser checks), all 15 blobs + Vercel; resolved",
+  "pr": 124
+ },
+ {
+  "findingId": "pr62-r4125549150",
+  "status": "fixed",
+  "evidence": "Verified/merged #119; CI 36858433312 + Vercel; automated review waived; resolved",
+  "pr": 119
+ },
+ {
+  "findingId": "pr62-r4125549157",
+  "status": "fixed",
+  "evidence": "Verified/merged #124; CI 36867157292 (854 tests/137 browser checks), all 15 blobs + Vercel; resolved",
+  "pr": 124
+ },
+ {
+  "findingId": "pr62-r4125549168",
+  "status": "fixed",
+  "evidence": "Verified/merged #124; CI 36867157292 (854 tests/137 browser checks), all 15 blobs + Vercel; resolved",
+  "pr": 124
+ },
+ {
+  "findingId": "pr76-r4135862592",
+  "status": "superseded",
+  "evidence": "Replaced by the Evergreen Signature tokens: src/app/globals.css sets the heading weight (--text-h2--font-weight: 800) and V-1 to V-4 are merged.",
+  "pr": 76
+ },
+ {
+  "findingId": "pr76-r4135862605",
+  "status": "superseded",
+  "evidence": "docs/DESIGN-SYSTEM.md was rewritten for the Evergreen Signature system (V-1 to V-4).",
+  "pr": 76
+ },
+ {
+  "findingId": "pr78-r4136765429",
+  "status": "superseded",
+  "evidence": "No instruction to install the Neon command line globally remains in docs, scripts or package.json.",
+  "pr": 78
+ },
+ {
+  "findingId": "pr79-r4136879568",
+  "status": "fixed",
+  "evidence": "Verified/merged #120; CI 36858585089 + Vercel; automated review waived; resolved",
+  "pr": 120
+ },
+ {
+  "findingId": "pr79-r4136879577",
+  "status": "fixed",
+  "evidence": "Verified/merged #120; CI 36858585089 + Vercel; automated review waived; resolved",
+  "pr": 120
+ },
+ {
+  "findingId": "pr80-r4137359495",
+  "status": "fixed",
+  "evidence": "Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved",
+  "pr": 117
+ },
+ {
+  "findingId": "pr80-r4137359503",
+  "status": "already-fixed",
+  "evidence": "createLeadAction is OWNER and ADMIN only (src/app/desk/leads/actions.ts) and the new-lead form lives on that restricted page; role boundary stays at the action.",
+  "pr": 80
+ },
+ {
+  "findingId": "pr80-r4137359513",
+  "status": "already-fixed",
+  "evidence": "tests/lead-conversion-integration.test.ts and tests/scenarios/01-lead-to-recurring-billing.test.ts create and convert leads against a real database.",
+  "pr": 80
+ },
+ {
+  "findingId": "pr81-r4138431819",
+  "status": "already-fixed",
+  "evidence": "e2e/crm-workspace.spec.ts and the integrated scenarios cover the CRM flows with behavior tests.",
+  "pr": 81
+ },
+ {
+  "findingId": "pr81-r4138431829",
+  "status": "already-fixed",
+  "evidence": "Superseded by approved O09 team-shared visibility contract; current scope/role tests verified in #117 CI; resolved",
+  "pr": 81
+ },
+ {
+  "findingId": "pr81-r4138431837",
+  "status": "already-fixed",
+  "evidence": "Verified existing Denver date-key fix; business-date/task workspace tests in #117 CI 36854516416; resolved",
+  "pr": 81
+ },
+ {
+  "findingId": "pr81-r4138431842",
+  "status": "already-fixed",
+  "evidence": "Verified existing UTC calendar-date rendering; selected-day regression in #117 CI 36854516416; resolved",
+  "pr": 81
+ },
+ {
+  "findingId": "pr81-r4138431849",
+  "status": "already-fixed",
+  "evidence": "Verified existing Denver midnight/DST boundaries; date/query/browser coverage in #117 CI 36854516416; resolved",
+  "pr": 81
+ },
+ {
+  "findingId": "pr81-r4138431858",
+  "status": "fixed",
+  "evidence": "Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved",
+  "pr": 117
+ },
+ {
+  "findingId": "pr83-r4138909733",
+  "status": "fixed",
+  "evidence": "Verified/merged #118; CI 36854626321 + Vercel; automated review waived; resolved",
+  "pr": 118
+ },
+ {
+  "findingId": "pr83-r4138909741",
+  "status": "fixed",
+  "evidence": "Verified/merged #118; CI 36854626321 + Vercel; automated review waived; resolved",
+  "pr": 118
+ },
+ {
+  "findingId": "pr83-r4138909747",
+  "status": "fixed",
+  "evidence": "Verified/merged #118; CI 36854626321 + Vercel; automated review waived; resolved",
+  "pr": 118
+ },
+ {
+  "findingId": "pr83-r4138909752",
+  "status": "fixed",
+  "evidence": "Verified/merged #118; CI 36854626321 + Vercel; automated review waived; resolved",
+  "pr": 118
+ },
+ {
+  "findingId": "pr83-r4138909756",
+  "status": "superseded",
+  "evidence": "HANDOFF.md was retired; docs/STATUS.md is the current record.",
+  "pr": 83
+ },
+ {
+  "findingId": "pr86-r4143931482",
+  "status": "already-fixed",
+  "evidence": "src/lib/email.ts never sends in previews or without the owner's switch (NOT_ATTEMPTED), and previews use their own database; docs/GO-LIVE-CHECKLIST.md section 2.",
+  "pr": 86
+ },
+ {
+  "findingId": "pr98-r4147176159",
+  "status": "already-fixed",
+  "evidence": "prisma/migrations/20260928160000_require_email_verification adds the email-verification requirement and backfill.",
+  "pr": 98
+ },
+ {
+  "findingId": "pr102-r4149812016",
+  "status": "fixed",
+  "evidence": "Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved",
+  "pr": 117
+ },
+ {
+  "findingId": "pr102-r4149812022",
+  "status": "fixed",
+  "evidence": "Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved",
+  "pr": 117
+ },
+ {
+  "findingId": "pr102-r4149812032",
+  "status": "fixed",
+  "evidence": "Verified/merged #117; CI 36854516416 + Vercel; automated review waived; resolved",
+  "pr": 117
+ },
+ {
+  "findingId": "pr104-r4149971361",
+  "status": "already-fixed",
+  "evidence": "docs/brand/00_Start_Here/SHA256SUMS.txt checked with sha256sum -c: every listed file is present and matches (this PR).",
+  "pr": 104
+ },
+ {
+  "findingId": "pr104-r4149971370",
+  "status": "already-fixed",
+  "evidence": "docs/brand/01_Logos/mark/Robinson-mark-light.png exists and is not empty (no zero-size PNG under docs/brand).",
+  "pr": 104
+ },
+ {
+  "findingId": "pr104-r4149971375",
+  "status": "already-fixed",
+  "evidence": "docs/brand/README.md states that public/brand/logo-light.svg and logo-dark.svg are not yet synchronized and that update remains pending.",
+  "pr": 104
+ }
+]
