@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { postForSource } from "@/domains/books/post";
 import {
   createExpense, getExpenses, postExpense, voidExpense,
   attachExpenseReceipt, saveRecurringExpense, createDueRecurringExpenses,
@@ -62,6 +63,17 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
     } });
   });
   afterAll(async () => {
+    const taxIds = (await prisma.purchaseUseTax.findMany({ where: {
+      sourceType: "EXPENSE", sourceId: { in: expenseIds },
+    }, select: { id: true } })).map(x => x.id);
+    await prisma.journalLine.deleteMany({ where: { entry: {
+      sourceType: "USE_TAX", sourceId: { in: taxIds },
+    } } });
+    await prisma.journalEntry.deleteMany({ where: { sourceType: "USE_TAX", sourceId: { in: taxIds } } });
+    await prisma.journalLine.deleteMany({ where: { entry: {
+      sourceType: "APPLIANCE", sourceId: applianceId,
+    } } });
+    await prisma.journalEntry.deleteMany({ where: { sourceType: "APPLIANCE", sourceId: applianceId } });
     await prisma.journalLine.deleteMany({ where: { entry: {
       sourceType: "EXPENSE", sourceId: { in: expenseIds },
     } } });
@@ -121,7 +133,7 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
     }
   });
   it("posts once across concurrent owners, records use tax, and preserves balanced reversal", async () => {
-    const saved = await createExpense(staff, input(), "SUBMITTED"); expenseIds.push(saved.id);
+    const saved = await createExpense(staff, input({ vendorTaxCents: 100 }), "SUBMITTED"); expenseIds.push(saved.id);
     const results = await Promise.allSettled(Array.from({ length: 4 }, () => postExpense(owner, saved.id, 1)));
     expect(results.filter(x => x.status === "fulfilled")).toHaveLength(1);
     let row = await prisma.expense.findUniqueOrThrow({ where: { id: saved.id } });
@@ -129,7 +141,11 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
     const entries = await prisma.journalEntry.findMany({ where: { sourceType: "EXPENSE", sourceId: saved.id }, include: { lines: true } });
     expect(entries).toHaveLength(1);
     expect(entries[0]?.lines.reduce((n, x) => n + x.debitCents - x.creditCents, 0)).toBe(0);
-    expect(await prisma.purchaseUseTax.count({ where: { sourceType: "EXPENSE", sourceId: saved.id } })).toBe(1);
+    const dueRows = await prisma.purchaseUseTax.findMany({ where: { sourceType: "EXPENSE", sourceId: saved.id } });
+    expect(dueRows).toHaveLength(1);
+    expect(dueRows[0]!.useTaxDueCents).toBeGreaterThan(0);
+    await prisma.$transaction(tx => postForSource(tx, "USE_TAX", dueRows[0]!.id));
+    expect(await prisma.journalEntry.count({ where: { sourceType: "USE_TAX", sourceId: dueRows[0]!.id } })).toBe(1);
     await expect(voidExpense(staff, saved.id, row.version, "my attempt")).rejects.toThrow(/access/);
     await expect(voidExpense(owner, saved.id, row.version, "")).rejects.toThrow(/reason/);
     await voidExpense(owner, saved.id, row.version, "Wrong source expense");
@@ -138,7 +154,24 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
     const after = await prisma.journalEntry.findMany({ where: { sourceType: "EXPENSE", sourceId: saved.id }, include: { lines: true } });
     expect(after.map(x=>x.eventKind).sort()).toEqual(["EXPENSE_POSTED","EXPENSE_VOIDED"]);
     expect(after.flatMap(x=>x.lines).reduce((n,x)=>n+x.debitCents-x.creditCents,0)).toBe(0);
+    expect((await prisma.journalEntry.findMany({ where: {
+      sourceType: "USE_TAX", sourceId: dueRows[0]!.id,
+    } })).map(x => x.eventKind).sort()).toEqual(["USE_TAX_ACCRUED", "USE_TAX_VOIDED"]);
+    expect((await prisma.purchaseUseTax.findUniqueOrThrow({ where: { id: dueRows[0]!.id } })).useTaxDueCents).toBe(0);
     await expect(voidExpense(owner, saved.id, row.version, "double submit")).rejects.toThrow(/unchanged, posted/);
+  });
+  it("preserves a pre-existing appliance acquisition and refuses double contribution journals", async () => {
+    const matching = await createExpense(owner, input({ amountCents: 12000, applianceId, capitalizeToAppliance: true }), "DRAFT");
+    expenseIds.push(matching.id);
+    await postExpense(owner, matching.id, 1);
+    const posted = await prisma.expense.findUniqueOrThrow({ where: { id: matching.id } });
+    await voidExpense(owner, matching.id, posted.version, "Vendor receipt corrected");
+    expect((await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } })).acquisitionCostCents).toBe(12000);
+    await prisma.$transaction(tx => postForSource(tx, "APPLIANCE", applianceId));
+    const second = await createExpense(owner, input({ amountCents: 12000, applianceId, capitalizeToAppliance: true }), "DRAFT");
+    expenseIds.push(second.id);
+    await expect(postExpense(owner, second.id, 1)).rejects.toThrow(/contribution was already booked/);
+    expect((await prisma.expense.findUniqueOrThrow({ where: { id: second.id } })).status).toBe("DRAFT");
   });
   it("refuses forged/foreign private receipt attachment and keeps source scoped", async () => {
     const saved = await createExpense(staff, input(), "SUBMITTED"); expenseIds.push(saved.id);
@@ -155,12 +188,14 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
     expect(await prisma.expense.count({ where: { recurringExpenseId: templateId } })).toBe(1);
     expect((await prisma.expense.findFirstOrThrow({ where: { recurringExpenseId: templateId } })).status).toBe("DRAFT");
     expect(await createDueRecurringExpenses(new Date("2026-10-18T13:00:00Z"))).toBe(0);
+    expect(await createDueRecurringExpenses(new Date("2026-12-18T13:00:00Z"))).toBe(2);
+    expect(await prisma.expense.count({ where: { recurringExpenseId: templateId } })).toBe(3);
     const template = await prisma.recurringExpense.findUniqueOrThrow({ where: { id: templateId } });
-    expect(template.lastCreatedFor).toBe("2026-10");
+    expect(template.lastCreatedFor).toBe("2026-12");
     await saveRecurringExpense(owner, {
       name: template.name, vendorName: template.vendorName, amountCents: template.amountCents,
       categoryId, paidFromAccountId, dayOfMonth: template.dayOfMonth, active: false,
     }, template.id);
-    expect(await createDueRecurringExpenses(new Date("2026-11-18T13:00:00Z"))).toBe(0);
+    expect(await createDueRecurringExpenses(new Date("2027-01-18T13:00:00Z"))).toBe(0);
   });
 });
