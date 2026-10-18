@@ -23,5 +23,71 @@
       "anchor": "export",
       "purpose": "Existing export stays intact until the K-5 replacement."
     }
+  ],
+  "proposedFiles": [
+    "prisma/schema.prisma",
+    "prisma/migrations/20261018050000_batch_k_books/migration.sql",
+    "src/domains/books/system-chart.json",
+    "src/domains/books/accounts.ts",
+    "src/domains/books/posting-rules.ts",
+    "src/domains/backup/manifest.ts",
+    "tests/books-posting-rules.test.ts",
+    "tests/books-schema-integration.test.ts",
+    "docs/DATABASE.md"
+  ],
+  "invariants": [
+    "Integer cents and balanced journal lines only; no mutation of existing invoice or payment evidence.",
+    "No secrets, customer fixtures or production database writes.",
+    "All developer approval and payment activation restrictions remain in place.",
+    "Tax payable roles may not become general income; K-6 disposition is fail-closed.",
+    "New accounting tables are included in backup and schema health."
+  ],
+  "sequence": [
+    "Additive schema and migration with system account/category/tax seeds",
+    "Role map and tax account synchronization",
+    "Pure posting events and deferred asset disposition refusal",
+    "Unit and throwaway Postgres concurrency tests",
+    "Backup/restore, schema health and docs",
+    "Typecheck, preflight, exact head CI and review"
+  ],
+  "acceptance": [
+    "Add exactly the approved additive Batch K books schema, settings and check constraints without rewriting historical billing records.",
+    "Seed the complete immutable system-role chart and expense categories with stable keys, safe reruns and filing-account mapping, with no duplicate financial accounts.",
+    "Prove populated-schema upgrade, original rows intact, role and tenant boundaries, schema health and disposable backup/restore coverage.",
+    "Provide a fail-closed account-role resolver and approved InvoiceLineItemKind mapping, preserving negative/contra and tax filing account distinctions.",
+    "Implement pure balanced journal posting plans for all source events in Batch K section 3.2, including reversals, refunds, deposits, credits, Stripe, expenses, assets, depreciation and tax events.",
+    "Every rule uses integer cents, bounded source snapshots, Colorado accounting dates, and null or explicit refusal for ineligible/incomplete source events; prove balanced and idempotent planning in tests."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/books-posting-rules.test.ts"
+    ],
+    "db": [
+      "tests/books-schema-integration.test.ts",
+      "tests/backup-restore-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "K-1A",
+      "outcome": "K-1A",
+      "acceptance": [
+        "Add exactly the approved additive Batch K books schema, settings and check constraints without rewriting historical billing records.",
+        "Seed the complete immutable system-role chart and expense categories with stable keys, safe reruns and filing-account mapping, with no duplicate financial accounts.",
+        "Prove populated-schema upgrade, original rows intact, role and tenant boundaries, schema health and disposable backup/restore coverage."
+      ]
+    },
+    {
+      "id": "K-1B",
+      "outcome": "K-1B",
+      "acceptance": [
+        "Provide a fail-closed account-role resolver and approved InvoiceLineItemKind mapping, preserving negative/contra and tax filing account distinctions.",
+        "Implement pure balanced journal posting plans for all source events in Batch K section 3.2, including reversals, refunds, deposits, credits, Stripe, expenses, assets, depreciation and tax events.",
+        "Every rule uses integer cents, bounded source snapshots, Colorado accounting dates, and null or explicit refusal for ineligible/incomplete source events; prove balanced and idempotent planning in tests."
+      ]
+    }
   ]
 }

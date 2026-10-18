@@ -1181,3 +1181,7 @@ sanitized cases; report text cannot authorize actions or leak into public PRs.
 Eleven original planned subsections have finite criteria; active F2 work is untouched.
 No runtime, spending, schedule, credential, production write or release authorized
 by this design change. Existing approval/review/CI/release rules remain binding.
+
+## 2026-10-17 — Map later invoice fee types in K-1B without treating state charges as revenue
+
+The approved K design predates ADMIN_SETUP_FEE and RETAIL_DELIVERY_FEE. The administrative setup fee maps to OTHER_INCOME for books while retaining its separate ADMINISTRATIVE_SETUP tax classification. State retail delivery fees collected from customers map to a dedicated RETAIL_DELIVERY_FEE_PAYABLE liability, not income or sales tax. The K-1A migration seeds that role. No taxability determination, revenue figure, Stripe production action or CPA approval is implied. Retirement/disposition rules with unresolved K-6 balances refuse instead of inventing a sale gain/loss.

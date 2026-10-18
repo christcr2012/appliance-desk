@@ -59,3 +59,10 @@ Journal poster, books period/owner screens (K-2A/K-2B); Stripe sync (K-3); expen
 }
 ```
 <!-- bundle-plan:end -->
+
+## Delivery evidence (after frozen plan)
+- Schema and migration: `prisma/schema.prisma`; `prisma/migrations/20261018050000_batch_k_books/migration.sql`. System roles and categories: `src/domains/books/system-chart.json`.
+- Role mapping, new tax liability synchronization and pure source postings: `src/domains/books/accounts.ts` and `posting-rules.ts`.
+- Evidence: `tests/books-posting-rules.test.ts` (9 passed), `tests/books-schema-integration.test.ts` (disposable PostgreSQL, duplicate transaction safety), the schema-health/backup and restore checks (passed locally).
+- No live financial posting and no provider keys; future K-2A ties source records into a transactional journal. Asset retirement/disposition remains fail-closed until K-6 confirms loss/proceeds mapping, not an invented account.
+- Exact-head PR CI, review and owner/provider activation: NOT VERIFIED yet.
