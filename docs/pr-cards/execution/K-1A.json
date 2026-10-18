@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "K-1A",
+  "parent": "K-1A",
+  "baseline": "ef16a14bfb2d4fab1b65a77c7153460124e1214f",
+  "card": "docs/pr-cards/K-1A.md",
+  "outcome": "Foundation for reproducible double-entry books: stable accounts, safe schema, and balanced posting plans from real money events.",
+  "risk": "Schema must be additive, all journal lines balanced, and historical source references protected; no live provider calls.",
+  "next": "Implement approved schema and role seed first, then pure posting plans, focused unit and disposable DB/restore tests.",
+  "references": [
+    {
+      "path": "prisma/schema.prisma",
+      "anchor": "model BusinessSettings {",
+      "purpose": "Add effective book settings with legacy-safe defaults."
+    },
+    {
+      "path": "docs/designs/BATCH-K.md",
+      "anchor": "## 2. Schema changes",
+      "purpose": "Exact approved data and money contract."
+    },
+    {
+      "path": "src/domains/reports/accounting-export.ts",
+      "anchor": "export",
+      "purpose": "Existing export stays intact until the K-5 replacement."
+    }
+  ]
+}
