@@ -1,3 +1,7 @@
+## October 18 — K-4 PR #500 first CI corrections (exact-head rerun required)
+
+Initial CI on `2a2453b`: secret scan, release policy and all four browser/axe shards PASS, unit shard 1 PASS. Type/lint/repo job failed one lint `prefer-const` in the new finance test; test shard 3 found the older W-8 More expected route/name lists stale; shard 2 found `/desk/expenses` missing from accessibility route inventory and an important real financial bug: an expense could be marked POSTED before owner books initialization while K-2 source poster properly declined to create a journal. All are fixed in one correction: owner opening-book date is required **before** expense post, VOID refuses if the original posting journal is missing, a disposable-Postgres regression proves no status/journal changes with uninitialized books, the tax fixture initializes and restores the test book date, the new route and More labels are counted, and lint is corrected. This is **not** a green-head claim. Independent review and exact-head rerun remain required. No LIVE money, customer message, provider call or production write.
+
 ## October 18 — K-4A/K-4B frozen-plan engineering in progress
 
 K-3 PR #499 completed **all exact-head CI and review** and merged as `7ee4d2de5d40e2c78d8a7bf84ebf0096fa714dd7`. Historical entries below recorded earlier pending checkpoints, not its current state. Live production still held older revision `b171510` at last checked release; real Stripe/accounting acceptance remains pending.

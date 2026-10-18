@@ -99,6 +99,9 @@ export async function postExpense(userId: string, id: string, expectedVersion: n
     const expense = await tx.expense.findUnique({ where: { id } });
     if (!expense || expense.version !== expectedVersion || !["DRAFT", "SUBMITTED"].includes(expense.status))
       throw new ExpenseInputError("Expense changed or is already posted; refresh the list.");
+    const books = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { booksStartDate: true } });
+    if (!books?.booksStartDate || expense.spentOn < books.booksStartDate)
+      throw new ExpenseInputError("Initialize books through the owner before approving this expense's journal.");
     await validateReferences(tx, {
       spentOn: expense.spentOn, amountCents: expense.amountCents, vendorTaxCents: expense.vendorTaxCents,
       vendorName: expense.vendorName, categoryId: expense.categoryId, paidFromAccountId: expense.paidFromAccountId,
@@ -136,6 +139,10 @@ export async function voidExpense(userId: string, id: string, expectedVersion: n
     const row = await tx.expense.findUnique({ where: { id } });
     if (!row || row.version !== expectedVersion || row.status !== "POSTED")
       throw new ExpenseInputError("Only an unchanged, posted expense can be voided.");
+    const original = await tx.journalEntry.findUnique({ where: { sourceType_sourceId_eventKind: {
+      sourceType: "EXPENSE", sourceId: id, eventKind: "EXPENSE_POSTED",
+    } }, select: { id: true } });
+    if (!original) throw new ExpenseInputError("The original expense journal is missing; reversal requires review.");
     await tx.expense.update({ where: { id }, data: {
       status: "VOID", voidReason: why, voidedAt: new Date(), voidedByUserId: userId,
       version: { increment: 1 },

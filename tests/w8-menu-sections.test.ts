@@ -75,10 +75,10 @@ describe("W-8 simpler menu", () => {
 
   it("More lists the rarely used screens by role, and never the developer-only storage check", () => {
     expect(deskMoreLinks("OWNER").map((link) => link.label)).toEqual(
-      ["Suppliers", "Growth signals", "Launch list", "System health", "Website", "Privacy requests", "Activity"]);
+      ["Expenses", "Suppliers", "Growth signals", "Launch list", "System health", "Website", "Privacy requests", "Activity"]);
     expect(deskMoreLinks("ADMIN").map((link) => link.label)).toEqual(
-      ["Suppliers", "Growth signals", "Launch list", "System health", "Website", "Activity"]);
-    expect(deskMoreLinks("STAFF").map((link) => link.label)).toEqual(["Activity"]);
+      ["Expenses", "Suppliers", "Growth signals", "Launch list", "System health", "Website", "Activity"]);
+    expect(deskMoreLinks("STAFF").map((link) => link.label)).toEqual(["Expenses", "Activity"]);
     expect(deskMoreLinks("CUSTOMER")).toEqual([]);
     const everything = JSON.stringify([deskNavigation("OWNER"), deskMoreLinks("OWNER"), DESK_SECTIONS]);
     expect(everything).not.toMatch(/preview-storage/);

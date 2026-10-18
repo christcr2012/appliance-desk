@@ -15,7 +15,9 @@ const owner = "k4-owner-" + tag, staff = "k4-staff-" + tag, other = "k4-other-" 
 const account = "k4-use-account-" + tag, juris = "k4-use-jur-" + tag, location = "k4-loc-" + tag;
 const fixtureDate = "2026-10-17";
 let categoryId = "", paidFromAccountId = "", savedElection = "UNDECIDED";
-let applianceId = "", templateId = "", expenseIds: string[] = [], currentLocations: string[] = [];
+let savedBooksStart: Date | null = null;
+let applianceId = "", templateId = "", currentLocations: string[] = [];
+const expenseIds: string[] = [];
 const input = (over: Record<string, unknown> = {}) => ({
   date: fixtureDate, amountCents: 10500, vendorTaxCents: 500,
   vendorName: "Synthetic hardware vendor", categoryId, paidFromAccountId,
@@ -31,11 +33,13 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
     const category = await prisma.expenseCategory.findFirstOrThrow({ where: { active: true } });
     const paid = await prisma.ledgerAccount.findUniqueOrThrow({ where: { systemRole: "BANK" } });
     categoryId = category.id; paidFromAccountId = paid.id;
-    savedElection = (await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).shortTermLeaseElection;
+    const oldSettings = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    savedElection = oldSettings.shortTermLeaseElection;
+    savedBooksStart = oldSettings.booksStartDate;
     currentLocations = (await prisma.addressTaxLocation.findMany({
       where: { forBusinessLocation: true, isCurrent: true }, select: { id: true },
     })).map(x => x.id);
-    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { shortTermLeaseElection: "PAY_ON_ACQUISITION" } });
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { shortTermLeaseElection: "PAY_ON_ACQUISITION", booksStartDate: new Date("2026-01-01T07:00:00.000Z") } });
     await prisma.addressTaxLocation.updateMany({ where: { id: { in: currentLocations } }, data: { isCurrent: false } });
     await prisma.taxFilingAccount.create({ data: { id: account, name: "K4 synthetic use tax", kind: "USE_TAX_RETURN", basis: "ACCRUAL" } });
     await prisma.taxJurisdiction.create({ data: {
@@ -80,7 +84,7 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
     await prisma.taxFilingAccount.deleteMany({ where: { id: account } });
     await prisma.addressTaxLocation.updateMany({ where: { id: { in: currentLocations } }, data: { isCurrent: true } });
     await prisma.businessSettings.update({ where: { id: "singleton" },
-      data: { shortTermLeaseElection: savedElection as "PAY_ON_ACQUISITION" | "COLLECT_ON_RENTALS" | "UNDECIDED" } });
+      data: { shortTermLeaseElection: savedElection as "PAY_ON_ACQUISITION" | "COLLECT_ON_RENTALS" | "UNDECIDED", booksStartDate: savedBooksStart } });
     await prisma.user.deleteMany({ where: { id: { in: [owner, staff, other] } } });
   });
   it("enforces owned staff submission, role separation and cents/category validation", async () => {
@@ -103,6 +107,18 @@ describe.skipIf(!enabled)("K-4A/B expenses on disposable PostgreSQL", () => {
     await expect(postExpense(owner, created.id, 1)).rejects.toThrow(/different purchase cost/);
     expect((await prisma.expense.findUniqueOrThrow({ where: { id: created.id } })).status).toBe("DRAFT");
     expect(await prisma.journalEntry.count({ where: { sourceId: created.id } })).toBe(0);
+  });
+  it("refuses approval before owner initialization without recording a payment or journal", async () => {
+    const draft = await createExpense(owner, input(), "DRAFT"); expenseIds.push(draft.id);
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { booksStartDate: null } });
+    try {
+      await expect(postExpense(owner, draft.id, 1)).rejects.toThrow(/Initialize books/);
+      expect((await prisma.expense.findUniqueOrThrow({ where: { id: draft.id } })).status).toBe("DRAFT");
+      expect(await prisma.journalEntry.count({ where: { sourceId: draft.id } })).toBe(0);
+    } finally {
+      await prisma.businessSettings.update({ where: { id: "singleton" },
+        data: { booksStartDate: new Date("2026-01-01T07:00:00.000Z") } });
+    }
   });
   it("posts once across concurrent owners, records use tax, and preserves balanced reversal", async () => {
     const saved = await createExpense(staff, input(), "SUBMITTED"); expenseIds.push(saved.id);
