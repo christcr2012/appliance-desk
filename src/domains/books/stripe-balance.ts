@@ -1,5 +1,4 @@
 import type Stripe from "stripe";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";

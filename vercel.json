@@ -37,6 +37,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/cron/books-nightly",
+      "schedule": "40 9 * * *"
+    },
+    {
       "path": "/api/cron/estimate-follow-ups",
       "schedule": "0 16 * * *"
     },
