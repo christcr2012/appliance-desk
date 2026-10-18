@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "id": "K-2A",
+  "parent": "K-2A",
+  "baseline": "b17151021f03a58be62fa58870b107d80c40cf1d",
+  "card": "docs/pr-cards/K-2A.md",
+  "outcome": "Usable, permission-gated owner accounting books: backfill and inspect balanced journal entries, configure start/accounts, and safely close months.",
+  "risk": "Financial source evidence and closed periods must never be distorted; owner-only destructive settings.",
+  "next": "Implement poster, source adapters, permission-guarded owner Books screen and transactional tests.",
+  "references": [
+    {
+      "path": "src/domains/books/posting-rules.ts",
+      "anchor": "export function balancedPlan",
+      "purpose": "Reuse pure balanced source rules."
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "anchor": "model JournalEntry {",
+      "purpose": "Existing immutable per-event journal schema."
+    },
+    {
+      "path": "docs/designs/BATCH-K.md",
+      "anchor": "### 3.3 Poster",
+      "purpose": "Approved posting and closed-month algorithm."
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/books/post.ts",
+    "src/domains/books/management.ts",
+    "src/app/desk/books/page.tsx",
+    "src/app/desk/books/actions.ts",
+    "tests/books-poster-integration.test.ts",
+    "tests/books-management-integration.test.ts"
+  ],
+  "invariants": [
+    "Do not change original billing evidence",
+    "One journal per unique event, atomically balanced",
+    "Owner-only setup/closure; no raw customer finance to staff",
+    "No live payments/provider writes"
+  ],
+  "sequence": [
+    "Source adapters and journal writer",
+    "Closed-period and role guards",
+    "Owner start/account/journal browser UI",
+    "Real DB race and role tests",
+    "Browser and full CI proof"
+  ],
+  "acceptance": [
+    "Owner-initialized books start date gates all posting; sources stay unchanged and nonfinancial states are skipped or reported as problems.",
+    "Journal poster processes pending eligible historical invoice, receipt, payment, credit, refund, deposit, expense, use-tax, Stripe and opening evidence in bounded chronological transactions, each with stable source/event idempotency keys and account-resolved balanced integer-cent lines.",
+    "Concurrent/repeated posting is single-effect; failed or incomplete source is reported and never silently marked posted, with no partial entries.",
+    "Closed accounting months never mutate: historical events land in first open month with original business date and late-entry memo; closure/reopening requires authorized owner and audit evidence.",
+    "OWNER can set the accounting start date and initial bank/card/Stripe balances once, with a checked entry and revision-safe saves; ADMIN can inspect and post but not silently reset the starting figures.",
+    "OWNER can rename accounts, configure export mappings and create approved expense/payment accounts without changing system-role/type or deleting used accounts; STAFF and CUSTOMER cannot inspect company books.",
+    "OWNER/ADMIN Books screen offers bounded journal browser, date filters, source/late-entry labels, account balances, owner month closure and reopen-with-reason, and a guarded Bring the books up to date command; navigation and responsive/keyboard checks apply."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/books-posting-rules.test.ts"
+    ],
+    "db": [
+      "tests/books-poster-integration.test.ts",
+      "tests/books-management-integration.test.ts"
+    ],
+    "browser": [],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "K-2A",
+      "outcome": "K-2A",
+      "acceptance": [
+        "Owner-initialized books start date gates all posting; sources stay unchanged and nonfinancial states are skipped or reported as problems.",
+        "Journal poster processes pending eligible historical invoice, receipt, payment, credit, refund, deposit, expense, use-tax, Stripe and opening evidence in bounded chronological transactions, each with stable source/event idempotency keys and account-resolved balanced integer-cent lines.",
+        "Concurrent/repeated posting is single-effect; failed or incomplete source is reported and never silently marked posted, with no partial entries.",
+        "Closed accounting months never mutate: historical events land in first open month with original business date and late-entry memo; closure/reopening requires authorized owner and audit evidence."
+      ]
+    },
+    {
+      "id": "K-2B",
+      "outcome": "K-2B",
+      "acceptance": [
+        "OWNER can set the accounting start date and initial bank/card/Stripe balances once, with a checked entry and revision-safe saves; ADMIN can inspect and post but not silently reset the starting figures.",
+        "OWNER can rename accounts, configure export mappings and create approved expense/payment accounts without changing system-role/type or deleting used accounts; STAFF and CUSTOMER cannot inspect company books.",
+        "OWNER/ADMIN Books screen offers bounded journal browser, date filters, source/late-entry labels, account balances, owner month closure and reopen-with-reason, and a guarded Bring the books up to date command; navigation and responsive/keyboard checks apply."
+      ]
+    }
+  ]
+}
