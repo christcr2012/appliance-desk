@@ -22,6 +22,7 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
   const notice=params.notice?.slice(0,200);
   return <div className="space-y-6">
     <header className="space-y-2">
+      <Link className="underline" href="/desk/expenses">Expenses and receipts</Link>
       <h1 className="text-2xl font-bold">Books and journal</h1>
       <p className="text-muted-foreground">Account balances and source-backed double-entry records. No payment is sent from this screen.</p>
       {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}

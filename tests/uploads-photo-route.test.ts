@@ -11,12 +11,14 @@ const handleUpload = vi.fn();
 const customer = vi.fn();
 const job = vi.fn();
 const appliance = vi.fn();
+const expense = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     customer: { findFirst: (...args: unknown[]) => customer(...args) },
     job: { findUnique: (...args: unknown[]) => job(...args) },
     appliance: { findFirst: (...args: unknown[]) => appliance(...args) },
+    expense: { findUnique: (...args: unknown[]) => expense(...args) },
   },
 }));
 
@@ -62,6 +64,7 @@ describe("POST /api/uploads/photo", () => {
     customer.mockReset().mockResolvedValue({ id: "customer-1" });
     job.mockReset().mockResolvedValue({ id: "job-1" });
     appliance.mockReset().mockResolvedValue({ id: "appliance-1" });
+    expense.mockReset().mockResolvedValue({ id: "expense-1", submittedByUserId: "staff-1", status: "SUBMITTED" });
 
     delete process.env.VERCEL;
     delete process.env.VERCEL_ENV;
@@ -112,6 +115,21 @@ describe("POST /api/uploads/photo", () => {
     successfulProviderResponse();
     expect((await POST(uploadRequest(pathname))).status).toBe(200);
     expect(handleUpload).toHaveBeenCalledWith(expect.objectContaining({ token }));
+  });
+
+  it("allows the submitting staff member but denies another staff/customer expense photo token", async () => {
+    successfulProviderResponse();
+    getServerSession.mockResolvedValue({ user: { id: "staff-1", role: "STAFF" } });
+    expect((await POST(uploadRequest("expenses/expense-1/receipt.png"))).status).toBe(200);
+    expect(handleUpload).toHaveBeenCalledWith(expect.objectContaining({ token: PRIVATE_TOKEN }));
+    expect(expense).toHaveBeenCalledWith({ where: { id: "expense-1" },
+      select: { submittedByUserId: true, status: true } });
+    handleUpload.mockClear();
+    getServerSession.mockResolvedValue({ user: { id: "other-staff", role: "STAFF" } });
+    expect((await POST(uploadRequest("expenses/expense-1/receipt.png"))).status).toBe(403);
+    getServerSession.mockResolvedValue({ user: { id: "customer", role: "CUSTOMER" } });
+    expect((await POST(uploadRequest("expenses/expense-1/receipt.png"))).status).toBe(403);
+    expect(handleUpload).not.toHaveBeenCalled();
   });
 
   it("allows only an OWNER to upload a private tax-exemption certificate for an existing customer", async () => {

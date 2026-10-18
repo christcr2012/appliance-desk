@@ -1,31 +1,44 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-3",
+  "parent": "K-4A",
   "completedSlices": [
     {
-      "id": "K-3",
+      "id": "K-4A",
       "acceptanceEvidence": [
-        "Source: src/domains/books/stripe-balance.ts paginates 100 at a time, overlaps 3 days and advances IntegrationCursor only on full traversal; real DB replay regression authored in tests/books-stripe-sync-integration.test.ts, CI unverified.",
-        "Source: decodeTransaction checks USD and exact amount minus fee equals net; upsert persists provider identity, times and cents; foreign/malformed provider regression authored in tests/books-stripe-sync-integration.test.ts, CI unverified.",
-        "Source: src/domains/books/post.ts refuses suspect Stripe types and reuses stripeBalancePlans and unique event journals; concurrent fee, payout, dispute and refund replay regressions authored, CI unverified.",
-        "Source: checkStripeClearing uses businessDayBounds for yesterday, owner opening JournalEntry, imported net and journal clearing; typed one-cent issue and day-after-cutoff regressions authored, CI unverified.",
-        "Source: /api/cron/books-nightly authenticated and owner-gated; vercel.json 09:40 UTC schedule after 09:00 backup; runAutomation retains run outcomes, no Stripe money methods; guard regression authored, CI unverified.",
-        "Regression files tests/books-stripe-sync-integration.test.ts and tests/books-nightly-route.test.ts written; K-2 posting and owner-guide tests retained, new test serialized in vitest.config.mts. Disposable PostgreSQL and exact-head CI run remain outstanding."
+        "Code: checked expense cents, seller tax, references and active submitter roles in src/domains/books/expenses.ts; real-Postgres regression authored, CI pending.",
+        "Code: live-role Serializable lock, original source journal and immutable version guard in postExpense; parallel Postgres regression authored, CI pending.",
+        "Code: void requires reason and version and uses exact K-2 reversal under same transaction; use-tax filed controls reused; PostgreSQL regression authored, CI pending.",
+        "Code: appliance purchase amount cannot conflict and recordUseTaxForPurchase retains local verified-rate/filed-period rules; invalid-acquisition regression authored, CI pending.",
+        "Code: private expenses/id scoped Blob token, stored Photo association and owner/staff-source check in photo reads; upload route regression authored, CI pending.",
+        "Auth/finance PostgreSQL tests written in tests/books-expenses-integration.test.ts and upload boundary tests; browser tests registered; exact-head CI pending."
+      ]
+    },
+    {
+      "id": "K-4B",
+      "acceptanceEvidence": [
+        "Source: /desk/expenses role-gated, scoped getExpenses query and staff own submitted expense forms; OWNER/ADMIN show reviews, CI pending.",
+        "UI: responsive labeled form, private receipt uploader, post and void buttons with revision version, server actions and per-item notices; Playwright axe authored, CI pending.",
+        "Source: recurring templates validate day 1–28, support create/edit/pause and owner-only controls; independent cron uses review-only drafts.",
+        "Source: per-template FOR UPDATE plus lastCreatedFor; bounded 250 due templates, retries safe and durable runAutomation; PostgreSQL regression authored, CI pending.",
+        "Docs: Owner Guide, DATABASE, STORAGE, STATUS, decisions and active packet describe implemented behavior and pending owner activation; route appears under More and Books.",
+        "Source/tests include expense concurrency, ownership and recurrence regression, Blob token mock, staff/owner Playwright page and axe; exact-head CI not yet verified."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Exact-head typecheck, disposable PostgreSQL finance/regression suites, owner-guide, browser and security CI are pending; source is not certified until these gates pass.",
-    "Owner has not enabled BOOKS_STRIPE_SYNC_ENABLED nor attested real production Stripe clearing, books start, accountant signoff or provider balance history.",
-    "K-2A/B source merged but remains behind live until checked daily release; no real-provider acceptance or production data modification performed."
+    "All engineering verification remains pending: exact-head CI, serial real PostgreSQL, browser/a11y and independent review; do not count complete before proof.",
+    "Real private Blob upload/readback and real owner tax setup are separate release/provider acceptance.",
+    "K-3 source is merged but production live revision remains behind main until approved daily promotion."
   ],
-  "workloadException": "K-3 is one whole substantial Stripe provider integration with bounded importer, journal reconciliation, owner issue, cron and Postgres tests; K-4A/B involves private receipt/photo provider and must not be bundled across that boundary.",
+  "workloadException": "Two whole approved connected K-4A/K-4B expense subsections are bundled together; this matches the 2–5 subsection intent without combining money-out or third-party provider activation.",
   "evidence": [
-    "Frozen full K-3 acceptance plan committed at 335cc521c6c0d4bde42933d2c55234b974ff1887 before implementation.",
-    "Provider/importer and SQL typed issue integration plus guarded scheduled job authored in same branch; no production or live-money operation.",
-    "Tests authored for pagination failure, cursor overlap, invalid money, previous-day gap, fee categories, concurrency and disabled cron; not yet executed or represented as passed.",
-    "First exact-head PR #499 CI: type/lint/repo, secret, release policy, two unit shards and four browser shards passed; shard 3 failed one new test because an earlier Stripe fixture remained unposted before cutoff (1097/1098 passed). Corrected fixture date, added successful-replay issue resolution, made every unknown nightly clearing state fail closed; new exact-head CI pending."
+    "Pre-code frozen acceptance plan committed at 0b2ce3aa8209aeb6f519065cd83ea30a78885e99; original full scope retained.",
+    "Source, screen, private Blob verification, independently guarded draft cron and disposable DB/browser tests authored; CI and independent review not yet verified.",
+    "No production data or customer messaging/provider money calls, no live Stripe activation, no paid infrastructure.",
+    "Initial PR #500 exact-head CI: all four browser/a11y shards, secret, policy and shard 1 green; others found route inventories, test lint and missing books-init posting guard. Corrected all in one branch patch; exact-head rerun and independent review still required.",
+    "First independent PR #500 review reported five P1 issues in tax reversal, existing asset contribution/cost and missed recurring month handling; source corrections and finance PostgreSQL regressions added together. Exact-head CI after this patch still pending.",
+    "PR #500 correction head cf50e5f passed all 3 unit/DB shards and all 4 browser/accessibility shards, while the type/lint/repo check failed only shared-cents input format guidance at two page fields; corrected both using moneyInputValue, final exact-head CI required. Capacity baselines failed (non-gating)."
   ]
 }

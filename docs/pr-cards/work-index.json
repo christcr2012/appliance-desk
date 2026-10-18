@@ -767,7 +767,7 @@
       "dependencies": [
         "K-2B"
       ],
-      "status": "IN_PROGRESS",
+      "status": "IMPLEMENTED",
       "migration": "books_stripe_clearing_issue",
       "budget": 470,
       "units": [
@@ -784,7 +784,7 @@
       "tests": [
         "tests/books-stripe-sync-integration.test.ts"
       ],
-      "readiness": "ENGINEERING_IN_PROGRESS",
+      "readiness": "ENGINEERING_MERGED_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-3.md",
       "card": "docs/pr-cards/K-3.md"
     },
@@ -795,7 +795,7 @@
       "dependencies": [
         "K-3"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "batch_k_expense_photo_scope_if_needed",
       "budget": 470,
       "units": [
@@ -803,16 +803,20 @@
       ],
       "evidence": [
         "docs/designs/BATCH-K.md",
-        "prisma/schema.prisma",
-        "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts",
-        "docs/designs/BATCH-K-CASH.md"
+        "src/domains/books/expenses.ts",
+        "src/domains/books/post.ts",
+        "src/lib/photo-storage.ts",
+        "src/domains/uploads/index.ts",
+        "src/app/desk/expenses/page.tsx"
       ],
       "tests": [
-        "tests/books-expenses-integration.test.ts"
+        "tests/books-expenses-integration.test.ts",
+        "tests/uploads-photo-route.test.ts",
+        "e2e/books-expenses.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-4A.md"
+      "readiness": "ENGINEERING_IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/K-4A.md",
+      "card": "docs/pr-cards/K-4A.md"
     },
     {
       "id": "K-4B",
@@ -821,7 +825,7 @@
       "dependencies": [
         "K-4A"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "batch_k_recurring_expense_identity",
       "budget": 450,
       "units": [
@@ -829,17 +833,20 @@
       ],
       "evidence": [
         "docs/designs/BATCH-K.md",
-        "prisma/schema.prisma",
-        "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts",
-        "docs/designs/BATCH-K-CASH.md"
+        "src/domains/books/expenses.ts",
+        "src/domains/books/post.ts",
+        "src/lib/photo-storage.ts",
+        "src/domains/uploads/index.ts",
+        "src/app/desk/expenses/page.tsx"
       ],
       "tests": [
-        "tests/books-recurring.test.ts",
+        "tests/books-expenses-integration.test.ts",
+        "tests/uploads-photo-route.test.ts",
         "e2e/books-expenses.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-4B.md"
+      "readiness": "ENGINEERING_IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/K-4B.md",
+      "card": "docs/pr-cards/K-4B.md"
     },
     {
       "id": "K-5",
@@ -3827,7 +3834,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-3",
+  "activeExecution": "K-4A",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3944,6 +3951,10 @@
     {
       "id": "K-3",
       "path": "docs/pr-cards/execution/K-3.json"
+    },
+    {
+      "id": "K-4A",
+      "path": "docs/pr-cards/execution/K-4A.json"
     }
   ]
 }

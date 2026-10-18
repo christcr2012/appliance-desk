@@ -5,7 +5,7 @@ Appliance Desk uses separate storage roles. Treat every credential and pathname 
 ## What lives where
 
 1. `BLOB_READ_WRITE_TOKEN` selects the existing Vercel Blob store used by the application. Database backups are written under `backups/` with private access; F1-b pairs each database backup with `<backup-url>.media.json`.
-2. Operational/customer photos use the separately verified **private photo store** selected by `PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN` + `PRIVATE_PHOTO_BLOB_STORE_ID`. The code refuses a mismatched token/store ID.
+2. Expense receipts under `expenses/<expense-id>/` are stored privately with server-validated expense permissions: only the submitting STAFF user and OWNER/ADMIN may read an attached receipt. The existing private media manifest and recovery obligations cover referenced Photo records. Operational/customer photos use the separately verified **private photo store** selected by `PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN` + `PRIVATE_PHOTO_BLOB_STORE_ID`. The code refuses a mismatched token/store ID.
 3. Private-photo recovery copies stay in that same private store at `recovery/YYYY-MM/<sha256>/<source-path>`. Privacy-deletion tombstones live under `recovery/tombstones/`.
 4. Preview uses its own verified preview private store and must never fall back to production storage.
 

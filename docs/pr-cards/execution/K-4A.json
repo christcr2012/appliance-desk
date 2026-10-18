@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "id": "K-4A",
+  "parent": "K-4A",
+  "baseline": "7ee4d2de5d40e2c78d8a7bf84ebf0096fa714dd7",
+  "card": "docs/pr-cards/K-4A.md",
+  "outcome": "Owners and staff record and review expenses privately; accounting posts and voids exactly once and templates create review-only monthly drafts.",
+  "risk": "Permissioned finance, tax and private-storage boundaries are transactionally scoped; scheduled drafts never initiate provider payment.",
+  "next": "Finish full tests, CI, review, PR #500; then K-5 accounting exports.",
+  "references": [
+    {
+      "path": "src/domains/books/post.ts",
+      "anchor": "export async function postForSource",
+      "purpose": "Reuses transactionally balanced K-2 postings."
+    },
+    {
+      "path": "src/domains/tax/use-tax.ts",
+      "anchor": "export async function recordUseTaxForPurchase",
+      "purpose": "Reuse certified purchase tax calculations and filed period controls."
+    },
+    {
+      "path": "src/lib/photo-storage.ts",
+      "anchor": "export function getPrivatePhotoStore",
+      "purpose": "Refuse mismatched or public storage."
+    },
+    {
+      "path": "src/domains/uploads/index.ts",
+      "anchor": "export async function canUploadPhoto",
+      "purpose": "Server-authorized ID-scoped upload tokens."
+    },
+    {
+      "path": "src/lib/team-actor.ts",
+      "anchor": "export async function assertActiveTeamActor",
+      "purpose": "Role deactivation locking."
+    },
+    {
+      "path": "docs/designs/BATCH-K.md",
+      "anchor": "### 3.5 Expenses",
+      "purpose": "Approved expense domain, mobile and recurring design."
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/books/expenses.ts",
+    "src/app/desk/expenses/page.tsx",
+    "src/app/desk/expenses/actions.ts",
+    "src/app/desk/expenses/receipt-upload.tsx",
+    "src/app/api/cron/expense-drafts/route.ts",
+    "tests/books-expenses-integration.test.ts",
+    "e2e/books-expenses.spec.ts"
+  ],
+  "invariants": [
+    "No Stripe or provider money operations from expense actions",
+    "STAFF and CUSTOMER cannot post or read foreign receipts",
+    "Every journal has balanced unique source identity",
+    "Private uploaded evidence is neither public nor deletable by status change",
+    "Recurring drafts never auto-post",
+    "No use-tax filed-month mutation without reviewed amendment"
+  ],
+  "sequence": [
+    "Validate identity, money and foreign references",
+    "Post/void under one real DB transaction",
+    "Add exact-path private receipt upload/read authorization",
+    "Build mobile staff and owner expenses workspace",
+    "Create idempotent recurring drafts and separate guarded cron",
+    "Prove real Postgres privacy/permissions/double-submit and mobile accessibility"
+  ],
+  "acceptance": [
+    "All expense mutations validate USD integer cents, dates, seller tax ≤ amount, vendor/category/payment source and optional appliance/job/purchase references. STAFF can submit own expense; OWNER/ADMIN may create POSTED or DRAFT. No Stripe/provider money moves.",
+    "Posting requires live OWNER/ADMIN identity checked transactionally, a row lock and matching expected version; double submits and concurrent/replayed post calls yield exactly one immutable balanced journal. POSTED cannot be edited or deleted.",
+    "Voiding requires live OWNER/ADMIN, matching expected version and a non-empty reason; it preserves original Expense and audit trail, creates one balanced reversal via K-2, never deletes media or overwrites closed months.",
+    "Capitalized acquisition sets appliance acquisitionCostCents only if empty or identical; conflicting cost fails closed without partial journal. Eligible expense purchases integrate the existing use-tax service and preserve filed-period rules.",
+    "Private receipt attachment uses verified existing private photo Blob store, new expense-only path and a verified source-owned Photo. Upload token mint, attachment, readback and unauthorized photo IDs fail closed for strangers/other STAFF/CUSTOMER, without public URL leakage or production fixture data.",
+    "Real PostgreSQL integration regressions cover status and role boundaries, money cent validation, wrong-category/paid-from, concurrent/double post, void/reversal, acquisition conflict, use tax behavior, receipt ownership and recovery. Focused browser/CI tests remain independently required.",
+    "OWNER/ADMIN see a phone-first Expenses workspace within Books and can filter DRAFT/SUBMITTED/POSTED/VOID; STAFF see and submit only their own expense records with no journal, balances or other staff expenses; CUSTOMER cannot access.",
+    "Accessible responsive form presents date, amount, vendor, category, paid-from and optional memo/receipt/record links; clear role-specific Save draft / Submit / Post / Void and error feedback, without client-only authorization.",
+    "OWNER/ADMIN can create, edit/deactivate and inspect recurring expense templates with safe day 1–28; a bounded daily scheduler creates at most one DRAFT per enabled template and Colorado month, never auto-posts or sends money.",
+    "Recurring creation is idempotent under parallel runs, survives partial failure, does not mutate prior drafts, and records durable run/checkpoint evidence; disabled templates do nothing. It is independently scheduled without activating Stripe sync.",
+    "Owner Guide, sidebar/route inventory, operational status/roadmap and database notes explain submitted versus posted, private receipt access, recurring drafts, and outstanding owner/real-world acceptance accurately.",
+    "Disposable PostgreSQL concurrency/permission tests, unit forms and route/browser/accessibility checks prove privacy, save/post/void actions, recurrence and no duplicate billing. Exact-head CI and review must pass before merge; private storage provider acceptance is separate."
+  ],
+  "slices": [
+    {
+      "id": "K-4A",
+      "outcome": "Complete lifecycle and private receipts",
+      "acceptance": [
+        "All expense mutations validate USD integer cents, dates, seller tax ≤ amount, vendor/category/payment source and optional appliance/job/purchase references. STAFF can submit own expense; OWNER/ADMIN may create POSTED or DRAFT. No Stripe/provider money moves.",
+        "Posting requires live OWNER/ADMIN identity checked transactionally, a row lock and matching expected version; double submits and concurrent/replayed post calls yield exactly one immutable balanced journal. POSTED cannot be edited or deleted.",
+        "Voiding requires live OWNER/ADMIN, matching expected version and a non-empty reason; it preserves original Expense and audit trail, creates one balanced reversal via K-2, never deletes media or overwrites closed months.",
+        "Capitalized acquisition sets appliance acquisitionCostCents only if empty or identical; conflicting cost fails closed without partial journal. Eligible expense purchases integrate the existing use-tax service and preserve filed-period rules.",
+        "Private receipt attachment uses verified existing private photo Blob store, new expense-only path and a verified source-owned Photo. Upload token mint, attachment, readback and unauthorized photo IDs fail closed for strangers/other STAFF/CUSTOMER, without public URL leakage or production fixture data.",
+        "Real PostgreSQL integration regressions cover status and role boundaries, money cent validation, wrong-category/paid-from, concurrent/double post, void/reversal, acquisition conflict, use tax behavior, receipt ownership and recovery. Focused browser/CI tests remain independently required."
+      ]
+    },
+    {
+      "id": "K-4B",
+      "outcome": "Complete mobile and recurring drafts",
+      "acceptance": [
+        "OWNER/ADMIN see a phone-first Expenses workspace within Books and can filter DRAFT/SUBMITTED/POSTED/VOID; STAFF see and submit only their own expense records with no journal, balances or other staff expenses; CUSTOMER cannot access.",
+        "Accessible responsive form presents date, amount, vendor, category, paid-from and optional memo/receipt/record links; clear role-specific Save draft / Submit / Post / Void and error feedback, without client-only authorization.",
+        "OWNER/ADMIN can create, edit/deactivate and inspect recurring expense templates with safe day 1–28; a bounded daily scheduler creates at most one DRAFT per enabled template and Colorado month, never auto-posts or sends money.",
+        "Recurring creation is idempotent under parallel runs, survives partial failure, does not mutate prior drafts, and records durable run/checkpoint evidence; disabled templates do nothing. It is independently scheduled without activating Stripe sync.",
+        "Owner Guide, sidebar/route inventory, operational status/roadmap and database notes explain submitted versus posted, private receipt access, recurring drafts, and outstanding owner/real-world acceptance accurately.",
+        "Disposable PostgreSQL concurrency/permission tests, unit forms and route/browser/accessibility checks prove privacy, save/post/void actions, recurrence and no duplicate billing. Exact-head CI and review must pass before merge; private storage provider acceptance is separate."
+      ]
+    }
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/uploads-photo-route.test.ts",
+      "tests/desk-navigation.test.ts",
+      "tests/owner-guide-coverage.test.ts"
+    ],
+    "db": [
+      "tests/books-expenses-integration.test.ts",
+      "tests/books-poster-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/books-expenses.spec.ts"
+    ],
+    "node": []
+  }
+}
