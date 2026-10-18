@@ -1,3 +1,7 @@
+## October 18 — PR #498 CI correction
+
+First exact-head CI found owner guide route omission and inadequate contrast on the newly added Books buttons; both were corrected without weakening tests. An existing scenario-10 schedule-save browser assertion also failed, alongside stream closure errors, despite no schedule code changes in the K bundle. Its next exact-head rerun is required; do not claim browser CI green or the PR merged until proven.
+
 ## October 18 — K-2A + K-2B journal and owner Books (review branch, CI pending)
 
 Baseline merged main b171510; no open PR at session start. Planning-only commit 6e7b761, frozen full K-2A/K-2B criteria. Implemented bounded chronological financial backfill using source/event uniqueness, balanced journals, Colorado month placement, month advisory locks, a one-time owner-attested opening balance and owner-only month closing/reopening with an audit trail. Added OWNER/ADMIN Books screen with journal browser, balances, account mapping, review CSV and manual posting; STAFF/CUSTOMER are denied. Incomplete source evidence gives a sanitized deduplicated system-issue card without a partial journal. Added K-2 migration extending the SystemIssue known-kind check; old rows untouched.

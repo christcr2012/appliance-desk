@@ -10,7 +10,7 @@ import {
 
 export const metadata={title:"Books — Accounting"};
 const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
-const button="rounded border border-border bg-primary px-3 py-2 text-primary-foreground font-medium hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2";
+const button="rounded border border-border bg-card px-3 py-2 text-foreground font-medium hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2";
 export default async function BooksPage({searchParams}:{searchParams:Promise<{month?:string;page?:string;notice?:string}>}) {
   const session=await requireRole("OWNER","ADMIN");
   const params=await searchParams;

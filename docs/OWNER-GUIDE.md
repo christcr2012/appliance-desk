@@ -29,6 +29,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Purchases | `/desk/purchases` | Recording appliances you bought |
 | Money (billing) | `/desk/billing` | Invoices, deposits, held payments, statements |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
+| Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
 | Reports | `/desk/reports` | Earnings, repairs, lead sources, accounting CSV |
 | Fleet | `/desk/fleet` | Which machines earn or cost the most |
 | Growth | `/desk/growth` | Customers and leads worth a call |
