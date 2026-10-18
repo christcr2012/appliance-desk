@@ -39,7 +39,6 @@ const groups = [
     links: [
       ["billing", "Money", "finance"],
       ["sales-tax", "Taxes", "finance"],
-      ["expenses", "Expenses"],
     ],
   },
   {
@@ -57,12 +56,13 @@ export const DESK_NAV_ALIASES: Record<string, string[]> = {
   "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders"],
   "/desk/billing": ["/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
   "/desk/more": [
-    "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity",
+    "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity",
   ],
 };
 
 export type DeskMoreLink = { href: string; label: string; detail: string };
 const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined]> = [
+  ["expenses", "Expenses", "Submit costs, attach receipts or approve recurring drafts.", undefined],
   ["suppliers", "Suppliers", "Who you buy appliances and parts from.", "finance"],
   ["growth", "Growth signals", "Early signs of where demand is heading.", "finance"],
   ["launch", "Launch list", "What is left before you open to real customers.", "finance"],
