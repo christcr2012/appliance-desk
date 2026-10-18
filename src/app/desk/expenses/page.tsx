@@ -96,6 +96,22 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       </form>
       <ul className="space-y-3">{data.templates.map(t => <li key={t.id} className="border-t border-border pt-2">
         <p>{t.name} — {formatMoney(t.amountCents)} on day {t.dayOfMonth} · {t.active ? "Active" : "Paused"} · last draft {t.lastCreatedFor || "none"}</p>
+        <details className="space-y-2">
+          <summary className="cursor-pointer underline">Edit recurring template</summary>
+          <form action={saveRecurringAction} className="grid gap-2 sm:grid-cols-2 mt-2">
+            <input type="hidden" name="id" value={t.id}/>
+            <label>Template name<input className={field} name="name" defaultValue={t.name} required/></label>
+            <label>Vendor<input className={field} name="vendor" defaultValue={t.vendorName} required/></label>
+            <label>Monthly amount ($)<input className={field} name="amount" defaultValue={(t.amountCents/100).toFixed(2)} required/></label>
+            <label>Day of month<input className={field} name="day" type="number" min={1} max={28} defaultValue={t.dayOfMonth} required/></label>
+            <label>Category<select name="categoryId" className={field} defaultValue={t.categoryId} required>
+              {data.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+            <label>Paid from<select name="paidFromAccountId" className={field} defaultValue={t.paidFromAccountId} required>
+              {data.payments.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+            <label><input name="active" type="checkbox" defaultChecked={t.active}/>Active</label>
+            <button className={button}>Save recurring changes</button>
+          </form>
+        </details>
         <form action={saveRecurringAction} className="flex gap-2 items-end flex-wrap">
           <input type="hidden" name="id" value={t.id}/><input type="hidden" name="name" value={t.name}/>
           <input type="hidden" name="vendor" value={t.vendorName}/><input type="hidden" name="amount" value={(t.amountCents/100).toFixed(2)}/>

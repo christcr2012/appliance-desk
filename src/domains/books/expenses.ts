@@ -230,10 +230,11 @@ export async function saveRecurringExpense(userId: string, input: RecurringField
 export async function createDueRecurringExpenses(now = new Date()): Promise<number> {
   const key = businessDateKey(now), month = key.slice(0, 7), day = Number(key.slice(-2));
   const owner = await prisma.user.findFirst({ where: { role: "OWNER", archivedAt: null }, select: { id: true } });
-  if (!owner) return 0;
+  if (!owner) throw new ExpenseInputError("Cannot create recurring drafts without an active owner.");
   let count = 0;
   const rows = await prisma.recurringExpense.findMany({ where: { active: true, dayOfMonth: { lte: day } },
-    orderBy: { id: "asc" }, take: 250 });
+    orderBy: { id: "asc" }, take: 251 });
+  if (rows.length > 250) throw new ExpenseInputError("More than 250 active templates are due; investigate before advancing the month.");
   for (const row of rows) {
     const made = await prisma.$transaction(async tx => {
       await assertActiveTeamActor(tx, owner.id, ["OWNER"]);

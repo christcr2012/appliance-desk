@@ -30,6 +30,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Money (billing) | `/desk/billing` | Invoices, deposits, held payments, statements |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
+| Expenses | `/desk/expenses` | Submit your own expense or approve, reverse and review private receipts |
 | Reports | `/desk/reports` | Earnings, repairs, lead sources, accounting CSV |
 | Fleet | `/desk/fleet` | Which machines earn or cost the most |
 | Growth | `/desk/growth` | Customers and leads worth a call |
@@ -47,7 +48,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Customer portal | `/account` | What your customers see after signing in |
 | Sign in | `/login` | Everyone's sign-in page |
 
-The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Books, Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them; they never see prices, billing, reports or Settings.
+The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Books, Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Expenses, Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them; they never see prices, billing, reports or Settings.
 
 ## Signing in and staying safe
 
@@ -140,6 +141,14 @@ Ending: ending a month-to-month rental, early return ("Returned early — choose
 **Change without code.** Appliance types and pictures (Settings → Products and pricing), sets and packages, record-keeping years (starts at 7; a receipt a filed return relies on can never be removed).
 
 **If it fails.** A receipt photo that cannot be stored is refused with a plain message and nothing partial is saved. Using more parts than the count shows is refused instead of dropping to zero.
+
+## Expense records and private receipts
+
+**What it's for.** Open `/desk/expenses` from **More → Expenses** or Books. Staff can submit only their own receipts; OWNER/ADMIN review and **Approve and post** source-backed balanced journals. All roles see only their permitted expense history. Submit without paying anybody. A saved expense gets its own verified private receipt upload, and only the submitter or owner/admin can read that attached receipt. A corrected posted expense is **voided with a reason** rather than deleted. Recurring insurance, storage and software templates create review-only drafts on the chosen Colorado day, never automatic money movement.
+
+**Change without code.** Owner/admin can create, edit, pause or reactivate recurring templates and choose expense categories, payment sources and optional appliance/job/purchase links. Staff can only submit; a draft is not a posted journal. `expense-drafts` is a daily 09:50 UTC automation independent of the Stripe balance sync switch.
+
+**If it fails.** Invalid cents, missing vendor/category, inaccessible receipt, inactive team role or stale post version is refused. An existing acquisition amount cannot be silently replaced. Use-tax purchases require the verified business address and reviewed rates; changing a filed tax period requires separate review. Failed draft runs remain visible under System health, and all incomplete changes stay unposted. The private store must be configured correctly before receipt upload; never use the public catalog token for sensitive receipts.
 
 ## Billing, deposits and statements
 
