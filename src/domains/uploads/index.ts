@@ -40,6 +40,10 @@ export async function canUploadPhoto(
   }
   // Purchase receipts: the folder is the form's random draft key (new purchase) or an existing
   // purchase id (pages added later). Verified again against storage when the purchase is saved.
+  if (segments[0] === "expenses" && operational) {
+    const row = await prisma.expense.findUnique({ where: { id }, select: { submittedByUserId: true, status: true } });
+    return !!row && row.status !== "VOID" && (manager || row.submittedByUserId === user.id);
+  }
   if (segments[0] === "purchases") return manager && id.length >= 8 && id.length <= 100;
   if (segments[0] === "tax-filings" && user.role === "OWNER") {
     return (

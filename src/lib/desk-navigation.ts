@@ -39,6 +39,7 @@ const groups = [
     links: [
       ["billing", "Money", "finance"],
       ["sales-tax", "Taxes", "finance"],
+      ["expenses", "Expenses"],
     ],
   },
   {

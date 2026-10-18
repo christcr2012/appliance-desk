@@ -18,6 +18,7 @@ export type AutomationRuleDefinition = {
 };
 
 export const AUTOMATION_RULES: AutomationRuleDefinition[] = [
+  { ruleKey: "expense-drafts", label: "Recurring expense drafts", explanation: "Creates draft expense records for owner review; never pays or posts automatically.", requiredEnv: ["CRON_SECRET"], expectedEveryHours: 24, resolutionHref: "/desk/automations#expense-drafts" },
   { ruleKey: "books-nightly", label: "Stripe books sync and reconciliation", explanation: "Imports read-only Stripe balance evidence and compares yesterday’s clearing with the owner’s opening books balance. It is off until owner-activated.", requiredEnv: ["CRON_SECRET", "STRIPE_SECRET_KEY", "BOOKS_STRIPE_SYNC_ENABLED"], expectedEveryHours: 24, resolutionHref: "/desk/automations#books-nightly" },
   { ruleKey: "backup", label: "Daily backup", explanation: "Exports the business database to the private backup store.", requiredEnv: ["CRON_SECRET", "BLOB_READ_WRITE_TOKEN"], expectedEveryHours: 24, resolutionHref: "/desk/automations#backup" },
   { ruleKey: "media-copy", label: "Private media recovery copy", explanation: "Inventories private photo evidence and keeps a second recoverable copy without resurrecting privacy-deleted files.", requiredEnv: ["CRON_SECRET", "BLOB_READ_WRITE_TOKEN", "PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN", "PRIVATE_PHOTO_BLOB_STORE_ID"], expectedEveryHours: 24, resolutionHref: "/desk/automations#media-copy" },

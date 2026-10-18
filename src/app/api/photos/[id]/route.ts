@@ -61,6 +61,13 @@ export async function GET(
   // Tax-filing confirmations are finance evidence, unlike ordinary job
   // photos. A STAFF user who learns the Photo id cannot read the blob.
   const privatePath = privatePhotoPathFromUrl(photo.url, store.storeId);
+  const linkedExpense = privatePath?.startsWith("expenses/")
+    ? await prisma.expense.findFirst({ where: { receiptPhotoId: photo.id },
+        select: { id: true, submittedByUserId: true } }) : null;
+  if (privatePath?.startsWith("expenses/") &&
+    (!linkedExpense || (role !== "OWNER" && role !== "ADMIN" &&
+      !(role === "STAFF" && linkedExpense.submittedByUserId === session.user.id))))
+    return NextResponse.json({ error: "Photo not found." }, { status: 404 });
   const taxFilingPhoto = privatePath?.startsWith("tax-filings/") ||
     privatePath?.startsWith("purchases/") ||
     (await prisma.purchaseDocument.findFirst({
