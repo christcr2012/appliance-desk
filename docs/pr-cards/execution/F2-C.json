@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "id": "F2-C",
+  "parent": "F2-C",
+  "baseline": "ef8af2cdd2e7dcd1322ff0163b32ca6ab34c42fe",
+  "card": "docs/pr-cards/F2-C.md",
+  "outcome": "The launch evidence is finished as far as engineering goes: Chris has a current plain-English owner guide with real screenshots that a test keeps complete, every old review finding has an honest evidence-backed status, one generated launch ledger shows exactly what is proven and what still needs his decision, and a rollback plan says how to back out safely.",
+  "risk": "A guide that describes screens that no longer exist, screenshots with real data, a finding marked fixed without evidence, a ledger that hides an open item, a generated ledger that drifts from the committed one, or a rollback plan that suggests a destructive database step.",
+  "next": "Plan frozen; implement the guide, screenshots, dispositions, ledger, rollback and ENH-F proof, then one push and exact-head CI.",
+  "references": [
+    {
+      "path": "scripts/check-route-inventory.mjs",
+      "anchor": "export function pageRoutes",
+      "purpose": "Route inventory used by the guide coverage test"
+    },
+    {
+      "path": "docs/reviews/2026-10-01-review-reconciliation.md",
+      "anchor": "| PR/thread | Finding | Disposition |",
+      "purpose": "Findings to disposition"
+    },
+    {
+      "path": "docs/PLAN.md",
+      "anchor": "### Human / owner gates that stay explicit",
+      "purpose": "Owner gates for the ledger"
+    },
+    {
+      "path": "docs/GO-LIVE-CHECKLIST.md",
+      "anchor": "# Go-live checklist",
+      "purpose": "Open owner switches for the ledger"
+    }
+  ],
+  "proposedFiles": [
+    "docs/OWNER-GUIDE.md",
+    "e2e/owner-guide-screenshots.spec.ts",
+    "tests/owner-guide-coverage.test.ts",
+    "docs/reviews/dispositions/reconciliation-2026-10-01.json",
+    "tests/review-dispositions.test.ts",
+    "scripts/launch-ledger.mjs",
+    "docs/LAUNCH-LEDGER.md",
+    "tests/launch-ledger.test.ts",
+    "docs/runbooks/ROLLBACK.md"
+  ],
+  "invariants": [
+    "Throwaway local Postgres and synthetic data only for screenshots.",
+    "No schema, price, permission or status change.",
+    "A finding is closed only with openable evidence.",
+    "No Stripe LIVE, customer email, SMS or spending.",
+    "Open decisions and real-provider acceptance stay visibly open in the ledger."
+  ],
+  "sequence": [
+    "Owner guide rewrite and archive",
+    "Screenshot spec and real screenshots",
+    "Guide coverage test",
+    "Pending finding checks and dispositions",
+    "Ledger generator, ledger and test",
+    "Rollback runbook and ENH-F proof",
+    "Docs, one push and exact-head CI"
+  ],
+  "acceptance": [
+    "docs/OWNER-GUIDE.md is rewritten as one current guide organized per screen (Today and To do, Leads, Customers, Rentals and agreements, Billing and deposits, Inventory and cleaning, Dispatch and visits, Taxes, Settings, Website editor, Notices and messages, Backup and restore, the customer portal, and the public site), in plain English, each section stating what the owner can change without code and what a failed save or automation looks like and what to do; the old dated change-note stack moves to docs/archive/ so the guide no longer carries superseded instructions.",
+    "tests/owner-guide-coverage.test.ts passes: every top-level desk section that exists in the route inventory (pageRoutes() from scripts/check-route-inventory.mjs) is named in the guide, every image the guide embeds exists on disk, every required per-screen heading is present, and a negative case proves a guide missing a section or a picture is reported.",
+    "e2e/owner-guide-screenshots.spec.ts exists, is registered in the lightest group of e2e/shards.json, skips unless OWNER_GUIDE_SHOTS=1, and when run signs in as the throwaway owner and writes one PNG per listed screen to docs/owner-guide/screenshots/; the committed PNGs come from a real local run of that spec and the guide embeds them with alt text.",
+    "docs/reviews/dispositions/reconciliation-2026-10-01.json records one entry {findingId, status, evidence, pr} for every one of the 91 findings in docs/reviews/2026-10-01-review-reconciliation.md, status being fixed, already-fixed, superseded or open; each of the 42 findings that were Pending is checked against current code, tests or docs on main and given a concrete evidence string (file and test or doc named), and anything not actually resolved stays open and is listed in the ledger; the reconciliation table is updated to match, and tests/review-dispositions.test.ts proves every table row has exactly one valid disposition and no Pending row remains.",
+    "scripts/launch-ledger.mjs generates docs/LAUNCH-LEDGER.md (committed) from the PLAN acceptance checklist, the 17 integrated scenarios, the review dispositions, the open GO-LIVE-CHECKLIST lines and the owner gates; an item without evidence renders OPEN, owner gates render as decisions for Chris, and the file ends with the explicit owner-gates list and a blank 'Owner authorization: ____' line that only Chris fills in; tests/launch-ledger.test.ts proves the OPEN rule, the decision rendering, the blank authorization line, and that the committed ledger equals a fresh generation.",
+    "docs/runbooks/ROLLBACK.md gives numbered steps to revert the interface commit on failure without any destructive database rollback (additive tables stay), what to check afterwards from the scenarios and ledger, and a Drill section with a last-drilled date; it follows the shape of the existing runbooks.",
+    "ENH-F: the post-commit notification path of estimate approval is inspected at its real error contract and proved by scenario 07 (and a targeted addition if a case is missing): a thrown sender after the durable approval, a disabled sender and a successful send each leave exactly one account and one agreement, a retry after the commit creates no second account or agreement, and the customer is told approval succeeded with the notice pending; if already proved the regression is cited with no duplicate implementation and no new outbox."
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/owner-guide-coverage.test.ts",
+      "tests/review-dispositions.test.ts",
+      "tests/launch-ledger.test.ts"
+    ],
+    "db": [
+      "tests/scenarios/07-message-send-failure-reconcile.test.ts"
+    ],
+    "browser": [
+      "e2e/owner-guide-screenshots.spec.ts"
+    ],
+    "node": []
+  },
+  "slices": [
+    {
+      "id": "F2-C",
+      "outcome": "F2-C",
+      "acceptance": [
+        "docs/OWNER-GUIDE.md is rewritten as one current guide organized per screen (Today and To do, Leads, Customers, Rentals and agreements, Billing and deposits, Inventory and cleaning, Dispatch and visits, Taxes, Settings, Website editor, Notices and messages, Backup and restore, the customer portal, and the public site), in plain English, each section stating what the owner can change without code and what a failed save or automation looks like and what to do; the old dated change-note stack moves to docs/archive/ so the guide no longer carries superseded instructions.",
+        "tests/owner-guide-coverage.test.ts passes: every top-level desk section that exists in the route inventory (pageRoutes() from scripts/check-route-inventory.mjs) is named in the guide, every image the guide embeds exists on disk, every required per-screen heading is present, and a negative case proves a guide missing a section or a picture is reported.",
+        "e2e/owner-guide-screenshots.spec.ts exists, is registered in the lightest group of e2e/shards.json, skips unless OWNER_GUIDE_SHOTS=1, and when run signs in as the throwaway owner and writes one PNG per listed screen to docs/owner-guide/screenshots/; the committed PNGs come from a real local run of that spec and the guide embeds them with alt text."
+      ]
+    },
+    {
+      "id": "F2-D",
+      "outcome": "F2-D",
+      "acceptance": [
+        "docs/reviews/dispositions/reconciliation-2026-10-01.json records one entry {findingId, status, evidence, pr} for every one of the 91 findings in docs/reviews/2026-10-01-review-reconciliation.md, status being fixed, already-fixed, superseded or open; each of the 42 findings that were Pending is checked against current code, tests or docs on main and given a concrete evidence string (file and test or doc named), and anything not actually resolved stays open and is listed in the ledger; the reconciliation table is updated to match, and tests/review-dispositions.test.ts proves every table row has exactly one valid disposition and no Pending row remains.",
+        "scripts/launch-ledger.mjs generates docs/LAUNCH-LEDGER.md (committed) from the PLAN acceptance checklist, the 17 integrated scenarios, the review dispositions, the open GO-LIVE-CHECKLIST lines and the owner gates; an item without evidence renders OPEN, owner gates render as decisions for Chris, and the file ends with the explicit owner-gates list and a blank 'Owner authorization: ____' line that only Chris fills in; tests/launch-ledger.test.ts proves the OPEN rule, the decision rendering, the blank authorization line, and that the committed ledger equals a fresh generation.",
+        "docs/runbooks/ROLLBACK.md gives numbered steps to revert the interface commit on failure without any destructive database rollback (additive tables stay), what to check afterwards from the scenarios and ledger, and a Drill section with a last-drilled date; it follows the shape of the existing runbooks.",
+        "ENH-F: the post-commit notification path of estimate approval is inspected at its real error contract and proved by scenario 07 (and a targeted addition if a case is missing): a thrown sender after the durable approval, a disabled sender and a successful send each leave exactly one account and one agreement, a retry after the commit creates no second account or agreement, and the customer is told approval succeeded with the notice pending; if already proved the regression is cited with no duplicate implementation and no new outbox."
+      ]
+    }
+  ]
+}
