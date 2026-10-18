@@ -1,3 +1,7 @@
+## October 18 — PR #498 financial review fixes, next exact-head CI required
+
+Five automated code-review findings (four P1, one P2) were corrected in a single batch: use canonical successful payment statuses, correctly classify RECEIPT_OVERPAYMENT credits, avoid double-subtracting applied credits from write-offs, include invoices with post-start issue/void/write-off dates, and select bounded candidates per source before chronological ranking. Added synthetic real-Postgres regressions; 10/10 local books tests pass. First PR CI found missing literal Books path in owner guide and insufficient accessible button contrast; both fixed; owner-guide test now passes. Previous browser-a schedule-save failure was on an unchanged workflow and will be checked against the next CI run; it has not been dismissed or quarantined. Exact-head CI and merge still pending. No production or real-money operations.
+
 ## October 18 — PR #498 CI correction
 
 First exact-head CI found owner guide route omission and inadequate contrast on the newly added Books buttons; both were corrected without weakening tests. An existing scenario-10 schedule-save browser assertion also failed, alongside stream closure errors, despite no schedule code changes in the K bundle. Its next exact-head rerun is required; do not claim browser CI green or the PR merged until proven.

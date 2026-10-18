@@ -29,6 +29,7 @@
   "evidence": [
     "K-2A and K-2B implemented across Books page, posting domain and tests; money writes are transactional.",
     "Seven local disposable Postgres tests passed for money, roles, concurrency, exceptions and closed periods.",
-    "Browser, exact-head CI, independent review and production acceptance not yet verified."
+    "Browser, exact-head CI, independent review and production acceptance not yet verified.",
+    "Independent review: all five actionable Codex PR #498 findings addressed together with real database regression coverage, 10 books tests passed; exact-head browser CI remains pending."
   ]
 }

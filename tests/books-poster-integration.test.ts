@@ -9,14 +9,21 @@ import { getBooksWorkspace, initializeBooks, closeAccountingMonth, reopenAccount
 const tag=randomUUID().slice(0,12),ownerId="books-owner-"+tag,customerId="books-customer-"+tag;
 const invoiceId="books-invoice-"+tag,receiptId="books-receipt-"+tag,paymentId="books-payment-"+tag;
 const invalidInvoiceId="books-bad-invoice-"+tag;
+const issuedLateInvoiceId="books-issued-late-"+tag;
+const writeOffInvoiceId="books-writeoff-"+tag;
+const receiptCreditId="books-receipt-credit-"+tag;
+const partialCreditId="books-partial-credit-"+tag;
+const partialApplicationId="books-credit-appl-"+tag;
+const earlierReceiptId="books-early-receipt-"+tag;
 const lateReceiptId="books-late-receipt-"+tag, stripeId="books-stripe-"+tag;
 const actor={id:ownerId,role:"OWNER" as const},staff={id:ownerId,role:"STAFF" as const},guest={id:ownerId,role:"CUSTOMER" as const};
 const start="2026-01-01";
-let savedStart:Date|null=null, extraAccount:string|null=null;
+let savedStart:Date|null=null, extraAccount:string|null=null, savedBadDebtPolicy="UNDECIDED";
 const month="2026-10";
 beforeAll(async()=>{
   const settings=await prisma.businessSettings.findUnique({where:{id:"singleton"}});
   savedStart=settings?.booksStartDate??null;
+  savedBadDebtPolicy=settings?.badDebtTaxRecovery??"UNDECIDED";
   await prisma.user.create({data:{id:ownerId,email:tag+"@example.test",role:"OWNER"}});
   await prisma.customer.create({data:{id:customerId,userId:ownerId,referralCode:"BOOKS-"+tag}});
   await prisma.businessSettings.upsert({where:{id:"singleton"},create:{id:"singleton",booksStartDate:null},update:{booksStartDate:null}});
@@ -24,19 +31,21 @@ beforeAll(async()=>{
 afterAll(async()=>{
   await prisma.exportBatchEntry.deleteMany({where:{batch:{createdByUserId:ownerId}}});
   await prisma.exportBatch.deleteMany({where:{createdByUserId:ownerId}});
-  await prisma.journalLine.deleteMany({where:{entry:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,start]}}}});
-  await prisma.journalEntry.deleteMany({where:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,start]}}});
+  await prisma.journalLine.deleteMany({where:{entry:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,issuedLateInvoiceId,writeOffInvoiceId,receiptCreditId,partialCreditId,partialApplicationId,earlierReceiptId,start]}}}});
+  await prisma.journalEntry.deleteMany({where:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,issuedLateInvoiceId,writeOffInvoiceId,receiptCreditId,partialCreditId,partialApplicationId,earlierReceiptId,start]}}});
   await prisma.payment.deleteMany({where:{id:paymentId}});
-  await prisma.invoiceLineItem.deleteMany({where:{invoiceId:{in:[invoiceId,invalidInvoiceId]}}});
-  await prisma.invoice.deleteMany({where:{id:{in:[invoiceId,invalidInvoiceId]}}});
-  await prisma.receipt.deleteMany({where:{id:{in:[receiptId,lateReceiptId]}}});
+  await prisma.creditApplication.deleteMany({where:{id:partialApplicationId}});
+  await prisma.customerCredit.deleteMany({where:{id:{in:[receiptCreditId,partialCreditId]}}});
+  await prisma.invoiceLineItem.deleteMany({where:{invoiceId:{in:[invoiceId,invalidInvoiceId,issuedLateInvoiceId,writeOffInvoiceId]}}});
+  await prisma.invoice.deleteMany({where:{id:{in:[invoiceId,invalidInvoiceId,issuedLateInvoiceId,writeOffInvoiceId]}}});
+  await prisma.receipt.deleteMany({where:{id:{in:[receiptId,lateReceiptId,earlierReceiptId]}}});
   await prisma.stripeBalanceTransaction.deleteMany({where:{id:stripeId}});
   await prisma.accountExportMapping.deleteMany({where:{ledgerAccountId:extraAccount??"none"}});
   if(extraAccount)await prisma.ledgerAccount.deleteMany({where:{id:extraAccount}});
   await prisma.accountingPeriod.deleteMany({where:{periodKey:month}});
   await prisma.auditLog.deleteMany({where:{userId:ownerId}});
   await prisma.systemIssue.deleteMany({where:{fingerprint:"books-post:INVOICE:"+invalidInvoiceId}});
-  await prisma.businessSettings.update({where:{id:"singleton"},data:{booksStartDate:savedStart}});
+  await prisma.businessSettings.update({where:{id:"singleton"},data:{booksStartDate:savedStart,badDebtTaxRecovery:savedBadDebtPolicy}});
   await prisma.customer.deleteMany({where:{id:customerId}});
   await prisma.user.deleteMany({where:{id:ownerId}});
 });
@@ -61,14 +70,15 @@ describe("K-2A+K-2B source to immutable books",()=>{
       lineItems:{create:{kind:"RENTAL",description:"Synthetic rental",amountCents:2500}}}});
     await prisma.receipt.create({data:{id:receiptId,customerId,source:"MANUAL",method:"CHECK",
       amountCents:2500,receivedOn:new Date("2026-10-17T18:00:00Z")}});
-    await prisma.payment.create({data:{id:paymentId,invoiceId,receiptId,amountCents:2500,status:"SUCCEEDED"}});
+    await prisma.payment.create({data:{id:paymentId,invoiceId,receiptId,amountCents:2500,status:"succeeded"}});
     const attempt=()=>prisma.$transaction(tx=>postForSource(tx,"INVOICE",invoiceId),
       {isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
     await Promise.allSettled(Array.from({length:8},attempt));
     expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:invoiceId}})).toBe(1);
     await prisma.$transaction(tx=>postForSource(tx,"INVOICE",invoiceId));
     await prisma.$transaction(tx=>postForSource(tx,"RECEIPT",receiptId));
-    await prisma.$transaction(tx=>postForSource(tx,"PAYMENT",paymentId));
+    // Backfill must find the lowercase canonical successful status, not only direct posting.
+    await postPending({limit:500});
     expect(await prisma.journalEntry.count({where:{sourceId:{in:[invoiceId,receiptId,paymentId]}}})).toBe(3);
     const journal=await prisma.journalEntry.findMany({where:{sourceId:{in:[invoiceId,receiptId,paymentId]}},include:{lines:true}});
     for(const row of journal)expect(row.lines.reduce((n,x)=>n+x.debitCents-x.creditCents,0)).toBe(0);
@@ -132,6 +142,44 @@ describe("K-2A+K-2B source to immutable books",()=>{
       include:{lines:true}});
     expect(journals.map(j=>j.eventKind)).toEqual(["STRIPE_FEE"]);
     expect(journals[0].lines.reduce((sum,line)=>sum+line.debitCents-line.creditCents,0)).toBe(0);
+  });
+  it("uses receipt-overpayment source evidence instead of false goodwill expense",async()=>{
+    await prisma.customerCredit.create({data:{
+      id:receiptCreditId,customerId,sourceType:"RECEIPT_OVERPAYMENT",sourceId:receiptId,
+      reason:"Receipt overpayment",amountCents:300,remainingCents:300,
+    }});
+    await prisma.$transaction(tx=>postForSource(tx,"CUSTOMER_CREDIT",receiptCreditId));
+    const entry=await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"CUSTOMER_CREDIT",sourceId:receiptCreditId},
+      include:{lines:{include:{ledgerAccount:true}}}});
+    expect(entry.eventKind).toBe("CREDIT_FROM_RECEIPT");
+    expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="UNAPPLIED_RECEIPTS"&&line.debitCents===300)).toBe(true);
+  });
+  it("does not double-subtract applied credits from an invoice write-off",async()=>{
+    await prisma.businessSettings.update({where:{id:"singleton"},data:{badDebtTaxRecovery:"NO"}});
+    await prisma.invoice.create({data:{id:writeOffInvoiceId,customerId,status:"OPEN",amountDueCents:10000,amountPaidCents:3000,
+      writtenOffAt:new Date("2026-10-16T20:00:00Z"),lineItems:{create:{kind:"RENTAL",description:"Write-off ledger fixture",amountCents:10000}}}});
+    await prisma.customerCredit.create({data:{id:partialCreditId,customerId,reason:"Synthetic applied credit",
+      amountCents:3000,remainingCents:0}});
+    await prisma.creditApplication.create({data:{id:partialApplicationId,creditId:partialCreditId,
+      invoiceId:writeOffInvoiceId,amountCents:3000}});
+    await prisma.$transaction(tx=>postForSource(tx,"INVOICE",writeOffInvoiceId));
+    const entry=await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"INVOICE",sourceId:writeOffInvoiceId,
+      eventKind:"INVOICE_WRITTEN_OFF"},include:{lines:true}});
+    expect(entry.lines.filter(x=>x.debitCents).reduce((n,x)=>n+x.debitCents,0)).toBe(7000);
+  });
+  it("includes formerly drafted invoices issued after accounting begins and globally ranks an earlier cash receipt",async()=>{
+    await prisma.invoice.create({data:{id:issuedLateInvoiceId,customerId,status:"OPEN",amountDueCents:2700,
+      createdAt:new Date("2025-12-15T19:00:00Z"),issuedAt:new Date("2026-10-12T19:00:00Z"),
+      lineItems:{create:{kind:"RENTAL",description:"Post-start issued invoice",amountCents:2700}}}});
+    await postPending({limit:500});
+    expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:issuedLateInvoiceId,
+      eventKind:"INVOICE_RECOGNIZED"}})).toBe(1);
+    await prisma.receipt.create({data:{id:earlierReceiptId,customerId,source:"MANUAL",method:"CHECK",amountCents:125,
+      receivedOn:new Date("2026-02-15T19:00:00Z")}});
+    const result=await postPending({limit:1});
+    expect(result.posted).toBe(1);
+    expect(await prisma.journalEntry.count({where:{sourceType:"RECEIPT",sourceId:earlierReceiptId,
+      eventKind:"RECEIPT_RECEIVED"}})).toBe(1);
   });
   it("bounded backfill never double-applies settled source events",async()=>{
     const out=await postPending({limit:12});

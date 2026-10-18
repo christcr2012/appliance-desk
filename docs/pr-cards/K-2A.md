@@ -70,3 +70,14 @@ K-3 real Stripe balance sync, K-4 expense capture forms, K-5 export formats, K-6
 - Browser spec e2e/books-workspace.spec.ts is in browser-b; exact-head browser/CI and review still pending.
 - Typed SystemIssue category migration preserves prior allowed issue types; no real data changed.
 - Automatic scheduling, K-3 live Stripe sync, K-5 formal exports and K-6 retirement gain/loss still not implemented.
+
+## Independent review corrections — October 18
+
+Review of PR #498 at head 651aa04 found five blocking accounting concerns, resolved together in a subsequent correction patch:
+1. Canonical lowercase successful payment statuses are selected for backlog posting (not only uppercase values).
+2. Customer credits sourced from RECEIPT_OVERPAYMENT debit UNAPPLIED_RECEIPTS, never assumed goodwill.
+3. Invoice write-offs no longer subtract credit applications twice; amountPaidCents already includes them.
+4. Pending invoices consider finalized/issued, billing-period, cancellation and write-off dates, including invoices drafted before books began.
+5. Backfill applies a per-source bounded candidate cap before chronological global ranking, so an invoice backlog cannot prevent older cash/credit sources from being considered.
+
+New synthetic real-Postgres cases cover all five; the expanded books integration suite passes 10/10 locally. First GitHub CI also found the owner guide path and new button contrast incomplete; both were fixed without skipping WCAG checks. One unrelated existing schedule-save browser scenario returned no Saved status amid stream errors and requires exact-head CI readback before merging. Exact-head CI, review resolution, merged main and real acceptance are not yet claimed.

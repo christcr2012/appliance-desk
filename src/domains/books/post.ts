@@ -1,6 +1,7 @@
 import { Prisma, type JournalSourceType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordSystemIssue } from "@/domains/system-issues";
+import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { businessDateKey, businessDateFromKey } from "@/lib/business-date";
 import { accountIdForRole, ensureTaxLiabilityAccounts } from "./accounts";
 import {
@@ -84,8 +85,8 @@ Promise<{ events: Event[]; extra: Subject }> {
         ...(reversed ? [{eventKind:"INVOICE_VOIDED",plan:reversed}] : []),
       ];
       if(x.writtenOffAt) {
-        const applied=await tx.creditApplication.aggregate({where:{invoiceId:x.id},_sum:{amountCents:true}});
-        const open=cents(x.amountDueCents-x.amountPaidCents-(applied._sum.amountCents??0));
+        // Credited invoice allocations are already included in amountPaidCents.
+        const open=cents(x.amountDueCents-x.amountPaidCents);
         const policy=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{badDebtTaxRecovery:true}});
         if(policy?.badDebtTaxRecovery==="UNDECIDED")throw new PostingEvidenceError("Bad debt tax recovery policy awaits owner/CPA approval.");
         if(policy?.badDebtTaxRecovery==="YES"&&x.taxLines.some(t=>t.taxCents>0))
@@ -104,8 +105,7 @@ Promise<{ events: Event[]; extra: Subject }> {
     case "PAYMENT": {
       const x = await tx.payment.findUnique({ where: { id:sourceId },include:{invoice:{select:{customerId:true}}} });
       if (!x) return { events:[], extra:{} };
-      const status = x.status.toUpperCase();
-      const settled = ["SUCCEEDED","PAID","COMPLETE","COMPLETED","RECORDED"].includes(status);
+      const settled = isSuccessfulPaymentStatus(x.status);
       if (!settled) return {events:[],extra:{customerId:x.invoice.customerId}};
       const plan=paymentApplied({date:x.createdAt,amountCents:cents(x.amountCents),receiptId:x.receiptId,moneyArrived:true});
       return {events:plan?[{eventKind:"PAYMENT_APPLIED",plan}]:[],extra:{customerId:x.invoice.customerId}};
@@ -130,7 +130,7 @@ Promise<{ events: Event[]; extra: Subject }> {
     case "CUSTOMER_CREDIT": {
       const x=await tx.customerCredit.findUnique({where:{id:sourceId}});
       if(!x)return {events:[],extra:{}};
-      const type=x.sourceType?.toUpperCase() === "RECEIPT" ? "RECEIPT_OVERPAYMENT" :
+      const type=x.sourceType?.toUpperCase() === "RECEIPT_OVERPAYMENT" ? "RECEIPT_OVERPAYMENT" :
         x.reason.toUpperCase().includes("REFUND") ? "REFUND_TO_CREDIT" : "GOODWILL";
       const plan=creditIssued({date:x.createdAt,amountCents:cents(x.amountCents),source:type});
       return {events:plan?[{eventKind:type==="RECEIPT_OVERPAYMENT"?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED",plan}]:[],extra:{customerId:x.customerId}};
@@ -283,15 +283,20 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
   type Candidate = {type: JournalSourceType; id: string; at: Date; required: string[]};
   const querySources: { type: JournalSourceType; load: (skip:number,take:number)=>Promise<Candidate[]> }[] = [
     {type:"INVOICE",load:async(skip,take)=>(await prisma.invoice.findMany({
-      where:{status:{not:"DRAFT"},createdAt:{gte:since}},select:{id:true,createdAt:true,status:true,writtenOffAt:true},
-      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"INVOICE",id:x.id,at:x.createdAt,
+      where:{status:{not:"DRAFT"},OR:[
+        {createdAt:{gte:since}},{issuedAt:{gte:since}},
+        {billingPeriodStart:{gte:since}},{cancelledAt:{gte:since}},
+        {writtenOffAt:{gte:since}},
+      ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true},
+      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"INVOICE",id:x.id,
+      at:x.billingPeriodStart??x.issuedAt??x.createdAt,
       required:["INVOICE_RECOGNIZED",...(x.status==="VOID"?["INVOICE_VOIDED"]:[]),
         ...(x.writtenOffAt?["INVOICE_WRITTEN_OFF"]:[])]}))},
     {type:"RECEIPT",load:async(skip,take)=>(await prisma.receipt.findMany({
       where:{receivedOn:{gte:since}},select:{id:true,receivedOn:true},
       orderBy:[{receivedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"RECEIPT",id:x.id,at:x.receivedOn,required:["RECEIPT_RECEIVED"]}))},
     {type:"PAYMENT",load:async(skip,take)=>(await prisma.payment.findMany({
-      where:{createdAt:{gte:since},status:{in:["SUCCEEDED","PAID","COMPLETE","COMPLETED","RECORDED"]}},
+      where:{createdAt:{gte:since},status:{in:[...SUCCESSFUL_PAYMENT_STATUSES]}},
       select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
       .map(x=>({type:"PAYMENT",id:x.id,at:x.createdAt,required:["PAYMENT_APPLIED"]}))},
     {type:"DEPOSIT",load:async(skip,take)=>(await prisma.deposit.findMany({
@@ -303,7 +308,7 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
     {type:"CUSTOMER_CREDIT",load:async(skip,take)=>(await prisma.customerCredit.findMany({
       where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceType:true},
       orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"CUSTOMER_CREDIT",id:x.id,at:x.createdAt,
-      required:[x.sourceType?.toUpperCase()==="RECEIPT"?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED"]}))},
+      required:[x.sourceType?.toUpperCase()==="RECEIPT_OVERPAYMENT"?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED"]}))},
     {type:"CREDIT_APPLICATION",load:async(skip,take)=>(await prisma.creditApplication.findMany({
       where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
       .map(x=>({type:"CREDIT_APPLICATION",id:x.id,at:x.createdAt,required:["CREDIT_APPLIED"]}))},
@@ -335,8 +340,10 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
   // A bounded anti-join scans past already posted rows instead of always replaying
   // the first 500 and starving later invoices. Never materialize the full table.
   for(const source of querySources) {
-    let scanned=0;
-    while(scanned<10000 && sources.length<limit) {
+    let scanned=0, queuedForSource=0;
+    // Keep each source type independently bounded. The global oldest-first
+    // ranking must not be defeated by invoices filling the whole limit.
+    while(scanned<10000 && queuedForSource<limit) {
       const page=await source.load(scanned,Math.min(200,10000-scanned));
       if(!page.length)break;
       scanned+=page.length;
@@ -348,8 +355,11 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
         byId.get(row.sourceId)!.add(row.eventKind);
       }
       for(const candidate of page) {
-        if(candidate.required.length&&!candidate.required.every(kind=>byId.get(candidate.id)?.has(kind)))
+        if(candidate.required.length&&!candidate.required.every(kind=>byId.get(candidate.id)?.has(kind))) {
           sources.push(candidate);
+          queuedForSource++;
+          if(queuedForSource>=limit)break;
+        }
       }
       if(page.length<200)break;
     }
