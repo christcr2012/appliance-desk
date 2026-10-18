@@ -105,6 +105,13 @@ describe("K-3 provider evidence to Stripe clearing", () => {
       .rejects.toThrow(/not USD/);
     expect((await prisma.integrationCursor.findUnique({ where: { key: "stripe-balance-transactions" } }))?.value)
       .toBe(prior);
+    const stable = transaction("immutable", 500, 15);
+    await syncStripeBalanceTransactions(fake([[stable]]).client);
+    const modified = { ...stable, amount: 501, net: 486 } as Stripe.BalanceTransaction;
+    await expect(syncStripeBalanceTransactions(fake([[modified]]).client))
+      .rejects.toThrow(/Previously recorded Stripe transaction changed/);
+    expect((await prisma.stripeBalanceTransaction.findUnique({ where: { id: stable.id } }))?.amountCents)
+      .toBe(500);
   });
   it("uses one cutoff; later receipts do not fake mismatches, real cent gaps are reviewable", async () => {
     // Existing opening is 500 cents, no older Stripe transaction yet.

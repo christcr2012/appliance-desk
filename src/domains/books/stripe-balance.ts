@@ -107,8 +107,18 @@ export async function syncStripeBalanceTransactions(
     // Each page is atomic and independently recoverable; no partial row is saved.
     await prisma.$transaction(async tx => {
       for (const row of checked) {
+        const existing = await tx.stripeBalanceTransaction.findUnique({ where: { id: row.id } });
+        if (existing && (
+          existing.type !== row.type || existing.reportingCategory !== row.reportingCategory ||
+          existing.currency !== row.currency || existing.amountCents !== row.amountCents ||
+          existing.feeCents !== row.feeCents || existing.netCents !== row.netCents ||
+          existing.sourceId !== row.sourceId || existing.payoutId !== row.payoutId ||
+          existing.createdAtStripe.getTime() !== row.createdAtStripe.getTime() ||
+          existing.availableOn.getTime() !== row.availableOn.getTime()
+        )) throw new StripeBooksEvidenceError("Previously recorded Stripe transaction changed; preserve books and review before importing.");
         await tx.stripeBalanceTransaction.upsert({
-          where: { id: row.id }, create: row, update: { ...row, syncedAt: new Date() },
+          where: { id: row.id }, create: row,
+          update: { syncedAt: new Date() },
         });
       }
     }, { timeout: 30_000 });
