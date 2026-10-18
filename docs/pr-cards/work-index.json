@@ -525,7 +525,7 @@
     },
     {
       "id": "F2-A",
-      "title": "Integrated rental and financial scenarios 1\u20135",
+      "title": "Integrated rental and financial scenarios 1–5",
       "batch": "F2",
       "dependencies": [
         "V-4"
@@ -658,7 +658,7 @@
       "dependencies": [
         "F2-D"
       ],
-      "status": "APPROVED",
+      "status": "IN_REVIEW",
       "migration": "batch_k_books",
       "budget": 490,
       "units": [
@@ -674,8 +674,9 @@
       "tests": [
         "tests/books-migration-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-1A.md"
+      "readiness": "IMPLEMENTED_PENDING_CI",
+      "plannedCard": "docs/pr-cards/K-1A.md",
+      "card": "docs/pr-cards/K-1A.md"
     },
     {
       "id": "K-1B",
@@ -684,7 +685,7 @@
       "dependencies": [
         "K-1A"
       ],
-      "status": "APPROVED",
+      "status": "IN_REVIEW",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -700,8 +701,9 @@
       "tests": [
         "tests/books-posting-rules.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-1B.md"
+      "readiness": "IMPLEMENTED_PENDING_CI",
+      "plannedCard": "docs/pr-cards/K-1B.md",
+      "card": "docs/pr-cards/K-1A.md"
     },
     {
       "id": "K-2A",
@@ -951,7 +953,7 @@
       "dependencies": [
         "K-8"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "batch_k_cash_evidence",
       "budget": 480,
       "units": [
@@ -977,7 +979,7 @@
       "dependencies": [
         "K-CASH-1"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1005,7 +1007,7 @@
       "dependencies": [
         "K-CASH-2"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1032,7 +1034,7 @@
       "dependencies": [
         "K-CASH-3"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "batch_k_cash_budget",
       "budget": 480,
       "units": [
@@ -1058,7 +1060,7 @@
       "dependencies": [
         "K-CASH-4A"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1084,7 +1086,7 @@
       "dependencies": [
         "K-CASH-4B"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1111,7 +1113,7 @@
       "dependencies": [
         "K-CASH-5A"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1138,7 +1140,7 @@
       "dependencies": [
         "K-CASH-5B"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "batch_k_cash_accounting_delivery",
       "budget": 480,
       "units": [
@@ -1165,7 +1167,7 @@
       "dependencies": [
         "K-CASH-6"
       ],
-      "status": "PROPOSED \u2014 documentation review required",
+      "status": "PROPOSED — documentation review required",
       "migration": "batch_k_cash_report_snapshots",
       "budget": 480,
       "units": [
@@ -2230,7 +2232,7 @@
         "COM-N4",
         "O-5"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "batch_bp_commercial_records",
       "budget": 470,
       "units": [
@@ -2255,7 +2257,7 @@
       "dependencies": [
         "BP-1"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2280,7 +2282,7 @@
       "dependencies": [
         "BP-2A"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -2305,7 +2307,7 @@
       "dependencies": [
         "BP-2B"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -2330,7 +2332,7 @@
       "dependencies": [
         "BP-3"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "batch_bp_first_use",
       "budget": 250,
       "units": [
@@ -2355,7 +2357,7 @@
       "dependencies": [
         "BP-4"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -2380,7 +2382,7 @@
       "dependencies": [
         "BP-5"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "batch_bp_property_evidence",
       "budget": 400,
       "units": [
@@ -2405,7 +2407,7 @@
       "dependencies": [
         "BP-6"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2430,7 +2432,7 @@
       "dependencies": [
         "BP-7A"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -2456,7 +2458,7 @@
       "dependencies": [
         "BP-7B"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2481,7 +2483,7 @@
       "dependencies": [
         "BP-8"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2506,7 +2508,7 @@
       "dependencies": [
         "BP-9"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "batch_bp_portfolio_contracts",
       "budget": 300,
       "units": [
@@ -2531,7 +2533,7 @@
       "dependencies": [
         "BP-10"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -2556,7 +2558,7 @@
       "dependencies": [
         "BP-11A"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -2582,7 +2584,7 @@
       "dependencies": [
         "BP-11B"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "batch_bp_partner_programs",
       "budget": 430,
       "units": [
@@ -2607,7 +2609,7 @@
       "dependencies": [
         "BP-12"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -2632,7 +2634,7 @@
       "dependencies": [
         "BP-13A"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -2657,7 +2659,7 @@
       "dependencies": [
         "BP-13B"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "batch_bp_partner_books_settlement",
       "budget": 500,
       "units": [
@@ -2682,7 +2684,7 @@
       "dependencies": [
         "BP-14"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -2707,7 +2709,7 @@
       "dependencies": [
         "BP-15A"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -2732,7 +2734,7 @@
       "dependencies": [
         "BP-15B"
       ],
-      "status": "PROPOSED \u2014 runtime design acceptance required",
+      "status": "PROPOSED — runtime design acceptance required",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3821,7 +3823,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "F2-C",
+  "activeExecution": "K-1A",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3926,6 +3928,10 @@
     {
       "id": "F2-C",
       "path": "docs/pr-cards/execution/F2-C.json"
+    },
+    {
+      "id": "K-1A",
+      "path": "docs/pr-cards/execution/K-1A.json"
     }
   ]
 }

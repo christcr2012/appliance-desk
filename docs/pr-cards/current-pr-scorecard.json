@@ -1,17 +1,36 @@
 {
   "version": 1,
-  "kind": "maintenance",
-  "parent": "F2-C",
-  "completedSlices": [],
-  "remainingEngineering": [
-    "K batches continue per docs/MASTER-ROADMAP.md starting with K-1A; no product subsection is claimed by this tooling change."
+  "kind": "implementation",
+  "parent": "K-1A",
+  "completedSlices": [
+    {
+      "id": "K-1A",
+      "acceptanceEvidence": [
+        "tests/books-schema-integration.test.ts: Add exactly the approved additive Batch K books schema, settings and check constraints without rewriting historical billing records. Verified by implemented source, disposable schema checks and focused tests.",
+        "tests/books-schema-integration.test.ts: Seed the complete immutable system-role chart and expense categories with stable keys, safe reruns and filing-account mapping, with no duplicate financial accounts. Verified by implemented source, disposable schema checks and focused tests.",
+        "tests/books-schema-integration.test.ts: Prove populated-schema upgrade, original rows intact, role and tenant boundaries, schema health and disposable backup/restore coverage. Verified by implemented source, disposable schema checks and focused tests."
+      ]
+    },
+    {
+      "id": "K-1B",
+      "acceptanceEvidence": [
+        "tests/books-posting-rules.test.ts: Provide a fail-closed account-role resolver and approved InvoiceLineItemKind mapping, preserving negative/contra and tax filing account distinctions. Verified by implemented source, disposable schema checks and focused tests.",
+        "tests/books-posting-rules.test.ts: Implement pure balanced journal posting plans for all source events in Batch K section 3.2, including reversals, refunds, deposits, credits, Stripe, expenses, assets, depreciation and tax events. Verified by implemented source, disposable schema checks and focused tests.",
+        "tests/books-posting-rules.test.ts: Every rule uses integer cents, bounded source snapshots, Colorado accounting dates, and null or explicit refusal for ineligible/incomplete source events; prove balanced and idempotent planning in tests. Verified by implemented source, disposable schema checks and focused tests."
+      ]
+    }
   ],
+  "remainingEngineering": [],
   "externalAcceptance": [
-    "Whether weaker agents now follow the loop without red CI is only known after their next PRs."
+    "Actual paid-provider Stripe balances and CPA treatment are not yet accepted; K-3, K-6 and financial activation remain gated.",
+    "K-6 owns post-retirement/disposition gain/loss mapping; K-1B refuses to invent it."
   ],
   "evidence": [
-    "Added docs/AGENT-QUICKSTART.md, scripts/bundle-preflight.mjs (local run of every paperwork gate with plain-English fixes) and scripts/bundle-new.mjs (card and packet scaffold), with tests/bundle-new.test.ts.",
-    "Made the launch-ledger freshness test a shape check so unrelated PRs are not blocked; a stale ledger is now a warning in bundle:preflight. tests/launch-ledger.test.ts passes.",
-    "Exact-head CI and self-review are recorded in the PR; no product behavior changed."
+    "K-1A: new ledger/source/expense/export/period tables, system account and expense category seed, and new tax-account idempotent synchronizer; additive migration and historical data remain intact.",
+    "K-1A: eight concurrent attempts produce one source journal; SQL checks reject negative/both-sided line values in tests/books-schema-integration.test.ts.",
+    "K-1A: all 12 new models have backup policy and targeted schema/backup tests; disposable migrated restore checked using backup-restore-integration.test.ts.",
+    "K-1B: role-mapped invoice kinds including 2026 additional admin and RDF fees with distinct tax liability, return-safe account mapping and immutable source evidence.",
+    "K-1B: pure entries/reversals for billing, receipts, credits, refunds, deposits, Stripe, expenses, appliances, depreciation, use tax, filing and opening balances; 9 focused tests pass.",
+    "K-1B: invalid or incomplete money evidence refuses, including deferred K-6 dispositions; K-2A poster and screens not represented as complete."
   ]
 }

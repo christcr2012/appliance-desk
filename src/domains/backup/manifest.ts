@@ -143,6 +143,20 @@ export const BACKUP_MODEL_POLICY = {
   MarketingSuppression: "marketingSuppression",
   PreDeliveryCancellation: "preDeliveryCancellation",
   AssetNumberCounter: "assetNumberCounter",
+  // Batch K: immutable accounting evidence, export contents and integration cursors.
+  LedgerAccount: "ledgerAccount",
+  AccountExportMapping: "accountExportMapping",
+  JournalEntry: "journalEntry",
+  JournalLine: "journalLine",
+  AccountingPeriod: "accountingPeriod",
+  StripeBalanceTransaction: "stripeBalanceTransaction",
+  IntegrationCursor: "integrationCursor",
+  ExpenseCategory: "expenseCategory",
+  Expense: "expense",
+  RecurringExpense: "recurringExpense",
+  ExportBatch: "exportBatch",
+  ExportBatchEntry: "exportBatchEntry",
+
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

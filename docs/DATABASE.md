@@ -1111,3 +1111,7 @@ legacy Checkout parameters stay unchanged; Stripe handles its own browser locale
 English source hash. Quote pages and outgoing quote mail use the reviewed note
 or wholly English output; the stored note and monetary quote evidence are not
 rewritten. Arbitrary product/customer data and historical documents remain exact.
+
+## Batch K books foundation — October 17, 2026
+
+The additive Batch K tables are LedgerAccount, AccountExportMapping, JournalEntry, JournalLine, AccountingPeriod, StripeBalanceTransaction, IntegrationCursor, ExpenseCategory, Expense, RecurringExpense, ExportBatch and ExportBatchEntry. Journal entries have a unique (sourceType, sourceId, eventKind) and their lines must use nonnegative integer debit or credit, never both. Existing invoices, payments, customers and tax records are unchanged. The migration seeds non-destructive chart roles, per-filing-account tax liabilities and 16 expense categories; saved owner account names are not overwritten by later synchronization. Backup and restore retain all 12 models. Financial posting itself is intentionally not live until K-2A.

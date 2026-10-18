@@ -1,3 +1,7 @@
+## Current K handoff — October 17
+
+K-1A and K-1B are implemented together on a review branch with exact-head CI/merge pending; K-2A (transactional journal poster) follows only after verified merge. Asset disposition remains deliberately deferred to the K-6 reviewed contract. See STATUS for evidence.
+
 ## What is next — October 17 V-C4 and V-C5 delivery
 
 V-1 to V-4 (the signature look: home, every public page, Today and the portal home) are merged (#490, #491); the owner accepted the look and real visit lengths. F2-A and F2-B (all integrated scenarios, the owner-workflow browser spec and the link check) are delivered together from `docs/pr-cards/F2-A.md` (CI pending at the exact head); F2-C (owner guide and screenshots) and F2-D (review discharge, launch ledger, rollback, ENH-F proof) are delivered together from `docs/pr-cards/F2-C.md` (CI pending at the exact head); the K batches follow.

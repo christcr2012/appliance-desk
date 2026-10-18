@@ -1,0 +1,420 @@
+{
+  "accounts": [
+    {
+      "role": "BANK",
+      "name": "Business checking",
+      "type": "ASSET",
+      "description": "Business checking",
+      "paymentSource": true
+    },
+    {
+      "role": "STRIPE_CLEARING",
+      "name": "Stripe balance (clearing)",
+      "type": "ASSET",
+      "description": "Stripe balance (clearing)",
+      "paymentSource": false
+    },
+    {
+      "role": "UNDEPOSITED",
+      "name": "Cash and checks not yet deposited",
+      "type": "ASSET",
+      "description": "Cash and checks not yet deposited",
+      "paymentSource": false
+    },
+    {
+      "role": "RECEIVABLES",
+      "name": "Customer balances owed (Appliance Desk)",
+      "type": "ASSET",
+      "description": "Customer balances owed (Appliance Desk)",
+      "paymentSource": false
+    },
+    {
+      "role": "RENTAL_EQUIPMENT",
+      "name": "Rental appliances (cost)",
+      "type": "ASSET",
+      "description": "Rental appliances (cost)",
+      "paymentSource": false
+    },
+    {
+      "role": "ACCUM_DEPRECIATION",
+      "name": "Rental appliances — depreciation to date",
+      "type": "CONTRA_ASSET",
+      "description": "Rental appliances — depreciation to date",
+      "paymentSource": false
+    },
+    {
+      "role": "CARD",
+      "name": "Business credit card",
+      "type": "LIABILITY",
+      "description": "Business credit card",
+      "paymentSource": true
+    },
+    {
+      "role": "DEPOSITS_HELD",
+      "name": "Customer deposits held",
+      "type": "LIABILITY",
+      "description": "Customer deposits held",
+      "paymentSource": false
+    },
+    {
+      "role": "CUSTOMER_CREDITS",
+      "name": "Customer account credits",
+      "type": "LIABILITY",
+      "description": "Customer account credits",
+      "paymentSource": false
+    },
+    {
+      "role": "UNAPPLIED_RECEIPTS",
+      "name": "Payments not yet matched to a bill",
+      "type": "LIABILITY",
+      "description": "Payments not yet matched to a bill",
+      "paymentSource": false
+    },
+    {
+      "role": "SALES_TAX_UNASSIGNED",
+      "name": "Sales tax owed — area not yet assigned",
+      "type": "LIABILITY",
+      "description": "Sales tax owed — area not yet assigned",
+      "paymentSource": false
+    },
+    {
+      "role": "OWNER_CONTRIBUTIONS",
+      "name": "Owner contributions",
+      "type": "EQUITY",
+      "description": "Owner contributions",
+      "paymentSource": true
+    },
+    {
+      "role": "RENTAL_INCOME",
+      "name": "Rental income",
+      "type": "INCOME",
+      "description": "Rental income",
+      "paymentSource": false
+    },
+    {
+      "role": "LATE_RETURN_INCOME",
+      "name": "Late-return rent",
+      "type": "INCOME",
+      "description": "Late-return rent",
+      "paymentSource": false
+    },
+    {
+      "role": "DELIVERY_INCOME",
+      "name": "Delivery fees",
+      "type": "INCOME",
+      "description": "Delivery fees",
+      "paymentSource": false
+    },
+    {
+      "role": "INSTALLATION_INCOME",
+      "name": "Installation fees",
+      "type": "INCOME",
+      "description": "Installation fees",
+      "paymentSource": false
+    },
+    {
+      "role": "REMOVAL_INCOME",
+      "name": "Removal fees",
+      "type": "INCOME",
+      "description": "Removal fees",
+      "paymentSource": false
+    },
+    {
+      "role": "DAMAGE_WAIVER_INCOME",
+      "name": "Damage waiver",
+      "type": "INCOME",
+      "description": "Damage waiver",
+      "paymentSource": false
+    },
+    {
+      "role": "LATE_FEE_INCOME",
+      "name": "Late payment fees",
+      "type": "INCOME",
+      "description": "Late payment fees",
+      "paymentSource": false
+    },
+    {
+      "role": "EARLY_TERMINATION_INCOME",
+      "name": "Early-ending fees",
+      "type": "INCOME",
+      "description": "Early-ending fees",
+      "paymentSource": false
+    },
+    {
+      "role": "DAMAGE_RECOVERY_INCOME",
+      "name": "Kept from deposits for damage",
+      "type": "INCOME",
+      "description": "Kept from deposits for damage",
+      "paymentSource": false
+    },
+    {
+      "role": "TAX_SERVICE_FEE_INCOME",
+      "name": "Sales tax collection allowance",
+      "type": "INCOME",
+      "description": "Sales tax collection allowance",
+      "paymentSource": false
+    },
+    {
+      "role": "OTHER_INCOME",
+      "name": "Other income",
+      "type": "INCOME",
+      "description": "Other income",
+      "paymentSource": false
+    },
+    {
+      "role": "DISCOUNTS",
+      "name": "Discounts and waivers",
+      "type": "CONTRA_INCOME",
+      "description": "Discounts and waivers",
+      "paymentSource": false
+    },
+    {
+      "role": "CREDITS_GIVEN",
+      "name": "Credits given to customers",
+      "type": "CONTRA_INCOME",
+      "description": "Credits given to customers",
+      "paymentSource": false
+    },
+    {
+      "role": "REFUNDS",
+      "name": "Refunds",
+      "type": "CONTRA_INCOME",
+      "description": "Refunds",
+      "paymentSource": false
+    },
+    {
+      "role": "CARD_FEES",
+      "name": "Card processing fees",
+      "type": "EXPENSE",
+      "description": "Card processing fees",
+      "paymentSource": false
+    },
+    {
+      "role": "STRIPE_SERVICE_FEES",
+      "name": "Stripe billing and service fees",
+      "type": "EXPENSE",
+      "description": "Stripe billing and service fees",
+      "paymentSource": false
+    },
+    {
+      "role": "CHARGEBACKS",
+      "name": "Disputed payments",
+      "type": "EXPENSE",
+      "description": "Disputed payments",
+      "paymentSource": false
+    },
+    {
+      "role": "BAD_DEBT",
+      "name": "Bad debt (written off)",
+      "type": "EXPENSE",
+      "description": "Bad debt (written off)",
+      "paymentSource": false
+    },
+    {
+      "role": "DEPRECIATION",
+      "name": "Depreciation",
+      "type": "EXPENSE",
+      "description": "Depreciation",
+      "paymentSource": false
+    },
+    {
+      "role": "DISPOSAL_LOSS",
+      "name": "Loss on retired appliances",
+      "type": "EXPENSE",
+      "description": "Loss on retired appliances",
+      "paymentSource": false
+    },
+    {
+      "role": "USE_TAX_EXPENSE",
+      "name": "Use tax on purchases",
+      "type": "EXPENSE",
+      "description": "Use tax on purchases",
+      "paymentSource": false
+    },
+    {
+      "role": "REPAIRS_PARTS",
+      "name": "Repair parts",
+      "type": "EXPENSE",
+      "description": "Repair parts",
+      "paymentSource": false
+    },
+    {
+      "role": "TAX_ADJUSTMENTS",
+      "name": "Sales tax rounding and adjustments",
+      "type": "EXPENSE",
+      "description": "Sales tax rounding and adjustments",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_FUEL",
+      "name": "Fuel",
+      "type": "EXPENSE",
+      "description": "Fuel",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_VEHICLE_REPAIRS_AND_MAINTENANCE",
+      "name": "Vehicle repairs and maintenance",
+      "type": "EXPENSE",
+      "description": "Vehicle repairs and maintenance",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_VEHICLE_INSURANCE",
+      "name": "Vehicle insurance",
+      "type": "EXPENSE",
+      "description": "Vehicle insurance",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_BUSINESS_INSURANCE",
+      "name": "Business insurance",
+      "type": "EXPENSE",
+      "description": "Business insurance",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_STORAGE___WAREHOUSE_RENT",
+      "name": "Storage / warehouse rent",
+      "type": "EXPENSE",
+      "description": "Storage / warehouse rent",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_PHONE_AND_INTERNET",
+      "name": "Phone and internet",
+      "type": "EXPENSE",
+      "description": "Phone and internet",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_SOFTWARE_AND_SUBSCRIPTIONS",
+      "name": "Software and subscriptions",
+      "type": "EXPENSE",
+      "description": "Software and subscriptions",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_ADVERTISING_AND_MARKETING",
+      "name": "Advertising and marketing",
+      "type": "EXPENSE",
+      "description": "Advertising and marketing",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_SUPPLIES",
+      "name": "Supplies",
+      "type": "EXPENSE",
+      "description": "Supplies",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_SMALL_TOOLS_AND_EQUIPMENT",
+      "name": "Small tools and equipment",
+      "type": "EXPENSE",
+      "description": "Small tools and equipment",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_PROFESSIONAL_FEES__CPA__LEGAL",
+      "name": "Professional fees (CPA, legal)",
+      "type": "EXPENSE",
+      "description": "Professional fees (CPA, legal)",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_LICENSES_AND_PERMITS",
+      "name": "Licenses and permits",
+      "type": "EXPENSE",
+      "description": "Licenses and permits",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_BANK_FEES",
+      "name": "Bank fees",
+      "type": "EXPENSE",
+      "description": "Bank fees",
+      "paymentSource": false
+    },
+    {
+      "role": "EXPENSE_OTHER",
+      "name": "Other",
+      "type": "EXPENSE",
+      "description": "Other",
+      "paymentSource": false
+    },
+    {
+      "role": "RETAIL_DELIVERY_FEE_PAYABLE",
+      "name": "Colorado retail delivery fees owed",
+      "type": "LIABILITY",
+      "description": "Colorado retail delivery fees collected but not yet remitted",
+      "paymentSource": false
+    }
+  ],
+  "categories": [
+    {
+      "name": "Fuel",
+      "role": "EXPENSE_FUEL"
+    },
+    {
+      "name": "Vehicle repairs and maintenance",
+      "role": "EXPENSE_VEHICLE_REPAIRS_AND_MAINTENANCE"
+    },
+    {
+      "name": "Vehicle insurance",
+      "role": "EXPENSE_VEHICLE_INSURANCE"
+    },
+    {
+      "name": "Business insurance",
+      "role": "EXPENSE_BUSINESS_INSURANCE"
+    },
+    {
+      "name": "Storage / warehouse rent",
+      "role": "EXPENSE_STORAGE___WAREHOUSE_RENT"
+    },
+    {
+      "name": "Phone and internet",
+      "role": "EXPENSE_PHONE_AND_INTERNET"
+    },
+    {
+      "name": "Software and subscriptions",
+      "role": "EXPENSE_SOFTWARE_AND_SUBSCRIPTIONS"
+    },
+    {
+      "name": "Advertising and marketing",
+      "role": "EXPENSE_ADVERTISING_AND_MARKETING"
+    },
+    {
+      "name": "Supplies",
+      "role": "EXPENSE_SUPPLIES"
+    },
+    {
+      "name": "Small tools and equipment",
+      "role": "EXPENSE_SMALL_TOOLS_AND_EQUIPMENT"
+    },
+    {
+      "name": "Repair parts",
+      "role": "REPAIRS_PARTS"
+    },
+    {
+      "name": "Professional fees (CPA, legal)",
+      "role": "EXPENSE_PROFESSIONAL_FEES__CPA__LEGAL"
+    },
+    {
+      "name": "Licenses and permits",
+      "role": "EXPENSE_LICENSES_AND_PERMITS"
+    },
+    {
+      "name": "Bank fees",
+      "role": "EXPENSE_BANK_FEES"
+    },
+    {
+      "name": "Other",
+      "role": "EXPENSE_OTHER"
+    },
+    {
+      "name": "Rental appliance purchase",
+      "role": "RENTAL_EQUIPMENT"
+    }
+  ]
+}

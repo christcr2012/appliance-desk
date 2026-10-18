@@ -10,7 +10,7 @@ You do not need to read the other 40 documents to ship a bundle. You need this p
 
 ```bash
 npm run bundle:preflight                                      # before any push
-npm run bundle:preflight -- --card F2-C --planned-at <sha>    # when the bundle has a frozen plan
+npm run bundle:preflight -- --card docs/pr-cards/F2-C.md --planned-at <sha> --report /tmp/delivery.json    # frozen-plan delivery check
 ```
 
 It runs every paperwork gate CI runs (clean tree, secret scan, work packet, owner-decision map, e2e shard list,

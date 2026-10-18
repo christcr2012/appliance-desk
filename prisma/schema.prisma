@@ -445,6 +445,7 @@ model LeadApplianceRequest {
 // ---------------------------------------------------------------------------
 
 model ApplianceType {
+  depreciationMonths Int?
   id   String @id @default(cuid())
   name String @unique // "Refrigerator", "Washer", "Dryer", ...
   slug String @unique
@@ -693,6 +694,8 @@ enum PurchaseOrderStatus {
 // from — deliberately minimal (name + how to reach them), not a full
 // vendor-management system.
 model Supplier {
+  is1099Vendor Boolean @default(false)
+  taxIdOnFile Boolean @default(false)
   id          String @id @default(cuid())
   name        String
   contactName String?
@@ -2747,6 +2750,13 @@ model PurchaseUseTax {
 // ---------------------------------------------------------------------------
 
 model BusinessSettings {
+  booksStartDate DateTime?
+  depreciationMonthsDefault Int @default(60)
+  depreciationSalvagePercent Int @default(0)
+  badDebtTaxRecovery String @default("UNDECIDED")
+  lemonRepairPercent Int @default(30)
+  vendor1099ThresholdCents Int @default(200000)
+  exportPayoutLines Json @default("{\"QBO_JOURNAL_CSV\":true,\"XERO_JOURNAL_CSV\":false,\"GENERIC_JOURNAL_CSV\":true,\"CASH_MOVEMENTS_CSV\":true}")
   id    String @id @default("singleton")
 
   // W-15 (IN-71): keep purchase receipts and tax records this many years after the machine leaves the fleet.
@@ -4104,4 +4114,234 @@ model CustomerTranslationDraft {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@unique([sourceKind, sourceKey])
+}
+
+// Batch K — accounting domain; immutable journal provenance and bounded account mapping.
+enum LedgerAccountType {
+  ASSET
+  CONTRA_ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  CONTRA_INCOME
+  EXPENSE
+}
+
+enum JournalSourceType {
+  OPENING
+  INVOICE
+  RECEIPT
+  PAYMENT
+  DEPOSIT
+  CUSTOMER_CREDIT
+  CREDIT_APPLICATION
+  REFUND
+  STRIPE_BALANCE_TXN
+  EXPENSE
+  APPLIANCE
+  USE_TAX
+  TAX_FILING
+}
+
+enum AccountingPeriodStatus {
+  OPEN
+  CLOSED
+}
+
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  POSTED
+  VOID
+}
+
+enum ExportTarget {
+  QBO_JOURNAL_CSV
+  XERO_JOURNAL_CSV
+  GENERIC_JOURNAL_CSV
+  CASH_MOVEMENTS_CSV
+}
+
+enum ExportMode {
+  DAILY_SUMMARY
+  DETAIL
+}
+
+model LedgerAccount {
+  id              String                 @id @default(cuid())
+  systemRole      String?                @unique // section 2.1; null for owner-added accounts
+  name            String
+  type            LedgerAccountType
+  description     String // plain words, shown on screen
+  isPaymentSource Boolean                @default(false)
+  filingAccountId String? // set for per-filing-account tax payable accounts
+  active          Boolean                @default(true)
+  sortOrder       Int                    @default(0)
+  mappings        AccountExportMapping[]
+  lines           JournalLine[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+}
+
+model AccountExportMapping {
+  id              String        @id @default(cuid())
+  ledgerAccountId String
+  ledgerAccount   LedgerAccount @relation(fields: [ledgerAccountId], references: [id])
+  target          ExportTarget
+  externalName    String // QuickBooks account name ("Parent:Child" for sub-accounts) or Xero account code
+  externalTaxRate String? // Xero only; starting value "Tax Exempt" — the owner confirms the exact name of the no-tax rate in his Xero organisation
+
+  @@unique([ledgerAccountId, target])
+}
+
+model JournalEntry {
+  id          String             @id @default(cuid())
+  entryNumber Int                @unique @default(autoincrement())
+  entryDate   DateTime // Colorado midnight of the business date
+  periodKey   String // "YYYY-MM" of entryDate (Colorado)
+  sourceType  JournalSourceType
+  sourceId    String
+  eventKind   String // section 3.2 names
+  memo        String
+  customerId  String?
+  applianceId String?
+  lateForDate DateTime?
+  lines       JournalLine[]
+  exports     ExportBatchEntry[]
+  createdAt   DateTime           @default(now())
+
+  @@unique([sourceType, sourceId, eventKind])
+  @@index([periodKey])
+  @@index([entryDate])
+}
+
+model JournalLine {
+  id              String        @id @default(cuid())
+  entryId         String
+  entry           JournalEntry  @relation(fields: [entryId], references: [id])
+  ledgerAccountId String
+  ledgerAccount   LedgerAccount @relation(fields: [ledgerAccountId], references: [id])
+  debitCents      Int           @default(0)
+  creditCents     Int           @default(0)
+  memo            String?
+
+  @@index([ledgerAccountId])
+  @@index([entryId])
+}
+
+model AccountingPeriod {
+  periodKey      String                 @id
+  status         AccountingPeriodStatus @default(OPEN)
+  closedAt       DateTime?
+  closedByUserId String?
+  reopenedReason String?
+  updatedAt      DateTime               @updatedAt
+}
+
+model StripeBalanceTransaction {
+  id                String   @id // Stripe txn_… id
+  type              String
+  reportingCategory String
+  amountCents       Int
+  feeCents          Int
+  netCents          Int
+  currency          String
+  sourceId          String?
+  payoutId          String?
+  description       String?
+  createdAtStripe   DateTime
+  availableOn       DateTime
+  syncedAt          DateTime @default(now())
+
+  @@index([createdAtStripe])
+  @@index([payoutId])
+}
+
+model IntegrationCursor {
+  key       String   @id // "stripe-balance-transactions"
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model ExpenseCategory {
+  id              String    @id @default(cuid())
+  name            String
+  description     String
+  ledgerAccountId String
+  active          Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  expenses        Expense[]
+  createdAt       DateTime  @default(now())
+}
+
+model Expense {
+  id                    String          @id @default(cuid())
+  status                ExpenseStatus
+  spentOn               DateTime
+  amountCents           Int // total paid, including any tax the seller charged
+  vendorTaxCents        Int             @default(0)
+  vendorName            String
+  supplierId            String?
+  categoryId            String
+  category              ExpenseCategory @relation(fields: [categoryId], references: [id])
+  paidFromAccountId     String
+  memo                  String?
+  receiptPhotoId        String?
+  applianceId           String?
+  jobId                 String?
+  purchaseOrderId       String?
+  capitalizeToAppliance Boolean         @default(false)
+  recurringExpenseId    String?
+  submittedByUserId     String
+  postedByUserId        String?
+  postedAt              DateTime?
+  voidedAt              DateTime?
+  voidedByUserId        String?
+  voidReason            String?
+  version               Int             @default(1)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([status, spentOn])
+  @@index([applianceId])
+  @@index([submittedByUserId])
+}
+
+model RecurringExpense {
+  id                String   @id @default(cuid())
+  name              String
+  vendorName        String
+  amountCents       Int
+  categoryId        String
+  paidFromAccountId String
+  dayOfMonth        Int // 1–28
+  active            Boolean  @default(true)
+  lastCreatedFor    String? // "YYYY-MM"
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ExportBatch {
+  id              String             @id @default(cuid())
+  target          ExportTarget
+  mode            ExportMode
+  periodFrom      DateTime
+  periodTo        DateTime
+  fileName        String
+  content         String // the CSV text exactly as downloaded
+  contentSha256   String
+  entryCount      Int
+  createdByUserId String
+  entries         ExportBatchEntry[]
+  createdAt       DateTime           @default(now())
+}
+
+model ExportBatchEntry {
+  exportBatchId  String
+  batch          ExportBatch  @relation(fields: [exportBatchId], references: [id], onDelete: Cascade)
+  journalEntryId String
+  entry          JournalEntry @relation(fields: [journalEntryId], references: [id])
+
+  @@id([exportBatchId, journalEntryId])
+  @@index([journalEntryId])
 }
