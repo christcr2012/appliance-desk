@@ -113,7 +113,7 @@ export async function getBooksWorkspace(actor:BooksActor, options?:{month?:strin
       orderBy:[{entryDate:"desc"},{entryNumber:"desc"}],skip:(page-1)*30,take:30}),
     prisma.accountingPeriod.findMany({orderBy:{periodKey:"desc"},take:36}),
     prisma.journalEntry.count({where:month?{periodKey:month}:{}}),
-    prisma.systemIssue.findMany({where:{kind:"BOOKS_POSTING_FAILURE",status:"OPEN"},
+    prisma.systemIssue.findMany({where:{kind:{in:["BOOKS_POSTING_FAILURE","BOOKS_STRIPE_CLEARING_DIFFERENCE"]},status:"OPEN"},
       orderBy:{lastSeenAt:"desc"},take:30,select:{id:true,summary:true,detail:true,lastSeenAt:true,occurrences:true}}),
   ]);
   const balances=await prisma.journalLine.groupBy({
