@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type Stripe from "stripe";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { recordSystemIssue } from "@/domains/system-issues";
 import { businessDateFromKey } from "@/lib/business-date";
 import { writeJournal, postPending } from "@/domains/books/post";
 import { openingBalance, receiptReceived } from "@/domains/books/posting-rules";
@@ -67,6 +68,7 @@ afterAll(async () => {
   await prisma.stripeBalanceTransaction.deleteMany({ where: { id: { startsWith: prefix } } });
   await prisma.systemIssue.deleteMany({ where: { fingerprint: { in: [
     "books-stripe-clearing:2026-10-17", "books-post:STRIPE_BALANCE_TXN:" + prefix + "_unknown",
+    "books-post:STRIPE_BALANCE_TXN:" + prefix + "_fee",
   ] } } });
   if (oldCursor) await prisma.integrationCursor.upsert({ where: { key: "stripe-balance-transactions" },
     create: { key: "stripe-balance-transactions", value: oldCursor.value },
@@ -105,7 +107,7 @@ describe("K-3 provider evidence to Stripe clearing", () => {
       .rejects.toThrow(/not USD/);
     expect((await prisma.integrationCursor.findUnique({ where: { key: "stripe-balance-transactions" } }))?.value)
       .toBe(prior);
-    const stable = transaction("immutable", 500, 15);
+    const stable = transaction("immutable", 500, 15, afterCutoff);
     await syncStripeBalanceTransactions(fake([[stable]]).client);
     const modified = { ...stable, amount: 501, net: 486 } as Stripe.BalanceTransaction;
     await expect(syncStripeBalanceTransactions(fake([[modified]]).client))
@@ -136,8 +138,11 @@ describe("K-3 provider evidence to Stripe clearing", () => {
     const payout = transaction("payout", -400, 0, beforeCutoff, "payout", "payout");
     const refunded = transaction("refund", -50, 0, beforeCutoff, "refund", "refund");
     await syncStripeBalanceTransactions(fake([[fee, service, dispute, payout, refunded]]).client);
+    await recordSystemIssue({ kind: "BOOKS_POSTING_FAILURE", sourceType: "STRIPE_BALANCE_TXN", sourceId: fee.id });
     await Promise.allSettled([postPending({ limit: 500 }), postPending({ limit: 500 })]);
     await postPending({ limit: 500 });
+    expect((await prisma.systemIssue.findUnique({ where: { fingerprint: "books-post:STRIPE_BALANCE_TXN:" + fee.id } }))?.status)
+      .toBe("RESOLVED");
     const rows = await prisma.journalEntry.findMany({ where: {
       sourceType: "STRIPE_BALANCE_TXN",
       sourceId: { in: [fee.id, service.id, dispute.id, payout.id, refunded.id] },

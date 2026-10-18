@@ -25,6 +25,7 @@
   "evidence": [
     "Frozen full K-3 acceptance plan committed at 335cc521c6c0d4bde42933d2c55234b974ff1887 before implementation.",
     "Provider/importer and SQL typed issue integration plus guarded scheduled job authored in same branch; no production or live-money operation.",
-    "Tests authored for pagination failure, cursor overlap, invalid money, previous-day gap, fee categories, concurrency and disabled cron; not yet executed or represented as passed."
+    "Tests authored for pagination failure, cursor overlap, invalid money, previous-day gap, fee categories, concurrency and disabled cron; not yet executed or represented as passed.",
+    "First exact-head PR #499 CI: type/lint/repo, secret, release policy, two unit shards and four browser shards passed; shard 3 failed one new test because an earlier Stripe fixture remained unposted before cutoff (1097/1098 passed). Corrected fixture date, added successful-replay issue resolution, made every unknown nightly clearing state fail closed; new exact-head CI pending."
   ]
 }

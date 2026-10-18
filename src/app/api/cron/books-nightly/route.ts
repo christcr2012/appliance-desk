@@ -21,9 +21,10 @@ export async function GET(request: Request): Promise<NextResponse> {
       const answer = await runStripeBooksNightly();
       if (answer.sync.state === "NOT_INITIALIZED")
         throw new Error("Owner must initialize books before nightly reconciliation.");
-      if (answer.clearing.state === "UNKNOWN" && "problems" in answer && answer.problems) {
-        // The owner can inspect the typed posting exceptions; never mark this pass reconciled.
-        throw new Error("Some source evidence could not be posted; see the private Books exceptions.");
+      if (answer.clearing.state === "UNKNOWN") {
+        // Any incomplete reconciliation, even without an explicit posting error,
+        // is a failed daily obligation. Do not consume the daily success slot.
+        throw new Error("Stripe clearing could not be verified; review opening balance, import coverage and pending Books sources.");
       }
       return { counts: {
         pages: answer.sync.pages,
