@@ -6,7 +6,7 @@
   "card": "docs/pr-cards/F2-A.md",
   "outcome": "The whole business is proven to work as connected flows: the five rental and financial scenarios, then the security, messaging, privacy, restore and continuing-rental scenarios, the owner workflow in the browser, the connected-flow scenarios 13 to 17 and an automated link check, all on a throwaway database with every provider faked, so the launch ledger can cite real evidence instead of per-feature tests.",
   "risk": "A scenario that passes only because it fakes the thing under test, a fake provider that hides a real double-charge or duplicate-record bug, a test that touches a non-local database, real customer data or secrets in a fixture, flaky ordering between files that share the throwaway database, a scenario bent to pass over a real defect, or evidence overclaimed as real provider acceptance.",
-  "next": "Plan frozen; scenarios, any proven fixes and docs follow.",
+  "next": "Delivered: all 17 scenario files, the link check and the owner-workflow browser spec; exact-head CI then merge. F2-C (owner guide and screenshots) follows.",
   "references": [
     {
       "path": "tests/helpers/w22-v2-order.ts",
@@ -82,7 +82,7 @@
     "tests/scenarios/16-failed-charge-to-recovery.test.ts",
     "tests/scenarios/17-portal-journeys.test.ts",
     "tests/connection-check.test.ts",
-    "e2e/scenarios/10-owner-workflow.spec.ts"
+    "e2e/scenario-10-owner-workflow.spec.ts"
   ],
   "invariants": [
     "Throwaway local Postgres only; never Neon, production or real customer data.",
@@ -111,7 +111,7 @@
     "tests/scenarios/09-restore-and-media-recovery.test.ts: a backup export taken from the scenario database is restored into a separate disposable database by the real restore path, row counts and key totals match, provider-state tables are restored, credentials are not, and a media inventory sample re-reads with matching hashes; it refuses any non-local target.",
     "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts: a fixed term ends into month-to-month, billing continues without a second agreement, the customer ends it online with the required notice, the end date and pickup are created, and billing stops at the right date; asserts agreement status and dates, the subscription end intent, the pickup job and the notices.",
     "tests/scenarios/12-late-pickup-company-waiver.test.ts: when the company causes a late pickup the owner records the company-delay waiver, rent and late fees for the delay are waived exactly as the waiver says, a pickup that is the customer's fault still charges, and replaying the waiver changes nothing; asserts invoice lines, waiver record and audit rows in integer cents.",
-    "e2e/scenarios/10-owner-workflow.spec.ts: using only the owner's screens (no code or database help), the owner changes a price, publishes site copy, schedules a delivery, records a check payment and decides a deposit refund; the spec is registered in e2e/shards.json and every step shows its saved result and its To do or notice.",
+    "e2e/scenario-10-owner-workflow.spec.ts: using only the owner's screens (no code or database help), the owner changes a price, publishes site copy, schedules a delivery, records a check payment and decides a deposit refund; the spec is registered in e2e/shards.json and every step shows its saved result and its To do or notice.",
     "tests/scenarios/13-purchase-to-audit.test.ts: a purchase receipt with four appliances records use tax, the period closes, File now produces a confirmation, and the audit pack lists every serial; asserts the totals in integer cents, the tax proof and that the audit pack matches the purchase.",
     "tests/scenarios/14-set-lifecycle.test.ts: a package quote becomes an agreement with a washer and a dryer, one returns early, repricing follows the owner's rules, then pickup, inspection, cleaning and available; asserts line prices, the repricing result, custody episodes and the ending chain.",
     "tests/scenarios/15-ending-to-ready.test.ts: each ending path (term end, early return, termination, cancellation) creates the pickup, inspection and cleaning or repair chain and ends with the appliance available or out of service; asserts the same chain exists for every path and none is skipped.",
@@ -126,7 +126,7 @@
       "tests/scenarios/01-lead-to-recurring-billing.test.ts"
     ],
     "browser": [
-      "e2e/scenarios/10-owner-workflow.spec.ts"
+      "e2e/scenario-10-owner-workflow.spec.ts"
     ],
     "node": []
   },
@@ -152,7 +152,7 @@
         "tests/scenarios/09-restore-and-media-recovery.test.ts: a backup export taken from the scenario database is restored into a separate disposable database by the real restore path, row counts and key totals match, provider-state tables are restored, credentials are not, and a media inventory sample re-reads with matching hashes; it refuses any non-local target.",
         "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts: a fixed term ends into month-to-month, billing continues without a second agreement, the customer ends it online with the required notice, the end date and pickup are created, and billing stops at the right date; asserts agreement status and dates, the subscription end intent, the pickup job and the notices.",
         "tests/scenarios/12-late-pickup-company-waiver.test.ts: when the company causes a late pickup the owner records the company-delay waiver, rent and late fees for the delay are waived exactly as the waiver says, a pickup that is the customer's fault still charges, and replaying the waiver changes nothing; asserts invoice lines, waiver record and audit rows in integer cents.",
-        "e2e/scenarios/10-owner-workflow.spec.ts: using only the owner's screens (no code or database help), the owner changes a price, publishes site copy, schedules a delivery, records a check payment and decides a deposit refund; the spec is registered in e2e/shards.json and every step shows its saved result and its To do or notice.",
+        "e2e/scenario-10-owner-workflow.spec.ts: using only the owner's screens (no code or database help), the owner changes a price, publishes site copy, schedules a delivery, records a check payment and decides a deposit refund; the spec is registered in e2e/shards.json and every step shows its saved result and its To do or notice.",
         "tests/scenarios/13-purchase-to-audit.test.ts: a purchase receipt with four appliances records use tax, the period closes, File now produces a confirmation, and the audit pack lists every serial; asserts the totals in integer cents, the tax proof and that the audit pack matches the purchase.",
         "tests/scenarios/14-set-lifecycle.test.ts: a package quote becomes an agreement with a washer and a dryer, one returns early, repricing follows the owner's rules, then pickup, inspection, cleaning and available; asserts line prices, the repricing result, custody episodes and the ending chain.",
         "tests/scenarios/15-ending-to-ready.test.ts: each ending path (term end, early return, termination, cancellation) creates the pickup, inspection and cleaning or repair chain and ends with the appliance available or out of service; asserts the same chain exists for every path and none is skipped.",

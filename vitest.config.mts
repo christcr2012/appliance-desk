@@ -85,6 +85,10 @@ const SHARED_SETTINGS_TESTS = [
   "tests/voice-voicemail-integration.test.ts",
   "tests/use-tax-frequency-transition-integration.test.ts",
   "tests/use-tax-unlinked-account-integration.test.ts",
+  // Added 2026-10-17 (F2-A/F2-B): the integrated scenarios seed the shared tax settings, switch shared business settings
+  // on and off, and work through whole-database queues (billing hand-offs, waiting notices, due terminations), so they
+  // run one after another and never beside each other.
+  "tests/scenarios/**/*.test.ts",
 ];
 
 export default defineConfig({

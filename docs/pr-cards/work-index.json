@@ -561,7 +561,7 @@
         "tests/scenarios/16-failed-charge-to-recovery.test.ts",
         "tests/scenarios/17-portal-journeys.test.ts",
         "tests/connection-check.test.ts",
-        "e2e/scenarios/10-owner-workflow.spec.ts"
+        "e2e/scenario-10-owner-workflow.spec.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/F2-A.md",
@@ -592,7 +592,7 @@
         "tests/scenarios/09-restore-and-media-recovery.test.ts",
         "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts",
         "tests/scenarios/12-late-pickup-company-waiver.test.ts",
-        "e2e/scenarios/10-owner-workflow.spec.ts"
+        "e2e/scenario-10-owner-workflow.spec.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/F2-A.md",

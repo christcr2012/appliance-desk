@@ -1,3 +1,19 @@
+## October 17 — F2-A and F2-B delivered (every connected business flow proved by a real test), CI pending
+
+V-3 and V-4 are merged (#491). This PR delivers two whole approved subsections as launch evidence: **F2-A** (scenarios 1–5) and **F2-B** (scenarios 6–9, 11–17, the owner-workflow browser test and the link check).
+Each scenario runs the real business code on a throwaway local database with Stripe, email and the photo store faked at their edge. They cover: lead to recurring billing (1); a Stripe failure, one-subscription retry and a never-repeated unknown outcome (2); repair to inspection (3);
+a check, overpayment credit, refund and the statement agreeing to the cent (4); term end, renewal, termination and opt-out (5); staff leaving with work in flight (6); email send failures and reconciliation (7); a privacy export and deletion with required records kept (8);
+a real backup restore into a new database and photo recovery (9); month-to-month continuation and ending online (11); the company-caused late-pickup waiver (12); purchase to use-tax filing to audit pack (13); a washer-and-dryer set (14);
+every way a rental ends reaching the same pickup, inspection and cleaning-or-repair chain (15); failed charge to Today item to pay-now to cleared (16); and the customer portal staying inside the customer's own records (17).
+`tests/connection-check.test.ts` checks that every To do button and Related link in the code points at a page or download that exists. `e2e/scenario-10-owner-workflow.spec.ts` drives the owner's own screens: change a price, publish site words, schedule a delivery, record a check and decide a deposit.
+**One real defect found and fixed:** cancelling a delivered rental that was still active left its machines "awaiting pickup" with no pickup visit and nothing on Today. Cancelling now drafts the same one pickup visit as ending does (`pickup-draft.ts`, `agreements/index.ts`); scenario 15 is the regression test.
+**Finding, not changed:** fulfilling a privacy deletion writes no audit-log row; the request itself records who completed it and when. Owner to say whether a separate audit row is wanted.
+Honest limits: nothing here is real-provider acceptance (Stripe, email, SMS, photo storage and a production-sized restore stay open); the link check reads the code rather than opening every record page; the browser test confirms each saved result on screen but does not separately assert a Today tile for every step (scenario 16 does for failed payments).
+The scenarios run one at a time in the existing shared-settings test group (`vitest.config.mts`) and clear the billing and provider queue rows they create, so they cannot disturb older tests that read whole-database queues.
+The browser spec sits at `e2e/scenario-10-owner-workflow.spec.ts` (the shard checker only registers top-level specs) and is in shard browser-a.
+Proof: all 17 scenario files and the link check pass together twice in a row on one database (35 tests); 108 existing agreement and pickup tests re-run green after the fix; the owner-workflow spec passed in a real local browser; typecheck, lint, owner-decision, route-inventory, shard and bundle-accounting checks pass; exact-head CI is pending.
+Next: F2-C (owner guide and reproducible screenshots), then F2-D (review discharge, launch ledger, rollback). Nothing is live; no Stripe, email, SMS, spending or production data touched.
+
 ## October 17 — V-3 and V-4 delivered (the bolder look for every public page, Today and the portal home), CI pending, owner look decision OPEN
 
 V-1 and V-2 are merged (#490); the owner accepted the home page ("better, not as big a change as hoped") and asked for a bolder step, which this PR takes.

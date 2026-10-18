@@ -845,7 +845,8 @@ export async function closeAgreementInTx(
   }
 
   // E1: a rental that ends while appliances are still at the customer's gets one draft pickup visit (never sent or charged).
-  if (newStatus === "ENDED") await ensurePickupDraftInTx(tx, agreementId);
+  // Cancelling a delivered rental leaves the machines awaiting pickup, so it gets the same draft (none when nothing is at the customer's).
+  await ensurePickupDraftInTx(tx, agreementId);
 
   // A cancelled automatic renewal's reminder no longer needs to go out: withdrawn in the same transaction.
   if (newStatus === "CANCELLED" && agreement.createdByAutoRenew && agreement.renewedFromAgreementId) {

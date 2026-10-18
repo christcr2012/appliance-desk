@@ -1,0 +1,99 @@
+{
+  "subsections": [
+    {
+      "id": "F2-A",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "tests/scenarios/01-lead-to-recurring-billing.test.ts: a real lead is created and converted to a customer, an order for that customer is reviewed, signed and paid by a recorded check, the delivery is completed, and recurring billing starts exactly once; it asserts the signed totals, the receipt, the deposit/reserve record, the signing credit applied to the first invoice, the custody (appliance assignment) and the audit rows, using the real domain functions on a throwaway Postgres with Stripe, email and SMS faked at their client boundary.",
+          "evidence": "tests/scenarios/01-lead-to-recurring-billing.test.ts passes on the throwaway Postgres: public form lead, conversion to one account (second convert refused), reviewed order, signing, a check recorded once (replay is a no-op) giving the $286.31 receipt, deposit linked to the receipt and the $60.00 signing credit, delivery with custody, exactly one fake-Stripe subscription whose first invoice carries -$6,000 cents credit, replays create nothing, audit rows exist. Stripe and email are faked at the client boundary."
+        },
+        {
+          "criterion": "tests/scenarios/02-provider-failure-retry.test.ts: a Stripe failure while starting recurring billing is recorded as a provider operation that is never treated as success, a retry after the failure creates exactly one subscription, a retry after success creates none, an uncertain outcome is not blindly repeated, and the stored error text never contains a secret; asserts ProviderOperation states, the call counts on the fake, and the owner-visible To do or issue.",
+          "evidence": "tests/scenarios/02-provider-failure-retry.test.ts passes: a definite rejection leaves delivery done, the ProviderOperation FAILED with the key-shaped text removed, a BILLING_BLOCKED To do for the owner; the retry reuses the same idempotency key and creates exactly one subscription and clears the block; a further retry calls Stripe zero times; a dropped connection leaves the operation UNKNOWN, is never repeated, and creates no subscription."
+        },
+        {
+          "criterion": "tests/scenarios/03-maintenance-to-inspection.test.ts: a customer's maintenance request is scheduled, a visit is started and finished, the request status follows the visit, and the appliance moves through the inspection step to available or out of service as the existing rules say; asserts statuses, job and request links, custody and audit rows, and that a customer cannot reach another customer's request.",
+          "evidence": "tests/scenarios/03-maintenance-to-inspection.test.ts passes: customer request, scheduling a visit, start and finish, request status following the visit, appliance through inspection to available or out of service, audit rows, and another customer is refused the request."
+        },
+        {
+          "criterion": "tests/scenarios/04-manual-payment-overpayment-refund-statement.test.ts: a manual payment is recorded against an invoice, an overpayment is held as a credit (not lost and not double-counted), a refund is decided and recorded once, and the customer's statement and the owner's invoice view agree to the cent; asserts invoice, receipt, credit and refund totals in integer cents, idempotent replays, and the audit rows.",
+          "evidence": "tests/scenarios/04-manual-payment-overpayment-refund-statement.test.ts passes: manual payment, overpayment held as one credit, a refund decided once, replays change nothing, and the customer statement and the owner invoice view agree in integer cents."
+        },
+        {
+          "criterion": "tests/scenarios/05-term-end-renew-terminate-autorenew.test.ts: with the Automatic renewals switch turned on only inside the test, a fixed-term agreement reaches its term end and renews, a customer termination and an auto-renew opt-out are honored on the right dates, an opt-out racing the extension leaves the old end date in the fake Stripe (the B2 ordering rule), and reminders, notices and billing-end rows are asserted at each step.",
+          "evidence": "tests/scenarios/05-term-end-renew-terminate-autorenew.test.ts passes (4 tests): renewal at term end, termination and opt-out on the right dates, the opt-out racing the extension leaves the old end date in the fake Stripe, reminders and notices asserted at each step with the Automatic renewals switch turned on and restored inside the test. A notice the sender marks sent in real time is hand-delivered inside the window because the test clock is in the future; that is stated in the file."
+        }
+      ]
+    },
+    {
+      "id": "F2-B",
+      "remainingEngineering": [],
+      "criteria": [
+        {
+          "criterion": "tests/scenarios/06-staff-lifecycle-inflight.test.ts: a staff member is created, given in-flight work (a scheduled job and an assigned task), then deactivated; their sessions and access stop at once, in-flight work stays visible and reassignable to the owner, nothing is deleted, and role checks (OWNER, ADMIN, STAFF, CUSTOMER) still hold at the query boundary; asserts audit rows and that a deactivated actor cannot write.",
+          "evidence": "tests/scenarios/06-staff-lifecycle-inflight.test.ts passes (4 tests): a staff member is created and invited, given a scheduled job and task, deactivated; sessions end at once, access stops, in-flight work stays visible and is reassignable by the owner, nothing is deleted, a deactivated actor is refused, and roles hold at the query boundary."
+        },
+        {
+          "criterion": "tests/scenarios/07-message-send-failure-reconcile.test.ts: a customer email send fails after the durable business change (for example an estimate approval), the business change is reported as done with the notice pending, a retry does not create a second account or agreement, an uncertain delivery is marked UNCERTAIN or MISSED and reconciled, and a disabled sender is distinct from a thrown one; asserts MessageDelivery and CustomerNotice states and account/agreement counts, with the sender faked.",
+          "evidence": "tests/scenarios/07-message-send-failure-reconcile.test.ts passes (4 tests): lead conversion whose activation email fails still creates the account once and a retry creates no second one; a throwing sender gives UNCERTAIN, not repeated, then reconciled by confirmEmailOutcome; a disabled sender (NOT_ATTEMPTED, notice stays PENDING) is distinct from a thrown one and from REJECTED (FAILED); a notice past its deadline becomes MISSED and is never sent."
+        },
+        {
+          "criterion": "tests/scenarios/08-privacy-request-retention.test.ts: a privacy request (export and deletion) is opened for a customer, retention rules keep what the law or open money requires, deletable data is removed or anonymized only where allowed, another customer's data never appears in the export, and the request records who did what; asserts counts, retained-versus-removed tables and audit rows on the throwaway database only.",
+          "evidence": "tests/scenarios/08-privacy-request-retention.test.ts passes (3 tests): request opened and verified, export contains only that customer, deletion pseudonymizes while invoices, payments, receipts, refunds, credits, signatures, documents, notices and audit rows are retained, and the request records who fulfilled it. FINDING: fulfilling a deletion writes no AuditLog row (only the request row holds who/when); recorded for the owner, not changed here."
+        },
+        {
+          "criterion": "tests/scenarios/09-restore-and-media-recovery.test.ts: a backup export taken from the scenario database is restored into a separate disposable database by the real restore path, row counts and key totals match, provider-state tables are restored, credentials are not, and a media inventory sample re-reads with matching hashes; it refuses any non-local target.",
+          "evidence": "tests/scenarios/09-restore-and-media-recovery.test.ts passes (3 tests): the real restore script restores a backup into a new local database with matching counts and totals, refuses a non-local target before touching anything, and the media inventory/recovery sample re-reads with matching hashes using an in-memory blob fake. Real Blob storage and a real production restore are NOT proved here."
+        },
+        {
+          "criterion": "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts: a fixed term ends into month-to-month, billing continues without a second agreement, the customer ends it online with the required notice, the end date and pickup are created, and billing stops at the right date; asserts agreement status and dates, the subscription end intent, the pickup job and the notices.",
+          "evidence": "tests/scenarios/11-month-to-month-continuation-and-online-end.test.ts passes: the renewal takes over the same subscription (no second agreement), a stranger is refused, the customer ends it online with notice, one removal draft pickup is created, the Stripe cancel_at is set one second before the end date, and runDueTerminations ends it on that date."
+        },
+        {
+          "criterion": "tests/scenarios/12-late-pickup-company-waiver.test.ts: when the company causes a late pickup the owner records the company-delay waiver, rent and late fees for the delay are waived exactly as the waiver says, a pickup that is the customer's fault still charges, and replaying the waiver changes nothing; asserts invoice lines, waiver record and audit rows in integer cents.",
+          "evidence": "tests/scenarios/12-late-pickup-company-waiver.test.ts passes: a late return charges $4.00 plus tax ($4.28) and the company-delay waiver removes it exactly (negative waiver line and tax reversal, 321 cents after a partial waiver of the days, 0 after a full one), replay changes nothing, a customer-fault late pickup still charges."
+        },
+        {
+          "criterion": "e2e/scenarios/10-owner-workflow.spec.ts: using only the owner's screens (no code or database help), the owner changes a price, publishes site copy, schedules a delivery, records a check payment and decides a deposit refund; the spec is registered in e2e/shards.json and every step shows its saved result and its To do or notice.",
+          "evidence": "e2e/scenario-10-owner-workflow.spec.ts (registered in e2e/shards.json, browser-a) PASSED in a real local Chromium against the built app and the throwaway database: price saved with history row, site words saved as draft, reviewed, published and seen by a visitor then restored, delivery scheduled on the job, a $60 check recorded and the bill PAID with one payment, and a $40 partial deposit give-back with a written reason shown as the saved decision, with an accessibility scan. DEVIATION: the file lives at e2e/scenario-10-owner-workflow.spec.ts, not e2e/scenarios/, because scripts/e2e-shard.mjs only registers top-level spec files. The saved confirmation on each screen is checked; the To do tile for these steps is not separately asserted in the browser (scenario 16 covers the To do)."
+        },
+        {
+          "criterion": "tests/scenarios/13-purchase-to-audit.test.ts: a purchase receipt with four appliances records use tax, the period closes, File now produces a confirmation, and the audit pack lists every serial; asserts the totals in integer cents, the tax proof and that the audit pack matches the purchase.",
+          "evidence": "tests/scenarios/13-purchase-to-audit.test.ts passes: four appliances on one purchase receipt record $50.00 of use tax, the filing packet is READY, File now builds the form, the period is marked filed with a confirmation number, and the audit pack lists every serial with matching tax and proof."
+        },
+        {
+          "criterion": "tests/scenarios/14-set-lifecycle.test.ts: a package quote becomes an agreement with a washer and a dryer, one returns early, repricing follows the owner's rules, then pickup, inspection, cleaning and available; asserts line prices, the repricing result, custody episodes and the ending chain.",
+          "evidence": "tests/scenarios/14-set-lifecycle.test.ts passes (run repeatedly): washer and dryer set delivered with one subscription, the dryer returned and marked done, the line repriced by the owner's rule (never above today, one amendment, doing it twice refused), an explicit end-at-pickup early return, then pickup, inspection and cleaning to AVAILABLE with custody episodes closed."
+        },
+        {
+          "criterion": "tests/scenarios/15-ending-to-ready.test.ts: each ending path (term end, early return, termination, cancellation) creates the pickup, inspection and cleaning or repair chain and ends with the appliance available or out of service; asserts the same chain exists for every path and none is skipped.",
+          "evidence": "tests/scenarios/15-ending-to-ready.test.ts passes (3 tests, repeated): term end, early return, agreed termination and cancellation each produce exactly one unscheduled pickup draft holding the machine, and the machine moves AWAITING_INSPECTION, CLEANING, AVAILABLE identically; a failed inspection goes to MAINTENANCE with exactly one repair draft; cancelling an undelivered rental drafts no pickup. FINDING FIXED: cancelling a delivered ACTIVE rental left its machines awaiting pickup with no pickup draft and no To do; ensurePickupDraftInTx now also accepts CANCELLED when machines are still at the customer's, and closeAgreementInTx calls it for cancellations, with this scenario as the regression test."
+        },
+        {
+          "criterion": "tests/scenarios/16-failed-charge-to-recovery.test.ts: an automatic charge fails, a To do appears for the owner, the customer pays now in the portal, the payment applies once and the To do clears; asserts invoice status, To do creation and clearing, and no duplicate charge on replay.",
+          "evidence": "tests/scenarios/16-failed-charge-to-recovery.test.ts passes: the failed payment (delivered twice) records one failed attempt and DELINQUENT, the owner To do shows the $52.00 and links to the invoice, the portal Pay now returns the hosted page for the owner customer and the same not-found refusal for another customer, the paid message gives one successful payment and one receipt, the To do clears, Pay now is refused afterwards, and replays of paid, paid again and a late failure change nothing."
+        },
+        {
+          "criterion": "tests/scenarios/17-portal-journeys.test.ts: a signed-in customer requests a pickup, reports a problem, sees the status of each and pays an open bill, only for their own records; asserts each created record, its status wording source, and that another customer receives no data from any of these paths.",
+          "evidence": "tests/scenarios/17-portal-journeys.test.ts passes (repeated): a customer's pickup request creates one draft pickup visit (a repeat is folded in), the problem report is stored and listed, Pay now works for their own bill, and a second customer is refused the pickup, the problem report against the machine, and the bill, with none of the first customer's identifiers anywhere in the second customer's portal data."
+        },
+        {
+          "criterion": "The connection check (scripts and tests/connection-check.test.ts, extending the route inventory): an automated walk of every record page's Related panel links and every To do item's button asserts each resolves to a real page that exists in the route inventory; a link to a missing page fails the test.",
+          "evidence": "tests/connection-check.test.ts passes (3 tests): reads every link target written in domain code (To do and Related-panel links), the desk and portal pages and shared components, and matches each to the real App Router pages and download endpoints (dynamic and prefix links included); it has a negative test proving a link to a missing page fails. It is a static source walk against the page list, not a rendering of every record page."
+        }
+      ]
+    }
+  ],
+  "productionAdded": 5,
+  "productionRemoved": 4,
+  "planComparison": "Plan estimated about 120 production lines; actual production change is +5/-4 lines in two files (one proven defect fix). Everything else is permanent test evidence: 15 scenario files plus a shared helper under tests/scenarios and tests/helpers, tests/connection-check.test.ts, and one browser spec. Deliberate differences: the browser spec sits at e2e/scenario-10-owner-workflow.spec.ts (the shard checker only registers top-level specs); no sender test hooks were needed because every scenario fakes the sender at the module boundary; the link check is a static source walk with a negative test rather than a live walk of every record page.",
+  "newEngineering": "Seventeen new test files with fake-provider harnesses (Stripe, email, blob), the shared signing and delivery helper, a static link checker with a negative test, a browser workflow spec with cleanup, shard registration, and one production fix proven by scenario 15 (cancelling a delivered rental now drafts its pickup).",
+  "relatedWorkDecision": "F2-A and F2-B ship together on the owner's request for larger bundles; they share fixtures and fake providers while each scenario keeps its own assertions and provider boundary. F2-C (owner guide and screenshots) and F2-D (review discharge, launch ledger, rollback) follow as the next roadmap items.",
+  "decision": "SUBSTANTIAL_EXCEPTION",
+  "exceptionEvidence": [
+    "Two whole approved subsections (F2-A and F2-B, eighteen frozen acceptance items) are delivered; the production-line count is small by design because the work is evidence, not features, and the frozen plan estimated only 120 lines.",
+    "New engineering beyond the card: a real defect found and fixed (cancelled delivered rentals had no pickup draft or To do) with a regression scenario, a shared signing/delivery helper, fake Stripe harness that captures subscription parameters, and a static link checker with a negative test.",
+    "New permanent evidence: 17 scenario files with 35 tests passing together twice in a row on one database, 108 existing agreement and pickup tests re-run green after the fix, and a browser run that passed locally against the built app."
+  ]
+}

@@ -1146,3 +1146,10 @@ tax-evidence model. Choices made here, within the approved designs:
 - **Actual and Estimate tags live on the METRICS money tiles**, since Today has none; Estimate already existed and Actual is added so neither is unlabelled.
 - **Owner look gate stays open** for these screens; the PR waits for his answer.
 
+
+## 2026-10-17 — F2-A and F2-B decisions
+- **Scenarios use the real business code and fake only the outside world.** Stripe, email and the photo store are faked at their client edge so a double charge or a duplicate record in our own code would still fail a scenario.
+- **A scenario is never bent to pass.** Scenario 15 exposed that cancelling a delivered rental left machines awaiting pickup with no pickup visit; the code was fixed (cancellation drafts the same single pickup visit) instead of weakening the test.
+- **The privacy-deletion audit gap is reported, not changed.** Deleting writes no audit-log row (the request row records who and when); adding one is an owner policy call, so it is listed as a finding.
+- **The link check reads source, not rendered pages.** It matches every literal To do and Related link against the real page and download list and proves a bad link fails; walking every record page with live data is left to the browser suites.
+- **The owner-workflow browser spec lives at the top level of `e2e/`** because the shard registration only accepts top-level spec files.

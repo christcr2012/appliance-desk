@@ -10,8 +10,8 @@ export async function ensurePickupDraftInTx(
   const agreement = await tx.rentalAgreement.findUnique({
     where: { id: agreementId }, select: { id: true, customerId: true, serviceAddressId: true, status: true },
   });
-  // An ended rental still needs a pickup when appliances are still at the customer's (checked below).
-  if (!agreement || (agreement.status !== "ACTIVE" && agreement.status !== "ENDED")) return null;
+  // An ended or cancelled-after-delivery rental still needs a pickup when appliances are still at the customer's (checked below).
+  if (!agreement || (agreement.status !== "ACTIVE" && agreement.status !== "ENDED" && agreement.status !== "CANCELLED")) return null;
   const existing = await tx.job.findFirst({
     where: { agreementId, type: "REMOVAL", status: { not: "CANCELLED" } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true },
@@ -20,7 +20,7 @@ export async function ensurePickupDraftInTx(
   const held = await tx.applianceCustodyEpisode.findMany({
     where: { agreementId, endedOn: null }, select: { applianceId: true },
   });
-  if (agreement.status === "ENDED" && held.length === 0) return null;
+  if (agreement.status !== "ACTIVE" && held.length === 0) return null;
   const job = await tx.job.create({ data: {
     type: "REMOVAL", status: "SCHEDULED", scheduledAt: null, agreementId,
     customerId: agreement.customerId, serviceAddressId: agreement.serviceAddressId,
