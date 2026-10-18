@@ -1,5 +1,7 @@
 # Execution cards — just in time
 
+**Starting a new card?** `npm run bundle:new -- <ID> --subsections A-1,A-2` writes the card and packet skeletons (every placeholder line must be replaced; `npm run bundle:preflight` rejects leftover placeholders). Procedure: [../AGENT-QUICKSTART.md](../AGENT-QUICKSTART.md).
+
 A card defines approved scope, not an automatic separate PR or bundle. Group related
 whole subsections under AGENTS' bundle/card/PR rule; keep every acceptance criterion,
 permission and migration proof, with no numeric per-card ceiling.

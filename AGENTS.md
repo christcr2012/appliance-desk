@@ -1,5 +1,10 @@
 # AGENTS.md — the rules. Read this first, every session.
 
+> **Fast path for any agent:** read [docs/AGENT-QUICKSTART.md](docs/AGENT-QUICKSTART.md) (one page, the whole
+> loop and every known CI trap), scaffold with `npm run bundle:new`, and gate with `npm run bundle:preflight`.
+> **Precedence:** when two instructions in this repo disagree, the later-dated owner amendment wins; at equal
+> dates the safer rule (money, security, data) wins. The long sections below are reference, not extra steps.
+
 ## End-user product authority versus developer operating limits — owner decision 2026-10-16
 
 Read [docs/END-USER-AUTHORITY.md](docs/END-USER-AUTHORITY.md). Rules restricting **our coding/acceptance agents** (autonomous $0 spend, no unauthorized LIVE/production work, special owner permission and release constraints) do **not** restrict the product's fully authorized end users or their coding agents. Build the complete feasible provider capability; show financial/security/destructive notices, honor provider scope and user-chosen delegation policies, and permit actual execution. No developer restriction may silently become a permanent "guide-only" or outright refusal in the product. This clarification does not waive development authorization, CI, review or release gates.

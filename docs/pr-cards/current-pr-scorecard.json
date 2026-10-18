@@ -4,13 +4,14 @@
   "parent": "F2-C",
   "completedSlices": [],
   "remainingEngineering": [
-    "All MCP-1 through MCP-11 runtime engineering remains planned and unimplemented; no original product subsection claimed complete."
+    "K batches continue per docs/MASTER-ROADMAP.md starting with K-1A; no product subsection is claimed by this tooling change."
   ],
   "externalAcceptance": [
-    "Actual backup root cause, private store configuration, real restore, agent-client compatibility, monitoring worker and optional Hub routes remain unverified."
+    "Whether weaker agents now follow the loop without red CI is only known after their next PRs."
   ],
   "evidence": [
-    "Owner-requested architecture and repository planning in docs/mcp/README.md and related contracts.",
-    "Planning integrity is checked by python3 docs/mcp/validate-plan.py and existing documentation/secret checks; exact-head CI and review remain separate."
+    "Added docs/AGENT-QUICKSTART.md, scripts/bundle-preflight.mjs (local run of every paperwork gate with plain-English fixes) and scripts/bundle-new.mjs (card and packet scaffold), with tests/bundle-new.test.ts.",
+    "Made the launch-ledger freshness test a shape check so unrelated PRs are not blocked; a stale ledger is now a warning in bundle:preflight. tests/launch-ledger.test.ts passes.",
+    "Exact-head CI and self-review are recorded in the PR; no product behavior changed."
   ]
 }

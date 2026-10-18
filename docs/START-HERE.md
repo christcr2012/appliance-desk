@@ -1,5 +1,7 @@
 # START HERE — Appliance Desk
 
+**Implementing something? Read [AGENT-QUICKSTART.md](AGENT-QUICKSTART.md) first** — the whole loop on one page, with a table of every known CI failure and its fix. Run `npm run bundle:preflight` before every push.
+
 **Professional-review engineering:** the [researched implementation contract](designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md)
 maps the professional-review IN register to configurable data, owner controls,
 evidence, failure cases and tests. Build the current approved outcome while
