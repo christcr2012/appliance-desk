@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "b2a06c2",
-  "updated": "2026-10-17",
+  "updated": "2026-10-18",
   "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
@@ -674,7 +674,7 @@
       "tests": [
         "tests/books-migration-integration.test.ts"
       ],
-      "readiness": "IMPLEMENTED_PENDING_CI",
+      "readiness": "ENGINEERING_MERGED_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-1A.md",
       "card": "docs/pr-cards/K-1A.md"
     },
@@ -701,7 +701,7 @@
       "tests": [
         "tests/books-posting-rules.test.ts"
       ],
-      "readiness": "IMPLEMENTED_PENDING_CI",
+      "readiness": "ENGINEERING_MERGED_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-1B.md",
       "card": "docs/pr-cards/K-1A.md"
     },
@@ -712,7 +712,7 @@
       "dependencies": [
         "K-1B"
       ],
-      "status": "IN_REVIEW",
+      "status": "IMPLEMENTED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -728,7 +728,7 @@
       "tests": [
         "tests/books-poster-integration.test.ts"
       ],
-      "readiness": "IMPLEMENTED_PENDING_CI",
+      "readiness": "ENGINEERING_MERGED_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-2A.md",
       "card": "docs/pr-cards/K-2A.md"
     },
@@ -739,7 +739,7 @@
       "dependencies": [
         "K-2A"
       ],
-      "status": "IN_REVIEW",
+      "status": "IMPLEMENTED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -756,7 +756,7 @@
         "tests/books-setup-integration.test.ts",
         "e2e/books-setup.spec.ts"
       ],
-      "readiness": "IMPLEMENTED_PENDING_CI",
+      "readiness": "ENGINEERING_MERGED_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-2B.md",
       "card": "docs/pr-cards/K-2A.md"
     },
@@ -767,24 +767,26 @@
       "dependencies": [
         "K-2B"
       ],
-      "status": "APPROVED",
-      "migration": "none",
+      "status": "IN_PROGRESS",
+      "migration": "books_stripe_clearing_issue",
       "budget": 470,
       "units": [
         "K-3"
       ],
       "evidence": [
         "docs/designs/BATCH-K.md",
-        "prisma/schema.prisma",
-        "src/domains/billing/ledger.ts",
-        "src/domains/tax/filing-packet.ts",
-        "docs/designs/BATCH-K-CASH.md"
+        "src/domains/books/post.ts",
+        "src/domains/books/posting-rules.ts",
+        "src/domains/books/stripe-balance.ts",
+        "src/domains/automation/runs.ts",
+        "prisma/schema.prisma"
       ],
       "tests": [
         "tests/books-stripe-sync-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-3.md"
+      "readiness": "ENGINEERING_IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/K-3.md",
+      "card": "docs/pr-cards/K-3.md"
     },
     {
       "id": "K-4A",
@@ -3825,7 +3827,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-2A",
+  "activeExecution": "K-3",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3938,6 +3940,10 @@
     {
       "id": "K-2A",
       "path": "docs/pr-cards/execution/K-2A.json"
+    },
+    {
+      "id": "K-3",
+      "path": "docs/pr-cards/execution/K-3.json"
     }
   ]
 }
