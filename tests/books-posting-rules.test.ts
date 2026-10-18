@@ -42,6 +42,7 @@ describe("Batch K chart and pure posting", () => {
     };
     const plan = invoiceRecognition(invoice);
     check(plan);
+    expect(plan!.entryDate.toISOString()).toBe("2026-10-17T06:00:00.000Z");
     expect(plan!.lines).toContainEqual({role:"SALES_TAX:co",debitCents:0,creditCents:2250});
     expect(plan!.lines).toContainEqual({role:"DISCOUNTS",debitCents:1000,creditCents:0});
     check(invoiceVoided({...invoice,status:"VOID",voidedAt:date}));
@@ -107,7 +108,8 @@ describe("Batch K chart and pure posting", () => {
     check(expenseVoided(posted!,date));
     check(applianceContributed({date,amountCents:cents,booksStartDate:new Date("2026-11-01Z"),capitalizedExpenseExists:false}));
     expect(applianceContributed({date,amountCents:cents,booksStartDate:date,capitalizedExpenseExists:true})).toBeNull();
-    check(depreciationAccrued({date,amountCents:250,periodKey:"2026-10"}));
+    check(depreciationAccrued({date:new Date("2026-10-31T21:00:00Z"),amountCents:250,periodKey:"2026-10"}));
+    expect(() => depreciationAccrued({date,amountCents:250,periodKey:"2026-10"})).toThrow(/last Colorado/);
     expect(() => depreciationAccrued({date,amountCents:250,periodKey:"2026-09"})).toThrow();
     check(useTaxAccrued({date,amountCents:250,filingAccountId:"co"}));
     check(taxFiled({date,filingAccountId:"co",salesTaxCents:1200,useTaxCents:500,paidCents:1600,serviceFeeRetainedCents:20}));

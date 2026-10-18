@@ -31,7 +31,7 @@ export function balancedPlan(date: Date, memo: string, input: PostingLine[]): Po
   const right = lines.reduce((n, line) => n + line.creditCents, 0);
   if (!Number.isSafeInteger(left) || !Number.isSafeInteger(right) || left !== right)
     throw new PostingEvidenceError("Journal would not balance; no entry created.");
-  return { entryDate: date, memo, lines };
+  return { entryDate: postingBusinessDate(date), memo, lines };
 }
 export function reversePlan(plan: PostingPlan, date: Date, memo: string): PostingPlan {
   const result = balancedPlan(date, memo, plan.lines.map(line => ({
@@ -192,8 +192,12 @@ export function applianceContributed(input: SimpleEvidence & { booksStartDate: D
   ]);
 }
 export function depreciationAccrued(input: SimpleEvidence & { periodKey: string }): PostingPlan | null {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.periodKey) || businessDateKey(input.date).slice(0,7) !== input.periodKey)
-    throw new PostingEvidenceError("Depreciation month does not match source date.");
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.periodKey))
+    throw new PostingEvidenceError("Invalid depreciation period.");
+  const [year, month] = input.periodKey.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (businessDateKey(input.date) !== input.periodKey + "-" + String(lastDay).padStart(2, "0"))
+    throw new PostingEvidenceError("Depreciation must be posted on the last Colorado calendar day of its month.");
   return balancedPlan(input.date, "Appliance depreciation " + input.periodKey, [
     debit("DEPRECIATION", input.amountCents), credit("ACCUM_DEPRECIATION", input.amountCents),
   ]);
