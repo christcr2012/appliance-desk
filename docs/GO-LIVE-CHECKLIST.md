@@ -1,3 +1,10 @@
+## K-7 financial report acceptance — still open
+
+- [ ] Trial reconcile accrual, posted applied-cash and their comparison periods to a trusted bookkeeper journal; resolve each excluded needs-review source before relying on totals.
+- [ ] Cross-check signed source account balances, tax/customer deposit liabilities and retired held assets on the first real deployed readback; do not mistake money owed for earned income.
+- [ ] Confirm actual posted RENTAL/LATE_RETURN invoice apportionment for a washer/dryer set, itemized job part cost and incomplete evidence; payback months are estimates.
+- [ ] Check owner/admin-only 360px accessible deployed financial screens; exact-head CI is not external CPA/bank reconciliation.
+
 ## K-6 equipment book balances and tax-basis acceptance — pending
 
 - [ ] Attest real appliance acquisition cost, Books opening balances and book in-service dates; verify a complete deposited book depreciation schedule and account mapping in a trial company.
