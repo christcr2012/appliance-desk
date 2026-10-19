@@ -25,8 +25,9 @@ export default async function CashEvidencePage({searchParams}:{searchParams:Prom
  return <div className="space-y-6">
   <header className="space-y-2">
    <Link href="/desk/books" className="underline">Back to Books</Link>
+   <Link href="/desk/books/cash/checks" className="underline ml-4">Bank checks and statement reconciliation</Link>
    <h1 className="text-2xl font-bold">Bank evidence and cash journals</h1>
-   <p className="text-muted-foreground">Import settled bank evidence, then match and reconcile in the next K-CASH stage. Nothing here initiates bank transfers, verifies live balances automatically, or funds a budget.</p>
+   <p className="text-muted-foreground">Import settled bank evidence and review it in Bank checks. Nothing here initiates bank transfers, verifies live balances automatically, or funds a budget.</p>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
    {!settings?.booksStartDate&&<p role="alert">Initialize owner-approved Books opening balances before any typed cash event can be journaled.</p>}
   </header>
