@@ -1,5 +1,6 @@
 "use client";
 import { useId, useState } from "react";
+import { formatMoney } from "@/lib/money-ui";
 import type { BankCsvMapping } from "@/domains/books/cash/csv";
 type Account={id:string;name:string;lastFour:string|null};
 type Preview={
@@ -28,7 +29,7 @@ export function BankCsvImporter({accounts,owner}:{accounts:Account[];owner:boole
    ...(amountColumn?{amountColumn}:{debitColumn,creditColumn}),
    ...(externalIdColumn?{externalIdColumn}:{}),dateFormat,bankCreditIsPositive};
  }
- const dollars=(c:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(c/100);
+ const dollars=formatMoney;
  async function request(preview:boolean){
   if(!file||!accountId)return;
   setPending(true);setMessage("");
