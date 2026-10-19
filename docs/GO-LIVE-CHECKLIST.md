@@ -1,3 +1,10 @@
+## K-6 equipment book balances and tax-basis acceptance — pending
+
+- [ ] Attest real appliance acquisition cost, Books opening balances and book in-service dates; verify a complete deposited book depreciation schedule and account mapping in a trial company.
+- [ ] Confirm retirement pending value stays an asset and does not automatically become disposal loss or proceeds; confirm Fleet removal and date evidence before any completed sale.
+- [ ] CPA confirms IN-56 and any tax classification/adjusted basis, allowed/allowable/section 179/bonus; do not infer §1245 recapture or tax due from management book depreciation.
+- [ ] Independently verify deployed additive K-6 migration, restore/backup and real owner/admin role readback before claiming external acceptance.
+
 ## K-5 accounting export trial acceptance — 2026-10-18 (not completed)
 
 - [ ] Once K-5 is released, owner/bookkeeper confirms account mappings and generates a month of QBO or Xero export. **Trial-company import, balance and duplicate checks are required before real external accounting use**; a green CI CSV test is not a provider-accepted import.

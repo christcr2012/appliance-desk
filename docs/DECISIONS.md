@@ -1,3 +1,9 @@
+## October 18, 2026 — K-6 retained book value is not a sale or tax loss
+
+K-6 snapshots a sourced acquisition cost/owner-attested in-service date and uses only whole-cent **management** straight-line schedules. It never overwrites an immutable depreciation journal: new owner life/salvage rules can only affect unposted periods. At physical Fleet RETIRED, after completed-month accrual and source reconciliation, a dated, owner-authorized balanced transfer preserves the non-depreciated book amount in `RETIRED_PENDING_DISPOSITION` (ASSET). It neither books disposal loss nor tax/sale proceeds. Future M-2C evidence is required for a completed sale, gain/loss and sales-tax handling.
+
+Federal/state income-tax adjusted basis is distinct from management book depreciation. CPA classification, allowed/allowable, section 179/bonus and signed adjustments are recorded through application-create-only, source-attributed BookTaxEvidence rows and shown with UNKNOWN/OWNER_SUPPLIED/CPA_CONFIRMED provenance; no tax rate/recapture or filing is invented. Owner controls writes, ADMIN views only, STAFF/CUSTOMER cannot access Books. Existing IN-56 owner/CPA real-life acceptance remains pending.
+
 ## October 18, 2026 — K-5 provider import verification against approved 3.6
 
 The immutable export engine follows Batch K §3.6 for QuickBooks, Xero, generic journal and cash movement CSVs, uses transactionally consistent source batches and mapping, and never calls outside accounting APIs. Official QuickBooks journal import help (2026-08-04) confirms Journal No., Journal Date, Account Name, Debits, Credits and Description are import-mappable columns, plus an actual `Parent:Sub Account` label is required for subaccounts. Source: https://quickbooks.intuit.com/learn-support/en-us/help-article/import-export-data-files/import-journal-entries-quickbooks-online/L4tQBwbs7_US_en_US.
