@@ -31,6 +31,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
+| Book fixed assets | `/desk/books/assets` | Appliance management depreciation, carried retirement value and separate CPA tax-basis evidence |
 | Expenses | `/desk/expenses` | Submit your own expense or approve, reverse and review private receipts |
 | Reports | `/desk/reports` | Earnings, repairs, lead sources, accounting CSV |
 | Fleet | `/desk/fleet` | Which machines earn or cost the most |
@@ -150,6 +151,15 @@ Ending: ending a month-to-month rental, early return ("Returned early — choose
 **Change without code.** Owner/admin can create, edit, pause or reactivate recurring templates and choose expense categories, payment sources and optional appliance/job/purchase links. Staff can only submit; a draft is not a posted journal. `expense-drafts` is a daily 09:50 UTC automation independent of the Stripe balance sync switch.
 
 **If it fails.** Invalid cents, missing vendor/category, inaccessible receipt, inactive team role or stale post version is refused. An existing acquisition amount cannot be silently replaced. Use-tax purchases require the verified business address and reviewed rates; changing a filed tax period requires separate review. Failed draft runs remain visible under System health, and all incomplete changes stay unposted. The private store must be configured correctly before receipt upload; never use the public catalog token for sensitive receipts.
+
+## Fixed assets, management depreciation and CPA evidence
+
+From **Books → Rental equipment and book depreciation**, OWNER can enroll an existing appliance with a documented positive acquisition cost and explicitly attest an in-service date on or after the Books start date. ADMIN can read; staff/customers cannot access Books. This records management book evidence without moving money or changing the federal tax basis.
+
+The default management straight-line schedule is 60 months and 0% salvage, overridable for new assets; use an individual asset's future-only policy form to change the remaining useful life without rewriting posted journals. **Post depreciation** for completed Colorado months; the ledger uses unique journal events and advances zero-cent months in a durable checkpoint. A complete physical Fleet retirement, followed by the completed depreciation postings, allows OWNER to stage its actual retirement intent and preserve remaining carrying value in the Retired pending disposition **asset** account. This is not sale income, tax gain or a premature disposal loss. Final sale/disposal is a separately approved later feature.
+
+The CPA evidence form records classification, source date/reference, original adjusted-basis inputs, signed adjustments, allowed/allowable depreciation and section 179/bonus separately; UNKNOWN remains a valid state. There is no automatic recapture or income-tax due estimate. CPA decision IN-56 and real-accounting-book reconciliation remain outstanding. Missing acquisition journal, conflicting values, stale form version, missing retirement evidence or completed-month checkpoint fails closed; reconcile the underlying source without editing immutable journals.
+
 
 ## Accounting exports
 

@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/books-depreciation-integration.test.ts", // K-6 adjusts verified opening date and book life defaults in a serial database fixture.
   "tests/books-exports-integration.test.ts", // K-5 temporarily sets shared Books opening date and verifies export provenance.
   "tests/books-expenses-integration.test.ts", // K-4 modifies the verified business tax context, restores it after the serial DB suite.
   "tests/books-stripe-sync-integration.test.ts", // K-3 fixture temporarily changes the shared books start and Stripe import cursor.

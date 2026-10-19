@@ -348,7 +348,7 @@ export default async function CustomerDetailPage({
         title={customer.user.name ?? customer.user.email}
         description={
           <>
-            {customer.user.email}
+            <span className="break-all">{customer.user.email}</span>
             {customer.phone && ` · ${customer.phone}`}
             {customer.companyName && ` · ${customer.companyName}`}
             {customer.archivedAt && <p>Archived customer record</p>}

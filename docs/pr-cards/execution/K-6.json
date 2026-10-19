@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "id": "K-6",
+  "parent": "K-6",
+  "baseline": "005e9fc95c2af5c4b9a73b7eaed4bad26099f3dd",
+  "card": "docs/pr-cards/K-6.md",
+  "outcome": "Manage verified rental-appliance book depreciation and preserve retired units' remaining value pending a real disposition, while recording separate CPA-sourced tax-basis evidence.",
+  "risk": "Book source balance and immutable journal integrity, unknown federal tax basis and retired asset pending disposition; no speculative sale or loss.",
+  "next": "Engineering K-6, one exact-head PR and review; then K-7 reports.",
+  "references": [
+    {
+      "path": "src/domains/books/posting-rules.ts",
+      "anchor": "export function depreciationAccrued",
+      "purpose": "Existing balanced monthly depreciation plan."
+    },
+    {
+      "path": "src/domains/books/post.ts",
+      "anchor": "export async function writeJournal",
+      "purpose": "K-2 source/idempotent balanced immutable journal."
+    },
+    {
+      "path": "src/lib/team-actor.ts",
+      "anchor": "export async function assertActiveTeamActor",
+      "purpose": "Lock and recheck live actor role."
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "anchor": "model Appliance {",
+      "purpose": "Reuse immutable acquisition owner evidence."
+    },
+    {
+      "path": "docs/designs/BATCH-K.md",
+      "anchor": "### D-K9",
+      "purpose": "Owner-approved book life and salvage scope."
+    },
+    {
+      "path": "docs/designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md",
+      "anchor": "## 3. Book disposition timing",
+      "purpose": "Retirement preserves book basis; M-2C sale and tax separation."
+    }
+  ],
+  "proposedFiles": [
+    "prisma/schema.prisma",
+    "prisma/migrations/20261018190000_batch_k6_book_assets/migration.sql",
+    "src/domains/books/depreciation.ts",
+    "src/domains/books/fixed-assets.ts",
+    "src/app/desk/books/assets/page.tsx",
+    "src/app/desk/books/assets/actions.ts",
+    "tests/books-depreciation.test.ts",
+    "tests/books-depreciation-integration.test.ts",
+    "e2e/books-fixed-assets.spec.ts"
+  ],
+  "invariants": [
+    "Never infer federal depreciation/tax adjusted basis from book life",
+    "Never post disposal loss merely from retirement",
+    "All journals balanced and source-unique",
+    "Live OWNER-only finance writes, ADMIN view-only",
+    "No existing disposal duplication or closed-month mutation",
+    "No production data, money-out, Stripe, tax filing or messaging"
+  ],
+  "sequence": [
+    "Freeze plan docs only",
+    "Add migration and system account",
+    "Implement pure schedule and atomic journal writing",
+    "Add retirement evidence/transfer and append-only CPA notes",
+    "Build owner/admin fixed assets screen and audited configuration",
+    "Prove full real-DB concurrency and mobile acceptance",
+    "Update docs/test inventories",
+    "Exact-head CI, independent review and merge"
+  ],
+  "acceptance": [
+    "An additive, auditable BookAsset ledger identity records each enrolled owned rental appliance's immutable source acquisition cost, book placed-in-service/start month, useful life, salvage policy and version. Missing or conflicting acquisition evidence refuses enrollment and never fabricates book or tax basis.",
+    "Pure monthlySchedule computes safe integer-cent, straight-line management depreciation beginning the month after purchase/in-service under the approved ApplianceType lifetime or configured default (60 months) and salvage policy (default 0%); the last month absorbs rounding. Changed life/salvage never changes posted months, only the unposted remainder.",
+    "OWNER-approved bounded depreciation posting checks live role, book opening date, date cutoff, active appliance and period locks under Serializable transactions; each period creates a unique balanced DEPRECIATION:<YYYY-MM> entry using existing K-2 journal accounts, with replay/concurrent calls idempotent and closed periods handled by existing late-entry rules.",
+    "An appliance withdrawn from rentable service can be staged as RETIRED with dated SELL / DECIDE_LATER / SCRAP / STRIP / DISPOSE / DONATE_OTHER intent. Retirement stops additional depreciation and preserves exact remaining book carrying value; SELL or DECIDE_LATER records a single balanced transfer to separately mapped RETIRED_PENDING_DISPOSITION, never automatic full-value disposal loss.",
+    "Already posted legacy retirement/disposal journals, conflicting acquisition sources, a previous transfer or an already completed disposal fail closed with owner-visible review reason; retirement plans/versions are auditable, and the subsequent sale/disposal posting belongs to M-2C, never auto-implemented or recorded speculatively in K-6.",
+    "OWNER enters dated classification-specific federal/state tax-basis evidence in append-only per-asset history, with UNKNOWN/OWNER_SUPPLIED/CPA_CONFIRMED confidence, signed adjustments, allowed/allowable depreciation, section 179/bonus records and CPA/source reference. The screen strictly separates management book balances from IRS adjusted basis and never invents recapture, tax due, tax rate or filing.",
+    "OWNER can configure default book life and salvage with meaningful bounds and audit trail and can view/enroll/retire assets and add CPA evidence on a phone-ready Books fixed-assets page. ADMIN has strictly read-only books access, STAFF/CUSTOMER are denied, and no provider credentials, live charges, messages, destructive production writes or tax filing occur.",
+    "Real disposable PostgreSQL regression covers permissions, concurrent/double period posting, 1-cent rounding and DST Colorado cutoff, retirement carrying-value transfer, no premature write-off, immutable original journal/evidence, audit and CPA uncertainty; focused pure schedule tests, browser/axe and full exact-head CI/review are mandatory.",
+    "Update STATUS/roadmap/decision log, database and migration notes, owner guide, go-live CPA/retirement acceptance and the stored plan/scorecard honestly. Keep real CPA determination IN-56, trial asset reconciliation, external accountant acceptance and deployed release checks separate from source implementation."
+  ],
+  "slices": [
+    {
+      "id": "K-6",
+      "outcome": "Manage verified rental-appliance book depreciation and preserve retired units' remaining value pending a real disposition, while recording separate CPA-sourced tax-basis evidence.",
+      "acceptance": [
+        "An additive, auditable BookAsset ledger identity records each enrolled owned rental appliance's immutable source acquisition cost, book placed-in-service/start month, useful life, salvage policy and version. Missing or conflicting acquisition evidence refuses enrollment and never fabricates book or tax basis.",
+        "Pure monthlySchedule computes safe integer-cent, straight-line management depreciation beginning the month after purchase/in-service under the approved ApplianceType lifetime or configured default (60 months) and salvage policy (default 0%); the last month absorbs rounding. Changed life/salvage never changes posted months, only the unposted remainder.",
+        "OWNER-approved bounded depreciation posting checks live role, book opening date, date cutoff, active appliance and period locks under Serializable transactions; each period creates a unique balanced DEPRECIATION:<YYYY-MM> entry using existing K-2 journal accounts, with replay/concurrent calls idempotent and closed periods handled by existing late-entry rules.",
+        "An appliance withdrawn from rentable service can be staged as RETIRED with dated SELL / DECIDE_LATER / SCRAP / STRIP / DISPOSE / DONATE_OTHER intent. Retirement stops additional depreciation and preserves exact remaining book carrying value; SELL or DECIDE_LATER records a single balanced transfer to separately mapped RETIRED_PENDING_DISPOSITION, never automatic full-value disposal loss.",
+        "Already posted legacy retirement/disposal journals, conflicting acquisition sources, a previous transfer or an already completed disposal fail closed with owner-visible review reason; retirement plans/versions are auditable, and the subsequent sale/disposal posting belongs to M-2C, never auto-implemented or recorded speculatively in K-6.",
+        "OWNER enters dated classification-specific federal/state tax-basis evidence in append-only per-asset history, with UNKNOWN/OWNER_SUPPLIED/CPA_CONFIRMED confidence, signed adjustments, allowed/allowable depreciation, section 179/bonus records and CPA/source reference. The screen strictly separates management book balances from IRS adjusted basis and never invents recapture, tax due, tax rate or filing.",
+        "OWNER can configure default book life and salvage with meaningful bounds and audit trail and can view/enroll/retire assets and add CPA evidence on a phone-ready Books fixed-assets page. ADMIN has strictly read-only books access, STAFF/CUSTOMER are denied, and no provider credentials, live charges, messages, destructive production writes or tax filing occur.",
+        "Real disposable PostgreSQL regression covers permissions, concurrent/double period posting, 1-cent rounding and DST Colorado cutoff, retirement carrying-value transfer, no premature write-off, immutable original journal/evidence, audit and CPA uncertainty; focused pure schedule tests, browser/axe and full exact-head CI/review are mandatory.",
+        "Update STATUS/roadmap/decision log, database and migration notes, owner guide, go-live CPA/retirement acceptance and the stored plan/scorecard honestly. Keep real CPA determination IN-56, trial asset reconciliation, external accountant acceptance and deployed release checks separate from source implementation."
+      ]
+    }
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/books-depreciation.test.ts"
+    ],
+    "db": [
+      "tests/books-depreciation-integration.test.ts",
+      "tests/books-poster-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/books-fixed-assets.spec.ts"
+    ],
+    "node": []
+  }
+}

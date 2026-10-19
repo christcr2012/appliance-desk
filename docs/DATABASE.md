@@ -1,3 +1,9 @@
+## K-6 additive book asset storage and source journals — pending migration verification
+
+Migration `20261019010000_batch_k6_book_assets` adds `BookAsset` (FK to Appliance, original cost and in-service date snapshot, book life/salvage, durable `lastDepreciationMonth` even for zero-cent scheduled months, retired date/intent/book carrying value, version) and `BookTaxEvidence` (source-attributed append-only application records, CPA/tax evidence separate from management book numbers). SQL CHECK constraints validate months, cents, retirement consistency and CPA states. A seeded `RETIRED_PENDING_DISPOSITION` ASSET ledger role retains book value independently of `DISPOSAL_LOSS`. `system-chart.json` includes the new account for future installations. No existing acquisition history is silently overwritten by this migration.
+
+Source journals are uniquely identified by `APPLIANCE` + `DEPRECIATION:YYYY-MM` or `RETIRED_HELD` through K-2 balanced journal rules; original source posting and role locks must pass first. Schema migration, DB test results, backups and real owner/accountant acceptance are not yet claimed green.
+
 ## K-5 immutable accounting export provenance — source in progress (October 18, 2026)
 
 K-5 reuses existing `ExportBatch` + `ExportBatchEntry` (immutable bytes, SHA-256, creator and linked journal entries), `AccountExportMapping`, `JournalEntry`, `JournalLine`, and the JSON `BusinessSettings.exportPayoutLines` policy. The engine locks per target, checks source integrity and owner/admin database identity, and stores all journal IDs with the original bytes. Re-download checks the hash and never regenerates content from current account labels. Source-code implementation and regression fixtures do not represent deployed accountant trial acceptance. No new destructive migration is required.

@@ -1,34 +1,37 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-5",
+  "parent": "K-6",
   "completedSlices": [
     {
-      "id": "K-5",
+      "id": "K-6",
       "acceptanceEvidence": [
-        "Export domain: live database OWNER/ADMIN role, valid Colorado date span, bounded postPending and no API writes; matched unit and real-DB tests authored, CI pending.",
-        "Export domain: opening-date gate, checked posting exceptions, mapping validation and per-entry balanced integer cents; integrity tests authored, CI pending.",
-        "Formatters: four target-specific headers, numeric decimals, safe toCsv text, US QBO and provider-current Xero dates, daily/cash splits; unit tests authored, CI pending.",
-        "Export transaction: target-specific Stripe payout policy, journal date/number order, per-target new-only query, single-day net balance; Postgres/formatter tests authored, CI pending.",
-        "Export DB: advisory lock, immutable bytes/SHA256/provenance, deduplication and protected unchanged historical readback; real PostgreSQL concurrency fixture authored, CI pending.",
-        "UI/routes: owner/admin target/mode/date forms, blocked message, history re-download; existing month review stays intact, browser/axe test authored, CI pending.",
-        "Regression and docs: pure/real-DB/browser tests, route-shard inventory, owner guide, official provider format cross-check, status and owner real-world trial import remain distinct; exact-head CI/review pending."
+        "Additive BookAsset source-cost/in-service-date snapshot, BookTaxEvidence and checked migration; real-DB fixture authored, CI pending.",
+        "Pure month-start and remaining whole-cent schedules preserve last-cent rounding, zero-cent checkpoint and posted immutable amounts; unit tests authored.",
+        "Role/BookAsset row locks, K-2 source-cost journal, complete Colorado period/date cutoff and unique DEPRECIATION:YYYY-MM events; serial DB test authored.",
+        "Physical Fleet RETIRED and true dated owner intent required; carrying book value transferred to RETIRED_PENDING_DISPOSITION as ASSET rather than auto disposal loss.",
+        "Conflicting acquisition history, source missing, stale version and existing retired/disposed journal are refused; M-2C subsequent completed sale remains out of scope.",
+        "Source-attributed date/classification/confidence/CPA book tax evidence is separated from management book; no recapture or return, ADMIN view-only.",
+        "OWNER fixed-asset page enrolls, adjusts future-only life, posts and stages retirement, stores tax sources; ADMIN reads, STAFF denied; browser spec authored.",
+        "Disposable Postgres cases cover acquisition/role, unique concurrent source posting, preservation of asset carrying value and CPA distinction; pure test and axe/browser authored.",
+        "Updated owner guide, decision log, DB notes, go-live CPA checklist, STATUS, index and plan evidence while keeping deployment/CPA/CI separate."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Source and tests have been authored but local preflight and exact-head CI, Postgres, accessibility and independent code review are not yet witnessed.",
-    "Owner trial import into actual QBO/Xero sandbox/trial company, provider chart mapping and bank/system holding account attestations require owner/provider validation after checked deployment.",
-    "Source K-4A/B merged through #500; live remains behind main and production provider/CPA activation untouched."
+    "Implementation authored but exact-head type/lint, real PostgreSQL, browser/axe, CI and independent review remain pending.",
+    "Original K-5 export engine merged in #501, but production live revision remains behind main.",
+    "CPA IN-56, actual book asset opening reconciliation, first deployed depreciation and retained-value readback are external acceptance, not source completion."
   ],
-  "workloadException": "K-5 is one substantial existing whole subsection involving four file formatters, transactionally immutable source data, privacy, account mappings, protected UI and full tests; splitting it would leave unusable exports.",
+  "workloadException": "One original whole K-6 financial asset scope with additive schema, unique ledger posting, retained carrying value, separate CPA evidence and owner UI. K-7 reports follow only after K-6 green merge; no fake helper units.",
   "evidence": [
-    "Frozen full original K-5 subsection acceptance plan committed at e3489535773e1470cc0f8bd671d946367bca2ee5, before code.",
-    "K-4A/B merge #500 3dd2dfca validated exact-head ci green, including all three unit DB and four browser shards; five reviewed finance P1 findings fixed/resolved.",
-    "K-5 source, unit, disposable-PostgreSQL and browser test files authored after frozen plan; do not claim tests passed until exact-head evidence.",
-    "No live money write, customer notifications, external accounting provider API or production fixture.",
-    "PR #501 initial CI head edd30a1 red: 3/3? unit shard 1/2 green, shard 3 1 finance fixture FK failure; all browser builds blocked by test mock TS2554. Codex P1 x3: cash mapping target missing, empty Xero tax rate, same-byte archive wrong journal IDs. Code and test corrections grouped; final exact-head proof pending.",
-    "Exact head 5979294: typecheck/lint, security, policy, capacity, unit 2/3 and browser A/C/D passed. Unit 1 failed only the existing complete backup/restore drill's inappropriate 5s generic unit deadline; browser B only ambiguous label locator on our export form. Corrected with explicitly linked accessible labels and a scoped 45-second real restore test budget without removing assertions; next exact-head run required."
+    "Frozen full acceptance plan: 21f1793a44b96a2d8b995b1e2a9955781d0ad9a0 docs-only, preceding all code.",
+    "K-5 merged into main 005e9fc95c2af5c4b9a73b7eaed4bad26099f3dd, with exact-head CI and 3 reviewed P1 fixes.",
+    "K-6 Prisma migration, fixed-asset screens, ledger source and strict permission logic, pure/real-DB/browser tests authored on feature branch, not yet verified.",
+    "No production data, live money, filing, emails, SMS or paid services.",
+    "Initial #502 exact-head CI failed before database/browser tests: migration duplicated SQL after truncated regex; TS syntax at fixed-assets.ts and test; JSX lint. All grouped build blockers corrected, next exact-head CI pending.",
+    "Head 4e2b12b: corrected migration and unit shards 2/3 green, unit 1 backup coverage and build/typecheck failed due new models omitted from explicit recovery manifest; fixed without skipping tests. Review P0 migration already corrected; P1 clamps final schedule/guards later depreciation; P2 locks shared settings. Real-db regressions added; exact-head rerun pending.",
+    "Third exact-head c5bbc3f: type/lint, security, policy, unit 1/3 and 3/3, browser B/C/D green. Unit 2 had 1131 passes and 1 fixture-salvage failure; fixed by setting zero salvage inside the exact fully depreciated scenario. Browser A had 44 passes and 1 existing phone overflow; fixed real customer header address text wrapping without altering the viewport or assertion. All gates rerun on new SHA."
   ]
 }
