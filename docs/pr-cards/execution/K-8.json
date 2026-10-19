@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "id": "K-8",
+  "parent": "K-8",
+  "baseline": "82862d13e5be402b56807d680487adfa35e88cf0",
+  "card": "docs/pr-cards/K-8.md",
+  "outcome": "Finish Batch K with a clearly estimated cash outlook, evidence-based customer health, and protected downloadable year-end accounting evidence, without inventing receipts or tax facts.",
+  "risk": "Forecast misrepresented as actual cash; lead/private financial data; tax/1099 classification without source proof; provider and CPA acceptance separated.",
+  "next": "Complete K-8 exact-head CI/review/merge, then reconcile ordered roadmap and still-pending real-world acceptance.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-K.md",
+      "anchor": "cashForecast(days = 90)",
+      "purpose": "Approved forecast and year-end contract."
+    },
+    {
+      "path": "src/domains/books/reports.ts",
+      "anchor": "export async function profitAndLoss",
+      "purpose": "K-7 immutable actual P&L reused for year-end."
+    },
+    {
+      "path": "src/lib/business-date.ts",
+      "anchor": "export function businessDateKey",
+      "purpose": "Colorado cutoff and DST."
+    },
+    {
+      "path": "src/domains/reports/definitions.ts",
+      "anchor": "export const METRICS",
+      "purpose": "Single metric catalog for real vs estimate."
+    },
+    {
+      "path": "src/domains/books/expenses.ts",
+      "anchor": "export async function createDueRecurringExpenses",
+      "purpose": "Use existing template semantics; avoid double forecast."
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "anchor": "model TaxFilingPeriod {",
+      "purpose": "Filing status/worksheet source, not assumed tax payable."
+    },
+    {
+      "path": "src/lib/team-actor.ts",
+      "anchor": "export async function assertActiveTeamActor",
+      "purpose": "Live OWNER/ADMIN role recheck."
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/books/closing-math.ts",
+    "src/domains/books/closing.ts",
+    "src/app/desk/books/closing/page.tsx",
+    "src/app/desk/books/closing/download/route.ts",
+    "tests/books-closing.test.ts",
+    "tests/books-closing-integration.test.ts",
+    "e2e/books-closing.spec.ts"
+  ],
+  "invariants": [
+    "Historical actuals from verified posted records only",
+    "Forecasts labelled ESTIMATE",
+    "No fictional IRS/1099 liability",
+    "No customer/bank data exposed to STAFF",
+    "Every CSV revalidates current role",
+    "No money, tax filing, provider request or marketing messaging",
+    "No K-CASH implementation without independent approved card"
+  ],
+  "sequence": [
+    "Freeze K-8 whole original plan",
+    "Build bounded pure cash-flow recurrence and cent formatting",
+    "Build repeatable read source queries/health, year-end evidence",
+    "Build accessible protected owner report and CSV",
+    "Add pure, real-DB and browser security/correctness tests",
+    "Reconcile docs/map/scorecard",
+    "Exact-head CI, reviews, safe merge"
+  ],
+  "acceptance": [
+    "OWNER and ADMIN only can read cashForecast, customerHealth and yearEndPackage through current live database roles and authenticated routes. STAFF and CUSTOMER receive no business-level data, and all queries are read-only with bounded records and safe Colorado dates.",
+    "A 90-day configurable forecast (1–180 days) uses only ACTIVE agreements with successfully started recurring billing and a known real next billing date; monthly line totals reflect documented discounts/amendments and tax estimates use the existing Colorado tax calculation or are explicitly marked unknown pending missing tax context. Forecasted receipts are never described as bank cash or collected funds.",
+    "Recurring expense templates produce dated future estimated outflows once per template/cycle, with month-end day safety, and match already generated drafts to avoid double counting; speculative expenses are clearly labelled and never posted.",
+    "Open sales/use-tax filing periods contribute only supported worksheet amounts and known due dates. Missing/undecided worksheet, unconfirmed liability and unknown tax inputs are disclosed as needs-review entries, not invented payables. No filing, payment, provider call or tax estimate presented as confirmed.",
+    "Customer health distinguishes active, ending and ended agreements, rental lengths based on supported start/end dates and net collected receipts minus refunds/credit movements. Grouping by original lead source only when convertedCustomerId evidence exists, with an explicit unknown bucket; do not infer missing lead attribution.",
+    "Year-end accepts an actual, bounded YYYY with completed year or current year-to-date and owner Books opening-date guard. Downloadable deterministic safe CSVs include monthly P&L in separate accrual/cash bases, rental fixed-asset register with book depreciation and distinct CPA tax evidence status, sales and use-tax FILED periods by account, source-backed expenses by category, and supplier-paid summary for 1099-marked vendors at the owner-configured threshold.",
+    "Supplier-paid/1099 candidates are sourced only from confirmed, vendor-linked cash payments, not purchase orders, procurement receipts or unpaid expense drafts. Where purchase/expense supplier-payment matching cannot be proven, show unknown amounts or an explicit incomplete warning; do not fabricate income tax filing eligibility or claim federal threshold verification.",
+    "All actual/estimated customer, forecast and year-end metrics are registered in METRICS with date basis, calculation, exact sources and drill path. Phone-friendly OWNER/ADMIN screens, downloading links, clear warnings, safe CSV escaping and accessibility preserve existing Books navigation.",
+    "Pure math and disposable PostgreSQL tests cover role separation, future-cycle boundaries/DST, no billing-before-delivery, forecast-vs-real separation, incomplete worksheet, source-only collection/refund, lead-link gap, book CPA non-inference and 1099 evidence thresholds. Browser/axe and full exact-head CI/review pass; update roadmap/status/owner guide, decisions, database and go-live acceptance. Real-world CPA and deployed provider validation remain separate."
+  ],
+  "gates": [],
+  "slices": [
+    {
+      "id": "K-8",
+      "outcome": "Finish Batch K with a clearly estimated cash outlook, evidence-based customer health, and protected downloadable year-end accounting evidence, without inventing receipts or tax facts.",
+      "acceptance": [
+        "OWNER and ADMIN only can read cashForecast, customerHealth and yearEndPackage through current live database roles and authenticated routes. STAFF and CUSTOMER receive no business-level data, and all queries are read-only with bounded records and safe Colorado dates.",
+        "A 90-day configurable forecast (1–180 days) uses only ACTIVE agreements with successfully started recurring billing and a known real next billing date; monthly line totals reflect documented discounts/amendments and tax estimates use the existing Colorado tax calculation or are explicitly marked unknown pending missing tax context. Forecasted receipts are never described as bank cash or collected funds.",
+        "Recurring expense templates produce dated future estimated outflows once per template/cycle, with month-end day safety, and match already generated drafts to avoid double counting; speculative expenses are clearly labelled and never posted.",
+        "Open sales/use-tax filing periods contribute only supported worksheet amounts and known due dates. Missing/undecided worksheet, unconfirmed liability and unknown tax inputs are disclosed as needs-review entries, not invented payables. No filing, payment, provider call or tax estimate presented as confirmed.",
+        "Customer health distinguishes active, ending and ended agreements, rental lengths based on supported start/end dates and net collected receipts minus refunds/credit movements. Grouping by original lead source only when convertedCustomerId evidence exists, with an explicit unknown bucket; do not infer missing lead attribution.",
+        "Year-end accepts an actual, bounded YYYY with completed year or current year-to-date and owner Books opening-date guard. Downloadable deterministic safe CSVs include monthly P&L in separate accrual/cash bases, rental fixed-asset register with book depreciation and distinct CPA tax evidence status, sales and use-tax FILED periods by account, source-backed expenses by category, and supplier-paid summary for 1099-marked vendors at the owner-configured threshold.",
+        "Supplier-paid/1099 candidates are sourced only from confirmed, vendor-linked cash payments, not purchase orders, procurement receipts or unpaid expense drafts. Where purchase/expense supplier-payment matching cannot be proven, show unknown amounts or an explicit incomplete warning; do not fabricate income tax filing eligibility or claim federal threshold verification.",
+        "All actual/estimated customer, forecast and year-end metrics are registered in METRICS with date basis, calculation, exact sources and drill path. Phone-friendly OWNER/ADMIN screens, downloading links, clear warnings, safe CSV escaping and accessibility preserve existing Books navigation.",
+        "Pure math and disposable PostgreSQL tests cover role separation, future-cycle boundaries/DST, no billing-before-delivery, forecast-vs-real separation, incomplete worksheet, source-only collection/refund, lead-link gap, book CPA non-inference and 1099 evidence thresholds. Browser/axe and full exact-head CI/review pass; update roadmap/status/owner guide, decisions, database and go-live acceptance. Real-world CPA and deployed provider validation remain separate."
+      ]
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/books-closing.test.ts"
+    ],
+    "db": [
+      "tests/books-closing-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/books-closing.spec.ts"
+    ],
+    "node": []
+  }
+}
