@@ -4331,6 +4331,7 @@ model BookAsset {
   placedInServiceOn DateTime
   lifeMonths Int
   salvagePercent Int
+  lastDepreciationMonth String?
   retiredOn DateTime?
   retirementIntent String?
   retiredValueCents Int?
