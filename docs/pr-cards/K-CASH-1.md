@@ -82,3 +82,7 @@ Business cash authority is distinct from development: no actual bank account sel
 ## Evidence
 
 Plan frozen in its own docs-only commit before code. No implementation, test pass, external bank acceptance, merge or production release is claimed at plan time.
+
+## Implementation checkpoint — October 19, 2026
+
+Frozen scope preserved. Source, migration, owner/admin import and journal screen, private evidence and focused database/browser tests have been authored on the feature branch; exact-head CI, review, merge and real bank acceptance are not yet verified.

@@ -977,15 +977,18 @@
       ],
       "evidence": [
         "docs/designs/BATCH-K-CASH.md",
-        "docs/designs/BATCH-K.md",
-        "docs/research/2026-10-08-startup-banking-quickbooks.md",
-        "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/books/cash/accounts.ts",
+        "src/domains/books/cash/import.ts",
+        "src/domains/books/cash/events.ts",
+        "src/domains/books/cash/desk.ts",
+        "src/app/desk/books/cash/page.tsx",
+        "prisma/schema.prisma"
       ],
       "tests": [
-        "tests/cash-schema-integration.test.ts"
+        "tests/cash-schema-integration.test.ts",
+        "tests/backup-restore-integration.test.ts"
       ],
-      "readiness": "PLAN_FROZEN_ENGINEERING_PENDING",
+      "readiness": "ENGINEERING_AUTHORED_VERIFICATION_PENDING",
       "plannedCard": "docs/pr-cards/K-CASH-1.md",
       "card": "docs/pr-cards/K-CASH-1.md"
     },
@@ -1004,17 +1007,20 @@
       ],
       "evidence": [
         "docs/designs/BATCH-K-CASH.md",
-        "docs/designs/BATCH-K.md",
-        "docs/research/2026-10-08-startup-banking-quickbooks.md",
-        "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/books/cash/accounts.ts",
+        "src/domains/books/cash/import.ts",
+        "src/domains/books/cash/events.ts",
+        "src/domains/books/cash/desk.ts",
+        "src/app/desk/books/cash/page.tsx",
+        "prisma/schema.prisma"
       ],
       "tests": [
         "tests/bank-import.test.ts",
         "tests/bank-import-integration.test.ts",
-        "tests/books-cash-events-integration.test.ts"
+        "tests/books-cash-events-integration.test.ts",
+        "e2e/books-cash.spec.ts"
       ],
-      "readiness": "PLAN_FROZEN_ENGINEERING_PENDING",
+      "readiness": "ENGINEERING_AUTHORED_VERIFICATION_PENDING",
       "plannedCard": "docs/pr-cards/K-CASH-2.md",
       "card": "docs/pr-cards/K-CASH-1.md"
     },

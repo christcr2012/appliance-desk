@@ -109,7 +109,9 @@
       "tests/bank-import-integration.test.ts",
       "tests/books-cash-events-integration.test.ts"
     ],
-    "browser": [],
+    "browser": [
+      "e2e/books-cash.spec.ts"
+    ],
     "node": []
   }
 }
