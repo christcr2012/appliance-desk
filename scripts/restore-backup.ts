@@ -323,12 +323,13 @@ async function restore(file: string, target: string): Promise<void> {
           }
         }
       }
-      const nullableHistory = {
+      const historyByTable: Record<string, { key: string; links: Array<{id:string;priorId:string}> } | undefined> = {
         bankImport: { key: "supersedesImportId", links: importSupersessionLinks },
         bankReconciliation: { key: "priorCompletedId", links: reconciliationRevisionLinks },
         bookCashEvent: { key: "reversalOfId", links: cashEventReversalLinks },
         accountingDelivery: { key: "replacesDeliveryId", links: deliveryRevisionLinks },
-      }[table];
+      };
+      const nullableHistory = historyByTable[table];
       if (nullableHistory) for (const row of data) {
         const key = nullableHistory.key;
         if (typeof row[key] === "string") {

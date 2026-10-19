@@ -77,7 +77,7 @@ export async function GET(
       : await prisma.accountingDelivery.findFirst({where:{privateEvidenceId:id},
           select:{id:true}});
     if (!linked || (bankStatement ? !["OWNER","ADMIN"].includes(role) : role !== "OWNER"))
-      return NextResponse.json({error:"Photo not found."},{status:404});
+      return NextResponse.json({error:"Photo not found."},{status:404,headers:{"Cache-Control":"private, no-store"}});
     if (bankStatement && !privatePath!.startsWith("bank-statements/" + ("cashAccountId" in linked ? linked.cashAccountId : "") + "/"))
       return NextResponse.json({error:"Photo not found."},{status:404});
     if (accountingConfirmation && !privatePath!.startsWith("accounting-confirmations/" + ("id" in linked ? linked.id : "") + "/"))
@@ -117,7 +117,7 @@ export async function GET(
     const result = await get(photo.url, {
       token: store.token,
       access: "private",
-      useCache: true,
+      useCache: !(bankStatement || accountingConfirmation),
       abortSignal: AbortSignal.timeout(15_000),
     });
     if (!result || result.statusCode !== 200) {
@@ -129,7 +129,7 @@ export async function GET(
       headers: {
         "Content-Type": result.blob.contentType || "application/octet-stream",
         "Content-Length": String(result.blob.size),
-        "Cache-Control": "private, max-age=60",
+        "Cache-Control": (bankStatement || accountingConfirmation) ? "private, no-store" : "private, max-age=60",
         "X-Content-Type-Options": "nosniff",
       },
     });

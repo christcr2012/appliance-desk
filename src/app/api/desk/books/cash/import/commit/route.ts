@@ -7,7 +7,7 @@ export const runtime="nodejs";
 export async function POST(request:Request){
  const session=await getServerSession();
  if(!session||session.user.archivedAt||!["OWNER","ADMIN"].includes(session.user.role))
-  return NextResponse.json({error:"Not permitted."},{status:403});
+  return NextResponse.json({error:"Not permitted."},{status:403,headers:{"Cache-Control":"private, no-store"}});
  try{
   const form=await request.formData(),file=form.get("file");
   if(!(file instanceof File)||file.size<5||file.size>5*1024*1024)
