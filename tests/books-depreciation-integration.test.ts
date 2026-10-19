@@ -110,6 +110,8 @@ describe.skipIf(!enabled)("K-6 source-accounted rental fixed assets in disposabl
  });
  it("retires an already fully depreciated asset without inventing further months",async()=>{
   const short="k6-short-"+tag;
+  // Earlier policy test intentionally sets default salvage to 5%; isolate this zero-salvage case.
+  await setBookDepreciationDefaults(owner,24,0);
   await prisma.applianceType.update({where:{id:type},data:{depreciationMonths:1}});
   await prisma.appliance.create({data:{id:short,assetNumber:"K6-SHORT-"+tag,
    applianceTypeId:type,acquisitionCostCents:1200,purchaseDate:bought,status:"RETIRED"}});

@@ -31,6 +31,7 @@
     "K-6 Prisma migration, fixed-asset screens, ledger source and strict permission logic, pure/real-DB/browser tests authored on feature branch, not yet verified.",
     "No production data, live money, filing, emails, SMS or paid services.",
     "Initial #502 exact-head CI failed before database/browser tests: migration duplicated SQL after truncated regex; TS syntax at fixed-assets.ts and test; JSX lint. All grouped build blockers corrected, next exact-head CI pending.",
-    "Head 4e2b12b: corrected migration and unit shards 2/3 green, unit 1 backup coverage and build/typecheck failed due new models omitted from explicit recovery manifest; fixed without skipping tests. Review P0 migration already corrected; P1 clamps final schedule/guards later depreciation; P2 locks shared settings. Real-db regressions added; exact-head rerun pending."
+    "Head 4e2b12b: corrected migration and unit shards 2/3 green, unit 1 backup coverage and build/typecheck failed due new models omitted from explicit recovery manifest; fixed without skipping tests. Review P0 migration already corrected; P1 clamps final schedule/guards later depreciation; P2 locks shared settings. Real-db regressions added; exact-head rerun pending.",
+    "Third exact-head c5bbc3f: type/lint, security, policy, unit 1/3 and 3/3, browser B/C/D green. Unit 2 had 1131 passes and 1 fixture-salvage failure; fixed by setting zero salvage inside the exact fully depreciated scenario. Browser A had 44 passes and 1 existing phone overflow; fixed real customer header address text wrapping without altering the viewport or assertion. All gates rerun on new SHA."
   ]
 }
