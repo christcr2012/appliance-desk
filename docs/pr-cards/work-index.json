@@ -941,7 +941,7 @@
       "dependencies": [
         "K-7"
       ],
-      "status": "IN_PROGRESS",
+      "status": "IMPLEMENTED",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -958,7 +958,7 @@
         "tests/books-closing-integration.test.ts",
         "e2e/books-closing.spec.ts"
       ],
-      "readiness": "ENGINEERING_IN_PROGRESS",
+      "readiness": "ENGINEERING_MERGED_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-8.md",
       "card": "docs/pr-cards/K-8.md"
     },

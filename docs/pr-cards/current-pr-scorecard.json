@@ -1,36 +1,22 @@
 {
   "version": 1,
-  "kind": "implementation",
+  "kind": "maintenance",
   "parent": "K-8",
-  "completedSlices": [
-    {
-      "id": "K-8",
-      "acceptanceEvidence": [
-        "cashForecast, customerHealth and yearEndPackage are read-only, live OWNER/ADMIN guarded with protected CSV route, attested books date and safe Colorado date caps. Tests authored; CI pending.",
-        "ACTIVE billingStartedAt Stripe subscriptions with a documented nextBillingDate use signed line prices and agreement rate snapshot as a labelled estimate, not collected cash.",
-        "Recurring templates preserve 1–28 Colorado dates and skip existing generated expense occurrences; no draft creation or provider operation.",
-        "Typed OPEN worksheet totals may contribute only an ESTIMATE; unsupported worksheets are named in needsReview.",
-        "Receipt-linked successful applied invoice payments less actual refunds, dated completed rental length, explicitly converted lead source or Unknown.",
-        "Five downloadable year-end CSVs separate monthly K-7 cash/accrual profit, book assets/CPA basis, FILED tax, posted expense journal categories and 1099 candidate supplier paid totals.",
-        "Marked suppliers must have a POSTED expense source journal and known paidFromAccount isPaymentSource; owner-set threshold and CPA warning preserve uncertain tax reportability.",
-        "Eight definitions added to METRICS; protected phone-first reports and download; browser/axe suite and Books route inventory authored.",
-        "Pure and disposable PostgreSQL/browser tests, owner/decision/status/DB/go-live paperwork updated in branch; exact-head CI, independent review and real CPA acceptance still pending."
-      ]
-    }
+  "completedSlices": [],
+  "evidence": [
+    "K-8 original full plan, source and regression tests are already merged in PR #504 at daed09b582808577ef40c64568e703e3a4fcbdca; this documentation-only maintenance does not count another implementation bundle.",
+    "Exact-head 2152cd9971f0c23da7c9f962b9576d5a11deb28e achieved aggregate ci success with three unit/real DB and four browser/axe shards, type/lint/repo, security, release policy and capacity.",
+    "Three independent P1/P2 code review comments were answered using source-reversal/cutoff evidence and tested pre-delivery source fix; all three review threads resolved before merge.",
+    "Actual Vercel production READY and GitHub live are revision 82862d13e5be402b56807d680487adfa35e88cf0 (K-7); K-8 has not yet undergone scheduled live release.",
+    "The existing 22 real-world acceptance entries remain PENDING; no provider, accountant, owner, LIVE payment, contact consent or production test action has been misrepresented as accepted.",
+    "Updated STATUS, work-index and K-8 evidence prose after actual merge; frozen plan JSON and original acceptance criteria were not changed.",
+    "K-CASH remains documented PROPOSED and subject to owner approval; no newly approved engineering subsection is invented or started."
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Exact-head CI, database/browser tests, review and merge not yet verified.",
-    "Owner and accountant must validate real billing/collection, tax worksheet, 1099 exclusions and year-end package. CPA IN-39/IN-56 still pending.",
-    "Live branch release and 22 real-owner/provider acceptance items are separate."
+    "Scheduled live promotion of K-8 and independent deployed readback pending.",
+    "22 original authenticated provider/owner/customer acceptance entries still pending; real accountant trial reconciliation for Batch K separately outstanding.",
+    "Owner documentation decision for proposed K-CASH-1..7 remains outstanding before implementation or M dependency advancement."
   ],
-  "workloadException": "K-8 is one complete original substantial subsection for customer collections, labelled future cash outlook and five year-end artifacts; K-CASH remains separate proposed work.",
-  "evidence": [
-    "Frozen entire original nine-line plan in docs-only commit 80ccd16112986b32eec386dba5a32bed58727e80 before source.",
-    "K-7 PR #503 merged exact-head green as 82862d13e5be402b56807d680487adfa35e88cf0; Codex review unavailable at usage limit, documented self-review.",
-    "K-8 source, routes and pure/real-DB/browser regression files authored, not yet witnessed running.",
-    "No LIVE charges, provider requests, tax filings, customer communications, production writes or spending.",
-    "PR #504 initial a4a0598: type/lint failed tuple nullable and const rules; unit shard 1 had one same-code CustomerHealth runtime exception; browser builds blocked on type. Corrected with explicit guard and no test weakening, plus self-reviewed jurisdiction tax source, supplier reversal and historical asset cutoff. Exact-head CI/review pending.",
-    "PR #504 initial da05078: unit/DB shards 1–3, browser C/D and security/release passed, but typecheck/lint money header and browser A/B failed. Grouped remediation fixes dollar-labelled UI, authentic staff non-CSV redirect assertion, real mobile reserve form overflow, review P2 pre-delivery exclusion and two additional PostgreSQL regressions; final CI pending."
-  ]
+  "workloadException": "Maintenance-only verification/roadmap closeout after already-green PR #504; zero new production code and zero new completed batch subsections, not counted as an engineering or completion bundle."
 }
