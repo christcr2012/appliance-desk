@@ -30,6 +30,7 @@
     "K-5 merged into main 005e9fc95c2af5c4b9a73b7eaed4bad26099f3dd, with exact-head CI and 3 reviewed P1 fixes.",
     "K-6 Prisma migration, fixed-asset screens, ledger source and strict permission logic, pure/real-DB/browser tests authored on feature branch, not yet verified.",
     "No production data, live money, filing, emails, SMS or paid services.",
-    "Initial #502 exact-head CI failed before database/browser tests: migration duplicated SQL after truncated regex; TS syntax at fixed-assets.ts and test; JSX lint. All grouped build blockers corrected, next exact-head CI pending."
+    "Initial #502 exact-head CI failed before database/browser tests: migration duplicated SQL after truncated regex; TS syntax at fixed-assets.ts and test; JSX lint. All grouped build blockers corrected, next exact-head CI pending.",
+    "Head 4e2b12b: corrected migration and unit shards 2/3 green, unit 1 backup coverage and build/typecheck failed due new models omitted from explicit recovery manifest; fixed without skipping tests. Review P0 migration already corrected; P1 clamps final schedule/guards later depreciation; P2 locks shared settings. Real-db regressions added; exact-head rerun pending."
   ]
 }

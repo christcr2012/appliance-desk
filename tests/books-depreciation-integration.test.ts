@@ -108,6 +108,48 @@ describe.skipIf(!enabled)("K-6 source-accounted rental fixed assets in disposabl
   expect(view.assets.find(x=>x.applianceId===id)?.taxEvidence[0]?.confidence).toBe("CPA_CONFIRMED");
   expect(await prisma.journalEntry.count({where:{sourceType:"TAX_FILING",sourceId:id}})).toBe(0);
  });
+ it("retires an already fully depreciated asset without inventing further months",async()=>{
+  const short="k6-short-"+tag;
+  await prisma.applianceType.update({where:{id:type},data:{depreciationMonths:1}});
+  await prisma.appliance.create({data:{id:short,assetNumber:"K6-SHORT-"+tag,
+   applianceTypeId:type,acquisitionCostCents:1200,purchaseDate:bought,status:"RETIRED"}});
+  try{
+   await enrollBookAsset(owner,short,"2026-01-15");
+   const booked=await postBookDepreciation(owner,short,"2026-06");
+   expect(booked.lastCompleted).toBe("2026-02");
+   const asset=await prisma.bookAsset.findUniqueOrThrow({where:{applianceId:short}});
+   expect((await retireBookAsset(owner,short,asset.version,"SELL","2026-06-30")).carriedCents).toBe(0);
+   expect((await prisma.bookAsset.findUniqueOrThrow({where:{applianceId:short}})).retirementIntent).toBe("SELL");
+   expect(await prisma.journalEntry.count({where:{sourceType:"APPLIANCE",sourceId:short,eventKind:"RETIRED_HELD"}})).toBe(0);
+  }finally{
+   await prisma.bookTaxEvidence.deleteMany({where:{applianceId:short}});
+   await prisma.bookAsset.deleteMany({where:{applianceId:short}});
+   const entries=await prisma.journalEntry.findMany({where:{sourceType:"APPLIANCE",sourceId:short},select:{id:true}});
+   await prisma.journalLine.deleteMany({where:{entryId:{in:entries.map(x=>x.id)}}});
+   await prisma.journalEntry.deleteMany({where:{sourceType:"APPLIANCE",sourceId:short}});
+   await prisma.appliance.deleteMany({where:{id:short}});
+   await prisma.applianceType.update({where:{id:type},data:{depreciationMonths:null}});
+  }
+ });
+ it("refuses retroactive retirement when depreciation journal was posted after its date",async()=>{
+  const late="k6-late-"+tag;
+  await prisma.appliance.create({data:{id:late,assetNumber:"K6-LATE-"+tag,
+   applianceTypeId:type,acquisitionCostCents:12000,purchaseDate:bought,status:"RETIRED"}});
+  try {
+   await enrollBookAsset(owner,late,"2026-01-15");
+   await postBookDepreciation(owner,late,"2026-05");
+   const asset=await prisma.bookAsset.findUniqueOrThrow({where:{applianceId:late}});
+   await expect(retireBookAsset(owner,late,asset.version,"SELL","2026-03-31"))
+     .rejects.toThrow(/past retirement/);
+   expect((await prisma.bookAsset.findUniqueOrThrow({where:{applianceId:late}})).retiredOn).toBeNull();
+  } finally {
+   await prisma.bookAsset.deleteMany({where:{applianceId:late}});
+   const entries=await prisma.journalEntry.findMany({where:{sourceType:"APPLIANCE",sourceId:late},select:{id:true}});
+   await prisma.journalLine.deleteMany({where:{entryId:{in:entries.map(x=>x.id)}}});
+   await prisma.journalEntry.deleteMany({where:{sourceType:"APPLIANCE",sourceId:late}});
+   await prisma.appliance.deleteMany({where:{id:late}});
+  }
+ });
  it("does not recognize automatic disposal loss when the fleet machine is retired",async()=>{
   await prisma.appliance.update({where:{id},data:{status:"RETIRED"}});
   const asset=await prisma.bookAsset.findUniqueOrThrow({where:{applianceId:id}});

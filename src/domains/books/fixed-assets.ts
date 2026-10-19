@@ -4,7 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { balancedPlan, depreciationAccrued } from "./posting-rules";
 import { postForSource, writeJournal } from "./post";
-import { BookAssetInputError, lastBusinessDay, lastCompletedMonth, monthKey, nextMonth, remainingSchedule } from "./depreciation";
+import { BookAssetInputError, lastBusinessDay, lastCompletedMonth, monthKey, monthlySchedule, nextMonth, remainingSchedule } from "./depreciation";
 
 type Tx=Prisma.TransactionClient;
 type BookRole="OWNER"|"ADMIN";
@@ -125,6 +125,7 @@ export async function setBookDepreciationDefaults(userId:string,months:number,sa
  bounded(months,1,360,"Book life");bounded(salvagePercent,0,95,"Book salvage");
  return prisma.$transaction(async tx=>{
   await actor(tx,userId);
+  await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id"=${"singleton"} FOR UPDATE`;
   const old=await tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"},
    select:{depreciationMonthsDefault:true,depreciationSalvagePercent:true}});
   await tx.businessSettings.update({where:{id:"singleton"},data:{
@@ -189,11 +190,17 @@ export async function retireBookAsset(userId:string,id:string,expectedVersion:nu
   },select:{eventKind:true}});
   if(previous)throw new BookAssetInputError("Historical asset retirement/disposition journal requires accountant reconciliation.");
   const first=nextMonth(asMonth(asset.placedInServiceOn));
-  const finalMonth=asMonth(retired)<lastCompletedMonth()?asMonth(retired):lastCompletedMonth();
-  if(first<=finalMonth && (!asset.lastDepreciationMonth||asset.lastDepreciationMonth<finalMonth))
-   throw new BookAssetInputError("Post completed depreciation through retirement month before staging.");
-  await verifyCapitalSource(tx,id);
+  const scheduledEnd=monthlySchedule({costCents:asset.costCents,months:asset.lifeMonths,
+   salvagePercent:asset.salvagePercent,startMonth:first}).at(-1)!.periodKey;
+  const retireMonth=asMonth(retired);
+  const required=[retireMonth,lastCompletedMonth(),scheduledEnd].sort()[0]!;
   const history=await postedEvidence(tx,id);
+  if((asset.lastDepreciationMonth && asset.lastDepreciationMonth>retireMonth) ||
+     history.months.some(month=>month>retireMonth))
+   throw new BookAssetInputError("Depreciation was recorded past retirement date; review before transferring book value.");
+  if(first<=required && (!asset.lastDepreciationMonth||asset.lastDepreciationMonth<required))
+   throw new BookAssetInputError("Post completed scheduled depreciation before staging retirement.");
+  await verifyCapitalSource(tx,id);
   const carried=asset.costCents-history.total;
   if(!Number.isSafeInteger(carried)||carried<0)
    throw new BookAssetInputError("Book carrying value is invalid; reconcile first.");

@@ -29,6 +29,8 @@ export const BACKUP_MODEL_POLICY = {
   RentalPackage: "rentalPackage",
   RentalPackageComponent: "rentalPackageComponent",
   Appliance: "appliance",
+  BookAsset: "bookAsset",
+  BookTaxEvidence: "bookTaxEvidence",
   ApplianceInspection: "applianceInspection",
   PartRecord: "partRecord",
   Supplier: "supplier",
