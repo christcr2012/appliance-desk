@@ -1,3 +1,7 @@
+## October 19, 2026 — K-8 reporting is evidence, not provider or tax authority
+
+K-8 extends approved K-7 source reporting with clearly labelled future ESTIMATE invoices, repeat expense schedules and OPEN tax worksheet remittance, alongside receipt-linked customer health. Five year-end CSVs are live read-only compilations, not immutable CPA-certified exports; tax returns must be FILED to appear in the filed-tax CSV and nonfiled returns remain estimated. A 1099 candidate is computed only from marked supplier expense payments backed by actual expense-posting journal and a known payment-source account, uses owner-configured vendor1099ThresholdCents and retains CPA source/eligibility warnings. Converted lead attribution only uses a real convertedCustomerId record. No direct bank sync, live payment, tax filing, text or email is activated; K-CASH remains its own separately gated roadmap.
+
 ## October 18 — K-7 source-backed bookkeeping reports
 
 Accrual P&L is based solely on immutable posted journal account categories and actual ledger dates. Cash P&L is distinct: only source-linked applied receipt money, prorated against original posted invoice revenue, contra-income and pass-through tax, plus posted cash-paid expense/refund/fees. Unapplied receipts, refundable deposits, tax pass-through and incomplete allocations are not invented as revenue. Missing evidence is visible for review. The report never posts a journal or moves money.

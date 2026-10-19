@@ -32,6 +32,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
 | Book fixed assets | `/desk/books/assets` | Appliance management depreciation, carried retirement value and separate CPA tax-basis evidence |
+| Cash outlook and year-end | `/desk/books/closing` | Clearly labelled estimates, customer health and protected accounting CSV downloads |
 | Expenses | `/desk/expenses` | Submit your own expense or approve, reverse and review private receipts |
 | Reports | `/desk/reports` | Earnings, repairs, lead sources, accounting CSV |
 | Fleet | `/desk/fleet` | Which machines earn or cost the most |
@@ -165,6 +166,19 @@ From **Books → Rental equipment and book depreciation**, OWNER can enroll an e
 The default management straight-line schedule is 60 months and 0% salvage, overridable for new assets; use an individual asset's future-only policy form to change the remaining useful life without rewriting posted journals. **Post depreciation** for completed Colorado months; the ledger uses unique journal events and advances zero-cent months in a durable checkpoint. A complete physical Fleet retirement, followed by the completed depreciation postings, allows OWNER to stage its actual retirement intent and preserve remaining carrying value in the Retired pending disposition **asset** account. This is not sale income, tax gain or a premature disposal loss. Final sale/disposal is a separately approved later feature.
 
 The CPA evidence form records classification, source date/reference, original adjusted-basis inputs, signed adjustments, allowed/allowable depreciation and section 179/bonus separately; UNKNOWN remains a valid state. There is no automatic recapture or income-tax due estimate. CPA decision IN-56 and real-accounting-book reconciliation remain outstanding. Missing acquisition journal, conflicting values, stale form version, missing retirement evidence or completed-month checkpoint fails closed; reconcile the underlying source without editing immutable journals.
+
+
+## Books cash outlook, customers and year-end files
+
+From **Books → Cash outlook, customers and year-end**, owner and admin can review three private reports. STAFF and CUSTOMER are refused in the domain and the protected CSV downloads; reporting does not contact Stripe or send an invoice, money, message or tax return.
+
+**Estimated cash outlook (1–180 days).** Only actual ACTIVE agreements with documented recurring billing already started and real nextBillingDate contribute future expected invoice line values. Future tax uses recorded rate snapshots (review-required), not a guaranteed current tax quote. Active recurring expense templates appear at their upcoming Colorado date unless a matching expense has been created already. Only known OPEN tax-return worksheet totals are represented; an unknown worksheet is flagged rather than assumed zero. Invoices being due never mean customers paid, so use actual banking/reconciliation instead of treating these figures as cash on hand.
+
+**Customer health.** Current active and ending agreements are distinct from closed rentals. Rental length uses supported dates, payments require a successful invoice-applied Receipt and actual refunds are subtracted; account credits, refundable deposits and unapplied money do not create collected cash. Lead source requires a real convertedCustomerId link; otherwise it stays Unknown.
+
+**Five year-end CSVs:** source-backed K-7 monthly separate accrual/cash book profit, management BookAsset and CPA-basis confidence, filed sales/use tax records, expense journal totals by category and **candidate** 1099 vendor spending. The latter uses the owner-configured threshold (currently defaults to $2,000) and only confirmed, payment-account-backed POSTED expenses with a source journal. It does not prove federal reportability, cash method, taxable status or 1099 filing responsibility. The CPA must verify supplier classifications, payment network exclusions and federal rules before any real filings. The downloads are live read-only evidence snapshots, not accountant-certified frozen balances or a replacement for QBO/Xero.
+
+If something is blocked, check Books opening records, recurring template dates, customer payment receipt links and actual filed tax worksheet data. Preserve omissions and source uncertainty for the accountant rather than editing immutable posting evidence.
 
 
 ## Accounting exports

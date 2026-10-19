@@ -1,37 +1,34 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-7",
+  "parent": "K-8",
   "completedSlices": [
     {
-      "id": "K-7",
+      "id": "K-8",
       "acceptanceEvidence": [
-        "Read-only RepeatableRead transactions check active OWNER/ADMIN role and Books opening date, validate Colorado dates and finite capped journal amounts; real-DB role case authored; CI pending.",
-        "Pure source-accounted journal grouping supports income, contra-income, ordinary expense/depreciation, reversed-sign entries and per-account original entry IDs; pure and real-DB tests authored; CI pending.",
-        "Cash sources require posted PAYMENT_APPLIED linked to Receipt and original finalized invoice recognition, with proportionate tax/discount/income allocation, posted expenses/refunds, and needs-review exclusion; cash-vs-accrual real-DB test authored, CI pending.",
-        "Colorado date range plus previous equal-length and same-period-last-year compares, using immutable entryDate not silent lateForDate backdating, displayed separately; CI pending.",
-        "Pure whole-cent ASSET+CONTRA_ASSET, liability, equity and book result equation rejects unbalanced journals; retained-pending K-6 assets included only as asset; balance math/DB test authored, CI pending.",
-        "Posted invoice RENTAL/LATE_RETURN cents split across distinct assigned assets at invoice-period start via stable odd-cent routine; incomplete source totals exposed; unit cases authored.",
-        "Completed maintenance jobs reuse itemized-parts cost helper instead of double counting manual parts; job-linked extra expenses flagged and standalone posted cost attributed; six-month payback estimate and book value exposed with unknown-cost status; CI pending.",
-        "Fourteen K-7 transparency definitions in METRICS, private accessible Books reports view and owner/admin versus staff route tests at phone/desktop widths, without remote payments; e2e authored, CI pending.",
-        "Plan-only frozen SHA 8ac58dd, status/index/decision mapping/owner guide/go-live/database notes updated, K-6 verified merged; exact-head full CI/independent review, merge and real-world accountant acceptance pending."
+        "cashForecast, customerHealth and yearEndPackage are read-only, live OWNER/ADMIN guarded with protected CSV route, attested books date and safe Colorado date caps. Tests authored; CI pending.",
+        "ACTIVE billingStartedAt Stripe subscriptions with a documented nextBillingDate use signed line prices and agreement rate snapshot as a labelled estimate, not collected cash.",
+        "Recurring templates preserve 1–28 Colorado dates and skip existing generated expense occurrences; no draft creation or provider operation.",
+        "Typed OPEN worksheet totals may contribute only an ESTIMATE; unsupported worksheets are named in needsReview.",
+        "Receipt-linked successful applied invoice payments less actual refunds, dated completed rental length, explicitly converted lead source or Unknown.",
+        "Five downloadable year-end CSVs separate monthly K-7 cash/accrual profit, book assets/CPA basis, FILED tax, posted expense journal categories and 1099 candidate supplier paid totals.",
+        "Marked suppliers must have a POSTED expense source journal and known paidFromAccount isPaymentSource; owner-set threshold and CPA warning preserve uncertain tax reportability.",
+        "Eight definitions added to METRICS; protected phone-first reports and download; browser/axe suite and Books route inventory authored.",
+        "Pure and disposable PostgreSQL/browser tests, owner/decision/status/DB/go-live paperwork updated in branch; exact-head CI, independent review and real CPA acceptance still pending."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "K-7 exact-head typecheck, all disposable PostgreSQL and browser suites, CI review and merge are not yet verified.",
-    "The owner/bookkeeper still must trial-reconcile cash/applied tax, balance and a real two-appliance invoice; CPA IN-39/IN-56 remain open.",
-    "K-6 predecessor PR #502 merged exact-head green at 986dce6; live remains behind main until its scheduled promotion."
+    "Exact-head CI, database/browser tests, review and merge not yet verified.",
+    "Owner and accountant must validate real billing/collection, tax worksheet, 1099 exclusions and year-end package. CPA IN-39/IN-56 still pending.",
+    "Live branch release and 22 real-owner/provider acceptance items are separate."
   ],
-  "workloadException": "K-7 is one original complete high-risk financial-reporting subsection, source-backed cash-vs-accrual, signed balance and invoice-level payback together. K-8 cannot be counted as complete yet.",
+  "workloadException": "K-8 is one complete original substantial subsection for customer collections, labelled future cash outlook and five year-end artifacts; K-CASH remains separate proposed work.",
   "evidence": [
-    "Frozen complete K-7 criteria in docs-only 8ac58ddb97326e6aa1ba1b2342957f6dbf432249 before first reporting source commit.",
-    "K-6 real DB, accessible browser, all CI and review passed and PR #502 merged at 986dce6.",
-    "K-7 source and pure/disposable PostgreSQL/browser tests authored; CI/preflight and independent review pending; no local green evidence claimed.",
-    "No money, tax filing, Stripe LIVE, outbound messages, production customer data or preview infrastructure used.",
-    "Initial #503 head b1d3455: all three unit/DB shards green; secret-scan path failed because execution packet omitted gates, type/build failed because source-name test used accountName instead of ProfitRow.name. Fixed packet arrays and exact typed assertion; all exact-head CI and review remain pending.",
-    "K-7 head 9280787: complete aggregate CI green (3/3 unit DB, 4/4 browser axe, type/lint/security/policy). Self-review then identified shared job double-count, all-time vs last-12-month repair warning and opening-date snapshot; grouped fixes and pure/real-DB tests authored, final exact-head rerun pending.",
-    "CI head d8a507c type/build red on new test reduce accumulator TS18048, corrected to explicit numeric accumulator preserving assertion; non-gating independent large-account perf baseline 14.5ms vs 14.3ms limit with no override. Exact-head rerun pending."
+    "Frozen entire original nine-line plan in docs-only commit 80ccd16112986b32eec386dba5a32bed58727e80 before source.",
+    "K-7 PR #503 merged exact-head green as 82862d13e5be402b56807d680487adfa35e88cf0; Codex review unavailable at usage limit, documented self-review.",
+    "K-8 source, routes and pure/real-DB/browser regression files authored, not yet witnessed running.",
+    "No LIVE charges, provider requests, tax filings, customer communications, production writes or spending."
   ]
 }
