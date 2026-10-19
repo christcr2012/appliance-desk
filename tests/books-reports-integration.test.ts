@@ -74,7 +74,7 @@ describe.skipIf(!enabled)("K-7 reports read immutable money and refuse other rol
  it("excludes sales-tax pass-through and dates accrual income to the journal",async()=>{
   const x=await profitAndLoss(owner,{from:"2026-03-01",to:"2026-03-31",basis:"ACCRUAL"});
   expect(x.summary.rows.find(z=>z.accountId===incomeId)?.amountCents).toBe(10000);
-  expect(x.summary.rows.some(z=>z.accountName==="SALES_TAX_UNASSIGNED")).toBe(false);
+  expect(x.summary.rows.some(z=>z.name==="SALES_TAX_UNASSIGNED")).toBe(false);
   const cash=await profitAndLoss(owner,{from:"2026-03-01",to:"2026-03-31",basis:"CASH"});
   expect(cash.summary.rows.find(z=>z.accountId===incomeId)).toBeUndefined();
  });

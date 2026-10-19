@@ -109,6 +109,8 @@
     ],
     "browser": [
       "e2e/books-reports.spec.ts"
-    ]
-  }
+    ],
+    "node": []
+  },
+  "gates": []
 }
