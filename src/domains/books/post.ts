@@ -1,3 +1,4 @@
+import { cashEventPlan } from "./cash/event-plan";
 import { Prisma, type JournalSourceType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordSystemIssue, resolveSystemIssue } from "@/domains/system-issues";
@@ -208,6 +209,12 @@ Promise<{ events: Event[]; extra: Subject }> {
         booksStartDate:settings.booksStartDate,capitalizedExpenseExists:alreadyCapitalized>0});
       return {events:plan?[{eventKind:"APPLIANCE_CONTRIBUTED",plan}]:[],extra:{applianceId:x.id}};
     }
+    case "CASH_EVENT": {
+      const event=await tx.bookCashEvent.findUnique({where:{id:sourceId}});
+      if(!event)return {events:[],extra:{}};
+      const plan=cashEventPlan(event);
+      return {events:[{eventKind:event.reversalOfId?"CASH_EVENT_REVERSED":"CASH_EVENT_POSTED",plan}],extra:{}};
+    }
     case "TAX_FILING": {
       const x=await tx.taxFilingPeriod.findUnique({where:{id:sourceId}});
       if(!x||x.status!=="FILED")return {events:[],extra:{}};
@@ -296,6 +303,12 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
   const since=settings.booksStartDate;
   type Candidate = {type: JournalSourceType; id: string; at: Date; required: string[]};
   const querySources: { type: JournalSourceType; load: (skip:number,take:number)=>Promise<Candidate[]> }[] = [
+    {type:"CASH_EVENT",load:async(skip,take)=>(await prisma.bookCashEvent.findMany({
+      where:{occurredOn:{gte:since}},orderBy:[{occurredOn:"asc"},{id:"asc"}],skip,take,
+      select:{id:true,occurredOn:true,reversalOfId:true},
+    })).map(x=>({type:"CASH_EVENT",id:x.id,at:x.occurredOn,
+      required:[x.reversalOfId?"CASH_EVENT_REVERSED":"CASH_EVENT_POSTED"]}))},
+
     {type:"INVOICE",load:async(skip,take)=>(await prisma.invoice.findMany({
       where:{status:{not:"DRAFT"},OR:[
         {createdAt:{gte:since}},{issuedAt:{gte:since}},
