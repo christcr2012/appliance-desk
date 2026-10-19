@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "id": "K-5",
+  "parent": "K-5",
+  "baseline": "3dd2dfca7be1e734b230c46d27f7d38fc089b9c9",
+  "card": "docs/pr-cards/K-5.md",
+  "outcome": "Finance owner/admin can export immutable, mapped, balanced journal evidence into trial QuickBooks/Xero or general CSV without exposing accounting records to staff or sending provider writes.",
+  "risk": "Immutable financial export, protected readback, safe CSV injection handling and target-specific mapping/date/currency correctness; no external provider API calls.",
+  "next": "Complete full K-5 implementation and exact-head CI/review; proceed in order to K-6 depreciation.",
+  "references": [
+    {
+      "path": "src/domains/books/management.ts",
+      "anchor": "export async function exportMonthReview",
+      "purpose": "Keep K-2 read-only month review unchanged."
+    },
+    {
+      "path": "src/domains/books/post.ts",
+      "anchor": "export async function postPending",
+      "purpose": "Finish/reject source posting before snapshotting export."
+    },
+    {
+      "path": "src/lib/csv.ts",
+      "anchor": "export function toCsv",
+      "purpose": "Reuse safe spreadsheet CSV escaping."
+    },
+    {
+      "path": "src/domains/pricing/money.ts",
+      "anchor": "export function formatCentsAsPlainDecimal",
+      "purpose": "Exact decimal fields."
+    },
+    {
+      "path": "src/lib/business-date.ts",
+      "anchor": "export function businessDateFromKey",
+      "purpose": "Colorado boundary validation."
+    },
+    {
+      "path": "docs/designs/BATCH-K.md",
+      "anchor": "### 3.6 Exports",
+      "purpose": "Owner-approved four-format contract."
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/books/exports/formatters.ts",
+    "src/domains/books/exports/index.ts",
+    "src/app/desk/books/exports/page.tsx",
+    "src/app/desk/books/exports/actions.ts",
+    "src/app/desk/books/exports/download/[id]/route.ts",
+    "tests/books-exports.test.ts",
+    "tests/books-exports-integration.test.ts",
+    "e2e/books-export.spec.ts"
+  ],
+  "invariants": [
+    "OWNER/ADMIN only, live role verification on all export and download paths",
+    "No CSV formula injection or secret leakage",
+    "No unbalanced source journal export",
+    "No duplicate accounting external import by silent overwrite",
+    "Existing month export untouched",
+    "No money-out or provider API activation"
+  ],
+  "sequence": [
+    "Freeze full acceptance",
+    "Pure target-specific CSV formatting and currency/date guard",
+    "Bounded source post and transactionally consistent entries/maps",
+    "Immutable batch and target-scoped provenance",
+    "OWNER/ADMIN screen and protected download history",
+    "Real-Postgres/unit/browser tests",
+    "Full exact-head CI and review",
+    "Merge and permanent closeout"
+  ],
+  "acceptance": [
+    "OWNER/ADMIN can request QBO_JOURNAL_CSV, XERO_JOURNAL_CSV, GENERIC_JOURNAL_CSV or CASH_MOVEMENTS_CSV exports with a validated inclusive Colorado from/to range, DETAIL or DAILY_SUMMARY mode, and an optional already-exported filter; STAFF/CUSTOMER and inactive identities are refused by the domain and every route.",
+    "Before export, bounded source posting completes without errors; the export refuses uninitialized books, invalid/oversized dates, unsettled posting exceptions, unbalanced journals and any missing or inactive used-account mappings. No guessed account names or company credentials, no external accounting API.",
+    "Every target produces source-defined stable exact headers, dates, account mappings, integer-cent decimal amounts and safe spreadsheet-text escaping; QBO entry numbers/dates, Xero sign/account/tax columns, generic detailed journal and cash-movements category allocation have distinct tested formatters.",
+    "DETAIL contains all eligible source entries in stable date/entryNumber order; DAILY_SUMMARY nets each day's debit and credit per ledger account and remains balanced. Stripe payout skip settings are target-specific and the onlyNotYetExported filter is target-scoped, not globally suppressing a source.",
+    "Successful exports persist immutable ExportBatch bytes and SHA-256, bounded journal-entry provenance, output filename and creator; concurrent same-criteria requests and replay with onlyNotYetExported do not create duplicate exported entry identities, and existing export content never changes when mappings or source journals later change.",
+    "Owner/admin Books screen supports target/mode/date/filter, unmapped-account guidance and read-only export history with secure re-download; CSV GET enforces live authenticated accounting roles and no-store content headers. Existing /desk/books/export?month review remains working and unchanged.",
+    "Disposable PostgreSQL tests cover authorization, mapping and date guards, retries/concurrency, locked source batches, hash/byte integrity, cutoff and target scopes; focused formatter unit tests cover all target headers, daily net/cash allocations, payout flags and formula injection, and browser/axe/regression CI validates Books and export navigation. Maintain roadmap/owner guide/database/status and explicit real-provider trial-import acceptance."
+  ],
+  "slices": [
+    {
+      "id": "K-5",
+      "outcome": "Finance owner/admin can export immutable, mapped, balanced journal evidence into trial QuickBooks/Xero or general CSV without exposing accounting records to staff or sending provider writes.",
+      "acceptance": [
+        "OWNER/ADMIN can request QBO_JOURNAL_CSV, XERO_JOURNAL_CSV, GENERIC_JOURNAL_CSV or CASH_MOVEMENTS_CSV exports with a validated inclusive Colorado from/to range, DETAIL or DAILY_SUMMARY mode, and an optional already-exported filter; STAFF/CUSTOMER and inactive identities are refused by the domain and every route.",
+        "Before export, bounded source posting completes without errors; the export refuses uninitialized books, invalid/oversized dates, unsettled posting exceptions, unbalanced journals and any missing or inactive used-account mappings. No guessed account names or company credentials, no external accounting API.",
+        "Every target produces source-defined stable exact headers, dates, account mappings, integer-cent decimal amounts and safe spreadsheet-text escaping; QBO entry numbers/dates, Xero sign/account/tax columns, generic detailed journal and cash-movements category allocation have distinct tested formatters.",
+        "DETAIL contains all eligible source entries in stable date/entryNumber order; DAILY_SUMMARY nets each day's debit and credit per ledger account and remains balanced. Stripe payout skip settings are target-specific and the onlyNotYetExported filter is target-scoped, not globally suppressing a source.",
+        "Successful exports persist immutable ExportBatch bytes and SHA-256, bounded journal-entry provenance, output filename and creator; concurrent same-criteria requests and replay with onlyNotYetExported do not create duplicate exported entry identities, and existing export content never changes when mappings or source journals later change.",
+        "Owner/admin Books screen supports target/mode/date/filter, unmapped-account guidance and read-only export history with secure re-download; CSV GET enforces live authenticated accounting roles and no-store content headers. Existing /desk/books/export?month review remains working and unchanged.",
+        "Disposable PostgreSQL tests cover authorization, mapping and date guards, retries/concurrency, locked source batches, hash/byte integrity, cutoff and target scopes; focused formatter unit tests cover all target headers, daily net/cash allocations, payout flags and formula injection, and browser/axe/regression CI validates Books and export navigation. Maintain roadmap/owner guide/database/status and explicit real-provider trial-import acceptance."
+      ]
+    }
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/books-exports.test.ts",
+      "tests/owner-guide-coverage.test.ts"
+    ],
+    "db": [
+      "tests/books-exports-integration.test.ts",
+      "tests/books-poster-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/books-export.spec.ts",
+      "e2e/books-workspace.spec.ts"
+    ],
+    "node": []
+  }
+}

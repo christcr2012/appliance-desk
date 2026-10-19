@@ -30,6 +30,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Money (billing) | `/desk/billing` | Invoices, deposits, held payments, statements |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
+| Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
 | Expenses | `/desk/expenses` | Submit your own expense or approve, reverse and review private receipts |
 | Reports | `/desk/reports` | Earnings, repairs, lead sources, accounting CSV |
 | Fleet | `/desk/fleet` | Which machines earn or cost the most |
@@ -48,7 +49,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Customer portal | `/account` | What your customers see after signing in |
 | Sign in | `/login` | Everyone's sign-in page |
 
-The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Books, Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Expenses, Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them; they never see prices, billing, reports or Settings.
+The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Books (including Accounting exports), Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Expenses, Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them; they never see prices, billing, reports or Settings.
 
 ## Signing in and staying safe
 
@@ -149,6 +150,17 @@ Ending: ending a month-to-month rental, early return ("Returned early — choose
 **Change without code.** Owner/admin can create, edit, pause or reactivate recurring templates and choose expense categories, payment sources and optional appliance/job/purchase links. Staff can only submit; a draft is not a posted journal. `expense-drafts` is a daily 09:50 UTC automation independent of the Stripe balance sync switch.
 
 **If it fails.** Invalid cents, missing vendor/category, inaccessible receipt, inactive team role or stale post version is refused. An existing acquisition amount cannot be silently replaced. Use-tax purchases require the verified business address and reviewed rates; changing a filed tax period requires separate review. Failed draft runs remain visible under System health, and all incomplete changes stay unposted. The private store must be configured correctly before receipt upload; never use the public catalog token for sensitive receipts.
+
+## Accounting exports
+
+**What it's for.** Open `/desk/books/exports` from **Books → Export to QuickBooks, Xero or CSV**. Choose your target, date range, **Journal detail** or **Daily summary**, and whether to include only journal sources not already exported to that specific target. An export is a stored, SHA-256-verified snapshot: re-downloading it later returns the original file, not current edited account names. This does not connect to an accounting provider or send any money. Only active owner/admin users can view or create files; staff cannot access these internal books.
+
+**Change without code.** First open `/desk/books` and map every account to the exact QuickBooks account name (use `Parent:Subaccount` for subaccounts), Xero account **code**, or the recipient's intended generic account label. Confirm the applicable Xero tax-rate names. Mapping cash-movement accounts is also available in Books under Export to → **Cash movements**. For Xero, enter a rate name or leave the new optional rate field empty for **Tax Exempt**; the organization may require another approved tax-rate label. Choose the export period and format on the export screen. The daily summary nets debit/credit movements by day/account; detail keeps separate source journal numbers. Cash movements show payment-account changes with an opposite category. The optional **Only not yet exported** checkbox checks history for this target, not other targets.
+
+**Trial-company import steps (required before real accounting acceptance).** In a disposable QuickBooks Online trial company, go to Settings → Import Data → Journal Entries, browse the CSV and match its Journal No., Journal Date, Account, Debits, Credits and Description columns to QuickBooks fields. Confirm trial balances and duplicate-journal warnings; never import the same source twice. For Xero, create/check its chart of accounts and any **holding accounts** needed for bank or system accounts, then use the manual-journal CSV import/Conversion Toolbox. Match Narration, Date, Account Code, Tax Rate and signed Amount fields; validate the selected `yyyy/mm/dd` date and trial debit/credit totals. Xero cannot post manual journals directly to some system/bank accounts, so owner/accountant-approved holding-account mappings may be needed. Review the trial journals before using real accounts.
+
+**If it fails.** No file is saved for invalid dates, incomplete source postings, an unbalanced journal or a missing account mapping; return to Books to correct the reason, then retry. A protected download verifies the archived SHA-256 and refuses a missing/corrupt batch. If QuickBooks or Xero rejects the trial import, compare provider-specific account names/codes, posting permissions, dates, tax names and duplicate numbers before attempting real import. These steps are based on current <https://quickbooks.intuit.com/learn-support/en-us/help-article/import-export-data-files/import-journal-entries-quickbooks-online/L4tQBwbs7_US_en_US> and <https://central.xero.com/0/article/Import-manual-journals-using-the-Conversion-Toolbox>; external acceptance remains pending.
+
 
 ## Billing, deposits and statements
 

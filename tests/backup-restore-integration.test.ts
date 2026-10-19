@@ -338,5 +338,5 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     } finally {
       await pg.end();
     }
-  });
+  }, 45_000); // A full restore, subprocess schema verification and PostgreSQL health check exceed Vitest's 5s unit default under CI load.
 });

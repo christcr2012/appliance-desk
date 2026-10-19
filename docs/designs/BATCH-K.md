@@ -476,6 +476,8 @@ DETAIL: per entry); format; store `ExportBatch` + entries; return. All amounts f
 - **QBO_JOURNAL_CSV**: header `Journal No,Journal Date,Account,Debits,Credits,Description`; date `MM/DD/YYYY`; Journal No
   `AD-YYYYMMDD` (summary) or `AD-<entryNumber>` (detail); Description = memo (summary: "Appliance Desk daily summary").
   QuickBooks' import screen lets the user match columns, so the owner guide shows the matching step.
+**Provider verification addendum (2026-10-18, K-5):** The older Xero U.S. assumption in the description below is not accepted by the current official Xero Conversion Toolbox manual-journal importer. Xero specifies `dd/mm/yyyy` or `yyyy/mm/dd` even for U.S. organizations. K-5 uses `yyyy/mm/dd` (unambiguous) and prefixes Narration with the internal journal number to keep distinct entries discernible. Certain Xero bank/system accounts cannot receive manual journals, so the user must map to approved holding-account codes if necessary. Trial-company verification is still an owner/bookkeeper acceptance gate. Source: https://central.xero.com/0/article/Import-manual-journals-using-the-Conversion-Toolbox. QuickBooks column and subaccount guidance: https://quickbooks.intuit.com/learn-support/en-us/help-article/import-export-data-files/import-journal-entries-quickbooks-online/L4tQBwbs7_US_en_US.
+
 - **XERO_JOURNAL_CSV**: header `*Narration,*Date,Description,*AccountCode,*TaxRate,*Amount`; date `MM/DD/YYYY` (Xero
   reads dates in the organisation's region format; Chris's is US); Amount positive = debit, negative = credit; TaxRate =
   mapping's `externalTaxRate` (sales tax is already its own liability account, so lines are "Tax Exempt").

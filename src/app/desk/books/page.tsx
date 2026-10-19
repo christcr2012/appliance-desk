@@ -23,6 +23,7 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
   return <div className="space-y-6">
     <header className="space-y-2">
       <Link className="underline" href="/desk/expenses">Expenses and receipts</Link>
+      <Link className="underline ml-4" href="/desk/books/exports">Export to QuickBooks, Xero or CSV</Link>
       <h1 className="text-2xl font-bold">Books and journal</h1>
       <p className="text-muted-foreground">Account balances and source-backed double-entry records. No payment is sent from this screen.</p>
       {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
@@ -94,8 +95,9 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
         </form>:<p>{a.name}</p>}
         {owner?<form action={mapExportAccountAction} className="flex flex-wrap gap-2 items-end">
           <input type="hidden" name="accountId" value={a.id}/>
-          <label>Export to<select name="target" className={input}><option value="GENERIC_JOURNAL_CSV">Generic CSV</option><option value="QBO_JOURNAL_CSV">QuickBooks</option><option value="XERO_JOURNAL_CSV">Xero</option></select></label>
+          <label>Export to<select name="target" className={input}><option value="GENERIC_JOURNAL_CSV">Generic CSV</option><option value="QBO_JOURNAL_CSV">QuickBooks</option><option value="XERO_JOURNAL_CSV">Xero</option><option value="CASH_MOVEMENTS_CSV">Cash movements</option></select></label>
           <label className="flex-1">External account<input name="externalName" className={input} placeholder="Account name or code" required/></label>
+          <label>Xero tax rate (optional)<input name="externalTaxRate" className={input} placeholder="Tax Exempt" maxLength={120}/></label>
           <button className={button}>Map</button>
         </form>:<p>{a.mappings.length} saved export mappings</p>}
       </div>)}</div>
