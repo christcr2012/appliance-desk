@@ -54,10 +54,11 @@ W-20 → V → F-part-2, subject to newer checked approved index changes.
 W-11/12/13 retain their independently scoped provider/CPA prerequisites.
 Completed W-1/W-18, COM-L and earlier features must not be rebuilt.
 
-Later K/M/O follow their existing postlaunch order. **K-CASH remains PROPOSED
-requiring its own design review, and BP remains PROPOSED requiring business/runtime
-design approval**. Mapping known owner preferences to those units is not approval
-to advance, pay, publish, or deploy them. Real professional/provider/business
+Later K/M/O follow their approved sequencing and owner gates. **K-CASH was approved
+for source engineering on 2026-10-19** (see the original K-CASH section and frozen
+K-CASH-1/2 plan below). **BP remains PROPOSED and requires business/runtime
+design approval**. K-CASH engineering approval is not permission to pay, publish,
+activate banking providers, modify production data, or deploy outside release policy. Real professional/provider/business
 acceptance is separate from code implementation, explicitly queued with revision,
 procedure and re-entry trigger. CPA/counsel review restricts affected real use,
 **not safe source development**; each restriction needs owner-unlock workflow.
@@ -68,7 +69,7 @@ procedure and re-entry trigger. CPA/counsel review restricts affected real use,
 |---|---|---|
 | Finish launch product | T → S → W-0A/W-0B → W-0C → COM-L (to L15) → **W-1…W-20** (Amendment B section 8; W-16A/B and W-21 already done) → V → F-part-2 | CPA/legal tax answers; COM sender/retention/activation; V rendered visual acceptance |
 | Launch | GO-LIVE-CHECKLIST after final evidence | Chris authorizes live operation; engineering evidence is not activation |
-| After launch | K → K-CASH (documentation review pending) → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
+| After launch | K → K-CASH (engineering approved; provider/release acceptance pending) → M → O → COM-N | K earlier only if Chris schedules; M IN-47 after launch; affected CPA/telecom decisions |
 | Proposed later | BP after K/M/O, and relevant COM-N | Explicit runtime design acceptance; IN-48/49/50 for affected offers/programs |
 | Deferred | O32, O29, direct QBO, P and COM-A | Actual accounts/data/selected scope and accepted design; never fake-ready |
 

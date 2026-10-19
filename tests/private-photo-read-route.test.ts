@@ -5,6 +5,8 @@ const photoFindUnique = vi.fn();
 const blobGet = vi.fn();
 const filingPhotoFindFirst = vi.fn();
 const purchaseDocumentFindFirst = vi.fn();
+const bankImportFindFirst = vi.fn();
+const accountingDeliveryFindFirst = vi.fn();
 
 vi.mock("@/lib/session", () => ({
   getServerSession: (...args: unknown[]) => getServerSession(...args),
@@ -15,6 +17,8 @@ vi.mock("@/lib/prisma", () => ({
     photo: { findUnique: (...args: unknown[]) => photoFindUnique(...args) },
     taxFilingPeriod: { findFirst: (...args: unknown[]) => filingPhotoFindFirst(...args) },
     purchaseDocument: { findFirst: (...args: unknown[]) => purchaseDocumentFindFirst(...args) },
+    bankImport: { findFirst: (...args: unknown[]) => bankImportFindFirst(...args) },
+    accountingDelivery: { findFirst: (...args: unknown[]) => accountingDeliveryFindFirst(...args) },
   },
 }));
 
@@ -82,6 +86,8 @@ describe("GET /api/photos/[id]", () => {
     photoFindUnique.mockReset();
     filingPhotoFindFirst.mockReset().mockResolvedValue(null);
     purchaseDocumentFindFirst.mockReset().mockResolvedValue(null);
+    bankImportFindFirst.mockReset().mockResolvedValue(null);
+    accountingDeliveryFindFirst.mockReset().mockResolvedValue(null);
     blobGet.mockReset();
   });
 
@@ -124,6 +130,46 @@ describe("GET /api/photos/[id]", () => {
       );
     },
   );
+
+  it("serves bank statement evidence only to finance roles with no browser or provider cache",async()=>{
+    getServerSession.mockResolvedValue({user:{id:"owner-1",role:"OWNER"}});
+    photoFindUnique.mockResolvedValue(photoRow({
+      jobId:null,
+      url:"https://teststore.private.blob.vercel-storage.com/bank-statements/cash-1/statement.pdf",
+    }));
+    bankImportFindFirst.mockResolvedValue({cashAccountId:"cash-1"});
+    successfulBlob();
+    const response=await requestPhoto();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(blobGet).toHaveBeenCalledWith(expect.stringContaining("bank-statements/cash-1/statement.pdf"),
+      expect.objectContaining({token:"private-token",access:"private",useCache:false}));
+    blobGet.mockClear();
+    getServerSession.mockResolvedValue({user:{id:"staff-1",role:"STAFF"}});
+    const denied=await requestPhoto();
+    expect(denied.status).toBe(404);
+    expect(denied.headers.get("cache-control")).toBe("private, no-store");
+    expect(blobGet).not.toHaveBeenCalled();
+  });
+
+  it("keeps accounting confirmation OWNER-only and uncached",async()=>{
+    photoFindUnique.mockResolvedValue(photoRow({
+      jobId:null,
+      url:"https://teststore.private.blob.vercel-storage.com/accounting-confirmations/delivery-1/receipt.pdf",
+    }));
+    accountingDeliveryFindFirst.mockResolvedValue({id:"delivery-1"});
+    successfulBlob();
+    getServerSession.mockResolvedValue({user:{id:"owner-1",role:"OWNER"}});
+    const response=await requestPhoto();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(blobGet).toHaveBeenCalledWith(expect.any(String),expect.objectContaining({useCache:false}));
+    blobGet.mockClear();
+    getServerSession.mockResolvedValue({user:{id:"admin-1",role:"ADMIN"}});
+    const denied=await requestPhoto();
+    expect(denied.status).toBe(404);
+    expect(blobGet).not.toHaveBeenCalled();
+  });
 
   it.each(["STAFF", "CUSTOMER"] as const)(
     "refuses %s access to a private tax filing image with a known Photo ID",
