@@ -1,3 +1,9 @@
+## October 19, 2026 — K-CASH private evidence cache and immutable restore source correction
+
+Bank statements and accounting confirmation blobs are financial evidence. Their authenticated download requires the originating record's private namespace and OWNER/ADMIN (accounting confirmation OWNER-only) checks, and now explicitly sends `Cache-Control: private, no-store` with `useCache: false`; bank import preview/commit responses, including unauthorized responses, use no-store as well. Generic job/customer photos preserve their existing bounded cache. This tightening changes only transport/cache retention, not end-user permissions or product functionality.
+
+The signed Books posting revision is a BigInt persisted losslessly as a decimal string in the existing version-2 backup and reconstructed as schema-typed BigInt on restore; four nullable bank/history self-relations are similarly restored in a second pass. These are mandatory source integrity protections, not authorization for production banking data or owner-directed provider charges. The corresponding test suites must be green on exact PR head before merging.
+
 ## October 19, 2026 — Frozen first K-CASH bundle accounting boundary
 
 Owner's already-in-roadmap approval now authorizes K-CASH-1/2 engineering; frozen plan `c08c9b11f1b2b45893cfd1d71528ec4c0aa16912` precedes runtime changes. Importing bank observations never proves spendable cash, and journal evidence never initiates an external transfer. OWNER controls bank registration/match policy, ambiguity supersession and typed cash events; ADMIN may review/import nonambiguous settled evidence only; STAFF/CUSTOMER are excluded. Private bank statements and account confirmations are source-linked, never public. K-CASH-3 owns actual reconciliation and budget funding. The engineering permission does not override development spending, LIVE financial services, production data, messaging or release gates.
