@@ -1,3 +1,7 @@
+## October 19, 2026 — Frozen first K-CASH bundle accounting boundary
+
+Owner's already-in-roadmap approval now authorizes K-CASH-1/2 engineering; frozen plan `c08c9b11f1b2b45893cfd1d71528ec4c0aa16912` precedes runtime changes. Importing bank observations never proves spendable cash, and journal evidence never initiates an external transfer. OWNER controls bank registration/match policy, ambiguity supersession and typed cash events; ADMIN may review/import nonambiguous settled evidence only; STAFF/CUSTOMER are excluded. Private bank statements and account confirmations are source-linked, never public. K-CASH-3 owns actual reconciliation and budget funding. The engineering permission does not override development spending, LIVE financial services, production data, messaging or release gates.
+
 ## October 19, 2026 — Owner roadmap approval is sufficient to begin K-CASH engineering
 
 Owner expressly clarified: "If it's in the roadmap, then I already approved it." This supersedes the October 8/13 *documentation-only/proposed* status for K-CASH-1 through K-CASH-7 and advances engineering eligibility now that K-8 is merged. Their original design requirements and dependency order are unchanged. No extra "approve the documentation" prompt may block engineering. Actual financial source facts, paid plans, bank/account selection, LIVE payment/SMS/email activation, spending, production data and non-scheduled release still require their own existing controls. Track code tests and real financial acceptance separately.

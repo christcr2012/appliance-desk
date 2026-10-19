@@ -31,6 +31,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
+| Bank evidence and cash journals | `/desk/books/cash` | Import verified settled CSV observations and owner journaled cash events |
 | Book fixed assets | `/desk/books/assets` | Appliance management depreciation, carried retirement value and separate CPA tax-basis evidence |
 | Cash outlook and year-end | `/desk/books/closing` | Clearly labelled estimates, customer health and protected accounting CSV downloads |
 | Expenses | `/desk/expenses` | Submit your own expense or approve, reverse and review private receipts |
@@ -179,6 +180,15 @@ From **Books → Cash outlook, customers and year-end**, owner and admin can rev
 **Five year-end CSVs:** source-backed K-7 monthly separate accrual/cash book profit, management BookAsset and CPA-basis confidence, filed sales/use tax records, expense journal totals by category and **candidate** 1099 vendor spending. The latter uses the owner-configured threshold (currently defaults to $2,000) and only confirmed, payment-account-backed POSTED expenses with a source journal. It does not prove federal reportability, cash method, taxable status or 1099 filing responsibility. The CPA must verify supplier classifications, payment network exclusions and federal rules before any real filings. The downloads are live read-only evidence snapshots, not accountant-certified frozen balances or a replacement for QBO/Xero.
 
 If something is blocked, check Books opening records, recurring template dates, customer payment receipt links and actual filed tax worksheet data. Preserve omissions and source uncertainty for the accountant rather than editing immutable posting evidence.
+
+
+## Bank observations and typed cash events — K-CASH-1/2
+
+Open **Books → Bank evidence and cash journals** (`/desk/books/cash`). OWNER registers a real business bank ledger asset (name, institution label, optional four-digit suffix only). No credentials, full account numbers, bank OAuth, invented balance or transfer. OWNER or ADMIN previews/archives settled UTF-8 CSV evidence; STAFF/CUSTOMER are denied. ADMIN cannot change bank source policies, decide ambiguous overlapping transactions or post owner cash events.
+
+To import, select the account, choose a local CSV (5 MiB/10,000 rows maximum), name exact date/description/ID (optional)/amount or debit and credit column headers and choose date format and sign. **Preview** displays the first 20 sanitized observations, inflow/outflow totals and overlap alerts. The 30-minute signed preview binds current user, bank revision, raw file hash and mapping; commit revalidates all. OWNER explicitly resolves ambiguous equal-fingerprint rows and states a reason before correcting an existing interpretation of the same file. Old mappings and observations survive as auditable inactive evidence. An imported row is **not** reconciled cash and cannot fund a budget. Private PDF/image statements use separate bank-account-scoped storage, protected by linked record and current owner/admin rights.
+
+OWNER can journal six typed sources: owner contribution (To bank), owner draw (From bank), bank-to-bank transfer (different From/To), actual bank interest (To bank), card payment (From bank) and cash/check deposit (To bank with exact unique settled Receipt IDs). Select a real date/amount in dollars and source reason; the code stores cents, journals balanced lines in Books, and appends a new reasoned reversal for corrections. It does **not** send money to a bank or create an arbitrary manual journal. Already-closed month controls remain in effect. K-CASH-3 supplies matching, reconciliation and real cash readiness; no owner/provider acceptance is implied by passing source CI.
 
 
 ## Accounting exports
