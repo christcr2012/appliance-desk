@@ -31,7 +31,8 @@
       "signature-home.spec.ts",
       "books-workspace.spec.ts",
       "books-expenses.spec.ts",
-      "books-export.spec.ts"
+      "books-export.spec.ts",
+      "books-fixed-assets.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",

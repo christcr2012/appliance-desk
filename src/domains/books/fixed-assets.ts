@@ -4,7 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { balancedPlan, depreciationAccrued } from "./posting-rules";
 import { postForSource, writeJournal } from "./post";
-import { BookAssetInputError, lastBusinessDay, lastCompletedMonth, monthKey, monthlySchedule, nextMonth, remainingSchedule } from "./depreciation";
+import { BookAssetInputError, lastBusinessDay, lastCompletedMonth, monthKey, nextMonth, remainingSchedule } from "./depreciation";
 
 type Tx=Prisma.TransactionClient;
 type BookRole="OWNER"|"ADMIN";
