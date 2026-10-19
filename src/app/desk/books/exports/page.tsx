@@ -33,12 +33,12 @@ export default async function BooksExportsPage({searchParams}:{
    <h2 className="font-semibold text-lg">Create a mapped export</h2>
    <p>All accounts used in the journal must be mapped for this target. <Link href="/desk/books" className="underline">Edit account mappings in Books.</Link> Dates include both endpoints in Colorado time.</p>
    <form action={runBookExportAction} className="grid gap-3 sm:grid-cols-2">
-    <label>Accounting software<select name="target" required className={input}>
+    <label htmlFor="books-export-target">Accounting software</label><select id="books-export-target" name="target" required className={input}>
      {TARGETS.map(x=><option key={x} value={x}>{names[x]}</option>)}
-    </select></label>
-    <label>Detail level<select name="mode" required className={input}>
+    </select>
+    <label htmlFor="books-export-mode">Detail level</label><select id="books-export-mode" name="mode" required className={input}>
      {MODES.map(x=><option key={x} value={x}>{names[x]}</option>)}
-    </select></label>
+    </select>
     <label>From (Colorado date)<input type="date" name="from" defaultValue={currentMonth} required className={input}/></label>
     <label>Through (Colorado date)<input type="date" name="to" defaultValue={today} required className={input}/></label>
     <label className="sm:col-span-2 inline-flex items-start gap-2"><input type="checkbox" name="onlyNew" defaultChecked className="mt-1"/>Only journal entries not yet included in a prior export for the selected accounting software</label>

@@ -28,6 +28,7 @@
     "K-4A/B merge #500 3dd2dfca validated exact-head ci green, including all three unit DB and four browser shards; five reviewed finance P1 findings fixed/resolved.",
     "K-5 source, unit, disposable-PostgreSQL and browser test files authored after frozen plan; do not claim tests passed until exact-head evidence.",
     "No live money write, customer notifications, external accounting provider API or production fixture.",
-    "PR #501 initial CI head edd30a1 red: 3/3? unit shard 1/2 green, shard 3 1 finance fixture FK failure; all browser builds blocked by test mock TS2554. Codex P1 x3: cash mapping target missing, empty Xero tax rate, same-byte archive wrong journal IDs. Code and test corrections grouped; final exact-head proof pending."
+    "PR #501 initial CI head edd30a1 red: 3/3? unit shard 1/2 green, shard 3 1 finance fixture FK failure; all browser builds blocked by test mock TS2554. Codex P1 x3: cash mapping target missing, empty Xero tax rate, same-byte archive wrong journal IDs. Code and test corrections grouped; final exact-head proof pending.",
+    "Exact head 5979294: typecheck/lint, security, policy, capacity, unit 2/3 and browser A/C/D passed. Unit 1 failed only the existing complete backup/restore drill's inappropriate 5s generic unit deadline; browser B only ambiguous label locator on our export form. Corrected with explicitly linked accessible labels and a scoped 45-second real restore test budget without removing assertions; next exact-head run required."
   ]
 }

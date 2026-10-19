@@ -7,8 +7,8 @@ for(const width of [360,1280]) {
   await page.setViewportSize({width,height:900});
   await page.goto("/desk/books/exports");
   await expect(page.getByRole("heading",{name:"Accounting exports"})).toBeVisible();
-  await expect(page.getByLabel("Accounting software")).toBeVisible();
-  await expect(page.getByLabel("Detail level")).toBeVisible();
+  await expect(page.getByRole("combobox",{name:"Accounting software",exact:true})).toBeVisible();
+  await expect(page.getByRole("combobox",{name:"Detail level",exact:true})).toBeVisible();
   await expect(page.getByRole("button",{name:"Create and archive CSV"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Prior immutable exports"})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
