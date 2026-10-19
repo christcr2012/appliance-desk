@@ -381,8 +381,18 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
         if(!byId.has(row.sourceId))byId.set(row.sourceId,new Set());
         byId.get(row.sourceId)!.add(row.eventKind);
       }
+      const unresolvedStripe = source.type === "STRIPE_BALANCE_TXN"
+        ? new Set((await prisma.systemIssue.findMany({where:{
+            kind:"BOOKS_POSTING_FAILURE",status:"OPEN",
+            fingerprint:{in:page.map(x=>"books-post:STRIPE_BALANCE_TXN:"+x.id)},
+          },select:{fingerprint:true}})).map(x=>x.fingerprint))
+        : new Set<string>();
       for(const candidate of page) {
-        if(candidate.required.length&&!candidate.required.every(kind=>byId.get(candidate.id)?.has(kind))) {
+        const complete=candidate.required.length>0 &&
+          candidate.required.every(kind=>byId.get(candidate.id)?.has(kind));
+        if(complete && unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
+          await resolveSystemIssue("books-post:STRIPE_BALANCE_TXN:"+candidate.id,"SOURCE_SUCCEEDED");
+        if(candidate.required.length&&!complete) {
           sources.push(candidate);
           queuedForSource++;
           if(queuedForSource>=limit)break;

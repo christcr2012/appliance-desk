@@ -286,6 +286,8 @@ async function restore(file: string, target: string): Promise<void> {
     const costSupersessionLinks: Array<{ id: string; supersedesId: string }> = [];
     const importSupersessionLinks: Array<{ id: string; priorId: string }> = [];
     const reconciliationRevisionLinks: Array<{ id: string; priorId: string }> = [];
+    const cashEventReversalLinks: Array<{ id: string; priorId: string }> = [];
+    const deliveryRevisionLinks: Array<{ id: string; priorId: string }> = [];
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
@@ -321,11 +323,16 @@ async function restore(file: string, target: string): Promise<void> {
           }
         }
       }
-      if (table === "bankImport" || table === "bankReconciliation") {
-        const key = table === "bankImport" ? "supersedesImportId" : "priorCompletedId";
-        const links = table === "bankImport" ? importSupersessionLinks : reconciliationRevisionLinks;
-        for (const row of data) if (typeof row[key] === "string") {
-          links.push({ id: String(row.id), priorId: row[key] as string });
+      const nullableHistory = {
+        bankImport: { key: "supersedesImportId", links: importSupersessionLinks },
+        bankReconciliation: { key: "priorCompletedId", links: reconciliationRevisionLinks },
+        bookCashEvent: { key: "reversalOfId", links: cashEventReversalLinks },
+        accountingDelivery: { key: "replacesDeliveryId", links: deliveryRevisionLinks },
+      }[table];
+      if (nullableHistory) for (const row of data) {
+        const key = nullableHistory.key;
+        if (typeof row[key] === "string") {
+          nullableHistory.links.push({ id: String(row.id), priorId: row[key] as string });
           row[key] = null;
         }
       }
@@ -365,6 +372,11 @@ async function restore(file: string, target: string): Promise<void> {
       await prisma.bankImport.update({ where: { id: link.id }, data: { supersedesImportId: link.priorId } });
     for (const link of reconciliationRevisionLinks)
       await prisma.bankReconciliation.update({ where: { id: link.id }, data: { priorCompletedId: link.priorId } });
+
+    for (const link of cashEventReversalLinks)
+      await prisma.bookCashEvent.update({ where: { id: link.id }, data: { reversalOfId: link.priorId } });
+    for (const link of deliveryRevisionLinks)
+      await prisma.accountingDelivery.update({ where: { id: link.id }, data: { replacesDeliveryId: link.priorId } });
 
     await resetAutoincrementSequences(sql, schema);
     await verifySchemaHealth(prisma);
