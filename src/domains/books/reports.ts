@@ -194,7 +194,7 @@ export async function appliancePayback(userId:string,asOf=new Date()){
   for(const line of sourceLines){
    if(!sources.has(line.invoiceId))continue;
    const at=line.invoice.billingPeriodStart??line.invoice.createdAt;
-   if(at>end)continue;
+   if(at>=end)continue;
    if(!line.rentalLineId){unallocatedInvoiceCents+=line.amountCents;continue;}
    const ids=assignments.filter(a=>a.rentalLineId===line.rentalLineId&&a.assignedAt<=at&&
     (!a.unassignedAt||a.unassignedAt>at)).map(a=>a.applianceId);

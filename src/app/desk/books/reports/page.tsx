@@ -69,9 +69,10 @@ export default async function BooksReportsPage({searchParams}:{searchParams:Prom
    <label>As of Colorado date<input type="date" name="asOf" className={input} defaultValue={asOf} required/></label>
    <button className="rounded border border-border p-2 focus-visible:outline-2">View balance</button>
   </form>}
+  <h2 className="text-lg font-semibold">{kind==="profit"?"Profit and loss":kind==="balance"?"Balance snapshot":"Appliance payback"} — {error?"needs setup or reconciliation":"source-backed report"}</h2>
   {error&&<p role="alert" className="rounded border border-border p-3">Report needs attention: {error.slice(0,350)}</p>}
   {profit&&<section className="space-y-4">
-   <h2 className="text-lg font-semibold">Profit and loss — {profit.basis==="ACCRUAL"?"Accrual":"Cash allocated"}</h2>
+   <h3 className="font-semibold">Basis: {profit.basis==="ACCRUAL"?"Accrual":"Cash allocated"}</h3>
    <p className="text-sm text-muted-foreground">{profit.from} through {profit.to}; includes both endpoints. {basis==="CASH"?"Cash basis recognizes only posted receipt-backed payments applied to specific issued invoices; unmatched receipts and refundable deposits are excluded. This is not a balance of your checking account.":"Accrual basis recognizes immutable posted earning and cost journal entries on their effective book dates."}</p>
    <Explain metric={basis==="CASH"?"books.cashNetProfit":"books.accrualNetProfit"}/>
    {profit.needsReview.length>0&&<div role="alert" className="rounded border border-border p-3">
@@ -94,7 +95,7 @@ export default async function BooksReportsPage({searchParams}:{searchParams:Prom
    {profit.previous&&<p className="text-sm text-muted-foreground">Comparison: {profit.compare?.from} through {profit.compare?.to}; {profit.previous.needsReview.length} source allocations need review.</p>}
   </section>}
   {balance&&<section className="space-y-3">
-   <h2 className="text-lg font-semibold">Balance snapshot · {balance.asOf}</h2>
+   <h3 className="font-semibold">As of {balance.asOf}</h3>
    <p>Assets equal liabilities plus owner equity and accumulated book result. Retired equipment held for disposition is still an asset, not disposal loss. Sales tax and deposits are liabilities, not income.</p>
    <Explain metric="books.totalAssets"/>
    <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr><th className="p-2 text-left">Ledger account</th><th className="p-2 text-right">Book balance</th><th className="p-2">Source</th></tr></thead><tbody>
@@ -107,7 +108,7 @@ export default async function BooksReportsPage({searchParams}:{searchParams:Prom
    <p className="font-semibold">Assets {fmt(balance.assetsCents)} = Liabilities {fmt(balance.liabilitiesCents)} + Equity {fmt(balance.equityCents)} + Book result {fmt(balance.retainedEarningsCents)}</p>
   </section>}
   {payback&&<section className="space-y-3">
-   <h2 className="text-lg font-semibold">Appliance payback — invoiced rental evidence</h2>
+   <h3 className="font-semibold">Invoiced rental source evidence</h3>
    <p className="text-muted-foreground text-sm">Rental and late-return invoice lines are divided across equipment assigned at that invoice period start. Payback uses invoices, not cash collected or hypothetical price-list rent; six-month run rate is a projection, not actual future money. Repair costs can be incomplete.</p>
    <Explain metric="books.applianceNet"/>
    {payback.unallocatedInvoiceCents!==0&&<p role="alert" className="rounded border border-border p-3">Cannot attribute {fmt(payback.unallocatedInvoiceCents)} in rental invoice lines to a verified appliance assignment; those amounts are omitted from per-appliance payback until reconciled.</p>}
@@ -121,7 +122,7 @@ export default async function BooksReportsPage({searchParams}:{searchParams:Prom
      <p>Net after cost and repairs: {fmt(a.netContributionCents)}</p>
      <p>Remaining payback at the six-month observed run rate: {a.paybackMonths===null?"unknown":a.paybackMonths+" months (estimate)"}</p>
      {a.repairWarning&&<p role="status">Repair costs exceeded the recorded rent-warning threshold; review whether this appliance remains economical.</p>}
-     <Link href={"/desk/fleet/"+encodeURIComponent(a.applianceId)} className={nav}>View original appliance record</Link>
+     <Link href="/desk/fleet" className={nav}>View fleet inventory and source records</Link>
     </article>)}
    </div>
   </section>}
