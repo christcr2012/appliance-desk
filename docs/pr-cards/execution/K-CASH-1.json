@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "id": "K-CASH-1",
+  "parent": "K-CASH-1",
+  "baseline": "72bdfc5b3f4e27d5b103726e08426a00f498052e",
+  "card": "docs/pr-cards/K-CASH-1.md",
+  "outcome": "Set up secure durable bank evidence and safe typed cash-event accounting, then import settled CSV with explicit owner-controlled deduplication; no bank API, account opening or money movement.",
+  "risk": "Mutable cash evidence, source reconciliation, raw CSV identities and journal writer; must fail closed on spoofed/duplicate/unverified funds.",
+  "next": "Build K-CASH-1 and K-CASH-2 fully, exact-head finance CI and review; then K-CASH-3 matching and reconciliation.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-K-CASH.md",
+      "anchor": "## 2. Additive schema contract",
+      "purpose": "Approved schema and financial invariants."
+    },
+    {
+      "path": "src/domains/books/post.ts",
+      "anchor": "export async function writeJournal",
+      "purpose": "Reuse existing source-posting balance/closed month rules."
+    },
+    {
+      "path": "src/lib/team-actor.ts",
+      "anchor": "export async function assertActiveTeamActor",
+      "purpose": "Live role checks on every money mutation."
+    },
+    {
+      "path": "src/domains/backup/manifest.ts",
+      "anchor": "export const",
+      "purpose": "Include new evidence in complete restore."
+    }
+  ],
+  "proposedFiles": [
+    "prisma/schema.prisma",
+    "prisma/migrations/20261019200000_k_cash_evidence/migration.sql",
+    "src/domains/books/cash/accounts.ts",
+    "src/domains/books/cash/import.ts",
+    "src/domains/books/cash/events.ts",
+    "tests/cash-schema-integration.test.ts",
+    "tests/bank-import.test.ts",
+    "tests/bank-import-integration.test.ts",
+    "tests/books-cash-events-integration.test.ts"
+  ],
+  "invariants": [
+    "No fabricated bank opening balance",
+    "Single active raw mapping per account",
+    "Immutable historical interpretations and reconciliation",
+    "All typed journal source writes balanced/idempotent with one active role",
+    "No automatic external money, production data or payments",
+    "Never assume owner-selected bank/account/CPA outcome"
+  ],
+  "sequence": [
+    "Plan-only frozen document and owner authorization mapping",
+    "Add audited schema/restore+revision",
+    "Implement byte-bounded preview/import and source idempotency",
+    "Implement typed cash events, reversal and closed-period guards",
+    "Add all real Postgres, pure and browser/role tests",
+    "Run focused checks and exact-head aggregate CI",
+    "Independent review and merge; then K-CASH-3"
+  ],
+  "acceptance": [
+    "Add complete, non-destructive Postgres/Prisma schema for CashAccount, BankImport, BankObservation, BankMatchGroup/Item, BankReconciliation, CashHold, BookCashEvent, and AccountingDelivery, using checked FK relations, scoped uniqueness/partial indexes, version and immutable-evidence columns, no sensitive full bank credentials.",
+    "Implement and migrate proper partial unique active bank file/external transaction and matched assignment claims, XOR group items, account-specific match-window bounds, one current statement revision, immutable completed evidence and owner-auditable source links; safe legacy database upgrade/rollback is forward-only and backup-aware.",
+    "Add the CASH_EVENT journal source and required owner-draw/interest accounts without guessing opening balances; finance-ordered monotonic posting revision covers every journal-producing writer and preserves unique balanced journal authority.",
+    "Extend existing private document/upload, backup manifests, restored populated data, schema health, route/type inventories and banking identity with no public statement exposure or deleted historical proof.",
+    "Run disposable PostgreSQL migration and database contract tests for FK/check/unique/partial races, populated backup-and-restore and original accounting source compatibility; no real bank/Stripe activation or production fixtures.",
+    "Provide a bounded settled-bank CSV parser and preview for 5 MiB/10,000 rows, UTF-8/BOM/quoted newlines, explicit date/sign/currency and field mapping, exact whole cents, 20-row preview, totals and all-or-nothing validation; redact sensitive descriptions, no remote reads, OCR, provider credentials or silent truncation.",
+    "Bind import preview to actor/account/file SHA/mapping/expected account revision with a short-lived signed token; reparse and revalidate identical source and account state on commit before any mutation.",
+    "Import accounts and observations serializably using file SHA, external ID uniqueness, occurrence-index fingerprints and explicit ambiguity/overlap choices; exact retry is idempotent, distinct identical legitimate purchases are retained and concurrent submissions cannot partially duplicate rows.",
+    "Correct a mis-mapped same-file import only through explicit owner-reviewed supersession with reason, frozen original raw/mapping evidence, dependent-reconciliation refusal, and atomic deactivation and replacement of active interpretation; ADMIN cannot override ambiguous correction.",
+    "Implement all six typed cash events (contribution, draw, transfer, interest, card payment, actual linked cash deposit) with validated positive cents, live OWNER role, typed source accounts/receipts, no unsupported manual journal or double cash source, and existing closed-month placement policy.",
+    "Void/retry typed events safely: command-key payload conflict detection, version guards, one source-backed balanced journal and exact immutable reversal, forbidden double/late void, transaction locks, no actual transfer or provider-money operation.",
+    "Create comprehensive pure and disposable PostgreSQL tests for CSV injection/PII/date/encoding, duplicate multiplicities, bad totals, permissions, import supersession/retry/concurrency, typed event debit/credit identities, receipt dedupe and reversal; maintain owner guide/status/decisions/acceptance separately.",
+    "Add private owner/admin read/preview capability to make source evidence verifiable without exposing unrelated account details to STAFF/CUSTOMER; full bank matching/reconciliation workflow screens remain K-CASH-3, not a K-CASH-2 shortcut."
+  ],
+  "slices": [
+    {
+      "id": "K-CASH-1",
+      "outcome": "Cash evidence schema and atomic source identity",
+      "acceptance": [
+        "Add complete, non-destructive Postgres/Prisma schema for CashAccount, BankImport, BankObservation, BankMatchGroup/Item, BankReconciliation, CashHold, BookCashEvent, and AccountingDelivery, using checked FK relations, scoped uniqueness/partial indexes, version and immutable-evidence columns, no sensitive full bank credentials.",
+        "Implement and migrate proper partial unique active bank file/external transaction and matched assignment claims, XOR group items, account-specific match-window bounds, one current statement revision, immutable completed evidence and owner-auditable source links; safe legacy database upgrade/rollback is forward-only and backup-aware.",
+        "Add the CASH_EVENT journal source and required owner-draw/interest accounts without guessing opening balances; finance-ordered monotonic posting revision covers every journal-producing writer and preserves unique balanced journal authority.",
+        "Extend existing private document/upload, backup manifests, restored populated data, schema health, route/type inventories and banking identity with no public statement exposure or deleted historical proof.",
+        "Run disposable PostgreSQL migration and database contract tests for FK/check/unique/partial races, populated backup-and-restore and original accounting source compatibility; no real bank/Stripe activation or production fixtures."
+      ]
+    },
+    {
+      "id": "K-CASH-2",
+      "outcome": "CSV imports and typed cash events",
+      "acceptance": [
+        "Provide a bounded settled-bank CSV parser and preview for 5 MiB/10,000 rows, UTF-8/BOM/quoted newlines, explicit date/sign/currency and field mapping, exact whole cents, 20-row preview, totals and all-or-nothing validation; redact sensitive descriptions, no remote reads, OCR, provider credentials or silent truncation.",
+        "Bind import preview to actor/account/file SHA/mapping/expected account revision with a short-lived signed token; reparse and revalidate identical source and account state on commit before any mutation.",
+        "Import accounts and observations serializably using file SHA, external ID uniqueness, occurrence-index fingerprints and explicit ambiguity/overlap choices; exact retry is idempotent, distinct identical legitimate purchases are retained and concurrent submissions cannot partially duplicate rows.",
+        "Correct a mis-mapped same-file import only through explicit owner-reviewed supersession with reason, frozen original raw/mapping evidence, dependent-reconciliation refusal, and atomic deactivation and replacement of active interpretation; ADMIN cannot override ambiguous correction.",
+        "Implement all six typed cash events (contribution, draw, transfer, interest, card payment, actual linked cash deposit) with validated positive cents, live OWNER role, typed source accounts/receipts, no unsupported manual journal or double cash source, and existing closed-month placement policy.",
+        "Void/retry typed events safely: command-key payload conflict detection, version guards, one source-backed balanced journal and exact immutable reversal, forbidden double/late void, transaction locks, no actual transfer or provider-money operation.",
+        "Create comprehensive pure and disposable PostgreSQL tests for CSV injection/PII/date/encoding, duplicate multiplicities, bad totals, permissions, import supersession/retry/concurrency, typed event debit/credit identities, receipt dedupe and reversal; maintain owner guide/status/decisions/acceptance separately.",
+        "Add private owner/admin read/preview capability to make source evidence verifiable without exposing unrelated account details to STAFF/CUSTOMER; full bank matching/reconciliation workflow screens remain K-CASH-3, not a K-CASH-2 shortcut."
+      ]
+    }
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/bank-import.test.ts"
+    ],
+    "db": [
+      "tests/cash-schema-integration.test.ts",
+      "tests/bank-import-integration.test.ts",
+      "tests/books-cash-events-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/books-cash.spec.ts"
+    ],
+    "node": []
+  }
+}

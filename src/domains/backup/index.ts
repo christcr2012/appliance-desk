@@ -67,9 +67,14 @@ export async function buildDatabaseBackupSnapshot(): Promise<{
         // OpsAgentKey credentials are deliberately excluded from backups.
         // Keep human/agent diagnostic notes, but clear their optional key FK
         // so restores never reference a credential absent from the archive.
-        tables[table] = table === "systemIssueNote"
-          ? rows.map(row => ({ ...(row as Record<string, unknown>), authorKeyId: null }))
-          : rows;
+        tables[table] = rows.map(row => {
+          const result = { ...(row as Record<string, unknown>) };
+          if (table === "systemIssueNote") result.authorKeyId = null;
+          // Lossless decimal string snapshots for every Prisma BigInt scalar.
+          for (const [key, value] of Object.entries(result))
+            if (typeof value === "bigint") result[key] = value.toString();
+          return result;
+        });
         tableCounts[table] = rows.length;
         if (backupReadHookForTests && index < BACKUP_TABLES.length - 1) {
           await backupReadHookForTests({ table, index });

@@ -140,7 +140,8 @@ describe("K-3 provider evidence to Stripe clearing", () => {
     await syncStripeBalanceTransactions(fake([[fee, service, dispute, payout, refunded]]).client);
     await recordSystemIssue({ kind: "BOOKS_POSTING_FAILURE", sourceType: "STRIPE_BALANCE_TXN", sourceId: fee.id });
     await Promise.allSettled([postPending({ limit: 500 }), postPending({ limit: 500 })]);
-    await postPending({ limit: 500 });
+    const verified = await postPending({ limit: 500 });
+    expect(verified.problems.filter(x=>x.sourceType==="STRIPE_BALANCE_TXN"&&x.sourceId===fee.id)).toEqual([]);
     expect((await prisma.systemIssue.findUnique({ where: { fingerprint: "books-post:STRIPE_BALANCE_TXN:" + fee.id } }))?.status)
       .toBe("RESOLVED");
     const rows = await prisma.journalEntry.findMany({ where: {

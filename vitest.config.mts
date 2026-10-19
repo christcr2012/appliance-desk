@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/books-cash-events-integration.test.ts", // K-CASH-2 fixture changes global Books opening date and restores it.
   "tests/books-closing-integration.test.ts", // K-8 toggles Books start during isolated real-database source tests.
   "tests/books-reports-integration.test.ts", // K-7 read-only reports fixture temporarily seeds an isolated Books opening date.
   "tests/books-depreciation-integration.test.ts", // K-6 adjusts verified opening date and book life defaults in a serial database fixture.

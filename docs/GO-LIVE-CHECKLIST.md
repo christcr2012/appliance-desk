@@ -1,3 +1,11 @@
+## K-CASH banking acceptance still pending — October 19, 2026
+
+- [ ] Owner selects a real bank and attests opening cash source, ledger, and legitimate account suffix; no bank account is automatically opened.
+- [ ] After a normal approved deployment, compare consented real settled statement counts/amounts with an archived CSV import and protected statement PDF readback.
+- [ ] Verify current live OWNER/ADMIN/STAFF session behavior on private bank documents, correction/ambiguity and event posting.
+- [ ] Reconcile every actual bank movement to a verified source under K-CASH-3 before treating cash as spendable.
+- [ ] Independently confirm CPA/QBO external trial import and previously recorded provider acceptance; no LIVE money/SMS/email or paid bank activation without separate approval.
+
 ## K-8 accountant/owner acceptance (pending; never self-certify from source CI)
 
 - [ ] Compare projected next signed recurring invoice dates and prices with a real billed agreement; do not claim these estimates are collected cash or synced bank totals.

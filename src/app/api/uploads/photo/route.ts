@@ -105,7 +105,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             "image/heic",
             "image/heif",
             // Receipts and invoices are often PDFs; no other folder accepts them.
-            ...((pathname.startsWith("purchases/") || pathname.startsWith("expenses/")) ? ["application/pdf"] : []),
+            ...((pathname.startsWith("purchases/") || pathname.startsWith("expenses/") || pathname.startsWith("bank-statements/") || pathname.startsWith("accounting-confirmations/")) ? ["application/pdf"] : []),
           ],
           maximumSizeInBytes: MAX_UPLOAD_BYTES,
           addRandomSuffix: true,

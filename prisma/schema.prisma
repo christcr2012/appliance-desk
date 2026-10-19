@@ -3072,6 +3072,8 @@ model Photo {
   maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
 
   createdAt DateTime @default(now())
+  bankImportEvidence BankImport[] @relation("CashImportEvidence")
+  accountingDeliveryEvidence AccountingDelivery[] @relation("CashDeliveryEvidence")
 }
 
 // A message the customer is owed. Batch B2 makes delivery state explicit and
@@ -4143,6 +4145,7 @@ enum JournalSourceType {
   APPLIANCE
   USE_TAX
   TAX_FILING
+  CASH_EVENT
 }
 
 enum AccountingPeriodStatus {
@@ -4180,6 +4183,9 @@ model LedgerAccount {
   active          Boolean                @default(true)
   sortOrder       Int                    @default(0)
   mappings        AccountExportMapping[]
+  cashAccount     CashAccount? @relation("CashAccountLedger")
+  cashOutEvents   BookCashEvent[] @relation("CashEventFrom")
+  cashInEvents    BookCashEvent[] @relation("CashEventTo")
   lines           JournalLine[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
@@ -4226,6 +4232,7 @@ model JournalLine {
   debitCents      Int           @default(0)
   creditCents     Int           @default(0)
   memo            String?
+  bankMatchItems  BankMatchItem[]
 
   @@index([ledgerAccountId])
   @@index([entryId])
@@ -4364,6 +4371,210 @@ model BookTaxEvidence {
   @@index([applianceId, createdAt])
 }
 
+
+model BooksPostingRevision {
+  id String @id @default("singleton")
+  revision BigInt @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model CashAccount {
+  id String @id @default(cuid())
+  ledgerAccountId String @unique
+  ledgerAccount LedgerAccount @relation("CashAccountLedger", fields: [ledgerAccountId], references: [id], onDelete: Restrict)
+  name String
+  institutionLabel String
+  lastFour String?
+  currency String @default("USD")
+  active Boolean @default(true)
+  bankMatchWindowDays Int @default(7)
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  imports BankImport[]
+  observations BankObservation[]
+  matches BankMatchGroup[]
+  reconciliations BankReconciliation[]
+  holds CashHold[]
+
+  @@index([active])
+}
+
+model BankImport {
+  id String @id @default(cuid())
+  cashAccountId String
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id], onDelete: Restrict)
+  sha256 String
+  mapping Json
+  mappingHash String
+  mappingRevision Int @default(1)
+  rowCount Int
+  status String @default("ACTIVE")
+  supersedesImportId String?
+  priorImport BankImport? @relation("BankImportSupersession", fields: [supersedesImportId], references: [id], onDelete: Restrict)
+  replacementImports BankImport[] @relation("BankImportSupersession")
+  supersededAt DateTime?
+  supersededByUserId String?
+  supersededReason String?
+  importedByUserId String
+  privateEvidenceId String?
+  privateEvidence Photo? @relation("CashImportEvidence", fields: [privateEvidenceId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  observations BankObservation[]
+
+  @@unique([cashAccountId, sha256, mappingRevision])
+  @@index([cashAccountId, status])
+  @@index([supersedesImportId])
+}
+
+model BankObservation {
+  id String @id @default(cuid())
+  cashAccountId String
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id], onDelete: Restrict)
+  importId String
+  bankImport BankImport @relation(fields: [importId], references: [id], onDelete: Restrict)
+  rowNumber Int
+  postedOn DateTime
+  signedCents Int
+  description String
+  externalId String?
+  fingerprint String
+  occurrenceIndex Int
+  status String @default("UNMATCHED")
+  isActive Boolean @default(true)
+  ignoreReason String?
+  version Int @default(1)
+  matchItems BankMatchItem[]
+
+  @@unique([importId, rowNumber])
+  @@index([cashAccountId, postedOn])
+  @@index([fingerprint, occurrenceIndex])
+  @@index([importId])
+}
+
+model BankMatchGroup {
+  id String @id @default(cuid())
+  cashAccountId String
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id], onDelete: Restrict)
+  key String @unique
+  createdByUserId String
+  createdAt DateTime @default(now())
+  voidedAt DateTime?
+  voidedByUserId String?
+  voidedReason String?
+  version Int @default(1)
+  items BankMatchItem[]
+
+  @@index([cashAccountId])
+}
+
+model BankMatchItem {
+  id String @id @default(cuid())
+  groupId String
+  group BankMatchGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  bankObservationId String?
+  observation BankObservation? @relation(fields: [bankObservationId], references: [id], onDelete: Restrict)
+  journalLineId String?
+  journalLine JournalLine? @relation(fields: [journalLineId], references: [id], onDelete: Restrict)
+  signedCents Int
+  active Boolean @default(true)
+
+  @@index([groupId])
+  @@index([bankObservationId])
+  @@index([journalLineId])
+}
+
+model BankReconciliation {
+  id String @id @default(cuid())
+  cashAccountId String
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id], onDelete: Restrict)
+  fromOn DateTime
+  toOn DateTime
+  beginningCents Int
+  endingCents Int
+  status String @default("DRAFT")
+  revisionNo Int @default(1)
+  isCurrent Boolean @default(true)
+  priorCompletedId String?
+  priorCompleted BankReconciliation? @relation("BankReconciliationHistory", fields: [priorCompletedId], references: [id], onDelete: Restrict)
+  laterRevisions BankReconciliation[] @relation("BankReconciliationHistory")
+  includedEvidence Json?
+  completedAt DateTime?
+  completedByUserId String?
+  reopenReason String?
+  version Int @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([cashAccountId, fromOn, toOn, revisionNo])
+  @@index([cashAccountId, isCurrent])
+  @@index([priorCompletedId])
+}
+
+model CashHold {
+  id String @id @default(cuid())
+  cashAccountId String
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id], onDelete: Restrict)
+  amountCents Int
+  reason String
+  effectiveOn DateTime
+  releasedAt DateTime?
+  releasedByUserId String?
+  releasedReason String?
+  version Int @default(1)
+  createdByUserId String
+  createdAt DateTime @default(now())
+
+  @@index([cashAccountId, releasedAt])
+}
+
+model BookCashEvent {
+  id String @id @default(cuid())
+  commandKey String @unique
+  kind String
+  amountCents Int
+  occurredOn DateTime
+  fromLedgerAccountId String?
+  fromLedgerAccount LedgerAccount? @relation("CashEventFrom", fields: [fromLedgerAccountId], references: [id], onDelete: Restrict)
+  toLedgerAccountId String?
+  toLedgerAccount LedgerAccount? @relation("CashEventTo", fields: [toLedgerAccountId], references: [id], onDelete: Restrict)
+  sourceReceiptIds Json?
+  memo String
+  status String @default("POSTED")
+  version Int @default(1)
+  createdByUserId String
+  createdAt DateTime @default(now())
+  reversalOfId String? @unique
+  reversedOriginal BookCashEvent? @relation("CashEventReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversingEvents BookCashEvent[] @relation("CashEventReversal")
+
+  @@index([occurredOn, kind])
+}
+
+model AccountingDelivery {
+  id String @id @default(cuid())
+  exportBatchId String @unique
+  batch ExportBatch @relation(fields: [exportBatchId], references: [id], onDelete: Restrict)
+  status String @default("PREPARED")
+  tenantLabel String
+  edition String
+  confirmedAt DateTime?
+  confirmedByUserId String?
+  resolvedAt DateTime?
+  resolvedByUserId String?
+  resolvedReason String?
+  replacesDeliveryId String?
+  priorDelivery AccountingDelivery? @relation("AccountingDeliveryReplacement", fields: [replacesDeliveryId], references: [id], onDelete: Restrict)
+  replacementDeliveries AccountingDelivery[] @relation("AccountingDeliveryReplacement")
+  periodKey String
+  memo String?
+  privateEvidenceId String?
+  privateEvidence Photo? @relation("CashDeliveryEvidence", fields: [privateEvidenceId], references: [id], onDelete: Restrict)
+  version Int @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([status, periodKey])
+}
+
 model ExportBatch {
   id              String             @id @default(cuid())
   target          ExportTarget
@@ -4376,6 +4587,7 @@ model ExportBatch {
   entryCount      Int
   createdByUserId String
   entries         ExportBatchEntry[]
+  accountingDelivery AccountingDelivery?
   createdAt       DateTime           @default(now())
 }
 

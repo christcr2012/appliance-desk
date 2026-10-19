@@ -68,6 +68,21 @@ export async function GET(
     (!linkedExpense || (role !== "OWNER" && role !== "ADMIN" &&
       !(role === "STAFF" && linkedExpense.submittedByUserId === session.user.id))))
     return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+  const bankStatement = privatePath?.startsWith("bank-statements/");
+  const accountingConfirmation = privatePath?.startsWith("accounting-confirmations/");
+  if (bankStatement || accountingConfirmation) {
+    const linked = bankStatement
+      ? await prisma.bankImport.findFirst({where:{privateEvidenceId:id},
+          select:{cashAccountId:true}})
+      : await prisma.accountingDelivery.findFirst({where:{privateEvidenceId:id},
+          select:{id:true}});
+    if (!linked || (bankStatement ? !["OWNER","ADMIN"].includes(role) : role !== "OWNER"))
+      return NextResponse.json({error:"Photo not found."},{status:404,headers:{"Cache-Control":"private, no-store"}});
+    if (bankStatement && !privatePath!.startsWith("bank-statements/" + ("cashAccountId" in linked ? linked.cashAccountId : "") + "/"))
+      return NextResponse.json({error:"Photo not found."},{status:404});
+    if (accountingConfirmation && !privatePath!.startsWith("accounting-confirmations/" + ("id" in linked ? linked.id : "") + "/"))
+      return NextResponse.json({error:"Photo not found."},{status:404});
+  }
   const taxFilingPhoto = privatePath?.startsWith("tax-filings/") ||
     privatePath?.startsWith("purchases/") ||
     (await prisma.purchaseDocument.findFirst({
@@ -102,7 +117,7 @@ export async function GET(
     const result = await get(photo.url, {
       token: store.token,
       access: "private",
-      useCache: true,
+      useCache: !(bankStatement || accountingConfirmation),
       abortSignal: AbortSignal.timeout(15_000),
     });
     if (!result || result.statusCode !== 200) {
@@ -114,7 +129,7 @@ export async function GET(
       headers: {
         "Content-Type": result.blob.contentType || "application/octet-stream",
         "Content-Length": String(result.blob.size),
-        "Cache-Control": "private, max-age=60",
+        "Cache-Control": (bankStatement || accountingConfirmation) ? "private, no-store" : "private, max-age=60",
         "X-Content-Type-Options": "nosniff",
       },
     });

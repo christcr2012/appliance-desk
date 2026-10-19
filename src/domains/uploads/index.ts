@@ -24,6 +24,12 @@ export async function canUploadPhoto(
   if (segments.length !== 3 || !/^[A-Za-z0-9_-]+$/.test(segments[1]!))
     return false;
   const id = segments[1]!;
+  if (segments[0] === "bank-statements" && manager) {
+    return (await prisma.cashAccount.findFirst({where:{id,active:true},select:{id:true}}))!==null;
+  }
+  if (segments[0] === "accounting-confirmations" && user.role === "OWNER") {
+    return (await prisma.accountingDelivery.findUnique({where:{id},select:{id:true}}))!==null;
+  }
   if (segments[0] === "jobs" && operational) {
     return (
       (await prisma.job.findUnique({ where: { id }, select: { id: true } })) !==

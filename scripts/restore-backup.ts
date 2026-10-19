@@ -10,6 +10,7 @@ import { verifySchemaHealth } from "../src/lib/schema-health";
 import {
   autoincrementFields,
   dateTimeFieldsByDelegate,
+  bigIntFieldsByDelegate,
   deriveRestoreTableOrder,
   nullableJsonFieldsByDelegate,
 } from "./lib/table-order";
@@ -186,6 +187,7 @@ function reviveRows(
   table: string,
   rows: unknown[],
   dateFields: Record<string, string[]>,
+  bigIntFields: Record<string, string[]>,
   nullableJsonFields: Record<string, string[]>,
 ): Record<string, unknown>[] {
   return rows.map((row, rowIndex) => {
@@ -204,6 +206,13 @@ function reviveRows(
         throw new Error(`Backup field "${table}.${field}" contains an invalid date.`);
       }
       revived[field] = date;
+    }
+    for (const field of bigIntFields[table] ?? []) {
+      const value = revived[field];
+      if (value === null || value === undefined) continue;
+      if (typeof value !== "string" || !/^-?\d+$/.test(value))
+        throw new Error(`Backup field "${table}.${field}" must be a decimal BigInt string.`);
+      revived[field] = BigInt(value);
     }
     for (const field of nullableJsonFields[table] ?? []) {
       if (revived[field] === null) revived[field] = Prisma.DbNull;
@@ -243,6 +252,7 @@ async function restore(file: string, target: string): Promise<void> {
   const schema = await readFile(SCHEMA_FILE, "utf8");
   const order = deriveRestoreTableOrder(schema, BACKUP_MODEL_POLICY);
   const dateFields = dateTimeFieldsByDelegate(schema, BACKUP_MODEL_POLICY);
+  const bigIntFields = bigIntFieldsByDelegate(schema, BACKUP_MODEL_POLICY);
   const nullableJsonFields = nullableJsonFieldsByDelegate(schema, BACKUP_MODEL_POLICY);
 
   const sql = new Client({ connectionString: target });
@@ -274,12 +284,16 @@ async function restore(file: string, target: string): Promise<void> {
     const receiptLinks: Array<{ id: string; receiptPhotoId: string }> = [];
     const currentAttemptLinks: Array<{ id: string; attemptId: string }> = [];
     const costSupersessionLinks: Array<{ id: string; supersedesId: string }> = [];
+    const importSupersessionLinks: Array<{ id: string; priorId: string }> = [];
+    const reconciliationRevisionLinks: Array<{ id: string; priorId: string }> = [];
+    const cashEventReversalLinks: Array<{ id: string; priorId: string }> = [];
+    const deliveryRevisionLinks: Array<{ id: string; priorId: string }> = [];
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
       const delegate = delegates[table];
       if (!delegate?.createMany) throw new Error(`Restore delegate "${table}" is unavailable.`);
-      const data = reviveRows(table, rows, dateFields, nullableJsonFields);
+      const data = reviveRows(table, rows, dateFields, bigIntFields, nullableJsonFields);
       if(table === "signingBusinessReview")data.sort((a,b)=>String(a.agreementId).localeCompare(String(b.agreementId))||Number(a.revision)-Number(b.revision));
       if (table === "appliance") {
         for (const row of data) {
@@ -307,6 +321,20 @@ async function restore(file: string, target: string): Promise<void> {
             });
             row.supersedesId = null;
           }
+        }
+      }
+      const historyByTable: Record<string, { key: string; links: Array<{id:string;priorId:string}> } | undefined> = {
+        bankImport: { key: "supersedesImportId", links: importSupersessionLinks },
+        bankReconciliation: { key: "priorCompletedId", links: reconciliationRevisionLinks },
+        bookCashEvent: { key: "reversalOfId", links: cashEventReversalLinks },
+        accountingDelivery: { key: "replacesDeliveryId", links: deliveryRevisionLinks },
+      };
+      const nullableHistory = historyByTable[table];
+      if (nullableHistory) for (const row of data) {
+        const key = nullableHistory.key;
+        if (typeof row[key] === "string") {
+          nullableHistory.links.push({ id: String(row.id), priorId: row[key] as string });
+          row[key] = null;
         }
       }
       const result = await delegate.createMany({ data });
@@ -340,6 +368,16 @@ async function restore(file: string, target: string): Promise<void> {
         data: { supersedesId: link.supersedesId },
       });
     }
+
+    for (const link of importSupersessionLinks)
+      await prisma.bankImport.update({ where: { id: link.id }, data: { supersedesImportId: link.priorId } });
+    for (const link of reconciliationRevisionLinks)
+      await prisma.bankReconciliation.update({ where: { id: link.id }, data: { priorCompletedId: link.priorId } });
+
+    for (const link of cashEventReversalLinks)
+      await prisma.bookCashEvent.update({ where: { id: link.id }, data: { reversalOfId: link.priorId } });
+    for (const link of deliveryRevisionLinks)
+      await prisma.accountingDelivery.update({ where: { id: link.id }, data: { replacesDeliveryId: link.priorId } });
 
     await resetAutoincrementSequences(sql, schema);
     await verifySchemaHealth(prisma);

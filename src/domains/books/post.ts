@@ -1,3 +1,4 @@
+import { cashEventPlan } from "./cash/event-plan";
 import { Prisma, type JournalSourceType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordSystemIssue, resolveSystemIssue } from "@/domains/system-issues";
@@ -44,6 +45,12 @@ export async function journalPlacement(tx: Tx, sourceDate: Date) {
 /** Single transaction holds evidence read, account mapping, closed-month check and journal insert. */
 export async function writeJournal(tx: Tx, sourceType: JournalSourceType, sourceId: string,
   eventKind: string, plan: PostingPlan, extra: Subject = {}) {
+  // K-CASH: the revision row is the common first lock for ALL ledger writers,
+  // before month locks. It also makes this uniqueness check race-safe.
+  const revisionLock = await tx.$queryRaw<Array<{ revision: bigint }>>`
+    SELECT "revision" FROM "BooksPostingRevision" WHERE "id" = ${"singleton"} FOR UPDATE
+  `;
+  if (!revisionLock.length) throw new PostingEvidenceError("Books posting revision is not initialized.");
   const exists = await tx.journalEntry.findUnique({
     where: { sourceType_sourceId_eventKind: { sourceType, sourceId, eventKind } }, select: { id: true },
   });
@@ -59,6 +66,9 @@ export async function writeJournal(tx: Tx, sourceType: JournalSourceType, source
   const memo = place.lateForDate ? `Late entry for ${businessDateKey(place.lateForDate)}: ${plan.memo}` : plan.memo;
   await tx.journalEntry.create({
     data: { sourceType, sourceId, eventKind, ...extra, ...place, memo: memo.slice(0, 500), lines: { create: resolved } },
+  });
+  await tx.booksPostingRevision.update({
+    where: { id: "singleton" }, data: { revision: { increment: 1 } },
   });
   return true;
 }
@@ -199,6 +209,12 @@ Promise<{ events: Event[]; extra: Subject }> {
         booksStartDate:settings.booksStartDate,capitalizedExpenseExists:alreadyCapitalized>0});
       return {events:plan?[{eventKind:"APPLIANCE_CONTRIBUTED",plan}]:[],extra:{applianceId:x.id}};
     }
+    case "CASH_EVENT": {
+      const event=await tx.bookCashEvent.findUnique({where:{id:sourceId}});
+      if(!event)return {events:[],extra:{}};
+      const plan=cashEventPlan(event);
+      return {events:[{eventKind:event.reversalOfId?"CASH_EVENT_REVERSED":"CASH_EVENT_POSTED",plan}],extra:{}};
+    }
     case "TAX_FILING": {
       const x=await tx.taxFilingPeriod.findUnique({where:{id:sourceId}});
       if(!x||x.status!=="FILED")return {events:[],extra:{}};
@@ -287,6 +303,12 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
   const since=settings.booksStartDate;
   type Candidate = {type: JournalSourceType; id: string; at: Date; required: string[]};
   const querySources: { type: JournalSourceType; load: (skip:number,take:number)=>Promise<Candidate[]> }[] = [
+    {type:"CASH_EVENT",load:async(skip,take)=>(await prisma.bookCashEvent.findMany({
+      where:{occurredOn:{gte:since}},orderBy:[{occurredOn:"asc"},{id:"asc"}],skip,take,
+      select:{id:true,occurredOn:true,reversalOfId:true},
+    })).map(x=>({type:"CASH_EVENT",id:x.id,at:x.occurredOn,
+      required:[x.reversalOfId?"CASH_EVENT_REVERSED":"CASH_EVENT_POSTED"]}))},
+
     {type:"INVOICE",load:async(skip,take)=>(await prisma.invoice.findMany({
       where:{status:{not:"DRAFT"},OR:[
         {createdAt:{gte:since}},{issuedAt:{gte:since}},
@@ -359,8 +381,18 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
         if(!byId.has(row.sourceId))byId.set(row.sourceId,new Set());
         byId.get(row.sourceId)!.add(row.eventKind);
       }
+      const unresolvedStripe = source.type === "STRIPE_BALANCE_TXN"
+        ? new Set((await prisma.systemIssue.findMany({where:{
+            kind:"BOOKS_POSTING_FAILURE",status:"OPEN",
+            fingerprint:{in:page.map(x=>"books-post:STRIPE_BALANCE_TXN:"+x.id)},
+          },select:{fingerprint:true}})).map(x=>x.fingerprint))
+        : new Set<string>();
       for(const candidate of page) {
-        if(candidate.required.length&&!candidate.required.every(kind=>byId.get(candidate.id)?.has(kind))) {
+        const complete=candidate.required.length>0 &&
+          candidate.required.every(kind=>byId.get(candidate.id)?.has(kind));
+        if(complete && unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
+          await resolveSystemIssue("books-post:STRIPE_BALANCE_TXN:"+candidate.id,"SOURCE_SUCCEEDED");
+        if(candidate.required.length&&!complete) {
           sources.push(candidate);
           queuedForSource++;
           if(queuedForSource>=limit)break;
