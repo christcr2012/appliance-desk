@@ -68,6 +68,21 @@ export async function GET(
     (!linkedExpense || (role !== "OWNER" && role !== "ADMIN" &&
       !(role === "STAFF" && linkedExpense.submittedByUserId === session.user.id))))
     return NextResponse.json({ error: "Photo not found." }, { status: 404 });
+  const bankStatement = privatePath?.startsWith("bank-statements/");
+  const accountingConfirmation = privatePath?.startsWith("accounting-confirmations/");
+  if (bankStatement || accountingConfirmation) {
+    const linked = bankStatement
+      ? await prisma.bankImport.findFirst({where:{privateEvidenceId:id},
+          select:{cashAccountId:true}})
+      : await prisma.accountingDelivery.findFirst({where:{privateEvidenceId:id},
+          select:{id:true}});
+    if (!linked || (bankStatement ? !["OWNER","ADMIN"].includes(role) : role !== "OWNER"))
+      return NextResponse.json({error:"Photo not found."},{status:404});
+    if (bankStatement && !privatePath!.startsWith("bank-statements/" + ("cashAccountId" in linked ? linked.cashAccountId : "") + "/"))
+      return NextResponse.json({error:"Photo not found."},{status:404});
+    if (accountingConfirmation && !privatePath!.startsWith("accounting-confirmations/" + ("id" in linked ? linked.id : "") + "/"))
+      return NextResponse.json({error:"Photo not found."},{status:404});
+  }
   const taxFilingPhoto = privatePath?.startsWith("tax-filings/") ||
     privatePath?.startsWith("purchases/") ||
     (await prisma.purchaseDocument.findFirst({
