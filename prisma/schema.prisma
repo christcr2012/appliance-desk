@@ -565,6 +565,8 @@ model Appliance {
   // pattern as Lead.scoreReasons.
   features Json @default("[]")
 
+  bookAsset BookAsset?
+
   assignments ApplianceAssignment[]
   outOfServicePeriods OutOfServicePeriod[] @relation("OutOfServiceAppliance")
   photos      Photo[]
@@ -4319,6 +4321,46 @@ model RecurringExpense {
   lastCreatedFor    String? // "YYYY-MM"
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+
+model BookAsset {
+  applianceId String @id
+  appliance Appliance @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  costCents Int
+  placedInServiceOn DateTime
+  lifeMonths Int
+  salvagePercent Int
+  retiredOn DateTime?
+  retirementIntent String?
+  retiredValueCents Int?
+  version Int @default(1)
+  createdByUserId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  taxEvidence BookTaxEvidence[]
+
+  @@index([retiredOn])
+}
+
+model BookTaxEvidence {
+  id String @id @default(cuid())
+  applianceId String
+  asset BookAsset @relation(fields: [applianceId], references: [applianceId], onDelete: Restrict)
+  classification String
+  confidence String
+  originalBasisCents Int?
+  signedAdjustmentsCents Int?
+  allowedDepreciationCents Int?
+  section179Cents Int?
+  bonusDepreciationCents Int?
+  evidenceAsOf DateTime
+  sourceReference String
+  cpaName String?
+  recordedByUserId String
+  createdAt DateTime @default(now())
+
+  @@index([applianceId, createdAt])
 }
 
 model ExportBatch {

@@ -36,6 +36,13 @@
       "paymentSource": false
     },
     {
+      "role": "RETIRED_PENDING_DISPOSITION",
+      "name": "Retired appliances held pending sale or supported disposal",
+      "type": "ASSET",
+      "description": "Preserved rental asset carrying value after removal from rentable service; not a disposal loss",
+      "paymentSource": false
+    },
+    {
       "role": "ACCUM_DEPRECIATION",
       "name": "Rental appliances — depreciation to date",
       "type": "CONTRA_ASSET",
