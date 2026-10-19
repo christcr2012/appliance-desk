@@ -56,7 +56,7 @@ describe.skipIf(!enabled)("K-CASH-2 preview/import authorization, immutable hist
   const replay=await commitBankImport(owner,bank,file,mapping,preview.token,"initial-"+tag);
   expect(replay).toBe(first);
   expect(await prisma.bankImport.count({where:{cashAccountId:bank,status:"ACTIVE"}})).toBe(1);
-  await expect(commitBankImport(owner,bank,file,{...mapping,dateFormat:"MM/DD/YYYY"},
+  await expect(commitBankImport(owner,bank,file,{...mapping,bankCreditIsPositive:false},
    preview.token,"mismatch-"+tag)).rejects.toThrow(/changed/);
  });
  it("requires OWNER-reasoned mapping supersession and retains inactive source evidence",async()=>{

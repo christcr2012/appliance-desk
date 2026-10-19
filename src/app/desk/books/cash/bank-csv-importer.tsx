@@ -49,9 +49,10 @@ export function BankCsvImporter({accounts,owner}:{accounts:Account[];owner:boole
  }
  return <section className="rounded-lg border border-border p-4 space-y-3">
   <h2 className="text-lg font-semibold">Import a settled bank CSV</h2>
-  <p className="text-sm text-muted-foreground">The bank CSV is parsed privately on the server, never sent to an accounting provider. Preview uses real dates and whole cents; imports do not move money, add to available cash, or finish reconciliation.</p>
-  {!accounts.length?<p>Register an actual business bank source before previewing transactions.</p>:<div className="grid gap-3 sm:grid-cols-2">
-   <label>Registered bank<select className={base} value={accountId} onChange={e=>{setAccountId(e.target.value);reset();}}>
+  <p className="text-sm text-muted-foreground">The bank CSV is parsed privately on the server, never sent to an accounting provider. Preview uses real dates and exact dollar amounts; imports do not move money, add to available cash, or finish reconciliation.</p>
+  {!accounts.length&&<p>Register an actual business bank source before previewing transactions.</p>}
+   <div className="grid gap-3 sm:grid-cols-2">
+   <label>Registered bank<select className={base} disabled={!accounts.length} value={accountId} onChange={e=>{setAccountId(e.target.value);reset();}}>
     {accounts.map(x=><option key={x.id} value={x.id}>{x.name}{x.lastFour?" ····"+x.lastFour:""}</option>)}
    </select></label>
    <label htmlFor={fileId}>Settled CSV file (5 MiB max)
@@ -68,8 +69,8 @@ export function BankCsvImporter({accounts,owner}:{accounts:Account[];owner:boole
     <option value="MM/DD/YYYY">MM/DD/YYYY</option><option value="YYYY-MM-DD">YYYY-MM-DD</option>
    </select></label>
    <label className="flex items-center gap-2 pt-4"><input type="checkbox" checked={bankCreditIsPositive} onChange={e=>{setBankCreditIsPositive(e.target.checked);reset();}}/>Positive/credit amount means bank inflow</label>
-   <div className="sm:col-span-2"><button disabled={pending||!file} type="button" onClick={()=>void request(true)} className={action}>{pending?"Checking…":"Preview before importing"}</button></div>
-  </div>}
+   <div className="sm:col-span-2"><button disabled={pending||!file||!accountId} type="button" onClick={()=>void request(true)} className={action}>{pending?"Checking…":"Preview before importing"}</button></div>
+  </div>
   {state&&<div className="space-y-3 border-t border-border pt-3">
    <p role="status">{state.count} settled rows · Inflows {dollars(state.totalInflowsCents)} · Outflows {dollars(state.totalOutflowsCents)}</p>
    <p>Existing duplicate IDs: {state.overlap.duplicates.length}; ambiguous same-day fingerprints: {state.overlap.ambiguous.length}; conflicting IDs: {state.overlap.conflicts.length}.</p>

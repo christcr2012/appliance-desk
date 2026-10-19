@@ -38,6 +38,7 @@
     "Plan frozen in docs-only commit c08c9b11f1b2b45893cfd1d71528ec4c0aa16912 before code and preserved.",
     "Original October 19 owner approval verified in docs/DECISIONS.md and source design, without LIVE activation authorization.",
     "Code and real-Postgres/pure/browser regression cases authored on one feature branch; local Node/DB checks unavailable and no green CI claimed.",
-    "K-CASH-3 matching and real reconciliation remain separate downstream roadmap work."
+    "K-CASH-3 matching and real reconciliation remain separate downstream roadmap work.",
+    "Initial PR #506 exact-head failed: unsupported advisory lock void results, BigInt backup snapshot, bank import/reconciliation self-link cycle, invalid alternate mapping fixture, hidden empty-state preview, and dollars wording. Added source corrections and table-order/BigInt contract assertion; full CI/review remain pending."
   ]
 }
