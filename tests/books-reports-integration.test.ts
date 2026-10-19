@@ -104,7 +104,7 @@ describe.skipIf(!enabled)("K-7 reports read immutable money and refuse other rol
    const report=await appliancePayback(owner,day("2026-05-01"));
    const numbers=[first,second].map(id=>report.rows.find(row=>row.applianceId===id)?.repairCostCents);
    expect(numbers.every(n=>n!==undefined)).toBe(true);
-   expect(numbers.reduce((sum,n)=>sum+(n??0),0)).toBe(1201);
+   expect(numbers.reduce<number>((sum,n)=>sum+(n??0),0)).toBe(1201);
    expect([...numbers].sort((a,b)=>(a??0)-(b??0))).toEqual([600,601]);
   }finally{
    await prisma.jobAppliance.deleteMany({where:{jobId:job}});

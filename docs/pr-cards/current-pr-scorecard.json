@@ -31,6 +31,7 @@
     "K-7 source and pure/disposable PostgreSQL/browser tests authored; CI/preflight and independent review pending; no local green evidence claimed.",
     "No money, tax filing, Stripe LIVE, outbound messages, production customer data or preview infrastructure used.",
     "Initial #503 head b1d3455: all three unit/DB shards green; secret-scan path failed because execution packet omitted gates, type/build failed because source-name test used accountName instead of ProfitRow.name. Fixed packet arrays and exact typed assertion; all exact-head CI and review remain pending.",
-    "K-7 head 9280787: complete aggregate CI green (3/3 unit DB, 4/4 browser axe, type/lint/security/policy). Self-review then identified shared job double-count, all-time vs last-12-month repair warning and opening-date snapshot; grouped fixes and pure/real-DB tests authored, final exact-head rerun pending."
+    "K-7 head 9280787: complete aggregate CI green (3/3 unit DB, 4/4 browser axe, type/lint/security/policy). Self-review then identified shared job double-count, all-time vs last-12-month repair warning and opening-date snapshot; grouped fixes and pure/real-DB tests authored, final exact-head rerun pending.",
+    "CI head d8a507c type/build red on new test reduce accumulator TS18048, corrected to explicit numeric accumulator preserving assertion; non-gating independent large-account perf baseline 14.5ms vs 14.3ms limit with no override. Exact-head rerun pending."
   ]
 }
