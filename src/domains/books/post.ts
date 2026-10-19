@@ -44,6 +44,12 @@ export async function journalPlacement(tx: Tx, sourceDate: Date) {
 /** Single transaction holds evidence read, account mapping, closed-month check and journal insert. */
 export async function writeJournal(tx: Tx, sourceType: JournalSourceType, sourceId: string,
   eventKind: string, plan: PostingPlan, extra: Subject = {}) {
+  // K-CASH: the revision row is the common first lock for ALL ledger writers,
+  // before month locks. It also makes this uniqueness check race-safe.
+  const revisionLock = await tx.$queryRaw<Array<{ revision: bigint }>>`
+    SELECT "revision" FROM "BooksPostingRevision" WHERE "id" = ${"singleton"} FOR UPDATE
+  `;
+  if (!revisionLock.length) throw new PostingEvidenceError("Books posting revision is not initialized.");
   const exists = await tx.journalEntry.findUnique({
     where: { sourceType_sourceId_eventKind: { sourceType, sourceId, eventKind } }, select: { id: true },
   });
@@ -59,6 +65,9 @@ export async function writeJournal(tx: Tx, sourceType: JournalSourceType, source
   const memo = place.lateForDate ? `Late entry for ${businessDateKey(place.lateForDate)}: ${plan.memo}` : plan.memo;
   await tx.journalEntry.create({
     data: { sourceType, sourceId, eventKind, ...extra, ...place, memo: memo.slice(0, 500), lines: { create: resolved } },
+  });
+  await tx.booksPostingRevision.update({
+    where: { id: "singleton" }, data: { revision: { increment: 1 } },
   });
   return true;
 }

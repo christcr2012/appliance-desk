@@ -356,6 +356,20 @@
       "type": "LIABILITY",
       "description": "Colorado retail delivery fees collected but not yet remitted",
       "paymentSource": false
+    },
+    {
+      "role": "OWNER_DRAWS",
+      "name": "Owner draws",
+      "type": "EQUITY",
+      "description": "Funds actually distributed to owners, not business expense",
+      "paymentSource": false
+    },
+    {
+      "role": "INTEREST_INCOME",
+      "name": "Bank interest earned",
+      "type": "INCOME",
+      "description": "Actual bank interest, excluding hypothetical future income",
+      "paymentSource": false
     }
   ],
   "categories": [
