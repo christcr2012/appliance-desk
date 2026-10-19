@@ -1,6 +1,9 @@
 # Design — Batch K-CASH: cash envelopes, planned costs and bank reconciliation
 
-Status: **OWNER-REQUESTED DESIGN — documentation-only PR; implementation after accepted review and prerequisites.**
+**Owner authorization update — October 19, 2026:** The owner explicitly confirmed that work listed in the governing project roadmap was already approved and directed immediate completion. All original K-CASH-1 through K-CASH-7 scope and dependencies are now **APPROVED FOR ENGINEERING** in their existing order; no extra documentation-approval request is required. Prior "PROPOSED / approval pending" labels are historical and superseded. This does **not** authorize live payments, financial-provider activation, customer email/SMS, real-data edits, spending or unscheduled production releases. Separate provider/account/CPA business facts still require actual evidence.
+
+
+Status: **OWNER-APPROVED ENGINEERING — 2026-10-19; follow existing prerequisites and release safeguards.**
 Requested October 8, 2026: research low-cost startup banking/QBO, decide domain/UI/test contracts in advance for
 Sol 5.6 light/medium execution, include robust simple planning for recurring/annual costs and original-plan comparisons/revenue-expense trends.
 Baseline main `6f31f72013f0a1dcc1597160af32d329b27fa53e` (#321).
@@ -17,7 +20,7 @@ multiple small individually dated owner contributions, documented loans,
 draws and real opening assets; no invented starting balances and no personal
 tools booked without transfer. QBO Free is only an edition preference;
 balanced portable CSV/CPA exports and future paid compatibility are required.
-Bank not selected. **K-CASH remains PROPOSED, not approved or moved earlier.**
+Bank not selected. **Historical as of October 13: K-CASH was proposed. Superseded by the owner's October 19 approval above.**
 
 ## 0. Product decision and boundaries
 

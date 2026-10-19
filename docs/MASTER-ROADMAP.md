@@ -186,10 +186,10 @@ remain in `pr-cards/` as the record of what was built; W-0A/W-0B fix defects fou
 | K-7 | Profit, balance and appliance payback | JIT — `K-7.md` | K-6 |
 | K-8 | Forecast, customer health and year-end package | JIT — `K-8.md` | K-7 |
 
-### K-CASH — owner-requested design, documentation review pending
+### K-CASH — owner-approved engineering (2026-10-19), original dependency order
 
 Design: `docs/designs/BATCH-K-CASH.md`; [research](research/2026-10-08-startup-banking-quickbooks.md).
-Launch unchanged. K affected units read K-CASH section 9; no application/payment authority.
+Launch unchanged. K affected units read K-CASH section 9. Owner approved implementation of all roadmap K-CASH units; no live provider/payment or release authorization is implied.
 JIT cards reflect actual merged K contracts; preserve the existing two-lane workflow.
 
 | Unit | Scope | Execution card | Prerequisite |
