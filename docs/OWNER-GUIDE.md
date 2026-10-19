@@ -152,6 +152,12 @@ Ending: ending a month-to-month rental, early return ("Returned early — choose
 
 **If it fails.** Invalid cents, missing vendor/category, inaccessible receipt, inactive team role or stale post version is refused. An existing acquisition amount cannot be silently replaced. Use-tax purchases require the verified business address and reviewed rates; changing a filed tax period requires separate review. Failed draft runs remain visible under System health, and all incomplete changes stay unposted. The private store must be configured correctly before receipt upload; never use the public catalog token for sensitive receipts.
 
+## Books — profit, balance and appliance payback
+
+From **Books → Profit, balance and payback**, choose the Colorado date period and accrual versus cash reporting. Accrual reads the true posted journal income/discounts/expense/depreciation by book date. Cash includes only posted payments attached to a real receipt and an original invoice account/tax allocation; unmatched customer money and deposits are not booked as income. If a source is ambiguous, it appears in the needs-review warning and is excluded from the reported total until reconciled.
+
+The balance screen shows existing checking, card, Stripe/undeposited funds, customer balances, tax/deposit liabilities, equity and retained results. It keeps retired equipment pending disposition as an **asset**, with accrued depreciation netted once. The appliance payback screen divides actual invoiced rent across physical appliances assigned at that invoice period's start, then accounts for sourced repairs; missing costs remain unknown. Remaining payback months at the last six-month rent pace are a **projection**, never guaranteed cash. OWNER/ADMIN can view; STAFF/CUSTOMER cannot access these private reports. This does not file taxes, call banks or pay expenses. Accountant trial reconciliation and CPA IN-39/IN-56 acceptance are separately required.
+
 ## Fixed assets, management depreciation and CPA evidence
 
 From **Books → Rental equipment and book depreciation**, OWNER can enroll an existing appliance with a documented positive acquisition cost and explicitly attest an in-service date on or after the Books start date. ADMIN can read; staff/customers cannot access Books. This records management book evidence without moving money or changing the federal tax basis.

@@ -1,37 +1,37 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-6",
+  "parent": "K-7",
   "completedSlices": [
     {
-      "id": "K-6",
+      "id": "K-7",
       "acceptanceEvidence": [
-        "Additive BookAsset source-cost/in-service-date snapshot, BookTaxEvidence and checked migration; real-DB fixture authored, CI pending.",
-        "Pure month-start and remaining whole-cent schedules preserve last-cent rounding, zero-cent checkpoint and posted immutable amounts; unit tests authored.",
-        "Role/BookAsset row locks, K-2 source-cost journal, complete Colorado period/date cutoff and unique DEPRECIATION:YYYY-MM events; serial DB test authored.",
-        "Physical Fleet RETIRED and true dated owner intent required; carrying book value transferred to RETIRED_PENDING_DISPOSITION as ASSET rather than auto disposal loss.",
-        "Conflicting acquisition history, source missing, stale version and existing retired/disposed journal are refused; M-2C subsequent completed sale remains out of scope.",
-        "Source-attributed date/classification/confidence/CPA book tax evidence is separated from management book; no recapture or return, ADMIN view-only.",
-        "OWNER fixed-asset page enrolls, adjusts future-only life, posts and stages retirement, stores tax sources; ADMIN reads, STAFF denied; browser spec authored.",
-        "Disposable Postgres cases cover acquisition/role, unique concurrent source posting, preservation of asset carrying value and CPA distinction; pure test and axe/browser authored.",
-        "Updated owner guide, decision log, DB notes, go-live CPA checklist, STATUS, index and plan evidence while keeping deployment/CPA/CI separate."
+        "Read-only RepeatableRead transactions check active OWNER/ADMIN role and Books opening date, validate Colorado dates and finite capped journal amounts; real-DB role case authored; CI pending.",
+        "Pure source-accounted journal grouping supports income, contra-income, ordinary expense/depreciation, reversed-sign entries and per-account original entry IDs; pure and real-DB tests authored; CI pending.",
+        "Cash sources require posted PAYMENT_APPLIED linked to Receipt and original finalized invoice recognition, with proportionate tax/discount/income allocation, posted expenses/refunds, and needs-review exclusion; cash-vs-accrual real-DB test authored, CI pending.",
+        "Colorado date range plus previous equal-length and same-period-last-year compares, using immutable entryDate not silent lateForDate backdating, displayed separately; CI pending.",
+        "Pure whole-cent ASSET+CONTRA_ASSET, liability, equity and book result equation rejects unbalanced journals; retained-pending K-6 assets included only as asset; balance math/DB test authored, CI pending.",
+        "Posted invoice RENTAL/LATE_RETURN cents split across distinct assigned assets at invoice-period start via stable odd-cent routine; incomplete source totals exposed; unit cases authored.",
+        "Completed maintenance jobs reuse itemized-parts cost helper instead of double counting manual parts; job-linked extra expenses flagged and standalone posted cost attributed; six-month payback estimate and book value exposed with unknown-cost status; CI pending.",
+        "Fourteen K-7 transparency definitions in METRICS, private accessible Books reports view and owner/admin versus staff route tests at phone/desktop widths, without remote payments; e2e authored, CI pending.",
+        "Plan-only frozen SHA 8ac58dd, status/index/decision mapping/owner guide/go-live/database notes updated, K-6 verified merged; exact-head full CI/independent review, merge and real-world accountant acceptance pending."
       ]
     }
   ],
   "remainingEngineering": [],
   "externalAcceptance": [
-    "Implementation authored but exact-head type/lint, real PostgreSQL, browser/axe, CI and independent review remain pending.",
-    "Original K-5 export engine merged in #501, but production live revision remains behind main.",
-    "CPA IN-56, actual book asset opening reconciliation, first deployed depreciation and retained-value readback are external acceptance, not source completion."
+    "K-7 exact-head typecheck, all disposable PostgreSQL and browser suites, CI review and merge are not yet verified.",
+    "The owner/bookkeeper still must trial-reconcile cash/applied tax, balance and a real two-appliance invoice; CPA IN-39/IN-56 remain open.",
+    "K-6 predecessor PR #502 merged exact-head green at 986dce6; live remains behind main until its scheduled promotion."
   ],
-  "workloadException": "One original whole K-6 financial asset scope with additive schema, unique ledger posting, retained carrying value, separate CPA evidence and owner UI. K-7 reports follow only after K-6 green merge; no fake helper units.",
+  "workloadException": "K-7 is one original complete high-risk financial-reporting subsection, source-backed cash-vs-accrual, signed balance and invoice-level payback together. K-8 cannot be counted as complete yet.",
   "evidence": [
-    "Frozen full acceptance plan: 21f1793a44b96a2d8b995b1e2a9955781d0ad9a0 docs-only, preceding all code.",
-    "K-5 merged into main 005e9fc95c2af5c4b9a73b7eaed4bad26099f3dd, with exact-head CI and 3 reviewed P1 fixes.",
-    "K-6 Prisma migration, fixed-asset screens, ledger source and strict permission logic, pure/real-DB/browser tests authored on feature branch, not yet verified.",
-    "No production data, live money, filing, emails, SMS or paid services.",
-    "Initial #502 exact-head CI failed before database/browser tests: migration duplicated SQL after truncated regex; TS syntax at fixed-assets.ts and test; JSX lint. All grouped build blockers corrected, next exact-head CI pending.",
-    "Head 4e2b12b: corrected migration and unit shards 2/3 green, unit 1 backup coverage and build/typecheck failed due new models omitted from explicit recovery manifest; fixed without skipping tests. Review P0 migration already corrected; P1 clamps final schedule/guards later depreciation; P2 locks shared settings. Real-db regressions added; exact-head rerun pending.",
-    "Third exact-head c5bbc3f: type/lint, security, policy, unit 1/3 and 3/3, browser B/C/D green. Unit 2 had 1131 passes and 1 fixture-salvage failure; fixed by setting zero salvage inside the exact fully depreciated scenario. Browser A had 44 passes and 1 existing phone overflow; fixed real customer header address text wrapping without altering the viewport or assertion. All gates rerun on new SHA."
+    "Frozen complete K-7 criteria in docs-only 8ac58ddb97326e6aa1ba1b2342957f6dbf432249 before first reporting source commit.",
+    "K-6 real DB, accessible browser, all CI and review passed and PR #502 merged at 986dce6.",
+    "K-7 source and pure/disposable PostgreSQL/browser tests authored; CI/preflight and independent review pending; no local green evidence claimed.",
+    "No money, tax filing, Stripe LIVE, outbound messages, production customer data or preview infrastructure used.",
+    "Initial #503 head b1d3455: all three unit/DB shards green; secret-scan path failed because execution packet omitted gates, type/build failed because source-name test used accountName instead of ProfitRow.name. Fixed packet arrays and exact typed assertion; all exact-head CI and review remain pending.",
+    "K-7 head 9280787: complete aggregate CI green (3/3 unit DB, 4/4 browser axe, type/lint/security/policy). Self-review then identified shared job double-count, all-time vs last-12-month repair warning and opening-date snapshot; grouped fixes and pure/real-DB tests authored, final exact-head rerun pending.",
+    "CI head d8a507c type/build red on new test reduce accumulator TS18048, corrected to explicit numeric accumulator preserving assertion; non-gating independent large-account perf baseline 14.5ms vs 14.3ms limit with no override. Exact-head rerun pending."
   ]
 }

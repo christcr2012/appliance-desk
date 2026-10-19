@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "id": "K-7",
+  "parent": "K-7",
+  "baseline": "986dce6d85c3852313b85d231aab2c5fa3d97842",
+  "card": "docs/pr-cards/K-7.md",
+  "outcome": "Source-backed finance reports for accrual/cash profit, balance position and appliance payback, accurately separated from payment processing and forecasts.",
+  "risk": "Misstated real money and tax/accounting basis, double count of owner rental assets, misattributed appliance invoice revenue, missing source identity; never invent data or hide gaps.",
+  "next": "K-7 one exact-head PR, then K-8; pending external deployed and CPA review remains separate.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-K.md",
+      "anchor": "### 3.8 Reports",
+      "purpose": "Frozen K-7 report contracts"
+    },
+    {
+      "path": "src/domains/books/post.ts",
+      "anchor": "export async function writeJournal",
+      "purpose": "Source-backed immutable double-entry actuals"
+    },
+    {
+      "path": "src/domains/books/fixed-assets.ts",
+      "anchor": "export async function getBookAssets",
+      "purpose": "Reuse K-6 book carrying values"
+    },
+    {
+      "path": "src/domains/inventory/analytics.ts",
+      "anchor": "export function computeAssignmentRevenueCents",
+      "purpose": "Reuse assignment evidence, avoid estimated price in actual invoices"
+    },
+    {
+      "path": "src/domains/reports/definitions.ts",
+      "anchor": "export const METRICS",
+      "purpose": "Every number has a single transparent definition"
+    },
+    {
+      "path": "src/lib/business-date.ts",
+      "anchor": "export function businessDateKey",
+      "purpose": "All date cutoffs use business zone"
+    },
+    {
+      "path": "src/lib/team-actor.ts",
+      "anchor": "export async function assertActiveTeamActor",
+      "purpose": "Role recheck for data reads"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/books/reports.ts",
+    "src/domains/books/reports-math.ts",
+    "src/domains/reports/definitions.ts",
+    "src/app/desk/books/reports/page.tsx",
+    "src/app/desk/books/page.tsx",
+    "tests/books-reports.test.ts",
+    "tests/books-reports-integration.test.ts",
+    "e2e/books-reports.spec.ts"
+  ],
+  "invariants": [
+    "No mixed accrual/cash basis under the same label",
+    "Never double-count posted tax, deposits or amounts from price list",
+    "Do not mutate journals or write to providers",
+    "Only source and effective posted Colorado dates count",
+    "Retired pending-value appears once as asset, not income/loss",
+    "STAFF/CUSTOMER blocked by domain, not only UI",
+    "No fabricated appliance assignment of rent"
+  ],
+  "sequence": [
+    "Frozen plan commit",
+    "Implement pure P&L sign and deterministic cent split",
+    "Read-only DB reports with role/check/date guards",
+    "Screens and metrics definitions",
+    "Serializable/real DB fixture tests and exact browser assertions",
+    "Update all repo docs and scorecard",
+    "Preflight, exact-head CI, review, merge"
+  ],
+  "acceptance": [
+    "OWNER and ADMIN can inspect Books reports under live role checks; STAFF and CUSTOMER cannot access reporting data or directly load report routes. All report functions are read-only, require a verified Books opening date, reject invalid/future/out-of-order Colorado dates, and do not trigger speculative journal postings.",
+    "Accrual profit-and-loss reports exact integer cents from immutable JournalEntry/JournalLine and LedgerAccount type, including RENTAL and other income, contra-income as reductions, ordinary EXPENSE and depreciation, void/reversal with its actual posting date and source drill-through, without counting balance-sheet, bank transfers, deposits or pass-through sales tax as business profit.",
+    "Cash-basis profit-and-loss recognizes actual source-linked payments/receipts and cash expenses, separately attributes paid customer invoices to their posted income/discount/tax rows with deterministic cent allocation, excluding unapplied funds, refundable deposits and pure credit moves. Unsupported linkage is explicitly marked unavailable for review, not converted to invented cash profit.",
+    "Both bases support previous-period and same-period-last-year comparison with valid inclusive Colorado business dates, explained basis labels, signed cents and deterministic account grouping. A closed-month journal posted later uses its actual immutable posting date and exposes any lateForDate source; no silent backdating.",
+    "Balance snapshot is as-of-date and source-backed: cash/checking/Stripe clearing/undeposited and receivables, deposits and credits payable, card debt, each sales/use tax account, owner contributions and accumulated profits, with rental cost/accumulated depreciation and RETIRED_PENDING_DISPOSITION shown separately. Totals reconcile to the journal debits/credits without double counting retired cost or depreciation.",
+    "Per-appliance payback uses actual RENTAL and LATE_RETURN invoice line cents apportioned to appliances assigned on each line's business-period start, deterministically splitting odd cents and avoiding duplicate assignment inflation. If assignment links are missing, mark uncovered invoice dollars rather than guessing an appliance allocation.",
+    "Appliance repair cost uses completed maintenance jobs' sourced parts/labor (respecting itemized-vs-manual parts precedence) plus separately posted appliance-linked nonduplicate expense amounts, and tracks cost, invoiced rent, repair burden, net, book carrying value, trailing-six-month average and payback months/over-repair warnings without treating forecasts or price-list estimates as actual collections.",
+    "Every displayed report metric is declared in src/domains/reports/definitions.ts METRICS with actual-versus-estimate, date basis, formula, source and drill location. Books exposes usable mobile OWNER/ADMIN profit/loss, balance and payback screens with clear basis, comparisons, unknowns, drill-through, keyboard and axe accessibility, without any payment, tax filing, provider sync, message or production write.",
+    "Disposable PostgreSQL regressions prove accrual/cash divergence, taxes/deposit exclusion, sign/reversal, closed-period lateness, two-unit and odd-cent split, repaired-vs-unknown cost and balance reconciliation, role isolation; pure unit math and browser 360/1280 light/dark/axe tests pass. Update STATUS, decisions, owner guide, metric definitions, docs and work index; complete exact-head CI and independent review before merge. Deployed live and accountant trial acceptance remain separate pending checks."
+  ],
+  "slices": [
+    {
+      "id": "K-7",
+      "outcome": "Source-backed finance reports for accrual/cash profit, balance position and appliance payback, accurately separated from payment processing and forecasts.",
+      "acceptance": [
+        "OWNER and ADMIN can inspect Books reports under live role checks; STAFF and CUSTOMER cannot access reporting data or directly load report routes. All report functions are read-only, require a verified Books opening date, reject invalid/future/out-of-order Colorado dates, and do not trigger speculative journal postings.",
+        "Accrual profit-and-loss reports exact integer cents from immutable JournalEntry/JournalLine and LedgerAccount type, including RENTAL and other income, contra-income as reductions, ordinary EXPENSE and depreciation, void/reversal with its actual posting date and source drill-through, without counting balance-sheet, bank transfers, deposits or pass-through sales tax as business profit.",
+        "Cash-basis profit-and-loss recognizes actual source-linked payments/receipts and cash expenses, separately attributes paid customer invoices to their posted income/discount/tax rows with deterministic cent allocation, excluding unapplied funds, refundable deposits and pure credit moves. Unsupported linkage is explicitly marked unavailable for review, not converted to invented cash profit.",
+        "Both bases support previous-period and same-period-last-year comparison with valid inclusive Colorado business dates, explained basis labels, signed cents and deterministic account grouping. A closed-month journal posted later uses its actual immutable posting date and exposes any lateForDate source; no silent backdating.",
+        "Balance snapshot is as-of-date and source-backed: cash/checking/Stripe clearing/undeposited and receivables, deposits and credits payable, card debt, each sales/use tax account, owner contributions and accumulated profits, with rental cost/accumulated depreciation and RETIRED_PENDING_DISPOSITION shown separately. Totals reconcile to the journal debits/credits without double counting retired cost or depreciation.",
+        "Per-appliance payback uses actual RENTAL and LATE_RETURN invoice line cents apportioned to appliances assigned on each line's business-period start, deterministically splitting odd cents and avoiding duplicate assignment inflation. If assignment links are missing, mark uncovered invoice dollars rather than guessing an appliance allocation.",
+        "Appliance repair cost uses completed maintenance jobs' sourced parts/labor (respecting itemized-vs-manual parts precedence) plus separately posted appliance-linked nonduplicate expense amounts, and tracks cost, invoiced rent, repair burden, net, book carrying value, trailing-six-month average and payback months/over-repair warnings without treating forecasts or price-list estimates as actual collections.",
+        "Every displayed report metric is declared in src/domains/reports/definitions.ts METRICS with actual-versus-estimate, date basis, formula, source and drill location. Books exposes usable mobile OWNER/ADMIN profit/loss, balance and payback screens with clear basis, comparisons, unknowns, drill-through, keyboard and axe accessibility, without any payment, tax filing, provider sync, message or production write.",
+        "Disposable PostgreSQL regressions prove accrual/cash divergence, taxes/deposit exclusion, sign/reversal, closed-period lateness, two-unit and odd-cent split, repaired-vs-unknown cost and balance reconciliation, role isolation; pure unit math and browser 360/1280 light/dark/axe tests pass. Update STATUS, decisions, owner guide, metric definitions, docs and work index; complete exact-head CI and independent review before merge. Deployed live and accountant trial acceptance remain separate pending checks."
+      ]
+    }
+  ],
+  "checks": {
+    "unit": [
+      "tests/books-reports.test.ts"
+    ],
+    "db": [
+      "tests/books-reports-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/books-reports.spec.ts"
+    ],
+    "node": []
+  },
+  "gates": []
+}

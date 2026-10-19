@@ -1,3 +1,7 @@
+## K-7 existing-data-only reporting contract
+
+K-7 requires **no new schema migration**. It reads `JournalEntry`, `JournalLine`, `LedgerAccount`, `Payment`, `Receipt`, `Invoice`, `InvoiceLineItem`, `ApplianceAssignment`, `JobAppliance`, `PartStockMovement`, `Expense` and K-6 `BookAsset`. Every financial read uses a verified live OWNER/ADMIN role inside a read-only repeatable-read transaction. It rejects unsupported dates/unbalanced accounts and over-limit sources rather than silently truncating. No source journal, customer data, payment account or production balance is updated by the reports. New metrics definitions distinguish book ACTUALs and payback ESTIMATES, and expose underlying source classes.
+
 ## K-6 additive book asset storage and source journals — pending migration verification
 
 Migration `20261019010000_batch_k6_book_assets` adds `BookAsset` (FK to Appliance, original cost and in-service date snapshot, book life/salvage, durable `lastDepreciationMonth` even for zero-cent scheduled months, retired date/intent/book carrying value, version) and `BookTaxEvidence` (source-attributed append-only application records, CPA/tax evidence separate from management book numbers). SQL CHECK constraints validate months, cents, retirement consistency and CPA states. A seeded `RETIRED_PENDING_DISPOSITION` ASSET ledger role retains book value independently of `DISPOSAL_LOSS`. `system-chart.json` includes the new account for future installations. No existing acquisition history is silently overwritten by this migration.
