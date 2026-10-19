@@ -969,7 +969,7 @@
       "dependencies": [
         "K-8"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "batch_k_cash_evidence",
       "budget": 480,
       "units": [
@@ -988,7 +988,7 @@
         "tests/cash-schema-integration.test.ts",
         "tests/backup-restore-integration.test.ts"
       ],
-      "readiness": "ENGINEERING_AUTHORED_VERIFICATION_PENDING",
+      "readiness": "ENGINEERING_MERGED_RELEASE_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-CASH-1.md",
       "card": "docs/pr-cards/K-CASH-1.md"
     },
@@ -999,7 +999,7 @@
       "dependencies": [
         "K-CASH-1"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1020,7 +1020,7 @@
         "tests/books-cash-events-integration.test.ts",
         "e2e/books-cash.spec.ts"
       ],
-      "readiness": "ENGINEERING_AUTHORED_VERIFICATION_PENDING",
+      "readiness": "ENGINEERING_MERGED_RELEASE_ACCEPTANCE_PENDING",
       "plannedCard": "docs/pr-cards/K-CASH-2.md",
       "card": "docs/pr-cards/K-CASH-1.md"
     },
@@ -1031,7 +1031,7 @@
       "dependencies": [
         "K-CASH-2"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1048,8 +1048,9 @@
         "tests/bank-reconciliation-integration.test.ts",
         "e2e/bank-checks.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-CASH-3.md"
+      "readiness": "FROZEN_PLAN_IMPLEMENTATION_PENDING",
+      "plannedCard": "docs/pr-cards/K-CASH-3.md",
+      "card": "docs/pr-cards/K-CASH-3.md"
     },
     {
       "id": "K-CASH-4A",
@@ -3847,7 +3848,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-CASH-1",
+  "activeExecution": "K-CASH-3",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3988,6 +3989,10 @@
     {
       "id": "K-CASH-1",
       "path": "docs/pr-cards/execution/K-CASH-1.json"
+    },
+    {
+      "id": "K-CASH-3",
+      "path": "docs/pr-cards/execution/K-CASH-3.json"
     }
   ]
 }
