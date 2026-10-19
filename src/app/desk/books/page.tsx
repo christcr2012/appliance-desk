@@ -26,6 +26,7 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
       <Link className="underline ml-4" href="/desk/books/exports">Export to QuickBooks, Xero or CSV</Link>
       <Link className="underline ml-4" href="/desk/books/assets">Rental equipment and book depreciation</Link>
       <Link className="underline ml-4" href="/desk/books/reports">Profit, balance and payback</Link>
+      <Link className="underline ml-4" href="/desk/books/cash">Bank evidence and cash journals</Link>
       <Link className="underline ml-4" href="/desk/books/closing">Cash outlook, customers and year-end</Link>
       <h1 className="text-2xl font-bold">Books and journal</h1>
       <p className="text-muted-foreground">Account balances and source-backed double-entry records. No payment is sent from this screen.</p>

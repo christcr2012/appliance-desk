@@ -1,5 +1,4 @@
 "use server";
-import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
@@ -38,7 +37,7 @@ export async function createCashEventAction(form:FormData){
  const kind=str(form,"kind") as CashEventKind;
  if(!CASH_EVENT_KINDS.includes(kind))return done("Unknown cash movement type.");
  await action("Cash journal source",()=>recordBookCashEvent(session.user.id,
-  randomUUID(),{
+  str(form,"commandKey"),{
    kind,amountCents:parseDollarInput(str(form,"amount"),1_000_000_000),
    occurredDate:str(form,"occurredDate"),
    fromLedgerAccountId:str(form,"fromLedgerAccountId")||null,
@@ -50,7 +49,7 @@ export async function createCashEventAction(form:FormData){
 export async function voidCashEventAction(form:FormData){
  const session=await requireRole("OWNER");
  await action("Cash event reversal",()=>voidBookCashEvent(session.user.id,str(form,"id"),
-   Number(str(form,"version")),randomUUID(),str(form,"reason")));
+   Number(str(form,"version")),str(form,"commandKey"),str(form,"reason")));
 }
 export async function attachBankStatementAction(form:FormData){
  const session=await requireRole("OWNER","ADMIN");

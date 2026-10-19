@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getCashDesk } from "@/domains/books/cash/desk";
@@ -69,6 +70,7 @@ export default async function CashEvidencePage({searchParams}:{searchParams:Prom
    <h2 className="text-lg font-semibold">Typed cash journals</h2>
    <p className="text-sm text-muted-foreground">Journal posted only from verified source types, never manual free-form entries. An owner contribution, bank transfer or draw here records accounting evidence; it does not actually move funds. Bank sources and money movements must be independently verified.</p>
    {owner&&<form action={createCashEventAction} className="grid gap-3 sm:grid-cols-2">
+    <input type="hidden" name="commandKey" value={randomUUID()}/>
     <label>Event type<select className={input} name="kind">{Object.entries(EVENT_NAMES).map(([kind,label])=><option value={kind} key={kind}>{label}</option>)}</select></label>
     <label>Amount in dollars<input name="amount" className={input} inputMode="decimal" placeholder="0.00" required/></label>
     <label>Recorded bank movement date<input type="date" name="occurredDate" className={input} max={today} defaultValue={today} required/></label>
@@ -88,6 +90,7 @@ export default async function CashEvidencePage({searchParams}:{searchParams:Prom
      {e.reversalOfId&&<p className="text-sm">Reversal of {e.reversalOfId}</p>}
      {owner&&e.status==="POSTED"&&!e.reversalOfId&&<form action={voidCashEventAction} className="flex flex-wrap items-end gap-2">
       <input type="hidden" name="id" value={e.id}/><input type="hidden" name="version" value={e.version}/>
+      <input type="hidden" name="commandKey" value={randomUUID()}/>
       <label className="min-w-0 flex-1">Reason to reverse<input className={input} name="reason" maxLength={250} required/></label>
       <button className={button}>Reverse with immutable journal</button>
      </form>}
