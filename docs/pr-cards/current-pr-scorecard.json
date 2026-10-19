@@ -30,6 +30,7 @@
     "K-6 real DB, accessible browser, all CI and review passed and PR #502 merged at 986dce6.",
     "K-7 source and pure/disposable PostgreSQL/browser tests authored; CI/preflight and independent review pending; no local green evidence claimed.",
     "No money, tax filing, Stripe LIVE, outbound messages, production customer data or preview infrastructure used.",
-    "Initial #503 head b1d3455: all three unit/DB shards green; secret-scan path failed because execution packet omitted gates, type/build failed because source-name test used accountName instead of ProfitRow.name. Fixed packet arrays and exact typed assertion; all exact-head CI and review remain pending."
+    "Initial #503 head b1d3455: all three unit/DB shards green; secret-scan path failed because execution packet omitted gates, type/build failed because source-name test used accountName instead of ProfitRow.name. Fixed packet arrays and exact typed assertion; all exact-head CI and review remain pending.",
+    "K-7 head 9280787: complete aggregate CI green (3/3 unit DB, 4/4 browser axe, type/lint/security/policy). Self-review then identified shared job double-count, all-time vs last-12-month repair warning and opening-date snapshot; grouped fixes and pure/real-DB tests authored, final exact-head rerun pending."
   ]
 }

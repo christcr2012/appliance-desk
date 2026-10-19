@@ -85,6 +85,34 @@ describe.skipIf(!enabled)("K-7 reports read immutable money and refuse other rol
   const accrual=await profitAndLoss(owner,{from:"2026-04-01",to:"2026-04-30",basis:"ACCRUAL"});
   expect(accrual.summary.rows.find(z=>z.accountId===incomeId)).toBeUndefined();
  });
+ it("refuses a balance snapshot before Books opening instead of reporting zero assets",async()=>{
+  await expect(balanceSnapshot(owner,"2025-12-31")).rejects.toThrow(/opening date/);
+ });
+ it("allocates real completed maintenance job cost across two machines once",async()=>{
+  const applianceType="k7-job-type-"+tag,first="k7-job-a-"+tag,second="k7-job-b-"+tag,job="k7-job-"+tag;
+  await prisma.applianceType.create({data:{id:applianceType,name:"K7 repair type "+tag,slug:"k7-job-"+tag}});
+  await prisma.appliance.createMany({data:[
+   {id:first,assetNumber:"K7-JOBA-"+tag,applianceTypeId:applianceType,acquisitionCostCents:4000},
+   {id:second,assetNumber:"K7-JOBB-"+tag,applianceTypeId:applianceType,acquisitionCostCents:4000},
+  ]});
+  await prisma.job.create({data:{id:job,type:"MAINTENANCE_VISIT",status:"COMPLETED",
+   completedAt:day("2026-04-15"),partsCostCents:1001,laborCostCents:200}});
+  await prisma.jobAppliance.createMany({data:[
+   {jobId:job,applianceId:first},{jobId:job,applianceId:second},
+  ]});
+  try{
+   const report=await appliancePayback(owner,day("2026-05-01"));
+   const numbers=[first,second].map(id=>report.rows.find(row=>row.applianceId===id)?.repairCostCents);
+   expect(numbers.every(n=>n!==undefined)).toBe(true);
+   expect(numbers.reduce((sum,n)=>sum+(n??0),0)).toBe(1201);
+   expect([...numbers].sort((a,b)=>(a??0)-(b??0))).toEqual([600,601]);
+  }finally{
+   await prisma.jobAppliance.deleteMany({where:{jobId:job}});
+   await prisma.job.delete({where:{id:job}});
+   await prisma.appliance.deleteMany({where:{id:{in:[first,second]}}});
+   await prisma.applianceType.delete({where:{id:applianceType}});
+  }
+ });
  it("as-of position remains precisely balanced without taxing business revenue twice",async()=>{
   const b=await balanceSnapshot(owner,"2026-04-30");
   expect(b.equationDifferenceCents).toBe(0);

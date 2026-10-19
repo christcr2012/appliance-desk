@@ -155,7 +155,9 @@ export async function balanceSnapshot(userId:string,asOf:string){
  const limit=exclusive(asOf);
  if(date(asOf)>new Date())throw new ReportIntegrityError("Balance snapshot date is in the future.");
  return prisma.$transaction(async tx=>{
-  await authorized(tx,userId);
+  const settings=await authorized(tx,userId);
+  if(date(asOf)<settings.booksStartDate!)
+   throw new ReportIntegrityError("Balance snapshot predates the owner-attested Books opening date.");
   const data=flatten(await journals(tx,{end:limit}));
   return {asOf,...summarizeBalance(data)};
  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
@@ -174,9 +176,9 @@ export async function appliancePayback(userId:string,asOf=new Date()){
     select:{sourceId:true},take:CAP+1}),
    tx.applianceAssignment.findMany({select:{applianceId:true,rentalLineId:true,assignedAt:true,unassignedAt:true}}),
    tx.jobAppliance.findMany({where:{job:{type:"MAINTENANCE_VISIT",status:"COMPLETED",completedAt:{lt:end}}},
-    select:{applianceId:true,job:{select:{id:true,partsCostCents:true,laborCostCents:true}}}}),
+    select:{applianceId:true,job:{select:{id:true,partsCostCents:true,laborCostCents:true,completedAt:true}}}}),
    tx.expense.findMany({where:{status:"POSTED",capitalizeToAppliance:false,applianceId:{not:null},spentOn:{lt:end}},
-    select:{id:true,applianceId:true,jobId:true,amountCents:true}}),
+    select:{id:true,applianceId:true,jobId:true,amountCents:true,spentOn:true}}),
    tx.invoiceLineItem.findMany({where:{kind:{in:["RENTAL","LATE_RETURN"]},
     invoice:{status:{notIn:["DRAFT","VOID"]}}},
     select:{invoiceId:true,kind:true,amountCents:true,rentalLineId:true,
@@ -209,19 +211,38 @@ export async function appliancePayback(userId:string,asOf=new Date()){
   }
   const repairJobs=await jobPartsCosts(tx,[...new Set(jobs.map(j=>j.job.id))]);
   const knownJobIds=new Set(jobs.map(j=>j.job.id));
-  const cost=new Map<string,number>(),unknownCost=new Set<string>();
+  const cost=new Map<string,number>(),trailingRepair=new Map<string,number>(),unknownCost=new Set<string>();
+  const byJob=new Map<string,{job:(typeof jobs)[number]["job"];assetIds:Set<string>}>();
   for(const item of jobs){
-   const part=repairJobs.get(item.job.id);
-   const partCents=part?.source==="ITEMIZED"?part.cents:item.job.partsCostCents;
-   if(partCents===null||partCents===undefined||item.job.laborCostCents===null||part?.unknownCostLines)
-    unknownCost.add(item.applianceId);
-   cost.set(item.applianceId,(cost.get(item.applianceId)??0)+(partCents??0)+(item.job.laborCostCents??0));
+   const existing=byJob.get(item.job.id)??{job:item.job,assetIds:new Set<string>()};
+   existing.assetIds.add(item.applianceId);
+   byJob.set(item.job.id,existing);
+  }
+  // A completed visit is one real parts/labor bill even if it repaired two
+  // machines. Divide that one bill in whole cents across distinct asset IDs.
+  for(const {job,assetIds} of byJob.values()){
+   const part=repairJobs.get(job.id);
+   const partCents=part?.source==="ITEMIZED"?part.cents:job.partsCostCents;
+   if(partCents===null||partCents===undefined||job.laborCostCents===null||part?.unknownCostLines)
+    for(const id of assetIds)unknownCost.add(id);
+   const total=(partCents??0)+(job.laborCostCents??0);
+   if(!Number.isSafeInteger(total)||total<0)
+    throw new ReportIntegrityError("Maintenance source cost is not safe whole cents.");
+   const shares=splitInvoiceCents(total,[...assetIds]).shares;
+   const inLastYear=!!job.completedAt&&businessDateKey(job.completedAt).slice(0,7)>=cutoff12;
+   for(const share of shares){
+    cost.set(share.applianceId,(cost.get(share.applianceId)??0)+share.amountCents);
+    if(inLastYear)trailingRepair.set(share.applianceId,
+     (trailingRepair.get(share.applianceId)??0)+share.amountCents);
+   }
   }
   for(const e of expenses){
    // A job-linked expense can be the same parts/labor bill already in Job; flag and
    // do not double count that expense as a second appliance repair cost.
    if(e.jobId&&knownJobIds.has(e.jobId)){unknownCost.add(e.applianceId!);continue;}
    cost.set(e.applianceId!,(cost.get(e.applianceId!)??0)+e.amountCents);
+   if(businessDateKey(e.spentOn).slice(0,7)>=cutoff12)
+    trailingRepair.set(e.applianceId!,(trailingRepair.get(e.applianceId!)??0)+e.amountCents);
   }
   const bookTotals=await tx.journalEntry.findMany({where:{
     sourceType:"APPLIANCE",eventKind:{startsWith:"DEPRECIATION:"},entryDate:{lt:end}},
@@ -240,6 +261,7 @@ export async function appliancePayback(userId:string,asOf=new Date()){
      rentInvoicedCents:rent,repairCostCents:repair,repairCostComplete:!unknownCost.has(a.id),
      ...paybackMath({costCents:base,rentInvoicedCents:rent,repairCostCents:repair,
       lastSixMonthsRentCents:last6.get(a.id)??0,rentLast12MonthsCents:last12.get(a.id)??0,
+      repairLast12MonthsCents:trailingRepair.get(a.id)??0,
       bookCarryingCents:carrying,lemonRepairPercent:settings.lemonRepairPercent}),
     };
    })};

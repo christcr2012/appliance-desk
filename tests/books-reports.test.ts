@@ -35,13 +35,20 @@ describe("K-7 actual finance report maths",()=>{
   expect(splitInvoiceCents(-101,["washer","dryer"]).shares.map(x=>x.amountCents)).toEqual([-51,-50]);
   expect(splitInvoiceCents(91,[])).toEqual({shares:[],unallocatedCents:91});
  });
+ it("repair warning compares the same trailing 12-month source window",()=>{
+  const fixture={costCents:2000,rentInvoicedCents:5000,repairCostCents:3000,
+   lastSixMonthsRentCents:600,bookCarryingCents:1200,rentLast12MonthsCents:1000,
+   lemonRepairPercent:30};
+  expect(paybackMath({...fixture,repairLast12MonthsCents:100}).repairWarning).toBe(false);
+  expect(paybackMath({...fixture,repairLast12MonthsCents:400}).repairWarning).toBe(true);
+ });
  it("distinguishes actual invoice payback and unknown acquisition/repair evidence",()=>{
   expect(paybackMath({costCents:5000,rentInvoicedCents:2000,repairCostCents:500,
-   lastSixMonthsRentCents:1200,bookCarryingCents:3000,rentLast12MonthsCents:2500,
+   lastSixMonthsRentCents:1200,bookCarryingCents:3000,rentLast12MonthsCents:2500,repairLast12MonthsCents:500,
    lemonRepairPercent:30})).toMatchObject({
     netContributionCents:-3500,paybackMonths:18,paidForItself:false,repairWarning:false,bookCarryingCents:3000});
   expect(paybackMath({costCents:null,rentInvoicedCents:2000,repairCostCents:500,
-   lastSixMonthsRentCents:1200,bookCarryingCents:null,rentLast12MonthsCents:0,
+   lastSixMonthsRentCents:1200,bookCarryingCents:null,rentLast12MonthsCents:0,repairLast12MonthsCents:500,
    lemonRepairPercent:30}).paybackMonths).toBeNull();
  });
 });

@@ -83,7 +83,7 @@ export function splitInvoiceCents(cents:number,applianceIds:string[]){
 export function paybackMath(input:{
  costCents:number|null;rentInvoicedCents:number;repairCostCents:number;
  lastSixMonthsRentCents:number;bookCarryingCents:number|null;
- rentLast12MonthsCents:number;lemonRepairPercent:number;
+ rentLast12MonthsCents:number;repairLast12MonthsCents:number;lemonRepairPercent:number;
 }){
  const cost=input.costCents===null?null:integer(input.costCents,"acquisition");
  const rent=integer(input.rentInvoicedCents,"rent");
@@ -93,7 +93,8 @@ export function paybackMath(input:{
  if(!Number.isSafeInteger(input.lemonRepairPercent)||input.lemonRepairPercent<0||input.lemonRepairPercent>100)
   throw new ReportIntegrityError("Invalid repair warning threshold.");
  const paybackMonths=cost===null||lastSix<=0?null:Math.ceil(Math.max(0,cost+repair-rent)/(lastSix/6));
- const repairWarning=input.rentLast12MonthsCents>0&&repair*100>input.rentLast12MonthsCents*input.lemonRepairPercent;
+ const lastYearRepair=integer(input.repairLast12MonthsCents,"trailing repair cost");
+ const repairWarning=input.rentLast12MonthsCents>0&&lastYearRepair*100>input.rentLast12MonthsCents*input.lemonRepairPercent;
  return {netContributionCents:contribution,paybackMonths,
   paidForItself:cost===null?null:rent-repair>=cost,
   repairWarning,bookCarryingCents:input.bookCarryingCents};
