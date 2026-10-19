@@ -48,7 +48,7 @@ export async function recordBookCashEvent(userId:string,commandKey:string,input:
  return prisma.$transaction(async tx=>{
   await assertActiveTeamActor(tx,userId,["OWNER"]);
   // Distinct command idempotency; no double-submit, including parallel requests.
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${"cash-command:"+cmd}))`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${"cash-command:"+cmd}))::text AS locked`;
   const old=await tx.bookCashEvent.findUnique({where:{commandKey:cmd}});
   const equal=old&&old.kind===n.kind&&old.amountCents===n.amountCents&&
     old.occurredOn.getTime()===n.occurredOn.getTime()&&old.memo===n.memo&&
@@ -105,7 +105,7 @@ export async function voidBookCashEvent(userId:string,sourceId:string,expectedVe
  if(!why||why.length>250)throw new CashEvidenceError("A reason is required to reverse recorded cash.");
  return prisma.$transaction(async tx=>{
   await assertActiveTeamActor(tx,userId,["OWNER"]);
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${"cash-command:"+cmd}))`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${"cash-command:"+cmd}))::text AS locked`;
   const prior=await tx.bookCashEvent.findUnique({where:{commandKey:cmd}});
   if(prior) {
    if(prior.reversalOfId===sourceId&&prior.memo===why)

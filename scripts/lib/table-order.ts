@@ -55,6 +55,8 @@ export function relationDependencies(schema: string): RelationDependency[] {
         // COM-L10 nullable self-reference is restored in a second pass.
         && !(block.name === "CommunicationCostFact" &&
           field.name === "supersedes")
+        && !(block.name === "BankImport" && field.name === "priorImport")
+        && !(block.name === "BankReconciliation" && field.name === "priorCompleted")
       ) {
         dependencies.push({ model: block.name, dependsOn: field.type });
       }
@@ -114,6 +116,16 @@ export function dateTimeFieldsByDelegate(
     const delegate = policy[block.name];
     if (!delegate) continue;
     result[delegate] = fields(block).filter((field) => field.type === "DateTime").map((field) => field.name);
+  }
+  return result;
+}
+
+export function bigIntFieldsByDelegate(schema: string, policy: BackupPolicy): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  for (const block of modelBlocks(schema)) {
+    const delegate = policy[block.name];
+    if (!delegate) continue;
+    result[delegate] = fields(block).filter(field => field.type === "BigInt").map(field => field.name);
   }
   return result;
 }
