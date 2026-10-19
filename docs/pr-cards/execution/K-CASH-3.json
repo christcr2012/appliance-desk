@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "id": "K-CASH-3",
+  "parent": "K-CASH-3",
+  "baseline": "78b3de99cc6484a97498327865649ecde0fd3d50",
+  "card": "docs/pr-cards/K-CASH-3.md",
+  "outcome": "Bank observations can be explicitly matched to immutable book cash journal lines and reconciled against owner-attested statement balances; cash readiness is conservative and evidenced, never fabricated.",
+  "risk": "Financial matching identity, evidence immutability, no ledger journal mutation, actor and completed-period boundaries.",
+  "next": "Complete K-CASH-3 then K-CASH-4A budget schema.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-K-CASH.md",
+      "anchor": "### 3.2 Matching semantics",
+      "purpose": "Authoritative matching and 7–day default persisted window."
+    },
+    {
+      "path": "docs/designs/BATCH-K-CASH.md",
+      "anchor": "### 3.3 Reconciliation",
+      "purpose": "Completed statement equality and version/evidence contract."
+    },
+    {
+      "path": "docs/designs/BATCH-K-CASH.md",
+      "anchor": "### 4.1 Cash eligibility",
+      "purpose": "Conservative signed cash source and stale/unknown limits."
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "anchor": "model BankMatchGroup {",
+      "purpose": "Reuse schema and partial indexes."
+    },
+    {
+      "path": "src/domains/books/cash/accounts.ts",
+      "anchor": "setCashMatchWindow",
+      "purpose": "Reuse owner controls and live role."
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/books/cash/matching.ts",
+    "src/domains/books/cash/reconciliation.ts",
+    "src/domains/books/cash/readiness.ts",
+    "src/app/desk/books/cash/checks/page.tsx",
+    "src/app/desk/books/cash/checks/actions.ts",
+    "tests/bank-reconciliation-integration.test.ts",
+    "tests/bank-readiness.test.ts",
+    "e2e/bank-checks.spec.ts"
+  ],
+  "invariants": [
+    "Only registered bank ledger accounts are matchable",
+    "Same-sign, exact net; no invented journal",
+    "Source and historic match evidence immutable",
+    "No completed period rollback without reviewed owner reopen",
+    "No positive budget authority without recent complete statement",
+    "No external payments or bank provider call"
+  ],
+  "sequence": [
+    "Freeze full criteria and execution packet in docs-only plan",
+    "Implement source-based matching and stable claims",
+    "Add statement complete/reopen and SHA evidence",
+    "Implement conservative cash readiness",
+    "Expose protected owner/admin screen and drilldown",
+    "Real database/unit/browser tests and docs",
+    "Full exact-head CI and review, safe merge"
+  ],
+  "acceptance": [
+    "Owner/ADMIN can view bounded same-bank suggested matches using persisted CashAccount.bankMatchWindowDays (0–30, default 7), exact signed cents and Colorado day difference, with explicit source/date/account display; no suggestion is an automatic posting or approval.",
+    "OWNER/ADMIN can atomically confirm a many-to-many BankMatchGroup with at least one bank observation and one journal bank line, same account, same sign, equal nonzero signed sums, live role/version checks, stable account→sorted observation→sorted journal locks and active-partial-unique claims. Concurrent retries and second claims refuse or return stable idempotent identity without partial match.",
+    "An explicitly reasoned group void restores claimability and observation status when the matched period is still open; the original group, items, actor and audit evidence remain available. Groups touching completed reconciliations require owner reopening the applicable period first; historical linked journal entries are never edited.",
+    "OWNER/ADMIN may ignore only proved duplicate/non-account bank rows with a stated reason; unknown income, unmatched expense, payroll, loan, interest or ambiguous transaction cannot be ignored to make a statement reconcile. Existing expense/receipt/typed source links are provided, not guessed accounting entries.",
+    "OWNER can create and complete dated statement reconciliation only with an attested opening book balance, explicit acknowledgement of existing outstanding items, sequential contiguous statement range, verified import-through evidence, bank-observation status completeness, independent bank-observation and matched-journal signed totals and zero-cent difference; no fabricated plugs, and no overlapping/gapped completed ranges.",
+    "Completion retains immutable source-linked balance, import, match IDs, date, actor, counts and SHA-256 evidence snapshot; a reasoned OWNER reopen leaves old revision readable, invalidates affected later reconciliations and corresponding cash-readiness labels while preserving earlier source journal/export evidence, then permits ordered re-completion.",
+    "Read-only cash eligibility from each registered business bank uses last completed statement ending balance plus only cleared/matched later inflows, subtracts all later journal bank outflows and pre-statement outstanding outflows exactly once, includes only subsequently matched earlier inflows, subtracts unreleased holds, and never treats Stripe clearing, undeposited money, promised rent or personal accounts as spendable cash. Missing/stale evidence, unresolved money, unsupported provider types and negative net display UNKNOWN/BLOCKED rather than a positive green funding claim.",
+    "Owner/admin mobile bank-check workspace provides account, unmatched observation/source register, matching suggestions and many-to-many confirmation, reasoned ignore/void, statement date/opening/closing/confirmation, full history/reopen and cash-readiness drilldown. STAFF/CUSTOMER cannot access; ADMIN cannot set owner-only opening/reopen policy, and errors are accessible without leaking private bank evidence.",
+    "Pure and disposable PostgreSQL tests prove same-account/sign/date, 1:M/M:1 exact sums, claim concurrency/replay/void, strict ignore, DST cutoff, gap/overlap/ending mismatch/outstanding guard, persisted immutable revision/reopen cascade, cash funding exclusions and permission boundaries; mobile Playwright/axe and full exact-head CI/review are mandatory, with owner/provider real bank evidence acceptance separate.",
+    "Update STATUS, work-index, decision log, owner guide, database/backup notes and release acceptance honestly; existing K-CASH-1/2 verified merge must be recorded without implying K-CASH-3 deployment, owner bank selection, external transfers or live account authorization."
+  ],
+  "slices": [
+    {
+      "id": "K-CASH-3",
+      "outcome": "Bank observations can be explicitly matched to immutable book cash journal lines and reconciled against owner-attested statement balances; cash readiness is conservative and evidenced, never fabricated.",
+      "acceptance": [
+        "Owner/ADMIN can view bounded same-bank suggested matches using persisted CashAccount.bankMatchWindowDays (0–30, default 7), exact signed cents and Colorado day difference, with explicit source/date/account display; no suggestion is an automatic posting or approval.",
+        "OWNER/ADMIN can atomically confirm a many-to-many BankMatchGroup with at least one bank observation and one journal bank line, same account, same sign, equal nonzero signed sums, live role/version checks, stable account→sorted observation→sorted journal locks and active-partial-unique claims. Concurrent retries and second claims refuse or return stable idempotent identity without partial match.",
+        "An explicitly reasoned group void restores claimability and observation status when the matched period is still open; the original group, items, actor and audit evidence remain available. Groups touching completed reconciliations require owner reopening the applicable period first; historical linked journal entries are never edited.",
+        "OWNER/ADMIN may ignore only proved duplicate/non-account bank rows with a stated reason; unknown income, unmatched expense, payroll, loan, interest or ambiguous transaction cannot be ignored to make a statement reconcile. Existing expense/receipt/typed source links are provided, not guessed accounting entries.",
+        "OWNER can create and complete dated statement reconciliation only with an attested opening book balance, explicit acknowledgement of existing outstanding items, sequential contiguous statement range, verified import-through evidence, bank-observation status completeness, independent bank-observation and matched-journal signed totals and zero-cent difference; no fabricated plugs, and no overlapping/gapped completed ranges.",
+        "Completion retains immutable source-linked balance, import, match IDs, date, actor, counts and SHA-256 evidence snapshot; a reasoned OWNER reopen leaves old revision readable, invalidates affected later reconciliations and corresponding cash-readiness labels while preserving earlier source journal/export evidence, then permits ordered re-completion.",
+        "Read-only cash eligibility from each registered business bank uses last completed statement ending balance plus only cleared/matched later inflows, subtracts all later journal bank outflows and pre-statement outstanding outflows exactly once, includes only subsequently matched earlier inflows, subtracts unreleased holds, and never treats Stripe clearing, undeposited money, promised rent or personal accounts as spendable cash. Missing/stale evidence, unresolved money, unsupported provider types and negative net display UNKNOWN/BLOCKED rather than a positive green funding claim.",
+        "Owner/admin mobile bank-check workspace provides account, unmatched observation/source register, matching suggestions and many-to-many confirmation, reasoned ignore/void, statement date/opening/closing/confirmation, full history/reopen and cash-readiness drilldown. STAFF/CUSTOMER cannot access; ADMIN cannot set owner-only opening/reopen policy, and errors are accessible without leaking private bank evidence.",
+        "Pure and disposable PostgreSQL tests prove same-account/sign/date, 1:M/M:1 exact sums, claim concurrency/replay/void, strict ignore, DST cutoff, gap/overlap/ending mismatch/outstanding guard, persisted immutable revision/reopen cascade, cash funding exclusions and permission boundaries; mobile Playwright/axe and full exact-head CI/review are mandatory, with owner/provider real bank evidence acceptance separate.",
+        "Update STATUS, work-index, decision log, owner guide, database/backup notes and release acceptance honestly; existing K-CASH-1/2 verified merge must be recorded without implying K-CASH-3 deployment, owner bank selection, external transfers or live account authorization."
+      ]
+    }
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/bank-readiness.test.ts"
+    ],
+    "db": [
+      "tests/bank-reconciliation-integration.test.ts",
+      "tests/bank-import-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/bank-checks.spec.ts"
+    ],
+    "node": []
+  }
+}
