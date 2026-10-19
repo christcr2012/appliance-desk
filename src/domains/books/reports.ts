@@ -112,8 +112,8 @@ async function cashJournalLines(tx:Tx,rows:JournalRows):Promise<{
   // proportions; reconcile last-cent remainder to the first positive income row.
   const scale=(value:number)=>Math.trunc(value*payment.amountCents/payment.invoice.amountDueCents);
   const weights=gross.map(l=>scale(signed(l)));
-  let appliedTax=scale(tax);
-  let remainder=payment.amountCents-appliedTax-weights.reduce((n,x)=>n+x,0);
+  const appliedTax=scale(tax);
+  const remainder=payment.amountCents-appliedTax-weights.reduce((n,x)=>n+x,0);
   const firstIncome=gross.findIndex(l=>l.accountType==="INCOME"&&signed(l)>0);
   if(firstIncome<0||!Number.isSafeInteger(remainder)){
    needsReview.push("Invoice "+payment.invoiceId+" requires manual cash categorization.");continue;
@@ -122,10 +122,9 @@ async function cashJournalLines(tx:Tx,rows:JournalRows):Promise<{
   if(weights[firstIncome]<0){needsReview.push("Invoice "+payment.invoiceId+" has invalid cash revenue allocation.");continue;}
   for(let i=0;i<gross.length;i++){
    const l=gross[i]!,amount=weights[i]!;
-   const positive=l.accountType==="INCOME"?amount:-amount;
-   if(!positive)continue;
+   if(!amount)continue;
    result.push({...l,entryId:entry.id,sourceType:"PAYMENT",sourceId:entry.sourceId,eventKind:"CASH_APPLIED",
-    debitCents:positive<0?-positive:0,creditCents:positive>0?positive:0});
+    debitCents:amount<0?-amount:0,creditCents:amount>0?amount:0});
   }
  }
  return {lines:result,needsReview};
@@ -147,7 +146,8 @@ export async function profitAndLoss(userId:string,options:{
    return {summary:summarizeAccrual(cash.lines),needsReview:cash.needsReview};
   };
   const current=await load(options.from,options.to);
-  const previous=compare&&date(compare.from)>=settings.booksStartDate!?await load(compare.from,compare.to):null;
+  const previous=compare&&date(compare.from)>=settings.booksStartDate!
+   ?await load(compare.from,compare.to):null;
   return {from:options.from,to:options.to,basis:options.basis,compare, ...current, previous};
  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
 }
@@ -236,7 +236,7 @@ export async function appliancePayback(userId:string,asOf=new Date()){
     const base=book?.costCents??a.acquisitionCostCents;
     const carrying=book?.retiredOn?book.retiredValueCents??null:
       book?book.costCents-(depreciation.get(a.id)??0):null;
-    return {applianceId:a.id,assetNumber:a.assetNumber,costKnown:base!==null,
+    return {applianceId:a.id,assetNumber:a.assetNumber,costCents:base,costKnown:base!==null,
      rentInvoicedCents:rent,repairCostCents:repair,repairCostComplete:!unknownCost.has(a.id),
      ...paybackMath({costCents:base,rentInvoicedCents:rent,repairCostCents:repair,
       lastSixMonthsRentCents:last6.get(a.id)??0,rentLast12MonthsCents:last12.get(a.id)??0,
