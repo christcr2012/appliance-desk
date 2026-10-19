@@ -77,7 +77,8 @@ export async function recordBookCashEvent(userId:string,commandKey:string,input:
    // Serialize deposit allocations, even across differing command keys.
    for(const id of ids)await tx.$queryRaw`SELECT "id" FROM "Receipt" WHERE "id"=${id} FOR UPDATE`;
    const past=await tx.bookCashEvent.findMany({where:{kind:"CASH_DEPOSIT",status:"POSTED"},
-    select:{sourceReceiptIds:true},take:10000});
+    select:{sourceReceiptIds:true},take:10001});
+   if(past.length>10000)throw new CashEvidenceError("Too many prior deposits to verify safely; accounting review required.");
    for(const prior of past)if(prior.sourceReceiptIds&&typeof prior.sourceReceiptIds==="object"&&
      !Array.isArray(prior.sourceReceiptIds)&&Array.isArray(prior.sourceReceiptIds.ids)&&
      prior.sourceReceiptIds.ids.some(id=>typeof id==="string"&&ids.includes(id)))
@@ -104,6 +105,13 @@ export async function voidBookCashEvent(userId:string,sourceId:string,expectedVe
  if(!why||why.length>250)throw new CashEvidenceError("A reason is required to reverse recorded cash.");
  return prisma.$transaction(async tx=>{
   await assertActiveTeamActor(tx,userId,["OWNER"]);
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${"cash-command:"+cmd}))`;
+  const prior=await tx.bookCashEvent.findUnique({where:{commandKey:cmd}});
+  if(prior) {
+   if(prior.reversalOfId===sourceId&&prior.memo===why)
+    return prior.id;
+   throw new CashEvidenceError("The reversal command key was used for different evidence.");
+  }
   await tx.$queryRaw`SELECT "id" FROM "BookCashEvent" WHERE "id"=${sourceId} FOR UPDATE`;
   const row=await tx.bookCashEvent.findUnique({where:{id:sourceId}});
   if(!row||row.reversalOfId||row.status!=="POSTED"||row.version!==expectedVersion)
