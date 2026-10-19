@@ -33,7 +33,8 @@
       "books-expenses.spec.ts",
       "books-export.spec.ts",
       "books-fixed-assets.spec.ts",
-      "books-reports.spec.ts"
+      "books-reports.spec.ts",
+      "books-closing.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",

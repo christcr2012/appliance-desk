@@ -1,3 +1,11 @@
+## K-8 accountant/owner acceptance (pending; never self-certify from source CI)
+
+- [ ] Compare projected next signed recurring invoice dates and prices with a real billed agreement; do not claim these estimates are collected cash or synced bank totals.
+- [ ] Match active recurring template dates against drafted expenses, and independently confirm real OPEN filing account worksheet and due dates; no tax filing or provider payment is enabled here.
+- [ ] Review a customer with a documented receipt-backed invoice allocation, refund and correctly linked originating lead; unknown sources must remain unknown.
+- [ ] Download and accountant-reconcile all five year-end files to the ledger, held retired assets and actual FILED return records; verify supplier payment reporting methods, owner-selected threshold and federal/state tax eligibility before filing any 1099.
+- [ ] Confirm released revision and private OWNER/ADMIN permissions in the real environment, after the scheduled promotion. Exact-head source CI is not production acceptance.
+
 ## K-7 financial report acceptance — still open
 
 - [ ] Trial reconcile accrual, posted applied-cash and their comparison periods to a trusted bookkeeper journal; resolve each excluded needs-review source before relying on totals.

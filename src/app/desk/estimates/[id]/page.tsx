@@ -64,7 +64,7 @@ export default async function EstimateDetailPage({
           <h1 className="break-words text-xl font-semibold [overflow-wrap:anywhere]">
             Estimate #{estimate.estimateNumber} — {estimate.title}
           </h1>
-          <p className="text-sm text-ink-soft">
+          <p className="min-w-0 break-words [overflow-wrap:anywhere] text-sm text-ink-soft">
             {estimate.customer ? (
               <>
                 {estimate.customer.user.name ?? estimate.customer.user.email}

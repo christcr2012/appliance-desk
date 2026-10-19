@@ -14,7 +14,7 @@ export function CommercialReserveAllocationForm({overview,owner}:{
   const [status,action,pending]=useActionState(saveCommercialReserveAction,{success:"",error:""});
   const eligible=overview.canAllocate&&owner;
   return <section aria-labelledby="commercial-reserve-title"
-    className="mt-5 space-y-3 rounded-lg border border-line bg-surface p-4 text-sm">
+    className="mt-5 min-w-0 max-w-full space-y-3 rounded-lg border border-line bg-surface p-4 text-sm [overflow-wrap:anywhere]">
     <h2 id="commercial-reserve-title" className="font-semibold">
       Negotiated refundable commercial reserve — owner draft
     </h2>
@@ -45,7 +45,7 @@ export function CommercialReserveAllocationForm({overview,owner}:{
       <input type="hidden" name="estimateId" value={overview.estimateId}/>
       <input type="hidden" name="estimateUpdatedAt" value={overview.estimateUpdatedAt}/>
       {overview.allocations.map((row,index)=><fieldset key={row.agreementId}
-        className="space-y-2 rounded border border-line p-3">
+        className="min-w-0 max-w-full space-y-2 rounded border border-line p-3">
         <legend className="px-1 font-medium">{row.addressLabel}</legend>
         <input type="hidden" name="agreementId" value={row.agreementId}/>
         <input type="hidden" name={"revision_"+index} value={row.revision??""}/>
@@ -56,12 +56,12 @@ export function CommercialReserveAllocationForm({overview,owner}:{
               min="0" max="1000000" step="0.01" required
               defaultValue={formatCentsAsPlainDecimal(row.amountCents)}
               disabled={!eligible||pending}
-              className="w-full rounded border border-line bg-surface p-2"/>
+              className="min-w-0 max-w-full rounded border border-line bg-surface p-2"/>
           </label>
           <label className="grid gap-1">
             Negotiated replenishment
             <select name={"replenishment_"+index} defaultValue={row.replenishment}
-              disabled={!eligible||pending} className="w-full rounded border border-line bg-surface p-2">
+              disabled={!eligible||pending} className="min-w-0 max-w-full rounded border border-line bg-surface p-2">
               <option value="NONE">Not applicable / none</option>
               <option value="QUARTERLY">Quarterly (terms only)</option>
             </select>
@@ -73,7 +73,7 @@ export function CommercialReserveAllocationForm({overview,owner}:{
             required minLength={12} disabled={!eligible||pending}
             defaultValue={row.termsReference||
               "No security reserve has been negotiated for this delivery location."}
-            className="w-full rounded border border-line bg-surface p-2"/>
+            className="min-w-0 max-w-full rounded border border-line bg-surface p-2"/>
         </label>
         <p className="text-xs text-ink-soft">
           Original policy revision: {row.revision??"not recorded"}.
@@ -85,7 +85,7 @@ export function CommercialReserveAllocationForm({overview,owner}:{
         <textarea name="reason" maxLength={500} minLength={12} rows={2}
           placeholder="Why was the negotiated reserve allocated or changed?"
           required disabled={!eligible||pending}
-          className="w-full rounded border border-line bg-surface p-2"/>
+          className="min-w-0 max-w-full rounded border border-line bg-surface p-2"/>
       </label>}
       {eligible&&<button type="submit" disabled={pending||!overview.allocations.length}
         className="rounded bg-action px-4 py-2 font-medium text-on-action disabled:opacity-50">
