@@ -88,7 +88,7 @@ describe.skipIf(!enabled)("K-6 source-accounted rental fixed assets in disposabl
   await expect(setBookAssetPolicy(admin,id,asset.version,8,0)).rejects.toThrow(/access/);
   await setBookAssetPolicy(owner,id,asset.version,8,0);
   await expect(setBookAssetPolicy(owner,id,asset.version,8,0)).rejects.toThrow(/changed/);
-  expect(await prisma.journalEntry.count({where:{sourceType:"APPLIANCE",sourceId:id,eventKind:{startsWith:"DEPRECIATION:"}})).toBe(3);
+  expect(await prisma.journalEntry.count({where:{sourceType:"APPLIANCE",sourceId:id,eventKind:{startsWith:"DEPRECIATION:"}}})).toBe(3);
   await setBookDepreciationDefaults(owner,24,5);
   expect((await prisma.bookAsset.findUniqueOrThrow({where:{applianceId:id}})).lifeMonths).toBe(8);
  });

@@ -29,6 +29,7 @@
     "Frozen full acceptance plan: 21f1793a44b96a2d8b995b1e2a9955781d0ad9a0 docs-only, preceding all code.",
     "K-5 merged into main 005e9fc95c2af5c4b9a73b7eaed4bad26099f3dd, with exact-head CI and 3 reviewed P1 fixes.",
     "K-6 Prisma migration, fixed-asset screens, ledger source and strict permission logic, pure/real-DB/browser tests authored on feature branch, not yet verified.",
-    "No production data, live money, filing, emails, SMS or paid services."
+    "No production data, live money, filing, emails, SMS or paid services.",
+    "Initial #502 exact-head CI failed before database/browser tests: migration duplicated SQL after truncated regex; TS syntax at fixed-assets.ts and test; JSX lint. All grouped build blockers corrected, next exact-head CI pending."
   ]
 }

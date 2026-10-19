@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { getBookAssets } from "@/domains/books/fixed-assets";
 import { lastCompletedMonth } from "@/domains/books/depreciation";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
-import { formatMoney, moneyInputValue } from "@/lib/money-ui";
+import { formatMoney } from "@/lib/money-ui";
 import {
  bookAssetPolicyAction,bookDefaultsAction,bookTaxEvidenceAction,
  enrollBookAssetAction,postBookDepreciationAction,retireBookAssetAction,
@@ -25,7 +25,7 @@ export default async function FixedAssets({searchParams}:{searchParams:Promise<{
   </header>
   <section className="rounded-lg border border-border p-4 space-y-2">
    <h2 className="font-semibold text-lg">Book depreciation policy</h2>
-   <p>Default life: {data.settings?.depreciationMonthsDefault??60} months; salvage: {data.settings?.depreciationSalvagePercent??0}%. Applies to newly enrolled assets. Changing an enrolled asset's life recalculates only its remaining unposted months; old entries never change.</p>
+   <p>Default life: {data.settings?.depreciationMonthsDefault??60} months; salvage: {data.settings?.depreciationSalvagePercent??0}%. Applies to newly enrolled assets. Changing an enrolled asset life recalculates only its remaining unposted months; old entries never change.</p>
    {owner&&<form action={bookDefaultsAction} className="grid gap-3 sm:grid-cols-3">
     <label>Default life in months<input className={field} type="number" name="months" min={1} max={360} defaultValue={data.settings?.depreciationMonthsDefault??60} required/></label>
     <label>Salvage percent<input className={field} type="number" name="salvagePercent" min={0} max={95} defaultValue={data.settings?.depreciationSalvagePercent??0} required/></label>

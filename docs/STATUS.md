@@ -1,3 +1,7 @@
+## October 18 — K-6 PR #502 first red CI repair
+
+Exact-head `241edae` did **not** pass. Full unit/browser shards could not run because migration SQL accidentally duplicated its tail after an unterminated `BookAsset_month_check` regex; PostgreSQL reported syntax error near `SELL` during migration. The type job also detected one missing `) ` in the BookAsset include query, a missing `}` in the new integration assertion, an unescaped JSX apostrophe and one unused import. Rebuilt the complete additive SQL migration without speculative data writes, corrected the two syntax errors and removed the JSX/lint issue. Every failing shard must rerun on the new exact SHA, and independent review/owner acceptance are still pending. The baseline/security/release-policy checks on initial head were not enough for merge.
+
 ## October 18 — K-5 merged; K-6 complete implementation authored, verification pending
 
 PR #501 merged K-5 at `005e9fc95c2af5c4b9a73b7eaed4bad26099f3dd` after exact-head `46e925449f9a39f2b031bfdd9a797625d5b0efb6` passed aggregate CI, all three unit/DB shards, all four browser/axe shards, typecheck, lint, publication checks, security and review. All three P1 code-review threads were fixed and resolved. Older K-5 headings below are historical, not current status. K-5 real accounting provider trial import still needs owner/bookkeeper acceptance.

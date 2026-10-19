@@ -258,7 +258,7 @@ export async function getBookAssets(userId:string) {
    }}),
    tx.bookAsset.findMany({orderBy:{createdAt:"desc"},take:100,
     include:{appliance:{select:{assetNumber:true,status:true,acquisitionCostCents:true}},
-     taxEvidence:{orderBy:{createdAt:"desc"},take:3}}},
+     taxEvidence:{orderBy:{createdAt:"desc"},take:3}}}),
    tx.appliance.findMany({where:{acquisitionCostCents:{gt:0},bookAsset:{is:null}},
     orderBy:{createdAt:"desc"},take:100,select:{id:true,assetNumber:true,acquisitionCostCents:true,purchaseDate:true}}),
   ]);
