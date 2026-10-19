@@ -24,7 +24,8 @@ test("K-8 is reachable from Books, while staff cannot access reports or CSV down
   const staff=await context.newPage();
   await staff.goto("/desk/books/closing?tab=year");
   await expect(staff.getByRole("heading",{name:"Cash outlook, customers and year-end"})).toHaveCount(0);
-  const response=await staff.request.get("/desk/books/closing/download?year=2026&file=suppliers");
-  expect([302,303,307,401,403]).toContain(response.status());
+  const response=await staff.request.get("/desk/books/closing/download?year=2026&file=suppliers",{maxRedirects:0});
+  expect([302,303,307,308,401,403]).toContain(response.status());
+  expect(response.headers()["content-type"]??"").not.toContain("text/csv");
  }finally{await context.close();}
 });

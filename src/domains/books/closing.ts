@@ -148,8 +148,9 @@ export async function customerHealth(userId:string,asOf=new Date()){
   let activeRentals=0,endingNext90Days=0,endedRentals=0;
   const next90=datePlus(key,90),completed:{start:string;end:string}[]=[];
   for(const a of agreements){
-   if(a.status==="ACTIVE")activeRentals++;
-   if(a.status==="ACTIVE"&&a.endDate&&businessDateKey(a.endDate)>=key&&businessDateKey(a.endDate)<=next90)endingNext90Days++;
+   const started=a.status==="ACTIVE"&&!!a.billingStartedAt&&a.billingStartedAt<=asOf;
+   if(started)activeRentals++;
+   if(started&&a.endDate&&businessDateKey(a.endDate)>=key&&businessDateKey(a.endDate)<=next90)endingNext90Days++;
    if(a.status==="ENDED"){endedRentals++;const first=a.billingStartedAt??a.startDate,finish=a.closedAt??a.endDate;
     if(first&&finish&&finish>=first)completed.push({start:businessDateKey(first),end:businessDateKey(finish)});
    }

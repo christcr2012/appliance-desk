@@ -30,6 +30,7 @@
     "K-7 PR #503 merged exact-head green as 82862d13e5be402b56807d680487adfa35e88cf0; Codex review unavailable at usage limit, documented self-review.",
     "K-8 source, routes and pure/real-DB/browser regression files authored, not yet witnessed running.",
     "No LIVE charges, provider requests, tax filings, customer communications, production writes or spending.",
-    "PR #504 initial a4a0598: type/lint failed tuple nullable and const rules; unit shard 1 had one same-code CustomerHealth runtime exception; browser builds blocked on type. Corrected with explicit guard and no test weakening, plus self-reviewed jurisdiction tax source, supplier reversal and historical asset cutoff. Exact-head CI/review pending."
+    "PR #504 initial a4a0598: type/lint failed tuple nullable and const rules; unit shard 1 had one same-code CustomerHealth runtime exception; browser builds blocked on type. Corrected with explicit guard and no test weakening, plus self-reviewed jurisdiction tax source, supplier reversal and historical asset cutoff. Exact-head CI/review pending.",
+    "PR #504 initial da05078: unit/DB shards 1–3, browser C/D and security/release passed, but typecheck/lint money header and browser A/B failed. Grouped remediation fixes dollar-labelled UI, authentic staff non-CSV redirect assertion, real mobile reserve form overflow, review P2 pre-delivery exclusion and two additional PostgreSQL regressions; final CI pending."
   ]
 }

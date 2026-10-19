@@ -59,7 +59,7 @@ export default async function BooksClosingPage({searchParams}:{searchParams:Prom
     {forecast.needsReview.length>0&&<div role="alert" className="rounded border border-border p-3"><h3 className="font-semibold">Source review needed</h3>{forecast.needsReview.slice(0,25).map((v,i)=><p className="break-words" key={i}>{v}</p>)}</div>}
     <div className="overflow-x-auto rounded border border-border"><table className="min-w-full text-sm">
      <caption className="p-2 text-left">Source-linked future estimates, not guaranteed future cash</caption>
-     <thead><tr><th className="p-2 text-left">Expected date</th><th className="p-2 text-left">Estimate source</th><th className="p-2 text-right">Cents equivalent</th><th className="p-2 text-left">Basis</th></tr></thead>
+     <thead><tr><th className="p-2 text-left">Expected date</th><th className="p-2 text-left">Estimate source</th><th className="p-2 text-right">Estimated amount ($)</th><th className="p-2 text-left">Basis</th></tr></thead>
      <tbody>{forecast.rows.map((r,i)=><tr className="border-t border-border" key={r.sourceId+":"+r.date+":"+i}>
       <td className="p-2 whitespace-nowrap">{r.date}</td><td className="p-2">{r.label}</td>
       <td className="p-2 text-right tabular-nums">{r.kind==="BILLING_ESTIMATE"?"+":"−"}{money(r.amountCents)}</td>

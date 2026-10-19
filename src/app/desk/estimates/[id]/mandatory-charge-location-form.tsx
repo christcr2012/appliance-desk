@@ -19,7 +19,7 @@ export function MandatoryChargeLocationReviewForm({overview,owner}:{
   const [status,action,pending]=useActionState(
     saveMandatoryChargeReviewAction,{success:"",error:""});
   const available=owner&&overview.canReview&&overview.globalPolicyRevision!==null;
-  return <section className="mt-5 rounded-lg border border-line bg-surface p-4 text-sm"
+  return <section className="mt-5 min-w-0 max-w-full rounded-lg border border-line bg-surface p-4 text-sm [overflow-wrap:anywhere]"
     aria-labelledby="mandatory-services-title">
     <h2 id="mandatory-services-title" className="font-semibold">
       Service, tax and Colorado delivery fee review — all locations
@@ -44,7 +44,7 @@ export function MandatoryChargeLocationReviewForm({overview,owner}:{
       <input name="globalRevision" type="hidden" value={overview.globalPolicyRevision??""}/>
       <input name="settingsUpdatedAt" type="hidden" value={overview.settingsUpdatedAt??""}/>
       {overview.locations.map((loc,i)=><fieldset key={loc.agreementId}
-        className="space-y-2 rounded border border-line p-3">
+        className="min-w-0 max-w-full space-y-2 rounded border border-line p-3">
         <legend className="px-1 font-medium">{loc.addressLabel}</legend>
         <input name="agreementId" type="hidden" value={loc.agreementId}/>
         <input name={"revision_"+i} type="hidden" value={loc.revision??""}/>
@@ -55,7 +55,7 @@ export function MandatoryChargeLocationReviewForm({overview,owner}:{
           <label className="grid gap-1">
             <span>{label} — global: {overview.globalDecisions[key]}</span>
             <select disabled={!available||pending||overview.globalDecisions[key]==="UNDECIDED"}
-              className="w-full rounded border border-line bg-surface p-2"
+              className="min-w-0 max-w-full rounded border border-line bg-surface p-2"
               name={key+"_"+i} defaultValue={loc.decisions[key]}>
               <option value="REQUIRED">Required for this property</option>
               <option value="NOT_APPLICABLE">Not applicable (reason if exception)</option>
@@ -66,7 +66,7 @@ export function MandatoryChargeLocationReviewForm({overview,owner}:{
             <textarea name={key+"_reason_"+i} rows={2} maxLength={500}
               defaultValue={loc.exceptionReasons[key]??""}
               disabled={!available||pending}
-              className="w-full rounded border border-line bg-surface p-2"/>
+              className="min-w-0 max-w-full rounded border border-line bg-surface p-2"/>
           </label>
         </div>)}
         <dl className="grid gap-2 sm:grid-cols-3">
@@ -84,7 +84,7 @@ export function MandatoryChargeLocationReviewForm({overview,owner}:{
         Colorado retail delivery fee: assign one reviewed qualifying event
         <select name="rdfAgreementId" disabled={!available||pending}
           defaultValue={overview.locations.find(row=>row.retailDeliveryEvent)?.agreementId??""}
-          className="w-full rounded border border-line bg-surface p-2">
+          className="min-w-0 max-w-full rounded border border-line bg-surface p-2">
           <option value="">No fee event (only when independently exempt)</option>
           {overview.locations.map(loc=><option key={loc.agreementId}
             value={loc.agreementId}>{loc.addressLabel}</option>)}
@@ -97,7 +97,7 @@ export function MandatoryChargeLocationReviewForm({overview,owner}:{
         Owner reason for reviewing all affected addresses
         <textarea name="reason" rows={2} minLength={12} maxLength={500}
           required disabled={!available||pending}
-          className="w-full rounded border border-line bg-surface p-2"/>
+          className="min-w-0 max-w-full rounded border border-line bg-surface p-2"/>
       </label>
       {available&&<button type="submit" disabled={pending}
         className="rounded bg-action px-4 py-2 font-medium text-on-action disabled:opacity-50">

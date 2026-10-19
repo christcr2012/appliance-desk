@@ -125,6 +125,50 @@ describe.skipIf(!enabled)("K-8 real sources and privacy in disposable PostgreSQL
    await prisma.journalEntry.delete({where:{id:reverse.id}});
   }
  });
+ it("does not count signed ACTIVE rentals before billing/delivery start",async()=>{
+  const addressId="k8-predeliver-address-"+tag,agreementId="k8-predeliver-"+tag;
+  await prisma.serviceAddress.create({data:{id:addressId,customerId:customer,
+   line1:"500 Incomplete Delivery",city:"Greeley",state:"CO",zip:"80631"}});
+  try{
+   await prisma.rentalAgreement.create({data:{
+    id:agreementId,customerId:customer,serviceAddressId:addressId,status:"ACTIVE",
+    startDate:day("2026-10-10"),billingStartedAt:null,endDate:day("2026-11-05"),
+   }});
+   const before=await customerHealth(owner,day("2026-10-19"));
+   await prisma.rentalAgreement.update({where:{id:agreementId},data:{billingStartedAt:day("2026-10-18")}});
+   const after=await customerHealth(owner,day("2026-10-19"));
+   expect(after.activeRentals).toBe(before.activeRentals+1);
+   expect(after.endingNext90Days).toBe(before.endingNext90Days+1);
+  }finally{
+   await prisma.rentalAgreement.deleteMany({where:{id:agreementId}});
+   await prisma.serviceAddress.deleteMany({where:{id:addressId}});
+  }
+ });
+ it("excludes future placed-in-service assets from historical year-end",async()=>{
+  const kind="k8-year-kind-"+tag;
+  const oldId="k8-year-asset-old-"+tag, futureId="k8-year-asset-future-"+tag;
+  await prisma.applianceType.create({data:{id:kind,name:"K8 historical year asset "+tag,slug:"k8-year-"+tag}});
+  try{
+   await prisma.appliance.createMany({data:[
+    {id:oldId,assetNumber:"K8-OLD-"+tag,applianceTypeId:kind,acquisitionCostCents:12000},
+    {id:futureId,assetNumber:"K8-FUTURE-"+tag,applianceTypeId:kind,acquisitionCostCents:12000},
+   ]});
+   await prisma.bookAsset.createMany({data:[
+    {applianceId:oldId,costCents:12000,placedInServiceOn:day("2026-02-01"),
+     lifeMonths:60,salvagePercent:0,createdByUserId:owner},
+    {applianceId:futureId,costCents:12000,placedInServiceOn:day("2027-02-01"),
+     lifeMonths:60,salvagePercent:0,createdByUserId:owner},
+   ]});
+   const historical=await yearEndPackage(owner,2026,"assets");
+   expect(historical.content).toContain("K8-OLD-"+tag);
+   expect(historical.content).not.toContain("K8-FUTURE-"+tag);
+  }finally{
+   await prisma.bookTaxEvidence.deleteMany({where:{applianceId:{in:[oldId,futureId]}}});
+   await prisma.bookAsset.deleteMany({where:{applianceId:{in:[oldId,futureId]}}});
+   await prisma.appliance.deleteMany({where:{id:{in:[oldId,futureId]}}});
+   await prisma.applianceType.deleteMany({where:{id:kind}});
+  }
+ });
  it("exports only filed tax period evidence, not draft open worksheet",async()=>{
   const before=await yearEndPackage(owner,2026,"tax-filed");
   expect(before.content).not.toContain("K8 tax account "+tag);
