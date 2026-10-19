@@ -1,8 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { businessDateFromKey,businessDateKey,addBusinessDays } from "@/lib/business-date";
-import { sumTax } from "@/domains/billing/tax";
+import { businessDateKey,addBusinessDays } from "@/lib/business-date";
+import { computeTax } from "@/domains/tax/engine";
+import { getAgreementTaxContext,loadRentalAcquisitionBasis,assertTaxReadyForAgreement } from "@/domains/tax/locations";
 import { isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { profitAndLoss } from "./reports";
 import { toCsv } from "@/lib/csv";
@@ -43,8 +44,8 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
   const [agreements,templates,taxPeriods]=await Promise.all([
    tx.rentalAgreement.findMany({where:{status:"ACTIVE",stripeSubscriptionId:{not:null},
     billingStartedAt:{not:null},nextBillingDate:{not:null}},
-    select:{id:true,nextBillingDate:true,endDate:true,taxRateMilliPercent:true,
-     lines:{select:{monthlyPriceCents:true}}},take:CAP+1}),
+    select:{id:true,nextBillingDate:true,endDate:true,
+     lines:{select:{id:true,monthlyPriceCents:true}}},take:CAP+1}),
    tx.recurringExpense.findMany({where:{active:true},select:{
     id:true,name:true,amountCents:true,dayOfMonth:true,
    },take:CAP+1}),
@@ -60,16 +61,31 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
    if(prices.some(n=>n<0)){needsReview.push("Agreement "+agreement.id+" has invalid price lines.");continue;}
    const base=prices.reduce(add,0);
    if(!base)continue;
-   let tax=0;
-   if(agreement.taxRateMilliPercent<0||agreement.taxRateMilliPercent>100000)
-    needsReview.push("Agreement "+agreement.id+" has an unverified sales-tax rate.");
-   else tax=sumTax(prices,agreement.taxRateMilliPercent);
    for(const instant of futureBillingDates(agreement.nextBillingDate,start,end)){
     if(agreement.endDate&&instant>agreement.endDate)continue;
+    let billedCents=base;
+    let confidence:"ESTIMATE"|"NEEDS_REVIEW"="ESTIMATE";
+    let label="Future subscription invoice including current jurisdiction engine estimate, not collected";
+    try {
+     await assertTaxReadyForAgreement(tx,agreement.id,instant);
+     const context=await getAgreementTaxContext(tx,agreement.id,instant);
+     if(!context.jurisdictions.length)throw new BooksClosingError("Jurisdictions not yet verified");
+     const lineInput=agreement.lines.map(line=>({key:line.id,kind:"RENTAL" as const,
+      amountCents:line.monthlyPriceCents,rentalLineId:line.id}));
+     const basis=await loadRentalAcquisitionBasis(tx,agreement.id,instant,lineInput);
+     const evaluated=computeTax({...context,lines:lineInput.map(line=>({
+      ...line,acquisitionBasis:basis.get(line.key),
+     }))});
+     if(!evaluated.ok)throw new BooksClosingError("Rental tax settings need accountant review");
+     billedCents=add(base,evaluated.totalTaxCents);
+    } catch {
+     confidence="NEEDS_REVIEW";
+     label="Future base invoice only — jurisdiction tax unavailable";
+     needsReview.push("Agreement "+agreement.id+" billing "+businessDateKey(instant)+
+      " has unverified future tax; shown base rent is not a complete invoice amount.");
+    }
     rows.push({date:businessDateKey(instant),kind:"BILLING_ESTIMATE",
-     amountCents:add(base,tax),sourceId:agreement.id,
-     label:"Future subscription invoice estimate (signed rate snapshot, not collected)",
-     confidence:"ESTIMATE"});
+     amountCents:billedCents,sourceId:agreement.id,label,confidence});
    }
   }
   const expenseIds=templates.map(t=>t.id);
@@ -117,8 +133,8 @@ export async function customerHealth(userId:string,asOf=new Date()){
    tx.refund.findMany({where:{createdAt:{lte:asOf}},
     select:{invoice:{select:{customerId:true}},amountCents:true},take:CAP+1}),
   ]);
-  for(const [name,rows] of [["agreements",agreements],["leads",leads],["payments",payments],["refunds"]] as const)
-   within(rows.length,name);
+  within(agreements.length,"agreements");within(leads.length,"leads");
+  within(payments.length,"payments");within(refunds.length,"refunds");
   const source=new Map<string,string>();
   for(const lead of leads)if(lead.convertedCustomerId&&!source.has(lead.convertedCustomerId))
    source.set(lead.convertedCustomerId,lead.howHeard?.trim()||"Unknown");
@@ -173,7 +189,7 @@ export async function yearEndPackage(userId:string,year:number,requestedFile:Yea
    let first=month+"-01";
    if(first>today)break;
    const endOfMonth=new Date(Date.UTC(year,m,0)).toISOString().slice(0,10);
-   let last=endOfMonth<=today?endOfMonth:today;
+   const last=endOfMonth<=today?endOfMonth:today;
    if(date(first)<settings.booksStartDate)first=businessDateKey(settings.booksStartDate);
    if(first>last)continue;
    const accrued=await profitAndLoss(userId,{from:first,to:last,basis:"ACCRUAL"});
@@ -193,9 +209,10 @@ export async function yearEndPackage(userId:string,year:number,requestedFile:Yea
  return prisma.$transaction(async tx=>{
   await scoped(tx,userId);
   if(requestedFile==="assets"){
-   const assets=await tx.bookAsset.findMany({include:{
+   const assets=await tx.bookAsset.findMany({where:{placedInServiceOn:{lt:endDate}},include:{
     appliance:{select:{assetNumber:true}},
-    taxEvidence:{orderBy:{createdAt:"desc"},take:1,select:{classification:true,confidence:true}},
+    taxEvidence:{where:{createdAt:{lt:endDate}},orderBy:{createdAt:"desc"},take:1,
+     select:{classification:true,confidence:true}},
    },orderBy:{applianceId:"asc"},take:CAP+1});
    within(assets.length,"assets");
    const depreciation=await tx.journalEntry.findMany({where:{sourceType:"APPLIANCE",
@@ -268,9 +285,13 @@ export async function yearEndPackage(userId:string,year:number,requestedFile:Yea
   for(const journal of source){
    const e=byId.get(journal.sourceId);
    if(!e?.supplierId||!marked.has(e.supplierId))continue;
-   if(journal.eventKind!=="EXPENSE_POSTED")continue;
    if(!paymentSource.has(e.paidFromAccountId)){unsupported.add(e.supplierId);continue;}
-   totals.set(e.supplierId,add(totals.get(e.supplierId)??0,num(e.amountCents)));
+   // Only immutable cash-source journal credits are vendor payments.
+   // A later EXPENSE_VOIDED reversing debit offsets the candidate amount.
+   const paid=journal.lines.filter(l=>l.ledgerAccountId===e.paidFromAccountId)
+    .reduce((n,l)=>add(n,l.creditCents-l.debitCents),0);
+   if(!paid){unsupported.add(e.supplierId);continue;}
+   totals.set(e.supplierId,add(totals.get(e.supplierId)??0,paid));
   }
   const threshold=num(settings.vendor1099ThresholdCents);
   return moneyCsv("books-"+year+"-1099-review.csv",col(

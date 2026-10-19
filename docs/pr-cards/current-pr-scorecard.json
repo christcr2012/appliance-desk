@@ -29,6 +29,7 @@
     "Frozen entire original nine-line plan in docs-only commit 80ccd16112986b32eec386dba5a32bed58727e80 before source.",
     "K-7 PR #503 merged exact-head green as 82862d13e5be402b56807d680487adfa35e88cf0; Codex review unavailable at usage limit, documented self-review.",
     "K-8 source, routes and pure/real-DB/browser regression files authored, not yet witnessed running.",
-    "No LIVE charges, provider requests, tax filings, customer communications, production writes or spending."
+    "No LIVE charges, provider requests, tax filings, customer communications, production writes or spending.",
+    "PR #504 initial a4a0598: type/lint failed tuple nullable and const rules; unit shard 1 had one same-code CustomerHealth runtime exception; browser builds blocked on type. Corrected with explicit guard and no test weakening, plus self-reviewed jurisdiction tax source, supplier reversal and historical asset cutoff. Exact-head CI/review pending."
   ]
 }

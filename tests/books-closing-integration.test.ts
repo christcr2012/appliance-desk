@@ -105,6 +105,26 @@ describe.skipIf(!enabled)("K-8 real sources and privacy in disposable PostgreSQL
   expect(vendor.content).toContain("CANDIDATE — CPA REVIEW");
   expect(vendor.content).toContain("200000");
  });
+ it("nets a later source-journal reversal out of actual supplier candidate spending",async()=>{
+  const reverse=await prisma.journalEntry.create({data:{
+   sourceType:"EXPENSE",sourceId:expense,eventKind:"EXPENSE_VOIDED",
+   entryDate:day("2026-10-16"),periodKey:"2026-10",
+   memo:"Synthetic repayment/correction of supplier payment",
+   lines:{create:[
+    {ledgerAccountId:bank,debitCents:250000},
+    {ledgerAccountId:account,creditCents:250000},
+   ]},
+  }});
+  try{
+   const report=await yearEndPackage(owner,2026,"suppliers");
+   expect(report.content).toContain("K8 supplier "+tag);
+   expect(report.content).toContain("BELOW THRESHOLD — CPA REVIEW");
+   expect(report.content).not.toContain("CANDIDATE — CPA REVIEW");
+  } finally {
+   await prisma.journalLine.deleteMany({where:{entryId:reverse.id}});
+   await prisma.journalEntry.delete({where:{id:reverse.id}});
+  }
+ });
  it("exports only filed tax period evidence, not draft open worksheet",async()=>{
   const before=await yearEndPackage(owner,2026,"tax-filed");
   expect(before.content).not.toContain("K8 tax account "+tag);

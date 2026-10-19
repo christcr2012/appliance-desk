@@ -38,7 +38,7 @@ export function recurringDates(day:number,fromKey:string,throughKey:string){
  calendarKey(fromKey);calendarKey(throughKey);
  if(fromKey>throughKey)throw new BooksClosingError("Reversed recurring range.");
  const result:string[]=[];
- let month=fromKey.slice(0,7),end=throughKey.slice(0,7);
+ let month=fromKey.slice(0,7);const end=throughKey.slice(0,7);
  while(month<=end&&result.length<24){
   const due=monthDay(month,day);
   if(due>=fromKey&&due<=throughKey)result.push(due);
