@@ -261,16 +261,63 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
  it("releases and undoes only funded positive balances, without inventing a bank transaction",async()=>{
   const snap=await getBudgetSnapshot(owner,date);
   const key=ownerId("release");
+  const beforeBalance=snap.envelopes.find(x=>x.id===account)!.balanceCents;
   await applyBudgetMoves(owner,{asOf:date,expectedRevision:snap.stateRevision,
    sourceHash:snap.sourceHash,commandKey:key,reason:"Owner adjusts repair funding after review",
    moves:[{envelopeId:account,kind:"RELEASE",signedCents:-1000}]});
   const release=await prisma.budgetMove.findFirstOrThrow({where:{commandKey:key}});
   const current=await getBudgetSnapshot(owner,date);
-  expect(current.envelopes.find(x=>x.id===account)?.balanceCents).toBe(14000);
+  expect(current.envelopes.find(x=>x.id===account)?.balanceCents).toBe(beforeBalance-1000);
   await undoBudgetMove(owner,{moveId:release.id,expectedRevision:current.stateRevision,
    sourceHash:current.sourceHash,asOf:date,reason:"Source-verified reversal of owner release"});
   const restored=await getBudgetSnapshot(owner,date);
-  expect(restored.envelopes.find(x=>x.id===account)?.balanceCents).toBe(15000);
+  expect(restored.envelopes.find(x=>x.id===account)?.balanceCents).toBe(beforeBalance);
   expect(await prisma.budgetMove.count({where:{reversalOfId:release.id}})).toBe(1);
+ });
+ it("moves exactly two legs in one atomic transaction, retaining the original funding pool",async()=>{
+  const snap=await getBudgetSnapshot(owner,date);
+  const destination="budget-default-operating",source=snap.envelopes.find(x=>x.id===account)!;
+  const startingDest=snap.envelopes.find(x=>x.id===destination)!.balanceCents;
+  const originalBacked=snap.discretionaryBackedCents;
+  const command={asOf:date,expectedRevision:snap.stateRevision,sourceHash:snap.sourceHash,
+   commandKey:ownerId("transfer"),reason:"Synthetic owner review moving repair allocation",
+   moves:[{envelopeId:account,kind:"RELEASE" as const,signedCents:-1200},
+    {envelopeId:destination,kind:"ASSIGN" as const,signedCents:1200}]};
+  const result=await applyBudgetMoves(owner,command);
+  expect(await applyBudgetMoves(owner,command)).toBe(result);
+  const after=await getBudgetSnapshot(owner,date);
+  expect(after.envelopes.find(x=>x.id===account)?.balanceCents).toBe(source.balanceCents-1200);
+  expect(after.envelopes.find(x=>x.id===destination)?.balanceCents).toBe(startingDest+1200);
+  expect(after.discretionaryBackedCents).toBe(originalBacked);
+  expect(await prisma.budgetMove.count({where:{commandKey:command.commandKey}})).toBe(2);
+  await expect(applyBudgetMoves(owner,{...command,
+   commandKey:ownerId("transfer-overdraw"),
+   expectedRevision:after.stateRevision,sourceHash:after.sourceHash,
+   moves:[{envelopeId:account,kind:"RELEASE",signedCents:-30000},
+    {envelopeId:destination,kind:"ASSIGN",signedCents:30000}]}))
+    .rejects.toThrow(/release more/);
+ });
+ it("protects card liability before remaining discretionary cash and rejects stale source revisions",async()=>{
+  const card=await prisma.ledgerAccount.findUniqueOrThrow({where:{systemRole:"CARD"}});
+  const expense=await prisma.ledgerAccount.findFirstOrThrow({where:{type:"EXPENSE",active:true}});
+  const stale=await getBudgetSnapshot(owner,date);
+  const expenseCharge=await prisma.journalEntry.create({data:{
+   sourceType:"OPENING",sourceId:ownerId("synthetic-card-charge"),
+   eventKind:"OPENING_BALANCE",entryDate:day,periodKey:date.slice(0,7),
+   memo:"Synthetic unpaid business-card expense, not a bank debit",
+   lines:{create:[{ledgerAccountId:expense.id,debitCents:9800},
+    {ledgerAccountId:card.id,creditCents:9800}]}},include:{lines:true}});
+  additionalEntries.push(expenseCharge.id);
+  const snapshot=await getBudgetSnapshot(owner,date);
+  expect(snapshot.protectedLiabilities.some(x=>
+   x.sourceRole==="CARD"&&x.requiredCents>=9800)).toBe(true);
+  expect(snapshot.readyCents).toBeLessThan(stale.readyCents!);
+  expect(snapshot.mayAssign).toBe(false);
+  await expect(applyBudgetMoves(owner,{
+   asOf:date,expectedRevision:stale.stateRevision,sourceHash:stale.sourceHash,
+   commandKey:ownerId("stale-after-card-charge"),
+   reason:"Reject stale protected card debt before funding",
+   moves:[{envelopeId:account,kind:"ASSIGN",signedCents:200}]}))
+   .rejects.toThrow(/changed|preview/i);
  });
 });
