@@ -5,9 +5,9 @@ import { businessDateKey } from "@/lib/business-date";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { getBudgetSnapshot } from "@/domains/budget/protected";
 import { getBudgetWindows } from "@/domains/budget/envelopes";
-import { getPostedBankSpendingDesk } from "@/domains/budget/spending";
+import { getPostedBankSpendingDesk,getSupplierRefundDesk } from "@/domains/budget/spending";
 import { attestBudgetAction,activateBudgetAction,budgetMoveAction,assignSpendingAction,reverseSpendingAction,
- editEnvelopeAction,configureWindowsAction,transferBudgetAction } from "./actions";
+ editEnvelopeAction,configureWindowsAction,transferBudgetAction,applyRefundAction } from "./actions";
 export const metadata={title:"Budget backing — Books"};
 const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
 const btn="rounded border border-border bg-card px-3 py-2 font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -16,8 +16,8 @@ export default async function BudgetBackingPage({searchParams}:{
  searchParams:Promise<{notice?:string}>}){
  const actor=await requireRole("OWNER","ADMIN"),owner=actor.user.role==="OWNER";
  const asOf=businessDateKey(new Date());
- const [snap,spending,windows]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
-   getPostedBankSpendingDesk(actor.user.id),getBudgetWindows(actor.user.id)]);
+ const [snap,spending,windows,refunds]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
+   getPostedBankSpendingDesk(actor.user.id),getBudgetWindows(actor.user.id),getSupplierRefundDesk(actor.user.id)]);
  const notice=(await searchParams).notice?.slice(0,240);
  return <div className="space-y-6">
   <header className="space-y-2">
@@ -110,6 +110,23 @@ export default async function BudgetBackingPage({searchParams}:{
      <button className={btn}>Reverse classification with audit history</button>
     </form>}
    </article>)}
+  </section>
+  <section className="rounded-lg border border-border p-4 space-y-3">
+   <h2 className="text-lg font-semibold">Cleared supplier refunds — return original envelope funding</h2>
+   <p>Only real matched business-bank receipts credited against an expense may restore the exact original expense envelope. Customer refunds, card payments and un-cleared receipts are excluded.</p>
+   {owner&&refunds.clearedRefunds.length>0&&refunds.originals.length>0?
+   <form action={applyRefundAction} className="grid gap-2 sm:grid-cols-2">
+    <input type="hidden" name="revision" value={snap.stateRevision}/><input type="hidden" name="key" value={randomUUID()}/>
+    <label>Cleared supplier bank receipt<select name="refundLineId" className={input}>
+     {refunds.clearedRefunds.map(r=><option key={r.id} value={r.id}>{r.reference} · {formatMoney(r.amountCents)}</option>)}
+    </select></label>
+    <label>Original classified expense<select name="originalSpendId" className={input}>
+     {refunds.originals.map(r=><option key={r.id} value={r.id}>{r.envelope} · up to {formatMoney(r.remainingCents)} · {r.id}</option>)}
+    </select></label>
+    <label>Refund to restore ($)<input className={input} name="amount" inputMode="decimal" required/></label>
+    <label>Independent source and correction reason<input name="reason" className={input} minLength={12} maxLength={300} required/></label>
+    <button className={btn}>Return cleared refund to original envelope (no bank transfer)</button>
+   </form>:<p>No independently cleared, eligible supplier refund and original expense pair is available.</p>}
   </section>
   {owner&&<section className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Transfer already-funded cash between envelopes</h2>

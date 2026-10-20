@@ -7,7 +7,7 @@ import { parseDollarInput } from "@/lib/money-ui";
 import { attestBudgetSources,setBudgetActivation } from "@/domains/budget/protected";
 import { applyBudgetMoves,undoBudgetMove } from "@/domains/budget/moves";
 import { configureBudgetEnvelope,configureBudgetWindows } from "@/domains/budget/envelopes";
-import { assignPostedBankSpending,reversePostedBankSpending } from "@/domains/budget/spending";
+import { assignPostedBankSpending,reversePostedBankSpending,returnClearedSupplierRefund } from "@/domains/budget/spending";
 const str=(f:FormData,k:string)=>String(f.get(k)??"").trim();
 const done=(message:string):never=>{
  revalidatePath("/desk/books/budget");
@@ -91,4 +91,13 @@ export async function transferBudgetAction(f:FormData){
    moves:[{envelopeId:from,kind:"RELEASE",signedCents:-amount},
     {envelopeId:to,kind:"ASSIGN",signedCents:amount}]});
  });
+}
+
+export async function applyRefundAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Cleared original supplier refund",()=>returnClearedSupplierRefund(s.user.id,{
+  refundBankJournalLineId:str(f,"refundLineId"),originalSpendMoveId:str(f,"originalSpendId"),
+  amountCents:parseDollarInput(str(f,"amount"),2_000_000_000),
+  expectedRevision:str(f,"revision"),commandKey:str(f,"key")||randomUUID(),
+  reason:str(f,"reason")}));
 }
