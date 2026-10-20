@@ -141,5 +141,51 @@ describe.skipIf(!enabled)("K-CASH-3 disposable Postgres match and statement proo
   await expect(completeBankReconciliation(owner,first,2)).rejects.toThrow(/replaced/);
   const proof=await completeBankReconciliation(owner,reopened,1);
   expect(proof.sourceHash).toMatch(/^[a-f0-9]{64}$/);
+  expect(proof.firstStatement).toMatchObject({sourceReference:"Synthetic checked source"});
+ });
+ it("rejects cross-account book lines, protects unmatched debits and proves negative signed bank clearance",async()=>{
+  const equity=await prisma.ledgerAccount.findUniqueOrThrow({where:{systemRole:"OWNER_CONTRIBUTIONS"}});
+  const nextImport=await prisma.bankImport.create({data:{cashAccountId:cash,
+   sha256:"c".repeat(64),mappingHash:"d".repeat(64),mapping:{schemaVersion:1},
+   rowCount:2,importedByUserId:owner}});
+  const debit=await prisma.bankObservation.create({data:{cashAccountId:cash,importId:nextImport.id,
+   rowNumber:1,postedOn:day("2026-10-18"),signedCents:-40,
+   description:"Verified synthetic outflow",fingerprint:"e".repeat(64),occurrenceIndex:1}});
+  const possibleDuplicate=await prisma.bankObservation.create({data:{cashAccountId:cash,importId:nextImport.id,
+   rowNumber:2,postedOn:day("2026-10-18"),signedCents:10,
+   description:"Verified imported duplicate",fingerprint:"f".repeat(64),occurrenceIndex:1}});
+  const sourceId=cmd("late-outflow");sourceIds.push(sourceId);
+  const book=await prisma.journalEntry.create({data:{
+   sourceType:"OPENING",sourceId,eventKind:"OPENING_BALANCE",entryDate:day("2026-10-18"),
+   periodKey:"2026-10",memo:"Synthetic post-statement bank debit",
+   lines:{create:[
+    {ledgerAccountId:ledger,creditCents:40},
+    {ledgerAccountId:equity.id,debitCents:40}
+   ]}},include:{lines:true}});
+  const bankLine=book.lines.find(x=>x.ledgerAccountId===ledger)!.id;
+  const equityLine=book.lines.find(x=>x.ledgerAccountId===equity.id)!.id;
+  await expect(confirmBankMatch(owner,{accountId:cash,commandKey:cmd("cross-ledger"),
+   observationIds:[debit.id],journalLineIds:[equityLine]}))
+   .rejects.toThrow(/stale|claimed/);
+  const unmatched=await getCashReadiness(owner,"2026-10-18");
+  const before=unmatched.banks.find(x=>x.id===cash)!;
+  expect(before.unmatchedCount).toBe(2);
+  expect(before.status).toBe("UNKNOWN");
+  expect(before.eligibleCents).toBe(360);
+  const negativeGroup=await confirmBankMatch(admin,{accountId:cash,
+   commandKey:cmd("negative-clear"),observationIds:[debit.id],journalLineIds:[bankLine]});
+  expect(await prisma.bankMatchItem.count({where:{groupId:negativeGroup,active:true}})).toBe(2);
+  await expect(ignoreBankObservation(admin,possibleDuplicate.id,1,"DUPLICATE","Independently identified duplicate row"))
+   .rejects.toThrow(/access/);
+  await ignoreBankObservation(owner,possibleDuplicate.id,1,"DUPLICATE",
+   "Duplicate verified from independent statement transaction identifier");
+  expect((await prisma.bankObservation.findUniqueOrThrow({where:{id:possibleDuplicate.id}})).status)
+   .toBe("IGNORED");
+  const ready=await getCashReadiness(owner,"2026-10-18");
+  const bank=ready.banks.find(x=>x.id===cash)!;
+  expect(bank).toMatchObject({endingCents:400,bookOutflowsCents:40,
+   clearedLaterInflowsCents:0,eligibleCents:360,
+   bookDifferenceCents:0,unmatchedCount:0});
+  expect(ready.mayFund).toBe(false);
  });
 });

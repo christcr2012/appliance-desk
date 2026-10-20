@@ -196,11 +196,19 @@ export async function reopenBankReconciliation(userId:string,id:string,expectedV
   if(await tx.bankReconciliation.count({where:{cashAccountId:prior.cashAccountId,
     isCurrent:true,status:"COMPLETED",fromOn:{gt:prior.fromOn}}}))
    throw new CashEvidenceError("Reopen later statements in reverse chronological order first.");
+  const priorSnapshot=prior.includedEvidence&&typeof prior.includedEvidence==="object"&&!Array.isArray(prior.includedEvidence)
+   ?prior.includedEvidence as Record<string,unknown>:null;
+  // Preserve first-statement attestation in every revision. Never erase the
+  // original completed proof or present its old SHA as the new draft's proof.
+  const carryForward=priorSnapshot?.firstStatement
+   ?{stage:"REOPENED",firstStatement:priorSnapshot.firstStatement}
+   :{stage:"REOPENED"};
   await tx.bankReconciliation.update({where:{id},data:{isCurrent:false}});
   const next=await tx.bankReconciliation.create({data:{
    cashAccountId:prior.cashAccountId,fromOn:prior.fromOn,toOn:prior.toOn,
    beginningCents:prior.beginningCents,endingCents:prior.endingCents,
    status:"REOPENED",revisionNo:prior.revisionNo+1,priorCompletedId:id,
+   includedEvidence:carryForward as Prisma.InputJsonValue,
    reopenReason:why}});
   await tx.auditLog.create({data:{userId,action:"books.bank.statement.reopen",
    entityType:"BankReconciliation",entityId:next.id,newValue:{
