@@ -14,6 +14,7 @@ ALTER TABLE "BusinessSettings" ADD CONSTRAINT "CashBudget_settings_range" CHECK 
 );
 
 CREATE TABLE "BudgetState" (
+ "readinessAttestation" JSONB,
  "id" TEXT NOT NULL DEFAULT 'singleton', "revision" BIGINT NOT NULL DEFAULT 1,
  "startOn" TIMESTAMP(3), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

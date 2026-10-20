@@ -4614,6 +4614,7 @@ model ExportBatchEntry {
 // K-CASH-4A: zero-money budget state; every funding mutation locks this singleton
 // before BooksPostingRevision, bank account, and sorted envelope/source rows.
 model BudgetState {
+  readinessAttestation Json?
   id String @id @default("singleton")
   revision BigInt @default(1)
   startOn DateTime?
