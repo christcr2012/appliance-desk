@@ -199,6 +199,11 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   expect(await prisma.budgetMove.count({where:{sourceType:"JOURNAL_LINE",sourceId:spendLine.id,kind:"REVERSAL"}})).toBe(1);
   expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id,active:true}})).toBe(0);
   expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id}})).toBe(1);
+  const oldSplit=await prisma.budgetSpendSplit.findFirstOrThrow({where:{journalLineId:spendLine.id}});
+  expect(oldSplit).toMatchObject({active:false});
+  expect(oldSplit.reversedReason).toMatch(/Correction/);
+  await expect(prisma.budgetSpendSplit.delete({where:{id:oldSplit.id}}))
+   .rejects.toThrow(/immutable/);
   const reversed=await getBudgetSnapshot(owner,date);
   expect(reversed.envelopes.find(x=>x.id===account)?.balanceCents).toBe(15000);
   expect(reversed.unassignedCount).toBeGreaterThan(0);

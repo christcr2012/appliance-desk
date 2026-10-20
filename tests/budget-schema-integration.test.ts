@@ -67,6 +67,10 @@ describe.skipIf(!enabled)("K-CASH-4A additive populated Postgres budget schema a
     sourceType:"EXPENSE",sourceId:"synthetic-expense-"+id,amountCents:1200,
     commandKey:"budget-undo-"+id,payloadHash:"2".repeat(64),reversalOfId:settled.id}});
    expect(reverse.reversalOfId).toBe(settled.id);
+   await expect(prisma.budgetCostSettlement.update({where:{id:settled.id},
+    data:{amountCents:500}})).rejects.toThrow(/immutable/);
+   await expect(prisma.budgetCostSettlement.delete({where:{id:settled.id}}))
+    .rejects.toThrow(/immutable/);
    await expect(prisma.budgetCostSettlement.create({data:{occurrenceId:occ.id,
     sourceType:"EXPENSE",sourceId:"synthetic-expense-"+id,amountCents:1200,
     commandKey:"budget-duplicate-"+id,payloadHash:"3".repeat(64)}})).rejects.toThrow();
@@ -79,6 +83,7 @@ describe.skipIf(!enabled)("K-CASH-4A additive populated Postgres budget schema a
   }finally{
    await prisma.$transaction(async tx=>{
     await tx.$executeRawUnsafe("SELECT set_config('app.synthetic_budget_cleanup','yes',true)");
+    await tx.budgetCostSettlement.deleteMany({where:{occurrence:{planId},reversalOfId:{not:null}}});
     await tx.budgetCostSettlement.deleteMany({where:{occurrence:{planId}}});
    });
    await prisma.budgetCostOccurrence.deleteMany({where:{planId}});
@@ -108,12 +113,17 @@ describe.skipIf(!enabled)("K-CASH-4A additive populated Postgres budget schema a
     sourceType:"BUDGET",sourceId:release.id,eventKind:"RELEASE_UNDO",
     reversalOfId:release.id}});
    expect(undo.reversalOfId).toBe(release.id);
+   await expect(prisma.budgetMove.update({where:{id:release.id},
+     data:{signedCents:-200}})).rejects.toThrow(/immutable/);
+   await expect(prisma.budgetMove.delete({where:{id:release.id}}))
+    .rejects.toThrow(/immutable/);
    await expect(prisma.budgetMove.create({data:{...base,
     commandKey:"foreign-"+id,envelopeId:"missing-budget-envelope",
     signedCents:1,kind:"ASSIGN"}})).rejects.toThrow();
   }finally{
    await prisma.$transaction(async tx=>{
     await tx.$executeRawUnsafe("SELECT set_config('app.synthetic_budget_cleanup','yes',true)");
+    await tx.budgetMove.deleteMany({where:{envelopeId,reversalOfId:{not:null}}});
     await tx.budgetMove.deleteMany({where:{envelopeId}});
    });
    await prisma.budgetEnvelope.delete({where:{id:envelopeId}});
