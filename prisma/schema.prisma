@@ -4645,6 +4645,7 @@ model BudgetMove {
   id String @id @default(cuid())
   commandKey String
   payloadHash String
+  resultRevision BigInt?
   envelopeId String
   envelope BudgetEnvelope @relation(fields:[envelopeId],references:[id],onDelete:Restrict)
   signedCents Int

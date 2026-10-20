@@ -45,7 +45,7 @@ INSERT INTO "BudgetEnvelope" ("id","name","sortOrder") VALUES
  ('budget-default-emergency','Emergency cushion',6);
 
 CREATE TABLE "BudgetMove" (
- "id" TEXT NOT NULL, "commandKey" TEXT NOT NULL, "payloadHash" TEXT NOT NULL,
+ "id" TEXT NOT NULL, "commandKey" TEXT NOT NULL, "payloadHash" TEXT NOT NULL, "resultRevision" BIGINT,
  "envelopeId" TEXT NOT NULL, "signedCents" INTEGER NOT NULL, "kind" TEXT NOT NULL,
  "sourceType" TEXT, "sourceId" TEXT, "eventKind" TEXT, "reason" TEXT NOT NULL,
  "actorId" TEXT, "reversalOfId" TEXT,
