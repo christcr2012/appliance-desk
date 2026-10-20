@@ -38,7 +38,7 @@ export async function assignPostedBankSpending(userId:string,input:{
    tx.budgetState.findUniqueOrThrow({where:{id:"singleton"}}),
    tx.journalLine.findUnique({where:{id:input.journalLineId},include:{
     entry:{include:{lines:{include:{ledgerAccount:true}}}},
-    ledgerAccount:true,budgetSpendSplits:true}}),
+    ledgerAccount:true,budgetSpendSplits:{where:{active:true}}}}),
    tx.budgetMove.findMany({where:{commandKey:input.commandKey}})]);
   if(existing.length){
    if(existing.length!==splits.length||existing.some(x=>x.payloadHash!==proofHash||
@@ -103,7 +103,7 @@ export async function reversePostedBankSpending(userId:string,input:{
   if(state.revision.toString()!==input.expectedRevision)
    throw new BudgetEvidenceError("Budget changed since this correction was reviewed.");
   const source=await tx.journalLine.findUnique({where:{id:input.journalLineId},
-   include:{budgetSpendSplits:true}});
+   include:{budgetSpendSplits:{where:{active:true}}}});
   if(!source?.budgetSpendSplits.length)
    throw new BudgetEvidenceError("No spending classification exists for this source.");
   const originals=await tx.budgetMove.findMany({where:{
@@ -125,7 +125,8 @@ export async function reversePostedBankSpending(userId:string,input:{
     reason,actorId:userId}});
   // Existing split rows are the mutable current version. The original signed
   // postings and source/amount live permanently in immutable BudgetMove/AuditLog.
-  await tx.budgetSpendSplit.deleteMany({where:{journalLineId:source.id}});
+  await tx.budgetSpendSplit.updateMany({where:{journalLineId:source.id,active:true},
+   data:{active:false,reversedAt:new Date(),reversedReason:reason}});
   await tx.budgetState.update({where:{id:"singleton"},data:{revision:{increment:1}}});
   await tx.auditLog.create({data:{userId,action:"budget.source.spending.correct",
    entityType:"JournalLine",entityId:source.id,
@@ -148,7 +149,7 @@ export async function getPostedBankSpendingDesk(userId:string){
    ledgerAccountId:{in:accounts.map(x=>x.ledgerAccountId)},creditCents:{gt:0}},
    include:{
     entry:{include:{lines:{include:{ledgerAccount:{select:{type:true,systemRole:true}}}}}},
-    budgetSpendSplits:{include:{envelope:{select:{name:true}}}},
+    budgetSpendSplits:{where:{active:true},include:{envelope:{select:{name:true}}}},
    },
    orderBy:{entry:{entryDate:"desc"}},take:200});
   return rows.filter(line=>line.entry.lines.some(x=>x.id!==line.id&&x.debitCents>0&&

@@ -86,7 +86,7 @@ export async function budgetSnapshotInTx(tx:Tx,asOf:string){
  const bankOutflows=state.startOn?await tx.journalLine.findMany({where:{
   ledgerAccountId:{in:sourceLedgers.map(x=>x.ledgerAccountId)},
   creditCents:{gt:0},entry:{entryDate:{gte:state.startOn,lte:at}}},
-  include:{budgetSpendSplits:true,entry:{include:{
+  include:{budgetSpendSplits:{where:{active:true}},entry:{include:{
    lines:{include:{ledgerAccount:{select:{type:true,systemRole:true}}}}}}},
   take:10001}):[];
  if(bankOutflows.length>10000)reasons.push("Too many bank outflows to confirm spending classifications.");

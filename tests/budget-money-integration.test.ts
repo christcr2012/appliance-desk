@@ -66,9 +66,12 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   account=(await prisma.budgetEnvelope.findFirstOrThrow({where:{id:"budget-default-repairs"}})).id;
  });
  afterAll(async()=>{
-  await prisma.budgetMove.deleteMany({where:{actorId:owner,reversalOfId:{not:null}}});
-  await prisma.budgetMove.deleteMany({where:{OR:[{actorId:owner},{commandKey:{startsWith:cmd}}]}});
-  await prisma.budgetSpendSplit.deleteMany({where:{journalLineId:{in:lineIds}}});
+  await prisma.$transaction(async tx=>{
+   await tx.$executeRawUnsafe("SELECT set_config('app.synthetic_budget_cleanup','yes',true)");
+   await tx.budgetMove.deleteMany({where:{actorId:owner,reversalOfId:{not:null}}});
+   await tx.budgetMove.deleteMany({where:{OR:[{actorId:owner},{commandKey:{startsWith:cmd}}]}});
+   await tx.budgetSpendSplit.deleteMany({where:{journalLineId:{in:lineIds}}});
+  });
   await prisma.budgetState.update({where:{id:"singleton"},data:{
    revision:oldState?.revision??BigInt(1),startOn:oldState?.startOn??null,
    readinessAttestation:oldState?.readinessAttestation==null?
@@ -185,7 +188,7 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   expect(await assignPostedBankSpending(owner,item)).toBe(result);
   await expect(assignPostedBankSpending(owner,{...item,commandKey:ownerId("double-spend")}))
    .rejects.toThrow(/already classified/);
-  expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id}})).toBe(1);
+  expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id,active:true}})).toBe(1);
   expect(await prisma.budgetMove.count({where:{sourceType:"JOURNAL_LINE",sourceId:spendLine.id,kind:"SPEND"}})).toBe(1);
   const corrected=await getBudgetSnapshot(owner,date);
   expect(corrected.unassignedCount).toBe(0);
@@ -194,7 +197,8 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
    reason:"Correction: original source assigned wrong cost envelope",expectedRevision:corrected.stateRevision,
    commandKey:ownerId("reverse-spend")});
   expect(await prisma.budgetMove.count({where:{sourceType:"JOURNAL_LINE",sourceId:spendLine.id,kind:"REVERSAL"}})).toBe(1);
-  expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id}})).toBe(0);
+  expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id,active:true}})).toBe(0);
+  expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id}})).toBe(1);
   const reversed=await getBudgetSnapshot(owner,date);
   expect(reversed.envelopes.find(x=>x.id===account)?.balanceCents).toBe(15000);
   expect(reversed.unassignedCount).toBeGreaterThan(0);

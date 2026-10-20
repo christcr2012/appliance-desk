@@ -4668,6 +4668,9 @@ model BudgetMove {
 }
 
 model BudgetSpendSplit {
+  active Boolean @default(true)
+  reversedAt DateTime?
+  reversedReason String?
   id String @id @default(cuid())
   journalLineId String
   journalLine JournalLine @relation(fields:[journalLineId],references:[id],onDelete:Restrict)
@@ -4676,7 +4679,7 @@ model BudgetSpendSplit {
   amountCents Int
   version Int @default(1)
 
-  @@unique([journalLineId,envelopeId])
+  @@index([journalLineId,envelopeId])
   @@index([envelopeId])
 }
 

@@ -77,7 +77,10 @@ describe.skipIf(!enabled)("K-CASH-4A additive populated Postgres budget schema a
    expect(target.amountCents).toBe(100000);
    expect(await prisma.budgetCostSettlement.count({where:{occurrenceId:occ.id}})).toBe(2);
   }finally{
-   await prisma.budgetCostSettlement.deleteMany({where:{occurrence:{planId}}});
+   await prisma.$transaction(async tx=>{
+    await tx.$executeRawUnsafe("SELECT set_config('app.synthetic_budget_cleanup','yes',true)");
+    await tx.budgetCostSettlement.deleteMany({where:{occurrence:{planId}}});
+   });
    await prisma.budgetCostOccurrence.deleteMany({where:{planId}});
    await prisma.budgetCostPlan.deleteMany({where:{id:planId}});
    await prisma.budgetTarget.deleteMany({where:{envelopeId}});
@@ -109,7 +112,10 @@ describe.skipIf(!enabled)("K-CASH-4A additive populated Postgres budget schema a
     commandKey:"foreign-"+id,envelopeId:"missing-budget-envelope",
     signedCents:1,kind:"ASSIGN"}})).rejects.toThrow();
   }finally{
-   await prisma.budgetMove.deleteMany({where:{envelopeId}});
+   await prisma.$transaction(async tx=>{
+    await tx.$executeRawUnsafe("SELECT set_config('app.synthetic_budget_cleanup','yes',true)");
+    await tx.budgetMove.deleteMany({where:{envelopeId}});
+   });
    await prisma.budgetEnvelope.delete({where:{id:envelopeId}});
   }
  });

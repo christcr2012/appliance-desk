@@ -75,10 +75,12 @@ ALTER TABLE "BudgetMove" ADD CONSTRAINT "BudgetMove_reversalOfId_fkey"
 CREATE TABLE "BudgetSpendSplit" (
  "id" TEXT NOT NULL, "journalLineId" TEXT NOT NULL, "envelopeId" TEXT NOT NULL,
  "amountCents" INTEGER NOT NULL, "version" INTEGER NOT NULL DEFAULT 1,
+ "active" BOOLEAN NOT NULL DEFAULT true, "reversedAt" TIMESTAMP(3), "reversedReason" TEXT,
  CONSTRAINT "BudgetSpendSplit_pkey" PRIMARY KEY ("id"),
  CONSTRAINT "BudgetSpendSplit_valid" CHECK ("amountCents">0 AND "version">0)
 );
-CREATE UNIQUE INDEX "BudgetSpendSplit_journalLineId_envelopeId_key" ON "BudgetSpendSplit" ("journalLineId","envelopeId");
+CREATE INDEX "BudgetSpendSplit_journalLineId_envelopeId_idx" ON "BudgetSpendSplit" ("journalLineId","envelopeId");
+CREATE UNIQUE INDEX "BudgetSpendSplit_active_once" ON "BudgetSpendSplit" ("journalLineId","envelopeId") WHERE "active";
 CREATE INDEX "BudgetSpendSplit_envelopeId_idx" ON "BudgetSpendSplit" ("envelopeId");
 ALTER TABLE "BudgetSpendSplit" ADD CONSTRAINT "BudgetSpendSplit_journalLineId_fkey"
  FOREIGN KEY ("journalLineId") REFERENCES "JournalLine"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -154,3 +156,47 @@ ALTER TABLE "BudgetCostSettlement" ADD CONSTRAINT "BudgetCostSettlement_occurren
  FOREIGN KEY ("occurrenceId") REFERENCES "BudgetCostOccurrence"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "BudgetCostSettlement" ADD CONSTRAINT "BudgetCostSettlement_reversalOfId_fkey"
  FOREIGN KEY ("reversalOfId") REFERENCES "BudgetCostSettlement"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Financial history is append-only in real databases. Reversal FK repair is
+-- the ONLY permitted update for completed BudgetMove/Settlement evidence.
+CREATE OR REPLACE FUNCTION "budget_financial_event_guard"()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN
+  IF current_database()='appliance_desk_test' AND
+     current_setting('app.synthetic_budget_cleanup',true)='yes' THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'Budget financial event is immutable; append a reversal';
+ END IF;
+ IF OLD."reversalOfId" IS NULL AND NEW."reversalOfId" IS NOT NULL AND
+    (to_jsonb(NEW)-'reversalOfId')=(to_jsonb(OLD)-'reversalOfId') THEN
+   RETURN NEW;
+ END IF;
+ RAISE EXCEPTION 'Budget financial event is immutable; append a reversal';
+END;
+$$;
+CREATE TRIGGER "BudgetMove_append_only" BEFORE UPDATE OR DELETE ON "BudgetMove"
+ FOR EACH ROW EXECUTE FUNCTION "budget_financial_event_guard"();
+CREATE TRIGGER "BudgetCostSettlement_append_only" BEFORE UPDATE OR DELETE ON "BudgetCostSettlement"
+ FOR EACH ROW EXECUTE FUNCTION "budget_financial_event_guard"();
+
+CREATE OR REPLACE FUNCTION "budget_split_history_guard"()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='DELETE' THEN
+  IF current_database()='appliance_desk_test' AND
+     current_setting('app.synthetic_budget_cleanup',true)='yes' THEN RETURN OLD; END IF;
+  RAISE EXCEPTION 'Budget spending split is immutable; record reasoned correction';
+ END IF;
+ IF OLD."active" AND NOT NEW."active" AND NEW."reversedAt" IS NOT NULL AND
+  length(btrim(coalesce(NEW."reversedReason",'')))>=12 AND
+  (to_jsonb(NEW)-'active'-'reversedAt'-'reversedReason')=
+  (to_jsonb(OLD)-'active'-'reversedAt'-'reversedReason') THEN
+  RETURN NEW;
+ END IF;
+ RAISE EXCEPTION 'Budget spending split history cannot be rewritten';
+END;
+$$;
+CREATE TRIGGER "BudgetSpendSplit_append_only" BEFORE UPDATE OR DELETE ON "BudgetSpendSplit"
+ FOR EACH ROW EXECUTE FUNCTION "budget_split_history_guard"();
