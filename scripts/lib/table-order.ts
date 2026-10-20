@@ -59,6 +59,8 @@ export function relationDependencies(schema: string): RelationDependency[] {
         && !(block.name === "BankReconciliation" && field.name === "priorCompleted")
         && !(block.name === "BookCashEvent" && field.name === "reversedOriginal")
         && !(block.name === "AccountingDelivery" && field.name === "priorDelivery")
+        && !(block.name === "BudgetMove" && field.name === "reversalOf")
+        && !(block.name === "BudgetCostSettlement" && field.name === "reversalOf")
       ) {
         dependencies.push({ model: block.name, dependsOn: field.type });
       }

@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { deriveRestoreTableOrder } from "../scripts/lib/table-order";
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { BACKUP_TABLES } from "@/domains/backup/manifest";
+import { BACKUP_MODEL_POLICY,BACKUP_TABLES } from "@/domains/backup/manifest";
 import { buildDatabaseBackupSnapshot } from "@/domains/backup";
 const id=randomUUID().slice(0,10);
 const db=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
@@ -35,6 +37,15 @@ describe.skipIf(!enabled)("K-CASH-4A additive populated Postgres budget schema a
   for(const model of names)expect(snapshot.payload.tables[model]).toBeInstanceOf(Array);
   expect(snapshot.payload.tables.budgetEnvelope).toHaveLength(7);
   expect(snapshot.tableCounts.budgetState).toBe(1);
+ });
+ it("derives a safe populated restore order with self-reversal links deferred",()=>{
+  const schema=readFileSync("prisma/schema.prisma","utf8");
+  const sorted=deriveRestoreTableOrder(schema,BACKUP_MODEL_POLICY);
+  for(const model of names)expect(sorted).toContain(model);
+  expect(sorted.indexOf("budgetEnvelope")).toBeLessThan(sorted.indexOf("budgetMove"));
+  expect(sorted.indexOf("journalLine")).toBeLessThan(sorted.indexOf("budgetSpendSplit"));
+  expect(sorted.indexOf("budgetCostPlan")).toBeLessThan(sorted.indexOf("budgetCostOccurrence"));
+  expect(sorted.indexOf("budgetCostOccurrence")).toBeLessThan(sorted.indexOf("budgetCostSettlement"));
  });
  it("persists typed FK-linked goals, recurrence, settlements, and reversal lineage",async()=>{
   const envelopeId="test-budget-"+id,planId="test-budget-plan-"+id;
