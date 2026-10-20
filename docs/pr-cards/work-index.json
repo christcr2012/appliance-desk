@@ -1042,13 +1042,17 @@
         "docs/designs/BATCH-K.md",
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/reports/definitions.ts",
+        "src/domains/books/cash/matches.ts",
+        "src/domains/books/cash/reconcile.ts",
+        "src/domains/books/cash/cash-readiness.ts",
+        "src/app/desk/books/cash/checks/page.tsx"
       ],
       "tests": [
         "tests/bank-reconciliation-integration.test.ts",
         "e2e/bank-checks.spec.ts"
       ],
-      "readiness": "FROZEN_PLAN_IMPLEMENTATION_PENDING",
+      "readiness": "IMPLEMENTATION_AUTHORED_VERIFICATION_PENDING",
       "plannedCard": "docs/pr-cards/K-CASH-3.md",
       "card": "docs/pr-cards/K-CASH-3.md"
     },

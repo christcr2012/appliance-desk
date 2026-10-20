@@ -1,46 +1,20 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-CASH-1",
-  "completedSlices": [
-    {
-      "id": "K-CASH-1",
-      "acceptanceEvidence": [
-        "Additive Prisma/Postgres models and FK Restrict/check/partial indexes for all nine cash evidence categories, no bank credentials or opening balances.",
-        "Source scoped active hash/transaction indexes, active match XOR/uniqueness, current statement revision, match window and evidence-preserving supersession.",
-        "Shared BooksPostingRevision row lock now surrounds every journal writer, CASH_EVENT source and owner draws/interest roles; source-linked balanced posting.",
-        "Private bank-statement and accounting-confirmation upload/read namespaces, source linkage, protected Blob, and complete backup model manifest.",
-        "Real Postgres schema constraints and source-compatibility regression authored; backup/restore and exact-head CI not yet executed."
-      ]
-    },
-    {
-      "id": "K-CASH-2",
-      "acceptanceEvidence": [
-        "Strict 5-MiB/10k settled CSV parser supports UTF8/BOM, quoted newlines, mapped signs, cents and redacted preview totals.",
-        "Signed 30-minute preview token includes actor, account/version, raw file sha and mapping sha; commit rechecks bytes/state.",
-        "Serializable bank account lock, revision/hash replay, fingerprint occurrences and explicit ambiguity/duplicate policies.",
-        "Reasoned OWNER-only supersession preserves previous source, refuses active matches/completed statement and audits correction.",
-        "Six typed cash events with registered bank-account source checks, receipt-linked deposit and balanced K-2 source journals.",
-        "Stable command identities, conflicts, versioned reasoned void with inverse journal, receipt locks and no provider money execution.",
-        "Pure parser/mapping tests, new disposable Postgres constraints/import/typed event tests and privacy/browser specs authored; CI pending.",
-        "Owner/admin phone-first evidence/import screen plus guarded preview/commit APIs, OWNER-only typed event controls and protected statement read."
-      ]
-    }
+  "parent": "K-CASH-3",
+  "completedSlices": [],
+  "remainingEngineering": [
+    "Exact-head unit/real PostgreSQL/browser verification, transaction/privacy review, bug corrections and complete 12/12 frozen acceptance outcomes still required before subsection counts complete."
   ],
-  "remainingEngineering": [],
   "externalAcceptance": [
-    "All exact-head CI (type/lint, DB, security, backup, browser/a11y) and independent review are still pending; authored tests are not claimed passed.",
-    "Owner real bank/account, opening statement, protected private provider Blob readback, actual reconciliation and CPA trial import need separately recorded evidence.",
-    "Production release and 22 existing owner/customer/provider acceptance items remain independent; no LIVE provider money, data edits or notifications."
+    "Bank/account and first statement are not selected or verified; no real bank source or statement readback.",
+    "22 original release/provider/customer acceptance tasks remain PENDING and are not simulated.",
+    "Daily release only; no manual release, LIVE Stripe or messages authorized."
   ],
-  "workloadException": "Two complete original K-CASH-1/2 subsections form one independently secured schema/import/finance/UI/test bundle; large source size follows inseparable money and privacy boundaries.",
+  "workloadException": "Substantial single original K-CASH-3 subsection spans atomic matching, financial completion/version history, conservative cash calculation, owner UI, and real-database/browser proof; no invented subsection credits.",
   "evidence": [
-    "Plan frozen in docs-only commit c08c9b11f1b2b45893cfd1d71528ec4c0aa16912 before code and preserved.",
-    "Original October 19 owner approval verified in docs/DECISIONS.md and source design, without LIVE activation authorization.",
-    "Code and real-Postgres/pure/browser regression cases authored on one feature branch; local Node/DB checks unavailable and no green CI claimed.",
-    "K-CASH-3 matching and real reconciliation remain separate downstream roadmap work.",
-    "Initial PR #506 exact-head failed: unsupported advisory lock void results, BigInt backup snapshot, bank import/reconciliation self-link cycle, invalid alternate mapping fixture, hidden empty-state preview, and dollars wording. Added source corrections and table-order/BigInt contract assertion; full CI/review remain pending.",
-    "Head 44a942b0 checked: 4/4 browser, source type/lint, secret and release policy passed. Unit DB remaining restore cycle BookCashEvent and legacy Stripe issue; K-CASH history now supports all four nullable self-FKs and reconciles only fully posted Stripe issues, with private evidence no-store. Exact latest CI/review pending.",
-    "Engineering head 2964742c completed: 3/3 real database/unit and 4/4 browser/a11y shards, type/lint/repository, secret, release and capacity checks success. Final patch reconciles outdated K-CASH roadmap proposal wording and adds protected no-store bank/accounting private photo GET tests; full new exact-head CI pending."
+    "Original 12 acceptance lines frozen in plan-only commit 58f0429e796c61615e60a16477cf0e87198dcb33 before source edits.",
+    "Source services, owner Bank checks page, and synthetic disposable-Postgres/browser cases authored, without a passing-test claim.",
+    "PR/CI/review and release are pending; all source code is in the feature branch, not main or live."
   ]
 }
