@@ -1,3 +1,9 @@
+## October 19, 2026 — K-CASH-3 matching is not posting or bank verification
+
+K-CASH-3 reuses verified account/observation and immutable journal source tables; a suggested/confirmed bank match does not create new accounting postings or execute funds movement. Matching is explicit exact signed same-account group authority. An OWNER alone completes a zero-difference statement, attests first-period opening composition and may reopen with an immutable prior revision; ADMIN may match/review but not complete/reopen. Two concurrent double-claims may not survive active uniqueness. Unknown bank outflows remain unresolved rather than being suppressed as expenses.
+
+Readiness is source-backed **provisional** evidence: bank statement plus cleared subsequent inflows minus journal outflows and holds, and separately required journal liabilities. Incomplete bank-through proof, provisional reserves, or missing budget envelope backing never becomes spendable cash. The owner-approved later K-CASH-4A/B remains responsible for budget state, protected funding and movements. No bank-provider credential, paid plan, LIVE payment, production data edit, customer messaging or manual release authority was granted. K-CASH-3 implementation and tests remain unverified until exact-head CI.
+
 ## October 19, 2026 — K-CASH private evidence cache and immutable restore source correction
 
 Bank statements and accounting confirmation blobs are financial evidence. Their authenticated download requires the originating record's private namespace and OWNER/ADMIN (accounting confirmation OWNER-only) checks, and now explicitly sends `Cache-Control: private, no-store` with `useCache: false`; bank import preview/commit responses, including unauthorized responses, use no-store as well. Generic job/customer photos preserve their existing bounded cache. This tightening changes only transport/cache retention, not end-user permissions or product functionality.

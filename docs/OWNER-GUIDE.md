@@ -31,7 +31,8 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
-| Bank evidence and cash journals | `/desk/books/cash` | Import verified settled CSV observations and owner journaled cash events |
+| Bank evidence and cash journals | `/desk/books/cash` | Import settled CSV observations and enter source-backed owner cash events; importing does not prove cleared money |
+| Bank checks (K-CASH-3 engineering candidate) | `/desk/books/cash/checks` | Compare bank rows to books, retain statement evidence and view provisional, non-spendable cash calculations (not yet released) |
 | Book fixed assets | `/desk/books/assets` | Appliance management depreciation, carried retirement value and separate CPA tax-basis evidence |
 | Cash outlook and year-end | `/desk/books/closing` | Clearly labelled estimates, customer health and protected accounting CSV downloads |
 | Expenses | `/desk/expenses` | Submit your own expense or approve, reverse and review private receipts |
@@ -53,6 +54,18 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Sign in | `/login` | Everyone's sign-in page |
 
 The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Books (including Accounting exports), Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Expenses, Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them; they never see prices, billing, reports or Settings.
+
+## Bank checks and statement proof — K-CASH-3 implementation candidate, not yet released
+
+This screen is available only on the engineering branch until exact-head CI, review, merge and normal deployment. Until then **do not expect it on the live website**.
+
+1. Go to Books → Bank evidence and cash journals. Register a real business bank source without entering account/routing numbers, then import a settled CSV. An import is a collection of observations, **not** bank verification or money ready to use.
+2. Choose **Bank checks**. For each account, inspect exact signed-cent/day suggestions, select one or more observations and bank journal lines whose signed totals agree, then explicitly confirm. No suggestion changes the books. If an outflow is missing, search Expenses first; if an inflow is missing, inspect existing receipts or payouts before recording anything. Leave unsupported loan, payroll and adjustments unresolved rather than inventing a category.
+3. The OWNER records which real statement was independently checked and explicitly confirms the through-date on **every** draft. The OWNER drafts the first statement using actual beginning and ending balances, a checked Books opening composition, pre-start outstanding items and a private source reference. Later statements start the calendar day after the previous one and carry forward the previous ending.
+4. Complete only after the matched bank rows and Books lines independently total the statement ending with **zero difference**. Every row must be matched or independently established as a duplicate/non-account entry. Never ignore an unknown expense. A completed proof preserves its SHA-256 and match IDs. Correct a statement by reopening it with a reason; reopen later statements first.
+5. **Cash readiness is provisional and does not authorize funding**. Later cleared inflows, every posted bank debit, outstanding earlier debits, holds and protected liabilities are accounted for conservatively. Missing/old bank evidence, unclassified debt, unknown card/tax facts or discrepancies show UNKNOWN. Do not use a provisional number to pay or allocate. Actual envelope funding is a later K-CASH-4A/B requirement.
+
+ADMIN may inspect, import and confirm/void unreconciled matches but may not complete/reopen statements, ignore rows or create/release holds. STAFF and CUSTOMER cannot view bank data. Corrections and source checks preserve audit records. Nothing on these screens signs into the bank, initiates a transfer, submits a tax return or enables LIVE Stripe.
 
 ## Signing in and staying safe
 

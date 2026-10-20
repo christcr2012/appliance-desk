@@ -195,9 +195,9 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| K-CASH-1 | Cash evidence schema, typed events and posting revision | JIT — `K-CASH-1.md` | K-8 |
-| K-CASH-2 | CSV imports and typed cash-event posting | JIT — `K-CASH-2.md` | K-CASH-1 |
-| K-CASH-3 | Bank matches, reconciliation and cash readiness | JIT — `K-CASH-3.md` | K-CASH-2 |
+| K-CASH-1 | **MERGED #506** — cash evidence schema, posting revision | `K-CASH-1.md` (joint K-CASH-1/2 frozen card) | K-8 |
+| K-CASH-2 | **MERGED #506** — CSV imports and typed cash-event posting | `K-CASH-1.md` (joint frozen card) | K-CASH-1 |
+| K-CASH-3 | **IN PROGRESS** — bank matches, immutable reconciliation, conservative cash readiness | `K-CASH-3.md` (frozen 2026-10-19 plan) | K-CASH-2 |
 | K-CASH-4A | Envelope, target and planned-cost schema | JIT — `K-CASH-4A.md` | K-CASH-3 |
 | K-CASH-4B | Protected reserves and atomic envelope movements | JIT — `K-CASH-4B.md` | K-CASH-4A |
 | K-CASH-5A | Recurring plans, targets, settlements and forecast dedupe | JIT — `K-CASH-5A.md` | K-CASH-4B |
