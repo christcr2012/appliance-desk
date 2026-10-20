@@ -237,3 +237,39 @@ export async function returnClearedSupplierRefund(userId:string,input:{
   return revision.toString();
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }
+
+export async function getSupplierRefundDesk(userId:string){
+ return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+  const bank=await tx.cashAccount.findMany({where:{active:true},
+   select:{ledgerAccountId:true},take:100});
+  const items=await tx.journalLine.findMany({where:{
+   ledgerAccountId:{in:bank.map(x=>x.ledgerAccountId)},debitCents:{gt:0}},
+   include:{entry:{include:{lines:{include:{
+    ledgerAccount:{select:{type:true}}}}}}},
+    bankMatchItems:{where:{active:true},include:{group:{include:{
+     items:{where:{active:true,bankObservationId:{not:null}},
+       include:{observation:true}}}}}}}},
+   orderBy:{entry:{entryDate:"desc"}},take:200});
+  const clearedRefunds=items.filter(line=>
+   line.entry.lines.some(l=>l.id!==line.id&&l.creditCents>0&&l.ledgerAccount.type==="EXPENSE")&&
+   line.bankMatchItems.some(i=>!i.group.voidedAt&&i.group.items.some(m=>
+    m.observation?.isActive&&m.observation.status==="MATCHED"&&
+    m.observation.postedOn.getTime()<=Date.now())))
+   .map(x=>({id:x.id,amountCents:x.debitCents,reference:x.entry.memo}));
+  const spending=await tx.budgetMove.findMany({where:{
+   kind:"SPEND",sourceType:"JOURNAL_LINE",laterReversals:{none:{}}},
+   orderBy:{createdAt:"desc"},take:150,
+   select:{id:true,envelopeId:true,signedCents:true,envelope:{select:{name:true}},
+    sourceId:true}});
+  const originals=[];
+  for(const move of spending){
+   const credited=await tx.budgetMove.aggregate({where:{
+    kind:"REFUND",eventKind:"REFUND_"+move.id},_sum:{signedCents:true}});
+   const remainingCents=-move.signedCents-(credited._sum.signedCents??0);
+   if(remainingCents>0)originals.push({id:move.id,remainingCents,envelope:move.envelope.name,
+    journalLineId:move.sourceId});
+  }
+  return {clearedRefunds,originals};
+ },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
+}
