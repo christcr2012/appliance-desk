@@ -6,37 +6,50 @@
     {
       "id": "K-CASH-4A",
       "acceptanceEvidence": [
-        "Prisma BudgetState/Envelope/Move/SpendSplit/Target/CostPlan/Occurrence/Settlement models authored; migration adds Restrict FKs and stable initial zero-funding labels.",
-        "SQL constraints/partial indexes and source/reversal uniqueness authored in 20261020010000_batch_k_cash_budget migration. BudgetMove now has durable resultRevision and signed source provenance with backend idempotency and full replay conflict check.",
-        "BusinessSettings off-by-default budget start/age/window/horizon/reminder fields and valid-range SQL checks authored.",
-        "Seven specified discretionary editable labels seeded without positive funding or target/plan amounts.",
-        "OWNER active tx guard and private route controls authored for money operations; restricted STAFF access covered in browser spec.",
-        "Target/plan/occurrence/settlement identity and source quality evidence modeled for later K-CASH-5A; no automatic scheduler invented.",
-        "All eight model delegates in BACKUP_MODEL_POLICY; self-reversal restore second-pass patch authored.",
-        "Disposable Postgres populated schema/check/backup test authored; execution and populated restore proof still pending.",
-        "docs/DATABASE, owner guide, STATUS and decision boundaries updated; no new bank, Stripe or QBO provider called."
+        "Prisma eight additive BudgetState/Envelope/Move/SpendSplit/Target/CostPlan/Occurrence/Settlement tables and restrictive foreign keys in migration 20261020010000_batch_k_cash_budget.",
+        "SQL signed movement kinds, positive amount, unique/source/command/partial active-claim constraints; SQL append-only update/delete triggers for BudgetMove, BudgetSpendSplit and BudgetCostSettlement with tightly bounded reversal-FK restore exception.",
+        "BusinessSettings owner-editable start date/enable switch OFF by default and bank age, planning, upcoming and reminder windows with SQL numeric ranges, validated owner settings actions.",
+        "Exactly seven approved non-funded editable envelope labels seeded; BudgetMove is the only signed virtual balance and protected card/customer/tax liabilities come from K journal.",
+        "configureBudgetEnvelope updates version/name/group/order/archive with active OWNER guard and account-level audit; requires zero balance before archive; STAFF cannot see budget route.",
+        "BudgetTarget, CostPlan, Occurrence and Settlement schema preserve source identity, amount quality, one-per-period uniqueness and reversal links for future K-CASH-5A; no planning execution invented.",
+        "BACKUP_MODEL_POLICY includes all eight models; table-order dependency checker defers nullable self links; scripts/restore-backup.ts repairs reversal links after creation.",
+        "tests/budget-schema-integration.test.ts uses disposable PostgreSQL for defaults, signed SQL, unique claims, immutable rejection, nested source identity and a populated clone/restore of real budget movement/settlement reversal records.",
+        "docs/DATABASE.md, OWNER-GUIDE.md, DECISIONS.md, GO-LIVE-CHECKLIST.md explain source privacy, retained history, owner validation and default-off release gates; no external provider call."
+      ]
+    },
+    {
+      "id": "K-CASH-4B",
+      "acceptanceEvidence": [
+        "getCashReadiness/readCashReadinessInTx keeps per-account completed statement, cleared later matched inflows, posted bank outflows including outstanding, unreleased holds and conservative UNKNOWN; protected.ts rechecks account/source through-date on one same-transaction snapshot.",
+        "protected.ts loads each active K liability account separately, clamps negative amounts individually, sorts customer/tax/RDF/card first; unknown custom liability and real bank/card sources block owner funding.",
+        "budgetSnapshotInTx computes Ready = sum eligible bank - sum journal protected debt - sum positive envelope moves; preserves negative envelopes/shortages without second counting planned costs, and computes row-wise funded/shortage amounts.",
+        "applyBudgetMoves serializable transaction locks BudgetState, BooksPostingRevision, registered bank sources and sorted envelopes; requires exact sourceHash and expectedRevision, OWNER actor and account-level source readiness before increased backing.",
+        "BudgetMove.commandKey/payloadHash/resultRevision ensures idempotent identical replay and different-payload conflict; tests/budget-money-integration.test.ts covers concurrent original claims and excessive two-leg transfers.",
+        "assignPostedBankSpending consumes exactly one actual posted bank-credit JournalLine via versioned, uniquely active BudgetSpendSplit rows; pending/unassigned business expenses remain in journal and are visible as attention, never auto-reposted.",
+        "Protected ledger liability/bank payments and transfers never consume a discretionary envelope; OWNER_DRAWS require Owner pay, and returnClearedSupplierRefund validates matched settled bank credit against original categorized spend and caps cumulative refunds.",
+        "reversePostedBankSpending records signed inverse BudgetMove, preserves inactive original spend-split with reason/timestamp and allows source-versioned reclassification; SQL triggers prevent rewriting completed event history.",
+        "OWNER-only transaction guards on all funding/source/hold/refund/envelope actions; ADMIN read-only; STAFF and CUSTOMER blocked by route and server-transaction actor validation.",
+        "Books Budget backing page renders per-bank source, protected shortages, UNKNOWN warnings, editable envelope metadata/windows, atomic two-leg funding controls, source-based spend/refund and responsive keyboard/axe browser test at 360/768/1440px.",
+        "tests/budget-money-integration.test.ts authors synthetic real PostgreSQL concurrency, idempotent replay, OWNER/STAFF boundaries, protected debt, stale source, negative/positive signed money, supplier-refund, reverse/reclassification and two-leg transfer cases; browser coverage registered in browser-b.",
+        "Budget activation remains OFF until owner source attestation, exact-day business bank statement, complete protected K liability/card evidence and a verified Books revision; no LIVE payment, user-message, bank-money move or production data edit."
       ]
     }
   ],
   "remainingEngineering": [
-    "4A: Verify actual populated schema migration, migration index/check mappings, new FK and 2-pass restoration under disposable Postgres; do not count 4A complete until gates prove it.",
-    "4B: Verify protected liability/statement source completeness under all approved cash/card/tax cases, including unknown and transfer in flight.",
-    "4B: Add and prove stable preview, atomic 2-leg transfer and stale/no-double-submit/race tests; protect negative envelopes and restore.",
-    "4B: Complete OWNER settings/label management, preview/undo/release safety, responsive screens, exact-head full CI/review and evidence.",
-    "22 original release/provider/owner acceptance items remain separately PENDING.",
-    "4B: source-linked spend classification and inverse/reclassification authored; still needs verified paid-vs-filed tax, supplier refund, card debt opening/pending refund pathways and complete source adapter readback.",
-    "4B: full owner transfer preview, two-leg funding, envelope label/archive settings and accessible UX remain to complete and verify.",
-    "Latest PR #508 CI for the most recent head is NOT yet confirmed green. Do not merge before all exact-head gates, database restore and review are verified."
+    "Exact-head CI on the final branch must pass all 3 Postgres/unit shards, all 4 browser/axe shards, typecheck/lint, secrets and full repo checks; any new failure must be fixed without skipping a test.",
+    "Document review/allowed waiver, verify no unaddressed blocking feedback, then merge with exact-head SHA. This is mandatory engineering closeout, not provider acceptance."
   ],
   "externalAcceptance": [
-    "Actual bank statements/opening cash, card/tax/deposit debt source facts and owner budget activation remain independent.",
-    "22 recorded release-acceptance checks remain pending; no LIVE/paid provider, customer messaging or manual release."
+    "Real owner-selected business bank, independently checked reconciled bank-through and opening balances, actual card/customer/tax liabilities, CPA decisions and actual business budget activation remain pending real-use acceptance.",
+    "Existing 22 release/provider/owner acceptance tasks retain their pending evidence and are not represented by synthetic Postgres or local screenshots.",
+    "Scheduled live promotion only; manual release, LIVE Stripe, banking transfers, customer messaging, or spending not authorized by this engineering merge."
   ],
-  "workloadException": "Two complete adjacent original K-CASH-4A/4B subsections share additive financial models and the same lock/evidence surface. Proposed production scope is substantial; neither is claimed delivered at plan stage.",
+  "workloadException": "Two original adjacent full K-CASH-4A/4B subsections share the same finance-risk schema/locks and verified bank/K journal evidence, so one large financial-integrity PR is safer than fragmented helper PRs. Acceptance counted only after green CI/merge.",
   "evidence": [
     "Both original whole-subsection acceptance criteria frozen in a single docs-only planning commit before source edits; no new tests run yet.",
     "K-CASH-3 PR #507 merged aa575887ce1800e8354841270942b0c9365b34bf with exact-head CI green; does not verify the next bundle.",
     "Full implementation bundle remains IN PROGRESS in draft PR: first-pass service and synthetic disposable-Postgres/browser specs authored; no CI results claimed yet.",
-    "Budget source spending UI, unassigned debit prevention, negative-protected exclusion and synthetic correction/reclassification cases authored on branch; no new passing CI results claimed."
+    "Budget source spending UI, unassigned debit prevention, negative-protected exclusion and synthetic correction/reclassification cases authored on branch; no new passing CI results claimed.",
+    "Source integration/owner UI, SQL append-only triggers, real populated Postgres clone-restore and protected/refund/transfer tests authored. No green CI on this exact head is claimed until GitHub reports it."
   ]
 }
