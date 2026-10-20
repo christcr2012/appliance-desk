@@ -26,6 +26,7 @@ export default async function CashEvidencePage({searchParams}:{searchParams:Prom
   <header className="space-y-2">
    <Link href="/desk/books" className="underline">Back to Books</Link>
    <Link href="/desk/books/cash/checks" className="underline ml-4">Bank checks and statement reconciliation</Link>
+   <Link href="/desk/books/budget" className="underline ml-4">Budget backing</Link>
    <h1 className="text-2xl font-bold">Bank evidence and cash journals</h1>
    <p className="text-muted-foreground">Import settled bank evidence and review it in Bank checks. Nothing here initiates bank transfers, verifies live balances automatically, or funds a budget.</p>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
