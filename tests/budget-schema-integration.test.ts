@@ -1,4 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { mkdtemp,writeFile,rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { Client } from "pg";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { readFileSync } from "node:fs";
 import { deriveRestoreTableOrder } from "../scripts/lib/table-order";
 import { describe, expect, it } from "vitest";
@@ -47,6 +55,68 @@ describe.skipIf(!enabled)("K-CASH-4A additive populated Postgres budget schema a
   expect(sorted.indexOf("budgetCostPlan")).toBeLessThan(sorted.indexOf("budgetCostOccurrence"));
   expect(sorted.indexOf("budgetCostOccurrence")).toBeLessThan(sorted.indexOf("budgetCostSettlement"));
  });
+ it("restores genuinely populated budget source/history into a separate migrated disposable PostgreSQL database",async()=>{
+  const envelopeId="restore-envelope-"+id,planId="restore-plan-"+id;
+  const database="appliance_desk_restore_budget_"+id;
+  const adminUrl=new URL(process.env.DATABASE_URL!);adminUrl.pathname="/postgres";
+  const restoreUrl=new URL(process.env.DATABASE_URL!);restoreUrl.pathname="/"+database;
+  const admin=new Client({connectionString:adminUrl.toString()});
+  const directory=await mkdtemp(path.join(tmpdir(),"budget-restore-"));
+  let restored:PrismaClient|undefined,databaseCreated=false,connected=false;
+  await prisma.budgetEnvelope.create({data:{id:envelopeId,name:"Restore evidence test"}});
+  try{
+   const original=await prisma.budgetMove.create({data:{
+    envelopeId,kind:"ASSIGN",signedCents:600,commandKey:"budget-restore-fund-"+id,
+    payloadHash:"3".repeat(64),reason:"Disposable restore seed funding"}});
+   const inverse=await prisma.budgetMove.create({data:{
+    envelopeId,kind:"REVERSAL",signedCents:-600,commandKey:"budget-restore-undo-"+id,
+    payloadHash:"4".repeat(64),reason:"Original seed reversal history",
+    sourceType:"BUDGET",sourceId:original.id,eventKind:"OWNER_UNDO",reversalOfId:original.id}});
+   const plan=await prisma.budgetCostPlan.create({data:{
+    id:planId,envelopeId,name:"Restore annual renewal",amountCents:3000,amountQuality:"EXACT",
+    dueOn:new Date("2026-12-15T07:00:00Z"),recurrence:"ANNUAL",anchorDay:15,
+    anchorMonth:12,sourceType:"MANUAL"}});
+   const occ=await prisma.budgetCostOccurrence.create({data:{
+    planId:plan.id,dueOn:plan.dueOn,amountCents:3000}});
+   const paid=await prisma.budgetCostSettlement.create({data:{
+    occurrenceId:occ.id,sourceType:"EXPENSE",sourceId:"restore-expense-"+id,amountCents:100,
+    commandKey:"restore-settle-"+id,payloadHash:"5".repeat(64)}});
+   const returned=await prisma.budgetCostSettlement.create({data:{
+    occurrenceId:occ.id,sourceType:"EXPENSE",sourceId:"restore-expense-"+id,amountCents:100,
+    commandKey:"restore-reversal-"+id,payloadHash:"6".repeat(64),reversalOfId:paid.id}});
+   const snapshot=await buildDatabaseBackupSnapshot();
+   await writeFile(path.join(directory,"budget-synthetic-backup.json"),JSON.stringify(snapshot.payload));
+   await admin.connect();connected=true;
+   await admin.query('CREATE DATABASE "'+database+'"');databaseCreated=true;
+   await promisify(execFile)(process.execPath,["node_modules/tsx/dist/cli.mjs",
+    "scripts/restore-backup.ts",path.join(directory,"budget-synthetic-backup.json"),
+    "--into",restoreUrl.toString()],{timeout:120000,maxBuffer:2*1024*1024});
+   restored=new PrismaClient({adapter:new PrismaPg({connectionString:restoreUrl.toString()})});
+   expect(await restored.budgetEnvelope.findUniqueOrThrow({where:{id:envelopeId}})).toMatchObject({
+    active:true,name:"Restore evidence test"});
+   expect((await restored.budgetMove.findUniqueOrThrow({where:{id:inverse.id}})).reversalOfId).toBe(original.id);
+   expect((await restored.budgetCostSettlement.findUniqueOrThrow({where:{id:returned.id}})).reversalOfId).toBe(paid.id);
+   expect((await restored.budgetCostOccurrence.findUniqueOrThrow({where:{id:occ.id}})).amountCents).toBe(3000);
+   await expect(restored.budgetMove.delete({where:{id:original.id}})).rejects.toThrow(/immutable/);
+   await expect(restored.budgetCostSettlement.update({where:{id:paid.id},
+    data:{amountCents:200}})).rejects.toThrow(/immutable/);
+  }finally{
+   await restored?.$disconnect();
+   if(databaseCreated&&connected)await admin.query('DROP DATABASE IF EXISTS "'+database+'" WITH (FORCE)');
+   if(connected)await admin.end();
+   await rm(directory,{recursive:true,force:true});
+   await prisma.$transaction(async tx=>{
+    await tx.$executeRawUnsafe("SELECT set_config('app.synthetic_budget_cleanup','yes',true)");
+    await tx.budgetCostSettlement.deleteMany({where:{occurrence:{planId},reversalOfId:{not:null}}});
+    await tx.budgetCostSettlement.deleteMany({where:{occurrence:{planId}}});
+    await tx.budgetMove.deleteMany({where:{envelopeId,reversalOfId:{not:null}}});
+    await tx.budgetMove.deleteMany({where:{envelopeId}});
+   });
+   await prisma.budgetCostOccurrence.deleteMany({where:{planId}});
+   await prisma.budgetCostPlan.deleteMany({where:{id:planId}});
+   await prisma.budgetEnvelope.deleteMany({where:{id:envelopeId}});
+  }
+ },120000);
  it("persists typed FK-linked goals, recurrence, settlements, and reversal lineage",async()=>{
   const envelopeId="test-budget-"+id,planId="test-budget-plan-"+id;
   await prisma.budgetEnvelope.create({data:{id:envelopeId,name:"Fixture repairs",groupLabel:"Private fixture"}});
