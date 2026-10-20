@@ -74,6 +74,36 @@ export async function budgetSnapshotInTx(tx:Tx,asOf:string){
    reasons.push(b.name+": bank and Books have unresolved differences.");
  }
  if(bank.unknownLiabilities.length)reasons.push("Unclassified liabilities need review.");
+ // A posted expense must never be hidden because it has not yet been given a
+ // budget envelope. Do not require an allocation to POST financial reality;
+ // instead block new positive discretionary funding and show the shortfall.
+ const sourceLedgers=await tx.cashAccount.findMany({where:{active:true},
+  select:{ledgerAccountId:true}});
+ const bankOutflows=state.startOn?await tx.journalLine.findMany({where:{
+  ledgerAccountId:{in:sourceLedgers.map(x=>x.ledgerAccountId)},
+  creditCents:{gt:0},entry:{entryDate:{gte:state.startOn,lte:at}}},
+  include:{budgetSpendSplits:true,entry:{include:{
+   lines:{include:{ledgerAccount:{select:{type:true,systemRole:true}}}}}}},
+  take:10001}):[];
+ if(bankOutflows.length>10000)reasons.push("Too many bank outflows to confirm spending classifications.");
+ let unassignedCount=0,unassignedCents=0;
+ for(const line of bankOutflows){
+  const counterparts=line.entry.lines.filter(x=>x.id!==line.id&&x.debitCents>0);
+  const discretionary=counterparts.some(x=>x.ledgerAccount.type==="EXPENSE"||
+   x.ledgerAccount.systemRole==="OWNER_DRAWS");
+  const protectedOrTransfer=counterparts.length>0&&counterparts.every(x=>
+   x.ledgerAccount.type==="LIABILITY"||x.ledgerAccount.type==="ASSET");
+  if(discretionary){
+   const assigned=line.budgetSpendSplits.reduce((s,x)=>s+x.amountCents,0);
+   if(assigned!==line.creditCents){
+    unassignedCount++;unassignedCents+=line.creditCents-Math.min(line.creditCents,assigned);
+   }
+  }else if(!protectedOrTransfer){
+   unassignedCount++;unassignedCents+=line.creditCents;
+  }
+ }
+ if(unassignedCount)reasons.push("Unassigned or unclassified posted business-bank outflow must be reviewed before new funding.");
+
  if(!safe(discretionaryBackedCents)||readyCents!==null&&!safe(readyCents)||
   balances.some(x=>!safe(x.balanceCents)))reasons.push("Unsafe cash arithmetic.");
  if(readyCents!==null&&readyCents<0)reasons.push("Protected/discretionary funding exceeds confirmed bank evidence.");
@@ -81,7 +111,8 @@ export async function budgetSnapshotInTx(tx:Tx,asOf:string){
  const sourceHash=createHash("sha256").update(JSON.stringify({
   date:asOf,bookRevision:rev.revision.toString(),bank:bank.banks,
   protected:liabilities.map(x=>[x.accountId,x.requiredCents]),
-  balances:balances.map(x=>[x.id,x.balanceCents]),proof,enabled:settings.cashBudgetEnabled
+  balances:balances.map(x=>[x.id,x.balanceCents]),unassignedCount,unassignedCents,
+  proof,enabled:settings.cashBudgetEnabled
  })).digest("hex");
  const mayAssign=reasons.length===0&&readyCents!==null&&readyCents>=0;
  return {asOf,stateRevision:state.revision.toString(),bookRevision:rev.revision.toString(),
@@ -89,7 +120,8 @@ export async function budgetSnapshotInTx(tx:Tx,asOf:string){
   status:mayAssign?"READY" as const:bank.eligibleBankCents===null?"UNKNOWN" as const:"REVIEW_REQUIRED" as const,
   eligibleBankCents:bank.eligibleBankCents,protectedTotalCents:bank.protectedTotalCents,
   envelopes:balances,protectedLiabilities,unknownLiabilities:bank.unknownLiabilities,
-  discretionaryBackedCents,readyCents,reasons,sourceHash,mayAssign,bankEvidence:bank.banks};
+  discretionaryBackedCents,readyCents,reasons,sourceHash,mayAssign,
+  unassignedCount,unassignedCents,bankEvidence:bank.banks};
 }
 export async function getBudgetSnapshot(userId:string,asOf=businessDateKey(new Date())){
  day(asOf);
