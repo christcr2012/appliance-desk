@@ -12,6 +12,14 @@ import { createCashHold,releaseCashHold } from "@/domains/books/cash/cash-readin
 const field=(f:FormData,key:string)=>String(f.get(key)??"").trim();
 const number=(f:FormData,key:string)=>Number(field(f,key));
 const money=(f:FormData,key:string)=>parseDollarInput(field(f,key),2_000_000_000);
+const signedMoney=(f:FormData,key:string)=>{
+ const input=field(f,key);
+ if(!/^-?(0|[1-9]\\d{0,9})(?:\\.\\d{1,2})?$/.test(input))
+  throw new Error("Enter a signed whole-cent amount in dollars.");
+ const neg=input.startsWith("-");
+ const value=parseDollarInput(neg?input.slice(1):input,2_000_000_000);
+ return neg?-value:value;
+};
 const choices=(f:FormData,key:string)=>f.getAll(key).map(x=>String(x));
 function finish(accountId:string,message:string):never{
  revalidatePath("/desk/books/cash/checks");
@@ -48,11 +56,11 @@ export async function draftStatementAction(form:FormData){
  const user=await requireRole("OWNER"),accountId=field(form,"accountId");
  await command(accountId,"Statement draft",()=>createBankReconciliation(user.user.id,{
   accountId,fromDate:field(form,"fromDate"),toDate:field(form,"toDate"),
-  beginningCents:money(form,"beginning"),endingCents:money(form,"ending"),
+  beginningCents:signedMoney(form,"beginning"),endingCents:signedMoney(form,"ending"),
   firstStatement:field(form,"sourceReference")?{
    sourceReference:field(form,"sourceReference"),
-   bookBeginningCents:money(form,"bookBeginning"),
-   preStartOutstandingCents:money(form,"outstanding")
+   bookBeginningCents:signedMoney(form,"bookBeginning"),
+   preStartOutstandingCents:signedMoney(form,"outstanding")
   }:undefined
  }));
 }

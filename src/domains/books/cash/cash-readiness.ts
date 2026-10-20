@@ -1,7 +1,6 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { businessDateFromKey, businessDateKey, businessDaysBetween } from "@/lib/business-date";
+import { businessDateFromKey, businessDateKey, businessDateEnd, businessDaysBetween } from "@/lib/business-date";
 import { CashEvidenceError } from "./accounts";
 
 type Tx=Prisma.TransactionClient;
@@ -26,14 +25,14 @@ async function readBank(tx:Tx,bank:{id:string;name:string;ledgerAccountId:string
  const age=cutoff?businessDaysBetween(cutoff,asOf):null;
  if(age!==null&&age>7)reasons.push("Statement evidence is over seven calendar days old; confirm newer bank activity.");
  const observed=await tx.bankObservation.findMany({where:{cashAccountId:bank.id,isActive:true,
-   postedOn:{lte:asOf}},select:{id:true,postedOn:true,signedCents:true,status:true,
+   postedOn:{lte:asOf}},select:{id:true,postedOn:true,signedCents:true,status:true,ignoreReason:true,
     matchItems:{where:{active:true},select:{groupId:true}}},
    },take:CAP+1});
  if(observed.length>CAP)reasons.push("Too many bank observations to verify completely.");
  const after=cutoff?observed.filter(x=>x.postedOn>cutoff):[];
  const unreviewed=after.filter(x=>x.status!=="MATCHED"&&x.status!=="IGNORED");
  if(unreviewed.length)reasons.push("Unmatched or unreviewed settled bank rows exist after last statement.");
- if(after.some(x=>x.status==="IGNORED"&&!["DUPLICATE: ","NON_ACCOUNT: "].some(p=>(x as {ignoreReason?:string|null}).ignoreReason?.startsWith(p))))
+ if(after.some(x=>x.status==="IGNORED"&&!["DUPLICATE: ","NON_ACCOUNT: "].some(p=>x.ignoreReason?.startsWith(p))))
   reasons.push("Unknown ignored bank evidence after statement.");
  const bankLines=await tx.journalLine.findMany({where:{ledgerAccountId:bank.ledgerAccountId,
    entry:{entryDate:{lte:asOf}}},select:{id:true,debitCents:true,creditCents:true,
@@ -88,18 +87,19 @@ export async function getCashReadiness(userId:string,asOfKey=businessDateKey(new
  const date=businessDateFromKey(asOfKey);
  if(!date||businessDateKey(date)!==asOfKey||date.getTime()>Date.now())
   throw new CashEvidenceError("Cash readiness needs a valid current/past Colorado day.");
+ const asOf=new Date(Math.min(Date.now(),businessDateEnd(asOfKey).getTime()));
  return prisma.$transaction(async tx=>{
   await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
   const active=await tx.cashAccount.findMany({where:{active:true},take:100,orderBy:{id:"asc"},
    select:{id:true,name:true,ledgerAccountId:true}});
   const bankResults:EligibleBank[]=[];
-  for(const bank of active)bankResults.push(await readBank(tx,bank,date));
+  for(const bank of active)bankResults.push(await readBank(tx,bank,asOf));
   const reasons:string[]=[];
   if(!active.length)reasons.push("No registered business checking source.");
   const accounts=await tx.ledgerAccount.findMany({where:{type:"LIABILITY",active:true},
    select:{id:true,name:true,systemRole:true}});
   const liabilityLines=await tx.journalLine.groupBy({by:["ledgerAccountId"],
-   where:{ledgerAccountId:{in:accounts.map(x=>x.id)},entry:{entryDate:{lte:date}}},
+   where:{ledgerAccountId:{in:accounts.map(x=>x.id)},entry:{entryDate:{lte:asOf}}},
    _sum:{debitCents:true,creditCents:true}});
   const liabilityTotals=new Map(liabilityLines.map(row=>[row.ledgerAccountId,
    (row._sum.creditCents??0)-(row._sum.debitCents??0)]));
