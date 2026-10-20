@@ -58,8 +58,7 @@ export async function assignPostedBankSpending(userId:string,input:{
    throw new BudgetEvidenceError("Discretionary splits must equal the single posted bank outflow exactly.");
   if(source.budgetSpendSplits.length)
    throw new BudgetEvidenceError("This bank journal line was already classified; corrections need an audited inverse.");
-  const envelopes=await tx.budgetEnvelope.findMany({where:{id:{in:splits.map(x=>x.envelopeId)}},
-   active:true},select:{id:true,name:true}});
+  const envelopes=await tx.budgetEnvelope.findMany({where:{id:{in:splits.map(x=>x.envelopeId)},active:true}},select:{id:true,name:true}});
   if(envelopes.length!==splits.length||
     ownerDraw&&envelopes.some(x=>x.name!=="Owner pay"))
    throw new BudgetEvidenceError("Choose active envelopes; owner draws belong to Owner pay only.");
