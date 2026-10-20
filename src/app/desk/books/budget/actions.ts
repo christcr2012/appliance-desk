@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/session";
 import { parseDollarInput } from "@/lib/money-ui";
 import { attestBudgetSources,setBudgetActivation } from "@/domains/budget/protected";
 import { applyBudgetMoves,undoBudgetMove } from "@/domains/budget/moves";
+import { configureBudgetEnvelope,configureBudgetWindows } from "@/domains/budget/envelopes";
 import { assignPostedBankSpending,reversePostedBankSpending } from "@/domains/budget/spending";
 const str=(f:FormData,k:string)=>String(f.get(k)??"").trim();
 const done=(message:string):never=>{
@@ -60,4 +61,34 @@ export async function reverseSpendingAction(f:FormData){
  await command("Posted expense classification correction",()=>reversePostedBankSpending(s.user.id,{
   journalLineId:str(f,"journalLineId"),expectedRevision:str(f,"revision"),
   commandKey:str(f,"key")||randomUUID(),reason:str(f,"reason")}));
+}
+
+export async function editEnvelopeAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Envelope details",()=>configureBudgetEnvelope(s.user.id,{
+  envelopeId:str(f,"envelopeId"),expectedVersion:Number(str(f,"version")),
+  name:str(f,"name"),groupLabel:str(f,"groupLabel"),sortOrder:Number(str(f,"sortOrder")),
+  active:str(f,"active")==="true",reason:str(f,"reason")}));
+}
+export async function configureWindowsAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Review windows",()=>configureBudgetWindows(s.user.id,{
+  bankEvidenceMaxAgeDays:Number(str(f,"bankAge")),
+  budgetPlanningHorizonDays:Number(str(f,"horizon")),
+  budgetUpcomingWindowDays:Number(str(f,"upcoming")),
+  budgetReminderLeadDays:Number(str(f,"lead")),
+  expectedRevision:str(f,"revision"),reason:str(f,"reason")}));
+}
+export async function transferBudgetAction(f:FormData){
+ const s=await requireRole("OWNER"),from=str(f,"fromId"),to=str(f,"toId");
+ await command("Envelope transfer",async()=>{
+  if(!from||!to||from===to)throw new Error("Choose two distinct active envelopes.");
+  const amount=parseDollarInput(str(f,"amount"),2_000_000_000);
+  if(!amount)throw new Error("A positive amount is required.");
+  return applyBudgetMoves(s.user.id,{
+   asOf:str(f,"asOf"),expectedRevision:str(f,"revision"),sourceHash:str(f,"hash"),
+   commandKey:str(f,"key")||randomUUID(),reason:str(f,"reason"),
+   moves:[{envelopeId:from,kind:"RELEASE",signedCents:-amount},
+    {envelopeId:to,kind:"ASSIGN",signedCents:amount}]});
+ });
 }

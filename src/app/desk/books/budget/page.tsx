@@ -4,8 +4,10 @@ import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { getBudgetSnapshot } from "@/domains/budget/protected";
+import { getBudgetWindows } from "@/domains/budget/envelopes";
 import { getPostedBankSpendingDesk } from "@/domains/budget/spending";
-import { attestBudgetAction,activateBudgetAction,budgetMoveAction,assignSpendingAction,reverseSpendingAction } from "./actions";
+import { attestBudgetAction,activateBudgetAction,budgetMoveAction,assignSpendingAction,reverseSpendingAction,
+ editEnvelopeAction,configureWindowsAction,transferBudgetAction } from "./actions";
 export const metadata={title:"Budget backing — Books"};
 const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
 const btn="rounded border border-border bg-card px-3 py-2 font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -14,8 +16,8 @@ export default async function BudgetBackingPage({searchParams}:{
  searchParams:Promise<{notice?:string}>}){
  const actor=await requireRole("OWNER","ADMIN"),owner=actor.user.role==="OWNER";
  const asOf=businessDateKey(new Date());
- const [snap,spending]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
-   getPostedBankSpendingDesk(actor.user.id)]);
+ const [snap,spending,windows]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
+   getPostedBankSpendingDesk(actor.user.id),getBudgetWindows(actor.user.id)]);
  const notice=(await searchParams).notice?.slice(0,240);
  return <div className="space-y-6">
   <header className="space-y-2">
@@ -71,6 +73,19 @@ export default async function BudgetBackingPage({searchParams}:{
     <button className={btn}>Review and save budget setting</button>
    </form>
   </section>}
+  {owner&&<section className="rounded-lg border border-border p-4 space-y-3">
+   <h2 className="text-lg font-semibold">Owner review windows</h2>
+   <p>Settings affect source-review warnings and later planning horizons; they do not waive statement matching or protected obligations.</p>
+   <form action={configureWindowsAction} className="grid gap-3 sm:grid-cols-2">
+    <input type="hidden" name="revision" value={snap.stateRevision}/>
+    <label>Maximum age of bank evidence (1–90 days)<input type="number" name="bankAge" min={1} max={90} defaultValue={windows.bankEvidenceMaxAgeDays} className={input} required/></label>
+    <label>Planning horizon (30–365 days)<input type="number" name="horizon" min={30} max={365} defaultValue={windows.budgetPlanningHorizonDays} className={input} required/></label>
+    <label>Upcoming expense window (1–90 days)<input type="number" name="upcoming" min={1} max={90} defaultValue={windows.budgetUpcomingWindowDays} className={input} required/></label>
+    <label>Reminder lead time (0–90 days)<input type="number" name="lead" min={0} max={90} defaultValue={windows.budgetReminderLeadDays} className={input} required/></label>
+    <label className="sm:col-span-2">Owner review reason<input name="reason" className={input} minLength={12} maxLength={300} required/></label>
+    <button className={btn}>Save reviewed settings</button>
+   </form>
+  </section>}
   <section className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Posted business spending — classification only</h2>
    <p>Review existing Books bank outflows, not imported CSV duplicates. A real expense can post even when there is no envelope balance. This form only labels that posted debit; it cannot create a payment or bank transaction. Protected tax/card/deposit repayments are not discretionary spending.</p>
@@ -96,12 +111,40 @@ export default async function BudgetBackingPage({searchParams}:{
     </form>}
    </article>)}
   </section>
+  {owner&&<section className="rounded-lg border border-border p-4 space-y-3">
+   <h2 className="text-lg font-semibold">Transfer already-funded cash between envelopes</h2>
+   <p>One atomic reviewed command releases the source and assigns the same amount to the destination. This is not a bank transfer and cannot move customer, tax or card reserves.</p>
+   <form action={transferBudgetAction} className="grid gap-2 sm:grid-cols-2">
+    <input type="hidden" name="asOf" value={asOf}/><input type="hidden" name="revision" value={snap.stateRevision}/>
+    <input type="hidden" name="hash" value={snap.sourceHash}/><input type="hidden" name="key" value={randomUUID()}/>
+    <label>From envelope<select name="fromId" className={input}>
+     {snap.envelopes.filter(e=>e.active&&e.balanceCents>0).map(e=><option key={e.id} value={e.id}>{e.name} · {formatMoney(e.balanceCents)}</option>)}
+    </select></label>
+    <label>To envelope<select name="toId" className={input}>
+     {snap.envelopes.filter(e=>e.active).map(e=><option key={e.id} value={e.id}>{e.name} · {formatMoney(e.balanceCents)}</option>)}
+    </select></label>
+    <label>Amount ($)<input name="amount" inputMode="decimal" className={input} required/></label>
+    <label>Reviewed transfer reason<input name="reason" minLength={12} maxLength={300} className={input} required/></label>
+    <button className={btn}>Confirm one atomic envelope transfer</button>
+   </form>
+  </section>}
   <section className="rounded-lg border border-border p-4 space-y-4">
    <h2 className="text-lg font-semibold">One shared set of discretionary envelopes</h2>
    <p>These balances carry forward between months. Releasing returns positive backing to the shared pool; assigning spends none of the bank cash by itself. Negative balances remain visible.</p>
    <div className="grid gap-3 md:grid-cols-2">{snap.envelopes.map(e=><article key={e.id} className="rounded border border-border p-3 space-y-2">
     <h3 className="font-semibold">{e.name}</h3>
     <p>{e.groupLabel} · {e.active?"Active":"Archived"} · balance {formatMoney(e.balanceCents)}</p>
+    {owner&&<form action={editEnvelopeAction} className="grid gap-2">
+     <input type="hidden" name="envelopeId" value={e.id}/><input type="hidden" name="version" value={e.version}/>
+     <label>Label<input name="name" className={input} defaultValue={e.name} maxLength={120} required/></label>
+     <label>Group<input name="groupLabel" className={input} defaultValue={e.groupLabel} maxLength={120} required/></label>
+     <label>Order<input type="number" name="sortOrder" className={input} defaultValue={e.sortOrder} min={-9999} max={9999} required/></label>
+     <label>Visibility<select name="active" className={input} defaultValue={e.active?"true":"false"}>
+      <option value="true">Active</option><option value="false">Archived (requires zero balance)</option>
+     </select></label>
+     <label>Reason for change<input name="reason" className={input} minLength={12} maxLength={300} required/></label>
+     <button className={btn}>Save envelope label and status</button>
+    </form>}
     {owner&&e.active&&<form action={budgetMoveAction} className="grid gap-2">
      <input type="hidden" name="asOf" value={asOf}/><input type="hidden" name="revision" value={snap.stateRevision}/>
      <input type="hidden" name="hash" value={snap.sourceHash}/><input type="hidden" name="key" value={randomUUID()}/>
