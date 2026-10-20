@@ -1,3 +1,7 @@
+## October 20 — K-CASH-4A/4B source and risk boundary under verification
+
+BudgetState stores a dated owner source-attestation JSON instead of pretending an imported CSV is a live bank balance. BusinessSettings.cashBudgetEnabled is OFF by default; budget decisions never enable LIVE bank payments, Stripe, QBO or customer messaging. The first service implementation uses the same Books/cash snapshot transaction and revision locks as K-CASH-3, plus signed, idempotent, immutable-intended envelope moves. Preserve the original K-CASH-4A/4B frozen plan and audit every financial claim with synthetic real-Postgres cases. No declaration of completion until original source-linked spend/reversal and entire review, browser and CI acceptance are green.
+
 ## October 19, 2026 — K-CASH-3 accepted engineering and the next whole-budget bundle
 
 K-CASH-3 financial engineering merged as #507 after exact-head full CI. The owner bank/source references and first statement facts are **not live validated**, nor does any preliminary cash calculation authorize real spending. The next frozen plan combines the complete original K-CASH-4A and K-CASH-4B subsections: add the additive budget/plan/target evidence schema first, then implement protected liability backing, idempotent revision-locked envelope funding/consumption and owner review as one coherent finance-risk boundary. K-CASH-5A remains separately responsible for scheduling/targets/settlements. No paid provider, LIVE money, production data, messages or manual release is authorized.

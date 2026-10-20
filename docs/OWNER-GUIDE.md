@@ -1,3 +1,9 @@
+## Budget backing candidate — K-CASH-4A/4B (engineering branch only)
+
+After the branch has passed release checks and merged, use Books → Bank evidence → **Budget backing** to review bank statements, protected customer/tax/card debt, and the one shared discretionary envelope pool. Draft labels have **no money**; budgets are OFF by default. A first bank statement, current statement date, actual card debt and customer/tax debt must be independently verified before owner activation. No CSV alone proves a bank balance.
+
+The owner reviews and references these sources using safe descriptions (never passwords or full account numbers); an attestation expires when a new Books posting or day changes. The read-only page shows shortages and unresolved sources even when funding is blocked. An OWNER alone may switch on budgeting after source validation or submit exact-dollar assignments/releases with a documented reason. ADMIN can inspect but cannot move envelopes. A funding move never transfers money from the bank and never sends customers a message. Money is unavailable for assignment if source date, bank match, liabilities or the backing equation do not tie. This is **an engineering candidate, not a live-use instruction or an approved bank/CPA decision**; later cost planning belongs to K-CASH-5A/5B.
+
 # Owner's guide (for Chris — plain English, no code)
 
 This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **as it exists on 2026-10-17**. It is organized by screen. Each screen says what it is for, what you can change yourself without any code, and what a failed save or a failed automatic job looks like and what to do. The earlier running list of change notes is kept for history in `docs/archive/OWNER-GUIDE-before-2026-10-17.md`; this guide replaces it.
