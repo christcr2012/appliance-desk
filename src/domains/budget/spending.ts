@@ -158,3 +158,82 @@ export async function getPostedBankSpendingDesk(userId:string){
     splits:line.budgetSpendSplits}));
  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
 }
+
+/** Supplier refund is usable only if cleared at the bank and linked to an
+ * original, unreversed budget SPEND. It is never revenue or a second journal.
+ */
+export async function returnClearedSupplierRefund(userId:string,input:{
+ refundBankJournalLineId:string;originalSpendMoveId:string;amountCents:number;
+ commandKey:string;reason:string;expectedRevision:string;
+}){
+ const why=input.reason.trim();
+ if(!Number.isSafeInteger(input.amountCents)||input.amountCents<=0||
+    input.amountCents>2_000_000_000||why.length<12||why.length>300||
+    !/^[A-Za-z0-9_-]{10,120}$/.test(input.commandKey)||
+    !/^\d+$/.test(input.expectedRevision))
+   throw new BudgetEvidenceError("Use a real cleared supplier refund, original spend and reviewed amount.");
+ const payloadHash=hash({refund:input.refundBankJournalLineId,original:input.originalSpendMoveId,
+  cents:input.amountCents,reason:why});
+ return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,userId,["OWNER"]);
+  await tx.$queryRawUnsafe('SELECT "id" FROM "BudgetState" WHERE "id"=$1 FOR UPDATE',"singleton");
+  await tx.$queryRawUnsafe('SELECT "id" FROM "BooksPostingRevision" WHERE "id"=$1 FOR UPDATE',"singleton");
+  const existing=await tx.budgetMove.findFirst({where:{commandKey:input.commandKey}});
+  if(existing){
+   if(existing.kind!=="REFUND"||existing.payloadHash!==payloadHash)
+    throw new BudgetEvidenceError("A different refund used this command key.");
+   return existing.resultRevision?.toString()??"";
+  }
+  const original=await tx.budgetMove.findUnique({where:{id:input.originalSpendMoveId}});
+  if(!original||original.kind!=="SPEND"||original.signedCents>=0||
+    original.sourceType!=="JOURNAL_LINE"||!original.sourceId)
+   throw new BudgetEvidenceError("Choose an original classified posted supplier expense.");
+  await tx.$queryRawUnsafe('SELECT "id" FROM "BudgetEnvelope" WHERE "id"=$1 FOR UPDATE',original.envelopeId);
+  const state=await tx.budgetState.findUniqueOrThrow({where:{id:"singleton"}});
+  if(state.revision.toString()!==input.expectedRevision)
+   throw new BudgetEvidenceError("Budget was changed; refresh before refund correction.");
+  if(await tx.budgetMove.count({where:{reversalOfId:original.id}}))
+   throw new BudgetEvidenceError("The original expense allocation was reversed; reconcile it before refunding.");
+  const refunds=await tx.budgetMove.findMany({where:{
+   kind:"REFUND",eventKind:"REFUND_"+original.id}});
+  const creditedToOriginal=refunds.reduce((s,x)=>s+x.signedCents,0);
+  if(creditedToOriginal+input.amountCents> -original.signedCents)
+   throw new BudgetEvidenceError("The cumulative refunds exceed the original classified expense.");
+  const bankLine=await tx.journalLine.findUnique({where:{id:input.refundBankJournalLineId},
+   include:{entry:{include:{lines:{include:{ledgerAccount:true}}}},
+    bankMatchItems:{where:{active:true},include:{group:{include:{
+     items:{where:{active:true,bankObservationId:{not:null}},
+       include:{observation:true}}}}}}}});
+  if(!bankLine||bankLine.debitCents<=0||bankLine.creditCents!==0||
+    input.amountCents>bankLine.debitCents)
+   throw new BudgetEvidenceError("Only a real bank debit to cash can credit an expense envelope.");
+  const bank=await tx.cashAccount.findFirst({where:{
+   active:true,ledgerAccountId:bankLine.ledgerAccountId}});
+  if(!bank)throw new BudgetEvidenceError("Refund is not in registered business checking.");
+  const counter=bankLine.entry.lines.filter(l=>l.id!==bankLine.id&&l.creditCents>0);
+  if(!counter.length||counter.some(l=>l.ledgerAccount.type!=="EXPENSE"))
+   throw new BudgetEvidenceError("Refund is not a supplier expense return; deposits and customer refunds are protected.");
+  if(!bankLine.bankMatchItems.some(i=>!i.group.voidedAt&&i.group.items.some(item=>
+   item.observation?.isActive&&item.observation.status==="MATCHED"&&
+   item.observation.postedOn.getTime()<=Date.now())))
+   throw new BudgetEvidenceError("Supplier refund is not yet proved cleared by settled matched bank evidence.");
+  const already=await tx.budgetMove.aggregate({where:{
+   kind:"REFUND",sourceType:"JOURNAL_LINE",sourceId:bankLine.id},
+   _sum:{signedCents:true}});
+  if((already._sum.signedCents??0)+input.amountCents>bankLine.debitCents)
+   throw new BudgetEvidenceError("Refund journal already allocated to other envelopes.");
+  const revision=state.revision+BigInt(1);
+  await tx.budgetMove.create({data:{
+   commandKey:input.commandKey,payloadHash,resultRevision:revision,
+   envelopeId:original.envelopeId,kind:"REFUND",signedCents:input.amountCents,
+   sourceType:"JOURNAL_LINE",sourceId:bankLine.id,
+   eventKind:"REFUND_"+original.id,reason:why,actorId:userId}});
+  await tx.budgetState.update({where:{id:"singleton"},data:{revision:{increment:1}}});
+  await tx.auditLog.create({data:{userId,action:"budget.source.supplier-refund",
+   entityType:"JournalLine",entityId:bankLine.id,newValue:{
+    originalSpendMoveId:original.id,originalJournalLineId:original.sourceId,
+    envelopeId:original.envelopeId,amountCents:input.amountCents,
+    reason:why,commandKey:input.commandKey,revision:revision.toString()}}});
+  return revision.toString();
+ },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
+}
