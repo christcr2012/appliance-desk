@@ -243,14 +243,31 @@ export async function getSupplierRefundDesk(userId:string){
   await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
   const bank=await tx.cashAccount.findMany({where:{active:true},
    select:{ledgerAccountId:true},take:100});
-  const items=await tx.journalLine.findMany({where:{
-   ledgerAccountId:{in:bank.map(x=>x.ledgerAccountId)},debitCents:{gt:0}},
-   include:{entry:{include:{lines:{include:{
-    ledgerAccount:{select:{type:true}}}}}}},
-    bankMatchItems:{where:{active:true},include:{group:{include:{
-     items:{where:{active:true,bankObservationId:{not:null}},
-       include:{observation:true}}}}}}}},
-   orderBy:{entry:{entryDate:"desc"}},take:200});
+  const items=await tx.journalLine.findMany({
+    where: { ledgerAccountId: { in: bank.map(x => x.ledgerAccountId) }, debitCents: { gt: 0 } },
+    include: {
+      entry: {
+        include: {
+          lines: { include: { ledgerAccount: { select: { type: true } } } }
+        }
+      },
+      bankMatchItems: {
+        where: { active: true },
+        include: {
+          group: {
+            include: {
+              items: {
+                where: { active: true, bankObservationId: { not: null } },
+                include: { observation: true }
+              }
+            }
+          }
+        }
+      }
+    },
+    orderBy: { entry: { entryDate: "desc" } },
+    take: 200
+  });
   const clearedRefunds=items.filter(line=>
    line.entry.lines.some(l=>l.id!==line.id&&l.creditCents>0&&l.ledgerAccount.type==="EXPENSE")&&
    line.bankMatchItems.some(i=>!i.group.voidedAt&&i.group.items.some(m=>
