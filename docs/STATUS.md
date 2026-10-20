@@ -1,3 +1,9 @@
+## October 19 — K-CASH-3 merged green; next original K-CASH-4A/4B bundle plan frozen
+
+PR **#507 merged** to `main` as `aa575887ce1800e8354841270942b0c9365b34bf`, containing bank matches, owner-reviewed statement proof and conservative bank/readiness UI. Its exact-head `ci`, all three disposable-Postgres/unit shards, all four browser shards, type/lint, secret scan, daily release-policy and capacity checks were **green**. No independent reviewer submitted a review; the required self-review waiver is documented in PR #507. The 22 owner/provider/release checks remain PENDING; `live` is `82862d13e5be402b56807d680487adfa35e88cf0`, and there is **no manual-release approval**.
+
+The next approved bundle combines only original K-CASH-4A (schema/restore) and K-CASH-4B (protected reserve/atomic envelope movement) with a frozen docs-only plan in `docs/pr-cards/K-CASH-4A.md`. K-CASH-4A/4B engineering is **not implemented or verified** at this checkpoint. Funding must remain disabled without actual owner-attested complete bank and liability evidence; target/cost recurrence is K-CASH-5A. No production money, provider credentials or customer communications authorized.
+
 ## October 19 — K-CASH-3 exact-head self-review checkpoint
 
 PR #507 draft engineering head `3f7e081537ff09d32b179e0193940c9f71846445` passed the repository's CI gate: classify, secrets, typecheck/lint, 3/3 real DB/unit shards and 4/4 browser shards. During financial self-review, a final source-date correctness patch and DST/adjacent statement tests were added subsequently on the same feature branch; **the newer head must pass fresh exact-head CI** before merge. No reviewer approval is claimed; the documented automated-review-unavailable self-review waiver is recorded on PR #507. External owner/bank provider checks and all 22 recorded release-acceptance tasks remain pending. `main` and `live` not promoted here.

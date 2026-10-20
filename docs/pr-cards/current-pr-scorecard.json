@@ -1,42 +1,20 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-CASH-3",
-  "completedSlices": [
-    {
-      "id": "K-CASH-3",
-      "acceptanceEvidence": [
-        "matches.ts getBankMatchDesk uses exact signed bank-cents, persisted CashAccount bankMatchWindowDays, and matching source LedgerAccount; read-only suggestions. Match-date selection now uses JournalEntry.lateForDate when a closed Books month shifts the actual posting date.",
-        "matches.ts confirmBankMatch serializable lock/guard uses sorted bank/observation/journal IDs, exclusive SQL active claims and actor-in-transaction; tests/bank-reconciliation-integration.test.ts authors simultaneous/retry cases.",
-        "matches.ts voidBankMatch preserves historical groups, requires reason/version, verifies not completed; ignoreBankObservation restricts duplicate/non-account labels with audit.",
-        "Bank checks screen links existing Expenses/Books/source cash events and tells the operator unsupported/ambiguous transactions remain unresolved; new unsupported journal kinds are not created.",
-        "reconcile.ts createBankReconciliation validates real Denver dates, sequential periods, explicit signed beginning/ending, first book opening and outstanding reference; private source attachments reuse K-CASH-2 evidence. Every statement now demands an independently reviewed bank source reference and explicit through-date confirmation, even with no bank rows.",
-        "reconcile.ts evidence checks every active observed row and matched group in exact period; independently totals journal bank lines against statement cents without plug and includes outstanding book items.",
-        "reconcile.ts completed SHA-256 includedEvidence contains exact source IDs/dates/signed cents, group lineage, outstanding IDs, and original source; completion audit includes actor/time.",
-        "reconcile.ts reopenBankReconciliation locks account, owner/reason and expected version, refuses later completed, appends revision pointer without erasing prior immutable includedEvidence. Reopened revision now carries source attestation forward without posing as new completed hash.",
-        "cash-readiness.ts readBank calculates completed-statement ending plus confirmed later inflows minus journal outflows and pre-cutoff outstanding bank debits/holds; never counts unpaid invoices as cash.",
-        "cash-readiness.ts protected liability journal balances, unknown source/negative/stale/drift flags, provisional pool and mayFund=false until later actual budget backing; no funding mutation.",
-        "src/app/desk/books/cash/checks owner/admin screen and actions; requireRole plus transactional assertActiveTeamActor and explicit OWNER-only finalize/reopen/hold, e2e/bank-checks.spec.ts phone/axe/staff route.",
-        "tests/bank-reconciliation-integration.test.ts and e2e/bank-checks.spec.ts authored for synthetic DB/browser contracts; CI not yet verified, full proof/independent review outstanding. Negative post-cutoff outflow, rejected cross-ledger matching and owner-only duplicate classification added to synthetic real database test. Additional synthetic adjacent-statement/negative reconciliation and Denver DST 23/25-hour day tests authored, pending exact-head CI."
-      ]
-    }
-  ],
+  "parent": "K-CASH-4A",
+  "completedSlices": [],
   "remainingEngineering": [
-    "Review/test/repair all K-CASH-3 original completion requirements before merge; CI not yet executed past classify gate, no verified source acceptance yet."
+    "Complete K-CASH-4A database models, migration, backup/restore and real Postgres proof.",
+    "Complete K-CASH-4B protected source readiness, idempotent money moves, journal consumption/reversal and owner controls.",
+    "Run full repo typecheck, preflight, suites, browser/a11y, independent review/allowed waiver and exact-head CI before declaring either original subsection delivered."
   ],
   "externalAcceptance": [
-    "Bank/account and first statement are not selected or verified; no real bank source or statement readback.",
-    "22 original release/provider/customer acceptance tasks remain PENDING and are not simulated.",
-    "Daily release only; no manual release, LIVE Stripe or messages authorized."
+    "Actual bank statements/opening cash, card/tax/deposit debt source facts and owner budget activation remain independent.",
+    "22 recorded release-acceptance checks remain pending; no LIVE/paid provider, customer messaging or manual release."
   ],
-  "workloadException": "Substantial single original K-CASH-3 subsection spans atomic matching, financial completion/version history, conservative cash calculation, owner UI, and real-database/browser proof; no invented subsection credits.",
+  "workloadException": "Two complete adjacent original K-CASH-4A/4B subsections share additive financial models and the same lock/evidence surface. Proposed production scope is substantial; neither is claimed delivered at plan stage.",
   "evidence": [
-    "Original 12 acceptance lines frozen in plan-only commit 58f0429e796c61615e60a16477cf0e87198dcb33 before source edits.",
-    "Source services, owner Bank checks page, and synthetic disposable-Postgres/browser cases authored, without a passing-test claim.",
-    "PR/CI/review and release are pending; all source code is in the feature branch, not main or live.",
-    "Scorecard implementation acceptance strings refer to authored code/tests only. CI compile, finance correctness, browser/accessibility, and independent review are pending and must pass before merged acceptance.",
-    "2026-10-19 self-review reinforced first-statement attestation preservation and negative signed bank clearance/role boundary regressions. Must retest on updated exact head.",
-    "Self-review strengthened source-backed evidence for zero-activity statements and preserved through-date references across historical revisions; new exact-head checks still required.",
-    "Prior exact-head 3f7e081537ff09d32b179e0193940c9f71846445 passed CI (3/3 unit, 4/4 browser, type/lint and secret); latest source-date/DST patch must independently re-pass."
+    "Both original whole-subsection acceptance criteria frozen in a single docs-only planning commit before source edits; no new tests run yet.",
+    "K-CASH-3 PR #507 merged aa575887ce1800e8354841270942b0c9365b34bf with exact-head CI green; does not verify the next bundle."
   ]
 }

@@ -1,3 +1,7 @@
+## October 19, 2026 — K-CASH-3 accepted engineering and the next whole-budget bundle
+
+K-CASH-3 financial engineering merged as #507 after exact-head full CI. The owner bank/source references and first statement facts are **not live validated**, nor does any preliminary cash calculation authorize real spending. The next frozen plan combines the complete original K-CASH-4A and K-CASH-4B subsections: add the additive budget/plan/target evidence schema first, then implement protected liability backing, idempotent revision-locked envelope funding/consumption and owner review as one coherent finance-risk boundary. K-CASH-5A remains separately responsible for scheduling/targets/settlements. No paid provider, LIVE money, production data, messages or manual release is authorized.
+
 ## October 19, 2026 — K-CASH-3 matching is not posting or bank verification
 
 K-CASH-3 reuses verified account/observation and immutable journal source tables; a suggested/confirmed bank match does not create new accounting postings or execute funds movement. Matching is explicit exact signed same-account group authority. An OWNER alone completes a zero-difference statement, attests first-period opening composition and may reopen with an immutable prior revision; ADMIN may match/review but not complete/reopen. Two concurrent double-claims may not survive active uniqueness. Unknown bank outflows remain unresolved rather than being suppressed as expenses.
