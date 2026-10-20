@@ -78,7 +78,7 @@ export async function confirmBankMatch(userId:string,input:{
   const obs=await tx.bankObservation.findMany({where:{id:{in:obsIds},cashAccountId:bank.id,
    isActive:true,status:"UNMATCHED"},include:{matchItems:{where:{active:true}}}});
   const lines=await tx.journalLine.findMany({where:{id:{in:lineIds},ledgerAccountId:bank.ledgerAccountId},
-   include:{bankMatchItems:{where:{active:true}}}});
+   include:{bankMatchItems:{where:{active:true}},entry:{select:{entryDate:true}}}});
   if(obs.length!==obsIds.length||lines.length!==lineIds.length||
    obs.some(x=>x.matchItems.length||(input.observationVersions&&input.observationVersions[x.id]!==x.version))||
    lines.some(x=>x.bankMatchItems.length))
