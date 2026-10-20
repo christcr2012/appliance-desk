@@ -59,6 +59,10 @@ export async function budgetSnapshotInTx(tx:Tx,asOf:string){
  const proof=checked(state.readinessAttestation);
  const accountIds=bank.banks.map(x=>x.id).sort();
  if(!settings.cashBudgetEnabled||!state.startOn)reasons.push("Budget setup is OFF.");
+ for(const item of bank.banks){
+  if(item.ageDays!==null&&item.ageDays>settings.bankEvidenceMaxAgeDays)
+   reasons.push(item.name+": owner-configured bank evidence age exceeded.");
+ }
  if(state.startOn&&state.startOn>at)reasons.push("Budget start is in the future.");
  if(!proof||proof.asOf!==asOf||
   JSON.stringify([...proof.accountIds].sort())!==JSON.stringify(accountIds))
