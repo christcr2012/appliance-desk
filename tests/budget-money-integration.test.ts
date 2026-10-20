@@ -14,7 +14,7 @@ const enabled=process.env.CI==="true"&&["localhost","127.0.0.1"].includes(url.ho
 const tag=randomUUID().slice(0,10),owner="budget-owner-"+tag,admin="budget-admin-"+tag,staff="budget-staff-"+tag;
 const bankLedger="budget-ledger-"+tag,cmd="budget-cmd-"+tag;
 const date=businessDateKey(new Date()),day=businessDateFromKey(date)!;
-let oldSettings:{cashBudgetEnabled:boolean;cashBudgetStartOn:Date|null}|null=null;
+let oldSettings:{cashBudgetEnabled:boolean;cashBudgetStartOn:Date|null;booksStartDate:Date|null}|null=null;
 let oldState:{revision:bigint;startOn:Date|null;readinessAttestation:unknown}|null=null;
 let bank="",bankImport="",bankObs="",entryId="",statement="",group="";
 let account="",bookRev=BigInt(0);
@@ -23,12 +23,12 @@ const ownerId=(suffix:string)=>cmd+"-"+suffix;
 describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority and funding",()=>{
  beforeAll(async()=>{
   const settings=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
-  oldSettings={cashBudgetEnabled:settings.cashBudgetEnabled,cashBudgetStartOn:settings.cashBudgetStartOn};
+  oldSettings={cashBudgetEnabled:settings.cashBudgetEnabled,cashBudgetStartOn:settings.cashBudgetStartOn,booksStartDate:settings.booksStartDate};
   const state=await prisma.budgetState.findUniqueOrThrow({where:{id:"singleton"}});
   oldState={revision:state.revision,startOn:state.startOn,readinessAttestation:state.readinessAttestation};
   bookRev=(await prisma.booksPostingRevision.findUniqueOrThrow({where:{id:"singleton"}})).revision;
   await prisma.businessSettings.update({where:{id:"singleton"},data:{
-   cashBudgetEnabled:false,cashBudgetStartOn:null}});
+   cashBudgetEnabled:false,cashBudgetStartOn:null,booksStartDate:day}});
   await prisma.user.createMany({data:[
    {id:owner,email:owner+"@example.test",role:"OWNER"},
    {id:admin,email:admin+"@example.test",role:"ADMIN"},
@@ -72,7 +72,8 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
     Prisma.DbNull:oldState.readinessAttestation as Prisma.InputJsonValue}});
   await prisma.businessSettings.update({where:{id:"singleton"},data:{
    cashBudgetEnabled:oldSettings?.cashBudgetEnabled??false,
-   cashBudgetStartOn:oldSettings?.cashBudgetStartOn??null}});
+   cashBudgetStartOn:oldSettings?.cashBudgetStartOn??null,
+   booksStartDate:oldSettings?.booksStartDate??null}});
   await prisma.bankMatchItem.deleteMany({where:{groupId:group}});
   await prisma.bankMatchGroup.deleteMany({where:{id:group}});
   await prisma.bankReconciliation.deleteMany({where:{id:statement}});

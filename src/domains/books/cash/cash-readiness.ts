@@ -17,7 +17,7 @@ export type EligibleBank={
 const protective=(role:string|null)=>
  !!role&&(/^(CARD|DEPOSITS_HELD|CUSTOMER_CREDITS|UNAPPLIED_RECEIPTS|SALES_TAX_UNASSIGNED|SALES_TAX:|USE_TAX:|RETAIL_DELIVERY_FEE_PAYABLE|RDF_PAYABLE)/.test(role));
 async function readBank(tx:Tx,bank:{id:string;name:string;ledgerAccountId:string},asOf:Date){
- const reasons:string[]=[],date=businessDateKey(asOf);
+ const reasons:string[]=[];
  const rows=await tx.bankReconciliation.findMany({where:{cashAccountId:bank.id,isCurrent:true},
   orderBy:{toOn:"desc"},take:2});
  const last=rows[0];

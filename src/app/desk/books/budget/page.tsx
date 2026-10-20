@@ -2,7 +2,7 @@ import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
-import { formatMoney } from "@/lib/money-ui";
+import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { getBudgetSnapshot } from "@/domains/budget/protected";
 import { getPostedBankSpendingDesk } from "@/domains/budget/spending";
 import { attestBudgetAction,activateBudgetAction,budgetMoveAction,assignSpendingAction,reverseSpendingAction } from "./actions";
@@ -84,7 +84,7 @@ export default async function BudgetBackingPage({searchParams}:{
      <label>Discretionary envelope<select name="envelopeId" className={input} required>
       {snap.envelopes.filter(e=>e.active).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
      </select></label>
-     <label>Original posted amount ($)<input name="amount" className={input} defaultValue={(s.amountCents/100).toFixed(2)} required/></label>
+     <label>Original posted amount ($)<input name="amount" className={input} defaultValue={moneyInputValue(s.amountCents)} required/></label>
      <label className="sm:col-span-2">Classification source and reason<input name="reason" className={input} minLength={12} maxLength={300} required/></label>
      <button className={btn}>Classify original posted bank expense (no new payment)</button>
     </form>}

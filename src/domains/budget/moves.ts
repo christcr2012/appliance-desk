@@ -2,10 +2,8 @@ import { createHash,randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { businessDateKey } from "@/lib/business-date";
 import { BudgetEvidenceError,budgetSnapshotInTx } from "./protected";
 
-type Tx=Prisma.TransactionClient;
 const int=(n:number)=>Number.isSafeInteger(n)&&n!==0&&Math.abs(n)<=2_000_000_000;
 const hash=(input:unknown)=>createHash("sha256").update(JSON.stringify(input)).digest("hex");
 type Leg={envelopeId:string;kind:"ASSIGN"|"RELEASE";signedCents:number};
