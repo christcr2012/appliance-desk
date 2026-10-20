@@ -2,21 +2,24 @@ import { randomUUID } from "node:crypto";
 import { beforeAll,afterAll,describe,expect,it } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { businessDateFromKey,businessDateKey } from "@/lib/business-date";
+import { businessDateFromKey,businessDateKey,addBusinessDays } from "@/lib/business-date";
 import { confirmBankMatch } from "@/domains/books/cash/matches";
 import { createBankReconciliation,completeBankReconciliation } from "@/domains/books/cash/reconcile";
 import { getBudgetSnapshot,attestBudgetSources,setBudgetActivation } from "@/domains/budget/protected";
 import { applyBudgetMoves,undoBudgetMove } from "@/domains/budget/moves";
-import { assignPostedBankSpending,reversePostedBankSpending } from "@/domains/budget/spending";
+import { assignPostedBankSpending,reversePostedBankSpending,returnClearedSupplierRefund } from "@/domains/budget/spending";
 
 const url=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true"&&["localhost","127.0.0.1"].includes(url.hostname)&&url.pathname==="/appliance_desk_test";
 const tag=randomUUID().slice(0,10),owner="budget-owner-"+tag,admin="budget-admin-"+tag,staff="budget-staff-"+tag;
 const bankLedger="budget-ledger-"+tag,cmd="budget-cmd-"+tag;
-const date=businessDateKey(new Date()),day=businessDateFromKey(date)!;
+const date=businessDateKey(addBusinessDays(businessDateFromKey(businessDateKey(new Date()))!,-1));
+const day=businessDateFromKey(date)!;
+const refundDate=businessDateKey(new Date()),refundDay=businessDateFromKey(refundDate)!;
 let oldSettings:{cashBudgetEnabled:boolean;cashBudgetStartOn:Date|null;booksStartDate:Date|null}|null=null;
 let oldState:{revision:bigint;startOn:Date|null;readinessAttestation:unknown}|null=null;
 let bank="",bankImport="",bankObs="",entryId="",statement="",group="";
+const extraImports:string[]=[],extraObs:string[]=[],extraGroups:string[]=[];
 let account="",bookRev=BigInt(0);
 const lineIds:string[]=[],additionalEntries:string[]=[];
 const ownerId=(suffix:string)=>cmd+"-"+suffix;
@@ -74,11 +77,11 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
    cashBudgetEnabled:oldSettings?.cashBudgetEnabled??false,
    cashBudgetStartOn:oldSettings?.cashBudgetStartOn??null,
    booksStartDate:oldSettings?.booksStartDate??null}});
-  await prisma.bankMatchItem.deleteMany({where:{groupId:group}});
-  await prisma.bankMatchGroup.deleteMany({where:{id:group}});
+  await prisma.bankMatchItem.deleteMany({where:{groupId:{in:[group,...extraGroups]}}});
+  await prisma.bankMatchGroup.deleteMany({where:{id:{in:[group,...extraGroups]}}});
   await prisma.bankReconciliation.deleteMany({where:{id:statement}});
-  await prisma.bankObservation.deleteMany({where:{id:bankObs}});
-  await prisma.bankImport.deleteMany({where:{id:bankImport}});
+  await prisma.bankObservation.deleteMany({where:{id:{in:[bankObs,...extraObs]}}});
+  await prisma.bankImport.deleteMany({where:{id:{in:[bankImport,...extraImports]}}});
   await prisma.journalLine.deleteMany({where:{entryId:{in:[entryId,...additionalEntries]}}});
   await prisma.journalEntry.deleteMany({where:{id:{in:[entryId,...additionalEntries]}}});
   await prisma.cashAccount.deleteMany({where:{id:bank}});
@@ -200,6 +203,51 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   expect(second).toBeTruthy();
   expect(await prisma.budgetMove.count({where:{sourceType:"JOURNAL_LINE",
     sourceId:spendLine.id,kind:"SPEND"}})).toBe(2);
+ });
+ it("refuses an uncleared supplier refund, then returns only cleared original-spend money exactly once",async()=>{
+  const orig=await prisma.budgetMove.findFirstOrThrow({where:{
+   kind:"SPEND",sourceType:"JOURNAL_LINE",laterReversals:{none:{}}},
+   orderBy:{createdAt:"desc"}});
+  const expense=await prisma.ledgerAccount.findFirstOrThrow({where:{type:"EXPENSE",active:true}});
+  const refund=await prisma.journalEntry.create({data:{
+   sourceType:"OPENING",sourceId:ownerId("supplier-refund"),eventKind:"OPENING_BALANCE",
+   entryDate:refundDay,periodKey:refundDate.slice(0,7),
+   memo:"Synthetic supplier refund to business checking",
+   lines:{create:[{ledgerAccountId:bankLedger,debitCents:300},
+     {ledgerAccountId:expense.id,creditCents:300}]}},include:{lines:true}});
+  additionalEntries.push(refund.id);
+  const line=refund.lines.find(x=>x.ledgerAccountId===bankLedger)!;
+  lineIds.push(line.id);
+  const before=await getBudgetSnapshot(owner,date);
+  const input={refundBankJournalLineId:line.id,originalSpendMoveId:orig.id,
+   amountCents:300,commandKey:ownerId("supplier-refund-budget"),
+   reason:"Synthetic cleared supplier part refund",expectedRevision:before.stateRevision};
+  await expect(returnClearedSupplierRefund(owner,input))
+   .rejects.toThrow(/not yet proved cleared/);
+  const imp=await prisma.bankImport.create({data:{
+   cashAccountId:bank,sha256:"8".repeat(64),mappingHash:"9".repeat(64),
+   mapping:{schemaVersion:1},rowCount:1,importedByUserId:owner}});
+  extraImports.push(imp.id);
+  const obs=await prisma.bankObservation.create({data:{
+   cashAccountId:bank,importId:imp.id,rowNumber:1,postedOn:refundDay,
+   signedCents:300,description:"Synthetic supplier bank refund",
+   fingerprint:"e".repeat(64),occurrenceIndex:1}});
+  extraObs.push(obs.id);
+  extraGroups.push(await confirmBankMatch(owner,{
+   accountId:bank,commandKey:ownerId("supplier-refund-match"),
+   observationIds:[obs.id],journalLineIds:[line.id]}));
+  const revision=await returnClearedSupplierRefund(owner,input);
+  expect(await returnClearedSupplierRefund(owner,input)).toBe(revision);
+  await expect(returnClearedSupplierRefund(owner,{...input,amountCents:200}))
+   .rejects.toThrow(/different refund/);
+  await expect(returnClearedSupplierRefund(owner,{
+   ...input,commandKey:ownerId("supplier-refund-double"),amountCents:200,
+   expectedRevision:revision})).rejects.toThrow(/exceed|already allocated/);
+  const budgetRefunds=await prisma.budgetMove.findMany({where:{
+   kind:"REFUND",sourceId:line.id}});
+  expect(budgetRefunds).toHaveLength(1);
+  expect(budgetRefunds[0]?.envelopeId).toBe(orig.envelopeId);
+  expect(budgetRefunds[0]?.signedCents).toBe(300);
  });
  it("releases and undoes only funded positive balances, without inventing a bank transaction",async()=>{
   const snap=await getBudgetSnapshot(owner,date);
