@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getBankMatchDesk,confirmBankMatch,voidBankMatch,ignoreBankObservation } from "@/domains/books/cash/matches";
 import { createBankReconciliation,completeBankReconciliation,reopenBankReconciliation } from "@/domains/books/cash/reconcile";
 import { getCashReadiness,createCashHold,releaseCashHold } from "@/domains/books/cash/cash-readiness";
-import { businessDateFromKey } from "@/lib/business-date";
+import { businessDateFromKey,businessDateKey,addBusinessDays } from "@/lib/business-date";
 
 const db=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true"&&["localhost","127.0.0.1"].includes(db.hostname)&&db.pathname==="/appliance_desk_test";
@@ -63,6 +63,15 @@ describe.skipIf(!enabled)("K-CASH-3 disposable Postgres match and statement proo
   await prisma.ledgerAccount.deleteMany({where:{id:ledger}});
   await prisma.user.deleteMany({where:{id:{in:[owner,admin,staff]}}});
   await prisma.businessSettings.update({where:{id:"singleton"},data:{booksStartDate:oldBooksStart}});
+ });
+ it("resolves Colorado spring and fall statement calendar transitions without UTC-day shortcuts",()=>{
+  const spring=day("2026-03-08"),next=addBusinessDays(spring,1);
+  expect(businessDateKey(next)).toBe("2026-03-09");
+  expect((next.getTime()-spring.getTime())/3600000).toBe(23);
+  const fall=day("2026-11-01"),after=addBusinessDays(fall,1);
+  expect(businessDateKey(after)).toBe("2026-11-02");
+  expect((after.getTime()-fall.getTime())/3600000).toBe(25);
+  expect(businessDateFromKey("2026-02-30")).toBeNull();
  });
  it("rejects staff and does not auto-match approximate or unrelated values",async()=>{
   await expect(getBankMatchDesk(staff,cash)).rejects.toThrow(/access/);
@@ -194,5 +203,14 @@ describe.skipIf(!enabled)("K-CASH-3 disposable Postgres match and statement proo
    clearedLaterInflowsCents:0,eligibleCents:360,
    bookDifferenceCents:0,unmatchedCount:0});
   expect(ready.mayFund).toBe(false);
+  const next=await createBankReconciliation(owner,{...statementAttestation,
+   accountId:cash,fromDate:"2026-10-17",toDate:"2026-10-18",
+   beginningCents:400,endingCents:360});
+  const nextProof=await completeBankReconciliation(owner,next,1);
+  expect(nextProof).toMatchObject({observationSumCents:-40,
+   journalMatchedSumCents:-40,bankDifferenceCents:0});
+  await expect(reopenBankReconciliation(owner,reopened,2,
+   "Recheck prior evidence after next statement completion"))
+    .rejects.toThrow(/reverse chronological/);
  });
 });

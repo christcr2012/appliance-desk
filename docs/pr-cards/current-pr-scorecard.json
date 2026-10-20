@@ -6,7 +6,7 @@
     {
       "id": "K-CASH-3",
       "acceptanceEvidence": [
-        "matches.ts getBankMatchDesk uses exact signed bank-cents, persisted CashAccount bankMatchWindowDays, and matching source LedgerAccount; read-only suggestions.",
+        "matches.ts getBankMatchDesk uses exact signed bank-cents, persisted CashAccount bankMatchWindowDays, and matching source LedgerAccount; read-only suggestions. Match-date selection now uses JournalEntry.lateForDate when a closed Books month shifts the actual posting date.",
         "matches.ts confirmBankMatch serializable lock/guard uses sorted bank/observation/journal IDs, exclusive SQL active claims and actor-in-transaction; tests/bank-reconciliation-integration.test.ts authors simultaneous/retry cases.",
         "matches.ts voidBankMatch preserves historical groups, requires reason/version, verifies not completed; ignoreBankObservation restricts duplicate/non-account labels with audit.",
         "Bank checks screen links existing Expenses/Books/source cash events and tells the operator unsupported/ambiguous transactions remain unresolved; new unsupported journal kinds are not created.",
@@ -17,7 +17,7 @@
         "cash-readiness.ts readBank calculates completed-statement ending plus confirmed later inflows minus journal outflows and pre-cutoff outstanding bank debits/holds; never counts unpaid invoices as cash.",
         "cash-readiness.ts protected liability journal balances, unknown source/negative/stale/drift flags, provisional pool and mayFund=false until later actual budget backing; no funding mutation.",
         "src/app/desk/books/cash/checks owner/admin screen and actions; requireRole plus transactional assertActiveTeamActor and explicit OWNER-only finalize/reopen/hold, e2e/bank-checks.spec.ts phone/axe/staff route.",
-        "tests/bank-reconciliation-integration.test.ts and e2e/bank-checks.spec.ts authored for synthetic DB/browser contracts; CI not yet verified, full proof/independent review outstanding. Negative post-cutoff outflow, rejected cross-ledger matching and owner-only duplicate classification added to synthetic real database test."
+        "tests/bank-reconciliation-integration.test.ts and e2e/bank-checks.spec.ts authored for synthetic DB/browser contracts; CI not yet verified, full proof/independent review outstanding. Negative post-cutoff outflow, rejected cross-ledger matching and owner-only duplicate classification added to synthetic real database test. Additional synthetic adjacent-statement/negative reconciliation and Denver DST 23/25-hour day tests authored, pending exact-head CI."
       ]
     }
   ],
@@ -36,6 +36,7 @@
     "PR/CI/review and release are pending; all source code is in the feature branch, not main or live.",
     "Scorecard implementation acceptance strings refer to authored code/tests only. CI compile, finance correctness, browser/accessibility, and independent review are pending and must pass before merged acceptance.",
     "2026-10-19 self-review reinforced first-statement attestation preservation and negative signed bank clearance/role boundary regressions. Must retest on updated exact head.",
-    "Self-review strengthened source-backed evidence for zero-activity statements and preserved through-date references across historical revisions; new exact-head checks still required."
+    "Self-review strengthened source-backed evidence for zero-activity statements and preserved through-date references across historical revisions; new exact-head checks still required.",
+    "Prior exact-head 3f7e081537ff09d32b179e0193940c9f71846445 passed CI (3/3 unit, 4/4 browser, type/lint and secret); latest source-date/DST patch must independently re-pass."
   ]
 }

@@ -107,7 +107,7 @@ export default async function BankChecksPage({searchParams}:{
       <legend className="font-semibold">Unclaimed Books bank lines</legend>
       {model.lines.map(l=><label key={l.id} className="flex gap-2 items-start">
        <input type="checkbox" name="journalLineIds" value={l.id}/>
-       <span>#{l.entry.entryNumber} · {formatBusinessDate(l.entry.entryDate)} · {formatMoney(l.debitCents-l.creditCents)} · {l.entry.sourceType}</span>
+       <span>#{l.entry.entryNumber} · {formatBusinessDate(l.entry.lateForDate??l.entry.entryDate)}{l.entry.lateForDate?" (source day; later book entry)":""} · {formatMoney(l.debitCents-l.creditCents)} · {l.entry.sourceType}</span>
       </label>)}
      </fieldset>
      <button className={btn}>Confirm exact bank/book group</button>

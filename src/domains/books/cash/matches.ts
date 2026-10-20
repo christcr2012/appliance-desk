@@ -37,11 +37,11 @@ export async function getBankMatchDesk(userId:string,accountId:string){
   const lines=await tx.journalLine.findMany({where:{ledgerAccountId:bank.ledgerAccountId,
    bankMatchItems:{none:{active:true}}},orderBy:{entry:{entryDate:"desc"}},take:500,
    select:{id:true,debitCents:true,creditCents:true,
-    entry:{select:{entryDate:true,entryNumber:true,eventKind:true,sourceType:true}}}});
+    entry:{select:{entryDate:true,lateForDate:true,entryNumber:true,eventKind:true,sourceType:true}}}});
   const suggestions=observations.filter(x=>x.status==="UNMATCHED").map(o=>({
    observationId:o.id,candidates:lines.filter(l=>signed(l)===o.signedCents&&
-    Math.abs(days(l.entry.entryDate)-days(o.postedOn))<=bank.bankMatchWindowDays)
-    .slice(0,10).map(l=>({id:l.id,entryNumber:l.entry.entryNumber,date:businessDateKey(l.entry.entryDate),
+    Math.abs(days(l.entry.lateForDate??l.entry.entryDate)-days(o.postedOn))<=bank.bankMatchWindowDays)
+    .slice(0,10).map(l=>({id:l.id,entryNumber:l.entry.entryNumber,date:businessDateKey(l.entry.lateForDate??l.entry.entryDate),
      amountCents:signed(l),source:l.entry.sourceType}))}));
   const groups=await tx.bankMatchGroup.findMany({where:{cashAccountId:accountId},
    orderBy:{createdAt:"desc"},take:40,include:{items:true}});
@@ -78,7 +78,7 @@ export async function confirmBankMatch(userId:string,input:{
   const obs=await tx.bankObservation.findMany({where:{id:{in:obsIds},cashAccountId:bank.id,
    isActive:true,status:"UNMATCHED"},include:{matchItems:{where:{active:true}}}});
   const lines=await tx.journalLine.findMany({where:{id:{in:lineIds},ledgerAccountId:bank.ledgerAccountId},
-   include:{bankMatchItems:{where:{active:true}},entry:{select:{entryDate:true}}}});
+   include:{bankMatchItems:{where:{active:true}},entry:{select:{entryDate:true,lateForDate:true}}}});
   if(obs.length!==obsIds.length||lines.length!==lineIds.length||
    obs.some(x=>x.matchItems.length||(input.observationVersions&&input.observationVersions[x.id]!==x.version))||
    lines.some(x=>x.bankMatchItems.length))
@@ -88,7 +88,7 @@ export async function confirmBankMatch(userId:string,input:{
   if(!Number.isSafeInteger(amount)||amount===0||lines.reduce((s,x)=>s+signed(x),0)!==amount||
     components.some(x=>!Number.isSafeInteger(x)||x===0||Math.sign(x)!==Math.sign(amount)))
    throw new CashEvidenceError("Same-account match requires exact signed amounts in one direction.");
-  if(obs.some(o=>lines.every(l=>Math.abs(days(o.postedOn)-days(l.entry.entryDate))>bank.bankMatchWindowDays)))
+  if(obs.some(o=>lines.every(l=>Math.abs(days(o.postedOn)-days(l.entry.lateForDate??l.entry.entryDate))>bank.bankMatchWindowDays)))
    throw new CashEvidenceError("Confirmed matches must fall inside the saved bank match window.");
   if(await completed(tx,bank.id,obs.map(x=>x.postedOn)))
    throw new CashEvidenceError("Reopen the completed statement before changing its match.");
