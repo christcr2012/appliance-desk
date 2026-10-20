@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { businessDateKey } from "@/lib/business-date";
 import { BudgetEvidenceError } from "./protected";
 
 const hash=(x:unknown)=>createHash("sha256").update(JSON.stringify(x)).digest("hex");
@@ -125,4 +126,28 @@ export async function reversePostedBankSpending(userId:string,input:{
     envelopeId:x.envelopeId})),resultRevision:next.toString()}}});
   return next.toString();
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
+}
+
+/** Bounded, private listing of posted discretionary bank debits for the
+ * owner to classify. Displaying a source does not post/repost money.
+ */
+export async function getPostedBankSpendingDesk(userId:string){
+ return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+  const accounts=await tx.cashAccount.findMany({where:{active:true},
+   select:{ledgerAccountId:true},take:100});
+  if(!accounts.length)return [];
+  const rows=await tx.journalLine.findMany({where:{
+   ledgerAccountId:{in:accounts.map(x=>x.ledgerAccountId)},creditCents:{gt:0}},
+   include:{
+    entry:{include:{lines:{include:{ledgerAccount:{select:{type:true,systemRole:true}}}}}},
+    budgetSpendSplits:{include:{envelope:{select:{name:true}}}}},
+   },
+   orderBy:{entry:{entryDate:"desc"}},take:200});
+  return rows.filter(line=>line.entry.lines.some(x=>x.id!==line.id&&x.debitCents>0&&
+   (x.ledgerAccount.type==="EXPENSE"||x.ledgerAccount.systemRole==="OWNER_DRAWS")))
+   .map(line=>({id:line.id,amountCents:line.creditCents,
+    bookDate:businessDateKey(line.entry.entryDate),entry:{memo:line.entry.memo},
+    splits:line.budgetSpendSplits}));
+ },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
 }
