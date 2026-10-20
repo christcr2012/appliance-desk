@@ -7,6 +7,7 @@ import { confirmBankMatch } from "@/domains/books/cash/matches";
 import { createBankReconciliation,completeBankReconciliation } from "@/domains/books/cash/reconcile";
 import { getBudgetSnapshot,attestBudgetSources,setBudgetActivation } from "@/domains/budget/protected";
 import { applyBudgetMoves,undoBudgetMove } from "@/domains/budget/moves";
+import { assignPostedBankSpending,reversePostedBankSpending } from "@/domains/budget/spending";
 
 const url=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true"&&["localhost","127.0.0.1"].includes(url.hostname)&&url.pathname==="/appliance_desk_test";
@@ -17,7 +18,7 @@ let oldSettings:{cashBudgetEnabled:boolean;cashBudgetStartOn:Date|null}|null=nul
 let oldState:{revision:bigint;startOn:Date|null;readinessAttestation:unknown}|null=null;
 let bank="",bankImport="",bankObs="",entryId="",statement="",group="";
 let account="",bookRev=BigInt(0);
-const lineIds:string[]=[];
+const lineIds:string[]=[],additionalEntries:string[]=[];
 const ownerId=(suffix:string)=>cmd+"-"+suffix;
 describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority and funding",()=>{
  beforeAll(async()=>{
@@ -62,6 +63,7 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   account=(await prisma.budgetEnvelope.findFirstOrThrow({where:{id:"budget-default-repairs"}})).id;
  });
  afterAll(async()=>{
+  await prisma.budgetMove.deleteMany({where:{actorId:owner,reversalOfId:{not:null}}});
   await prisma.budgetMove.deleteMany({where:{OR:[{actorId:owner},{commandKey:{startsWith:cmd}}]}});
   await prisma.budgetSpendSplit.deleteMany({where:{journalLineId:{in:lineIds}}});
   await prisma.budgetState.update({where:{id:"singleton"},data:{
@@ -76,8 +78,8 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   await prisma.bankReconciliation.deleteMany({where:{id:statement}});
   await prisma.bankObservation.deleteMany({where:{id:bankObs}});
   await prisma.bankImport.deleteMany({where:{id:bankImport}});
-  await prisma.journalLine.deleteMany({where:{entryId}});
-  await prisma.journalEntry.deleteMany({where:{id:entryId}});
+  await prisma.journalLine.deleteMany({where:{entryId:{in:[entryId,...additionalEntries]}}});
+  await prisma.journalEntry.deleteMany({where:{id:{in:[entryId,...additionalEntries]}}});
   await prisma.cashAccount.deleteMany({where:{id:bank}});
   await prisma.ledgerAccount.deleteMany({where:{id:bankLedger}});
   await prisma.auditLog.deleteMany({where:{userId:{in:[owner,admin,staff]}}});
@@ -144,6 +146,54 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   await expect(applyBudgetMoves(owner,{...original,commandKey:ownerId("first"),
    moves:[{envelopeId:account,kind:"ASSIGN",signedCents:14000}]}))
    .rejects.toThrow(/different command/);
+ });
+ it("classifies a posted expense exactly once, blocks protected debt/payments and preserves signed inverse audit",async()=>{
+  const expense=await prisma.ledgerAccount.findFirstOrThrow({where:{type:"EXPENSE",active:true}});
+  const liability=await prisma.ledgerAccount.findUniqueOrThrow({where:{systemRole:"DEPOSITS_HELD"}});
+  const outflow=await prisma.journalEntry.create({data:{
+    sourceType:"OPENING",sourceId:ownerId("expense-bank"),eventKind:"OPENING_BALANCE",
+    entryDate:day,periodKey:date.slice(0,7),memo:"Synthetic expense paid after bank statement",
+    lines:{create:[{ledgerAccountId:bankLedger,creditCents:600},
+      {ledgerAccountId:expense.id,debitCents:600}]}},include:{lines:true}});
+  additionalEntries.push(outflow.id);
+  const spendLine=outflow.lines.find(x=>x.ledgerAccountId===bankLedger)!;
+  lineIds.push(spendLine.id);
+  const liabilityPayment=await prisma.journalEntry.create({data:{
+    sourceType:"OPENING",sourceId:ownerId("liability-bank"),eventKind:"OPENING_BALANCE",
+    entryDate:day,periodKey:date.slice(0,7),memo:"Protected customer deposit repayment",
+    lines:{create:[{ledgerAccountId:bankLedger,creditCents:200},
+      {ledgerAccountId:liability.id,debitCents:200}]}},include:{lines:true}});
+  additionalEntries.push(liabilityPayment.id);
+  lineIds.push(liabilityPayment.lines.find(x=>x.ledgerAccountId===bankLedger)!.id);
+  const snap=await getBudgetSnapshot(owner,date);
+  expect(snap.unassignedCount).toBeGreaterThanOrEqual(1);
+  expect(snap.mayAssign).toBe(false);
+  await expect(assignPostedBankSpending(admin,{journalLineId:spendLine.id,
+   splits:[{envelopeId:account,amountCents:600}],commandKey:ownerId("staff-spend"),
+   reason:"Admin may not classify protected budget spending"})).rejects.toThrow(/access/);
+  await expect(assignPostedBankSpending(owner,{journalLineId:liabilityPayment.lines.find(
+   x=>x.ledgerAccountId===bankLedger)!.id,
+   splits:[{envelopeId:account,amountCents:200}],commandKey:ownerId("liability-spend"),
+   reason:"Synthetic protected customer refund"})).rejects.toThrow(/protected|not discretionary/);
+  const item={journalLineId:spendLine.id,splits:[{envelopeId:account,amountCents:600}],
+   commandKey:ownerId("expense-spend"),reason:"Synthetic matched posted repair bank payment"};
+  const result=await assignPostedBankSpending(owner,item);
+  expect(await assignPostedBankSpending(owner,item)).toBe(result);
+  await expect(assignPostedBankSpending(owner,{...item,commandKey:ownerId("double-spend")}))
+   .rejects.toThrow(/already classified/);
+  expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id}})).toBe(1);
+  expect(await prisma.budgetMove.count({where:{sourceType:"JOURNAL_LINE",sourceId:spendLine.id,kind:"SPEND"}})).toBe(1);
+  const corrected=await getBudgetSnapshot(owner,date);
+  expect(corrected.unassignedCount).toBe(0);
+  expect(corrected.envelopes.find(x=>x.id===account)?.balanceCents).toBe(14400);
+  await reversePostedBankSpending(owner,{journalLineId:spendLine.id,
+   reason:"Correction: original source assigned wrong cost envelope",expectedRevision:corrected.stateRevision,
+   commandKey:ownerId("reverse-spend")});
+  expect(await prisma.budgetMove.count({where:{sourceType:"JOURNAL_LINE",sourceId:spendLine.id,kind:"REVERSAL"}})).toBe(1);
+  expect(await prisma.budgetSpendSplit.count({where:{journalLineId:spendLine.id}})).toBe(0);
+  const reversed=await getBudgetSnapshot(owner,date);
+  expect(reversed.envelopes.find(x=>x.id===account)?.balanceCents).toBe(15000);
+  expect(reversed.unassignedCount).toBeGreaterThan(0);
  });
  it("releases and undoes only funded positive balances, without inventing a bank transaction",async()=>{
   const snap=await getBudgetSnapshot(owner,date);
