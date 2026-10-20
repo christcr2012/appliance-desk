@@ -11,7 +11,7 @@ const names=["budgetState","budgetEnvelope","budgetMove","budgetSpendSplit",
 describe.skipIf(!enabled)("K-CASH-4A additive populated Postgres budget schema and restore source",()=>{
  it("preserves one empty state and seven editable funded-by-nobody envelope labels",async()=>{
   expect(await prisma.budgetState.count()).toBe(1);
-  expect((await prisma.budgetState.findUniqueOrThrow({where:{id:"singleton"}})).revision).toBe(1n);
+  expect((await prisma.budgetState.findUniqueOrThrow({where:{id:"singleton"}})).revision).toBe(BigInt(1));
   const labels=await prisma.budgetEnvelope.findMany({where:{id:{startsWith:"budget-default-"}},
    orderBy:{sortOrder:"asc"}});
   expect(labels.map(l=>l.name)).toEqual(["Operating costs","Repairs and parts",

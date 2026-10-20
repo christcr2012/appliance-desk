@@ -14,7 +14,7 @@ export type BudgetMoveInput={asOf:string;expectedRevision:string;sourceHash:stri
 function normalized(input:BudgetMoveInput){
  if(!/^[A-Za-z0-9_-]{10,120}$/.test(input.commandKey)||
   !/^[0-9a-f]{64}$/.test(input.sourceHash)||
-  !/^\d+$/.test(input.expectedRevision)||BigInt(input.expectedRevision)<=0n)
+  !/^\d+$/.test(input.expectedRevision)||BigInt(input.expectedRevision)<=BigInt(0))
   throw new BudgetEvidenceError("Refresh the budget snapshot and use a safe command identity.");
  if(!Array.isArray(input.moves)||!input.moves.length||input.moves.length>60)
   throw new BudgetEvidenceError("Select one or more funding movements.");
@@ -91,7 +91,7 @@ export async function applyBudgetMoves(userId:string,input:BudgetMoveInput){
     cmd.moves.some(x=>x.kind==="ASSIGN"&&
       (before.get(x.envelopeId)?.balanceCents??0)>=0))
    throw new BudgetEvidenceError("Cover negative discretionary balances before new funding.");
-  const resultRevision=state.revision+1n;
+  const resultRevision=state.revision+BigInt(1);
   for(const leg of cmd.moves)await tx.budgetMove.create({data:{
    commandKey:input.commandKey,payloadHash,resultRevision,envelopeId:leg.envelopeId,
    signedCents:leg.signedCents,kind:leg.kind,reason:cmd.reason,actorId:userId}});
@@ -127,7 +127,7 @@ export async function undoBudgetMove(userId:string,input:{
    throw new BudgetEvidenceError("Cannot undo using money now spent or reserved.");
   if(original.signedCents<0&&!snap.mayAssign)
    throw new BudgetEvidenceError("Reversing this release would require unverified positive backing.");
-  const signedCents=-original.signedCents,resultRevision=state.revision+1n;
+  const signedCents=-original.signedCents,resultRevision=state.revision+BigInt(1);
   await tx.budgetMove.create({data:{
    commandKey:input.commandKey??randomUUID(),payloadHash:hash({original:original.id,reason}),
    resultRevision,envelopeId:original.envelopeId,signedCents,kind:"REVERSAL",

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll,afterAll,describe,expect,it } from "vitest";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey,businessDateKey } from "@/lib/business-date";
 import { confirmBankMatch } from "@/domains/books/cash/matches";
@@ -15,7 +16,7 @@ const date=businessDateKey(new Date()),day=businessDateFromKey(date)!;
 let oldSettings:{cashBudgetEnabled:boolean;cashBudgetStartOn:Date|null}|null=null;
 let oldState:{revision:bigint;startOn:Date|null;readinessAttestation:unknown}|null=null;
 let bank="",bankImport="",bankObs="",entryId="",statement="",group="";
-let account="",bookRev=0n;
+let account="",bookRev=BigInt(0);
 const lineIds:string[]=[];
 const ownerId=(suffix:string)=>cmd+"-"+suffix;
 describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority and funding",()=>{
@@ -64,9 +65,9 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   await prisma.budgetMove.deleteMany({where:{OR:[{actorId:owner},{commandKey:{startsWith:cmd}}]}});
   await prisma.budgetSpendSplit.deleteMany({where:{journalLineId:{in:lineIds}}});
   await prisma.budgetState.update({where:{id:"singleton"},data:{
-   revision:oldState?.revision??1n,startOn:oldState?.startOn??null,
-   readinessAttestation:oldState?.readinessAttestation===null?
-    null:oldState?.readinessAttestation as object}});
+   revision:oldState?.revision??BigInt(1),startOn:oldState?.startOn??null,
+   readinessAttestation:oldState?.readinessAttestation==null?
+    Prisma.DbNull:oldState.readinessAttestation as Prisma.InputJsonValue}});
   await prisma.businessSettings.update({where:{id:"singleton"},data:{
    cashBudgetEnabled:oldSettings?.cashBudgetEnabled??false,
    cashBudgetStartOn:oldSettings?.cashBudgetStartOn??null}});
