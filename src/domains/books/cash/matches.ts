@@ -88,6 +88,8 @@ export async function confirmBankMatch(userId:string,input:{
   if(!Number.isSafeInteger(amount)||amount===0||lines.reduce((s,x)=>s+signed(x),0)!==amount||
     components.some(x=>!Number.isSafeInteger(x)||x===0||Math.sign(x)!==Math.sign(amount)))
    throw new CashEvidenceError("Same-account match requires exact signed amounts in one direction.");
+  if(obs.some(o=>lines.every(l=>Math.abs(days(o.postedOn)-days(l.entry.entryDate))>bank.bankMatchWindowDays)))
+   throw new CashEvidenceError("Confirmed matches must fall inside the saved bank match window.");
   if(await completed(tx,bank.id,obs.map(x=>x.postedOn)))
    throw new CashEvidenceError("Reopen the completed statement before changing its match.");
   const group=await tx.bankMatchGroup.create({data:{cashAccountId:bank.id,
