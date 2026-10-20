@@ -50,13 +50,16 @@ CREATE TABLE "BudgetMove" (
  "actorId" TEXT, "reversalOfId" TEXT,
  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
  CONSTRAINT "BudgetMove_pkey" PRIMARY KEY ("id"),
- CONSTRAINT "BudgetMove_amount_kind" CHECK ("signedCents"<>0 AND "kind" IN ('ASSIGN','RELEASE','SPEND','REVERSAL')),
+ CONSTRAINT "BudgetMove_amount_kind" CHECK (
+ ("kind"='ASSIGN' AND "signedCents">0) OR
+ ("kind" IN ('RELEASE','SPEND') AND "signedCents"<0) OR
+ ("kind"='REVERSAL' AND "signedCents"<>0)),
  CONSTRAINT "BudgetMove_source_shape" CHECK (("kind" IN ('ASSIGN','RELEASE')) OR
   ("sourceType" IS NOT NULL AND "sourceId" IS NOT NULL AND "eventKind" IS NOT NULL))
 );
 CREATE UNIQUE INDEX "BudgetMove_commandKey_envelopeId_kind_key" ON "BudgetMove" ("commandKey","envelopeId","kind");
 CREATE UNIQUE INDEX "BudgetMove_reversalOfId_key" ON "BudgetMove" ("reversalOfId");
-CREATE UNIQUE INDEX "BudgetMove_source_active_once" ON "BudgetMove" ("sourceType","sourceId","eventKind","envelopeId")
+CREATE UNIQUE INDEX "BudgetMove_source_active_once" ON "BudgetMove" ("sourceType","sourceId","eventKind","envelopeId","kind")
  WHERE "kind" IN ('SPEND','REVERSAL') AND "sourceType" IS NOT NULL;
 CREATE INDEX "BudgetMove_envelopeId_createdAt_idx" ON "BudgetMove" ("envelopeId","createdAt");
 CREATE INDEX "BudgetMove_sourceType_sourceId_eventKind_idx" ON "BudgetMove" ("sourceType","sourceId","eventKind");
