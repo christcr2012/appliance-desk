@@ -9,6 +9,7 @@ for(const width of [360,768,1440]){
   await expect(page.getByRole("heading",{name:/Cash ready to assign/})).toBeVisible();
   await expect(page.getByRole("heading",{name:/Required protected obligations/})).toBeVisible();
   await expect(page.getByRole("heading",{name:/One shared set of discretionary envelopes/})).toBeVisible();
+  await expect(page.getByRole("heading",{name:/Posted business spending/})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  });

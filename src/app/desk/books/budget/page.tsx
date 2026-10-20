@@ -4,7 +4,8 @@ import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import { getBudgetSnapshot } from "@/domains/budget/protected";
-import { attestBudgetAction,activateBudgetAction,budgetMoveAction } from "./actions";
+import { getPostedBankSpendingDesk } from "@/domains/budget/spending";
+import { attestBudgetAction,activateBudgetAction,budgetMoveAction,assignSpendingAction,reverseSpendingAction } from "./actions";
 export const metadata={title:"Budget backing — Books"};
 const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
 const btn="rounded border border-border bg-card px-3 py-2 font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -12,7 +13,9 @@ const dollars=(n:number|null)=>n===null?"Unknown":formatMoney(n);
 export default async function BudgetBackingPage({searchParams}:{
  searchParams:Promise<{notice?:string}>}){
  const actor=await requireRole("OWNER","ADMIN"),owner=actor.user.role==="OWNER";
- const asOf=businessDateKey(new Date()),snap=await getBudgetSnapshot(actor.user.id,asOf);
+ const asOf=businessDateKey(new Date());
+ const [snap,spending]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
+   getPostedBankSpendingDesk(actor.user.id)]);
  const notice=(await searchParams).notice?.slice(0,240);
  return <div className="space-y-6">
   <header className="space-y-2">
@@ -68,6 +71,31 @@ export default async function BudgetBackingPage({searchParams}:{
     <button className={btn}>Review and save budget setting</button>
    </form>
   </section>}
+  <section className="rounded-lg border border-border p-4 space-y-3">
+   <h2 className="text-lg font-semibold">Posted business spending — classification only</h2>
+   <p>Review existing Books bank outflows, not imported CSV duplicates. A real expense can post even when there is no envelope balance. This form only labels that posted debit; it cannot create a payment or bank transaction. Protected tax/card/deposit repayments are not discretionary spending.</p>
+   <p role="status">{snap.unassignedCount} unclassified business bank outflow(s); outstanding classification {formatMoney(snap.unassignedCents)}.</p>
+   {!spending.length?<p>No recent discretionary bank outflows were found.</p>:spending.map(s=><article key={s.id} className="rounded border border-border p-3 space-y-2">
+    <h3 className="font-semibold">{s.entry.memo} · {formatMoney(s.amountCents)}</h3>
+    <p className="text-xs break-all">Books bank journal line {s.id} · {s.bookDate} · {s.splits.length?"Classified":"Needs classification"}</p>
+    {s.splits.map(x=><p key={x.id}>Assigned to {x.envelope.name}: {formatMoney(x.amountCents)}</p>)}
+    {owner&&!s.splits.length&&<form action={assignSpendingAction} className="grid gap-2 sm:grid-cols-2">
+     <input type="hidden" name="journalLineId" value={s.id}/><input type="hidden" name="key" value={randomUUID()}/>
+     <label>Discretionary envelope<select name="envelopeId" className={input} required>
+      {snap.envelopes.filter(e=>e.active).map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
+     </select></label>
+     <label>Original posted amount ($)<input name="amount" className={input} defaultValue={(s.amountCents/100).toFixed(2)} required/></label>
+     <label className="sm:col-span-2">Classification source and reason<input name="reason" className={input} minLength={12} maxLength={300} required/></label>
+     <button className={btn}>Classify original posted bank expense (no new payment)</button>
+    </form>}
+    {owner&&s.splits.length>0&&<form action={reverseSpendingAction} className="grid gap-2">
+     <input type="hidden" name="journalLineId" value={s.id}/>
+     <input type="hidden" name="revision" value={snap.stateRevision}/><input type="hidden" name="key" value={randomUUID()}/>
+     <label>Why the classification must be corrected<input name="reason" minLength={12} maxLength={300} className={input} required/></label>
+     <button className={btn}>Reverse classification with audit history</button>
+    </form>}
+   </article>)}
+  </section>
   <section className="rounded-lg border border-border p-4 space-y-4">
    <h2 className="text-lg font-semibold">One shared set of discretionary envelopes</h2>
    <p>These balances carry forward between months. Releasing returns positive backing to the shared pool; assigning spends none of the bank cash by itself. Negative balances remain visible.</p>

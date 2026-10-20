@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/session";
 import { parseDollarInput } from "@/lib/money-ui";
 import { attestBudgetSources,setBudgetActivation } from "@/domains/budget/protected";
 import { applyBudgetMoves,undoBudgetMove } from "@/domains/budget/moves";
+import { assignPostedBankSpending,reversePostedBankSpending } from "@/domains/budget/spending";
 const str=(f:FormData,k:string)=>String(f.get(k)??"").trim();
 const done=(message:string):never=>{
  revalidatePath("/desk/books/budget");
@@ -45,4 +46,18 @@ export async function budgetUndoAction(f:FormData){
  await command("Undo allocation",()=>undoBudgetMove(s.user.id,{
   moveId:str(f,"moveId"),asOf:str(f,"asOf"),expectedRevision:str(f,"revision"),
   sourceHash:str(f,"hash"),reason:str(f,"reason"),commandKey:str(f,"key")||randomUUID()}));
+}
+
+export async function assignSpendingAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Existing Books expense classification",()=>assignPostedBankSpending(s.user.id,{
+  journalLineId:str(f,"journalLineId"),commandKey:str(f,"key")||randomUUID(),
+  reason:str(f,"reason"),splits:[{envelopeId:str(f,"envelopeId"),
+   amountCents:parseDollarInput(str(f,"amount"),2_000_000_000)}]}));
+}
+export async function reverseSpendingAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Posted expense classification correction",()=>reversePostedBankSpending(s.user.id,{
+  journalLineId:str(f,"journalLineId"),expectedRevision:str(f,"revision"),
+  commandKey:str(f,"key")||randomUUID(),reason:str(f,"reason")}));
 }
