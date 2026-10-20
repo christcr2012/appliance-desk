@@ -56,6 +56,8 @@ export async function draftStatementAction(form:FormData){
  const user=await requireRole("OWNER"),accountId=field(form,"accountId");
  await command(accountId,"Statement draft",()=>createBankReconciliation(user.user.id,{
   accountId,fromDate:field(form,"fromDate"),toDate:field(form,"toDate"),
+  statementSourceReference:field(form,"statementSourceReference"),
+  confirmedThroughDate:field(form,"confirmedThroughDate")==="confirmed",
   beginningCents:signedMoney(form,"beginning"),endingCents:signedMoney(form,"ending"),
   firstStatement:field(form,"sourceReference")?{
    sourceReference:field(form,"sourceReference"),

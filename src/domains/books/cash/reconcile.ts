@@ -30,11 +30,15 @@ export type FirstStatementProof={
 };
 export type NewStatement={
  accountId:string;fromDate:string;toDate:string;beginningCents:number;endingCents:number;
+ statementSourceReference:string;confirmedThroughDate:boolean;
  firstStatement?:FirstStatementProof;
 };
 /** Drafts are unverified; explicit attestation never produces spendable cash on its own. */
 export async function createBankReconciliation(userId:string,input:NewStatement){
  const from=validDate(input.fromDate),to=validDate(input.toDate);
+ const source=input.statementSourceReference?.trim()??"";
+ if(source.length<12||source.length>250||input.confirmedThroughDate!==true)
+  throw new CashEvidenceError("Confirm the real bank statement source and period through-date before drafting.");
  if(from>to||![input.beginningCents,input.endingCents].every(cents))
   throw new CashEvidenceError("Invalid period or statement amounts.");
  return prisma.$transaction(async tx=>{
@@ -65,21 +69,26 @@ export async function createBankReconciliation(userId:string,input:NewStatement)
   }
   const draft=await tx.bankReconciliation.create({data:{
    cashAccountId:bank.id,fromOn:from,toOn:to,beginningCents:input.beginningCents,
-   endingCents:input.endingCents,includedEvidence:input.firstStatement?{
-    stage:"DRAFT",firstStatement:{bookBeginningCents:input.firstStatement.bookBeginningCents,
-     preStartOutstandingCents:input.firstStatement.preStartOutstandingCents,
-     sourceReference:input.firstStatement.sourceReference.trim()}}:Prisma.JsonNull
+   endingCents:input.endingCents,includedEvidence:{
+    stage:"DRAFT",bankStatement:{sourceReference:source,throughDate:input.toDate},
+    ...(input.firstStatement?{firstStatement:{
+      bookBeginningCents:input.firstStatement.bookBeginningCents,
+      preStartOutstandingCents:input.firstStatement.preStartOutstandingCents,
+      sourceReference:input.firstStatement.sourceReference.trim()}}:{})
+   }
   }});
   await tx.auditLog.create({data:{userId,action:"books.bank.statement.draft",
    entityType:"BankReconciliation",entityId:draft.id,newValue:{
     accountId:bank.id,fromDate:input.fromDate,toDate:input.toDate,
     beginningCents:input.beginningCents,endingCents:input.endingCents,
-    ownerAttestedOpening:Boolean(input.firstStatement)}}});
+    ownerAttestedOpening:Boolean(input.firstStatement),statementThroughConfirmed:true,
+    statementSourceReference:source}}});
   return draft.id;
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }
 type ReconciliationEvidence={
  schemaVersion:1;from:string;to:string;beginningCents:number;endingCents:number;
+ bankStatement:{sourceReference:string;throughDate:string};
  observations:Array<{id:string;date:string;signedCents:number;status:string;ignoreReason:string|null;groupId:string|null}>;
  lines:Array<{id:string;entryDate:string;signedCents:number;groupId:string}>;
  outstanding:Array<{id:string;entryDate:string;signedCents:number}>;
@@ -88,6 +97,15 @@ type ReconciliationEvidence={
 };
 async function evidence(tx:Tx,bank:{id:string;ledgerAccountId:string},
  statement:{fromOn:Date;toOn:Date;beginningCents:number;endingCents:number;includedEvidence:Prisma.JsonValue|null}){
+ const priorSource=statement.includedEvidence&&typeof statement.includedEvidence==="object"&&!Array.isArray(statement.includedEvidence)
+  ?(statement.includedEvidence as Record<string,unknown>).bankStatement:null;
+ if(!priorSource||typeof priorSource!=="object"||Array.isArray(priorSource))
+  throw new CashEvidenceError("Statement source and confirmed through-date are missing.");
+ const statementSource=priorSource as Record<string,unknown>;
+ if(typeof statementSource.sourceReference!=="string"||statementSource.sourceReference.trim().length<12||
+    statementSource.throughDate!==businessDateKey(statement.toOn))
+  throw new CashEvidenceError("Statement source is not attested through this exact period.");
+ const bankStatement={sourceReference:statementSource.sourceReference,throughDate:String(statementSource.throughDate)};
  const obs=await tx.bankObservation.findMany({where:{cashAccountId:bank.id,isActive:true,
    postedOn:{gte:statement.fromOn,lte:statement.toOn}},include:{matchItems:{where:{active:true},
      include:{group:{select:{id:true,voidedAt:true}}}}},orderBy:[{postedOn:"asc"},{id:"asc"}],take:MAX+1});
@@ -145,7 +163,7 @@ async function evidence(tx:Tx,bank:{id:string;ledgerAccountId:string},
   ?(statement.includedEvidence as Record<string,unknown>).firstStatement:null;
  const payload={schemaVersion:1 as const,from:businessDateKey(statement.fromOn),
   to:businessDateKey(statement.toOn),beginningCents:statement.beginningCents,
-  endingCents:statement.endingCents,observations,lines,outstanding,
+  endingCents:statement.endingCents,bankStatement,observations,lines,outstanding,
   observationSumCents:included,journalMatchedSumCents:journalMatchedSum,
   bankDifferenceCents:difference,firstStatement:prior??null};
  return {...payload,sourceHash:createHash("sha256").update(JSON.stringify(payload)).digest("hex")};
@@ -200,9 +218,10 @@ export async function reopenBankReconciliation(userId:string,id:string,expectedV
    ?prior.includedEvidence as Record<string,unknown>:null;
   // Preserve first-statement attestation in every revision. Never erase the
   // original completed proof or present its old SHA as the new draft's proof.
-  const carryForward=priorSnapshot?.firstStatement
-   ?{stage:"REOPENED",firstStatement:priorSnapshot.firstStatement}
-   :{stage:"REOPENED"};
+  const carryForward={
+   stage:"REOPENED",bankStatement:priorSnapshot?.bankStatement??null,
+   ...(priorSnapshot?.firstStatement?{firstStatement:priorSnapshot.firstStatement}:{})
+  };
   await tx.bankReconciliation.update({where:{id},data:{isCurrent:false}});
   const next=await tx.bankReconciliation.create({data:{
    cashAccountId:prior.cashAccountId,fromOn:prior.fromOn,toOn:prior.toOn,

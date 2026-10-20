@@ -15,6 +15,7 @@ let cash="",importId="",first="",match="",reopened="",hold="",oldBooksStart:Date
 const obsIds:string[]=[],bankLines:string[]=[],sourceIds:string[]=[];
 const day=(s:string)=>businessDateFromKey(s)!;
 const cmd=(name:string)=>name+"-"+tag;
+const statementAttestation={statementSourceReference:"Synthetic bank statement verified independently",confirmedThroughDate:true};
 describe.skipIf(!enabled)("K-CASH-3 disposable Postgres match and statement proof",()=>{
  beforeAll(async()=>{
   oldBooksStart=(await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"}})).booksStartDate;
@@ -86,15 +87,18 @@ describe.skipIf(!enabled)("K-CASH-3 disposable Postgres match and statement proo
   expect(await prisma.bankMatchItem.count({where:{groupId:match,active:true}})).toBe(4);
  });
  it("refuses unverified openings, gaps, partial sources and ADMIN completion",async()=>{
-  await expect(createBankReconciliation(admin,{accountId:cash,fromDate:"2026-10-15",
+  await expect(createBankReconciliation(admin,{...statementAttestation,accountId:cash,fromDate:"2026-10-15",
    toDate:"2026-10-16",beginningCents:0,endingCents:400})).rejects.toThrow(/access/);
-  await expect(createBankReconciliation(owner,{accountId:cash,fromDate:"2026-10-15",
+  await expect(createBankReconciliation(owner,{...statementAttestation,confirmedThroughDate:false,
+   accountId:cash,fromDate:"2026-10-15",toDate:"2026-10-16",beginningCents:0,endingCents:400}))
+   .rejects.toThrow(/statement source/);
+  await expect(createBankReconciliation(owner,{...statementAttestation,accountId:cash,fromDate:"2026-10-15",
    toDate:"2026-10-16",beginningCents:0,endingCents:400})).rejects.toThrow(/First statement/);
-  first=await createBankReconciliation(owner,{accountId:cash,fromDate:"2026-10-15",
+  first=await createBankReconciliation(owner,{...statementAttestation,accountId:cash,fromDate:"2026-10-15",
    toDate:"2026-10-16",beginningCents:0,endingCents:400,
    firstStatement:{bookBeginningCents:0,preStartOutstandingCents:0,sourceReference:"Synthetic checked source"}});
   await expect(completeBankReconciliation(admin,first,1)).rejects.toThrow(/access/);
-  await expect(createBankReconciliation(owner,{accountId:cash,fromDate:"2026-10-18",
+  await expect(createBankReconciliation(owner,{...statementAttestation,accountId:cash,fromDate:"2026-10-18",
    toDate:"2026-10-19",beginningCents:400,endingCents:400})).rejects.toThrow(/pending/);
  });
  it("freezes exact bank/book group proof and blocks historical reclassification",async()=>{
@@ -102,13 +106,15 @@ describe.skipIf(!enabled)("K-CASH-3 disposable Postgres match and statement proo
   expect(proof).toMatchObject({observationSumCents:400,journalMatchedSumCents:400,
    bankDifferenceCents:0});
   expect(proof.sourceHash).toMatch(/^[a-f0-9]{64}$/);
+  expect(proof.bankStatement).toMatchObject({throughDate:"2026-10-16",
+   sourceReference:statementAttestation.statementSourceReference});
   expect(proof.lines).toHaveLength(2);
   await expect(completeBankReconciliation(owner,first,1)).rejects.toThrow(/already completed|changed/);
   await expect(voidBankMatch(admin,match,1,"Wrong prior review")).rejects.toThrow(/Reopen/);
   await expect(ignoreBankObservation(owner,obsIds[0]!,2,"DUPLICATE","Synthetic")).rejects.toThrow(/Matched|stale/);
   const current=await prisma.bankReconciliation.findUniqueOrThrow({where:{id:first}});
   expect(current.includedEvidence).toMatchObject({sourceHash:proof.sourceHash});
-  await expect(createBankReconciliation(owner,{accountId:cash,fromDate:"2026-10-18",
+  await expect(createBankReconciliation(owner,{...statementAttestation,accountId:cash,fromDate:"2026-10-18",
    toDate:"2026-10-18",beginningCents:400,endingCents:400})).rejects.toThrow(/day after/);
  });
  it("reads reconciled money, protects an audited hold and refuses staff disclosure",async()=>{
@@ -142,6 +148,7 @@ describe.skipIf(!enabled)("K-CASH-3 disposable Postgres match and statement proo
   const proof=await completeBankReconciliation(owner,reopened,1);
   expect(proof.sourceHash).toMatch(/^[a-f0-9]{64}$/);
   expect(proof.firstStatement).toMatchObject({sourceReference:"Synthetic checked source"});
+  expect(proof.bankStatement).toMatchObject({sourceReference:statementAttestation.statementSourceReference});
  });
  it("rejects cross-account book lines, protects unmatched debits and proves negative signed bank clearance",async()=>{
   const equity=await prisma.ledgerAccount.findUniqueOrThrow({where:{systemRole:"OWNER_CONTRIBUTIONS"}});

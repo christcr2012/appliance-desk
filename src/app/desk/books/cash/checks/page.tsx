@@ -133,6 +133,12 @@ export default async function BankChecksPage({searchParams}:{
      <label>Statement ends<input type="date" name="toDate" max={today} className={cls} required/></label>
      <label>Beginning balance ($)<input name="beginning" className={cls} inputMode="decimal" required/></label>
      <label>Ending balance ($)<input name="ending" className={cls} inputMode="decimal" required/></label>
+     <label className="sm:col-span-2">Real bank statement source (safe reference; no account numbers or credentials)
+       <input name="statementSourceReference" className={cls} minLength={12} maxLength={250} required/>
+     </label>
+     <label className="sm:col-span-2 flex items-start gap-2"><input type="checkbox" name="confirmedThroughDate" value="confirmed" required/>
+      <span>I independently checked the actual bank statement through the ending date entered above.</span>
+     </label>
      {first&&<div className="sm:col-span-2 space-y-3">
       <h3 className="font-semibold">First statement: verified Books opening composition</h3>
       <p>Use actual bank/book records only. The Books balance plus explicit outstanding prior entries must equal the statement beginning balance.</p>

@@ -10,7 +10,7 @@
         "matches.ts confirmBankMatch serializable lock/guard uses sorted bank/observation/journal IDs, exclusive SQL active claims and actor-in-transaction; tests/bank-reconciliation-integration.test.ts authors simultaneous/retry cases.",
         "matches.ts voidBankMatch preserves historical groups, requires reason/version, verifies not completed; ignoreBankObservation restricts duplicate/non-account labels with audit.",
         "Bank checks screen links existing Expenses/Books/source cash events and tells the operator unsupported/ambiguous transactions remain unresolved; new unsupported journal kinds are not created.",
-        "reconcile.ts createBankReconciliation validates real Denver dates, sequential periods, explicit signed beginning/ending, first book opening and outstanding reference; private source attachments reuse K-CASH-2 evidence.",
+        "reconcile.ts createBankReconciliation validates real Denver dates, sequential periods, explicit signed beginning/ending, first book opening and outstanding reference; private source attachments reuse K-CASH-2 evidence. Every statement now demands an independently reviewed bank source reference and explicit through-date confirmation, even with no bank rows.",
         "reconcile.ts evidence checks every active observed row and matched group in exact period; independently totals journal bank lines against statement cents without plug and includes outstanding book items.",
         "reconcile.ts completed SHA-256 includedEvidence contains exact source IDs/dates/signed cents, group lineage, outstanding IDs, and original source; completion audit includes actor/time.",
         "reconcile.ts reopenBankReconciliation locks account, owner/reason and expected version, refuses later completed, appends revision pointer without erasing prior immutable includedEvidence. Reopened revision now carries source attestation forward without posing as new completed hash.",
@@ -35,6 +35,7 @@
     "Source services, owner Bank checks page, and synthetic disposable-Postgres/browser cases authored, without a passing-test claim.",
     "PR/CI/review and release are pending; all source code is in the feature branch, not main or live.",
     "Scorecard implementation acceptance strings refer to authored code/tests only. CI compile, finance correctness, browser/accessibility, and independent review are pending and must pass before merged acceptance.",
-    "2026-10-19 self-review reinforced first-statement attestation preservation and negative signed bank clearance/role boundary regressions. Must retest on updated exact head."
+    "2026-10-19 self-review reinforced first-statement attestation preservation and negative signed bank clearance/role boundary regressions. Must retest on updated exact head.",
+    "Self-review strengthened source-backed evidence for zero-activity statements and preserved through-date references across historical revisions; new exact-head checks still required."
   ]
 }
