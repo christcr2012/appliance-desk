@@ -1102,7 +1102,13 @@
         "docs/designs/BATCH-K.md",
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/reports/definitions.ts",
+        "src/domains/budget/protected.ts",
+        "src/domains/budget/moves.ts",
+        "src/domains/budget/spending.ts",
+        "src/app/desk/books/budget/page.tsx",
+        "tests/budget-money-integration.test.ts",
+        "e2e/budget-money.spec.ts"
       ],
       "tests": [
         "tests/budget-money-integration.test.ts",
