@@ -2,7 +2,7 @@ import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
-import { formatMoney, moneyInputValue } from "@/lib/money-ui";
+import { formatMoney, moneyInputValue, parseDollarInput } from "@/lib/money-ui";
 import { getBudgetSnapshot } from "@/domains/budget/protected";
 import { getBudgetWindows } from "@/domains/budget/envelopes";
 import { getPostedBankSpendingDesk,getSupplierRefundDesk } from "@/domains/budget/spending";
@@ -13,12 +13,56 @@ const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2
 const btn="rounded border border-border bg-card px-3 py-2 font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2";
 const dollars=(n:number|null)=>n===null?"Unknown":formatMoney(n);
 export default async function BudgetBackingPage({searchParams}:{
- searchParams:Promise<{notice?:string}>}){
+ searchParams:Promise<{notice?:string;previewKind?:string;envelopeId?:string;
+ fromId?:string;toId?:string;amount?:string;reason?:string}>}){
  const actor=await requireRole("OWNER","ADMIN"),owner=actor.user.role==="OWNER";
  const asOf=businessDateKey(new Date());
  const [snap,spending,windows,refunds]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
    getPostedBankSpendingDesk(actor.user.id),getBudgetWindows(actor.user.id),getSupplierRefundDesk(actor.user.id)]);
- const notice=(await searchParams).notice?.slice(0,240);
+ const params=await searchParams,notice=params.notice?.slice(0,240);
+ type PreviewLeg={id:string;signedCents:number;kind:"ASSIGN"|"RELEASE"};
+ let preview:null|{kind:string;legs:PreviewLeg[];amount:number;reason:string;
+  problem:string|null;before:number;after:number|null;changed:Array<{id:string;
+  name:string;prior:number;next:number}>;fromId:string;toId:string}=null;
+ if(owner&&["ASSIGN","RELEASE","TRANSFER"].includes(params.previewKind??"")){
+  const kind=params.previewKind!,fromId=params.fromId??"",
+   toId=params.toId??"",envelopeId=params.envelopeId??"";
+  let amount=0,problem:string|null=null;
+  try{amount=parseDollarInput(params.amount??"",2_000_000_000);
+   if(amount<=0)problem="Choose a positive whole-cent amount.";
+  }catch{problem="Enter a supported dollars-and-cents amount.";}
+  const reason=(params.reason??"").trim();
+  if(reason.length<12||reason.length>300)problem="Explain the reviewed financial change.";
+  const legs:PreviewLeg[]=kind==="TRANSFER"?
+   [{id:fromId,signedCents:-amount,kind:"RELEASE"},
+    {id:toId,signedCents:amount,kind:"ASSIGN"}]:
+   [{id:envelopeId,signedCents:kind==="RELEASE"?-amount:amount,
+     kind:kind==="RELEASE"?"RELEASE":"ASSIGN"}];
+  const choices=new Map(snap.envelopes.map(x=>[x.id,x]));
+  const after=new Map(snap.envelopes.map(x=>[x.id,x.balanceCents]));
+  if(kind==="TRANSFER"&&(!fromId||!toId||fromId===toId))
+   problem="Choose two distinct active envelopes.";
+  for(const leg of legs){
+   const row=choices.get(leg.id),before=after.get(leg.id);
+   if(!row?.active||before===undefined){problem="Choose an active envelope.";continue;}
+   if(leg.kind==="RELEASE"&&before< -leg.signedCents)
+    problem="The source envelope does not have enough positive funding.";
+   after.set(leg.id,before+leg.signedCents);
+  }
+  const afterBacked=[...after.values()].reduce((total,n)=>total+Math.max(0,n),0);
+  const readyAfter=snap.eligibleBankCents===null?null:
+   snap.eligibleBankCents-snap.protectedTotalCents-afterBacked;
+  if(afterBacked>snap.discretionaryBackedCents&&(!snap.mayAssign||
+    readyAfter===null||readyAfter<0))
+   problem="A new assignment would exceed verified unprotected cash.";
+  if(snap.envelopes.some(x=>x.balanceCents<0)&&legs.some(x=>x.kind==="ASSIGN"&&
+   (choices.get(x.id)?.balanceCents??0)>=0))
+   problem="Cover negative envelopes before funding another.";
+  preview={kind,legs,amount,reason,problem,before:snap.readyCents??0,after:readyAfter,
+   fromId,toId,changed:legs.map(x=>({id:x.id,name:choices.get(x.id)?.name??"Unknown",
+     prior:choices.get(x.id)?.balanceCents??0,
+     next:after.get(x.id)??0}))};
+ }
  return <div className="space-y-6">
   <header className="space-y-2">
    <Link className="underline" href="/desk/books/cash/checks">Back to bank statement reconciliation</Link>
@@ -26,6 +70,31 @@ export default async function BudgetBackingPage({searchParams}:{
    <p>Discretionary envelopes do not move money out of the bank. Protected tax, card and customer obligations are reserved first. A CSV or estimated rent is never spendable cash.</p>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
   </header>
+  {owner&&preview&&<section id="funding-preview" className="rounded-lg border border-border p-4 space-y-3">
+   <h2 className="text-lg font-semibold">Review before and after — no change has been submitted</h2>
+   <p>The displayed balance and protection calculations are read-only. Confirming rechecks the exact revision and source evidence inside one serializable transaction; if something changes, nothing is moved.</p>
+   <p>Current unprotected ready balance: {dollars(snap.readyCents)}. After proposal: {dollars(preview.after)}.</p>
+   {preview.changed.map(row=><p key={row.id}>{row.name}: {formatMoney(row.prior)} → {formatMoney(row.next)}</p>)}
+   {preview.problem?<p role="alert">{preview.problem} The proposed movement cannot be confirmed.</p>:
+    <p role="status">The current snapshot supports this proposed virtual envelope movement. This does not approve any bank payment.</p>}
+   <form action={preview.kind==="TRANSFER"?transferBudgetAction:budgetMoveAction} className="space-y-3">
+    <input type="hidden" name="asOf" value={asOf}/>
+    <input type="hidden" name="revision" value={snap.stateRevision}/>
+    <input type="hidden" name="hash" value={snap.sourceHash}/>
+    <input type="hidden" name="key" value={randomUUID()}/>
+    <input type="hidden" name="amount" value={moneyInputValue(preview.amount)}/>
+    <input type="hidden" name="reason" value={preview.reason}/>
+    {preview.kind==="TRANSFER"?<>
+     <input type="hidden" name="fromId" value={preview.fromId}/>
+     <input type="hidden" name="toId" value={preview.toId}/>
+    </>:<>
+     <input type="hidden" name="kind" value={preview.kind}/>
+     <input type="hidden" name="envelopeId" value={preview.legs[0]?.id??""}/>
+    </>}
+    <button className={btn} disabled={Boolean(preview.problem)}>Confirm this exact reviewed envelope proposal</button>
+   </form>
+   <Link href="/desk/books/budget" className="inline-block underline p-2">Cancel and return to balances</Link>
+  </section>}
   <section className="rounded-lg border border-border p-4 space-y-2">
    <h2 className="text-lg font-semibold">Cash ready to assign — {snap.status}</h2>
    <p role="status">Budget setup is {snap.enabled?"ON":"OFF"}. Funding approval: {snap.mayAssign?"Source conditions verified":"NOT AUTHORIZED"}.</p>
@@ -131,7 +200,8 @@ export default async function BudgetBackingPage({searchParams}:{
   {owner&&<section className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Transfer already-funded cash between envelopes</h2>
    <p>One atomic reviewed command releases the source and assigns the same amount to the destination. This is not a bank transfer and cannot move customer, tax or card reserves.</p>
-   <form action={transferBudgetAction} className="grid gap-2 sm:grid-cols-2">
+   <form action="/desk/books/budget" method="get" className="grid gap-2 sm:grid-cols-2">
+    <input type="hidden" name="previewKind" value="TRANSFER"/>
     <input type="hidden" name="asOf" value={asOf}/><input type="hidden" name="revision" value={snap.stateRevision}/>
     <input type="hidden" name="hash" value={snap.sourceHash}/><input type="hidden" name="key" value={randomUUID()}/>
     <label>From envelope<select name="fromId" className={input}>
@@ -142,7 +212,7 @@ export default async function BudgetBackingPage({searchParams}:{
     </select></label>
     <label>Amount ($)<input name="amount" inputMode="decimal" className={input} required/></label>
     <label>Reviewed transfer reason<input name="reason" minLength={12} maxLength={300} className={input} required/></label>
-    <button className={btn}>Confirm one atomic envelope transfer</button>
+    <button className={btn}>Preview two-sided balances before transfer</button>
    </form>
   </section>}
   <section className="rounded-lg border border-border p-4 space-y-4">
@@ -162,16 +232,16 @@ export default async function BudgetBackingPage({searchParams}:{
      <label>Reason for change<input name="reason" className={input} minLength={12} maxLength={300} required/></label>
      <button className={btn}>Save envelope label and status</button>
     </form>}
-    {owner&&e.active&&<form action={budgetMoveAction} className="grid gap-2">
+    {owner&&e.active&&<form action="/desk/books/budget" method="get" className="grid gap-2">
      <input type="hidden" name="asOf" value={asOf}/><input type="hidden" name="revision" value={snap.stateRevision}/>
      <input type="hidden" name="hash" value={snap.sourceHash}/><input type="hidden" name="key" value={randomUUID()}/>
      <input type="hidden" name="envelopeId" value={e.id}/>
-     <label>Move type<select className={input} name="kind">
+     <label>Move type<select className={input} name="previewKind">
       <option value="ASSIGN">Assign verified cash</option><option value="RELEASE">Release existing positive funding</option>
      </select></label>
      <label>Amount ($)<input name="amount" inputMode="decimal" className={input} required/></label>
      <label>Reason<input name="reason" className={input} minLength={12} maxLength={300} required/></label>
-     <button className={btn}>Previewed source-backed movement (atomic)</button>
+     <button className={btn}>Preview cash and envelope balances</button>
     </form>}
    </article>)}</div>
   </section>
