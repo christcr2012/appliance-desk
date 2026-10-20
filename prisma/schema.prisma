@@ -33,6 +33,7 @@ enum Role {
 }
 
 model User {
+  budgetMoves BudgetMove[]
   signingBusinessReviews SigningBusinessReview[]
   enteredRdfRates RetailDeliveryFeeRate[] @relation("RdfRateEditor")
   id            String    @id @default(cuid())
@@ -2752,6 +2753,13 @@ model PurchaseUseTax {
 // ---------------------------------------------------------------------------
 
 model BusinessSettings {
+  // K-CASH-4A: cash budgeting is OFF until source-reviewed owner setup.
+  cashBudgetStartOn DateTime?
+  cashBudgetEnabled Boolean @default(false)
+  bankEvidenceMaxAgeDays Int @default(7)
+  budgetPlanningHorizonDays Int @default(90)
+  budgetUpcomingWindowDays Int @default(30)
+  budgetReminderLeadDays Int @default(7)
   booksStartDate DateTime?
   depreciationMonthsDefault Int @default(60)
   depreciationSalvagePercent Int @default(0)
@@ -4224,6 +4232,7 @@ model JournalEntry {
 }
 
 model JournalLine {
+  budgetSpendSplits BudgetSpendSplit[]
   id              String        @id @default(cuid())
   entryId         String
   entry           JournalEntry  @relation(fields: [entryId], references: [id])
@@ -4599,4 +4608,144 @@ model ExportBatchEntry {
 
   @@id([exportBatchId, journalEntryId])
   @@index([journalEntryId])
+}
+
+
+// K-CASH-4A: zero-money budget state; every funding mutation locks this singleton
+// before BooksPostingRevision, bank account, and sorted envelope/source rows.
+model BudgetState {
+  id String @id @default("singleton")
+  revision BigInt @default(1)
+  startOn DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// No monetary balance column: all discretionary balances derive from signed
+// immutable BudgetMove history; protected debts derive from K liability journals.
+model BudgetEnvelope {
+  id String @id @default(cuid())
+  name String
+  groupLabel String @default("Discretionary")
+  sortOrder Int @default(0)
+  active Boolean @default(true)
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  moves BudgetMove[]
+  splits BudgetSpendSplit[]
+  target BudgetTarget?
+  costPlans BudgetCostPlan[]
+
+  @@index([active,sortOrder])
+}
+
+model BudgetMove {
+  id String @id @default(cuid())
+  commandKey String
+  payloadHash String
+  envelopeId String
+  envelope BudgetEnvelope @relation(fields:[envelopeId],references:[id],onDelete:Restrict)
+  signedCents Int
+  kind String
+  sourceType String?
+  sourceId String?
+  eventKind String?
+  reason String
+  actorId String?
+  actor User? @relation(fields:[actorId],references:[id],onDelete:Restrict)
+  reversalOfId String? @unique
+  reversalOf BudgetMove? @relation("BudgetMoveReversal",fields:[reversalOfId],references:[id],onDelete:Restrict)
+  laterReversals BudgetMove[] @relation("BudgetMoveReversal")
+  createdAt DateTime @default(now())
+
+  @@unique([commandKey,envelopeId,kind])
+  @@index([envelopeId,createdAt])
+  @@index([sourceType,sourceId,eventKind])
+  @@index([actorId])
+}
+
+model BudgetSpendSplit {
+  id String @id @default(cuid())
+  journalLineId String
+  journalLine JournalLine @relation(fields:[journalLineId],references:[id],onDelete:Restrict)
+  envelopeId String
+  envelope BudgetEnvelope @relation(fields:[envelopeId],references:[id],onDelete:Restrict)
+  amountCents Int
+  version Int @default(1)
+
+  @@unique([journalLineId,envelopeId])
+  @@index([envelopeId])
+}
+
+model BudgetTarget {
+  id String @id @default(cuid())
+  envelopeId String @unique
+  envelope BudgetEnvelope @relation(fields:[envelopeId],references:[id],onDelete:Restrict)
+  kind String
+  amountCents Int
+  dueOn DateTime?
+  repeat String @default("NONE")
+  active Boolean @default(true)
+  cycleStartOn DateTime?
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BudgetCostPlan {
+  id String @id @default(cuid())
+  envelopeId String
+  envelope BudgetEnvelope @relation(fields:[envelopeId],references:[id],onDelete:Restrict)
+  name String
+  amountCents Int
+  amountQuality String
+  dueOn DateTime
+  recurrence String @default("NONE")
+  anchorDay Int
+  anchorMonth Int?
+  sourceType String @default("MANUAL")
+  sourceId String?
+  active Boolean @default(true)
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  occurrences BudgetCostOccurrence[]
+
+  @@index([envelopeId,active])
+  @@index([dueOn])
+  @@index([sourceType,sourceId])
+}
+
+model BudgetCostOccurrence {
+  id String @id @default(cuid())
+  planId String
+  plan BudgetCostPlan @relation(fields:[planId],references:[id],onDelete:Restrict)
+  dueOn DateTime
+  amountCents Int
+  status String @default("PLANNED")
+  sourceRevision Int @default(1)
+  version Int @default(1)
+  settlements BudgetCostSettlement[]
+
+  @@unique([planId,dueOn])
+  @@index([status,dueOn])
+}
+
+model BudgetCostSettlement {
+  id String @id @default(cuid())
+  occurrenceId String
+  occurrence BudgetCostOccurrence @relation(fields:[occurrenceId],references:[id],onDelete:Restrict)
+  sourceType String
+  sourceId String
+  amountCents Int
+  commandKey String @unique
+  payloadHash String
+  reversalOfId String? @unique
+  reversalOf BudgetCostSettlement? @relation("BudgetSettlementReversal",fields:[reversalOfId],references:[id],onDelete:Restrict)
+  laterReversals BudgetCostSettlement[] @relation("BudgetSettlementReversal")
+  createdAt DateTime @default(now())
+
+  @@index([occurrenceId])
+  @@index([sourceType,sourceId])
 }

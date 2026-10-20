@@ -288,6 +288,8 @@ async function restore(file: string, target: string): Promise<void> {
     const reconciliationRevisionLinks: Array<{ id: string; priorId: string }> = [];
     const cashEventReversalLinks: Array<{ id: string; priorId: string }> = [];
     const deliveryRevisionLinks: Array<{ id: string; priorId: string }> = [];
+    const budgetMoveReversalLinks: Array<{ id: string; priorId: string }> = [];
+    const budgetSettlementReversalLinks: Array<{ id: string; priorId: string }> = [];
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
@@ -328,6 +330,8 @@ async function restore(file: string, target: string): Promise<void> {
         bankReconciliation: { key: "priorCompletedId", links: reconciliationRevisionLinks },
         bookCashEvent: { key: "reversalOfId", links: cashEventReversalLinks },
         accountingDelivery: { key: "replacesDeliveryId", links: deliveryRevisionLinks },
+        budgetMove: { key: "reversalOfId", links: budgetMoveReversalLinks },
+        budgetCostSettlement: { key: "reversalOfId", links: budgetSettlementReversalLinks },
       };
       const nullableHistory = historyByTable[table];
       if (nullableHistory) for (const row of data) {
@@ -378,6 +382,11 @@ async function restore(file: string, target: string): Promise<void> {
       await prisma.bookCashEvent.update({ where: { id: link.id }, data: { reversalOfId: link.priorId } });
     for (const link of deliveryRevisionLinks)
       await prisma.accountingDelivery.update({ where: { id: link.id }, data: { replacesDeliveryId: link.priorId } });
+
+    for (const link of budgetMoveReversalLinks)
+      await prisma.budgetMove.update({ where: { id: link.id }, data: { reversalOfId: link.priorId } });
+    for (const link of budgetSettlementReversalLinks)
+      await prisma.budgetCostSettlement.update({ where: { id: link.id }, data: { reversalOfId: link.priorId } });
 
     await resetAutoincrementSequences(sql, schema);
     await verifySchemaHealth(prisma);
