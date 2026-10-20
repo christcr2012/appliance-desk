@@ -27,7 +27,7 @@ async function readBank(tx:Tx,bank:{id:string;name:string;ledgerAccountId:string
  const observed=await tx.bankObservation.findMany({where:{cashAccountId:bank.id,isActive:true,
    postedOn:{lte:asOf}},select:{id:true,postedOn:true,signedCents:true,status:true,ignoreReason:true,
     matchItems:{where:{active:true},select:{groupId:true}}},
-   },take:CAP+1});
+   take:CAP+1});
  if(observed.length>CAP)reasons.push("Too many bank observations to verify completely.");
  const after=cutoff?observed.filter(x=>x.postedOn>cutoff):[];
  const unreviewed=after.filter(x=>x.status!=="MATCHED"&&x.status!=="IGNORED");
@@ -39,7 +39,7 @@ async function readBank(tx:Tx,bank:{id:string;name:string;ledgerAccountId:string
     entry:{select:{entryDate:true}},
     bankMatchItems:{where:{active:true},select:{
       groupId:true,group:{select:{voidedAt:true}},
-      journalLineId:true}}}},take:CAP+1});
+      journalLineId:true}}},take:CAP+1});
  if(bankLines.length>CAP)reasons.push("Too many book bank lines to verify completely.");
  const laterOutflows=cutoff?bankLines.filter(x=>x.entry.entryDate>cutoff&&signed(x)<0):[];
  const earlierUnpresented=cutoff?bankLines.filter(x=>x.entry.entryDate<=cutoff&&signed(x)<0):[];

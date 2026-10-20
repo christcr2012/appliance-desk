@@ -14,7 +14,7 @@ const number=(f:FormData,key:string)=>Number(field(f,key));
 const money=(f:FormData,key:string)=>parseDollarInput(field(f,key),2_000_000_000);
 const signedMoney=(f:FormData,key:string)=>{
  const input=field(f,key);
- if(!/^-?(0|[1-9]\\d{0,9})(?:\\.\\d{1,2})?$/.test(input))
+ if(!/^-?(0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(input))
   throw new Error("Enter a signed whole-cent amount in dollars.");
  const neg=input.startsWith("-");
  const value=parseDollarInput(neg?input.slice(1):input,2_000_000_000);

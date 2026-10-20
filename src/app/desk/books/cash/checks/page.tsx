@@ -35,7 +35,7 @@ export default async function BankChecksPage({searchParams}:{
   <header className="space-y-2">
    <Link href="/desk/books/cash" className="underline">Back to bank evidence and CSV imports</Link>
    <h1 className="text-2xl font-bold">Bank checks</h1>
-   <p className="text-muted-foreground">Review real settled bank observations against source-backed Books journal lines. A match does not move money. Statements only prove a dated period; neither an import nor a match certifies today's bank balance.</p>
+   <p className="text-muted-foreground">Review real settled bank observations against source-backed Books journal lines. A match does not move money. Statements only prove a dated period; neither an import nor a match certifies today&apos;s bank balance.</p>
    {notice&&<p role="status" className="rounded border border-border p-3 break-words">{notice}</p>}
   </header>
   <section className="rounded-lg border border-border p-4 space-y-3">
