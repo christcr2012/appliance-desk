@@ -31,7 +31,7 @@ export default async function BankChecksPage({searchParams}:{
  const today=businessDateKey(new Date());
  const notice=params.notice?.slice(0,240);
  const first=!model?.statements.some(x=>x.status==="COMPLETED");
- return <main className="space-y-6 min-w-0">
+ return <div className="space-y-6 min-w-0">
   <header className="space-y-2">
    <Link href="/desk/books/cash" className="underline">Back to bank evidence and CSV imports</Link>
    <h1 className="text-2xl font-bold">Bank checks</h1>
@@ -126,7 +126,7 @@ export default async function BankChecksPage({searchParams}:{
    </section>
    <section className="rounded-lg border border-border p-4 space-y-3">
     <h2 className="text-lg font-semibold">Statement reconciliation</h2>
-    <p>Owner confirms a real statement balance independently. Complete only if every row is matched or a justified duplicate/non-account row, the bank equation is exactly zero cents and bank matches independently equal book lines. Later periods must be contiguous. Completed evidence is immutable.</p>
+    <p>Owner confirms a real statement balance independently. Complete only if every row is matched or a justified duplicate/non-account row, the bank and book difference is exactly $0.00 and bank matches independently equal book lines. Later periods must be contiguous. Completed evidence is immutable.</p>
     {owner&&<form action={draftStatementAction} className="grid gap-3 sm:grid-cols-2">
      <input type="hidden" name="accountId" value={selected.id}/>
      <label>Statement starts<input type="date" name="fromDate" max={today} className={cls} required/></label>
@@ -182,5 +182,5 @@ export default async function BankChecksPage({searchParams}:{
     </article>)}
    </section>}
   </div>}
- </main>;
+ </div>;
 }
