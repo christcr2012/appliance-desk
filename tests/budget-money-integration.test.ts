@@ -194,6 +194,11 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   const reversed=await getBudgetSnapshot(owner,date);
   expect(reversed.envelopes.find(x=>x.id===account)?.balanceCents).toBe(15000);
   expect(reversed.unassignedCount).toBeGreaterThan(0);
+  const second=await assignPostedBankSpending(owner,{...item,
+   commandKey:ownerId("corrected-spend"),reason:"Corrected allocation after independent source review"});
+  expect(second).toBeTruthy();
+  expect(await prisma.budgetMove.count({where:{sourceType:"JOURNAL_LINE",
+    sourceId:spendLine.id,kind:"SPEND"}})).toBe(2);
  });
  it("releases and undoes only funded positive balances, without inventing a bank transaction",async()=>{
   const snap=await getBudgetSnapshot(owner,date);

@@ -63,6 +63,9 @@ export async function assignPostedBankSpending(userId:string,input:{
   if(envelopes.length!==splits.length||
     ownerDraw&&envelopes.some(x=>x.name!=="Owner pay"))
    throw new BudgetEvidenceError("Choose active envelopes; owner draws belong to Owner pay only.");
+  const priorVersions=await tx.budgetMove.count({where:{
+   sourceType:"JOURNAL_LINE",sourceId:source.id,kind:"SPEND"}});
+  const eventKind=priorVersions===0?"SPEND":"SPEND_REVISION_"+(priorVersions+1);
   const newRevision=state.revision+BigInt(1);
   for(const x of splits){
    await tx.budgetSpendSplit.create({data:{
@@ -70,7 +73,7 @@ export async function assignPostedBankSpending(userId:string,input:{
    await tx.budgetMove.create({data:{
     commandKey:input.commandKey,payloadHash:proofHash,resultRevision:newRevision,
     envelopeId:x.envelopeId,signedCents:-x.amountCents,kind:"SPEND",
-    sourceType:"JOURNAL_LINE",sourceId:source.id,eventKind:"SPEND",
+    sourceType:"JOURNAL_LINE",sourceId:source.id,eventKind,
     reason,actorId:userId}});
   }
   await tx.budgetState.update({where:{id:"singleton"},data:{revision:{increment:1}}});
@@ -92,6 +95,10 @@ export async function reversePostedBankSpending(userId:string,input:{
   await assertActiveTeamActor(tx,userId,["OWNER"]);
   await tx.$queryRawUnsafe('SELECT "id" FROM "BudgetState" WHERE "id"=$1 FOR UPDATE',"singleton");
   await tx.$queryRawUnsafe('SELECT "id" FROM "BooksPostingRevision" WHERE "id"=$1 FOR UPDATE',"singleton");
+  const accounts=await tx.cashAccount.findMany({where:{active:true},
+   select:{id:true},orderBy:{id:"asc"}});
+  for(const bank of accounts)
+   await tx.$queryRawUnsafe('SELECT "id" FROM "CashAccount" WHERE "id"=$1 FOR SHARE',bank.id);
   const state=await tx.budgetState.findUniqueOrThrow({where:{id:"singleton"}});
   if(state.revision.toString()!==input.expectedRevision)
    throw new BudgetEvidenceError("Budget changed since this correction was reviewed.");
@@ -100,7 +107,7 @@ export async function reversePostedBankSpending(userId:string,input:{
   if(!source?.budgetSpendSplits.length)
    throw new BudgetEvidenceError("No spending classification exists for this source.");
   const originals=await tx.budgetMove.findMany({where:{
-   sourceType:"JOURNAL_LINE",sourceId:source.id,eventKind:"SPEND",kind:"SPEND"}});
+   sourceType:"JOURNAL_LINE",sourceId:source.id,kind:"SPEND",laterReversals:{none:{}}}});
   if(originals.length!==source.budgetSpendSplits.length)
    throw new BudgetEvidenceError("Source splits and move history disagree; stop for review.");
   for(const original of originals){
