@@ -377,14 +377,25 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
    if(bookDay?.slice(0,7)!==asOf.slice(0,7))continue;
    spent.set(move.envelopeId,(spent.get(move.envelopeId)??0)-move.signedCents);
   }
+  const expenseSources=[...new Set(plans.flatMap(p=>p.occurrences.flatMap(o=>
+   o.settlements.filter(s=>s.sourceType==="EXPENSE").map(s=>s.sourceId))))];
+  const sourceExpenses=await tx.expense.findMany({where:{id:{in:expenseSources}},
+   select:{id:true,status:true},take:5001});
+  const paymentStatus=new Map(sourceExpenses.map(e=>[e.id,e.status]));
   const upcoming=plans.flatMap(plan=>plan.occurrences.map(occ=>{
-   const paidCents=netPaid(occ.settlements);
+   const reversed=new Set(occ.settlements.flatMap(x=>x.reversalOfId?[x.reversalOfId]:[]));
+   const originals=occ.settlements.filter(s=>s.reversalOfId===null&&!reversed.has(s.id));
+   const unverified=originals.filter(s=>s.sourceType!=="EXPENSE"||
+    paymentStatus.get(s.sourceId)!=="POSTED");
+   if(unverified.length)sourceWarnings.push("A linked bill has voided or unavailable payment evidence; correct the planning link in Budget before relying on a paid status.");
+   const paidCents=originals.filter(x=>x.sourceType==="EXPENSE"&&
+    paymentStatus.get(x.sourceId)==="POSTED").reduce((sum,s)=>sum+s.amountCents,0);
    return {id:occ.id,planId:plan.id,envelopeId:plan.envelopeId,
     envelopeName:plan.envelope.name,name:plan.name,
     dueOn:businessDateKey(occ.dueOn),amountCents:occ.amountCents,
     paidCents,unpaidCents:Math.max(0,occ.amountCents-paidCents),
-    quality:plan.amountQuality,status:occ.status,
-    settlements:occ.settlements.filter(s=>!s.reversalOfId&&!occ.settlements.some(r=>r.reversalOfId===s.id)).map(s=>({id:s.id,amountCents:s.amountCents,sourceId:s.sourceId})),sourceType:plan.sourceType,
+    quality:plan.amountQuality,status:unverified.length?"REVIEW_REQUIRED":occ.status,
+    settlements:originals.map(s=>({id:s.id,amountCents:s.amountCents,sourceId:s.sourceId})),sourceType:plan.sourceType,
     sourceId:plan.sourceId,version:occ.version};
   }));
   const targetByEnvelope=new Map(targets.map(x=>[x.envelopeId,x]));

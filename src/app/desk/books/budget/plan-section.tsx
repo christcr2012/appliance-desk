@@ -150,6 +150,11 @@ export async function BudgetPlanSection({userId,owner,notice,days,view,state}:{
      </form>}
     </details>)}
     {data.upcoming.filter(item=>item.dueOn<=businessDateKey(addBusinessDays(new Date(),dayWindow)) && (filter==="ALL" || (filter==="UNPAID" ? item.unpaidCents>0 : item.status===filter))).length?
+     listView==="calendar"?<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{[...new Set(data.upcoming.filter(item=>item.dueOn<=businessDateKey(addBusinessDays(new Date(),dayWindow))&&(filter==="ALL"||(filter==="UNPAID"?item.unpaidCents>0:item.status===filter))).map(item=>item.dueOn))].map(day=><article key={day} className="rounded border border-border p-3">
+      <h3 className="font-semibold">{day}</h3>
+      {data.upcoming.filter(item=>item.dueOn===day&&(filter==="ALL"||(filter==="UNPAID"?item.unpaidCents>0:item.status===filter))).map(item=><p className="text-sm" key={item.id}>{item.name} · {money(item.unpaidCents)} remaining · {item.quality} · {item.status}</p>)}
+      <Link href={"/desk/books/budget?tab=plan&days="+dayWindow+"&view=list"} className="underline">Open detailed linked-source actions</Link>
+     </article>)}</div>:
      data.upcoming.filter(item=>item.dueOn<=businessDateKey(addBusinessDays(new Date(),dayWindow)) && (filter==="ALL" || (filter==="UNPAID" ? item.unpaidCents>0 : item.status===filter))).map(item=><article key={item.id} className="rounded border border-border p-3 space-y-2">
      <h3 className="font-semibold">{item.name} · {money(item.amountCents)} · {item.quality}</h3>
      <p>Due {item.dueOn} · {item.envelopeName} · {item.status} · paid from verified sources {money(item.paidCents)} · unpaid {money(item.unpaidCents)}</p>
