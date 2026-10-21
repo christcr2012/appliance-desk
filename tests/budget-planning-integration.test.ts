@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll,afterAll,describe,expect,it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey,businessDateKey } from "@/lib/business-date";
+import { getBudgetContext } from "@/domains/budget/context";
 import { saveBudgetCostPlan,saveBudgetTarget,settleBudgetCost,
  reverseBudgetCostSettlement,getBudgetPlanning } from "@/domains/budget/planning";
 
@@ -56,6 +57,14 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
   await prisma.user.deleteMany({where:{id:{in:[owner,staff]}}});
   await prisma.budgetState.update({where:{id:"singleton"},data:{revision:oldRevision}});
   await prisma.businessSettings.update({where:{id:"singleton"},data:{budgetPlanningHorizonDays:oldHorizon}});
+ });
+ it("returns a labels-only DTO to staff and refuses archived actors' private finance data",async()=>{
+  const labels=await getBudgetContext(staff);
+  expect(labels.role).toBe("STAFF");
+  expect(labels.envelopes.every(x=>Object.keys(x).length===1)).toBe(true);
+  expect(JSON.stringify(labels)).not.toMatch(/readyCents|protectedCents|balanceCents/);
+  const ownerView=await getBudgetContext(owner);
+  expect(ownerView.role).toBe("MANAGER");
  });
  it("creates only actual bounded future cost occurrences and refuses staff mutations",async()=>{
   await expect(saveBudgetCostPlan(staff,{envelopeId:env,name:"Denied bill",
