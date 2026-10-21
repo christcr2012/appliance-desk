@@ -13,6 +13,7 @@ export type ExpenseFields = {
   categoryId: string; paidFromAccountId: string; memo?: string;
   applianceId?: string; jobId?: string; purchaseOrderId?: string;
   capitalizeToAppliance?: boolean;
+  budgetEnvelopeId?: string;
 };
 export const cents = (n: number, field: string) => {
   if (!Number.isSafeInteger(n) || n < 0 || n > 1_000_000_000)
@@ -48,15 +49,17 @@ function checked(input: ExpenseFields) {
     jobId: optional(input.jobId, 100),
     purchaseOrderId: optional(input.purchaseOrderId, 100),
     capitalizeToAppliance: !!input.capitalizeToAppliance,
+    budgetEnvelopeId: input.budgetEnvelopeId?.trim() || null,
   };
 }
 async function validateReferences(tx: Prisma.TransactionClient, input: ReturnType<typeof checked>) {
-  const [category, paid, appliance, job, purchase] = await Promise.all([
+  const [category, paid, appliance, job, purchase, envelope] = await Promise.all([
     tx.expenseCategory.findUnique({ where: { id: input.categoryId }, include: { } }),
     tx.ledgerAccount.findUnique({ where: { id: input.paidFromAccountId } }),
     input.applianceId ? tx.appliance.findUnique({ where: { id: input.applianceId } }) : Promise.resolve(null),
     input.jobId ? tx.job.findUnique({ where: { id: input.jobId }, select: { id: true } }) : Promise.resolve(null),
     input.purchaseOrderId ? tx.purchaseOrder.findUnique({ where: { id: input.purchaseOrderId }, select: { id: true } }) : Promise.resolve(null),
+    input.budgetEnvelopeId ? tx.budgetEnvelope.findUnique({where:{id:input.budgetEnvelopeId},select:{id:true,active:true}}) : Promise.resolve(null),
   ]);
   if (!category?.active) throw new ExpenseInputError("Expense category is unavailable.");
   const categoryAccount = await tx.ledgerAccount.findUnique({ where: { id: category.ledgerAccountId } });
@@ -68,6 +71,7 @@ async function validateReferences(tx: Prisma.TransactionClient, input: ReturnTyp
     throw new ExpenseInputError("Rental appliance cannot be found.");
   if (input.jobId && !job) throw new ExpenseInputError("Job cannot be found.");
   if (input.purchaseOrderId && !purchase) throw new ExpenseInputError("Purchase order cannot be found.");
+  if (input.budgetEnvelopeId && !envelope?.active) throw new ExpenseInputError("Select an active budget label.");
   return { category, paid, appliance };
 }
 function audit(tx: Prisma.TransactionClient, userId: string, id: string, action: string, detail: Record<string, string | number | boolean | null>) {
@@ -87,6 +91,8 @@ export async function createExpense(userId: string, fields: ExpenseFields, mode:
       submittedByUserId: userId,
     } });
     await audit(tx, userId, expense.id, "books.expense.create", { mode, amountCents: input.amountCents });
+    if(input.budgetEnvelopeId)await audit(tx,userId,expense.id,"books.expense.budget-intent",{
+     budgetEnvelopeId:input.budgetEnvelopeId,actualPayment:false});
     return expense.id;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   if (mode === "POSTED") await postExpense(userId, id, 1);
@@ -108,6 +114,7 @@ export async function postExpense(userId: string, id: string, expectedVersion: n
       vendorName: expense.vendorName, categoryId: expense.categoryId, paidFromAccountId: expense.paidFromAccountId,
       memo: expense.memo, applianceId: expense.applianceId, jobId: expense.jobId,
       purchaseOrderId: expense.purchaseOrderId, capitalizeToAppliance: expense.capitalizeToAppliance,
+      budgetEnvelopeId: null,
     });
     let acquisitionCostAssigned = false;
     if (expense.capitalizeToAppliance && expense.applianceId) {
@@ -235,7 +242,22 @@ export async function getExpenses(userId: string, status?: string) {
     ] }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     manager ? prisma.recurringExpense.findMany({ orderBy: { name: "asc" }, take: 100 }) : Promise.resolve([]),
   ]);
-  return { rows, categories, payments, templates, manager };
+
+  // Source-scoped review of a selected label, not an allocation or payment.
+  const intentAudit=rows.length?await prisma.auditLog.findMany({where:{
+   action:"books.expense.budget-intent",entityType:"Expense",
+   entityId:{in:rows.map(row=>row.id)}},select:{entityId:true,newValue:true},take:101}):[];
+  const intents=new Map<string,string>();
+  for(const event of intentAudit){
+   const value=event.newValue;
+   if(value&&typeof value==="object"&&!Array.isArray(value)&&
+     typeof value.budgetEnvelopeId==="string")intents.set(event.entityId!,value.budgetEnvelopeId);
+  }
+  const requested=await prisma.budgetEnvelope.findMany({where:{id:{in:[...new Set(intents.values())]}},
+   select:{id:true,name:true},take:100});
+  const names=new Map(requested.map(x=>[x.id,x.name]));
+  return {rows:rows.map(row=>({...row,budgetIntentLabel:names.get(intents.get(row.id)??"")??null})),
+   categories,payments,templates,manager};
 }
 export type RecurringFields = {
   name: string; vendorName: string; amountCents: number; categoryId: string;

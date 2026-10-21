@@ -12,8 +12,8 @@ export async function getBudgetContext(userId:string){
  const role=await prisma.$transaction(tx=>assertActiveTeamActor(tx,userId,["OWNER","ADMIN","STAFF"]));
  if(role.role==="STAFF"){
   const envelopes=await prisma.budgetEnvelope.findMany({where:{active:true},
-   select:{name:true},orderBy:[{sortOrder:"asc"},{id:"asc"}],take:100});
-  return {role:"STAFF" as const,envelopes:envelopes.map(e=>({name:e.name}))};
+   select:{id:true,name:true},orderBy:[{sortOrder:"asc"},{id:"asc"}],take:100});
+  return {role:"STAFF" as const,envelopes:envelopes.map(e=>({id:e.id,name:e.name}))};
  }
  const info=await getBudgetPlanning(userId);
  return {role:"MANAGER" as const,sourceStatus:info.sourceStatus,

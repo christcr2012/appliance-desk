@@ -64,7 +64,7 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
  it("returns a labels-only DTO to staff and refuses archived actors' private finance data",async()=>{
   const labels=await getBudgetContext(staff);
   expect(labels.role).toBe("STAFF");
-  expect(labels.envelopes.every(x=>Object.keys(x).length===1)).toBe(true);
+  expect(labels.envelopes.every(x=>Object.keys(x).length===2)).toBe(true);
   expect(JSON.stringify(labels)).not.toMatch(/readyCents|protectedCents|balanceCents/);
   const ownerView=await getBudgetContext(owner);
   expect(ownerView.role).toBe("MANAGER");
