@@ -21,3 +21,5 @@ Outstanding implementation in exact original bundle:
 **Known seam to inspect first:** BudgetCostSettlement immutable original uniqueness means a reversed posted expense link cannot simply be reused; ensure legitimate correction/reclassification safety with permanent original evidence. Cost plan source identity must not double-post K expense or bank money. Unit spec is newly authored and has not been executed. No production mutations/provider actions are authorized.
 
 Additional implementation checkpoint: cash forecast source dedupe and two tracks, role-scoped context in Expenses/Purchases/Tax/Inventory, Today budget reminder block, schedule refresh and linked template choices are authored but unverified. Same existing original acceptance remains unfinished; this is not a new roadmap subsection.
+
+Candidate phase: proposed scorecard source references cover original acceptance lines, but are **not yet evidence of passing CI**. Run exact-head tests before finalizing either completed whole subsection; rollback candidate claims if actual gaps emerge. No independent provider acceptance implied.

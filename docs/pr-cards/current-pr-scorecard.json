@@ -2,21 +2,52 @@
   "version": 1,
   "kind": "implementation",
   "parent": "K-CASH-5A",
-  "completedSlices": [],
+  "completedSlices": [
+    {
+      "id": "K-CASH-5A",
+      "acceptanceEvidence": [
+        "src/domains/budget/planning.ts saveBudgetCostPlan validates whole cents/date/source identity under OWNER BudgetState transaction; form saves plan only, no journal/payment.",
+        "src/domains/budget/planning-math.ts plannedDueKeys independently clamps 31st and Feb 29; materialize/refreshBudgetOccurrenceHorizon bound generated, unique plan/due; tests/budget-planning.test.ts covers month-end.",
+        "src/domains/budget/planning.ts optimistic plan version, cancellation retention of paid and part-paid rows and audit; tests/budget-planning-integration.test.ts covers source/date plans.",
+        "src/domains/budget/planning.ts validates actual RecurringExpense/PurchaseOrder/VERIFIED TelecomStatement sources, synchronizes a selected recurring source inside Books template save, and reads tax filing periods without editing them.",
+        "settleBudgetCost/reverseBudgetCostSettlement validate POSTED Books expense journal, source matching, immutable original/inverse, bounded amount and serializable revision; tests/budget-planning-integration.test.ts exercises replay and correction.",
+        "saveBudgetTarget enforces OWNER, active envelope, unique target per envelope, amount, due/repeat, optimistic version and audit; test creates and revises a target with zero BudgetMove.",
+        "src/domains/budget/planning-math.ts suggestedTarget computes cents-safe MONTHLY_SPEND, SAVE_BY_DATE incl monthly ceil and annual due cycle, MAINTAIN_BALANCE; test 100000/3 gives 33334.",
+        "src/domains/budget/planning-math.ts fundNowNeed uses MAX of target and unpaid upcoming after positive carryover and covers negative balance first; pure tests prove no target/bill addition.",
+        "fundingSuggestion deterministically orders negative/bill/dated/monthly/maintenance needs under Ready; Budget fundBudgetSuggestionAction re-reads state and delegates atomic revision/source checks to applyBudgetMoves.",
+        "src/domains/books/closing.ts extends the existing K-8 forecast with unpaid cost occurrence and linked recurring-template dedupe, separate verified-cash/no-new and estimated-collections scenarios; METRICS and books-closing test authored.",
+        "tests/budget-planning.test.ts, tests/budget-planning-integration.test.ts, tests/books-closing-integration.test.ts and e2e/budget.spec.ts authored for recurrence, actual source, role denial, idempotence, forecast and accessible owner UI; exact-head CI result pending."
+      ]
+    },
+    {
+      "id": "K-CASH-5B",
+      "acceptanceEvidence": [
+        "src/app/desk/books/budget/page.tsx + plan-section.tsx provide My money, Plan ahead, Review, Bank checks and Setup source-routed navigation; no separate duplicate Books P&L.",
+        "getBudgetPlanning and BudgetContextCard show validated bank status, Ready/UNKNOWN, protected warnings, saved/needed/unpaid per envelope; staff returns names/IDs only without private balances.",
+        "fundBudgetSuggestionAction compares revision/source hash and proposed exact leg signature, then uses OWNER-only applyBudgetMoves serializable money guards; preview labels virtual funding not bank transfer.",
+        "Plan Ahead offers 30/90 windows, list/calendar and payment-state filters, exact/estimate cost editors, recurring/purchasing/telecom source validation, savings targets and posted-expense linking rather than an external payment.",
+        "BudgetContextCard in Expenses, Purchases, Sales tax and Appliance details; ExpenseBudgetFields gives manager-only illustrative after-cost preview, staff-only labels; expense intent validated and audited without posting or exposing bank totals.",
+        "src/app/desk/today/page.tsx shows role-restricted source/shortage/unpaid upcoming categories with per-plan IDs; no customer or staff private bank totals, and explicit Budget recovery link.",
+        "src/domains/reports/definitions.ts includes source/as-of definition keys budget.ready/budget.unpaidPlans/budget.targetNeed and two K-8 forecast tracks; all calculations reuse domain services rather than P&L duplication.",
+        "tests/budget-context-access.test.ts disposable Postgres staff/customer/archived denial; tests/budget-planning-integration.test.ts and e2e/budget.spec.ts owner/phone/keyboard/axe tests authored; exact-head execution still pending.",
+        "docs/OWNER-GUIDE.md provides planning, owner review, actual Books posting, source corrections, forecast caveats and independent bank/CPA release gates; no live activation or provider permission."
+      ]
+    }
+  ],
   "remainingEngineering": [
-    "K-CASH-5A original scope is PARTIAL: source-linked recurring expense/PO/COM dedupe; exact source reconciliation, partial settlement correction, K-8 dual-track forecast, source metrics; full tests not run.",
-    "K-CASH-5B original scope is PARTIAL: shared My money/Review/Bank checks/Setup workspace, expense/purchasing/appliance/tax context cards, Today exceptions, source metric registry, accessible full owner/customer role and browser suite.",
-    "Run repo setup/session:prepare, current packet check, focused isolated PostgreSQL, typecheck, full check:quick/bundle:preflight, all CI shards; perform self or independent review, repair all failures before eventual PR merge."
+    "All authored acceptance proof must still be EXECUTED: CI on the final exact branch head is pending; failures require full code/test corrections before this scorecard is accepted.",
+    "No local repo clone due blocked github.com DNS; use read-only PR CI, get every failed job/annotation and repair all; never bypass tests/hooks, merge, release or describe as proven before green.",
+    "Self-review diff, resolve reviewer comments together and verify frozen plan/preflight against actual branch; preserve real business bank/CPA/owner/provider checks separately."
   ],
   "externalAcceptance": [
-    "All 22 original customer/owner/provider release acceptance checks remain individually pending and source-gated.",
-    "Current newer K-CASH code not in live; owner bank, tax/card, source attestation and CPA confirmation and default-off budget activation remain external.",
-    "No manual release, live Stripe payments, bank transfer, customer email/SMS, provider paid service, or real production mutation authorized."
+    "22 original owner/customer/provider release acceptance checks remain individually PENDING; existing source commits on live do not establish account-verified evidence.",
+    "Owner-selected bank/accounts/opening/card/customer/tax liabilities, CPA treatment and default-off cash budget activation remain strictly external and are not granted by this proposed code.",
+    "No real customer email/SMS, Stripe LIVE, bank transfer, paid telecom provider change, production fixture/data edit or unscheduled live promotion authorized."
   ],
-  "workloadException": "Two adjacent original 5A/5B subsections planned as one coherent usable outcome; work in progress, none counted complete.",
+  "workloadException": "Two whole approved K-CASH-5A/5B subsections share linked budget/Books source and owner screens; the coherent implementation is larger than a helper PR and must pass exact-head CI before either can be counted fully completed.",
   "evidence": [
-    "Full acceptance froze in plan-only commit ae5eeaf1b6f60b4916e862dfc30f329da8ff0846 before source edits.",
-    "Current GitHub branch has authored planning domain, owner UI, synthetic real-DB and browser test cases. No test run or verified completion asserted.",
-    "No implementation PR yet: local clone/network unavailable; next editor must continue from the actual branch checkpoint and obtain exact-head CI."
+    "Plan frozen in docs-only commit ae5eeaf1b6f60b4916e862dfc30f329da8ff0846 before any implementation edits.",
+    "Original named tests for 5A/5B plus existing K-8 regression and browser shards are authored as candidate tests, not a passed run.",
+    "Active source is on branch ai/gpt6/kcash-5ab-plan-budget; no production/source release change, no 22 real-account acceptance checks passed."
   ]
 }
