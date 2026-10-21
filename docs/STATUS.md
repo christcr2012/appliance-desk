@@ -1,6 +1,6 @@
 ## October 21 — owner-requested Sol 5.6 identity/permissions preparation
 
-[Existing authority guidance](END-USER-AUTHORITY.md#sol-56-remaining-verification-and-correction-contract--owner-2026-10-21) now includes the bounded remaining audit/correction contract, current source/test seams, disposable customer/session fixtures and acceptance criteria. Existing Better Auth and role/customer boundaries are reused; prior 33 focused tests are limited evidence, not full acceptance. Follow the current work-index/packet and preserve concurrent K-CASH #508. No runtime, migration, real customer, financial operation, release or original acceptance state changed. This is owner-requested documentation preparation, zero product bundles.
+[Existing authority guidance](END-USER-AUTHORITY.md#sol-56-remaining-verification-and-correction-contract--owner-2026-10-21) now includes the bounded remaining audit/correction contract, current source/test seams, disposable customer/session fixtures and acceptance criteria. Existing Better Auth and role/customer boundaries are reused; prior 33 focused tests are limited evidence, not full acceptance. Follow the current work-index/packet and preserve merged K-CASH #508 and concurrent draft #509. No runtime, migration, real customer, financial operation, release or original acceptance state changed. This is owner-requested documentation preparation, zero product bundles.
 
 ## October 20 — PR #508 K-CASH-4A + K-CASH-4B prepared for exact-head full verification
 

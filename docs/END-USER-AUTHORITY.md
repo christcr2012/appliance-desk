@@ -31,9 +31,9 @@ For Appliance Desk, **a customer must not gain owner/operator powers** merely be
 This is explicitly requested implementation preparation for the universal permissions
 directive, not new authentication infrastructure or a second roadmap. Continue
 AGENTS/SESSION-START, the active work-index packet and MASTER-ROADMAP ordering.
-Reconcile concurrent K-CASH-4A/4B PR #508 and actual main/live before editing;
-do not replace its financial source, freeze a new financial scope, or mark it merged
-from this historical pointer. Attach confirmed defects to the affected original card.
+K-CASH-4A/4B PR #508 is merged; K-CASH-5A/5B PR #509 is currently draft.
+Reconcile both and actual main/live before editing; do not replace that concurrent
+financial source or freeze a new financial scope. Attach confirmed defects to the affected original card.
 
 ### Existing behavior to reuse and audit boundary
 
