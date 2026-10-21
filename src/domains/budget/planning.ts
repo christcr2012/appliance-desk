@@ -360,7 +360,7 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
    tx.budgetTarget.findMany({where:{active:true},take:500}),
    tx.budgetCostPlan.findMany({where:{active:true},include:{
     occurrences:{where:{dueOn:{lte:date(horizon)},status:{not:"CANCELLED"}},
-     orderBy:{dueOn:"asc"},include:{settlements:true},take:500}},
+     orderBy:{dueOn:"asc"},include:{settlements:true},take:500},
     envelope:{select:{id:true,name:true}}},orderBy:{dueOn:"asc"},take:500}),
    tx.budgetMove.findMany({where:{kind:{in:["SPEND","REFUND","REVERSAL"]},sourceType:"JOURNAL_LINE"},
     select:{envelopeId:true,signedCents:true,kind:true,sourceId:true},take:5001}),

@@ -99,7 +99,7 @@ export async function BudgetPlanSection({userId,owner,notice,days,view,state}:{
      <p id="linked-source-help" className="text-sm sm:col-span-2">Linked recurring templates must match the saved amount, monthly day and recurrence. Source ID is from the source screen; no duplicate manual plan for the same source.</p>
      {data.recurringSources.length>0&&<details className="sm:col-span-2"><summary className="cursor-pointer">Existing monthly expense templates (read-only IDs)</summary>
        {data.recurringSources.map(s=><p key={s.id} className="text-xs break-all">{s.name}: {money(s.amountCents)} on day {s.dayOfMonth} — {s.id}</p>)}
-      </details>
+      </details>}
      <label>Envelope<select name="envelopeId" className={field}>{data.envelopes.filter(x=>x.active).map(e=>
       <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
      <label>Amount ($)<input name="amount" className={field} inputMode="decimal" required/></label>
