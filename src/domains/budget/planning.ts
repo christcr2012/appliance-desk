@@ -297,6 +297,51 @@ export async function refreshBudgetOccurrenceHorizon(userId:string,today=busines
   return plans.length;
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }
+/**
+ * Source-owned linked schedule. Invoked within the exact recurring-template
+ * edit transaction only after the existing Books role/validation gates.
+ * Already-settled occurrence snapshots are NEVER rewritten or deleted.
+ */
+export async function synchronizeLinkedRecurringPlanInTx(tx:Tx,userId:string,source:{
+ id:string;name:string;amountCents:number;dayOfMonth:number;active:boolean
+}){
+ const existing=await tx.budgetCostPlan.findFirst({where:{
+  sourceType:"RECURRING_EXPENSE",sourceId:source.id},include:{
+  occurrences:{include:{settlements:true},take:500}}});
+ if(!existing)return;
+ if(!cents(source.amountCents)||!Number.isInteger(source.dayOfMonth)||
+  source.dayOfMonth<1||source.dayOfMonth>28)
+  throw new BudgetEvidenceError("Recurring source contains an invalid verified amount or due day.");
+ await lockState(tx);
+ const now=businessDateKey(new Date()),anchor=businessDateKey(existing.dueOn);
+ const revisedKey=anchor.slice(0,8)+String(source.dayOfMonth).padStart(2,"0");
+ const revisedOn=date(revisedKey),updated=await tx.budgetCostPlan.update({
+  where:{id:existing.id},data:{name:source.name,amountCents:source.amountCents,
+  dueOn:revisedOn,anchorDay:source.dayOfMonth,active:source.active,
+  version:{increment:1}}});
+ for(const old of existing.occurrences){
+  if(netPaid(old.settlements)>0)continue;
+  const oldKey=businessDateKey(old.dueOn);
+  if(oldKey<now)continue;
+  const changedDate=source.dayOfMonth!==Number(oldKey.slice(8));
+  if(!source.active||changedDate){
+   if(old.status!=="CANCELLED")await tx.budgetCostOccurrence.update({
+    where:{id:old.id},data:{status:"CANCELLED",version:{increment:1}}});
+  }else if(old.status==="PLANNED")
+   await tx.budgetCostOccurrence.update({where:{id:old.id},data:{
+    amountCents:source.amountCents,sourceRevision:updated.version,version:{increment:1}}});
+ }
+ if(source.active){
+  const settings=await tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
+  await materialize(tx,updated,now,settings.budgetPlanningHorizonDays);
+ }
+ await revision(tx);
+ await tx.auditLog.create({data:{userId,action:"budget.plan.linked-recurring-source",
+  entityType:"BudgetCostPlan",entityId:updated.id,newValue:{
+   sourceId:source.id,sourceType:"RECURRING_EXPENSE",
+   previousVersion:existing.version,currentVersion:updated.version,
+   changedAmountCents:updated.amountCents,active:source.active}}});
+}
 export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new Date())){
  date(asOf);
  return prisma.$transaction(async tx=>{

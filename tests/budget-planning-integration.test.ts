@@ -3,6 +3,7 @@ import { beforeAll,afterAll,describe,expect,it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey,businessDateKey } from "@/lib/business-date";
 import { getBudgetContext } from "@/domains/budget/context";
+import { saveRecurringExpense } from "@/domains/books/expenses";
 import { saveBudgetCostPlan,saveBudgetTarget,settleBudgetCost,
  reverseBudgetCostSettlement,getBudgetPlanning } from "@/domains/budget/planning";
 
@@ -15,6 +16,7 @@ const expenseId="bp-exp-"+stamp,category="bp-cat-"+stamp,ledger="bp-ledger-"+sta
 const d=businessDateKey(new Date()),on=businessDateFromKey(d)!;
 let oldRevision=BigInt(0),oldHorizon=90,bankLedger="",sourceJournal="";
 const planIds:string[]=[],settlementIds:string[]=[];
+const sourceTemplate="bp-recurring-"+stamp;
 const reason="Reviewed disposable budget plan and posting evidence";
 describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tenant guards",()=>{
  beforeAll(async()=>{
@@ -46,6 +48,7 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
   });
   await prisma.budgetCostOccurrence.deleteMany({where:{planId:{in:planIds}}});
   await prisma.budgetCostPlan.deleteMany({where:{id:{in:planIds}}});
+  await prisma.recurringExpense.deleteMany({where:{id:sourceTemplate}});
   await prisma.budgetTarget.deleteMany({where:{envelopeId:env}});
   await prisma.budgetEnvelope.deleteMany({where:{id:env}});
   await prisma.journalLine.deleteMany({where:{entryId:sourceJournal}});
@@ -81,6 +84,24 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
    name:"Changed bill",amountCents:6000,amountQuality:"ESTIMATE",dueOn:d,
    recurrence:"MONTHLY",reason})).rejects.toThrow(/changed/);
   await expect(getBudgetPlanning(staff,d)).rejects.toThrow(/access/);
+ });
+ it("keeps a linked recurring plan in step with the existing Books source edit",async()=>{
+  const anchor=d.slice(0,8)+"28";
+  await prisma.recurringExpense.create({data:{id:sourceTemplate,name:"Current source",
+   vendorName:"Source vendor",amountCents:4200,dayOfMonth:28,
+   categoryId:category,paidFromAccountId:bankLedger}});
+  const linked=await saveBudgetCostPlan(owner,{envelopeId:env,name:"Current source",
+   amountCents:4200,amountQuality:"ESTIMATE",dueOn:anchor,recurrence:"MONTHLY",
+   sourceType:"RECURRING_EXPENSE",sourceId:sourceTemplate,reason});
+  planIds.push(linked);
+  await saveRecurringExpense(owner,{name:"Changed verified source",vendorName:"Source vendor",
+    amountCents:5200,dayOfMonth:28,categoryId:category,paidFromAccountId:bankLedger,
+    active:true},sourceTemplate);
+  const after=await prisma.budgetCostPlan.findUniqueOrThrow({where:{id:linked},
+   include:{occurrences:{where:{status:"PLANNED"}}}});
+  expect(after.name).toBe("Changed verified source");
+  expect(after.amountCents).toBe(5200);
+  expect(after.occurrences.every(x=>x.amountCents===5200)).toBe(true);
  });
  it("records target only once per envelope with optimistic corrections and no cash entries",async()=>{
   await expect(saveBudgetTarget(staff,{envelopeId:env,kind:"SAVE_BY_DATE",

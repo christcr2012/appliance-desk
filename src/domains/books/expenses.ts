@@ -5,6 +5,7 @@ import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
 import { postForSource, writeJournal } from "./post";
 import { recordUseTaxForPurchase } from "@/domains/tax/use-tax";
+import { synchronizeLinkedRecurringPlanInTx } from "@/domains/budget/planning";
 
 export class ExpenseInputError extends Error {}
 export type ExpenseFields = {
@@ -261,6 +262,9 @@ export async function saveRecurringExpense(userId: string, input: RecurringField
       const found = await tx.recurringExpense.findUnique({ where: { id: existingId } });
       if (!found) throw new ExpenseInputError("Recurring template no longer exists.");
       await tx.recurringExpense.update({ where: { id: existingId }, data: fields });
+      await synchronizeLinkedRecurringPlanInTx(tx,userId,{id:existingId,
+        name:fields.name,amountCents:fields.amountCents,
+        dayOfMonth:fields.dayOfMonth,active:fields.active});
       await audit(tx, userId, existingId, "books.recurring.update", { active: fields.active });
       return existingId;
     }
