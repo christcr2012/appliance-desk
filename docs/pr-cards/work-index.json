@@ -1031,7 +1031,7 @@
       "dependencies": [
         "K-CASH-2"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1046,13 +1046,14 @@
         "src/domains/books/cash/matches.ts",
         "src/domains/books/cash/reconcile.ts",
         "src/domains/books/cash/cash-readiness.ts",
-        "src/app/desk/books/cash/checks/page.tsx"
+        "src/app/desk/books/cash/checks/page.tsx",
+        "PR #507 merged at aa575887ce1800e8354841270942b0c9365b34bf"
       ],
       "tests": [
         "tests/bank-reconciliation-integration.test.ts",
         "e2e/bank-checks.spec.ts"
       ],
-      "readiness": "IMPLEMENTATION_AUTHORED_VERIFICATION_PENDING",
+      "readiness": "ENGINEERING_MERGED_EXACT_HEAD_CI_GREEN",
       "plannedCard": "docs/pr-cards/K-CASH-3.md",
       "card": "docs/pr-cards/K-CASH-3.md"
     },
@@ -1063,7 +1064,7 @@
       "dependencies": [
         "K-CASH-3"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "batch_k_cash_budget",
       "budget": 480,
       "units": [
@@ -1074,13 +1075,22 @@
         "docs/designs/BATCH-K.md",
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/reports/definitions.ts",
+        "prisma/migrations/20261020010000_batch_k_cash_budget/migration.sql",
+        "src/domains/budget/envelopes.ts",
+        "src/domains/budget/protected.ts",
+        "src/domains/budget/moves.ts",
+        "src/domains/budget/spending.ts",
+        "tests/budget-schema-integration.test.ts",
+        "tests/budget-money-integration.test.ts",
+        "e2e/budget-money.spec.ts"
       ],
       "tests": [
         "tests/budget-schema-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-CASH-4A.md"
+      "readiness": "ENGINEERING_AUTHORED_EXACT_HEAD_CI_PENDING",
+      "plannedCard": "docs/pr-cards/K-CASH-4A.md",
+      "card": "docs/pr-cards/K-CASH-4A.md"
     },
     {
       "id": "K-CASH-4B",
@@ -1089,7 +1099,7 @@
       "dependencies": [
         "K-CASH-4A"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1100,13 +1110,24 @@
         "docs/designs/BATCH-K.md",
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/reports/definitions.ts",
+        "src/domains/budget/protected.ts",
+        "src/domains/budget/moves.ts",
+        "src/domains/budget/spending.ts",
+        "src/app/desk/books/budget/page.tsx",
+        "tests/budget-money-integration.test.ts",
+        "e2e/budget-money.spec.ts",
+        "prisma/migrations/20261020010000_batch_k_cash_budget/migration.sql",
+        "src/domains/budget/envelopes.ts",
+        "tests/budget-schema-integration.test.ts"
       ],
       "tests": [
-        "tests/budget-money-integration.test.ts"
+        "tests/budget-money-integration.test.ts",
+        "e2e/budget-money.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-CASH-4B.md"
+      "readiness": "ENGINEERING_AUTHORED_EXACT_HEAD_CI_PENDING",
+      "plannedCard": "docs/pr-cards/K-CASH-4A.md",
+      "card": "docs/pr-cards/K-CASH-4A.md"
     },
     {
       "id": "K-CASH-5A",
@@ -3852,7 +3873,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-CASH-3",
+  "activeExecution": "K-CASH-4A",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -3997,6 +4018,10 @@
     {
       "id": "K-CASH-3",
       "path": "docs/pr-cards/execution/K-CASH-3.json"
+    },
+    {
+      "id": "K-CASH-4A",
+      "path": "docs/pr-cards/execution/K-CASH-4A.json"
     }
   ]
 }

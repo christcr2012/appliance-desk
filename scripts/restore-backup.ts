@@ -288,6 +288,7 @@ async function restore(file: string, target: string): Promise<void> {
     const reconciliationRevisionLinks: Array<{ id: string; priorId: string }> = [];
     const cashEventReversalLinks: Array<{ id: string; priorId: string }> = [];
     const deliveryRevisionLinks: Array<{ id: string; priorId: string }> = [];
+    const budgetMoveReversalLinks: Array<{ id: string; priorId: string }> = [];
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
@@ -328,6 +329,7 @@ async function restore(file: string, target: string): Promise<void> {
         bankReconciliation: { key: "priorCompletedId", links: reconciliationRevisionLinks },
         bookCashEvent: { key: "reversalOfId", links: cashEventReversalLinks },
         accountingDelivery: { key: "replacesDeliveryId", links: deliveryRevisionLinks },
+        budgetMove: { key: "reversalOfId", links: budgetMoveReversalLinks },
       };
       const nullableHistory = historyByTable[table];
       if (nullableHistory) for (const row of data) {
@@ -336,6 +338,32 @@ async function restore(file: string, target: string): Promise<void> {
           nullableHistory.links.push({ id: String(row.id), priorId: row[key] as string });
           row[key] = null;
         }
+      }
+      if (table === "budgetCostSettlement") {
+        // A reversing settlement carries the SAME source identity as its
+        // original. Clearing reversalOfId even temporarily collides with the
+        // partial original-source uniqueness index. Restore original rows
+        // first, then linked reversals with their FK intact on INSERT.
+        // PostgreSQL append-only triggers deliberately prohibit rewriting
+        // committed settlement history afterward.
+        let pending = [...data];
+        const created = new Set<string>();
+        let written = 0;
+        while (pending.length) {
+          const ready = pending.filter(row =>
+            row.reversalOfId == null || created.has(String(row.reversalOfId)));
+          if (!ready.length) {
+            throw new Error("Budget settlement reversal history has a dangling or cyclic source link.");
+          }
+          const result = await delegate.createMany({ data: ready });
+          written += result.count;
+          for (const row of ready) created.add(String(row.id));
+          const readyIds = new Set(ready.map(row => String(row.id)));
+          pending = pending.filter(row => !readyIds.has(String(row.id)));
+        }
+        if (written !== rows.length) throw new Error(
+          `Restore count mismatch for budgetCostSettlement: expected ${rows.length}, wrote ${written}.`);
+        continue;
       }
       const result = await delegate.createMany({ data });
       if (result.count !== rows.length) {
@@ -378,6 +406,9 @@ async function restore(file: string, target: string): Promise<void> {
       await prisma.bookCashEvent.update({ where: { id: link.id }, data: { reversalOfId: link.priorId } });
     for (const link of deliveryRevisionLinks)
       await prisma.accountingDelivery.update({ where: { id: link.id }, data: { replacesDeliveryId: link.priorId } });
+
+    for (const link of budgetMoveReversalLinks)
+      await prisma.budgetMove.update({ where: { id: link.id }, data: { reversalOfId: link.priorId } });
 
     await resetAutoincrementSequences(sql, schema);
     await verifySchemaHealth(prisma);

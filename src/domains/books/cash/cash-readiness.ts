@@ -17,7 +17,7 @@ export type EligibleBank={
 const protective=(role:string|null)=>
  !!role&&(/^(CARD|DEPOSITS_HELD|CUSTOMER_CREDITS|UNAPPLIED_RECEIPTS|SALES_TAX_UNASSIGNED|SALES_TAX:|USE_TAX:|RETAIL_DELIVERY_FEE_PAYABLE|RDF_PAYABLE)/.test(role));
 async function readBank(tx:Tx,bank:{id:string;name:string;ledgerAccountId:string},asOf:Date){
- const reasons:string[]=[],date=businessDateKey(asOf);
+ const reasons:string[]=[];
  const rows=await tx.bankReconciliation.findMany({where:{cashAccountId:bank.id,isCurrent:true},
   orderBy:{toOn:"desc"},take:2});
  const last=rows[0];
@@ -91,6 +91,14 @@ export async function getCashReadiness(userId:string,asOfKey=businessDateKey(new
  const asOf=new Date(Math.min(Date.now(),businessDateEnd(asOfKey).getTime()));
  return prisma.$transaction(async tx=>{
   await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+  return readCashReadinessInTx(tx,asOfKey,asOf);
+ },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
+}
+/** Read money and journal liabilities in the CALLER'S snapshot/lock transaction.
+ * Private: callers must check active roles before requesting it.
+ * Never changes the original conservative no-funding result.
+ */
+export async function readCashReadinessInTx(tx:Tx,asOfKey:string,asOf:Date){
   const active=await tx.cashAccount.findMany({where:{active:true},take:100,orderBy:{id:"asc"},
    select:{id:true,name:true,ledgerAccountId:true}});
   const bankResults:EligibleBank[]=[];
@@ -126,7 +134,6 @@ export async function getCashReadiness(userId:string,asOfKey=businessDateKey(new
    eligibleBankCents:eligible,protectedLiabilities,protectedTotalCents:protectedTotal,
    provisionalAfterProtectedCents:afterObligations,unknownLiabilities:unknownLiabilities.map(x=>x.name),
    reasons,mayFund:false,provenance:"Completed bank statement plus posted K journal and hold evidence; not a bank API or payment authorization."};
- },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
 }
 /** A hold is for risk evidence not already booked as a bank debit. Never shifts money. */
 export async function createCashHold(userId:string,input:{

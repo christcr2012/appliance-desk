@@ -36,7 +36,8 @@
       "books-reports.spec.ts",
       "books-closing.spec.ts",
       "books-cash.spec.ts",
-      "bank-checks.spec.ts"
+      "bank-checks.spec.ts",
+      "budget-money.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",

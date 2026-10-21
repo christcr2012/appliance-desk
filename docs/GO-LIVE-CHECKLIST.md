@@ -1,3 +1,11 @@
+## K-CASH-4A/4B initial business activation — NOT YET AUTHORIZED
+
+- [ ] Verify the additive budget migration, populated restore and protected owner budget screens on the actual scheduled released revision; draft PR source checks do not establish live readiness.
+- [ ] Owner selects all business checking accounts and independently attests actual bank statement, opening composition and full settlement through the reviewed date, including outstanding bank debits and cleared refunds.
+- [ ] Confirm all current credit-card payable, pending customer deposits/credits/refunds, area-specific sales/use tax and RDF obligations from real K journal and bank sources; obtain CPA review for disputed legal/tax treatment. Filed is not automatically paid.
+- [ ] Owner separately chooses a budget start day and explicitly enables the default-OFF `cashBudgetEnabled` setting only when evidence is complete, with no LIVE Stripe, bank transfer, automated messaging or manual deployment implied.
+- [ ] On released web OWNER/ADMIN/STAFF sessions, verify source review, protected shortages, atomic envelope allocation/correction, spending and real cleared supplier refund without a duplicated journal.
+
 ## K-CASH banking acceptance still pending — October 19, 2026
 
 - [ ] Owner selects a real bank and attests opening cash source, ledger, and legitimate account suffix; no bank account is automatically opened.
