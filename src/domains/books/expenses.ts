@@ -281,6 +281,7 @@ export async function saveRecurringExpense(userId: string, input: RecurringField
       spentOn: new Date(), amountCents: fields.amountCents, vendorTaxCents: 0,
       vendorName: fields.vendorName, categoryId: fields.categoryId, paidFromAccountId: fields.paidFromAccountId,
       memo: null, applianceId: null, jobId: null, purchaseOrderId: null, capitalizeToAppliance: false,
+      budgetEnvelopeId: null,
     });
     if (existingId) {
       await tx.$queryRaw`SELECT "id" FROM "RecurringExpense" WHERE "id" = ${existingId} FOR UPDATE`;

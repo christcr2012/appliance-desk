@@ -27,8 +27,8 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
    {id:staff,email:staff+"@example.test",role:"STAFF"}]});
   await prisma.budgetEnvelope.create({data:{id:env,name:"Disposable invoice fund"}});
   bankLedger=(await prisma.ledgerAccount.findFirstOrThrow({where:{systemRole:"BANK"}})).id;
-  await prisma.ledgerAccount.create({data:{id:ledger,name:"Disposable budget bill",type:"EXPENSE"}});
-  await prisma.expenseCategory.create({data:{id:category,name:"Disposable budget expense",ledgerAccountId:ledger}});
+  await prisma.ledgerAccount.create({data:{id:ledger,name:"Disposable budget bill",type:"EXPENSE",description:"Synthetic budget test account"}});
+  await prisma.expenseCategory.create({data:{id:category,name:"Disposable budget expense",description:"Synthetic test cost category",ledgerAccountId:ledger}});
   await prisma.expense.create({data:{
    id:expenseId,status:"POSTED",spentOn:on,amountCents:5000,
    vendorTaxCents:0,vendorName:"Synthetic",categoryId:category,
