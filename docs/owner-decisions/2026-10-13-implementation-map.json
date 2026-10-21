@@ -2,7 +2,7 @@
   "version": 1,
   "source": "docs/owner-decisions/2026-10-13-text-voice-reconciliation.md",
   "purpose": "Owner answer to approved roadmap and testable execution coverage, not implementation/live proof",
-  "updated": "2026-10-19",
+  "updated": "2026-10-21",
   "expectedGroupCounts": {
     "pricing": 22,
     "delivery": 5,
@@ -10,7 +10,7 @@
     "communications": 11,
     "accounting": 12
   },
-  "activeExecutionMustRemain": "K-CASH-4A",
+  "activeExecutionMustRemain": "K-CASH-5A",
   "entries": [
     {
       "id": "OD13-PRI-01",
