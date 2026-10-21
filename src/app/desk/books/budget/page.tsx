@@ -71,7 +71,13 @@ export default async function BudgetBackingPage({searchParams}:{
   <header className="space-y-2">
    <Link className="underline" href="/desk/books/cash/checks">Back to bank statement reconciliation</Link>
    <h1 className="text-2xl font-bold">Budget backing</h1>
-   <nav aria-label="Budget views" className="flex flex-wrap gap-3"><Link className="underline p-2" href="/desk/books/budget?tab=plan">Plan ahead and savings goals</Link><Link className="underline p-2" href="/desk/books/closing">Cash outlook</Link></nav>
+   <nav aria-label="Budget views" className="flex flex-wrap gap-3">
+    <Link className="underline p-2" href="/desk/books/budget" aria-current="page">My money</Link>
+    <Link className="underline p-2" href="/desk/books/budget?tab=plan">Plan ahead</Link>
+    <Link className="underline p-2" href="/desk/books/reports">Review</Link>
+    <Link className="underline p-2" href="/desk/books/cash/checks">Bank checks</Link>
+    <Link className="underline p-2" href="/desk/books/budget#source-setup">Setup</Link>
+   </nav>
    <p>Discretionary envelopes do not move money out of the bank. Protected tax, card and customer obligations are reserved first. A CSV or estimated rent is never spendable cash.</p>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
   </header>
@@ -125,7 +131,7 @@ export default async function BudgetBackingPage({searchParams}:{
    </p>):<p>No classified liabilities were available; that does not establish absence of debt.</p>}
    {snap.unknownLiabilities.length>0&&<p role="alert">Unclassified liabilities: {snap.unknownLiabilities.join(", ")}</p>}
   </section>
-  {owner&&<section className="rounded-lg border border-border p-4 space-y-3">
+  {owner&&<section id="source-setup" className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Owner review and activation</h2>
    <p>Record references to independent bank statements, the current business-card debt and customer/tax liability review. No account or card numbers, passwords or unreviewed guessed amounts. This review expires when the day or journal changes.</p>
    <form action={attestBudgetAction} className="grid gap-3">

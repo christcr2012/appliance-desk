@@ -5,6 +5,7 @@ import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { getExpenses } from "@/domains/books/expenses";
 import { createExpenseAction, postExpenseAction, voidExpenseAction, saveRecurringAction } from "./actions";
 import { ExpenseReceiptUpload } from "./receipt-upload";
+import { BudgetContextCard } from "@/domains/budget/context";
 
 export const metadata = { title: "Expenses — Books" };
 const field = "min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
@@ -21,6 +22,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       {data.manager && <Link href="/desk/books" className="underline">View accounting journal and balances</Link>}
       {notice && <p role="status" className="rounded border border-border p-3">{notice}</p>}
     </header>
+    <BudgetContextCard userId={session.user.id} heading="Expense and budget context"/>
     <section className="rounded-lg border border-border p-4 space-y-3">
       <h2 className="text-lg font-semibold">Record an expense</h2>
       <p>First save the expense, then upload its private receipt below. Seller tax is included in the amount paid.</p>
