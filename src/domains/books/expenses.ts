@@ -86,13 +86,16 @@ export async function createExpense(userId: string, fields: ExpenseFields, mode:
     if (mode !== "SUBMITTED" && actor.role === "STAFF")
       throw new ExpenseInputError("Staff may submit expenses only.");
     await validateReferences(tx, input);
+    // Intent is evidence in the audit log, never an unsupported Expense DB
+    // column or an implicit journal/envelope movement.
+    const {budgetEnvelopeId,...sourceFields}=input;
     const expense = await tx.expense.create({ data: {
-      ...input, status: mode === "POSTED" ? "DRAFT" : mode,
+      ...sourceFields, status: mode === "POSTED" ? "DRAFT" : mode,
       submittedByUserId: userId,
     } });
     await audit(tx, userId, expense.id, "books.expense.create", { mode, amountCents: input.amountCents });
-    if(input.budgetEnvelopeId)await audit(tx,userId,expense.id,"books.expense.budget-intent",{
-     budgetEnvelopeId:input.budgetEnvelopeId,actualPayment:false});
+    if(budgetEnvelopeId)await audit(tx,userId,expense.id,"books.expense.budget-intent",{
+     budgetEnvelopeId,actualPayment:false});
     return expense.id;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   if (mode === "POSTED") await postExpense(userId, id, 1);

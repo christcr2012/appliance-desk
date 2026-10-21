@@ -3,7 +3,7 @@ import { beforeAll,afterAll,describe,expect,it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey,businessDateKey } from "@/lib/business-date";
 import { getBudgetContext } from "@/domains/budget/context";
-import { saveRecurringExpense } from "@/domains/books/expenses";
+import { createExpense,getExpenses,saveRecurringExpense } from "@/domains/books/expenses";
 import { saveBudgetCostPlan,saveBudgetTarget,settleBudgetCost,
  reverseBudgetCostSettlement,getBudgetPlanning } from "@/domains/budget/planning";
 
@@ -53,10 +53,10 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
   await prisma.budgetEnvelope.deleteMany({where:{id:env}});
   await prisma.journalLine.deleteMany({where:{entryId:sourceJournal}});
   await prisma.journalEntry.deleteMany({where:{id:sourceJournal}});
-  await prisma.expense.deleteMany({where:{id:expenseId}});
+  await prisma.expense.deleteMany({where:{OR:[{id:expenseId},{vendorName:"Budget intent "+stamp}]}});
   await prisma.expenseCategory.deleteMany({where:{id:category}});
   await prisma.ledgerAccount.deleteMany({where:{id:ledger}});
-  await prisma.auditLog.deleteMany({where:{userId:owner}});
+  await prisma.auditLog.deleteMany({where:{userId:{in:[owner,staff]}}});
   await prisma.user.deleteMany({where:{id:{in:[owner,staff]}}});
   await prisma.budgetState.update({where:{id:"singleton"},data:{revision:oldRevision}});
   await prisma.businessSettings.update({where:{id:"singleton"},data:{budgetPlanningHorizonDays:oldHorizon}});
@@ -68,6 +68,18 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
   expect(JSON.stringify(labels)).not.toMatch(/readyCents|protectedCents|balanceCents/);
   const ownerView=await getBudgetContext(owner);
   expect(ownerView.role).toBe("MANAGER");
+ });
+ it("records STAFF's selected expense label as audit evidence, never a financial move or private balance",async()=>{
+  const made=await createExpense(staff,{date:d,amountCents:1234,vendorTaxCents:0,
+   vendorName:"Budget intent "+stamp,categoryId:category,paidFromAccountId:bankLedger,
+   budgetEnvelopeId:env},"SUBMITTED");
+  const returned=await getExpenses(staff);
+  const own=returned.rows.find(row=>row.id===made.id);
+  expect(own?.budgetIntentLabel).toBe("Disposable invoice fund");
+  expect(own?.status).toBe("SUBMITTED");
+  expect(await prisma.budgetMove.count({where:{envelopeId:env}})).toBe(0);
+  expect(await prisma.auditLog.count({where:{entityType:"Expense",entityId:made.id,
+   action:"books.expense.budget-intent"}})).toBe(1);
  });
  it("creates only actual bounded future cost occurrences and refuses staff mutations",async()=>{
   await expect(saveBudgetCostPlan(staff,{envelopeId:env,name:"Denied bill",
