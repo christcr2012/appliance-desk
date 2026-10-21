@@ -114,7 +114,8 @@ export async function saveBudgetCostPlanAction(f:FormData){
   dueOn:str(f,"dueOn"),
   recurrence:(str(f,"recurrence")||"NONE") as BudgetRecurrence,
   sourceType:str(f,"sourceType")==="RECURRING_EXPENSE"?"RECURRING_EXPENSE":
-   str(f,"sourceType")==="PURCHASE_ORDER"?"PURCHASE_ORDER":"MANUAL",
+   str(f,"sourceType")==="PURCHASE_ORDER"?"PURCHASE_ORDER":
+   str(f,"sourceType")==="TELECOM_PLAN"?"TELECOM_PLAN":"MANUAL",
   sourceId:str(f,"sourceId")||undefined,
   active:str(f,"active")!=="false",reason:str(f,"reason")}));
 }

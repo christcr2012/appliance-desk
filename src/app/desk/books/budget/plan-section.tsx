@@ -92,6 +92,7 @@ export async function BudgetPlanSection({userId,owner,notice,days,view,state}:{
       <option value="MANUAL">Manual known bill</option>
       <option value="RECURRING_EXPENSE">Existing recurring expense template</option>
       <option value="PURCHASE_ORDER">Existing purchasing commitment</option>
+      <option value="TELECOM_PLAN">Verified telecom statement — future cost estimate</option>
      </select></label>
      <label>Existing source ID (required for linked sources)
       <input name="sourceId" className={field} aria-describedby="linked-source-help"/></label>

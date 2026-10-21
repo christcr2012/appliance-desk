@@ -61,7 +61,7 @@ async function materialize(tx:Tx,plan:{id:string;dueOn:Date;recurrence:string;
 export async function saveBudgetCostPlan(userId:string,input:{
  planId?:string;expectedVersion?:number;envelopeId:string;name:string;
  amountCents:number;amountQuality:"EXACT"|"ESTIMATE";dueOn:string;
- recurrence:BudgetRecurrence;sourceType?:"MANUAL"|"RECURRING_EXPENSE"|"PURCHASE_ORDER";
+ recurrence:BudgetRecurrence;sourceType?:"MANUAL"|"RECURRING_EXPENSE"|"PURCHASE_ORDER"|"TELECOM_PLAN";
  sourceId?:string;active?:boolean;reason:string;today?:string;
 }){
  const reason=why(input.reason),name=input.name.trim(),due=date(input.dueOn);
@@ -69,7 +69,7 @@ export async function saveBudgetCostPlan(userId:string,input:{
   !quality.includes(input.amountQuality)||!recurrences.includes(input.recurrence))
   throw new BudgetEvidenceError("Choose a name, exact or estimated amount, valid due day and recurrence.");
  const sourceType=input.sourceType??"MANUAL",sourceId=input.sourceId?.trim()||null;
- if(!["MANUAL","RECURRING_EXPENSE","PURCHASE_ORDER"].includes(sourceType)||
+ if(!["MANUAL","RECURRING_EXPENSE","PURCHASE_ORDER","TELECOM_PLAN"].includes(sourceType)||
   sourceType==="MANUAL"&&sourceId!==null||sourceType!=="MANUAL"&&!sourceId)
   throw new BudgetEvidenceError("A linked bill must name exactly one verified existing source.");
  const today=input.today??businessDateKey(new Date());
@@ -93,6 +93,13 @@ export async function saveBudgetCostPlan(userId:string,input:{
    if(input.amountQuality!=="ESTIMATE")throw new BudgetEvidenceError("A purchase order is a commitment estimate until an actual posted payment is verified.");
    // Receipt of parts/appliances is stock evidence, not bill payment.
    if(!order.lines.length)throw new BudgetEvidenceError("Purchase order has no committed lines to plan.");
+  }
+  if(sourceType==="TELECOM_PLAN"){
+   const statement=await tx.telecomStatement.findUnique({where:{id:sourceId!}});
+   if(!statement||statement.state!=="VERIFIED"||statement.currency!=="USD")
+    throw new BudgetEvidenceError("Telecom commitment needs an existing, verified USD provider statement. Unverified usage is not booked or paid.");
+   if(input.amountQuality!=="ESTIMATE")
+    throw new BudgetEvidenceError("Planning future telecom spending from a past statement remains an estimate.");
   }
   const old=input.planId?await tx.budgetCostPlan.findUnique({
    where:{id:input.planId},include:{occurrences:{include:{settlements:true}}}}):null;
