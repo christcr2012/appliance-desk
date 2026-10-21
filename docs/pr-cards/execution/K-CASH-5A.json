@@ -126,5 +126,21 @@
         "Document plain-English weekly/monthly owner planning, provider-off operation, preserved immutable paid financial history and remaining real bank/CPA/release acceptance without treating synthetic test data as business approval."
       ]
     }
-  ]
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/budget-planning.test.ts"
+    ],
+    "db": [
+      "tests/budget-planning-integration.test.ts",
+      "tests/budget-context-access.test.ts",
+      "tests/books-closing-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/budget.spec.ts",
+      "e2e/budget-money.spec.ts"
+    ],
+    "node": []
+  }
 }
