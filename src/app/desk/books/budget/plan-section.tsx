@@ -106,6 +106,36 @@ export async function BudgetPlanSection({userId,owner,notice}:{
      <label className="sm:col-span-2">Reason for adding this cost<input name="reason" minLength={12} maxLength={300} required className={field}/></label>
      <button className={button}>Save planned cost only — do not pay</button>
     </form>}
+    {data.taxPeriods.length>0&&<aside className="rounded border border-border p-3 space-y-2">
+     <h3 className="font-semibold">Protected sales/use tax filing dates — read only</h3>
+     {data.taxPeriods.map(x=><p key={x.id}>{x.name}: due {x.dueOn} · {x.status}. Amount/payment requires verified tax filing and bank sources. <Link href="/desk/sales-tax/returns" className="underline">Open authoritative tax return</Link></p>)}
+    </aside>}
+    <h3 className="font-semibold">Existing bill plans and revisions</h3>
+    {data.plans.map(plan=><details key={plan.id} className="rounded border border-border p-3">
+     <summary className="cursor-pointer">{plan.name} — {money(plan.amountCents)} {plan.amountQuality}, {plan.recurrence} · {plan.dueOn}</summary>
+     <p className="text-sm">Source {plan.sourceType}, ID {plan.sourceId??"manual"}; revision {plan.version}. Changing future dates does not overwrite recorded partial payments.</p>
+     {owner&&<form action={saveBudgetCostPlanAction} className="grid gap-2 sm:grid-cols-2 pt-2">
+      <input name="planId" type="hidden" value={plan.id}/><input name="version" type="hidden" value={plan.version}/>
+      <input name="sourceType" type="hidden" value={plan.sourceType}/>
+      <input name="sourceId" type="hidden" value={plan.sourceId??""}/>
+      <input name="envelopeId" type="hidden" value={plan.envelopeId}/>
+      <label>Bill name<input name="name" className={field} defaultValue={plan.name} required/></label>
+      <label>Amount ($)<input name="amount" inputMode="decimal" className={field} defaultValue={moneyInputValue(plan.amountCents)} required/></label>
+      <label>Source quality<select name="quality" className={field} defaultValue={plan.amountQuality}>
+       <option value="ESTIMATE">Estimate</option><option value="EXACT">Exact</option>
+      </select></label>
+      <label>Next original due anchor<input name="dueOn" type="date" className={field} defaultValue={plan.dueOn} required/></label>
+      <label>Repeats<select name="recurrence" className={field} defaultValue={plan.recurrence}>
+       <option value="NONE">Once</option><option value="MONTHLY">Monthly</option>
+       <option value="QUARTERLY">Quarterly</option><option value="ANNUAL">Annually</option>
+      </select></label>
+      <label>Plan state<select name="active" className={field} defaultValue={plan.active?"true":"false"}>
+       <option value="true">Active</option><option value="false">Canceled (retain any paid evidence)</option>
+      </select></label>
+      <label className="sm:col-span-2">Why this future cost is changing<input name="reason" className={field} minLength={12} maxLength={300} required/></label>
+      <button className={button}>Save reviewed future cost revision</button>
+     </form>}
+    </details>)}
     {data.upcoming.length?data.upcoming.map(item=><article key={item.id} className="rounded border border-border p-3 space-y-2">
      <h3 className="font-semibold">{item.name} · {money(item.amountCents)} · {item.quality}</h3>
      <p>Due {item.dueOn} · {item.envelopeName} · {item.status} · paid from verified sources {money(item.paidCents)} · unpaid {money(item.unpaidCents)}</p>

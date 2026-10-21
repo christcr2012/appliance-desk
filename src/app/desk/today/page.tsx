@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import {
   businessDateKey,
+  addBusinessDays,
   formatBusinessDate,
   formatBusinessTime,
   businessMinuteOfDay,
@@ -171,7 +172,7 @@ export default async function TodayPage() {
     ? await getBudgetPlanning(session.user.id,businessDateKey(now)).then(data=>({
       sourceStatus:data.sourceStatus,review:data.sourceReasons.slice(0,3),
       items:data.upcoming.filter(x=>x.unpaidCents>0&&x.dueOn<=businessDateKey(
-       new Date(now.getTime()+30*86400000))).slice(0,15),
+       addBusinessDays(now,30))).slice(0,15),
       shortages:data.envelopes.filter(x=>x.needCents>0||x.balanceCents<0).slice(0,12),
       revision:data.revision
     })).catch(()=>null)

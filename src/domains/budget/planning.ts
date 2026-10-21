@@ -87,8 +87,13 @@ export async function saveBudgetCostPlan(userId:string,input:{
       Number(input.dueOn.slice(8))!==source.dayOfMonth)
     throw new BudgetEvidenceError("The linked recurring expense's saved date and amount must match its plan.");
   }
-  if(sourceType==="PURCHASE_ORDER"&&!await tx.purchaseOrder.findUnique({where:{id:sourceId!}}))
-   throw new BudgetEvidenceError("The purchase commitment no longer exists.");
+  if(sourceType==="PURCHASE_ORDER"){
+   const order=await tx.purchaseOrder.findUnique({where:{id:sourceId!},include:{lines:true}});
+   if(!order)throw new BudgetEvidenceError("The purchase commitment no longer exists.");
+   if(input.amountQuality!=="ESTIMATE")throw new BudgetEvidenceError("A purchase order is a commitment estimate until an actual posted payment is verified.");
+   // Receipt of parts/appliances is stock evidence, not bill payment.
+   if(!order.lines.length)throw new BudgetEvidenceError("Purchase order has no committed lines to plan.");
+  }
   const old=input.planId?await tx.budgetCostPlan.findUnique({
    where:{id:input.planId},include:{occurrences:{include:{settlements:true}}}}):null;
   if(input.planId&&(!old||old.version!==input.expectedVersion))
@@ -299,18 +304,32 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
   const settings=await tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
   const snap=await budgetSnapshotInTx(tx,asOf);
   const horizon=businessDateKey(addBusinessDays(date(asOf),settings.budgetPlanningHorizonDays));
-  const [targets,plans,moves,recurringSources]=await Promise.all([
+  const [targets,plans,moves,recurringSources,taxPeriods]=await Promise.all([
    tx.budgetTarget.findMany({where:{active:true},take:500}),
    tx.budgetCostPlan.findMany({where:{active:true},include:{
     occurrences:{where:{dueOn:{lte:date(horizon)},status:{not:"CANCELLED"}},
      orderBy:{dueOn:"asc"},include:{settlements:true},take:500}},
     envelope:{select:{id:true,name:true}}},orderBy:{dueOn:"asc"},take:500}),
-   tx.budgetMove.findMany({where:{kind:"SPEND",createdAt:{gte:date(asOf.slice(0,7)+"-01")}},
-    select:{envelopeId:true,signedCents:true},take:5000}),
-   tx.recurringExpense.findMany({where:{active:true},select:{id:true,name:true,amountCents:true,dayOfMonth:true},take:300})
+   tx.budgetMove.findMany({where:{kind:{in:["SPEND","REFUND","REVERSAL"]},sourceType:"JOURNAL_LINE"},
+    select:{envelopeId:true,signedCents:true,kind:true,sourceId:true},take:5001}),
+   tx.recurringExpense.findMany({where:{active:true},select:{id:true,name:true,amountCents:true,dayOfMonth:true},take:300}),
+   tx.taxFilingPeriod.findMany({where:{status:"OPEN",dueOn:{gte:date(asOf),lte:date(horizon)}},
+    include:{filingAccount:{select:{name:true}}},take:200})
   ]);
+  // Categorize net booked spending by the K journal source's Colorado date,
+  // not the day the owner happened to classify or correct an expense.
+  const sourceWarnings:string[]=[];
+  if(moves.length>5000)sourceWarnings.push("Spending history exceeded the bounded source window; monthly target needs may be incomplete.");
+  const bankJournalIds=[...new Set(moves.map(x=>x.sourceId).filter((x):x is string=>Boolean(x)))];
+  const sourceLines=await tx.journalLine.findMany({where:{id:{in:bankJournalIds}},
+   select:{id:true,entry:{select:{entryDate:true}}},take:5001});
+  const lineDate=new Map(sourceLines.map(x=>[x.id,businessDateKey(x.entry.entryDate)]));
   const spent=new Map<string,number>();
-  for(const move of moves)spent.set(move.envelopeId,(spent.get(move.envelopeId)??0)-move.signedCents);
+  for(const move of moves.slice(0,5000)){
+   const bookDay=move.sourceId?lineDate.get(move.sourceId):null;
+   if(bookDay?.slice(0,7)!==asOf.slice(0,7))continue;
+   spent.set(move.envelopeId,(spent.get(move.envelopeId)??0)-move.signedCents);
+  }
   const upcoming=plans.flatMap(plan=>plan.occurrences.map(occ=>{
    const paidCents=netPaid(occ.settlements);
    return {id:occ.id,planId:plan.id,envelopeId:plan.envelopeId,
@@ -321,9 +340,12 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
     settlements:occ.settlements.filter(s=>!s.reversalOfId&&!occ.settlements.some(r=>r.reversalOfId===s.id)).map(s=>({id:s.id,amountCents:s.amountCents,sourceId:s.sourceId})),sourceType:plan.sourceType,
     sourceId:plan.sourceId,version:occ.version};
   }));
-  const targetsByEnvelope=new Map(targets.map(x=>[x.envelopeId,x]));
+  const targetByEnvelope=new Map(targets.map(x=>[x.envelopeId,x]));
+  const targetCycleWarnings=targets.filter(x=>x.kind==="SAVE_BY_DATE"&&!x.dueOn)
+   .map(x=>"Savings target "+x.id+" has no valid due date; owner must review.");
+  sourceWarnings.push(...targetCycleWarnings);
   const rows=snap.envelopes.map(env=>{
-   const target=targetsByEnvelope.get(env.id);
+   const target=targetByEnvelope.get(env.id);
    const calculation=target?suggestedTarget({
     kind:target.kind as BudgetTargetKind,amountCents:target.amountCents,
     balanceCents:env.balanceCents,netSpentThisMonthCents:spent.get(env.id)??0,
@@ -350,9 +372,12 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
    sortOrder:x.sortOrder}));
   const proposal=fundingSuggestion(candidates,snap.mayAssign?snap.readyCents:null);
   return {asOf,through:horizon,revision:snap.stateRevision,sourceHash:snap.sourceHash,
-   sourceStatus:snap.status,mayAssign:snap.mayAssign,sourceReasons:snap.reasons,
+   sourceStatus:snap.status,mayAssign:snap.mayAssign,
+   sourceReasons:[...snap.reasons,...sourceWarnings],
    readyCents:snap.readyCents,protectedCents:snap.protectedTotalCents,
-   envelopes:rows,upcoming,proposal,recurringSources,plans:plans.map(p=>({
+   envelopes:rows,upcoming,proposal,recurringSources,
+   taxPeriods:taxPeriods.map(x=>({id:x.id,name:x.filingAccount.name,dueOn:businessDateKey(x.dueOn),status:x.status})),
+   plans:plans.map(p=>({
     id:p.id,envelopeId:p.envelopeId,name:p.name,amountCents:p.amountCents,
     amountQuality:p.amountQuality,dueOn:businessDateKey(p.dueOn),
     recurrence:p.recurrence,active:p.active,version:p.version,
