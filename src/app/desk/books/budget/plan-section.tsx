@@ -4,7 +4,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { formatMoney,moneyInputValue } from "@/lib/money-ui";
 import { getBudgetPlanning } from "@/domains/budget/planning";
 import { saveBudgetCostPlanAction,saveBudgetTargetAction,settleBudgetCostAction,
- reverseBudgetCostAction,fundBudgetSuggestionAction } from "./actions";
+ reverseBudgetCostAction,fundBudgetSuggestionAction,refreshBudgetPlanHorizonAction } from "./actions";
 const field="min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
 const button="rounded border border-border bg-card px-3 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2";
 const money=(n:number|null)=>n===null?"Unknown":formatMoney(n);
@@ -80,9 +80,21 @@ export async function BudgetPlanSection({userId,owner,notice}:{
    </section>
    <section className="rounded border border-border p-4 space-y-3">
     <h2 className="text-lg font-semibold">Known future costs</h2>
+    {owner&&<form action={refreshBudgetPlanHorizonAction} className="flex gap-2 items-center"><input type="hidden" name="today" value={today}/><button className={button}>Refresh dated plan horizon (no charge)</button></form>}
     <p>Exact bills and owner estimates shown separately through {data.through}. Past due amounts are still unpaid until a verified posted Books source is linked.</p>
     {owner&&<form action={saveBudgetCostPlanAction} className="grid gap-3 sm:grid-cols-2">
      <label>Bill name<input name="name" className={field} maxLength={200} required/></label>
+     <label>Linked source type<select name="sourceType" className={field}>
+      <option value="MANUAL">Manual known bill</option>
+      <option value="RECURRING_EXPENSE">Existing recurring expense template</option>
+      <option value="PURCHASE_ORDER">Existing purchasing commitment</option>
+     </select></label>
+     <label>Existing source ID (required for linked sources)
+      <input name="sourceId" className={field} aria-describedby="linked-source-help"/></label>
+     <p id="linked-source-help" className="text-sm sm:col-span-2">Linked recurring templates must match the saved amount, monthly day and recurrence. Source ID is from the source screen; no duplicate manual plan for the same source.</p>
+     {data.recurringSources.length>0&&<details className="sm:col-span-2"><summary className="cursor-pointer">Existing monthly expense templates (read-only IDs)</summary>
+       {data.recurringSources.map(s=><p key={s.id} className="text-xs break-all">{s.name}: {money(s.amountCents)} on day {s.dayOfMonth} — {s.id}</p>)}
+      </details>
      <label>Envelope<select name="envelopeId" className={field}>{data.envelopes.filter(x=>x.active).map(e=>
       <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
      <label>Amount ($)<input name="amount" className={field} inputMode="decimal" required/></label>

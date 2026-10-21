@@ -34,6 +34,9 @@ describe("K-CASH-5A deterministic Colorado cost and envelope planning",()=>{
    dueOn:"2026-12-31"})).toMatchObject({neededCents:100000,
     suggestedPerMonthCents:33334,nextDueOn:"2026-12-31"});
  });
+ it("covers a negative balance before any unrelated savings goal",()=>{
+  expect(fundNowNeed({balanceCents:-1200,targetNeedCents:0,unpaidUpcomingCents:0})).toBe(1200);
+ });
  it("does not add the same upcoming insurance bill to its target",()=>{
   expect(fundNowNeed({balanceCents:3000,targetNeedCents:17000,
    unpaidUpcomingCents:20000})).toBe(17000);

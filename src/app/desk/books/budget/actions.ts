@@ -8,7 +8,7 @@ import { attestBudgetSources,setBudgetActivation } from "@/domains/budget/protec
 import { applyBudgetMoves,undoBudgetMove } from "@/domains/budget/moves";
 import { configureBudgetEnvelope,configureBudgetWindows } from "@/domains/budget/envelopes";
 import { assignPostedBankSpending,reversePostedBankSpending,returnClearedSupplierRefund } from "@/domains/budget/spending";
-import { saveBudgetCostPlan,saveBudgetTarget,settleBudgetCost,reverseBudgetCostSettlement,getBudgetPlanning } from "@/domains/budget/planning";
+import { saveBudgetCostPlan,saveBudgetTarget,settleBudgetCost,reverseBudgetCostSettlement,getBudgetPlanning,refreshBudgetOccurrenceHorizon } from "@/domains/budget/planning";
 import type { BudgetRecurrence,BudgetTargetKind } from "@/domains/budget/planning-math";
 const str=(f:FormData,k:string)=>String(f.get(k)??"").trim();
 const done=(message:string):never=>{
@@ -113,7 +113,10 @@ export async function saveBudgetCostPlanAction(f:FormData){
   amountQuality:str(f,"quality")==="EXACT"?"EXACT":"ESTIMATE",
   dueOn:str(f,"dueOn"),
   recurrence:(str(f,"recurrence")||"NONE") as BudgetRecurrence,
-  sourceType:"MANUAL",active:str(f,"active")!=="false",reason:str(f,"reason")}));
+  sourceType:str(f,"sourceType")==="RECURRING_EXPENSE"?"RECURRING_EXPENSE":
+   str(f,"sourceType")==="PURCHASE_ORDER"?"PURCHASE_ORDER":"MANUAL",
+  sourceId:str(f,"sourceId")||undefined,
+  active:str(f,"active")!=="false",reason:str(f,"reason")}));
 }
 export async function saveBudgetTargetAction(f:FormData){
  const s=await requireRole("OWNER");
@@ -156,4 +159,10 @@ export async function fundBudgetSuggestionAction(f:FormData){
    reason:str(f,"reason"),moves:view.proposal.legs.map(l=>({
     envelopeId:l.envelopeId,kind:"ASSIGN" as const,signedCents:l.signedCents}))});
  });
+}
+
+export async function refreshBudgetPlanHorizonAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Future planned bill dates",()=>refreshBudgetOccurrenceHorizon(s.user.id,
+  str(f,"today")));
 }

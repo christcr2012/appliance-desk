@@ -91,7 +91,7 @@ export function fundNowNeed(input:{balanceCents:number;targetNeedCents:number;
  const target=cap(input.targetNeedCents,"Target need");
  const unpaid=cap(input.unpaidUpcomingCents,"Unpaid bills");
  if(target<0||unpaid<0)throw new BudgetPlanError("Need cannot be negative.");
- return Math.max(target,Math.max(0,unpaid-Math.max(0,balance)));
+ return Math.max(Math.max(0,-balance),target,Math.max(0,unpaid-Math.max(0,balance)));
 }
 export type BudgetFundCandidate={id:string;currentCents:number;needCents:number;
  priority:"NEGATIVE"|"BILL"|"SAVE_BY_DATE"|"MONTHLY_SPEND"|"MAINTAIN_BALANCE";

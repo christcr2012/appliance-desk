@@ -116,7 +116,15 @@ export async function saveBudgetCostPlan(userId:string,input:{
   const plan=old?await tx.budgetCostPlan.update({where:{id:old.id},data:{
    ...common,version:{increment:1}}}):
    await tx.budgetCostPlan.create({data:{...common,sourceType,sourceId}});
-  await materialize(tx,plan,today,settings.budgetPlanningHorizonDays);
+  if(!plan.active){
+   const unpaid=await tx.budgetCostOccurrence.findMany({where:{planId:plan.id,
+    status:{in:["PLANNED","PART_PAID"]}},include:{settlements:true}});
+   for(const occ of unpaid){
+    if(netPaid(occ.settlements)===0)
+     await tx.budgetCostOccurrence.update({where:{id:occ.id},data:{
+      status:"CANCELLED",version:{increment:1}}});
+   }
+  }else await materialize(tx,plan,today,settings.budgetPlanningHorizonDays);
   await revision(tx);
   await tx.auditLog.create({data:{userId,action:old?"budget.plan.revise":"budget.plan.create",
    entityType:"BudgetCostPlan",entityId:plan.id,newValue:{
@@ -197,7 +205,7 @@ export async function settleBudgetCost(userId:string,input:{
   await tx.$queryRawUnsafe('SELECT "id" FROM "BudgetCostOccurrence" WHERE "id"=$1 FOR UPDATE',occ.id);
   const expense=await tx.expense.findUnique({where:{id:input.expenseId}});
   const journal=await tx.journalEntry.findFirst({where:{sourceType:"EXPENSE",
-   sourceId:input.expenseId},select:{id:true}});
+   sourceId:input.expenseId,eventKind:"EXPENSE_POSTED"},select:{id:true}});
   if(!expense||expense.status!=="POSTED"||!journal||!cents(expense.amountCents))
    throw new BudgetEvidenceError("Only an existing posted Books expense can settle a planned bill.");
   // This strict one-source-one-occurrence rule avoids attributing the same
@@ -206,6 +214,10 @@ export async function settleBudgetCost(userId:string,input:{
    sourceType:"EXPENSE",sourceId:input.expenseId,reversalOfId:null}});
   if(elsewhere.length)
    throw new BudgetEvidenceError("This posted expense already settled a bill; reverse that link first.");
+  if(occ.plan.sourceType==="RECURRING_EXPENSE"&&occ.plan.sourceId!==expense.recurringExpenseId)
+   throw new BudgetEvidenceError("Posted source does not match the recurring bill template.");
+  if(occ.plan.sourceType==="PURCHASE_ORDER"&&occ.plan.sourceId!==expense.purchaseOrderId)
+   throw new BudgetEvidenceError("Posted source does not match the purchase commitment.");
   const paid=netPaid(occ.settlements);
   if(paid+input.amountCents>occ.amountCents||input.amountCents>expense.amountCents)
    throw new BudgetEvidenceError("Actual payment exceeds the original bill or verified expense.");
@@ -262,6 +274,24 @@ export async function reverseBudgetCostSettlement(userId:string,input:{
   return inverse.id;
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }
+
+/** Explicit owner-requested schedule refresh. Does not post Books, move budget cash or pay anything. */
+export async function refreshBudgetOccurrenceHorizon(userId:string,today=businessDateKey(new Date())){
+ date(today);
+ return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,userId,["OWNER"]);
+  await lockState(tx);
+  const settings=await tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
+  const plans=await tx.budgetCostPlan.findMany({where:{active:true},take:500,
+   orderBy:[{dueOn:"asc"},{id:"asc"}]});
+  for(const plan of plans)await materialize(tx,plan,today,settings.budgetPlanningHorizonDays);
+  await revision(tx);
+  await tx.auditLog.create({data:{userId,action:"budget.plan.refresh-horizon",
+   entityType:"BudgetState",entityId:"singleton",newValue:{
+    date:today,plannedCount:plans.length,horizon:settings.budgetPlanningHorizonDays}}});
+  return plans.length;
+ },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
+}
 export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new Date())){
  date(asOf);
  return prisma.$transaction(async tx=>{
@@ -269,14 +299,15 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
   const settings=await tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
   const snap=await budgetSnapshotInTx(tx,asOf);
   const horizon=businessDateKey(addBusinessDays(date(asOf),settings.budgetPlanningHorizonDays));
-  const [targets,plans,moves]=await Promise.all([
+  const [targets,plans,moves,recurringSources]=await Promise.all([
    tx.budgetTarget.findMany({where:{active:true},take:500}),
    tx.budgetCostPlan.findMany({where:{active:true},include:{
     occurrences:{where:{dueOn:{lte:date(horizon)},status:{not:"CANCELLED"}},
      orderBy:{dueOn:"asc"},include:{settlements:true},take:500}},
     envelope:{select:{id:true,name:true}}},orderBy:{dueOn:"asc"},take:500}),
    tx.budgetMove.findMany({where:{kind:"SPEND",createdAt:{gte:date(asOf.slice(0,7)+"-01")}},
-    select:{envelopeId:true,signedCents:true},take:5000})
+    select:{envelopeId:true,signedCents:true},take:5000}),
+   tx.recurringExpense.findMany({where:{active:true},select:{id:true,name:true,amountCents:true,dayOfMonth:true},take:300})
   ]);
   const spent=new Map<string,number>();
   for(const move of moves)spent.set(move.envelopeId,(spent.get(move.envelopeId)??0)-move.signedCents);
@@ -321,7 +352,7 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
   return {asOf,through:horizon,revision:snap.stateRevision,sourceHash:snap.sourceHash,
    sourceStatus:snap.status,mayAssign:snap.mayAssign,sourceReasons:snap.reasons,
    readyCents:snap.readyCents,protectedCents:snap.protectedTotalCents,
-   envelopes:rows,upcoming,proposal,plans:plans.map(p=>({
+   envelopes:rows,upcoming,proposal,recurringSources,plans:plans.map(p=>({
     id:p.id,envelopeId:p.envelopeId,name:p.name,amountCents:p.amountCents,
     amountQuality:p.amountQuality,dueOn:businessDateKey(p.dueOn),
     recurrence:p.recurrence,active:p.active,version:p.version,
