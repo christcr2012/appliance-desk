@@ -286,7 +286,8 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
     envelopeName:plan.envelope.name,name:plan.name,
     dueOn:businessDateKey(occ.dueOn),amountCents:occ.amountCents,
     paidCents,unpaidCents:Math.max(0,occ.amountCents-paidCents),
-    quality:plan.amountQuality,status:occ.status,sourceType:plan.sourceType,
+    quality:plan.amountQuality,status:occ.status,
+    settlements:occ.settlements.filter(s=>!s.reversalOfId&&!occ.settlements.some(r=>r.reversalOfId===s.id)).map(s=>({id:s.id,amountCents:s.amountCents,sourceId:s.sourceId})),sourceType:plan.sourceType,
     sourceId:plan.sourceId,version:occ.version};
   }));
   const targetsByEnvelope=new Map(targets.map(x=>[x.envelopeId,x]));

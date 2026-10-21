@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BudgetPlanSection } from "./plan-section";
 import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
@@ -13,13 +14,16 @@ const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2
 const btn="rounded border border-border bg-card px-3 py-2 font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2";
 const dollars=(n:number|null)=>n===null?"Unknown":formatMoney(n);
 export default async function BudgetBackingPage({searchParams}:{
- searchParams:Promise<{notice?:string;previewKind?:string;envelopeId?:string;
+ searchParams:Promise<{tab?:string;notice?:string;previewKind?:string;envelopeId?:string;
  fromId?:string;toId?:string;amount?:string;reason?:string}>}){
  const actor=await requireRole("OWNER","ADMIN"),owner=actor.user.role==="OWNER";
+ const params=await searchParams;
+ if(params.tab==="plan")return <BudgetPlanSection userId={actor.user.id} owner={owner}
+  notice={params.notice?.slice(0,240)}/>;
  const asOf=businessDateKey(new Date());
  const [snap,spending,windows,refunds]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
    getPostedBankSpendingDesk(actor.user.id),getBudgetWindows(actor.user.id),getSupplierRefundDesk(actor.user.id)]);
- const params=await searchParams,notice=params.notice?.slice(0,240);
+ const notice=params.notice?.slice(0,240);
  type PreviewLeg={id:string;signedCents:number;kind:"ASSIGN"|"RELEASE"};
  let preview:null|{kind:string;legs:PreviewLeg[];amount:number;reason:string;
   problem:string|null;before:number;after:number|null;changed:Array<{id:string;
@@ -67,6 +71,7 @@ export default async function BudgetBackingPage({searchParams}:{
   <header className="space-y-2">
    <Link className="underline" href="/desk/books/cash/checks">Back to bank statement reconciliation</Link>
    <h1 className="text-2xl font-bold">Budget backing</h1>
+   <nav aria-label="Budget views" className="flex flex-wrap gap-3"><Link className="underline p-2" href="/desk/books/budget?tab=plan">Plan ahead and savings goals</Link><Link className="underline p-2" href="/desk/books/closing">Cash outlook</Link></nav>
    <p>Discretionary envelopes do not move money out of the bank. Protected tax, card and customer obligations are reserved first. A CSV or estimated rent is never spendable cash.</p>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
   </header>
