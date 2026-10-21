@@ -6,6 +6,7 @@ import { computeTax } from "@/domains/tax/engine";
 import { getAgreementTaxContext,loadRentalAcquisitionBasis,assertTaxReadyForAgreement } from "@/domains/tax/locations";
 import { isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { profitAndLoss } from "./reports";
+import { budgetSnapshotInTx } from "@/domains/budget/protected";
 import { toCsv } from "@/lib/csv";
 import {
  BooksClosingError,whole,add,calendarKey,futureBillingDates,recurringDates,
@@ -41,7 +42,7 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
  return prisma.$transaction(async tx=>{
   const settings=await scoped(tx,userId);
   if(!settings.booksStartDate)throw new BooksClosingError("Owner must initialize Books before cash forecasting.");
-  const [agreements,templates,taxPeriods]=await Promise.all([
+  const [agreements,templates,taxPeriods,planned]=await Promise.all([
    tx.rentalAgreement.findMany({where:{status:"ACTIVE",stripeSubscriptionId:{not:null},
     billingStartedAt:{not:null},nextBillingDate:{not:null}},
     select:{id:true,nextBillingDate:true,endDate:true,
@@ -51,8 +52,11 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
    },take:CAP+1}),
    tx.taxFilingPeriod.findMany({where:{status:"OPEN",dueOn:{gte:date(today),lt:date(datePlus(last,1))}},
     include:{filingAccount:{select:{name:true}}},take:CAP+1}),
+   tx.budgetCostOccurrence.findMany({where:{status:{in:["PLANNED","PART_PAID","PAID"]},
+    dueOn:{gte:date(today),lt:date(datePlus(last,1))},plan:{active:true}},
+    include:{plan:true,settlements:true},take:CAP+1}),
   ]);
-  within(agreements.length,"billing");within(templates.length,"recurring expense");within(taxPeriods.length,"tax filing");
+  within(agreements.length,"billing");within(templates.length,"recurring expense");within(taxPeriods.length,"tax filing");within(planned.length,"planned budget cost");
   const rows:CashLine[]=[],needsReview:string[]=[];
   const start=date(today),end=date(datePlus(last,1));
   for(const agreement of agreements){
@@ -88,6 +92,24 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
      amountCents:billedCents,sourceId:agreement.id,label,confidence});
    }
   }
+  const coveredTemplateKeys=new Set<string>();
+  for(const cost of planned){
+   if(cost.plan.sourceType==="RECURRING_EXPENSE"&&cost.plan.sourceId)
+    coveredTemplateKeys.add(cost.plan.sourceId+":"+businessDateKey(cost.dueOn));
+   const canceled=new Set(cost.settlements.flatMap(s=>s.reversalOfId?[s.reversalOfId]:[]));
+   const paid=cost.settlements.filter(s=>!s.reversalOfId&&!canceled.has(s.id))
+    .reduce((sum,s)=>sum+s.amountCents,0);
+   const unpaid=Math.max(0,cost.amountCents-paid);
+   if(unpaid>0){
+    if(cost.plan.sourceType==="TAX_FILING"&&cost.plan.sourceId){
+     needsReview.push("Budget tax source "+cost.plan.sourceId+" is protected and cannot duplicate a filing estimate.");
+     continue;
+    }
+    rows.push({date:businessDateKey(cost.dueOn),kind:"BUDGET_PLAN_ESTIMATE",
+     amountCents:unpaid,sourceId:cost.id,label:cost.plan.name+" — unpaid "+cost.plan.amountQuality.toLowerCase()+" plan (not booked)",
+     confidence:"ESTIMATE"});
+   }
+  }
   const expenseIds=templates.map(t=>t.id);
   const existing=expenseIds.length?await tx.expense.findMany({where:{
    recurringExpenseId:{in:expenseIds},spentOn:{gte:start,lt:end},status:{in:["DRAFT","SUBMITTED","POSTED"]}},
@@ -96,7 +118,7 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
   const already=new Set(existing.map(e=>e.recurringExpenseId+":"+businessDateKey(e.spentOn)));
   for(const template of templates){
    for(const due of recurringDates(template.dayOfMonth,today,last)){
-    if(already.has(template.id+":"+due))continue;
+    if(already.has(template.id+":"+due)||coveredTemplateKeys.has(template.id+":"+due))continue;
     rows.push({date:due,kind:"RECURRING_EXPENSE_ESTIMATE",amountCents:num(template.amountCents),
      label:template.name,sourceId:template.id,confidence:"ESTIMATE"});
    }
@@ -112,9 +134,45 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
     label:period.filingAccount.name+" — open worksheet, not filed or paid",
     confidence:"ESTIMATE"});
   }
+
   rows.sort((a,b)=>a.date.localeCompare(b.date)||a.kind.localeCompare(b.kind)||a.sourceId.localeCompare(b.sourceId));
+  // One existing K-8 source contract. Cash from unresolved bank evidence stays unknown;
+  // scheduled invoices are a separate estimate, NEVER ready-to-assign money.
+  let verifiedCashCents:number|null=null;
+  try{
+   const budget=await budgetSnapshotInTx(tx,today);
+   if(budget.bankEvidence.length&&budget.bankEvidence.every(b=>b.statementTo===today&&
+    b.bookDifferenceCents===0&&b.status!=="UNKNOWN"))verifiedCashCents=budget.eligibleBankCents;
+   if(verifiedCashCents===null)needsReview.push("Confirmed bank cash unavailable or not reconciled through today; both projected cash tracks are incomplete.");
+  }catch{
+   needsReview.push("Confirmed bank evidence is unavailable for this projection.");
+  }
+  const plannedOutflows=rows.filter(x=>x.kind!=="BILLING_ESTIMATE")
+   .reduce((sum,x)=>add(sum,x.amountCents),0);
+  const estimatedInvoicing=rows.filter(x=>x.kind==="BILLING_ESTIMATE")
+   .reduce((sum,x)=>add(sum,x.amountCents),0);
+  const firstShortfall=(includeInvoicing:boolean)=>{
+   if(verifiedCashCents===null)return null;
+   let balance=verifiedCashCents;
+   for(const line of rows){
+    if(line.kind==="BILLING_ESTIMATE"&&!includeInvoicing)continue;
+    balance=add(balance,line.kind==="BILLING_ESTIMATE"?line.amountCents:-line.amountCents);
+    if(balance<0)return {date:line.date,shortfallCents:-balance};
+   }
+   return null;
+  };
   return {from:today,through:last,days,kind:"ESTIMATE" as const,rows,
-   needsReview,totals:cashTotals(rows),disclaimer:"Expected invoice dates are not bank receipts. Tax uses agreement rate snapshots and open saved worksheets; all figures require owner review."};
+   needsReview,totals:cashTotals(rows),
+   tracks:{
+    noNewCollections:{openingConfirmedCashCents:verifiedCashCents,
+     projectedCents:verifiedCashCents===null?null:add(verifiedCashCents,-plannedOutflows),
+     firstShortfall:firstShortfall(false),kind:"CONFIRMED_CASH_MINUS_ESTIMATED_COSTS" as const},
+    expectedCollections:{openingConfirmedCashCents:verifiedCashCents,
+     projectedCents:verifiedCashCents===null?null:add(verifiedCashCents,add(estimatedInvoicing,-plannedOutflows)),
+     firstShortfall:firstShortfall(true),kind:"ESTIMATED_BILLING_NOT_COLLECTED" as const}
+   },
+   disclaimer:"No-new-collections uses reconciled current bank evidence minus planned unpaid costs. Expected collections are future invoicing estimates, not receipts. Neither raises Ready or authorizes payment. Unknown source facts stay incomplete."};
+  
  },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
 }
 export async function customerHealth(userId:string,asOf=new Date()){

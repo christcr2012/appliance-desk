@@ -60,7 +60,7 @@ export function avgRentalMonths(rentals:{start:string;end:string}[]){
  }
  return rentals.length?Math.round(totalDays/rentals.length/30.4375*10)/10:null;
 }
-export type CashLine={date:string;kind:"BILLING_ESTIMATE"|"RECURRING_EXPENSE_ESTIMATE"|"TAX_WORKSHEET_ESTIMATE";
+export type CashLine={date:string;kind:"BILLING_ESTIMATE"|"RECURRING_EXPENSE_ESTIMATE"|"TAX_WORKSHEET_ESTIMATE"|"BUDGET_PLAN_ESTIMATE";
  amountCents:number;sourceId:string;label:string;confidence:"ESTIMATE"|"NEEDS_REVIEW"};
 export function cashTotals(rows:CashLine[]){
  let inflowCents=0,outflowCents=0;
