@@ -117,12 +117,14 @@ export async function saveBudgetCostPlanAction(f:FormData){
 }
 export async function saveBudgetTargetAction(f:FormData){
  const s=await requireRole("OWNER");
+ const kind=str(f,"kind") as BudgetTargetKind;
  await command("Savings target",()=>saveBudgetTarget(s.user.id,{
   envelopeId:str(f,"envelopeId"),
   expectedVersion:str(f,"version")?Number(str(f,"version")):undefined,
-  kind:(str(f,"kind")||"MAINTAIN_BALANCE") as BudgetTargetKind,
+  kind,
   amountCents:parseDollarInput(str(f,"amount"),2_000_000_000),
-  dueOn:str(f,"dueOn")||null,repeat:str(f,"repeat")==="ANNUAL"?"ANNUAL":"NONE",
+  dueOn:kind==="SAVE_BY_DATE"?(str(f,"dueOn")||null):null,
+  repeat:kind==="SAVE_BY_DATE"&&str(f,"repeat")==="ANNUAL"?"ANNUAL":"NONE",
   active:true,reason:str(f,"reason")}));
 }
 export async function settleBudgetCostAction(f:FormData){

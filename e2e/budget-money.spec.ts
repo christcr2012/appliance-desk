@@ -26,3 +26,21 @@ test("K-CASH-4B staff route cannot expose private protected debt or cash",async(
   await expect(p.getByRole("heading",{name:/Cash ready to assign/})).toHaveCount(0);
  }finally{await c.close();}
 });
+
+test("K-CASH-5A/B owner planning view labels plans as unpaid and does not expose bank money as a target",async({page})=>{
+ await page.setViewportSize({width:360,height:820});
+ await page.goto("/desk/books/budget?tab=plan");
+ await expect(page.getByRole("heading",{name:"Budget — plan ahead"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Known future costs"})).toBeVisible();
+ await expect(page.getByRole("button",{name:"Save planned cost only — do not pay"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"My envelopes and targets"})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
+ expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+});
+test("K-CASH-5A/B staff planning route cannot expose private goals or cash",async({browser})=>{
+ const c=await browser.newContext({storageState:"e2e/.auth/staff.json"});
+ try{const p=await c.newPage();await p.goto("/desk/books/budget?tab=plan");
+  await expect(p.getByRole("heading",{name:"Budget — plan ahead"})).toHaveCount(0);
+  await expect(p.getByRole("heading",{name:"My envelopes and targets"})).toHaveCount(0);
+ }finally{await c.close();}
+});

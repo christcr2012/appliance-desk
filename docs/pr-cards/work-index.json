@@ -1138,7 +1138,7 @@
       "dependencies": [
         "K-CASH-4B"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1149,13 +1149,14 @@
         "docs/designs/BATCH-K.md",
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/reports/definitions.ts",
+        "K-CASH-5A/5B partial branch checkpoint; original acceptance and exact-head CI still incomplete"
       ],
       "tests": [
         "tests/budget-planning.test.ts",
         "tests/budget-planning-integration.test.ts"
       ],
-      "readiness": "PLAN_FROZEN_BEFORE_ENGINEERING",
+      "readiness": "ENGINEERING_AUTHORED_TESTS_NOT_RUN",
       "plannedCard": "docs/pr-cards/K-CASH-5A.md",
       "card": "docs/pr-cards/K-CASH-5A.md"
     },
@@ -1166,7 +1167,7 @@
       "dependencies": [
         "K-CASH-5A"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1177,13 +1178,14 @@
         "docs/designs/BATCH-K.md",
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/reports/definitions.ts",
+        "K-CASH-5A/5B partial branch checkpoint; original acceptance and exact-head CI still incomplete"
       ],
       "tests": [
         "tests/budget-context-access.test.ts",
         "e2e/budget.spec.ts"
       ],
-      "readiness": "PLAN_FROZEN_BEFORE_ENGINEERING",
+      "readiness": "ENGINEERING_AUTHORED_TESTS_NOT_RUN",
       "plannedCard": "docs/pr-cards/K-CASH-5B.md",
       "card": "docs/pr-cards/K-CASH-5A.md"
     },

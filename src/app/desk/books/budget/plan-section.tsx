@@ -105,7 +105,7 @@ export async function BudgetPlanSection({userId,owner,notice}:{
        <label>Source and reason<input name="reason" className={field} minLength={12} maxLength={300} required/></label>
        <button className={button}>Link verified posted expense to this bill</button>
       </form>
-      <Link className="underline p-2 inline-block" href="/desk/books/expenses">Find posted expense in Books</Link>
+      <Link className="underline p-2 inline-block" href="/desk/expenses">Find posted expense in Books</Link>
      </details>}
      {owner&&item.settlements.map(link=><details key={link.id} className="rounded border border-border p-2">
       <summary className="cursor-pointer">Correct linked posted source {link.sourceId} ({money(link.amountCents)})</summary>
