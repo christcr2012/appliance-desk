@@ -14,12 +14,13 @@ const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2
 const btn="rounded border border-border bg-card px-3 py-2 font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2";
 const dollars=(n:number|null)=>n===null?"Unknown":formatMoney(n);
 export default async function BudgetBackingPage({searchParams}:{
- searchParams:Promise<{tab?:string;notice?:string;previewKind?:string;envelopeId?:string;
+ searchParams:Promise<{tab?:string;days?:string;view?:string;state?:string;notice?:string;previewKind?:string;envelopeId?:string;
  fromId?:string;toId?:string;amount?:string;reason?:string}>}){
  const actor=await requireRole("OWNER","ADMIN"),owner=actor.user.role==="OWNER";
  const params=await searchParams;
  if(params.tab==="plan")return <BudgetPlanSection userId={actor.user.id} owner={owner}
-  notice={params.notice?.slice(0,240)}/>;
+  notice={params.notice?.slice(0,240)} days={params.days} view={params.view}
+  state={params.state}/>;
  const asOf=businessDateKey(new Date());
  const [snap,spending,windows,refunds]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
    getPostedBankSpendingDesk(actor.user.id),getBudgetWindows(actor.user.id),getSupplierRefundDesk(actor.user.id)]);

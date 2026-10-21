@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
-import { businessDateKey } from "@/lib/business-date";
+import { businessDateKey,addBusinessDays } from "@/lib/business-date";
 import { formatMoney,moneyInputValue } from "@/lib/money-ui";
 import { getBudgetPlanning } from "@/domains/budget/planning";
 import { saveBudgetCostPlanAction,saveBudgetTargetAction,settleBudgetCostAction,
@@ -9,9 +9,12 @@ const field="min-w-0 w-full rounded border border-border bg-background px-3 py-2
 const button="rounded border border-border bg-card px-3 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2";
 const money=(n:number|null)=>n===null?"Unknown":formatMoney(n);
 /** Same authenticated /desk/books/budget route; this view never authorizes a payment. */
-export async function BudgetPlanSection({userId,owner,notice}:{
- userId:string;owner:boolean;notice?:string}){
+export async function BudgetPlanSection({userId,owner,notice,days,view,state}:{
+ userId:string;owner:boolean;notice?:string;days?:string;view?:string;state?:string}){
  const today=businessDateKey(new Date());
+ const dayWindow=days==="30"?30:90;
+ const listView=view==="calendar"?"calendar":"list";
+ const filter=state==="PAID"||state==="PART_PAID"||state==="UNPAID"?state:"ALL";
  let data:Awaited<ReturnType<typeof getBudgetPlanning>>|null=null,error:string|null=null;
  try{data=await getBudgetPlanning(userId,today);}
  catch(e){error=e instanceof Error?e.message:"Unable to read verified finance sources.";}
@@ -30,6 +33,7 @@ export async function BudgetPlanSection({userId,owner,notice}:{
   </header>
   {error&&<p role="alert" className="rounded border border-border p-4">{error} — No forecast or payment readiness is implied.</p>}
   {data&&<>
+   <p className="text-sm">Planning source history: {data.recentChanges.length} recent audited budget edits. Existing external bank and Books posting history remain authoritative.</p>
    <section className="rounded border border-border p-4 space-y-3">
     <h2 className="text-lg font-semibold">Actual bank backing — {data.sourceStatus}</h2>
     <p>Checked through {data.asOf}. Ready after protected tax, customer and card obligations: <strong>{money(data.readyCents)}</strong>. Protected requirements: {money(data.protectedCents)}. Neither estimated rent nor targets fund envelopes.</p>
@@ -106,6 +110,15 @@ export async function BudgetPlanSection({userId,owner,notice}:{
      <label className="sm:col-span-2">Reason for adding this cost<input name="reason" minLength={12} maxLength={300} required className={field}/></label>
      <button className={button}>Save planned cost only — do not pay</button>
     </form>}
+    <nav aria-label="Upcoming bill controls" className="flex flex-wrap gap-3">
+     <Link className="underline p-2" href="/desk/books/budget?tab=plan&days=30">Next 30 days</Link>
+     <Link className="underline p-2" href="/desk/books/budget?tab=plan&days=90">Next 90 days</Link>
+     <Link className="underline p-2" href={"/desk/books/budget?tab=plan&days="+dayWindow+"&view=list"}>List</Link>
+     <Link className="underline p-2" href={"/desk/books/budget?tab=plan&days="+dayWindow+"&view=calendar"}>Calendar</Link>
+     {["ALL","UNPAID","PART_PAID","PAID"].map(kind=><Link key={kind} className="underline p-2" aria-current={filter===kind?"page":undefined}
+      href={"/desk/books/budget?tab=plan&days="+dayWindow+"&view="+listView+"&state="+kind}>{kind==="ALL"?"All payment states":kind.toLowerCase()}</Link>)}
+    </nav>
+    <p className="text-sm">View: {listView}. The selected day window is clipped to the owner-configured planning horizon; overdue bills remain in the underlying plan history.</p>
     {data.taxPeriods.length>0&&<aside className="rounded border border-border p-3 space-y-2">
      <h3 className="font-semibold">Protected sales/use tax filing dates — read only</h3>
      {data.taxPeriods.map(x=><p key={x.id}>{x.name}: due {x.dueOn} · {x.status}. Amount/payment requires verified tax filing and bank sources. <Link href="/desk/sales-tax/returns" className="underline">Open authoritative tax return</Link></p>)}
@@ -136,7 +149,8 @@ export async function BudgetPlanSection({userId,owner,notice}:{
       <button className={button}>Save reviewed future cost revision</button>
      </form>}
     </details>)}
-    {data.upcoming.length?data.upcoming.map(item=><article key={item.id} className="rounded border border-border p-3 space-y-2">
+    {data.upcoming.filter(item=>item.dueOn<=businessDateKey(addBusinessDays(new Date(),dayWindow)) && (filter==="ALL" || (filter==="UNPAID" ? item.unpaidCents>0 : item.status===filter))).length?
+     data.upcoming.filter(item=>item.dueOn<=businessDateKey(addBusinessDays(new Date(),dayWindow)) && (filter==="ALL" || (filter==="UNPAID" ? item.unpaidCents>0 : item.status===filter))).map(item=><article key={item.id} className="rounded border border-border p-3 space-y-2">
      <h3 className="font-semibold">{item.name} · {money(item.amountCents)} · {item.quality}</h3>
      <p>Due {item.dueOn} · {item.envelopeName} · {item.status} · paid from verified sources {money(item.paidCents)} · unpaid {money(item.unpaidCents)}</p>
      {owner&&item.unpaidCents>0&&<details className="rounded border border-border p-2"><summary className="cursor-pointer">Link an existing posted Books expense, not a new charge</summary>
@@ -158,6 +172,10 @@ export async function BudgetPlanSection({userId,owner,notice}:{
       </form>
      </details>)}
     </article>):<p>No dated planned bills have been generated. Create a known future cost to see a schedule.</p>}
+   </section>
+   <section className="rounded border border-border p-4 space-y-2">
+    <h2 className="text-lg font-semibold">Recent changes to my plan</h2>
+    {data.recentChanges.length?data.recentChanges.map(x=><p key={x.id} className="text-sm">{new Date(x.createdAt).toLocaleDateString("en-US")} · {x.action.replaceAll("."," ")} · {x.entityType}</p>):<p>No recent audited budget edits.</p>}
    </section>
   </>}
  </div>;

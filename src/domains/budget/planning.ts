@@ -349,7 +349,7 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
   const settings=await tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
   const snap=await budgetSnapshotInTx(tx,asOf);
   const horizon=businessDateKey(addBusinessDays(date(asOf),settings.budgetPlanningHorizonDays));
-  const [targets,plans,moves,recurringSources,taxPeriods]=await Promise.all([
+  const [targets,plans,moves,recurringSources,taxPeriods,recentChanges]=await Promise.all([
    tx.budgetTarget.findMany({where:{active:true},take:500}),
    tx.budgetCostPlan.findMany({where:{active:true},include:{
     occurrences:{where:{dueOn:{lte:date(horizon)},status:{not:"CANCELLED"}},
@@ -359,7 +359,9 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
     select:{envelopeId:true,signedCents:true,kind:true,sourceId:true},take:5001}),
    tx.recurringExpense.findMany({where:{active:true},select:{id:true,name:true,amountCents:true,dayOfMonth:true},take:300}),
    tx.taxFilingPeriod.findMany({where:{status:"OPEN",dueOn:{gte:date(asOf),lte:date(horizon)}},
-    include:{filingAccount:{select:{name:true}}},take:200})
+    include:{filingAccount:{select:{name:true}}},take:200}),
+   tx.auditLog.findMany({where:{action:{startsWith:"budget."}},orderBy:{createdAt:"desc"},take:12,
+    select:{id:true,action:true,createdAt:true,entityType:true}})
   ]);
   // Categorize net booked spending by the K journal source's Colorado date,
   // not the day the owner happened to classify or correct an expense.
@@ -421,6 +423,7 @@ export async function getBudgetPlanning(userId:string,asOf=businessDateKey(new D
    sourceReasons:[...snap.reasons,...sourceWarnings],
    readyCents:snap.readyCents,protectedCents:snap.protectedTotalCents,
    envelopes:rows,upcoming,proposal,recurringSources,
+   recentChanges:recentChanges.map(x=>({...x,createdAt:x.createdAt.toISOString()})),
    taxPeriods:taxPeriods.map(x=>({id:x.id,name:x.filingAccount.name,dueOn:businessDateKey(x.dueOn),status:x.status})),
    plans:plans.map(p=>({
     id:p.id,envelopeId:p.envelopeId,name:p.name,amountCents:p.amountCents,
