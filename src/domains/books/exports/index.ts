@@ -96,12 +96,17 @@ export async function runExport(userId:string,input:ExportInput):Promise<{batchI
       const confirmed=new Set(links.filter(x=>deliveryIsConfirmed(x.batch.accountingDelivery?.status??""))
         .map(x=>x.journalEntryId));
       const priorConfirmed=links.find(x=>deliveryIsConfirmed(x.batch.accountingDelivery?.status??""));
+      const importedArchiveIds=new Set(links.filter(x=>deliveryIsConfirmed(x.batch.accountingDelivery?.status??""))
+        .map(x=>x.batch.id));
       const failed=links.filter(x=>x.batch.accountingDelivery?.status==="FAILED_BEFORE_IMPORT")
         .sort((a,b)=>b.batch.createdAt.getTime()-a.batch.createdAt.getTime());
       replacesDeliveryId=failed[0]?.batch.accountingDelivery?.id;
       eligible=eligible.filter(x=>!confirmed.has(x.id));
-      if(!eligible.length&&priorConfirmed)
+      if(!eligible.length&&priorConfirmed) {
+        if(importedArchiveIds.size!==1)
+          return {blocked:["This period was already imported across multiple archived QuickBooks batches. Review the original files below; do not upload a combined CSV again."]};
         return {batchId:priorConfirmed.batch.id,alreadyImported:true};
+      }
     }
     if(!eligible.length) {
       if(input.onlyNotYetExported&&input.target!=="QBO_JOURNAL_CSV") {

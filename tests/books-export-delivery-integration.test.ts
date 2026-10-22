@@ -157,7 +157,7 @@ describe.skipIf(!enabled)("K-CASH-6 QBO accounting delivery under real PostgreSQ
   await expect(decideQboDelivery(owner,{deliveryId:extraDelivery,expectedVersion:1,
    decision:"FAILED_BEFORE_IMPORT",reference:"trial-import-failure",
    note:"Could not submit the import and nobody uploaded the CSV."}))
-   .rejects.toThrow(/never started/);
+   .rejects.toThrow(/no remote import ever started/);
   const failed=await decideQboDelivery(owner,{deliveryId:extraDelivery,expectedVersion:1,
    decision:"FAILED_BEFORE_IMPORT",reference:"trial-import-failure",
    note:"Never started upload; selected trial-company import was canceled.",neverStarted:true});
@@ -171,6 +171,16 @@ describe.skipIf(!enabled)("K-CASH-6 QBO accounting delivery under real PostgreSQ
   expect(next.accountingDelivery?.replacesDeliveryId).toBe(extraDelivery);
   expect(next.contentSha256).toBe((await readBookExport(owner,replacementBatch)).contentSha256);
   expect("blocked" in await runExport(owner,input)).toBe(true);
+  await decideQboDelivery(owner,{
+   deliveryId:next.accountingDelivery!.id,expectedVersion:1,
+   decision:"IMPORT_CONFIRMED",reference:"second-trial-import-check",
+   note:"Synthetic second batch matches practice bank and statement totals.",
+   importedCount:1,balanced:true,bankMatched:true,statementChecked:true,
+  });
+  const multiple=await runExport(owner,input);
+  expect(multiple).toMatchObject({
+    blocked:expect.arrayContaining([expect.stringMatching(/multiple archived QuickBooks batches/)]),
+  });
  });
 
  it("quarantines true pre-K-CASH legacy QBO archives and records a safe replacement with private provenance",async()=>{
