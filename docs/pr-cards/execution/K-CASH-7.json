@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "id": "K-CASH-7",
+  "parent": "K-CASH-7",
+  "baseline": "555aa42efd9a1651ca49b4df3717a89a779f6a3e",
+  "card": "docs/pr-cards/K-CASH-7.md",
+  "outcome": "Deliver original K-CASH-7 immutable published monthly budgets, authoritative signed finance and budget reports, verified source drilldowns, month-end snapshot review and private downloads without live/provider changes.",
+  "risk": "New reporting could misclassify tax/equity as operating profit, double cash, assert planned-as-paid, overwrite source reports, publish stale plans or let unauthorized actors expose financials.",
+  "next": "Deliver whole original K-CASH-7 migration, provenance, reporting, accessible owner screens and database/browser proof, then exact-head CI/review/merge. 22 external gates separately pending.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-K-CASH.md",
+      "anchor": "### 6.1 Reports, comparisons and month-end review",
+      "purpose": "Authoritative complete report/basis/plan/snapshot contract"
+    },
+    {
+      "path": "src/domains/books/reports.ts",
+      "anchor": "export",
+      "purpose": "Reuse K P&L and balance sheet accounting calculations"
+    },
+    {
+      "path": "src/domains/budget/planning.ts",
+      "anchor": "export async function getBudgetPlanning",
+      "purpose": "Authoritative planned costs and occurrence settlements"
+    },
+    {
+      "path": "src/domains/budget/protected.ts",
+      "anchor": "export",
+      "purpose": "Conservative funding readiness"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "anchor": "model BudgetMove",
+      "purpose": "Immutable financial movement source and owner permission boundaries"
+    }
+  ],
+  "proposedFiles": [
+    "prisma/schema.prisma",
+    "prisma/migrations/20261022160000_k_cash_report_snapshots/migration.sql",
+    "src/domains/budget/reports.ts",
+    "src/domains/budget/published.ts",
+    "src/domains/books/reports.ts",
+    "src/app/desk/books/budget/actions.ts",
+    "src/app/desk/books/budget/page.tsx",
+    "src/app/desk/books/budget/review-section.tsx",
+    "src/app/desk/reports/page.tsx",
+    "src/app/desk/books/budget/report-export/route.ts",
+    "tests/budget-reports-integration.test.ts",
+    "tests/business-trends.test.ts",
+    "e2e/money-reports.spec.ts"
+  ],
+  "invariants": [
+    "All source numbers signed whole cents from K journal and immutable BudgetMove, never create payment",
+    "Owner-only publish and private snapshot, active actor inside tx, CAS/revision watermarks; reports readable only by OWNER/ADMIN",
+    "Missing published plan is Unplanned, not zero; source/plan changes never mutate old versions",
+    "No change to existing K close history/accounting basis; bank movement not ledger revenue or budget saving",
+    "No external provider API, money movement, production write or unscheduled live release"
+  ],
+  "sequence": [
+    "Verify #511 merged and intact 22 owner/provider gates",
+    "Freeze full original K-CASH-7 criteria and packet in docs-only commit",
+    "Implement additive snapshots and immutable publish+review under shared lock order",
+    "Implement source-ledger/budget comparison and report CSV, selectors, source drilldowns and private reports UI",
+    "Prove Postgres races/role/csv/totals/restore and browser/a11y with focused then one full exact-head run",
+    "Update long-lived docs/decisions/work-index/scorecard, all consistency scripts, self-review, merge if exact-head green"
+  ],
+  "acceptance": [
+    "Create one additive/restorable migration for immutable BudgetPlanVersion and BudgetReviewSnapshot with monthly Denver period key, unique month/version and commandKey, source/budget revision watermarks, owner provenance, sha256, schema version, supersession and on-delete Restrict; no inserted defaults for populated or new businesses.",
+    "Allow OWNER-only draft preview and publish under BudgetState then BooksPostingRevision shared lock/revision, with commandKey idempotency, concurrency/stale-conflict, original first version and reasoned immutable revisions; ADMIN read-only, STAFF/CUSTOMER/revoked actors denied.",
+    "Validate typed cents and explicit period, envelope ID/name snapshots, planned spending/funding, opening saved balances, due occurrence source IDs/quality, optional labelled forecast revenue; schedule costs seed spending and targets funding (never expenses/cash). Editable unscheduled estimates require explicit owner review; absent plan is Unplanned not zero.",
+    "Produce signed K-ledger business trend measures: recognized revenue, operating costs and depreciation separate, net profit; handle refunds/contra/reversals, capital/deposits/tax/owner transfers excluded, actual accounting basis and unclosed/incomplete period warnings, default 12 and max 60 monthly buckets.",
+    "Produce signed bank cash movement independently of P&L: selected active cash-account debit/credit, per-account and consolidated opening/closing, transfer cancellation, tax/deposit/owner/Stripe classification and fees/clearing bridge; missing source proof is Unknown, not fabricated money.",
+    "Produce report for selected published month and version with planned spend vs actual net budget SPEND/REVERSAL, funding assignments minus releases, carryover, unpaid remaining commitments, unclassified outflows and signed variance; positive over/under labels, zero/missing denominator an em dash with reason.",
+    "Provide operating spending category/vendor share trend and known recurring-versus-oneoff split, unknown vendor/unclassified row preserved; upcoming due cost/coverage 30/90 days, protected tax/deposit/card reserve readiness and unresolved bank/QBO delivery evidence, without guessed projections.",
+    "Provide Denver month, quarter, year, YTD, bounded custom day 366, previous-period and prior-year same-elapsed-day comparisons (including leap day and partial periods), unavailable reasons for empty/uninitialized history; report filters never leak or convert K accounting to budget expenses.",
+    "Give every source-backed report total a deterministic date/id paginated drilldown whose complete source sum ties to displayed total at different page sizes; provide private owner/admin formula-escaped current-filter report CSV carrying source/basis/version/as-of metadata, distinctly labelled Report export not QBO journal import.",
+    "Provide an accessible, responsive owner finance report screen integrated into existing Reports hub and Budget Review navigation/tab, with chart-equivalent tables, keyboard/light/dark/axe and explicit accounting vs cash vs allocation labels; avoid duplicate journal aggregation logic or phantom ledger posting.",
+    "Month-end checklist derives bank-statement completion, unmatched/unclassified, expense/source posting, reserves, published plan and QBO confirmation from authoritative facts, with unresolved/unknown separate; publishing plan is not Books accounting close and saving review does not file tax.",
+    "Owner-only save immutable month-end report snapshot including selected plan version, filters, source and budget revision watermarks, totals and readiness facts, SHA256 and private actor/time; repeated saves create new artefact, prior evidence remains readable and stale after source changes, SQL restoration/upgrade safe.",
+    "Tests prove real-database duplicate/replay/race/role denial/immutability + existing populated upgrade/backup/restore, missing plan vs zero, partial settlements/reversals, refund/cash movement and transfer, journal P&L signed classifications, late source revision staleness, 60 bucket/paging/CSV formula and accessibility navigation; run one complete exact-head CI without disabling tests.",
+    "Keep source-based ledger, bank and forecast authority separate, funding OFF by default, no QBO provider connection, customer messages, live payment, bank transfer or production data writes; 22 external provider/owner/CPA acceptance items remain explicitly pending."
+  ],
+  "slices": [
+    {
+      "id": "K-CASH-7",
+      "outcome": "Deliver original K-CASH-7 immutable published monthly budgets, authoritative signed finance and budget reports, verified source drilldowns, month-end snapshot review and private downloads without live/provider changes.",
+      "acceptance": [
+        "Create one additive/restorable migration for immutable BudgetPlanVersion and BudgetReviewSnapshot with monthly Denver period key, unique month/version and commandKey, source/budget revision watermarks, owner provenance, sha256, schema version, supersession and on-delete Restrict; no inserted defaults for populated or new businesses.",
+        "Allow OWNER-only draft preview and publish under BudgetState then BooksPostingRevision shared lock/revision, with commandKey idempotency, concurrency/stale-conflict, original first version and reasoned immutable revisions; ADMIN read-only, STAFF/CUSTOMER/revoked actors denied.",
+        "Validate typed cents and explicit period, envelope ID/name snapshots, planned spending/funding, opening saved balances, due occurrence source IDs/quality, optional labelled forecast revenue; schedule costs seed spending and targets funding (never expenses/cash). Editable unscheduled estimates require explicit owner review; absent plan is Unplanned not zero.",
+        "Produce signed K-ledger business trend measures: recognized revenue, operating costs and depreciation separate, net profit; handle refunds/contra/reversals, capital/deposits/tax/owner transfers excluded, actual accounting basis and unclosed/incomplete period warnings, default 12 and max 60 monthly buckets.",
+        "Produce signed bank cash movement independently of P&L: selected active cash-account debit/credit, per-account and consolidated opening/closing, transfer cancellation, tax/deposit/owner/Stripe classification and fees/clearing bridge; missing source proof is Unknown, not fabricated money.",
+        "Produce report for selected published month and version with planned spend vs actual net budget SPEND/REVERSAL, funding assignments minus releases, carryover, unpaid remaining commitments, unclassified outflows and signed variance; positive over/under labels, zero/missing denominator an em dash with reason.",
+        "Provide operating spending category/vendor share trend and known recurring-versus-oneoff split, unknown vendor/unclassified row preserved; upcoming due cost/coverage 30/90 days, protected tax/deposit/card reserve readiness and unresolved bank/QBO delivery evidence, without guessed projections.",
+        "Provide Denver month, quarter, year, YTD, bounded custom day 366, previous-period and prior-year same-elapsed-day comparisons (including leap day and partial periods), unavailable reasons for empty/uninitialized history; report filters never leak or convert K accounting to budget expenses.",
+        "Give every source-backed report total a deterministic date/id paginated drilldown whose complete source sum ties to displayed total at different page sizes; provide private owner/admin formula-escaped current-filter report CSV carrying source/basis/version/as-of metadata, distinctly labelled Report export not QBO journal import.",
+        "Provide an accessible, responsive owner finance report screen integrated into existing Reports hub and Budget Review navigation/tab, with chart-equivalent tables, keyboard/light/dark/axe and explicit accounting vs cash vs allocation labels; avoid duplicate journal aggregation logic or phantom ledger posting.",
+        "Month-end checklist derives bank-statement completion, unmatched/unclassified, expense/source posting, reserves, published plan and QBO confirmation from authoritative facts, with unresolved/unknown separate; publishing plan is not Books accounting close and saving review does not file tax.",
+        "Owner-only save immutable month-end report snapshot including selected plan version, filters, source and budget revision watermarks, totals and readiness facts, SHA256 and private actor/time; repeated saves create new artefact, prior evidence remains readable and stale after source changes, SQL restoration/upgrade safe.",
+        "Tests prove real-database duplicate/replay/race/role denial/immutability + existing populated upgrade/backup/restore, missing plan vs zero, partial settlements/reversals, refund/cash movement and transfer, journal P&L signed classifications, late source revision staleness, 60 bucket/paging/CSV formula and accessibility navigation; run one complete exact-head CI without disabling tests.",
+        "Keep source-based ledger, bank and forecast authority separate, funding OFF by default, no QBO provider connection, customer messages, live payment, bank transfer or production data writes; 22 external provider/owner/CPA acceptance items remain explicitly pending."
+      ]
+    }
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/business-trends.test.ts"
+    ],
+    "db": [
+      "tests/budget-reports-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/money-reports.spec.ts"
+    ],
+    "node": []
+  }
+}

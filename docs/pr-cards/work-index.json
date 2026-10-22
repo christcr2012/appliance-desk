@@ -1198,7 +1198,7 @@
       "dependencies": [
         "K-CASH-5B"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "batch_k_cash_accounting_delivery",
       "budget": 480,
       "units": [
@@ -1216,7 +1216,7 @@
         "tests/books-export-delivery-integration.test.ts",
         "e2e/books-export.spec.ts"
       ],
-      "readiness": "SOURCE_CI_GREEN_FINAL_DOC_CI_REVIEW_MERGE_PENDING",
+      "readiness": "ENGINEERING_MERGED_EXACT_HEAD_CI_GREEN",
       "plannedCard": "docs/pr-cards/K-CASH-6.md",
       "card": "docs/pr-cards/K-CASH-6.md"
     },
@@ -1234,18 +1234,19 @@
         "K-CASH-7"
       ],
       "evidence": [
-        "docs/designs/BATCH-K-CASH.md",
-        "docs/designs/BATCH-K.md",
-        "src/domains/reports/definitions.ts",
-        "docs/research/2026-10-08-startup-banking-quickbooks.md"
+        "prisma/schema.prisma",
+        "src/domains/budget/reports.ts",
+        "src/domains/books/reports.ts",
+        "docs/designs/BATCH-K-CASH.md"
       ],
       "tests": [
         "tests/budget-reports-integration.test.ts",
         "tests/business-trends.test.ts",
         "e2e/money-reports.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-CASH-7.md"
+      "readiness": "FROZEN_ORIGINAL_PLAN",
+      "plannedCard": "docs/pr-cards/K-CASH-7.md",
+      "card": "docs/pr-cards/K-CASH-7.md"
     },
     {
       "id": "M-1A",
@@ -3883,7 +3884,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-CASH-6",
+  "activeExecution": "K-CASH-7",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -4040,6 +4041,10 @@
     {
       "id": "K-CASH-6",
       "path": "docs/pr-cards/execution/K-CASH-6.json"
+    },
+    {
+      "id": "K-CASH-7",
+      "path": "docs/pr-cards/execution/K-CASH-7.json"
     }
   ]
 }
