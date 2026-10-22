@@ -10,7 +10,7 @@ for(const width of [360,768,1440]){
   await expect(page.getByRole("heading",{name:"Budget — plan ahead"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Known future costs"})).toBeVisible();
   await expect(page.getByRole("link",{name:"Next 30 days"})).toBeVisible();
-  await expect(page.getByRole("button",{name:"Refresh dated plan horizon (no charge)"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Refresh dated plan horizon — first 25 plans (no charge)"})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  });
