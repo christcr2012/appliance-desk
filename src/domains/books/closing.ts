@@ -58,6 +58,14 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
   ]);
   within(agreements.length,"billing");within(templates.length,"recurring expense");within(taxPeriods.length,"tax filing");within(planned.length,"planned budget cost");
   const rows:CashLine[]=[],needsReview:string[]=[];
+  // Immutable budget claims are not payment proof after a Books expense is voided.
+  // Recheck current authoritative source status before removing costs from forecast.
+  const claimedExpenseIds=[...new Set(planned.flatMap(cost=>cost.settlements
+   .filter(s=>s.reversalOfId===null&&s.sourceType==="EXPENSE").map(s=>s.sourceId)))];
+  const paymentSources=claimedExpenseIds.length?await tx.expense.findMany({
+   where:{id:{in:claimedExpenseIds}},select:{id:true,status:true},take:CAP+1}):[];
+  within(paymentSources.length,"budget payment evidence");
+  const postedExpenseIds=new Set(paymentSources.filter(e=>e.status==="POSTED").map(e=>e.id));
   const start=date(today),end=date(datePlus(last,1));
   for(const agreement of agreements){
    if(!agreement.nextBillingDate)continue;
@@ -97,8 +105,11 @@ export async function cashForecast(userId:string,days=90,now=new Date()){
    if(cost.plan.sourceType==="RECURRING_EXPENSE"&&cost.plan.sourceId)
     coveredTemplateKeys.add(cost.plan.sourceId+":"+businessDateKey(cost.dueOn));
    const canceled=new Set(cost.settlements.flatMap(s=>s.reversalOfId?[s.reversalOfId]:[]));
-   const paid=cost.settlements.filter(s=>!s.reversalOfId&&!canceled.has(s.id))
-    .reduce((sum,s)=>sum+s.amountCents,0);
+   const originals=cost.settlements.filter(s=>!s.reversalOfId&&!canceled.has(s.id));
+   const valid=originals.filter(s=>s.sourceType==="EXPENSE"&&postedExpenseIds.has(s.sourceId));
+   if(valid.length!==originals.length)
+    needsReview.push("Budget bill "+cost.id+" contains voided or unavailable payment evidence; treat the unsupported portion as unpaid until corrected.");
+   const paid=valid.reduce((sum,s)=>sum+s.amountCents,0);
    const unpaid=Math.max(0,cost.amountCents-paid);
    if(unpaid>0){
     if(cost.plan.sourceType==="TAX_FILING"&&cost.plan.sourceId){

@@ -1,3 +1,6 @@
+## Recovery after rebased exact-head CI `c1d1506bd744701a45dab77f8921c025537a8048` — 2026-10-21
+Main Sol 5.6 owner identity-guidance merge is in this branch; PR #509 is mergeable but DRAFT. On this exact head, all three unit/real-PostgreSQL shards, typecheck/lint, capacity, secret scan, release policy and browser-c/d passed. Browser-b failed because a streamed Next.js role-denial redirect had HTTP 200 instead of the asserted 3xx; the test must assert the resulting URL and denied private DOM, not the wire status. Browser-a owner workflow failed because an unhydrated controlled delivery time input was reset before save, leaving visible `Choose a date and time` alert in Playwright's error snapshot. Fix the interactive input hydration guard; do not skip or weaken the workflow test. Separate self-review found that K-8 forecast counted an immutable settlement from a now-VOID Books expense as still paid; recheck authoritative posted status and add disposable real-Postgres regression. Corrective code is a CANDIDATE and requires a fresh exact-head run; all original K-CASH-5A/5B acceptance and 22 external checks remain pending until independently verified.
+
 # K-CASH-5A/5B same-bundle recovery checkpoint — 2026-10-21
 
 Base: main `a1174bb33b500feeb7ce3e4e35cdf76084eb1e45`.

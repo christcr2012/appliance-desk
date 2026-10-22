@@ -27,10 +27,13 @@ test("K-CASH-5B expense budgeting is source-only and offers no bank transfer",as
 test("K-CASH-5B staff cannot read owner planning or bank status",async({browser})=>{
  const c=await browser.newContext({storageState:"e2e/.auth/staff.json"});
  try{
-  const denied=await c.request.get("/desk/books/budget?tab=plan",{maxRedirects:0});
-  expect([302,303,307,308,401,403]).toContain(denied.status());
-  expect(await denied.text()).not.toContain("Actual bank backing");
   const p=await c.newPage();
+  await p.goto("/desk/books/budget?tab=plan",{waitUntil:"domcontentloaded"});
+  // Next can issue an RSC redirect in a streamed HTTP 200 response. Check
+  // the actual navigation and private DOM, not an assumed 3xx status.
+  await expect(p).not.toHaveURL(/\/desk\/books\/budget(?:\?|$)/);
+  await expect(p.getByRole("heading",{name:"Budget — plan ahead"})).toHaveCount(0);
+  await expect(p.getByText(/Actual bank backing|Ready after protected/)).toHaveCount(0);
   await p.goto("/desk/expenses",{waitUntil:"domcontentloaded"});
   await expect(p.getByRole("combobox",{name:/Requested discretionary budget label/})).toBeVisible();
   await expect(p.getByText(/Cash review:/)).toHaveCount(0);

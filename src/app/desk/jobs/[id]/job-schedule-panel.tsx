@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markJobNoShowAction, scheduleJobAction, type ScheduleConflictView } from "../actions";
 import { ScheduleConflictNotice } from "../schedule-conflicts";
@@ -39,6 +39,10 @@ export function JobSchedulePanel({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // Disable controlled inputs until hydration so early typing cannot be lost
+  // when React attaches the client handlers to this server-rendered page.
+  const [hydrated,setHydrated]=useState(false);
+  useEffect(()=>{setHydrated(true);},[]);
   const [missedCause,setMissedCause]=useState<"NOBODY_HOME"|"HOOKUPS_NOT_READY">("NOBODY_HOME");
   const [missedEvidence,setMissedEvidence]=useState("");
   const [when, setWhen] = useState(scheduledAtLocal);
@@ -129,6 +133,7 @@ export function JobSchedulePanel({
             <input
               id="sched-when"
               type="datetime-local"
+              disabled={!hydrated||isPending}
               value={when}
               onChange={(e) => {
                 setWhen(e.target.value);
@@ -177,7 +182,7 @@ export function JobSchedulePanel({
           {conflicts.length > 0 && <ScheduleConflictNotice conflicts={conflicts} disabled={isPending} onConfirm={(ids) => save(ids)} />}
           <button
             type="button"
-            disabled={isPending}
+            disabled={!hydrated||isPending}
             onClick={() => save([])}
             className="rounded-md bg-action px-4 py-2 text-sm font-medium text-on-action disabled:opacity-60"
           >
