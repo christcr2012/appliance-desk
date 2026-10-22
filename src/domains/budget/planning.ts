@@ -103,6 +103,16 @@ export async function saveBudgetCostPlan(userId:string,input:{
   }
   const old=input.planId?await tx.budgetCostPlan.findUnique({
    where:{id:input.planId},include:{occurrences:{include:{settlements:true}}}}):null;
+  // Source identity belongs to one obligation for its entire life, including
+  // inactive plans. BudgetState's row lock serializes competing OWNER submissions;
+  // the matching partial database unique index guards direct/other writers too.
+  if(sourceId!==null){
+   const duplicate=await tx.budgetCostPlan.findFirst({where:{
+    sourceType,sourceId,...(input.planId?{id:{not:input.planId}}:{})},
+    select:{id:true}});
+   if(duplicate)throw new BudgetEvidenceError(
+    "This verified source already has a cost plan. Revise its original record instead.");
+  }
   if(input.planId&&(!old||old.version!==input.expectedVersion))
    throw new BudgetEvidenceError("This bill changed. Refresh the version before editing.");
   if(!old&&due.getTime()<date(today).getTime())
@@ -287,21 +297,38 @@ export async function reverseBudgetCostSettlement(userId:string,input:{
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }
 
-/** Explicit owner-requested schedule refresh. Does not post Books, move budget cash or pay anything. */
-export async function refreshBudgetOccurrenceHorizon(userId:string,today=businessDateKey(new Date())){
+/** OWNER-controlled, id-cursor paged date refresh. One transaction per page;
+ * never silently truncate after a fixed source window or charge/pay a bill.
+ * An older/deactivated cursor is rejected so the owner can restart safely. */
+export async function refreshBudgetOccurrenceHorizon(
+ userId:string,today=businessDateKey(new Date()),cursor?:string){
  date(today);
+ if(cursor!==undefined&&(!/^[a-zA-Z0-9_-]{1,64}$/.test(cursor)))
+  throw new BudgetEvidenceError("Invalid plan refresh cursor. Start from the first page.");
  return prisma.$transaction(async tx=>{
   await assertActiveTeamActor(tx,userId,["OWNER"]);
   await lockState(tx);
+  if(cursor){
+   const prior=await tx.budgetCostPlan.findUnique({where:{id:cursor}});
+   if(!prior?.active)throw new BudgetEvidenceError(
+    "Plan refresh cursor changed. Restart the refresh from the first page.");
+  }
   const settings=await tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
-  const plans=await tx.budgetCostPlan.findMany({where:{active:true},take:500,
-   orderBy:[{dueOn:"asc"},{id:"asc"}]});
+  // Stable ID ordering permits continuation without skipping or duplicating a page.
+  // A fresh full pass includes plans inserted before a previous cursor.
+  const pageSize=25;
+  const page=await tx.budgetCostPlan.findMany({where:{active:true},
+   orderBy:{id:"asc"},take:pageSize+1,
+   ...(cursor?{cursor:{id:cursor},skip:1}:{})});
+  const plans=page.slice(0,pageSize);
   for(const plan of plans)await materialize(tx,plan,today,settings.budgetPlanningHorizonDays);
+  const nextCursor=page.length>pageSize?plans[plans.length-1]!.id:null;
   await revision(tx);
   await tx.auditLog.create({data:{userId,action:"budget.plan.refresh-horizon",
    entityType:"BudgetState",entityId:"singleton",newValue:{
-    date:today,plannedCount:plans.length,horizon:settings.budgetPlanningHorizonDays}}});
-  return plans.length;
+    date:today,plannedCount:plans.length,afterCursor:cursor??null,
+    nextCursor,horizon:settings.budgetPlanningHorizonDays}}});
+  return {processed:plans.length,nextCursor};
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }
 /**

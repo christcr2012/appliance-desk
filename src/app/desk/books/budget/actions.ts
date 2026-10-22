@@ -164,6 +164,17 @@ export async function fundBudgetSuggestionAction(f:FormData){
 
 export async function refreshBudgetPlanHorizonAction(f:FormData){
  const s=await requireRole("OWNER");
- await command("Future planned bill dates",()=>refreshBudgetOccurrenceHorizon(s.user.id,
-  str(f,"today")));
+ let message:string,nextCursor:string|null=null;
+ try{
+  const batch=await refreshBudgetOccurrenceHorizon(s.user.id,
+   str(f,"today"),str(f,"cursor")||undefined);
+  nextCursor=batch.nextCursor;
+  message="Refreshed "+batch.processed+" plan schedules. "+
+   (nextCursor?"More pages remain; select Continue refresh.":"All active source plans checked.");
+ }catch(e){
+  message="Plan refresh: "+(e instanceof Error?e.message:"Unable to refresh. Restart from page one.");
+ }
+ revalidatePath("/desk/books/budget");
+ redirect("/desk/books/budget?tab=plan&notice="+encodeURIComponent(message.slice(0,240))+
+  (nextCursor?"&refreshCursor="+encodeURIComponent(nextCursor):""));
 }

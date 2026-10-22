@@ -5,7 +5,7 @@ import { businessDateFromKey,businessDateKey } from "@/lib/business-date";
 import { getBudgetContext } from "@/domains/budget/context";
 import { createExpense,getExpenses,saveRecurringExpense } from "@/domains/books/expenses";
 import { saveBudgetCostPlan,saveBudgetTarget,settleBudgetCost,
- reverseBudgetCostSettlement,getBudgetPlanning } from "@/domains/budget/planning";
+ reverseBudgetCostSettlement,getBudgetPlanning,refreshBudgetOccurrenceHorizon } from "@/domains/budget/planning";
 
 const db=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true"&&["localhost","127.0.0.1"].includes(db.hostname)
@@ -114,6 +114,52 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
   expect(after.name).toBe("Changed verified source");
   expect(after.amountCents).toBe(5200);
   expect(after.occurrences.every(x=>x.amountCents===5200)).toBe(true);
+ });
+ it("allows only one permanent plan per verified recurring source, including direct DB writes",async()=>{
+  const existing=await prisma.budgetCostPlan.findFirstOrThrow({where:{
+   sourceType:"RECURRING_EXPENSE",sourceId:sourceTemplate}});
+  const due=businessDateKey(existing.dueOn);
+  await expect(saveBudgetCostPlan(owner,{envelopeId:env,name:"Duplicate bill",
+   amountCents:5200,amountQuality:"ESTIMATE",dueOn:due,recurrence:"MONTHLY",
+   sourceType:"RECURRING_EXPENSE",sourceId:sourceTemplate,reason,today:due}))
+   .rejects.toThrow(/already has a cost plan/);
+  await expect(prisma.budgetCostPlan.create({data:{envelopeId:env,
+   name:"Direct duplicate",amountCents:5200,amountQuality:"ESTIMATE",
+   dueOn:existing.dueOn,recurrence:"MONTHLY",anchorDay:28,anchorMonth:10,
+   sourceType:"RECURRING_EXPENSE",sourceId:sourceTemplate}}))
+   .rejects.toThrow();
+  expect(await prisma.budgetCostPlan.count({where:{
+   sourceType:"RECURRING_EXPENSE",sourceId:sourceTemplate}})).toBe(1);
+ });
+ it("resumes a bounded 25-plan page refresh without duplicate generated dates",async()=>{
+  const batchIds=Array.from({length:27},(_,i)=>"bp-page-"+stamp+"-"+String(i).padStart(2,"0"));
+  await prisma.budgetCostPlan.createMany({data:batchIds.map((id,i)=>({
+   id,envelopeId:env,name:"Synthetic page "+i,amountCents:100,
+   amountQuality:"ESTIMATE",dueOn:on,recurrence:"NONE",
+   anchorDay:Number(d.slice(8)),anchorMonth:Number(d.slice(5)),
+   sourceType:"MANUAL",active:true
+  }))});
+  planIds.push(...batchIds);
+  await expect(refreshBudgetOccurrenceHorizon(staff,d)).rejects.toThrow(/access/);
+  await expect(refreshBudgetOccurrenceHorizon(owner,d,"not/a-cursor"))
+   .rejects.toThrow(/cursor/);
+  let cursor:string|undefined=undefined,total=0;
+  const seen=new Set<string>();
+  for(let i=0;i<25;i++){
+   const page=await refreshBudgetOccurrenceHorizon(owner,d,cursor);
+   expect(page.processed).toBeLessThanOrEqual(25);
+   total+=page.processed;
+   if(!page.nextCursor)break;
+   expect(seen.has(page.nextCursor)).toBe(false);
+   seen.add(page.nextCursor);
+   cursor=page.nextCursor;
+   if(i===24)throw new Error("Could not exhaust bounded refresh pages");
+  }
+  expect(total).toBeGreaterThanOrEqual(27);
+  const generated=await prisma.budgetCostOccurrence.findMany({where:{
+   planId:{in:batchIds}}});
+  expect(generated).toHaveLength(27);
+  expect(new Set(generated.map(x=>x.planId+"|"+businessDateKey(x.dueOn))).size).toBe(27);
  });
  it("records target only once per envelope with optimistic corrections and no cash entries",async()=>{
   await expect(saveBudgetTarget(staff,{envelopeId:env,kind:"SAVE_BY_DATE",

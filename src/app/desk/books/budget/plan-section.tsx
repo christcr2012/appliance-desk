@@ -9,8 +9,9 @@ const field="min-w-0 w-full rounded border border-border bg-background px-3 py-2
 const button="rounded border border-border bg-card px-3 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2";
 const money=(n:number|null)=>n===null?"Unknown":formatMoney(n);
 /** Same authenticated /desk/books/budget route; this view never authorizes a payment. */
-export async function BudgetPlanSection({userId,owner,notice,days,view,state}:{
- userId:string;owner:boolean;notice?:string;days?:string;view?:string;state?:string}){
+export async function BudgetPlanSection({userId,owner,notice,days,view,state,refreshCursor}:{
+ userId:string;owner:boolean;notice?:string;days?:string;view?:string;state?:string;
+ refreshCursor?:string}){
  const today=businessDateKey(new Date());
  const dayWindow=days==="30"?30:90;
  const listView=view==="calendar"?"calendar":"list";
@@ -84,7 +85,12 @@ export async function BudgetPlanSection({userId,owner,notice,days,view,state}:{
    </section>
    <section className="rounded border border-border p-4 space-y-3">
     <h2 className="text-lg font-semibold">Known future costs</h2>
-    {owner&&<form action={refreshBudgetPlanHorizonAction} className="flex gap-2 items-center"><input type="hidden" name="today" value={today}/><button className={button}>Refresh dated plan horizon (no charge)</button></form>}
+    {owner&&<form action={refreshBudgetPlanHorizonAction} className="flex flex-wrap gap-2 items-center">
+     <input type="hidden" name="today" value={today}/>
+     <input type="hidden" name="cursor" value={refreshCursor??""}/>
+     <button className={button}>{refreshCursor?"Continue refresh — next 25 plans":"Refresh dated plan horizon — first 25 plans"} (no charge)</button>
+     {refreshCursor&&<Link className="underline p-2" href="/desk/books/budget?tab=plan">Restart from the first plan</Link>}
+    </form>}
     <p>Exact bills and owner estimates shown separately through {data.through}. Past due amounts are still unpaid until a verified posted Books source is linked.</p>
     {owner&&<form action={saveBudgetCostPlanAction} className="grid gap-3 sm:grid-cols-2">
      <label>Bill name<input name="name" className={field} maxLength={200} required/></label>
