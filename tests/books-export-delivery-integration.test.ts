@@ -5,6 +5,7 @@ const {postPending}=vi.hoisted(()=>({postPending:vi.fn(async()=>({posted:0,probl
 vi.mock("@/domains/books/post",()=>({postPending:()=>postPending()}));
 import { runExport, readBookExport, getBookExportHistory } from "@/domains/books/exports";
 import { decideQboDelivery, registerQboDelivery, checkedQboIdentity } from "@/domains/books/exports/delivery";
+import { formatBookExport } from "@/domains/books/exports/formatters";
 const db=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true"&&["localhost","127.0.0.1"].includes(db.hostname)&&
  db.pathname==="/appliance_desk_test";
@@ -15,7 +16,7 @@ const day=new Date("2026-10-14T06:00:00Z");
 const input={target:"QBO_JOURNAL_CSV" as const,mode:"DETAIL" as const,
  from:"2026-10-14",to:"2026-10-14",onlyNotYetExported:true,
  qboTenantLabel:"Practice company "+tag,qboEdition:"OTHER"};
-let priorStart:Date|null=null,firstEntry="",extraEntry="";
+let priorStart:Date|null=null,firstEntry="",extraEntry="",legacyEntry="";
 let originalBatch="",replacementBatch="",firstDelivery="",extraDelivery="";
 
 describe.skipIf(!enabled)("K-CASH-6 QBO accounting delivery under real PostgreSQL",()=>{
@@ -54,7 +55,7 @@ describe.skipIf(!enabled)("K-CASH-6 QBO accounting delivery under real PostgreSQ
   await prisma.accountingDelivery.deleteMany({where:{exportBatchId:{in:ids}}});
   await prisma.exportBatchEntry.deleteMany({where:{exportBatchId:{in:ids}}});
   await prisma.exportBatch.deleteMany({where:{id:{in:ids}}});
-  await prisma.journalLine.deleteMany({where:{entryId:{in:[firstEntry,extraEntry].filter(Boolean)}}});
+  await prisma.journalLine.deleteMany({where:{entryId:{in:[firstEntry,extraEntry,legacyEntry].filter(Boolean)}}});
   await prisma.journalEntry.deleteMany({where:{id:{in:[firstEntry,extraEntry].filter(Boolean)}}});
   await prisma.accountExportMapping.deleteMany({where:{ledgerAccountId:{in:[checking,revenue]}}});
   await prisma.ledgerAccount.deleteMany({where:{id:{in:[checking,revenue]}}});
@@ -170,5 +171,60 @@ describe.skipIf(!enabled)("K-CASH-6 QBO accounting delivery under real PostgreSQ
   expect(next.accountingDelivery?.replacesDeliveryId).toBe(extraDelivery);
   expect(next.contentSha256).toBe((await readBookExport(owner,replacementBatch)).contentSha256);
   expect("blocked" in await runExport(owner,input)).toBe(true);
+ });
+
+ it("quarantines true pre-K-CASH legacy QBO archives and records a safe replacement with private provenance",async()=>{
+  const legacyDate=new Date("2026-10-15T06:00:00Z");
+  const row=await prisma.journalEntry.create({data:{
+   sourceType:"OPENING",sourceId:source+"-legacy",eventKind:"TRIAL_LEGACY",
+   periodKey:"2026-10",entryDate:legacyDate,memo:"Older journal requiring review",
+   lines:{create:[{ledgerAccountId:checking,debitCents:4300},
+     {ledgerAccountId:revenue,creditCents:4300}]},
+  }});
+  legacyEntry=row.id;
+  const content=formatBookExport("QBO_JOURNAL_CSV","DETAIL",[{
+   id:row.id,entryNumber:row.entryNumber,entryDate:legacyDate,
+   memo:"Older journal requiring review",sourceType:"OPENING",eventKind:"TRIAL_LEGACY",
+   lines:[
+    {ledgerAccountId:checking,accountName:"Practice checking",externalName:"Practice Checking",
+     externalTaxRate:null,isPaymentSource:true,systemRole:null,debitCents:4300,creditCents:0},
+    {ledgerAccountId:revenue,accountName:"Rental income",externalName:"Revenue:Rental",
+     externalTaxRate:null,isPaymentSource:false,systemRole:null,debitCents:0,creditCents:4300},
+   ],
+  }]);
+  const legacy=await prisma.exportBatch.create({data:{
+   target:"QBO_JOURNAL_CSV",mode:"DETAIL",periodFrom:legacyDate,periodTo:legacyDate,
+   fileName:"legacy-qbo-"+tag+".csv",content,contentSha256:createHash("sha256").update(content).digest("hex"),
+   entryCount:1,createdByUserId:owner,entries:{create:[{journalEntryId:row.id}]},
+  }});
+  const request={...input,from:"2026-10-15",to:"2026-10-15"};
+  expect("blocked" in await runExport(owner,request)).toBe(true);
+  expect((await registerQboDelivery(owner,legacy.id,input.qboTenantLabel,"OTHER")).existing).toBe(false);
+  const previous=await prisma.accountingDelivery.findUniqueOrThrow({where:{exportBatchId:legacy.id}});
+  expect(previous.status).toBe("PREPARED");
+  expect("blocked" in await runExport(owner,{...request,onlyNotYetExported:false})).toBe(true);
+  await decideQboDelivery(owner,{
+   deliveryId:previous.id,expectedVersion:1,decision:"FAILED_BEFORE_IMPORT",
+   reference:"legacy-bookkeeper-note",note:"No import attempted; older file kept as archival evidence.",
+   neverStarted:true,
+  });
+  const replacement=await runExport(owner,request);
+  expect("batchId" in replacement).toBe(true);
+  if(!("batchId" in replacement))throw new Error("Expected safe replacement.");
+  const imported=await prisma.exportBatch.findUniqueOrThrow({where:{id:replacement.batchId},
+   include:{accountingDelivery:true}});
+  expect(imported.id).not.toBe(legacy.id);
+  expect(imported.accountingDelivery?.replacesDeliveryId).toBe(previous.id);
+  expect(imported.contentSha256).toBe(legacy.contentSha256);
+  expect("blocked" in await runExport(owner,request)).toBe(true);
+ });
+ it("refuses archive reads and manual decisions for deactivated owner identities",async()=>{
+  await prisma.user.update({where:{id:owner},data:{archivedAt:new Date()}});
+  await expect(getBookExportHistory(owner)).rejects.toThrow(/access/);
+  await expect(runExport(owner,input)).rejects.toThrow(/access/);
+  await expect(decideQboDelivery(owner,{
+   deliveryId:firstDelivery,expectedVersion:4,decision:"UNCERTAIN",
+   reference:"trial-owner-offline",note:"Attempted after account was deactivated.",
+  })).rejects.toThrow(/access/);
  });
 });

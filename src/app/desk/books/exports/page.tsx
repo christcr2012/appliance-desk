@@ -12,6 +12,10 @@ const names:Record<string,string>={
  GENERIC_JOURNAL_CSV:"Generic accounting journal",CASH_MOVEMENTS_CSV:"Cash and card movements",
  DAILY_SUMMARY:"Daily summary",DETAIL:"Journal detail",
 };
+const deliveryNames:Record<string,string>={
+ PREPARED:"Prepared — outcome uncertain",IMPORT_CONFIRMED:"Imported in trial company (owner attested)",
+ FAILED_BEFORE_IMPORT:"Failed before upload started",RECONCILIATION_CONFIRMED:"Trial statement reviewed",
+};
 export default async function BooksExportsPage({searchParams}:{
  searchParams:Promise<{notice?:string;created?:string;imported?:string}>
 }){
@@ -21,6 +25,7 @@ export default async function BooksExportsPage({searchParams}:{
  const today=businessDateKey(new Date());
  const currentMonth=today.slice(0,7)+"-01";
  const recent=history.find(x=>x.id===params.created);
+ const qboHistory=history.filter(x=>x.target==="QBO_JOURNAL_CSV");
  return <div className="space-y-6">
   <header className="space-y-2">
    <Link href="/desk/books" className="underline">Back to Books and accounts</Link>
@@ -46,7 +51,7 @@ export default async function BooksExportsPage({searchParams}:{
       <option value="SIMPLE_START">Simple Start</option><option value="ESSENTIALS">Essentials</option>
       <option value="PLUS">Plus</option><option value="OTHER">Other or not yet verified</option>
     </select></label>
-    <label className="sm:col-span-2 flex items-start gap-2"><input type="checkbox" name="qboSummaryRiskAccepted" className="mt-1"/>I accept that QuickBooks DAILY_SUMMARY combines journals and may prevent matching individual bank rows. Required only for that advanced mode.</label>
+    <label className="sm:col-span-2 flex items-start gap-2"><input type="checkbox" name="qboSummaryRiskAccepted" className="mt-1"/>I accept that QuickBooks daily summary combines journals and may prevent matching individual bank rows. Required only for that advanced mode.</label>
     <label>From (Colorado date)<input type="date" name="from" defaultValue={currentMonth} required className={input}/></label>
     <label>Through (Colorado date)<input type="date" name="to" defaultValue={today} required className={input}/></label>
     <label className="sm:col-span-2 inline-flex items-start gap-2"><input type="checkbox" name="onlyNew" defaultChecked className="mt-1"/>Only journal entries not yet included in a prior export for the selected accounting software</label>
@@ -67,7 +72,7 @@ export default async function BooksExportsPage({searchParams}:{
      <tbody>{history.map(batch=><tr className="border-b border-border" key={batch.id}>
        <td className="p-2 break-all">{names[batch.target]} — {names[batch.mode]}<p className="text-muted-foreground">{formatBusinessDate(batch.createdAt)}</p></td>
        <td className="p-2 whitespace-nowrap">{formatBusinessDate(batch.periodFrom)} to {formatBusinessDate(batch.periodTo)}</td>
-       <td className="p-2 tabular-nums">{batch.entryCount}{batch.accountingDelivery&&<p className="text-xs">{batch.accountingDelivery.status.replaceAll("_"," ")}</p>}</td>
+       <td className="p-2 tabular-nums">{batch.entryCount}{batch.accountingDelivery&&<p className="text-xs">{deliveryNames[batch.accountingDelivery.status]??"Needs review"}</p>}</td>
        <td className="p-2"><Link className="underline" href={`/desk/books/exports/download/${encodeURIComponent(batch.id)}`}>Download CSV</Link></td>
      </tr>)}</tbody>
     </table></div>}
@@ -76,14 +81,14 @@ export default async function BooksExportsPage({searchParams}:{
   <section aria-labelledby="qbo-delivery-review" className="space-y-3 rounded-lg border border-border p-4">
    <h2 id="qbo-delivery-review" className="text-lg font-semibold">QuickBooks import and delivery review</h2>
    <p className="text-sm text-muted-foreground">A file can have been imported remotely even when Appliance Desk cannot see it. Prepared or unverified exports block another overlapping file. Only mark failed-before-import if you know no QuickBooks upload started. Imported files remain archived; do not upload them twice.</p>
-   {history.filter(x=>x.target==="QBO_JOURNAL_CSV").length===0?<p>No QuickBooks journal exports yet.</p>:
-    <div className="space-y-4">{history.filter(x=>x.target==="QBO_JOURNAL_CSV").map(batch=>
+   {qboHistory.length===0?<p>No QuickBooks journal exports yet.</p>:
+    <div className="space-y-4">{qboHistory.map(batch=>
      <article key={batch.id} className="space-y-2 rounded border border-border p-3">
       <h3 className="font-semibold break-all">{batch.fileName}</h3>
       <p>{batch.entryCount} journal sources · {formatBusinessDate(batch.periodFrom)} through {formatBusinessDate(batch.periodTo)}</p>
       <p className="font-medium">{batch.accountingDelivery?
         (batch.accountingDelivery.status==="PREPARED"?"PREPARED — import outcome uncertain":
-        batch.accountingDelivery.status.replaceAll("_"," ")):
+        deliveryNames[batch.accountingDelivery.status]??"Needs review"):
         "Legacy batch — import status unknown"}</p>
       {batch.accountingDelivery&&<p className="text-sm text-muted-foreground">
         Company: {batch.accountingDelivery.tenantLabel} · Edition: {batch.accountingDelivery.edition}

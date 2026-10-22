@@ -41,7 +41,7 @@ test("QuickBooks summary is advanced and visible risk acknowledgment is unchecke
  const level=page.getByRole("combobox",{name:"Detail level",exact:true});
  await level.selectOption("DAILY_SUMMARY");
  await expect(page.getByText(/combines many journal sources/i)).toBeVisible();
- await expect(page.getByRole("checkbox",{name:/accept that QuickBooks DAILY_SUMMARY/})).not.toBeChecked();
+ await expect(page.getByRole("checkbox",{name:/accept that QuickBooks daily summary/})).not.toBeChecked();
  await level.selectOption("DETAIL");
  await expect(level).toHaveValue("DETAIL");
 });
