@@ -149,8 +149,13 @@ describe.skipIf(!enabled)("K-CASH-5A cost schedules, source settlements and tena
   expect((await prisma.budgetCostOccurrence.findUniqueOrThrow({where:{id:occurrence.id}})).status).toBe("PLANNED");
   expect(await reverseBudgetCostSettlement(owner,{settlementId:saved,
    expectedRevision:state2.revision.toString(),reason,commandKey:"bp-reverse-"+stamp})).toBe(inverse);
+  // A new correction key with the old snapshot must fail before checking the record.
   await expect(reverseBudgetCostSettlement(owner,{settlementId:saved,
-   expectedRevision:state2.revision.toString(),reason,commandKey:"bp-again-"+stamp}))
+   expectedRevision:state2.revision.toString(),reason,commandKey:"bp-stale-"+stamp}))
+   .rejects.toThrow(/changed/);
+  const state3=await prisma.budgetState.findUniqueOrThrow({where:{id:"singleton"}});
+  await expect(reverseBudgetCostSettlement(owner,{settlementId:saved,
+   expectedRevision:state3.revision.toString(),reason,commandKey:"bp-again-"+stamp}))
    .rejects.toThrow(/already/);
   expect(await prisma.budgetCostSettlement.count({where:{occurrenceId:occurrence.id}})).toBe(2);
  });

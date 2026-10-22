@@ -27,11 +27,11 @@ export async function BudgetContextCard({userId,heading="Budget context"}:{
  userId:string;heading?:string}){
  let context:Awaited<ReturnType<typeof getBudgetContext>>|null=null;
  try{context=await getBudgetContext(userId);}
- catch{return <aside className="rounded-lg border border-border p-4">
+ catch{return <aside aria-label={heading} className="rounded-lg border border-border p-4">
   <h2 className="font-semibold">{heading}</h2>
   <p>Budget evidence is unavailable. This does not block recording legitimate expenses or stock receipts.</p>
  </aside>;}
- return <aside className="rounded-lg border border-border p-4 space-y-2">
+ return <aside aria-label={heading} className="rounded-lg border border-border p-4 space-y-2">
   <h2 className="text-lg font-semibold">{heading}</h2>
   <p className="text-sm">Budget envelopes are virtual planning labels, not a bank transfer, payment, tax or authority to post an expense.</p>
   {context.role==="STAFF"?<p>Available planning labels: {context.envelopes.length?

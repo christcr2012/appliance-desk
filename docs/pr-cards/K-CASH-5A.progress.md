@@ -3,8 +3,9 @@
 Base: main `a1174bb33b500feeb7ce3e4e35cdf76084eb1e45`.
 Frozen plan: `ae5eeaf1b6f60b4916e862dfc30f329da8ff0846` (never rewrite acceptance).
 Branch: `ai/gpt6/kcash-5ab-plan-budget`.
-Latest checkpoint: replace this resume SHA with actual branch head as observed (GitHub ref); the new plan, code and tests were committed in order.
-No PR; zero whole completed subsections; no typecheck, local DB, CI or review claim.
+First candidate head: `4fc9f7d6b771f15fb5eaab87a2c475e293215ac6`; draft PR #509 is open. Frozen plan, source and tests were committed in order. First exact-head CI FAILED on formatting lint, one stale-correction assertion and three browser checks; capacity baseline is a separate advisory failure. No whole subsections are accepted or merged. Typecheck passed on that first head; other required proof remains pending.
+
+Recovery diagnosis: fix shared-money-format rule in expense budget field; distinguish stale-revision denial from a fresh one-time inverse denial with separate real-Postgres assertions; label the new BudgetContextCard aside landmark; show Unknown forecast tracks when Books source initialization is missing rather than inventing cash; ensure the staff denial browser test waits on an actual server response instead of a redirect race. Corrective candidate still needs all new exact-head gates, updated-base reconciliation and review; no local clone or disposable Postgres was available in this sandbox.
 
 Implemented but **unverified** seams:
 - planning-math recurrence, target and prioritized funding preview; pure Vitest specs.
