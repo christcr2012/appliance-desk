@@ -1205,18 +1205,17 @@
         "K-CASH-6"
       ],
       "evidence": [
-        "docs/designs/BATCH-K-CASH.md",
-        "docs/designs/BATCH-K.md",
-        "docs/research/2026-10-08-startup-banking-quickbooks.md",
-        "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/books/exports/index.ts",
+        "src/domains/books/exports/delivery.ts",
+        "prisma/schema.prisma"
       ],
       "tests": [
         "tests/books-export-delivery-integration.test.ts",
         "e2e/books-export.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-CASH-6.md"
+      "readiness": "PLANNED_AFTER_MERGED_509",
+      "plannedCard": "docs/pr-cards/K-CASH-6.md",
+      "card": "docs/pr-cards/K-CASH-6.md"
     },
     {
       "id": "K-CASH-7",
@@ -4034,6 +4033,10 @@
     {
       "id": "K-CASH-5A",
       "path": "docs/pr-cards/execution/K-CASH-5A.json"
+    },
+    {
+      "id": "K-CASH-6",
+      "path": "docs/pr-cards/execution/K-CASH-6.json"
     }
   ]
 }

@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "id": "K-CASH-6",
+  "parent": "K-CASH-6",
+  "baseline": "4cff6f5fdb072c95d2f42210c0fafc3218e5ae4c",
+  "card": "docs/pr-cards/K-CASH-6.md",
+  "outcome": "Complete original K-CASH-6 provider-specific QuickBooks DETAIL export and accountable manual import/delivery proof without provider calls or false remote success.",
+  "risk": "Remote duplicate QBO imports, PREPARED falsely marked imported, journal mismatch, provider/account uncertainty, private finance leakage.",
+  "next": "Full source+DB/browser acceptance and exact-head CI, review/merge. No provider activation. 22 external gates remain pending.",
+  "references": [
+    {
+      "path": "docs/designs/BATCH-K-CASH.md",
+      "anchor": "## 7. Functions and transaction order",
+      "purpose": "Original export-delivery finance boundary"
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "anchor": "model AccountingDelivery",
+      "purpose": "Existing delivery evidence/version/schema"
+    },
+    {
+      "path": "src/domains/books/exports/index.ts",
+      "anchor": "export async function runExport",
+      "purpose": "Immutable batch and source linking"
+    },
+    {
+      "path": "src/app/desk/books/exports/page.tsx",
+      "anchor": "Accounting exports",
+      "purpose": "Owner wizard and history"
+    }
+  ],
+  "proposedFiles": [
+    "src/domains/books/exports/index.ts",
+    "src/domains/books/exports/delivery.ts",
+    "src/app/desk/books/exports/actions.ts",
+    "src/app/desk/books/exports/page.tsx",
+    "tests/books-export-delivery-integration.test.ts",
+    "e2e/books-export.spec.ts",
+    "docs/OWNER-GUIDE.md"
+  ],
+  "invariants": [
+    "Download/archived does not imply QBO import",
+    "OWNER-only explicit proof; unknown remote status blocks repeated exports",
+    "Previously imported QBO journal entries never silently re-export",
+    "Only active authorized finance actor can read histories; immutable bytes",
+    "No provider API, spending, production data or release"
+  ],
+  "sequence": [
+    "Verify merged main, live and current 22 acceptance gates",
+    "Commit frozen plan before source modifications",
+    "Build authoritative QBO delivery state machine and cross-batch source gate",
+    "Add role-scoped owner wizard and trial-check instructions",
+    "Test pure, disposable Postgres/replay/races and browser/axe",
+    "Run exact-head full CI and review, merge only when green"
+  ],
+  "acceptance": [
+    "Default bank-reconciled QuickBooks journal exports to DETAIL; allow DAILY_SUMMARY only by conscious advanced selection with a visible bank-match warning; leave other targets and prior immutable CSV unchanged.",
+    "Match vendor QBO journal CSV field/map/date requirements including parent:subaccount names and reject missing account mappings; no account, plan, remote import or provider state is asserted verified from vendor research or file download.",
+    "Create PREPARED AccountingDelivery evidence for every new QBO journal batch with tenant/company label, edition, period, batch hash and creator; export and download do not automatically mark imported.",
+    "Allow OWNER-only import confirmation after independent trial-company verification of journal count, balanced debits/credits and bank/statement comparison, with evidence notes/reference and actor/time/version; keep real-tenant proof separate.",
+    "Quarantine PREPARED/UNCERTAIN QBO batches: block any fresh overlapping entry export even if a new date window or onlyNew=false is requested, rather than assuming manual CSV import can deduplicate.",
+    "After IMPORT_CONFIRMED, never include the same journal source in another QBO batch by default; return a safe already-imported/redownload instruction, while preserving all immutable archived history.",
+    "Permit OWNER to resolve a failed-before-import attempt or uncertain import with a reason and version check; ambiguous remote outcomes stay UNCERTAIN until separately verified, with serializable concurrency/replay, immutable audit and no deletion.",
+    "Provide OWNER/ADMIN private history and download, OWNER-only confirmation/resolution, STAFF/CUSTOMER/inactive actor denial across domain/actions/pages, private errors and no provider API calls.",
+    "Build a mobile/keyboard/dark/light/axe-safe Books export and delivery wizard, QBO detail default, private company/edition, import checklist, prior batch resolution, safe download and real proof guidance; keep Books/Budget navigation.",
+    "Prove QBO sample-format DETAIL, trial-bank matching/statement expectation, immutable hash, state transitions, quarantined retries and race, partial/unknown import, role denial and full browser workflow with disposable PostgreSQL and exact-head CI; document remaining 22 external gates."
+  ],
+  "slices": [
+    {
+      "id": "K-CASH-6",
+      "outcome": "Complete original K-CASH-6 provider-specific QuickBooks DETAIL export and accountable manual import/delivery proof without provider calls or false remote success.",
+      "acceptance": [
+        "Default bank-reconciled QuickBooks journal exports to DETAIL; allow DAILY_SUMMARY only by conscious advanced selection with a visible bank-match warning; leave other targets and prior immutable CSV unchanged.",
+        "Match vendor QBO journal CSV field/map/date requirements including parent:subaccount names and reject missing account mappings; no account, plan, remote import or provider state is asserted verified from vendor research or file download.",
+        "Create PREPARED AccountingDelivery evidence for every new QBO journal batch with tenant/company label, edition, period, batch hash and creator; export and download do not automatically mark imported.",
+        "Allow OWNER-only import confirmation after independent trial-company verification of journal count, balanced debits/credits and bank/statement comparison, with evidence notes/reference and actor/time/version; keep real-tenant proof separate.",
+        "Quarantine PREPARED/UNCERTAIN QBO batches: block any fresh overlapping entry export even if a new date window or onlyNew=false is requested, rather than assuming manual CSV import can deduplicate.",
+        "After IMPORT_CONFIRMED, never include the same journal source in another QBO batch by default; return a safe already-imported/redownload instruction, while preserving all immutable archived history.",
+        "Permit OWNER to resolve a failed-before-import attempt or uncertain import with a reason and version check; ambiguous remote outcomes stay UNCERTAIN until separately verified, with serializable concurrency/replay, immutable audit and no deletion.",
+        "Provide OWNER/ADMIN private history and download, OWNER-only confirmation/resolution, STAFF/CUSTOMER/inactive actor denial across domain/actions/pages, private errors and no provider API calls.",
+        "Build a mobile/keyboard/dark/light/axe-safe Books export and delivery wizard, QBO detail default, private company/edition, import checklist, prior batch resolution, safe download and real proof guidance; keep Books/Budget navigation.",
+        "Prove QBO sample-format DETAIL, trial-bank matching/statement expectation, immutable hash, state transitions, quarantined retries and race, partial/unknown import, role denial and full browser workflow with disposable PostgreSQL and exact-head CI; document remaining 22 external gates."
+      ]
+    }
+  ],
+  "gates": [],
+  "checks": {
+    "unit": [
+      "tests/books-exports.test.ts"
+    ],
+    "db": [
+      "tests/books-exports-integration.test.ts",
+      "tests/books-export-delivery-integration.test.ts"
+    ],
+    "browser": [
+      "e2e/books-export.spec.ts"
+    ],
+    "node": []
+  }
+}
