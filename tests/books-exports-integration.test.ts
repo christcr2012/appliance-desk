@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 const {postPending}=vi.hoisted(()=>({postPending:vi.fn(async()=>({posted:0,problems:[]}))}));
 vi.mock("@/domains/books/post",()=>({postPending:()=>postPending()}));
 import { runExport, getBookExportHistory, readBookExport } from "@/domains/books/exports";
+import { decideQboDelivery } from "@/domains/books/exports/delivery";
 
 const db=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true" && ["localhost","127.0.0.1"].includes(db.hostname) &&
@@ -14,7 +15,7 @@ const tag=randomUUID().slice(0,12),owner="k5-owner-"+tag,staff="k5-staff-"+tag;
 const bank="k5-bank-"+tag,income="k5-income-"+tag, source="k5-source-"+tag;
 const date=new Date("2026-10-16T06:00:00.000Z");
 let entryId="",priorStart:Date|null=null;
-const period={from:"2026-10-16",to:"2026-10-16"};
+const period={from:"2026-10-16",to:"2026-10-16",qboTenantLabel:"Sample bookkeeping trial",qboEdition:"OTHER"};
 describe.skipIf(!enabled)("K-5 immutable exports in disposable PostgreSQL",()=>{
  beforeAll(async()=>{
   await prisma.user.createMany({data:[
@@ -41,6 +42,7 @@ describe.skipIf(!enabled)("K-5 immutable exports in disposable PostgreSQL",()=>{
  });
  afterAll(async()=>{
   const batches=await prisma.exportBatch.findMany({where:{createdByUserId:owner},select:{id:true}});
+  await prisma.accountingDelivery.deleteMany({where:{exportBatchId:{in:batches.map(x=>x.id)}}});
   await prisma.exportBatchEntry.deleteMany({where:{exportBatchId:{in:batches.map(x=>x.id)}}});
   await prisma.exportBatch.deleteMany({where:{createdByUserId:owner}});
   await prisma.journalLine.deleteMany({where:{entryId}});
@@ -56,9 +58,9 @@ describe.skipIf(!enabled)("K-5 immutable exports in disposable PostgreSQL",()=>{
    .rejects.toThrow(/access/);
   await expect(runExport("unknown-user",{...period,target:"QBO_JOURNAL_CSV",mode:"DETAIL",onlyNotYetExported:true}))
    .rejects.toThrow(/access/);
-  await expect(runExport(owner,{from:"2026-02-30",to:"2026-03-01",
+  await expect(runExport(owner,{...period,from:"2026-02-30",to:"2026-03-01",
     target:"QBO_JOURNAL_CSV",mode:"DETAIL",onlyNotYetExported:true})).rejects.toThrow(/real Colorado/);
-  await expect(runExport(owner,{from:"2025-01-01",to:"2026-10-16",
+  await expect(runExport(owner,{...period,from:"2025-01-01",to:"2026-10-16",
     target:"QBO_JOURNAL_CSV",mode:"DETAIL",onlyNotYetExported:true})).rejects.toThrow(/366/);
  });
  it("refuses unmapped accounts without creating a partial batch",async()=>{
@@ -87,7 +89,18 @@ describe.skipIf(!enabled)("K-5 immutable exports in disposable PostgreSQL",()=>{
  it("does not repeat a target-scoped journal but permits a different target",async()=>{
   const input={...period,target:"QBO_JOURNAL_CSV" as const,mode:"DETAIL" as const,onlyNotYetExported:true};
   const repeat=await runExport(owner,input);
-  expect("batchId" in repeat).toBe(true);
+  expect("blocked" in repeat).toBe(true);
+  const saved=await prisma.exportBatch.findFirstOrThrow({where:{createdByUserId:owner,target:"QBO_JOURNAL_CSV"},
+    include:{accountingDelivery:true}});
+  expect(saved.accountingDelivery?.status).toBe("PREPARED");
+  const proof=await decideQboDelivery(owner,{
+    deliveryId:saved.accountingDelivery!.id,expectedVersion:1,
+    decision:"IMPORT_CONFIRMED",reference:"trial-import-reference-2026",
+    note:"Synthetic fixture matched to sample journal and bank statement.",
+    importedCount:1,balanced:true,bankMatched:true,statementChecked:true,
+  });
+  expect(proof.status).toBe("IMPORT_CONFIRMED");
+  expect(await runExport(owner,input)).toEqual({batchId:saved.id,alreadyImported:true});
   expect(await prisma.exportBatch.count({where:{createdByUserId:owner,target:"QBO_JOURNAL_CSV"}})).toBe(1);
   await prisma.accountExportMapping.createMany({data:[
    {ledgerAccountId:bank,target:"GENERIC_JOURNAL_CSV",externalName:"Bank export"},
@@ -123,6 +136,7 @@ describe.skipIf(!enabled)("K-5 immutable exports in disposable PostgreSQL",()=>{
    // cleanup must unlink each archived journal before deleting synthetic rows.
    const linked=await prisma.exportBatchEntry.findMany({where:{journalEntryId:payout.id},select:{exportBatchId:true}});
    const batchIds=linked.map(x=>x.exportBatchId);
+   await prisma.accountingDelivery.deleteMany({where:{exportBatchId:{in:batchIds}}});
    await prisma.exportBatchEntry.deleteMany({where:{exportBatchId:{in:batchIds}}});
    await prisma.exportBatch.deleteMany({where:{id:{in:batchIds}}});
    await prisma.journalLine.deleteMany({where:{entryId:payout.id}});

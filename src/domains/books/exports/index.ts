@@ -5,9 +5,11 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { postPending } from "@/domains/books/post";
 import { formatBookExport, type ExportEntry, ExportIntegrityError } from "./formatters";
+import { checkedQboIdentity, deliveryIsConfirmed } from "./delivery";
 
 export type ExportInput = {
   target: ExportTarget; mode: ExportMode; from: string; to: string; onlyNotYetExported: boolean;
+  qboTenantLabel?: string; qboEdition?: string; qboSummaryRiskAccepted?: boolean;
 };
 export const TARGETS: ExportTarget[] = ["QBO_JOURNAL_CSV","XERO_JOURNAL_CSV","GENERIC_JOURNAL_CSV","CASH_MOVEMENTS_CSV"];
 export const MODES: ExportMode[] = ["DETAIL","DAILY_SUMMARY"];
@@ -15,6 +17,11 @@ const MAX_DAYS=366, MAX_ENTRIES=5000;
 function validInput(input:ExportInput) {
   if (!TARGETS.includes(input.target) || !MODES.includes(input.mode))
     throw new ExportIntegrityError("Unsupported export target or mode.");
+  if(input.target==="QBO_JOURNAL_CSV") {
+    checkedQboIdentity(input.qboTenantLabel??"",input.qboEdition??"");
+    if(input.mode==="DAILY_SUMMARY"&&!input.qboSummaryRiskAccepted)
+      throw new ExportIntegrityError("QuickBooks daily summary loses individual bank matching. Explicitly accept this advanced risk.");
+  }
   const from=businessDateFromKey(input.from), to=businessDateFromKey(input.to);
   if(!from||!to||businessDateKey(from)!==input.from||businessDateKey(to)!==input.to)
     throw new ExportIntegrityError("Choose real Colorado from and through dates.");
@@ -38,7 +45,7 @@ type Tx=Prisma.TransactionClient;
 async function liveRole(tx:Tx,userId:string) {
   await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
 }
-export async function runExport(userId:string,input:ExportInput):Promise<{batchId:string}|{blocked:string[]}> {
+export async function runExport(userId:string,input:ExportInput):Promise<{batchId:string;alreadyImported?:boolean}|{blocked:string[]}> {
   const interval=validInput(input);
   // The source catch-up is not a provider-money operation. It must not start
   // before checking the calling user's current DB role.
@@ -59,7 +66,7 @@ export async function runExport(userId:string,input:ExportInput):Promise<{batchI
       return {blocked:["The date range starts before the owner-attested Books opening date."]};
     const where:Prisma.JournalEntryWhereInput={
       entryDate:{gte:interval.from,lt:interval.until},
-      ...(input.onlyNotYetExported?{exports:{none:{batch:{target:input.target}}}}:{}),
+      ...(input.onlyNotYetExported&&input.target!=="QBO_JOURNAL_CSV"?{exports:{none:{batch:{target:input.target}}}}:{}),
     };
     const selected=await tx.journalEntry.findMany({
       where,orderBy:[{entryDate:"asc"},{entryNumber:"asc"}],take:MAX_ENTRIES+1,
@@ -68,15 +75,41 @@ export async function runExport(userId:string,input:ExportInput):Promise<{batchI
     if(selected.length>MAX_ENTRIES)
       return {blocked:["Too many entries for a safe export. Choose a shorter date range."]};
     const payoutFlag=payoutEnabled(settings.exportPayoutLines,input.target);
-    const eligible=selected.filter(entry=>{
+    let eligible=selected.filter(entry=>{
       if(entry.eventKind==="STRIPE_PAYOUT"&&!payoutFlag)return false;
       if(input.target==="CASH_MOVEMENTS_CSV")return entry.lines.some(x=>
         (x.ledgerAccount.isPaymentSource||x.ledgerAccount.systemRole==="STRIPE_CLEARING") &&
         (x.debitCents!==0||x.creditCents!==0));
       return true;
     });
+    // A remote CSV import has no guaranteed idempotency. Inspect all QBO
+    // linked sources regardless of onlyNew or date-window overlaps.
+    let replacesDeliveryId: string | undefined;
+    if(input.target==="QBO_JOURNAL_CSV"&&eligible.length) {
+      const links=await tx.exportBatchEntry.findMany({where:{
+        journalEntryId:{in:eligible.map(x=>x.id)},batch:{target:"QBO_JOURNAL_CSV"},
+      },select:{journalEntryId:true,batch:{select:{
+        id:true,createdAt:true,accountingDelivery:{select:{id:true,status:true}},
+      }}}});
+      if(links.some(x=>!x.batch.accountingDelivery||x.batch.accountingDelivery.status==="PREPARED"))
+        return {blocked:["An older QuickBooks export could already have been imported. Review its outcome and record an owner decision before another overlapping CSV."]};
+      const confirmed=new Set(links.filter(x=>deliveryIsConfirmed(x.batch.accountingDelivery?.status??""))
+        .map(x=>x.journalEntryId));
+      const priorConfirmed=links.find(x=>deliveryIsConfirmed(x.batch.accountingDelivery?.status??""));
+      const importedArchiveIds=new Set(links.filter(x=>deliveryIsConfirmed(x.batch.accountingDelivery?.status??""))
+        .map(x=>x.batch.id));
+      const failed=links.filter(x=>x.batch.accountingDelivery?.status==="FAILED_BEFORE_IMPORT")
+        .sort((a,b)=>b.batch.createdAt.getTime()-a.batch.createdAt.getTime());
+      replacesDeliveryId=failed[0]?.batch.accountingDelivery?.id;
+      eligible=eligible.filter(x=>!confirmed.has(x.id));
+      if(!eligible.length&&priorConfirmed) {
+        if(importedArchiveIds.size!==1)
+          return {blocked:["This period was already imported across multiple archived QuickBooks batches. Review the original files below; do not upload a combined CSV again."]};
+        return {batchId:priorConfirmed.batch.id,alreadyImported:true};
+      }
+    }
     if(!eligible.length) {
-      if(input.onlyNotYetExported) {
+      if(input.onlyNotYetExported&&input.target!=="QBO_JOURNAL_CSV") {
         const prior=await tx.exportBatch.findFirst({where:{
           target:input.target,mode:input.mode,periodFrom:interval.from,periodTo:interval.to,
         },orderBy:{createdAt:"desc"},select:{id:true}});
@@ -108,10 +141,11 @@ export async function runExport(userId:string,input:ExportInput):Promise<{batchI
     const candidateBatches=await tx.exportBatch.findMany({where:{
       target:input.target,mode:input.mode,periodFrom:interval.from,periodTo:interval.to,contentSha256:hash,
     },orderBy:{createdAt:"desc"},take:100,select:{
-      id:true,entryCount:true,entries:{select:{journalEntryId:true}},
+      id:true,entryCount:true,accountingDelivery:{select:{status:true}},entries:{select:{journalEntryId:true}},
     }});
     const sourceIds=new Set(entries.map(entry=>entry.id));
-    const old=candidateBatches.find(batch=>batch.entryCount===sourceIds.size &&
+    const old=candidateBatches.find(batch=>(input.target!=="QBO_JOURNAL_CSV" ||
+      batch.accountingDelivery?.status!=="FAILED_BEFORE_IMPORT") && batch.entryCount===sourceIds.size &&
       batch.entries.length===sourceIds.size &&
       batch.entries.every(link=>sourceIds.has(link.journalEntryId)));
     if(old)return {batchId:old.id};
@@ -120,11 +154,16 @@ export async function runExport(userId:string,input:ExportInput):Promise<{batchI
       fileName:safeFilename(input.target,input.mode,input.from,input.to),
       content,contentSha256:hash,entryCount:entries.length,createdByUserId:userId,
       entries:{create:entries.map(entry=>({journalEntryId:entry.id}))},
+      ...(input.target==="QBO_JOURNAL_CSV"?{accountingDelivery:{create:{
+        status:"PREPARED",tenantLabel:input.qboTenantLabel!.trim(),edition:input.qboEdition!,
+        periodKey:input.from.slice(0,7),...(replacesDeliveryId?{replacesDeliveryId}:{})
+      }}}:{}),
     }});
     await tx.auditLog.create({data:{
       userId,action:"books.export.generate",entityType:"ExportBatch",entityId:batch.id,
       newValue:{target:input.target,mode:input.mode,from:input.from,to:input.to,
-        entryCount:entries.length,sha256:hash,onlyNew:input.onlyNotYetExported},
+        entryCount:entries.length,sha256:hash,onlyNew:input.onlyNotYetExported,
+        delivery:input.target==="QBO_JOURNAL_CSV"?"PREPARED":null,replacesDeliveryId:replacesDeliveryId??null},
     }});
     return {batchId:batch.id};
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30_000});
@@ -134,7 +173,9 @@ export async function getBookExportHistory(userId:string) {
     await liveRole(tx,userId);
     return tx.exportBatch.findMany({orderBy:[{createdAt:"desc"},{id:"desc"}],take:100,
       select:{id:true,target:true,mode:true,periodFrom:true,periodTo:true,fileName:true,
-        contentSha256:true,entryCount:true,createdAt:true}});
+        contentSha256:true,entryCount:true,createdAt:true,
+        accountingDelivery:{select:{id:true,status:true,tenantLabel:true,edition:true,memo:true,
+          confirmedAt:true,version:true,privateEvidenceId:true}}}});
   });
 }
 export async function readBookExport(userId:string,id:string) {

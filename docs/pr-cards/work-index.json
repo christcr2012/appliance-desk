@@ -1138,7 +1138,7 @@
       "dependencies": [
         "K-CASH-4B"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "20261021190000_k_cash_unique_cost_sources",
       "budget": 480,
       "units": [
@@ -1157,7 +1157,7 @@
         "tests/budget-planning.test.ts",
         "tests/budget-planning-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "ENGINEERING_MERGED_EXACT_HEAD_CI_GREEN",
       "plannedCard": "docs/pr-cards/K-CASH-5A.md",
       "card": "docs/pr-cards/K-CASH-5A.md"
     },
@@ -1168,7 +1168,7 @@
       "dependencies": [
         "K-CASH-5A"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1187,7 +1187,7 @@
         "tests/budget-context-access.test.ts",
         "e2e/budget.spec.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "ENGINEERING_MERGED_EXACT_HEAD_CI_GREEN",
       "plannedCard": "docs/pr-cards/K-CASH-5B.md",
       "card": "docs/pr-cards/K-CASH-5A.md"
     },
@@ -1198,25 +1198,27 @@
       "dependencies": [
         "K-CASH-5B"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "batch_k_cash_accounting_delivery",
       "budget": 480,
       "units": [
         "K-CASH-6"
       ],
       "evidence": [
-        "docs/designs/BATCH-K-CASH.md",
-        "docs/designs/BATCH-K.md",
-        "docs/research/2026-10-08-startup-banking-quickbooks.md",
+        "src/domains/books/exports/index.ts",
+        "src/domains/books/exports/delivery.ts",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "https://github.com/christcr2012/appliance-desk/pull/511",
+        "tests/books-export-delivery-integration.test.ts",
+        "e2e/books-export.spec.ts"
       ],
       "tests": [
         "tests/books-export-delivery-integration.test.ts",
         "e2e/books-export.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-CASH-6.md"
+      "readiness": "SOURCE_CI_GREEN_FINAL_DOC_CI_REVIEW_MERGE_PENDING",
+      "plannedCard": "docs/pr-cards/K-CASH-6.md",
+      "card": "docs/pr-cards/K-CASH-6.md"
     },
     {
       "id": "K-CASH-7",
@@ -3881,7 +3883,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-CASH-5A",
+  "activeExecution": "K-CASH-6",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -4034,6 +4036,10 @@
     {
       "id": "K-CASH-5A",
       "path": "docs/pr-cards/execution/K-CASH-5A.json"
+    },
+    {
+      "id": "K-CASH-6",
+      "path": "docs/pr-cards/execution/K-CASH-6.json"
     }
   ]
 }

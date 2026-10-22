@@ -9,6 +9,11 @@ for(const width of [360,1280]) {
   await expect(page.getByRole("heading",{name:"Accounting exports"})).toBeVisible();
   await expect(page.getByRole("combobox",{name:"Accounting software",exact:true})).toBeVisible();
   await expect(page.getByRole("combobox",{name:"Detail level",exact:true})).toBeVisible();
+  await expect(page.getByRole("combobox",{name:"Detail level",exact:true})).toHaveValue("DETAIL");
+  await expect(page.getByRole("textbox",{name:/QuickBooks company or trial tenant/})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"QuickBooks import and delivery review"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Trial-company import checklist"})).toBeVisible();
+  await expect(page.getByText(/A QuickBooks CSV is/i)).toBeVisible();
   await expect(page.getByRole("button",{name:"Create and archive CSV"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Prior immutable exports"})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
@@ -29,4 +34,14 @@ test("STAFF cannot see owner accounting exports",async({browser})=>{
   await expect(page.getByRole("heading",{name:"Accounting exports"})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Create and archive CSV"})).toHaveCount(0);
  } finally { await context.close(); }
+});
+
+test("QuickBooks summary is advanced and visible risk acknowledgment is unchecked by default",async({page})=>{
+ await page.goto("/desk/books/exports");
+ const level=page.getByRole("combobox",{name:"Detail level",exact:true});
+ await level.selectOption("DAILY_SUMMARY");
+ await expect(page.getByText(/combines many journal sources/i)).toBeVisible();
+ await expect(page.getByRole("checkbox",{name:/accept that QuickBooks daily summary/})).not.toBeChecked();
+ await level.selectOption("DETAIL");
+ await expect(level).toHaveValue("DETAIL");
 });
