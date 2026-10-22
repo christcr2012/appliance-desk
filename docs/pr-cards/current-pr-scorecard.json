@@ -1,55 +1,37 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-CASH-5A",
+  "parent": "K-CASH-6",
   "completedSlices": [
     {
-      "id": "K-CASH-5A",
+      "id": "K-CASH-6",
       "acceptanceEvidence": [
-        "src/domains/budget/planning.ts saveBudgetCostPlan validates whole cents/date/source identity under OWNER BudgetState transaction; form saves plan only, no journal/payment.",
-        "src/domains/budget/planning-math.ts plannedDueKeys independently clamps 31st and Feb 29; materialize/refreshBudgetOccurrenceHorizon bound generated, unique plan/due; tests/budget-planning.test.ts covers month-end. Follow-up adds 25-plan cursor-paged owner refresh with no silent 500-plan cap, including a 27-plan disposable-Postgres regression.",
-        "src/domains/budget/planning.ts optimistic plan version, cancellation retention of paid and part-paid rows and audit; tests/budget-planning-integration.test.ts covers source/date plans.",
-        "src/domains/budget/planning.ts validates actual RecurringExpense/PurchaseOrder/VERIFIED TelecomStatement sources, synchronizes a selected recurring source inside Books template save, and reads tax filing periods without editing them. Permanent linked source uniqueness is also enforced by PostgreSQL partial unique index (including inactive plans).",
-        "settleBudgetCost/reverseBudgetCostSettlement validate POSTED Books expense journal, source matching, immutable original/inverse, bounded amount and serializable revision; tests/budget-planning-integration.test.ts exercises replay and correction.",
-        "saveBudgetTarget enforces OWNER, active envelope, unique target per envelope, amount, due/repeat, optimistic version and audit; test creates and revises a target with zero BudgetMove.",
-        "src/domains/budget/planning-math.ts suggestedTarget computes cents-safe MONTHLY_SPEND, SAVE_BY_DATE incl monthly ceil and annual due cycle, MAINTAIN_BALANCE; test 100000/3 gives 33334.",
-        "src/domains/budget/planning-math.ts fundNowNeed uses MAX of target and unpaid upcoming after positive carryover and covers negative balance first; pure tests prove no target/bill addition.",
-        "fundingSuggestion deterministically orders negative/bill/dated/monthly/maintenance needs under Ready; Budget fundBudgetSuggestionAction re-reads state and delegates atomic revision/source checks to applyBudgetMoves.",
-        "src/domains/books/closing.ts extends the existing K-8 forecast with unpaid cost occurrence and linked recurring-template dedupe, separate verified-cash/no-new and estimated-collections scenarios; METRICS and books-closing test authored. A now-VOID posted source is rechecked and conservatively reforecast as unpaid; regression exercised in disposable Postgres.",
-        "All three full disposable-PostgreSQL/unit shards PASSED at exact head 2db0f8b39b623f7437b305eb1c5385917f367ea8; pure recurrence, settlement inversion/replay, linked source uniqueness, horizon paging, privacy and K-8 forecast tests remain unskipped."
-      ]
-    },
-    {
-      "id": "K-CASH-5B",
-      "acceptanceEvidence": [
-        "src/app/desk/books/budget/page.tsx + plan-section.tsx provide My money, Plan ahead, Review, Bank checks and Setup source-routed navigation; no separate duplicate Books P&L.",
-        "getBudgetPlanning and BudgetContextCard show validated bank status, Ready/UNKNOWN, protected warnings, saved/needed/unpaid per envelope; staff returns names/IDs only without private balances.",
-        "fundBudgetSuggestionAction compares revision/source hash and proposed exact leg signature, then uses OWNER-only applyBudgetMoves serializable money guards; preview labels virtual funding not bank transfer.",
-        "Plan Ahead offers 30/90 windows, list/calendar and payment-state filters, exact/estimate cost editors, recurring/purchasing/telecom source validation, savings targets and posted-expense linking rather than an external payment. The dated cost refresh is now explicit first/continue 25-plan pages with a visible continuation link.",
-        "BudgetContextCard in Expenses, Purchases, Sales tax and Appliance details; ExpenseBudgetFields gives manager-only illustrative after-cost preview, staff-only labels; expense intent validated and audited without posting or exposing bank totals.",
-        "src/app/desk/today/page.tsx shows role-restricted source/shortage/unpaid upcoming categories with per-plan IDs; no customer or staff private bank totals, and explicit Budget recovery link.",
-        "src/domains/reports/definitions.ts includes source/as-of definition keys budget.ready/budget.unpaidPlans/budget.targetNeed and two K-8 forecast tracks; all calculations reuse domain services rather than P&L duplication.",
-        "Owner, staff and archived-user role isolation; phone 360/768/1440px, keyboard/dark/light/axe and existing Books routes: all four Playwright browser shards PASSED at exact head 2db0f8b39b623f7437b305eb1c5385917f367ea8.",
-        "docs/OWNER-GUIDE.md provides planning, owner review, actual Books posting, source corrections, forecast caveats and independent bank/CPA release gates; no live activation or provider permission."
+        "Domain default DETAIL for QuickBooks and explicit advanced summary-risk checkbox without changing Xero/generic formatting.",
+        "Existing QBO formatter and account mappings preserved; documented parent:subaccount trial import and Free-tier unknowns.",
+        "New QBO export transaction inserts PREPARED AccountingDelivery alongside immutable hashed batch and source IDs.",
+        "OWNER-only delivery review requires matching journal count and explicit trial balanced/bank/statement attestations; audit/provenance retained.",
+        "Target-scoped full historical journal-source anti-join blocks any PREPARED/legacy overlapping QBO archive.",
+        "Confirmed QBO sources are filtered from new files and safe immutable prior archive re-download warns Already imported.",
+        "OWNER version/reason and neverStarted proof gate failed-before-import; optional previous-delivery link and shared advisory lock serialize conflicting decisions.",
+        "Live owner/admin accounting authorization and role-scoped actions/screen, STAFF/CUSTOMER denied; no QBO or payment API.",
+        "Owner QBO manual delivery wizard, editable trial labels/edition, archive status, import steps, phone/keyboard/axe.",
+        "Full named disposable PostgreSQL and browser test cases authored, with exact-head CI pending before any completion claim."
       ]
     }
   ],
   "remainingEngineering": [
-    "Documentation/evidence reconciliation is this final source-only PR commit; exact-head CI must rerun and be green before merge. No additional engineering slice is deliberately concealed.",
-    "No local checkout or separate local preflight claim; full GitHub disposable database/browser gates are the executed verification. PR review threads were empty; source self-review recorded in PR comment #6340547950 and automated review unavailable — waived."
+    "Exact-head GitHub CI and independent PR review still required; candidate acceptance evidence is source-authored rather than passed tests.",
+    "External real QuickBooks tenant/trial journal/bank proof and 22 owner-provider release checks remain unexercised."
   ],
   "externalAcceptance": [
-    "22 original owner/customer/provider release acceptance checks remain individually PENDING; existing source commits on live do not establish account-verified evidence.",
-    "Owner-selected bank/accounts/opening/card/customer/tax liabilities, CPA treatment and default-off cash budget activation remain strictly external and are not granted by this proposed code.",
-    "No real customer email/SMS, Stripe LIVE, bank transfer, paid telecom provider change, production fixture/data edit or unscheduled live promotion authorized."
+    "All 22 original owner/provider/CPA acceptance cases remain PENDING, including observed actual QBO import and bank statement proof.",
+    "Budget OFF. No paid provider service, QBO API calls, live Stripe, customer messaging, production fixtures or unscheduled release."
   ],
-  "workloadException": "Two whole approved K-CASH-5A/5B subsections share linked budget/Books source and owner screens; the coherent implementation is larger than a helper PR and must pass exact-head CI before either can be counted fully completed.",
+  "workloadException": "The single full original K-CASH-6 accounting-provider subsection is a coherent substantial end-to-end delivery/domain/wizard/test unit; the dependent K-CASH-7 report/migration risk is separately staged.",
   "evidence": [
-    "Plan frozen in docs-only commit ae5eeaf1b6f60b4916e862dfc30f329da8ff0846 before any implementation edits.",
-    "Original named tests for 5A/5B plus existing K-8 regression and browser shards are authored as candidate tests, not a passed run.",
-    "Active source is on branch ai/gpt6/kcash-5ab-plan-budget; no production/source release change, no 22 real-account acceptance checks passed.",
-    "Exact head 2db0f8b39b623f7437b305eb1c5385917f367ea8 green: aggregate ci, type-check/lint, three unit/real PostgreSQL shards, four browser/axe shards, capacity baselines, secret scan, release policy.",
-    "New source uniqueness SQL migration 20261021190000_k_cash_unique_cost_sources and 27-plan paged-refresh integration spec verified within full disposable GitHub CI.",
-    "PR #509 final review notes in issue comment 6340547950. No external real-bank/CPA/customer/provider acceptance granted."
+    "Full 10-criterion original plan committed docs-only before code at 975045b8e68bedd492d9cbfb95d1d7c8a7bf1673.",
+    "Reuses K-5 formatters and existing K-CASH-1 AccountingDelivery schema; no migration.",
+    "Real-DB/browser tests authored; no local test, preflight or exact-head CI pass claimed yet.",
+    "Self-review, exact-head CI and PR merge evidence to be added before accepting engineering."
   ]
 }

@@ -43,6 +43,11 @@
 - [ ] CPA confirms IN-56 and any tax classification/adjusted basis, allowed/allowable/section 179/bonus; do not infer §1245 recapture or tax due from management book depreciation.
 - [ ] Independently verify deployed additive K-6 migration, restore/backup and real owner/admin role readback before claiming external acceptance.
 
+## K-CASH-6 QBO delivery owner/provider acceptance — still PENDING (2026-10-22)
+- [ ] After authorized normal release, inspect actual QuickBooks tenant/edition and independent trial-company DETAIL CSV journal count/debit-credit balancing, bank matching and statement beginning/ending. No PREPARED record proves remote import.
+- [ ] OWNER records genuine private trial import reference and checks immutable imported re-download; overlapping uncertain/legacy archives cannot create new files, and roles cannot bypass the decision.
+- [ ] Preserve all 22 separate owner/provider/CPA release gates. No direct QBO API, bank movement, live payment, provider cost or unscheduled release authorized.
+
 ## K-5 accounting export trial acceptance — 2026-10-18 (not completed)
 
 - [ ] Once K-5 is released, owner/bookkeeper confirms account mappings and generates a month of QBO or Xero export. **Trial-company import, balance and duplicate checks are required before real external accounting use**; a green CI CSV test is not a provider-accepted import.

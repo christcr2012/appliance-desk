@@ -1138,7 +1138,7 @@
       "dependencies": [
         "K-CASH-4B"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "20261021190000_k_cash_unique_cost_sources",
       "budget": 480,
       "units": [
@@ -1157,7 +1157,7 @@
         "tests/budget-planning.test.ts",
         "tests/budget-planning-integration.test.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "ENGINEERING_MERGED_EXACT_HEAD_CI_GREEN",
       "plannedCard": "docs/pr-cards/K-CASH-5A.md",
       "card": "docs/pr-cards/K-CASH-5A.md"
     },
@@ -1168,7 +1168,7 @@
       "dependencies": [
         "K-CASH-5A"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1187,7 +1187,7 @@
         "tests/budget-context-access.test.ts",
         "e2e/budget.spec.ts"
       ],
-      "readiness": "IN_PROGRESS",
+      "readiness": "ENGINEERING_MERGED_EXACT_HEAD_CI_GREEN",
       "plannedCard": "docs/pr-cards/K-CASH-5B.md",
       "card": "docs/pr-cards/K-CASH-5A.md"
     },
@@ -1198,7 +1198,7 @@
       "dependencies": [
         "K-CASH-5B"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "batch_k_cash_accounting_delivery",
       "budget": 480,
       "units": [
@@ -1213,7 +1213,7 @@
         "tests/books-export-delivery-integration.test.ts",
         "e2e/books-export.spec.ts"
       ],
-      "readiness": "PLANNED_AFTER_MERGED_509",
+      "readiness": "CANDIDATE_AWAITING_EXACT_HEAD_CI",
       "plannedCard": "docs/pr-cards/K-CASH-6.md",
       "card": "docs/pr-cards/K-CASH-6.md"
     },
@@ -3880,7 +3880,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-CASH-5A",
+  "activeExecution": "K-CASH-6",
   "executionPackets": [
     {
       "id": "W-22D12",
