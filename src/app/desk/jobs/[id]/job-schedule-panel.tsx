@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markJobNoShowAction, scheduleJobAction, type ScheduleConflictView } from "../actions";
 import { ScheduleConflictNotice } from "../schedule-conflicts";
+
+// React's hydration boundary is observable as a stable external snapshot.
+// SSR supplies false; the hydrated client supplies true without setting state in an effect.
+const subscribeHydration=()=>()=>{};
+const hydratedClient=()=>true;
+const hydratedServer=()=>false;
 
 /**
  * When, how long and who. Owners and admins can change all three; the person a visit is assigned
@@ -41,8 +47,7 @@ export function JobSchedulePanel({
   const [isPending, startTransition] = useTransition();
   // Disable controlled inputs until hydration so early typing cannot be lost
   // when React attaches the client handlers to this server-rendered page.
-  const [hydrated,setHydrated]=useState(false);
-  useEffect(()=>{setHydrated(true);},[]);
+  const hydrated=useSyncExternalStore(subscribeHydration,hydratedClient,hydratedServer);
   const [missedCause,setMissedCause]=useState<"NOBODY_HOME"|"HOOKUPS_NOT_READY">("NOBODY_HOME");
   const [missedEvidence,setMissedEvidence]=useState("");
   const [when, setWhen] = useState(scheduledAtLocal);
