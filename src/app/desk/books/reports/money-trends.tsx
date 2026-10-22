@@ -72,6 +72,9 @@ export async function MoneyTrendsSection({userId,query}:{userId:string;query:Tre
     <p>{report.cash.status==="UNKNOWN"?"Unknown: bank account evidence is missing.":
      money(report.cash.openingCents)+" beginning + "+money(report.cash.inflowCents)+" inflows − "+money(report.cash.outflowCents)+" outflows = "+money(report.cash.closingCents)+" closing"}.
      Transfers between selected active accounts offset in consolidated net movement; they are not profit.</p>
+    {report.cash.accounts&&<ul className="list-disc pl-5">{report.cash.accounts.map(b=><li key={b.id}>
+     {b.name}: {money(b.openingCents)} start + {money(b.netCents)} net = {money(b.closingCents)} end
+    </li>)}</ul>}
    </section>
    <section className="rounded border border-border p-4 space-y-3">
     <h2 className="text-lg font-semibold">Monthly profit and bank trend</h2>

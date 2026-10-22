@@ -110,6 +110,23 @@ export async function BudgetReviewSection({userId,owner,month,planId,notice,page
     <p>Posted journal basis: recognized revenue {money(report.profit.revenueCents)}, expenses {money(report.profit.costCents)} (including depreciation {money(report.profit.depreciationCents)}), management profit {money(report.profit.netProfitCents)}.</p>
     <p>Active business bank sources: {report.cash.status==="UNKNOWN"?"Unknown; no verified cash source":money(report.cash.openingCents)+" opening + "+money(report.cash.netCents)+" net movement = "+money(report.cash.closingCents)+" closing"}. Internal transfers cancel in combined net movement; capital and deposits are not operating profit.</p>
     <p>Protected debt and tax: {money(report.protectedCents)}; discretionary available to assign: {money(report.readyToAssignCents)}. Budget funding stays separate from bank movement.</p>
+    <h3 className="font-semibold">Per-account recorded cash</h3>
+    {report.cash.accounts?<ul className="list-disc pl-5">{report.cash.accounts.map(b=>
+     <li key={b.id}>{b.name}: {money(b.openingCents)} opening + {money(b.netCents)} net = {money(b.closingCents)} ending</li>)}</ul>:
+     <p>Unknown account openings — no source-proven cash is asserted.</p>}
+    <h3 className="font-semibold">Upcoming cost coverage — reminders, not payments</h3>
+    <p>30 days: due {money(report.upcoming.days30.dueCents)}, verified paid {money(report.upcoming.days30.paidCents)}, still due {money(report.upcoming.days30.unpaidCents)}.</p>
+    <p>90 days: due {money(report.upcoming.days90.dueCents)}, verified paid {money(report.upcoming.days90.paidCents)}, still due {money(report.upcoming.days90.unpaidCents)}. Unverified payment claims {report.upcoming.days90.incompleteEvidence} need review.</p>
+    <h3 className="font-semibold">Operating cost categories and vendors</h3>
+    <div className="grid gap-3 sm:grid-cols-2">
+     <div><h4 className="font-medium">Expense categories</h4>
+      <ul className="list-disc pl-5">{report.categories.map(c=><li key={c.accountId}>{c.name}: {money(c.cents)} ({c.sharePercent===null?"No positive expense denominator":c.sharePercent+"%"})</li>)}</ul>
+     </div>
+     <div><h4 className="font-medium">Vendors</h4>
+      <ul className="list-disc pl-5">{report.vendors.map(v=><li key={v.name}>{v.name}: {money(v.cents)} ({v.sharePercent===null?"No percentage":v.sharePercent+"%"})</li>)}</ul>
+      <p>Unknown vendor: {money(report.costSplit.unknownVendorCents)}; recognized recurring {money(report.costSplit.recurringCents)}; one-off/unknown {money(report.costSplit.oneOffCents)}.</p>
+     </div>
+    </div>
    </section>
    <section className="rounded border border-border p-4 space-y-3">
     <h2 className="text-lg font-semibold">Month-end review checklist</h2>

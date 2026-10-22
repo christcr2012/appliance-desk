@@ -14,6 +14,8 @@ type Tx=Prisma.TransactionClient;
 const CAP=10000;
 const day=(s:string)=>coloradoDay(s);
 const warn=(label:string)=>"Too many "+label+" sources to verify. Narrow the report; totals must not be truncated.";
+const plusDays=(key:string,n:number)=>{const d=new Date(key+"T12:00:00Z");
+ d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
 export type PublishedRow={
  envelopeId:string;name:string;groupLabel:string;openingSavedCents:number;
  plannedSpendCents:number;plannedFundCents:number;amountQuality:"EXACT"|"ESTIMATE"|"OWNER_REVIEWED";
@@ -86,12 +88,22 @@ async function bankLedgerInTx(tx:Tx){
  if(banks.length>500)throw new BudgetReportError("Too many active bank sources to report safely.");
  return banks;
 }
-async function cashOpeningInTx(tx:Tx,bankIds:string[],before:string){
- if(!bankIds.length)return null;
+async function cashOpeningsInTx(tx:Tx,banks:{id:string;name:string;ledgerAccountId:string}[],before:string){
+ if(!banks.length)return null;
  const groups=await tx.journalLine.groupBy({by:["ledgerAccountId"],
-  where:{ledgerAccountId:{in:bankIds},entry:{entryDate:{lt:day(before)}}},
+  where:{ledgerAccountId:{in:banks.map(b=>b.ledgerAccountId)},entry:{entryDate:{lt:day(before)}}},
   _sum:{debitCents:true,creditCents:true}});
- return groups.reduce((s,x)=>safeAdd(s,(x._sum.debitCents??0)-(x._sum.creditCents??0)),0);
+ const byId=new Map(groups.map(x=>[x.ledgerAccountId,
+  safeAdd(x._sum.debitCents??0,-(x._sum.creditCents??0))]));
+ return banks.map(b=>({id:b.id,ledgerAccountId:b.ledgerAccountId,name:b.name,
+  openingCents:byId.get(b.ledgerAccountId)??0}));
+}
+function completeCashAccounts(banks:Awaited<ReturnType<typeof cashOpeningsInTx>>,net:{
+ perAccount:{id:string;netCents:number}[]},eligible:boolean){
+ if(!eligible||!banks)return null;
+ const movement=new Map(net.perAccount.map(x=>[x.id,x.netCents]));
+ return banks.map(b=>({...b,netCents:movement.get(b.ledgerAccountId)??0,
+  closingCents:safeAdd(b.openingCents,movement.get(b.ledgerAccountId)??0)}));
 }
 type ReadOptions={month:string;planId?:string;page?:number;pageSize?:number};
 function checkPage(page:number,size:number){
@@ -134,7 +146,8 @@ export async function reportMonthInTx(tx:Tx,options:ReadOptions,today=businessDa
  const journal=await signedRows(tx,window.from,window.to);
  const profit=journalProfit(journal);
  const cash=bankMovement(journal,bankAccounts.map(x=>x.ledgerAccountId));
- const cashOpening=await cashOpeningInTx(tx,bankAccounts.map(x=>x.ledgerAccountId),window.from);
+ const cashAccountOpenings=await cashOpeningsInTx(tx,bankAccounts,window.from);
+ const cashOpening=cashAccountOpenings?.reduce((s,x)=>safeAdd(s,x.openingCents),0)??null;
  const moveSourceIds=[...new Set(allMoves.filter(m=>m.sourceType==="JOURNAL_LINE")
    .map(m=>m.sourceId).filter((x):x is string=>!!x))];
  const realSource=await tx.journalLine.findMany({where:{id:{in:moveSourceIds}},
@@ -258,6 +271,33 @@ export async function reportMonthInTx(tx:Tx,options:ReadOptions,today=businessDa
  if(window.to>=window.from)backing=await budgetSnapshotInTx(tx,window.to);
  const ready=backing!==null&&backing.status==="READY"&&backing.unknownLiabilities.length===0;
  checks.push({key:"reserve",label:"Protected tax, customer and card backing",ok:ready,reason:ready?null:"Bank, tax, deposit or card source incomplete; do not allocate"});
+ const upcomingRows=await tx.budgetCostOccurrence.findMany({where:{
+  dueOn:{gte:day(today),lte:day(plusDays(today,90))},
+  status:{not:"CANCELLED"},plan:{active:true}},
+  include:{settlements:true},orderBy:[{dueOn:"asc"},{id:"asc"}],take:CAP+1});
+ if(upcomingRows.length>CAP)throw new BudgetReportError(warn("upcoming cost"));
+ const upcomingIds=[...new Set(upcomingRows.flatMap(x=>x.settlements.filter(s=>
+  s.sourceType==="EXPENSE"&&s.reversalOfId===null).map(s=>s.sourceId)))];
+ const verification=await tx.expense.findMany({where:{id:{in:upcomingIds}},
+  select:{id:true,status:true}});
+ const posted=new Set(verification.filter(x=>x.status==="POSTED").map(x=>x.id));
+ const upcomingTotals=(until:string)=>{
+  let dueCents=0,paidCents=0,unpaidCents=0,incompleteEvidence=0;
+  for(const x of upcomingRows){
+   if(businessDateKey(x.dueOn)>until)continue;
+   const inverse=new Set(x.settlements.flatMap(s=>s.reversalOfId?[s.reversalOfId]:[]));
+   const originals=x.settlements.filter(s=>s.reversalOfId===null&&!inverse.has(s.id));
+   const paid=originals.filter(s=>s.sourceType==="EXPENSE"&&posted.has(s.sourceId))
+    .reduce((sum,s)=>safeAdd(sum,s.amountCents),0);
+   if(originals.some(s=>s.sourceType!=="EXPENSE"||!posted.has(s.sourceId)))
+    incompleteEvidence++;
+   dueCents=safeAdd(dueCents,x.amountCents);
+   paidCents=safeAdd(paidCents,paid);
+   unpaidCents=safeAdd(unpaidCents,Math.max(0,x.amountCents-paid));
+  }
+  return {dueCents,paidCents,unpaidCents,incompleteEvidence};
+ };
+ const upcoming={days30:upcomingTotals(plusDays(today,30)),days90:upcomingTotals(plusDays(today,90))};
  const sourcePages=journal.map(x=>({...x,kind:x.accountType==="EXPENSE"?"Expense":
   x.accountType==="INCOME"||x.accountType==="CONTRA_INCOME"?"Revenue":
   bankAccounts.some(b=>b.ledgerAccountId===x.accountId)?"Bank":"Other"}))
@@ -275,16 +315,21 @@ export async function reportMonthInTx(tx:Tx,options:ReadOptions,today=businessDa
   versions:versions.map(v=>({id:v.id,version:v.version,date:v.publishedAt.toISOString(),
    sha256:v.sha256,stale:v.budgetRevision!==state.revision||v.sourceRevision!==bookRev.revision})),
   amountBasis:"POSTED_JOURNAL_ACCRUAL" as const,
-  profit,cash:{...cash,status:(sourcesReady?cash.status:"UNKNOWN") as "KNOWN"|"UNKNOWN",
+  profit,cash:{...cash,accounts:completeCashAccounts(cashAccountOpenings,cash,sourcesReady),
+   status:(sourcesReady?cash.status:"UNKNOWN") as "KNOWN"|"UNKNOWN",
    inflowCents:sourcesReady?cash.inflowCents:null,outflowCents:sourcesReady?cash.outflowCents:null,
    netCents:sourcesReady?cash.netCents:null,
    openingCents:sourcesReady?cashOpening:null,
    closingCents:!sourcesReady||cashOpening===null||cash.netCents===null?null:safeAdd(cashOpening,cash.netCents)},
   envelopes:monthRows,
-  categories:[...categories.values()].sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name)),
-  vendors:[...vendors.values()].sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name)),
+  categories:[...categories.values()].map(x=>({...x,
+   sharePercent:profit.costCents>0?Math.round(x.cents*10000/profit.costCents)/100:null}))
+   .sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name)),
+  vendors:[...vendors.values()].map(x=>({...x,
+   sharePercent:profit.costCents>0?Math.round(x.cents*10000/profit.costCents)/100:null}))
+   .sort((a,b)=>b.cents-a.cents||a.name.localeCompare(b.name)),
   costSplit:{recurringCents:recurringExpenseCents,oneOffCents,unknownVendorCents},
-  unclassifiedCents,unclassifiedCount,
+  unclassifiedCents,unclassifiedCount,upcoming,
   sourceCount:totalRows,sourcePage:{page,pageSize:size,totalRows,rows},
   checklist:checks,allMonthEndReady:checks.every(x=>x.ok),
   protectedCents:backing?.protectedTotalCents??null,
@@ -314,7 +359,10 @@ export async function getFinanceTrends(userId:string,options:{
  const {page,size}=checkPage(options.page??1,options.pageSize??25);
  return prisma.$transaction(async tx=>{
   await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
-  const settings=await tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{booksStartDate:true}});
+  const [settings,booksRevision]=await Promise.all([
+   tx.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{booksStartDate:true}}),
+   tx.booksPostingRevision.findUniqueOrThrow({where:{id:"singleton"}}),
+  ]);
   const banks=await bankLedgerInTx(tx);
   const ledgerIds=banks.map(x=>x.ledgerAccountId);
   const rangeFrom=months[0]+"-01";
@@ -335,12 +383,14 @@ export async function getFinanceTrends(userId:string,options:{
   const percent=compareProfit?
    variancePercent(Math.max(0,compareProfit.revenueCents),actual.revenueCents):
    {differenceCents:null,percent:null,label:"No comparison selected"};
-  const opening=await cashOpeningInTx(tx,ledgerIds,current.from);
+  const cashAccountOpenings=await cashOpeningsInTx(tx,banks,current.from);
+ const opening=cashAccountOpenings?.reduce((s,x)=>safeAdd(s,x.openingCents),0)??null;
   const sourceOk=Boolean(settings.booksStartDate&&settings.booksStartDate<=day(first));
   return {asOf,range:current,compareRange:previous,period:options.period??"ROLLING_12",
    sourceRevision:booksRevision.revision.toString(),
    sourceStatus:sourceOk?"AVAILABLE" as const:"UNKNOWN" as const,
    basis:"POSTED_JOURNAL_ACCRUAL" as const,profit:actual,cash:{...cash,
+    accounts:completeCashAccounts(cashAccountOpenings,cash,sourceOk),
     status:(sourceOk?cash.status:"UNKNOWN") as "KNOWN"|"UNKNOWN",
     inflowCents:sourceOk?cash.inflowCents:null,outflowCents:sourceOk?cash.outflowCents:null,
     netCents:sourceOk?cash.netCents:null,
