@@ -28,6 +28,7 @@ export async function BudgetPlanSection({userId,owner,notice,days,view,state,ref
     <Link href="/desk/books/budget" className="underline p-2">My money and bank checks</Link>
     <Link href="/desk/books/budget?tab=plan" aria-current="page" className="underline p-2">Plan ahead</Link>
     <Link href="/desk/books/closing" className="underline p-2">Cash forecast</Link>
+    <Link href="/desk/books/budget?tab=review" className="underline p-2">Monthly review</Link>
     <Link href="/desk/books/reports" className="underline p-2">Review reports</Link>
    </nav>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BudgetPlanSection } from "./plan-section";
+import { BudgetReviewSection } from "./review-section";
 import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
@@ -14,10 +15,13 @@ const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2
 const btn="rounded border border-border bg-card px-3 py-2 font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2";
 const dollars=(n:number|null)=>n===null?"Unknown":formatMoney(n);
 export default async function BudgetBackingPage({searchParams}:{
- searchParams:Promise<{tab?:string;days?:string;view?:string;state?:string;notice?:string;refreshCursor?:string;previewKind?:string;envelopeId?:string;
+ searchParams:Promise<{tab?:string;month?:string;planId?:string;page?:string;pageSize?:string;days?:string;view?:string;state?:string;notice?:string;refreshCursor?:string;previewKind?:string;envelopeId?:string;
  fromId?:string;toId?:string;amount?:string;reason?:string}>}){
  const actor=await requireRole("OWNER","ADMIN"),owner=actor.user.role==="OWNER";
  const params=await searchParams;
+ if(params.tab==="review")return <BudgetReviewSection userId={actor.user.id} owner={owner}
+  month={params.month} planId={params.planId} notice={params.notice?.slice(0,240)}
+  page={params.page} pageSize={params.pageSize}/>;
  if(params.tab==="plan")return <BudgetPlanSection userId={actor.user.id} owner={owner}
   notice={params.notice?.slice(0,240)} days={params.days} view={params.view}
   state={params.state} refreshCursor={params.refreshCursor?.slice(0,64)}/>;
@@ -75,6 +79,7 @@ export default async function BudgetBackingPage({searchParams}:{
    <nav aria-label="Budget views" className="flex flex-wrap gap-3">
     <Link className="underline p-2" href="/desk/books/budget" aria-current="page">My money</Link>
     <Link className="underline p-2" href="/desk/books/budget?tab=plan">Plan ahead</Link>
+    <Link className="underline p-2" href="/desk/books/budget?tab=review">Monthly review</Link>
     <Link className="underline p-2" href="/desk/books/reports">Review</Link>
     <Link className="underline p-2" href="/desk/books/cash/checks">Bank checks</Link>
     <Link className="underline p-2" href="/desk/books/budget#source-setup">Setup</Link>

@@ -1227,7 +1227,7 @@
       "dependencies": [
         "K-CASH-6"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "batch_k_cash_report_snapshots",
       "budget": 480,
       "units": [
@@ -1237,14 +1237,18 @@
         "prisma/schema.prisma",
         "src/domains/budget/reports.ts",
         "src/domains/books/reports.ts",
-        "docs/designs/BATCH-K-CASH.md"
+        "docs/designs/BATCH-K-CASH.md",
+        "src/domains/budget/published.ts",
+        "src/domains/budget/report-math.ts",
+        "src/domains/backup/manifest.ts",
+        "scripts/restore-backup.ts"
       ],
       "tests": [
         "tests/budget-reports-integration.test.ts",
         "tests/business-trends.test.ts",
         "e2e/money-reports.spec.ts"
       ],
-      "readiness": "FROZEN_ORIGINAL_PLAN",
+      "readiness": "IMPLEMENTATION_CANDIDATE_AWAITING_EXACT_HEAD_CI",
       "plannedCard": "docs/pr-cards/K-CASH-7.md",
       "card": "docs/pr-cards/K-CASH-7.md"
     },

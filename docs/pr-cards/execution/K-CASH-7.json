@@ -6,7 +6,7 @@
   "card": "docs/pr-cards/K-CASH-7.md",
   "outcome": "Deliver original K-CASH-7 immutable published monthly budgets, authoritative signed finance and budget reports, verified source drilldowns, month-end snapshot review and private downloads without live/provider changes.",
   "risk": "New reporting could misclassify tax/equity as operating profit, double cash, assert planned-as-paid, overwrite source reports, publish stale plans or let unauthorized actors expose financials.",
-  "next": "Deliver whole original K-CASH-7 migration, provenance, reporting, accessible owner screens and database/browser proof, then exact-head CI/review/merge. 22 external gates separately pending.",
+  "next": "Engineering source/migration/UI and pure/disposable-postgres/browser tests staged; exact-head CI, source review/waiver, blocking fixes and expected-head merge pending. Keep all 22 external release checks pending.",
   "references": [
     {
       "path": "docs/designs/BATCH-K-CASH.md",
