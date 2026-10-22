@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import {
   businessDateKey,
+  addBusinessDays,
   formatBusinessDate,
   formatBusinessTime,
   businessMinuteOfDay,
@@ -33,6 +34,9 @@ import {
 import { TaskRow } from "../tasks/task-row";
 import { getSetupChecklist } from "@/domains/setup/checklist";
 import { SetupCard } from "./setup-card";
+import { getBudgetPlanning } from "@/domains/budget/planning";
+import Link from "next/link";
+import { formatMoney } from "@/lib/money-ui";
 
 export const metadata = { title: "Today" };
 
@@ -164,6 +168,15 @@ export default async function TodayPage() {
       })
     : null;
 
+  const budgetAttention=role==="OWNER"||role==="ADMIN"
+    ? await getBudgetPlanning(session.user.id,businessDateKey(now)).then(data=>({
+      sourceStatus:data.sourceStatus,review:data.sourceReasons.slice(0,3),
+      items:data.upcoming.filter(x=>x.unpaidCents>0&&x.dueOn<=businessDateKey(
+       addBusinessDays(now,30))).slice(0,15),
+      shortages:data.envelopes.filter(x=>x.needCents>0||x.balanceCents<0).slice(0,12),
+      revision:data.revision
+    })).catch(()=>null)
+    :null;
   const [{ items: exceptions, snoozed, truncated }, jobs, followUps, openRequests] =
     await Promise.all([
       getExceptionOverview(),
@@ -240,6 +253,19 @@ export default async function TodayPage() {
       />
 
       {setupChecklist ? <SetupCard checklist={setupChecklist} /> : null}
+      {budgetAttention&&<section aria-label="Budget source and upcoming cost attention"
+       className="mb-6 space-y-2 rounded border border-border p-4">
+       <h2 className="text-lg font-semibold">Budget and known upcoming bills</h2>
+       <p role="status">Verified bank source status: {budgetAttention.sourceStatus}. Budget notices do not initiate payments or assign cash.</p>
+       {budgetAttention.review.map((x,i)=><p key={i}>{x}</p>)}
+       {budgetAttention.shortages.map(row=><p key={row.id}>
+        <strong>{row.name}</strong>: saved {formatMoney(row.balanceCents)}, more needed {formatMoney(row.needCents)}
+       </p>)}
+       {budgetAttention.items.map(row=><p key={row.id}>
+        Unpaid {row.name} — {formatMoney(row.unpaidCents)} due {row.dueOn} ({row.quality})
+       </p>)}
+       <Link href="/desk/books/budget?tab=plan" className="inline-block underline p-2">Review bills, source proof and funding proposal</Link>
+      </section>}
 
       <div className="mb-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard

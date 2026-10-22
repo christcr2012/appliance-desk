@@ -35,6 +35,7 @@ export async function createExpenseAction(form: FormData) {
     memo: read(form, "memo"), applianceId: read(form, "applianceId"),
     jobId: read(form, "jobId"), purchaseOrderId: read(form, "purchaseOrderId"),
     capitalizeToAppliance: form.get("capitalize") === "on",
+    budgetEnvelopeId: read(form,"budgetEnvelopeId"),
   }, mode === "POSTED" && session.user.role !== "STAFF" ? "POSTED" :
     mode === "DRAFT" && session.user.role !== "STAFF" ? "DRAFT" : "SUBMITTED"));
 }

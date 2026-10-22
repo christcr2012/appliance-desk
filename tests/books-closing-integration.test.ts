@@ -91,6 +91,57 @@ describe.skipIf(!enabled)("K-8 real sources and privacy in disposable PostgreSQL
   expect(report.rows.some(x=>x.sourceId===period)).toBe(false);
   expect(report.rows.some(x=>x.kind==="BILLING_ESTIMATE")).toBe(false);
  });
+ it("deduplicates linked recurring costs in K-8 and keeps separate bank evidence scenarios",async()=>{
+  const envelope=await prisma.budgetEnvelope.findFirstOrThrow({where:{id:"budget-default-repairs"}});
+  const linked=await prisma.budgetCostPlan.create({data:{envelopeId:envelope.id,
+   name:"K8 budget linked recurring",amountCents:3000,amountQuality:"ESTIMATE",
+   dueOn:day("2026-10-28"),recurrence:"MONTHLY",anchorDay:28,anchorMonth:10,
+   sourceType:"RECURRING_EXPENSE",sourceId:template}});
+  try{
+   await prisma.budgetCostOccurrence.create({data:{
+    planId:linked.id,dueOn:day("2026-10-28"),amountCents:3000}});
+   const report=await cashForecast(owner,30,day("2026-10-19"));
+   const sameDate=report.rows.filter(x=>x.date==="2026-10-28"&&
+    (x.kind==="RECURRING_EXPENSE_ESTIMATE"||x.kind==="BUDGET_PLAN_ESTIMATE"));
+   expect(sameDate).toHaveLength(1);
+   expect(sameDate[0]?.kind).toBe("BUDGET_PLAN_ESTIMATE");
+   expect(report.tracks.noNewCollections.kind).toBe("CONFIRMED_CASH_MINUS_ESTIMATED_COSTS");
+   expect(report.tracks.expectedCollections.kind).toBe("ESTIMATED_BILLING_NOT_COLLECTED");
+   expect(report.needsReview).toEqual(expect.any(Array));
+  }finally{
+   await prisma.budgetCostOccurrence.deleteMany({where:{planId:linked.id}});
+   await prisma.budgetCostPlan.delete({where:{id:linked.id}});
+  }
+ });
+ it("does not call a voided Books expense a paid future cost",async()=>{
+  const envelope=await prisma.budgetEnvelope.findFirstOrThrow({where:{id:"budget-default-repairs"}});
+  const linked=await prisma.budgetCostPlan.create({data:{envelopeId:envelope.id,
+   name:"K8 voided payment must be re-forecast",amountCents:2000,amountQuality:"EXACT",
+   dueOn:day("2026-10-27"),recurrence:"NONE",anchorDay:27,anchorMonth:10,
+   sourceType:"MANUAL"}});
+  const occurrence=await prisma.budgetCostOccurrence.create({data:{planId:linked.id,
+   dueOn:day("2026-10-27"),amountCents:2000,status:"PAID"}});
+  await prisma.budgetCostSettlement.create({data:{occurrenceId:occurrence.id,
+   sourceType:"EXPENSE",sourceId:expense,amountCents:2000,
+   commandKey:"k8-source-"+tag,payloadHash:"synthetic-test-evidence"}});
+  try{
+   const recorded=await cashForecast(owner,30,day("2026-10-19"));
+   expect(recorded.rows.some(x=>x.sourceId===occurrence.id)).toBe(false);
+   await prisma.expense.update({where:{id:expense},data:{status:"VOID"}});
+   const corrected=await cashForecast(owner,30,day("2026-10-19"));
+   expect(corrected.rows.find(x=>x.sourceId===occurrence.id)).toMatchObject({
+    kind:"BUDGET_PLAN_ESTIMATE",amountCents:2000});
+   expect(corrected.needsReview.some(x=>x.includes("voided or unavailable payment evidence"))).toBe(true);
+  }finally{
+   await prisma.expense.update({where:{id:expense},data:{status:"POSTED"}});
+   await prisma.$transaction(async tx=>{
+    await tx.$executeRawUnsafe("SELECT set_config('app.synthetic_budget_cleanup','yes',true)");
+    await tx.budgetCostSettlement.deleteMany({where:{occurrenceId:occurrence.id}});
+   });
+   await prisma.budgetCostOccurrence.delete({where:{id:occurrence.id}});
+   await prisma.budgetCostPlan.delete({where:{id:linked.id}});
+  }
+ });
  it("counts only receipt-linked successful payments less real recorded refunds",async()=>{
   const report=await customerHealth(owner,day("2026-10-19"));
   expect(report.sourceGroups.find(x=>x.leadSource==="Organic search")?.netCollectedCents).toBe(900);

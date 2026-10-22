@@ -27,6 +27,7 @@ import { formatBusinessDate } from "@/lib/business-date";
 import { CustodyPanel } from "./custody-panel";
 import { OLD_SET_TYPE_SLUG } from "@/domains/packages/pricing";
 import { RecordConnections } from "@/components/desk/record-connections";
+import { BudgetContextCard } from "@/domains/budget/context";
 
 export const metadata = { title: "Appliance" };
 
@@ -112,6 +113,7 @@ export default async function ApplianceDetailPage({
       )}
 
       {profitability && <ApplianceEarningsSummary report={profitability} />}
+      <BudgetContextCard userId={session.user.id} heading="Appliance replacement savings and budget"/>
 
       <div className="mt-6 space-y-6">
         <CustodyPanel

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "b2a06c2",
-  "updated": "2026-10-19",
+  "updated": "2026-10-22",
   "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
@@ -1064,7 +1064,7 @@
       "dependencies": [
         "K-CASH-3"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "batch_k_cash_budget",
       "budget": 480,
       "units": [
@@ -1083,12 +1083,13 @@
         "src/domains/budget/spending.ts",
         "tests/budget-schema-integration.test.ts",
         "tests/budget-money-integration.test.ts",
-        "e2e/budget-money.spec.ts"
+        "e2e/budget-money.spec.ts",
+        "PR #508 merged a1174bb33b500feeb7ce3e4e35cdf76084eb1e45 after exact-head CI; real bank/CPA acceptance pending"
       ],
       "tests": [
         "tests/budget-schema-integration.test.ts"
       ],
-      "readiness": "ENGINEERING_AUTHORED_EXACT_HEAD_CI_PENDING",
+      "readiness": "ENGINEERING_MERGED_EXACT_HEAD_CI_GREEN",
       "plannedCard": "docs/pr-cards/K-CASH-4A.md",
       "card": "docs/pr-cards/K-CASH-4A.md"
     },
@@ -1099,7 +1100,7 @@
       "dependencies": [
         "K-CASH-4A"
       ],
-      "status": "IN_PROGRESS",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1119,13 +1120,14 @@
         "e2e/budget-money.spec.ts",
         "prisma/migrations/20261020010000_batch_k_cash_budget/migration.sql",
         "src/domains/budget/envelopes.ts",
-        "tests/budget-schema-integration.test.ts"
+        "tests/budget-schema-integration.test.ts",
+        "PR #508 merged a1174bb33b500feeb7ce3e4e35cdf76084eb1e45 after exact-head CI; real bank/CPA acceptance pending"
       ],
       "tests": [
         "tests/budget-money-integration.test.ts",
         "e2e/budget-money.spec.ts"
       ],
-      "readiness": "ENGINEERING_AUTHORED_EXACT_HEAD_CI_PENDING",
+      "readiness": "ENGINEERING_MERGED_EXACT_HEAD_CI_GREEN",
       "plannedCard": "docs/pr-cards/K-CASH-4A.md",
       "card": "docs/pr-cards/K-CASH-4A.md"
     },
@@ -1136,8 +1138,8 @@
       "dependencies": [
         "K-CASH-4B"
       ],
-      "status": "APPROVED",
-      "migration": "none",
+      "status": "IN_PROGRESS",
+      "migration": "20261021190000_k_cash_unique_cost_sources",
       "budget": 480,
       "units": [
         "K-CASH-5A"
@@ -1147,14 +1149,17 @@
         "docs/designs/BATCH-K.md",
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/reports/definitions.ts",
+        "K-CASH-5A/5B partial branch checkpoint; original acceptance and exact-head CI still incomplete",
+        "PR #509 code head 2db0f8b39b623f7437b305eb1c5385917f367ea8 passed aggregate CI including 3 disposable PostgreSQL/unit and 4 browser shards; final documentation/PR exact-head CI still required before merge; 22 release checks remain external."
       ],
       "tests": [
         "tests/budget-planning.test.ts",
         "tests/budget-planning-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-CASH-5A.md"
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/K-CASH-5A.md",
+      "card": "docs/pr-cards/K-CASH-5A.md"
     },
     {
       "id": "K-CASH-5B",
@@ -1163,7 +1168,7 @@
       "dependencies": [
         "K-CASH-5A"
       ],
-      "status": "APPROVED",
+      "status": "IN_PROGRESS",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -1174,14 +1179,17 @@
         "docs/designs/BATCH-K.md",
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
-        "src/domains/reports/definitions.ts"
+        "src/domains/reports/definitions.ts",
+        "K-CASH-5A/5B partial branch checkpoint; original acceptance and exact-head CI still incomplete",
+        "PR #509 code head 2db0f8b39b623f7437b305eb1c5385917f367ea8 passed aggregate CI including 3 disposable PostgreSQL/unit and 4 browser shards; final documentation/PR exact-head CI still required before merge; 22 release checks remain external."
       ],
       "tests": [
         "tests/budget-context-access.test.ts",
         "e2e/budget.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/K-CASH-5B.md"
+      "readiness": "IN_PROGRESS",
+      "plannedCard": "docs/pr-cards/K-CASH-5B.md",
+      "card": "docs/pr-cards/K-CASH-5A.md"
     },
     {
       "id": "K-CASH-6",
@@ -3873,7 +3881,7 @@
       "scope": "Owner-requested hidden public pricing during prelaunch discovery; independent of engineering queue"
     }
   ],
-  "activeExecution": "K-CASH-4A",
+  "activeExecution": "K-CASH-5A",
   "executionPackets": [
     {
       "id": "W-22D12",
@@ -4022,6 +4030,10 @@
     {
       "id": "K-CASH-4A",
       "path": "docs/pr-cards/execution/K-CASH-4A.json"
+    },
+    {
+      "id": "K-CASH-5A",
+      "path": "docs/pr-cards/execution/K-CASH-5A.json"
     }
   ]
 }

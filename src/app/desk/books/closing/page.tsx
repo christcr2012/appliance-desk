@@ -49,8 +49,13 @@ export default async function BooksClosingPage({searchParams}:{searchParams:Prom
     <label>Forecast days (1–180)<input className={input} name="days" type="number" min={1} max={180} defaultValue={safeDays} required/></label>
     <button className="rounded border border-border p-2 focus-visible:outline-2">View estimated outlook</button>
    </form>
+   {!forecast&&<div role="status" className="grid gap-3 sm:grid-cols-2">
+    <div className="rounded border border-border p-3"><p>No new collections — confirmed bank cash minus upcoming obligations</p><p className="font-bold">Unknown</p><p>Books source initialization and confirmed bank evidence are required to calculate this projection.</p></div>
+    <div className="rounded border border-border p-3"><p>Expected collections scenario — estimate, not bank cash</p><p className="font-bold">Unknown</p><p>Future invoicing cannot be estimated until the report sources are ready; no collections are assumed.</p></div>
+   </div>}
    {forecast&&<>
     <p className="text-sm text-muted-foreground">{forecast.from} through {forecast.through}. Future subscription invoices are not receipts. No live payment, provider sync, or filing is initiated.</p>
+    <div className="grid gap-3 sm:grid-cols-2"><div className="rounded border border-border p-3"><p>No new collections — confirmed bank cash minus upcoming obligations</p><p className="font-bold tabular-nums">{forecast.tracks.noNewCollections.projectedCents===null?"Unknown":money(forecast.tracks.noNewCollections.projectedCents)}</p><p>First possible shortfall: {forecast.tracks.noNewCollections.firstShortfall?.date??"Unknown or none detected"}.</p><Explain metric="books.forecastCashNoNewCollections"/></div><div className="rounded border border-border p-3"><p>Expected collections scenario — estimate, not bank cash</p><p className="font-bold tabular-nums">{forecast.tracks.expectedCollections.projectedCents===null?"Unknown":money(forecast.tracks.expectedCollections.projectedCents)}</p><p>First possible shortfall: {forecast.tracks.expectedCollections.firstShortfall?.date??"Unknown or none detected"}.</p><Explain metric="books.forecastCashEstimatedCollections"/></div></div>
     <div className="grid gap-3 sm:grid-cols-3">
      <div className="rounded border border-border p-3"><p>Expected invoicing</p><p className="font-bold tabular-nums">{money(forecast.totals.inflowCents)}</p><Explain metric="books.forecastInflow"/></div>
      <div className="rounded border border-border p-3"><p>Expected costs and tax</p><p className="font-bold tabular-nums">{money(forecast.totals.outflowCents)}</p><Explain metric="books.forecastOutflow"/></div>

@@ -4,6 +4,7 @@ import {
   getTaxWorkspaceOverview, includeTodayTaxAttention, type TaxAttentionKind,
 } from "@/domains/tax/workspace-overview";
 import { getExceptionOverview } from "@/domains/exceptions";
+import { BudgetContextCard } from "@/domains/budget/context";
 
 const label: Record<TaxAttentionKind, string> = {
   OVERDUE: "Past due", AMENDMENT: "Amendment", DUE: "Due soon",
@@ -23,6 +24,7 @@ export default async function SalesTaxRootPage() {
         Filing, reconciliation and payment remain separate owner-controlled actions.
       </p>
     </section>
+    <BudgetContextCard userId={actor.user.id} heading="Protected tax obligations and budget"/>
     <section className="space-y-3">
       <h3 className="text-lg font-semibold">Setup and verification</h3>
       <ul className="grid gap-3 sm:grid-cols-2">

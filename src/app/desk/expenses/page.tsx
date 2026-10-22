@@ -5,6 +5,9 @@ import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { getExpenses } from "@/domains/books/expenses";
 import { createExpenseAction, postExpenseAction, voidExpenseAction, saveRecurringAction } from "./actions";
 import { ExpenseReceiptUpload } from "./receipt-upload";
+import { getBudgetContext } from "@/domains/budget/context";
+import { ExpenseBudgetFields } from "./budget-expense-fields";
+import { BudgetContextCard } from "@/domains/budget/context";
 
 export const metadata = { title: "Expenses — Books" };
 const field = "min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
@@ -13,6 +16,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const params = await searchParams;
   const data = await getExpenses(session.user.id, params.status);
+  const budget = await getBudgetContext(session.user.id).catch(()=>null);
   const notice = params.notice?.slice(0, 250);
   return <div className="space-y-6">
     <header className="space-y-2">
@@ -21,12 +25,16 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       {data.manager && <Link href="/desk/books" className="underline">View accounting journal and balances</Link>}
       {notice && <p role="status" className="rounded border border-border p-3">{notice}</p>}
     </header>
+    <BudgetContextCard userId={session.user.id} heading="Expense and budget context"/>
     <section className="rounded-lg border border-border p-4 space-y-3">
       <h2 className="text-lg font-semibold">Record an expense</h2>
       <p>First save the expense, then upload its private receipt below. Seller tax is included in the amount paid.</p>
       <form action={createExpenseAction} className="grid gap-3 sm:grid-cols-2">
         <label>Date paid (Colorado)<input className={field} name="date" type="date" defaultValue={businessDateKey(new Date())} required/></label>
-        <label>Total paid ($)<input className={field} name="amount" type="text" inputMode="decimal" placeholder="0.00" required/></label>
+        <ExpenseBudgetFields manager={budget?.role==="MANAGER"}
+          choices={budget?.envelopes.map(e=>({
+           id:e.id,name:e.name,balanceCents:"balanceCents" in e?e.balanceCents:undefined
+          }))??[]}/>
         <label>Seller tax already included ($)<input className={field} name="vendorTax" type="text" inputMode="decimal" defaultValue="0.00" required/></label>
         <label>Vendor<input className={field} name="vendor" maxLength={160} required/></label>
         <label>Category<select className={field} name="categoryId" required>
@@ -64,6 +72,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         </div>
         <p className="text-sm">{formatBusinessDate(row.spentOn)} · {row.category.name} · seller tax {formatMoney(row.vendorTaxCents)}</p>
         {row.memo && <p>{row.memo}</p>}
+        {row.budgetIntentLabel&&<p className="text-sm">Requested budget label: {row.budgetIntentLabel}. Not yet classified against a posted bank expense.</p>}
         {row.receiptPhotoId ? <a className="underline" href={`/api/photos/${encodeURIComponent(row.receiptPhotoId)}`}>View private receipt</a> :
           row.status !== "VOID" ? <ExpenseReceiptUpload id={row.id}/> : <p>No receipt attached.</p>}
         {data.manager && (row.status === "DRAFT" || row.status === "SUBMITTED") && <form action={postExpenseAction}>

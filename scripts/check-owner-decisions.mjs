@@ -16,7 +16,7 @@ export function validateOwnerDecisionRouting(coverage, work, fileExists = path =
   // This marker is a reviewed, committed roadmap transition, not a
   // permanent W-23 fixture. Future approved successors advance this source
   // document deliberately rather than weakening the roadmap lock.
-  const allowedOrdered = ["W-23", "W-24", "W-25", "W-26", "W-14", "W-3", "W-5", "W-7", "W-8", "W-10", "W-17", "V-C1", "V-C3", "V-C4", "V-1", "V-3", "F2-A", "F2-C", "K-1A", "K-2A", "K-3", "K-4A", "K-5", "K-6", "K-7", "K-8", "K-CASH-1", "K-CASH-3", "K-CASH-4A"];
+  const allowedOrdered = ["W-23", "W-24", "W-25", "W-26", "W-14", "W-3", "W-5", "W-7", "W-8", "W-10", "W-17", "V-C1", "V-C3", "V-C4", "V-1", "V-3", "F2-A", "F2-C", "K-1A", "K-2A", "K-3", "K-4A", "K-5", "K-6", "K-7", "K-8", "K-CASH-1", "K-CASH-3", "K-CASH-4A", "K-CASH-5A"];
   if (!allowedOrdered.includes(coverage?.activeExecutionMustRemain))
     errors.push("Owner decision map has no approved active W successor");
   if (work?.activeExecution !== coverage?.activeExecutionMustRemain)

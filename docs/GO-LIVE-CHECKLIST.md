@@ -1,3 +1,10 @@
+## K-CASH-5A/5B financial planning activation — NOT authorized by source CI
+
+- [ ] After the normal independently approved release, owner checks Plan ahead refresh across every 25-plan page and validates real recurring template, purchase commitment, due amount and source status against current Books records.
+- [ ] Compare a real posted payment, refund/VOID and related planning correction to bank and Books evidence; no scheduled bill or goal is itself a paid expense.
+- [ ] Verify real opening bank statement, business card, customer deposit, sales/use tax and RDF protected obligations with accountant/owner; separately choose date and explicitly enable default-OFF budget funding only after those sources tie.
+- [ ] Confirm owner/admin read and OWNER-only mutation with the released revision and preserve all **22 original distinct release acceptance checks**; engineering CI does not close any of them, enable Stripe LIVE, customer messaging, bank transfer or unscheduled release.
+
 ## K-CASH-4A/4B initial business activation — NOT YET AUTHORIZED
 
 - [ ] Verify the additive budget migration, populated restore and protected owner budget screens on the actual scheduled released revision; draft PR source checks do not establish live readiness.
@@ -233,3 +240,9 @@ payment smoke test.
 - [ ] Before the first real phone payment: confirm with Stripe that staff-typing a customer's card into Stripe's hosted invoice page is allowed on the live account. Then send one real payment link to yourself and pay it to see the To do clear. (W-5; nothing is live until the owner does this.)
 
 - [ ] Books activation (owner, post-release): inspect actual bank/Stripe/card statements before confirming a permanent books start date in Desk > Money > Books. Inspect source exceptions before posting any real journal. This engineering work alone does not authorize production writes or enable automatic posting/Stripe sync.
+
+## K-CASH-5A/5B future release acceptance — NEVER inferred from engineering CI
+- [ ] After ordinary checked daily live promotion, verify owner can record an EXACT and an ESTIMATE recurring bill, edit future unpaid plans while preserving historical paid evidence, and separately correct one real posted Books expense link.
+- [ ] Check independent reconciled bank/current card/customer/tax reserve facts with owner and CPA as needed before enabling OFF-by-default budget funding. Do not enable from planned/expected income.
+- [ ] On released OWNER/ADMIN/STAFF sessions, verify Plan ahead screens, staff labels-only expense intent, read-only tax/provider source, Today source attention and no automatic provider payment, bank transfer, customer message or undisclosed totals.
+- [ ] Independently reconcile K-8 dual-track forecast against current bank and posted expense sources and verify uncertain/voided linked source labels remain explicit. Actual supplier/telecom/tax payments stay authoritative in their own source.

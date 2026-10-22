@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/money-ui";
 import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 import { ButtonLink, DataList, EmptyState, PageHeader, type DataListColumn } from "@/components/ui";
+import { BudgetContextCard } from "@/domains/budget/context";
 
 export const metadata = { title: "Purchases" };
 
@@ -36,6 +37,7 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
           </>
         }
       />
+      <BudgetContextCard userId={session.user.id} heading="Purchase commitments and replacement reserves"/>
       <DataList
         rows={purchases} columns={columns} caption="Purchases"
         empty={<EmptyState title="No purchases yet" description="Record a purchase when you buy appliances; it replaces adding appliances one at a time." />}

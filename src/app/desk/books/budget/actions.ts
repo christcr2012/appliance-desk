@@ -8,6 +8,8 @@ import { attestBudgetSources,setBudgetActivation } from "@/domains/budget/protec
 import { applyBudgetMoves,undoBudgetMove } from "@/domains/budget/moves";
 import { configureBudgetEnvelope,configureBudgetWindows } from "@/domains/budget/envelopes";
 import { assignPostedBankSpending,reversePostedBankSpending,returnClearedSupplierRefund } from "@/domains/budget/spending";
+import { saveBudgetCostPlan,saveBudgetTarget,settleBudgetCost,reverseBudgetCostSettlement,getBudgetPlanning,refreshBudgetOccurrenceHorizon } from "@/domains/budget/planning";
+import type { BudgetRecurrence,BudgetTargetKind } from "@/domains/budget/planning-math";
 const str=(f:FormData,k:string)=>String(f.get(k)??"").trim();
 const done=(message:string):never=>{
  revalidatePath("/desk/books/budget");
@@ -100,4 +102,79 @@ export async function applyRefundAction(f:FormData){
   amountCents:parseDollarInput(str(f,"amount"),2_000_000_000),
   expectedRevision:str(f,"revision"),commandKey:str(f,"key")||randomUUID(),
   reason:str(f,"reason")}));
+}
+
+export async function saveBudgetCostPlanAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Known future bill",()=>saveBudgetCostPlan(s.user.id,{
+  envelopeId:str(f,"envelopeId"),planId:str(f,"planId")||undefined,
+  expectedVersion:str(f,"version")?Number(str(f,"version")):undefined,
+  name:str(f,"name"),amountCents:parseDollarInput(str(f,"amount"),2_000_000_000),
+  amountQuality:str(f,"quality")==="EXACT"?"EXACT":"ESTIMATE",
+  dueOn:str(f,"dueOn"),
+  recurrence:(str(f,"recurrence")||"NONE") as BudgetRecurrence,
+  sourceType:str(f,"sourceType")==="RECURRING_EXPENSE"?"RECURRING_EXPENSE":
+   str(f,"sourceType")==="PURCHASE_ORDER"?"PURCHASE_ORDER":
+   str(f,"sourceType")==="TELECOM_PLAN"?"TELECOM_PLAN":"MANUAL",
+  sourceId:str(f,"sourceId")||undefined,
+  active:str(f,"active")!=="false",reason:str(f,"reason")}));
+}
+export async function saveBudgetTargetAction(f:FormData){
+ const s=await requireRole("OWNER");
+ const kind=str(f,"kind") as BudgetTargetKind;
+ await command("Savings target",()=>saveBudgetTarget(s.user.id,{
+  envelopeId:str(f,"envelopeId"),
+  expectedVersion:str(f,"version")?Number(str(f,"version")):undefined,
+  kind,
+  amountCents:parseDollarInput(str(f,"amount"),2_000_000_000),
+  dueOn:kind==="SAVE_BY_DATE"?(str(f,"dueOn")||null):null,
+  repeat:kind==="SAVE_BY_DATE"&&str(f,"repeat")==="ANNUAL"?"ANNUAL":"NONE",
+  active:true,reason:str(f,"reason")}));
+}
+export async function settleBudgetCostAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Posted Books expense link",()=>settleBudgetCost(s.user.id,{
+  occurrenceId:str(f,"occurrenceId"),expenseId:str(f,"expenseId"),
+  amountCents:parseDollarInput(str(f,"amount"),2_000_000_000),
+  commandKey:str(f,"key")||randomUUID(),expectedRevision:str(f,"revision"),
+  reason:str(f,"reason")}));
+}
+export async function reverseBudgetCostAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Posted payment link correction",()=>reverseBudgetCostSettlement(s.user.id,{
+  settlementId:str(f,"settlementId"),expectedRevision:str(f,"revision"),
+  commandKey:str(f,"key")||randomUUID(),reason:str(f,"reason")}));
+}
+export async function fundBudgetSuggestionAction(f:FormData){
+ const s=await requireRole("OWNER");
+ await command("Verified-cash funding plan",async()=>{
+  const asOf=str(f,"asOf"),view=await getBudgetPlanning(s.user.id,asOf);
+  if(!view.mayAssign||view.revision!==str(f,"revision")||
+     view.sourceHash!==str(f,"hash")||
+     !view.proposal.legs.length||
+     JSON.stringify(view.proposal.legs.map(l=>({envelopeId:l.envelopeId,
+      signedCents:l.signedCents})))!==str(f,"legs"))
+   throw new Error("Current protected source or funding plan changed. Review again before confirming.");
+  return applyBudgetMoves(s.user.id,{asOf,sourceHash:view.sourceHash,
+   expectedRevision:view.revision,commandKey:str(f,"key")||randomUUID(),
+   reason:str(f,"reason"),moves:view.proposal.legs.map(l=>({
+    envelopeId:l.envelopeId,kind:"ASSIGN" as const,signedCents:l.signedCents}))});
+ });
+}
+
+export async function refreshBudgetPlanHorizonAction(f:FormData){
+ const s=await requireRole("OWNER");
+ let message:string,nextCursor:string|null=null;
+ try{
+  const batch=await refreshBudgetOccurrenceHorizon(s.user.id,
+   str(f,"today"),str(f,"cursor")||undefined);
+  nextCursor=batch.nextCursor;
+  message="Refreshed "+batch.processed+" plan schedules. "+
+   (nextCursor?"More pages remain; select Continue refresh.":"All active source plans checked.");
+ }catch(e){
+  message="Plan refresh: "+(e instanceof Error?e.message:"Unable to refresh. Restart from page one.");
+ }
+ revalidatePath("/desk/books/budget");
+ redirect("/desk/books/budget?tab=plan&notice="+encodeURIComponent(message.slice(0,240))+
+  (nextCursor?"&refreshCursor="+encodeURIComponent(nextCursor):""));
 }

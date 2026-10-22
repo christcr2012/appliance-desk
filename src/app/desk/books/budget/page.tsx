@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BudgetPlanSection } from "./plan-section";
 import { randomUUID } from "node:crypto";
 import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
@@ -13,13 +14,17 @@ const input="min-w-0 w-full rounded border border-border bg-background px-3 py-2
 const btn="rounded border border-border bg-card px-3 py-2 font-semibold text-foreground focus-visible:outline-2 focus-visible:outline-offset-2";
 const dollars=(n:number|null)=>n===null?"Unknown":formatMoney(n);
 export default async function BudgetBackingPage({searchParams}:{
- searchParams:Promise<{notice?:string;previewKind?:string;envelopeId?:string;
+ searchParams:Promise<{tab?:string;days?:string;view?:string;state?:string;notice?:string;refreshCursor?:string;previewKind?:string;envelopeId?:string;
  fromId?:string;toId?:string;amount?:string;reason?:string}>}){
  const actor=await requireRole("OWNER","ADMIN"),owner=actor.user.role==="OWNER";
+ const params=await searchParams;
+ if(params.tab==="plan")return <BudgetPlanSection userId={actor.user.id} owner={owner}
+  notice={params.notice?.slice(0,240)} days={params.days} view={params.view}
+  state={params.state} refreshCursor={params.refreshCursor?.slice(0,64)}/>;
  const asOf=businessDateKey(new Date());
  const [snap,spending,windows,refunds]=await Promise.all([getBudgetSnapshot(actor.user.id,asOf),
    getPostedBankSpendingDesk(actor.user.id),getBudgetWindows(actor.user.id),getSupplierRefundDesk(actor.user.id)]);
- const params=await searchParams,notice=params.notice?.slice(0,240);
+ const notice=params.notice?.slice(0,240);
  type PreviewLeg={id:string;signedCents:number;kind:"ASSIGN"|"RELEASE"};
  let preview:null|{kind:string;legs:PreviewLeg[];amount:number;reason:string;
   problem:string|null;before:number;after:number|null;changed:Array<{id:string;
@@ -67,6 +72,13 @@ export default async function BudgetBackingPage({searchParams}:{
   <header className="space-y-2">
    <Link className="underline" href="/desk/books/cash/checks">Back to bank statement reconciliation</Link>
    <h1 className="text-2xl font-bold">Budget backing</h1>
+   <nav aria-label="Budget views" className="flex flex-wrap gap-3">
+    <Link className="underline p-2" href="/desk/books/budget" aria-current="page">My money</Link>
+    <Link className="underline p-2" href="/desk/books/budget?tab=plan">Plan ahead</Link>
+    <Link className="underline p-2" href="/desk/books/reports">Review</Link>
+    <Link className="underline p-2" href="/desk/books/cash/checks">Bank checks</Link>
+    <Link className="underline p-2" href="/desk/books/budget#source-setup">Setup</Link>
+   </nav>
    <p>Discretionary envelopes do not move money out of the bank. Protected tax, card and customer obligations are reserved first. A CSV or estimated rent is never spendable cash.</p>
    {notice&&<p role="status" className="rounded border border-border p-3">{notice}</p>}
   </header>
@@ -120,7 +132,7 @@ export default async function BudgetBackingPage({searchParams}:{
    </p>):<p>No classified liabilities were available; that does not establish absence of debt.</p>}
    {snap.unknownLiabilities.length>0&&<p role="alert">Unclassified liabilities: {snap.unknownLiabilities.join(", ")}</p>}
   </section>
-  {owner&&<section className="rounded-lg border border-border p-4 space-y-3">
+  {owner&&<section id="source-setup" className="rounded-lg border border-border p-4 space-y-3">
    <h2 className="text-lg font-semibold">Owner review and activation</h2>
    <p>Record references to independent bank statements, the current business-card debt and customer/tax liability review. No account or card numbers, passwords or unreviewed guessed amounts. This review expires when the day or journal changes.</p>
    <form action={attestBudgetAction} className="grid gap-3">
