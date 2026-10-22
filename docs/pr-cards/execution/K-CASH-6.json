@@ -6,7 +6,7 @@
   "card": "docs/pr-cards/K-CASH-6.md",
   "outcome": "Complete original K-CASH-6 provider-specific QuickBooks DETAIL export and accountable manual import/delivery proof without provider calls or false remote success.",
   "risk": "Remote duplicate QBO imports, PREPARED falsely marked imported, journal mismatch, provider/account uncertainty, private finance leakage.",
-  "next": "Full source+DB/browser acceptance and exact-head CI, review/merge. No provider activation. 22 external gates remain pending.",
+  "next": "PR #511 source head 74e06c4 passed exact aggregate CI and full disposable DB/browser; final documentation-only checkpoint CI, PR self-review/automated review disposition and expected-head merge pending. Original K-CASH-7 follows. All 22 external owner/provider cases are independently PENDING.",
   "references": [
     {
       "path": "docs/designs/BATCH-K-CASH.md",

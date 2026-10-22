@@ -1207,13 +1207,16 @@
       "evidence": [
         "src/domains/books/exports/index.ts",
         "src/domains/books/exports/delivery.ts",
-        "prisma/schema.prisma"
+        "prisma/schema.prisma",
+        "https://github.com/christcr2012/appliance-desk/pull/511",
+        "tests/books-export-delivery-integration.test.ts",
+        "e2e/books-export.spec.ts"
       ],
       "tests": [
         "tests/books-export-delivery-integration.test.ts",
         "e2e/books-export.spec.ts"
       ],
-      "readiness": "CANDIDATE_AWAITING_EXACT_HEAD_CI",
+      "readiness": "SOURCE_CI_GREEN_FINAL_DOC_CI_REVIEW_MERGE_PENDING",
       "plannedCard": "docs/pr-cards/K-CASH-6.md",
       "card": "docs/pr-cards/K-CASH-6.md"
     },

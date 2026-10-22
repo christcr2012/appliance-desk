@@ -14,14 +14,14 @@
         "Confirmed QBO sources are filtered from new files and safe immutable prior archive re-download warns Already imported.",
         "OWNER version/reason and neverStarted proof gate failed-before-import; optional previous-delivery link and shared advisory lock serialize conflicting decisions.",
         "Live owner/admin accounting authorization and role-scoped actions/screen, STAFF/CUSTOMER denied; no QBO or payment API.",
-        "Owner QBO manual delivery wizard, editable trial labels/edition, archive status, import steps, phone/keyboard/axe.",
-        "Full named disposable PostgreSQL and browser test cases authored, with exact-head CI pending before any completion claim."
+        "Responsive/keyboard/axe owner QBO file-preparation and review wizard, private tenant label and edition, archived status, bank-matching warnings and step-by-step trial import checklist, validated in browser-a/b/c/d.",
+        "Real disposable PostgreSQL shard passed K-CASH-6 prepared/uncertain/legacy/failed/replacement/confirmed/multi-confirmed/role/replay cases; Playwright Books/export and generated route/axe checks passed on exact source head 74e06c4242b9d53612caebfbfd88b435de21c0e8."
       ]
     }
   ],
   "remainingEngineering": [
-    "Exact-head GitHub CI and independent PR review still required; candidate acceptance evidence is source-authored rather than passed tests.",
-    "External real QuickBooks tenant/trial journal/bank proof and 22 owner-provider release checks remain unexercised."
+    "Final documentation and review checkpoint still requires its own exact-head aggregate CI, PR review/waiver and merge; synthetic implementation passed CI on source head 74e06c4242b9d53612caebfbfd88b435de21c0e8.",
+    "Real QBO trial-company count/balances/import/bank proof and all 22 owner/provider/CPA release checks are externally pending; do not claim those as engineering failures or successes."
   ],
   "externalAcceptance": [
     "All 22 original owner/provider/CPA acceptance cases remain PENDING, including observed actual QBO import and bank statement proof.",
@@ -29,9 +29,10 @@
   ],
   "workloadException": "The single full original K-CASH-6 accounting-provider subsection is a coherent substantial end-to-end delivery/domain/wizard/test unit; the dependent K-CASH-7 report/migration risk is separately staged.",
   "evidence": [
-    "Full 10-criterion original plan committed docs-only before code at 975045b8e68bedd492d9cbfb95d1d7c8a7bf1673.",
-    "Reuses K-5 formatters and existing K-CASH-1 AccountingDelivery schema; no migration.",
-    "Real-DB/browser tests authored; no local test, preflight or exact-head CI pass claimed yet.",
-    "Self-review, exact-head CI and PR merge evidence to be added before accepting engineering."
+    "Frozen original K-CASH-6 10 acceptance lines in docs-only planning commit 975045b8e68bedd492d9cbfb95d1d7c8a7bf1673 before changes; PR #511.",
+    "Exact source head 74e06c4242b9d53612caebfbfd88b435de21c0e8: aggregate ci SUCCESS; all 3 disposable PostgreSQL/unit shards and all 4 Playwright/axe browser shards green; typecheck/lint/owner-language, secrets, release-policy green.",
+    "Capacity baseline rerun passed 2026-10-22 without thresholds or code changes; original run 16.7ms vs 11.9ms property manager read (unrelated runner fluctuation). Browser b/d were rerun successfully after isolated unrelated custom-color contrast misses; existing WCAG checks not weakened or skipped.",
+    "No separate local checkout/tests or live provider run claimed. Financial data, tenant, provider import, customer communications, budget activation and live deployment untouched.",
+    "Source/auth/provider diff self-review and absence of automated review/comments/threads will be recorded on PR; final docs head still requires new aggregate CI green before merge."
   ]
 }
