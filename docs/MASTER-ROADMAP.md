@@ -321,3 +321,7 @@ batch and its original acceptance with work-index and the pinned validator in on
 reviewed change; preserve every existing required unit. Source engineering, merged,
 released and real acceptance remain separate. Design does not authorize production
 configuration changes, live effects, paid infrastructure or manual release.
+
+## Universal permissions audit overlay — owner October21
+
+Use the [Sol 5.6 contract in existing authority guidance](END-USER-AUTHORITY.md#sol-56-remaining-verification-and-correction-contract--owner-2026-10-21) within the affected original capability/card. It supplies identity/role/customer/session audit and regression requirements without changing active packet, K-CASH or original launch order. Preserve signup policy and business safeguards; no new multi-business/MCP architecture or duplicate batch IDs are approved by this documentation.

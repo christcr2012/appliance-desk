@@ -1,5 +1,9 @@
 # AGENTS.md — the rules. Read this first, every session.
 
+## Universal identity completion preparation
+
+Owner-requested Sol 5.6 implementation detail is in [END-USER-AUTHORITY](docs/END-USER-AUTHORITY.md#sol-56-remaining-verification-and-correction-contract--owner-2026-10-21). Follow the active original packet/order; reuse Better Auth and existing role/customer boundaries. The contract identifies source, disposable fixtures, meaningful tests and scope limits, not a new backlog or runtime implementation.
+
 > **Fast path for any agent:** read [docs/AGENT-QUICKSTART.md](docs/AGENT-QUICKSTART.md) (one page, the whole
 > loop and every known CI trap), scaffold with `npm run bundle:new`, and gate with `npm run bundle:preflight`.
 > **Precedence:** when two instructions in this repo disagree, the later-dated owner amendment wins; at equal
