@@ -1,3 +1,10 @@
+## K-CASH-5A/5B financial planning activation — NOT authorized by source CI
+
+- [ ] After the normal independently approved release, owner checks Plan ahead refresh across every 25-plan page and validates real recurring template, purchase commitment, due amount and source status against current Books records.
+- [ ] Compare a real posted payment, refund/VOID and related planning correction to bank and Books evidence; no scheduled bill or goal is itself a paid expense.
+- [ ] Verify real opening bank statement, business card, customer deposit, sales/use tax and RDF protected obligations with accountant/owner; separately choose date and explicitly enable default-OFF budget funding only after those sources tie.
+- [ ] Confirm owner/admin read and OWNER-only mutation with the released revision and preserve all **22 original distinct release acceptance checks**; engineering CI does not close any of them, enable Stripe LIVE, customer messaging, bank transfer or unscheduled release.
+
 ## K-CASH-4A/4B initial business activation — NOT YET AUTHORIZED
 
 - [ ] Verify the additive budget migration, populated restore and protected owner budget screens on the actual scheduled released revision; draft PR source checks do not establish live readiness.

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "b2a06c2",
-  "updated": "2026-10-21",
+  "updated": "2026-10-22",
   "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
@@ -1139,7 +1139,7 @@
         "K-CASH-4B"
       ],
       "status": "IN_PROGRESS",
-      "migration": "none",
+      "migration": "20261021190000_k_cash_unique_cost_sources",
       "budget": 480,
       "units": [
         "K-CASH-5A"
@@ -1150,13 +1150,14 @@
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
         "src/domains/reports/definitions.ts",
-        "K-CASH-5A/5B partial branch checkpoint; original acceptance and exact-head CI still incomplete"
+        "K-CASH-5A/5B partial branch checkpoint; original acceptance and exact-head CI still incomplete",
+        "PR #509 code head 2db0f8b39b623f7437b305eb1c5385917f367ea8 passed aggregate CI including 3 disposable PostgreSQL/unit and 4 browser shards; final documentation/PR exact-head CI still required before merge; 22 release checks remain external."
       ],
       "tests": [
         "tests/budget-planning.test.ts",
         "tests/budget-planning-integration.test.ts"
       ],
-      "readiness": "ENGINEERING_AUTHORED_TESTS_NOT_RUN",
+      "readiness": "IN_PROGRESS",
       "plannedCard": "docs/pr-cards/K-CASH-5A.md",
       "card": "docs/pr-cards/K-CASH-5A.md"
     },
@@ -1179,13 +1180,14 @@
         "docs/research/2026-10-08-startup-banking-quickbooks.md",
         "prisma/schema.prisma",
         "src/domains/reports/definitions.ts",
-        "K-CASH-5A/5B partial branch checkpoint; original acceptance and exact-head CI still incomplete"
+        "K-CASH-5A/5B partial branch checkpoint; original acceptance and exact-head CI still incomplete",
+        "PR #509 code head 2db0f8b39b623f7437b305eb1c5385917f367ea8 passed aggregate CI including 3 disposable PostgreSQL/unit and 4 browser shards; final documentation/PR exact-head CI still required before merge; 22 release checks remain external."
       ],
       "tests": [
         "tests/budget-context-access.test.ts",
         "e2e/budget.spec.ts"
       ],
-      "readiness": "ENGINEERING_AUTHORED_TESTS_NOT_RUN",
+      "readiness": "IN_PROGRESS",
       "plannedCard": "docs/pr-cards/K-CASH-5B.md",
       "card": "docs/pr-cards/K-CASH-5A.md"
     },

@@ -200,8 +200,8 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 | K-CASH-3 | **MERGED #507** — bank matches, immutable reconciliation, conservative cash readiness | `K-CASH-3.md` (frozen 2026-10-19 plan) | K-CASH-2 |
 | K-CASH-4A | **MERGED #508** — envelope/targets/plans/settlement schema and restore | `K-CASH-4A.md` (joint frozen K-CASH-4A/4B plan) | K-CASH-3 |
 | K-CASH-4B | **MERGED #508** — protected reserves and atomic envelope movements | `K-CASH-4A.md` (joint frozen plan) | K-CASH-4A |
-| K-CASH-5A | **IN PROGRESS** — recurring plans, targets, settlements and forecast dedupe | `K-CASH-5A.md` (joint frozen 5A/5B) | K-CASH-4B |
-| K-CASH-5B | **IN PROGRESS** — budget workspace and contextual source integration | `K-CASH-5A.md` (joint frozen 5A/5B) | K-CASH-5A |
+| K-CASH-5A | **PR #509 GREEN CODE — AWAITING FINAL DOC CI / MERGE** — recurring plans, targets, settlements and forecast dedupe | `K-CASH-5A.md` (joint frozen 5A/5B) | K-CASH-4B |
+| K-CASH-5B | **PR #509 GREEN CODE — AWAITING FINAL DOC CI / MERGE** — budget workspace and contextual source integration | `K-CASH-5A.md` (joint frozen 5A/5B) | K-CASH-5A |
 | K-CASH-6 | QBO detail export, import proof and owner handoff | JIT — `K-CASH-6.md` | K-CASH-5B |
 | K-CASH-7 | Published plans, variance/trend reports and month-end review | JIT — `K-CASH-7.md` | K-CASH-6 |
 

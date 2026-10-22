@@ -6,7 +6,7 @@
   "card": "docs/pr-cards/K-CASH-5A.md",
   "outcome": "Complete original K-CASH-5A cost schedules, targets, source-linked settlements and corrected K forecast together with K-CASH-5B owner My money/Plan ahead/Today/context workspace, using K-CASH-4A/B budget evidence without enabling external payments.",
   "risk": "A plan mistaken for paid money, target/expense double counts, invented Ready cash, duplicate settlement, stale approvals, staff/private financial exposure or source revision race.",
-  "next": "Implement both original 5A+5B end-to-end on this branch, one coherent tested result; inspect real source seams and all synthetic/Postgres/browser proof, update scorecard/handoff and run exact-head CI before merge.",
+  "next": "K-CASH-5A/5B source engineering evidence passed all required GitHub CI at 2db0f8b39b623f7437b305eb1c5385917f367ea8. Recheck aggregate CI on final docs-only head, reconcile reviews and source acceptance, merge authorized PR #509 if all required gates remain green; keep 22 external release gates pending and default-off budget funding.",
   "references": [
     {
       "path": "docs/designs/BATCH-K-CASH.md",
