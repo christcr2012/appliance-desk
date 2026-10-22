@@ -25,7 +25,7 @@ describe("K-CASH-7 real reporting whole-cent math and Colorado periods",()=>{
   });
  });
  it("refund/void/reversal signs are net, not made absolute",()=>{
-  const rows=[journal("INCOME",450,0),journal("CONTRA_INCOME",0,200),
+  const rows=[journal("INCOME",450,0),journal("CONTRA_INCOME",200,0),
    journal("EXPENSE",0,175)];
   expect(journalProfit(rows)).toMatchObject({
    revenueCents:-650,costCents:-175,netProfitCents:-475,

@@ -37,7 +37,7 @@ async function draftInTx(tx:Tx,month:MonthKey){
   tx.budgetCostPlan.findMany({where:{active:true},select:{
    id:true,envelopeId:true,amountCents:true,amountQuality:true,dueOn:true,recurrence:true,
    occurrences:{where:{dueOn:{gte:coloradoDay(from),lte:coloradoDay(to)},status:{not:"CANCELLED"}},
-     select:{id:true,dueOn:true,amountCents:true},take:LIMIT+1}},
+     select:{id:true,dueOn:true,amountCents:true},take:LIMIT+1},
   },take:LIMIT+1}),
   tx.budgetTarget.findMany({where:{active:true},take:LIMIT+1}),
   tx.budgetMove.findMany({where:{createdAt:{lt:coloradoDay(from)}},select:{
