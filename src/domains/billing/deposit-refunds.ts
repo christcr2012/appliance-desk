@@ -94,6 +94,16 @@ export async function decideDepositRefund(
     await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" = ${scope.agreementId} FOR UPDATE`;
     const cancellation = await tx.preDeliveryCancellation.findUnique({where:{agreementId:scope.agreementId},select:{agreementId:true}});
     if(cancellation) throw new Error("This reserve is included in the approved cancellation return. Reconcile that return instead of refunding the deposit again.");
+    const refundsOnDepositBills = await tx.refund.count({
+      where: {
+        invoice: { agreementId: scope.agreementId, lineItems: { some: { kind: "DEPOSIT" } } },
+      },
+    });
+    if (refundsOnDepositBills > 0) {
+      throw new Error(
+        "Money has already been refunded on the bill that included this deposit. Check that refund first so the deposit isn't returned twice.",
+      );
+    }
     const rows = await tx.$queryRaw<
       Array<{
         id: string;

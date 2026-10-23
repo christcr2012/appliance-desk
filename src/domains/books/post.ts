@@ -73,6 +73,11 @@ export async function writeJournal(tx: Tx, sourceType: JournalSourceType, source
   return true;
 }
 
+function isCreditFromReceipt(sourceType: string | null | undefined) {
+  const kind=sourceType?.toUpperCase();
+  return kind==="RECEIPT_OVERPAYMENT"||kind==="HELD_PAYMENT";
+}
+
 export async function sourceEvents(tx: Tx, sourceType: JournalSourceType, sourceId: string):
 Promise<{ events: Event[]; extra: Subject }> {
   switch (sourceType) {
@@ -140,8 +145,15 @@ Promise<{ events: Event[]; extra: Subject }> {
     case "CUSTOMER_CREDIT": {
       const x=await tx.customerCredit.findUnique({where:{id:sourceId}});
       if(!x)return {events:[],extra:{}};
-      const type=x.sourceType?.toUpperCase() === "RECEIPT_OVERPAYMENT" ? "RECEIPT_OVERPAYMENT" :
-        x.reason.toUpperCase().includes("REFUND") ? "REFUND_TO_CREDIT" : "GOODWILL";
+      // Credits made from money that already arrived (an overpayment, or a late
+      // payment kept as credit) move it out of "unapplied receipts"; they are not
+      // an expense. Only a refund-to-credit hits the refunds account.
+      // A held-payment credit posted before this correction already has a goodwill entry; keep it as it is
+      // (it is a different event kind, so posting again would double the liability).
+      const legacyHeld=x.sourceType?.toUpperCase()==="HELD_PAYMENT"&&
+        (await tx.journalEntry.count({where:{sourceType:"CUSTOMER_CREDIT",sourceId,eventKind:"CREDIT_GRANTED"}}))>0;
+      const type=legacyHeld ? "GOODWILL" : isCreditFromReceipt(x.sourceType) ? "RECEIPT_OVERPAYMENT" :
+        x.sourceType?.toUpperCase()==="REFUND_TO_CREDIT"||x.reason.toUpperCase().includes("REFUND") ? "REFUND_TO_CREDIT" : "GOODWILL";
       const plan=creditIssued({date:x.createdAt,amountCents:cents(x.amountCents),source:type});
       return {events:plan?[{eventKind:type==="RECEIPT_OVERPAYMENT"?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED",plan}]:[],extra:{customerId:x.customerId}};
     }
@@ -155,6 +167,10 @@ Promise<{ events: Event[]; extra: Subject }> {
       if(!x)return {events:[],extra:{}};
       // There is no per-refund tax attribution stored yet. Never invent tax-recovery allocation.
       // A refund against a taxed bill is held for K-2 exception and owner/CPA evidence.
+      // A refund kept as store credit sends no money out: the credit's own entry
+      // (refunds expense / customer credits liability) is the whole story.
+      const toCredit=await tx.customerCredit.count({where:{sourceType:"REFUND_TO_CREDIT",sourceId:x.id}});
+      if(toCredit>0)return {events:[],extra:{customerId:x.invoice.customerId}};
       const tax=await tx.invoiceTaxLine.count({where:{invoiceId:x.invoiceId,taxCents:{gt:0}}});
       if(tax)throw new PostingEvidenceError("Taxed refund lacks an immutable refund tax allocation.");
       const plan=refundIssued({date:x.createdAt,amountCents:cents(x.amountCents),stripeRefundId:x.stripeRefundId,tax:[]});
@@ -332,16 +348,26 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
       required:[...(x.sourceReceiptId?["DEPOSIT_FUNDED"]:["DEPOSIT_FUNDED"]),
         ...(x.refundedAt&&((x.refundedAmountCents??0)>0)?["DEPOSIT_REFUNDED"]:[]),
         ...(x.refundedAt&&(x.amountCents-(x.refundedAmountCents??0))>0?["DEPOSIT_RETAINED"]:[])]}))},
-    {type:"CUSTOMER_CREDIT",load:async(skip,take)=>(await prisma.customerCredit.findMany({
-      where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceType:true},
-      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"CUSTOMER_CREDIT",id:x.id,at:x.createdAt,
-      required:[x.sourceType?.toUpperCase()==="RECEIPT_OVERPAYMENT"?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED"]}))},
+    {type:"CUSTOMER_CREDIT",load:async(skip,take)=>{
+      const rows=await prisma.customerCredit.findMany({
+        where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceType:true},
+        orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
+      // Held-payment credits posted before the correction keep their original goodwill entry.
+      const legacyHeld=new Set((await prisma.journalEntry.findMany({
+        where:{sourceType:"CUSTOMER_CREDIT",eventKind:"CREDIT_GRANTED",
+          sourceId:{in:rows.filter(r=>r.sourceType?.toUpperCase()==="HELD_PAYMENT").map(r=>r.id)}},
+        select:{sourceId:true}})).map(e=>e.sourceId));
+      return rows.map(x=>({type:"CUSTOMER_CREDIT",id:x.id,at:x.createdAt,
+        required:[isCreditFromReceipt(x.sourceType)&&!legacyHeld.has(x.id)?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED"]}));}},
     {type:"CREDIT_APPLICATION",load:async(skip,take)=>(await prisma.creditApplication.findMany({
       where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
       .map(x=>({type:"CREDIT_APPLICATION",id:x.id,at:x.createdAt,required:["CREDIT_APPLIED"]}))},
-    {type:"REFUND",load:async(skip,take)=>(await prisma.refund.findMany({
-      where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
-      .map(x=>({type:"REFUND",id:x.id,at:x.createdAt,required:["REFUND_ISSUED"]}))},
+    {type:"REFUND",load:async(skip,take)=>{
+      const rows=await prisma.refund.findMany({
+        where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
+      const creditBackedRefunds=new Set((await prisma.customerCredit.findMany({
+        where:{sourceType:"REFUND_TO_CREDIT",sourceId:{in:rows.map(r=>r.id)}},select:{sourceId:true}})).map(c=>c.sourceId));
+      return rows.map(x=>({type:"REFUND",id:x.id,at:x.createdAt,required:creditBackedRefunds.has(x.id)?[]:["REFUND_ISSUED"]}));}},
     {type:"EXPENSE",load:async(skip,take)=>(await prisma.expense.findMany({
       where:{spentOn:{gte:since},status:{in:["POSTED","VOID"]}},select:{id:true,spentOn:true,status:true},
       orderBy:[{spentOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"EXPENSE",id:x.id,at:x.spentOn,

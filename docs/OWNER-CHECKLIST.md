@@ -15,13 +15,19 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
   Environments → Production → Branch Tracking → choose `live` → Save; also turn automatic Preview deployments off.
   Ready when: now (`live` exists). You'll know it worked: Branch Tracking shows `live`.
-- [ ] **Colorado tax-rate key (IN-61, about 10 minutes).** Steps: sign in to SUTS → Quick Links → Lookup API Key → pick the
-  business; save the key in Vercel as `COLORADO_GIS_API_KEY` (Production and Preview) — never in a chat, email or
-  GitHub; give the agent the instructions text shown on that page (not the key). Ready when: now. You'll know it worked:
-  new customer addresses get a tax rate automatically instead of "review this address".
-- [ ] **Email Colorado about XML tax-return upload (IN-62).** Steps: send the one email text in OWNER-INPUTS IN-62 to
-  DOR_LocationFilers@state.co.us; create the free SUTS test account it mentions. Ready when: now. You'll know it worked:
-  you have their written answer; tell the agent.
+- [ ] **Colorado tax-rate key (IN-61, about 10 minutes).** Steps: sign in to SUTS → "Sales Tax Rates" menu → "GIS API Key" →
+  pick the business → copy the API documentation text shown at the bottom of that page and give it to the agent (not the key).
+  Save the key itself in Vercel as `COLORADO_GIS_API_KEY` (Production and Preview) — never in a chat, email or GitHub.
+  Ready when: your LLC, federal EIN and Colorado sales-tax license exist and you can sign in to SUTS (not before). You'll
+  know it worked: new customer addresses get a tax rate automatically instead of "review this address". Until then the
+  app keeps asking you to review each address, which is safe.
+- [ ] **Ask Colorado to approve your tax-return upload (IN-62).** Both the XML upload and the Excel upload need Colorado's
+  approval first. Steps: send the one email text in OWNER-INPUTS IN-62 to DOR_LocationFilers@state.co.us (they answer in
+  about 5–7 business days; the Excel template has 48 columns). Ready when: you have a sales-tax license. You'll know it
+  worked: you have their written answer; tell the agent. Until then you file by typing the numbers into SUTS from the
+  return packet the app prepares.
+- [ ] **Receipt scanning (W-13) is OFF.** Reading photographed receipts needs an outside service that costs money per
+  receipt, so the app doesn't turn it on by itself. Tell the agent if you want it, and which price you're comfortable with.
 - [ ] **Enter your SUTS details in the app (IN-43).** Steps: Desk → Money → Sales tax → Filing accounts → SUTS setup (tax
   areas and codes in your return's order, license number, filing frequency, expiry, deduction names). Ready when: you
   have registered on SUTS. You'll know it worked: the return packet matches your SUTS return.

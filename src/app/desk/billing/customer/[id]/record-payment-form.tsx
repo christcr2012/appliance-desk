@@ -29,7 +29,7 @@ export function RecordPaymentForm({
     const data = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await recordPaymentAction(customerId, {
-        amountDollars: Number(data.get("amountDollars") ?? 0),
+        amountDollars: String(data.get("amountDollars") ?? ""),
         method: (data.get("method") as "check" | "cash" | "bank_transfer" | "other") ?? "check",
         receivedOn: String(data.get("receivedOn") ?? ""),
         invoiceId: String(data.get("invoiceId") ?? ""),

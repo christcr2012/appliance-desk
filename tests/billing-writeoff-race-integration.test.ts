@@ -121,4 +121,20 @@ describe.skipIf(!enabled)("invoice payment/write-off race in disposable Postgres
     expect(invoice.amountPaidCents).toBe(10_000);
     expect(invoice.writtenOffAt).toBeNull();
   });
+
+  it("refuses to write off a voided bill", async () => {
+    const voidId = `${invoiceId}-void`;
+    await prisma.invoice.create({
+      data: { id: voidId, customerId, status: "VOID", amountDueCents: 5_000, amountPaidCents: 0 },
+    });
+    try {
+      await expect(writeOffInvoice(voidId, ownerId, "Should be refused")).rejects.toThrow(
+        /unpaid, open bill/i,
+      );
+      const after = await prisma.invoice.findUniqueOrThrow({ where: { id: voidId } });
+      expect(after.status).toBe("VOID");
+    } finally {
+      await prisma.invoice.deleteMany({ where: { id: voidId } });
+    }
+  });
 });

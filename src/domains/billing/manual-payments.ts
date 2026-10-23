@@ -1,5 +1,6 @@
 import type { InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import {
   createReceiptWithAllocations,
   lockCustomerLedger,
@@ -59,6 +60,7 @@ export async function recordManualPayment(
   let result: ManualPaymentResult | undefined;
 
   await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actingUserId, ["OWNER", "ADMIN"]);
     await lockCustomerLedger(tx, customerId);
 
     const targetInvoices = await tx.invoice.findMany({
@@ -161,6 +163,7 @@ export async function writeOffInvoice(
   reason: string,
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actingUserId, ["OWNER", "ADMIN"]);
     const rows = await tx.$queryRaw<
       Array<{
         id: string;
@@ -183,6 +186,9 @@ export async function writeOffInvoice(
     }
     if (invoice.status === "WRITTEN_OFF") {
       throw new Error("This invoice is already written off.");
+    }
+    if (!["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(invoice.status)) {
+      throw new Error("Only an unpaid, open bill can be written off.");
     }
 
     await tx.invoice.update({

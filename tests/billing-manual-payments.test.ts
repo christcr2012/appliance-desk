@@ -8,6 +8,8 @@ const invoiceFindMany = vi.fn();
 const invoiceUpdate = vi.fn();
 const auditLogCreate = vi.fn();
 const queryRaw = vi.fn();
+const assertActiveTeamActor = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/team-actor", () => ({ assertActiveTeamActor }));
 
 vi.mock("@/domains/billing/ledger", () => ledger);
 vi.mock("@/lib/prisma", () => ({
@@ -195,6 +197,16 @@ describe("writeOffInvoice", () => {
     ]);
     const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
     await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/already written off/i);
+  });
+
+  it("refuses a voided bill and re-checks the acting staff member first", async () => {
+    queryRaw.mockResolvedValueOnce([
+      { id: "inv-1", status: "VOID", amountDueCents: 4000, amountPaidCents: 0 },
+    ]);
+    const { writeOffInvoice } = await import("@/domains/billing/manual-payments");
+    await expect(writeOffInvoice("inv-1", "owner-1", "reason")).rejects.toThrow(/unpaid, open bill/i);
+    expect(assertActiveTeamActor).toHaveBeenCalledWith(expect.anything(), "owner-1", ["OWNER", "ADMIN"]);
+    expect(invoiceUpdate).not.toHaveBeenCalled();
   });
 
   it("refuses an invoice that doesn't exist", async () => {
