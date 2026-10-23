@@ -8,7 +8,7 @@ export const DR0252_FORMS_DIR = path.join(process.cwd(), "src/domains/tax/forms"
 /** Years for which an official blank DR 0252 is bundled (files named DR0252_<year>.pdf). */
 export function availableDr0252Years(dir = DR0252_FORMS_DIR): number[] {
   try {
-    return fs.readdirSync(dir)
+    return fs.readdirSync(/*turbopackIgnore: true*/ dir)
       .map((name) => /^DR0252_(\d{4})\.pdf$/.exec(name)?.[1])
       .filter((year): year is string => Boolean(year))
       .map(Number).sort((a, b) => a - b);

@@ -65,7 +65,8 @@ export function parseStructuredAgentNote(input: unknown) {
       !/^(src|docs|tests|e2e|prisma|scripts)\/[A-Za-z0-9_/.-]+$/.test(file) ||
       file.split("/").some(part => part === ".." || part.startsWith(".")))
       throw new OpsRequestError(422);
-    const full = resolve(process.cwd(), file);
+    // Validation only (the file is never read or bundled): keep Turbopack from tracing the whole project.
+    const full = resolve(/*turbopackIgnore: true*/ process.cwd(), file);
     if (!full.startsWith(process.cwd() + sep) || !existsSync(full) || !lstatSync(full).isFile() || !realpathSync(full).startsWith(process.cwd() + sep))
       throw new OpsRequestError(422);
     paths.push(file);
