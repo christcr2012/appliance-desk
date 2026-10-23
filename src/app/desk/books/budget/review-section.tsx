@@ -59,7 +59,7 @@ export async function BudgetReviewSection({userId,owner,month,planId,notice,page
      <input name="expectedVersion" type="hidden" value={draft.latest?.version??0}/>
      <input name="commandKey" type="hidden" value={randomUUID()}/>
      <input name="ids" type="hidden" value={JSON.stringify(draft.rows.map(r=>r.envelopeId))}/>
-     <div className="min-w-0 max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Published budget source/amount table" tabIndex={0}>
+     <div className="relative min-w-0 max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Published budget source/amount table" tabIndex={0}>
       <table className="min-w-full text-sm"><caption className="text-left py-2">Owner-reviewed cost and funding draft, per envelope</caption>
        <thead><tr className="text-left border-b border-border">
         <th className="p-2" scope="col">Envelope</th>
@@ -88,7 +88,7 @@ export async function BudgetReviewSection({userId,owner,month,planId,notice,page
    <section className="rounded border border-border p-4 space-y-3" aria-labelledby="monthly-variances">
     <h2 id="monthly-variances" className="text-lg font-semibold">Published plan vs recorded movements</h2>
     <p>Planned spending is not paid spending. Actual spending is the signed budget classification of already-posted bank journal lines; funding is the separate signed allocation history. Unplanned does not mean zero.</p>
-    <div className="min-w-0 max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Envelope spending, funding and commitments" tabIndex={0}><table className="min-w-full text-sm">
+    <div className="relative min-w-0 max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Envelope spending, funding and commitments" tabIndex={0}><table className="min-w-full text-sm">
      <caption className="text-left py-2">Envelope spending, funding and unpaid commitments for {selected}</caption>
      <thead><tr className="border-b border-border text-left"><th scope="col" className="p-2">Envelope</th>
       <th scope="col" className="p-2">Planned cost</th><th scope="col" className="p-2">Actual spending</th>
@@ -151,7 +151,7 @@ export async function BudgetReviewSection({userId,owner,month,planId,notice,page
    <section className="rounded border border-border p-4 space-y-2">
     <h2 className="font-semibold text-lg">Journal-source drilldown</h2>
     <p>{report.sourceCount} individual journal lines. Changing page size does not change reported totals.</p>
-    <div className="min-w-0 max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Journal source detail" tabIndex={0}><table className="min-w-full text-sm"><caption className="text-left py-2">Posted source rows (read-only)</caption>
+    <div className="relative min-w-0 max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Journal source detail" tabIndex={0}><table className="min-w-full text-sm"><caption className="text-left py-2">Posted source rows (read-only)</caption>
      <thead><tr className="text-left border-b border-border"><th scope="col" className="p-2">Date</th><th scope="col" className="p-2">Source</th><th scope="col" className="p-2">Account</th><th scope="col" className="p-2">Debit</th><th scope="col" className="p-2">Credit</th></tr></thead>
      <tbody>{report.sourcePage.rows.map((r,i)=><tr className="border-b border-border" key={r.entryId+"-"+r.accountId+"-"+i}>
       <td className="p-2">{r.entryDate}</td><td className="p-2 break-all">{r.sourceType} / {r.eventKind}</td>

@@ -78,7 +78,7 @@ export async function MoneyTrendsSection({userId,query}:{userId:string;query:Tre
    </section>
    <section className="rounded border border-border p-4 space-y-3">
     <h2 className="text-lg font-semibold">Monthly profit and bank trend</h2>
-    <div className="overflow-x-auto"><table className="min-w-full text-sm">
+    <div className="relative min-w-0 max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Monthly profit and bank trend table" tabIndex={0}><table className="min-w-full text-sm">
      <caption className="text-left py-2">Up to 60 complete or elapsed reporting months, actual posted ledger</caption>
      <thead><tr className="border-b border-border text-left"><th scope="col" className="p-2">Month</th>
       <th scope="col" className="p-2">Revenue</th><th scope="col" className="p-2">Expenses</th>
@@ -93,7 +93,7 @@ export async function MoneyTrendsSection({userId,query}:{userId:string;query:Tre
     <h2 className="text-lg font-semibold">Export and source drilldown</h2>
     <p>{report.sourcePage.totalRows} source journal lines; each row is posted evidence. The complete filtered CSV, not just this page, ties to management journal totals.</p>
     <Link className="underline p-2" href={"/desk/books/reports/export?"+url.toString()}>Download this filtered report CSV (not a QuickBooks import)</Link>
-    <div className="overflow-x-auto"><table className="min-w-full text-sm">
+    <div className="relative min-w-0 max-w-full overflow-x-auto overscroll-x-contain" role="region" aria-label="Signed journal detail table" tabIndex={0}><table className="min-w-full text-sm">
      <caption className="text-left py-2">Signed journal detail, including excluded liabilities and bank flow</caption>
      <thead><tr className="text-left border-b border-border"><th scope="col" className="p-2">Date</th><th scope="col" className="p-2">Source</th>
       <th scope="col" className="p-2">Account</th><th scope="col" className="p-2">Debit</th><th scope="col" className="p-2">Credit</th></tr></thead>
