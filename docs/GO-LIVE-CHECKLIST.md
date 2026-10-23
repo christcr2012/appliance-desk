@@ -1,3 +1,9 @@
+## K-CASH-7 monthly plan/report external acceptance — PENDING
+
+- [ ] After an approved normal release, owner and accountant independently inspect at least one real prior/current Denver month and original/revised published plan against actual confirmed bank/Books sources and audit history. Validate the signed P&L versus bank/deposit/tax/capital bridge, one reimbursed/reversed expense, partial paid occurrence and unclassified debit.
+- [ ] Verify source drilldown/CSV category totals, all saved review snapshots, later-source stale warning, real statement beginning/ending proof, QBO trial-company import outcome and attorney/CPA or filing work where applicable. One simulated CI test is not proof of the real business.
+- [ ] Confirm all 22 existing original owner/provider/CPA/production release gates independently; cash funding remains disabled until separately authorized. Publication, report export and review save move no money and send no customer messages.
+
 ## K-CASH-5A/5B financial planning activation — NOT authorized by source CI
 
 - [ ] After the normal independently approved release, owner checks Plan ahead refresh across every 25-plan page and validates real recurring template, purchase commitment, due amount and source status against current Books records.

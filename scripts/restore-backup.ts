@@ -339,6 +339,25 @@ async function restore(file: string, target: string): Promise<void> {
           row[key] = null;
         }
       }
+      if (table === "budgetPlanVersion") {
+        // K-CASH-7 immutable supersession chains cannot be relinked by UPDATE.
+        // Insert original versions before their dependents, preserving all FKs
+        // and DB UPDATE/DELETE immutability triggers during restore.
+        let pending=[...data],written=0;
+        const inserted=new Set<string>();
+        while(pending.length){
+          const ready=pending.filter(x=>x.supersedesId==null||
+            inserted.has(String(x.supersedesId)));
+          if(!ready.length)throw new Error("Budget published plan supersession is missing/cyclic.");
+          const result=await delegate.createMany({data:ready});
+          written+=result.count;
+          for(const row of ready)inserted.add(String(row.id));
+          const ids=new Set(ready.map(row=>String(row.id)));
+          pending=pending.filter(row=>!ids.has(String(row.id)));
+        }
+        if(written!==rows.length)throw new Error("Published budget plan restore count mismatch.");
+        continue;
+      }
       if (table === "budgetCostSettlement") {
         // A reversing settlement carries the SAME source identity as its
         // original. Clearing reversalOfId even temporarily collides with the

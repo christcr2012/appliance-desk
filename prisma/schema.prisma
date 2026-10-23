@@ -33,6 +33,8 @@ enum Role {
 }
 
 model User {
+  budgetPublishedPlans BudgetPlanVersion[] @relation("BudgetPlanPublisher")
+  budgetReviewSnapshots BudgetReviewSnapshot[] @relation("BudgetReviewCreator")
   budgetMoves BudgetMove[]
   signingBusinessReviews SigningBusinessReview[]
   enteredRdfRates RetailDeliveryFeeRate[] @relation("RdfRateEditor")
@@ -4613,6 +4615,46 @@ model ExportBatchEntry {
 
 // K-CASH-4A: zero-money budget state; every funding mutation locks this singleton
 // before BooksPostingRevision, bank account, and sorted envelope/source rows.
+// K-CASH-7: immutable published monthly budget versions and private month-end reviews.
+// Never inferred from later actuals or overwritten by edits to live schedules or names.
+model BudgetPlanVersion {
+  id String @id @default(cuid())
+  monthKey String
+  version Int
+  commandKey String @unique
+  publishedAt DateTime @default(now())
+  publishedByUserId String
+  publishedBy User @relation("BudgetPlanPublisher",fields:[publishedByUserId],references:[id],onDelete:Restrict)
+  sourceRevision BigInt
+  budgetRevision BigInt
+  schemaVersion Int @default(1)
+  payload Json
+  sha256 String
+  note String
+  supersedesId String? @unique
+  supersedes BudgetPlanVersion? @relation("BudgetPlanSupersession",fields:[supersedesId],references:[id],onDelete:Restrict)
+  replacements BudgetPlanVersion[] @relation("BudgetPlanSupersession")
+
+  @@unique([monthKey,version])
+  @@index([monthKey,publishedAt])
+}
+
+model BudgetReviewSnapshot {
+  id String @id @default(cuid())
+  commandKey String @unique
+  monthKey String
+  createdAt DateTime @default(now())
+  createdByUserId String
+  createdBy User @relation("BudgetReviewCreator",fields:[createdByUserId],references:[id],onDelete:Restrict)
+  sourceRevision BigInt
+  budgetRevision BigInt
+  schemaVersion Int @default(1)
+  payload Json
+  sha256 String
+
+  @@index([monthKey,createdAt])
+}
+
 model BudgetState {
   readinessAttestation Json?
   id String @id @default("singleton")

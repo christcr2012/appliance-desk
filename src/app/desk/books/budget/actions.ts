@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { parseDollarInput } from "@/lib/money-ui";
+import { publishMonthlyBudget,saveMonthEndReview } from "@/domains/budget/published";
 import { attestBudgetSources,setBudgetActivation } from "@/domains/budget/protected";
 import { applyBudgetMoves,undoBudgetMove } from "@/domains/budget/moves";
 import { configureBudgetEnvelope,configureBudgetWindows } from "@/domains/budget/envelopes";
@@ -177,4 +178,40 @@ export async function refreshBudgetPlanHorizonAction(f:FormData){
  revalidatePath("/desk/books/budget");
  redirect("/desk/books/budget?tab=plan&notice="+encodeURIComponent(message.slice(0,240))+
   (nextCursor?"&refreshCursor="+encodeURIComponent(nextCursor):""));
+}
+
+export async function publishBudgetMonthAction(f:FormData){
+ const user=await requireRole("OWNER");
+ await reviewCommand("Published monthly plan",str(f,"month"),async()=>{
+  const ids=JSON.parse(str(f,"ids")) as string[];
+  if(!Array.isArray(ids)||ids.length>500||ids.some(id=>typeof id!=="string"))
+   throw new Error("Refresh the monthly draft.");
+  await publishMonthlyBudget(user.user.id,{
+   month:str(f,"month"),expectedBudgetRevision:str(f,"budgetRevision"),
+   expectedBookRevision:str(f,"bookRevision"),expectedVersion:Number(str(f,"expectedVersion")),
+   draftHash:str(f,"draftHash"),commandKey:str(f,"commandKey"),note:str(f,"note"),
+   confirmReviewed:str(f,"confirmReviewed")==="on",
+   rows:ids.map(envelopeId=>({
+    envelopeId,plannedSpendCents:parseDollarInput(str(f,"spend-"+envelopeId),2_000_000_000),
+    plannedFundCents:parseDollarInput(str(f,"fund-"+envelopeId),2_000_000_000),
+    amountQuality:str(f,"quality-"+envelopeId) as "EXACT"|"ESTIMATE"|"OWNER_REVIEWED"
+   }))
+  });
+ });
+}
+export async function saveBudgetReviewAction(f:FormData){
+ const user=await requireRole("OWNER");
+ await reviewCommand("Month-end evidence",str(f,"month"),()=>saveMonthEndReview(user.user.id,{
+  month:str(f,"month"),planId:str(f,"planId")||undefined,commandKey:str(f,"commandKey"),
+  reason:str(f,"reason"),confirmReviewed:str(f,"confirmReviewed")==="on",
+  expectedBudgetRevision:str(f,"budgetRevision"),expectedBookRevision:str(f,"bookRevision")
+ }));
+}
+
+async function reviewCommand(label:string,month:string,execute:()=>Promise<unknown>){
+ let message=label+" saved.";
+ try{await execute();}catch(error){message=label+": "+(error instanceof Error?error.message:"Failed to save.");}
+ revalidatePath("/desk/books/budget");
+ redirect("/desk/books/budget?tab=review&month="+encodeURIComponent(month.slice(0,7))+
+  "&notice="+encodeURIComponent(message.slice(0,240)));
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MoneyTrendsSection,type TrendsQuery } from "./money-trends";
 import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
@@ -9,7 +10,7 @@ import { balanceSnapshot,profitAndLoss,appliancePayback,
 export const metadata={title:"Profit, balance and payback — Books"};
 const input="w-full min-w-0 rounded border border-border bg-background px-3 py-2 text-foreground";
 const nav="underline focus-visible:outline-2 focus-visible:outline-offset-2";
-type Search={kind?:string;from?:string;to?:string;basis?:string;compare?:string;asOf?:string};
+type Search=TrendsQuery&{kind?:string;basis?:string};
 const safe=(value:string|undefined,pattern:RegExp,fallback:string)=>value&&pattern.test(value)?value:fallback;
 const dayPattern=/^\d{4}-\d{2}-\d{2}$/;
 const fmt=(n:number|null|undefined)=>n===null||n===undefined?"unknown":formatMoney(n);
@@ -24,6 +25,7 @@ function Explain({metric}:{metric:keyof typeof METRICS}){
 export default async function BooksReportsPage({searchParams}:{searchParams:Promise<Search>}){
  const session=await requireRole("OWNER","ADMIN");
  const q=await searchParams,today=businessDateKey(new Date());
+ if(q.kind==="trends")return <MoneyTrendsSection userId={session.user.id} query={q}/>;
  const kind=["profit","balance","payback"].includes(q.kind??"")?q.kind??"profit":"profit";
  const from=safe(q.from,dayPattern,today.slice(0,7)+"-01");
  const to=safe(q.to,dayPattern,today);
@@ -46,6 +48,7 @@ export default async function BooksReportsPage({searchParams}:{searchParams:Prom
    <p className="text-muted-foreground">Read-only, source-backed numbers. Management-book profitability is not a tax return or a bank reconciliation. Missing evidence is shown instead of guessed.</p>
   </header>
   <nav aria-label="Books report type" className="flex flex-wrap gap-4">
+   <Link href="/desk/books/reports?kind=trends" className={nav}>Business trends</Link>
    <Link href="/desk/books/reports?kind=profit" className={nav} aria-current={kind==="profit"?"page":undefined}>Profit and loss</Link>
    <Link href="/desk/books/reports?kind=balance" className={nav} aria-current={kind==="balance"?"page":undefined}>Balance snapshot</Link>
    <Link href="/desk/books/reports?kind=payback" className={nav} aria-current={kind==="payback"?"page":undefined}>Appliance payback</Link>

@@ -1,38 +1,42 @@
 {
   "version": 1,
   "kind": "implementation",
-  "parent": "K-CASH-6",
+  "parent": "K-CASH-7",
   "completedSlices": [
     {
-      "id": "K-CASH-6",
+      "id": "K-CASH-7",
       "acceptanceEvidence": [
-        "Domain default DETAIL for QuickBooks and explicit advanced summary-risk checkbox without changing Xero/generic formatting.",
-        "Existing QBO formatter and account mappings preserved; documented parent:subaccount trial import and Free-tier unknowns.",
-        "New QBO export transaction inserts PREPARED AccountingDelivery alongside immutable hashed batch and source IDs.",
-        "OWNER-only delivery review requires matching journal count and explicit trial balanced/bank/statement attestations; audit/provenance retained.",
-        "Target-scoped full historical journal-source anti-join blocks any PREPARED/legacy overlapping QBO archive.",
-        "Confirmed QBO sources are filtered from new files and safe immutable prior archive re-download warns Already imported.",
-        "OWNER version/reason and neverStarted proof gate failed-before-import; optional previous-delivery link and shared advisory lock serialize conflicting decisions.",
-        "Live owner/admin accounting authorization and role-scoped actions/screen, STAFF/CUSTOMER denied; no QBO or payment API.",
-        "Responsive/keyboard/axe owner QBO file-preparation and review wizard, private tenant label and edition, archived status, bank-matching warnings and step-by-step trial import checklist, validated in browser-a/b/c/d.",
-        "Real disposable PostgreSQL shard passed K-CASH-6 prepared/uncertain/legacy/failed/replacement/confirmed/multi-confirmed/role/replay cases; Playwright Books/export and generated route/axe checks passed on exact source head 74e06c4242b9d53612caebfbfd88b435de21c0e8."
+        "One additive migration has SQL constraints and immutable UPDATE/DELETE triggers for BudgetPlanVersion and BudgetReviewSnapshot, unique command keys and past-version FK provenance; no table seeds or live source changes.",
+        "previewMonthlyBudget and publishMonthlyBudget lock BudgetState then BooksPostingRevision; owner-only, expected budget/book revision, exact draft hash, unique command replay, prior immutable versions and concurrent/stale rejection; admin read-only.",
+        "Monthly draft records dated costs, target funding, original envelope names and balances/source occurrence IDs; manual overrides demand OWNER_REVIEWED quality; no journal, cash or payment writing.",
+        "Signed K journal INCOME/CONTRA_INCOME/EXPENSE profit with depreciation separately; excluded equity/assets/liabilities and reversal/refund signs, 1–60 monthly buckets and bounded complete entry set.",
+        "Active business-bank debit-credit movement and opening/closing per selected accounts, transfers cancel in consolidated net and Unknown without actual account; no credit-card/tax/owner movement misrepresented as profit.",
+        "Month comparison joins immutable plan row/version with source-dated net SPEND/REFUND/REVERSAL budget moves, separate funding assignments/releases, unpaid verified cost occurrences and unclassified spending; null plan and zero denominator separate.",
+        "Operating expense account/vendor splits and repeat/oneoff, unknown vendor remaining; due/unpaid occurrence totals and protected reserve readiness/gaps and incomplete QBO/bank status explicit without cash generation.",
+        "Colorado month/quarter/YTD/rolling year/custom bounded 366; prior equal-length and prior-year leap-day clamp; 60 monthly buckets and Missing/Unknown source state with signed measures.",
+        "Source journal lines ordered date/id and paged 10/25/50/100 without changing aggregate; explicit date/basis/source rows in formula-escaped private CSV using existing shared toCsv, not QBO import.",
+        "Books reports hub and budget review linked views, server owner/admin access, owner publish/save actions, private archive read/export, semantic responsive tables and keyboard focus; Playwright/axe new spec registered.",
+        "Month-end checklist of owner plan, books opening, bank statements, QBO uncertain history, protected reserve and bank unclassified outflows; always labels missing unknown and no tax filing/Books close implied.",
+        "OWNER saves immutable SHA256 report with selected plan version and original checklist/source watermark; prior snapshots returned unchanged and marked stale after ledger/budget revision movement; restore order and backup policies updated.",
+        "Pure business-trends math, disposable real-Postgres publication/race/permission/SQL-immutability/CSV tests and 360/768/1440 browser/axe authored; exact-head CI not claimed yet.",
+        "Settings cashBudgetEnabled preserved OFF by default, no new provider integration/payments/customer messages/production financial data, original 22 external release checks documented pending."
       ]
     }
   ],
   "remainingEngineering": [
-    "Final documentation and review checkpoint still requires its own exact-head aggregate CI, PR review/waiver and merge; synthetic implementation passed CI on source head 74e06c4242b9d53612caebfbfd88b435de21c0e8.",
-    "Real QBO trial-company count/balances/import/bank proof and all 22 owner/provider/CPA release checks are externally pending; do not claim those as engineering failures or successes."
+    "Final documentation checkpoint still requires its own exact-head aggregate ci, final review disposition and merge; synthetic implementation passed CI on source head 8371f177e4bffe443c1a14c8974ee8d40583c3c8.",
+    "All 22 external real-world owner/CPA/provider gates remain OPEN, including real bank/QBO trial and independent CPA checks."
   ],
   "externalAcceptance": [
-    "All 22 original owner/provider/CPA acceptance cases remain PENDING, including observed actual QBO import and bank statement proof.",
-    "Budget OFF. No paid provider service, QBO API calls, live Stripe, customer messaging, production fixtures or unscheduled release."
+    "22 original release/owner/provider/CPA acceptance items are PENDING.",
+    "No activation of cash budgeting; no QBO API/real import/live payments, production bank/financial changes, email/SMS or unscheduled release."
   ],
-  "workloadException": "The single full original K-CASH-6 accounting-provider subsection is a coherent substantial end-to-end delivery/domain/wizard/test unit; the dependent K-CASH-7 report/migration risk is separately staged.",
+  "workloadException": "Single original K-CASH-7 full coherent migration/report/publishing/owner interface/report-source-workflow, naturally substantially larger than usual 400–800 lines. No splitting original subsection into invented task IDs.",
   "evidence": [
-    "Frozen original K-CASH-6 10 acceptance lines in docs-only planning commit 975045b8e68bedd492d9cbfb95d1d7c8a7bf1673 before changes; PR #511.",
-    "Exact source head 74e06c4242b9d53612caebfbfd88b435de21c0e8: aggregate ci SUCCESS; all 3 disposable PostgreSQL/unit shards and all 4 Playwright/axe browser shards green; typecheck/lint/owner-language, secrets, release-policy green.",
-    "Capacity baseline rerun passed 2026-10-22 without thresholds or code changes; original run 16.7ms vs 11.9ms property manager read (unrelated runner fluctuation). Browser b/d were rerun successfully after isolated unrelated custom-color contrast misses; existing WCAG checks not weakened or skipped.",
-    "No separate local checkout/tests or live provider run claimed. Financial data, tenant, provider import, customer communications, budget activation and live deployment untouched.",
-    "Source/auth/provider diff self-review and absence of automated review/comments/threads will be recorded on PR; final docs head still requires new aggregate CI green before merge."
+    "Frozen exact original 14 acceptance clauses: docs-only plan d6f3f0b05bbcbafaef05eaaed3a5f44d2982e45a before any source changes; PR #513.",
+    "Exact source head 8371f177e4bffe443c1a14c8974ee8d40583c3c8: aggregate ci SUCCESS; all 3 disposable PostgreSQL/unit shards, all 4 Playwright/axe browser shards, typecheck/lint/plain-words, secret scan and release policy green. Earlier head 9f402ac failed browser-b on a real 360px page overflow (screen-reader-only labels escaped their scrolling table wrapper; fixed by positioning the wrappers, no test weakened) and browser-d on one contrast miss in /desk/jobs/[id] schedule-panel code this PR does not touch, which did not recur at the new head; existing WCAG checks not weakened or skipped.",
+    "Capacity baseline at 8371f17: first run failed f-large-account-owner-read 16.5ms vs 11.9ms baseline (limit 14.3ms), an unrelated read path this PR does not change; a same-job rerun on the same head passed with no code or threshold change. Both results retained.",
+    "Supporting local reproduction on a production build with disposable PostgreSQL and Chromium: money-reports at 360/768/1440px with axe, the staff-denied check and /desk/jobs/[id] axe at 360px light passed; check:quick passed. Supporting evidence only, not a substitute for exact-head CI.",
+    "Self-review (automated review unavailable — waived) covered migration immutability triggers, owner-only publish/save with transaction-time actor check and lock order, command replay, stale/version conflicts, SHA-256 verification on read, OWNER/ADMIN-only read routes and CSV formula escaping. Two low-risk observations are recorded as open in docs/ROADMAP.md; no money, security or data-loss finding is unfixed."
   ]
 }

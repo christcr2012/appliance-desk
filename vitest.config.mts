@@ -5,6 +5,7 @@ import path from "node:path";
 const SHARED_SETTINGS_TESTS = [
   "tests/bank-reconciliation-integration.test.ts",
   "tests/budget-money-integration.test.ts",
+  "tests/budget-reports-integration.test.ts", // K-CASH-7 changes/restores Books opening and BudgetState singleton on disposable DB.
   "tests/budget-planning-integration.test.ts", // K-CASH-5A changes/restores shared BusinessSettings planning horizon.
   "tests/budget-schema-integration.test.ts", // K-CASH-3 temporarily changes/restores singleton Books start; it must be serial.
   "tests/books-cash-events-integration.test.ts", // K-CASH-2 fixture changes global Books opening date and restores it.
