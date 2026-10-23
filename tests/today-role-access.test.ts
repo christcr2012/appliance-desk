@@ -227,7 +227,7 @@ describe("Today server-side visibility", () => {
     const calls = [mocks.agreement, mocks.invoice, mocks.job, mocks.request, mocks.appliance, mocks.notice, mocks.pendingDelivery, mocks.providerOp, mocks.taxExemption, mocks.taxAddressLocation, mocks.officialSourceWatch, mocks.outOfService].flatMap(
       (fn) => fn.mock.calls.map(([query]) => query),
     );
-    expect(calls.length).toBe(23); // includes bounded Sales tax draft-invoice, exemption-expiry, address-change, two official-source reads, the W-16B old-set read and the W-21A out-of-service read
+    expect(calls.length).toBe(24); // includes the bounded retired-appliance read (M-2B), bounded Sales tax draft-invoice, exemption-expiry, address-change, two official-source reads, the W-16B old-set read and the W-21A out-of-service read
     for (const query of calls) {
       expect(query.take).toBe(50);
       expect(query.orderBy.at(-1)).toEqual({ id: "asc" });

@@ -22,7 +22,7 @@ describe("Batch K chart and pure posting", () => {
   it("has unique system roles and valid category mappings", () => {
     const names = SYSTEM_ACCOUNTS.map(x => x.role);
     expect(new Set(names).size).toBe(names.length);
-    expect(DEFAULT_EXPENSE_CATEGORIES.length).toBe(16);
+    expect(DEFAULT_EXPENSE_CATEGORIES.length).toBe(17); // includes Dump and disposal fees (M-2B)
     expect(DEFAULT_EXPENSE_CATEGORIES.every(x => names.includes(x.role))).toBe(true);
   });
   it("maps every existing invoice item kind including newer fees", () => {

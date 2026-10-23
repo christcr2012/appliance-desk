@@ -235,6 +235,13 @@ export function expensePosted(input: SimpleEvidence & { accountRole: string; pai
 export function expenseVoided(original: PostingPlan, date: Date): PostingPlan {
   return reversePlan(original, date, "Expense posting reversed");
 }
+/** Money from a scrap yard, recorded in a lump: into the chosen bank/cash account, out to "Scrap sales" income. */
+export function scrapReceived(input: SimpleEvidence & { depositRole: string }): PostingPlan | null {
+  return balancedPlan(input.date, "Scrap money received", [
+    debit(input.depositRole, input.amountCents),
+    credit("SCRAP_INCOME", input.amountCents),
+  ]);
+}
 export function applianceContributed(input: SimpleEvidence & { booksStartDate: Date; capitalizedExpenseExists: boolean }): PostingPlan | null {
   if (input.capitalizedExpenseExists) return null;
   return balancedPlan(input.date < input.booksStartDate ? input.booksStartDate : input.date, "Rental appliance contributed", [

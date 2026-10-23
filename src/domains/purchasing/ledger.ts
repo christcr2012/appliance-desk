@@ -49,6 +49,8 @@ export type PartMovementRequest = {
   forResale?: boolean;
   /** SALE only: the invoice line that sold these units. */
   invoiceLineId?: string;
+  /** SALVAGE only: the retired appliance the parts were taken from. */
+  applianceId?: string;
 };
 
 /**
@@ -100,6 +102,7 @@ function canonical(requests: readonly PartMovementRequest[]): string {
       // Only written when set, so a request made before resale existed still hashes the same and replays.
       ...(r.forResale ? { forResale: true } : {}),
       ...(r.invoiceLineId ? { invoiceLineId: r.invoiceLineId } : {}),
+      ...(r.applianceId ? { applianceId: r.applianceId } : {}),
     }))
     .sort((a, b) => (a.partRecordId < b.partRecordId ? -1 : a.partRecordId > b.partRecordId ? 1 : 0));
   return JSON.stringify(rows);
@@ -119,6 +122,7 @@ function validateRequests(operationKey: string, requests: readonly PartMovementR
     if (seen.has(r.partRecordId)) throw new Error("A part can appear only once in one stock change.");
     seen.add(r.partRecordId);
     if (r.invoiceLineId && r.kind !== "SALE") throw new Error("Only a sale can be tied to an invoice line.");
+    if (r.applianceId && r.kind !== "SALVAGE") throw new Error("Only parts taken from a retired appliance can be tied to an appliance.");
     if (r.forResale && r.kind !== "RECEIPT") throw new Error("Only a received purchase can be marked as bought for resale.");
     // Unknown must never be counted as free: the cost of resale units is what use tax is figured on.
     if (r.forResale && r.unitCostCents === null) throw new Error("Enter what each part cost. Parts bought to resell need a price so the right use tax can be figured if you use them yourself.");
@@ -275,6 +279,7 @@ export async function applyPartMovementsInTx(
           resaleUnits: effect.resaleUnits,
           resaleCostCents: effect.resaleCostCents,
           invoiceLineId: request.invoiceLineId ?? reversedOriginal?.invoiceLineId ?? null,
+          applianceId: request.applianceId ?? reversedOriginal?.applianceId ?? null,
           reason: request.reason?.trim() ? request.reason.trim().slice(0, 500) : null,
           createdByUserId: actorUserId,
           // Stamped after the part lock is held, so history order matches the order changes were really applied
@@ -316,7 +321,11 @@ export async function applyPartMovementsInTx(
   return { movements, replayed: false };
 }
 
-/** The most recent receipt cost known for a part, used to label a usage as an estimate. */
+/**
+ * The most recent stock-in cost known for a part, used to label a usage as an estimate. A purchase receipt carries what
+ * was paid; parts taken from a retired appliance (SALVAGE) come in at $0, so using those on a repair costs $0, not an
+ * older purchase price (M-2B).
+ */
 export async function lastKnownPurchaseCostCents(tx: Prisma.TransactionClient, partRecordId: string): Promise<number | null> {
   // A receipt that was undone (reversed) is not a price we paid.
   const reversed = await tx.partStockMovement.findMany({
@@ -324,7 +333,7 @@ export async function lastKnownPurchaseCostCents(tx: Prisma.TransactionClient, p
     select: { reversesMovementId: true },
   });
   const row = await tx.partStockMovement.findFirst({
-    where: { partRecordId, kind: "RECEIPT", unitCostCents: { not: null }, id: { notIn: reversed.map((r) => r.reversesMovementId as string) } },
+    where: { partRecordId, kind: { in: ["RECEIPT", "SALVAGE"] }, unitCostCents: { not: null }, id: { notIn: reversed.map((r) => r.reversesMovementId as string) } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: { unitCostCents: true },
   });

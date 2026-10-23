@@ -176,6 +176,13 @@
       "paymentSource": false
     },
     {
+      "role": "SCRAP_INCOME",
+      "name": "Scrap sales",
+      "type": "INCOME",
+      "description": "Money from scrap yards for appliances and metal sold as scrap",
+      "paymentSource": false
+    },
+    {
       "role": "OTHER_INCOME",
       "name": "Other income",
       "type": "INCOME",
@@ -365,6 +372,13 @@
       "paymentSource": false
     },
     {
+      "role": "EXPENSE_DUMP_AND_DISPOSAL_FEES",
+      "name": "Dump and disposal fees",
+      "type": "EXPENSE",
+      "description": "Dump and disposal fees",
+      "paymentSource": false
+    },
+    {
       "role": "RETAIL_DELIVERY_FEE_PAYABLE",
       "name": "Colorado retail delivery fees owed",
       "type": "LIABILITY",
@@ -442,6 +456,10 @@
     {
       "name": "Bank fees",
       "role": "EXPENSE_BANK_FEES"
+    },
+    {
+      "name": "Dump and disposal fees",
+      "role": "EXPENSE_DUMP_AND_DISPOSAL_FEES"
     },
     {
       "name": "Other",

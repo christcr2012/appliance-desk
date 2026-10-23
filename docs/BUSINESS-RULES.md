@@ -1689,3 +1689,16 @@ needs a written reason (kept in the audit log). Items come off stock in the same
 first. A walk-in sale uses one hidden customer and is never shown in customer lists, search, counts or emails. An unpaid
 sale can be cancelled (void plus restock); a paid sale needs a return and refund, which is not built yet. Money is taken
 with the normal manual-payment record.
+
+## Retired appliances: what's next (Batch M-2; design D-M4)
+
+Retiring an appliance (reason required) removes it from every rentable list for good. The owner may then choose one plan
+per appliance: Sell, Strip for parts, Scrap, Throw away, or Donate/other (note required). The plan can be changed or cleared
+until it is marked done; the owner can reopen a finished plan with a reason. Choosing, changing, finishing or reopening a plan
+never books money. Strip for parts adds parts to stock as SALVAGE movements at $0 cost (their cost is already inside the
+appliance's price), once under retry, and needs the leftovers answered (scrapped or thrown away). Scrap-yard money is entered
+once per check or ticket, not per appliance, and posts to "Scrap sales" income; a void reverses it. Dump fees are an ordinary
+expense (category "Dump and disposal fees"). A reminder appears on Today (one item, never per appliance) when a retired appliance
+has had no plan, or an unfinished one, for the owner's number of days (starts at 30; 0 = never). Selling a retired appliance is
+not built: the books cannot yet clear its pending-disposition value in one gain/loss entry (stop rule S-M3).
+

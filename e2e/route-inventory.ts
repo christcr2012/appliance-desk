@@ -180,6 +180,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason: "CI seeds no old one-record set; the split itself is covered by tests/rental-package-lines-integration.test.ts.",
   },
   { path: "/desk/inventory", role: "OWNER", fixture: "/desk/inventory" },
+  { path: "/desk/inventory/retired", role: "OWNER", fixture: "/desk/inventory/retired" },
   { path: "/desk/jobs/[id]", role: "OWNER", fixture: "/desk/jobs/ci-security-job" },
   { path: "/desk/jobs/[id]/work-order", role: "OWNER", fixture: "/desk/jobs/ci-security-job/work-order" },
   { path: "/desk/jobs/new", role: "OWNER", fixture: "/desk/jobs/new" },

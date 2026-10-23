@@ -44,7 +44,7 @@ describe("W-8 simpler menu", () => {
     expect(deskSectionTabs("money", "STAFF")).toEqual([]);
     expect(deskSectionTabs("equipment", "STAFF").map((tab) => tab.label)).toEqual(["Inventory", "Parts"]);
     expect(deskSectionTabs("equipment", "ADMIN").map((tab) => tab.label)).toEqual(
-      ["Inventory", "Parts", "Purchases", "Purchase orders"]);
+      ["Inventory", "Retired", "Parts", "Purchases", "Purchase orders"]);
     expect(deskSectionTabs("money", undefined)).toEqual([]);
     expect(deskSectionTabs("schedule", "CUSTOMER")).toEqual([]);
   });
