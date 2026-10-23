@@ -58,7 +58,7 @@ export function composeAnnualReminder(input: AnnualReminderInput): { subject: st
   };
 }
 
-export type AnnualReminderRun = { queued: number; missed: number; skipped: number };
+export type AnnualReminderRun = { queued: number; missed: number; skipped: number; failed: number };
 
 /**
  * Nightly: for every active month-to-month rental with no ending requested, queue the reminder for its next yearly
@@ -67,7 +67,7 @@ export type AnnualReminderRun = { queued: number; missed: number; skipped: numbe
  * MISSED at once (never sent) so the owner sees it. A missed reminder never stops billing.
  */
 export async function queueAnnualReminders(now: Date = new Date()): Promise<AnnualReminderRun> {
-  const run: AnnualReminderRun = { queued: 0, missed: 0, skipped: 0 };
+  const run: AnnualReminderRun = { queued: 0, missed: 0, skipped: 0, failed: 0 };
   const candidates = await prisma.rentalAgreement.findMany({
     where: {
       status: "ACTIVE",
@@ -87,6 +87,7 @@ export async function queueAnnualReminders(now: Date = new Date()): Promise<Annu
       run.skipped += 1;
       continue;
     }
+    try {
     await prisma.$transaction(async (tx) => {
       // Re-read under the transaction: the rental may have ended or an ending may have been requested meanwhile.
       const agreement = await tx.rentalAgreement.findUnique({
@@ -172,6 +173,11 @@ export async function queueAnnualReminders(now: Date = new Date()): Promise<Annu
         run.queued += 1;
       }
     });
+    } catch (error) {
+      // One bad rental must not stop everyone else's reminder.
+      run.failed += 1;
+      console.error("annual reminder failed for one rental", candidate.id, error instanceof Error ? error.message : error);
+    }
   }
   return run;
 }

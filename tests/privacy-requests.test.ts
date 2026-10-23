@@ -134,6 +134,10 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
       audit: await prisma.auditLog.count({ where: { entityId: customerA } }),
     };
 
+    await expect(fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE")).rejects.toThrow(/rental in force or an unpaid bill/i);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(`${tag}-a@example.test`);
+    await prisma.rentalAgreement.update({ where: { id: agreementA }, data: { status: "ENDED" } });
+
     deletePrivatePhoto.mockRejectedValueOnce(new Error("private blob unavailable"));
     await expect(fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE")).rejects.toThrow(/blob unavailable/i);
     expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(`${tag}-a@example.test`);

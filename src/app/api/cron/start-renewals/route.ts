@@ -39,6 +39,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     work: async () => {
       const result = await queueAnnualReminders();
       if (result.missed > 0) console.error("[cron] Yearly reminders already past their allowed days:", result.missed);
+      // The other rentals were still processed; failing the run keeps it visible on System health and lets it retry.
+      if (result.failed > 0) throw new Error(`Yearly reminders failed for ${result.failed} rental(s); the rest were processed.`);
       return { counts: automationCounts(result) };
     },
   });

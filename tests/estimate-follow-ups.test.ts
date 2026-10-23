@@ -30,6 +30,7 @@ function estimate(overrides: {
   status?: "SENT" | "VIEWED";
   customerEmail?: string | null;
   leadEmail?: string | null;
+  validUntil?: Date | null;
 }) {
   return {
     id: overrides.id,
@@ -37,6 +38,7 @@ function estimate(overrides: {
     title: "Test estimate",
     status: overrides.status ?? "SENT",
     sentAt: overrides.sentAt,
+    validUntil: overrides.validUntil ?? null,
     followUpSentForSentAt: overrides.followUpSentForSentAt ?? null,
     customer: overrides.customerEmail
       ? { user: { name: "Jane Doe", email: overrides.customerEmail } }
@@ -70,6 +72,15 @@ describe("sendEstimateFollowUpReminders", () => {
       where: { id: "est-1", sentAt },
       data: { followUpSentForSentAt: sentAt },
     });
+  });
+
+  it("does not nudge about a quote that has already expired", async () => {
+    const sentAt = new Date("2026-09-20T00:00:00Z");
+    estimateFindMany.mockResolvedValue([
+      estimate({ id: "est-old", sentAt, customerEmail: "jane@example.com", validUntil: new Date("2026-09-30T05:59:59Z") }),
+    ]);
+    expect(await sendEstimateFollowUpReminders()).toEqual({ sent: 0, failed: 0 });
+    expect(deliver).not.toHaveBeenCalled();
   });
 
   it("skips an estimate already followed up on for its current sentAt", async () => {

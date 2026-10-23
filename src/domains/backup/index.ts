@@ -92,7 +92,7 @@ export async function buildDatabaseBackupSnapshot(): Promise<{
         tableCounts,
       };
     },
-    { isolationLevel: "RepeatableRead" },
+    { isolationLevel: "RepeatableRead", timeout: 120_000, maxWait: 20_000 },
   );
 }
 
