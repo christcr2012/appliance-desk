@@ -26,7 +26,7 @@ The owner reviews and references these sources using safe descriptions (never pa
 
 # Owner's guide (for Chris — plain English, no code)
 
-This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **as it exists on 2026-10-17**. It is organized by screen. Each screen says what it is for, what you can change yourself without any code, and what a failed save or a failed automatic job looks like and what to do. The earlier running list of change notes is kept for history in `docs/archive/OWNER-GUIDE-before-2026-10-17.md`; this guide replaces it.
+This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **as it exists on 2026-10-23**. It is organized by screen. Each screen says what it is for, what you can change yourself without any code, and what a failed save or a failed automatic job looks like and what to do. The earlier running list of change notes is kept for history in `docs/archive/OWNER-GUIDE-before-2026-10-17.md`; this guide replaces it.
 
 **What is and is not live.** Stripe is in test mode (no real money moves), customer email and texting are switched off, and automatic renewals are off until you turn them on. Nothing in this guide turns any of that on. The things only you can decide are listed in `docs/LAUNCH-LEDGER.md` and `docs/GO-LIVE-CHECKLIST.md`.
 
@@ -73,7 +73,11 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | System health (automations) | `/desk/automations` | Health of every scheduled job |
 | Launch list | `/desk/launch` | People waiting for you to open |
 | More → Privacy requests | `/desk/privacy` | Customers asking to see or delete data |
-| Security | `/desk/security` | Two-step sign-in and account safety |
+| Security | `/desk/security` (the page itself is `/desk/security/setup`) | Two-step sign-in and account safety |
+| Missed calls and voicemail | `/desk/communications/calls` | Missed calls and voicemail |
+| Phone, texts and provider costs | `/desk/settings/telecom` | Phone and text setup and what the provider charges |
+| Preview storage check | `/desk/settings/preview-storage` | A check that the practice copy's photo storage works (practice copy only) |
+| Equipment: work order, QR label, out of service, ending decision | `/desk/jobs/[id]/work-order`, `/desk/inventory/[id]/qr`, `/desk/inventory/[id]/out-of-service`, `/desk/agreements/[id]/ending-decision` | Printable work order for a visit, a QR label for an appliance, taking an appliance out of service, and deciding what happens when a rental ends |
 | Activity | `/desk/activity` | A combined "what happened" feed |
 | Search | `/desk/search` | One box for customers, machines, leads, purchases |
 | Settings | `/desk/settings` | Prices, fees, wording, rules, notifications |

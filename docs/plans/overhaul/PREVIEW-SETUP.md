@@ -23,9 +23,9 @@ earlier unavailable-dashboard blocker; no dependent schema or small PR yet.
 
 ## Earlier batch 1 checkpoint — 2026-10-01
 
-Reverified Neon preview br-broad-union-b784qy62 is separate from protected
+Reverified Neon preview branch `vercel-preview-2` is separate from protected
 production <production-branch-id>, under appliance-desk project
-jolly-term-08991992. Vercel project <vercel-project-id> belongs
+the Appliance Desk Neon project. Vercel project <vercel-project-id> belongs
 to <vercel-team-id> and has preview SSO protection.
 Vercel get_project currently needs both projectId and idOrName arguments.
 
@@ -61,7 +61,7 @@ operations until independent storage is verified.
 
 Status: IN_REVIEW safeguard; full O02 incomplete.
 
-Read-only Neon metadata on 2026-09-30 verifies project jolly-term-08991992:
+Read-only Neon metadata on 2026-09-30 verifies the Appliance Desk project:
 - Production main: <production-branch-id>, <production-endpoint-id>.
 - Separate vercel-preview-2: br-broad-union-b784qy62, ep-silent-hill-b7rpraoc.
 

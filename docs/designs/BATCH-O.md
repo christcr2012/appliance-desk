@@ -1,6 +1,8 @@
 # Design — Batch O: More owner controls
 
 Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-06: "I love all of this! Update the repo!"). Run the drift check in section 0 before starting.
+
+**Built-status note (2026-10-23):** O-1, O-2A and O-3A are built and merged (#534–#536; approvals cover write-offs and expenses only). O-3B, O-4, O-5, O-6 and O-7 are not built; files named below for those parts do not exist yet.
 Written 2026-10-06 by Claude Opus 5.5 against `main` 23eff64, from Part 3 of
 `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. Runs after Batch K (approvals cover expense posting).
 Scope and acceptance: `docs/PLAN.md` → Batch O.

@@ -1,6 +1,8 @@
 # Design — Batch K: Books — journal, expenses, Stripe fees, profit & loss, accounting exports
 
 Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-06: "I love all of this! Update the repo!"). Run the drift check in section 0 before starting.
+
+**Built-status note (2026-10-23):** K-1A…K-8 are built and merged (#497–#505); keep this document as the reference for current books behavior. Some test names below were renamed in practice (for example `e2e/books-cash.spec.ts`, `books-closing.spec.ts`, `books-expenses.spec.ts`, `books-export.spec.ts`); search `tests/` and `e2e/` for the real files. Owner/CPA acceptance is pending.
 Written 2026-10-06 by Claude Opus 5.5 against `main` 23eff64 (#260). Plain-English summary for Chris:
 `docs/plans/TAX-AND-BOOKS-OVERVIEW.md`. Scope and acceptance: `docs/PLAN.md` → Batch K. **Depends on Batch T**
 (sales tax lines, `allocateAcrossLines`, use tax, filing periods).

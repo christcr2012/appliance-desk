@@ -355,10 +355,13 @@ remain frozen and corrections are reviewed via the filing-amendment detector.
   "Used appliance sale", were added to the chart. Cancelling an unpaid sale voids the invoice and adds `REVERSAL` movements.
 - **Retired appliances** (Batch M-2, 2026-10-23, migration `20261023210000_retired_appliances`). `RetiredAppliancePlan`
   (one row per appliance: choice SELL/STRIP/SCRAP/DISPOSE/OTHER, note, leftovers `remainder` for STRIP, done date and note,
-  reopen reason). `ScrapPayment` (a lump scrap-yard check: operation key, date, amount, yard, deposit account, void fields). `StaffCapabilityOverride` (userId + capability, allowed: a row with allowed=false takes one money permission away from one admin; no row = the role's default; owner/staff never affected). `ApprovalRequest` (kind WRITE_OFF/EXPENSE now, REFUND/CREDIT/DEPOSIT_KEPT reserved; status PENDING/APPROVED/DECLINED/EXPIRED/FAILED; targetRef; the stored input; amount; plain summary; requester; decision, note, executedAt, resultRef, failureMessage; expiresAt; one PENDING row per kind+target by a partial unique index). `BusinessSettings.approvalThresholds` ({} = no limits) and `approvalExpiryDays` (7).
+  reopen reason). `ScrapPayment` (a lump scrap-yard check: operation key, date, amount, yard, deposit account, void fields).
   `PartStockMovement.applianceId` ties a `SALVAGE` movement to the retired appliance. `BusinessSettings.retiredFollowUpDays`
   (default 30, 0 = never, 0–365). Journal source type `SCRAP_PAYMENT` (events `SCRAP_RECEIVED`, `SCRAP_VOIDED`). Chart rows
   "Scrap sales" (`SCRAP_INCOME`) and "Dump and disposal fees" (`EXPENSE_DUMP_AND_DISPOSAL_FEES`) plus the matching expense category.
+- **Models added to this list by the 2026-10-23 audit** (they existed but were not named): `TwoFactor` (a user's two-step sign-in secret, backup codes, failed-attempt count and lock time); `TaxJurisdiction` (a tax authority with its code, level, filing account, service-fee percent and review status, linked to rates, rules, addresses and invoice tax lines); `CustomerTaxExemption` (a customer's exemption: reason, certificate number and photo, the jurisdictions it covers, valid-from and expiry, revoked date); `RetailDeliveryFeeRate` (the Colorado retail delivery fee amount, effective-dated); `RetailDeliveryFeeRecord` (one fee per sale: rate used, amount, whether collected from the customer, refund and filing links); `BudgetCostOccurrence` (one dated expected cost from a budget plan, unique per plan and due date, with settlements).
+- **What each admin may do** (Batch O, O-2A, 2026-10-23, migration `20261023230000_staff_capabilities`). `StaffCapabilityOverride` (userId + capability, allowed: a row with allowed=false takes one money permission away from one admin; no row = the role's default; owner/staff never affected).
+- **Approvals** (Batch O, O-3A, 2026-10-23, migration `20261024000000_approval_limits`). `ApprovalRequest` (kind WRITE_OFF/EXPENSE now, REFUND/CREDIT/DEPOSIT_KEPT reserved; status PENDING/APPROVED/DECLINED/EXPIRED/FAILED; targetRef; the stored input; amount; plain summary; requester; decision, note, executedAt, resultRef, failureMessage; expiresAt; one PENDING row per kind+target by a partial unique index). `BusinessSettings.approvalThresholds` ({} = no limits) and `approvalExpiryDays` (7).
 - **PurchaseOrderReceiptOperation** (Remediation R16, 2026-10-04) — one row per
   "these items arrived" request on a purchase order: the request's key (unique),
   the order, and a SHA-256 fingerprint of the order plus every submitted line
@@ -525,8 +528,8 @@ same external object twice or losing the local link.
   refund). The deterministic `idempotencyKey`, status, provider object id,
   attempts and sanitized failure make provider/local drift observable and
   recoverable (design D1/D2). `kind` is CUSTOMER_CREATE, SUBSCRIPTION_CREATE,
-  SUBSCRIPTION_CANCEL, SUBSCRIPTION_UPDATE (moves a live subscription's end date when a renewal is signed or cancelled), BALANCE_CREDIT or REFUND_CREATE; `status` is PENDING,
-  SUCCEEDED, FAILED, UNKNOWN or DRIFT; `subjectType`/`subjectId` name the local
+  SUBSCRIPTION_CANCEL, SUBSCRIPTION_UPDATE (moves a live subscription's end date when a renewal is signed or cancelled), BALANCE_CREDIT, REFUND_CREATE, TAX_RATE_CREATE, SUBSCRIPTION_TAX_UPDATE or one of the invoice-item kinds RDF_INVOICE_ITEM, TRIP_FEE_INVOICE_ITEM and RELOCATION_INVOICE_ITEM; `status` is PENDING,
+  SUCCEEDED, FAILED, UNKNOWN, DRIFT or SUPERSEDED; `subjectType`/`subjectId` name the local
   record it is about (for example `RentalAgreement` and its id).
 - **Receipt** — one real-world payment event, whether Stripe or manual.
   One combined check is one receipt even when it is allocated across several
