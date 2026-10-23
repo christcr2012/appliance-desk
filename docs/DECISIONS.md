@@ -1288,3 +1288,11 @@ Use the shared successful-payment status predicate in both the source adapter an
 
 ## 2026-10-21 — K-CASH-5A/5B planned expense label as audit evidence (engineering candidate)
 Owner-approved original K-CASH plan requires staff to select a discretionary label without revealing account balances. Instead of adding a second money-bearing Expense field/migration, the existing Books `createExpense` validates the active envelope and writes `books.expense.budget-intent` with its source Expense ID, in the same transaction as the untouched expense draft. Only the existing posted-bank journal classification may actually consume a budget envelope; this label does not initiate payment, pre-authorize a posted expense, or touch bank cash. `BudgetContextCard` shapes owner/admin vs staff data on the server; a client-rendered illustrative after-expense value is available only to managers. This is a reviewable implementation choice, not an activation decision or completed real-world acceptance.
+
+## 2026-10-23 — Owner answer: everything sold in the shop is taxable (Chris)
+
+Chris said "anything I sell is taxable." Shop sales therefore start from taxable for "Items sold" and "Used appliance sale".
+The answer still has to be entered by the owner on the "What gets taxed" screen, which requires the CPA confirmation date,
+because the app never invents a tax opinion or writes tax settings to the live database for him. Delivery and installation
+charges on a sale follow their own existing rules. Recorded on OWNER-CHECKLIST.
+

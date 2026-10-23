@@ -55,9 +55,10 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
 - [ ] **Sales-tax answers from your CPA** (IN-17, IN-33–IN-38, IN-44, IN-65, IN-79; early-ending fee IN-25): enter them in
   Desk → Money → Sales tax until every rule shows "CPA confirmed". Until then **do not bill real customers.**
   (What to ask is written in each IN row in OWNER-INPUTS.)
-- [ ] **Tell the app whether shop sales are taxable** (IN-46, IN-79). Desk → Taxes → "What gets taxed": for "Items sold" and
-  "Used appliance sale", choose taxable or not for each tax area and enter the date your CPA confirmed it. Until you do,
-  every shop sale is refused with that reason (rentals are not affected). Worked: Desk → Money → Shop sales → New sale saves.
+- [ ] **Enter your answer that shop sales are taxable** (IN-46, IN-79). You told us everything you sell is taxable. Desk →
+  Taxes → "What gets taxed": for "Items sold" and "Used appliance sale", choose **Taxable** for each tax area. The screen
+  asks for the date your CPA confirmed it; the app cannot make that date up. Until it is entered, every shop sale is
+  refused with a plain reason (rentals are not affected). Worked: Desk → Money → Shop sales → New sale saves with tax added.
 - [ ] **CPA, not a launch blocker:** IN-39 (bad debt, 60-month depreciation, 1099 threshold), IN-46 (shop sales, resale
   certificate, scrap), IN-56 (retired-appliance tax basis), IN-71 (record retention — starts at 7 years).
 - [ ] **Attorney: rental terms, early-ending/auto-renew wording, month-to-month notices** (IN-07, IN-21, IN-31); privacy
