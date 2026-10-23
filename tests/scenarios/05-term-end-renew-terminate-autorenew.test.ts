@@ -183,7 +183,7 @@ describe.skipIf(!enabled)("scenario 5: term end, renewal, termination and auto-r
     expect(ended.endDate?.toISOString()).toBe(new Date(effectiveOn.getTime() - 1000).toISOString());
     const invoices = await prisma.invoice.findMany({ where: { agreementId: c.id }, include: { lineItems: true } });
     expect(invoices).toHaveLength(1);
-    expect(invoices[0]).toMatchObject({ status: "OPEN", amountDueCents: 5000, amountPaidCents: 0, taxCents: 0 });
+    expect(invoices[0]).toMatchObject({ status: "DRAFT", amountDueCents: 5000, amountPaidCents: 0, taxCents: 0 }); // no confirmed tax area in this scenario, so the fee waits as a draft instead of going out with $0 tax
     expect(invoices[0].lineItems.map((l) => [l.kind, l.amountCents])).toEqual([["EARLY_TERMINATION_FEE", 5000]]);
     expect(await prisma.auditLog.count({ where: { entityId: c.id, action: "agreement.end" } })).toBe(1);
     await runDueTerminations(onEnding);

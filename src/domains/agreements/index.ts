@@ -821,6 +821,12 @@ export async function closeAgreementInTx(
     where: { agreementId },
     include: { assignments: { where: { unassignedAt: null } } },
   });
+  // Lock every machine on this rental (in a fixed order, so two screens cannot deadlock) before reading its status,
+  // so a delivery, swap or repair update happening at the same moment cannot be overwritten.
+  const applianceIds = [...new Set(lines.flatMap((line) => line.assignments.map((assignment) => assignment.applianceId)))].sort();
+  if (applianceIds.length) {
+    await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${applianceIds}) ORDER BY "id" FOR UPDATE`;
+  }
   for (const line of lines) {
     for (const assignment of line.assignments) {
       await tx.applianceAssignment.update({

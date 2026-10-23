@@ -148,7 +148,12 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
       fulfilledByUserId: ownerId,
     });
 
+    const joined = await prisma.launchSubscriber.create({ data: {
+      name: "Pat Launch", email: `${tag}-A@example.test`, city: "Greeley", interest: "washer",
+      consentVersion: "t", consentText: "I agree", unsubscribeToken: `unsub-${tag}-1`, confirmedAt: new Date(),
+    } });
     const result = await fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE");
+    expect(await prisma.launchSubscriber.count({ where: { id: joined.id } })).toBe(0);
     expect(result.retained).toContain("Invoice");
     expect(deletePrivatePhoto).toHaveBeenLastCalledWith(
       privatePhotoUrl,
@@ -188,6 +193,14 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
       await openPrivacyRequest({ kind: "EXPORT", email: `${tag}-unknown-${i}@example.test`, ipKey: rateKey });
     }
     await expect(openPrivacyRequest({ kind: "EXPORT", email: `${tag}-unknown-6@example.test`, ipKey: rateKey })).rejects.toThrow(/too many/i);
+  });
+
+  it("limits one email address to three public requests a day, even from different networks", async () => {
+    const same = `${tag}-same@example.test`;
+    for (let i = 0; i < 3; i += 1) {
+      await openPrivacyRequest({ kind: "EXPORT", email: same, ipKey: `${rateKey}-net-${i}` });
+    }
+    await expect(openPrivacyRequest({ kind: "EXPORT", email: same, ipKey: `${rateKey}-net-9` })).rejects.toThrow(/too many/i);
   });
 
   it("public known and unknown emails both use the same neutral page response path", async () => {

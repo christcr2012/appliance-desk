@@ -94,6 +94,10 @@ Agents will do the parts they safely can and record what they saw; the rest need
   else's receipt is refused.
 - [ ] **Tenant/privacy and imports** (`W23-*`): retention defaults OFF, holds work, other customers' contacts are refused,
   a spreadsheet import dry-run and replay behave.
+- [ ] **After any "delete my data" request, also remove the customer in Stripe by hand.** The app clears the customer's
+  name, email, phone, address and launch-list entry, but does not call Stripe for you (that would be a live action on
+  your real account). Steps: Stripe dashboard → Customers → find the person → delete. Ready when: you fulfil a real
+  deletion request. You'll know it worked: the customer no longer appears in Stripe (past payments stay for your tax records).
 - [ ] **One-link order and phone orders** (`W24-*`, `W25-*`): the customer one-link quote→signature→Stripe TEST payment→portal
   works; driving-distance pricing for 15/30/50 miles; phone-draft prefill; the support@ inbox receives and an
   authorized reply goes out; phone routing and the $20 notice thresholds.

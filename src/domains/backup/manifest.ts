@@ -15,6 +15,7 @@ export const BACKUP_MODEL_POLICY = {
   Session: null,
   Account: null,
   Verification: null,
+  RateLimit: null,
   TwoFactor: null,
   Customer: "customer",
   Referral: "referral",

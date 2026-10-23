@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findMany = vi.fn();
 const updateMany = vi.fn();
 const deliver = vi.fn();
+const intentFindMany = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     customer:{findUnique:vi.fn().mockResolvedValue({preferredLanguage:"en",archivedAt:null})},
+    subscriptionEndIntent: { findMany: (...args: unknown[]) => intentFindMany(...args) },
     rentalAgreement: {
       findMany: (...args: unknown[]) => findMany(...args),
       updateMany: (...args: unknown[]) => updateMany(...args),
@@ -25,11 +27,15 @@ function agreement(overrides: {
   billingReminderSentForDate?: Date | null;
   email?: string;
   amountDueCents?: number | null;
+  terminationEffectiveOn?: Date | null;
+  stripeSubscriptionId?: string | null;
 }) {
   return {
     id: overrides.id,
     nextBillingDate: overrides.nextBillingDate,
     billingReminderSentForDate: overrides.billingReminderSentForDate ?? null,
+    terminationEffectiveOn: overrides.terminationEffectiveOn ?? null,
+    stripeSubscriptionId: overrides.stripeSubscriptionId ?? null,
     customer: {
       id: `customer-${overrides.id}`,
       user: { name: "Jane Doe", email: overrides.email ?? "jane@example.com" },
@@ -41,6 +47,7 @@ function agreement(overrides: {
 describe("sendUpcomingBillingReminders", () => {
   beforeEach(() => {
     findMany.mockReset();
+    intentFindMany.mockReset().mockResolvedValue([]);
     updateMany.mockReset().mockResolvedValue({ count: 1 });
     deliver.mockReset().mockResolvedValue({ state: "ACCEPTED", deliveryId: "delivery", providerMessageId: "provider" });
   });
@@ -60,6 +67,25 @@ describe("sendUpcomingBillingReminders", () => {
       subject: { type: "RentalAgreement", id: "agr-1" },
     });
     expect(message.render().text).toContain("$40");
+  });
+
+  it("sends no 'next bill' reminder when billing is set to stop on or before the bill date", async () => {
+    const nextBillingDate = new Date("2026-10-01T12:00:00Z");
+    findMany.mockResolvedValue([
+      agreement({ id: "ends-first", nextBillingDate, stripeSubscriptionId: "sub_a" }),
+      agreement({ id: "ends-later", nextBillingDate, stripeSubscriptionId: "sub_b" }),
+      agreement({ id: "closed", nextBillingDate, stripeSubscriptionId: "sub_c" }),
+      agreement({ id: "agreed-ending", nextBillingDate, terminationEffectiveOn: new Date("2026-09-30T12:00:00Z") }),
+      agreement({ id: "renewal-continues", nextBillingDate, stripeSubscriptionId: "sub_d", terminationEffectiveOn: new Date("2026-09-30T12:00:00Z") }),
+    ]);
+    intentFindMany.mockResolvedValue([
+      { stripeSubscriptionId: "sub_a", mode: "END_AT", cancelAt: new Date("2026-09-30T12:00:00Z") },
+      { stripeSubscriptionId: "sub_b", mode: "END_AT", cancelAt: new Date("2026-11-01T12:00:00Z") },
+      { stripeSubscriptionId: "sub_c", mode: "CLOSED", cancelAt: null },
+      { stripeSubscriptionId: "sub_d", mode: "NO_END", cancelAt: null },
+    ]);
+    expect(await sendUpcomingBillingReminders()).toEqual({ sent: 2, failed: 0 });
+    expect(deliver.mock.calls.map((c) => c[0].subject.id).sort()).toEqual(["ends-later", "renewal-continues"]);
   });
 
   it("skips a cycle already reminded", async () => {

@@ -662,7 +662,7 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       expect(await prisma.invoice.count({ where: { agreementId: a.id } })).toBe(0);
     });
 
-    it("on the ending date ends the rental, invoices the fee once as an open invoice, and charges nothing", async () => {
+    it("on the ending date ends the rental, invoices the fee once (held as a draft until the tax areas are confirmed), and charges nothing", async () => {
       const a = await ending();
       const first = await runDueTerminations(onEnding);
       expect(first.needsReview.filter((n) => n.agreementId === a.id)).toEqual([]);
@@ -671,11 +671,13 @@ describe.skipIf(!enabled)("auto-renew and agreed early endings are carried out",
       expect(after.endDate?.toISOString()).toBe(new Date(effectiveOn.getTime() - 1000).toISOString());
       const invoices = await prisma.invoice.findMany({ where: { agreementId: a.id }, include: { lineItems: true } });
       expect(invoices).toHaveLength(1);
-      expect(invoices[0]!.status).toBe("OPEN");
+      // These fixtures have no confirmed tax area, so the fee waits as a draft instead of going out with $0 tax.
+      expect(invoices[0]!.status).toBe("DRAFT");
       expect(invoices[0]!.amountDueCents).toBe(5000);
       expect(invoices[0]!.amountPaidCents).toBe(0);
       expect(invoices[0]!.taxCents).toBe(0);
       expect(invoices[0]!.lineItems.map((l) => [l.kind, l.amountCents])).toEqual([["EARLY_TERMINATION_FEE", 5000]]);
+      expect(await prisma.auditLog.count({ where: { entityId: invoices[0]!.id, action: "billing.invoice_tax_blocked" } })).toBe(1);
 
       await runDueTerminations(onEnding);
       expect(await prisma.invoice.count({ where: { agreementId: a.id } })).toBe(1);

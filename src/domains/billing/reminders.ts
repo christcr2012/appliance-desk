@@ -26,6 +26,8 @@ export async function sendUpcomingBillingReminders(): Promise<{
       id: true,
       nextBillingDate: true,
       billingReminderSentForDate: true,
+      stripeSubscriptionId: true,
+      terminationEffectiveOn: true,
       customer: {
         select: {
           id: true,
@@ -40,11 +42,30 @@ export async function sendUpcomingBillingReminders(): Promise<{
     },
   });
 
+  const subscriptionIds = dueAgreements.flatMap((a) => (a.stripeSubscriptionId ? [a.stripeSubscriptionId] : []));
+  const intents = new Map(
+    (subscriptionIds.length
+      ? await prisma.subscriptionEndIntent.findMany({
+          where: { stripeSubscriptionId: { in: subscriptionIds } },
+          select: { stripeSubscriptionId: true, mode: true, cancelAt: true },
+        })
+      : []
+    ).map((row) => [row.stripeSubscriptionId, row]),
+  );
+
   let sent = 0;
   let failed = 0;
 
   for (const agreement of dueAgreements) {
     if (!agreement.nextBillingDate) continue;
+    // A rental that ends on or before the bill date is not billed again, so "your next bill is coming" would be wrong.
+    // The billing-end record is the source of truth (it already accounts for renewals that keep billing going);
+    // an agreed early ending is the fallback when no record exists yet.
+    const intent = agreement.stripeSubscriptionId ? intents.get(agreement.stripeSubscriptionId) : undefined;
+    const ending = intent
+      ? intent.mode === "CLOSED" || (intent.mode === "END_AT" && intent.cancelAt !== null && intent.cancelAt.getTime() <= agreement.nextBillingDate.getTime())
+      : Boolean(agreement.terminationEffectiveOn && agreement.terminationEffectiveOn.getTime() <= agreement.nextBillingDate.getTime());
+    if (ending) continue;
     if (
       agreement.billingReminderSentForDate?.getTime() ===
       agreement.nextBillingDate.getTime()

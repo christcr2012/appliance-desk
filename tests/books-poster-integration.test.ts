@@ -287,6 +287,34 @@ describe("K-2A+K-2B source to immutable books",()=>{
       await prisma.invoice.delete({where:{id}}).catch(()=>undefined);
     }
   });
+  it("an invoice changed after posting gets a difference entry (once), and a void undoes exactly what the books say",async()=>{
+    const id="books-invoice-change-"+tag;
+    await prisma.invoice.create({data:{id,customerId,status:"OPEN",amountDueCents:10000,
+      lineItems:{create:{kind:"RENTAL",description:"Rent",amountCents:10000}}}});
+    try {
+      await postPending({limit:500});
+      expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:id,eventKind:"INVOICE_RECOGNIZED"}})).toBe(1);
+      await prisma.invoice.update({where:{id},data:{amountDueCents:10500,lateFeeCents:500,
+        lineItems:{create:{kind:"LATE_FEE",description:"Late fee",amountCents:500}}}});
+      await postPending({limit:500});
+      await postPending({limit:500});
+      expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:id,eventKind:"INVOICE_ADJUSTED_1"}})).toBe(1);
+      expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:id,eventKind:{startsWith:"INVOICE_ADJUSTED_"}}})).toBe(1);
+      const total=async(role:string)=>(await prisma.journalLine.findMany({where:{entry:{sourceType:"INVOICE",sourceId:id},ledgerAccount:{systemRole:role}}}))
+        .reduce((n,l)=>n+l.debitCents-l.creditCents,0);
+      expect(await total("RECEIVABLES")).toBe(10500);
+      await prisma.invoice.update({where:{id},data:{status:"VOID",cancelledAt:new Date()}});
+      await postPending({limit:500});
+      expect(await total("RECEIVABLES")).toBe(0);
+      const all=await prisma.journalLine.findMany({where:{entry:{sourceType:"INVOICE",sourceId:id}}});
+      expect(all.reduce((n,l)=>n+l.debitCents-l.creditCents,0)).toBe(0);
+    } finally {
+      await prisma.journalLine.deleteMany({where:{entry:{sourceId:id}}});
+      await prisma.journalEntry.deleteMany({where:{sourceId:id}});
+      await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+      await prisma.invoice.delete({where:{id}}).catch(()=>undefined);
+    }
+  });
   it("does not double-subtract applied credits from an invoice write-off",async()=>{
     await prisma.businessSettings.update({where:{id:"singleton"},data:{badDebtTaxRecovery:"NO"}});
     await prisma.invoice.create({data:{id:writeOffInvoiceId,customerId,status:"OPEN",amountDueCents:10000,amountPaidCents:3000,

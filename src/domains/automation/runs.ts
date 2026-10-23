@@ -1,3 +1,4 @@
+import { reportBackgroundError } from "@/lib/report-error";
 import { Prisma, type AutomationRun } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
@@ -177,6 +178,7 @@ export async function runAutomation(input: RunAutomationInput): Promise<RunAutom
     }
     return { outcome: "RAN", runId: run.id };
   } catch (cause) {
+    await reportBackgroundError(cause, "automation:" + input.ruleKey);
     await prisma.automationRun.update({
       where: { id: run.id },
       data: { state: "FAILED", finishedAt: new Date(), error: safeError(cause) },

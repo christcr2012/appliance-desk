@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { sendLaunchSequence } from "@/domains/launch";
@@ -7,7 +8,7 @@ export const maxDuration = 60;
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: "Cron not configured" }, { status: 503 });
-  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!cronAuthorized(request.headers.get("authorization"), secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

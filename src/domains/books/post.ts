@@ -9,7 +9,7 @@ import {
   type PostingPlan, PostingEvidenceError, invoiceRecognition, invoiceVoided,
   receiptReceived, paymentApplied, creditIssued, creditApplied, refundIssued,
   depositFunded, depositRefunded, depositRetained, expensePosted, expenseVoided,
-  useTaxAccrued as planUseTaxAccrual, stripeBalancePlans, applianceContributed, reversePlan, taxFiled, balancedPlan, invoiceWrittenOff,
+  useTaxAccrued as planUseTaxAccrual, stripeBalancePlans, applianceContributed, reversePlan, invoiceAdjustment, invoiceVoidFromPosted, netByAccount, taxFiled, balancedPlan, invoiceWrittenOff,
 } from "./posting-rules";
 
 export type BooksProblem = { sourceType: string; sourceId: string; message: string };
@@ -94,11 +94,33 @@ Promise<{ events: Event[]; extra: Subject }> {
         voidedAt: x.cancelledAt, amountDueCents: x.amountDueCents,
         items: x.lineItems, taxes: x.taxLines.map(t => ({taxCents:t.taxCents,filingAccountId:t.jurisdiction.filingAccountId})) };
       const recognized = invoiceRecognition(snapshot);
-      const reversed = x.status === "VOID" ? invoiceVoided(snapshot) : null;
+      // What the books already say about this invoice: the first entry plus any later changes. A void undoes exactly
+      // that (not the invoice as it reads now), and a change after posting is booked as a difference.
+      const prior = await tx.journalEntry.findMany({
+        where: { sourceType: "INVOICE", sourceId: x.id, OR: [{ eventKind: "INVOICE_RECOGNIZED" }, { eventKind: { startsWith: "INVOICE_ADJUSTED_" } }] },
+        select: { eventKind: true, lines: { select: { ledgerAccountId: true, debitCents: true, creditCents: true } } },
+      });
+      const posted = netByAccount(prior.flatMap(e => e.lines.map(l => ({ accountId: l.ledgerAccountId, debitCents: l.debitCents, creditCents: l.creditCents }))));
+      let reversed: PostingPlan | null = null;
+      if (x.status === "VOID") {
+        if (prior.length) {
+          if (!x.cancelledAt) throw new PostingEvidenceError("Voided invoice lacks evidence date.");
+          reversed = invoiceVoidFromPosted(x.cancelledAt, posted);
+        } else reversed = invoiceVoided(snapshot);
+      }
       const events:Event[] = [
         ...(recognized ? [{eventKind:"INVOICE_RECOGNIZED",plan:recognized}] : []),
         ...(reversed ? [{eventKind:"INVOICE_VOIDED",plan:reversed}] : []),
       ];
+      if (x.status !== "VOID" && recognized && prior.length) {
+        const current = new Map<string, number>();
+        for (const line of recognized.lines) {
+          const id = await accountIdForRole(tx, line.role);
+          current.set(id, (current.get(id) ?? 0) + line.debitCents - line.creditCents);
+        }
+        const change = invoiceAdjustment(x.updatedAt, current, posted);
+        if (change) events.push({ eventKind: "INVOICE_ADJUSTED_" + (prior.filter(e => e.eventKind !== "INVOICE_RECOGNIZED").length + 1), plan: change });
+      }
       if(x.writtenOffAt) {
         // Credited invoice allocations are already included in amountPaidCents.
         const open=cents(x.amountDueCents-x.amountPaidCents);
@@ -355,8 +377,23 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
         {createdAt:{gte:since}},{issuedAt:{gte:since}},
         {billingPeriodStart:{gte:since}},{cancelledAt:{gte:since}},
         {writtenOffAt:{gte:since}},
-      ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true},
+      ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true,amountDueCents:true},
       orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
+      // Invoices whose amount due no longer matches what the books recorded (a late fee, waiver or new tax added after
+      // posting) need a difference entry. The next entry's name is used as the "still to do" marker.
+      const live=invoices.filter(i=>i.status!=="VOID");
+      const bookedRows=live.length?await prisma.journalLine.findMany({
+        where:{entry:{sourceType:"INVOICE",sourceId:{in:live.map(i=>i.id)},
+          OR:[{eventKind:"INVOICE_RECOGNIZED"},{eventKind:{startsWith:"INVOICE_ADJUSTED_"}}]},
+          ledgerAccount:{systemRole:"RECEIVABLES"}},
+        select:{debitCents:true,creditCents:true,entry:{select:{sourceId:true,eventKind:true}}}}):[];
+      const bookedReceivable=new Map<string,number>(), adjustments=new Map<string,number>();
+      for(const row of bookedRows)
+        bookedReceivable.set(row.entry.sourceId,(bookedReceivable.get(row.entry.sourceId)??0)+row.debitCents-row.creditCents);
+      if(live.length)for(const e of await prisma.journalEntry.findMany({
+        where:{sourceType:"INVOICE",sourceId:{in:live.map(i=>i.id)},eventKind:{startsWith:"INVOICE_ADJUSTED_"}},select:{sourceId:true}}))
+        adjustments.set(e.sourceId,(adjustments.get(e.sourceId)??0)+1);
+      const needsAdjustment=(i:{id:string;amountDueCents:number})=>bookedReceivable.has(i.id)&&bookedReceivable.get(i.id)!==i.amountDueCents;
       const writtenOffBooks=new Set((await prisma.journalEntry.findMany({
         where:{sourceType:"INVOICE",eventKind:"INVOICE_WRITTEN_OFF",sourceId:{in:invoices.filter(i=>!i.writtenOffAt).map(i=>i.id)}},
         select:{sourceId:true}})).map(e=>e.sourceId));
@@ -364,7 +401,8 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
       at:x.billingPeriodStart??x.issuedAt??x.createdAt,
       required:["INVOICE_RECOGNIZED",...(x.status==="VOID"?["INVOICE_VOIDED"]:[]),
         ...(x.writtenOffAt?["INVOICE_WRITTEN_OFF"]:[]),
-        ...(!x.writtenOffAt&&writtenOffBooks.has(x.id)?["INVOICE_WRITE_OFF_REVERSED"]:[])]}));}},
+        ...(!x.writtenOffAt&&writtenOffBooks.has(x.id)?["INVOICE_WRITE_OFF_REVERSED"]:[]),
+        ...(needsAdjustment(x)?["INVOICE_ADJUSTED_"+((adjustments.get(x.id)??0)+1)]:[])]}));}},
     {type:"RECEIPT",load:async(skip,take)=>(await prisma.receipt.findMany({
       where:{receivedOn:{gte:since}},select:{id:true,receivedOn:true},
       orderBy:[{receivedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"RECEIPT",id:x.id,at:x.receivedOn,required:["RECEIPT_RECEIVED"]}))},

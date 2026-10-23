@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { runStripeBooksNightly } from "@/domains/books/stripe-balance";
@@ -8,7 +9,7 @@ export const maxDuration = 60;
 export async function GET(request: Request): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: "Not configured." }, { status: 500 });
-  if (request.headers.get("authorization") !== "Bearer " + secret)
+  if (!cronAuthorized(request.headers.get("authorization"), secret))
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   // Owner operational activation is distinct from published inactive engineering.
   if (process.env.BOOKS_STRIPE_SYNC_ENABLED !== "true")

@@ -95,11 +95,18 @@ export async function runTaxFilingCalendar(now = new Date()): Promise<FilingRemi
             data: { legalDueOn: legalDate },
           });
         }
-        const stages = reminderStages(
-          { periodEnd: period.periodEnd, dueOn: period.dueOn, legalDueOn: legalDate },
-          account,
-          now,
-        );
+        // Reminders are tied to exact days, and this job runs once a day. If a run is missed (an outage, a failed
+        // pass), look back three days too so a missed "due in 7 days" or "ready" reminder still goes out late.
+        // The reminder key below makes repeats harmless: a reminder already sent is never sent twice.
+        const evidence = { periodEnd: period.periodEnd, dueOn: period.dueOn, legalDueOn: legalDate };
+        const stages = [...new Set([
+          ...reminderStages(evidence, account, now),
+          // Only the advance reminders ("ready", "due in N days") are made up late; "due today" and "overdue" are
+          // about today alone.
+          ...[1, 2, 3].flatMap((back) =>
+            reminderStages(evidence, account, new Date(now.getTime() - back * 24 * 60 * 60 * 1000))
+              .filter((stage) => stage === "READY" || stage.startsWith("DUE_IN_"))),
+        ])];
         for (const stage of stages) {
           if (stage === "OVERDUE" && !overdueReminderDue(legalDate, now)) continue;
           if (!account.emailReminders) continue;
