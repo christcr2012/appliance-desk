@@ -62,12 +62,12 @@ export async function cancelWithdrawalUseTaxInTx(tx: Tx, movementId: string): Pr
   }
 }
 
-type PendingRow = { id: string; createdAt: Date; resaleCostCents: number };
+type PendingRow = { id: string; partRecordId: string; createdAt: Date; resaleCostCents: number };
 
 /** Movements that took resale units, are not undone, and have no use-tax row yet. */
 async function pendingWithdrawals(client: Tx | typeof prisma, limit: number): Promise<PendingRow[]> {
   return client.$queryRaw<PendingRow[]>`
-    SELECT m."id", m."createdAt", m."resaleCostCents"
+    SELECT m."id", m."partRecordId", m."createdAt", m."resaleCostCents"
     FROM "PartStockMovement" m
     WHERE m."kind" IN ('USAGE', 'ADJUSTMENT', 'RECOUNT')
       AND m."resaleCostCents" < 0
@@ -91,6 +91,9 @@ export async function recordPendingWithdrawalUseTax(limit = 200): Promise<{ chec
   for (const row of rows) {
     try {
       const result = await prisma.$transaction(async (tx) => {
+        // Same part lock an undo takes, held until the tax is recorded: an undo can't slip in between the check
+        // and the write, and a movement undone first is no longer pending when we look again.
+        await tx.$queryRaw`SELECT "id" FROM "PartRecord" WHERE "id" = ${row.partRecordId} FOR UPDATE`;
         const fresh = await pendingWithdrawals(tx, 500);
         const mine = fresh.find((r) => r.id === row.id);
         if (!mine) return "SKIPPED" as const;

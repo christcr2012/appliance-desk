@@ -289,6 +289,9 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
       if (line.quantity > outstanding) {
         throw new Error(`Only ${outstanding} still to arrive on “${row.description}”.`);
       }
+      if (row.forResale && !(line.unitCostCents !== null || row.unitCostKnown)) {
+        throw new Error(`Enter what each “${row.description}” cost. Parts bought to resell need a price so the right use tax can be figured if you use them yourself.`);
+      }
       if (row.receivedQuantity > 0 && line.unitCostCents !== null && !(row.unitCostKnown && row.unitCostCents === line.unitCostCents)) {
         throw new Error(`Part of “${row.description}” already arrived at ${row.unitCostKnown ? `${(row.unitCostCents / 100).toFixed(2)} each` : "an unknown price"}. Leave the price blank for the rest, or correct the earlier receipt first, so the order total stays true.`);
       }

@@ -17,7 +17,6 @@ describe("resaleEffect (pure rules from design D-M1)", () => {
   it("a resale receipt adds resale units at cost; an ordinary one adds none", () => {
     expect(resaleEffect("RECEIPT", 4, part(0, 0, 0), { forResale: true, unitCostCents: 500 })).toEqual({ resaleUnits: 4, resaleCostCents: 2000 });
     expect(resaleEffect("RECEIPT", 4, part(0, 0, 0), { forResale: false, unitCostCents: 500 })).toEqual({ resaleUnits: 0, resaleCostCents: 0 });
-    expect(resaleEffect("RECEIPT", 2, part(0, 0, 0), { forResale: true, unitCostCents: null })).toEqual({ resaleUnits: 2, resaleCostCents: 0 });
   });
 
   it("a sale takes resale units first, a use takes ordinary units first", () => {
@@ -175,6 +174,33 @@ describe.skipIf(!enabled)("resale stock on real Postgres", () => {
     expect(await prisma.auditLog.count({ where: { action: "part.sale_settings.update", entityId: partId } })).toBe(1);
     const customer = await prisma.user.findFirst({ where: { role: "CUSTOMER" } });
     if (customer) await expect(updatePartSaleSettings(customer.id, partId, { sellable: false, retailPriceCents: null, defaultForResale: false })).rejects.toThrow();
+  });
+
+  it("refuses to receive resale parts without a price, so unknown is never counted as free", async () => {
+    const ownerId = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
+    const supplierId = (await prisma.supplier.create({ data: { name: `Resale price ${tag}` } })).id;
+    const partId = await newPart();
+    const po = await createPurchaseOrder(ownerId, { supplierId, lines: [{ partRecordId: partId, description: "No price yet", quantity: 2, forResale: true }] });
+    await markPurchaseOrderOrdered(ownerId, po.id);
+    const line = await prisma.purchaseOrderLineItem.findFirstOrThrow({ where: { purchaseOrderId: po.id } });
+    await expect(receivePurchaseOrderLines(ownerId, { purchaseOrderId: po.id, operationKey: key(), lines: [{ lineId: line.id, quantity: 2, unitCostCents: null }] }))
+      .rejects.toThrow(/needs? a price|Enter what each/);
+    expect((await part(partId)).quantityOnHand).toBe(0);
+    await receivePurchaseOrderLines(ownerId, { purchaseOrderId: po.id, operationKey: key(), lines: [{ lineId: line.id, quantity: 2, unitCostCents: 0 }] });
+    expect(await part(partId)).toMatchObject({ quantityOnHand: 2, resaleUnitsOnHand: 2, resaleCostOnHandCents: 0 });
+  });
+
+  it("a catch-up that overlaps an undo never leaves tax on a movement that was undone", async () => {
+    const ownerId = (await prisma.user.findFirstOrThrow({ where: { role: "OWNER" } })).id;
+    const supplierId = (await prisma.supplier.create({ data: { name: `Resale race ${tag}` } })).id;
+    const partId = await newPart();
+    await receive(ownerId, supplierId, partId, 2, 800, true);
+    await recordPartUsage(ownerId, partId, 1, { operationKey: key() });
+    const used = await prisma.partStockMovement.findFirstOrThrow({ where: { partRecordId: partId, kind: "USAGE" } });
+    await Promise.all([reversePartMovement(ownerId, used.id, key()), recordPendingWithdrawalUseTax(200)]);
+    const rows = await prisma.purchaseUseTax.findMany({ where: { sourceType: "PART_WITHDRAWAL", sourceId: used.id } });
+    expect(rows.every((row) => row.status !== "DUE" && row.useTaxDueCents === 0)).toBe(true);
+    expect(await part(partId)).toMatchObject({ quantityOnHand: 2, resaleUnitsOnHand: 2, resaleCostOnHandCents: 1600 });
   });
 
   it("only a received purchase can be marked as bought for resale", async () => {

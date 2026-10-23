@@ -116,6 +116,8 @@ function validateRequests(operationKey: string, requests: readonly PartMovementR
     if (seen.has(r.partRecordId)) throw new Error("A part can appear only once in one stock change.");
     seen.add(r.partRecordId);
     if (r.forResale && r.kind !== "RECEIPT") throw new Error("Only a received purchase can be marked as bought for resale.");
+    // Unknown must never be counted as free: the cost of resale units is what use tax is figured on.
+    if (r.forResale && r.unitCostCents === null) throw new Error("Enter what each part cost. Parts bought to resell need a price so the right use tax can be figured if you use them yourself.");
     if (r.unitCostCents !== null && (!Number.isSafeInteger(r.unitCostCents) || r.unitCostCents < 0)) {
       throw new Error("A part cost must be a whole number of cents, or left blank when unknown.");
     }

@@ -1380,8 +1380,9 @@ Dormant until the owner turns on "Sell to customers" for a part or ticks "Bought
   units that left (`PurchaseUseTax`, `sourceType PART_WITHDRAWAL`, `sourceId` = movement id; vendor tax 0). A sale owes none.
   Undoing the use cancels the row (an already-filed one is corrected through the normal amendment path). If the business tax
   address or rates are not ready yet, the stock change still happens, Today shows "uses of stock bought for resale need use
-  tax", and the daily tax check (`tax-address-recheck`) records it once setup is ready. A resale unit with an unknown cost
-  owes nothing until a cost is known.
+  tax", and the daily tax check (`tax-address-recheck`) records it once setup is ready. Parts bought to resell must be received with a price (0 is allowed
+  if you really paid nothing): an unknown cost is refused, never counted as free, because use tax is figured on that cost. The
+  daily catch-up locks the part first, so an undo and the catch-up can never both win.
 
 ## Purchasing & supplies (2026-09-29)
 
