@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/lib/rate-limit", () => ({ isRateLimited: vi.fn().mockResolvedValue(false) }));
 vi.mock("@/lib/session", () => ({
   getServerSession: (...args: unknown[]) => getServerSession(...args),
 }));
