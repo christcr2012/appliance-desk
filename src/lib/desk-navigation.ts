@@ -56,7 +56,7 @@ export const DESK_NAV_ALIASES: Record<string, string[]> = {
   "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders"],
   "/desk/billing": ["/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
   "/desk/more": [
-    "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity", "/desk/paperwork",
+    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity", "/desk/paperwork",
   ],
 };
 
@@ -67,6 +67,7 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["growth", "Growth signals", "Early signs of where demand is heading.", "finance"],
   ["launch", "Launch list", "What is left before you open to real customers.", "finance"],
   ["automations", "System health", "Whether the background jobs and connections are running.", "finance"],
+  ["control-center", "Manage my business", "Everything you can do, grouped by what you want to get done, with a search box.", "finance"],
   ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
   ["paperwork", "Business paperwork", "Your LLC, EIN, licenses and insurance, with reminders before anything needs renewing.", "owner"],
   ["privacy", "Privacy requests", "Customers asking to see or delete their information.", "owner"],
