@@ -12,6 +12,7 @@ import type { InvoiceLineItemKind } from "@prisma/client";
 export type LedgerCategory =
   | "RENT"
   | "FEES"
+  | "ITEMS"
   | "DEPOSIT"
   | "TAX"
   | "RETAIL_DELIVERY_FEE"
@@ -41,6 +42,9 @@ const CATEGORY_BY_KIND: Record<InvoiceLineItemKind, LedgerCategory> = {
   LATE_RETURN: "RENT",
   // A waiver of those extra days (our delay): negative rent.
   LATE_RETURN_WAIVER: "RENT",
+  // Batch M: things sold over the counter, shown apart from rent and fees.
+  MERCHANDISE: "ITEMS",
+  USED_APPLIANCE: "ITEMS",
 };
 
 export function categorizeLine(kind: InvoiceLineItemKind): LedgerCategory {
@@ -53,6 +57,7 @@ export function categorizeLine(kind: InvoiceLineItemKind): LedgerCategory {
 export const LEDGER_CATEGORY_LABELS: Record<LedgerCategory, string> = {
   RENT: "Rent",
   FEES: "Fees (administrative setup, delivery, installation, removal, damage waiver)",
+  ITEMS: "Items sold",
   DEPOSIT: "Deposit",
   TAX: "Sales tax",
   RETAIL_DELIVERY_FEE: "Colorado retail delivery fee",

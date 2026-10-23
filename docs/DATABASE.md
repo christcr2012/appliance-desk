@@ -347,6 +347,12 @@ remain frozen and corrections are reviewed via the filing-amendment detector.
   `resaleCostCents` (same sign as the quantity change) and the kinds `SALE` and `SALVAGE`. Which units a movement uses is
   fixed (see BUSINESS-RULES, "Shop and resale stock"). A use of resale stock records a `PurchaseUseTax` row with
   `sourceType "PART_WITHDRAWAL"` and `sourceId` = the movement id.
+- **Shop sales** (Batch M, M-1C/M-1D, 2026-10-23, migration `20261023190000_shop_sales`). `Customer.isWalkIn` marks the one hidden
+  built-in "Walk-in sales" customer (archived, no sign-in; a unique index allows only one). `Invoice` gains `saleKind`
+  (`SHOP_SALE`), `saleLocation` (`PICKUP`/`DELIVERED`), `saleServiceAddressId`, `walkInName` and `saleOperationKey`
+  (unique; a retry returns the first sale). `InvoiceLineItem.partRecordId` links an item line to its part;
+  `PartStockMovement.invoiceLineId` links the `SALE` movement to the line it sold. Two income accounts, "Items sold" and
+  "Used appliance sale", were added to the chart. Cancelling an unpaid sale voids the invoice and adds `REVERSAL` movements.
 - **PurchaseOrderReceiptOperation** (Remediation R16, 2026-10-04) — one row per
   "these items arrived" request on a purchase order: the request's key (unique),
   the order, and a SHA-256 fingerprint of the order plus every submitted line

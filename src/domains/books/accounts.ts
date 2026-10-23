@@ -27,6 +27,8 @@ export function lineKindAccountRole(
     case "RETAIL_DELIVERY_FEE": return "RETAIL_DELIVERY_FEE_PAYABLE"; // Collected on the state's behalf.
     case "TAX": return "TAX_LINES";
     case "DEPOSIT": return "SKIP"; // Deposits are never earned rent.
+    case "MERCHANDISE": return "MERCHANDISE_INCOME";
+    case "USED_APPLIANCE": return "RETIRED_APPLIANCE_SALES";
     default: {
       const invalid: never = kind;
       throw new Error("Unmapped invoice item kind: " + invalid);

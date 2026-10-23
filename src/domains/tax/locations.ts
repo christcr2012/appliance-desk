@@ -677,6 +677,42 @@ export async function getAgreementTaxContext(
     where: { id: agreementId },
     select: { termMonths: true, customerId: true, serviceAddressId: true },
   });
+  return buildTaxContext(tx, {
+    customerId: agreement.customerId,
+    termMonths: agreement.termMonths,
+    locationWhere: { serviceAddressId: agreement.serviceAddressId, isCurrent: true },
+    taxDate,
+  });
+}
+
+/**
+ * Tax context for a shop sale (Batch M). Where the sale happens decides the tax: delivered or installed → the
+ * customer's address (`serviceAddressId`); picked up at the shop → the business location.
+ */
+export async function getSaleTaxContext(
+  tx: Prisma.TransactionClient,
+  input: { customerId: string; serviceAddressId: string | null; taxDate: Date },
+): Promise<Omit<EngineInput, "lines">> {
+  return buildTaxContext(tx, {
+    customerId: input.customerId,
+    termMonths: null,
+    locationWhere: input.serviceAddressId
+      ? { serviceAddressId: input.serviceAddressId, isCurrent: true }
+      : { forBusinessLocation: true, isCurrent: true },
+    taxDate: input.taxDate,
+  });
+}
+
+async function buildTaxContext(
+  tx: Prisma.TransactionClient,
+  agreement: {
+    customerId: string;
+    termMonths: number | null;
+    locationWhere: Prisma.AddressTaxLocationWhereInput;
+    taxDate: Date;
+  },
+): Promise<Omit<EngineInput, "lines">> {
+  const taxDate = agreement.taxDate;
   const settings = await tx.businessSettings.findUniqueOrThrow({
     where: { id: "singleton" },
     select: { shortTermLeaseElection: true },
@@ -701,7 +737,7 @@ export async function getAgreementTaxContext(
   });
 
   const location = await tx.addressTaxLocation.findFirst({
-    where: { serviceAddressId: agreement.serviceAddressId, isCurrent: true },
+    where: agreement.locationWhere,
     include: {
       jurisdictions: {
         include: {

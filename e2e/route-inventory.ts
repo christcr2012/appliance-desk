@@ -228,6 +228,15 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/paperwork/new", role: "OWNER", fixture: "/desk/paperwork/new" },
   { path: "/desk/parts", role: "OWNER", fixture: "/desk/parts" },
   { path: "/desk/privacy", role: "OWNER", fixture: "/desk/privacy" },
+  { path: "/desk/sales", role: "OWNER", fixture: "/desk/sales" },
+  { path: "/desk/sales/new", role: "OWNER", fixture: "/desk/sales/new" },
+  {
+    path: "/desk/sales/[id]",
+    role: "OWNER",
+    fixture: "A generated shop-sale invoice id",
+    manualOnlyReason:
+      "A sale needs completed tax setup and a sellable part, which the CI seed does not create; sale behavior is covered by real-Postgres tests.",
+  },
   {
     path: "/desk/purchase-orders/[id]",
     role: "OWNER",

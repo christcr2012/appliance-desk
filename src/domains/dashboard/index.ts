@@ -31,7 +31,7 @@ export async function getDashboardStats() {
     prisma.lead.count({ where: { status: "CONTACTED" } }),
     prisma.lead.count({ where: { status: "CONVERTED" } }),
     getApplianceCountsByStatus(),
-    prisma.customer.count(),
+    prisma.customer.count({ where: { isWalkIn: false } }),
     prisma.rentalAgreement.count({ where: { status: "DRAFT" } }),
     prisma.rentalAgreement.count({ where: { status: "AWAITING_SIGNATURE" } }),
     prisma.rentalAgreement.count({ where: { status: "ACTIVE" } }),

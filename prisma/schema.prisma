@@ -181,6 +181,10 @@ model Customer {
   // account back to this one via the Referral row below.
   referralCode String @unique
 
+  // Batch M: the one built-in "Walk-in sales" customer that owns every counter sale to someone with no account.
+  // A database index allows at most one. It has no login, is archived, and is hidden from customer lists and sends.
+  isWalkIn Boolean @default(false)
+
   // SMS notifications (Task #71, docs/DECISIONS.md 2026-09-28) — TCPA
   // requires real, recorded opt-in before texting anyone (see
   // docs/BUSINESS-RULES.md's privacy baseline), so this is never
@@ -872,6 +876,8 @@ model PartStockMovement {
   // Batch M: how many of this movement's units were resale units and what they cost (same sign as quantityDelta).
   resaleUnits             Int                    @default(0)
   resaleCostCents         Int                    @default(0)
+  // Batch M: a SALE movement points at the invoice line it sold.
+  invoiceLineId           String?
   reason                  String?
   createdByUserId         String?
   createdAt               DateTime               @default(now())
@@ -2016,6 +2022,9 @@ enum InvoiceLineItemKind {
   // Negative rent adjustment when the business, not the customer, caused
   // a late pickup. The original charge stays visible; this line waives it.
   LATE_RETURN_WAIVER
+  // Batch M: items sold over the counter (a part) and used appliances sold after retirement.
+  MERCHANDISE
+  USED_APPLIANCE
 }
 
 // Batch T — Colorado sales and use tax
@@ -2047,6 +2056,9 @@ enum TaxChargeCategory {
   EARLY_TERMINATION
   LATE_PAYMENT_FEE
   OTHER_CHARGE
+  // Batch M: items and used appliances sold to customers.
+  MERCHANDISE
+  USED_APPLIANCE_SALE
 }
 
 enum Taxability {
@@ -2296,6 +2308,13 @@ model Invoice {
   writtenOffReason String?
 
   stripeInvoiceId    String? @unique
+  // Batch M: a shop sale is a local invoice. saleKind is "SHOP_SALE"; saleLocation is "PICKUP" or "DELIVERED"
+  // (decides which address the tax is figured for); saleOperationKey makes a retried sale return the first result.
+  saleKind             String?
+  saleLocation         String?
+  saleServiceAddressId String?
+  walkInName           String?
+  saleOperationKey     String? @unique
   // Stripe: finalized_at from the signed provider invoice, never webhook-receipt time.
   // Local: issue time is its original creation time. Null means evidence is incomplete.
   issuedAt           DateTime?
@@ -2330,6 +2349,8 @@ model InvoiceLineItem {
   amountCents Int
   quantity    Int      @default(1)
   rentalLineId String?
+  // Batch M: the part a MERCHANDISE line sold (the stock movement points back to this line).
+  partRecordId String?
 
   createdAt DateTime @default(now())
 

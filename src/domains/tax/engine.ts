@@ -66,6 +66,8 @@ const CATEGORY_WORDS: Record<TaxChargeCategory, string> = {
   EARLY_TERMINATION: "Early termination",
   LATE_PAYMENT_FEE: "Late payment fee",
   OTHER_CHARGE: "Other charge",
+  MERCHANDISE: "Items sold",
+  USED_APPLIANCE_SALE: "Used appliance sale",
 };
 
 export function resolveTaxability(

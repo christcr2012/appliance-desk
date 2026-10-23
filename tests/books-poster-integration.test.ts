@@ -139,6 +139,26 @@ describe("K-2A+K-2B source to immutable books",()=>{
       await prisma.invoice.delete({where:{id:depositInvoiceId}}).catch(()=>undefined);
     }
   });
+  it("posts items and used appliances sold as their own income accounts, apart from rental income",async()=>{
+    const id="books-shop-sale-"+tag;
+    await prisma.invoice.create({data:{id,customerId,status:"OPEN",amountDueCents:6000,saleKind:"SHOP_SALE",
+      lineItems:{create:[{kind:"MERCHANDISE",description:"Dryer hose",amountCents:3000},{kind:"USED_APPLIANCE",description:"Used washer",amountCents:3000}]}}});
+    try {
+      await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+      const entry=await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"INVOICE",sourceId:id,eventKind:"INVOICE_RECOGNIZED"},
+        include:{lines:{include:{ledgerAccount:true}}}});
+      const credit=(role:string)=>entry.lines.filter(l=>l.ledgerAccount.systemRole===role).reduce((n,l)=>n+l.creditCents,0);
+      expect(credit("MERCHANDISE_INCOME")).toBe(3000);
+      expect(credit("RETIRED_APPLIANCE_SALES")).toBe(3000);
+      expect(credit("RENTAL_INCOME")).toBe(0);
+      expect(entry.lines.reduce((n,l)=>n+l.debitCents,0)).toBe(entry.lines.reduce((n,l)=>n+l.creditCents,0));
+    } finally {
+      await prisma.journalLine.deleteMany({where:{entry:{sourceId:id}}});
+      await prisma.journalEntry.deleteMany({where:{sourceId:id}});
+      await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+      await prisma.invoice.delete({where:{id}}).catch(()=>undefined);
+    }
+  });
   it("writing off an unpaid deposit invoice reverses the parked deposit credit and books only the rent as bad debt",async()=>{
     const id="books-deposit-writeoff-"+tag;
     await prisma.businessSettings.update({where:{id:"singleton"},data:{badDebtTaxRecovery:"NO"}});

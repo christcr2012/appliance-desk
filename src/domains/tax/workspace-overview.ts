@@ -3,7 +3,7 @@ import { businessDayBounds } from "@/lib/business-date";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import type { ExceptionItem } from "@/domains/exceptions/rules";
 import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
-import { TAX_CHARGE_CATEGORIES } from "@/domains/tax/categories";
+import { RENTAL_TAX_CATEGORIES } from "@/domains/tax/categories";
 import {
   allFilingStartsRecorded,
   hasCompleteSalesAccount,
@@ -51,8 +51,8 @@ export function hasCompleteTaxabilityMatrix(
   // A specific undecided override blocks fallback even where a state
   // collected default exists; home-rule areas always require own decisions.
   return liveAreas.length > 0 && liveAreas.length <= 200 &&
-    TAX_CHARGE_CATEGORIES.every(category => confirmed(ruleFor(null, category))) &&
-    liveAreas.every(area => TAX_CHARGE_CATEGORIES.every(category => {
+    RENTAL_TAX_CATEGORIES.every(category => confirmed(ruleFor(null, category))) &&
+    liveAreas.every(area => RENTAL_TAX_CATEGORIES.every(category => {
       const specific = ruleFor(area.jurisdictionId, category);
       return specific ? confirmed(specific) :
         area.jurisdiction.administration === "STATE_COLLECTED" &&

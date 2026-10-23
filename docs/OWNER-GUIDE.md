@@ -54,6 +54,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Purchase orders | `/desk/purchase-orders` | Ordering parts |
 | Purchases | `/desk/purchases` | Recording appliances you bought |
 | Money (billing) | `/desk/billing` | Invoices, deposits, held payments, statements |
+| Shop sales | `/desk/sales` | Parts and used appliances sold over the counter or delivered |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
@@ -184,6 +185,8 @@ Ending: ending a month-to-month rental, early return ("Returned early — choose
 **What it's for.** **Inventory** lists every physical machine with asset number (like WASH-0001, never reused), serial, condition and status. After a pickup a machine goes to **Awaiting inspection**; check each item, and if all pass it goes to **Being cleaned** until you press **Cleaning done** and it becomes Available; if anything fails it goes to repair with a draft repair visit. A saved inspection cannot be edited; add a correction note. The **Who has it** panel shows which customer holds it. **Purchases** records a receipt once with one row per machine (model, serial, price), photos of every page, and the seller's tax split to the cent; the **Audit pack** lists everything you bought in a date range. **Parts** are kept by model with counts; **Suppliers** and **Purchase orders** (Draft, Ordered, Received) add to those counts as shipments arrive. Every count change is written to a permanent history; use **Undo** or **Archive** rather than delete.
 
 **Selling parts (new, off until you use it).** On **Parts**, press **Sell to customers** on a part, type the price you sell it for, and (if you usually buy it to resell) tick "Usually bought to resell". On a new purchase order, a part you sell gets a box "Bought to resell to customers": tick it when you gave the supplier your Colorado resale certificate so you did not pay sales tax (your CPA confirms the exact form). If you later use some of those parts yourself on a repair or install, the app records the use tax for you and lists it under Taxes → Use tax; if your tax address is not set up yet it waits, shows on Today, and is recorded automatically when setup is done. Selling to customers comes in the next update.
+
+**Shop sales (new).** Under **Money → Shop sales** (`/desk/sales`), press **New sale**, choose what is being sold, who it is for (or "Walk-in"), and whether it is picked up or delivered. The sales tax is figured for you: a pickup uses the shop's tax areas, a delivery uses the customer's address. The sale saves as an invoice and the items come off the shelf at the same moment. Open the sale to **record a payment** (cash, check or bank transfer) or, if nothing has been paid yet, **cancel it** and the items go back on the shelf. Selling below the listed price needs a short reason. A sale is refused with plain reasons until you have told Taxes whether "Items sold" and "Used appliance sale" are taxable.
 
 **The tax question has no default.** Only the owner answers it; "I'll check the receipt later" creates a dated To do, and another state's tax creates a CPA question.
 

@@ -1678,3 +1678,14 @@ is not a charge receipt. A draft visit has no promised appointment,
 does not send a customer notice and does not start billing or claim
 a completed delivery. The existing dispatch/job-detail screen owns
 the final scheduling decision.
+
+## Shop sales (Batch M, 2026-10-23; design D-M3)
+
+A shop sale is a local invoice with one MERCHANDISE line per item (and optional delivery and installation lines). Sales
+tax follows the destination: a pickup uses the business location's tax areas, a delivery uses the customer's address. A
+sale is refused, and nothing is saved, if tax setup is incomplete, the taxability of "Items sold" or "Used appliance sale"
+is not recorded, an item is not marked "Sell to customers", or there is not enough stock. Selling below the listed price
+needs a written reason (kept in the audit log). Items come off stock in the same transaction; a sale takes resale units
+first. A walk-in sale uses one hidden customer and is never shown in customer lists, search, counts or emails. An unpaid
+sale can be cancelled (void plus restock); a paid sale needs a return and refund, which is not built yet. Money is taken
+with the normal manual-payment record.

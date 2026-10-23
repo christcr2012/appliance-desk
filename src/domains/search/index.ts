@@ -30,6 +30,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
     prisma.customer.findMany({
       where: {
         archivedAt: null,
+        isWalkIn: false,
         OR: [
           { user: { name: { contains: query, mode: "insensitive" } } },
           { user: { email: { contains: query, mode: "insensitive" } } },
