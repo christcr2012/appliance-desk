@@ -9,7 +9,17 @@ for(const width of [360,768,1440]){
   await expect(page.getByRole("heading",{name:"Publish reviewed monthly plan"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Month-end review checklist"})).toBeVisible();
   await expect(page.getByText(/Current published version: Unplanned — no published baseline/)).toBeVisible();
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
+  const viewport=await page.evaluate(()=>({
+   innerWidth,documentWidth:document.documentElement.scrollWidth,
+   overflowing:[...document.querySelectorAll("*")].filter(el=>{
+    const box=el.getBoundingClientRect();
+    return box.width>0&&box.right>innerWidth+1;
+   }).slice(0,12).map(el=>({
+    tag:el.tagName.toLowerCase(),className:typeof el.className==="string"?el.className.slice(0,130):"",
+    right:Math.round(el.getBoundingClientRect().right)
+   }))
+  }));
+  expect(viewport.documentWidth,JSON.stringify(viewport)).toBeLessThanOrEqual(viewport.innerWidth+1);
   expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21a","wcag21aa"]).analyze()).violations).toEqual([]);
   await page.goto("/desk/books/reports?kind=trends");
   await expect(page.getByRole("heading",{name:"Business finance trends"})).toBeVisible();
