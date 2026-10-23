@@ -148,7 +148,12 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
       fulfilledByUserId: ownerId,
     });
 
+    const joined = await prisma.launchSubscriber.create({ data: {
+      name: "Pat Launch", email: `${tag}-A@example.test`, city: "Greeley", interest: "washer",
+      consentVersion: "t", consentText: "I agree", unsubscribeToken: `unsub-${tag}-1`, confirmedAt: new Date(),
+    } });
     const result = await fulfillPrivacyDeletion(ownerId, deletionRequest, "DELETE");
+    expect(await prisma.launchSubscriber.count({ where: { id: joined.id } })).toBe(0);
     expect(result.retained).toContain("Invoice");
     expect(deletePrivatePhoto).toHaveBeenLastCalledWith(
       privatePhotoUrl,

@@ -534,6 +534,17 @@ export async function fulfillPrivacyDeletion(
       },
     });
 
+    // The launch email list is marketing, not evidence: the person is taken off it. A person who had already
+    // unsubscribed stays only as an address on the do-not-email list (so they are never mailed again), with the
+    // rest of their details blanked.
+    await tx.launchSubscriber.deleteMany({
+      where: { email: { equals: customer.user.email, mode: "insensitive" }, unsubscribedAt: null },
+    });
+    await tx.launchSubscriber.updateMany({
+      where: { email: { equals: customer.user.email, mode: "insensitive" }, unsubscribedAt: { not: null } },
+      data: { name: "Deleted subscriber", city: "deleted", interest: "deleted", consentText: "deleted" },
+    });
+
     if (claim.photoIds.length > 0) {
       await tx.photo.deleteMany({ where: { id: { in: claim.photoIds } } });
     }
