@@ -1325,8 +1325,9 @@
       "tests": [
         "tests/shop-sale-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/M-1C.md"
+      "readiness": "IMPLEMENTATION_SOURCE_CI_PENDING",
+      "plannedCard": "docs/pr-cards/M-1C.md",
+      "card": "docs/pr-cards/M-1C.md"
     },
     {
       "id": "M-1D",
@@ -1348,11 +1349,12 @@
         "src/domains/inventory/guided-actions.ts"
       ],
       "tests": [
-        "tests/walkin-scope.test.ts",
-        "e2e/shop-sales.spec.ts"
+        "tests/shop-sale-integration.test.ts",
+        "tests/w8-menu-sections.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/M-1D.md"
+      "readiness": "IMPLEMENTATION_SOURCE_CI_PENDING",
+      "plannedCard": "docs/pr-cards/M-1D.md",
+      "card": "docs/pr-cards/M-1D.md"
     },
     {
       "id": "M-2A",

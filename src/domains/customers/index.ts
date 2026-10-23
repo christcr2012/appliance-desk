@@ -21,7 +21,7 @@ export type { TimelineEntry } from "./timeline";
  */
 export async function getCustomers() {
   return prisma.customer.findMany({
-    where: { archivedAt: null },
+    where: { archivedAt: null, isWalkIn: false },
     include: {
       user: { select: { name: true, email: true } },
       serviceAddresses: true,
@@ -40,7 +40,7 @@ export async function getCustomersCount(): Promise<number> {
 /** Paginated variant for /desk/customers's own list. */
 export async function getCustomersPage(skip: number, pageSize: number) {
   return prisma.customer.findMany({
-    where: { archivedAt: null },
+    where: { archivedAt: null, isWalkIn: false },
     include: {
       user: { select: { name: true, email: true } },
       serviceAddresses: true,

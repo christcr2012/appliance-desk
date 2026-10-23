@@ -162,6 +162,20 @@
       "paymentSource": false
     },
     {
+      "role": "MERCHANDISE_INCOME",
+      "name": "Item sales",
+      "type": "INCOME",
+      "description": "Parts and other items sold to customers",
+      "paymentSource": false
+    },
+    {
+      "role": "RETIRED_APPLIANCE_SALES",
+      "name": "Sales of retired appliances",
+      "type": "INCOME",
+      "description": "Used appliances sold after they left the rental fleet",
+      "paymentSource": false
+    },
+    {
       "role": "OTHER_INCOME",
       "name": "Other income",
       "type": "INCOME",

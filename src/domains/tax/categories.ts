@@ -9,9 +9,18 @@ export const TAX_CHARGE_CATEGORIES = [
   "EARLY_TERMINATION",
   "LATE_PAYMENT_FEE",
   "OTHER_CHARGE",
+  "MERCHANDISE",
+  "USED_APPLIANCE_SALE",
 ] as const;
 
 export type TaxChargeCategory = (typeof TAX_CHARGE_CATEGORIES)[number];
+
+/** The categories every rental business must decide before billing. Selling items adds its own two (below). */
+export const RENTAL_TAX_CATEGORIES = TAX_CHARGE_CATEGORIES.filter(
+  (category) => category !== "MERCHANDISE" && category !== "USED_APPLIANCE_SALE",
+);
+/** Decided only by owners who sell items; a sale of that kind is refused until its answer is recorded. */
+export const SALE_TAX_CATEGORIES = ["MERCHANDISE", "USED_APPLIANCE_SALE"] as const;
 
 export type InvoiceLineItemKind =
   | "ADMIN_SETUP_FEE"
@@ -29,7 +38,9 @@ export type InvoiceLineItemKind =
   | "ADJUSTMENT"
   | "EARLY_TERMINATION_FEE"
   | "LATE_RETURN"
-  | "LATE_RETURN_WAIVER";
+  | "LATE_RETURN_WAIVER"
+  | "MERCHANDISE"
+  | "USED_APPLIANCE";
 
 export type LineTaxCategory =
   | TaxChargeCategory
@@ -71,6 +82,10 @@ export function categoryForLineKind(
       if (amountCents < 0) return "FOLLOWS_PARENT";
       if (amountCents > 0) return "OTHER_CHARGE";
       return "NOT_TAXABLE";
+    case "MERCHANDISE":
+      return "MERCHANDISE";
+    case "USED_APPLIANCE":
+      return "USED_APPLIANCE_SALE";
     case "CREDIT":
     case "RETAIL_DELIVERY_FEE":
     case "DEPOSIT":

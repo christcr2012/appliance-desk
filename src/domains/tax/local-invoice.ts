@@ -4,7 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateKey } from "@/lib/business-date";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { computeTax } from "./engine";
-import { getAgreementTaxContext, loadRentalAcquisitionBasis } from "./locations";
+import { getAgreementTaxContext, getSaleTaxContext, loadRentalAcquisitionBasis } from "./locations";
 import type { InvoiceLineItemKind } from "./categories";
 
 export type LocalInvoiceTaxResult =
@@ -95,6 +95,31 @@ export async function applyLocalInvoiceTaxInTx(
         }
       : engineResult;
 
+  return persistLocalInvoiceTaxInTx(tx, {
+    invoiceId: input.invoiceId,
+    taxDate: input.taxDate,
+    actorUserId: input.actorUserId,
+    audit: { agreementId: input.agreementId },
+    result,
+    invoice,
+  });
+}
+
+type EngineOutcome = Awaited<ReturnType<typeof computeTax>> | { ok: false; problems: string[] };
+
+/** Writes the engine's answer (or the reasons it could not give one) onto a local invoice. */
+async function persistLocalInvoiceTaxInTx(
+  tx: Prisma.TransactionClient,
+  input: {
+    invoiceId: string;
+    taxDate: Date;
+    actorUserId: string | null;
+    audit: Record<string, string | null>;
+    result: EngineOutcome;
+    invoice: { subtotalCents: number; discountCents: number; lateFeeCents: number };
+  },
+): Promise<LocalInvoiceTaxResult> {
+  const { invoice, result } = input;
   // A recalculation replaces only engine-owned evidence and the single visible
   // tax total. Stripe evidence is never edited here.
   await tx.invoiceTaxLine.deleteMany({
@@ -124,7 +149,7 @@ export async function applyLocalInvoiceTaxInTx(
         entityType: "Invoice",
         entityId: input.invoiceId,
         newValue: {
-          agreementId: input.agreementId,
+          ...input.audit,
           taxDate: businessDateKey(input.taxDate),
           problems: result.problems,
         },
@@ -178,7 +203,7 @@ export async function applyLocalInvoiceTaxInTx(
       entityType: "Invoice",
       entityId: input.invoiceId,
       newValue: {
-        agreementId: input.agreementId,
+        ...input.audit,
         taxDate: businessDateKey(input.taxDate),
         taxCents: result.totalTaxCents,
         jurisdictionCount: new Set(result.lines.map((line) => line.jurisdictionId)).size,
@@ -231,5 +256,73 @@ export async function recalculateLocalInvoiceTax(
       taxDate: locked.billingPeriodEnd ?? locked.dueDate ?? locked.createdAt,
       actorUserId,
     });
+  });
+}
+
+export type SaleInvoiceTaxInput = {
+  invoiceId: string;
+  customerId: string;
+  /** null = picked up at the shop (the business location's tax areas); otherwise the delivery address. */
+  serviceAddressId: string | null;
+  taxDate: Date;
+  actorUserId: string | null;
+};
+
+/**
+ * Tax for a shop sale (Batch M, design D-M3). Same engine and the same stored evidence as a rental invoice; only the
+ * place differs: where the customer takes the goods decides the tax areas (Colorado is destination-based).
+ * Like rentals, uncertainty never escapes as an exception: the caller gets the plain reasons back.
+ */
+export async function applySaleInvoiceTaxInTx(
+  tx: Prisma.TransactionClient,
+  input: SaleInvoiceTaxInput,
+): Promise<LocalInvoiceTaxResult> {
+  const invoice = await tx.invoice.findUniqueOrThrow({
+    where: { id: input.invoiceId },
+    select: {
+      subtotalCents: true,
+      discountCents: true,
+      lateFeeCents: true,
+      lineItems: {
+        where: { kind: { not: "TAX" } },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { id: true, kind: true, amountCents: true },
+      },
+    },
+  });
+  const location = await tx.addressTaxLocation.findFirst({
+    where: input.serviceAddressId
+      ? { serviceAddressId: input.serviceAddressId, isCurrent: true }
+      : { forBusinessLocation: true, isCurrent: true },
+    select: { status: true, jurisdictions: { select: { jurisdiction: { select: { name: true, reviewStatus: true } } } } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  const readinessProblems: string[] = [];
+  if (!location || location.status !== "VERIFIED") {
+    readinessProblems.push(
+      input.serviceAddressId
+        ? "Confirm the tax areas for this delivery address before selling."
+        : "Confirm your shop's tax areas in Taxes → Setup before selling.",
+    );
+  }
+  for (const row of location?.jurisdictions ?? []) {
+    if (row.jurisdiction.reviewStatus !== "REVIEWED") readinessProblems.push(`Review ${row.jurisdiction.name} before selling.`);
+  }
+  const context = await getSaleTaxContext(tx, { customerId: input.customerId, serviceAddressId: input.serviceAddressId, taxDate: input.taxDate });
+  const engineResult = computeTax({
+    ...context,
+    lines: invoice.lineItems.map((line) => ({ key: line.id, kind: line.kind as InvoiceLineItemKind, amountCents: line.amountCents })),
+  });
+  const result: EngineOutcome =
+    readinessProblems.length > 0
+      ? { ok: false, problems: [...new Set([...readinessProblems, ...(engineResult.ok ? [] : engineResult.problems)])] }
+      : engineResult;
+  return persistLocalInvoiceTaxInTx(tx, {
+    invoiceId: input.invoiceId,
+    taxDate: input.taxDate,
+    actorUserId: input.actorUserId,
+    audit: { saleServiceAddressId: input.serviceAddressId },
+    result,
+    invoice,
   });
 }
