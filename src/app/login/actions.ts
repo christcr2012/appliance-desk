@@ -26,6 +26,9 @@ function isSafeNextPath(next: string | null): next is string {
   // Guards against a value like "/\evil.com", which some browsers treat as
   // protocol-relative.
   if (next.startsWith("/\\")) return false;
+  // Browsers strip tabs/newlines inside URLs, so "/\t/evil.example" would
+  // become "//evil.example". Refuse any control character, space or backslash.
+  if (/[\x00-\x20\x7f\\]/.test(next)) return false;
   return true;
 }
 

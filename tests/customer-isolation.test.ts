@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 const session = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/session", () => ({ getServerSession: session }));
+vi.mock("@/lib/photo-storage", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/photo-storage")>()),
+  getPrivatePhotoStore: () => ({ storeId: "store_abc123", token: "test" }),
+}));
 import { getPortalHome } from "@/domains/portal/workspace";
 import { createDraftAgreement } from "@/domains/agreements";
 import { randomUUID } from "node:crypto";
@@ -358,8 +362,8 @@ describe("customer data isolation (Phase 6A item 3)", () => {
     const request = await createMaintenanceRequestForUser(customerA.userId, {
       problem: "Dryer won't heat, here's what it looks like",
       photoUrls: [
-        "https://example-blob.vercel-storage.com/photo-one.jpg",
-        "https://example-blob.vercel-storage.com/photo-two.jpg",
+        `https://abc123.private.blob.vercel-storage.com/maintenance-requests/${customerA.customerId}/photo-one.jpg`,
+        `https://abc123.private.blob.vercel-storage.com/maintenance-requests/${customerA.customerId}/photo-two.jpg`,
       ],
     });
 
@@ -369,8 +373,8 @@ describe("customer data isolation (Phase 6A item 3)", () => {
     expect(photos).toHaveLength(2);
     expect(photos.map((p) => p.url).sort()).toEqual(
       [
-        "https://example-blob.vercel-storage.com/photo-one.jpg",
-        "https://example-blob.vercel-storage.com/photo-two.jpg",
+        `https://abc123.private.blob.vercel-storage.com/maintenance-requests/${customerA.customerId}/photo-one.jpg`,
+        `https://abc123.private.blob.vercel-storage.com/maintenance-requests/${customerA.customerId}/photo-two.jpg`,
       ].sort(),
     );
   });

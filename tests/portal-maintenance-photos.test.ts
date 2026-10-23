@@ -34,7 +34,18 @@ vi.mock("@/domains/agreements/active-appliances", () => ({
   getActiveApplianceOptionsForUser: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("@/lib/photo-storage", () => ({
+  getPrivatePhotoStore: () => ({ storeId: "store_abc123", token: "t" }),
+  privatePhotoPathFromUrl: (value: string) => {
+    const m = /^https:\/\/abc123\.private\.blob\.vercel-storage\.com\/(.+)$/.exec(value);
+    return m ? m[1] : null;
+  },
+}));
+
 import { createMaintenanceRequestForUser } from "@/domains/portal";
+
+const A = "https://abc123.private.blob.vercel-storage.com/maintenance-requests/cust-1/a.jpg";
+const B = "https://abc123.private.blob.vercel-storage.com/maintenance-requests/cust-1/b.jpg";
 
 describe("createMaintenanceRequestForUser photo handling", () => {
   beforeEach(() => {
@@ -56,23 +67,23 @@ describe("createMaintenanceRequestForUser photo handling", () => {
   it("nests photoUrls as a Photo create when photos are given", async () => {
     await createMaintenanceRequestForUser("user-1", {
       problem: "Leaking",
-      photoUrls: ["https://blob.example.com/a.jpg", "https://blob.example.com/b.jpg"],
+      photoUrls: [A, B],
     });
 
     const data = maintenanceRequestCreate.mock.calls[0][0].data;
     expect(data.photos).toEqual({
-      create: [{ url: "https://blob.example.com/a.jpg" }, { url: "https://blob.example.com/b.jpg" }],
+      create: [{ url: A }, { url: B }],
     });
   });
 
   it("filters out empty/falsy entries rather than creating a blank Photo row", async () => {
     await createMaintenanceRequestForUser("user-1", {
       problem: "Leaking",
-      photoUrls: ["https://blob.example.com/a.jpg", ""],
+      photoUrls: [A, ""],
     });
 
     const data = maintenanceRequestCreate.mock.calls[0][0].data;
-    expect(data.photos).toEqual({ create: [{ url: "https://blob.example.com/a.jpg" }] });
+    expect(data.photos).toEqual({ create: [{ url: A }] });
   });
 
   it("omits the photos key entirely when no photos are given (most requests)", async () => {
@@ -80,5 +91,17 @@ describe("createMaintenanceRequestForUser photo handling", () => {
 
     const data = maintenanceRequestCreate.mock.calls[0][0].data;
     expect(data.photos).toBeUndefined();
+  });
+
+  it.each([
+    "https://blob.example.com/a.jpg",
+    "javascript:alert(1)",
+    "https://abc123.private.blob.vercel-storage.com/maintenance-requests/cust-2/a.jpg",
+    "https://abc123.private.blob.vercel-storage.com/expenses/cust-1/a.jpg",
+  ])("refuses a photo that is not in the customer's own upload folder: %s", async (bad) => {
+    await expect(
+      createMaintenanceRequestForUser("user-1", { problem: "Leaking", photoUrls: [bad] }),
+    ).rejects.toThrow(/wasn't uploaded through your account/);
+    expect(maintenanceRequestCreate).not.toHaveBeenCalled();
   });
 });

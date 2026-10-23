@@ -20,6 +20,7 @@ vi.mock("@vercel/blob/client", () => ({ handleUpload: mocks.upload }));
 vi.mock("@vercel/blob", () => ({ put: mocks.put, list: mocks.list, del: mocks.del }));
 vi.mock("@/lib/prisma", () => ({ prisma: new Proxy({}, { get: () => ({ findMany: mocks.read }) }) }));
 vi.mock("@/domains/settings", () => ({ getBusinessSettings: vi.fn() }));
+vi.mock("@/lib/rate-limit", () => ({ isRateLimited: vi.fn().mockResolvedValue(false) }));
 
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { sendEmail } from "@/lib/email";

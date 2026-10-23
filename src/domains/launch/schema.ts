@@ -5,7 +5,12 @@ export const LAUNCH_CONSENT =
   "Email me launch news and appliance-rental information from Robinson Appliance Rentals. I can unsubscribe at any time.";
 
 export const launchSignupSchema = z.object({
-  name: z.string().trim().min(2, "Please enter your name.").max(100),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Please enter your name.")
+    .max(100)
+    .regex(/^[^\r\n\t]+$/, "Please enter your name on one line."),
   email: z
     .string()
     .trim()
