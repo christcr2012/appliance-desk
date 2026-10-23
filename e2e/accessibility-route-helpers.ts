@@ -18,6 +18,12 @@ export async function scanAccessibilityRoute(
   // actual load event, then inspect the visible DOM/axe state below.
   await page.goto(route.fixture, { waitUntil: "load" });
   await expect(page.locator("body")).toBeVisible();
+  // Controls such as "Save schedule" stay disabled (and dimmed) until React hydrates. Scanning mid-switch makes axe
+  // read a half-dimmed button (seen twice in CI at /desk/jobs/[id], 360px). Wait, bounded, for hydration to settle;
+  // pages that keep a control disabled on purpose simply continue after the cap and are scanned as they are.
+  await page
+    .waitForFunction(() => document.querySelectorAll("button:disabled").length === 0, undefined, { timeout: 4000 })
+    .catch(() => undefined);
 
   for (const theme of THEMES) {
     await page.evaluate((mode) => {
