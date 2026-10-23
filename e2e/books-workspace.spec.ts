@@ -8,9 +8,9 @@ for(const width of [360,768,1440])for(const theme of ["light","dark"]){
     await page.setViewportSize({width,height:900});
     await page.addInitScript(mode=>localStorage.setItem("theme",mode),theme);
     await page.goto("/desk/books");
-    await expect(page.getByRole("heading",{name:"Books and journal"})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Chart of accounts"})).toBeVisible();
-    await expect(page.getByText("System account types and roles are fixed.",{exact:false})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Your books",exact:true})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Your accounts",exact:true})).toBeVisible();
+    await expect(page.getByText("Accounts are the buckets your money is sorted into",{exact:false})).toBeVisible();
     await expect(page.getByRole("button",{name:"Add account"})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
     const results=await new AxeBuilder({page}).analyze();
