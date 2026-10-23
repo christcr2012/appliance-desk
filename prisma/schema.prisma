@@ -125,6 +125,14 @@ model Verification {
   @@index([identifier])
 }
 
+// Better Auth's sign-in attempt counter (kept in the database so every server copy shares it).
+model RateLimit {
+  id          String @id @default(cuid())
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+}
+
 model TwoFactor {
   id                      String   @id
   userId                  String   @unique

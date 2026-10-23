@@ -24,7 +24,6 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 - Minor: appliance status transition gaps, month-end anniversary anchor drift, STOP matching on unusual phone formats, day-of-visit text doc drift.
 
 ## Security / hardening (lower)
-- Better Auth's own login rate limit is per-server-instance memory; wire it to the shared database limiter.
 - `/sign/[id]` and `/estimate/[id]` use database ids as the only secret; add a random access token with expiry.
 - Privacy-request form: a per-email limit is in (fixed). Still open: the response time can still hint whether an email is a customer.
 - `/scan/<asset>` reveals existence of an asset number; CSV guard turns negative numbers into text; confirm `BETTER_AUTH_URL` is set in production.

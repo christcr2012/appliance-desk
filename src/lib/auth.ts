@@ -112,6 +112,8 @@ export const auth = betterAuth({
     enabled: !isDisposableCiAuthFixture(),
     window: 60,
     max: 10,
+    // Shared across every running copy of the site (memory would give each copy its own counter).
+    storage: "database",
   },
   user: {
     additionalFields: {

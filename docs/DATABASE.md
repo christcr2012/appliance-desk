@@ -1221,3 +1221,6 @@ CommunicationThread.customerId/leadId, ConsentRecord.customerId/leadId, RentalAg
 LeadApplianceRequest.leadId, PurchaseUseTax.filingPeriodId/jurisdictionId, AuditLog.userId, Referral.referrerCustomerId,
 PendingDelivery.deliveredJobId/substituteJobId, AddressTaxJurisdiction.jurisdictionId, InvoiceTaxLine.rateVersionId,
 Expense.categoryId, ApplianceCustodyEpisode.serviceAddressId, OutOfServicePeriod.rentalLineId.
+
+## Sign-in attempt counter (October 23, additive migration `20261023170000_auth_rate_limit`)
+New table `RateLimit` (`key` unique, `count`, `lastRequest` in milliseconds). Better Auth keeps its sign-in attempt counts here instead of in each server's memory, so the limit is the same however many server copies are running. Rows hold only a hashed network-address key and a count; they are safe to delete at any time (the counter just starts over). The site's own form limiter still uses the `Verification` table.
