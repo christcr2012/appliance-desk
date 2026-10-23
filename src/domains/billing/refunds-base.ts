@@ -2,6 +2,7 @@ import type { Prisma, RefundReason } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import { lockCustomerLedger } from "./ledger";
 import {
   HELD_PAYMENT_STATUS,
@@ -157,7 +158,7 @@ export async function decideDepositRefund(
   const resolvedStripeChargeId = await resolveDepositStripeCharge(input.depositId);
 
   const prepared = await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "REFUND_DEPOSIT");
     const rows = await tx.$queryRaw<
       Array<{
         id: string;
@@ -499,7 +500,7 @@ export async function issueInvoiceRefund(
   positiveCents(input.amountCents, "Refund amount");
 
   const prepared = await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "ISSUE_REFUND");
     return prepareInvoiceRefundInTx(tx, userId, input);
   });
 
@@ -534,7 +535,7 @@ export async function refundHeldPayment(
   paymentId: string,
 ): Promise<{ refundId: string; providerOpId: string; outcome: "SUCCEEDED" | "FAILED" | "UNKNOWN" }> {
   const prepared = await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "ISSUE_REFUND");
     const identity = await tx.payment.findUnique({
       where: { id: paymentId },
       select: { invoice: { select: { id: true, customerId: true } } },

@@ -1,6 +1,7 @@
 import type { InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import {
   createReceiptWithAllocations,
   lockCustomerLedger,
@@ -62,7 +63,7 @@ export async function recordManualPayment(
   let result: ManualPaymentResult | undefined;
 
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actingUserId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, actingUserId, "RECORD_MANUAL_PAYMENT");
     await lockCustomerLedger(tx, customerId);
 
     const targetInvoices = await tx.invoice.findMany({
@@ -169,7 +170,7 @@ export async function writeOffInvoice(
   reason: string,
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actingUserId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, actingUserId, "WRITE_OFF");
     const rows = await tx.$queryRaw<
       Array<{
         id: string;

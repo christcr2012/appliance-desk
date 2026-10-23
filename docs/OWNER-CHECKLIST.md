@@ -127,6 +127,12 @@ IN-14 first portfolio account requirements · IN-45 AI morning check-up key · I
 programs (proposed, not built) · IN-64 receipt-photo scanning (deferred) · IN-05 launch date (hoped for November, depends
 on readiness).
 
+- [ ] **Decision, only when you hire: should any staff member ever see reports or post expenses?** Today staff see only the
+  driver view and can do none of the money actions. The new "What each admin may do" page can only take things away from an
+  admin; it never gives staff more. Giving a staff member reports or expenses means opening desk screens to staff, which
+  widens access, so it waits for your yes. Steps: tell the agent which person and which of the two (reports, expenses).
+  Ready when: you have staff who need it. You'll know it worked: that person sees only what you chose.
+
 ## Log of rows added by agents
 
 | Date | Row added | Why |
@@ -134,3 +140,4 @@ on readiness).
 | 2026-10-23 | Business paperwork list | Chris asked for one place for LLC/EIN/licenses with renewal reminders (built in the app). |
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
+| 2026-10-23 | Staff-permission decision (section E) | Granting staff reports/expenses would widen access, so it needs the owner's approval. |

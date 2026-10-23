@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import { resolveDepositRefundRail } from "./deposit-provenance";
 import {
   claimProviderOperation,
@@ -82,12 +83,12 @@ export async function decideDepositRefund(
   }
 
   await prisma.$transaction((tx) =>
-    assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]),
+    assertCapability(tx, userId, "REFUND_DEPOSIT"),
   );
   const rail = await resolveDepositRefundRail(input.depositId);
 
   const prepared = await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "REFUND_DEPOSIT");
     // Share cancellation's agreement -> deposit lock order. The source can
     // move only via the existing renewal workflow, so recheck after locking.
     const scope = await tx.deposit.findUniqueOrThrow({where:{id:input.depositId},select:{agreementId:true}});

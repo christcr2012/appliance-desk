@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/team-actor", () => ({
   assertActiveTeamActor: (...args: unknown[]) => mocks.assertActiveTeamActor(...args),
 }));
+vi.mock("@/domains/capabilities", () => ({
+  assertCapability: (tx: unknown, id: string) => mocks.assertActiveTeamActor(tx, id, ["OWNER", "ADMIN"]),
+}));
 vi.mock("@/domains/billing/deposit-provenance", () => ({
   resolveDepositRefundRail: (...args: unknown[]) => mocks.resolveDepositRefundRail(...args),
 }));

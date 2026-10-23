@@ -928,6 +928,18 @@ model RetiredAppliancePlan {
   @@index([choice, doneOn])
 }
 
+// Per-person limits on what an admin may do (Batch O-2A). A row with allowed=false takes a capability away from that
+// person; no row means the role's default (which equals the old fixed rules). The owner can never be limited.
+model StaffCapabilityOverride {
+  userId          String
+  capability      String
+  allowed         Boolean
+  updatedByUserId String
+  updatedAt       DateTime @updatedAt
+
+  @@id([userId, capability])
+}
+
 // One scrap-yard check or ticket (a lump, not split by appliance). Posts to the "Scrap sales" income account.
 model ScrapPayment {
   id               String    @id @default(cuid())
