@@ -6,6 +6,8 @@ import { sendEstimateFollowUpReminders } from "@/domains/estimates";
 // claims the Colorado business-day slot before work starts, so two invocations
 // cannot silently run the same pass twice. The estimate domain keeps its own
 // per-estimate send-cycle claim as a second, business-level dedupe boundary.
+export const maxDuration = 60;
+
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { sendJobDayOfReminders } from "@/domains/jobs";
 
+export const maxDuration = 60;
+
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;
