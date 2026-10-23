@@ -19,6 +19,8 @@ export type ManualPaymentInput = {
   /** Apply the whole amount to one specific invoice instead of spreading
    * it across every open invoice oldest-first. */
   invoiceId?: string;
+  /** Refuse (inside the locked step) any amount above what the chosen invoice still owes, instead of making a credit. */
+  refuseOverpayment?: boolean;
 };
 
 export type ManualPaymentResult = {
@@ -103,6 +105,10 @@ export async function recordManualPayment(
         newStatus,
       });
       remainingCents -= appliedCents;
+    }
+
+    if (input.refuseOverpayment && remainingCents > 0) {
+      throw new Error("That is more than is still owed on this sale. Reload the page to see the current balance.");
     }
 
     const receiptNotes = [

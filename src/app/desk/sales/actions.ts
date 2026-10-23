@@ -89,7 +89,7 @@ export async function recordSalePaymentAction(raw: unknown): Promise<SaleActionS
     if (amountCents > sale.amountDueCents - sale.amountPaidCents) return { status: "error", message: "That is more than is still owed on this sale." };
     const receivedOn = businessDateFromKey(v.receivedOn);
     if (!receivedOn) return { status: "error", message: "Enter a valid date the payment was received." };
-    await recordManualPayment(sale.customerId, session.user.id, { amountCents, method: v.method, receivedOn, invoiceId: v.invoiceId });
+    await recordManualPayment(sale.customerId, session.user.id, { amountCents, method: v.method, receivedOn, invoiceId: v.invoiceId, refuseOverpayment: true });
     revalidatePath("/desk/sales");
     revalidatePath(`/desk/sales/${v.invoiceId}`);
     revalidatePath("/desk/billing");

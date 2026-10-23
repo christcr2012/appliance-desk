@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createShopSale, cancelShopSale, SaleTaxBlockedError } from "@/domains/sales";
+import { recordManualPayment } from "@/domains/billing";
 import { WALK_IN_EMAIL } from "@/domains/sales/walk-in";
 import { PartOperationConflictError, findPartLedgerMismatches } from "@/domains/purchasing/ledger";
 import { getCustomers, getCustomersCount, getCustomersPage } from "@/domains/customers";
@@ -177,7 +178,9 @@ describe.skipIf(!enabled)("shop sales on real Postgres", () => {
     expect(done).toMatchObject({ restocked: 3, alreadyCancelled: false });
     expect(await stock(part)).toBe(5);
     const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: sale.invoiceId } });
-    expect(invoice).toMatchObject({ status: "VOID", amountDueCents: 0 });
+    expect(invoice.status).toBe("VOID");
+    expect(invoice.cancelledAt).not.toBeNull();
+    expect(invoice.amountDueCents).toBe(sale.amountDueCents);
     expect(await cancelShopSale(ownerId, sale.invoiceId, "again")).toMatchObject({ alreadyCancelled: true, restocked: 0 });
     expect(await stock(part)).toBe(5);
     expect(await findPartLedgerMismatches(prisma, [part])).toEqual([]);
@@ -186,5 +189,25 @@ describe.skipIf(!enabled)("shop sales on real Postgres", () => {
     await prisma.invoice.update({ where: { id: paid.invoiceId }, data: { amountPaidCents: 500, status: "PARTIALLY_PAID" } });
     await expect(cancelShopSale(ownerId, paid.invoiceId, "oops")).rejects.toThrow(/paid/);
     expect(await stock(part)).toBe(4);
+  });
+
+  it("two overlapping requests with the same key make one sale and both return it", async () => {
+    const part = await newPart({ quantity: 1 });
+    const input = { operationKey: key(), customerId: null, location: "PICKUP" as const, items: [{ partRecordId: part, quantity: 1, unitPriceCents: 1000 }] };
+    const [a, b] = await Promise.all([createShopSale(ownerId, input), createShopSale(ownerId, input)]);
+    expect(a.invoiceId).toBe(b.invoiceId);
+    expect([a.replayed, b.replayed].sort()).toEqual([false, true]);
+    expect(await stock(part)).toBe(0);
+  });
+
+  it("a payment above what is still owed is refused inside the locked step", async () => {
+    const part = await newPart({ quantity: 1 });
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [{ partRecordId: part, quantity: 1, unitPriceCents: 1000 }] });
+    const walkIn = await prisma.customer.findFirstOrThrow({ where: { isWalkIn: true } });
+    const pay = (amountCents: number) => recordManualPayment(walkIn.id, ownerId, { amountCents, method: "cash", invoiceId: sale.invoiceId, refuseOverpayment: true });
+    await pay(sale.amountDueCents - 100);
+    await expect(pay(200)).rejects.toThrow(/more than is still owed/);
+    await pay(100);
+    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: sale.invoiceId } })).status).toBe("PAID");
   });
 });

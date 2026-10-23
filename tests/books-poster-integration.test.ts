@@ -152,6 +152,12 @@ describe("K-2A+K-2B source to immutable books",()=>{
       expect(credit("RETIRED_APPLIANCE_SALES")).toBe(3000);
       expect(credit("RENTAL_INCOME")).toBe(0);
       expect(entry.lines.reduce((n,l)=>n+l.debitCents,0)).toBe(entry.lines.reduce((n,l)=>n+l.creditCents,0));
+      // Cancelling the sale (as the Shop sales screen does: status VOID + cancelledAt, total kept) reverses it exactly.
+      await prisma.invoice.update({where:{id},data:{status:"VOID",cancelledAt:new Date()}});
+      await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+      const net=(await prisma.journalLine.findMany({where:{entry:{sourceType:"INVOICE",sourceId:id}}})).reduce((n,l)=>n+l.debitCents-l.creditCents,0);
+      expect(net).toBe(0);
+      expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:id,eventKind:"INVOICE_VOIDED"}})).toBe(1);
     } finally {
       await prisma.journalLine.deleteMany({where:{entry:{sourceId:id}}});
       await prisma.journalEntry.deleteMany({where:{sourceId:id}});

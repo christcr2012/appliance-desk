@@ -127,6 +127,9 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
 
     // Lock order: the customer's ledger, then the parts sorted by id (as everywhere else).
     await lockCustomerLedger(tx, customerId);
+    // An overlapping request with the same key may have just finished: answer with that sale, not an error.
+    const lateReplay = await replayedSale(tx, input.operationKey, hash);
+    if (lateReplay) return lateReplay;
     await lockPartRecords(tx, input.items.map((i) => i.partRecordId));
     const parts = await tx.partRecord.findMany({
       where: { id: { in: input.items.map((i) => i.partRecordId) } },
@@ -267,7 +270,7 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
         { partRecordId: m.partRecordId, kind: "REVERSAL", quantityDelta: 0, unitCostCents: null, reversesMovementId: m.id, reason: `Sale ${sale.invoiceNumber} cancelled: ${why}` },
       ]);
     }
-    await tx.invoice.update({ where: { id: sale.id }, data: { status: "VOID", amountDueCents: 0 } });
+    await tx.invoice.update({ where: { id: sale.id }, data: { status: "VOID", cancelledAt: new Date() } });
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "sale.cancel", entityType: "Invoice", entityId: sale.id, newValue: { reason: why, restockedLines: sold.length } },
     });
