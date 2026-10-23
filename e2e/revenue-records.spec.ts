@@ -27,7 +27,7 @@ for (const width of [360, 768, 1440])
 
       await expect(
         page.getByRole("heading", {
-          name: "Revenue and cash activity",
+          name: "Income and cash received",
           exact: true,
         }),
       ).toBeVisible();

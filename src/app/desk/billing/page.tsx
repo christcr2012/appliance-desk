@@ -169,7 +169,7 @@ export default async function BillingPage({
     <div>
       <PageHeader
         title="Billing"
-        description="Invoice snapshots and recorded payments. Rental rates, deposits, and revenue are separate amounts."
+        description="Bills you have sent and payments you have received. Rental prices, deposits and income are kept separate so each number means one thing."
       />
 
       <FilterBar

@@ -128,12 +128,12 @@ export default async function FleetPage({
   return (
     <div>
       <PageHeader
-        title="Fleet and appliance estimates"
-        description="Assignment-based rental value, recorded costs, and the appliance records behind them."
+        title="Your appliances: value and cost"
+        description="What each appliance has earned from rentals, what it has cost you, and the records behind those numbers."
       />
 
       <Card
-        title="How to read these estimates"
+        title="How to read these numbers"
         actions={
           <ButtonLink href="/desk/revenue" variant="secondary">
             Review payments and refunds
