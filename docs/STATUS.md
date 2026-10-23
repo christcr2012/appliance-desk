@@ -1,3 +1,7 @@
+## October 23 — Budget plans: an estimate stays an estimate (Chris's decision)
+
+Publishing a monthly budget plan now refuses to relabel an unchanged estimate as "exact" by hand; the owner can still replace an estimate with their own ("Owner reviewed manual adjustment"), and a row only becomes exact when the real source supports it. Pure rule in `report-math.ts` with unit tests; the publish path in `published.ts` uses it. No schema change, nothing live affected.
+
 ## October 23 — Security: Next.js 16.4.2 (PR #515)
 
 Moves Next.js 16.3.8 → 16.4.2 to close two published critical remote-code-execution advisories and a server-action denial-of-service one; also Sentry 11.8.0 (the older Sentry helper broke the new Turbopack build) and non-breaking audit fixes to developer tools. Two file reads got Turbopack ignore markers (path validation in the ops API; the bundled DR 0252 form directory, which stays included by `outputFileTracingIncludes`). `npm audit`: critical 1→0, moderate 2→0, high 7→5 (the 5 left sit only in the lint tool's file-matching chain and run on developer machines/CI, never on the live site). Exact-head CI proves build, unit, browser. Nothing live changes by hand; the daily job promotes it.
