@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction, noticeAction } from "@/lib/confirm-action";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, StatusPill } from "@/components/ui";
@@ -45,8 +47,8 @@ export function HeldPaymentCard(props: HeldPaymentCardProps) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function choose(option: Option) {
-    const ok = window.confirm(
+  async function choose(option: Option) {
+    const ok = await confirmAction(
       `${OPTION_TEXT[option].title}?\n\n${OPTION_TEXT[option].what}\n\nThis cannot be undone from here.`,
     );
     if (!ok) return;
@@ -62,7 +64,7 @@ export function HeldPaymentCard(props: HeldPaymentCardProps) {
         return;
       }
       if (result.status === "pending") {
-        window.alert(result.message);
+        void noticeAction(result.message);
       }
       router.refresh();
     });

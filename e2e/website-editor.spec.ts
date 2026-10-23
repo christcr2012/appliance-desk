@@ -116,8 +116,8 @@ test.describe("website editor (owner)", () => {
       await restore.click();
       await expect(page.getByRole("status").first()).toContainText("not live");
       expect(await publicSeen()).toContain(edited);
-      page.once("dialog", (dialog) => void dialog.accept());
       await page.getByRole("button", { name: "Discard the draft" }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Yes, throw it away" }).click();
       await expect(page.getByRole("status").first()).toContainText("discarded");
     }
     // Return the live words to the original and publish them.

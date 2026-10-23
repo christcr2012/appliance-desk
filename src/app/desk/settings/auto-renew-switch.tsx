@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction } from "@/lib/confirm-action";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, StatusPill } from "@/components/ui";
@@ -10,8 +12,8 @@ export function AutoRenewSwitch({ enabled, canChange }: { enabled: boolean; canC
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function change(next: boolean) {
-    const ok = window.confirm(
+  async function change(next: boolean) {
+    const ok = await confirmAction(
       next
         ? "Turn ON automatic renewals?\n\nCustomers who agreed to renew automatically will have a month-to-month renewal queued, get a reminder, and keep being billed after their term ends."
         : "Turn OFF automatic renewals?\n\nNothing new is queued or started automatically. Customers can still turn it off, and early endings still work.",

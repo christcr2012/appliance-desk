@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction } from "@/lib/confirm-action";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, StatusPill } from "@/components/ui";
@@ -19,8 +21,8 @@ export function CustomerEmailSwitch({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function change(next: boolean) {
-    const ok = window.confirm(
+  async function change(next: boolean) {
+    const ok = await confirmAction(
       next
         ? "Turn ON emails to customers?\n\nFrom now on the site will email real customers: renewal reminders, payment reminders, estimates and follow-ups, referral credit notices. Waiting reminders go out at the next nightly run."
         : "Turn OFF emails to customers?\n\nNothing will be emailed to customers. Reminders will wait on the Notices screen until you turn it back on or mark them delivered yourself.",

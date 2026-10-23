@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction, customerConfirmLabels } from "@/lib/confirm-action";
+
 import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -19,11 +21,12 @@ export function TurnOffAutoRenew({ agreementId }: { agreementId: string }) {
         type="button"
         variant="secondary"
         disabled={pending}
-        onClick={() => {
+        onClick={async () => {
           if (
-            !window.confirm(
-              "Turn off automatic renewal? Your rental will end on its end date instead of continuing month to month.",
-            )
+            !(await confirmAction(
+              tr("Turn off automatic renewal? Your rental will end on its end date instead of continuing month to month."),
+              customerConfirmLabels(tr),
+            ))
           )
             return;
           setError(null);

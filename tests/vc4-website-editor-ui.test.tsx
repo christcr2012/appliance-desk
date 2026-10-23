@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   restore: vi.fn(),
   discard: vi.fn(),
 }));
+const confirmAction = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/confirm-action", () => ({ confirmAction, noticeAction: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, refresh: vi.fn() }), usePathname: () => "/desk/settings/website" }));
 vi.mock("@/app/desk/settings/website/actions", () => ({
   saveWebsiteValuesAction: mocks.save,
@@ -182,9 +184,10 @@ describe("History screen", () => {
     mocks.restore.mockResolvedValue({ status: "restored", draftId: "d9", version: 9, replacedDraft: true });
     const view = render(<HistoryPanel rows={rows} draft={{ id: "d1", version: 1, changes: 2 }} />);
     expect(await problems(view.container)).toEqual([]);
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    confirmAction.mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     fireEvent.click(screen.getByRole("button", { name: "Put in draft" }));
-    expect(confirm.mock.calls[0][0]).toMatch(/replaces your unpublished draft/);
+    await waitFor(() => expect(confirmAction).toHaveBeenCalledTimes(1));
+    expect(confirmAction.mock.calls[0][0]).toMatch(/replaces your unpublished draft/);
     expect(mocks.restore).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Put in draft" }));
     await screen.findByText(/It is not live/);
@@ -194,12 +197,13 @@ describe("History screen", () => {
   it("discards the draft only after confirmation", async () => {
     mocks.discard.mockResolvedValue({ status: "discarded" });
     render(<HistoryPanel rows={rows} draft={{ id: "d1", version: 1, changes: 2 }} />);
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    confirmAction.mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     fireEvent.click(screen.getByRole("button", { name: "Discard the draft" }));
+    await waitFor(() => expect(confirmAction).toHaveBeenCalledTimes(1));
     expect(mocks.discard).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Discard the draft" }));
     await screen.findByText(/draft was discarded/);
     expect(mocks.discard).toHaveBeenCalledWith({ draftId: "d1", version: 1 });
-    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirmAction).toHaveBeenCalledTimes(2);
   });
 });
