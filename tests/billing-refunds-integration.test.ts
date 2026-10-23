@@ -521,6 +521,22 @@ describe.skipIf(!enabled)("refund decisions in disposable Postgres", () => {
     expect(operations.some((operation) => operation.idempotencyKey.endsWith(chargeTwo))).toBe(true);
   });
 
+  it("will not return a deposit after money was already refunded on the bill that included it", async () => {
+    const fixture = await createFixture();
+    await issueInvoiceRefund(ownerId, {
+      invoiceId: fixture.invoiceId,
+      amountCents: 5_000,
+      reason: "GOODWILL",
+      toCredit: true,
+    });
+
+    await expect(
+      decideDepositRefund(ownerId, { depositId: fixture.depositId, refundCents: 5_000 }),
+    ).rejects.toThrow(/already been refunded on the bill/i);
+    const deposit = await prisma.deposit.findUniqueOrThrow({ where: { id: fixture.depositId } });
+    expect(deposit.refundedAt).toBeNull();
+  });
+
   it("rejects refunds that exceed paid amount remaining after earlier refunds", async () => {
     const fixture = await createFixture();
     await issueInvoiceRefund(ownerId, {

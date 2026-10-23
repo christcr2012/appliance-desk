@@ -14,6 +14,7 @@ const writeOffInvoiceId="books-writeoff-"+tag;
 const receiptCreditId="books-receipt-credit-"+tag;
 const partialCreditId="books-partial-credit-"+tag;
 const partialApplicationId="books-credit-appl-"+tag;
+const heldCreditId="books-held-credit-"+tag, refundCreditId="books-refund-credit-"+tag, creditRefundId="books-credit-refund-"+tag;
 const earlierReceiptId="books-early-receipt-"+tag;
 const lateReceiptId="books-late-receipt-"+tag, stripeId="books-stripe-"+tag;
 const actor={id:ownerId,role:"OWNER" as const},staff={id:ownerId,role:"STAFF" as const},guest={id:ownerId,role:"CUSTOMER" as const};
@@ -31,11 +32,12 @@ beforeAll(async()=>{
 afterAll(async()=>{
   await prisma.exportBatchEntry.deleteMany({where:{batch:{createdByUserId:ownerId}}});
   await prisma.exportBatch.deleteMany({where:{createdByUserId:ownerId}});
-  await prisma.journalLine.deleteMany({where:{entry:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,issuedLateInvoiceId,writeOffInvoiceId,receiptCreditId,partialCreditId,partialApplicationId,earlierReceiptId,start]}}}});
-  await prisma.journalEntry.deleteMany({where:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,issuedLateInvoiceId,writeOffInvoiceId,receiptCreditId,partialCreditId,partialApplicationId,earlierReceiptId,start]}}});
+  await prisma.journalLine.deleteMany({where:{entry:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,issuedLateInvoiceId,writeOffInvoiceId,receiptCreditId,partialCreditId,partialApplicationId,earlierReceiptId,heldCreditId,refundCreditId,creditRefundId,start]}}}});
+  await prisma.journalEntry.deleteMany({where:{sourceId:{in:[invoiceId,receiptId,paymentId,invalidInvoiceId,lateReceiptId,stripeId,issuedLateInvoiceId,writeOffInvoiceId,receiptCreditId,partialCreditId,partialApplicationId,earlierReceiptId,heldCreditId,refundCreditId,creditRefundId,start]}}});
   await prisma.payment.deleteMany({where:{id:paymentId}});
   await prisma.creditApplication.deleteMany({where:{id:partialApplicationId}});
-  await prisma.customerCredit.deleteMany({where:{id:{in:[receiptCreditId,partialCreditId]}}});
+  await prisma.customerCredit.deleteMany({where:{id:{in:[receiptCreditId,partialCreditId,heldCreditId,refundCreditId]}}});
+  await prisma.refund.deleteMany({where:{id:creditRefundId}});
   await prisma.invoiceLineItem.deleteMany({where:{invoiceId:{in:[invoiceId,invalidInvoiceId,issuedLateInvoiceId,writeOffInvoiceId]}}});
   await prisma.invoice.deleteMany({where:{id:{in:[invoiceId,invalidInvoiceId,issuedLateInvoiceId,writeOffInvoiceId]}}});
   await prisma.receipt.deleteMany({where:{id:{in:[receiptId,lateReceiptId,earlierReceiptId]}}});
@@ -153,6 +155,32 @@ describe("K-2A+K-2B source to immutable books",()=>{
       include:{lines:{include:{ledgerAccount:true}}}});
     expect(entry.eventKind).toBe("CREDIT_FROM_RECEIPT");
     expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="UNAPPLIED_RECEIPTS"&&line.debitCents===300)).toBe(true);
+  });
+  it("treats a late payment kept as credit as received money, not a goodwill expense",async()=>{
+    await prisma.customerCredit.create({data:{
+      id:heldCreditId,customerId,sourceType:"HELD_PAYMENT",sourceId:paymentId,
+      reason:"Payment received after an invoice was closed",amountCents:400,remainingCents:400,
+    }});
+    await prisma.$transaction(tx=>postForSource(tx,"CUSTOMER_CREDIT",heldCreditId));
+    const entry=await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"CUSTOMER_CREDIT",sourceId:heldCreditId},
+      include:{lines:{include:{ledgerAccount:true}}}});
+    expect(entry.eventKind).toBe("CREDIT_FROM_RECEIPT");
+    expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="UNAPPLIED_RECEIPTS"&&line.debitCents===400)).toBe(true);
+    expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="CREDITS_GIVEN")).toBe(false);
+  });
+  it("books a refund kept as store credit once, with no money leaving the bank",async()=>{
+    await prisma.refund.create({data:{id:creditRefundId,invoiceId,amountCents:500,reason:"OTHER"}});
+    await prisma.customerCredit.create({data:{
+      id:refundCreditId,customerId,sourceType:"REFUND_TO_CREDIT",sourceId:creditRefundId,
+      reason:"Invoice refund — other",amountCents:500,remainingCents:500,
+    }});
+    await prisma.$transaction(tx=>postForSource(tx,"REFUND",creditRefundId));
+    await prisma.$transaction(tx=>postForSource(tx,"CUSTOMER_CREDIT",refundCreditId));
+    expect(await prisma.journalEntry.count({where:{sourceType:"REFUND",sourceId:creditRefundId}})).toBe(0);
+    const entry=await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"CUSTOMER_CREDIT",sourceId:refundCreditId},
+      include:{lines:{include:{ledgerAccount:true}}}});
+    expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="REFUNDS"&&line.debitCents===500)).toBe(true);
+    expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="CUSTOMER_CREDITS"&&line.creditCents===500)).toBe(true);
   });
   it("does not double-subtract applied credits from an invoice write-off",async()=>{
     await prisma.businessSettings.update({where:{id:"singleton"},data:{badDebtTaxRecovery:"NO"}});

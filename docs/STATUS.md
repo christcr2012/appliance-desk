@@ -1,3 +1,7 @@
+## October 23 — Full-code review: money fixes round 1
+
+Fixed (with tests): a refund kept as store credit no longer posts as money leaving the bank; a late payment kept as credit now posts against received money instead of a goodwill expense; write-off only works on open, unpaid bills and re-checks the acting staff member; manual payment amounts reject more than two decimals instead of rounding; a deposit cannot be returned after money was already refunded on the bill that included it. Every other confirmed finding is listed in `docs/OPEN-FINDINGS.md` (deposit-invoice books posting needs an accounting decision first). Also corrected the Colorado tax-rate (IN-61) and upload-approval (IN-62) rows on the owner checklist.
+
 ## October 23 — Budget plans: an estimate stays an estimate (Chris's decision)
 
 Publishing a monthly budget plan now refuses to relabel an unchanged estimate as "exact" by hand; the owner can still replace an estimate with their own ("Owner reviewed manual adjustment"), and a row only becomes exact when the real source supports it. Pure rule in `report-math.ts` with unit tests; the publish path in `published.ts` uses it. No schema change, nothing live affected.
