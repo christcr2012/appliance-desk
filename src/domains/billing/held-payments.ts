@@ -1,6 +1,7 @@
 import type { InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import { lockCustomerLedger } from "./ledger";
 import { HELD_PAYMENT_STATUS, HELD_REFUNDED_STATUS, HELD_TO_CREDIT_STATUS } from "./payment-status";
 
@@ -141,7 +142,7 @@ async function lockHeld(
 /** The customer did owe it: take the write-off back and record the invoice as paid. */
 export async function resolveHeldPaymentAsPaid(userId: string, paymentId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "RESOLVE_HELD_PAYMENT");
     const { customerId, invoice, payment } = await lockHeld(tx, paymentId);
     if (invoice.status !== "WRITTEN_OFF") {
       throw new Error("Only a written-off invoice can be marked paid. Choose credit or refund instead.");
@@ -202,7 +203,7 @@ export async function resolveHeldPaymentAsPaid(userId: string, paymentId: string
 /** Keep the money as account credit the customer can use later. */
 export async function resolveHeldPaymentAsCredit(userId: string, paymentId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "RESOLVE_HELD_PAYMENT");
     const { customerId, invoice, payment } = await lockHeld(tx, paymentId);
     await tx.customerCredit.create({
       data: {

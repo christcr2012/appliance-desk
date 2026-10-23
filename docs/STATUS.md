@@ -1,3 +1,7 @@
+## October 23 — What each admin may do (Batch O, step O-2A, in progress)
+
+New owner-only page **What each admin may do**: you can take any of seven money permissions (record a payment, write off, settle a held payment, refund or keep a deposit, refund a payment, change settings, post or void an expense) away from one admin, and give it back. Everyone starts allowed, so nothing changes until you use it. It takes effect on that admin's very next action and every change is recorded. Staff still cannot do any of these. Giving staff reports or expenses is not built because it widens access; it is a decision row on your checklist. Still to do in O-2: credit grants, price edits and data exports (their checks aren't uniform yet; see the card).
+
 ## October 23 — Settings history with undo, and the Switches page (Batch O, step O-1, in progress)
 
 Settings now has **Settings history and undo** (every change in plain words; undo one setting back only if it has not changed again; never touches signed agreements, email, tax, security or contract terms) and **All switches in one place** (read-only: customer email, text messages, automatic renewals, paused automations, card payments test or live, two-step sign-in, books start date, with who changed each last). Tests on throwaway Postgres cover undo, double undo, changed-again, staff refused and no secrets shown. Not yet in: tax-lookup, launch-email and approval-limit rows (nothing to read yet), and the impact preview (needs O-3). Nothing for Chris to do.

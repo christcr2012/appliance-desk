@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
 import { postForSource, writeJournal } from "./post";
@@ -104,7 +105,7 @@ export async function createExpense(userId: string, fields: ExpenseFields, mode:
 export async function postExpense(userId: string, id: string, expectedVersion: number) {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new ExpenseInputError("Invalid expense version.");
   return prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "POST_EXPENSES");
     await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id" = ${id} FOR UPDATE`;
     const expense = await tx.expense.findUnique({ where: { id } });
     if (!expense || expense.version !== expectedVersion || !["DRAFT", "SUBMITTED"].includes(expense.status))
@@ -154,7 +155,7 @@ export async function postExpense(userId: string, id: string, expectedVersion: n
 export async function voidExpense(userId: string, id: string, expectedVersion: number, reason: string) {
   const why = name(reason, "void reason", 300);
   return prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "POST_EXPENSES");
     await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id" = ${id} FOR UPDATE`;
     const row = await tx.expense.findUnique({ where: { id } });
     if (!row || row.version !== expectedVersion || row.status !== "POSTED")

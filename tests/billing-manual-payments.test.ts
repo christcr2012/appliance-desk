@@ -10,6 +10,10 @@ const auditLogCreate = vi.fn();
 const queryRaw = vi.fn();
 const assertActiveTeamActor = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/team-actor", () => ({ assertActiveTeamActor }));
+// The permission check re-checks the owner/admin role through the same fake (and also reads a per-admin limit table).
+vi.mock("@/domains/capabilities", () => ({
+  assertCapability: (tx: unknown, id: string) => assertActiveTeamActor(tx, id, ["OWNER", "ADMIN"]),
+}));
 
 vi.mock("@/domains/billing/ledger", () => ledger);
 vi.mock("@/lib/prisma", () => ({

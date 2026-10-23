@@ -355,7 +355,7 @@ remain frozen and corrections are reviewed via the filing-amendment detector.
   "Used appliance sale", were added to the chart. Cancelling an unpaid sale voids the invoice and adds `REVERSAL` movements.
 - **Retired appliances** (Batch M-2, 2026-10-23, migration `20261023210000_retired_appliances`). `RetiredAppliancePlan`
   (one row per appliance: choice SELL/STRIP/SCRAP/DISPOSE/OTHER, note, leftovers `remainder` for STRIP, done date and note,
-  reopen reason). `ScrapPayment` (a lump scrap-yard check: operation key, date, amount, yard, deposit account, void fields).
+  reopen reason). `ScrapPayment` (a lump scrap-yard check: operation key, date, amount, yard, deposit account, void fields). `StaffCapabilityOverride` (userId + capability, allowed: a row with allowed=false takes one money permission away from one admin; no row = the role's default; owner/staff never affected).
   `PartStockMovement.applianceId` ties a `SALVAGE` movement to the retired appliance. `BusinessSettings.retiredFollowUpDays`
   (default 30, 0 = never, 0–365). Journal source type `SCRAP_PAYMENT` (events `SCRAP_RECEIVED`, `SCRAP_VOIDED`). Chart rows
   "Scrap sales" (`SCRAP_INCOME`) and "Dump and disposal fees" (`EXPENSE_DUMP_AND_DISPOSAL_FEES`) plus the matching expense category.

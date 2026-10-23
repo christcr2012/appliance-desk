@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import type { Prisma } from "@prisma/client";
 
 /**
@@ -147,7 +147,7 @@ export class SettingsUndoError extends Error {}
 export async function undoSettingsChange(userId: string, auditId: string, key: string) {
   if (!Object.hasOwn(UNDOABLE_SETTINGS, key)) throw new SettingsUndoError("That setting cannot be undone from here.");
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const row = await tx.auditLog.findUnique({ where: { id: auditId } });
     if (!row || row.action !== "settings.update") throw new SettingsUndoError("That change is no longer in the history.");

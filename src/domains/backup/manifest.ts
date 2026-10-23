@@ -41,6 +41,7 @@ export const BACKUP_MODEL_POLICY = {
   PartStockMovement: "partStockMovement",
   RetiredAppliancePlan: "retiredAppliancePlan",
   ScrapPayment: "scrapPayment",
+  StaffCapabilityOverride: "staffCapabilityOverride",
   ApplianceCustodyEpisode: "applianceCustodyEpisode",
   RentalLineAmendment: "rentalLineAmendment",
   InspectionChecklistVersion: "inspectionChecklistVersion",

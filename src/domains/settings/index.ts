@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import { assetIdFromPublicPath } from "@/domains/site-content/asset-paths";
 import { checkExternalUrl } from "@/domains/site-content/links";
 
@@ -191,7 +192,7 @@ export async function updateBusinessSettings(
     // Re-check the person inside the transaction (a deactivated owner/admin
     // must not slip a change in after the page-level role check), then lock
     // the settings row so two saves cannot interleave.
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const before =
       (await tx.businessSettings.findUnique({ where: { id: "singleton" } })) ??

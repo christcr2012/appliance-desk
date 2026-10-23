@@ -279,6 +279,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/settings/lead-response", role: "OWNER", fixture: "/desk/settings/lead-response" },
   { path: "/desk/settings/history", role: "OWNER", fixture: "/desk/settings/history" },
   { path: "/desk/settings/switches", role: "OWNER", fixture: "/desk/settings/switches" },
+  { path: "/desk/settings/permissions", role: "OWNER", fixture: "/desk/settings/permissions" },
   { path: "/desk/settings/unsigned-follow-up", role: "OWNER", fixture: "/desk/settings/unsigned-follow-up" },
   { path: "/desk/settings/policies", role: "OWNER", fixture: "/desk/settings/policies" },
   { path: "/desk/settings/preview-storage", role: "OWNER", fixture: "/desk/settings/preview-storage" },
