@@ -86,6 +86,37 @@ export function invoiceVoided(input: InvoiceEvidence): PostingPlan | null {
   return plan && reversePlan(plan, input.voidedAt, "Invoice voided");
 }
 
+/** What is already in the books for one source: money by ledger account (debits minus credits). */
+export type PostedNet = Map<string, number>;
+const netFrom = (lines: { accountId: string; debitCents: number; creditCents: number }[]): PostedNet => {
+  const out: PostedNet = new Map();
+  for (const line of lines) out.set(line.accountId, (out.get(line.accountId) ?? 0) + line.debitCents - line.creditCents);
+  return out;
+};
+export { netFrom as netByAccount };
+/**
+ * An invoice changed after it was posted (a late fee, a waiver, new tax): post only the difference, never edit the
+ * first entry. `current` is what the invoice should now say; `posted` is what the books already say.
+ */
+export function invoiceAdjustment(date: Date, current: PostedNet, posted: PostedNet): PostingPlan | null {
+  const lines: PostingLine[] = [];
+  for (const id of new Set([...current.keys(), ...posted.keys()])) {
+    const diff = (current.get(id) ?? 0) - (posted.get(id) ?? 0);
+    if (diff > 0) lines.push(debit("ID:" + id, diff));
+    else if (diff < 0) lines.push(credit("ID:" + id, -diff));
+  }
+  return balancedPlan(date, "Invoice changed after it was recorded", lines);
+}
+/** Void an invoice by undoing exactly what the books say now (first entry plus any later changes). */
+export function invoiceVoidFromPosted(date: Date, posted: PostedNet): PostingPlan | null {
+  const lines: PostingLine[] = [];
+  for (const [id, net] of posted) {
+    if (net > 0) lines.push(credit("ID:" + id, net));
+    else if (net < 0) lines.push(debit("ID:" + id, -net));
+  }
+  return balancedPlan(date, "Invoice voided", lines);
+}
+
 export type SimpleEvidence = { date: Date; amountCents: number };
 export function receiptReceived(input: SimpleEvidence & { method: "STRIPE" | "MANUAL" }): PostingPlan | null {
   return balancedPlan(input.date, "Payment received", [

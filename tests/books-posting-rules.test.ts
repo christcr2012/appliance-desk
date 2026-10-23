@@ -4,7 +4,7 @@ import { SYSTEM_ACCOUNTS, DEFAULT_EXPENSE_CATEGORIES, lineKindAccountRole } from
 import {
   PostingEvidenceError, balancedPlan, reversePlan, invoiceRecognition, invoiceVoided,
   receiptReceived, paymentApplied, depositFunded, creditIssued, creditApplied, refundIssued,
-  depositRefunded, depositRetained, invoiceWrittenOff, stripeBalancePlans, expensePosted,
+  depositRefunded, depositRetained, invoiceWrittenOff, invoiceAdjustment, invoiceVoidFromPosted, stripeBalancePlans, expensePosted,
   expenseVoided, applianceContributed, depreciationAccrued, assetDisposedBeforeK6,
   useTaxAccrued, taxFiled, openingBalance, postingBusinessDate,
 } from "@/domains/books/posting-rules";
@@ -129,6 +129,21 @@ describe("Batch K chart and pure posting", () => {
     expect(sum("UNAPPLIED_RECEIPTS","debit")).toBe(25000);
     expect(sum("RECEIVABLES","credit")).toBe(35000);
     expect(() => invoiceWrittenOff({date,amountCents:100,taxRecoveryApproved:false,tax:[],uncollectedDepositCents:200})).toThrow();
+  });
+  it("books only the difference when an invoice changes after posting, and voids exactly what is booked", () => {
+    const posted = new Map([["receivable", 10000], ["rent", -10000]]);
+    const now = new Map([["receivable", 10500], ["rent", -10000], ["fees", -500]]);
+    const change = invoiceAdjustment(date, now, posted)!;
+    check(change);
+    const net = (id: string) => change.lines.filter(l => l.role === "ID:" + id).reduce((n, l) => n + l.debitCents - l.creditCents, 0);
+    expect(net("receivable")).toBe(500);
+    expect(net("fees")).toBe(-500);
+    expect(net("rent")).toBe(0);
+    expect(invoiceAdjustment(date, posted, posted)).toBeNull();
+    const after = new Map([["receivable", 10500], ["rent", -10000], ["fees", -500]]);
+    const voided = invoiceVoidFromPosted(date, after)!;
+    check(voided);
+    expect(voided.lines.find(l => l.role === "ID:receivable")!.creditCents).toBe(10500);
   });
   it("books distinct Stripe fees, disputes and payouts and ignores provider money already represented by receipts", () => {
     const cases=[

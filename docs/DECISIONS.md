@@ -1,3 +1,7 @@
+## October 23 — Bills changed after posting: difference entries (engineering default)
+
+The first journal entry for a bill is never edited. When the bill's amount due no longer matches what the books recorded, the next books run posts one `INVOICE_ADJUSTED_n` entry holding only the difference per ledger account (dated when the bill last changed), then stops. A void reverses the sum of what is actually booked (first entry plus differences), so it can no longer reverse a changed bill incorrectly. Bills that were already voided or fully matched are unaffected. Only the total amount due is compared, so a pure re-split of tax between accounts at the same total is not detected (rare; logged in OPEN-FINDINGS).
+
 ## October 23 — Refunds post on Stripe's confirmation; taken-back write-offs reverse (engineering default)
 
 A card refund row is written before Stripe answers. The books now skip it until Stripe's refund id is stored, so a pending or failed refund is never booked as money out; a refund with no Stripe operation (cash or check) posts as before. When a write-off is undone, the original write-off entry stays as history and a new reversing entry (dated when it was undone) restores the receivable. New entries only; nothing in closed history is rewritten.

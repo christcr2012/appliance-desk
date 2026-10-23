@@ -5,7 +5,6 @@ Each item was read against the code; none is yet reproduced unless marked **fixe
 Remove a line when its fix merges (and name the PR in STATUS). Nothing here blocks building or merging other work.
 
 ## Money / books (needs a short accounting design decision before changing the ledger)
-- **Invoice changed after posting** (late fee, waiver, retax): the first journal is never adjusted; void reverses the *mutated* lines. Post delta entries keyed by invoice version.
 - `handleChargeRefunded` compares a per-charge total with a per-invoice sum (multi-charge invoices); uses `refunds.data[0]`.
 - Legacy one-time signing charge rebuilds amounts from current agreement values instead of the PaymentIntent.
 - `invoice.paid` webhook overwrites local late-fee totals; PAID with zero cash recorded when no cash event exists.
@@ -36,3 +35,4 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 
 ## Owner screens, public site, portal (wording and flow)
 - See the reports summarized in STATUS: plain-English rewrites for Books/Budget/Money, consistent names (Quotes vs Estimates, Rentals vs Agreements, Schedule vs Jobs), a shared confirm dialog instead of browser pop-ups, phone/email help on every portal page, login/reset/sign pages styled like the rest, pre-launch honesty fixes, Spanish for the public site.
+- Books: a bill changed after posting is detected by its total amount due only; a change that only re-splits the same total between accounts (for example moving tax between two jurisdictions) is not caught.
