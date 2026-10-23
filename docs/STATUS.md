@@ -1,6 +1,6 @@
 ## October 23 — Security round 2: daily-job password check, privacy-form limit, steadier test
 
-Every daily-job address (the ones the scheduler calls) now checks its password in constant time, in one shared helper. The public privacy-request form allows only 3 requests per email address per day, from any network, so nobody can flood an inbox or probe for customers. The phone-order browser test now waits for the page to finish loading before it types (it failed once in CI for that reason). Tests added for the helper and the limit. Stacked on the books branch (PR #528).
+Every daily-job address (the ones the scheduler calls) now checks its password in constant time, in one shared helper. The public privacy-request form allows only 3 requests per email address per day, from any network, so nobody can flood an inbox or probe for customers. The phone-order browser test now waits for the page to finish loading before it types (it failed once in CI for that reason). If the daily tax-reminder job misses a day, the "ready to file" and "due in N days" reminders now go out late instead of never (a repeat is never sent twice). Tests added for the helper, the limit and the catch-up. Stacked on the books branch (PR #528).
 
 ## October 23 — Books: refunds wait for Stripe, taken-back write-offs reverse
 

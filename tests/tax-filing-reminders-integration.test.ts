@@ -132,6 +132,19 @@ describe.skipIf(!enabled)("T-6a2 owner filing reminders (real Postgres)", () => 
     expect(deliveries.some(row => row.state === "NOT_SENT")).toBe(true);
   });
 
+  it("makes up a missed 'ready to file' reminder if the daily job did not run on the exact day", async () => {
+    delete process.env.VERCEL;
+    delete process.env.VERCEL_ENV;
+    const file = await account("missed-day", { firstPeriodStart: day("2026-09-01") });
+    await runTaxFilingCalendar(day("2026-10-03"));
+    const period = await prisma.taxFilingPeriod.findFirstOrThrow({ where: { filingAccountId: file.id }, orderBy: { periodStart: "asc" } });
+    const sent = await prisma.messageDelivery.findMany({ where: { idempotencyKey: { startsWith: `tax-reminder:${period.id}:READY` } } });
+    expect(sent.length).toBeGreaterThan(0);
+    const before = sent.length;
+    await runTaxFilingCalendar(day("2026-10-04"));
+    expect(await prisma.messageDelivery.count({ where: { idempotencyKey: { startsWith: `tax-reminder:${period.id}:READY` } } })).toBe(before);
+  });
+
   it("never sends a pre-start reminder, handles legal due dates and repeats overdue every business day", async () => {
     await account("late", { firstPeriodStart: day("2026-05-01"), dueDayOfFollowingMonth: 20 });
     expect(overdueReminderDue(day("2026-06-22"), day("2026-06-22"))).toBe(false);
