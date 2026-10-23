@@ -14,6 +14,7 @@ import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 export const MAX_SCHEDULED_PRICE_CENTS = 1_000_000; // $10,000 a month is far above any real appliance rent.
 export const MAX_DAYS_AHEAD = 366;
 const PAGE = 50;
+const MAX_PASSES = 40; // up to 2,000 changes in one night
 
 export type ScheduleInput = {
   applianceTypeId: string;
@@ -23,9 +24,15 @@ export type ScheduleInput = {
   note?: string;
 };
 
+/** Calendar arithmetic on a YYYY-MM-DD key, so daylight-saving days (23 or 25 hours long) cannot throw it off. */
+export function addDaysToKey(key: string, days: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 /** The earliest start day the screen offers (tomorrow, Colorado calendar). */
 export function earliestStartDay(now: Date = new Date()): string {
-  return businessDateKey(new Date(now.getTime() + 86_400_000));
+  return addDaysToKey(businessDateKey(now), 1);
 }
 
 /** Pure rule so the screen and the domain agree. Returns a plain-words problem or null. */
@@ -36,7 +43,7 @@ export function scheduleInputProblem(input: ScheduleInput, now: Date = new Date(
   if (!day) return "Pick a valid start date.";
   const today = businessDateKey(now);
   if (input.effectiveOn <= today) return "The start date must be after today. To change a price right now, use the price on the Settings screen.";
-  const last = businessDateKey(new Date(now.getTime() + MAX_DAYS_AHEAD * 86_400_000));
+  const last = addDaysToKey(today, MAX_DAYS_AHEAD);
   if (input.effectiveOn > last) return "Pick a start date within the next year.";
   if ((input.note ?? "").length > 300) return "Keep the note under 300 characters.";
   return null;
@@ -164,22 +171,10 @@ function plainFailure(cause: unknown): string {
   return raw.replace(/https?:\/\/\S+/gi, "[link]").slice(0, 300);
 }
 
-/**
- * Nightly: apply every change whose start day has come, oldest first, once. Each change is its own transaction that
- * locks the change row, so a second run (or a cancel at the same moment) cannot apply it twice. The person who
- * scheduled it must still be allowed to change settings; if not, the change is marked FAILED with a plain reason and
- * the price is left alone (the owner can schedule it again).
- */
-export async function applyDueScheduledPriceChanges(now: Date = new Date()): Promise<{ applied: number; failed: number }> {
-  const due = await prisma.scheduledPriceChange.findMany({
-    where: { status: "PENDING", effectiveOn: { lte: now } },
-    orderBy: [{ effectiveOn: "asc" }, { id: "asc" }],
-    take: PAGE,
-    select: { id: true },
-  });
+async function applyBatch(ids: string[], now: Date): Promise<{ applied: number; failed: number }> {
   let applied = 0;
   let failed = 0;
-  for (const { id } of due) {
+  for (const id of ids) {
     try {
       const ok = await prisma.$transaction(async (tx) => {
         const rows = await tx.$queryRaw<Array<{ status: string }>>`
@@ -207,6 +202,32 @@ export async function applyDueScheduledPriceChanges(now: Date = new Date()): Pro
         data: { status: "FAILED", failureMessage: message },
       });
     }
+  }
+  return { applied, failed };
+}
+
+/**
+ * Nightly: apply every change whose start day has come, oldest first, once. Each change is its own transaction that
+ * locks the change row, so a second run (or a cancel at the same moment) cannot apply it twice. The person who
+ * scheduled it must still be allowed to change settings; if not, the change is marked FAILED with a plain reason and
+ * the price is left alone (the owner can schedule it again).
+ */
+export async function applyDueScheduledPriceChanges(now: Date = new Date()): Promise<{ applied: number; failed: number }> {
+  let applied = 0;
+  let failed = 0;
+  // Work through bounded batches until nothing due is left waiting. A row that fails becomes FAILED (no longer
+  // PENDING), so every pass makes progress and the loop ends; the cap is only a safety net.
+  for (let pass = 0; pass < MAX_PASSES; pass += 1) {
+    const due = await prisma.scheduledPriceChange.findMany({
+      where: { status: "PENDING", effectiveOn: { lte: now } },
+      orderBy: [{ effectiveOn: "asc" }, { id: "asc" }],
+      take: PAGE,
+      select: { id: true },
+    });
+    if (due.length === 0) break;
+    const counts = await applyBatch(due.map((r) => r.id), now);
+    applied += counts.applied;
+    failed += counts.failed;
   }
   return { applied, failed };
 }

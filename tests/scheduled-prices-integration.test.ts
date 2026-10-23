@@ -141,6 +141,21 @@ describe.skipIf(!enabled)("scheduled price changes on real Postgres", () => {
     await expect(scheduleAppliancePriceChange(ownerId, { applianceTypeId: t3, newPriceCents: 7_100, effectiveOn: key })).resolves.toMatchObject({ status: "PENDING" });
   });
 
+  it("applies every due change even when more than one batch is due", async () => {
+    const ids: string[] = [];
+    for (let i = 0; i < 55; i += 1) ids.push(await makeType(5_000));
+    const key = dayKey(2);
+    await prisma.scheduledPriceChange.createMany({
+      data: ids.map((applianceTypeId) => ({
+        applianceTypeId, newPriceCents: 5_500, effectiveOn: startOf(key), priceAtSchedulingCents: 5_000, createdByUserId: ownerId,
+      })),
+    });
+    const result = await applyDueScheduledPriceChanges(new Date(startOf(key).getTime() + 3 * 60 * 60 * 1000));
+    expect(result.applied).toBeGreaterThanOrEqual(55);
+    expect(await prisma.scheduledPriceChange.count({ where: { applianceTypeId: { in: ids }, status: "PENDING" } })).toBe(0);
+    expect(await prisma.applianceType.count({ where: { id: { in: ids }, monthlyPriceCents: 5_500 } })).toBe(55);
+  });
+
   it("fails safely, leaving the price alone, when the person who scheduled it has since been limited or the type retired", async () => {
     const t = await makeType(5_000);
     const key = dayKey(10);

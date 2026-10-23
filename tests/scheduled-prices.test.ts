@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_SCHEDULED_PRICE_CENTS, scheduleInputProblem } from "@/domains/pricing/scheduled";
+import { MAX_SCHEDULED_PRICE_CENTS, addDaysToKey, earliestStartDay, scheduleInputProblem } from "@/domains/pricing/scheduled";
 
 // Pure rules for scheduled price changes (O-4). Colorado calendar days, no clock of the machine involved.
 const now = new Date("2026-10-23T18:00:00Z"); // Friday afternoon in Colorado
@@ -36,5 +36,24 @@ describe("scheduleInputProblem", () => {
   });
   it("keeps notes short", () => {
     expect(scheduleInputProblem({ ...ok, note: "x".repeat(301) }, now)).toMatch(/300/);
+  });
+});
+
+describe("earliestStartDay (Colorado calendar, not 24-hour steps)", () => {
+  it("is tomorrow's Colorado date around the spring-forward night", () => {
+    // 23:30 on Saturday March 7, 2026 in Colorado (MST, UTC-7) is 06:30 UTC on March 8.
+    expect(earliestStartDay(new Date("2026-03-08T06:30:00Z"))).toBe("2026-03-08");
+    // and the form's choice is accepted by the rule
+    expect(scheduleInputProblem({ applianceTypeId: "t", newPriceCents: 100, effectiveOn: "2026-03-08" }, new Date("2026-03-08T06:30:00Z"))).toBeNull();
+  });
+  it("is tomorrow, never today, just after midnight on the fall-back day", () => {
+    // 00:30 on Sunday November 1, 2026 in Colorado (still MDT, UTC-6) is 06:30 UTC.
+    expect(earliestStartDay(new Date("2026-11-01T06:30:00Z"))).toBe("2026-11-02");
+    expect(scheduleInputProblem({ applianceTypeId: "t", newPriceCents: 100, effectiveOn: "2026-11-01" }, new Date("2026-11-01T06:30:00Z"))).toMatch(/after today/);
+  });
+  it("adds calendar days across month and year ends", () => {
+    expect(addDaysToKey("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDaysToKey("2028-02-28", 1)).toBe("2028-02-29");
+    expect(addDaysToKey("2026-10-23", 366)).toBe("2027-10-24");
   });
 });
