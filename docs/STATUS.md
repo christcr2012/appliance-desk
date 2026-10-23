@@ -1,3 +1,7 @@
+## October 24 — My workspace (Batch O, step O-7, in review)
+
+In progress: O-7. On Manage my business you can pin shortcuts (they show at the top of Today), save filtered views of Equipment, Visits and Tasks, and hide the three soft nudges (goals, idle appliances, low use). Important items can never be hidden, it is private to each person, and it never changes what anyone may do. Proved on throwaway Postgres (racing saves, own row only, staff refused, limited-admin pins refused, bad filters refused). Not covered: sharing views, reordering, Today/date-range saved views. After this, Batch O is complete except refund/credit/deposit approvals (waiting on your decision prompt).
+
 ## October 24 — Manage my business (Batch O, step O-6, in review)
 
 In progress: O-6. A new page, Manage my business (a button on Settings, a link on More), groups about 40 things you can do by what you want to get done, with a search box ("change rent", "fix failed payment", "stop reminders"). It only links to the real screens, which still check who you are; admins never see owner-only cards. A small "Right now" strip shows customer messages, card payments, background jobs and (owner) approvals, and says "can't check" instead of showing a green check it cannot prove. No new data. Not covered: shortcuts and saved views (O-7), website/price readiness. Next: O-7.

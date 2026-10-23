@@ -37,6 +37,8 @@ import { SetupCard } from "./setup-card";
 import { getBudgetPlanning } from "@/domains/budget/planning";
 import Link from "next/link";
 import { formatMoney } from "@/lib/money-ui";
+import { getWorkspace, describeSavedView, savedViewHref, usablePins } from "@/domains/workspace";
+import { visibleOwnerActions } from "@/lib/owner-actions";
 
 export const metadata = { title: "Today" };
 
@@ -183,7 +185,7 @@ export default async function TodayPage() {
       revision:data.revision
     })).catch(()=>null)
     :null;
-  const [{ items: exceptions, snoozed, truncated }, jobs, followUps, openRequests] =
+  const [{ items: allExceptions, snoozed, truncated: allTruncated }, jobs, followUps, openRequests] =
     await Promise.all([
       getExceptionOverview(),
       getTodaysJobs(now),
@@ -196,6 +198,18 @@ export default async function TodayPage() {
         },
       }),
     ]);
+
+  // O-7: a private workspace for the owner and admins. A problem reading it only hides the shortcuts; it never hides work.
+  // Only the optional notes (goal, idle appliances, low use) can be hidden; every other item always shows.
+  const workspace = role === "OWNER" || role === "ADMIN"
+    ? await getWorkspace(session.user.id).catch(() => null)
+    : null;
+  const hiddenOptional = new Set(workspace?.prefs.hiddenOptionalCardIds ?? []);
+  const exceptions = allExceptions.filter((item) => !hiddenOptional.has(item.category));
+  const truncated = allTruncated.filter((item) => !hiddenOptional.has(item.category));
+  const hiddenNoteCount = allExceptions.filter((item) => hiddenOptional.has(item.category)).length;
+  const myPins = workspace ? usablePins(workspace.prefs, visibleOwnerActions(role)) : [];
+  const mySavedViews = workspace?.prefs.savedViews ?? [];
 
   const visits = jobs.filter((job) => job.status !== "CANCELLED");
   const active = visits.filter(
@@ -258,6 +272,24 @@ export default async function TodayPage() {
         }
       />
 
+      {myPins.length + mySavedViews.length > 0 ? (
+        <nav aria-label="My shortcuts" className="mb-6 rounded-card border border-line p-4">
+          <p className="mb-2 text-sm font-semibold text-ink">My shortcuts</p>
+          <ul className="flex flex-wrap gap-2">
+            {myPins.map((a) => (
+              <li key={a.id}><Link href={a.href} className="inline-flex min-h-11 items-center rounded-md border px-3 text-sm underline">{a.label}</Link></li>
+            ))}
+            {mySavedViews.map((v) => (
+              <li key={v.id}><Link href={savedViewHref(v)} title={describeSavedView(v)} className="inline-flex min-h-11 items-center rounded-md border px-3 text-sm underline">{v.label}</Link></li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
+      {hiddenNoteCount > 0 ? (
+        <p className="mb-4 text-sm text-ink-soft">
+          {hiddenNoteCount} optional note{hiddenNoteCount === 1 ? " is" : "s are"} hidden. <Link href="/desk/control-center#my-workspace" className="underline">Show again</Link>
+        </p>
+      ) : null}
       {setupChecklist ? <SetupCard checklist={setupChecklist} /> : null}
       {budgetAttention&&<section aria-label="Budget source and upcoming cost attention"
        className="mb-6 space-y-2 rounded border border-border p-4">

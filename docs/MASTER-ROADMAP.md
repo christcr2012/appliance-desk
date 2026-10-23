@@ -204,7 +204,7 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 | O-4 | Scheduled price changes with frozen accepted terms | JIT — `O-4.md` | O-3B — *merged (appliance-type prices; packages not covered)* |
 | O-5 | Goals, utilization attention and final control handoff | JIT — `O-5.md` | O-4 — *merged (monthly goals for cash and new rentals; idle and low-utilization warnings)* |
 | O-6 | Manage my business: task search, controls and truthful readiness | JIT — `O-6.md` | O-5 — *merged (read-only map, search, four readiness cards)* |
-| O-7 | Personal saved queues and workspace; mandatory Today tasks preserved | JIT — `O-7.md` | O-6 |
+| O-7 | Personal saved queues and workspace; mandatory Today tasks preserved | JIT — `O-7.md` | O-6 — *merged (pins, hidden optional nudges, saved views)* |
 
 ### COM-N
 
