@@ -112,7 +112,7 @@ describe("exportDatabaseBackup", () => {
         ? { ...row, authorKeyId: null } : row]);
       expect(result.tableCounts?.[table]).toBe(1);
     }
-    expect(transactionMock.mock.calls[0]?.[1]).toEqual({ isolationLevel: "RepeatableRead" });
+    expect(transactionMock.mock.calls[0]?.[1]).toEqual({ isolationLevel: "RepeatableRead", timeout: 120_000, maxWait: 20_000 });
     for (const model of EXCLUDED_MODELS) {
       const table = model[0]!.toLowerCase() + model.slice(1);
       expect(prismaMock[table]!.findMany).not.toHaveBeenCalled();
