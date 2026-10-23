@@ -39,7 +39,7 @@ export async function listSwitches(): Promise<SwitchRow[]> {
   return [
     { id: "customer-email", name: "Email to customers", on: Boolean(s?.customerEmailEnabled), state: s?.customerEmailEnabled ? "On" : "Off", lastChange: email, changeAt: "/desk/settings?section=notifications" },
     { id: "email-provider", name: "Email service", on: null, state: pick("Email"), lastChange: null, changeAt: "/desk/settings?section=integrations" },
-    { id: "sms", name: "Text messages (SMS)", on: null, state: pick("SMS"), lastChange: null, changeAt: "/desk/settings/telecom" },
+    { id: "sms", name: "Text messages (SMS)", on: Boolean(s?.customerSmsEnabled), state: `${s?.customerSmsEnabled ? "Switched on" : "Switched off"} (${pick("SMS")})`, lastChange: null, changeAt: "/desk/settings/telecom" },
     { id: "auto-renew", name: "Automatic renewals", on: Boolean(s?.autoRenewEnabled), state: s?.autoRenewEnabled ? "On" : "Off", lastChange: renew, changeAt: "/desk/settings?section=terms" },
     { id: "paused-automations", name: "Paused automations", on: paused > 0, state: paused === 0 ? "None paused" : `${paused} paused`, lastChange: null, changeAt: "/desk/automations" },
     { id: "payments", name: "Card payments (Stripe)", on: null, state: pick("Payments"), lastChange: null, changeAt: "/desk/settings?section=integrations" },

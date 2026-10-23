@@ -84,6 +84,19 @@ describe.skipIf(!enabled)("settings undo on real Postgres", () => {
     expect(newest.undo.find((u) => u.key === "referralRewardCents")?.ok).toBe(true);
   });
 
+  it("refuses a stale Undo when a newer change put the same value back (B to C to B)", async () => {
+    const base = original.referralRewardCents;
+    await updateBusinessSettings(ownerId, { referralRewardCents: base + 500 });
+    const first = await lastUpdateRow(); // base -> base+500
+    await updateBusinessSettings(ownerId, { referralRewardCents: base + 600 });
+    await updateBusinessSettings(ownerId, { referralRewardCents: base + 500 });
+    await expect(undoSettingsChange(ownerId, first.id, "referralRewardCents")).rejects.toThrow(/changed again/);
+    const history = await listSettingsHistory(10);
+    expect(history.find((h) => h.id === first.id)!.undo.find((u) => u.key === "referralRewardCents")?.ok).toBe(false);
+    const s = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    expect(s.referralRewardCents).toBe(base + 500);
+  });
+
   it("refuses staff and fields outside the undoable list", async () => {
     await updateBusinessSettings(ownerId, { lateFeeGraceDays: original.lateFeeGraceDays + 1 });
     const row = await lastUpdateRow();
@@ -95,6 +108,7 @@ describe.skipIf(!enabled)("settings undo on real Postgres", () => {
 
   it("lists the switches without exposing secrets", async () => {
     const rows = await listSwitches();
+    expect(rows.find((r) => r.id === "sms")?.state).toMatch(/^Switched (on|off) \(/);
     expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["customer-email", "sms", "auto-renew", "payments", "two-factor", "books-start"]));
     expect(JSON.stringify(rows)).not.toMatch(/sk_(live|test)_/);
   });

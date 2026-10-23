@@ -159,6 +159,13 @@ export async function undoSettingsChange(userId: string, auditId: string, key: s
     const now = current as unknown as Record<string, unknown>;
     if (!same(now[key], after[key]))
       throw new SettingsUndoError("This setting changed again after that change, so it was left alone.");
+    // A newer change that put the same value back still counts as "changed again": it was a newer decision.
+    const newer = await tx.auditLog.findMany({
+      where: { action: { in: ["settings.update", "settings.undo"] }, createdAt: { gt: row.createdAt }, id: { not: row.id } },
+      select: { oldValue: true, newValue: true },
+    });
+    if (newer.some((n) => !same(((n.oldValue ?? {}) as Record<string, unknown>)[key], ((n.newValue ?? {}) as Record<string, unknown>)[key])))
+      throw new SettingsUndoError("This setting changed again after that change, so it was left alone.");
     const restored = (before[key] ?? null) as Prisma.InputJsonValue | null;
     const data = { [key]: restored } as Prisma.BusinessSettingsUpdateInput;
     const updated = await tx.businessSettings.update({ where: { id: "singleton" }, data });
