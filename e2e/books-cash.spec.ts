@@ -7,7 +7,7 @@ for(const width of [360,1280]){
   await page.goto("/desk/books/cash");
   await expect(page.getByRole("heading",{name:"Bank statements and cash records"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Import a settled bank CSV"})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Cash records"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Cash records",exact:true})).toBeVisible();
   await expect(page.getByRole("button",{name:"Record balanced cash event"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Preview before importing"})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
