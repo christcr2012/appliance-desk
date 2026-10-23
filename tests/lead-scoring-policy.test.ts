@@ -23,8 +23,8 @@ vi.mock("@/lib/prisma", () => ({
       }),
   },
 }));
-vi.mock("@/lib/team-actor", () => ({
-  assertActiveTeamActor: (...args: unknown[]) => m.assertActor(...args),
+vi.mock("@/domains/capabilities", () => ({
+  assertCapability: (...args: unknown[]) => m.assertActor(...args),
 }));
 
 import {

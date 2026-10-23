@@ -1,10 +1,15 @@
-## October 24 — My workspace (Batch O, step O-7, in review)
+## October 24 — A limited admin really is limited (Batch O, step O-2B, in review)
 
-In progress: O-7. On Manage my business you can pin shortcuts (they show at the top of Today), save filtered views of Equipment, Visits and Tasks, and hide the three soft nudges (goals, idle appliances, low use). Important items can never be hidden, it is private to each person, and it never changes what anyone may do. Proved on throwaway Postgres (racing saves, own row only, staff refused, limited-admin pins refused, bad filters refused). Not covered: sharing views, reordering, Today/date-range saved views. After this, Batch O is complete except refund/credit/deposit approvals (waiting on your decision prompt).
+In progress: O-2B. When you take "Change business settings" away from an admin, they could still change appliance prices, pictures, rental sets, the month-to-month notice rules and the lead scoring policy through their own screens. Those now respect the limit too. Nobody gains anything: the owner and un-limited admins work exactly as before. Proved on throwaway Postgres (nine entry points refuse, nothing is written, restoring brings it back). Still open from O-2B: a role-shaped proof of what each admin page sends to the browser.
+
+## October 24 — My workspace (Batch O, step O-7, merged #541)
+
+Merged: O-7. On Manage my business you can pin shortcuts (they show at the top of Today), save filtered views of Equipment, Visits and Tasks, and hide the three soft nudges (goals, idle appliances, low use). Important items can never be hidden, it is private to each person, and it never changes what anyone may do. Proved on throwaway Postgres (racing saves, own row only, staff refused, limited-admin pins refused, bad filters refused). Not covered: sharing views, reordering, Today/date-range saved views. After this, Batch O is complete except refund/credit/deposit approvals (waiting on your decision prompt).
 
 ## October 24 — Manage my business (Batch O, step O-6, merged #540)
 
 Merged: O-6. A new page, Manage my business (a button on Settings, a link on More), groups about 40 things you can do by what you want to get done, with a search box ("change rent", "fix failed payment", "stop reminders"). It only links to the real screens, which still check who you are; admins never see owner-only cards. A small "Right now" strip shows customer messages, card payments, background jobs and (owner) approvals, and says "can't check" instead of showing a green check it cannot prove. No new data. Not covered: shortcuts and saved views (O-7), website/price readiness. Next: O-7.
+
 ## October 24 — Goals and alerts (Batch O, step O-5, merged #539)
 
 Merged: O-5. Settings → Goals and alerts lets the owner or an admin set this month's target for money collected and for new rentals, and shows how far along you are. If you fall well behind (never in the first week) one note appears on Today. Two adjustable warnings: appliances idle for 30+ days (a count, not one per appliance) and low fleet use (off until you pick a percent). Nothing changes any money or customer. Proved on throwaway Postgres (set/change/clear with audit, limited admin refused, alert save and restore, idle list, Today items). Not covered: other measures, past or future months, email/text alerts. Next: O-6.

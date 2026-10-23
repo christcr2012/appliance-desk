@@ -1,14 +1,14 @@
 # MASTER ROADMAP — scope and ordered work coverage
 
-Audited baseline: main `91f7d34d` (#536), October 23, 2026 (documents re-checked against the code, Vercel and Neon that day). [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
+Audited baseline: main after #541, October 24, 2026 (documents re-checked against the code, Vercel and Neon that day). [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
 ## Where things stand
 
 Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through V, F2,
-K, K-CASH, M-1A…M-2B, O-1, O-2A and O-3A is merged. The live/provider/owner acceptance checks stay separately PENDING on
+K, K-CASH, M-1A…M-2B, O-1, O-2A, O-3A and O-4…O-7 is merged. The live/provider/owner acceptance checks stay separately PENDING on
 [OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
 Deliberately not built yet: M-2C and M-3 (stopped, see their STRONGER-MODEL-PROMPT files), O-3B refund/credit/deposit
-approvals, O-5…O-7, COM-N, BP and W-11/12/13.
+approvals, COM-N, BP and W-11/12/13.
 
 **New required implementer reading:** October 13
 [56-subject owner-answer mapping](owner-decisions/2026-10-13-implementation-map.json)
@@ -198,7 +198,7 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 |---|---|---|---|
 | O-1 | Settings history, guarded undo and live-switch inventory | JIT — `O-1.md` | M-3 — *merged #534; impact preview not built* |
 | O-2A | Capability defaults and scoped domain guards | JIT — `O-2A.md` | O-1 — *merged #535* |
-| O-2B | Per-person permissions UI and adversarial DTO proof | JIT — `O-2B.md` | O-2A — *permissions screen delivered inside #535; adversarial DTO proof still open* |
+| O-2B | Per-person permissions UI and adversarial DTO proof | JIT — `O-2B.md` | O-2A — *permissions screen delivered inside #535; every settings-type save now honours the limit (see `O-2B.md`); a role-shaped DTO proof for the admin pages is still open* |
 | O-3A | Durable approvals and transactional command preparation | JIT — `O-3A.md` | O-2B — *merged #536; write-off and expense kinds only* |
 | O-3B | Approval command adapters and Today decision workflow | JIT — `O-3B.md` | O-3A |
 | O-4 | Scheduled price changes with frozen accepted terms | JIT — `O-4.md` | O-3B — *merged (appliance-type prices; packages not covered)* |
