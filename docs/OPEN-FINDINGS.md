@@ -6,8 +6,6 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 
 ## Money / books (needs a short accounting design decision before changing the ledger)
 - **Invoice changed after posting** (late fee, waiver, retax): the first journal is never adjusted; void reverses the *mutated* lines. Post delta entries keyed by invoice version.
-- **Refund journaled before Stripe confirms** (`books/post.ts` REFUND/DEPOSIT): a failed or unconfirmed refund still posts as paid; clearing-vs-bank account follows a timing-dependent field.
-- **Held payment later marked paid after a write-off**: no reversal event for the write-off.
 - `handleChargeRefunded` compares a per-charge total with a per-invoice sum (multi-charge invoices); uses `refunds.data[0]`.
 - Legacy one-time signing charge rebuilds amounts from current agreement values instead of the PaymentIntent.
 - `invoice.paid` webhook overwrites local late-fee totals; PAID with zero cash recorded when no cash event exists.

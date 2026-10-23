@@ -121,11 +121,7 @@ export function creditApplied(input: SimpleEvidence): PostingPlan | null {
 export function refundIssued(input: SimpleEvidence & {
   stripeRefundId?: string | null;
   tax: { filingAccountId: string | null; taxCents: number }[];
-  /** Deposit billed but never collected: reverses the parked credit instead of becoming bad debt. */
-  uncollectedDepositCents?: number;
 }): PostingPlan | null {
-  const parked = whole(input.uncollectedDepositCents ?? 0, "Uncollected deposit");
-  if (parked < 0 || parked > input.amountCents) throw new PostingEvidenceError("Uncollected deposit exceeds open receivable.");
   const tax = input.tax.reduce((n, item) => n + whole(item.taxCents, "Refund tax"), 0);
   if (tax > whole(input.amountCents, "Refund")) throw new PostingEvidenceError("Refund tax exceeds refund.");
   return balancedPlan(input.date, "Refund paid", [
