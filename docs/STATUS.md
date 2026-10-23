@@ -1,3 +1,6 @@
+## October 23 — Customer portal help line and branded sign-in pages
+
+Every customer portal page ends with "Need help? call / email" using the business phone and email from Settings (hidden while those still hold the placeholder text; Spanish included). Log in, forgot-password, reset-password and two-step pages now show the business name and logo with a link back to the website, and no longer say "Appliance Desk" in the tab title.
 ## October 23 — Books screen in plain English
 
 The owner Books screen no longer says "double-entry", "immutable" or shows raw system codes: sources read like "A bill to a customer", months are "locked/unlocked", accounts are explained as buckets money is sorted into, and the link row is tidied. Meaning and permissions are unchanged.

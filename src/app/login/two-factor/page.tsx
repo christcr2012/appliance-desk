@@ -1,7 +1,7 @@
 import { TwoFactorLoginForm } from "./two-factor-login-form";
 
 export const metadata = {
-  title: "Two-step login — Appliance Desk",
+  title: "Two-step login",
   robots: { index: false, follow: false },
 };
 

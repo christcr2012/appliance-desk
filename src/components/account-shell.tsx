@@ -63,7 +63,16 @@ function activeFor(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AccountShell({ children, language = "en" }: { children: ReactNode; language?: CustomerLanguage }) {
+export function AccountShell({
+  children,
+  language = "en",
+  contact,
+}: {
+  children: ReactNode;
+  language?: CustomerLanguage;
+  /** The business phone and email, shown at the bottom of every page so help is always one tap away. */
+  contact?: { phone: string | null; email: string | null };
+}) {
   const pathname = usePathname();
   const t = (text: Parameters<typeof portalLabel>[1]) => portalLabel(language,text);
   const router = useRouter();
@@ -150,6 +159,22 @@ export function AccountShell({ children, language = "en" }: { children: ReactNod
         className="mx-auto min-w-0 max-w-screen-2xl p-4 pb-28 sm:p-6 md:pb-8"
       >
         {children}
+        {contact && (contact.phone || contact.email) && (
+          <p className="mt-10 border-t border-line pt-4 text-sm text-ink-soft print:hidden">
+            {t("Need help?")}{" "}
+            {contact.phone && (
+              <a className="font-semibold underline" href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`}>
+                {contact.phone}
+              </a>
+            )}
+            {contact.phone && contact.email && <> {t("or email")} </>}
+            {contact.email && (
+              <a className="font-semibold underline" href={`mailto:${contact.email}`}>
+                {contact.email}
+              </a>
+            )}
+          </p>
+        )}
       </main>
 
       <div className="md:hidden print:hidden">
