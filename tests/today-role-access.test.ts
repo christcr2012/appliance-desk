@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   amendmentAttention: vi.fn(async () => ({ amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } })),
   acquisitionAttention: vi.fn(async () => []),
 }));
+vi.mock("@/domains/paperwork", () => ({ listPaperworkAttention: vi.fn(async () => []) }));
 vi.mock("@/domains/tax/acquisition-attention", () => ({
   listAcquisitionTaxAttention: mocks.acquisitionAttention,
 }));

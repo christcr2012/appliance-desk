@@ -4796,3 +4796,41 @@ model BudgetCostSettlement {
   @@index([occurrenceId])
   @@index([sourceType,sourceId])
 }
+
+
+/// The owner's own business paperwork (LLC, EIN, licenses, insurance, yearly filings) with renewal reminders.
+/// Owner-only. `referenceNumber` holds things like an EIN or license number, so it is never logged or shown to staff.
+enum PaperworkStatus {
+  TO_DO
+  IN_PROGRESS
+  DONE
+  NOT_NEEDED
+}
+
+model BusinessPaperwork {
+  id               String          @id @default(cuid())
+  /// Set for items from the starter checklist (unique, so adding the checklist twice does nothing).
+  templateKey      String?         @unique
+  title            String
+  groupName        String
+  whatItIs         String?
+  agency           String?
+  officialUrl      String?
+  status           PaperworkStatus @default(TO_DO)
+  referenceNumber  String?
+  startedOn        DateTime?
+  /// Next renewal, expiry or filing date. Business date (Denver midnight).
+  dueOn            DateTime?
+  remindDaysBefore Int             @default(30)
+  repeatEveryMonths Int?
+  notes            String?
+  sortOrder        Int             @default(0)
+  lastDoneOn       DateTime?
+  createdByUserId  String?
+  updatedByUserId  String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  version          Int             @default(1)
+
+  @@index([status, dueOn])
+}

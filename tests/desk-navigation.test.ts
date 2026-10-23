@@ -24,6 +24,7 @@ it.each([
     // Privacy requests live on the More page, owner only.
     const more = deskMoreLinks(role).map((link) => link.href);
     expect(more.includes("/desk/privacy")).toBe(role === "OWNER");
+    expect(more.includes("/desk/paperwork")).toBe(role === "OWNER");
     expect(more).toContain("/desk/automations");
   },
 );

@@ -217,6 +217,15 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason:
       "The CI seed does not create a deterministic part record; inventory-part behavior is covered by real-Postgres tests.",
   },
+  { path: "/desk/paperwork", role: "OWNER", fixture: "/desk/paperwork" },
+  {
+    path: "/desk/paperwork/[id]",
+    role: "OWNER",
+    fixture: "A generated paperwork item id",
+    manualOnlyReason:
+      "Paperwork items are created by the owner from the starter checklist; the CI seed has none. Item behavior is covered by real-Postgres tests.",
+  },
+  { path: "/desk/paperwork/new", role: "OWNER", fixture: "/desk/paperwork/new" },
   { path: "/desk/parts", role: "OWNER", fixture: "/desk/parts" },
   { path: "/desk/privacy", role: "OWNER", fixture: "/desk/privacy" },
   {

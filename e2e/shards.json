@@ -15,7 +15,8 @@
       "communication-launch.spec.ts",
       "mandatory-signing-policy.spec.ts",
       "commercial-reserve-preapproval.spec.ts",
-      "scenario-10-owner-workflow.spec.ts"
+      "scenario-10-owner-workflow.spec.ts",
+      "business-paperwork.spec.ts"
     ],
     "browser-b": [
       "revenue-records.spec.ts",
