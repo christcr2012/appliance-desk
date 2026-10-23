@@ -168,6 +168,28 @@ describe("K-2A+K-2B source to immutable books",()=>{
     expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="UNAPPLIED_RECEIPTS"&&line.debitCents===400)).toBe(true);
     expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="CREDITS_GIVEN")).toBe(false);
   });
+  it("does not double-book a held-payment credit that was already posted as goodwill before the correction",async()=>{
+    const legacyId="books-legacy-held-"+tag;
+    await prisma.customerCredit.create({data:{
+      id:legacyId,customerId,sourceType:"HELD_PAYMENT",sourceId:"legacy-held-source-"+tag,
+      reason:"Payment received after an invoice was closed",amountCents:250,remainingCents:250,
+    }});
+    try {
+      // Simulate the old behavior: a goodwill-style entry already exists for this source.
+      const accounts=await prisma.ledgerAccount.findMany({where:{systemRole:{in:["CREDITS_GIVEN","CUSTOMER_CREDITS"]}}});
+      const given=accounts.find(a=>a.systemRole==="CREDITS_GIVEN")!,owed=accounts.find(a=>a.systemRole==="CUSTOMER_CREDITS")!;
+      await prisma.journalEntry.create({data:{sourceType:"CUSTOMER_CREDIT",sourceId:legacyId,eventKind:"CREDIT_GRANTED",
+        entryDate:new Date("2026-10-10T12:00:00Z"),periodKey:"2026-10",memo:"Legacy goodwill entry",
+        lines:{create:[{ledgerAccountId:given.id,debitCents:250,creditCents:0},{ledgerAccountId:owed.id,debitCents:0,creditCents:250}]}}});
+      await prisma.$transaction(tx=>postForSource(tx,"CUSTOMER_CREDIT",legacyId));
+      const entries=await prisma.journalEntry.findMany({where:{sourceType:"CUSTOMER_CREDIT",sourceId:legacyId}});
+      expect(entries.map(e=>e.eventKind)).toEqual(["CREDIT_GRANTED"]);
+    } finally {
+      await prisma.journalLine.deleteMany({where:{entry:{sourceId:legacyId}}});
+      await prisma.journalEntry.deleteMany({where:{sourceId:legacyId}});
+      await prisma.customerCredit.deleteMany({where:{id:legacyId}});
+    }
+  });
   it("books a refund kept as store credit once, with no money leaving the bank",async()=>{
     await prisma.refund.create({data:{id:creditRefundId,invoiceId,amountCents:500,reason:"OTHER"}});
     await prisma.customerCredit.create({data:{

@@ -148,7 +148,11 @@ Promise<{ events: Event[]; extra: Subject }> {
       // Credits made from money that already arrived (an overpayment, or a late
       // payment kept as credit) move it out of "unapplied receipts"; they are not
       // an expense. Only a refund-to-credit hits the refunds account.
-      const type=isCreditFromReceipt(x.sourceType) ? "RECEIPT_OVERPAYMENT" :
+      // A held-payment credit posted before this correction already has a goodwill entry; keep it as it is
+      // (it is a different event kind, so posting again would double the liability).
+      const legacyHeld=x.sourceType?.toUpperCase()==="HELD_PAYMENT"&&
+        (await tx.journalEntry.count({where:{sourceType:"CUSTOMER_CREDIT",sourceId,eventKind:"CREDIT_GRANTED"}}))>0;
+      const type=legacyHeld ? "GOODWILL" : isCreditFromReceipt(x.sourceType) ? "RECEIPT_OVERPAYMENT" :
         x.sourceType?.toUpperCase()==="REFUND_TO_CREDIT"||x.reason.toUpperCase().includes("REFUND") ? "REFUND_TO_CREDIT" : "GOODWILL";
       const plan=creditIssued({date:x.createdAt,amountCents:cents(x.amountCents),source:type});
       return {events:plan?[{eventKind:type==="RECEIPT_OVERPAYMENT"?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED",plan}]:[],extra:{customerId:x.customerId}};
@@ -344,10 +348,17 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
       required:[...(x.sourceReceiptId?["DEPOSIT_FUNDED"]:["DEPOSIT_FUNDED"]),
         ...(x.refundedAt&&((x.refundedAmountCents??0)>0)?["DEPOSIT_REFUNDED"]:[]),
         ...(x.refundedAt&&(x.amountCents-(x.refundedAmountCents??0))>0?["DEPOSIT_RETAINED"]:[])]}))},
-    {type:"CUSTOMER_CREDIT",load:async(skip,take)=>(await prisma.customerCredit.findMany({
-      where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceType:true},
-      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"CUSTOMER_CREDIT",id:x.id,at:x.createdAt,
-      required:[isCreditFromReceipt(x.sourceType)?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED"]}))},
+    {type:"CUSTOMER_CREDIT",load:async(skip,take)=>{
+      const rows=await prisma.customerCredit.findMany({
+        where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceType:true},
+        orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
+      // Held-payment credits posted before the correction keep their original goodwill entry.
+      const legacyHeld=new Set((await prisma.journalEntry.findMany({
+        where:{sourceType:"CUSTOMER_CREDIT",eventKind:"CREDIT_GRANTED",
+          sourceId:{in:rows.filter(r=>r.sourceType?.toUpperCase()==="HELD_PAYMENT").map(r=>r.id)}},
+        select:{sourceId:true}})).map(e=>e.sourceId));
+      return rows.map(x=>({type:"CUSTOMER_CREDIT",id:x.id,at:x.createdAt,
+        required:[isCreditFromReceipt(x.sourceType)&&!legacyHeld.has(x.id)?"CREDIT_FROM_RECEIPT":"CREDIT_GRANTED"]}));}},
     {type:"CREDIT_APPLICATION",load:async(skip,take)=>(await prisma.creditApplication.findMany({
       where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
       .map(x=>({type:"CREDIT_APPLICATION",id:x.id,at:x.createdAt,required:["CREDIT_APPLIED"]}))},
