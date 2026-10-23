@@ -1,5 +1,8 @@
 # Owner inputs and launch decisions
 
+> **Owner-only to-do items live in [OWNER-CHECKLIST.md](OWNER-CHECKLIST.md).** This file is the decision register (IN-xx answers). A missing
+> answer never stops unrelated building; see AGENTS.md section 2.
+
 **Research-to-code coverage:** [Professional-review implementation contract](designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md)
 maps this register's existing review subjects to researched policies, data/
 evidence, configuration, tests and precise real-use gates. Apply it with the

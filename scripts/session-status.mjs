@@ -187,17 +187,17 @@ export function run(root, args) {
     'Candidates need existing authorization, fixture isolation and cleanup. This command never runs provider tests or releases.'];
   lines.push(...releaseAlertLines(planReleaseAlert(plan, observation, ancestor)));
   lines.push(...acceptanceSummary(plan, limit));
-  lines.push('Work selection after acceptance catch-up: finish confirmed gaps in original approved order; reconcile uncertain criteria once and retain exact source/test proof. If no eligible engineering remains, plan substantial NEW real-world completion using existing acceptance IDs. No production-line minimum applies to COMPLETION; old code, audits, isolated reads and reused passes count zero. Do not invent features or require an optional dependency to finish the standalone project.');
+  lines.push('Work selection: continue approved work in roadmap order. These queued checks need a deployed revision or Chris; they are listed in docs/OWNER-CHECKLIST.md and never block building, review or merge.');
   if (flags['--acceptance-review']) {
     const raw = readFileSync(resolve(root, flags['--acceptance-review']), 'utf8');
     if (Buffer.byteLength(raw, 'utf8') > 262144) throw new Error('Acceptance review exceeds bounded size.');
     lines.push(reviewAcceptance(plan, observation, JSON.parse(raw), ancestor));
-  } else lines.push('Acceptance accounting NOT CHECKED: use --acceptance-review PATH before new implementation and final handoff (or equivalent manual accounting).');
+  } else lines.push('Acceptance review file not supplied (optional; the queue above is informational).');
   if (flags['--latest-pr']) {
     if (!/^\d+$/.test(flags['--latest-pr'])) throw new Error('Latest PR must be an integer.');
     lines.push(`Latest observed PR: #${Number(flags['--latest-pr'])} (informational only; no session PR quota or numeric boundary).`);
   }
-  lines.push('PR work unit = one whole predefined batch subsection (such as H-3 or B-5). Technical slices, functions, tools, UI wiring, guards and packet tasks do not count separately. Partial subsection = zero completed batch subsections.');
+  lines.push('Diagnostics only: counts and line totals are never goals. One PR = one complete usable outcome (AGENTS.md section 2).');
   lines.push(`Queue: ${plan.length} total; ${rows.filter(row => row.status === 'PASSED').length} recorded passes; ${active.length} tasks require planner consideration.`);
 
   return lines.join('\n');

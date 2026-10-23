@@ -1,3 +1,6 @@
+> **Where to tick things (2026-10-23):** the one checklist is [OWNER-CHECKLIST.md](OWNER-CHECKLIST.md). This file stays as the long
+> reference with exact click paths; new owner-only rows go in OWNER-CHECKLIST.md. Nothing here blocks building or merging.
+
 ## K-CASH-7 monthly plan/report external acceptance — PENDING
 
 - [ ] After an approved normal release, owner and accountant independently inspect at least one real prior/current Denver month and original/revised published plan against actual confirmed bank/Books sources and audit history. Validate the signed P&L versus bank/deposit/tax/capital bridge, one reimbursed/reversed expense, partial paid occurrence and unclassified debit.
