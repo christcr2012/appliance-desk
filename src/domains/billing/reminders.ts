@@ -26,6 +26,8 @@ export async function sendUpcomingBillingReminders(): Promise<{
       id: true,
       nextBillingDate: true,
       billingReminderSentForDate: true,
+      terminationEffectiveOn: true,
+      endDate: true,
       customer: {
         select: {
           id: true,
@@ -45,6 +47,11 @@ export async function sendUpcomingBillingReminders(): Promise<{
 
   for (const agreement of dueAgreements) {
     if (!agreement.nextBillingDate) continue;
+    // A rental that ends on or before the bill date is not billed again, so "your next bill is coming" would be wrong.
+    const endsOn = [agreement.terminationEffectiveOn, agreement.endDate]
+      .filter((d): d is Date => d instanceof Date)
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+    if (endsOn && endsOn.getTime() <= agreement.nextBillingDate.getTime()) continue;
     if (
       agreement.billingReminderSentForDate?.getTime() ===
       agreement.nextBillingDate.getTime()

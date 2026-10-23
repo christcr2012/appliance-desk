@@ -25,11 +25,15 @@ function agreement(overrides: {
   billingReminderSentForDate?: Date | null;
   email?: string;
   amountDueCents?: number | null;
+  terminationEffectiveOn?: Date | null;
+  endDate?: Date | null;
 }) {
   return {
     id: overrides.id,
     nextBillingDate: overrides.nextBillingDate,
     billingReminderSentForDate: overrides.billingReminderSentForDate ?? null,
+    terminationEffectiveOn: overrides.terminationEffectiveOn ?? null,
+    endDate: overrides.endDate ?? null,
     customer: {
       id: `customer-${overrides.id}`,
       user: { name: "Jane Doe", email: overrides.email ?? "jane@example.com" },
@@ -60,6 +64,17 @@ describe("sendUpcomingBillingReminders", () => {
       subject: { type: "RentalAgreement", id: "agr-1" },
     });
     expect(message.render().text).toContain("$40");
+  });
+
+  it("sends no 'next bill' reminder when the rental ends on or before the bill date", async () => {
+    const nextBillingDate = new Date("2026-10-01T12:00:00Z");
+    findMany.mockResolvedValue([
+      agreement({ id: "ends-first", nextBillingDate, terminationEffectiveOn: new Date("2026-09-30T12:00:00Z") }),
+      agreement({ id: "ends-same-day", nextBillingDate, terminationEffectiveOn: nextBillingDate }),
+      agreement({ id: "ends-later", nextBillingDate, terminationEffectiveOn: new Date("2026-11-01T12:00:00Z") }),
+    ]);
+    expect(await sendUpcomingBillingReminders()).toEqual({ sent: 1, failed: 0 });
+    expect(deliver.mock.calls.map((c) => c[0].subject.id)).toEqual(["ends-later"]);
   });
 
   it("skips a cycle already reminded", async () => {

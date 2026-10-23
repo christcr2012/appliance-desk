@@ -20,7 +20,7 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 - Launch welcome sequence: a definite send failure stops that subscriber on purpose (a hard bounce must not be retried blindly, and a test locks this in). Owner screen should show who is stuck and offer "try again" — not built.
 - Retax of waiver/discount lines fails under "pay on acquisition" tax election.
 - Today page recomputes up to 12 filing packets and can write inside a page load.
-- Upcoming-bill email ignores a rental ending before the bill date and may show the wrong amount.
+- Upcoming-bill email: no longer sent for a rental ending before the bill date (fixed). Still open: the amount shown is the last invoice, not a computed next bill.
 - Minor: appliance status transition gaps, month-end anniversary anchor drift, STOP matching on unusual phone formats, day-of-visit text doc drift.
 
 ## Security / hardening (lower)
