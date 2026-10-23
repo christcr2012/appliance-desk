@@ -7,6 +7,7 @@ import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-appl
 import { listTaxFilingAttention, listRdfRefundAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
+import { listRetiredPlanAttention } from "./retired-attention";
 import { prisma } from "@/lib/prisma";
 import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
@@ -1023,6 +1024,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     : { amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } };
 
   const acquisitionAttention = canViewFinance ? await listAcquisitionTaxAttention(now) : [];
+  const retiredAttention = canViewFinance ? await listRetiredPlanAttention(now) : [];
   const signingPaymentAttention = canViewFinance
     ? await listSigningPaymentAttention(EXCEPTION_CATEGORY_CAP)
     : { rows: [], total: 0 };
@@ -1081,6 +1083,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...amendmentAttention.amendments.rows,
     ...amendmentAttention.readiness.rows,
     ...acquisitionAttention,
+    ...retiredAttention,
   ];
 
   const truncated: ExceptionTruncation[] = (

@@ -28,6 +28,9 @@ import { CustodyPanel } from "./custody-panel";
 import { OLD_SET_TYPE_SLUG } from "@/domains/packages/pricing";
 import { RecordConnections } from "@/components/desk/record-connections";
 import { BudgetContextCard } from "@/domains/budget/context";
+import { getSalvagedParts } from "@/domains/inventory/retired-plans";
+import { businessDateKey } from "@/lib/business-date";
+import { RetiredPlanPanel } from "./retired-plan-panel";
 
 export const metadata = { title: "Appliance" };
 
@@ -66,6 +69,21 @@ export default async function ApplianceDetailPage({
     ? await prisma.$transaction(tx => explainPendingPurchaseTax(tx, id))
     : null;
   const taxProof = session.user.role === "OWNER" || session.user.role === "ADMIN" ? await getApplianceTaxProof(id) : null;
+  const retiredPlan = appliance.status === "RETIRED"
+    ? await prisma.retiredAppliancePlan.findUnique({ where: { applianceId: id } })
+    : null;
+  const retiredPanel = appliance.status === "RETIRED"
+    ? {
+        salvaged: (await getSalvagedParts(id)).map((m) => ({
+          id: m.id, quantity: m.quantityDelta,
+          label: `${m.partRecord.partName?.trim() || `Part ${m.partRecord.partNumber}`} (${m.partRecord.modelNumber})`,
+        })),
+        parts: (await prisma.partRecord.findMany({
+          where: { archivedAt: null }, orderBy: [{ partName: "asc" }, { modelNumber: "asc" }], take: 500,
+          select: { id: true, modelNumber: true, partNumber: true, partName: true },
+        })).map((p) => ({ id: p.id, label: `${p.partName?.trim() || `Part ${p.partNumber}`} (${p.modelNumber})` })),
+      }
+    : null;
   const custodyAddress = openCustody?.serviceAddressId
     ? await prisma.serviceAddress.findUnique({ where: { id: openCustody.serviceAddressId }, select: { line1: true, city: true } })
     : null;
@@ -142,6 +160,19 @@ export default async function ApplianceDetailPage({
           status={appliance.status}
           inspectionChecklist={inspectionChecklist}
         />
+        {retiredPanel && (
+          <RetiredPlanPanel
+            applianceId={id}
+            plan={retiredPlan ? {
+              choice: retiredPlan.choice, note: retiredPlan.note, remainder: retiredPlan.remainder,
+              doneOn: retiredPlan.doneOn ? businessDateKey(retiredPlan.doneOn) : null, doneNote: retiredPlan.doneNote, reopenReason: retiredPlan.reopenReason,
+            } : null}
+            salvaged={retiredPanel.salvaged}
+            parts={retiredPanel.parts}
+            today={businessDateKey(new Date())}
+            isOwner={session.user.role === "OWNER"}
+          />
+        )}
         {taxProof && <TaxProofPanel proof={taxProof} />}
         {session.user.role === "OWNER" && (
           <AppliancePurchaseTaxPanel appliance={{

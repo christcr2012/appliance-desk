@@ -9,7 +9,7 @@ import {
   type PostingPlan, PostingEvidenceError, invoiceRecognition, invoiceVoided,
   receiptReceived, paymentApplied, creditIssued, creditApplied, refundIssued,
   depositFunded, depositRefunded, depositRetained, expensePosted, expenseVoided,
-  useTaxAccrued as planUseTaxAccrual, stripeBalancePlans, applianceContributed, reversePlan, invoiceAdjustment, invoiceVoidFromPosted, netByAccount, taxFiled, balancedPlan, invoiceWrittenOff,
+  useTaxAccrued as planUseTaxAccrual, scrapReceived, stripeBalancePlans, applianceContributed, reversePlan, invoiceAdjustment, invoiceVoidFromPosted, netByAccount, taxFiled, balancedPlan, invoiceWrittenOff,
 } from "./posting-rules";
 
 export type BooksProblem = { sourceType: string; sourceId: string; message: string };
@@ -238,6 +238,18 @@ Promise<{ events: Event[]; extra: Subject }> {
       if(x.status==="VOID"&&x.voidedAt)events.push({eventKind:"EXPENSE_VOIDED",plan:expenseVoided(posted,x.voidedAt)});
       return {events,extra:{applianceId:x.applianceId}};
     }
+    case "SCRAP_PAYMENT": {
+      const x=await tx.scrapPayment.findUnique({where:{id:sourceId}});
+      if(!x)return {events:[],extra:{}};
+      const deposit=await tx.ledgerAccount.findUnique({where:{id:x.depositAccountId},select:{systemRole:true}});
+      if(!deposit)throw new PostingEvidenceError("Scrap payment has a missing deposit account.");
+      const received=scrapReceived({date:x.receivedOn,amountCents:cents(x.amountCents),
+        depositRole:deposit.systemRole??"ID:"+x.depositAccountId});
+      if(!received)return {events:[],extra:{}};
+      const events:Event[]=[{eventKind:"SCRAP_RECEIVED",plan:received}];
+      if(x.voidedAt)events.push({eventKind:"SCRAP_VOIDED",plan:reversePlan(received,x.voidedAt,"Scrap money entry voided")});
+      return {events,extra:{}};
+    }
     case "USE_TAX": {
       const x=await tx.purchaseUseTax.findUnique({where:{id:sourceId},include:{jurisdiction:{select:{useTaxFilingAccountId:true}}}});
       if(!x||x.useTaxDueCents<=0)return {events:[],extra:{}};
@@ -442,6 +454,10 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
       where:{spentOn:{gte:since},status:{in:["POSTED","VOID"]}},select:{id:true,spentOn:true,status:true},
       orderBy:[{spentOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"EXPENSE",id:x.id,at:x.spentOn,
       required:x.status==="VOID"?["EXPENSE_POSTED","EXPENSE_VOIDED"]:["EXPENSE_POSTED"]}))},
+    {type:"SCRAP_PAYMENT",load:async(skip,take)=>(await prisma.scrapPayment.findMany({
+      where:{receivedOn:{gte:since}},select:{id:true,receivedOn:true,voidedAt:true},
+      orderBy:[{receivedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"SCRAP_PAYMENT",id:x.id,at:x.receivedOn,
+      required:x.voidedAt?["SCRAP_RECEIVED","SCRAP_VOIDED"]:["SCRAP_RECEIVED"]}))},
     {type:"USE_TAX",load:async(skip,take)=>(await prisma.purchaseUseTax.findMany({
       where:{purchasedOn:{gte:since},useTaxDueCents:{gt:0}},select:{id:true,purchasedOn:true},
       orderBy:[{purchasedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"USE_TAX",id:x.id,at:x.purchasedOn,required:["USE_TAX_ACCRUED"]}))},

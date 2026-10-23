@@ -596,6 +596,9 @@ model Appliance {
   inspections ApplianceInspection[]
   custodyEpisodes ApplianceCustodyEpisode[]
   staffTasks  StaffTask[]
+  // Batch M-2: what the owner decided to do with it after retiring it, and parts taken from it.
+  retiredPlan RetiredAppliancePlan?
+  salvagedMovements PartStockMovement[] @relation("SalvageAppliance")
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -878,14 +881,69 @@ model PartStockMovement {
   resaleCostCents         Int                    @default(0)
   // Batch M: a SALE movement points at the invoice line it sold.
   invoiceLineId           String?
+  // Batch M-2: a SALVAGE movement points at the retired appliance the part was taken from.
+  applianceId             String?
+  appliance               Appliance?             @relation("SalvageAppliance", fields: [applianceId], references: [id], onDelete: Restrict)
   reason                  String?
   createdByUserId         String?
   createdAt               DateTime               @default(now())
 
   @@unique([partRecordId, operationKey])
+  @@index([applianceId])
   @@index([partRecordId, createdAt])
   @@index([jobId])
   @@index([purchaseOrderLineItemId])
+}
+
+// ---------------------------------------------------------------------------
+// Batch M-2: what happens to a retired appliance (design D-M4). One plan per appliance; no money is booked by choosing,
+// changing or finishing a plan. Scrap-yard checks are recorded in a lump (ScrapPayment), never per appliance.
+// ---------------------------------------------------------------------------
+
+enum RetiredPlanChoice {
+  SELL
+  STRIP
+  SCRAP
+  DISPOSE
+  OTHER
+}
+
+model RetiredAppliancePlan {
+  applianceId     String            @id
+  appliance       Appliance         @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  choice          RetiredPlanChoice
+  note            String?
+  // STRIP only: what happened to the rest once the parts were taken ("SCRAPPED" or "THROWN_AWAY").
+  remainder       String?
+  decidedAt       DateTime
+  decidedByUserId String
+  doneOn          DateTime?
+  doneNote        String?
+  doneByUserId    String?
+  reopenedAt      DateTime?
+  reopenReason    String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([choice, doneOn])
+}
+
+// One scrap-yard check or ticket (a lump, not split by appliance). Posts to the "Scrap sales" income account.
+model ScrapPayment {
+  id               String    @id @default(cuid())
+  operationKey     String    @unique
+  receivedOn       DateTime
+  amountCents      Int
+  yardName         String
+  note             String?
+  depositAccountId String
+  recordedByUserId String
+  createdAt        DateTime  @default(now())
+  voidedAt         DateTime?
+  voidReason       String?
+  voidedByUserId   String?
+
+  @@index([receivedOn])
 }
 
 // ---------------------------------------------------------------------------
@@ -2816,6 +2874,8 @@ model PurchaseUseTax {
 // ---------------------------------------------------------------------------
 
 model BusinessSettings {
+  // Batch M-2: remind on Today when a retired appliance has had no plan (or an unfinished one) this many days; 0 = never.
+  retiredFollowUpDays Int @default(30)
   // K-CASH-4A: cash budgeting is OFF until source-reviewed owner setup.
   cashBudgetStartOn DateTime?
   cashBudgetEnabled Boolean @default(false)
@@ -4212,6 +4272,7 @@ enum LedgerAccountType {
 
 enum JournalSourceType {
   OPENING
+  SCRAP_PAYMENT
   INVOICE
   RECEIPT
   PAYMENT
