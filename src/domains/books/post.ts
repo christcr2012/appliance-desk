@@ -106,7 +106,16 @@ Promise<{ events: Event[]; extra: Subject }> {
         if(policy?.badDebtTaxRecovery==="UNDECIDED")throw new PostingEvidenceError("Bad debt tax recovery policy awaits owner/CPA approval.");
         if(policy?.badDebtTaxRecovery==="YES"&&x.taxLines.some(t=>t.taxCents>0))
           throw new PostingEvidenceError("Bad debt tax recovery must be apportioned to open tax lines before posting.");
-        const written=invoiceWrittenOff({date:x.writtenOffAt,amountCents:open,taxRecoveryApproved:false,tax:[]});
+        // A deposit that was never collected is parked as a credit when the invoice posts;
+        // writing the invoice off must take that parked credit back, not call it bad debt.
+        const depositBilled=x.lineItems.filter(i=>i.kind==="DEPOSIT").reduce((n,i)=>n+i.amountCents,0);
+        let depositFunded=0;
+        if(depositBilled>0){
+          const receiptIds=(await tx.payment.findMany({where:{invoiceId:x.id,receiptId:{not:null}},select:{receiptId:true}})).map(p=>p.receiptId as string);
+          if(receiptIds.length)depositFunded=(await tx.deposit.findMany({where:{sourceReceiptId:{in:receiptIds}},select:{amountCents:true}})).reduce((n,d)=>n+d.amountCents,0);
+        }
+        const uncollectedDeposit=Math.max(0,Math.min(open,depositBilled-depositFunded));
+        const written=invoiceWrittenOff({date:x.writtenOffAt,amountCents:open,taxRecoveryApproved:false,tax:[],uncollectedDepositCents:uncollectedDeposit});
         if(written)events.push({eventKind:"INVOICE_WRITTEN_OFF",plan:written});
       }
       return { events, extra: {customerId: x.customerId} };

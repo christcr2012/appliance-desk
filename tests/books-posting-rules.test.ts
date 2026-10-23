@@ -108,6 +108,16 @@ describe("Batch K chart and pure posting", () => {
     ]) check(plan);
     expect(() => refundIssued({date,amountCents:100,tax:[{filingAccountId:null,taxCents:200}]})).toThrow();
   });
+  it("writing off an unpaid deposit invoice takes back the parked deposit credit instead of booking bad debt", () => {
+    const plan = invoiceWrittenOff({date,amountCents:35000,taxRecoveryApproved:false,tax:[],uncollectedDepositCents:25000})!;
+    check(plan);
+    const sum = (role: string, side: "debit" | "credit") =>
+      plan.lines.filter(l => l.role === role).reduce((n, l) => n + (side === "debit" ? l.debitCents : l.creditCents), 0);
+    expect(sum("BAD_DEBT","debit")).toBe(10000);
+    expect(sum("UNAPPLIED_RECEIPTS","debit")).toBe(25000);
+    expect(sum("RECEIVABLES","credit")).toBe(35000);
+    expect(() => invoiceWrittenOff({date,amountCents:100,taxRecoveryApproved:false,tax:[],uncollectedDepositCents:200})).toThrow();
+  });
   it("books distinct Stripe fees, disputes and payouts and ignores provider money already represented by receipts", () => {
     const cases=[
       {type:"charge",reportingCategory:"charge",amountCents:cents,feeCents:145,expected:["STRIPE_FEE"]},
