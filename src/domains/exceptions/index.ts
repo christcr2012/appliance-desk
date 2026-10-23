@@ -1013,8 +1013,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ? await listTaxFilingAttention(now, (session.user as { role?: string }).role === "ADMIN")
     : { returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } };
 
-  const paperworkAttention =
+  const paperworkItems =
     (session.user as { role?: string }).role === "OWNER" ? await listPaperworkAttention(now) : [];
+  const paperworkAttention: Capped<ExceptionItem> = { rows: paperworkItems, total: paperworkItems.length };
   const rdfRefundAttention = canViewFinance ? await listRdfRefundAttention() : [];
 
   const amendmentAttention = canViewFinance
@@ -1075,6 +1076,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
+    ...paperworkAttention.rows,
     ...rdfRefundAttention,
     ...amendmentAttention.amendments.rows,
     ...amendmentAttention.readiness.rows,
