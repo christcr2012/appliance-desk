@@ -11,6 +11,8 @@ import { resolvePendingRdfRecords } from "@/domains/tax/rdf-records";
 import { processReadyRdfCharges } from "@/domains/tax/rdf-charges";
 
 /** Daily recovery pass for durable provider intents. */
+export const maxDuration = 60;
+
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;

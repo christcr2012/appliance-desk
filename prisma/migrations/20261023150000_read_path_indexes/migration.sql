@@ -1,0 +1,25 @@
+-- Additive: indexes on foreign keys that are looked up on screens and in the background jobs.
+CREATE INDEX IF NOT EXISTS "Session_userId_idx" ON "Session"("userId");
+CREATE INDEX IF NOT EXISTS "Account_userId_idx" ON "Account"("userId");
+CREATE INDEX IF NOT EXISTS "MaintenanceRequest_customerId_idx" ON "MaintenanceRequest"("customerId");
+CREATE INDEX IF NOT EXISTS "Photo_applianceId_idx" ON "Photo"("applianceId");
+CREATE INDEX IF NOT EXISTS "Photo_jobId_idx" ON "Photo"("jobId");
+CREATE INDEX IF NOT EXISTS "Photo_maintenanceRequestId_idx" ON "Photo"("maintenanceRequestId");
+CREATE INDEX IF NOT EXISTS "CommunicationThread_customerId_idx" ON "CommunicationThread"("customerId");
+CREATE INDEX IF NOT EXISTS "CommunicationThread_leadId_idx" ON "CommunicationThread"("leadId");
+CREATE INDEX IF NOT EXISTS "ConsentRecord_customerId_idx" ON "ConsentRecord"("customerId");
+CREATE INDEX IF NOT EXISTS "ConsentRecord_leadId_idx" ON "ConsentRecord"("leadId");
+CREATE INDEX IF NOT EXISTS "RentalAgreement_serviceAddressId_idx" ON "RentalAgreement"("serviceAddressId");
+CREATE INDEX IF NOT EXISTS "RentalAgreement_sourceEstimateId_idx" ON "RentalAgreement"("sourceEstimateId");
+CREATE INDEX IF NOT EXISTS "LeadApplianceRequest_leadId_idx" ON "LeadApplianceRequest"("leadId");
+CREATE INDEX IF NOT EXISTS "PurchaseUseTax_filingPeriodId_idx" ON "PurchaseUseTax"("filingPeriodId");
+CREATE INDEX IF NOT EXISTS "PurchaseUseTax_jurisdictionId_idx" ON "PurchaseUseTax"("jurisdictionId");
+CREATE INDEX IF NOT EXISTS "AuditLog_userId_idx" ON "AuditLog"("userId");
+CREATE INDEX IF NOT EXISTS "Referral_referrerCustomerId_idx" ON "Referral"("referrerCustomerId");
+CREATE INDEX IF NOT EXISTS "PendingDelivery_deliveredJobId_idx" ON "PendingDelivery"("deliveredJobId");
+CREATE INDEX IF NOT EXISTS "PendingDelivery_substituteJobId_idx" ON "PendingDelivery"("substituteJobId");
+CREATE INDEX IF NOT EXISTS "AddressTaxJurisdiction_jurisdictionId_idx" ON "AddressTaxJurisdiction"("jurisdictionId");
+CREATE INDEX IF NOT EXISTS "InvoiceTaxLine_rateVersionId_idx" ON "InvoiceTaxLine"("rateVersionId");
+CREATE INDEX IF NOT EXISTS "Expense_categoryId_idx" ON "Expense"("categoryId");
+CREATE INDEX IF NOT EXISTS "ApplianceCustodyEpisode_serviceAddressId_idx" ON "ApplianceCustodyEpisode"("serviceAddressId");
+CREATE INDEX IF NOT EXISTS "OutOfServicePeriod_rentalLineId_idx" ON "OutOfServicePeriod"("rentalLineId");

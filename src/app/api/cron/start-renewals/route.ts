@@ -8,6 +8,8 @@ import { queueAnnualReminders } from "@/domains/notices/annual-reminder";
 import { runDueTerminations } from "@/domains/agreements/termination-execution";
 import { closeFullyReturnedAgreements } from "@/domains/agreements/returns";
 
+export const maxDuration = 60;
+
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;

@@ -3,6 +3,8 @@ import { runAutomation } from "@/domains/automation/runs";
 import { applyTaxRateChanges } from "@/domains/tax/rate-changes";
 import { runTaxFilingCalendar } from "@/domains/tax/filing-reminders";
 
+export const maxDuration = 60;
+
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;

@@ -1,3 +1,7 @@
+## October 23 — Speed and health round
+
+24 database indexes on frequently looked-up links (one additive migration), time limits on every background job, unused password library removed, and compatible updates to Prisma, Better Auth, Vercel Blob, pg and others. Correction to the entry below: the work-card list in `docs/pr-cards/work-index.json` is out of date — tax (T), system health (S), site look (V), scenarios (F2), books (K) and cash budget (K-CASH) are already built. Really unbuilt: M (shop/used sales), O (permissions, approvals, undo), COM-N (texts, stay OFF), W-24 (delivery ordering), BP (proposed only).
+
 ## October 23 — Reliability round 2 (from the full-code review)
 
 Failed daily jobs retry up to twice; the nightly backup has a 2-minute limit; one bad rental no longer stops the yearly reminder run; no follow-up email for an expired quote; privacy deletion refuses while a rental is in force or a bill is unpaid. Remaining findings: [OPEN-FINDINGS](OPEN-FINDINGS.md). Remaining approved cards (tax finishing T-6D..T-7D, S-1/S-2, W-22..W-24, M, O, COM-N) are unbuilt; BP is still PROPOSED and needs Chris's design approval.

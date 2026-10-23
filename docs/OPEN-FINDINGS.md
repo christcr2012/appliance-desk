@@ -37,9 +37,8 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 
 ## Performance / health
 - Public pages query Neon on every view (settings, content); cache with tags and revalidate on save.
-- ~25 read-path foreign keys have no index; many list queries have no `take`; add the indexes in one additive migration.
-- Sentry has no flush in cron/webhook routes and no explicit capture calls; cron routes lack `maxDuration` and return 200 on failed passes.
-- Remove unused `bcryptjs` + `@types/bcryptjs`; move `@types/qrcode` to dev; patch updates (Prisma 7.10.1, better-auth 1.7.12, others).
+- 24 read-path indexes added (fixed). Still open: many list queries have no `take`.
+- Sentry has no flush in cron/webhook routes and no explicit capture calls; cron routes return 200 on failed passes (`maxDuration` now set — fixed).
 - Add `@neondatabase/serverless` explicitly; retry-once on cold-start connection errors.
 
 ## Owner screens, public site, portal (wording and flow)

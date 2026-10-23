@@ -91,6 +91,7 @@ model Session {
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@index([userId])
 }
 
 model Account {
@@ -110,6 +111,7 @@ model Account {
   updatedAt             DateTime  @updatedAt
 
   @@unique([providerId, accountId])
+  @@index([userId])
 }
 
 model Verification {
@@ -247,6 +249,7 @@ model Referral {
   createdAt DateTime @default(now())
 
   @@index([status])
+  @@index([referrerCustomerId])
 }
 
 model ServiceAddress {
@@ -441,6 +444,7 @@ model LeadApplianceRequest {
   package       RentalPackage? @relation(fields: [packageId], references: [id], onDelete: Restrict)
 
   @@index([packageId])
+  @@index([leadId])
 }
 
 // ---------------------------------------------------------------------------
@@ -1041,6 +1045,8 @@ model RentalAgreement {
   @@index([customerId])
   @@index([status])
   @@index([continuityRootId])
+  @@index([serviceAddressId])
+  @@index([sourceEstimateId])
 }
 
 // W-22FIN: durable owner reason for an order/location fee exception.
@@ -1343,6 +1349,7 @@ model OutOfServicePeriod {
   @@unique([startJobId, applianceId])
   @@index([agreementId, endedOn])
   @@index([applianceId, endedOn])
+  @@index([rentalLineId])
 }
 
 model ApplianceAssignment {
@@ -1601,6 +1608,8 @@ model PendingDelivery {
   @@index([agreementId])
   @@index([applianceId])
   @@index([substituteApplianceId])
+  @@index([deliveredJobId])
+  @@index([substituteJobId])
 }
 
 model JobAppliance {
@@ -1714,6 +1723,7 @@ model ApplianceCustodyEpisode {
   @@unique([endJobId, applianceId])
   @@index([applianceId, closedAt])
   @@index([customerId])
+  @@index([serviceAddressId])
 }
 
 // ---------------------------------------------------------------------------
@@ -1762,6 +1772,7 @@ model MaintenanceRequest {
   @@index([status])
   @@index([applianceId])
   @@index([serviceAddressId])
+  @@index([customerId])
 }
 
 // ---------------------------------------------------------------------------
@@ -2534,6 +2545,7 @@ model AddressTaxJurisdiction {
   jurisdiction         TaxJurisdiction    @relation(fields: [jurisdictionId], references: [id])
 
   @@id([addressTaxLocationId, jurisdictionId])
+  @@index([jurisdictionId])
 }
 
 model InvoiceTaxLine {
@@ -2555,6 +2567,7 @@ model InvoiceTaxLine {
 
   @@index([invoiceId])
   @@index([jurisdictionId, createdAt])
+  @@index([rateVersionId])
 }
 
 model CustomerTaxExemption {
@@ -2748,6 +2761,8 @@ model PurchaseUseTax {
   createdAt           DateTime         @default(now())
 
   @@unique([sourceType, sourceId, jurisdictionId])
+  @@index([filingPeriodId])
+  @@index([jurisdictionId])
 }
 
 // ---------------------------------------------------------------------------
@@ -3084,6 +3099,9 @@ model Photo {
   createdAt DateTime @default(now())
   bankImportEvidence BankImport[] @relation("CashImportEvidence")
   accountingDeliveryEvidence AccountingDelivery[] @relation("CashDeliveryEvidence")
+  @@index([applianceId])
+  @@index([jobId])
+  @@index([maintenanceRequestId])
 }
 
 // A message the customer is owed. Batch B2 makes delivery state explicit and
@@ -3150,6 +3168,8 @@ model ConsentRecord {
   scope Json?
   communicationMessages CommunicationMessage[]
   @@index([contactPointId,purpose,occurredAt,id])
+  @@index([customerId])
+  @@index([leadId])
 }
 
 model CustomerNote {
@@ -3238,6 +3258,7 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+  @@index([userId])
 }
 
 // Prelaunch interest is not a quote, customer, reservation, or SMS consent.
@@ -3720,6 +3741,8 @@ model CommunicationThread {
   @@unique([accountId,id])
   @@index([status,lastActivityAt,id])
   @@index([assignedUserId])
+  @@index([customerId])
+  @@index([leadId])
 }
 
 model CommunicationReadMarker {
@@ -4325,6 +4348,7 @@ model Expense {
   @@index([status, spentOn])
   @@index([applianceId])
   @@index([submittedByUserId])
+  @@index([categoryId])
 }
 
 model RecurringExpense {

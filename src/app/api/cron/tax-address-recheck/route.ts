@@ -6,6 +6,8 @@ import { runOfficialRateObservation } from "@/domains/tax/official-rate-auto-app
 import { runOfficialSourceWatch } from "@/domains/tax/official-source-watch";
 import { recalculatePendingPurchaseTax } from "@/domains/tax/purchase-tax-catch-up";
 
+export const maxDuration = 60;
+
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get("authorization");
   const expected = process.env.CRON_SECRET;
