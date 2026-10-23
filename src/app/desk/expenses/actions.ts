@@ -2,8 +2,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
+import { submitExpensePost } from "@/domains/approvals";
 import {
-  createExpense, postExpense, voidExpense, attachExpenseReceipt, saveRecurringExpense,
+  createExpense, voidExpense, attachExpenseReceipt, saveRecurringExpense,
 } from "@/domains/books/expenses";
 
 const read = (form: FormData, field: string) => String(form.get(field) ?? "").trim();
@@ -21,14 +22,20 @@ function complete(message: string): never {
 }
 async function handled(action: string, callback: () => Promise<unknown>) {
   let result = "";
-  try { await callback(); result = "Saved."; }
+  try {
+    const outcome = await callback();
+    // An admin's action at or above the owner's limit is sent to the owner instead of happening.
+    result = outcome && typeof outcome === "object" && "message" in outcome && "requestId" in outcome ? String((outcome as { message: string }).message) : "Saved.";
+  }
   catch (error) { result = error instanceof Error ? error.message : "Request could not be saved."; }
   complete(action + " — " + result);
 }
 export async function createExpenseAction(form: FormData) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const mode = read(form, "mode");
-  await handled("Expense", () => createExpense(session.user.id, {
+  const wantsPosted = mode === "POSTED" && session.user.role !== "STAFF";
+  await handled("Expense", async () => {
+    const created = await createExpense(session.user.id, {
     date: read(form, "date"), amountCents: money(form, "amount"),
     vendorTaxCents: money(form, "vendorTax"), vendorName: read(form, "vendor"),
     categoryId: read(form, "categoryId"), paidFromAccountId: read(form, "paidFromAccountId"),
@@ -36,13 +43,15 @@ export async function createExpenseAction(form: FormData) {
     jobId: read(form, "jobId"), purchaseOrderId: read(form, "purchaseOrderId"),
     capitalizeToAppliance: form.get("capitalize") === "on",
     budgetEnvelopeId: read(form,"budgetEnvelopeId"),
-  }, mode === "POSTED" && session.user.role !== "STAFF" ? "POSTED" :
-    mode === "DRAFT" && session.user.role !== "STAFF" ? "DRAFT" : "SUBMITTED"));
+    }, wantsPosted ? "DRAFT" : mode === "DRAFT" && session.user.role !== "STAFF" ? "DRAFT" : "SUBMITTED");
+    // "Post now" goes through the same limit check as the Post button (an admin over the owner's limit sends it for approval).
+    return wantsPosted ? submitExpensePost(session.user.id, created.id, 1) : created;
+  });
 }
 export async function postExpenseAction(form: FormData) {
   const session = await requireRole("OWNER", "ADMIN");
   await handled("Post expense", () =>
-    postExpense(session.user.id, read(form, "id"), Number(read(form, "version"))));
+    submitExpensePost(session.user.id, read(form, "id"), Number(read(form, "version"))));
 }
 export async function voidExpenseAction(form: FormData) {
   const session = await requireRole("OWNER", "ADMIN");

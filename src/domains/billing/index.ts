@@ -16,7 +16,7 @@ export type {
   StatementInvoice,
   StatementLineItem,
 } from "./statements";
-export { recordManualPayment, writeOffInvoice } from "./manual-payments";
+export { recordManualPayment, writeOffInvoice, writeOffInvoiceInTx } from "./manual-payments";
 export type {
   ManualPaymentInput,
   ManualPaymentMethod,

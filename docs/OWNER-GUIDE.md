@@ -305,6 +305,8 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 **What each admin may do (new).** Under Settings → Staff (owner only), **What each admin may do** lists each admin account with seven permissions: record a payment, write off an invoice, settle a held payment, refund or keep a deposit, refund a payment, change business settings, and post or void an expense. All start allowed, exactly as before. **Take this away** limits that one admin on their very next action (they see "ask the owner"); **Give it back** restores it. You always keep every permission, and staff accounts still cannot do any of these. Every change is recorded.
 
+**Approval limits (new).** Under Settings (owner only), **Approval limits** lets you set a dollar amount for write-offs and for posting expenses. When an admin starts one at or above it, nothing happens yet: the admin sees "Sent to the owner for approval", and you get one item on Today. On **Approvals** (`/desk/approvals`) you see who asked, what and how much, and press **Approve and do it now** (it is done as you, and the note names who asked) or **Decline**. If the situation changed meanwhile (for example the invoice was paid), approving changes nothing and tells you why. Requests expire after the number of days you choose (starts at 7). Your own actions never need approval. Every box starts blank, so nothing changes until you fill one in. Refunds, credits and kept deposits are not covered yet.
+
 ## Website editor
 
 ![Website editor](owner-guide/screenshots/website.png)

@@ -461,6 +461,8 @@ export default async function DeskSettingsPage({
         <ButtonLink href="/desk/settings/history" variant="secondary">Settings history and undo</ButtonLink>
         <ButtonLink href="/desk/settings/switches" variant="secondary">All switches in one place</ButtonLink>
         {session.user.role === "OWNER" && <ButtonLink href="/desk/settings/permissions" variant="secondary">What each admin may do</ButtonLink>}
+        {session.user.role === "OWNER" && <ButtonLink href="/desk/settings/approvals" variant="secondary">Approval limits</ButtonLink>}
+        {session.user.role === "OWNER" && <ButtonLink href="/desk/approvals" variant="secondary">Approvals waiting</ButtonLink>}
       </div>
       <FilterBar
         label="Settings sections"

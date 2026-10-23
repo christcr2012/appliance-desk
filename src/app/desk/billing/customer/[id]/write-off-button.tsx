@@ -13,6 +13,7 @@ export function WriteOffButton({ customerId, invoiceId }: { customerId: string; 
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
 
   function handleClick() {
     const reason = window.prompt(
@@ -27,6 +28,7 @@ export function WriteOffButton({ customerId, invoiceId }: { customerId: string; 
         return;
       }
       setError(null);
+      setSent(result.status === "sent" ? result.message : null);
       router.refresh();
     });
   }
@@ -42,6 +44,7 @@ export function WriteOffButton({ customerId, invoiceId }: { customerId: string; 
         Write off
       </button>
       {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
+      {sent && <p role="status" className="mt-1 text-xs text-ink-soft">{sent}</p>}
     </div>
   );
 }

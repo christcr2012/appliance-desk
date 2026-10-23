@@ -1,4 +1,4 @@
-import type { InvoiceStatus } from "@prisma/client";
+import type { InvoiceStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
@@ -169,7 +169,17 @@ export async function writeOffInvoice(
   actingUserId: string,
   reason: string,
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction((tx) => writeOffInvoiceInTx(tx, invoiceId, actingUserId, reason));
+}
+
+/** The whole write-off inside a transaction the caller owns (approvals run it as the owner). */
+export async function writeOffInvoiceInTx(
+  tx: Prisma.TransactionClient,
+  invoiceId: string,
+  actingUserId: string,
+  reason: string,
+): Promise<void> {
+  {
     await assertCapability(tx, actingUserId, "WRITE_OFF");
     const rows = await tx.$queryRaw<
       Array<{
@@ -217,5 +227,5 @@ export async function writeOffInvoice(
         newValue: { reason },
       },
     });
-  });
+  }
 }

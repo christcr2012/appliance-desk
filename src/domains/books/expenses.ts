@@ -102,9 +102,14 @@ export async function createExpense(userId: string, fields: ExpenseFields, mode:
   if (mode === "POSTED") await postExpense(userId, id, 1);
   return { id };
 }
+export const POST_EXPENSE_TX_OPTIONS = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 25_000 } as const;
 export async function postExpense(userId: string, id: string, expectedVersion: number) {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new ExpenseInputError("Invalid expense version.");
-  return prisma.$transaction(async tx => {
+  return prisma.$transaction(tx => postExpenseInTx(tx, userId, id, expectedVersion), POST_EXPENSE_TX_OPTIONS);
+}
+/** The whole post, inside a transaction the caller owns (run it with POST_EXPENSE_TX_OPTIONS). Approvals use this too. */
+export async function postExpenseInTx(tx: Prisma.TransactionClient, userId: string, id: string, expectedVersion: number) {
+  {
     await assertCapability(tx, userId, "POST_EXPENSES");
     await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id" = ${id} FOR UPDATE`;
     const expense = await tx.expense.findUnique({ where: { id } });
@@ -150,7 +155,7 @@ export async function postExpense(userId: string, id: string, expectedVersion: n
     } });
     await postForSource(tx, "EXPENSE", id);
     await audit(tx, userId, id, "books.expense.post", { version: expectedVersion, amountCents: expense.amountCents, acquisitionCostAssigned });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 25_000 });
+  }
 }
 export async function voidExpense(userId: string, id: string, expectedVersion: number, reason: string) {
   const why = name(reason, "void reason", 300);

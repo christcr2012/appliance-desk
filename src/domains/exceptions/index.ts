@@ -8,6 +8,7 @@ import { listTaxFilingAttention, listRdfRefundAttention } from "@/domains/tax/fi
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { listRetiredPlanAttention } from "./retired-attention";
+import { listApprovalAttention } from "./approval-attention";
 import { prisma } from "@/lib/prisma";
 import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
@@ -1025,6 +1026,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
 
   const acquisitionAttention = canViewFinance ? await listAcquisitionTaxAttention(now) : [];
   const retiredAttention = canViewFinance ? await listRetiredPlanAttention(now) : [];
+  const approvalAttention = (session.user as { role?: string }).role === "OWNER" ? await listApprovalAttention(now) : [];
   const signingPaymentAttention = canViewFinance
     ? await listSigningPaymentAttention(EXCEPTION_CATEGORY_CAP)
     : { rows: [], total: 0 };
@@ -1084,6 +1086,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...amendmentAttention.readiness.rows,
     ...acquisitionAttention,
     ...retiredAttention,
+    ...approvalAttention,
   ];
 
   const truncated: ExceptionTruncation[] = (
