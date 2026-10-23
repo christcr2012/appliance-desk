@@ -52,7 +52,12 @@ export function invoiceRecognition(input: InvoiceEvidence): PostingPlan | null {
   if (!input.items.length && !input.taxes.length) throw new PostingEvidenceError("Invoice has no recognized lines.");
   const items = input.items.filter(row => row.kind !== "TAX" && row.kind !== "DEPOSIT");
   const itemSum = items.reduce((n, row) => n + row.amountCents, 0);
-  const taxSum = input.taxes.reduce((n, row) => n + whole(row.taxCents, "Tax"), 0);
+  // A tax line can be negative (a late-return waiver takes tax back off the invoice), so tax is signed whole cents.
+  const signedTax = (cents: number) => {
+    if (!Number.isSafeInteger(cents)) throw new PostingEvidenceError("Tax must be whole cents.");
+    return cents;
+  };
+  const taxSum = input.taxes.reduce((n, row) => n + signedTax(row.taxCents), 0);
   // A refundable deposit billed on the invoice is not income. The customer owes it (it is in the amount due), and it
   // is parked in "unapplied receipts" until the deposit is funded, when `depositFunded` moves it to Deposits held.
   // That keeps every existing payment, deposit and refund entry unchanged and nets the parking account to zero.
@@ -68,7 +73,10 @@ export function invoiceRecognition(input: InvoiceEvidence): PostingPlan | null {
     if (role === "SKIP" || role === "TAX_LINES") continue;
     lines.push(item.amountCents >= 0 ? credit(role, item.amountCents) : debit(role, -item.amountCents));
   }
-  for (const tax of input.taxes) lines.push(credit(tax.filingAccountId ? "SALES_TAX:" + tax.filingAccountId : "SALES_TAX_UNASSIGNED", tax.taxCents));
+  for (const tax of input.taxes) {
+    const role = tax.filingAccountId ? "SALES_TAX:" + tax.filingAccountId : "SALES_TAX_UNASSIGNED";
+    if (tax.taxCents !== 0) lines.push(tax.taxCents > 0 ? credit(role, tax.taxCents) : debit(role, -tax.taxCents));
+  }
   return balancedPlan(input.billingPeriodStart ?? input.createdAt, "Invoice recognized", lines);
 }
 export function invoiceVoided(input: InvoiceEvidence): PostingPlan | null {

@@ -1,3 +1,7 @@
+## October 23 — Books: tax taken back off an invoice now posts
+
+An invoice with a negative tax line (a late-return waiver) used to be rejected by the books, so it could not be recorded or voided. Tax is now allowed to go down as well as up; the tax account is reduced instead of increased. Writing off an unpaid deposit invoice also takes back the deposit that was never collected (merged earlier in #526). Rule test added.
+
 ## October 23 — Books: invoices with a deposit now post
 
 First rental invoices that include a refundable security deposit could not be recorded in the books. They now post correctly: the deposit is held as money owed back to the customer, never counted as income (see DECISIONS). Real-Postgres test added.
