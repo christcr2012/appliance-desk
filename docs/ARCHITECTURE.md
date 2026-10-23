@@ -352,6 +352,7 @@ charge or credit.
 | 09:40 | `/api/cron/books-nightly` | Nightly books pass |
 | 09:50 | `/api/cron/expense-drafts` | Recurring expense drafts |
 | 10:30 | `/api/cron/tenant-retention` | Tenant contact retention sweep (purge stays behind its switch) |
+| 10:10 | `/api/cron/scheduled-prices` | Applies owner-scheduled price changes whose Colorado start day has come (after Colorado midnight in both summer and winter time) |
 | 13:20 | `/api/cron/tax-address-recheck` | Re-checks tax locations of addresses |
 | 18:05 | `/api/cron/tax-rate-changes` | Looks for official tax-rate changes |
 

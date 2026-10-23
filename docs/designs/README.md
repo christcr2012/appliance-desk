@@ -20,7 +20,7 @@ the points where the implementer must stop and ask instead of guessing.
 | M — Shop sales (merchandise) and retired appliances (sell, strip for parts, scrap, throw away) | `BATCH-M.md` | **Approved 2026-10-07** (Chris). M-1 (parts for sale, shop sales) and M-2A/M-2B (retired appliances) are **built and merged** (#530, #531, #533). M-2C (used-appliance sale) and M-3 (hosted card payment) are not built: stopped on purpose, see their STRONGER-MODEL-PROMPT files. |
 | K-CASH — Cash envelopes, planned costs, bank checks, reports and QBO handoff | `BATCH-K-CASH.md` | Owner-approved for engineering 2026-10-19. K-CASH-1…7 **built and merged** (#506–#513); real bank/CPA acceptance still pending. |
 | K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **Approved 2026-10-06** (Chris). **Built and merged** (K-1A…K-8, #497–#505). Owner/CPA acceptance pending. |
-| O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). O-1 (settings history), O-2A (what each admin may do) and O-3A (approval limits) **built and merged** (#534–#536). O-3B refund/credit/deposit approvals (stopped, see prompt) and O-4…O-7 not built. |
+| O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). O-1 (settings history), O-2A (what each admin may do) and O-3A (approval limits) **built and merged** (#534–#536). O-4 scheduled price changes is built too. O-3B refund/credit/deposit approvals (stopped, see prompt) and O-5…O-7 not built. |
 
 **Completed batches** (B, B2, C, D, E, E2, G, R) are retired to `docs/archive/designs-completed/` (2026-10-09). Their
 behavior is in the code and tests; open them only to look up the reasoning behind a specific shipped rule. Code comments

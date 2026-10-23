@@ -1596,8 +1596,8 @@
       "dependencies": [
         "O-3B"
       ],
-      "status": "APPROVED",
-      "migration": "batch_o_scheduled_prices",
+      "status": "MERGED",
+      "migration": "scheduled_price_changes",
       "budget": 450,
       "units": [
         "O-4"
@@ -1606,14 +1606,17 @@
         "docs/designs/BATCH-O.md",
         "src/domains/settings/index.ts",
         "src/domains/settings/section-config.ts",
-        "src/app/desk/settings/actions.ts"
+        "src/app/desk/settings/actions.ts",
+        "src/domains/pricing/scheduled.ts",
+        "src/app/api/cron/scheduled-prices/route.ts",
+        "src/app/desk/settings/price-changes/page.tsx"
       ],
       "tests": [
-        "tests/scheduled-price-integration.test.ts",
-        "e2e/scheduled-prices.spec.ts"
+        "tests/scheduled-prices.test.ts",
+        "tests/scheduled-prices-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/O-4.md"
+      "readiness": "MERGED",
+      "card": "docs/pr-cards/O-4.md"
     },
     {
       "id": "O-5",
