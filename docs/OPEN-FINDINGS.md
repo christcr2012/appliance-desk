@@ -25,7 +25,7 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 ## Security / hardening (lower)
 - `/sign/[id]` and `/estimate/[id]` use database ids as the only secret; add a random access token with expiry.
 - Privacy-request form: a per-email limit is in (fixed). Still open: the response time can still hint whether an email is a customer.
-- `/scan/<asset>` reveals existence of an asset number; CSV guard turns negative numbers into text; confirm `BETTER_AUTH_URL` is set in production.
+- `/scan/<asset>` reveals existence of an asset number; confirm `BETTER_AUTH_URL` is set in production.
 
 ## Performance / health
 - Public pages query Neon on every view (settings, content); cache with tags and revalidate on save.

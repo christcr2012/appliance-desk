@@ -1,3 +1,7 @@
+## October 23 — Shop stock: parts you sell and parts you bought to resell (first half of Batch M, in progress)
+
+Parts can now be marked "Sell to customers" with a price, and a purchase-order line can be marked "Bought to resell". The stock count remembers which units came from resale purchases and what they cost (a moving average). A sale uses resale units first; a repair or other use takes ordinary units first. Using resale stock for your own use records use tax on its cost (the $5 batch / $10 batch example is a test); if tax setup is not ready it waits, shows on Today, and is recorded by the daily check. Undo restores exactly. Nothing changes until you opt in. Tests on throwaway Postgres cover the rules, the tax, undo, retries and the database limits. Also: CSV exports leave plain negative numbers as numbers. Not yet built: selling screens and invoices (M-1C/D), retired appliances (M-2), card payment of sales (M-3), then the O chain.
+
 ## October 23 — Books: bills changed after they were recorded
 
 If a bill is changed after the books recorded it (a late fee, a waiver, new tax), the books now add one small "difference" entry for just the change instead of leaving the first entry out of date. Voiding a bill now undoes exactly what the books say, not the bill as it reads today. The first entry is never edited. Tests on throwaway Postgres cover the change, the repeat run and the void.

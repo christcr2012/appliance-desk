@@ -1361,6 +1361,28 @@ gated by O02/O13. Completing a swap moves both units itself (see "Swap for a wor
 See the automation-rules entry in
 `docs/DECISIONS.md`.
 
+## Shop and resale stock (Batch M, M-1A/M-1B, 2026-10-23; design `docs/designs/BATCH-M.md` D-M1, D-M2)
+
+Dormant until the owner turns on "Sell to customers" for a part or ticks "Bought to resell" on a purchase-order line.
+- **One stock ledger.** Items you sell are ordinary parts marked "Sell to customers" with a price (set on the Parts screen).
+  A part can hold some units bought tax-free to resell and some bought with tax paid; the answer lives on each purchase
+  (`PurchaseOrderLineItem.forResale`, chosen when the order is made; the box is pre-ticked from "usually bought to resell").
+- **Which units a movement uses (fixed, no choice).** A received resale line adds resale units. A **sale** takes resale units
+  first. A **use, a downward adjustment or a downward recount** takes ordinary units first and only the shortfall from
+  resale units. An upward change and parts taken from a retired machine add ordinary units. **Undo** restores exactly what
+  the original movement removed; if later movements make that impossible (it would leave more resale units than stock) the
+  undo is refused and a recount is the fix.
+- **Cost of resale stock** is a moving average: a movement that takes resale units removes
+  `round half up (units × cost on hand ÷ resale units on hand)`, and the last resale units remove exactly what remains.
+  Example (a test): sell out a $5 batch, receive a $10 batch, use one → use tax is on $10, not $7.50.
+- **Use tax (D-M2).** Receiving a resale line creates no use tax (a resale receipt is left out of the receipt tax question's
+  rows). Using resale stock for the business (repair, install, given away, lost) records use tax on the cost of the resale
+  units that left (`PurchaseUseTax`, `sourceType PART_WITHDRAWAL`, `sourceId` = movement id; vendor tax 0). A sale owes none.
+  Undoing the use cancels the row (an already-filed one is corrected through the normal amendment path). If the business tax
+  address or rates are not ready yet, the stock change still happens, Today shows "uses of stock bought for resale need use
+  tax", and the daily tax check (`tax-address-recheck`) records it once setup is ready. A resale unit with an unknown cost
+  owes nothing until a cost is known.
+
 ## Purchasing & supplies (2026-09-29)
 
 `/desk/suppliers` and `/desk/purchase-orders` — deliberately minimal,

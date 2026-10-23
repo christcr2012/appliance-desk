@@ -97,6 +97,8 @@ export type NewPurchaseOrderLineInput = {
   description: string;
   quantity: number;
   unitCostCents?: number;
+  /** Bought to resell (no use tax when it arrives). Only for stocked parts; frozen once any of the line has arrived. */
+  forResale?: boolean;
 };
 
 export type NewPurchaseOrderInput = {
@@ -147,6 +149,7 @@ export async function createPurchaseOrder(userId: string, input: NewPurchaseOrde
               quantity: line.quantity,
               unitCostCents: line.unitCostCents ?? 0,
               unitCostKnown: line.unitCostCents !== undefined && line.unitCostCents !== null,
+              forResale: Boolean(line.forResale && line.partRecordId),
             })),
           },
         },
@@ -299,7 +302,7 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
       const cost = line.unitCostCents ?? (row.unitCostKnown ? row.unitCostCents : null);
       if (row.partRecordId) {
         await applyPartMovementsInTx(tx, userId, `${input.operationKey}:${row.id}`, [
-          { partRecordId: row.partRecordId, kind: "RECEIPT", quantityDelta: line.quantity, unitCostCents: cost, purchaseOrderLineItemId: row.id },
+          { partRecordId: row.partRecordId, kind: "RECEIPT", quantityDelta: line.quantity, unitCostCents: cost, purchaseOrderLineItemId: row.id, ...(row.forResale ? { forResale: true } : {}) },
         ]);
       }
       await tx.purchaseOrderLineItem.update({
@@ -317,7 +320,8 @@ export async function receivePurchaseOrderLines(userId: string, input: ReceiveLi
         lines: input.lines.map((line) => {
           const row = byId.get(line.lineId)!;
           return { lineId: row.id, description: row.description, quantity: line.quantity,
-            costCents: line.unitCostCents ?? (row.unitCostKnown ? row.unitCostCents : null) };
+            costCents: line.unitCostCents ?? (row.unitCostKnown ? row.unitCostCents : null),
+            ...(row.forResale ? { forResale: true } : {}) };
         }),
       }, new Date());
     }
@@ -364,7 +368,7 @@ export function receiptPayloadHash(
 async function replayLineMovements(
   tx: Prisma.TransactionClient,
   userId: string,
-  orderLines: Array<{ id: string; partRecordId: string | null; unitCostKnown: boolean; unitCostCents: number }>,
+  orderLines: Array<{ id: string; partRecordId: string | null; unitCostKnown: boolean; unitCostCents: number; forResale: boolean }>,
   input: ReceiveLinesInput,
 ) {
   const byId = new Map(orderLines.map((l) => [l.id, l]));
@@ -372,7 +376,7 @@ async function replayLineMovements(
     const row = byId.get(line.lineId);
     if (!row?.partRecordId) continue;
     const cost = line.unitCostCents ?? (row.unitCostKnown ? row.unitCostCents : null);
-    const request: PartMovementRequest = { partRecordId: row.partRecordId, kind: "RECEIPT", quantityDelta: line.quantity, unitCostCents: cost, purchaseOrderLineItemId: row.id };
+    const request: PartMovementRequest = { partRecordId: row.partRecordId, kind: "RECEIPT", quantityDelta: line.quantity, unitCostCents: cost, purchaseOrderLineItemId: row.id, ...(row.forResale ? { forResale: true } : {}) };
     await applyPartMovementsInTx(tx, userId, `${input.operationKey}:${row.id}`, [request]);
   }
 }
@@ -444,6 +448,34 @@ export type PartStockSettingsInput = {
 
 /** Lets Chris correct a part's on-hand count directly (a physical recount) or set/clear its
  * reorder threshold. A changed count is written to the ledger as a RECOUNT movement. */
+export type PartSaleSettingsInput = { sellable: boolean; retailPriceCents: number | null; defaultForResale: boolean };
+
+/** Batch M: whether a part is sold to customers, at what price, and whether it is usually bought for resale. */
+export async function updatePartSaleSettings(userId: string, partRecordId: string, input: PartSaleSettingsInput) {
+  if (input.retailPriceCents !== null && (!Number.isSafeInteger(input.retailPriceCents) || input.retailPriceCents < 0 || input.retailPriceCents > 100_000_00)) {
+    throw new Error("Enter a price between $0 and $100,000.");
+  }
+  if (input.sellable && input.retailPriceCents === null) throw new Error("Enter the price you sell it for, or turn off “Sell to customers”.");
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await lockPartRecords(tx, [partRecordId]);
+    const before = await tx.partRecord.findUniqueOrThrow({ where: { id: partRecordId }, select: { sellable: true, retailPriceCents: true, defaultForResale: true, archivedAt: true } });
+    if (before.archivedAt && input.sellable) throw new Error("This part is archived. Restore it before selling it.");
+    const updated = await tx.partRecord.update({
+      where: { id: partRecordId },
+      data: { sellable: input.sellable, retailPriceCents: input.retailPriceCents, defaultForResale: input.defaultForResale },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId, action: "part.sale_settings.update", entityType: "PartRecord", entityId: partRecordId,
+        oldValue: { sellable: before.sellable, retailPriceCents: before.retailPriceCents, defaultForResale: before.defaultForResale },
+        newValue: { sellable: input.sellable, retailPriceCents: input.retailPriceCents, defaultForResale: input.defaultForResale },
+      },
+    });
+    return updated;
+  });
+}
+
 export async function updatePartStockSettings(
   userId: string,
   partRecordId: string,

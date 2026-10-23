@@ -15,7 +15,7 @@ import type { PurchaseTaxAnswer } from "./purchases";
  */
 
 export type ReceiptTaxInput = { answer: PurchaseTaxAnswer; sellerTaxCents: number; otherState?: string | null };
-export type ReceiptTaxLine = { lineId: string; description: string; quantity: number; costCents: number | null };
+export type ReceiptTaxLine = { lineId: string; description: string; quantity: number; costCents: number | null; /** Bought to resell: no use tax when it arrives. */ forResale?: boolean };
 
 type Tx = Prisma.TransactionClient;
 
@@ -38,7 +38,7 @@ async function applyReceiptUseTax(
   tx: Tx, receiptId: string, answer: PurchaseTaxAnswer, sellerTaxCents: number, lines: ReceiptTaxLine[], when: Date,
 ): Promise<void> {
   if (answer === "LATER" || answer === "YES_OTHER_STATE") return;
-  const priced = lines.filter((l) => l.costCents !== null && l.costCents * l.quantity > 0);
+  const priced = lines.filter((l) => !l.forResale && l.costCents !== null && l.costCents * l.quantity > 0);
   if (!priced.length) return;
   const amounts = priced.map((l) => l.costCents! * l.quantity);
   const taxShares = allocateAcrossLines(sellerTaxCents, amounts);
@@ -141,7 +141,7 @@ export async function loadReceiptTaxSteps(client: Tx | typeof prisma, receiptTax
     const taxed = row.sellerTaxKind === "COLORADO";
     const none = row.sellerTaxKind === "NONE";
     const unknownKind = row.sellerTaxKind === "UNKNOWN" || row.sellerTaxKind === "OTHER_STATE";
-    const priced = lines.some((l) => l.costCents !== null);
+    const priced = lines.some((l) => !l.forResale && l.costCents !== null);
     let status: PurchaseTaxSubject["status"] = "UNKNOWN";
     let blocked: Awaited<ReturnType<typeof explainTaxContext>> = null;
     if (!unknownKind && priced) {

@@ -14,6 +14,7 @@ import {
   cancelPurchaseOrder,
   recordPartUsage,
   updatePartStockSettings,
+  updatePartSaleSettings,
   archivePartRecord,
   reversePartMovement,
   restorePartRecord,
@@ -21,6 +22,7 @@ import {
   restoreSupplier,
 } from "@/domains/purchasing";
 import { dollarsToCents } from "@/domains/pricing";
+import { parseDollarInput } from "@/lib/money-ui";
 
 // ---------------------------------------------------------------------------
 // Purchasing & supplies (2026-09-29) — server actions for
@@ -83,6 +85,7 @@ const poLineSchema = z.object({
   description: z.string().trim().min(1),
   quantity: z.coerce.number().int().min(1),
   unitCostDollars: z.coerce.number().min(0).optional(),
+  forResale: z.boolean().optional(),
 });
 
 const newPurchaseOrderSchema = z.object({
@@ -108,6 +111,7 @@ export async function createPurchaseOrderAction(raw: unknown): Promise<Purchasin
         quantity: line.quantity,
         // Left blank = the price is not known yet (stored as unknown, not as $0).
         unitCostCents: line.unitCostDollars === undefined ? undefined : dollarsToCents(line.unitCostDollars),
+        forResale: line.forResale === true,
       })),
     });
     revalidatePath("/desk/purchase-orders");
@@ -183,6 +187,25 @@ export async function updatePartStockSettingsAction(
   const session = await requireRole("OWNER", "ADMIN");
   try {
     await updatePartStockSettings(session.user.id, partRecordId, { quantityOnHand, reorderThreshold, operationKey });
+    revalidatePath("/desk/parts");
+    return { status: "success" };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't save those changes." };
+  }
+}
+
+export async function updatePartSaleSettingsAction(
+  partRecordId: string,
+  input: { sellable: boolean; priceDollars: string; defaultForResale: boolean },
+): Promise<PurchasingActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    const text = input.priceDollars.trim().replace(/^\$/, "").replace(/,/g, "");
+    await updatePartSaleSettings(session.user.id, partRecordId, {
+      sellable: input.sellable,
+      retailPriceCents: text === "" ? null : parseDollarInput(text, 100_000_00),
+      defaultForResale: input.defaultForResale,
+    });
     revalidatePath("/desk/parts");
     return { status: "success" };
   } catch (error) {
