@@ -5,7 +5,6 @@ Each item was read against the code; none is yet reproduced unless marked **fixe
 Remove a line when its fix merges (and name the PR in STATUS). Nothing here blocks building or merging other work.
 
 ## Money / books (needs a short accounting design decision before changing the ledger)
-- **Negative tax lines** (late-return waiver) are rejected by `invoiceRecognition`, so such invoices cannot be posted or voided.
 - **Invoice changed after posting** (late fee, waiver, retax): the first journal is never adjusted; void reverses the *mutated* lines. Post delta entries keyed by invoice version.
 - **Refund journaled before Stripe confirms** (`books/post.ts` REFUND/DEPOSIT): a failed or unconfirmed refund still posts as paid; clearing-vs-bank account follows a timing-dependent field.
 - **Held payment later marked paid after a write-off**: no reversal event for the write-off.

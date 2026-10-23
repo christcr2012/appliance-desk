@@ -33,6 +33,18 @@ describe("Batch K chart and pure posting", () => {
     expect(lineKindAccountRole("TAX",250)).toBe("TAX_LINES");
     expect(lineKindAccountRole("DEPOSIT",250)).toBe("SKIP");
   });
+  it("posts an invoice with a negative tax line (late-return waiver) and reverses it on void", () => {
+    const invoice = {
+      status:"OPEN" as const, createdAt:date, amountDueCents:11500,
+      items:[{kind:"RENTAL" as const,amountCents:10000},{kind:"ADMIN_SETUP_FEE" as const,amountCents:1000}],
+      taxes:[{filingAccountId:"co",taxCents:1000},{filingAccountId:"co",taxCents:-500}],
+    };
+    const plan = invoiceRecognition(invoice)!;
+    check(plan);
+    expect(plan.lines).toContainEqual({role:"SALES_TAX:co",debitCents:500,creditCents:0});
+    check(invoiceVoided({...invoice,status:"VOID",voidedAt:date}));
+    expect(() => invoiceRecognition({...invoice,taxes:[{filingAccountId:"co",taxCents:1.5}],amountDueCents:11001})).toThrow(PostingEvidenceError);
+  });
   it("posts a tax-split invoice including an RDF liability and reversible void", () => {
     const invoice = {
       status:"PAID" as const, createdAt:date, amountDueCents:11650,
