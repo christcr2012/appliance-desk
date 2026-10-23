@@ -96,6 +96,8 @@ export const OWNER_ACTIONS: OwnerAction[] = [
     summary: "Your books, cash, month-end closing and exports for your accountant.", synonyms: ["accounting", "accountant", "ledger", "close the month", "export", "cpa"], href: "/desk/books" },
   { id: "sales-tax", label: "Sales tax", group: "money", access: "admin",
     summary: "Tax setup, returns and records.", synonyms: ["tax return", "colorado tax", "taxable", "dor", "use tax"], href: "/desk/sales-tax" },
+  { id: "goals", label: "Monthly goals and warnings", group: "money", access: "admin",
+    summary: "Set this month's target for money collected and new rentals, and choose when to be warned about idle appliances.", synonyms: ["target", "goal", "quota", "how am i doing", "idle appliances", "utilization"], href: "/desk/settings/goals" },
   { id: "approvals", label: "Requests waiting for your approval", group: "money", access: "owner",
     summary: "Things an admin started that were over your limit.", synonyms: ["approve", "decline", "admin request"], href: "/desk/approvals" },
   { id: "approval-limits", label: "Approval limits", group: "money", access: "owner",
