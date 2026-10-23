@@ -1,4 +1,8 @@
-## October 23 — Retired appliances: what's next for each one (M-2A + M-2B, in progress)
+## October 23 — Settings history with undo, and the Switches page (Batch O, step O-1, in progress)
+
+Settings now has **Settings history and undo** (every change in plain words; undo one setting back only if it has not changed again; never touches signed agreements, email, tax, security or contract terms) and **All switches in one place** (read-only: customer email, text messages, automatic renewals, paused automations, card payments test or live, two-step sign-in, books start date, with who changed each last). Tests on throwaway Postgres cover undo, double undo, changed-again, staff refused and no secrets shown. Not yet in: tax-lookup, launch-email and approval-limit rows (nothing to read yet), and the impact preview (needs O-3). Nothing for Chris to do.
+
+## October 23 — Retired appliances: what's next for each one (M-2A + M-2B, merged)
 
 On a retired appliance's page you can now choose what happens to it: sell, strip for parts (add the parts you kept to your shelf at $0), scrap, throw away, or donate/other, and mark it done later. A new **Retired** tab lists them all, lets you mark a truckload done, and records **scrap money received** (one entry per check, posts to "Scrap sales" income; a void reverses it). Today shows one reminder when a retired appliance has waited 30+ days (changeable, 0 = off). Proved on real Postgres (`tests/retired-appliance-plan-integration.test.ts`, `tests/scrap-payment-integration.test.ts`). **Stopped on purpose (written up for a stronger model):** selling a retired appliance (M-2C, `docs/designs/M-2C-STRONGER-MODEL-PROMPT.md`) and card payment of sales (M-3, `docs/designs/M-3-STRONGER-MODEL-PROMPT.md`). Branch `ai/claude/retired-appliances`.
 

@@ -457,6 +457,10 @@ export default async function DeskSettingsPage({
           </ButtonLink>
         }
       />
+      <div className="mb-3 flex flex-wrap gap-3">
+        <ButtonLink href="/desk/settings/history" variant="secondary">Settings history and undo</ButtonLink>
+        <ButtonLink href="/desk/settings/switches" variant="secondary">All switches in one place</ButtonLink>
+      </div>
       <FilterBar
         label="Settings sections"
         items={SETTINGS_SECTIONS.map((s) => ({

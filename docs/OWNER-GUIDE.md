@@ -301,6 +301,8 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 **If it fails.** A save that is rejected keeps your input and says why. Two people saving at once: the second is told to reload.
 
+**Settings history and undo (new).** At the top of Settings, **Settings history and undo** lists every change to your business settings, newest first, in plain words ("Delivery fee: $45.00 → $50.00, by Chris"). **Undo this** puts one setting back, but only while it still has the value that change gave it. If you changed it again since, the button is replaced by a note saying so. Undo never changes agreements that customers already signed, and it does not touch email, tax, security or agreement-term settings (those are changed on their own screens). **All switches in one place** shows, read-only, whether customer email, text messages, automatic renewals, paused automations, card payments (test or live; the key is never shown), two-step sign-in and the books start date are on, who last changed each one, and a link to where you change it.
+
 ## Website editor
 
 ![Website editor](owner-guide/screenshots/website.png)
