@@ -1,3 +1,7 @@
+## October 23 — Books screen in plain English
+
+The owner Books screen no longer says "double-entry", "immutable" or shows raw system codes: sources read like "A bill to a customer", months are "locked/unlocked", accounts are explained as buckets money is sorted into, and the link row is tidied. Meaning and permissions are unchanged.
+
 ## October 23 — Friendlier "Are you sure?" boxes
 
 The browser's plain OK/Cancel pop-ups (11 places: turn customer emails on/off, auto-renew, held payments, website drafts, tax exemptions, telecom statements, customer rental changes) are replaced by one on-brand confirmation box (`src/lib/confirm-action.ts`) that works by keyboard and screen reader and starts on the safe "Cancel" choice. Only the "leave this page with unsaved changes" prompt stays browser-native (browsers require that).
