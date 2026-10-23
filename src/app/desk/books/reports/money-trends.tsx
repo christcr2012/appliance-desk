@@ -7,7 +7,7 @@ const button="rounded border border-border bg-card px-3 py-2 font-semibold focus
 const money=(n:number|null|undefined)=>n===null||n===undefined?"Unknown":formatMoney(n);
 export type TrendsQuery={asOf?:string;months?:string;period?:string;from?:string;to?:string;
  compare?:string;page?:string;pageSize?:string};
-const options=(q:TrendsQuery)=>({
+const options=(q:TrendsQuery):NonNullable<Parameters<typeof getFinanceTrends>[1]>=>({
  asOf:q.asOf,months:Number(q.months??"12"),period:q.period,
  from:q.from,to:q.to,
  compare:q.compare==="PREVIOUS_PERIOD"?"PREVIOUS_PERIOD":q.compare==="SAME_PERIOD_LAST_YEAR"?"SAME_PERIOD_LAST_YEAR":null,
