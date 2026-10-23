@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Field, Select, Textarea } from "@/components/ui";
+import { Button, Checkbox, Field, Select, Textarea } from "@/components/ui";
 import { createPurchaseOrderAction } from "../../purchasing-actions";
 
 type LineDraft = {
@@ -10,6 +10,7 @@ type LineDraft = {
   description: string;
   quantity: string;
   unitCostDollars: string;
+  forResale: boolean;
 };
 
 function emptyLine(): LineDraft {
@@ -18,6 +19,7 @@ function emptyLine(): LineDraft {
     description: "",
     quantity: "1",
     unitCostDollars: "",
+    forResale: false,
   };
 }
 
@@ -26,7 +28,7 @@ export function NewPurchaseOrderForm({
   partRecords,
 }: {
   suppliers: { id: string; name: string }[];
-  partRecords: { id: string; label: string }[];
+  partRecords: { id: string; label: string; sellable: boolean; defaultForResale: boolean }[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -55,6 +57,7 @@ export function NewPurchaseOrderForm({
           description: line.description,
           quantity: line.quantity,
           unitCostDollars: line.unitCostDollars || undefined,
+          forResale: line.forResale && Boolean(line.partRecordId),
         })),
       });
       if (result.status === "error") {
@@ -96,9 +99,14 @@ export function NewPurchaseOrderForm({
                 id={`po-line-${index}-part`}
                 label="Part on file (optional)"
                 value={line.partRecordId}
-                onChange={(event) =>
-                  updateLine(index, { partRecordId: event.target.value })
-                }
+                onChange={(event) => {
+                  const chosen = partRecords.find((part) => part.id === event.target.value);
+                  updateLine(index, {
+                    partRecordId: event.target.value,
+                    // Pre-ticked for parts you usually buy to resell; you can untick it for this order.
+                    forResale: Boolean(chosen?.sellable && chosen.defaultForResale),
+                  });
+                }}
               >
                 <option value="">— Not in the parts catalog —</option>
                 {partRecords.map((part) => (
@@ -141,6 +149,17 @@ export function NewPurchaseOrderForm({
                   updateLine(index, { unitCostDollars: event.target.value })
                 }
               />
+              {partRecords.find((part) => part.id === line.partRecordId)?.sellable && (
+                <div className="sm:col-span-3">
+                  <Checkbox
+                    id={`po-line-${index}-resale`}
+                    label="Bought to resell to customers"
+                    help="Tick this when you gave the supplier your Colorado resale certificate, so you did not pay sales tax. If you later use some of these parts yourself (a repair, an install), the app records the use tax for you."
+                    checked={line.forResale}
+                    onChange={(event) => updateLine(index, { forResale: event.target.checked })}
+                  />
+                </div>
+              )}
               {lines.length > 1 && (
                 <div className="flex items-end">
                   <Button

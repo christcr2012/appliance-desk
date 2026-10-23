@@ -1,3 +1,4 @@
+import { recordPendingWithdrawalUseTax } from "@/domains/purchasing/withdrawal-tax";
 import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 
@@ -64,7 +65,12 @@ export async function GET(request: Request): Promise<NextResponse> {
     }),
     runAutomation({
       ruleKey: "tax-address-recheck:purchase-tax-catch-up",
-      work: async () => ({ counts: await recalculatePendingPurchaseTax(new Date(), 200) }),
+      work: async () => {
+        const appliances = await recalculatePendingPurchaseTax(new Date(), 200);
+        // Resale stock the owner used before tax setup was ready.
+        const withdrawals = await recordPendingWithdrawalUseTax(200);
+        return { counts: { ...appliances, withdrawalsRecorded: withdrawals.recorded, withdrawalsStillPending: withdrawals.stillPending } };
+      },
     }),
   ]);
 

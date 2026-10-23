@@ -339,6 +339,14 @@ remain frozen and corrections are reviewed via the filing-amendment detector.
   Parts and suppliers with history are **archived** (`archivedAt`), not deleted;
   `PurchaseOrderLineItem.receivedQuantity` supports partial receipts and
   `unitCostKnown` says whether a line's price is real.
+- **Shop and resale stock** (Batch M, 2026-10-23, migration `20261023180000_shop_stock_resale`; all dormant until the owner
+  opts in). `PartRecord` gains `sellable`, `retailPriceCents`, `defaultForResale` (only pre-ticks new purchase-order
+  lines), `resaleUnitsOnHand` and `resaleCostOnHandCents` (how many of the stock came from purchases made for resale and
+  what they cost; a database CHECK keeps `0 ≤ resaleUnitsOnHand ≤ quantityOnHand` and cost ≥ 0).
+  `PurchaseOrderLineItem.forResale` is set when the order is made. `PartStockMovement` gains `resaleUnits` and
+  `resaleCostCents` (same sign as the quantity change) and the kinds `SALE` and `SALVAGE`. Which units a movement uses is
+  fixed (see BUSINESS-RULES, "Shop and resale stock"). A use of resale stock records a `PurchaseUseTax` row with
+  `sourceType "PART_WITHDRAWAL"` and `sourceId` = the movement id.
 - **PurchaseOrderReceiptOperation** (Remediation R16, 2026-10-04) — one row per
   "these items arrived" request on a purchase order: the request's key (unique),
   the order, and a SHA-256 fingerprint of the order plus every submitted line

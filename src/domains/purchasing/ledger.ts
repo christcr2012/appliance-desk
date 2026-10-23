@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { PartStockMovement, Prisma, PrismaClient } from "@prisma/client";
+import { cancelWithdrawalUseTaxInTx, recordWithdrawalUseTaxInTx, WITHDRAWAL_KINDS } from "./withdrawal-tax";
 
 // ---------------------------------------------------------------------------
 // Parts ledger (Batch C, slice P1-C). Every change to PartRecord.quantityOnHand goes through
@@ -24,10 +25,17 @@ export class PartOperationConflictError extends Error {
   }
 }
 
+export class ResaleStockConflictError extends Error {
+  constructor() {
+    super("Some of that stock has been sold or used since, so this can't be undone exactly. Fix the count with a recount instead.");
+    this.name = "ResaleStockConflictError";
+  }
+}
+
 export type PartMovementRequest = {
   partRecordId: string;
-  kind: "RECEIPT" | "USAGE" | "ADJUSTMENT" | "RECOUNT" | "REVERSAL";
-  /** RECEIPT: positive. USAGE: negative. ADJUSTMENT: signed, non-zero. Ignored for RECOUNT and REVERSAL. */
+  kind: "RECEIPT" | "USAGE" | "ADJUSTMENT" | "RECOUNT" | "REVERSAL" | "SALE" | "SALVAGE";
+  /** RECEIPT: positive. USAGE and SALE: negative. SALVAGE: positive. ADJUSTMENT: signed, non-zero. Ignored for RECOUNT and REVERSAL. */
   quantityDelta?: number;
   /** RECOUNT only: the shelf count; the change is worked out under the lock. */
   countedQuantity?: number;
@@ -37,7 +45,38 @@ export type PartMovementRequest = {
   jobId?: string;
   reversesMovementId?: string;
   reason?: string;
+  /** RECEIPT only: these units were bought to resell (no use tax when received). */
+  forResale?: boolean;
 };
+
+/**
+ * Which units a movement uses, and what the resale ones cost (Batch M, design D-M1). Pure so it can be tested alone.
+ * `balance`/`resaleUnits`/`resaleCostCents` are the part's current totals; `delta` is the signed quantity change.
+ * A sale takes resale units first; a use or downward adjustment takes ordinary units first. The cost removed is a
+ * moving average, and the last resale units remove exactly what remains.
+ */
+export function resaleEffect(
+  kind: PartMovementRequest["kind"],
+  delta: number,
+  part: { balance: number; resaleUnits: number; resaleCostCents: number },
+  receipt?: { forResale: boolean; unitCostCents: number | null },
+): { resaleUnits: number; resaleCostCents: number } {
+  if (kind === "RECEIPT") {
+    return receipt?.forResale ? { resaleUnits: delta, resaleCostCents: delta * (receipt.unitCostCents ?? 0) } : { resaleUnits: 0, resaleCostCents: 0 };
+  }
+  if (delta >= 0) return { resaleUnits: 0, resaleCostCents: 0 };
+  const quantity = -delta;
+  const taken =
+    kind === "SALE"
+      ? Math.min(quantity, part.resaleUnits)
+      : Math.max(0, quantity - (part.balance - part.resaleUnits));
+  if (taken <= 0) return { resaleUnits: 0, resaleCostCents: 0 };
+  const cost =
+    taken >= part.resaleUnits
+      ? part.resaleCostCents
+      : Math.floor((2 * taken * part.resaleCostCents + part.resaleUnits) / (2 * part.resaleUnits));
+  return { resaleUnits: -taken, resaleCostCents: -cost };
+}
 
 export const OPERATION_KEY_PATTERN = /^[A-Za-z0-9:_-]{8,100}$/;
 const MAX_REQUESTS = 100;
@@ -56,6 +95,8 @@ function canonical(requests: readonly PartMovementRequest[]): string {
       jobId: r.jobId ?? null,
       reversesMovementId: r.reversesMovementId ?? null,
       reason: r.reason ?? null,
+      // Only written when set, so a request made before resale existed still hashes the same and replays.
+      ...(r.forResale ? { forResale: true } : {}),
     }))
     .sort((a, b) => (a.partRecordId < b.partRecordId ? -1 : a.partRecordId > b.partRecordId ? 1 : 0));
   return JSON.stringify(rows);
@@ -74,6 +115,9 @@ function validateRequests(operationKey: string, requests: readonly PartMovementR
   for (const r of requests) {
     if (seen.has(r.partRecordId)) throw new Error("A part can appear only once in one stock change.");
     seen.add(r.partRecordId);
+    if (r.forResale && r.kind !== "RECEIPT") throw new Error("Only a received purchase can be marked as bought for resale.");
+    // Unknown must never be counted as free: the cost of resale units is what use tax is figured on.
+    if (r.forResale && r.unitCostCents === null) throw new Error("Enter what each part cost. Parts bought to resell need a price so the right use tax can be figured if you use them yourself.");
     if (r.unitCostCents !== null && (!Number.isSafeInteger(r.unitCostCents) || r.unitCostCents < 0)) {
       throw new Error("A part cost must be a whole number of cents, or left blank when unknown.");
     }
@@ -83,6 +127,12 @@ function validateRequests(operationKey: string, requests: readonly PartMovementR
         break;
       case "USAGE":
         if (!Number.isSafeInteger(r.quantityDelta) || (r.quantityDelta as number) > -1) throw new Error("Enter how many were used.");
+        break;
+      case "SALE":
+        if (!Number.isSafeInteger(r.quantityDelta) || (r.quantityDelta as number) > -1) throw new Error("Enter how many were sold.");
+        break;
+      case "SALVAGE":
+        if (!Number.isSafeInteger(r.quantityDelta) || (r.quantityDelta as number) < 1) throw new Error("Enter how many parts were taken.");
         break;
       case "ADJUSTMENT":
         if (!Number.isSafeInteger(r.quantityDelta) || r.quantityDelta === 0) throw new Error("An adjustment must change the count.");
@@ -145,7 +195,7 @@ export async function applyPartMovementsInTx(
 
   const parts = await tx.partRecord.findMany({
     where: { id: { in: partIds } },
-    select: { id: true, quantityOnHand: true, archivedAt: true },
+    select: { id: true, quantityOnHand: true, archivedAt: true, resaleUnitsOnHand: true, resaleCostOnHandCents: true },
   });
   const partById = new Map(parts.map((p) => [p.id, p]));
 
@@ -158,6 +208,8 @@ export async function applyPartMovementsInTx(
     let jobId = request.jobId ?? null;
     let purchaseOrderLineItemId = request.purchaseOrderLineItemId ?? null;
     let unitCostCents = request.unitCostCents;
+    let effect: { resaleUnits: number; resaleCostCents: number } | null = null;
+    let reversedOriginal: PartStockMovement | null = null;
 
     if (request.kind === "USAGE" && part.archivedAt) {
       throw new Error("This part is archived. Restore it before recording use.");
@@ -181,12 +233,27 @@ export async function applyPartMovementsInTx(
       jobId = original.jobId;
       purchaseOrderLineItemId = original.purchaseOrderLineItemId;
       unitCostCents = original.unitCostCents;
+      effect = { resaleUnits: -original.resaleUnits, resaleCostCents: -original.resaleCostCents };
+      reversedOriginal = original;
     } else {
       delta = request.quantityDelta as number;
     }
 
     const balanceAfter = balance + delta;
     if (balanceAfter < 0) throw new InsufficientStockError(balance);
+
+    effect ??= resaleEffect(
+      request.kind,
+      delta,
+      { balance, resaleUnits: part.resaleUnitsOnHand, resaleCostCents: part.resaleCostOnHandCents },
+      { forResale: Boolean(request.forResale), unitCostCents },
+    );
+    const resaleUnitsAfter = part.resaleUnitsOnHand + effect.resaleUnits;
+    const resaleCostAfter = part.resaleCostOnHandCents + effect.resaleCostCents;
+    // A late undo can't leave more resale units than there is stock, or less than none.
+    if (resaleUnitsAfter < 0 || resaleCostAfter < 0 || resaleUnitsAfter > balanceAfter || (resaleUnitsAfter === 0 && resaleCostAfter !== 0)) {
+      throw new ResaleStockConflictError();
+    }
 
     movements.push(
       await tx.partStockMovement.create({
@@ -201,6 +268,8 @@ export async function applyPartMovementsInTx(
           purchaseOrderLineItemId,
           jobId,
           reversesMovementId,
+          resaleUnits: effect.resaleUnits,
+          resaleCostCents: effect.resaleCostCents,
           reason: request.reason?.trim() ? request.reason.trim().slice(0, 500) : null,
           createdByUserId: actorUserId,
           // Stamped after the part lock is held, so history order matches the order changes were really applied
@@ -209,8 +278,19 @@ export async function applyPartMovementsInTx(
         },
       }),
     );
-    partById.set(part.id, { ...part, quantityOnHand: balanceAfter });
-    await tx.partRecord.update({ where: { id: part.id }, data: { quantityOnHand: balanceAfter } });
+    partById.set(part.id, { ...part, quantityOnHand: balanceAfter, resaleUnitsOnHand: resaleUnitsAfter, resaleCostOnHandCents: resaleCostAfter });
+    await tx.partRecord.update({
+      where: { id: part.id },
+      data: { quantityOnHand: balanceAfter, resaleUnitsOnHand: resaleUnitsAfter, resaleCostOnHandCents: resaleCostAfter },
+    });
+
+    // Taking resale stock for your own use owes use tax on its cost; undoing that cancels it.
+    const made = movements[movements.length - 1]!;
+    if (WITHDRAWAL_KINDS.has(made.kind) && made.resaleCostCents < 0) {
+      await recordWithdrawalUseTaxInTx(tx, made);
+    } else if (reversedOriginal && WITHDRAWAL_KINDS.has(reversedOriginal.kind) && reversedOriginal.resaleCostCents < 0) {
+      await cancelWithdrawalUseTaxInTx(tx, reversedOriginal.id);
+    }
   }
 
   if (movements.length > 0) {

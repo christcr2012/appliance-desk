@@ -5,6 +5,7 @@ import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { explainPendingPurchaseTax } from "@/domains/tax/purchase-tax-explain";
 import { loadApplianceTaxSteps, type PurchaseTaxStep } from "@/domains/tax/next-step";
 import { loadReceiptTaxSteps } from "@/domains/purchasing/receipt-tax";
+import { countPendingWithdrawalUseTax } from "@/domains/purchasing/withdrawal-tax";
 
 /** Two summary rows on Today, not one alert per appliance or purchase line. */
 export async function listAcquisitionTaxAttention(
@@ -146,6 +147,16 @@ export async function listAcquisitionTaxAttention(
       title: step.todo.title, detail: step.headline + " " + step.detail,
       href: step.subject.href, dueOn: step.todo.dueOn ?? undefined, dueDateOnly: step.todo.dueOn ? true : undefined,
       primaryAction: step.todo.primaryAction, since: step.subject.recordedAt ?? now,
+    });
+  }
+  // Resale stock the owner used while tax setup was not ready: the stock change happened, the tax is waiting.
+  const waiting = await countPendingWithdrawalUseTax(prisma);
+  if (waiting.count > 0) {
+    result.push({
+      category: "ACQUISITION_TAX_REVIEW", severity: "medium",
+      title: `${waiting.count} use${waiting.count === 1 ? "" : "s"} of stock bought for resale need use tax`,
+      detail: "You used parts you bought tax-free to resell, so use tax is owed on what they cost. It is recorded automatically as soon as your business tax address and rates are set up.",
+      href: "/desk/sales-tax/use-tax", since: waiting.oldest ?? now,
     });
   }
   const dueCents = due._sum.useTaxDueCents ?? 0;

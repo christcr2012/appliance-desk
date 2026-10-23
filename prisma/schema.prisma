@@ -685,6 +685,15 @@ model PartRecord {
   quantityOnHand   Int  @default(0)
   reorderThreshold Int?
 
+  // Batch M (shop sales). All dormant until the owner marks an item "sell to customers" or ticks "bought for resale".
+  // resaleUnitsOnHand is how many of quantityOnHand came from resale purchases (0 <= resale <= on hand, enforced by a
+  // database CHECK); resaleCostOnHandCents is the total cost of those units (a moving average).
+  sellable              Boolean @default(false)
+  retailPriceCents      Int?
+  defaultForResale      Boolean @default(false)
+  resaleUnitsOnHand     Int     @default(0)
+  resaleCostOnHandCents Int     @default(0)
+
   // Batch C P1-C: a part with history is archived, never deleted. quantityOnHand is the stored
   // total of this part's PartStockMovement rows (kept equal by applyPartMovementsInTx).
   archivedAt DateTime?
@@ -820,6 +829,8 @@ model PurchaseOrderLineItem {
   // unitCostKnown says whether unitCostCents is a real price (the old default 0 meant "unknown").
   receivedQuantity Int           @default(0)
   unitCostKnown    Boolean       @default(false)
+  // Batch M: bought to resell (no use tax when received). Frozen once any of the line has arrived.
+  forResale        Boolean       @default(false)
   movements        PartStockMovement[]
 
   createdAt DateTime @default(now())
@@ -835,6 +846,9 @@ enum PartMovementKind {
   ADJUSTMENT
   RECOUNT
   REVERSAL
+  // Batch M: an item sold over the counter, and parts taken from a retired appliance.
+  SALE
+  SALVAGE
 }
 
 // Batch C P1-C: the parts ledger. Append-only (a database trigger blocks UPDATE and DELETE);
@@ -855,6 +869,9 @@ model PartStockMovement {
   jobId                   String?
   job                     Job?                   @relation(fields: [jobId], references: [id], onDelete: Restrict)
   reversesMovementId      String?                @unique
+  // Batch M: how many of this movement's units were resale units and what they cost (same sign as quantityDelta).
+  resaleUnits             Int                    @default(0)
+  resaleCostCents         Int                    @default(0)
   reason                  String?
   createdByUserId         String?
   createdAt               DateTime               @default(now())

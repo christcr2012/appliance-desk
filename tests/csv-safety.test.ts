@@ -15,3 +15,7 @@ it("preserves signed numeric accounting values and RFC quoting", () => {
 it("neutralizes headers and leaves null/undefined empty", () => {
   expect(toCsv([{ key: "a", header: "=1+1" }, { key: "b", header: "Plain" }], [{ a: null, b: undefined }])).toBe("'=1+1,Plain\r\n,\r\n");
 });
+it("keeps a plain negative number written as text readable as a number, but still neutralizes formulas", () => {
+  expect(toCsv([{ key: "v", header: "Amount" }], [{ v: "-12.50" }, { v: "-1+2" }, { v: "-12.50+1" }, { v: "-" }]))
+    .toBe("Amount\r\n-12.50\r\n'-1+2\r\n'-12.50+1\r\n'-\r\n");
+});

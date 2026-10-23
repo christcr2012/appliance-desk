@@ -49,6 +49,8 @@ export default async function NewPurchaseOrderPage() {
             }))}
             partRecords={partRecords.map((part) => ({
               id: part.id,
+              sellable: part.sellable,
+              defaultForResale: part.defaultForResale,
               label: `${part.modelNumber} — ${part.partNumber}${
                 part.partName ? ` (${part.partName})` : ""
               }`,

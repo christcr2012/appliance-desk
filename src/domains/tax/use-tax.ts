@@ -17,7 +17,7 @@ export class PurchaseTaxContextPendingError extends Error {
 }
 
 export type UseTaxPurchase = {
-  sourceType: "APPLIANCE" | "PURCHASE_ORDER_LINE" | "EXPENSE";
+  sourceType: "APPLIANCE" | "PURCHASE_ORDER_LINE" | "EXPENSE" | "PART_WITHDRAWAL";
   sourceId: string;
   purchasedOn: Date;
   amountCents: number;

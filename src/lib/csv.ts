@@ -10,7 +10,9 @@ function csvField(value: unknown): string {
   // CSV quoting alone does not stop spreadsheet formula execution. Keep
   // numeric amounts numeric (including refunds), but force untrusted text
   // and headers to literal text even after leading whitespace/control chars.
-  if (typeof value === "string" && (/^[\t\r\n]/.test(s) || /^[\s\uFEFF]*[=+\-@]/.test(s))) {
+  // A plain negative number written as text (a refund shown as "-12.50") cannot run as a formula, so it stays a number.
+  const plainNegativeNumber = typeof value === "string" && /^-\d+(\.\d+)?$/.test(s);
+  if (typeof value === "string" && !plainNegativeNumber && (/^[\t\r\n]/.test(s) || /^[\s\uFEFF]*[=+\-@]/.test(s))) {
     s = "'" + s;
   }
   if (/[",\n\r]/.test(s)) {

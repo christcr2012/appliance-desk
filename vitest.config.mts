@@ -68,6 +68,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-migration-integration.test.ts",
   "tests/tax-locations-integration.test.ts",
   "tests/tax-use-tax-integration.test.ts",
+  "tests/resale-stock-integration.test.ts", // M-1B replaces the business tax address and rates for its use-tax example, then restores them.
   // Added 2026-10-09: every other real-database test that writes the business-settings row or creates Colorado filing
   // accounts (which filing reminders, the tax overview and the health sweep read across the whole database).
   // tests/shared-state-tests-listed.test.ts fails if a new one is missing.

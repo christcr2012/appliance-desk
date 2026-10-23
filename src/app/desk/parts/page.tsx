@@ -11,6 +11,7 @@ import {
   type DataListColumn,
 } from "@/components/ui";
 import { PartStockPanel } from "./part-stock-panel";
+import { PartSaleSettings } from "./part-sale-settings";
 
 export const metadata = { title: "Parts" };
 
@@ -76,6 +77,20 @@ export default async function PartsPage({
           quantityOnHand={part.quantityOnHand}
           reorderThreshold={part.reorderThreshold}
           lowStock={lowStockIds.has(part.id)}
+          archived={part.archivedAt !== null}
+        />
+      ),
+    },
+    {
+      key: "selling",
+      header: "Selling",
+      cell: (part) => (
+        <PartSaleSettings
+          partRecordId={part.id}
+          sellable={part.sellable}
+          retailPriceCents={part.retailPriceCents}
+          defaultForResale={part.defaultForResale}
+          averageCostCents={part.resaleUnitsOnHand > 0 ? Math.round(part.resaleCostOnHandCents / part.resaleUnitsOnHand) : null}
           archived={part.archivedAt !== null}
         />
       ),
