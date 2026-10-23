@@ -110,6 +110,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   SIGNED_DELIVERY_UNSCHEDULED: "Signed rental — schedule delivery",
   RENTAL_ENDING_SOON: "Rental ending soon — decide what happens next",
   PICKUP_UNSCHEDULED: "Pickup to schedule",
+  RETIRED_APPLIANCE_PLAN: "Retired appliances to decide on",
   VISIT_NEEDS_ASSIGNMENT: "Visit needs a technician or time",
   CLEANING_NEEDED: "Appliance to clean",
   OVERDUE_JOB: "Overdue job",

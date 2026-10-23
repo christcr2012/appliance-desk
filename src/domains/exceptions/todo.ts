@@ -10,6 +10,7 @@ export function todoKey(item: Pick<ExceptionItem, "category" | "href" | "title">
 const ACTION_LABEL: Record<string, string> = {
   RENTAL_ENDING_SOON: "Decide",
   PICKUP_UNSCHEDULED: "Schedule pickup",
+  RETIRED_APPLIANCE_PLAN: "Decide",
   VISIT_NEEDS_ASSIGNMENT: "Assign / set a time",
   CLEANING_NEEDED: "Open appliance",
   PAST_DUE_INVOICE: "Review unpaid invoice",

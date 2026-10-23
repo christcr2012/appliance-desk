@@ -1378,8 +1378,9 @@
       "tests": [
         "tests/retired-appliance-plan-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/M-2A.md"
+      "readiness": "IMPLEMENTATION_SOURCE_CI_PENDING",
+      "plannedCard": "docs/pr-cards/M-2A.md",
+      "card": "docs/pr-cards/M-2A.md"
     },
     {
       "id": "M-2B",
@@ -1402,11 +1403,11 @@
       ],
       "tests": [
         "tests/scrap-payment-integration.test.ts",
-        "tests/retired-follow-up.test.ts",
-        "e2e/retired-appliances.spec.ts"
+        "tests/retired-appliance-plan-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/M-2B.md"
+      "readiness": "IMPLEMENTATION_SOURCE_CI_PENDING",
+      "plannedCard": "docs/pr-cards/M-2B.md",
+      "card": "docs/pr-cards/M-2B.md"
     },
     {
       "id": "M-2C",

@@ -353,6 +353,12 @@ remain frozen and corrections are reviewed via the filing-amendment detector.
   (unique; a retry returns the first sale). `InvoiceLineItem.partRecordId` links an item line to its part;
   `PartStockMovement.invoiceLineId` links the `SALE` movement to the line it sold. Two income accounts, "Items sold" and
   "Used appliance sale", were added to the chart. Cancelling an unpaid sale voids the invoice and adds `REVERSAL` movements.
+- **Retired appliances** (Batch M-2, 2026-10-23, migration `20261023210000_retired_appliances`). `RetiredAppliancePlan`
+  (one row per appliance: choice SELL/STRIP/SCRAP/DISPOSE/OTHER, note, leftovers `remainder` for STRIP, done date and note,
+  reopen reason). `ScrapPayment` (a lump scrap-yard check: operation key, date, amount, yard, deposit account, void fields).
+  `PartStockMovement.applianceId` ties a `SALVAGE` movement to the retired appliance. `BusinessSettings.retiredFollowUpDays`
+  (default 30, 0 = never, 0–365). Journal source type `SCRAP_PAYMENT` (events `SCRAP_RECEIVED`, `SCRAP_VOIDED`). Chart rows
+  "Scrap sales" (`SCRAP_INCOME`) and "Dump and disposal fees" (`EXPENSE_DUMP_AND_DISPOSAL_FEES`) plus the matching expense category.
 - **PurchaseOrderReceiptOperation** (Remediation R16, 2026-10-04) — one row per
   "these items arrived" request on a purchase order: the request's key (unique),
   the order, and a SHA-256 fingerprint of the order plus every submitted line
