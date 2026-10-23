@@ -1483,7 +1483,7 @@
         "tests/settings-undo-integration.test.ts",
         "e2e/owner-switches.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "IN_PROGRESS",
       "plannedCard": "docs/pr-cards/O-1.md"
     },
     {
