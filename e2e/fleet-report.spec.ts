@@ -58,7 +58,7 @@ test("fleet estimates expose incomplete costs, supporting records and every pagi
         );
         await page.goto("/desk/fleet?costs=missing");
         await expect(
-          page.getByRole("heading", { name: "Fleet and appliance estimates" }),
+          page.getByRole("heading", { name: "Your appliances: value and cost" }),
         ).toBeVisible();
         await expect(
           page.getByText(

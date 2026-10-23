@@ -143,7 +143,7 @@ export default async function ReportsPage() {
     <div>
       <PageHeader
         title="Reports"
-        description="Compare agreed pricing with collections, find completed repairs missing cost data, and review lead-source conversion."
+        description="Check what customers were supposed to pay against what they paid, find finished repairs with no cost entered, and see which lead sources turn into customers."
         secondaryActions={
           <ExportCsvLink
             href="/desk/reports/export"
@@ -179,7 +179,7 @@ export default async function ReportsPage() {
 
       <div className="mt-8 space-y-6">
         <Card
-          title="Agreements falling behind their own pricing"
+          title="Rentals paying less than their agreed price"
           description="Only agreements more than $10 short are listed so small timing differences do not create noise."
         >
           <DataList

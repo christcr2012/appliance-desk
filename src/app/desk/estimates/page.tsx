@@ -107,9 +107,9 @@ export default async function EstimatesPage() {
   return (
     <div>
       <PageHeader
-        title="Estimates"
-        description="Custom-priced proposals for deals that don't fit standard pricing, including property-manager and multi-unit work."
-        primaryAction={{ href: "/desk/estimates/new", label: "New estimate" }}
+        title="Quotes"
+        description="Quotes (also called estimates) are custom-priced proposals for deals that don't fit standard pricing, including property-manager and multi-unit work."
+        primaryAction={{ href: "/desk/estimates/new", label: "New quote" }}
       />
 
       <p className="mb-4 text-sm">

@@ -140,8 +140,8 @@ export default async function RevenuePage({
   return (
     <div>
       <PageHeader
-        title="Revenue and cash activity"
-        description="Agreed rental rates, real cash receipts, invoice allocations and refunds are tracked separately so the numbers keep their meaning."
+        title="Income and cash received"
+        description="What your rentals should bring in each month, the money actually received, and refunds. They are shown separately because they are different things."
         secondaryActions={
           <ButtonLink href="/desk/billing" variant="secondary">
             Review invoices and statements
@@ -213,8 +213,8 @@ export default async function RevenuePage({
 
       <div className="mt-8">
         <Card
-          title="Estimated agreed rates, last 6 UTC months"
-          description="Sum of agreed monthly line rates for rentals whose billing period overlaps each month. A mid-month rental contributes its full rate; this is not invoiced rent or cash received."
+          title="Expected monthly rent, last 6 months"
+          description="Adds up the monthly price of every rental active that month. A rental that starts mid-month counts in full. This is an expectation, not bills sent or money received."
         >
           {stats.mrrTrend.some((point) => point.mrrCents > 0) ? (
             <div
