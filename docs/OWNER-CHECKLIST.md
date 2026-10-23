@@ -133,11 +133,7 @@ on readiness).
   widens access, so it waits for your yes. Steps: tell the agent which person and which of the two (reports, expenses).
   Ready when: you have staff who need it. You'll know it worked: that person sees only what you chose.
 
-- [ ] **Security tidy-up in Vercel: make two stored passwords "Sensitive".** Vercel flags the production `DATABASE_URL` and
-  `BETTER_AUTH_SECRET` settings as readable by anyone with project access (the other secrets are already hidden). Steps: Vercel
-  → the appliance-desk project → Settings → Environment Variables → edit each one → turn on "Sensitive" and save with the same
-  value, then let the next daily release pick it up. Ready when: you are signed in to Vercel. You'll know it worked: the
-  warning next to those two names disappears. Agents cannot do this: it changes production settings.
+- [x] **Security tidy-up in Vercel: make two stored passwords "Sensitive."** Done: Chris said he did it on 2026-10-23 and a read-only check the same day showed `DATABASE_URL` and `BETTER_AUTH_SECRET` marked Sensitive with no warning. Optional extra: production `DIRECT_URL` is the direct database connection and is not marked Sensitive either; the same steps (Vercel → appliance-desk → Settings → Environment Variables → edit → Sensitive) fix it.
 
 ## Log of rows added by agents
 

@@ -245,38 +245,53 @@ export async function updateAppliancePrice(
   applianceTypeId: string,
   newPriceCents: number,
 ) {
-  const applianceType = await prisma.applianceType.findUniqueOrThrow({
-    where: { id: applianceTypeId },
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    return updateAppliancePriceInTx(tx, userId, applianceTypeId, newPriceCents);
   });
+}
+
+/**
+ * The price save itself, inside a transaction the caller owns (the caller has already checked who may do this).
+ * Locks the appliance type first so two saves cannot both read the same old price. The scheduled-price nightly job
+ * (Batch O-4) calls this too, so a scheduled change leaves exactly the same history and audit rows as a typed one.
+ */
+export async function updateAppliancePriceInTx(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  applianceTypeId: string,
+  newPriceCents: number,
+  extraAudit: Record<string, string> = {},
+) {
+  if (!Number.isInteger(newPriceCents) || newPriceCents < 0) throw new Error("Enter a valid price.");
+  await tx.$queryRaw`SELECT "id" FROM "ApplianceType" WHERE "id" = ${applianceTypeId} FOR UPDATE`;
+  const applianceType = await tx.applianceType.findUniqueOrThrow({ where: { id: applianceTypeId } });
   const oldPriceCents = applianceType.monthlyPriceCents;
 
-  const [updated] = await prisma.$transaction([
-    prisma.applianceType.update({
-      where: { id: applianceTypeId },
-      data: { monthlyPriceCents: newPriceCents },
-    }),
-    prisma.pricingRule.create({
-      data: {
-        applianceTypeId,
-        label: `${applianceType.name} — monthly price`,
-        monthlyPriceCents: newPriceCents,
-        changedBy: userId,
-        oldValueCents: oldPriceCents,
-        newValueCents: newPriceCents,
-      },
-    }),
-    prisma.auditLog.create({
-      data: {
-        userId,
-        action: "pricing.update",
-        entityType: "ApplianceType",
-        entityId: applianceTypeId,
-        oldValue: { monthlyPriceCents: oldPriceCents },
-        newValue: { monthlyPriceCents: newPriceCents },
-      },
-    }),
-  ]);
-
+  const updated = await tx.applianceType.update({
+    where: { id: applianceTypeId },
+    data: { monthlyPriceCents: newPriceCents },
+  });
+  await tx.pricingRule.create({
+    data: {
+      applianceTypeId,
+      label: `${applianceType.name} — monthly price`,
+      monthlyPriceCents: newPriceCents,
+      changedBy: userId,
+      oldValueCents: oldPriceCents,
+      newValueCents: newPriceCents,
+    },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId,
+      action: "pricing.update",
+      entityType: "ApplianceType",
+      entityId: applianceTypeId,
+      oldValue: { monthlyPriceCents: oldPriceCents },
+      newValue: { monthlyPriceCents: newPriceCents, ...extraAudit },
+    },
+  });
   return updated;
 }
 

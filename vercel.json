@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/expense-drafts",
       "schedule": "50 9 * * *"
+    },
+    {
+      "path": "/api/cron/scheduled-prices",
+      "schedule": "10 10 * * *"
     }
   ]
 }

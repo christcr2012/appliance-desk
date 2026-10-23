@@ -492,6 +492,7 @@ model ApplianceType {
   leadRequests LeadApplianceRequest[]
   partRecords  PartRecord[]
   packageComponents RentalPackageComponent[]
+  scheduledPriceChanges ScheduledPriceChange[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -965,6 +966,38 @@ model ApprovalRequest {
 
   @@index([status, createdAt])
   @@index([kind, targetRef, status])
+}
+
+enum ScheduledPriceChangeStatus {
+  PENDING
+  APPLIED
+  CANCELLED
+  FAILED
+}
+
+// A monthly-price change for one appliance type that starts on a Colorado calendar day (Batch O-4). A nightly job applies
+// each due row once through the same price save as the Settings screen. Signed agreements and sent estimates keep the
+// price they were made with; only prices shown and quoted from then on change.
+model ScheduledPriceChange {
+  id                     String                     @id @default(cuid())
+  applianceTypeId        String
+  applianceType          ApplianceType              @relation(fields: [applianceTypeId], references: [id], onDelete: Restrict)
+  newPriceCents          Int
+  // Start of the Colorado calendar day the new price starts on (stored as that instant).
+  effectiveOn            DateTime
+  status                 ScheduledPriceChangeStatus @default(PENDING)
+  note                   String?
+  priceAtSchedulingCents Int
+  createdByUserId        String
+  createdAt              DateTime                   @default(now())
+  cancelledByUserId      String?
+  cancelledAt            DateTime?
+  appliedAt              DateTime?
+  priceBeforeApplyCents  Int?
+  failureMessage         String?
+
+  @@index([status, effectiveOn])
+  @@index([applianceTypeId, status])
 }
 
 // Per-person limits on what an admin may do (Batch O-2A). A row with allowed=false takes a capability away from that
