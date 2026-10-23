@@ -115,7 +115,12 @@ export function RetiredPlanPanel({ applianceId, plan, salvaged, parts, today, is
                       : { newPart: { modelNumber: r.modelNumber, partNumber: r.partNumber, partName: r.partName || undefined }, quantity: Number(r.quantity) });
                   run(async () => {
                     const r = await addSalvagedPartsAction(applianceId, { operationKey: salvageKey.current, lines });
-                    if (r.status === "success") salvageKey.current = `salvage-${crypto.randomUUID()}`;
+                    if (r.status === "success") {
+                      // New key AND empty rows, so "add another part" never re-sends what was just saved.
+                      salvageKey.current = `salvage-${crypto.randomUUID()}`;
+                      nextKey.current = 1;
+                      setRows([{ key: 0, partId: "", modelNumber: "", partNumber: "", partName: "", quantity: "1" }]);
+                    }
                     return r;
                   });
                 }}

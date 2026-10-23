@@ -325,11 +325,19 @@ export async function countRetiredAwaitingDecision(now = new Date()): Promise<nu
   const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { retiredFollowUpDays: true } });
   const days = settings?.retiredFollowUpDays ?? 30;
   if (days <= 0) return 0;
-  const waiting = await prisma.appliance.findMany({
-    where: { status: "RETIRED", OR: [{ retiredPlan: { is: null } }, { retiredPlan: { is: { doneOn: null } } }] },
-    select: { id: true, updatedAt: true },
-    take: 1000,
-  });
+  // Read in pages of 50 (the Today list never reads more than 50 rows at once); 20 pages is far more than the fleet.
+  const waiting: { id: string; updatedAt: Date }[] = [];
+  for (let page = 0; page < 20; page++) {
+    const rows = await prisma.appliance.findMany({
+      where: { status: "RETIRED", OR: [{ retiredPlan: { is: null } }, { retiredPlan: { is: { doneOn: null } } }] },
+      select: { id: true, updatedAt: true },
+      orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+      take: 50,
+      ...(waiting.length ? { cursor: { id: waiting[waiting.length - 1].id }, skip: 1 } : {}),
+    });
+    waiting.push(...rows);
+    if (rows.length < 50) break;
+  }
   if (waiting.length === 0) return 0;
   // The day it was retired comes from the status-change record; an older appliance falls back to its last update.
   const events = await prisma.auditLog.findMany({

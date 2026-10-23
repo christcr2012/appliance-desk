@@ -5,7 +5,8 @@ import {
   addSalvagedParts, completeRetiredPlan, completeRetiredPlans, countRetiredAwaitingDecision, daysBetweenKeys,
   getSalvagedParts, listRetiredAppliances, reopenRetiredPlan, retirementIsOverdue, setRetiredPlan,
 } from "@/domains/inventory/retired-plans";
-import { findPartLedgerMismatches } from "@/domains/purchasing/ledger";
+import { applyPartMovementsInTx, findPartLedgerMismatches } from "@/domains/purchasing/ledger";
+import { recordPartUsage } from "@/domains/purchasing";
 import { businessDateKey } from "@/lib/business-date";
 
 // Batch M-2: what happens to a retired appliance.
@@ -127,6 +128,18 @@ describe.skipIf(!enabled)("retired appliance plans on real Postgres", () => {
     await completeRetiredPlan(ownerId, id, { doneOnKey: today(), remainder: "SCRAPPED" });
     await expect(addSalvagedParts(ownerId, id, key(), lines)).rejects.toThrow(/already marked done/);
     expect(await prisma.journalEntry.count({ where: { sourceId: id } })).toBe(0);
+  });
+
+  it("a salvaged part used on a repair costs $0, not an older purchase price", async () => {
+    const id = await retired();
+    await setRetiredPlan(ownerId, id, { choice: "STRIP" });
+    const part = await prisma.partRecord.create({ data: { modelNumber: `RET-${tag}`, partNumber: `PUMP-${randomUUID().slice(0, 4)}`, partName: "Pump" } });
+    await prisma.$transaction((tx) => applyPartMovementsInTx(tx, ownerId, key(), [{ partRecordId: part.id, kind: "RECEIPT", quantityDelta: 1, unitCostCents: 4200 }]));
+    await recordPartUsage(ownerId, part.id, 1, { operationKey: key() }); // bought one, used it: $42
+    await addSalvagedParts(ownerId, id, key(), [{ partRecordId: part.id, quantity: 1 }]);
+    await recordPartUsage(ownerId, part.id, 1, { operationKey: key() }); // the salvaged one is free
+    const usage = await prisma.partStockMovement.findMany({ where: { partRecordId: part.id, kind: "USAGE" }, orderBy: { createdAt: "asc" } });
+    expect(usage.map((u) => u.unitCostCents)).toEqual([4200, 0]);
   });
 
   it("parts can't be taken from an appliance that is not planned for stripping", async () => {

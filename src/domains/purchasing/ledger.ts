@@ -321,7 +321,11 @@ export async function applyPartMovementsInTx(
   return { movements, replayed: false };
 }
 
-/** The most recent receipt cost known for a part, used to label a usage as an estimate. */
+/**
+ * The most recent stock-in cost known for a part, used to label a usage as an estimate. A purchase receipt carries what
+ * was paid; parts taken from a retired appliance (SALVAGE) come in at $0, so using those on a repair costs $0, not an
+ * older purchase price (M-2B).
+ */
 export async function lastKnownPurchaseCostCents(tx: Prisma.TransactionClient, partRecordId: string): Promise<number | null> {
   // A receipt that was undone (reversed) is not a price we paid.
   const reversed = await tx.partStockMovement.findMany({
@@ -329,7 +333,7 @@ export async function lastKnownPurchaseCostCents(tx: Prisma.TransactionClient, p
     select: { reversesMovementId: true },
   });
   const row = await tx.partStockMovement.findFirst({
-    where: { partRecordId, kind: "RECEIPT", unitCostCents: { not: null }, id: { notIn: reversed.map((r) => r.reversesMovementId as string) } },
+    where: { partRecordId, kind: { in: ["RECEIPT", "SALVAGE"] }, unitCostCents: { not: null }, id: { notIn: reversed.map((r) => r.reversesMovementId as string) } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: { unitCostCents: true },
   });
