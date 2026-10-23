@@ -33,7 +33,7 @@ for (const width of [360, 768, 1440])
       ).toBeVisible();
       await expect(
         page.getByText(
-          /real cash receipts, invoice allocations and refunds are tracked separately/i,
+          /the money actually received, and refunds. They are shown separately/i,
         ),
       ).toBeVisible();
       await expect(
