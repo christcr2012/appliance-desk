@@ -1,6 +1,6 @@
 # PLAN — remaining scope and acceptance
 
-Reconciled against main `b2a06c2` (#310), 2026-10-08. Current sequence is in [MASTER-ROADMAP](MASTER-ROADMAP.md); current head/blockers in [STATUS](STATUS.md). AGENTS owns workflow rules. This file owns acceptance, designs own semantic decisions, cards own the next bounded implementation. Do not read completed specifications as a work queue.
+Reconciled against main `91f7d34d` (#536), 2026-10-23. Current sequence is in [MASTER-ROADMAP](MASTER-ROADMAP.md); current head/blockers in [STATUS](STATUS.md). AGENTS owns workflow rules. This file owns acceptance, designs own semantic decisions, cards own the next bounded implementation. Do not read completed specifications as a work queue.
 
 ## Rules that apply to every batch
 
@@ -56,7 +56,7 @@ number; law/terms review is not hereby complete.
 
 ## Built — do not rebuild
 
-A, B, C, R, B2, D, E, E2, F-part-1 and G are merged. T is built through T-6b2 (#310): acquisition evidence/per-unit rules, RDF and tax workspace screens remain. E2's public visual result was rejected as final quality, so V remains. Live payments/customer email/SMS remain separately gated. Complete historical deliverables and acceptance are preserved in [the pre-reset plan](archive/reset-2026-10-08/PLAN.md), not discarded.
+A, B, C, R, B2, D, E, E2, F-part-1 and G are merged. Batches T (including acquisition evidence, retail delivery fee and the tax workspace), S, COM-L, W, V, F-part-2, K, K-CASH, M-1A…M-2B, O-1, O-2A and O-3A are also merged (see MASTER-ROADMAP and STATUS). Their owner/provider acceptance checks are still pending on OWNER-CHECKLIST. E2's public visual result was rejected as final quality, so V remains. Live payments/customer email/SMS remain separately gated. Complete historical deliverables and acceptance are preserved in [the pre-reset plan](archive/reset-2026-10-08/PLAN.md), not discarded.
 
 ## Every remaining implementation
 

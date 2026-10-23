@@ -1,12 +1,16 @@
-## October 23 — Approval limits for write-offs and expenses (Batch O, step O-3A, in progress)
+## October 23 — Documents re-checked against the code, Vercel and Neon (docs audit)
+
+Merged: nothing else; this entry covers the docs-only audit PR. Roadmap, plan and status wording now match what is built (K, K-CASH, M-1A…M-2B, O-1, O-2A, O-3A all merged). Hosting facts re-checked read-only against the live Vercel and Neon projects. Deliberately not built: M-2C and M-3 (stopped, see their STRONGER-MODEL-PROMPT files), O-3B refund/credit/deposit approvals, O-4…O-7. Needs Chris: make two Vercel settings "Sensitive" (row on OWNER-CHECKLIST). Next: O-4 scheduled price changes.
+
+## October 23 — Approval limits for write-offs and expenses (Batch O, step O-3A, merged #536)
 
 Settings → **Approval limits** (owner only): set a dollar amount for write-offs and for posting expenses. When an admin starts one at or above it, it waits on a new **Approvals** page (and one Today item) until you approve (it is done then, as you, with the admin's name on it) or decline. Everything starts blank, so nothing changes until you fill one in. Stale requests fail safely and expire (7 days by default). Refunds, credits and kept deposits are NOT covered: they call Stripe in two steps, so a written prompt for a stronger model is in `docs/designs/O-3B-STRONGER-MODEL-PROMPT.md`. Nothing for Chris to do.
 
-## October 23 — What each admin may do (Batch O, step O-2A, in progress)
+## October 23 — What each admin may do (Batch O, step O-2A, merged #535)
 
 New owner-only page **What each admin may do**: you can take any of seven money permissions (record a payment, write off, settle a held payment, refund or keep a deposit, refund a payment, change settings, post or void an expense) away from one admin, and give it back. Everyone starts allowed, so nothing changes until you use it. It takes effect on that admin's very next action and every change is recorded. Staff still cannot do any of these. Giving staff reports or expenses is not built because it widens access; it is a decision row on your checklist. Still to do in O-2: credit grants, price edits and data exports (their checks aren't uniform yet; see the card).
 
-## October 23 — Settings history with undo, and the Switches page (Batch O, step O-1, in progress)
+## October 23 — Settings history with undo, and the Switches page (Batch O, step O-1, merged #534)
 
 Settings now has **Settings history and undo** (every change in plain words; undo one setting back only if it has not changed again; never touches signed agreements, email, tax, security or contract terms) and **All switches in one place** (read-only: customer email, text messages, automatic renewals, paused automations, card payments test or live, two-step sign-in, books start date, with who changed each last). Tests on throwaway Postgres cover undo, double undo, changed-again, staff refused and no secrets shown. Not yet in: tax-lookup, launch-email and approval-limit rows (nothing to read yet), and the impact preview (needs O-3). Nothing for Chris to do.
 
@@ -14,11 +18,11 @@ Settings now has **Settings history and undo** (every change in plain words; und
 
 On a retired appliance's page you can now choose what happens to it: sell, strip for parts (add the parts you kept to your shelf at $0), scrap, throw away, or donate/other, and mark it done later. A new **Retired** tab lists them all, lets you mark a truckload done, and records **scrap money received** (one entry per check, posts to "Scrap sales" income; a void reverses it). Today shows one reminder when a retired appliance has waited 30+ days (changeable, 0 = off). Proved on real Postgres (`tests/retired-appliance-plan-integration.test.ts`, `tests/scrap-payment-integration.test.ts`). **Stopped on purpose (written up for a stronger model):** selling a retired appliance (M-2C, `docs/designs/M-2C-STRONGER-MODEL-PROMPT.md`) and card payment of sales (M-3, `docs/designs/M-3-STRONGER-MODEL-PROMPT.md`). Branch `ai/claude/retired-appliances`.
 
-## October 23 — Shop sales: sell parts and used appliances (second half of Batch M, in progress)
+## October 23 — Shop sales: sell parts and used appliances (second half of Batch M, merged #531)
 
 New **Money → Shop sales** screens: ring up a sale (items, walk-in or a customer, pickup or delivery), see the sales tax worked out for where it goes, record a cash/check/bank payment, or cancel an unpaid sale and the items go back on the shelf. The walk-in customer is hidden from every customer list, search and count. A sale is refused with plain reasons until you record whether "Items sold" and "Used appliance sale" are taxable (checklist row added). Proved on real Postgres (`tests/shop-sale-integration.test.ts`, books posting test). Not built yet: returns/refunds of paid sales, the Colorado retail delivery fee on delivered sales, card payment (M-3), retired appliances (M-2). Branch `ai/claude/shop-sales`.
 
-## October 23 — Shop stock: parts you sell and parts you bought to resell (first half of Batch M, in progress)
+## October 23 — Shop stock: parts you sell and parts you bought to resell (first half of Batch M, merged #530)
 
 Parts can now be marked "Sell to customers" with a price, and a purchase-order line can be marked "Bought to resell". The stock count remembers which units came from resale purchases and what they cost (a moving average). A sale uses resale units first; a repair or other use takes ordinary units first. Using resale stock for your own use records use tax on its cost (the $5 batch / $10 batch example is a test); if tax setup is not ready it waits, shows on Today, and is recorded by the daily check. Undo restores exactly. Nothing changes until you opt in. Tests on throwaway Postgres cover the rules, the tax, undo, retries and the database limits. Also: CSV exports leave plain negative numbers as numbers. Not yet built: selling screens and invoices (M-1C/D), retired appliances (M-2), card payment of sales (M-3), then the O chain.
 
