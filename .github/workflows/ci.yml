@@ -51,16 +51,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Require fresh verified-slice scorecard for each substantive PR
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/pr-progress.mjs --check --require-changed --base "$BASE_SHA" --ref "$HEAD_SHA"
-
       - id: changes
         name: Decide whether anything besides documentation changed
         env:

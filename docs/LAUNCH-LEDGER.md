@@ -9,7 +9,7 @@ A line is **PROVEN** only when it is ticked and names its evidence. Anything wit
 - Integrated scenarios proven by a committed test file: 17 of 17
 - Plan acceptance items proven with named evidence: 7 of 155; OPEN: 148
 - Old review findings: 83 resolved, 8 OPEN
-- Go-live switches and checks still waiting on Chris: 89
+- Go-live switches and checks still waiting on Chris: 132
 
 ## Integrated scenarios (F2-A, F2-B)
 
@@ -227,6 +227,75 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 
 Each line is a real-world step (accounts, keys, wording, approvals). Nothing here is switched on by this ledger.
 
+### K-CASH-7 monthly plan/report external acceptance — PENDING
+
+- DECISION (Chris): After an approved normal release, owner and accountant independently inspect at least one real prior/current Denver month and original/revised published plan against actual confirmed bank...
+- DECISION (Chris): Verify source drilldown/CSV category totals, all saved review snapshots, later-source stale warning, real statement beginning/ending proof, QBO trial-company import outcome and attorney/C...
+- DECISION (Chris): Confirm all 22 existing original owner/provider/CPA/production release gates independently; cash funding remains disabled until separately authorized. Publication, report export and revie...
+
+### K-CASH-5A/5B financial planning activation — NOT authorized by source CI
+
+- DECISION (Chris): After the normal independently approved release, owner checks Plan ahead refresh across every 25-plan page and validates real recurring template, purchase commitment, due amount and sourc...
+- DECISION (Chris): Compare a real posted payment, refund/VOID and related planning correction to bank and Books evidence; no scheduled bill or goal is itself a paid expense.
+- DECISION (Chris): Verify real opening bank statement, business card, customer deposit, sales/use tax and RDF protected obligations with accountant/owner; separately choose date and explicitly enable defaul...
+- DECISION (Chris): Confirm owner/admin read and OWNER-only mutation with the released revision and preserve all 22 original distinct release acceptance checks; engineering CI does not close any of them, ena...
+
+### K-CASH-4A/4B initial business activation — NOT YET AUTHORIZED
+
+- DECISION (Chris): Verify the additive budget migration, populated restore and protected owner budget screens on the actual scheduled released revision; draft PR source checks do not establish live readiness.
+- DECISION (Chris): Owner selects all business checking accounts and independently attests actual bank statement, opening composition and full settlement through the reviewed date, including outstanding bank...
+- DECISION (Chris): Confirm all current credit-card payable, pending customer deposits/credits/refunds, area-specific sales/use tax and RDF obligations from real K journal and bank sources; obtain CPA review...
+- DECISION (Chris): Owner separately chooses a budget start day and explicitly enables the default-OFF `cashBudgetEnabled` setting only when evidence is complete, with no LIVE Stripe, bank transfer, automate...
+- DECISION (Chris): On released web OWNER/ADMIN/STAFF sessions, verify source review, protected shortages, atomic envelope allocation/correction, spending and real cleared supplier refund without a duplicate...
+
+### K-CASH banking acceptance still pending — October 19, 2026
+
+- DECISION (Chris): Owner selects a real bank and attests opening cash source, ledger, and legitimate account suffix; no bank account is automatically opened.
+- DECISION (Chris): After a normal approved deployment, compare consented real settled statement counts/amounts with an archived CSV import and protected statement PDF readback.
+- DECISION (Chris): Verify current live OWNER/ADMIN/STAFF session behavior on private bank documents, correction/ambiguity and event posting.
+- DECISION (Chris): Reconcile every actual bank movement to a verified source under K-CASH-3 before treating cash as spendable.
+- DECISION (Chris): Independently confirm CPA/QBO external trial import and previously recorded provider acceptance; no LIVE money/SMS/email or paid bank activation without separate approval.
+
+### K-8 accountant/owner acceptance (pending; never self-certify from source CI)
+
+- DECISION (Chris): Compare projected next signed recurring invoice dates and prices with a real billed agreement; do not claim these estimates are collected cash or synced bank totals.
+- DECISION (Chris): Match active recurring template dates against drafted expenses, and independently confirm real OPEN filing account worksheet and due dates; no tax filing or provider payment is enabled here.
+- DECISION (Chris): Review a customer with a documented receipt-backed invoice allocation, refund and correctly linked originating lead; unknown sources must remain unknown.
+- DECISION (Chris): Download and accountant-reconcile all five year-end files to the ledger, held retired assets and actual FILED return records; verify supplier payment reporting methods, owner-selected thr...
+- DECISION (Chris): Confirm released revision and private OWNER/ADMIN permissions in the real environment, after the scheduled promotion. Exact-head source CI is not production acceptance.
+
+### K-7 financial report acceptance — still open
+
+- DECISION (Chris): Trial reconcile accrual, posted applied-cash and their comparison periods to a trusted bookkeeper journal; resolve each excluded needs-review source before relying on totals.
+- DECISION (Chris): Cross-check signed source account balances, tax/customer deposit liabilities and retired held assets on the first real deployed readback; do not mistake money owed for earned income.
+- DECISION (Chris): Confirm actual posted RENTAL/LATE_RETURN invoice apportionment for a washer/dryer set, itemized job part cost and incomplete evidence; payback months are estimates.
+- DECISION (Chris): Check owner/admin-only 360px accessible deployed financial screens; exact-head CI is not external CPA/bank reconciliation.
+
+### K-6 equipment book balances and tax-basis acceptance — pending
+
+- DECISION (Chris): Attest real appliance acquisition cost, Books opening balances and book in-service dates; verify a complete deposited book depreciation schedule and account mapping in a trial company.
+- DECISION (Chris): Confirm retirement pending value stays an asset and does not automatically become disposal loss or proceeds; confirm Fleet removal and date evidence before any completed sale.
+- DECISION (Chris): CPA confirms IN-56 and any tax classification/adjusted basis, allowed/allowable/section 179/bonus; do not infer §1245 recapture or tax due from management book depreciation.
+- DECISION (Chris): Independently verify deployed additive K-6 migration, restore/backup and real owner/admin role readback before claiming external acceptance.
+
+### K-CASH-6 QBO delivery owner/provider acceptance — still PENDING (2026-10-22)
+
+- DECISION (Chris): After authorized normal release, inspect actual QuickBooks tenant/edition and independent trial-company DETAIL CSV journal count/debit-credit balancing, bank matching and statement beginn...
+- DECISION (Chris): OWNER records genuine private trial import reference and checks immutable imported re-download; overlapping uncertain/legacy archives cannot create new files, and roles cannot bypass the ...
+- DECISION (Chris): Preserve all 22 separate owner/provider/CPA release gates. No direct QBO API, bank movement, live payment, provider cost or unscheduled release authorized.
+
+### K-5 accounting export trial acceptance — 2026-10-18 (not completed)
+
+- DECISION (Chris): Once K-5 is released, owner/bookkeeper confirms account mappings and generates a month of QBO or Xero export. Trial-company import, balance and duplicate checks are required before real e...
+- DECISION (Chris): Xero: confirm actual organization tax-rate names, codes and any holding-account mapping required for bank/system accounts; the manual-journal date is `yyyy/mm/dd` per current provider doc...
+- DECISION (Chris): Keep original export files and SHA-256 archival provenance; never silently re-export changed history to cover a failed trial.
+
+### K-3 Stripe accounting provider activation (added October 18, 2026)
+
+- DECISION (Chris): Independently approve and configure `BOOKS_STRIPE_SYNC_ENABLED=true` for the intended environment only after verifying the production books opening date/bank/Stripe balances, Stripe crede...
+- DECISION (Chris): Read the first complete Stripe transaction import and daily Colorado-cutoff clearing report in OWNER Books. Investigate UNKNOWN coverage, unsupported transaction types and any one-cent di...
+- DECISION (Chris): Preserve the separate Stripe LIVE payments and CPA/accounting-setup signoffs. The nightly job uses read-only Stripe balance endpoints; it must never make charges, payouts, refunds, or cus...
+
 ### 1. Money (Stripe)
 
 - DECISION (Chris): Stripe account verified for live payments (business details, bank account) Stripe dashboard (Owner) Test mode only Stripe shows "Live payments enabled"
@@ -357,6 +426,13 @@ Each line is a real-world step (accounts, keys, wording, approvals). Nothing her
 - DECISION (Chris): Verify the first scheduled daily promotion and its live-promotion date tag; validate the resulting production deployment from live. Keep all existing access, spending and activation gates.
 - DECISION (Chris): Before the first real phone payment: confirm with Stripe that staff-typing a customer's card into Stripe's hosted invoice page is allowed on the live account. Then send one real payment l...
 - DECISION (Chris): Books activation (owner, post-release): inspect actual bank/Stripe/card statements before confirming a permanent books start date in Desk > Money > Books. Inspect source exceptions before...
+
+### K-CASH-5A/5B future release acceptance — NEVER inferred from engineering CI
+
+- DECISION (Chris): After ordinary checked daily live promotion, verify owner can record an EXACT and an ESTIMATE recurring bill, edit future unpaid plans while preserving historical paid evidence, and separ...
+- DECISION (Chris): Check independent reconciled bank/current card/customer/tax reserve facts with owner and CPA as needed before enabling OFF-by-default budget funding. Do not enable from planned/expected i...
+- DECISION (Chris): On released OWNER/ADMIN/STAFF sessions, verify Plan ahead screens, staff labels-only expense intent, read-only tax/provider source, Today source attention and no automatic provider paymen...
+- DECISION (Chris): Independently reconcile K-8 dual-track forecast against current bank and posted expense sources and verify uncertain/voided linked source labels remain explicit. Actual supplier/telecom/t...
 
 ## Human / owner gates that stay explicit
 

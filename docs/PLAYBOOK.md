@@ -1,5 +1,8 @@
 # PLAYBOOK — how to deliver a coherent implementation bundle
 
+> **2026-10-23:** testing and verification mechanics below still apply. Where this file mentions bundle sizes, line or slice
+> targets, scorecards, frozen plans or waiting on acceptance, **AGENTS.md wins** (those are diagnostics or checklist items now).
+
 Session startup, cadence and release-dependent proof follow `docs/SESSION-START.md`. These recipes preserve all existing security, review and validation gates. Run focused checks at coherent seams and full required gates before publishing, rather than the whole suite after each small local edit.
 
 The rules are in `AGENTS.md`; the short start is `docs/SESSION-START.md`; the work is the card in `docs/pr-cards/`.
