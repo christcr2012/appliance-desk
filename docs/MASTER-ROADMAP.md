@@ -203,7 +203,7 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 | K-CASH-5A | **MERGED #509 — original engineering, owner acceptance still pending** — recurring plans, targets, settlements and forecast dedupe | `K-CASH-5A.md` (joint frozen 5A/5B) | K-CASH-4B |
 | K-CASH-5B | **MERGED #509 — original engineering, owner acceptance still pending** — budget workspace and contextual source integration | `K-CASH-5A.md` (joint frozen 5A/5B) | K-CASH-5A |
 | K-CASH-6 | **MERGED #511 — original QBO delivery engineering, real trial import/CPA acceptance pending** — DETAIL export, uncertain-import quarantine, owner attested delivery | `K-CASH-6.md` (frozen) | K-CASH-5B |
-| K-CASH-7 | **Full original source candidate; exact-head CI/review/merge pending** — immutable monthly plan versions, signed ledger/bank/budget variances and month-end snapshots | `K-CASH-7.md` (frozen original plan) | K-CASH-6 |
+| K-CASH-7 | **PR #513 ENGINEERING SOURCE CI GREEN — final docs CI/review/merge pending; real bank/CPA acceptance pending** — immutable monthly plan versions, signed ledger/bank/budget variances and month-end snapshots | `K-CASH-7.md` (frozen original plan) | K-CASH-6 |
 
 ### M
 

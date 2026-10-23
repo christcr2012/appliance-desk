@@ -1248,7 +1248,7 @@
         "tests/business-trends.test.ts",
         "e2e/money-reports.spec.ts"
       ],
-      "readiness": "IMPLEMENTATION_CANDIDATE_AWAITING_EXACT_HEAD_CI",
+      "readiness": "IMPLEMENTATION_SOURCE_CI_GREEN_FINAL_DOCS_CI_PENDING",
       "plannedCard": "docs/pr-cards/K-CASH-7.md",
       "card": "docs/pr-cards/K-CASH-7.md"
     },

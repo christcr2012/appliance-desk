@@ -704,3 +704,6 @@ Each setup-fee consumables kit (cord, vent hose, braided hoses) used on a delive
 consumables price can be checked against what the parts really cost. Not in W-22; needs its own card if Chris wants it.
 
 - 2026-10-17 (W-7): let the owner mark a setup step "not needed" (for example a business that will never take card payments) so the Get set up card can finish. Not built; needs an owner decision on whether skipping should be allowed.
+
+- 2026-10-22 (K-CASH-7): the monthly plan preview adds up opening saved balances from at most 10,000 budget movement rows and refuses with a clear message beyond that. A database-side grouped total would remove the limit; worth doing well before a business reaches that many movements. Not built; no owner decision needed.
+- 2026-10-22 (K-CASH-7): when publishing a monthly plan, the owner can relabel a row whose amounts were not changed from "estimate" to "exact". It is owner-only and recorded in the plan and audit trail, but the label could instead be limited to values the source supports. Not built; needs an owner decision on whether that should be allowed.

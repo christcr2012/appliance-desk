@@ -24,7 +24,7 @@
     }
   ],
   "remainingEngineering": [
-    "Engineering source, migration, UI and tests are a candidate. Need exact-head CI including schema/drill restore/unit/axe, red failure reproduction, source self-review and guarded merge; no local pass claimed.",
+    "Final documentation checkpoint still requires its own exact-head aggregate ci, final review disposition and merge; synthetic implementation passed CI on source head 8371f177e4bffe443c1a14c8974ee8d40583c3c8.",
     "All 22 external real-world owner/CPA/provider gates remain OPEN, including real bank/QBO trial and independent CPA checks."
   ],
   "externalAcceptance": [
@@ -33,8 +33,10 @@
   ],
   "workloadException": "Single original K-CASH-7 full coherent migration/report/publishing/owner interface/report-source-workflow, naturally substantially larger than usual 400–800 lines. No splitting original subsection into invented task IDs.",
   "evidence": [
-    "Frozen exact original 14 acceptance clauses: docs-only plan d6f3f0b05bbcbafaef05eaaed3a5f44d2982e45a before any source changes.",
-    "One additive full-report migration, product source and test changes staged for review; no CI success or merge claimed before exact-head GitHub checks.",
-    "Source review must inspect SQL immutability, actor/period guards, journal signs, stale/replay and unrelated UI/report regressions; no production data/providercalls."
+    "Frozen exact original 14 acceptance clauses: docs-only plan d6f3f0b05bbcbafaef05eaaed3a5f44d2982e45a before any source changes; PR #513.",
+    "Exact source head 8371f177e4bffe443c1a14c8974ee8d40583c3c8: aggregate ci SUCCESS; all 3 disposable PostgreSQL/unit shards, all 4 Playwright/axe browser shards, typecheck/lint/plain-words, secret scan and release policy green. Earlier head 9f402ac failed browser-b on a real 360px page overflow (screen-reader-only labels escaped their scrolling table wrapper; fixed by positioning the wrappers, no test weakened) and browser-d on one contrast miss in /desk/jobs/[id] schedule-panel code this PR does not touch, which did not recur at the new head; existing WCAG checks not weakened or skipped.",
+    "Capacity baseline at 8371f17: first run failed f-large-account-owner-read 16.5ms vs 11.9ms baseline (limit 14.3ms), an unrelated read path this PR does not change; a same-job rerun on the same head passed with no code or threshold change. Both results retained.",
+    "Supporting local reproduction on a production build with disposable PostgreSQL and Chromium: money-reports at 360/768/1440px with axe, the staff-denied check and /desk/jobs/[id] axe at 360px light passed; check:quick passed. Supporting evidence only, not a substitute for exact-head CI.",
+    "Self-review (automated review unavailable — waived) covered migration immutability triggers, owner-only publish/save with transaction-time actor check and lock order, command replay, stale/version conflicts, SHA-256 verification on read, OWNER/ADMIN-only read routes and CSV formula escaping. Two low-risk observations are recorded as open in docs/ROADMAP.md; no money, security or data-loss finding is unfixed."
   ]
 }
