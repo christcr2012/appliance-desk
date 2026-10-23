@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { recordManualPayment, writeOffInvoice } from "@/domains/billing";
-import { dollarsToCents } from "@/domains/pricing/money";
+import { parseDollarInput } from "@/lib/money-ui";
 import { businessDateFromKey } from "@/lib/business-date";
 
 export type RecordPaymentState =
@@ -18,7 +18,20 @@ export type RecordPaymentState =
   | { status: "error"; message: string };
 
 const recordPaymentSchema = z.object({
-  amountDollars: z.coerce.number().positive("Enter an amount greater than $0."),
+  // Kept as typed text so "10.999" is refused instead of silently rounded.
+  amountDollars: z
+    .string()
+    .transform((value) => value.replace(/[$,\s]/g, ""))
+    .refine(
+      (value) => {
+        try {
+          return parseDollarInput(value) > 0;
+        } catch {
+          return false;
+        }
+      },
+      "Enter an amount greater than $0, with at most two decimal places (for example 125.50).",
+    ),
   method: z.enum(["check", "cash", "bank_transfer", "other"]),
   receivedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the date the payment was received."),
   invoiceId: z.string().trim().optional().or(z.literal("")),
@@ -51,7 +64,7 @@ export async function recordPaymentAction(
 
   try {
     const result = await recordManualPayment(customerId, session.user.id, {
-      amountCents: dollarsToCents(parsed.data.amountDollars),
+      amountCents: parseDollarInput(parsed.data.amountDollars),
       method: parsed.data.method,
       receivedOn,
       invoiceId: parsed.data.invoiceId || undefined,
