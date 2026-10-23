@@ -1,3 +1,7 @@
+## October 23 — Friendlier "Are you sure?" boxes
+
+The browser's plain OK/Cancel pop-ups (11 places: turn customer emails on/off, auto-renew, held payments, website drafts, tax exemptions, telecom statements, customer rental changes) are replaced by one on-brand confirmation box (`src/lib/confirm-action.ts`) that works by keyboard and screen reader and starts on the safe "Cancel" choice. Only the "leave this page with unsaved changes" prompt stays browser-native (browsers require that).
+
 ## October 23 — Speed and health round
 
 24 database indexes on frequently looked-up links (one additive migration), time limits on every background job, unused password library removed, and compatible updates to Prisma, Better Auth, Vercel Blob, pg and others. Correction to the entry below: the work-card list in `docs/pr-cards/work-index.json` is out of date — tax (T), system health (S), site look (V), scenarios (F2), books (K) and cash budget (K-CASH) are already built. Really unbuilt: M (shop/used sales), O (permissions, approvals, undo), COM-N (texts, stay OFF), W-24 (delivery ordering), BP (proposed only).

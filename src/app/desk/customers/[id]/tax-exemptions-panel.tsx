@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction } from "@/lib/confirm-action";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -275,8 +277,8 @@ export function TaxExemptionsPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function revoke(exemptionId: string) {
-    if (!window.confirm("Revoke this tax exemption now? Historical records will remain on file.")) return;
+  async function revoke(exemptionId: string) {
+    if (!(await confirmAction("Revoke this tax exemption now? Historical records will remain on file.", { confirmLabel: "Yes, revoke it" }))) return;
     setMessage(null);
     startTransition(async () => {
       const result = await revokeCustomerTaxExemptionAction(customerId, exemptionId);

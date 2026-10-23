@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction } from "@/lib/confirm-action";
+
 import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -31,11 +33,11 @@ export function EndFixedTerm(props: {
         type="button"
         variant="secondary"
         disabled={pending}
-        onClick={() => {
+        onClick={async () => {
           if (
-            !window.confirm(
+            !(await confirmAction(
               `${tr("Request the ending shown above for")} ${props.effectiveLabel}? ${tr("This does not charge your card automatically.")}`,
-            )
+            ))
           )
             return;
           setError(null);

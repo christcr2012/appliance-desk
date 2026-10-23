@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmAction } from "@/lib/confirm-action";
+
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { Button, Card, StatusPill } from "@/components/ui";
@@ -33,8 +35,8 @@ export function HistoryPanel({ rows, draft }: { rows: HistoryRow[]; draft: { id:
     }
   }
 
-  function restore(row: HistoryRow) {
-    if (current && !window.confirm(`This replaces your unpublished draft (${current.changes} ${current.changes === 1 ? "change" : "changes"}) with version ${row.version}. Continue?`)) return;
+  async function restore(row: HistoryRow) {
+    if (current && !(await confirmAction(`This replaces your unpublished draft (${current.changes} ${current.changes === 1 ? "change" : "changes"}) with version ${row.version}. Continue?`))) return;
     void run(() => restoreToDraftAction({ revisionId: row.id, draftId: current?.id, draftVersion: current?.version }), (r) => {
       if (r.status === "restored") {
         setCurrent({ id: r.draftId, version: r.version, changes: 0 });
@@ -57,8 +59,8 @@ export function HistoryPanel({ rows, draft }: { rows: HistoryRow[]; draft: { id:
 
       {current && (
         <Card title="Your unpublished draft" description="Visitors do not see it. Throwing it away does not change the live website.">
-          <Button variant="danger" disabled={busy} onClick={() => {
-            if (!window.confirm("Throw away your unpublished draft? The live website is not affected.")) return;
+          <Button variant="danger" disabled={busy} onClick={async () => {
+            if (!(await confirmAction("Throw away your unpublished draft? The live website is not affected.", { confirmLabel: "Yes, throw it away" }))) return;
             void run(() => discardDraftAction({ draftId: current.id, version: current.version }), () => { setCurrent(null); setMessage({ kind: "ok", text: "The draft was discarded. The live website did not change." }); });
           }}>Discard the draft</Button>
         </Card>

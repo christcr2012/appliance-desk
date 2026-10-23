@@ -1,4 +1,6 @@
 "use client";
+
+import { confirmAction } from "@/lib/confirm-action";
 import { moneyInputValue } from "@/lib/money-ui";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -63,8 +65,8 @@ export function TelecomSettingsControls({accounts,statements,canEdit,canSavePoli
     finally { setWorking(false); }
   }
   async function verify(row:StatementItem) {
-    if (!canEdit || !window.confirm(
-      "Verify that you personally checked this PDF, its dates and dollar total? This marks it verified, not paid.")) return;
+    if (!canEdit || !(await confirmAction(
+      "Verify that you personally checked this PDF, its dates and dollar total? This marks it verified, not paid."))) return;
     setWorking(true);setMessage("");
     try {
       const response=await fetch("/api/desk/telecom",{method:"POST",
