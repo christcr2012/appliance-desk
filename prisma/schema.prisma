@@ -33,6 +33,7 @@ enum Role {
 }
 
 model User {
+  workspacePreference OwnerWorkspacePreference?
   budgetPublishedPlans BudgetPlanVersion[] @relation("BudgetPlanPublisher")
   budgetReviewSnapshots BudgetReviewSnapshot[] @relation("BudgetReviewCreator")
   budgetMoves BudgetMove[]
@@ -5069,4 +5070,14 @@ model BusinessGoal {
   updatedAt   DateTime @updatedAt
 
   @@unique([metricKey, month])
+}
+
+// O-7: one private workspace row per owner/admin: pinned shortcuts, hidden optional Today notes, saved views.
+// `preferences` is a strict versioned DTO validated in src/domains/workspace/preferences.ts. No URLs, SQL, customer data or secrets.
+model OwnerWorkspacePreference {
+  userId      String   @id
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version     Int      @default(1)
+  preferences Json
+  updatedAt   DateTime @updatedAt
 }

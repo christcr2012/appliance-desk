@@ -45,6 +45,7 @@ export const BACKUP_MODEL_POLICY = {
   ApprovalRequest: "approvalRequest",
   ScheduledPriceChange: "scheduledPriceChange",
   BusinessGoal: "businessGoal",
+  OwnerWorkspacePreference: "ownerWorkspacePreference",
   ApplianceCustodyEpisode: "applianceCustodyEpisode",
   RentalLineAmendment: "rentalLineAmendment",
   InspectionChecklistVersion: "inspectionChecklistVersion",
