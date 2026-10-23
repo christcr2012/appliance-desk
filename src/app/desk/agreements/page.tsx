@@ -127,11 +127,11 @@ export default async function AgreementsPage({
   return (
     <div>
       <PageHeader
-        title="Rental agreements"
-        description="Review active rentals, upcoming starts, signatures, ended agreements, and cancelled agreements."
+        title="Rentals"
+        description="Every rental agreement: active, starting soon, waiting for a signature, ended or cancelled."
         primaryAction={
           canViewFinance
-            ? { href: "/desk/agreements/new", label: "New agreement" }
+            ? { href: "/desk/agreements/new", label: "New rental" }
             : undefined
         }
       />

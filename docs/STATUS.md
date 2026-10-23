@@ -1,3 +1,7 @@
+## October 23 — Same names on the menu and the page
+
+The Quotes screen is titled "Quotes" (it said "Estimates") and says they are also called estimates; the Rentals screen is titled "Rentals" (it said "Rental agreements"); buttons read "New quote" and "New rental" to match the menu.
+
 ## October 23 — Customer portal help line and branded sign-in pages
 
 Every customer portal page ends with "Need help? call / email" using the business phone and email from Settings (hidden while those still hold the placeholder text; Spanish included). Log in, forgot-password, reset-password and two-step pages now show the business name and logo with a link back to the website, and no longer say "Appliance Desk" in the tab title.
