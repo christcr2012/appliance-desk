@@ -396,7 +396,7 @@ full reasoning behind the pattern.
   day at 09:00 UTC) hits `src/app/api/cron/backup/route.ts`, which calls
   `exportDatabaseBackup()` (`src/domains/backup/index.ts`). Exports one repeatable-read snapshot of every business-critical table (customers, leads, agreements, billing, appliances, notes, audit history and provider idempotency evidence such as `WebhookEvent`) while intentionally excluding reusable authentication credential/session rows. The format records the migration and app commit and is restored by `scripts/restore-backup.ts`. It uploads under `backups/` with private access and prunes database backups older than 30 days. F1-b then records a paired media manifest and content-addressed recovery copies for private photos; privacy-deletion tombstones are authoritative during recovery. This
   exists on top of — not instead of — Neon's own built-in point-in-time
-  recovery; Neon's free-tier plan only keeps a 6-hour recovery window,
+  recovery; Neon's current Launch plan keeps only a 6-hour recovery window (checked 2026-10-23),
   so this is the second, independent copy that reaches further back and
   isn't tied to Neon's own infrastructure. It's a data export, not a
   one-click restore: getting data back out means downloading the JSON
@@ -464,7 +464,7 @@ Because this is one script that stops at its first failure (`&&` between each st
 
 **What Chris still needs to do by hand:** nothing, for a normal additive migration — merging the PR and Vercel's own deploy now does it all. He's only asked to do anything when a migration trips the destructive-change check, and even then the action is "confirm this is safe" and record it, not "figure out and paste raw SQL."
 
-**Neon ↔ Vercel preview isolation:** previews already use the verified shared `vercel-preview-2` Neon branch rather than production, enforced by `src/lib/preview-database-safety.ts`. What is **not** enabled is one fresh Neon branch per individual preview deployment. That optional stronger isolation remains in `docs/ROADMAP.md`.
+**Neon ↔ Vercel preview isolation:** the Vercel preview settings point at the shared `vercel-preview-2` Neon branch rather than production (that branch is currently archived/asleep because previews are off, checked 2026-10-23), enforced by `src/lib/preview-database-safety.ts`. What is **not** enabled is one fresh Neon branch per individual preview deployment. That optional stronger isolation remains in `docs/ROADMAP.md`.
 
 **Branch protection:** completed and verified on 2026-09-29 after the Neon plan upgrade; the production `main` branch is protected. See `docs/DECISIONS.md` / `docs/ROADMAP.md`. Per-preview-deployment branching is a separate optional hardening item.
 
@@ -481,7 +481,7 @@ Never rely on hiding a nav link as the only protection for anything.
 
 ## Error monitoring
 
-[Sentry](https://sentry.io) via `@sentry/nextjs`, wired in `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser). Inactive until `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are set as Vercel environment variables — see `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for the setup step.
+[Sentry](https://sentry.io) via `@sentry/nextjs`, wired in `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser). Both `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` are set in Vercel for production, preview and development (names checked 2026-10-23), so error reporting is on; without them it stays inactive. Setup history: `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for the setup step.
 
 ## CI/CD
 

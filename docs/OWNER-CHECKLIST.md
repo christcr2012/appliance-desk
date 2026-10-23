@@ -133,6 +133,12 @@ on readiness).
   widens access, so it waits for your yes. Steps: tell the agent which person and which of the two (reports, expenses).
   Ready when: you have staff who need it. You'll know it worked: that person sees only what you chose.
 
+- [ ] **Security tidy-up in Vercel: make two stored passwords "Sensitive".** Vercel flags the production `DATABASE_URL` and
+  `BETTER_AUTH_SECRET` settings as readable by anyone with project access (the other secrets are already hidden). Steps: Vercel
+  → the appliance-desk project → Settings → Environment Variables → edit each one → turn on "Sensitive" and save with the same
+  value, then let the next daily release pick it up. Ready when: you are signed in to Vercel. You'll know it worked: the
+  warning next to those two names disappears. Agents cannot do this: it changes production settings.
+
 ## Log of rows added by agents
 
 | Date | Row added | Why |
@@ -141,3 +147,4 @@ on readiness).
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
 | 2026-10-23 | Staff-permission decision (section E) | Granting staff reports/expenses would widen access, so it needs the owner's approval. |
+| 2026-10-23 | Vercel "Sensitive" tidy-up | Read-only check of Vercel found two production settings readable by project members. |
