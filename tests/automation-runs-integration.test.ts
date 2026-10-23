@@ -72,6 +72,21 @@ describe.skipIf(!enabled)("automation runs (real Postgres)", () => {
     expect(row.error).not.toContain(secret);
   });
 
+  it("tries a failed slot again later the same day, but only twice", async () => {
+    const ruleKey = `${prefix}-failed-retry`;
+    let calls = 0;
+    const run = () => runAutomation({ ruleKey, now: fixedNow, work: async () => { calls += 1; throw new Error("boom"); } });
+    expect((await run()).outcome).toBe("FAILED");
+    expect((await run()).outcome).toBe("FAILED");
+    expect((await run()).outcome).toBe("FAILED");
+    expect((await run()).outcome).toBe("ALREADY_RAN");
+    expect(calls).toBe(3);
+    const good = `${prefix}-failed-then-ok`;
+    await runAutomation({ ruleKey: good, now: fixedNow, work: async () => { throw new Error("once"); } });
+    expect((await runAutomation({ ruleKey: good, now: fixedNow, work: async () => ({ counts: {} }) })).outcome).toBe("RAN");
+    expect((await runAutomation({ ruleKey: good, now: fixedNow, work: async () => ({ counts: {} }) })).outcome).toBe("ALREADY_RAN");
+  });
+
   it("marks a stale RUNNING row UNKNOWN and performs one retry row", async () => {
     const ruleKey = `${prefix}-stale`;
     const baseRunKey = `${ruleKey}:2026-10-05`;

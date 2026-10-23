@@ -122,6 +122,12 @@ describe.skipIf(!enabled)("scenario 8: privacy export and deletion with retentio
     await expect(verifyPrivacyRequest(opened.requestId, token)).rejects.toThrow(); // the link works once
 
     await expect(fulfillPrivacyDeletion(ownerId, opened.requestId, "delete" as "DELETE")).rejects.toThrow(/Type DELETE/);
+    // With a rental in force and a bill still owed, the deletion is refused and nothing changes.
+    await expect(fulfillPrivacyDeletion(ownerId, opened.requestId, "DELETE")).rejects.toThrow(/rental in force or an unpaid bill/i);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: userA } })).email).toBe(emailA);
+    // The owner ends the rental and writes the bill off; now the deletion can go ahead.
+    await prisma.rentalAgreement.update({ where: { id: agreementA }, data: { status: "ENDED" } });
+    await prisma.invoice.updateMany({ where: { customerId: customerA, status: "OPEN" }, data: { status: "WRITTEN_OFF" } });
     const before = {
       invoices: await prisma.invoice.count({ where: { customerId: customerA } }),
       payments: await prisma.payment.count({ where: { invoice: { customerId: customerA } } }),
@@ -139,9 +145,9 @@ describe.skipIf(!enabled)("scenario 8: privacy export and deletion with retentio
     expect(await prisma.customer.findUniqueOrThrow({ where: { id: customerA } })).toMatchObject({ phone: null, companyName: null });
     expect((await prisma.serviceAddress.findUniqueOrThrow({ where: { id: addressA } })).line1).toBe("Deleted address");
     expect(await prisma.session.count({ where: { userId: userA } })).toBe(0);
-    // ...while money, signatures, notices and the audit history stay, including the bill still owed.
+    // ...while money, signatures, notices and the audit history stay, including the written-off bill.
     expect(await prisma.invoice.count({ where: { customerId: customerA } })).toBe(before.invoices);
-    expect(await prisma.invoice.findFirstOrThrow({ where: { customerId: customerA, status: "OPEN" } })).toMatchObject({ amountDueCents: 6000, amountPaidCents: 0 });
+    expect(await prisma.invoice.findFirstOrThrow({ where: { customerId: customerA, status: "WRITTEN_OFF" } })).toMatchObject({ amountDueCents: 6000, amountPaidCents: 0 });
     expect(await prisma.payment.count({ where: { invoice: { customerId: customerA } } })).toBe(before.payments);
     expect(await prisma.receipt.count({ where: { customerId: customerA } })).toBe(before.receipts);
     expect(await prisma.customerNotice.count({ where: { customerId: customerA } })).toBe(before.notices);

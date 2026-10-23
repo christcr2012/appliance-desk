@@ -396,6 +396,25 @@ async function claimPrivacyDeletion(
   });
 }
 
+/** A customer who still has a rental in force or an unpaid bill cannot be wiped: the business still needs to reach them. */
+async function assertNoLiveObligations(
+  db: Pick<typeof prisma, "rentalAgreement" | "invoice">,
+  customerId: string,
+): Promise<void> {
+  const [rentals, bills] = await Promise.all([
+    db.rentalAgreement.count({
+      where: { customerId, status: { in: ["AWAITING_SIGNATURE", "SCHEDULED", "ACTIVE"] } },
+    }),
+    db.invoice.count({ where: { customerId, status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] } } }),
+  ]);
+  if (rentals > 0 || bills > 0) {
+    throw new Error(
+      "This customer still has a rental in force or an unpaid bill, so their details can't be deleted yet. " +
+        "End the rental and settle or write off the bill first, then try again.",
+    );
+  }
+}
+
 export async function fulfillPrivacyDeletion(
   userId: string,
   requestId: string,
@@ -403,6 +422,12 @@ export async function fulfillPrivacyDeletion(
 ): Promise<{ pseudonymized: string[]; retained: string[] }> {
   await requireOwner(userId);
   if (confirmation !== "DELETE") throw new Error("Type DELETE to confirm this privacy deletion.");
+
+  const asked = await prisma.privacyRequest.findUnique({
+    where: { id: requestId },
+    select: { customerId: true, status: true },
+  });
+  if (asked?.customerId && asked.status === "VERIFIED") await assertNoLiveObligations(prisma, asked.customerId);
 
   const claim = await claimPrivacyDeletion(userId, requestId);
   if (claim.fulfilled) {
@@ -442,6 +467,7 @@ export async function fulfillPrivacyDeletion(
       throw new Error("This privacy deletion can no longer be fulfilled from this claim.");
     }
 
+    await assertNoLiveObligations(tx, request.customerId);
     const customer = await tx.customer.findUniqueOrThrow({
       where: { id: request.customerId },
       select: { id: true, userId: true, user: { select: { email: true } } },

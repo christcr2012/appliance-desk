@@ -81,6 +81,8 @@ async function createRun(ruleKey: string, runKey: string, budgetSeconds: number,
   }
 }
 
+const MAX_FAILED_RETRIES = 2;
+
 async function claimRun(ruleKey: string, baseRunKey: string, budgetSeconds: number, now: Date): Promise<AutomationRun | null> {
   let runKey = baseRunKey;
   let retry = 0;
@@ -94,9 +96,10 @@ async function claimRun(ruleKey: string, baseRunKey: string, budgetSeconds: numb
     });
     if (!existing) continue;
 
-    if (existing.state === "SUCCEEDED" || existing.state === "FAILED" || existing.state === "SKIPPED") {
-      return null;
-    }
+    if (existing.state === "SUCCEEDED" || existing.state === "SKIPPED") return null;
+    // A failed slot may be tried again on a later call the same day (at most twice), so one bad moment
+    // does not cost the whole day's reminders. The owner still sees the failure on the System health page.
+    if (existing.state === "FAILED" && retry >= MAX_FAILED_RETRIES) return null;
 
     const ageMs = now.getTime() - existing.startedAt.getTime();
     if (existing.state === "RUNNING" && ageMs < existing.budgetSeconds * 1000) return null;

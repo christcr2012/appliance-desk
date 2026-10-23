@@ -19,13 +19,10 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 - **Fixed in this round:** refund-to-credit no longer posts a bank refund; late payment kept as credit no longer posts as goodwill expense; write-off only for open bills and re-checks the acting staff member; manual payment amounts reject more than two decimals; deposit refund refuses after a refund on its bill.
 
 ## Privacy / scheduling / tax
-- Privacy deletion does not refuse for active rentals/open invoices/live subscriptions and leaves phone numbers, texts, launch-list rows and the Stripe customer; restoring a backup resurrects deleted people.
-- A FAILED daily job slot is never retried that day; exact-day reminder windows (auto-renew notice at 25 days, tax reminders) lose their only chance. Make reminder checks range-based and let FAILED slots retry.
-- Annual reminder pass has no per-agreement try/catch (one bad row stops all).
+- Privacy deletion now refuses while a rental is in force or a bill is unpaid (fixed). Still open: it leaves phone numbers on texts, launch-list rows and the Stripe customer, and restoring a backup brings deleted details back.
+- A FAILED daily job slot is now retried up to twice on later calls (fixed). Still open: exact-day reminder windows (auto-renew notice at 25 days, tax reminders) should be range-based, because the cron only fires once a day.
 - Early-ending fee invoice is created OPEN with $0 tax, skipping the engine/CPA gate (the early-return path does it right).
-- Nightly backup runs inside one 5-second default transaction; add explicit timeout and consider chunking.
 - Launch welcome sequence: one failed send leaves the subscriber blocked forever.
-- Estimate follow-up emails go out for estimates already past "valid until".
 - `closeAgreementInTx` changes appliance status without row locks.
 - Retax of waiver/discount lines fails under "pay on acquisition" tax election.
 - Today page recomputes up to 12 filing packets and can write inside a page load.

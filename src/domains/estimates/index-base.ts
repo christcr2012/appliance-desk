@@ -12,7 +12,7 @@ import {
   type ManualLeadInput,
 } from "@/domains/leads";
 
-import { isEstimatePastValidity } from "./validity";
+import { estimateExpiresAt, isEstimatePastValidity } from "./validity";
 import { getPreparedEstimateQuoteInTx } from "./preapproval-quote";
 import { validatePreparedConversion, validateConvertedEstimateReplay } from "./prepared-conversion";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -466,8 +466,11 @@ export async function sendEstimateFollowUpReminders(): Promise<{
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ?? "https://robinsonappliancerentals.com";
 
+  const nowMs = Date.now();
   for (const estimate of dueEstimates) {
     if (!estimate.sentAt) continue;
+    // No "still interested?" email for a quote that can no longer be answered.
+    if (estimate.validUntil && estimateExpiresAt(estimate.validUntil).getTime() <= nowMs) continue;
     if (
       estimate.followUpSentForSentAt?.getTime() === estimate.sentAt.getTime()
     ) {
