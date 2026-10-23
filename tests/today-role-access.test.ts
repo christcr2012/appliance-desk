@@ -57,6 +57,9 @@ vi.mock("@/domains/exceptions/lead-turning-points", () => ({
   listLeadFollowUps: vi.fn(async () => ({ rows: [], total: 0 })),
   listApprovedQuoteToRental: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/goal-attention", () => ({
+  listGoalAttention: vi.fn(async () => []), // covered by tests/goals-integration.test.ts
+}));
 vi.mock("@/domains/exceptions/approval-attention", () => ({
   listApprovalAttention: vi.fn(async () => []), // owner-only approvals item; covered by tests/approvals-integration.test.ts
 }));

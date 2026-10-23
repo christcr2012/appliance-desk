@@ -1625,25 +1625,25 @@
       "dependencies": [
         "O-4"
       ],
-      "status": "APPROVED",
-      "migration": "batch_o_goals",
+      "status": "MERGED",
+      "migration": "goals_and_alerts",
       "budget": 450,
       "units": [
         "O-5"
       ],
       "evidence": [
         "docs/designs/BATCH-O.md",
-        "src/domains/settings/index.ts",
-        "src/domains/settings/section-config.ts",
-        "src/app/desk/settings/actions.ts"
+        "src/domains/goals/index.ts",
+        "src/domains/goals/pace.ts",
+        "src/domains/exceptions/goal-attention.ts",
+        "src/app/desk/settings/goals/page.tsx"
       ],
       "tests": [
-        "tests/goals-pace.test.ts",
-        "tests/owner-goals-integration.test.ts",
-        "e2e/owner-controls.spec.ts"
+        "tests/goals.test.ts",
+        "tests/goals-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/O-5.md"
+      "readiness": "MERGED",
+      "card": "docs/pr-cards/O-5.md"
     },
     {
       "id": "COM-L3",

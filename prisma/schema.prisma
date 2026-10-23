@@ -2960,6 +2960,10 @@ model PurchaseUseTax {
 model BusinessSettings {
   // Batch M-2: remind on Today when a retired appliance has had no plan (or an unfinished one) this many days; 0 = never.
   retiredFollowUpDays Int @default(30)
+  // O-5: warn on Today when a ready-to-rent appliance has sat idle this many days (0 = never) and when fleet utilization
+  // falls below this percent (null = never).
+  idleApplianceAlertDays Int @default(30)
+  utilizationAlertPercent Int?
   // O-3: approval limits. {} = nobody needs approval. Keys are approval kinds, values are cents.
   approvalThresholds Json @default("{}")
   approvalExpiryDays Int @default(7)
@@ -5051,4 +5055,18 @@ model BusinessPaperwork {
   version          Int             @default(1)
 
   @@index([status, dueOn])
+}
+
+// O-5: a monthly target for one business number (cash collected, or new rentals). One per metric per Colorado month.
+model BusinessGoal {
+  id          String   @id @default(cuid())
+  metricKey   String
+  // First day of the Colorado month this target is for, stored as that day's Colorado midnight.
+  month       DateTime
+  targetValue Int
+  createdByUserId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([metricKey, month])
 }

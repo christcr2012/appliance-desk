@@ -462,6 +462,7 @@ export default async function DeskSettingsPage({
         <ButtonLink href="/desk/settings/switches" variant="secondary">All switches in one place</ButtonLink>
         <ButtonLink href="/desk/settings/price-changes" variant="secondary">Price changes with a start date</ButtonLink>
         {session.user.role === "OWNER" && <ButtonLink href="/desk/settings/permissions" variant="secondary">What each admin may do</ButtonLink>}
+        <ButtonLink href="/desk/settings/goals" variant="secondary">Goals and alerts</ButtonLink>
         {session.user.role === "OWNER" && <ButtonLink href="/desk/settings/approvals" variant="secondary">Approval limits</ButtonLink>}
         {session.user.role === "OWNER" && <ButtonLink href="/desk/approvals" variant="secondary">Approvals waiting</ButtonLink>}
       </div>
