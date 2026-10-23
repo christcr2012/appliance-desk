@@ -1,3 +1,7 @@
+## October 23 — Security round 2: daily-job password check, privacy-form limit, steadier test
+
+Every daily-job address (the ones the scheduler calls) now checks its password in constant time, in one shared helper. The public privacy-request form allows only 3 requests per email address per day, from any network, so nobody can flood an inbox or probe for customers. The phone-order browser test now waits for the page to finish loading before it types (it failed once in CI for that reason). Tests added for the helper and the limit. Stacked on the books branch (PR #528).
+
 ## October 23 — Books: refunds wait for Stripe, taken-back write-offs reverse
 
 A card refund is now counted in the books as paid only after Stripe confirms it (a pending or failed one used to be booked as money out). When the owner takes a write-off back (a held payment turned out to be owed), a reversing entry puts the receivable back; the original entry is never edited. Also removed a stray leftover parameter from the refund rule. Tests on throwaway Postgres cover all three. In progress on branch `ai/claude/books-refund-confirm`; still open: invoice changed after posting (needs delta entries).

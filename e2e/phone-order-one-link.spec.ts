@@ -31,6 +31,9 @@ test.describe("W-25 owner entered order — accessible protected preparation",()
   }
   test("new caller creates a draft, never a phone signature or payment",async({page})=>{
     await page.goto("/desk/phone-orders/new");
+    // The form only works after the page has finished loading its scripts; clicking sooner submitted it the plain
+    // browser way (seen once in CI). Wait for the page to settle before typing.
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button",{name:"Someone new"}).click();
     const unique="W25 browser "+randomUUID();
     await page.locator("#contactName").fill(unique);

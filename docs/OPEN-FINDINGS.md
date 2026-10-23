@@ -28,8 +28,8 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 ## Security / hardening (lower)
 - Better Auth's own login rate limit is per-server-instance memory; wire it to the shared database limiter.
 - `/sign/[id]` and `/estimate/[id]` use database ids as the only secret; add a random access token with expiry.
-- Privacy-request form reveals (by timing) whether an email is a customer; per-email throttle missing.
-- `/scan/<asset>` reveals existence of an asset number; cron secret compared with `!==`; CSV guard turns negative numbers into text; confirm `BETTER_AUTH_URL` is set in production.
+- Privacy-request form: a per-email limit is in (fixed). Still open: the response time can still hint whether an email is a customer.
+- `/scan/<asset>` reveals existence of an asset number; CSV guard turns negative numbers into text; confirm `BETTER_AUTH_URL` is set in production.
 
 ## Performance / health
 - Public pages query Neon on every view (settings, content); cache with tags and revalidate on save.
@@ -39,4 +39,3 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 
 ## Owner screens, public site, portal (wording and flow)
 - See the reports summarized in STATUS: plain-English rewrites for Books/Budget/Money, consistent names (Quotes vs Estimates, Rentals vs Agreements, Schedule vs Jobs), a shared confirm dialog instead of browser pop-ups, phone/email help on every portal page, login/reset/sign pages styled like the rest, pre-launch honesty fixes, Spanish for the public site.
-- Possible slow-hydration race: `e2e/phone-order-one-link.spec.ts` (new caller) failed once in CI on the URL wait after submit and passed on re-run. Harden by waiting for the form to be ready before clicking submit.

@@ -1,3 +1,4 @@
+import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 
 import { runAutomation } from "@/domains/automation/runs";
@@ -17,7 +18,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     );
     return NextResponse.json({ error: "Not configured." }, { status: 500 });
   }
-  if (authHeader !== `Bearer ${expected}`) {
+  if (!cronAuthorized(authHeader, expected)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 

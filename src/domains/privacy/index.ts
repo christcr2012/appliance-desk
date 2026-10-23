@@ -9,6 +9,9 @@ import { deletePrivatePhotoWithRecovery } from "@/domains/backup/media-deletion"
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
 const PRIVACY_RATE_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 } as const;
+// One email address can be asked about only a few times a day, so a stranger cannot flood someone's inbox with
+// verification messages (or probe whether the address belongs to a customer) from many different networks.
+const PRIVACY_EMAIL_RATE_LIMIT = { max: 3, windowMs: 24 * 60 * 60 * 1000 } as const;
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -59,6 +62,9 @@ export async function openPrivacyRequest(input: {
   if (!input.customerId) {
     if (await isRateLimited(`privacy:${input.ipKey}`, PRIVACY_RATE_LIMIT)) {
       throw new Error("Too many privacy requests. Try again later.");
+    }
+    if (await isRateLimited(`privacy-email:${email}`, PRIVACY_EMAIL_RATE_LIMIT)) {
+      throw new Error("Too many privacy requests for this email. Try again tomorrow.");
     }
   }
 

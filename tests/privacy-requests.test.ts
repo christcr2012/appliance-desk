@@ -190,6 +190,14 @@ describe.skipIf(!enabled)("Batch D privacy requests (real Postgres)", () => {
     await expect(openPrivacyRequest({ kind: "EXPORT", email: `${tag}-unknown-6@example.test`, ipKey: rateKey })).rejects.toThrow(/too many/i);
   });
 
+  it("limits one email address to three public requests a day, even from different networks", async () => {
+    const same = `${tag}-same@example.test`;
+    for (let i = 0; i < 3; i += 1) {
+      await openPrivacyRequest({ kind: "EXPORT", email: same, ipKey: `${rateKey}-net-${i}` });
+    }
+    await expect(openPrivacyRequest({ kind: "EXPORT", email: same, ipKey: `${rateKey}-net-9` })).rejects.toThrow(/too many/i);
+  });
+
   it("public known and unknown emails both use the same neutral page response path", async () => {
     const source = await import("node:fs/promises").then((fs) => fs.readFile("src/app/(public)/privacy/actions.ts", "utf8"));
     expect(source.match(/redirect\("\/privacy\?request=received"\)/g)).toHaveLength(1);
