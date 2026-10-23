@@ -123,6 +123,8 @@ export const PORTAL_TRANSLATIONS = {
   "Your request was not confirmed. Your text and photos are still here; please try again.": "No se confirmó su solicitud. Conservamos el texto y las fotos; inténtelo de nuevo.",
   "Choose one of your appliances": "Elija uno de sus electrodomésticos",
   "Saving…": "Guardando…",
+  "Need help?": "¿Necesita ayuda?",
+  "or email": "o escriba a",
   "Please confirm": "Confirme, por favor",
   "Yes, continue": "Sí, continuar",
   "Cancel": "Cancelar",

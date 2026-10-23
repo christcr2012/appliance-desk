@@ -1,3 +1,7 @@
+## October 23 — Customer portal help line and branded sign-in pages
+
+Every customer portal page ends with "Need help? call / email" using the business phone and email from Settings (hidden while those still hold the placeholder text; Spanish included). Log in, forgot-password, reset-password and two-step pages now show the business name and logo with a link back to the website, and no longer say "Appliance Desk" in the tab title.
+
 ## October 23 — Friendlier "Are you sure?" boxes
 
 The browser's plain OK/Cancel pop-ups (11 places: turn customer emails on/off, auto-renew, held payments, website drafts, tax exemptions, telecom statements, customer rental changes) are replaced by one on-brand confirmation box (`src/lib/confirm-action.ts`) that works by keyboard and screen reader and starts on the safe "Cancel" choice. Only the "leave this page with unsaved changes" prompt stays browser-native (browsers require that).

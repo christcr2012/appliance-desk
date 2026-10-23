@@ -3,6 +3,9 @@ import { AccountShell } from "@/components/account-shell";
 import { readCustomerLanguage } from "@/domains/language";
 import { displayCustomerLanguage } from "@/domains/language/review";
 import { IdleLogout } from "@/components/idle-logout";
+import { getBusinessSettings } from "@/domains/settings";
+
+const isReal = (value: string | null | undefined) => (value && !value.startsWith("[") ? value : null);
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -18,9 +21,10 @@ export default async function AccountLayout({
   const session = await requireSession();
   const preference = await readCustomerLanguage(session.user.id);
   const language = await displayCustomerLanguage(preference);
+  const settings = await getBusinessSettings();
 
   return (
-    <AccountShell language={language}>
+    <AccountShell language={language} contact={{ phone: isReal(settings.publicPhone), email: isReal(settings.publicEmail) }}>
       {children}
       <IdleLogout timeoutMinutes={30} />
     </AccountShell>
