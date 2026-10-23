@@ -1,3 +1,7 @@
+## October 23 — Books: invoices with a deposit now post
+
+First rental invoices that include a refundable security deposit could not be recorded in the books. They now post correctly: the deposit is held as money owed back to the customer, never counted as income (see DECISIONS). Real-Postgres test added.
+
 ## October 23 — Same names on the menu and the page
 
 The Quotes screen is titled "Quotes" (it said "Estimates") and says they are also called estimates; the Rentals screen is titled "Rentals" (it said "Rental agreements"); buttons read "New quote" and "New rental" to match the menu.
