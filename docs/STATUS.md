@@ -1,3 +1,7 @@
+## October 24 — Goals and alerts (Batch O, step O-5, in review)
+
+In progress: O-5. Settings → Goals and alerts lets the owner or an admin set this month's target for money collected and for new rentals, and shows how far along you are. If you fall well behind (never in the first week) one note appears on Today. Two adjustable warnings: appliances idle for 30+ days (a count, not one per appliance) and low fleet use (off until you pick a percent). Nothing changes any money or customer. Proved on throwaway Postgres (set/change/clear with audit, limited admin refused, alert save and restore, idle list, Today items). Not covered: other measures, past or future months, email/text alerts. Next: O-6.
+
 ## October 23 — Price changes with a start date (Batch O, step O-4, merged)
 
 Merged: O-4. Settings → Price changes with a start date lets the owner or an admin schedule a new monthly price for an appliance on a Colorado start day; a nightly job (10:10 UTC) applies it once through the normal price save. Signed rentals and sent estimates keep their price. Cancel any time before the day. A change that cannot be applied leaves the price alone and shows in the system issues inbox. Proved on throwaway Postgres (apply-once, later-day-wins, cancel rules, limited admin, retired appliance, rentals unchanged). Not covered: package and set prices. Verified on Vercel (read-only): the two production secrets are now "Sensitive". Next: O-5 goals and alerts.

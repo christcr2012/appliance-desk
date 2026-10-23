@@ -44,6 +44,7 @@ export const BACKUP_MODEL_POLICY = {
   StaffCapabilityOverride: "staffCapabilityOverride",
   ApprovalRequest: "approvalRequest",
   ScheduledPriceChange: "scheduledPriceChange",
+  BusinessGoal: "businessGoal",
   ApplianceCustodyEpisode: "applianceCustodyEpisode",
   RentalLineAmendment: "rentalLineAmendment",
   InspectionChecklistVersion: "inspectionChecklistVersion",
