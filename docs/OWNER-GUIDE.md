@@ -93,6 +93,10 @@ This screen is available only on the engineering branch until exact-head CI, rev
 
 ADMIN may inspect, import and confirm/void unreconciled matches but may not complete/reopen statements, ignore rows or create/release holds. STAFF and CUSTOMER cannot view bank data. Corrections and source checks preserve audit records. Nothing on these screens signs into the bank, initiates a transfer, submits a tax return or enables LIVE Stripe.
 
+## Business paperwork (LLC, EIN, licenses, insurance)
+
+**More → Business paperwork** (owner only). Press **Set up my starter checklist** to get a plain list for a new Colorado rental business: register the LLC, registered agent, federal EIN, operating agreement, bank account, Colorado sales-tax license and tax website, city/county licenses, insurance and the yearly report. Open any item to record where you are with it, the number (EIN, license or policy), the date it started and the next due or expiry date. Items with a date appear on your **Today** list when they are inside their reminder window (30 days by default; you can change it per item) and again if they become overdue. **Mark done and schedule the next one** moves a yearly item forward a year. One summary line on Today reminds you of setup steps that have no date yet; you can mark steps **Not needed**. The list contains no fees or deadlines of its own: you enter dates from your papers and each agency's website (links are on the items). Numbers are shown only as the last four characters on the list, are visible only to the owner, and are kept out of the activity log.
+
 ## Signing in and staying safe
 
 Go to `/login`. **Forgot password?** emails a one-hour, one-use link. Owner and admin accounts land on the desk; customers land on their own account. Public sign-up is turned off, so nobody can create an account except through you.

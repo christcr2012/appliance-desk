@@ -1,3 +1,4 @@
+import { listPaperworkAttention } from "@/domains/paperwork";
 import { readDefaultJobMinutes } from "@/domains/jobs/scheduling";
 import { todoAction, todoDeadlineLabel, todoKey } from "./todo";
 import { businessDateKey, businessDayBounds, businessDaysBetween } from "@/lib/business-date";
@@ -1012,6 +1013,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ? await listTaxFilingAttention(now, (session.user as { role?: string }).role === "ADMIN")
     : { returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } };
 
+  const paperworkAttention =
+    (session.user as { role?: string }).role === "OWNER" ? await listPaperworkAttention(now) : [];
   const rdfRefundAttention = canViewFinance ? await listRdfRefundAttention() : [];
 
   const amendmentAttention = canViewFinance
@@ -1102,6 +1105,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["TAX_AMENDMENT_DUE", amendmentAttention.amendments],
       ["TAX_FILING_NOT_READY", amendmentAttention.readiness],
       ["TAX_LICENSE_RENEWAL", filingAttention.licenses],
+      ["BUSINESS_PAPERWORK", paperworkAttention],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],
       ["SIGNING_PAYMENT_DUE", signingPaymentAttention],

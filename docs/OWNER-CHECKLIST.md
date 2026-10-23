@@ -34,6 +34,11 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 
 Order matters: tax answers → money → email/text → the rest. "Live" switches never happen unless you say so in writing.
 
+- [ ] **Start your business paperwork list (5 minutes, then as things happen).** Steps: Desk → More → Business paperwork →
+  "Set up my starter checklist". As you form the LLC, get your federal EIN and the Colorado sales-tax license, open each item,
+  type the number and the next renewal date from your own papers, and set where you are with it. Worked: each dated item
+  shows on your Today list before it needs renewing. (The app doesn't know your dates or fees; they come from your papers
+  and the agency websites linked on each item.)
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).
   Stripe → Settings → Business → Branding. Worked: a test checkout page shows your brand.
@@ -112,4 +117,5 @@ on readiness).
 
 | Date | Row added | Why |
 |---|---|---|
+| 2026-10-23 | Business paperwork list | Chris asked for one place for LLC/EIN/licenses with renewal reminders (built in the app). |
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |

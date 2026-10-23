@@ -91,6 +91,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   SALES_TAX: "Sales tax",
   TAX_RETURN_DUE: "Tax returns to file",
   TAX_LICENSE_RENEWAL: "Tax licenses to renew",
+  BUSINESS_PAPERWORK: "Business paperwork",
   TAX_AMENDMENT_DUE: "Tax amendments requiring review",
   TAX_FILING_NOT_READY: "Tax returns not ready to file",
   ACQUISITION_TAX_REVIEW: "Appliance purchase tax needs review",
