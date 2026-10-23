@@ -1,7 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const m = vi.hoisted(() => ({ resolve: vi.fn(), refresh: vi.fn() }));
+const m = vi.hoisted(() => ({ resolve: vi.fn(), refresh: vi.fn(), confirm: vi.fn(), notice: vi.fn() }));
+vi.mock("@/lib/confirm-action", () => ({ confirmAction: m.confirm, noticeAction: m.notice }));
 vi.mock("@/app/desk/billing/held-payments/actions", () => ({ resolveHeldPaymentAction: m.resolve }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: m.refresh }) }));
 
@@ -22,7 +23,7 @@ const props = {
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
-  vi.spyOn(window, "confirm").mockReturnValue(true);
+  m.confirm.mockResolvedValue(true);
 });
 
 it("explains each choice in plain words and marks the recommended one", () => {
@@ -38,15 +39,16 @@ it("asks to confirm, then sends exactly the chosen option", async () => {
   m.resolve.mockResolvedValueOnce({ status: "success" });
   render(<ul><HeldPaymentCard {...props} /></ul>);
   fireEvent.click(screen.getByRole("button", { name: "Keep as credit" }));
-  expect(window.confirm).toHaveBeenCalled();
+  await waitFor(() => expect(m.confirm).toHaveBeenCalled());
   await waitFor(() => expect(m.resolve).toHaveBeenCalledWith({ paymentId: "p1", option: "CREDIT" }));
   await waitFor(() => expect(m.refresh).toHaveBeenCalled());
 });
 
-it("does nothing if the owner cancels the confirmation", () => {
-  vi.spyOn(window, "confirm").mockReturnValue(false);
+it("does nothing if the owner cancels the confirmation", async () => {
+  m.confirm.mockResolvedValue(false);
   render(<ul><HeldPaymentCard {...props} /></ul>);
   fireEvent.click(screen.getByRole("button", { name: "Refund to card" }));
+  await waitFor(() => expect(m.confirm).toHaveBeenCalled());
   expect(m.resolve).not.toHaveBeenCalled();
 });
 
