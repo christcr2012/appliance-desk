@@ -22,7 +22,8 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-vi.mock("@/lib/rate-limit", () => ({ isRateLimited: vi.fn().mockResolvedValue(false) }));
+const rateLimited = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/rate-limit", () => ({ isRateLimited: rateLimited }));
 vi.mock("@/lib/session", () => ({
   getServerSession: (...args: unknown[]) => getServerSession(...args),
 }));
@@ -61,6 +62,7 @@ function successfulProviderResponse() {
 describe("POST /api/uploads/photo", () => {
   beforeEach(() => {
     getServerSession.mockReset();
+    rateLimited.mockReset().mockResolvedValue(false);
     handleUpload.mockReset();
     customer.mockReset().mockResolvedValue({ id: "customer-1" });
     job.mockReset().mockResolvedValue({ id: "job-1" });
@@ -291,5 +293,14 @@ describe("POST /api/uploads/photo", () => {
     const response = await POST(uploadRequest("jobs/job-1/photo.jpg"));
     expect(response.status).toBe(400);
     expect(await response.text()).not.toContain("private-credential");
+  });
+
+  it("stops a person who asks for too many upload tokens, before any storage call", async () => {
+    getServerSession.mockResolvedValue({ user: { id: "user-1", role: "CUSTOMER" } });
+    rateLimited.mockResolvedValueOnce(true);
+    const response = await POST(uploadRequest("maintenance-requests/customer-1/photo.jpg"));
+    expect(response.status).toBe(429);
+    expect(rateLimited).toHaveBeenCalledWith("photo-upload:user-1", expect.any(Object));
+    expect(handleUpload).not.toHaveBeenCalled();
   });
 });
