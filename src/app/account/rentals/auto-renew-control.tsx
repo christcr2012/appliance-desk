@@ -1,6 +1,6 @@
 "use client";
 
-import { confirmAction } from "@/lib/confirm-action";
+import { confirmAction, customerConfirmLabels } from "@/lib/confirm-action";
 
 import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
@@ -30,7 +30,7 @@ export function AutoRenewControl(props: {
           const prompt = nextEnabled
             ? tr("Turn on automatic renewal using the terms shown above?")
             : tr("Turn off automatic renewal? Your rental will end on its existing end date unless you arrange something else.");
-          if (!(await confirmAction(prompt))) return;
+          if (!(await confirmAction(prompt, customerConfirmLabels(tr)))) return;
           setError(null);
           startTransition(async () => {
             const result = await setCustomerAutoRenewAction({

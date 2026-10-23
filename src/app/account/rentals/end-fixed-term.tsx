@@ -1,6 +1,6 @@
 "use client";
 
-import { confirmAction } from "@/lib/confirm-action";
+import { confirmAction, customerConfirmLabels } from "@/lib/confirm-action";
 
 import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
@@ -37,6 +37,7 @@ export function EndFixedTerm(props: {
           if (
             !(await confirmAction(
               `${tr("Request the ending shown above for")} ${props.effectiveLabel}? ${tr("This does not charge your card automatically.")}`,
+              customerConfirmLabels(tr),
             ))
           )
             return;

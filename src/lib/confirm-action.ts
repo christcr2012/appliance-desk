@@ -76,3 +76,8 @@ export function confirmAction(
 export async function noticeAction(message: string, title = "Heads up"): Promise<void> {
   await confirmAction(message, { confirmLabel: "OK", cancelLabel: "Close", title });
 }
+
+/** Button and heading words for a customer-facing box, in the customer's language (pass the portal's `tr`). */
+export function customerConfirmLabels(tr: (text: "Please confirm" | "Yes, continue" | "Cancel") => string) {
+  return { title: tr("Please confirm"), confirmLabel: tr("Yes, continue"), cancelLabel: tr("Cancel") };
+}
