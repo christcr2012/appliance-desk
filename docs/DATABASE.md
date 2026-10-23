@@ -1212,3 +1212,12 @@ Already deployed schema `AccountingDelivery` from the K-CASH evidence migration 
 ## Business paperwork (2026-10-23, additive migration `20261023120000_business_paperwork`)
 
 New table `BusinessPaperwork` and enum `PaperworkStatus` (TO_DO, IN_PROGRESS, DONE, NOT_NEEDED): the owner's own list of business paperwork (LLC, EIN, licenses, insurance, yearly filings) with an optional due/expiry date, reminder lead days (0–365), optional repeat length in months (1–120), a free-text `referenceNumber` (EIN/license/policy number) and notes. `templateKey` is unique for the starter checklist so adding it twice does nothing; `version` supports edit-conflict checks. No foreign keys and no existing table changes; zero-data migration. Owner-only at the domain boundary; the reference number and notes are never written to the activity log. The table is in the backup manifest. Dated items feed the Today list (category `BUSINESS_PAPERWORK`).
+
+## Read-path indexes (October 23)
+
+Migration `20261023150000_read_path_indexes` adds plain indexes (no data change) on links that screens and jobs look up:
+Session.userId, Account.userId, MaintenanceRequest.customerId, Photo.applianceId/jobId/maintenanceRequestId,
+CommunicationThread.customerId/leadId, ConsentRecord.customerId/leadId, RentalAgreement.serviceAddressId/sourceEstimateId,
+LeadApplianceRequest.leadId, PurchaseUseTax.filingPeriodId/jurisdictionId, AuditLog.userId, Referral.referrerCustomerId,
+PendingDelivery.deliveredJobId/substituteJobId, AddressTaxJurisdiction.jurisdictionId, InvoiceTaxLine.rateVersionId,
+Expense.categoryId, ApplianceCustodyEpisode.serviceAddressId, OutOfServicePeriod.rentalLineId.
