@@ -34,8 +34,8 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
       <Link className="underline" href="/desk/books/exports">Export to QuickBooks, Xero or CSV</Link>
       <Link className="underline" href="/desk/books/assets">Rental equipment and book depreciation</Link>
       <Link className="underline" href="/desk/books/reports">Profit, balance and payback</Link>
-      <Link className="underline" href="/desk/books/cash">Bank evidence and cash journals</Link>
-      <Link className="underline" href="/desk/books/closing">Cash outlook, customers and year-end</Link>
+      <Link className="underline" href="/desk/books/cash">Bank statements and cash records</Link>
+      <Link className="underline" href="/desk/books/closing">Cash forecast, customer health and year-end</Link>
       </nav>
       <h1 className="text-2xl font-bold">Your books</h1>
       <p className="text-muted-foreground">This is the record your accountant and your tax return will use. It fills itself in from your bills, payments, refunds and expenses, so you never type entries here. Nothing on this screen sends or moves money.</p>

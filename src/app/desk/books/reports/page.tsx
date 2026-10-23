@@ -44,7 +44,7 @@ export default async function BooksReportsPage({searchParams}:{searchParams:Prom
  return <div className="space-y-6">
   <header className="space-y-2">
    <Link href="/desk/books" className={nav}>Back to Books and journal</Link>
-   <h1 className="text-2xl font-bold">Books — financial reports</h1>
+   <h1 className="text-2xl font-bold">Profit, balance and payback reports</h1>
    <p className="text-muted-foreground">Read-only, source-backed numbers. Management-book profitability is not a tax return or a bank reconciliation. Missing evidence is shown instead of guessed.</p>
   </header>
   <nav aria-label="Books report type" className="flex flex-wrap gap-4">

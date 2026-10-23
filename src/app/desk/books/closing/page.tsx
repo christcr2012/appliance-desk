@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/money-ui";
 import { METRICS } from "@/domains/reports/definitions";
 import { cashForecast,customerHealth,YEAR_FILES } from "@/domains/books/closing";
 
-export const metadata={title:"Cash outlook, customers and year-end — Books"};
+export const metadata={title:"Cash forecast, customer health and year-end — Books"};
 const input="w-full min-w-0 rounded border border-border bg-background px-3 py-2 text-foreground";
 const link="underline focus-visible:outline-2 focus-visible:outline-offset-2";
 type Search={tab?:string;days?:string;year?:string};
@@ -33,7 +33,7 @@ export default async function BooksClosingPage({searchParams}:{searchParams:Prom
  return <div className="space-y-6">
   <header className="space-y-3">
    <Link className={link} href="/desk/books">Back to Books</Link>
-   <h1 className="text-2xl font-bold">Cash outlook, customers and year-end</h1>
+   <h1 className="text-2xl font-bold">Cash forecast, customer health and year-end</h1>
    <p className="text-muted-foreground">A forecast is an estimate, not money collected. Customer collections and year-end amounts come from supported source records; missing evidence stays visible for review.</p>
   </header>
   <nav aria-label="Books closing views" className="flex flex-wrap gap-4">
