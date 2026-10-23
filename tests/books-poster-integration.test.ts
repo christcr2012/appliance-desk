@@ -121,6 +121,46 @@ describe("K-2A+K-2B source to immutable books",()=>{
     expect(record?.mappings[0]?.externalName).toBe("Vehicle:Travel");
     expect(await prisma.auditLog.count({where:{userId:ownerId,action:{startsWith:"books."}}})).toBeGreaterThan(2);
   });
+  it("posts an invoice that includes a refundable deposit, holding the deposit as a liability, not income",async()=>{
+    const depositInvoiceId="books-deposit-invoice-"+tag;
+    await prisma.invoice.create({data:{id:depositInvoiceId,customerId,status:"OPEN",amountDueCents:3500,
+      lineItems:{create:[{kind:"RENTAL",description:"First month",amountCents:1000},{kind:"DEPOSIT",description:"Security deposit",amountCents:2500}]}}});
+    try {
+      await prisma.$transaction(tx=>postForSource(tx,"INVOICE",depositInvoiceId));
+      const entry=await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"INVOICE",sourceId:depositInvoiceId,eventKind:"INVOICE_RECOGNIZED"},
+        include:{lines:{include:{ledgerAccount:true}}}});
+      const total=(side:"debitCents"|"creditCents")=>entry.lines.reduce((n,l)=>n+l[side],0);
+      expect(total("debitCents")).toBe(3500);
+      expect(total("creditCents")).toBe(3500);
+      expect(entry.lines.find(l=>l.ledgerAccount.systemRole==="UNAPPLIED_RECEIPTS")?.creditCents).toBe(2500);
+    } finally {
+      await prisma.journalLine.deleteMany({where:{entry:{sourceId:depositInvoiceId}}});
+      await prisma.journalEntry.deleteMany({where:{sourceId:depositInvoiceId}});
+      await prisma.invoice.delete({where:{id:depositInvoiceId}}).catch(()=>undefined);
+    }
+  });
+  it("writing off an unpaid deposit invoice reverses the parked deposit credit and books only the rent as bad debt",async()=>{
+    const id="books-deposit-writeoff-"+tag;
+    await prisma.businessSettings.update({where:{id:"singleton"},data:{badDebtTaxRecovery:"NO"}});
+    await prisma.invoice.create({data:{id,customerId,status:"OPEN",amountDueCents:35000,amountPaidCents:0,
+      writtenOffAt:new Date("2026-10-16T20:00:00Z"),
+      lineItems:{create:[{kind:"RENTAL",description:"Rent",amountCents:10000},{kind:"DEPOSIT",description:"Security deposit",amountCents:25000}]}}});
+    try {
+      await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+      const lines=async(eventKind:string)=>(await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"INVOICE",sourceId:id,eventKind},
+        include:{lines:{include:{ledgerAccount:true}}}})).lines;
+      const net=(rows:Awaited<ReturnType<typeof lines>>,role:string)=>rows.filter(l=>l.ledgerAccount.systemRole===role).reduce((n,l)=>n+l.debitCents-l.creditCents,0);
+      const all=[...await lines("INVOICE_RECOGNIZED"),...await lines("INVOICE_WRITTEN_OFF")];
+      expect(net(all,"BAD_DEBT")).toBe(10000);
+      expect(net(all,"UNAPPLIED_RECEIPTS")).toBe(0);
+      expect(net(all,"RECEIVABLES")).toBe(0);
+    } finally {
+      await prisma.journalLine.deleteMany({where:{entry:{sourceId:id}}});
+      await prisma.journalEntry.deleteMany({where:{sourceId:id}});
+      await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+      await prisma.invoice.delete({where:{id}}).catch(()=>undefined);
+    }
+  });
   it("persists deduplicated exceptions for invalid money, without any partial journal",async()=>{
     await prisma.invoice.create({data:{
       id:invalidInvoiceId,customerId,status:"OPEN",amountDueCents:2600,

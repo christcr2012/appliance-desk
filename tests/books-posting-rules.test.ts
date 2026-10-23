@@ -50,6 +50,31 @@ describe("Batch K chart and pure posting", () => {
     expect(invoiceRecognition({...invoice,status:"DRAFT"})).toBeNull();
     expect(invoiceVoided({...invoice,status:"PAID"})).toBeNull();
   });
+  it("books a refundable deposit on an invoice as money held, not income, and nets to zero once funded", () => {
+    const invoice = {
+      status:"OPEN" as const, createdAt:date, amountDueCents:10000 + 800 + 25000,
+      items:[{kind:"RENTAL" as const,amountCents:10000},{kind:"DEPOSIT" as const,amountCents:25000}],
+      taxes:[{filingAccountId:"co",taxCents:800}],
+    };
+    const recognized = invoiceRecognition(invoice)!;
+    check(recognized);
+    expect(recognized.lines).toContainEqual({role:"RECEIVABLES",debitCents:35800,creditCents:0});
+    expect(recognized.lines).toContainEqual({role:"UNAPPLIED_RECEIPTS",debitCents:0,creditCents:25000});
+    expect(recognized.lines.some(l => l.role === "DEPOSITS_HELD")).toBe(false);
+    // The whole life of it: bill, money in, money applied to the bill, deposit moved to Deposits held.
+    const plans = [recognized, receiptReceived({date,amountCents:35800,method:"STRIPE"})!,
+      paymentApplied({date,amountCents:35800,receiptId:"r1",moneyArrived:true})!,
+      depositFunded({date,amountCents:25000,sourceReceiptId:"r1"})!];
+    const net = new Map<string, number>();
+    for (const plan of plans) for (const l of plan.lines) net.set(l.role, (net.get(l.role) ?? 0) + l.debitCents - l.creditCents);
+    expect(net.get("RECEIVABLES")).toBe(0);
+    expect(net.get("UNAPPLIED_RECEIPTS")).toBe(0);
+    expect(net.get("DEPOSITS_HELD")).toBe(-25000);
+    expect(net.get("STRIPE_CLEARING")).toBe(35800);
+    check(invoiceVoided({...invoice,status:"VOID",voidedAt:date}));
+    expect(() => invoiceRecognition({...invoice,amountDueCents:10800})).toThrow(PostingEvidenceError);
+    expect(() => invoiceRecognition({...invoice,items:[{kind:"RENTAL" as const,amountCents:10000},{kind:"DEPOSIT" as const,amountCents:-5}],amountDueCents:10795})).toThrow(PostingEvidenceError);
+  });
   it("refuses unbalanced, fractional, invalid or unsupported evidence", () => {
     expect(() => balancedPlan(date,"bad",[{role:"BANK",debitCents:1,creditCents:0}])).toThrow(PostingEvidenceError);
     expect(() => balancedPlan(date,"both",[{role:"BANK",debitCents:1,creditCents:1}])).toThrow(PostingEvidenceError);
@@ -82,6 +107,16 @@ describe("Batch K chart and pure posting", () => {
       invoiceWrittenOff({date,amountCents:cents,taxRecoveryApproved:false,tax:[{filingAccountId:"co",taxCents:250}]}),
     ]) check(plan);
     expect(() => refundIssued({date,amountCents:100,tax:[{filingAccountId:null,taxCents:200}]})).toThrow();
+  });
+  it("writing off an unpaid deposit invoice takes back the parked deposit credit instead of booking bad debt", () => {
+    const plan = invoiceWrittenOff({date,amountCents:35000,taxRecoveryApproved:false,tax:[],uncollectedDepositCents:25000})!;
+    check(plan);
+    const sum = (role: string, side: "debit" | "credit") =>
+      plan.lines.filter(l => l.role === role).reduce((n, l) => n + (side === "debit" ? l.debitCents : l.creditCents), 0);
+    expect(sum("BAD_DEBT","debit")).toBe(10000);
+    expect(sum("UNAPPLIED_RECEIPTS","debit")).toBe(25000);
+    expect(sum("RECEIVABLES","credit")).toBe(35000);
+    expect(() => invoiceWrittenOff({date,amountCents:100,taxRecoveryApproved:false,tax:[],uncollectedDepositCents:200})).toThrow();
   });
   it("books distinct Stripe fees, disputes and payouts and ignores provider money already represented by receipts", () => {
     const cases=[
