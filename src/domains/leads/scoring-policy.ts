@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import {
   leadScoringPolicySchema,
   parseLeadScoringPolicy,
@@ -33,7 +33,7 @@ export async function saveLeadScoringPolicy(
     .parse(input);
 
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const current = await tx.businessSettings.findUnique({
       where: { id: "singleton" },

@@ -1,7 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
-import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
 import { assetIdFromPublicPath } from "@/domains/site-content/asset-paths";
 import { checkExternalUrl } from "@/domains/site-content/links";
@@ -246,7 +245,7 @@ export async function updateAppliancePrice(
   newPriceCents: number,
 ) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     return updateAppliancePriceInTx(tx, userId, applianceTypeId, newPriceCents);
   });
 }
@@ -314,7 +313,7 @@ export async function setAppliancePhotoUrl(
   }
 
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     if (siteAssetId) {
       // A catalog picture is live as soon as it is saved, so an uploaded picture becomes public here.
       const asset = await tx.websiteAsset.findUnique({ where: { id: siteAssetId } });

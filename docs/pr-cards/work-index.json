@@ -1527,16 +1527,16 @@
       ],
       "evidence": [
         "docs/designs/BATCH-O.md",
+        "src/domains/capabilities/index.ts",
         "src/domains/settings/index.ts",
-        "src/domains/settings/section-config.ts",
-        "src/app/desk/settings/actions.ts"
+        "src/domains/packages/index.ts"
       ],
       "tests": [
-        "tests/capability-dto-scope.test.ts",
-        "e2e/owner-capabilities.spec.ts"
+        "tests/capabilities-integration.test.ts",
+        "tests/lead-scoring-policy.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/O-2B.md"
+      "readiness": "PARTIAL_LIMIT_GAPS_CLOSED_DTO_PROOF_OPEN",
+      "card": "docs/pr-cards/O-2B.md"
     },
     {
       "id": "O-3A",

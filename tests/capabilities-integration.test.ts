@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { assertCapability, CapabilityError, listAdminCapabilities, setAdminCapability } from "@/domains/capabilities";
 import { updateBusinessSettings } from "@/domains/settings";
 import { writeOffInvoice } from "@/domains/billing/manual-payments";
+import { setAppliancePhotoUrl, updateAppliancePrice } from "@/domains/settings";
+import { createPackage, setPackageActive, setPackageVisibility, updatePackage } from "@/domains/packages";
+import { setMonthToMonthSettings } from "@/domains/settings/month-to-month-save";
+import { saveLeadScoringPolicy } from "@/domains/leads/scoring-policy";
+import { setRetiredFollowUpDays } from "@/domains/inventory/retired-plans";
 
 // Batch O-2A on real Postgres: a limit takes effect on the very next action, restoring puts it back, and nobody gains access.
 const target = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -54,6 +59,39 @@ describe.skipIf(!enabled)("admin permission limits on real Postgres", () => {
     await expect(updateBusinessSettings(adminId, { lateFeeGraceDays: 5 })).rejects.toThrow(/permission/);
     await expect(updateBusinessSettings(ownerId, {})).resolves.toBeTruthy();
     await setAdminCapability(ownerId, adminId, "EDIT_SETTINGS", true);
+  });
+
+  it("an admin limited from changing settings cannot change prices, sets, notice rules or policies by another route either", async () => {
+    const typeId = `cap-type-${tag}`;
+    await prisma.applianceType.create({ data: { id: typeId, name: `Cap Type ${tag}`, slug: `cap-type-${tag}`, monthlyPriceCents: 4000 } });
+    const set = { name: `Cap Set ${tag}`, monthlyPriceCents: 1000, components: [{ applianceTypeId: typeId, quantity: 1 }] };
+    try {
+      await setAdminCapability(ownerId, adminId, "EDIT_SETTINGS", false);
+      const refused = [
+        () => updateAppliancePrice(adminId, typeId, 5000),
+        () => setAppliancePhotoUrl(adminId, typeId, null),
+        () => createPackage(adminId, set),
+        () => updatePackage(adminId, "no-such-set", set),
+        () => setPackageVisibility(adminId, "no-such-set", true),
+        () => setPackageActive(adminId, "no-such-set", false),
+        () => setMonthToMonthSettings(adminId, { days: 30, termsChangeNoticeText: null, annualReminderText: null }),
+        () => saveLeadScoringPolicy(adminId, { termPoints: { "month-to-month": 1, "6-month": 12, "12-month": 24 }, additionalUnitPoints: 6, businessAccountPoints: 11, multiUnitPropertyManagerPoints: 26, highValueThreshold: 35 }),
+        () => setRetiredFollowUpDays(adminId, 30),
+      ];
+      for (const call of refused) await expect(call()).rejects.toThrow(/permission/);
+      expect((await prisma.applianceType.findUniqueOrThrow({ where: { id: typeId } })).monthlyPriceCents).toBe(4000);
+      expect(await prisma.rentalPackage.count({ where: { name: set.name } })).toBe(0);
+      // Restored, the same admin can again (exactly today's rule), and the owner never needed the permission.
+      await setAdminCapability(ownerId, adminId, "EDIT_SETTINGS", true);
+      await updateAppliancePrice(adminId, typeId, 5000);
+      await updateAppliancePrice(ownerId, typeId, 4500);
+      expect((await prisma.applianceType.findUniqueOrThrow({ where: { id: typeId } })).monthlyPriceCents).toBe(4500);
+    } finally {
+      await setAdminCapability(ownerId, adminId, "EDIT_SETTINGS", true).catch(() => null);
+      await prisma.pricingRule.deleteMany({ where: { applianceTypeId: typeId } });
+      await prisma.auditLog.deleteMany({ where: { entityId: typeId } });
+      await prisma.applianceType.deleteMany({ where: { id: typeId } });
+    }
   });
 
   it("only the owner can change limits, only on active admins, never on staff or the owner", async () => {

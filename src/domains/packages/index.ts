@@ -6,7 +6,7 @@
  */
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import { slugify } from "@/domains/settings";
 import { packageContents, validatePackageInput, type PackageInput } from "./pricing";
 
@@ -64,7 +64,7 @@ const componentRows = (input: PackageInput) =>
 /** Creates a set. It starts hidden from the website, like a new appliance type. */
 export async function createPackage(userId: string, input: PackageInput) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     const name = await checkInput(tx, input);
     const slug = await uniqueSlug(tx, name);
     const maxSort = await tx.rentalPackage.aggregate({ _max: { sortOrder: true } });
@@ -94,7 +94,7 @@ export async function createPackage(userId: string, input: PackageInput) {
 /** Changes a set's name, price and machines. Agreements already signed keep their own prices. */
 export async function updatePackage(userId: string, packageId: string, input: PackageInput) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     const before = await lockPackage(tx, packageId);
     const name = await checkInput(tx, input, packageId);
     await tx.rentalPackageComponent.deleteMany({ where: { packageId } });
@@ -133,7 +133,7 @@ export async function updatePackage(userId: string, packageId: string, input: Pa
 
 export async function setPackageVisibility(userId: string, packageId: string, showOnWebsite: boolean) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     const before = await lockPackage(tx, packageId);
     if (showOnWebsite && !before.isActive) throw new PackageInputError("Restore this set before showing it on the website.");
     const updated = await tx.rentalPackage.update({ where: { id: packageId }, data: { showOnWebsite } });
@@ -147,7 +147,7 @@ export async function setPackageVisibility(userId: string, packageId: string, sh
 /** Retiring never deletes (old quotes and agreements keep pointing at it) and always hides it from the website. */
 export async function setPackageActive(userId: string, packageId: string, isActive: boolean) {
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, userId, "EDIT_SETTINGS");
     await lockPackage(tx, packageId);
     const updated = await tx.rentalPackage.update({
       where: { id: packageId },

@@ -1,6 +1,7 @@
 import type { Prisma, RetiredPlanChoice } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { assertCapability } from "@/domains/capabilities";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { postForSource } from "@/domains/books/post";
 import { applyPartMovementsInTx, lockPartRecords, OPERATION_KEY_PATTERN } from "@/domains/purchasing/ledger";
@@ -449,7 +450,7 @@ export async function getRetiredFollowUpDays(): Promise<number> {
 export async function setRetiredFollowUpDays(actorUserId: string, days: number): Promise<void> {
   if (!Number.isSafeInteger(days) || days < 0 || days > 365) throw new RetiredPlanError("Enter a number of days from 0 to 365 (0 turns the reminder off).");
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    await assertCapability(tx, actorUserId, "EDIT_SETTINGS");
     const before = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { retiredFollowUpDays: true } });
     await tx.businessSettings.update({ where: { id: "singleton" }, data: { retiredFollowUpDays: days } });
     await tx.auditLog.create({
