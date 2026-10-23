@@ -1,3 +1,7 @@
+## October 23 — Books: refunds wait for Stripe, taken-back write-offs reverse
+
+A card refund is now counted in the books as paid only after Stripe confirms it (a pending or failed one used to be booked as money out). When the owner takes a write-off back (a held payment turned out to be owed), a reversing entry puts the receivable back; the original entry is never edited. Also removed a stray leftover parameter from the refund rule. Tests on throwaway Postgres cover all three. In progress on branch `ai/claude/books-refund-confirm`; still open: invoice changed after posting (needs delta entries).
+
 ## October 23 — Books: tax taken back off an invoice now posts
 
 An invoice with a negative tax line (a late-return waiver) used to be rejected by the books, so it could not be recorded or voided. Tax is now allowed to go down as well as up; the tax account is reduced instead of increased. Writing off an unpaid deposit invoice also takes back the deposit that was never collected (merged earlier in #526). Rule test added.

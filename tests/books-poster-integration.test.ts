@@ -244,6 +244,49 @@ describe("K-2A+K-2B source to immutable books",()=>{
     expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="REFUNDS"&&line.debitCents===500)).toBe(true);
     expect(entry.lines.some(line=>line.ledgerAccount.systemRole==="CUSTOMER_CREDITS"&&line.creditCents===500)).toBe(true);
   });
+  it("does not book a card refund as paid until Stripe confirms it, then books it once",async()=>{
+    const id="books-card-refund-"+tag;
+    await prisma.refund.create({data:{id,invoiceId,amountCents:700,reason:"OTHER"}});
+    const opKey="books-card-refund-op-"+tag;
+    await prisma.providerOperation.create({data:{kind:"REFUND_CREATE",subjectType:"Refund",subjectId:id,idempotencyKey:opKey}});
+    try {
+      await prisma.$transaction(tx=>postForSource(tx,"REFUND",id));
+      expect(await prisma.journalEntry.count({where:{sourceType:"REFUND",sourceId:id}})).toBe(0);
+      await prisma.refund.update({where:{id},data:{stripeRefundId:"re_synthetic_"+tag}});
+      await prisma.$transaction(tx=>postForSource(tx,"REFUND",id));
+      await prisma.$transaction(tx=>postForSource(tx,"REFUND",id));
+      expect(await prisma.journalEntry.count({where:{sourceType:"REFUND",sourceId:id,eventKind:"REFUND_ISSUED"}})).toBe(1);
+    } finally {
+      await prisma.journalLine.deleteMany({where:{entry:{sourceId:id}}});
+      await prisma.journalEntry.deleteMany({where:{sourceId:id}});
+      await prisma.providerOperation.deleteMany({where:{idempotencyKey:opKey}});
+      await prisma.refund.deleteMany({where:{id}});
+    }
+  });
+  it("taking a write-off back puts the receivable back with a reversing entry and never edits the original",async()=>{
+    const id="books-writeoff-undo-"+tag;
+    await prisma.businessSettings.update({where:{id:"singleton"},data:{badDebtTaxRecovery:"NO"}});
+    await prisma.invoice.create({data:{id,customerId,status:"OPEN",amountDueCents:10000,amountPaidCents:0,
+      writtenOffAt:new Date("2026-10-16T20:00:00Z"),lineItems:{create:{kind:"RENTAL",description:"Rent",amountCents:10000}}}});
+    try {
+      await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+      const first=await prisma.journalEntry.findFirstOrThrow({where:{sourceType:"INVOICE",sourceId:id,eventKind:"INVOICE_WRITTEN_OFF"},include:{lines:true}});
+      await prisma.invoice.update({where:{id},data:{writtenOffAt:null,writtenOffReason:null}});
+      await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+      await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+      expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:id,eventKind:"INVOICE_WRITE_OFF_REVERSED"}})).toBe(1);
+      const entries=await prisma.journalEntry.findMany({where:{sourceType:"INVOICE",sourceId:id},include:{lines:{include:{ledgerAccount:true}}}});
+      const net=(role:string)=>entries.flatMap(e=>e.lines).filter(l=>l.ledgerAccount.systemRole===role).reduce((n,l)=>n+l.debitCents-l.creditCents,0);
+      expect(net("BAD_DEBT")).toBe(0);
+      expect(net("RECEIVABLES")).toBe(10000);
+      expect((await prisma.journalEntry.findFirstOrThrow({where:{id:first.id},include:{lines:true}})).lines.length).toBe(first.lines.length);
+    } finally {
+      await prisma.journalLine.deleteMany({where:{entry:{sourceId:id}}});
+      await prisma.journalEntry.deleteMany({where:{sourceId:id}});
+      await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+      await prisma.invoice.delete({where:{id}}).catch(()=>undefined);
+    }
+  });
   it("does not double-subtract applied credits from an invoice write-off",async()=>{
     await prisma.businessSettings.update({where:{id:"singleton"},data:{badDebtTaxRecovery:"NO"}});
     await prisma.invoice.create({data:{id:writeOffInvoiceId,customerId,status:"OPEN",amountDueCents:10000,amountPaidCents:3000,

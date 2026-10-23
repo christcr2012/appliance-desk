@@ -9,7 +9,7 @@ import {
   type PostingPlan, PostingEvidenceError, invoiceRecognition, invoiceVoided,
   receiptReceived, paymentApplied, creditIssued, creditApplied, refundIssued,
   depositFunded, depositRefunded, depositRetained, expensePosted, expenseVoided,
-  useTaxAccrued as planUseTaxAccrual, stripeBalancePlans, applianceContributed, taxFiled, balancedPlan, invoiceWrittenOff,
+  useTaxAccrued as planUseTaxAccrual, stripeBalancePlans, applianceContributed, reversePlan, taxFiled, balancedPlan, invoiceWrittenOff,
 } from "./posting-rules";
 
 export type BooksProblem = { sourceType: string; sourceId: string; message: string };
@@ -117,6 +117,17 @@ Promise<{ events: Event[]; extra: Subject }> {
         const uncollectedDeposit=Math.max(0,Math.min(open,depositBilled-depositFunded));
         const written=invoiceWrittenOff({date:x.writtenOffAt,amountCents:open,taxRecoveryApproved:false,tax:[],uncollectedDepositCents:uncollectedDeposit});
         if(written)events.push({eventKind:"INVOICE_WRITTEN_OFF",plan:written});
+      }      else {
+        // The owner took the write-off back (a held payment turned out to be owed). The original write-off entry is
+        // never edited; a reversing entry puts the receivable back, so the books match the invoice again.
+        const original=await tx.journalEntry.findFirst({where:{sourceType:"INVOICE",sourceId:x.id,eventKind:"INVOICE_WRITTEN_OFF"},
+          include:{lines:{include:{ledgerAccount:{select:{systemRole:true}}}}}});
+        if(original){
+          const plan=reversePlan({entryDate:original.entryDate,memo:"Uncollectible invoice balance",lines:original.lines.map(l=>({
+            role:l.ledgerAccount.systemRole??"ID:"+l.ledgerAccountId,debitCents:l.debitCents,creditCents:l.creditCents}))},
+            x.updatedAt,"Write-off taken back");
+          events.push({eventKind:"INVOICE_WRITE_OFF_REVERSED",plan});
+        }
       }
       return { events, extra: {customerId: x.customerId} };
     }
@@ -180,6 +191,10 @@ Promise<{ events: Event[]; extra: Subject }> {
       // (refunds expense / customer credits liability) is the whole story.
       const toCredit=await tx.customerCredit.count({where:{sourceType:"REFUND_TO_CREDIT",sourceId:x.id}});
       if(toCredit>0)return {events:[],extra:{customerId:x.invoice.customerId}};
+      // A card refund that Stripe has not confirmed (still pending, failed, or unknown) sent no money out yet.
+      // The refund row is written first, so wait for Stripe's confirmation id before the books say it was paid.
+      if(!x.stripeRefundId&&await tx.providerOperation.count({where:{kind:"REFUND_CREATE",subjectType:"Refund",subjectId:x.id}})>0)
+        return {events:[],extra:{customerId:x.invoice.customerId}};
       const tax=await tx.invoiceTaxLine.count({where:{invoiceId:x.invoiceId,taxCents:{gt:0}}});
       if(tax)throw new PostingEvidenceError("Taxed refund lacks an immutable refund tax allocation.");
       const plan=refundIssued({date:x.createdAt,amountCents:cents(x.amountCents),stripeRefundId:x.stripeRefundId,tax:[]});
@@ -334,16 +349,22 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
     })).map(x=>({type:"CASH_EVENT",id:x.id,at:x.occurredOn,
       required:[x.reversalOfId?"CASH_EVENT_REVERSED":"CASH_EVENT_POSTED"]}))},
 
-    {type:"INVOICE",load:async(skip,take)=>(await prisma.invoice.findMany({
+    {type:"INVOICE",load:async(skip,take)=>{
+      const invoices=await prisma.invoice.findMany({
       where:{status:{not:"DRAFT"},OR:[
         {createdAt:{gte:since}},{issuedAt:{gte:since}},
         {billingPeriodStart:{gte:since}},{cancelledAt:{gte:since}},
         {writtenOffAt:{gte:since}},
       ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true},
-      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"INVOICE",id:x.id,
+      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
+      const writtenOffBooks=new Set((await prisma.journalEntry.findMany({
+        where:{sourceType:"INVOICE",eventKind:"INVOICE_WRITTEN_OFF",sourceId:{in:invoices.filter(i=>!i.writtenOffAt).map(i=>i.id)}},
+        select:{sourceId:true}})).map(e=>e.sourceId));
+      return invoices.map(x=>({type:"INVOICE" as const,id:x.id,
       at:x.billingPeriodStart??x.issuedAt??x.createdAt,
       required:["INVOICE_RECOGNIZED",...(x.status==="VOID"?["INVOICE_VOIDED"]:[]),
-        ...(x.writtenOffAt?["INVOICE_WRITTEN_OFF"]:[])]}))},
+        ...(x.writtenOffAt?["INVOICE_WRITTEN_OFF"]:[]),
+        ...(!x.writtenOffAt&&writtenOffBooks.has(x.id)?["INVOICE_WRITE_OFF_REVERSED"]:[])]}));}},
     {type:"RECEIPT",load:async(skip,take)=>(await prisma.receipt.findMany({
       where:{receivedOn:{gte:since}},select:{id:true,receivedOn:true},
       orderBy:[{receivedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"RECEIPT",id:x.id,at:x.receivedOn,required:["RECEIPT_RECEIVED"]}))},
@@ -373,10 +394,12 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
       .map(x=>({type:"CREDIT_APPLICATION",id:x.id,at:x.createdAt,required:["CREDIT_APPLIED"]}))},
     {type:"REFUND",load:async(skip,take)=>{
       const rows=await prisma.refund.findMany({
-        where:{createdAt:{gte:since}},select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
+        where:{createdAt:{gte:since}},select:{id:true,createdAt:true,stripeRefundId:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
+      const awaitingStripe=new Set((await prisma.providerOperation.findMany({
+        where:{kind:"REFUND_CREATE",subjectType:"Refund",subjectId:{in:rows.filter(r=>!r.stripeRefundId).map(r=>r.id)}},select:{subjectId:true}})).map(o=>o.subjectId));
       const creditBackedRefunds=new Set((await prisma.customerCredit.findMany({
         where:{sourceType:"REFUND_TO_CREDIT",sourceId:{in:rows.map(r=>r.id)}},select:{sourceId:true}})).map(c=>c.sourceId));
-      return rows.map(x=>({type:"REFUND",id:x.id,at:x.createdAt,required:creditBackedRefunds.has(x.id)?[]:["REFUND_ISSUED"]}));}},
+      return rows.map(x=>({type:"REFUND",id:x.id,at:x.createdAt,required:creditBackedRefunds.has(x.id)||awaitingStripe.has(x.id)?[]:["REFUND_ISSUED"]}));}},
     {type:"EXPENSE",load:async(skip,take)=>(await prisma.expense.findMany({
       where:{spentOn:{gte:since},status:{in:["POSTED","VOID"]}},select:{id:true,spentOn:true,status:true},
       orderBy:[{spentOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"EXPENSE",id:x.id,at:x.spentOn,
