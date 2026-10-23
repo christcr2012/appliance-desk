@@ -88,4 +88,13 @@ describe("getPostLoginDestination", () => {
 
     await expect(getPostLoginDestination(null)).resolves.toBe("/login");
   });
+
+  it.each(["/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "/ /evil.example", "/\\evil.example", "//evil.example", "https://evil.example"])(
+    "refuses unsafe next value %j",
+    async (bad) => {
+      getServerSession.mockResolvedValue({ user: { id: "u1", role: "CUSTOMER" } });
+      const { getPostLoginDestination } = await import("@/app/login/actions");
+      await expect(getPostLoginDestination(bad)).resolves.toBe("/account");
+    },
+  );
 });
