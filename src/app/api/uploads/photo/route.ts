@@ -1,3 +1,4 @@
+import { isRateLimited } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { handleUpload } from "@vercel/blob/client";
 import { z } from "zod";
@@ -25,6 +26,13 @@ export async function POST(request: Request): Promise<NextResponse> {
   const session = await getServerSession();
   if (!session || (session.user as { archivedAt?: unknown }).archivedAt) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  }
+  // Stops a stolen or abusive session from filling the photo store.
+  if (await isRateLimited(`photo-upload:${session.user.id}`, { max: 60, windowMs: 10 * 60 * 1000 })) {
+    return NextResponse.json(
+      { error: "Too many uploads in a short time. Please wait a few minutes." },
+      { status: 429 },
+    );
   }
 
   try {

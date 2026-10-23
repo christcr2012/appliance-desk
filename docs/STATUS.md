@@ -1,3 +1,7 @@
+## October 23 — Full-code review: first fixes (security and error pages)
+
+Six read-only reviews covered money, security, tax/scheduling, the owner screens, the public site/portal and performance. This PR fixes the confirmed security items: the login `?next=` check now refuses tab/newline/space tricks; launch-list names can no longer contain line breaks (email phishing); the launch email confirmation now needs a button press (mail scanners were able to confirm people); customer maintenance photos must come from that customer's own upload folder; photo uploads are rate-limited per user. It also adds friendly error pages (desk, account, public, last-resort) that report to Sentry, a branded not-found page, and fixes the "$X,XXX.XXper month" spacing on the portal home. Still open from the reviews (next PRs): books posting bugs (deposit invoices, refunds to credit, late fees), double deposit-refund path, privacy-deletion safeguards, FAILED daily jobs never retried, public-site and desk wording, database indexes and caching.
+
 ## October 23 — Budget plans: an estimate stays an estimate (Chris's decision)
 
 Publishing a monthly budget plan now refuses to relabel an unchanged estimate as "exact" by hand; the owner can still replace an estimate with their own ("Owner reviewed manual adjustment"), and a row only becomes exact when the real source supports it. Pure rule in `report-math.ts` with unit tests; the publish path in `published.ts` uses it. No schema change, nothing live affected.

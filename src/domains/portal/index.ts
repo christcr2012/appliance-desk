@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { normalizeSmsAddress } from "@/domains/messaging/suppression";
 import { getBusinessSettings } from "@/domains/settings";
+import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
 import {
   ACTIVE_ASSIGNMENT_WHERE,
   getActiveApplianceOptionsForUser,
@@ -237,6 +238,19 @@ export async function createMaintenanceRequestForUser(
   }
 
   const photoUrls = (input.photoUrls ?? []).filter(Boolean);
+  if (photoUrls.length > 0) {
+    // Only photos this customer just uploaded to their own private folder may
+    // be attached; anything else could point at someone else's file.
+    const store = getPrivatePhotoStore();
+    const ownPrefix = `maintenance-requests/${customer.id}/`;
+    const allOwn =
+      store !== null &&
+      photoUrls.every((url) => {
+        const path = privatePhotoPathFromUrl(url, store.storeId);
+        return path !== null && path.startsWith(ownPrefix);
+      });
+    if (!allOwn) throw new Error("One of the photos wasn't uploaded through your account. Please upload it again.");
+  }
   const request = await prisma.maintenanceRequest.create({
     data: {
       customerId: customer.id,
