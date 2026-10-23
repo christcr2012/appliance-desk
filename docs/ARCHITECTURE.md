@@ -8,7 +8,7 @@ One Next.js 16 (App Router) application. No monorepo, no microservices.
 |---|---|---|
 | Source code | GitHub — public `christcr2012/appliance-desk` | `main` is development; work lands through checked PRs. Daily checked promotion alone updates `live`. |
 | Hosting | Vercel — team **Robinson AI Systems**, project **appliance-desk** | `live` → production; automatic previews disabled. Domain **robinsonappliancerentals.com**; daily release/cost policy governs. |
-| Database | Neon — project **Appliance Desk** (`jolly-term-08991992`), database `appliance_desk`, branch `main` | Region: **AWS US East 1 (N. Virginia)** — see `docs/DECISIONS.md` for why. |
+| Database | Neon — project **Appliance Desk** (identifier kept out of this public repo), database `appliance_desk`, branch `main` | Region: **AWS US East 1 (N. Virginia)** — see `docs/DECISIONS.md` for why. |
 
 ## Environment variables
 
@@ -18,7 +18,8 @@ See `.env.example` for the full list with comments. The short version:
 - `DIRECT_URL` — Neon's **direct** (unpooled) connection string. Used only by Prisma Migrate, which needs a session-level connection.
 - `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` — auth session signing + base URL.
 - `SENTRY_*` — error monitoring (see below).
-- `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe test-mode API keys, live as of 2026-09-27 (see docs/DECISIONS.md). See "Payments (Stripe)" below.
+- Also read in code (added by the 2026-10-23 audit): `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL` (public website address), `COMMUNICATION_CONTENT_KEY`, `VERCEL_GIT_COMMIT_REF` / `VERCEL_GIT_COMMIT_SHA` (set by Vercel), `TWILIO_API_KEY` / `TWILIO_API_SECRET`, `METRICOOL_TRACKING_HASH`, `NEON_API_KEY` / `NEON_PROJECT_ID` (tooling only), and the on/off gates `BOOKS_STRIPE_SYNC_ENABLED`, `RDF_CUSTOMER_CHARGING_ENABLED`, `TENANT_PII_PURGE_ENABLED`, `VOICE_MEDIA_ACTIVATION_APPROVED`, `W22_SIGNING_TEST_CHECKOUT_ENABLED`, `W24_APPROVED_FEE_TEST_POSTING_ENABLED`, `W24_FEE_TAX_POLICY_APPROVED`, `W24_FEE_TAX_POLICY_REFERENCE`. The on/off gates all default to off.
+- `STRIPE_SECRET_KEY` (and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, set but unused in code) — Stripe test-mode API keys, live as of 2026-09-27 (see docs/DECISIONS.md). See "Payments (Stripe)" below.
 - `STRIPE_WEBHOOK_SECRET` — **set (2026-09-27)**, the test-mode webhook signing secret, registered in the Stripe dashboard and set in Vercel. See "Payments (Stripe)" below.
 - `BLOB_READ_WRITE_TOKEN` — **set (2026-09-28)**, auto-injected by Vercel when the `appliance-desk-photos` Blob store was created and linked to this project. Used only server-side, by `src/app/api/uploads/photo/route.ts`, to mint short-lived upload tokens for every photo-upload button in the app — desk (Settings, jobs, appliance units) and the customer portal (maintenance requests) alike. See "Photo uploads (Vercel Blob)" below.
 - `CRON_SECRET` — **set (2026-09-28)**, a random token set in Vercel and checked by every `/api/cron/*` route (billing reminders, job reminders, late fees, and the daily backup added 2026-09-29). Vercel signs every Cron-triggered request with this same value as a bearer token (`Authorization: Bearer <CRON_SECRET>`), so a request without it is refused — otherwise the URL would be triggerable by anyone who found it. See "Automation rules" below.
@@ -348,6 +349,11 @@ charge or credit.
 | 15:30 | `/api/cron/billing-reconcile` | Recovery sweep: finishes pending Stripe operations (`finishPendingProviderOperations`), runs job billing hand-offs (`runPendingHandoffs`), freezes final invoice documents (`freezeFinalInvoiceArtifacts`, 200 per run), reconciles unknown email/SMS outcomes (`reconcileUnknownDeliveries`, 50 per run). Each part is its own `runAutomation` rule key (`billing-reconcile:*`). |
 | 16:00 | `/api/cron/estimate-follow-ups` | Estimate follow-up claims/sends |
 | 16:00 | `/api/cron/launch-emails` | Prelaunch launch-list sequence (sending stays behind the owner's switches) |
+| 09:40 | `/api/cron/books-nightly` | Nightly books pass |
+| 09:50 | `/api/cron/expense-drafts` | Recurring expense drafts |
+| 10:30 | `/api/cron/tenant-retention` | Tenant contact retention sweep (purge stays behind its switch) |
+| 13:20 | `/api/cron/tax-address-recheck` | Re-checks tax locations of addresses |
+| 18:05 | `/api/cron/tax-rate-changes` | Looks for official tax-rate changes |
 
 Every route refuses to run without `CRON_SECRET` and records its outcome through `runAutomation` (Desk → Automations).
 
@@ -396,7 +402,7 @@ full reasoning behind the pattern.
   day at 09:00 UTC) hits `src/app/api/cron/backup/route.ts`, which calls
   `exportDatabaseBackup()` (`src/domains/backup/index.ts`). Exports one repeatable-read snapshot of every business-critical table (customers, leads, agreements, billing, appliances, notes, audit history and provider idempotency evidence such as `WebhookEvent`) while intentionally excluding reusable authentication credential/session rows. The format records the migration and app commit and is restored by `scripts/restore-backup.ts`. It uploads under `backups/` with private access and prunes database backups older than 30 days. F1-b then records a paired media manifest and content-addressed recovery copies for private photos; privacy-deletion tombstones are authoritative during recovery. This
   exists on top of — not instead of — Neon's own built-in point-in-time
-  recovery; Neon's free-tier plan only keeps a 6-hour recovery window,
+  recovery; Neon's current Launch plan keeps only a 6-hour recovery window (checked 2026-10-23),
   so this is the second, independent copy that reaches further back and
   isn't tied to Neon's own infrastructure. It's a data export, not a
   one-click restore: getting data back out means downloading the JSON
@@ -464,7 +470,7 @@ Because this is one script that stops at its first failure (`&&` between each st
 
 **What Chris still needs to do by hand:** nothing, for a normal additive migration — merging the PR and Vercel's own deploy now does it all. He's only asked to do anything when a migration trips the destructive-change check, and even then the action is "confirm this is safe" and record it, not "figure out and paste raw SQL."
 
-**Neon ↔ Vercel preview isolation:** previews already use the verified shared `vercel-preview-2` Neon branch rather than production, enforced by `src/lib/preview-database-safety.ts`. What is **not** enabled is one fresh Neon branch per individual preview deployment. That optional stronger isolation remains in `docs/ROADMAP.md`.
+**Neon ↔ Vercel preview isolation:** the Vercel preview settings point at the shared `vercel-preview-2` Neon branch rather than production (that branch is currently archived/asleep because previews are off, checked 2026-10-23), enforced by `src/lib/preview-database-safety.ts`. What is **not** enabled is one fresh Neon branch per individual preview deployment. That optional stronger isolation remains in `docs/ROADMAP.md`.
 
 **Branch protection:** completed and verified on 2026-09-29 after the Neon plan upgrade; the production `main` branch is protected. See `docs/DECISIONS.md` / `docs/ROADMAP.md`. Per-preview-deployment branching is a separate optional hardening item.
 
@@ -481,11 +487,11 @@ Never rely on hiding a nav link as the only protection for anything.
 
 ## Error monitoring
 
-[Sentry](https://sentry.io) via `@sentry/nextjs`, wired in `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser). Inactive until `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are set as Vercel environment variables — see `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for the setup step.
+[Sentry](https://sentry.io) via `@sentry/nextjs`, wired in `instrumentation.ts` (server/edge) and `instrumentation-client.ts` (browser). Both `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` are set in Vercel for production, preview and development (names checked 2026-10-23), so error reporting is on; without them it stays inactive. Setup history: `docs/archive/HANDOFF-2026-09-26-to-2026-10-02.md` for the setup step.
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs on every PR and on `main`. A tiny `classify` job first decides whether the change touches the application (anything outside `docs/` and `*.md`); documentation-only PRs skip the heavy suites. Application changes then run three independent jobs **in parallel**, each on its own runner:
+`.github/workflows/ci.yml` runs on every PR and on `main`. A tiny `classify` job first decides whether the change touches the application (anything outside `docs/` and `*.md`); documentation-only PRs skip the heavy suites. Application changes then run these checks (secret scan, static checks, three unit/integration shards and four browser shards, then one final `ci` gate):
 
 - **static checks** — install → type-check → lint (no database).
 - **Local Vercel Sandbox integration tests** — run
@@ -496,7 +502,7 @@ Never rely on hiding a nav link as the only protection for anything.
   never substitute Neon or preview data. CI's PostgreSQL 17 job remains
   authoritative.
 - **migrations and unit/integration tests** — throwaway Postgres → check for un-reviewed destructive migrations → apply migrations → verify schema health (the same check production runs before building) → prove schema health rejects a missing column → prove a populated historical database upgrades → seed business content and test-only OWNER/CUSTOMER/STAFF accounts → unit and real-Postgres integration tests.
-- **production build and browser acceptance** — sharded across 3 runners. Each shard gets its own throwaway Postgres, applies migrations, verifies schema health, seeds, runs the production build, installs the Playwright browser, then runs the Playwright/axe accessibility, security and end-to-end spec files assigned to it. The assignment lives in `e2e/shards.json` (named groups → spec files) and is run by `scripts/e2e-shard.mjs <group>`. Playwright's own `--shard` was tried first and rejected: it balances by test *count*, and this suite's test durations are so uneven that one runner got ~4x the runtime of the others. The groups are balanced by measured duration instead; after each shard runs, the script prints a per-file duration notice (from Playwright's JSON reporter, CI-only) that is readable from the Checks API — use those numbers to rebalance. The script refuses to run, and the static-checks job fails (`--check`), if any `e2e/*.spec.ts` is unassigned, double-assigned, or missing, so a new spec file can never silently stop running. Every spec still runs exactly once per CI run. Each shard uploads its own Playwright report (`playwright-report-<group>`).
+- **production build and browser acceptance** — sharded across 4 runners (browser-a to browser-d, groups in `e2e/shards.json`). Each shard gets its own throwaway Postgres, applies migrations, verifies schema health, seeds, runs the production build, installs the Playwright browser, then runs the Playwright/axe accessibility, security and end-to-end spec files assigned to it. The assignment lives in `e2e/shards.json` (named groups → spec files) and is run by `scripts/e2e-shard.mjs <group>`. Playwright's own `--shard` was tried first and rejected: it balances by test *count*, and this suite's test durations are so uneven that one runner got ~4x the runtime of the others. The groups are balanced by measured duration instead; after each shard runs, the script prints a per-file duration notice (from Playwright's JSON reporter, CI-only) that is readable from the Checks API — use those numbers to rebalance. The script refuses to run, and the static-checks job fails (`--check`), if any `e2e/*.spec.ts` is unassigned, double-assigned, or missing, so a new spec file can never silently stop running. Every spec still runs exactly once per CI run. Each shard uploads its own Playwright report (`playwright-report-<group>`).
 
 A final `ci` job (the historical required-check name) succeeds only if every job above succeeded — for the browser shards, GitHub reports the matrix as a whole, so one failing shard fails the gate. Vercel builds only `live`; automatic previews are disabled. Daily checked promotion is independent of development PR batch counts; no deployment is required to merge a green development PR.
 

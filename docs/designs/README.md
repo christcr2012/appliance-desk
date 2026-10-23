@@ -9,7 +9,7 @@ the points where the implementer must stop and ask instead of guessing.
 
 | Batch | Design | Status |
 |---|---|---|
-| COM — Business communications, calls and telecom costs | `BATCH-COM.md` | Approved by Chris 2026-10-08. Architecture and L1a/L1b/L2 cards ready; runtime not started. Launch phase after T/S before V/F-part-2, near-term after K/O. |
+| COM — Business communications, calls and telecom costs | `BATCH-COM.md` | Approved by Chris 2026-10-08. Telecom foundation through COM-L7 is built and merged (numbers, texts, calls, voicemail, cost records); later COM-L steps and COM-N: see MASTER-ROADMAP and `work-index.json` for exactly what is merged. |
 | BP — Business offers, permission/installation evidence and partnerships | `BATCH-BP.md` | Proposed 2026-10-07 at owner request; documentation only. Reuses T/K/M/O and existing billing/renewals. Implementation requires accepted design and bounded cards after prerequisites. |
 | F — Integrated verification, recovery, owner handoff & launch ledger | `BATCH-F.md` + **`POST-BATCH-D-RECONCILIATION-2026-10-05.md`** | Approved. **Split 2026-10-06 (IN-41):** F-part-1 (WU-F1, F2, F4, F5) built; F-part-2 (WU-F3, F6–F9) after G, T and V — see the design's Amendments. Starts after E2; recovery must respect D privacy deletion and must never resurrect intentionally deleted private media. |
 | T — Colorado sales and use tax | `BATCH-T.md` | **Built** (through T-7D #328). Stays here as the reference for current tax behavior; W-0/W-2/W-3 change parts of it. CPA answers IN-33 … IN-38 still gate live billing. |
@@ -17,10 +17,10 @@ the points where the implementer must stop and ask instead of guessing.
 | W — Workflows that tell the owner what to do (To do list, guided intake/tax/rentals, setup checklist, simpler menu) | `BATCH-W.md` | **Approved 2026-10-09** (Chris). W-0A/W-0B now; W-1…W-8 after COM-L, before V. |
 | W Amendment B — the connected business (purchases with serials, tax proof/audit pack, sets as packages, connected pages, portal flows, plain-language kit) | `BATCH-W-AMENDMENT-B.md` | **Approved 2026-10-09** (Chris, IN-69/IN-70). Done: W-0C, W-16A/B, W-21A/B; remaining order in its section 8. |
 | S — System issues inbox and the AI check-up | `BATCH-S.md` | **Built** (S-1A #330 … S-2 #334). Reference for current behavior. |
-| M — Shop sales (merchandise) and retired appliances (sell, strip for parts, scrap, throw away) | `BATCH-M.md` | **Approved 2026-10-07** (Chris). After K (Chris will not sell before launch, IN-47). Retired appliances: "what's next" plan, revised 2026-10-07. |
-| K-CASH — Cash envelopes, planned costs, bank checks, reports and QBO handoff | `BATCH-K-CASH.md` | Owner-requested 2026-10-08; documentation review pending. Proposed after K-8 before M; launch unchanged. No accounts/provider activation. |
-| K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **Approved 2026-10-06** (Chris). After T; may run after launch. |
-| O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). After K; includes O-6/O-7 control center and saved workspace. |
+| M — Shop sales (merchandise) and retired appliances (sell, strip for parts, scrap, throw away) | `BATCH-M.md` | **Approved 2026-10-07** (Chris). M-1 (parts for sale, shop sales) and M-2A/M-2B (retired appliances) are **built and merged** (#530, #531, #533). M-2C (used-appliance sale) and M-3 (hosted card payment) are not built: stopped on purpose, see their STRONGER-MODEL-PROMPT files. |
+| K-CASH — Cash envelopes, planned costs, bank checks, reports and QBO handoff | `BATCH-K-CASH.md` | Owner-approved for engineering 2026-10-19. K-CASH-1…7 **built and merged** (#506–#513); real bank/CPA acceptance still pending. |
+| K — Books, expenses, P&L, accounting exports | `BATCH-K.md` | **Approved 2026-10-06** (Chris). **Built and merged** (K-1A…K-8, #497–#505). Owner/CPA acceptance pending. |
+| O — Owner controls | `BATCH-O.md` | **Approved 2026-10-06** (Chris). O-1 (settings history), O-2A (what each admin may do) and O-3A (approval limits) **built and merged** (#534–#536). O-3B refund/credit/deposit approvals (stopped, see prompt) and O-4…O-7 not built. |
 
 **Completed batches** (B, B2, C, D, E, E2, G, R) are retired to `docs/archive/designs-completed/` (2026-10-09). Their
 behavior is in the code and tests; open them only to look up the reasoning behind a specific shipped rule. Code comments

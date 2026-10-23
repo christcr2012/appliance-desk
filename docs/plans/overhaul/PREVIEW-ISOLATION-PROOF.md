@@ -68,7 +68,7 @@ Email: `preview-isolation-cd9441a2-fcb3-4cf7-9125-07545357bbed@example.com`.
 No real customer information, payments or messages were used.
 
 Narrow read-only queries against database `appliance_desk`, project
-`jolly-term-08991992`, using that exact email:
+the Appliance Desk Neon project, using that exact email:
 
 | Target | Result |
 | --- | --- |

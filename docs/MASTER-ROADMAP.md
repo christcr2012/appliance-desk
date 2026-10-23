@@ -1,40 +1,14 @@
-## Current K handoff — October 17
-
-K-1A and K-1B are implemented together on a review branch with exact-head CI/merge pending; K-2A (transactional journal poster) follows only after verified merge. Asset disposition remains deliberately deferred to the K-6 reviewed contract. See STATUS for evidence.
-
-## What is next — October 17 V-C4 and V-C5 delivery
-
-V-1 to V-4 (the signature look: home, every public page, Today and the portal home) are merged (#490, #491); the owner accepted the look and real visit lengths. F2-A and F2-B (all integrated scenarios, the owner-workflow browser spec and the link check) are delivered together from `docs/pr-cards/F2-A.md` (CI pending at the exact head); F2-C (owner guide and screenshots) and F2-D (review discharge, launch ledger, rollback, ENH-F proof) are delivered together from `docs/pr-cards/F2-C.md` (CI pending at the exact head); the K batches follow.
-
 # MASTER ROADMAP — scope and ordered work coverage
 
-Audited baseline: main `b2a06c2` (#310), October 8. [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
+Audited baseline: main `91f7d34d` (#536), October 23, 2026 (documents re-checked against the code, Vercel and Neon that day). [STATUS](STATUS.md) holds current state; [PLAN](PLAN.md) holds remaining acceptance. Original documentation reset: [PR #138](https://github.com/christcr2012/appliance-desk/pull/138). This reset preserves history and the current two-lane process.
 
-## What is next — October 17 W-17 and W-20 delivery
+## Where things stand
 
-W-10 and W-19 are merged (#485). One PR delivers W-17 (Related and History on seven record pages, purchase and seller search, the
-Cleaning step and the failed-inspection repair draft) and W-20 (next bill, Pay now, visit timelines, next-step notes, package sets);
-exact-head CI, review and merge remain pending. The visual redesign content bundle (V-C1…V-C5) is next.
-
-### Earlier: October 17 W-10 and W-19 delivery
-
-W-8 and W-9 are merged (#484). One PR delivers W-10 (File now panel and filled DR 0252 PDF with yearly form selection) and
-W-19 (conversion buttons, unsigned follow-up setting, instant repair To do, portal pickup requests, pickup after any ending,
-progress-card buttons); exact-head CI, review and merge remain pending. W-17 and W-20 are next after verified merge.
-
-### Earlier: October 17 W-8 and W-9 delivery
-
-W-7 is merged (#483). One PR delivers W-8 (14-entry menu, Schedule/Equipment/Money tabs, More page, plain-words check)
-and W-9 (tax filing To do with amounts, daily overdue reminders, simplified filed-and-paid, nightly missing-period
-check); exact-head CI, review and merge remain pending. W-10 is next after verified merge.
-
-### Earlier: October 17 W-3 and W-4 delivery
-
-W-3 and W-4 are merged (#481). One PR delivers W-5 and W-6 together (money and sales turning points as To do
-items; payment links and phone payment on Stripe's page; lead and quote follow-ups); exact-head CI, review and
-merge remain pending. W-7 is next after verified merge. The 22 existing
-live/provider/owner acceptance obligations remain separately PENDING; source completion does not
-supply their missing gates. READY production remains 4740313d; no manual release is authorized.
+Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through V, F2,
+K, K-CASH, M-1A…M-2B, O-1, O-2A and O-3A is merged. The live/provider/owner acceptance checks stay separately PENDING on
+[OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
+Deliberately not built yet: M-2C and M-3 (stopped, see their STRONGER-MODEL-PROMPT files), O-3B refund/credit/deposit
+approvals, O-4…O-7, COM-N, BP and W-11/12/13.
 
 **New required implementer reading:** October 13
 [56-subject owner-answer mapping](owner-decisions/2026-10-13-implementation-map.json)
@@ -203,29 +177,29 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 | K-CASH-5A | **MERGED #509 — original engineering, owner acceptance still pending** — recurring plans, targets, settlements and forecast dedupe | `K-CASH-5A.md` (joint frozen 5A/5B) | K-CASH-4B |
 | K-CASH-5B | **MERGED #509 — original engineering, owner acceptance still pending** — budget workspace and contextual source integration | `K-CASH-5A.md` (joint frozen 5A/5B) | K-CASH-5A |
 | K-CASH-6 | **MERGED #511 — original QBO delivery engineering, real trial import/CPA acceptance pending** — DETAIL export, uncertain-import quarantine, owner attested delivery | `K-CASH-6.md` (frozen) | K-CASH-5B |
-| K-CASH-7 | **PR #513 ENGINEERING SOURCE CI GREEN — final docs CI/review/merge pending; real bank/CPA acceptance pending** — immutable monthly plan versions, signed ledger/bank/budget variances and month-end snapshots | `K-CASH-7.md` (frozen original plan) | K-CASH-6 |
+| K-CASH-7 | **MERGED #513 — original engineering; real bank/CPA acceptance pending** — immutable monthly plan versions, signed ledger/bank/budget variances and month-end snapshots | `K-CASH-7.md` (frozen original plan) | K-CASH-6 |
 
 ### M
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| M-1A | Shop and resale stock schema | JIT — `M-1A.md` | K-CASH-7 (after design review) |
-| M-1B | Resale movement costs and use-tax withdrawals | JIT — `M-1B.md` | M-1A |
-| M-1C | Atomic local shop sale and refund domain | JIT — `M-1C.md` | M-1B |
-| M-1D | Sales and items-for-sale screens | JIT — `M-1D.md` | M-1C |
-| M-2A | Retired plans, salvage and lump scrap ledger | JIT — `M-2A.md` | M-1D |
-| M-2B | Retired workflow and scrap receipts | JIT — `M-2B.md` | M-2A |
-| M-2C | Used-appliance sale, owner-set price, recapture warning/CPA evidence, single balanced asset disposition ([design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md)) | JIT — `M-2C.md` | M-2B |
-| M-3 | Hosted card payment for local invoices | JIT — `M-3.md` | M-2C |
+| M-1A | Shop and resale stock schema | JIT — `M-1A.md` | K-CASH-7 (after design review) — *merged #530* |
+| M-1B | Resale movement costs and use-tax withdrawals | JIT — `M-1B.md` | M-1A — *merged #530* |
+| M-1C | Atomic local shop sale and refund domain | JIT — `M-1C.md` | M-1B — *merged #531* |
+| M-1D | Sales and items-for-sale screens | JIT — `M-1D.md` | M-1C — *merged #531* |
+| M-2A | Retired plans, salvage and lump scrap ledger | JIT — `M-2A.md` | M-1D — *merged #533* |
+| M-2B | Retired workflow and scrap receipts | JIT — `M-2B.md` | M-2A — *merged #533* |
+| M-2C | Used-appliance sale, owner-set price, recapture warning/CPA evidence, single balanced asset disposition ([design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md)) | JIT — `M-2C.md` | M-2B — *NOT BUILT — stopped, see M-2C-STRONGER-MODEL-PROMPT* |
+| M-3 | Hosted card payment for local invoices | JIT — `M-3.md` | M-2C — *NOT BUILT — stopped, see M-3-STRONGER-MODEL-PROMPT* |
 
 ### O
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| O-1 | Settings history, guarded undo and live-switch inventory | JIT — `O-1.md` | M-3 |
-| O-2A | Capability defaults and scoped domain guards | JIT — `O-2A.md` | O-1 |
-| O-2B | Per-person permissions UI and adversarial DTO proof | JIT — `O-2B.md` | O-2A |
-| O-3A | Durable approvals and transactional command preparation | JIT — `O-3A.md` | O-2B |
+| O-1 | Settings history, guarded undo and live-switch inventory | JIT — `O-1.md` | M-3 — *merged #534; impact preview not built* |
+| O-2A | Capability defaults and scoped domain guards | JIT — `O-2A.md` | O-1 — *merged #535* |
+| O-2B | Per-person permissions UI and adversarial DTO proof | JIT — `O-2B.md` | O-2A — *permissions screen delivered inside #535; adversarial DTO proof still open* |
+| O-3A | Durable approvals and transactional command preparation | JIT — `O-3A.md` | O-2B — *merged #536; write-off and expense kinds only* |
 | O-3B | Approval command adapters and Today decision workflow | JIT — `O-3B.md` | O-3A |
 | O-4 | Scheduled price changes with frozen accepted terms | JIT — `O-4.md` | O-3B |
 | O-5 | Goals, utilization attention and final control handoff | JIT — `O-5.md` | O-4 |

@@ -1,6 +1,8 @@
 # Design — Batch S: System issues inbox and the AI check-up
 
 Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-07: "When my system has problems, or flags
+
+**Built-status note (2026-10-23):** Batch S is built and merged (S-1A…S-2). Keep as the reference. Real tests are `tests/system-issues-integration.test.ts` and `tests/system-issue-*.test.ts` (the names below differ).
 issues like moved pages, can all these be recorded to a place where I can have an AI agent check that place and design
 solutions or otherwise figure out what's going on? … if it could be scheduled to check and address these things, that
 would be great"). Runs **after Batch T, before Batch V** (`docs/MASTER-ROADMAP.md`). Two PRs.
