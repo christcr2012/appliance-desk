@@ -9,7 +9,7 @@ import { loadReadiness, READINESS_STATE_TEXT } from "@/domains/control-center/re
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import {
   addSavedView, describeSavedView, getWorkspace, pinAction, removeSavedView, savedViewHref, setOptionalCardHidden, unpinAction,
-  usablePins, WorkspaceError, MAX_PINNED, MAX_SAVED_VIEWS, MAX_VIEW_LABEL, OPTIONAL_TODAY_CARDS, SAVED_VIEW_ROUTES, SAVED_VIEW_ROUTE_KEYS,
+  usablePins, resetWorkspace, WorkspaceError, MAX_PINNED, MAX_SAVED_VIEWS, MAX_VIEW_LABEL, OPTIONAL_TODAY_CARDS, SAVED_VIEW_ROUTES, SAVED_VIEW_ROUTE_KEYS,
 } from "@/domains/workspace";
 
 export const metadata = { title: "Manage my business", robots: { index: false, follow: false } };
@@ -41,6 +41,7 @@ const text = (form: FormData, key: string) => String(form.get(key) ?? "");
 async function pin(form: FormData) { "use server"; await run(form, (u, v) => pinAction(u, v, text(form, "id"))); }
 async function unpin(form: FormData) { "use server"; await run(form, (u, v) => unpinAction(u, v, text(form, "id"))); }
 async function toggleNote(form: FormData) { "use server"; await run(form, (u, v) => setOptionalCardHidden(u, v, text(form, "id"), text(form, "hide") === "1")); }
+async function reset(form: FormData) { "use server"; await run(form, (u, v) => resetWorkspace(u, v)); }
 async function removeView(form: FormData) { "use server"; await run(form, (u, v) => removeSavedView(u, v, text(form, "id"))); }
 async function saveView(form: FormData) {
   "use server";
@@ -201,6 +202,15 @@ export default async function ControlCenterPage({ searchParams }: { searchParams
               </form>
             );
           })}
+        </div>
+        <div className="rounded-md border p-3">
+          <h3 className="font-medium">Start over</h3>
+          <p className="text-sm text-ink-soft">
+            This would remove {prefs.pinnedActionIds.length} pinned shortcut{prefs.pinnedActionIds.length === 1 ? "" : "s"}, {prefs.savedViews.length} saved view{prefs.savedViews.length === 1 ? "" : "s"}
+            {prefs.hiddenOptionalCardIds.length > 0 ? ` and show ${prefs.hiddenOptionalCardIds.length} hidden note${prefs.hiddenOptionalCardIds.length === 1 ? "" : "s"} on Today again` : ""}. Nothing else changes.
+          </p>
+          <form action={reset} className="mt-2"><input type="hidden" name="version" value={version} />
+            <button type="submit" disabled={prefs.pinnedActionIds.length + prefs.savedViews.length + prefs.hiddenOptionalCardIds.length === 0} className="min-h-11 rounded-md border px-3 disabled:opacity-50">Reset my workspace</button></form>
         </div>
       </section>
     </main>

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { setAdminCapability } from "@/domains/capabilities";
 import {
-  addSavedView, getWorkspace, pinAction, removeSavedView, setOptionalCardHidden, unpinAction, MAX_PINNED,
+  addSavedView, getWorkspace, pinAction, removeSavedView, resetWorkspace, setOptionalCardHidden, unpinAction, MAX_PINNED,
 } from "@/domains/workspace";
 import { OWNER_ACTIONS } from "@/lib/owner-actions";
 
@@ -126,6 +126,19 @@ describe.skipIf(!enabled)("owner workspace on real Postgres", () => {
     for (const bad of bads) await expect(addSavedView(adminA, w.version, bad)).rejects.toThrow();
     await removeSavedView(adminA, w.version, w.prefs.savedViews[0].id);
     expect((await getWorkspace(adminA)).prefs.savedViews).toEqual([]);
+  });
+
+  it("reset clears everything for that person only, and still needs the current version", async () => {
+    const b = await getWorkspace(adminB);
+    const a = await getWorkspace(adminA);
+    await pinAction(adminA, a.version, "leads");
+    await setOptionalCardHidden(adminA, a.version + 1, "IDLE_APPLIANCES", true);
+    const mid = await getWorkspace(adminA);
+    expect(mid.prefs.pinnedActionIds.length).toBeGreaterThan(0);
+    await expect(resetWorkspace(adminA, mid.version - 1)).rejects.toThrow(/another window/);
+    await resetWorkspace(adminA, mid.version);
+    expect((await getWorkspace(adminA)).prefs).toEqual({ pinnedActionIds: [], hiddenOptionalCardIds: [], savedViews: [] });
+    expect((await getWorkspace(adminB)).prefs).toEqual(b.prefs);
   });
 
   it("an unreadable stored row never breaks reading, and deleting the account deletes the row", async () => {

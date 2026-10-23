@@ -81,6 +81,11 @@ export function addSavedView(actorUserId: string, expectedVersion: number, input
   });
 }
 
+/** Start over: no pins, no saved views, nothing hidden. The page shows what will go before the person presses the button. */
+export function resetWorkspace(actorUserId: string, expectedVersion: number) {
+  return update(actorUserId, expectedVersion, () => ({ ...EMPTY_PREFERENCES }));
+}
+
 export function removeSavedView(actorUserId: string, expectedVersion: number, viewId: string) {
   return update(actorUserId, expectedVersion, (p) => ({ ...p, savedViews: p.savedViews.filter((v) => v.id !== viewId) }));
 }
