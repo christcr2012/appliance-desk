@@ -1,6 +1,9 @@
-## October 24 — Goals and alerts (Batch O, step O-5, in review)
+## October 24 — Manage my business (Batch O, step O-6, in review)
 
-In progress: O-5. Settings → Goals and alerts lets the owner or an admin set this month's target for money collected and for new rentals, and shows how far along you are. If you fall well behind (never in the first week) one note appears on Today. Two adjustable warnings: appliances idle for 30+ days (a count, not one per appliance) and low fleet use (off until you pick a percent). Nothing changes any money or customer. Proved on throwaway Postgres (set/change/clear with audit, limited admin refused, alert save and restore, idle list, Today items). Not covered: other measures, past or future months, email/text alerts. Next: O-6.
+In progress: O-6. A new page, Manage my business (a button on Settings, a link on More), groups about 40 things you can do by what you want to get done, with a search box ("change rent", "fix failed payment", "stop reminders"). It only links to the real screens, which still check who you are; admins never see owner-only cards. A small "Right now" strip shows customer messages, card payments, background jobs and (owner) approvals, and says "can't check" instead of showing a green check it cannot prove. No new data. Not covered: shortcuts and saved views (O-7), website/price readiness. Next: O-7.
+## October 24 — Goals and alerts (Batch O, step O-5, merged #539)
+
+Merged: O-5. Settings → Goals and alerts lets the owner or an admin set this month's target for money collected and for new rentals, and shows how far along you are. If you fall well behind (never in the first week) one note appears on Today. Two adjustable warnings: appliances idle for 30+ days (a count, not one per appliance) and low fleet use (off until you pick a percent). Nothing changes any money or customer. Proved on throwaway Postgres (set/change/clear with audit, limited admin refused, alert save and restore, idle list, Today items). Not covered: other measures, past or future months, email/text alerts. Next: O-6.
 
 ## October 23 — Price changes with a start date (Batch O, step O-4, merged)
 

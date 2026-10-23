@@ -281,6 +281,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/settings/switches", role: "OWNER", fixture: "/desk/settings/switches" },
   { path: "/desk/settings/permissions", role: "OWNER", fixture: "/desk/settings/permissions" },
   { path: "/desk/settings/approvals", role: "OWNER", fixture: "/desk/settings/approvals" },
+  { path: "/desk/control-center", role: "OWNER", fixture: "/desk/control-center" },
   { path: "/desk/settings/price-changes", role: "OWNER", fixture: "/desk/settings/price-changes" },
   { path: "/desk/settings/goals", role: "OWNER", fixture: "/desk/settings/goals" },
   { path: "/desk/approvals", role: "OWNER", fixture: "/desk/approvals" },
