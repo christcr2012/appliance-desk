@@ -116,13 +116,14 @@ describe.skipIf(!enabled)("owner workspace on real Postgres", () => {
     w = await getWorkspace(adminA);
     expect(w.prefs.savedViews).toHaveLength(1);
     expect(w.prefs.savedViews[0]).toMatchObject({ label: "Rented out", routeKey: "inventory", filters: { status: "RENTED" } });
-    for (const bad of [
+    const bads: Array<{ label: string; routeKey: string; filters: Record<string, string> }> = [
       { label: "x", routeKey: "billing", filters: { status: "RENTED" } },
       { label: "x", routeKey: "inventory", filters: { search: "Jane" } },
       { label: "x", routeKey: "inventory", filters: { status: "'; DROP TABLE" } },
       { label: "", routeKey: "inventory", filters: { status: "RENTED" } },
       { label: "x", routeKey: "inventory", filters: {} },
-    ]) await expect(addSavedView(adminA, w.version, bad)).rejects.toThrow();
+    ];
+    for (const bad of bads) await expect(addSavedView(adminA, w.version, bad)).rejects.toThrow();
     await removeSavedView(adminA, w.version, w.prefs.savedViews[0].id);
     expect((await getWorkspace(adminA)).prefs.savedViews).toEqual([]);
   });
