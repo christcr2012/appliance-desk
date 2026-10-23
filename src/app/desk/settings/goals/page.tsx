@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { parseDollarInput, formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { businessDateKey } from "@/lib/business-date";
+import { CapabilityError } from "@/domains/capabilities";
 import {
   clearMonthlyGoal, getAlertSettings, getGoalProgress, GoalError, setAlertSettings, setMonthlyGoal,
   DEFAULT_IDLE_ALERT_DAYS, type GoalMetric,
@@ -30,7 +31,7 @@ async function saveGoal(form: FormData) {
       await setMonthlyGoal(session.user.id, metric, target);
     }
   } catch (e) {
-    if (e instanceof GoalError) fail(e.message);
+    if (e instanceof GoalError || e instanceof CapabilityError) fail(e.message);
     if (e instanceof Error && /dollars|amount|Enter/i.test(e.message)) fail("Enter the target as a plain number, like 5000 or 12.");
     throw e;
   }
@@ -50,7 +51,7 @@ async function saveAlerts(form: FormData) {
       utilizationPercent: restore || pctRaw === "" ? null : Number(pctRaw),
     });
   } catch (e) {
-    if (e instanceof GoalError) fail(e.message);
+    if (e instanceof GoalError || e instanceof CapabilityError) fail(e.message);
     throw e;
   }
   revalidatePath(PAGE);
