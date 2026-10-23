@@ -30,7 +30,7 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 ## Performance / health
 - Public pages query Neon on every view (settings, content); cache with tags and revalidate on save.
 - 24 read-path indexes added (fixed). Still open: many list queries have no `take`.
-- Sentry has no flush in cron/webhook routes and no explicit capture calls; cron routes return 200 on failed passes (`maxDuration` now set — fixed).
+- Failed daily-job runs are now reported to Sentry and flushed (fixed); webhooks still have no explicit capture; cron routes return 200 on failed passes (`maxDuration` now set — fixed).
 - Add `@neondatabase/serverless` explicitly; retry-once on cold-start connection errors.
 
 ## Owner screens, public site, portal (wording and flow)
