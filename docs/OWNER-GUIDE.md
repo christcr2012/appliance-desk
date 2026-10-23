@@ -57,7 +57,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
-| Bank evidence and cash journals | `/desk/books/cash` | Import settled CSV observations and enter source-backed owner cash events; importing does not prove cleared money |
+| Bank statements and cash records | `/desk/books/cash` | Import settled CSV observations and enter source-backed owner cash events; importing does not prove cleared money |
 | Bank checks (K-CASH-3 engineering candidate) | `/desk/books/cash/checks` | Compare bank rows to books, retain statement evidence and view provisional, non-spendable cash calculations (not yet released) |
 | Book fixed assets | `/desk/books/assets` | Appliance management depreciation, carried retirement value and separate CPA tax-basis evidence |
 | Cash outlook and year-end | `/desk/books/closing` | Clearly labelled estimates, customer health and protected accounting CSV downloads |
@@ -85,7 +85,7 @@ The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications,
 
 This screen is available only on the engineering branch until exact-head CI, review, merge and normal deployment. Until then **do not expect it on the live website**.
 
-1. Go to Books → Bank evidence and cash journals. Register a real business bank source without entering account/routing numbers, then import a settled CSV. An import is a collection of observations, **not** bank verification or money ready to use.
+1. Go to Books → Bank statements and cash records. Register a real business bank source without entering account/routing numbers, then import a settled CSV. An import is a collection of observations, **not** bank verification or money ready to use.
 2. Choose **Bank checks**. For each account, inspect exact signed-cent/day suggestions, select one or more observations and bank journal lines whose signed totals agree, then explicitly confirm. No suggestion changes the books. If an outflow is missing, search Expenses first; if an inflow is missing, inspect existing receipts or payouts before recording anything. Leave unsupported loan, payroll and adjustments unresolved rather than inventing a category.
 3. The OWNER records which real statement was independently checked and explicitly confirms the through-date on **every** draft. The OWNER drafts the first statement using actual beginning and ending balances, a checked Books opening composition, pre-start outstanding items and a private source reference. Later statements start the calendar day after the previous one and carry forward the previous ending.
 4. Complete only after the matched bank rows and Books lines independently total the statement ending with **zero difference**. Every row must be matched or independently established as a duplicate/non-account entry. Never ignore an unknown expense. A completed proof preserves its SHA-256 and match IDs. Correct a statement by reopening it with a reason; reopen later statements first.
@@ -214,7 +214,7 @@ The CPA evidence form records classification, source date/reference, original ad
 
 ## Books cash outlook, customers and year-end files
 
-From **Books → Cash outlook, customers and year-end**, owner and admin can review three private reports. STAFF and CUSTOMER are refused in the domain and the protected CSV downloads; reporting does not contact Stripe or send an invoice, money, message or tax return.
+From **Books → Cash forecast, customer health and year-end**, owner and admin can review three private reports. STAFF and CUSTOMER are refused in the domain and the protected CSV downloads; reporting does not contact Stripe or send an invoice, money, message or tax return.
 
 **Estimated cash outlook (1–180 days).** Only actual ACTIVE agreements with documented recurring billing already started and real nextBillingDate contribute future expected invoice line values. Future tax uses the read-only live Colorado jurisdiction tax engine and acquisition-basis evidence for each projected date. If rules, rates or jurisdictions need owner review, only base invoice amount is shown with an explicit incomplete-tax warning; it is not a guaranteed quote. Active recurring expense templates appear at their upcoming Colorado date unless a matching expense has been created already. Only known OPEN tax-return worksheet totals are represented; an unknown worksheet is flagged rather than assumed zero. Invoices being due never mean customers paid, so use actual banking/reconciliation instead of treating these figures as cash on hand.
 
@@ -227,7 +227,7 @@ If something is blocked, check Books opening records, recurring template dates, 
 
 ## Bank observations and typed cash events — K-CASH-1/2
 
-Open **Books → Bank evidence and cash journals** (`/desk/books/cash`). OWNER registers a real business bank ledger asset (name, institution label, optional four-digit suffix only). No credentials, full account numbers, bank OAuth, invented balance or transfer. OWNER or ADMIN previews/archives settled UTF-8 CSV evidence; STAFF/CUSTOMER are denied. ADMIN cannot change bank source policies, decide ambiguous overlapping transactions or post owner cash events.
+Open **Books → Bank statements and cash records** (`/desk/books/cash`). OWNER registers a real business bank ledger asset (name, institution label, optional four-digit suffix only). No credentials, full account numbers, bank OAuth, invented balance or transfer. OWNER or ADMIN previews/archives settled UTF-8 CSV evidence; STAFF/CUSTOMER are denied. ADMIN cannot change bank source policies, decide ambiguous overlapping transactions or post owner cash events.
 
 To import, select the account, choose a local CSV (5 MiB/10,000 rows maximum), name exact date/description/ID (optional)/amount or debit and credit column headers and choose date format and sign. **Preview** displays the first 20 sanitized observations, inflow/outflow totals and overlap alerts. The 30-minute signed preview binds current user, bank revision, raw file hash and mapping; commit revalidates all. OWNER explicitly resolves ambiguous equal-fingerprint rows and states a reason before correcting an existing interpretation of the same file. Old mappings and observations survive as auditable inactive evidence. An imported row is **not** reconciled cash and cannot fund a budget. Private PDF/image statements use separate bank-account-scoped storage, protected by linked record and current owner/admin rights.
 

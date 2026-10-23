@@ -6,7 +6,7 @@ for(const width of [360,1280]){
   test("K-7 private "+kind+" source report at "+width,async({page})=>{
    await page.setViewportSize({width,height:900});
    await page.goto("/desk/books/reports?kind="+kind);
-   await expect(page.getByRole("heading",{name:"Books — financial reports"})).toBeVisible();
+   await expect(page.getByRole("heading",{name:"Profit, balance and payback reports"})).toBeVisible();
    await expect(page.getByRole("link",{name:"Profit and loss"})).toBeVisible();
    await expect(page.getByRole("link",{name:"Balance snapshot"})).toBeVisible();
    await expect(page.getByRole("link",{name:"Appliance payback"})).toBeVisible();
@@ -23,7 +23,7 @@ test("Books navigation reaches reports, and staff cannot read owner finance repo
  try{
   const staff=await ctx.newPage();
   await staff.goto("/desk/books/reports?kind=profit");
-  await expect(staff.getByRole("heading",{name:"Books — financial reports"})).toHaveCount(0);
+  await expect(staff.getByRole("heading",{name:"Profit, balance and payback reports"})).toHaveCount(0);
   await expect(staff.getByRole("heading",{name:/Profit and loss/})).toHaveCount(0);
  }finally{await ctx.close()}
 });

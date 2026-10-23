@@ -43,3 +43,4 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 
 ## Owner screens, public site, portal (wording and flow)
 - See the reports summarized in STATUS: plain-English rewrites for Books/Budget/Money, consistent names (Quotes vs Estimates, Rentals vs Agreements, Schedule vs Jobs), a shared confirm dialog instead of browser pop-ups, phone/email help on every portal page, login/reset/sign pages styled like the rest, pre-launch honesty fixes, Spanish for the public site.
+- Possible slow-hydration race: `e2e/phone-order-one-link.spec.ts` (new caller) failed once in CI on the URL wait after submit and passed on re-run. Harden by waiting for the form to be ready before clicking submit.
