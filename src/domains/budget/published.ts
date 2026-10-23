@@ -4,7 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateKey } from "@/lib/business-date";
 import { plannedDueKeys,suggestedTarget,type BudgetTargetKind } from "./planning-math";
 import { monthKey,rangeOfMonth,coloradoDay,sha256,safeAdd,safeCents,
- BudgetReportError,type MonthKey } from "./report-math";
+ BudgetReportError,assertPublishedQuality,type MonthKey } from "./report-math";
 import { checkedPublished,reportMonthInTx,type PublishedPayload,type PublishedRow } from "./reports";
 
 type Tx=Prisma.TransactionClient;
@@ -134,8 +134,7 @@ export async function publishMonthlyBudget(userId:string,input:PublishBudgetInpu
    const edited=requested.find(x=>x.envelopeId===row.envelopeId)!;
    const changed=edited.plannedSpendCents!==row.plannedSpendCents||
     edited.plannedFundCents!==row.plannedFundCents;
-   if(changed&&edited.amountQuality!=="OWNER_REVIEWED")
-    throw new BudgetReportError("Use Owner reviewed quality for manual cost/funding changes.");
+   assertPublishedQuality(row.amountQuality,changed,edited.amountQuality);
    return {...row,...edited};
   });
   const payload:PublishedPayload={schemaVersion:1,monthKey:month,rows:values,
@@ -259,3 +258,4 @@ export async function getMonthEndReviewById(userId:string,id:string){
    content:data};
  });
 }
+

@@ -139,3 +139,15 @@ export function monthlyKeys(asOf:string,count:number){
   throw new BudgetReportError("Select 1–60 monthly history columns.");
  return Array.from({length:count},(_,i)=>addMonths(asOf,i+1-count));
 }
+
+/**
+ * Chris decided 2026-10-22: an owner may replace an estimate with their own estimate ("Owner reviewed"),
+ * but a row stays an estimate until real bank data replaces it, so an unchanged estimate is never relabelled EXACT.
+ */
+export function assertPublishedQuality(
+  sourceQuality:"EXACT"|"ESTIMATE"|"OWNER_REVIEWED",changed:boolean,requested:"EXACT"|"ESTIMATE"|"OWNER_REVIEWED"){
+  if(changed&&requested!=="OWNER_REVIEWED")
+    throw new BudgetReportError("Use Owner reviewed quality for manual cost/funding changes.");
+  if(!changed&&sourceQuality!=="EXACT"&&requested==="EXACT")
+    throw new BudgetReportError("An estimate stays an estimate until real bank data replaces it; it cannot be marked exact by hand.");
+}
