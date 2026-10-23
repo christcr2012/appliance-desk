@@ -928,6 +928,45 @@ model RetiredAppliancePlan {
   @@index([choice, doneOn])
 }
 
+enum ApprovalKind {
+  REFUND
+  CREDIT
+  WRITE_OFF
+  DEPOSIT_KEPT
+  EXPENSE
+}
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  EXPIRED
+  FAILED
+}
+
+// An admin's action that is waiting for the owner because it is at or above the owner's limit (Batch O-3).
+// `input` is exactly what the original function needs; approving runs that function again as the owner, once.
+model ApprovalRequest {
+  id                String         @id @default(cuid())
+  kind              ApprovalKind
+  status            ApprovalStatus @default(PENDING)
+  targetRef         String
+  input             Json
+  amountCents       Int
+  summary           String
+  requestedByUserId String
+  decidedByUserId   String?
+  decidedAt         DateTime?
+  decisionNote      String?
+  executedAt        DateTime?
+  resultRef         String?
+  failureMessage    String?
+  expiresAt         DateTime
+  createdAt         DateTime       @default(now())
+
+  @@index([status, createdAt])
+  @@index([kind, targetRef, status])
+}
+
 // Per-person limits on what an admin may do (Batch O-2A). A row with allowed=false takes a capability away from that
 // person; no row means the role's default (which equals the old fixed rules). The owner can never be limited.
 model StaffCapabilityOverride {
@@ -2888,6 +2927,9 @@ model PurchaseUseTax {
 model BusinessSettings {
   // Batch M-2: remind on Today when a retired appliance has had no plan (or an unfinished one) this many days; 0 = never.
   retiredFollowUpDays Int @default(30)
+  // O-3: approval limits. {} = nobody needs approval. Keys are approval kinds, values are cents.
+  approvalThresholds Json @default("{}")
+  approvalExpiryDays Int @default(7)
   // K-CASH-4A: cash budgeting is OFF until source-reviewed owner setup.
   cashBudgetStartOn DateTime?
   cashBudgetEnabled Boolean @default(false)

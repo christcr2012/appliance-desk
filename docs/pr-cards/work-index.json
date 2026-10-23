@@ -1561,7 +1561,7 @@
       "tests": [
         "tests/approvals-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "IN_PROGRESS",
       "plannedCard": "docs/pr-cards/O-3A.md"
     },
     {

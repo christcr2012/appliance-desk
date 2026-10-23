@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
-import { recordManualPayment, writeOffInvoice } from "@/domains/billing";
+import { recordManualPayment } from "@/domains/billing";
+import { submitWriteOff } from "@/domains/approvals";
 import { parseDollarInput } from "@/lib/money-ui";
 import { businessDateFromKey } from "@/lib/business-date";
 
@@ -94,6 +95,7 @@ export async function recordPaymentAction(
 export type WriteOffState =
   | { status: "idle" }
   | { status: "success" }
+  | { status: "sent"; message: string }
   | { status: "error"; message: string };
 
 export async function writeOffInvoiceAction(
@@ -108,10 +110,11 @@ export async function writeOffInvoiceAction(
   }
 
   try {
-    await writeOffInvoice(invoiceId, session.user.id, reason.trim());
+    const result = await submitWriteOff(session.user.id, invoiceId, reason.trim());
     revalidatePath(`/desk/billing/customer/${customerId}`);
     revalidatePath("/desk/billing");
     revalidatePath("/desk/dashboard");
+    if (result.status !== "DONE") return { status: "sent", message: result.message };
     return { status: "success" };
   } catch (error) {
     return {

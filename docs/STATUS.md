@@ -1,3 +1,7 @@
+## October 23 — Approval limits for write-offs and expenses (Batch O, step O-3A, in progress)
+
+Settings → **Approval limits** (owner only): set a dollar amount for write-offs and for posting expenses. When an admin starts one at or above it, it waits on a new **Approvals** page (and one Today item) until you approve (it is done then, as you, with the admin's name on it) or decline. Everything starts blank, so nothing changes until you fill one in. Stale requests fail safely and expire (7 days by default). Refunds, credits and kept deposits are NOT covered: they call Stripe in two steps, so a written prompt for a stronger model is in `docs/designs/O-3B-STRONGER-MODEL-PROMPT.md`. Nothing for Chris to do.
+
 ## October 23 — What each admin may do (Batch O, step O-2A, in progress)
 
 New owner-only page **What each admin may do**: you can take any of seven money permissions (record a payment, write off, settle a held payment, refund or keep a deposit, refund a payment, change settings, post or void an expense) away from one admin, and give it back. Everyone starts allowed, so nothing changes until you use it. It takes effect on that admin's very next action and every change is recorded. Staff still cannot do any of these. Giving staff reports or expenses is not built because it widens access; it is a decision row on your checklist. Still to do in O-2: credit grants, price edits and data exports (their checks aren't uniform yet; see the card).
