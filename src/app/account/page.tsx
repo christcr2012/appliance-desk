@@ -118,7 +118,7 @@ export default async function AccountHomePage({
                         (sum, line) => sum + line.monthlyPriceCents,
                         0,
                       ),
-                    )}
+                    )}{" "}
                     {t("per month")}
                   </p>
                   {agreement.outOfServicePeriods.map((away) => (
@@ -223,7 +223,8 @@ export default async function AccountHomePage({
             </div>
           ) : (
             <p className="text-sm text-ink-soft">
-              {t("No open invoice found")} {data.addressId ? t("for this property") : ""}.
+              {t("No open invoice found")}
+              {data.addressId ? ` ${t("for this property")}` : ""}.
             </p>
           )}
         </Card>

@@ -180,8 +180,7 @@ test.describe("customer isolation", () => {
     // Next's loading boundary can stream a 200 before notFound() runs.
     // Verify the denial UI and payload, rather than treating status as authorization.
     expect([200, 404]).toContain(response?.status());
-    await expect(page.getByRole("heading", { name: "404", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "This page could not be found.", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "We couldn't find that page", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /print/i })).toHaveCount(0);
     expect(await response!.text()).not.toMatch(/9876543|ci-other@example\.test|Other Customer/);
   });

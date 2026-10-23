@@ -13,8 +13,13 @@ vi.mock("@/domains/launch", () => ({
   unsubscribeLaunch: mocks.unsubscribe,
 }));
 vi.mock("next/headers", () => ({ headers: mocks.headers }));
+vi.mock("next/navigation", () => ({
+  redirect: (url: string) => {
+    throw new Error(`REDIRECT:${url}`);
+  },
+}));
 
-import LaunchConfirmPage from "@/app/launch/confirm/[token]/page";
+import { confirmLaunchAction } from "@/app/launch/confirm/[token]/actions";
 import { POST as unsubscribePost } from "@/app/launch/unsubscribe/route";
 
 describe("public launch abuse limits", () => {
@@ -28,9 +33,11 @@ describe("public launch abuse limits", () => {
     });
   });
 
-  it("rate-limits mailbox confirmation before consuming the token", async () => {
+  it("confirms only on the button press, and rate-limits it before consuming the token", async () => {
     mocks.limited.mockResolvedValueOnce(true);
-    await LaunchConfirmPage({ params: Promise.resolve({ token: "a".repeat(64) }) });
+    const form = new FormData();
+    form.set("token", "a".repeat(64));
+    await expect(confirmLaunchAction(form)).rejects.toThrow("result=failed");
     expect(mocks.limited).toHaveBeenCalledWith("launch-confirm:203.0.113.10", {
       max: 10,
       windowMs: 10 * 60 * 1000,
