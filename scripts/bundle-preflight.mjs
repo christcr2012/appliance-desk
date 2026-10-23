@@ -12,8 +12,7 @@ export const STEPS = (base) => [
   { name: "owner decision map", cmd: ["node", "scripts/check-owner-decisions.mjs"], hint: "activeExecution in docs/pr-cards/work-index.json changed. Update `activeExecutionMustRemain` in docs/owner-decisions/2026-10-13-implementation-map.json AND add the ID to allowedOrdered in scripts/check-owner-decisions.mjs (a deliberate, reviewed step)." },
   { name: "e2e shard list", cmd: ["node", "scripts/e2e-shard.mjs", "--check"], hint: "Every e2e/*.spec.ts must be listed once in e2e/shards.json. A spec that skips on purpose must also be in INTENTIONALLY_SKIPPED in scripts/e2e-shard.mjs." },
   { name: "launch ledger current", warnOnly: true, cmd: ["node", "scripts/launch-ledger.mjs", "--check"], hint: "You changed PLAN.md, GO-LIVE-CHECKLIST.md, a scenario list or the review dispositions. Run `npm run ledger` and commit docs/LAUNCH-LEDGER.md." },
-  { name: "docs describe the change", cmd: ["node", "scripts/check-docs-updated.mjs", base, "HEAD"], hint: "App code (src/ or prisma/) changed, so docs/STATUS.md AND a docs/pr-cards/*.md or work-index.json file must change in the same PR." },
-  { name: "scorecard", cmd: ["node", "scripts/pr-progress.mjs", "--check", "--require-changed", "--base", base, "--ref", "HEAD"], hint: "Edit docs/pr-cards/current-pr-scorecard.json. kind 'implementation' needs completed slices with one evidence line per acceptance item AND real changes under src/ or prisma/; 'maintenance' needs no src/ changes and no slices; 'risk_remediation' needs 3+ riskEvidence lines and a workloadException." },
+  { name: "docs describe the change", cmd: ["node", "scripts/check-docs-updated.mjs", base, "HEAD"], hint: "App code (src/ or prisma/) changed, so docs/STATUS.md (a short top entry) must change in the same PR; docs/DATABASE.md too if the schema changed." },
 ];
 
 export function cardBundleCheck(card, plannedAt, report) {

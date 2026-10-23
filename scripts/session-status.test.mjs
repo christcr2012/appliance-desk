@@ -81,8 +81,8 @@ test('real git refs and ancestry drive the offline CLI without network/mutations
     ] }));
     const before = git('status', '--porcelain');
     const output = run(root, ['--deployed', first, '--state', 'READY', '--latest-pr', '104']);
-    assert.match(output, /PR work unit = one whole predefined batch subsection/);
-    assert.match(output, /Partial subsection = zero completed batch subsections/);
+    assert.match(output, /Diagnostics only: counts and line totals are never goals/);
+    assert.match(output, /Diagnostics only: counts and line totals are never goals/);
     assert.match(output, /FIRST DEPLOYED_CANDIDATE_CHECK_GATES/); assert.match(output, /SECOND WAIT_RELEASE_OR_FETCH_HISTORY/); assert.match(output, /Latest observed PR: #104 \(informational only/); assert.doesNotMatch(output, /Next session boundary/);
     assert.match(run(root, ['--deployed', first, '--state', 'READY', '--acceptance-review', 'acceptance.json']), /accounting checked/);
     assert.equal(git('status', '--porcelain'), before);

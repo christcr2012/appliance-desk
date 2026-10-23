@@ -2,9 +2,9 @@
 
 **Starting a new card?** `npm run bundle:new -- <ID> --subsections A-1,A-2` writes the card and packet skeletons (every placeholder line must be replaced; `npm run bundle:preflight` rejects leftover placeholders). Procedure: [../AGENT-QUICKSTART.md](../AGENT-QUICKSTART.md).
 
-A card defines approved scope, not an automatic separate PR or bundle. Group related
-whole subsections under AGENTS' bundle/card/PR rule; keep every acceptance criterion,
-permission and migration proof, with no numeric per-card ceiling.
+A card defines approved scope, not an automatic separate PR. A card may ship as one PR or as several independently
+useful, independently safe PRs (AGENTS.md section 2); keep every acceptance criterion, permission and migration proof.
+No numeric targets exist (2026-10-23 reset); `current-pr-scorecard.json` and bundle plans are optional diagnostics.
 
 **Owner-answer crosswalk:** [October 13 implementation map](../owner-decisions/2026-10-13-implementation-map.json)
 and [engineering contract](../designs/OWNER-DECISIONS-2026-10-13-ENGINEERING.md)
@@ -23,11 +23,10 @@ prerequisites are still hypothetical. `work-index.json` preserves all later scop
 A missing card required by a design's implementation gate must be written before
 coding; the implementer can do this. Approved design/amendments govern semantic
 behavior. Cards cannot silently override them. Combine adjacent compatible units
-under AGENTS' outcome-led risk/review guidance; target 2–5 actually completed
-approved slices per implementation PR on average, not one PR per checkbox.
-Use the existing packet's `slices` definitions and update
-`current-pr-scorecard.json`; each completed ID requires test/integration
-evidence, not merely a passing helper.
+under AGENTS' outcome-led risk/review guidance, not one PR per checkbox.
+Use the existing packet's `slices` definitions; each completed item needs
+test/integration evidence, not merely a passing helper. Updating
+`current-pr-scorecard.json` is optional.
 
 ## Concrete execution packet
 

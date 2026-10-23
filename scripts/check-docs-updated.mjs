@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// "Docs describe the merged state" gate (Chris, 2026-10-09). A PR that changes the application must
-// update implementation/card/STATUS in the same PR; pending merge/check/acceptance labels stay truthful.
+// "Docs describe the merged state" gate (Chris, 2026-10-09; slimmed 2026-10-23). A PR that changes the application must
+// add a short STATUS entry in the same PR (card edits are no longer required); pending merge/check/acceptance labels stay truthful.
 // Escape hatch for a genuinely doc-neutral change: a line in the PR description starting with
 // "Docs-update: not needed" followed by the reason.
 import { execFileSync } from 'node:child_process';
@@ -13,8 +13,6 @@ export function missingDocs(changed, prBody = '') {
   if (/^\s*Docs-update:\s*not needed\b.{8,}/im.test(prBody)) return [];
   const missing = [];
   if (!changed.includes('docs/STATUS.md')) missing.push('docs/STATUS.md (what this PR merged, what is next)');
-  if (!changed.some(p => /^docs\/pr-cards\/.+\.(md|json)$/.test(p)))
-    missing.push('docs/pr-cards/<card>.md or work-index.json (card marked done / status updated)');
   if (changed.includes('prisma/schema.prisma') && !changed.includes('docs/DATABASE.md'))
     missing.push('docs/DATABASE.md (schema changed)');
   return missing;

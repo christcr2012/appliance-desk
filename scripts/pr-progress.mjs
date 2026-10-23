@@ -161,9 +161,8 @@ export function renderProgress(root, base = 'origin/main', ref = 'origin/main') 
     'Current: ' + card.kind + '; source +' + current.additions + '/-' + current.deletions + ' across ' + current.files + ' production files',
     'Declared completed packet tasks (not batch-subsection completion): ' + card.completedSlices + ' (' + (card.declaredIds.join(', ') || 'none') + ')',
     'Recent merged implementation PRs: ' + history.map(x => '#' + x.pr + ' +' + x.additions + ' source, ' + (x.completedSlices ?? 'unknown') + ' declared packet tasks').join(', '),
-    'Rolling production additions average (' + sample.length + ' measured implementation PRs' + (comparable ? ', including current' : '') + '): ' + (mean ?? 'not available') + '; target 400–800',
+    'Rolling production additions average (' + sample.length + ' measured implementation PRs' + (comparable ? ', including current' : '') + '): ' + (mean ?? 'not available') + '; diagnostic only, never a goal',
     'Rolling declared packet-task average (' + sliceSamples.length + ' evidenced PR scorecards' + (comparable ? ', including current' : '') + '): ' + meanSlices + '; diagnostic only, not batch-subsection throughput. Historical unrecorded tasks remain unknown.',
-    'PR workload target: 2–5 fully completed predefined batch subsections (such as H-3 or B-5), not packet-task counts. Verify full subsection scope and evidence independently.',
     'Formatting-only diffs ignored; renames treated as add/delete; incomplete/shallow history must be disclosed, never invented.'
   ].join('\n');
 }
