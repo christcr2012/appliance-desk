@@ -9,6 +9,7 @@ import {
   createPaperwork,
   deletePaperwork,
   markPaperworkDone,
+  PAPERWORK_STALE_MESSAGE,
   updatePaperwork,
 } from "@/domains/paperwork";
 
@@ -85,9 +86,15 @@ export async function updatePaperworkAction(
   redirect("/desk/paperwork");
 }
 
-export async function markPaperworkDoneAction(id: string): Promise<void> {
+export async function markPaperworkDoneAction(id: string, expectedVersion: number): Promise<void> {
   const session = await requireRole("OWNER");
-  await markPaperworkDone(session.user.id, id);
+  try {
+    await markPaperworkDone(session.user.id, id, expectedVersion);
+  } catch (error) {
+    // A second click or another tab: the item already moved on, so show its current state instead of an error page.
+    if (error instanceof Error && error.message === PAPERWORK_STALE_MESSAGE) redirect(`/desk/paperwork/${id}`);
+    throw error;
+  }
   refresh();
   redirect("/desk/paperwork");
 }

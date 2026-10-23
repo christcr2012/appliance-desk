@@ -39,7 +39,7 @@ export default async function PaperworkItemPage({ params }: { params: Promise<{ 
             : "Press this when it's finished. It stops reminding you."
         }
       >
-        <form action={markPaperworkDoneAction.bind(null, item.id)}>
+        <form action={markPaperworkDoneAction.bind(null, item.id, item.version)}>
           <Button type="submit" variant="secondary">
             {repeats ? "Mark done and schedule the next one" : "Mark done"}
           </Button>

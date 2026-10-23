@@ -110,7 +110,7 @@ export async function updatePaperwork(
       SELECT "version" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
     if (!rows[0]) throw new Error("That item no longer exists.");
     if (rows[0].version !== expectedVersion) {
-      throw new Error("This item was changed somewhere else. Reload the page and try again.");
+      throw new Error(PAPERWORK_STALE_MESSAGE);
     }
     const finishing = input.status === "DONE";
     await tx.businessPaperwork.update({
@@ -127,14 +127,18 @@ export async function updatePaperwork(
 }
 
 /** "I renewed / filed it": moves a repeating item to its next date, or marks a one-time item done. */
-export async function markPaperworkDone(userId: string, id: string, now = new Date()): Promise<void> {
+export const PAPERWORK_STALE_MESSAGE = "This item was changed somewhere else. Reload the page and try again.";
+
+/** `expectedVersion` is the version the owner was looking at, so a double-click or a second tab cannot skip a renewal year. */
+export async function markPaperworkDone(userId: string, id: string, expectedVersion: number, now = new Date()): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
     const rows = await tx.$queryRaw<
-      { dueOn: Date | null; repeatEveryMonths: number | null }[]
-    >`SELECT "dueOn", "repeatEveryMonths" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
+      { dueOn: Date | null; repeatEveryMonths: number | null; version: number }[]
+    >`SELECT "dueOn", "repeatEveryMonths", "version" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
     const row = rows[0];
     if (!row) throw new Error("That item no longer exists.");
+    if (row.version !== expectedVersion) throw new Error(PAPERWORK_STALE_MESSAGE);
     // A repeating item moves to its next date. A one-time item is simply finished, so its date is cleared
     // and it stops reminding. (For a license that expires, change the date on the item instead.)
     const nextDue =

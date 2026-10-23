@@ -100,8 +100,8 @@ describe.skipIf(!enabled)("business paperwork on disposable Postgres", () => {
   it("marks a yearly item done by moving to next year, and a one-time item done by clearing its date", async () => {
     const yearly = await createPaperwork(ownerId, input({ title: `Yearly ${tag}`, dueOn: "2026-10-30", repeatEveryMonths: "12" }));
     const once = await createPaperwork(ownerId, input({ title: `Once ${tag}`, status: "IN_PROGRESS", dueOn: "2026-10-30" }));
-    await markPaperworkDone(ownerId, yearly, new Date("2026-10-23T18:00:00Z"));
-    await markPaperworkDone(ownerId, once, new Date("2026-10-23T18:00:00Z"));
+    await markPaperworkDone(ownerId, yearly, 1, new Date("2026-10-23T18:00:00Z"));
+    await markPaperworkDone(ownerId, once, 1, new Date("2026-10-23T18:00:00Z"));
     const y = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: yearly } });
     const o = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: once } });
     expect(y.status).toBe("DONE");
@@ -109,6 +109,14 @@ describe.skipIf(!enabled)("business paperwork on disposable Postgres", () => {
     expect(o.status).toBe("DONE");
     expect(o.dueOn).toBeNull();
     expect(o.lastDoneOn).not.toBeNull();
+  });
+
+  it("ignores a repeated 'mark done' so a renewal year is never skipped", async () => {
+    const yearly = await createPaperwork(ownerId, input({ title: `Twice ${tag}`, dueOn: "2026-10-30", repeatEveryMonths: "12" }));
+    await markPaperworkDone(ownerId, yearly, 1, new Date("2026-10-23T18:00:00Z"));
+    await expect(markPaperworkDone(ownerId, yearly, 1, new Date("2026-10-23T18:00:05Z"))).rejects.toThrow(/changed somewhere else/);
+    const y = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: yearly } });
+    expect(y.dueOn?.toISOString().slice(0, 10)).toBe("2027-10-30");
   });
 
   it("lets the owner delete their own items but never starter items", async () => {
