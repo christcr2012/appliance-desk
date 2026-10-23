@@ -8,7 +8,7 @@ for(const width of [360,768,1440]){
   await expect(page.getByRole("heading",{name:"Budget — monthly review"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Publish reviewed monthly plan"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Month-end review checklist"})).toBeVisible();
-  await expect(page.getByText(/Unplanned — no published baseline/)).toBeVisible();
+  await expect(page.getByText(/Current published version: Unplanned — no published baseline/)).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1)).toBe(false);
   expect((await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa","wcag21a","wcag21aa"]).analyze()).violations).toEqual([]);
   await page.goto("/desk/books/reports?kind=trends");

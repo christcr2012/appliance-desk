@@ -116,7 +116,8 @@ export async function publishMonthlyBudget(userId:string,input:PublishBudgetInpu
   const repeat=await tx.budgetPlanVersion.findUnique({where:{commandKey:key}});
   if(repeat){
    const old=checkedPublished(repeat.payload);
-   if(old.requestHash!==requestHash)throw new BudgetReportError("This operation key already published a different plan.");
+   if(repeat.publishedByUserId!==userId||old.requestHash!==requestHash)
+    throw new BudgetReportError("This operation key already published a different plan or actor.");
    return {id:repeat.id,version:repeat.version,sha256:repeat.sha256,replayed:true};
   }
   const latest=await tx.budgetPlanVersion.findFirst({where:{monthKey:month},orderBy:{version:"desc"}});
@@ -173,14 +174,18 @@ export async function saveMonthEndReview(userId:string,input:{
  expectedBudgetRevision:string;expectedBookRevision:string;
 }){
  const month=monthKey(input.month),key=command(input.commandKey),reason=note(input.reason);
+ const requestHash=sha256({month,key,reason,actor:userId,planId:input.planId??null,
+  expectedBudgetRevision:input.expectedBudgetRevision,expectedBookRevision:input.expectedBookRevision,
+  confirmReviewed:input.confirmReviewed});
  if(!input.confirmReviewed)throw new BudgetReportError("Review the month-end checklist and open gaps first.");
  return prisma.$transaction(async tx=>{
   await assertActiveTeamActor(tx,userId,["OWNER"]);
   await locks(tx);
   const prior=await tx.budgetReviewSnapshot.findUnique({where:{commandKey:key}});
   if(prior){
-   if(prior.monthKey!==month||prior.createdByUserId!==userId)
-    throw new BudgetReportError("Another review already used this operation key.");
+   const savedHash=(prior.payload as unknown as {requestHash?:string}).requestHash;
+   if(prior.monthKey!==month||prior.createdByUserId!==userId||savedHash!==requestHash)
+    throw new BudgetReportError("Another review with different inputs already used this operation key.");
    if(sha256(prior.payload)!==prior.sha256)
     throw new BudgetReportError("Saved month-end review failed integrity check.");
    return {id:prior.id,sha256:prior.sha256,replayed:true};
@@ -189,7 +194,7 @@ export async function saveMonthEndReview(userId:string,input:{
   if(report.budgetRevision!==revision(input.expectedBudgetRevision).toString()||
    report.sourceRevision!==revision(input.expectedBookRevision).toString())
    throw new BudgetReportError("Sources changed while reviewing month-end; refresh.");
-  const payload={schemaVersion:1,month,reason,planId:report.published?.id??null,
+  const payload={schemaVersion:1,month,reason,requestHash,planId:report.published?.id??null,
    planVersion:report.published?.version??null,sourceRevision:report.sourceRevision,
    budgetRevision:report.budgetRevision,profit:report.profit,cash:report.cash,
    envelopes:report.envelopes,checklist:report.checklist,

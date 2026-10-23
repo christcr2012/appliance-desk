@@ -1,3 +1,7 @@
+## October 22 — K-CASH-7 immutable history restore and replay correction
+
+Monthly published plans and month-end reports are immutable evidence. The backup policy must restore original published version N before its superseding version N+1 **without SQL UPDATE or trigger bypass**, and must prove the original and revised money amounts/hash/audit survive migrated restore; after restore, UPDATE/DELETE still raise. A duplicate report command key is an idempotent retry only for the exact OWNER, month, selected plan, reason, confirmed scope and expected Book/Budget revision watermarks; a changed request under the same key is a conflict, not a silent success. Tests use disposable PostgreSQL and synthetic reviewer data only. This change strengthens the frozen K-CASH-7 immutable-plan and double-submit acceptance, not a business-account or provider authorization.
+
 ## October 22 — K-CASH-7 monthly publication/reporting accounting boundaries (frozen original approval)
 
 An owner-published month is an immutable, reasoned, revision-checked snapshot of intended costs and savings target funding. Keep source envelope name, source due-occurrence identifiers and live Budget/Books revisions in the version, and preserve all prior versions. An absent plan is **Unplanned**, never automatically $0; a reported zero is explicit only where the user actually published zero. A source adjustment requires manual Owner reviewed quality and reason. Published plans and month-end source-check reports are SQL-append-only and backed up with dependency-respecting restore.

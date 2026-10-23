@@ -1,4 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { mkdtemp,writeFile,rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { Client } from "pg";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { beforeAll,afterAll,describe,it,expect } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
@@ -168,6 +176,8 @@ describe.skipIf(!enabled)("K-CASH-7 immutable monthly publication, report ties a
   const saved=await saveMonthEndReview(owner,input);
   reviewId=saved.id;
   expect(await saveMonthEndReview(owner,input)).toMatchObject({id:reviewId,replayed:true});
+  await expect(saveMonthEndReview(owner,{...input,reason:"Changed report decision under reused operation identity"}))
+   .rejects.toThrow(/different inputs/);
   expect((await getMonthEndReviews(owner,month))).toHaveLength(1);
   expect(await getMonthEndReviewById(owner,reviewId)).toMatchObject({
    month,stale:false,content:{planVersion:2}});
@@ -182,4 +192,46 @@ describe.skipIf(!enabled)("K-CASH-7 immutable monthly publication, report ties a
   expect(snapshot.payload.tables.budgetReviewSnapshot.some(x=>typeof x==="object"&&x!==null&&"id" in x&&x.id===reviewId)).toBe(true);
   expect(snapshot.payload.tables.budgetPlanVersion.some(x=>typeof x==="object"&&x!==null&&"id" in x&&x.id===originalId)).toBe(true);
  });
+
+ it("restores original, superseded and reviewed immutable financial evidence into a fresh migrated disposable database",async()=>{
+  expect(originalId).toBeTruthy();expect(secondId).toBeTruthy();expect(reviewId).toBeTruthy();
+  const database="appliance_desk_restore_k7_"+tag;
+  const adminUrl=new URL(process.env.DATABASE_URL!);adminUrl.pathname="/postgres";
+  const restoredUrl=new URL(process.env.DATABASE_URL!);restoredUrl.pathname="/"+database;
+  const client=new Client({connectionString:adminUrl.toString()});
+  const folder=await mkdtemp(path.join(tmpdir(),"k7-plan-restore-"));
+  let created=false,connected=false,restored:PrismaClient|undefined;
+  try{
+   const backup=await buildDatabaseBackupSnapshot();
+   expect(backup.payload.tables.budgetPlanVersion).toBeInstanceOf(Array);
+   expect(backup.payload.tables.budgetReviewSnapshot).toBeInstanceOf(Array);
+   const file=path.join(folder,"immutable-k7.json");
+   await writeFile(file,JSON.stringify(backup.payload));
+   await client.connect();connected=true;
+   await client.query('CREATE DATABASE "'+database+'"');created=true;
+   await promisify(execFile)(process.execPath,["node_modules/tsx/dist/cli.mjs",
+    "scripts/restore-backup.ts",file,"--into",restoredUrl.toString()],
+    {timeout:120000,maxBuffer:3*1024*1024});
+   restored=new PrismaClient({adapter:new PrismaPg({connectionString:restoredUrl.toString()})});
+   const first=await restored.budgetPlanVersion.findUniqueOrThrow({where:{id:originalId}});
+   const second=await restored.budgetPlanVersion.findUniqueOrThrow({where:{id:secondId}});
+   const review=await restored.budgetReviewSnapshot.findUniqueOrThrow({where:{id:reviewId}});
+   expect(first).toMatchObject({version:1,supersedesId:null,monthKey:month});
+   expect(second).toMatchObject({version:2,supersedesId:originalId,monthKey:month});
+   expect(review).toMatchObject({monthKey:month,sha256:expect.stringMatching(/^[0-9a-f]{64}$/)});
+   expect((first.payload as unknown as {rows:{envelopeId:string;plannedSpendCents:number}[]}).rows
+    .find(x=>x.envelopeId===envelope)?.plannedSpendCents).toBe(2400);
+   expect((second.payload as {rows:{envelopeId:string;plannedSpendCents:number}[]}).rows
+    .find(x=>x.envelopeId===envelope)?.plannedSpendCents).toBe(3000);
+   await expect(restored.budgetPlanVersion.update({where:{id:first.id},data:{note:"Tampering after recovery"}}))
+    .rejects.toThrow(/immutable/);
+   await expect(restored.budgetReviewSnapshot.delete({where:{id:review.id}}))
+    .rejects.toThrow(/immutable/);
+  }finally{
+   await restored?.$disconnect();
+   if(created&&connected)await client.query('DROP DATABASE IF EXISTS "'+database+'" WITH (FORCE)');
+   if(connected)await client.end();
+   await rm(folder,{recursive:true,force:true});
+  }
+ },120000);
 });
