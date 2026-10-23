@@ -17,7 +17,6 @@ Remove a line when its fix merges (and name the PR in STATUS). Nothing here bloc
 ## Privacy / scheduling / tax
 - Privacy deletion now refuses while a rental is in force or a bill is unpaid (fixed). Still open: it leaves phone numbers on texts, launch-list rows and the Stripe customer, and restoring a backup brings deleted details back.
 - A FAILED daily job slot is now retried up to twice on later calls (fixed). Tax reminders now make up a missed day (3-day look-back; fixed). The auto-renew notice was already a 25-to-40-day window.
-- Early-ending fee invoice is created OPEN with $0 tax, skipping the engine/CPA gate (the early-return path does it right).
 - Launch welcome sequence: one failed send leaves the subscriber blocked forever.
 - `closeAgreementInTx` changes appliance status without row locks.
 - Retax of waiver/discount lines fails under "pay on acquisition" tax election.

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { formatBusinessDate } from "@/lib/business-date";
 import { formatCents } from "@/domains/pricing";
+import { applyLocalInvoiceTaxInTx } from "@/domains/tax/local-invoice";
 import { endAgreementOnAgreedDate, lockRentalAgreementInTx } from "./index";
 
 /**
@@ -59,7 +60,9 @@ async function createFeeInvoiceIfNeeded(agreementId: string): Promise<boolean> {
       data: {
         customerId: agreement.customerId,
         agreementId,
-        status: "OPEN",
+        // Starts as a draft; the tax step below opens it, or keeps it as a draft with a plain-English reason
+        // if the tax areas are not confirmed yet (the same safeguard the early-return path uses).
+        status: "DRAFT",
         subtotalCents: fee,
         taxCents: 0,
         amountDueCents: fee,
@@ -74,6 +77,12 @@ async function createFeeInvoiceIfNeeded(agreementId: string): Promise<boolean> {
         },
       },
     });
+    const taxResult = await applyLocalInvoiceTaxInTx(tx, {
+      invoiceId: invoice.id,
+      agreementId,
+      taxDate: effective,
+      actorUserId: null,
+    });
     await tx.auditLog.create({
       data: {
         userId: null,
@@ -85,7 +94,8 @@ async function createFeeInvoiceIfNeeded(agreementId: string): Promise<boolean> {
           feeCents: fee,
           fee: formatCents(fee),
           policyVersion: agreement.terminationPolicyVersion,
-          taxed: false,
+          taxCents: taxResult.ok ? taxResult.totalTaxCents : 0,
+          taxBlocked: !taxResult.ok,
         },
       },
     });
