@@ -55,7 +55,7 @@ async function draftInTx(tx:Tx,month:MonthKey){
    if(p.occurrences.length) return p.occurrences.map(o=>({id:o.id,cents:o.amountCents,quality:p.amountQuality}));
    const anchor=businessDateKey(p.dueOn);
    const keys=plannedDueKeys({anchor,recurrence:p.recurrence as "NONE"|"MONTHLY"|"QUARTERLY"|"ANNUAL",
-    from,to});
+    from,through:to});
    if(keys.length)warn.push("Planned due costs without materialized monthly occurrence for "+envelope.name+"; verify source details.");
    return keys.map(day=>({id:p.id+":"+day,cents:p.amountCents,quality:p.amountQuality}));
   });

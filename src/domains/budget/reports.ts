@@ -7,7 +7,7 @@ import { toCsv } from "@/lib/csv";
 import {
  BudgetReportError,rangeOfMonth,monthKey,coloradoDay,nextDay,monthlyKeys,
  journalProfit,bankMovement,variancePercent,priorWindow,reportingRange,
- safeAdd,sha256,type SignedJournal,
+ safeAdd,safeCents,sha256,type SignedJournal,
 } from "./report-math";
 
 type Tx=Prisma.TransactionClient;

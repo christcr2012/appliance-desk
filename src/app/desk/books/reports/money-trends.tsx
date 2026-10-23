@@ -10,7 +10,7 @@ export type TrendsQuery={asOf?:string;months?:string;period?:string;from?:string
 const options=(q:TrendsQuery)=>({
  asOf:q.asOf,months:Number(q.months??"12"),period:q.period,
  from:q.from,to:q.to,
- compare:(q.compare==="PREVIOUS_PERIOD"||q.compare==="SAME_PERIOD_LAST_YEAR"?q.compare:null),
+ compare:q.compare==="PREVIOUS_PERIOD"?"PREVIOUS_PERIOD":q.compare==="SAME_PERIOD_LAST_YEAR"?"SAME_PERIOD_LAST_YEAR":null,
  page:Number(q.page??"1"),pageSize:Number(q.pageSize??"25")
 });
 export async function MoneyTrendsSection({userId,query}:{userId:string;query:TrendsQuery}){

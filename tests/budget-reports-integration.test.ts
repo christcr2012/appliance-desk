@@ -96,7 +96,8 @@ describe.skipIf(!enabled)("K-CASH-7 immutable monthly publication, report ties a
   await expect(publishMonthlyBudget(staff,input)).rejects.toThrow(/access/);
   const settled=await Promise.allSettled([
    publishMonthlyBudget(owner,input),publishMonthlyBudget(owner,input)]);
-  expect(settled.some(x=>x.status==="fulfilled")).toBe(true);
+  expect(settled.some(x=>x.status==="fulfilled"),
+   settled.map(x=>x.status==="rejected"?String(x.reason):"fulfilled").join(" | ")).toBe(true);
   const versions=await getMonthlyPublishedVersions(owner,month);
   expect(versions).toHaveLength(1);
   originalId=versions[0]!.id;
@@ -178,7 +179,7 @@ describe.skipIf(!enabled)("K-CASH-7 immutable monthly publication, report ties a
   const snapshot=await buildDatabaseBackupSnapshot();
   expect(snapshot.payload.tables.budgetPlanVersion).toBeInstanceOf(Array);
   expect(snapshot.payload.tables.budgetReviewSnapshot).toBeInstanceOf(Array);
-  expect(snapshot.payload.tables.budgetReviewSnapshot.some((x:{id:string})=>x.id===reviewId)).toBe(true);
-  expect(snapshot.payload.tables.budgetPlanVersion.some((x:{id:string})=>x.id===originalId)).toBe(true);
+  expect(snapshot.payload.tables.budgetReviewSnapshot.some(x=>typeof x==="object"&&x!==null&&"id" in x&&x.id===reviewId)).toBe(true);
+  expect(snapshot.payload.tables.budgetPlanVersion.some(x=>typeof x==="object"&&x!==null&&"id" in x&&x.id===originalId)).toBe(true);
  });
 });
