@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createShopSale, cancelShopSale, getSaleFormData } from "@/domains/sales";
-import { setRetiredPlan } from "@/domains/inventory/retired-plans";
+import { setRetiredPlan, reopenRetiredPlan } from "@/domains/inventory/retired-plans";
+import { disposedValueBefore } from "@/domains/books/fixed-assets";
 import { writeJournal } from "@/domains/books/post";
 import { balancedPlan } from "@/domains/books/posting-rules";
 import { seedTaxReadyContext } from "./helpers/tax-ready";
@@ -120,7 +121,13 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 3000 }] });
     expect((await netByRole(id)).BOOK_VALUE_OF_APPLIANCES_SOLD).toBe(4000);
 
+    // A finished plan tied to a live sale cannot be reopened by hand: the sale must be cancelled so the books follow.
+    await expect(reopenRetiredPlan(ownerId, id, "changed my mind")).rejects.toThrow(/Cancel that sale first/);
+    const tomorrow = new Date(Date.now() + 2 * 86_400_000);
+    expect((await disposedValueBefore(prisma, tomorrow)).get(id)).toBe(4000);
+
     await cancelShopSale(ownerId, sale.invoiceId, "Buyer changed their mind");
+    expect((await disposedValueBefore(prisma, tomorrow)).get(id)).toBe(0); // sold then cancelled nets to nothing
     const net = await netByRole(id);
     expect(net.BOOK_VALUE_OF_APPLIANCES_SOLD).toBe(0);
     expect(net.RETIRED_PENDING_DISPOSITION).toBe(4000); // held again, as before the sale

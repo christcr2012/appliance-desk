@@ -337,3 +337,19 @@ export async function reverseBookAssetDisposalInTx(tx:Tx,applianceId:string,invo
  }
  await tx.bookAsset.update({where:{applianceId},data:{disposedOn:null,version:{increment:1}}});
 }
+
+/**
+ * M-2C. How much retained book value had LEFT the books through a sale before a given instant, per appliance, read
+ * from the dated "sold" and "sale cancelled" entries (so a sale that was later cancelled still counts for the dates in
+ * between). Reports subtract this from the retired value.
+ */
+export async function disposedValueBefore(tx:Tx,before:Date):Promise<Map<string,number>>{
+ const entries=await tx.journalEntry.findMany({where:{sourceType:"APPLIANCE",entryDate:{lt:before},
+  OR:[{eventKind:{startsWith:"SOLD:"}},{eventKind:{startsWith:"SOLD_VOIDED:"}}]},
+  select:{sourceId:true,lines:{select:{debitCents:true,creditCents:true,ledgerAccount:{select:{systemRole:true}}}}},take:5001});
+ if(entries.length>5000)throw new BookAssetInputError("Too many appliance sale entries to total safely; narrow the dates.");
+ const out=new Map<string,number>();
+ for(const e of entries)for(const l of e.lines)if(l.ledgerAccount.systemRole==="BOOK_VALUE_OF_APPLIANCES_SOLD")
+  out.set(e.sourceId,(out.get(e.sourceId)??0)+l.debitCents-l.creditCents);
+ return out;
+}

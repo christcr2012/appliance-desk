@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { disposedValueBefore } from "./fixed-assets";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey,businessDateKey } from "@/lib/business-date";
@@ -170,7 +171,7 @@ export async function appliancePayback(userId:string,asOf=new Date()){
   const [assets,postedInvoices,assignments,jobs,expenses,sourceLines]=await Promise.all([
    tx.appliance.findMany({where:{archivedAt:null},select:{
     id:true,assetNumber:true,acquisitionCostCents:true,
-    bookAsset:{select:{costCents:true,retiredOn:true,retiredValueCents:true,disposedOn:true}},
+    bookAsset:{select:{costCents:true,retiredOn:true,retiredValueCents:true}},
    },take:2000,orderBy:{assetNumber:"asc"}}),
    tx.journalEntry.findMany({where:{sourceType:"INVOICE",eventKind:"INVOICE_RECOGNIZED",entryDate:{lt:end}},
     select:{sourceId:true},take:CAP+1}),
@@ -184,6 +185,7 @@ export async function appliancePayback(userId:string,asOf=new Date()){
     select:{invoiceId:true,kind:true,amountCents:true,rentalLineId:true,
      invoice:{select:{createdAt:true,billingPeriodStart:true}}},take:CAP+1}),
   ]);
+  const disposedValue=await disposedValueBefore(tx,end);
   if(postedInvoices.length>CAP||sourceLines.length>CAP)
    throw new ReportIntegrityError("Too many rental sources; narrow records before trusting payback.");
   const sources=new Set(postedInvoices.map(x=>x.sourceId));
@@ -255,7 +257,7 @@ export async function appliancePayback(userId:string,asOf=new Date()){
    rows:assets.map(a=>{
     const rent=revenues.get(a.id)??0,repair=cost.get(a.id)??0,book=a.bookAsset;
     const base=book?.costCents??a.acquisitionCostCents;
-    const carrying=book?.disposedOn&&book.disposedOn<=asOf?0:book?.retiredOn?book.retiredValueCents??null:
+    const carrying=book?.retiredOn?(book.retiredValueCents===null?null:book.retiredValueCents-(disposedValue.get(a.id)??0)):
       book?book.costCents-(depreciation.get(a.id)??0):null;
     return {applianceId:a.id,assetNumber:a.assetNumber,costCents:base,costKnown:base!==null,
      rentInvoicedCents:rent,repairCostCents:repair,repairCostComplete:!unknownCost.has(a.id),
