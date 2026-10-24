@@ -1,4 +1,9 @@
 ## October 24 — Pay by card for shop sales (M-3, merged #553)
+## October 24 — Two small clean-ups (report label, tax-login guard)
+
+In progress (branch `ai/claude/polish-shop-sales-label`). The revenue reports now call the parts-and-items group "Shop sales (parts and items sold)" instead of "Items sold". A new automatic test fails the build if anyone ever adds a password/login field to a tax table or makes the app send anything to Colorado's tax sites (they are only linked to, for you to open). Nothing for Chris to do.
+
+## October 24 — Pay by card for shop sales (M-3)
 
 Merged (#553). On a shop sale (Money → Shop sales) there is now a **Pay by card** button that opens Stripe's own card page for what is still owed; a customer with an account can use the existing **Pay now** button in their portal. The sale turns to Paid when Stripe says the money arrived (bank payments only when they clear). Repeated Stripe messages cannot record the money twice. If the sale was cancelled or already paid when the money arrives, it is held for you (the existing "held payments" screen: send it back to the card, mark paid, or make it credit); if more than what is owed arrives, the extra becomes account credit. Proved with a pretend Stripe on throwaway Postgres (9 tests: same page on retry, refusals, portal isolation, paid once, bank clearing and failure, cancelled-then-paid, less owed than paid, customer mismatch, refund goes to the same charge). Not proved: a real Stripe test-mode payment (row added to your checklist; needs your test keys) and a browser test. Live payments stay off. Next: COM-N text messages and the unscheduled telecom jobs.
 ## October 24 — Refund, deposit and credit approvals (O-3B)
