@@ -14,6 +14,18 @@ vi.mock("@/lib/prisma", () => ({ prisma: m.prisma }));
 vi.mock("@/domains/billing/refunds", () => ({ decideDepositRefund: m.decide, issueInvoiceRefund: m.refund }));
 vi.mock("@/domains/billing/money-decisions", () => ({ applyCreditDecision: m.credit, getSpendableCredits: vi.fn() }));
 
+// The screens go through the approval entry points; with no limit set they just call the money code, which is what these
+// tests watch. (The approval behavior itself is proved in tests/approval-money-integration.test.ts.)
+vi.mock("@/domains/approvals", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/domains/approvals")>();
+  return {
+    ...real,
+    submitDepositDecision: async (userId: string, input: unknown) => ({ status: "DONE", providerOpId: (await m.decide(userId, input)).providerOpId }),
+    submitInvoiceRefund: async (userId: string, input: unknown) => ({ status: "DONE", providerOpId: (await m.refund(userId, input)).providerOpId }),
+    submitCreditApply: async (userId: string, input: unknown) => { await m.credit(userId, input); return { status: "DONE" }; },
+  };
+});
+
 import { applyCreditAction, decideDepositAction, refundInvoiceAction } from "@/app/desk/billing/money-actions";
 
 // A signed-in STAFF member: requireRole("OWNER","ADMIN") sends them away (it throws a redirect).

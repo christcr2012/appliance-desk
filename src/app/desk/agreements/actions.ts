@@ -303,7 +303,13 @@ export async function confirmEarlyReturnAction(formData: FormData): Promise<void
       },
       choiceFromSettings(earlyReturnSettingsFrom(settings)),
     );
-    await applyEarlyReturn(session.user.id, agreementId, choice, parsePreview(String(formData.get("preview") ?? "")));
+    const preview = parsePreview(String(formData.get("preview") ?? ""));
+    if (choice.unusedDays === "REFUND" && preview.refundOrCreditCents > 0) {
+      // An early-return refund goes to the card like any other refund, so the same owner limit applies.
+      const { assertRefundWithinLimit } = await import("@/domains/approvals");
+      await assertRefundWithinLimit(session.user.id, preview.refundOrCreditCents);
+    }
+    await applyEarlyReturn(session.user.id, agreementId, choice, preview);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     failure = message && message.length < 300 && !message.includes("prisma") ? message : "That could not be saved. Please try again.";

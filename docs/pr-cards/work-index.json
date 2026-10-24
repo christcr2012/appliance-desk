@@ -1568,7 +1568,7 @@
       "dependencies": [
         "O-3A"
       ],
-      "status": "NOT_BUILT (write-off/expense approvals merged in O-3A)",
+      "status": "IN_REVIEW",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1576,15 +1576,15 @@
       ],
       "evidence": [
         "docs/designs/BATCH-O.md",
-        "src/domains/settings/index.ts",
-        "src/domains/settings/section-config.ts",
-        "src/app/desk/settings/actions.ts"
+        "src/domains/approvals/index.ts",
+        "src/domains/billing/money-decisions.ts",
+        "src/app/desk/billing/money-actions.ts",
+        "src/app/desk/billing/held-payments/actions.ts"
       ],
       "tests": [
-        "tests/approval-command-adapters-integration.test.ts",
-        "e2e/owner-approvals.spec.ts"
+        "tests/approval-money-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "IN_REVIEW",
       "plannedCard": "docs/pr-cards/O-3B.md"
     },
     {
