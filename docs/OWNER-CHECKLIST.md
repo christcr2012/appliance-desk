@@ -130,6 +130,11 @@ Agents will do the parts they safely can and record what they saw; the rest need
 - [ ] **Stripe balance import (K-3):** approve `BOOKS_STRIPE_SYNC_ENABLED=true` for production only after you have checked
   the opening date and balances.
 
+- [ ] **Phone usage sync (COM-N wiring):** once your Twilio production account is set up under Settings, approve
+  `TELECOM_SYNC_ENABLED=true` in Vercel. It only reads usage and costs once a night; it never sends a text or makes a call.
+  Ready when: the Twilio account shows as production on the desk. You know it worked when Desk → Automations shows
+  "Phone usage sync" ran.
+
 ## E. Optional / later (no action until you want it)
 
 IN-10 real photos you are comfortable publishing · IN-11 genuine reviews with permission · IN-13 staff roles when you hire ·
