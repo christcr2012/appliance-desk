@@ -96,6 +96,15 @@ describe.skipIf(!enabled)("Sign-in recovery on real Postgres", () => {
     expect(await noteCompletedSignIn(ids.admin, iphone)).toBe("known");
   });
 
+  it("choosing a new password through Forgot password ends a sign-in pause", async () => {
+    await prisma.user.update({ where: { id: ids.login }, data: { failedSignInCount: 3, signInPausedUntil: new Date(Date.now() + 3_600_000) } });
+    const hook = (auth.options.emailAndPassword as unknown as { onPasswordReset?: (d: { user: { id: string } }) => Promise<void> }).onPasswordReset!;
+    await hook({ user: { id: ids.login } });
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: ids.login } });
+    expect(u.signInPausedUntil).toBeNull();
+    expect(u.failedSignInCount).toBe(0);
+  });
+
   it("an owner's reset turns off two-step, signs the person out, and the link sets a new password exactly once", async () => {
     await expect(resetTeamSignIn(ids.admin, ids.staff)).rejects.toThrow();
     await expect(resetTeamSignIn(ids.owner, ids.owner)).rejects.toThrow("own sign-in");
@@ -109,6 +118,9 @@ describe.skipIf(!enabled)("Sign-in recovery on real Postgres", () => {
     expect(await prisma.session.count({ where: { userId: ids.staff } })).toBe(0);
     expect(sent.map((m) => m.subject).sort()).toEqual(["Choose a new password for Appliance Desk", "Your sign-in was reset by the owner"]);
     expect(sent.find((m) => m.subject.startsWith("Your sign-in"))!.text).not.toMatch(/https?:\/\//);
+
+    // While the reset link waits, the old password no longer signs anyone in.
+    await expect(auth.api.signInEmail({ body: { email: email("staff"), password: PASSWORD } })).rejects.toThrow();
 
     const inv = await prisma.teamInvitation.findFirstOrThrow({ where: { targetUserId: ids.staff, purpose: "RESET", status: "INVITED" } });
     const code = `known-${randomUUID()}-${randomUUID()}`;

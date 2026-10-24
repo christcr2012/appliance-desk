@@ -152,6 +152,9 @@ export const auth = betterAuth({
     onPasswordReset: async ({ user }) => {
       const { sendAccountNotice, recordAccountEvent } = await import("@/domains/account");
       await recordAccountEvent(user.id, "account.password_reset", {}).catch(() => undefined);
+      // Choosing a new password through the emailed link ends any sign-in pause too (as the card requires).
+      const { prisma: db } = await import("./prisma");
+      await db.user.updateMany({ where: { id: user.id }, data: { failedSignInCount: 0, failedSignInWindowStartedAt: null, signInPausedUntil: null } }).catch(() => undefined);
       await sendAccountNotice(user.id, "password");
     },
     // Real "forgot password" flow (Phase 6A item 2 — customer account

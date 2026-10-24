@@ -377,6 +377,11 @@ export async function resetTeamSignIn(ownerId: string, targetId: string) {
     await tx.twoFactor.deleteMany({ where: { userId: targetId } });
     await tx.user.update({ where: { id: targetId }, data: { twoFactorEnabled: false, secondStepMethod: null, failedSignInCount: 0, failedSignInWindowStartedAt: null, signInPausedUntil: null } });
     await tx.session.deleteMany({ where: { userId: targetId } });
+    // The old password stops working right now (it is swapped for a random one nobody knows), so nobody who holds it can
+    // walk in with password alone while the reset link is waiting. Choosing a new password through the link, or
+    // "Forgot password", sets a real one.
+    const unusable = await (await auth.$context).password.hash(newInvitationCode() + newInvitationCode());
+    await tx.account.updateMany({ where: { userId: targetId, providerId: "credential" }, data: { password: unusable } });
     const inv = await tx.teamInvitation.create({
       data: {
         email: target.email, name: target.name || target.email, accessLevel: target.role, purpose: "RESET", targetUserId: targetId,
