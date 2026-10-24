@@ -8,17 +8,8 @@ import { prisma } from "@/lib/prisma";
  * adds one thing: the owner can take a named capability away from one admin. Nothing here gives anyone MORE than they
  * have today (granting capabilities to staff widens access and waits for Chris's approval, see the O-2 card).
  */
-export const CAPABILITIES = {
-  RECORD_MANUAL_PAYMENT: { label: "Record a cash, check or bank payment", help: "Mark an invoice paid by hand." },
-  WRITE_OFF: { label: "Write off an unpaid invoice", help: "Give up on money a customer owes." },
-  RESOLVE_HELD_PAYMENT: { label: "Settle a held payment", help: "Decide what happens to a payment that was held for review." },
-  REFUND_DEPOSIT: { label: "Refund or keep a deposit", help: "Decide how much of a deposit goes back." },
-  ISSUE_REFUND: { label: "Refund a payment", help: "Send money back to a customer." },
-  EDIT_SETTINGS: { label: "Change business settings", help: "Fees, policies, prices and sets, profile and service area." },
-  POST_EXPENSES: { label: "Post or void an expense", help: "Make an expense count in the books, or cancel one." },
-} as const;
-export type Capability = keyof typeof CAPABILITIES;
-export const CAPABILITY_KEYS = Object.keys(CAPABILITIES) as Capability[];
+import { CAPABILITIES, CAPABILITY_KEYS, type Capability } from "./labels";
+export { CAPABILITIES, CAPABILITY_KEYS, type Capability };
 
 export class CapabilityError extends Error {}
 

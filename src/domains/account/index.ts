@@ -96,7 +96,7 @@ export async function recordAccountEvent(userId: string, action: AccountEvent, d
   });
 }
 
-export type AccountNoticeKind = "profile" | "password" | "email_requested" | "email_changed" | "backup_codes" | "two_step_off";
+export type AccountNoticeKind = "profile" | "password" | "email_requested" | "email_changed" | "backup_codes" | "two_step_off" | "access_changed" | "team_removed" | "team_restored";
 
 const NOTICE_TEXT: Record<AccountNoticeKind, { subject: string; line: (extra?: string) => string }> = {
   profile: { subject: "Your account details were changed", line: () => "Your name or phone number on Appliance Desk was just changed." },
@@ -110,6 +110,9 @@ const NOTICE_TEXT: Record<AccountNoticeKind, { subject: string; line: (extra?: s
     line: (extra) => `The sign-in email on your Appliance Desk account was changed to ${extra ?? "a new address"}.`,
   },
   backup_codes: { subject: "New backup codes were made", line: () => "New two-step backup codes were made for your account. The old ones no longer work." },
+  access_changed: { subject: "Your access level was changed", line: (extra) => `Your access level on Appliance Desk was changed${extra ? ` to ${extra}` : ""}. You were signed out; sign in again to continue.` },
+  team_removed: { subject: "Your access was removed", line: () => "Your access to Appliance Desk was removed by the owner." },
+  team_restored: { subject: "Your access was restored", line: () => "Your access to Appliance Desk was restored. Sign in with your usual email and password." },
   two_step_off: { subject: "Two-step sign-in was turned off", line: () => "Two-step sign-in was turned off for your Appliance Desk account and you were signed out everywhere." },
 };
 

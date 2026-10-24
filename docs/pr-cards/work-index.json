@@ -3906,17 +3906,18 @@
       "evidence": [
         "docs/designs/ACCOUNTS-AND-SIGN-IN.md",
         "src/domains/staff/index.ts",
-        "src/app/desk/settings/staff-accounts-section.tsx",
+        "src/app/desk/settings/team-section.tsx",
         "src/domains/capabilities",
         "src/lib/account-provisioning.ts"
       ],
       "tests": [
+        "tests/acc2-team-rules.test.ts",
         "tests/acc2-team-invitations-integration.test.ts",
         "e2e/team-invitations.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "risk": "auth",
-      "plannedCard": "docs/pr-cards/ACC-2.md"
+      "card": "docs/pr-cards/ACC-2.md"
     },
     {
       "id": "ACC-3",

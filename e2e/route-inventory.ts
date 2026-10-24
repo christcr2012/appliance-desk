@@ -44,6 +44,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
     manualOnlyReason:
       "Launch confirmation tokens are single-use and expire; a fixed token would make the accessibility test stateful and non-repeatable.",
   },
+  { path: "/join/[code]", role: "PUBLIC", fixture: "/join/not-a-real-link" },
   { path: "/login", role: "PUBLIC", fixture: "/login" },
   { path: "/login/two-factor", role: "PUBLIC", fixture: "/login/two-factor" },
   { path: "/reset-password", role: "PUBLIC", fixture: "/reset-password" },

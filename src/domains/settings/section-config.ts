@@ -9,7 +9,7 @@ export const SETTINGS_SECTIONS = [
   { id: "website", label: "Website" },
   { id: "notifications", label: "Notifications" },
   { id: "security", label: "Security" },
-  { id: "staff", label: "Staff" },
+  { id: "staff", label: "Team" },
   { id: "integrations", label: "Integrations" },
 ] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number]["id"];

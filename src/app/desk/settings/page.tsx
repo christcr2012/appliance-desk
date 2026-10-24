@@ -12,7 +12,7 @@ import { SpanishDraftsEditor } from "./spanish-drafts-editor";
 import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
 import { getLeadScoringPolicy } from "@/domains/leads/scoring-policy";
-import { getStaffAccounts } from "@/domains/staff";
+import { getTeam, getTeamSettings } from "@/domains/team";
 import { requireRole } from "@/lib/session";
 import {
   SETTINGS_SECTIONS,
@@ -31,7 +31,7 @@ import { getEffectiveSetupTaxTreatment } from "@/domains/billing/setup-tax-polic
 import { AppliancePricingTable } from "./appliance-pricing-table";
 import { PackageTable } from "./package-table";
 import { listPackagesForSettings } from "@/domains/packages";
-import { StaffAccountsSection } from "./staff-accounts-section";
+import { TeamSection } from "./team-section";
 import { CustomerEmailSwitch } from "./customer-email-switch";
 import { SmsTemplatePreview } from "./sms-template-preview";
 import { isNonProductionDeployment } from "@/lib/deployment-safety";
@@ -204,18 +204,15 @@ export default async function DeskSettingsPage({
       </Card>
     );
   } else if (section === "staff") {
-    const accounts = await getStaffAccounts();
+    const [team, teamSettings] = await Promise.all([getTeam(), getTeamSettings()]);
     content = (
-      <Card title="Staff accounts">
-        <StaffAccountsSection
-          canSignOutEverywhere={session.user.role === "OWNER"}
-          accounts={accounts.map((a) => ({
-            id: a.id,
-            name: a.name,
-            email: a.email,
-            createdAt: a.createdAt,
-            isActive: a.archivedAt === null,
-          }))}
+      <Card title="Team">
+        <TeamSection
+          viewerRole={session.user.role === "OWNER" ? "OWNER" : "ADMIN"}
+          viewerId={session.user.id}
+          settings={teamSettings}
+          members={team.members.map((m) => ({ ...m, lastSignIn: m.lastSignIn ? m.lastSignIn.toISOString() : null }))}
+          invitations={team.invitations.map((i) => ({ id: i.id, name: i.name, email: i.email, accessLevel: i.accessLevel, state: i.state, expiresAt: i.expiresAt.toISOString() }))}
         />
       </Card>
     );

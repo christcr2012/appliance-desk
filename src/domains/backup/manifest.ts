@@ -42,6 +42,8 @@ export const BACKUP_MODEL_POLICY = {
   RetiredAppliancePlan: "retiredAppliancePlan",
   ScrapPayment: "scrapPayment",
   StaffCapabilityOverride: "staffCapabilityOverride",
+  // ACC-2: invitations are short-lived and hold only a hash of a link code; a restore re-invites instead.
+  TeamInvitation: null,
   ApprovalRequest: "approvalRequest",
   ScheduledPriceChange: "scheduledPriceChange",
   BusinessGoal: "businessGoal",
