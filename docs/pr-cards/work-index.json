@@ -1440,7 +1440,7 @@
       "dependencies": [
         "M-2C"
       ],
-      "status": "IN_REVIEW",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1455,7 +1455,7 @@
       "tests": [
         "tests/local-invoice-checkout-integration.test.ts"
       ],
-      "readiness": "IN_REVIEW",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/M-3.md"
     },
     {
@@ -1568,7 +1568,7 @@
       "dependencies": [
         "O-3A"
       ],
-      "status": "IN_REVIEW",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -1584,7 +1584,7 @@
       "tests": [
         "tests/approval-money-integration.test.ts"
       ],
-      "readiness": "IN_REVIEW",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/O-3B.md"
     },
     {
