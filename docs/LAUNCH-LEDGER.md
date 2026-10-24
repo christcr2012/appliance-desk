@@ -7,7 +7,7 @@ A line is **PROVEN** only when it is ticked and names its evidence. Anything wit
 ## Summary
 
 - Integrated scenarios proven by a committed test file: 17 of 17
-- Plan acceptance items proven with named evidence: 7 of 161; OPEN: 154
+- Plan acceptance items proven with named evidence: 14 of 161; OPEN: 147
 - Old review findings: 83 resolved, 8 OPEN
 - Go-live switches and checks still waiting on Chris: 132
 
@@ -50,97 +50,90 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 
 ### Acceptance checklist
 
-- OPEN: Tax areas come from the exact address (GIS or confirmed manual entry), never from ZIP or city name.
-- OPEN: Billing setup, send-for-signature and local invoices are blocked with a plain-English list while any needed tax decision, address check or rate is missing.
-- OPEN: The lease election applies only to state-collected areas; home-rule cities use only their own rules (engine tests).
-- OPEN: Stripe subscription items carry one Stripe tax rate per taxable area; Stripe-mirrored invoices record per-area tax lines; a 1-cent difference from the engine raises a card.
-- OPEN: A rate change entered with a future date reaches every affected live subscription the day before it starts, exactly once.
-- OPEN: (Amendment C) Rate changes found in Colorado's official lookup are applied automatically when they pass the guardrails (reviewed area, seen on two days, within the size limit, never backd...
-- OPEN: Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; a later change to a filed period opens an amended return for that same period (...
-- OPEN: (Amendment A, 2026-10-07) Each return is a SUTS entry packet: per tax area in SUTS order, the exact numbers to type with copy buttons, a zero-return path, and a total equal to the tax cus...
-- OPEN: (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from th...
-- OPEN: (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (c...
-- OPEN: Use tax computed for appliances and purchase-order lines bought without (enough) tax.
-- OPEN: (Amendment D) The appliance entry form records whether sales tax was paid at purchase and how much; untaxed or under-taxed purchases record the use tax owed; each appliance's status decid...
+- OPEN (ticked, but no evidence file or PR named): Tax areas come from the exact address (GIS or confirmed manual entry), never from ZIP or city name.
+- OPEN (ticked, but no evidence file or PR named): Billing setup, send-for-signature and local invoices are blocked with a plain-English list while any needed tax decision, address check or rate is missing.
+- OPEN (ticked, but no evidence file or PR named): The lease election applies only to state-collected areas; home-rule cities use only their own rules (engine tests).
+- OPEN (ticked, but no evidence file or PR named): Stripe subscription items carry one Stripe tax rate per taxable area; Stripe-mirrored invoices record per-area tax lines; a 1-cent difference from the engine raises a card.
+- OPEN (ticked, but no evidence file or PR named): A rate change entered with a future date reaches every affected live subscription the day before it starts, exactly once.
+- OPEN (ticked, but no evidence file or PR named): (Amendment C) Rate changes found in Colorado's official lookup are applied automatically when they pass the guardrails (reviewed area, seen on two days, within the size limit, never backd...
+- OPEN (ticked, but no evidence file or PR named): Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; a later change to a filed period opens an amended return for that same period (...
+- OPEN (ticked, but no evidence file or PR named): (Amendment A, 2026-10-07) Each return is a SUTS entry packet: per tax area in SUTS order, the exact numbers to type with copy buttons, a zero-return path, and a total equal to the tax cus...
+- OPEN (ticked, but no evidence file or PR named): (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from th...
+- OPEN (ticked, but no evidence file or PR named): (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (c...
+- OPEN (ticked, but no evidence file or PR named): Use tax computed for appliances and purchase-order lines bought without (enough) tax.
+- OPEN (ticked, but no evidence file or PR named): (Amendment D) The appliance entry form records whether sales tax was paid at purchase and how much; untaxed or under-taxed purchases record the use tax owed; each appliance's status decid...
 - OPEN: (Amendment A 11.13) The owner enters and updates the SUTS setup (areas, codes, order, screen names, deduction names, frequency, license expiry) in the app; changes apply to open returns, ...
-- OPEN: (Amendment B) Colorado retail delivery fee: the app decides automatically whether it applies (lease election, small-business exemption), counts one fee per qualifying delivery, charges it...
-- OPEN: Customer exemptions with certificate photo, scope and expiry.
-- OPEN: (D-T14) A prepaid agreement gets one local invoice for its prepaid rent with sales tax at signing, so prepaid rent appears on returns.
-- OPEN: OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
-- OPEN: (Section 14) All tax screens live under one "Sales tax" entry in Money with six tabs (Overview, Returns, Areas & addresses, What's taxed, Exemptions, Setup); every tax Today item opens th...
-- OPEN: No tax rate or taxability answer is written into code, seeds or docs as fact.
+- OPEN (ticked, but no evidence file or PR named): (Amendment B) Colorado retail delivery fee: the app decides automatically whether it applies (lease election, small-business exemption), counts one fee per qualifying delivery, charges it...
+- OPEN (ticked, but no evidence file or PR named): Customer exemptions with certificate photo, scope and expiry.
+- OPEN (ticked, but no evidence file or PR named): (D-T14) A prepaid agreement gets one local invoice for its prepaid rent with sales tax at signing, so prepaid rent appears on returns.
+- OPEN (ticked, but no evidence file or PR named): OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
+- OPEN (ticked, but no evidence file or PR named): No tax rate or taxability answer is written into code, seeds or docs as fact.
 - OPEN: Every item in "Rules that apply to every batch".
-- OPEN: Every D-S1 source records one de-duplicated issue and auto-resolves when the source recovers (integration tests).
-- OPEN: No customer data, keys or raw provider responses can be stored in an issue or note (redaction test with planted values).
-- OPEN: `/api/ops/issues` works only with a live owner-created key (stored hashed, revocable); the agent can read and add notes, never change data or resolve.
-- OPEN: System health page and Today "System" group (high only) render, axe clean, OWNER/ADMIN only.
-- OPEN: `docs/runbooks/AI-CHECKUP.md` contains the owner setup steps and the exact routine prompt; GO-LIVE-CHECKLIST has the setup lines.
+- OPEN (ticked, but no evidence file or PR named): Every D-S1 source records one de-duplicated issue and auto-resolves when the source recovers (integration tests).
+- OPEN (ticked, but no evidence file or PR named): No customer data, keys or raw provider responses can be stored in an issue or note (redaction test with planted values).
+- OPEN (ticked, but no evidence file or PR named): `/api/ops/issues` works only with a live owner-created key (stored hashed, revocable); the agent can read and add notes, never change data or resolve.
+- OPEN (ticked, but no evidence file or PR named): System health page and Today "System" group (high only) render, axe clean, OWNER/ADMIN only.
 - OPEN: Every item in "Rules that apply to every batch".
-- OPEN: Chris accepts the before/after comparison of the public site (human gate).
-- OPEN: Brand kept exactly (kit colours, Manrope, 8/16 radii); the Split-R 45° cut is the one signature shape; no new colours outside tokens.
-- OPEN: All public marketing copy comes from site-content fields; no hard-coded promises remain (grep test).
-- OPEN: Hero address check uses only the owner's service area, is rate-limited, and stores nothing.
-- OPEN: Contrast unit test for every token pair; axe clean light/dark; complete focus rings on clipped elements; no horizontal scroll at 360px; reduced motion honoured.
-- OPEN: Desk Today day-timeline and severity words; Actual/Estimate tags from the METRICS registry; no behaviour change.
-- OPEN: (Amendment B, after IN-69) The plain-language kit on every screen; the new W screens styled; intake, visits, pickups and inspections usable at 360 px.
+- OPEN: Chris accepts the before/after comparison of the public site (human gate). _(STATUS records Chris accepting the bolder look 2026-10-17; his final before/after sign-off stays an owner step)_
+- OPEN (ticked, but no evidence file or PR named): Brand kept exactly (kit colours, Manrope, 8/16 radii); the Split-R 45° cut is the one signature shape; no new colours outside tokens.
+- OPEN (ticked, but no evidence file or PR named): All public marketing copy comes from site-content fields; no hard-coded promises remain (grep test).
+- OPEN (ticked, but no evidence file or PR named): Hero address check uses only the owner's service area, is rate-limited, and stores nothing.
+- OPEN (ticked, but no evidence file or PR named): Contrast unit test for every token pair; axe clean light/dark; complete focus rings on clipped elements; no horizontal scroll at 360px; reduced motion honoured.
+- OPEN (ticked, but no evidence file or PR named): Desk Today day-timeline and severity words; Actual/Estimate tags from the METRICS registry; no behaviour change.
+- OPEN: (Amendment B, after IN-69) The plain-language kit on every screen; the new W screens styled; intake, visits, pickups and inspections usable at 360 px. _(Audit: not verified against code; ...
 - OPEN: Every item in "Rules that apply to every batch".
-- OPEN: All ten integrated scenarios pass with linked evidence, plus Amendment B scenarios 13–17 and the connection check (approved IN-69).
-- OPEN: Capacity numbers recorded for large account / fleet / invoice / job /
-- OPEN: Isolated database restore and private media recovery proven.
-- OPEN: Every launch gate below is either checked with evidence or explicitly
-- OPEN: No unresolved Critical/High is hidden behind a "done" label.
-- OPEN: Rollback plan: revert the UI commit on failure; additive DB tables stay;
+- OPEN (ticked, but no evidence file or PR named): All ten integrated scenarios pass with linked evidence, plus Amendment B scenarios 13–17 and the connection check (approved IN-69).
+- OPEN (ticked, but no evidence file or PR named): Capacity numbers recorded for large account / fleet / invoice / job /
+- OPEN (ticked, but no evidence file or PR named): Isolated database restore and private media recovery proven.
+- OPEN (ticked, but no evidence file or PR named): Every launch gate below is either checked with evidence or explicitly
+- OPEN: No unresolved Critical/High is hidden behind a "done" label. _(Audit: 8 older review findings are disclosed in LAUNCH-LEDGER, not hidden: stored photo files not cleaned on remove/replace ...
+- OPEN (ticked, but no evidence file or PR named): Rollback plan: revert the UI commit on failure; additive DB tables stay;
 - OPEN: Every item in "Rules that apply to every batch".
-- OPEN: W-0A: an owner can confirm the business tax address on screen; appliances waiting on setup get their use tax calculated automatically (once); use tax with no linked filing account raises ...
-- OPEN: W-0B: no Today item links to a page that doesn't exist (test); delivery-fee records waiting on a decision or amount have a page.
+- OPEN (ticked, but no evidence file or PR named): W-0A: an owner can confirm the business tax address on screen; appliances waiting on setup get their use tax calculated automatically (once); use tax with no linked filing account raises ...
+- OPEN (ticked, but no evidence file or PR named): W-0B: no Today item links to a page that doesn't exist (test); delivery-fee records waiting on a decision or amount have a page.
 - OPEN (ticked, but no evidence file or PR named): W-1: owner To do shows what, why, actual known amount/deadline and action; real-dated sort, durable audited snooze/reopen, unit and isolated database proof (PR gate still required).
-- OPEN: Saving an appliance (or receiving parts) with no seller tax shows what is owed, to whom and by when, and adds it to To do; "I'll check later" creates a dated To do.
+- OPEN (ticked, but no evidence file or PR named): Saving an appliance (or receiving parts) with no seller tax shows what is owed, to whom and by when, and adds it to To do; "I'll check later" creates a dated To do.
 - OPEN (ticked, but no evidence file or PR named): W-2 (D-WA6): `nextPurchaseTaxStep` gives every answer exactly one next step (full tax → done; partial or none → use tax on the right return with its legal due date; tax-free for rent → re...
-- OPEN: W-13 (only if IN-64 is yes): a receipt photo pre-fills price and seller tax marked "check it"; nothing saves without Chris confirming.
+- OPEN: W-13 (only if IN-64 is yes): a receipt photo pre-fills price and seller tax marked "check it"; nothing saves without Chris confirming. _(DEFERRED: owner answer IN-64 on 2026-10-13 was "de...
 - OPEN (ticked, but no evidence file or PR named): W-3: Taxes live in one menu entry; use tax is inside it; the return page starts with "File and pay $X on <site> by <date>"; money is typed in dollars.
 - OPEN (ticked, but no evidence file or PR named): W-4: Signing creates a draft delivery visit + To do; a rental ending in 30 days asks renew / month-to-month / pickup; a decided ending creates a draft pickup visit; drafts never send or c...
-- OPEN: Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.
-- OPEN: A new lead appears as "Contact <name>" (same day by default); "contacted" asks for the next follow-up date; an approved quote creates a To do.
+- OPEN (ticked, but no evidence file or PR named): Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.
+- OPEN (ticked, but no evidence file or PR named): A new lead appears as "Contact <name>" (same day by default); "contacted" asks for the next follow-up date; an approved quote creates a To do.
 - OPEN (ticked, but no evidence file or PR named): W-10: the use-tax return page has a "File now" panel (opens Revenue Online, each value in screen order with a copy button) and prints the official DR 0252 filled in.
 - OPEN: W-11 (after IN-61): new and existing addresses get Colorado's rates automatically from the GIS API; unmatched addresses and a broken key become To do items; billing never uses an unconfir...
-- OPEN: W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided.
-- OPEN: Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2).
+- OPEN: W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided. _(NOT BUILT: waits on ...
+- OPEN: Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2). _(holds by construction; no dedicated guard test yet)_
 - OPEN (ticked, but no evidence file or PR named): W-18: dollar-entry kit, two-decimal money displays, accessible glossary InfoTip, converted tax setup inputs and static UI money guard. Additional future screens inherit this shared contract.
-- OPEN: W-22: source engineering through complete V2 quote/signing/receipt/reserve/cancellation/dispatch/first invoice is delivered by PR #466 subject to exact-head CI/review/merge. Parent remain...
 - OPEN: W-22 (Amendment B 6.2; IN-73, IN-74, IN-80): signing collects a $45 administrative setup fee once per delivery location (owner may change it with a reason) and the first month as a down p...
-- OPEN: W-23 (Amendment B 6.3): each delivery address has a unit label and current/past tenant or on-site contacts with the client's allowed topics; plus access notes; the client's contact permis...
-- OPEN: W-24 (Amendment B 6.4): a standard quote is finished by the customer in one sitting — picks one of Chris's delivery choices (date + morning/afternoon), answers delivery questions (dryer o...
-- OPEN: W-25 (Amendment B 6.5): phone orders entered by Chris finish by an emailed (or copied) link with the customer's choices pre-filled; no card data ever stored; no phone backup (cancelled 20...
-- OPEN: W-26 (Amendment B 6.6): engineering complete in PR #478, final CI/merge pending; customer language, complete reviewed consumers and immutable signing evidence are implemented. Actual flue...
 - OPEN (ticked, but no evidence file or PR named): W-5 addition (Amendment B 6.7): every unpaid invoice has "Send payment link" (Stripe's secure invoice page by email, plus Copy link) with a short message explaining what it is for, amount...
 - OPEN (ticked, but no evidence file or PR named): W-5 addition (Amendment B 6.8): "Take payment by phone" opens Stripe's secure page for Chris to type the card the customer reads out; paid only on Stripe's confirmation; saving the card f...
 - OPEN (ticked, but no evidence file or PR named): W-14: one purchase records seller, date, receipt and many appliances, each with its own model and serial; seller tax split by price sums to the receipt to the cent.
 - OPEN (ticked, but no evidence file or PR named): W-15: every appliance shows its tax proof; an audit pack for any date range lists every serial with seller tax or use tax reported (return + confirmation) and its receipt.
 - OPEN: Every item in "Rules that apply to every batch".
-- OPEN: Every money record the app keeps produces balanced double-entry journal entries exactly once (concurrent runs included); closed months never change.
-- OPEN: Stripe fees, service fees, disputes and payouts are synced nightly; the Stripe clearing balance is checked against Stripe daily.
-- OPEN: Expenses with receipt photos; staff submit, owner/admin post; void, never delete; recurring templates create drafts only; use tax recorded.
+- OPEN (ticked, but no evidence file or PR named): Every money record the app keeps produces balanced double-entry journal entries exactly once (concurrent runs included); closed months never change.
+- OPEN (ticked, but no evidence file or PR named): Stripe fees, service fees, disputes and payouts are synced nightly; the Stripe clearing balance is checked against Stripe daily.
+- OPEN (ticked, but no evidence file or PR named): Expenses with receipt photos; staff submit, owner/admin post; void, never delete; recurring templates create drafts only; use tax recorded.
 - OPEN: Straight-line book depreciation with owner-set life and salvage; preserve retired appliance book value pending actual disposal instead of automatically expensing all remaining value at re...
-- OPEN: Profit & loss (accrual and cash), balance snapshot, appliance payback, 90-day cash forecast, customer health, year-end package — each number in the METRICS registry.
-- OPEN: Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
+- OPEN (ticked, but no evidence file or PR named): Profit & loss (accrual and cash), balance snapshot, appliance payback, 90-day cash forecast, customer health, year-end package — each number in the METRICS registry.
+- OPEN (ticked, but no evidence file or PR named): Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
 - OPEN: Every item in "Rules that apply to every batch".
-- OPEN: Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests).
-- OPEN: A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules.
-- OPEN: Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the...
-- OPEN: Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
-- OPEN: Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought).
+- OPEN: Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests). _(Audit: sales and repairs move stock; refunds of pa...
+- OPEN: A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules. _(Audit: tax by location built; the Colorado ...
+- OPEN (ticked, but no evidence file or PR named): Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the...
+- OPEN (ticked, but no evidence file or PR named): Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
+- OPEN: Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought). _(Audit: item sales built; used-appliance sales are NOT built (M-2C))_
 - OPEN: Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale compl...
-- OPEN: Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
+- OPEN (ticked, but no evidence file or PR named): Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
 - OPEN: Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Bat...
-- OPEN: One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
-- OPEN: Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean.
+- OPEN (ticked, but no evidence file or PR named): One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
+- OPEN: Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean. _(Audit: sales tax categories feed the engine; revenue reports la...
 - OPEN: Every item in "Rules that apply to every batch".
-- OPEN: Settings history in plain words with one-step undo through the normal save path.
-- OPEN: Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
-- OPEN: Approval thresholds per money action; requests execute once, re-validated, with expiry.
-- OPEN: Scheduled price changes applied once on their start date; agreements unchanged.
-- OPEN: Goals with pace on Today; idle-appliance and utilization alerts.
-- OPEN: Read-only page of every live switch with links.
+- OPEN (ticked, but no evidence file or PR named): Settings history in plain words with one-step undo through the normal save path.
+- OPEN (ticked, but no evidence file or PR named): Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
+- OPEN: Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Audit: write-off and expense approvals built (O-3A); refund, credit and kept-deposit approvals ar...
+- OPEN (ticked, but no evidence file or PR named): Scheduled price changes applied once on their start date; agreements unchanged. _(applies to appliance-type prices; package and set prices are not covered)_
+- OPEN (ticked, but no evidence file or PR named): Goals with pace on Today; idle-appliance and utilization alerts.
+- OPEN (ticked, but no evidence file or PR named): Read-only page of every live switch with links.
 - OPEN: Every item in "Rules that apply to every batch".
 - OPEN (ticked, but no evidence file or PR named): ACC-1: every desk user (owner first) can change their own password, email (confirmed at the new address, notice to
 - OPEN (ticked, but no evidence file or PR named): ACC-2: owner invites a person with name, email, phone, access level (Staff/Admin), job role and admin limits; the
@@ -157,50 +150,50 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 - OPEN: Two-way inbox/history works; shared/unknown numbers unresolved; explicit subject links, role-shaped queries/actions/private media.
 - OPEN: Editable versioned templates/disclosures, safe variables, rendered encoding/segments/cost preview and dispatch limits; existing job reminder migrated.
 - OPEN: Forwarding/human acceptance, parent/child legs, after-hours/missed calls; voicemail only if selected and privacy/recording approved.
-- OPEN: Paged retry-safe cost/usage/rate sync; estimates/provider-reported/invoice-reconciled totals distinct; no double-counted layers/categories/periods.
-- OPEN: Monthly spend/budgets/anomalies extend reports/dashboard/Today/S/automations; stale/unknown data visible; no blanket contact cutoff.
+- OPEN: Paged retry-safe cost/usage/rate sync; estimates/provider-reported/invoice-reconciled totals distinct; no double-counted layers/categories/periods. _(Audit: sync code is tested but nothin...
+- OPEN: Monthly spend/budgets/anomalies extend reports/dashboard/Today/S/automations; stale/unknown data visible; no blanket contact cutoff. _(Audit: the spend-alert evaluator has no scheduled ca...
 - OPEN: Customer/lead/job/maintenance/billing/renewal surfaces share evidence; CustomerNotice legal gates preserved.
 - OPEN: Real-Postgres race/rollback/isolation, cost fixtures, browser/axe/restore and final F scenarios pass with evidence.
 - OPEN: IN-03/09/51/52/53 and applicable live/legal decisions resolved; runbook complete; provider behavior remains OFF until explicit activation.
 
 ### Near-term acceptance (COM-N)
 
-- OPEN: Workflow templates/rules activated individually; click-to-call/STAFF job-scoped actions preserve actor and legal boundaries.
-- OPEN: Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction.
-- OPEN: Service metrics, reliable linked-cost unit economics/forecasts registered in METRICS; sparse data is unavailable, no invented causal attribution.
+- OPEN: Workflow templates/rules activated individually; click-to-call/STAFF job-scoped actions preserve actor and legal boundaries. _(NOT BUILT: no lead/job/billing SMS senders, no click-to-call...
+- OPEN: Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction. _(NOT BUILT: TelecomStatement has no link to an Expense yet)_
+- OPEN: Service metrics, reliable linked-cost unit economics/forecasts registered in METRICS; sparse data is unavailable, no invented causal attribution. _(NOT BUILT: no service-metrics, unit-eco...
 - OPEN: O controls and BP business scenarios consume existing evidence.
 
 ### Website content control acceptance — V-C1…V-C5
 
-- OPEN: Every public content item (all routes/variants, header/footer, metadata,
-- OPEN: Owner edits from the real rendered page/section, sees location and shared
-- OPEN: Draft/preview/live are distinct; anonymous users cannot access draft HTML
-- OPEN: Contact/catalog/pricing use one domain source; changing website prose never
-- OPEN: Intentional empty/hide/default are distinct; restoration creates a reviewed
-- OPEN: Customized text/photos/links survive redesign and compatible rollback;
-- OPEN: Old revision codec, asset storage, populated-upgrade/backup/restore, active
+- OPEN (ticked, but no evidence file or PR named): Every public content item (all routes/variants, header/footer, metadata,
+- OPEN (ticked, but no evidence file or PR named): Owner edits from the real rendered page/section, sees location and shared
+- OPEN (ticked, but no evidence file or PR named): Draft/preview/live are distinct; anonymous users cannot access draft HTML
+- OPEN (ticked, but no evidence file or PR named): Contact/catalog/pricing use one domain source; changing website prose never
+- OPEN (ticked, but no evidence file or PR named): Intentional empty/hide/default are distinct; restoration creates a reviewed
+- OPEN (ticked, but no evidence file or PR named): Customized text/photos/links survive redesign and compatible rollback;
+- OPEN (ticked, but no evidence file or PR named): Old revision codec, asset storage, populated-upgrade/backup/restore, active
 
 ### Batch K-CASH — cash envelopes, planned costs and bank reconciliation — owner-requested design
 
-- OPEN: Duplicate-safe CSV preview/import, exact matching and zero-difference statement proof preserve immutable
-- OPEN: Typed cash events/journal source revision/opening composition preserve balance, concurrency and liabilities.
-- OPEN: Confirmed-bank-cash-only envelopes protect deposits/credits/tax/RDF/card debt with shortage/as-of labels;
-- OPEN: Assign/move/spend/reverse use atomic revision/idempotency; virtual allocations never transfer bank money.
-- OPEN: Recurring/annual/one-time costs and monthly/save-by-date/maintain targets carry forward, settle partially,
-- OPEN: Existing K forecast separates no-new-income coverage from expected collections; source dedupe and unknown
-- OPEN: Budget tabs/context cards integrate expense/purchasing/inventory/tax/COM/Today/METRICS; role-shaped access.
-- OPEN: Original/revised immutable monthly plans, spending vs funding variance, revenue/expense/profit trends,
-- OPEN: QBO actual-tenant detail-import/matching/reconciliation proof, prepared vs imported status and overlapping/
+- OPEN (ticked, but no evidence file or PR named): Duplicate-safe CSV preview/import, exact matching and zero-difference statement proof preserve immutable
+- OPEN (ticked, but no evidence file or PR named): Typed cash events/journal source revision/opening composition preserve balance, concurrency and liabilities.
+- OPEN (ticked, but no evidence file or PR named): Confirmed-bank-cash-only envelopes protect deposits/credits/tax/RDF/card debt with shortage/as-of labels;
+- OPEN (ticked, but no evidence file or PR named): Assign/move/spend/reverse use atomic revision/idempotency; virtual allocations never transfer bank money.
+- OPEN (ticked, but no evidence file or PR named): Recurring/annual/one-time costs and monthly/save-by-date/maintain targets carry forward, settle partially,
+- OPEN (ticked, but no evidence file or PR named): Existing K forecast separates no-new-income coverage from expected collections; source dedupe and unknown
+- OPEN (ticked, but no evidence file or PR named): Budget tabs/context cards integrate expense/purchasing/inventory/tax/COM/Today/METRICS; role-shaped access.
+- OPEN (ticked, but no evidence file or PR named): Original/revised immutable monthly plans, spending vs funding variance, revenue/expense/profit trends,
+- OPEN: QBO actual-tenant detail-import/matching/reconciliation proof, prepared vs imported status and overlapping/ _(code and test built; the actual-tenant QuickBooks proof is an owner step)_
 - OPEN: IN-54/55 recorded before account/budget activation; no application/spending/live payment authorization.
-- OPEN: Named real-Postgres/security/race/upgrade/restore/phone/dark/keyboard/axe tests pass.
+- OPEN: Named real-Postgres/security/race/upgrade/restore/phone/dark/keyboard/axe tests pass. _(Audit: Postgres/race/restore proven; per-screen phone/dark/keyboard checks not individually verified)_
 - OPEN: Every item in Rules that apply to every batch.
 
 ### Owner workspace additions — O-6/O-7
 
-- OPEN: Manage my business offers task-oriented search, existing authorized routes
-- OPEN: Pin tasks/save typed filtered views/reset with preview; per-user scope,
-- OPEN: Mandatory Today obligations cannot be hidden; empty filtered results do not
-- OPEN: Settings/templates explain effects and effective dates in the screen, reuse
+- OPEN (ticked, but no evidence file or PR named): Manage my business offers task-oriented search, existing authorized routes
+- OPEN (ticked, but no evidence file or PR named): Pin tasks/save typed filtered views/reset with preview; per-user scope,
+- OPEN (ticked, but no evidence file or PR named): Mandatory Today obligations cannot be hidden; empty filtered results do not
+- OPEN: Settings/templates explain effects and effective dates in the screen, reuse _(Audit: not fully verified)_
 
 ### Deliverables and acceptance
 

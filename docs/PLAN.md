@@ -56,7 +56,33 @@ number; law/terms review is not hereby complete.
 
 ## Built — do not rebuild
 
-A, B, C, R, B2, D, E, E2, F-part-1 and G are merged. Batches T (including acquisition evidence, retail delivery fee and the tax workspace), S, COM-L, W, V, F-part-2, K, K-CASH, M-1A…M-2B, O-1, O-2A and O-3A are also merged (see MASTER-ROADMAP and STATUS). Their owner/provider acceptance checks are still pending on OWNER-CHECKLIST. E2's public visual result was rejected as final quality, so V remains. Live payments/customer email/SMS remain separately gated. Complete historical deliverables and acceptance are preserved in [the pre-reset plan](archive/reset-2026-10-08/PLAN.md), not discarded.
+A, B, C, R, B2, D, E, E2, F-part-1 and G are merged. Batches T (including acquisition evidence, retail delivery fee and the tax workspace), S, COM-L, W, V, F-part-2, K, K-CASH, M-1A…M-2B, O-1, O-2A, O-2B, O-3A, O-4…O-7 and ACC-1…ACC-5 are also merged (see MASTER-ROADMAP and STATUS). Their owner/provider acceptance checks are still pending on OWNER-CHECKLIST. V is built and merged (#487–#491); the owner accepted the bolder look on 2026-10-17. Live payments/customer email/SMS remain separately gated. Complete historical deliverables and acceptance are preserved in [the pre-reset plan](archive/reset-2026-10-08/PLAN.md), not discarded.
+
+## What truly remains (audited against the code, 2026-10-23)
+
+A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the stale "remaining" lists. Anything not listed here is built.
+
+**Not built, and waiting only for Chris's go-ahead or an answer**
+- BP-1…BP-16 (offers, property authorizations, portfolio contracts, partners): PROPOSED, nothing built.
+- W-11 live Colorado GIS rates (IN-61), W-12 sales tax XML file (IN-62, IN-44). W-13 receipt photo reading is DEFERRED (IN-64).
+- MCP-1…MCP-11 and the in-app feedback design: nothing built.
+
+**Approved but not built yet (engineering an agent can start)**
+- M-2C: sell a retired appliance (sale, plan auto-complete, recapture warning, disposal posting).
+- M-3: hosted card payment for local invoices.
+- O-3B: refund, credit and kept-deposit approvals (write-off and expense approvals are built).
+- COM-N1A…N4: lead/job/billing text messages, click-to-call, telecom statement to an expense, service metrics.
+- Wiring gaps in built telecom code: nothing calls the usage sync or the spend-alert checks, and no screen sends texts yet.
+
+**Partial items inside built units**
+- M-1C: refunds of paid sales; Colorado retail delivery fee on delivered sales. Revenue reports say "Items sold" not "Shop sales".
+- O-1: change preview and stale-save conflict; a few switch rows. O-2B: role-shaped DTO proof. O-4: package and set prices.
+- Yearly "check your SUTS setup" Today task. A guard test that nothing stores a tax-site login.
+- Website pricing page does not show the all-in total or $45 fee (hidden on purpose by the owner).
+- Eight older review findings in LAUNCH-LEDGER (photo cleanup, HEIC, earnings report basis, billing-estimate check, narrow-width desk check).
+- No browser specs yet for shop sales, retired appliances, approvals, switches, permissions, price changes, goals or workspace.
+
+**Owner and provider steps** are only on [OWNER-CHECKLIST](OWNER-CHECKLIST.md) and never block building.
 
 ## Every remaining implementation
 
@@ -80,25 +106,25 @@ These are integrated T exit criteria. Already merged engine/filing behavior is
 regression evidence, not a request to rebuild it; remaining cards deliver the
 acquisition/RDF/UI additions and final proof.
 
-- [ ] Tax areas come from the exact address (GIS or confirmed manual entry), never from ZIP or city name.
-- [ ] Billing setup, send-for-signature and local invoices are blocked with a plain-English list while any needed tax decision, address check or rate is missing.
-- [ ] The lease election applies only to state-collected areas; home-rule cities use only their own rules (engine tests).
-- [ ] Stripe subscription items carry one Stripe tax rate per taxable area; Stripe-mirrored invoices record per-area tax lines; a 1-cent difference from the engine raises a card.
-- [ ] A rate change entered with a future date reaches every affected live subscription the day before it starts, exactly once.
-- [ ] (Amendment C) Rate changes found in Colorado's official lookup are applied automatically when they pass the guardrails (reviewed area, seen on two days, within the size limit, never backdated), with a Today notice and undo; other differences become review tasks; watched official pages raise a Today task when they change.
-- [ ] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; a later change to a filed period opens an amended return for that same period (Amendment A 11.12).
-- [ ] (Amendment A, 2026-10-07) Each return is a SUTS entry packet: per tax area in SUTS order, the exact numbers to type with copy buttons, a zero-return path, and a total equal to the tax customers were charged.
-- [ ] (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from the day a period closes until it is marked filed; a calendar file can be downloaded.
-- [ ] (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (check → open SUTS → type these in with copy buttons and saved ticks → pay → confirmation).
-- [ ] Use tax computed for appliances and purchase-order lines bought without (enough) tax.
-- [ ] (Amendment D) The appliance entry form records whether sales tax was paid at purchase and how much; untaxed or under-taxed purchases record the use tax owed; each appliance's status decides whether its rent is exempt; the use-tax return (DR 0252 on Revenue Online, city use tax separately) is on the calendar with automatic annual/monthly frequency and a filled printable form or worksheet.
-- [ ] (Amendment A 11.13) The owner enters and updates the SUTS setup (areas, codes, order, screen names, deduction names, frequency, license expiry) in the app; changes apply to open returns, are audited, and a yearly "check your SUTS setup" task appears.
-- [ ] (Amendment B) Colorado retail delivery fee: the app decides automatically whether it applies (lease election, small-business exemption), counts one fee per qualifying delivery, charges it as a separate untaxed line or records it as paid by the business, and prepares its return on the same calendar.
-- [ ] Customer exemptions with certificate photo, scope and expiry.
-- [ ] (D-T14) A prepaid agreement gets one local invoice for its prepaid rent with sales tax at signing, so prepaid rent appears on returns.
-- [ ] OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
-- [ ] (Section 14) All tax screens live under one "Sales tax" entry in Money with six tabs (Overview, Returns, Areas & addresses, What's taxed, Exemptions, Setup); every tax Today item opens the exact screen that resolves it; the setup checklist matches the billing blockers word for word; on-screen wording follows the 14.6 glossary.
-- [ ] No tax rate or taxability answer is written into code, seeds or docs as fact.
+- [x] Tax areas come from the exact address (GIS or confirmed manual entry), never from ZIP or city name.
+- [x] Billing setup, send-for-signature and local invoices are blocked with a plain-English list while any needed tax decision, address check or rate is missing.
+- [x] The lease election applies only to state-collected areas; home-rule cities use only their own rules (engine tests).
+- [x] Stripe subscription items carry one Stripe tax rate per taxable area; Stripe-mirrored invoices record per-area tax lines; a 1-cent difference from the engine raises a card.
+- [x] A rate change entered with a future date reaches every affected live subscription the day before it starts, exactly once.
+- [x] (Amendment C) Rate changes found in Colorado's official lookup are applied automatically when they pass the guardrails (reviewed area, seen on two days, within the size limit, never backdated), with a Today notice and undo; other differences become review tasks; watched official pages raise a Today task when they change.
+- [x] Per-filing-account worksheets (accrual or cash per the owner's setting); marking a period filed freezes it; a later change to a filed period opens an amended return for that same period (Amendment A 11.12).
+- [x] (Amendment A, 2026-10-07) Each return is a SUTS entry packet: per tax area in SUTS order, the exact numbers to type with copy buttons, a zero-return path, and a total equal to the tax customers were charged.
+- [x] (Amendment A) Every filing account has its periods, due dates (with Colorado's weekend/holiday rule) and license renewal on a calendar; the owner is prompted on Today and by email from the day a period closes until it is marked filed; a calendar file can be downloaded.
+- [x] (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (check → open SUTS → type these in with copy buttons and saved ticks → pay → confirmation).
+- [x] Use tax computed for appliances and purchase-order lines bought without (enough) tax.
+- [x] (Amendment D) The appliance entry form records whether sales tax was paid at purchase and how much; untaxed or under-taxed purchases record the use tax owed; each appliance's status decides whether its rent is exempt; the use-tax return (DR 0252 on Revenue Online, city use tax separately) is on the calendar with automatic annual/monthly frequency and a filled printable form or worksheet.
+- [ ] (Amendment A 11.13) The owner enters and updates the SUTS setup (areas, codes, order, screen names, deduction names, frequency, license expiry) in the app; changes apply to open returns, are audited, and a yearly "check your SUTS setup" task appears. _(Audit 2026-10-23: editing, audit trail and open-return application are built; the yearly "check your SUTS setup" Today task is NOT built (the date is stored and shown only))_
+- [x] (Amendment B) Colorado retail delivery fee: the app decides automatically whether it applies (lease election, small-business exemption), counts one fee per qualifying delivery, charges it as a separate untaxed line or records it as paid by the business, and prepares its return on the same calendar.
+- [x] Customer exemptions with certificate photo, scope and expiry.
+- [x] (D-T14) A prepaid agreement gets one local invoice for its prepaid rent with sales tax at signing, so prepaid rent appears on returns.
+- [x] OWNER-only policy edits and filing; ADMIN limits enforced server-side; screens explained in plain words; axe clean.
+- [x] (Section 14) All tax screens live under one "Sales tax" entry in Money (W-3 owner decision, PR #481, replaced the six tabs with one "Taxes" entry and four tabs: To file, Use tax, Rates & areas, Setup; exemptions and what's taxed live under Setup); every tax Today item opens the exact screen that resolves it; the setup checklist matches the billing blockers word for word; on-screen wording follows the 14.6 glossary.
+- [x] No tax rate or taxability answer is written into code, seeds or docs as fact.
 - [ ] Every item in "Rules that apply to every batch".
 
 ## Batch S — System issues inbox and the AI check-up
@@ -107,11 +133,11 @@ Design: `docs/designs/BATCH-S.md`; work coverage and prerequisites: work-index.
 
 ### Acceptance checklist
 
-- [ ] Every D-S1 source records one de-duplicated issue and auto-resolves when the source recovers (integration tests).
-- [ ] No customer data, keys or raw provider responses can be stored in an issue or note (redaction test with planted values).
-- [ ] `/api/ops/issues` works only with a live owner-created key (stored hashed, revocable); the agent can read and add notes, never change data or resolve.
-- [ ] System health page and Today "System" group (high only) render, axe clean, OWNER/ADMIN only.
-- [ ] `docs/runbooks/AI-CHECKUP.md` contains the owner setup steps and the exact routine prompt; GO-LIVE-CHECKLIST has the setup lines.
+- [x] Every D-S1 source records one de-duplicated issue and auto-resolves when the source recovers (integration tests).
+- [x] No customer data, keys or raw provider responses can be stored in an issue or note (redaction test with planted values).
+- [x] `/api/ops/issues` works only with a live owner-created key (stored hashed, revocable); the agent can read and add notes, never change data or resolve.
+- [x] System health page and Today "System" group (high only) render, axe clean, OWNER/ADMIN only.
+- [x] `docs/runbooks/AI-CHECKUP.md` contains the owner setup steps and the exact routine prompt; GO-LIVE-CHECKLIST has the setup lines.
 - [ ] Every item in "Rules that apply to every batch".
 
 ## Batch COM — Business communications and telecom costs — APPROVED 2026-10-08
@@ -126,17 +152,17 @@ Design: `docs/designs/BATCH-COM.md`; work coverage and prerequisites: work-index
 - [ ] Two-way inbox/history works; shared/unknown numbers unresolved; explicit subject links, role-shaped queries/actions/private media.
 - [ ] Editable versioned templates/disclosures, safe variables, rendered encoding/segments/cost preview and dispatch limits; existing job reminder migrated.
 - [ ] Forwarding/human acceptance, parent/child legs, after-hours/missed calls; voicemail only if selected and privacy/recording approved.
-- [ ] Paged retry-safe cost/usage/rate sync; estimates/provider-reported/invoice-reconciled totals distinct; no double-counted layers/categories/periods.
-- [ ] Monthly spend/budgets/anomalies extend reports/dashboard/Today/S/automations; stale/unknown data visible; no blanket contact cutoff.
+- [ ] Paged retry-safe cost/usage/rate sync; estimates/provider-reported/invoice-reconciled totals distinct; no double-counted layers/categories/periods. _(Audit: sync code is tested but nothing in the app calls it yet (no cron or desk trigger) so cost reports have no data until wired)_
+- [ ] Monthly spend/budgets/anomalies extend reports/dashboard/Today/S/automations; stale/unknown data visible; no blanket contact cutoff. _(Audit: the spend-alert evaluator has no scheduled caller yet)_
 - [ ] Customer/lead/job/maintenance/billing/renewal surfaces share evidence; CustomerNotice legal gates preserved.
 - [ ] Real-Postgres race/rollback/isolation, cost fixtures, browser/axe/restore and final F scenarios pass with evidence.
 - [ ] IN-03/09/51/52/53 and applicable live/legal decisions resolved; runbook complete; provider behavior remains OFF until explicit activation.
 
 ### Near-term acceptance (COM-N)
 
-- [ ] Workflow templates/rules activated individually; click-to-call/STAFF job-scoped actions preserve actor and legal boundaries.
-- [ ] Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction.
-- [ ] Service metrics, reliable linked-cost unit economics/forecasts registered in METRICS; sparse data is unavailable, no invented causal attribution.
+- [ ] Workflow templates/rules activated individually; click-to-call/STAFF job-scoped actions preserve actor and legal boundaries. _(NOT BUILT: no lead/job/billing SMS senders, no click-to-call (only tel: links))_
+- [ ] Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction. _(NOT BUILT: TelecomStatement has no link to an Expense yet)_
+- [ ] Service metrics, reliable linked-cost unit economics/forecasts registered in METRICS; sparse data is unavailable, no invented causal attribution. _(NOT BUILT: no service-metrics, unit-economics or forecast code)_
 - [ ] O controls and BP business scenarios consume existing evidence.
 
 Section 9 defines 16 launch PR units (L1a/L1b plus L2–L15); large later units need bounded cards/splits before
@@ -149,34 +175,34 @@ Design: `docs/designs/BATCH-V.md`; work coverage and prerequisites: work-index.
 
 ### Acceptance checklist
 
-- [ ] Chris accepts the before/after comparison of the public site (human gate).
-- [ ] Brand kept exactly (kit colours, Manrope, 8/16 radii); the Split-R 45° cut is the one signature shape; no new colours outside tokens.
-- [ ] All public marketing copy comes from site-content fields; no hard-coded promises remain (grep test).
-- [ ] Hero address check uses only the owner's service area, is rate-limited, and stores nothing.
-- [ ] Contrast unit test for every token pair; axe clean light/dark; complete focus rings on clipped elements; no horizontal scroll at 360px; reduced motion honoured.
-- [ ] Desk Today day-timeline and severity words; Actual/Estimate tags from the METRICS registry; no behaviour change.
-- [ ] (Amendment B, after IN-69) The plain-language kit on every screen; the new W screens styled; intake, visits, pickups and inspections usable at 360 px.
+- [ ] Chris accepts the before/after comparison of the public site (human gate). _(STATUS records Chris accepting the bolder look 2026-10-17; his final before/after sign-off stays an owner step)_
+- [x] Brand kept exactly (kit colours, Manrope, 8/16 radii); the Split-R 45° cut is the one signature shape; no new colours outside tokens.
+- [x] All public marketing copy comes from site-content fields; no hard-coded promises remain (grep test).
+- [x] Hero address check uses only the owner's service area, is rate-limited, and stores nothing.
+- [x] Contrast unit test for every token pair; axe clean light/dark; complete focus rings on clipped elements; no horizontal scroll at 360px; reduced motion honoured.
+- [x] Desk Today day-timeline and severity words; Actual/Estimate tags from the METRICS registry; no behaviour change.
+- [ ] (Amendment B, after IN-69) The plain-language kit on every screen; the new W screens styled; intake, visits, pickups and inspections usable at 360 px. _(Audit: not verified against code; the plain-language kit and 360px screens outside V-1…V-4 evidence)_
 - [ ] Every item in "Rules that apply to every batch".
 
 ### Website content control acceptance — V-C1…V-C5
 
-_Progress: V-C1…V-C3 are merged (#487, #488). V-C4 (owner Website screen, preview with click-to-edit, review/publish, history) and V-C5 (template contract and compatibility proof) are built and tested locally, awaiting exact-head CI and merge; no box below is checked until that evidence passes._
+_Progress: V-C1…V-C3 are merged (#487, #488). V-C4 (owner Website screen, preview with click-to-edit, review/publish, history) and V-C5 (template contract and compatibility proof) merged in #489. Boxes below are ticked for the source work; the phone-photo replacement and keyboard/phone/dark visual passes are owner steps on OWNER-CHECKLIST._
 
-- [ ] Every public content item (all routes/variants, header/footer, metadata,
+- [x] Every public content item (all routes/variants, header/footer, metadata,
   form labels/messages, photos, links, descriptions, introductions and supported
   ad slots) has an editable content binding or one explicit source ownership.
-- [ ] Owner edits from the real rendered page/section, sees location and shared
+- [x] Owner edits from the real rendered page/section, sees location and shared
   usage, can replace a photo from a phone, and reviews exact text/photo/link diffs.
-- [ ] Draft/preview/live are distinct; anonymous users cannot access draft HTML
+- [x] Draft/preview/live are distinct; anonymous users cannot access draft HTML
   or media; stale/duplicate publish and post-commit failure outcomes are safe.
-- [ ] Contact/catalog/pricing use one domain source; changing website prose never
+- [x] Contact/catalog/pricing use one domain source; changing website prose never
   changes a charged amount or signed agreement. Promotion schedules are clear,
   default off and tested at Denver DST boundaries.
-- [ ] Intentional empty/hide/default are distinct; restoration creates a reviewed
+- [x] Intentional empty/hide/default are distinct; restoration creates a reviewed
   draft and tells the owner which external-source facts it does not restore.
-- [ ] Customized text/photos/links survive redesign and compatible rollback;
+- [x] Customized text/photos/links survive redesign and compatible rollback;
   new content types upgrade the editor before deployment, with coverage proof.
-- [ ] Old revision codec, asset storage, populated-upgrade/backup/restore, active
+- [x] Old revision codec, asset storage, populated-upgrade/backup/restore, active
   role/privacy boundaries, keyboard/phone/dark/light/axe and final F proof pass.
 
 ## Batch F-part-2 — final product proof (F-part-1 already complete)
@@ -185,14 +211,14 @@ Design: `docs/designs/BATCH-F.md`; work coverage and prerequisites: work-index.
 
 ### Acceptance checklist
 
-- [ ] All ten integrated scenarios pass with linked evidence, plus Amendment B scenarios 13–17 and the connection check (approved IN-69).
-- [ ] Capacity numbers recorded for large account / fleet / invoice / job /
+- [x] All ten integrated scenarios pass with linked evidence, plus Amendment B scenarios 13–17 and the connection check (approved IN-69).
+- [x] Capacity numbers recorded for large account / fleet / invoice / job /
       report fixtures.
-- [ ] Isolated database restore and private media recovery proven.
-- [ ] Every launch gate below is either checked with evidence or explicitly
+- [x] Isolated database restore and private media recovery proven.
+- [x] Every launch gate below is either checked with evidence or explicitly
       listed as an owner decision.
-- [ ] No unresolved Critical/High is hidden behind a "done" label.
-- [ ] Rollback plan: revert the UI commit on failure; additive DB tables stay;
+- [ ] No unresolved Critical/High is hidden behind a "done" label. _(Audit: 8 older review findings are disclosed in LAUNCH-LEDGER, not hidden: stored photo files not cleaned on remove/replace (3), HEIC not converted, earnings report compares all paid invoices with rent only (2), no calendar-month billing estimate check, no narrow-width desk layout check)_
+- [x] Rollback plan: revert the UI commit on failure; additive DB tables stay;
       never a destructive rollback.
 - [ ] Every item in "Rules that apply to every batch".
 
@@ -212,38 +238,38 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 
 ### Acceptance checklist
 
-- [ ] W-0A: an owner can confirm the business tax address on screen; appliances waiting on setup get their use tax calculated automatically (once); use tax with no linked filing account raises a high To do item; Today and the appliance page say why tax is unknown and link the fix.
-- [ ] W-0B: no Today item links to a page that doesn't exist (test); delivery-fee records waiting on a decision or amount have a page.
+- [x] W-0A: an owner can confirm the business tax address on screen; appliances waiting on setup get their use tax calculated automatically (once); use tax with no linked filing account raises a high To do item; Today and the appliance page say why tax is unknown and link the fix.
+- [x] W-0B: no Today item links to a page that doesn't exist (test); delivery-fee records waiting on a decision or amount have a page.
 - [x] W-1: owner To do shows what, why, actual known amount/deadline and action; real-dated sort, durable audited snooze/reopen, unit and isolated database proof (PR gate still required).
-- [ ] Saving an appliance (or receiving parts) with no seller tax shows what is owed, to whom and by when, and adds it to To do; "I'll check later" creates a dated To do.
+- [x] Saving an appliance (or receiving parts) with no seller tax shows what is owed, to whom and by when, and adds it to To do; "I'll check later" creates a dated To do.
 - [x] W-2 (D-WA6): `nextPurchaseTaxStep` gives every answer exactly one next step (full tax → done; partial or none → use tax on the right return with its legal due date; tax-free for rent → rent taxed; another state's tax → CPA To do until IN-65; later → To do in 3 days that turns high 7 days before the covering return closes); intake card, appliance page, PO receiving and To do all show the same step (tests per row); due dates come from the filing calendar, never hard-coded.
-- [ ] W-13 (only if IN-64 is yes): a receipt photo pre-fills price and seller tax marked "check it"; nothing saves without Chris confirming.
+- [ ] W-13 (only if IN-64 is yes): a receipt photo pre-fills price and seller tax marked "check it"; nothing saves without Chris confirming. _(DEFERRED: owner answer IN-64 on 2026-10-13 was "deferred"; not built on purpose)_
 - [x] W-3: Taxes live in one menu entry; use tax is inside it; the return page starts with "File and pay $X on <site> by <date>"; money is typed in dollars.
 - [x] W-4: Signing creates a draft delivery visit + To do; a rental ending in 30 days asks renew / month-to-month / pickup; a decided ending creates a draft pickup visit; drafts never send or charge anything.
-- [ ] Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.
-- [ ] A new lead appears as "Contact <name>" (same day by default); "contacted" asks for the next follow-up date; an approved quote creates a To do.
+- [x] Failed payments, held payments and deposit decisions appear on To do the same day with action buttons.
+- [x] A new lead appears as "Contact <name>" (same day by default); "contacted" asks for the next follow-up date; an approved quote creates a To do.
 - [x] A first-time setup checklist on Today (owner) until complete. (W-7: code-complete and locally proven; CI/merge pending, real keys are a go-live step.)
-- [x] About 14 menu entries; Dispatch, Jobs and Driver view are one Schedule screen; the plain-words check runs in CI. (W-8: code-complete and locally proven; CI/merge and owner look-over pending.)
+- [x] About 14 menu entries; Dispatch, Jobs and Driver view are one Schedule screen; the plain-words check runs in CI. (W-8 merged #484; owner look-over pending.)
 - [x] W-9 (Amendment A): every filing period creates "File and pay $X on <site> by <date>" on To do the day it closes ($0 returns included), reminds on schedule, captures confirmation number and date paid, and a nightly check proves no closed period is left without a filing item. (W-9: code-complete and locally proven; CI/merge pending; a real Colorado filing is owner acceptance.)
 - [x] W-10: the use-tax return page has a "File now" panel (opens Revenue Online, each value in screen order with a copy button) and prints the official DR 0252 filled in.
-- [ ] W-11 (after IN-61): new and existing addresses get Colorado's rates automatically from the GIS API; unmatched addresses and a broken key become To do items; billing never uses an unconfirmed rate.
-- [ ] W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided.
-- [ ] Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2).
+- [ ] W-11 (after IN-61): new and existing addresses get Colorado's rates automatically from the GIS API; unmatched addresses and a broken key become To do items; billing never uses an unconfirmed rate. _(NOT BUILT: only a manual-only stub exists (colorado-gis.ts returns unavailable); waits on IN-61)_
+- [ ] W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided. _(NOT BUILT: waits on IN-62 and IN-44)_
+- [ ] Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2). _(holds by construction; no dedicated guard test yet)_
 - [x] W-0C (#359; `docs/pr-cards/W-0C.md`): a failed automatic charge (existing or new invoice, with or without a due date) and a partly paid invoice appear on To do the same day, linked to the invoice (Amendment B 6.1).
 - [x] W-18: dollar-entry kit, two-decimal money displays, accessible glossary InfoTip, converted tax setup inputs and static UI money guard. Additional future screens inherit this shared contract.
-- [ ] W-22: source engineering through complete V2 quote/signing/receipt/reserve/cancellation/dispatch/first invoice is delivered by PR #466 subject to exact-head CI/review/merge. Parent remains PARTIAL for checked release, genuine professional/Stripe TEST and authenticated owner/customer acceptance; see STATUS.
-- [ ] W-22 (Amendment B 6.2; IN-73, IN-74, IN-80): signing collects a $45 administrative setup fee once per delivery location (owner may change it with a reason) and the first month as a down payment on large orders (5+ machines or a business/property-manager customer), applied to the first bill exactly once (per agreement when an estimate splits by property); manual check/transfer payments accepted; each delivery records new hookup items installed per machine; every amount is an owner setting in dollars; quotes, signing and the website show the all-in total.
-- [ ] W-23 (Amendment B 6.3): each delivery address has a unit label and current/past tenant or on-site contacts with the client's allowed topics; plus access notes; the client's contact permissions; tenant texts only with the tenant's own consent; tenant repair reports reach the client; past tenants erased after the retention setting; STAFF see them only on assigned visits; one customer never sees another's tenants.
-- [ ] W-24 (Amendment B 6.4): a standard quote is finished by the customer in one sitting — picks one of Chris's delivery choices (date + morning/afternoon), answers delivery questions (dryer outlet type, stairs), signs the agreement created from the quote, pays the setup fee (and down payment) and saves a payment method, sets a password and lands in the portal; a Requested visit + "Confirm delivery" To do follows; quotes can be declined; Copy link; missed-appointment trip fee (starting $0).
-- [ ] W-25 (Amendment B 6.5): phone orders entered by Chris finish by an emailed (or copied) link with the customer's choices pre-filled; no card data ever stored; no phone backup (cancelled 2026-10-10).
-- [ ] W-26 (Amendment B 6.6): engineering complete in PR #478, final CI/merge pending; customer language, complete reviewed consumers and immutable signing evidence are implemented. Actual fluent/legal review, owner publication and real live acceptance remain pending.
+- [x] W-22: source engineering through complete V2 quote/signing/receipt/reserve/cancellation/dispatch/first invoice is delivered by PR #466 subject to exact-head CI/review/merge. Parent remains PARTIAL for checked release, genuine professional/Stripe TEST and authenticated owner/customer acceptance; see STATUS. _(engineering merged in #466 and earlier; real Stripe TEST and CPA ruling on setup-fee tax are owner steps)_
+- [ ] W-22 (Amendment B 6.2; IN-73, IN-74, IN-80): signing collects a $45 administrative setup fee once per delivery location (owner may change it with a reason) and the first month as a down payment on large orders (5+ machines or a business/property-manager customer), applied to the first bill exactly once (per agreement when an estimate splits by property); manual check/transfer payments accepted; each delivery records new hookup items installed per machine; every amount is an owner setting in dollars; quotes, signing and the website show the all-in total. _(Audit: all built except the public website pricing page does not show the all-in total or the $45 fee; website prices are hidden on purpose (owner prelaunch decision, DECISIONS 1012). Quotes and signing show it)_
+- [x] W-23 (Amendment B 6.3): each delivery address has a unit label and current/past tenant or on-site contacts with the client's allowed topics; plus access notes; the client's contact permissions; tenant texts only with the tenant's own consent; tenant repair reports reach the client; past tenants erased after the retention setting; STAFF see them only on assigned visits; one customer never sees another's tenants. _(#470/#472; tenant erasure stays OFF behind two switches until the owner approves)_
+- [x] W-24 (Amendment B 6.4): a standard quote is finished by the customer in one sitting — picks one of Chris's delivery choices (date + morning/afternoon), answers delivery questions (dryer outlet type, stairs), signs the agreement created from the quote, pays the setup fee (and down payment) and saves a payment method, sets a password and lands in the portal; a Requested visit + "Confirm delivery" To do follows; quotes can be declined; Copy link; missed-appointment trip fee (starting $0). _(#473; automatic road-mile lookup and fee-to-invoice stay OFF until CPA/provider evidence; the owner types miles, trip fee starts at $0)_
+- [x] W-25 (Amendment B 6.5): phone orders entered by Chris finish by an emailed (or copied) link with the customer's choices pre-filled; no card data ever stored; no phone backup (cancelled 2026-10-10). _(#474)_
+- [x] W-26 (Amendment B 6.6): engineering merged in #478; customer language, complete reviewed consumers and immutable signing evidence are implemented. Actual fluent/legal review, owner publication and real live acceptance remain pending. _(Spanish publication stays an owner gate)_
 - [x] W-5 addition (Amendment B 6.7): every unpaid invoice has "Send payment link" (Stripe's secure invoice page by email, plus Copy link) with a short message explaining what it is for, amount, due date, overdue days and the reason it was sent (editable templates, previewed before sending); no public pay-any-bill page.
 - [x] W-5 addition (Amendment B 6.8): "Take payment by phone" opens Stripe's secure page for Chris to type the card the customer reads out; paid only on Stripe's confirmation; saving the card for monthly rent only with recorded permission; OWNER/ADMIN only; no card data ever stored.
 - [x] W-14: one purchase records seller, date, receipt and many appliances, each with its own model and serial; seller tax split by price sums to the receipt to the cent.
 - [x] W-15: every appliance shows its tax proof; an audit pack for any date range lists every serial with seller tax or use tax reported (return + confirmation) and its receipt.
 - [x] W-16A/B (#360, #362, early-return part #366; tests `rental-packages*`, `rental-package-lines*`, `set-machine-done-integration`): appliance types are single machines only; rental packages (e.g. Washer + Dryer Set) with set price and shown saving; package lines take one machine per part; early return of one part → single-machine price from the day after pickup with an exact partial-period credit; swaps change nothing; old "set" appliances are split with history kept.
 - [x] W-21 (#365; `tests/out-of-service-integration.test.ts`): a machine taken for repair without a replacement (any line, set or single) earns a credit on the next bill for exactly the days without it, never more than billed; the portal and bill explain it in dollars.
-- [x] W-17/W-19/W-20 (W-19 in the W-10/W-19 PR; W-17 and W-20 in the W-17/W-20 PR; CI and merge pending when written): every record page has Related and History; every ★ flow row in Amendment B D-WB4 creates exactly one To do with a working button; the portal shows next steps, status timelines and Pay now on overdue invoices.
+- [x] W-17/W-19/W-20 (W-19 in the W-10/W-19 PR; W-17 and W-20 in the W-17/W-20 PR; merged #485 and #486): every record page has Related and History; every ★ flow row in Amendment B D-WB4 creates exactly one To do with a working button; the portal shows next steps, status timelines and Pay now on overdue invoices.
 - [ ] Every item in "Rules that apply to every batch".
 
 ---
@@ -254,12 +280,12 @@ Design: `docs/designs/BATCH-K.md`; work coverage and prerequisites: work-index.
 
 ### Acceptance checklist
 
-- [ ] Every money record the app keeps produces balanced double-entry journal entries exactly once (concurrent runs included); closed months never change.
-- [ ] Stripe fees, service fees, disputes and payouts are synced nightly; the Stripe clearing balance is checked against Stripe daily.
-- [ ] Expenses with receipt photos; staff submit, owner/admin post; void, never delete; recurring templates create drafts only; use tax recorded.
-- [ ] Straight-line **book** depreciation with owner-set life and salvage; preserve retired appliance book value pending actual disposal instead of automatically expensing all remaining value at rental retirement. **Tax depreciation/adjusted basis** (including Section 179 and bonus) require CPA-backed evidence and are not inferred from book settings. [Resale tax and disposition design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md).
-- [ ] Profit & loss (accrual and cash), balance snapshot, appliance payback, 90-day cash forecast, customer health, year-end package — each number in the METRICS registry.
-- [ ] Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
+- [x] Every money record the app keeps produces balanced double-entry journal entries exactly once (concurrent runs included); closed months never change.
+- [x] Stripe fees, service fees, disputes and payouts are synced nightly; the Stripe clearing balance is checked against Stripe daily.
+- [x] Expenses with receipt photos; staff submit, owner/admin post; void, never delete; recurring templates create drafts only; use tax recorded.
+- [ ] Straight-line **book** depreciation with owner-set life and salvage; preserve retired appliance book value pending actual disposal instead of automatically expensing all remaining value at rental retirement. **Tax depreciation/adjusted basis** (including Section 179 and bonus) require CPA-backed evidence and are not inferred from book settings. [Resale tax and disposition design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md). _(Audit: depreciation and retirement value are built; the disposal posting waits on M-2C, which is NOT built; CPA sign-off is an owner step)_
+- [x] Profit & loss (accrual and cash), balance snapshot, appliance payback, 90-day cash forecast, customer health, year-end package — each number in the METRICS registry.
+- [x] Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
 - [ ] Every item in "Rules that apply to every batch".
 
 ## Batch K-CASH — cash envelopes, planned costs and bank reconciliation — owner-requested design
@@ -268,24 +294,24 @@ Design: [BATCH-K-CASH](designs/BATCH-K-CASH.md); [research](research/2026-10-08-
 Documentation review precedes affected implementation. Proposed after K-8 before M; launch unchanged.
 K section 9 amendments must be drift-checked before affected source/export/opening/forecast units.
 
-- [ ] Duplicate-safe CSV preview/import, exact matching and zero-difference statement proof preserve immutable
+- [x] Duplicate-safe CSV preview/import, exact matching and zero-difference statement proof preserve immutable
   evidence/outstanding items/private access and owner reopening; no balancing plugs.
-- [ ] Typed cash events/journal source revision/opening composition preserve balance, concurrency and liabilities.
-- [ ] Confirmed-bank-cash-only envelopes protect deposits/credits/tax/RDF/card debt with shortage/as-of labels;
+- [x] Typed cash events/journal source revision/opening composition preserve balance, concurrency and liabilities.
+- [x] Confirmed-bank-cash-only envelopes protect deposits/credits/tax/RDF/card debt with shortage/as-of labels;
   stale/unknown blocks new funding but never recording real expenses.
-- [ ] Assign/move/spend/reverse use atomic revision/idempotency; virtual allocations never transfer bank money.
-- [ ] Recurring/annual/one-time costs and monthly/save-by-date/maintain targets carry forward, settle partially,
+- [x] Assign/move/spend/reverse use atomic revision/idempotency; virtual allocations never transfer bank money.
+- [x] Recurring/annual/one-time costs and monthly/save-by-date/maintain targets carry forward, settle partially,
   reverse and avoid target/schedule double counting.
-- [ ] Existing K forecast separates no-new-income coverage from expected collections; source dedupe and unknown
+- [x] Existing K forecast separates no-new-income coverage from expected collections; source dedupe and unknown
   costs explicit; unpaid invoices/pending Stripe funds cannot fund envelopes.
-- [ ] Budget tabs/context cards integrate expense/purchasing/inventory/tax/COM/Today/METRICS; role-shaped access.
-- [ ] Original/revised immutable monthly plans, spending vs funding variance, revenue/expense/profit trends,
+- [x] Budget tabs/context cards integrate expense/purchasing/inventory/tax/COM/Today/METRICS; role-shaped access.
+- [x] Original/revised immutable monthly plans, spending vs funding variance, revenue/expense/profit trends,
   cash movement, drilldown/export ties, partial-period comparisons and fact-based month-end review; unknown
   history/attribution stays visible; no capital/deposit/tax/owner money misclassified as profit.
-- [ ] QBO actual-tenant detail-import/matching/reconciliation proof, prepared vs imported status and overlapping/
+- [ ] QBO actual-tenant detail-import/matching/reconciliation proof, prepared vs imported status and overlapping/ _(code and test built; the actual-tenant QuickBooks proof is an owner step)_
   uncertain export quarantine; download never claims import.
 - [ ] IN-54/55 recorded before account/budget activation; no application/spending/live payment authorization.
-- [ ] Named real-Postgres/security/race/upgrade/restore/phone/dark/keyboard/axe tests pass.
+- [ ] Named real-Postgres/security/race/upgrade/restore/phone/dark/keyboard/axe tests pass. _(Audit: Postgres/race/restore proven; per-screen phone/dark/keyboard checks not individually verified)_
 - [ ] Every item in Rules that apply to every batch.
 
 ## Batch M — Shop sales and appliance endings
@@ -294,16 +320,16 @@ Design: `docs/designs/BATCH-M.md`; work coverage and prerequisites: work-index.
 
 ### Acceptance checklist
 
-- [ ] Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests).
-- [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules.
-- [ ] Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the fixed unit-order rule.
-- [ ] Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
-- [ ] Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought).
-- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically. Used rental-asset sales can be priced at whatever the owner sets, even original cost or higher; show potential §1245 depreciation recapture, source-backed adjusted tax basis and CPA follow-up **rather than a resale-price cap**.
-- [ ] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
-- [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K.
-- [ ] One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
-- [ ] Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean.
+- [ ] Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests). _(Audit: sales and repairs move stock; refunds of paid sales are NOT built)_
+- [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules. _(Audit: tax by location built; the Colorado retail delivery fee on delivered sales is NOT built)_
+- [x] Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the fixed unit-order rule.
+- [x] Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
+- [ ] Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought). _(Audit: item sales built; used-appliance sales are NOT built (M-2C))_
+- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically. Used rental-asset sales can be priced at whatever the owner sets, even original cost or higher; show potential §1245 depreciation recapture, source-backed adjusted tax basis and CPA follow-up **rather than a resale-price cap**. _(Audit: plans built; selling a retired appliance, plan auto-completion and the recapture display are NOT built (M-2C))_
+- [x] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
+- [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K. _(Audit: scrap income built; writing off remaining book value on a finished plan not confirmed in code)_
+- [x] One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
+- [ ] Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean. _(Audit: sales tax categories feed the engine; revenue reports label it "Items sold" not "Shop sales"; no test ties shop sales onto the return)_
 - [ ] Every item in "Rules that apply to every batch".
 
 ## Batch O — Owner controls
@@ -312,23 +338,23 @@ Design: `docs/designs/BATCH-O.md`; work coverage and prerequisites: work-index.
 
 ### Acceptance checklist
 
-- [ ] Settings history in plain words with one-step undo through the normal save path.
-- [ ] Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
-- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry.
-- [ ] Scheduled price changes applied once on their start date; agreements unchanged.
-- [ ] Goals with pace on Today; idle-appliance and utilization alerts.
-- [ ] Read-only page of every live switch with links.
+- [x] Settings history in plain words with one-step undo through the normal save path.
+- [x] Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
+- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Audit: write-off and expense approvals built (O-3A); refund, credit and kept-deposit approvals are NOT built (O-3B))_
+- [x] Scheduled price changes applied once on their start date; agreements unchanged. _(applies to appliance-type prices; package and set prices are not covered)_
+- [x] Goals with pace on Today; idle-appliance and utilization alerts.
+- [x] Read-only page of every live switch with links.
 - [ ] Every item in "Rules that apply to every batch".
 
 ### Owner workspace additions — O-6/O-7
 
-- [ ] Manage my business offers task-oriented search, existing authorized routes
+- [x] Manage my business offers task-oriented search, existing authorized routes
   and truthful source-specific readiness, preserving direct bookmarks.
-- [ ] Pin tasks/save typed filtered views/reset with preview; per-user scope,
+- [x] Pin tasks/save typed filtered views/reset with preview; per-user scope,
   stale revision, revoked role and malformed filter tests pass.
-- [ ] Mandatory Today obligations cannot be hidden; empty filtered results do not
+- [x] Mandatory Today obligations cannot be hidden; empty filtered results do not
   claim no work exists. Setup help never exposes secrets or pretends provisioning.
-- [ ] Settings/templates explain effects and effective dates in the screen, reuse
+- [ ] Settings/templates explain effects and effective dates in the screen, reuse _(Audit: not fully verified)_
   domain validation and immutable customer facts, and provide safe restore paths.
 
 ## Batch ACC — Accounts and sign-in — APPROVED 2026-10-23
