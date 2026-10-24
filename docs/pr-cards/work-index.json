@@ -1440,23 +1440,22 @@
       "dependencies": [
         "M-2C"
       ],
-      "status": "NOT_BUILT",
-      "migration": "batch_m_local_invoice_checkout",
+      "status": "IN_REVIEW",
+      "migration": "none",
       "budget": 500,
       "units": [
         "M-3"
       ],
       "evidence": [
         "docs/designs/BATCH-M.md",
-        "src/domains/purchasing/ledger.ts",
-        "src/domains/purchasing/index.ts",
-        "src/domains/inventory/guided-actions.ts"
+        "src/domains/billing/local-invoice-checkout.ts",
+        "src/domains/billing/webhooks-base.ts",
+        "src/domains/portal/pay-now.ts"
       ],
       "tests": [
-        "tests/local-invoice-checkout-integration.test.ts",
-        "e2e/local-invoice-card.spec.ts"
+        "tests/local-invoice-checkout-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "IN_REVIEW",
       "plannedCard": "docs/pr-cards/M-3.md"
     },
     {

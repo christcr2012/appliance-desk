@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Select } from "@/components/ui";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
-import { cancelShopSaleAction, recordSalePaymentAction } from "../actions";
+import { cancelShopSaleAction, recordSalePaymentAction, startSaleCardPaymentAction } from "../actions";
 
 export function SalePanel({ invoiceId, owedCents, canCancel, today }: { invoiceId: string; owedCents: number; canCancel: boolean; today: string }) {
   const router = useRouter();
@@ -26,6 +26,15 @@ export function SalePanel({ invoiceId, owedCents, canCancel, today }: { invoiceI
     });
   }
 
+  function payByCard() {
+    setError(null);
+    start(async () => {
+      const r = await startSaleCardPaymentAction(invoiceId);
+      if (r.status === "error") return setError(r.message);
+      window.location.href = r.url;
+    });
+  }
+
   function cancel(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
@@ -38,6 +47,15 @@ export function SalePanel({ invoiceId, owedCents, canCancel, today }: { invoiceI
 
   return (
     <div className="space-y-6">
+      {owedCents > 0 && (
+        <Card>
+          <h2 className="text-lg font-semibold">Pay by card</h2>
+          <p className="mt-1 text-sm text-ink-soft">Opens Stripe&apos;s secure card page for {formatMoney(owedCents)}. The customer enters the card on Stripe, never here. The sale shows as paid when Stripe confirms, usually within seconds.</p>
+          <div className="mt-3">
+            <Button type="button" onClick={payByCard} disabled={pending}>{pending ? "Opening…" : `Pay ${formatMoney(owedCents)} by card`}</Button>
+          </div>
+        </Card>
+      )}
       {owedCents > 0 && (
         <Card>
           <form onSubmit={pay} className="grid gap-3 sm:max-w-md">

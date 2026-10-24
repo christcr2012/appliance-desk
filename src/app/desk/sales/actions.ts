@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
+import { createLocalInvoiceCheckout, LocalInvoiceCheckoutError } from "@/domains/billing/local-invoice-checkout";
 import { cancelShopSale, createShopSale, SaleTaxBlockedError } from "@/domains/sales";
 import { recordManualPayment } from "@/domains/billing";
 import { prisma } from "@/lib/prisma";
@@ -109,5 +110,16 @@ export async function cancelShopSaleAction(invoiceId: string, reason: string): P
     return { status: "success" };
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't cancel that sale." };
+  }
+}
+
+/** Open Stripe's own card page for what is still owed on a shop sale (nothing about the card passes through this app). */
+export async function startSaleCardPaymentAction(invoiceId: string): Promise<{ status: "success"; url: string } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    const { url } = await createLocalInvoiceCheckout({ kind: "desk", userId: session.user.id }, invoiceId);
+    return { status: "success", url };
+  } catch (error) {
+    return { status: "error", message: error instanceof LocalInvoiceCheckoutError ? error.message : "Couldn't open the card page. Nothing was charged. Please try again." };
   }
 }

@@ -69,7 +69,6 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 
 **Approved but not built yet (engineering an agent can start)**
 - M-2C: sell a retired appliance (sale, plan auto-complete, recapture warning, disposal posting).
-- M-3: hosted card payment for local invoices.
 - O-3B: refund, credit and kept-deposit approvals (write-off and expense approvals are built).
 - COM-N1A…N4: lead/job/billing text messages, click-to-call, telecom statement to an expense, service metrics.
 - Wiring gaps in built telecom code: nothing calls the usage sync or the spend-alert checks, and no screen sends texts yet.

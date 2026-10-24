@@ -62,7 +62,7 @@ export default async function AccountInvoicePage({
 
       {isPayNowEligible(invoice, new Date()) && (
         <div className="mt-4 rounded-xl border border-line bg-surface-subtle p-4 text-sm text-ink print:hidden">
-          <p className="font-semibold">{t("This bill is past due. You can pay it securely on Stripe's payment page.")}</p>
+          <p className="font-semibold">{invoice.isShopSale ? t("You can pay this sale securely by card on Stripe's payment page.") : t("This bill is past due. You can pay it securely on Stripe's payment page.")}</p>
           <form method="post" action={`/account/billing/invoice/${invoiceId}/pay`} className="mt-3">
             <Button type="submit">{t("Pay now")}</Button>
           </form>
@@ -74,7 +74,7 @@ export default async function AccountInvoicePage({
         </p>
       )}
 
-      {invoice.isLocalInvoice && invoice.balanceCents > 0 && (
+      {invoice.isLocalInvoice && !invoice.isShopSale && invoice.balanceCents > 0 && (
         <div className="mt-4 rounded-xl border border-line bg-surface-subtle p-4 text-sm text-ink print:hidden">
           <p className="font-semibold">{t("Pay as arranged with Robinson Appliance Rentals.")}</p>
           <p className="mt-1 text-ink-soft">

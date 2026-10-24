@@ -385,6 +385,7 @@ export const PORTAL_TRANSLATIONS = {
   "Done": "Completada",
   "Not scheduled yet": "Aún sin programar",
   "Pay now": "Pagar ahora",
+  "You can pay this sale securely by card on Stripe's payment page.": "Puede pagar esta venta de forma segura con tarjeta en la página de pago de Stripe.",
   "This bill is past due. You can pay it securely on Stripe's payment page.": "Esta factura está vencida. Puede pagarla de forma segura en la página de pago de Stripe.",
   "We couldn't open the payment page. Please try again shortly or contact us.": "No pudimos abrir la página de pago. Inténtelo de nuevo en unos minutos o comuníquese con nosotros.",
   "What happens next": "Qué sigue",

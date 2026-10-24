@@ -51,6 +51,12 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   type the number and the next renewal date from your own papers, and set where you are with it. Worked: each dated item
   shows on your Today list before it needs renewing. (The app doesn't know your dates or fees; they come from your papers
   and the agency websites linked on each item.)
+- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Steps: put your Stripe *test* secret key in Vercel as the
+  preview/test `STRIPE_SECRET_KEY` and set up a test webhook to `<site>/api/webhooks/stripe` (never your live key); ring up a
+  small shop sale; open it under Money → Shop sales and press "Pay by card"; pay with Stripe's test card 4242 4242 4242 4242.
+  Ready when: Stripe test keys are in place (not before). You'll know it worked: the sale turns to "Paid" within a minute and
+  the payment shows on the sale; refunding it from Billing sends the refund to the same test charge. Agents proved this only
+  with a pretend Stripe so far.
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).
   Stripe → Settings → Business → Branding. Worked: a test checkout page shows your brand.
@@ -154,4 +160,5 @@ on readiness).
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
 | 2026-10-23 | Staff-permission decision (section E) | Granting staff reports/expenses would widen access, so it needs the owner's approval. |
 | 2026-10-23 | ACC rows: email-code decision (IN-85), build-order decision, second sign-in method, Twilio sign-in-code use case | Chris asked for invitations, account self-service, recovery and text/email codes (design: designs/ACCOUNTS-AND-SIGN-IN.md). |
+| 2026-10-24 | Shop-sale card page in Stripe test mode | M-3 was proved only against a pretend Stripe; a real test-mode payment needs Chris's Stripe test keys. |
 | 2026-10-23 | Vercel "Sensitive" tidy-up | Read-only check of Vercel found two production settings readable by project members. |

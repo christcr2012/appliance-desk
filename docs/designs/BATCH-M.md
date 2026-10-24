@@ -2,7 +2,7 @@
 
 Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-07: "I plan on also reselling … small items
 
-**Built-status note (2026-10-23):** M-1A…M-1D and M-2A/M-2B are built and merged (#530, #531, #533): `SALE` and `SALVAGE` now exist in `PartMovementKind`, and the real shop-sale test is `tests/shop-sale-integration.test.ts`. M-2C and M-3 are not built (stopped on purpose; see their STRONGER-MODEL-PROMPT files).
+**Built-status note (2026-10-23):** M-1A…M-1D and M-2A/M-2B are built and merged (#530, #531, #533): `SALE` and `SALVAGE` now exist in `PartMovementKind`, and the real shop-sale test is `tests/shop-sale-integration.test.ts`. M-3 (card payment for shop sales) is built: see `docs/pr-cards/M-3.md` and `src/domains/billing/local-invoice-checkout.ts`; it uses a Stripe idempotency key instead of a `ProviderOperation` row (deliberate, explained on the card).
 … washer hoses, power cords for dryers … If I retire an appliance, I may choose to sell it … I may tear it down for scrap
 metal … receive a check … or I just have to dispose of it in the garbage, in which case it may cost me money").
 Runs **after Batch K** (Chris, 2026-10-07, IN-47: "Preferably not until after launch … I am really trying to get this
