@@ -162,6 +162,32 @@ describe.skipIf(!enabled)("Team invitations on real Postgres", () => {
     await restoreTeamMember(ids.admin, ids.staff);
   });
 
+  it("a removed inviter's link stops working; the owner sending it again makes a working link", async () => {
+    await updateTeamSettings(ids.owner, { invitationLinkDays: 7, adminsMayInviteStaff: true });
+    try {
+      const id = await invite(ids.admin2, "r9");
+      await removeTeamMember(ids.owner, ids.admin2);
+      const stale = await knownCode(id);
+      await expect(acceptInvitation(stale, PASSWORD, PASSWORD)).rejects.toThrow(TeamError);
+      await resendInvitation(ids.owner, id);
+      expect((await prisma.teamInvitation.findUniqueOrThrow({ where: { id } })).invitedById).toBe(ids.owner);
+      const fresh = await knownCode(id);
+      await acceptInvitation(fresh, PASSWORD, PASSWORD);
+      expect(await prisma.user.findUnique({ where: { email: email("r9") } })).not.toBeNull();
+    } finally {
+      await restoreTeamMember(ids.owner, ids.admin2).catch(() => undefined);
+      await updateTeamSettings(ids.owner, { invitationLinkDays: 7, adminsMayInviteStaff: false });
+    }
+  });
+
+  it("the owner can sign an admin out everywhere, but not an owner or a customer", async () => {
+    const { revokeStaffSessionsByOwner } = await import("@/domains/security/sessions");
+    await prisma.session.create({ data: { id: `s-${tag}`, token: `tok-${tag}`, userId: ids.admin, expiresAt: new Date(Date.now() + 3_600_000) } });
+    expect(await revokeStaffSessionsByOwner(ids.owner, ids.admin)).toBe(1);
+    await expect(revokeStaffSessionsByOwner(ids.owner, ids.owner)).rejects.toThrow();
+    await expect(revokeStaffSessionsByOwner(ids.owner, ids.customer)).rejects.toThrow();
+  });
+
   it("the Team list never exposes codes or hashes", async () => {
     const team = await getTeam();
     const text = JSON.stringify(team);

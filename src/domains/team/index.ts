@@ -157,8 +157,9 @@ export async function resendInvitation(actorId: string, invitationId: string) {
     if (inv.status !== "INVITED") throw new TeamError("Only an invitation that has not been used or cancelled can be sent again.");
     await lockEmail(tx, inv.email);
     await assertEmailFree(tx, inv.email, inv.id);
-    await tx.teamInvitation.update({ where: { id: inv.id }, data: { codeHash: hashInvitationCode(code), expiresAt: invitationExpiry(new Date(), settings.invitationLinkDays) } });
-    await tx.auditLog.create({ data: { userId: actorId, action: "team.invite.resend", entityType: "TeamInvitation", entityId: inv.id } });
+    await tx.teamInvitation.update({ where: { id: inv.id }, data: { codeHash: hashInvitationCode(code), expiresAt: invitationExpiry(new Date(), settings.invitationLinkDays), invitedById: actorId } });
+    // The person sending it now vouches for the new link (the earlier sender may have been removed); the audit row keeps both.
+    await tx.auditLog.create({ data: { userId: actorId, action: "team.invite.resend", entityType: "TeamInvitation", entityId: inv.id, oldValue: { invitedById: inv.invitedById }, newValue: { invitedById: actorId } } });
     return { inv, inviter: await inviterLabel(tx, actorId), days: settings.invitationLinkDays };
   });
   const emailOutcome = await sendInvitationEmail({ to: out.inv.email, name: out.inv.name, level: out.inv.accessLevel, code, inviterName: out.inviter, days: out.days });
@@ -201,8 +202,9 @@ export async function acceptInvitation(code: string, password: string, confirm: 
     await lockEmail(tx, inv.email);
     if (await tx.user.findUnique({ where: { email: inv.email }, select: { id: true } })) throw new TeamError(INVALID_LINK_MESSAGE);
     // The inviter must still be an active owner/admin when the link is used (a removed inviter's links stop working).
-    const inviter = await tx.user.findUnique({ where: { id: inv.invitedById }, select: { role: true, archivedAt: true } });
-    if (!inviter || inviter.archivedAt || (inviter.role !== "OWNER" && inviter.role !== "ADMIN")) throw new TeamError(INVALID_LINK_MESSAGE);
+    // Checked under a shared lock on their account row, so removing or demoting them cannot slip in between this
+    // check and the account being created.
+    try { await assertActiveTeamActor(tx, inv.invitedById, ["OWNER", "ADMIN"]); } catch { throw new TeamError(INVALID_LINK_MESSAGE); }
 
     const user = await createTrustedCredentialUserInTx(tx, { email: inv.email, name: inv.name, role: inv.accessLevel, password, emailVerified: true });
     if (inv.phone) await tx.user.update({ where: { id: user.id }, data: { phone: inv.phone } });
