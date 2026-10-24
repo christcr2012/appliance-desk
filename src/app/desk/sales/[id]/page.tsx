@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getShopSale, saleBuyerLabel } from "@/domains/sales";
 import { Card, PageHeader, StatusPill } from "@/components/ui";
@@ -26,6 +27,8 @@ export default async function ShopSalePage({ params, searchParams }: { params: P
   const sale = await getShopSale(session.user.id, id);
   if (!sale) notFound();
   const status = STATUS[sale.status] ?? { label: sale.status, tone: "pending" as StatusTone };
+  const returned = await prisma.auditLog.findFirst({ where: { action: "sale.return", entityType: "Invoice", entityId: sale.id }, select: { id: true } });
+  const canReturn = !returned && sale.status === "PAID" && sale.amountPaidCents > 0 && sale.lineItems.every((l) => !l.applianceId);
   const owed = Math.max(0, sale.amountDueCents - sale.amountPaidCents);
   return (
     <main className="space-y-6">
@@ -39,7 +42,8 @@ export default async function ShopSalePage({ params, searchParams }: { params: P
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <StatusPill tone={status.tone} label={status.label} />
-          {sale.status !== "VOID" && <p className="text-sm text-ink-soft">{owed > 0 ? `${formatMoney(owed)} still owed` : "Nothing owed"}</p>}
+          {returned && <p className="text-sm font-semibold">Taken back and refunded</p>}
+          {sale.status !== "VOID" && !returned && <p className="text-sm text-ink-soft">{owed > 0 ? `${formatMoney(owed)} still owed` : "Nothing owed"}</p>}
         </div>
         <ul className="mt-4 divide-y divide-line">
           {sale.lineItems.filter((l) => l.kind !== "TAX").map((line) => (
@@ -59,8 +63,8 @@ export default async function ShopSalePage({ params, searchParams }: { params: P
           {sale.amountPaidCents > 0 && <div className="flex justify-between"><dt>Paid so far</dt><dd>{formatMoney(sale.amountPaidCents)}</dd></div>}
         </dl>
       </Card>
-      {sale.status !== "VOID" && (
-        <SalePanel invoiceId={sale.id} owedCents={owed} canCancel={sale.amountPaidCents === 0 && ["DRAFT", "OPEN"].includes(sale.status)} today={businessDateKey(new Date())} />
+      {sale.status !== "VOID" && !returned && (
+        <SalePanel invoiceId={sale.id} owedCents={owed} canCancel={sale.amountPaidCents === 0 && ["DRAFT", "OPEN"].includes(sale.status)} canReturn={canReturn} today={businessDateKey(new Date())} />
       )}
     </main>
   );

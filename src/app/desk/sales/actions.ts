@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { createLocalInvoiceCheckout, LocalInvoiceCheckoutError } from "@/domains/billing/local-invoice-checkout";
-import { cancelShopSale, createShopSale, SaleTaxBlockedError } from "@/domains/sales";
+import { cancelShopSale, createShopSale, returnShopSale, SaleTaxBlockedError } from "@/domains/sales";
 import { recordManualPayment } from "@/domains/billing";
 import { prisma } from "@/lib/prisma";
 import { parseDollarInput } from "@/lib/money-ui";
@@ -112,6 +112,20 @@ export async function cancelShopSaleAction(invoiceId: string, reason: string): P
     return { status: "success" };
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : "Couldn't cancel that sale." };
+  }
+}
+
+export async function returnShopSaleAction(invoiceId: string, reason: string): Promise<SaleActionState> {
+  const session = await requireRole("OWNER", "ADMIN");
+  try {
+    await returnShopSale(session.user.id, invoiceId, reason);
+    revalidatePath("/desk/sales");
+    revalidatePath(`/desk/sales/${invoiceId}`);
+    revalidatePath("/desk/parts");
+    revalidatePath("/desk/billing");
+    return { status: "success" };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't take that sale back." };
   }
 }
 
