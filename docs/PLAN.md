@@ -331,6 +331,29 @@ Design: `docs/designs/BATCH-O.md`; work coverage and prerequisites: work-index.
 - [ ] Settings/templates explain effects and effective dates in the screen, reuse
   domain validation and immutable customer facts, and provide safe restore paths.
 
+## Batch ACC — Accounts and sign-in — APPROVED 2026-10-23
+
+Design: [designs/ACCOUNTS-AND-SIGN-IN.md](designs/ACCOUNTS-AND-SIGN-IN.md); units ACC-1…ACC-5 in work-index.
+Turning on text-message codes stays Chris's live-SMS switch; nothing else here needs a purchase or live action to merge.
+
+### Acceptance checklist
+
+- [ ] ACC-1: every desk user (owner first) can change their own password, email (confirmed at the new address, notice to
+  the old), name and phone, see and sign out their devices, make new backup codes, and manage two-step within the role
+  policy. Nobody can reach another person's account through any id.
+- [ ] ACC-2: owner invites a person with name, email, phone, access level (Staff/Admin), job role and admin limits; the
+  emailed link works for 7 days (owner setting), is single-use and can be resent or cancelled; the account is created
+  only when the link is used. Team lists owner, admins and staff; owner can change level and remove/restore admins;
+  admins can never create or promote admins; the last owner can't be removed; every change revokes sessions and is audited.
+- [ ] ACC-3: each person chooses authenticator, email code or text code within an owner policy per level; text codes
+  never send unless the separate "Send sign-in codes by text" switch is on; every failure offers another method or a
+  backup code; trusted-device option.
+- [ ] ACC-4: owner can reset an employee's sign-in (not their own); security notice emails for every account change;
+  failed-password pause per account; recovery runbooks updated.
+- [ ] ACC-5: owner-editable job roles that only narrow an access level, enforced on the server; staff money/report
+  access remains impossible until IN-13 is answered.
+- [ ] Every item in "Rules that apply to every batch".
+
 ## Batch BP — Business offers operations and partnerships — PROPOSED
 
 Design: `docs/designs/BATCH-BP.md`; work coverage and prerequisites: work-index.

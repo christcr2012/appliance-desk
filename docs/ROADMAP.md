@@ -348,6 +348,12 @@ section with a date.
   purpose; adding a category later is a data change in `/desk/settings`
   or a new `ApplianceType` row, never a code change.
 
+## Accounts and sign-in — later options (2026-10-23, not in Batch ACC)
+
+Left out of `docs/designs/ACCOUNTS-AND-SIGN-IN.md` on purpose; Chris decides if any are wanted later:
+transferring ownership to another person; "Sign in with Google"; passkeys / fingerprint or face sign-in (the sign-in
+library supports passkeys); two-step for customers in the portal; codes by voice call; single sign-on.
+
 ## Explicitly out of scope for launch (by design, not an oversight)
 
 - Customers reserving inventory, picking installation slots, or
