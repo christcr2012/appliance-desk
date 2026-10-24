@@ -27,8 +27,18 @@ function sentMessage(outcome: DeliveryOutcome, where: string): string {
   throw new SecondStepError(`We could not send the code ${where}. Nothing was changed; try again in a minute or choose another method.`);
 }
 
-export const chooseMethodAction = (method: string) => run(async (id) => { await chooseSecondStepMethod(id, method); return undefined; }, "Couldn't save that choice.");
-export const startPhoneCheckAction = () => run(async (id) => sentMessage(await startPhoneConfirmation(id), "to your phone"), "Couldn't send a code.");
-export const confirmPhoneAction = (code: string) => run(async (id) => { await confirmPhone(id, code); return "Phone number checked."; }, "Couldn't check that code.");
-export const startSwitchAction = (method: string) => run(async (id) => sentMessage(await startMethodSwitch(id, method), method === "SMS" ? "to your phone" : "to your email"), "Couldn't send a code.");
-export const confirmSwitchAction = (method: string, code: string) => run(async (id) => { await confirmMethodSwitch(id, method, code); return "Method changed."; }, "Couldn't change the method.");
+export async function chooseMethodAction(method: string): Promise<StepResult> {
+  return run(async (id) => { await chooseSecondStepMethod(id, method); return undefined; }, "Couldn't save that choice.");
+}
+export async function startPhoneCheckAction(): Promise<StepResult> {
+  return run(async (id) => sentMessage(await startPhoneConfirmation(id), "to your phone"), "Couldn't send a code.");
+}
+export async function confirmPhoneAction(code: string): Promise<StepResult> {
+  return run(async (id) => { await confirmPhone(id, code); return "Phone number checked."; }, "Couldn't check that code.");
+}
+export async function startSwitchAction(method: string): Promise<StepResult> {
+  return run(async (id) => sentMessage(await startMethodSwitch(id, method), method === "SMS" ? "to your phone" : "to your email"), "Couldn't send a code.");
+}
+export async function confirmSwitchAction(method: string, code: string): Promise<StepResult> {
+  return run(async (id) => { await confirmMethodSwitch(id, method, code); return "Method changed."; }, "Couldn't change the method.");
+}
