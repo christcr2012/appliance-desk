@@ -20,6 +20,9 @@ Design: `docs/designs/BATCH-O.md` D-O3 and `docs/designs/O-3B-STRONGER-MODEL-PRO
 
 ## Not in this card
 - A browser test of the new limit boxes (the page uses the same loop as O-3A's).
-- Automatic retry of an approved-but-unfinished refund: deliberately absent; Stripe's own recovery (Billing → Waiting for
-  Stripe) owns uncertain results.
+- Automatic retry of an approved-but-unfinished refund: deliberately absent. A request is "finished" only when Stripe
+  confirmed (or no Stripe step was needed); otherwise it shows "Approved, not finished" with the Stripe state, and Stripe's own
+  recovery (Billing → Waiting for Stripe) owns it. If the server stopped between "approved" and "sent", the owner can press
+  **Check and finish** after two minutes: it first looks for the refund this approval made (marker in the refund note, or the
+  deposit/held payment already changed) and only sends if none exists.
 - A deposit refund checks both limits (kept amount, refund amount); the refund limit also applies to a deposit given back.

@@ -16,7 +16,7 @@ vi.mock("@/lib/stripe", () => ({
 
 import { prisma } from "@/lib/prisma";
 import {
-  decideApproval, saveApprovalLimits, submitCreditApply, submitDepositDecision, submitHeldPaymentRefund, submitInvoiceRefund,
+  decideApproval, finishApprovedRequest, listDecidedApprovals, saveApprovalLimits, submitCreditApply, submitDepositDecision, submitHeldPaymentRefund, submitInvoiceRefund,
   type SubmitResult,
 } from "@/domains/approvals";
 
@@ -136,13 +136,50 @@ describe.skipIf(!enabled)("money approvals on real Postgres with a fake Stripe",
     mocks.refundCreate.mockRejectedValue({ type: "StripeConnectionError", message: "simulated connection loss" });
     const result = await decideApproval(ownerId, id, "APPROVE");
     expect(result.status).toBe("APPROVED");
-    expect(result.message).not.toMatch(/Stripe confirmed/);
+    expect(result.message).not.toMatch(/Stripe confirmed|Approved and done/);
+    expect(result.message).toMatch(/not finished yet/);
     expect(result.message).toMatch(/Waiting for Stripe/);
+    const waiting = await prisma.approvalRequest.findUniqueOrThrow({ where: { id } });
+    expect(waiting.executedAt).toBeNull(); // not finished until Stripe confirms
+    expect(waiting.resultRef).toMatch(/^op:/);
+    const shown = (await listDecidedApprovals()).find((r) => r.id === id)!;
+    expect(shown.finished).toBe(false);
+    expect(shown.stateNote).toMatch(/Waiting for Stripe/);
+    expect(shown.canFinish).toBe(false); // Stripe's own recovery owns it; no second send is offered
     const op = await prisma.providerOperation.findFirstOrThrow({ where: { subjectType: "Refund", subjectId: (await prisma.refund.findFirstOrThrow({ where: { invoiceId: f.invoiceId } })).id } });
     expect(["UNKNOWN", "PENDING", "FAILED"]).toContain(op.status);
     mocks.refundCreate.mockClear();
     await expect(decideApproval(ownerId, id, "APPROVE")).rejects.toThrow(/already decided/);
     expect(mocks.refundCreate).not.toHaveBeenCalled();
+  });
+
+  it("an approval interrupted before anything was sent can be checked and finished: it sends once, and not before two minutes", async () => {
+    const f = await fixture();
+    const id = request(await submitInvoiceRefund(adminId, { invoiceId: f.invoiceId, amountCents: 6_500, reason: "GOODWILL", notes: "interrupted" }));
+    // The server stopped right after the yes was recorded: approved, nothing sent.
+    await prisma.approvalRequest.update({ where: { id }, data: { status: "APPROVED", decidedByUserId: ownerId, decidedAt: new Date() } });
+    await expect(finishApprovedRequest(ownerId, id)).rejects.toThrow(/moments ago/);
+    await prisma.approvalRequest.update({ where: { id }, data: { decidedAt: new Date(Date.now() - 300_000) } });
+    const results = await Promise.allSettled([finishApprovedRequest(ownerId, id), finishApprovedRequest(ownerId, id)]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(mocks.refundCreate).toHaveBeenCalledTimes(1);
+    expect((await prisma.approvalRequest.findUniqueOrThrow({ where: { id } })).executedAt).not.toBeNull();
+    expect(await prisma.refund.count({ where: { invoiceId: f.invoiceId } })).toBe(1);
+  });
+
+  it("finishing finds the refund an interrupted approval already made and never sends the money again", async () => {
+    const f = await fixture();
+    const id = request(await submitInvoiceRefund(adminId, { invoiceId: f.invoiceId, amountCents: 6_600, reason: "GOODWILL", notes: "half done" }));
+    await decideApproval(ownerId, id, "APPROVE");
+    expect(mocks.refundCreate).toHaveBeenCalledTimes(1);
+    // Pretend the server stopped before it recorded the result.
+    await prisma.approvalRequest.update({ where: { id }, data: { executedAt: null, resultRef: null, decidedAt: new Date(Date.now() - 300_000) } });
+    mocks.refundCreate.mockClear();
+    const out = await finishApprovedRequest(ownerId, id);
+    expect(out.status).toBe("APPROVED");
+    expect(mocks.refundCreate).not.toHaveBeenCalled();
+    expect(await prisma.refund.count({ where: { invoiceId: f.invoiceId } })).toBe(1);
+    expect((await prisma.approvalRequest.findUniqueOrThrow({ where: { id } })).executedAt).not.toBeNull();
   });
 
   it("stale input fails safely: refunding more than was paid is refused at approval time and recorded as failed", async () => {

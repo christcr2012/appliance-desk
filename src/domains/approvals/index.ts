@@ -238,13 +238,7 @@ export async function submitCreditApply(actingUserId: string, input: { creditId:
 export async function describeProviderOperation(providerOpId: string | null | undefined): Promise<string> {
   if (!providerOpId) return "No Stripe step was needed (the money was not paid through Stripe, so you pay it back yourself and it is recorded).";
   const op = await prisma.providerOperation.findUnique({ where: { id: providerOpId }, select: { status: true } });
-  const labels: Record<string, string> = {
-    PENDING: "Stripe has been asked and has not confirmed yet. It is retried automatically; check Billing → Waiting for Stripe.",
-    SUCCEEDED: "Stripe confirmed the refund.",
-    FAILED: "Stripe refused it. See Billing → Waiting for Stripe for the reason.",
-    UNKNOWN: "We did not get an answer from Stripe. Do not repeat it; see Billing → Waiting for Stripe.",
-  };
-  return labels[op?.status ?? "PENDING"] ?? "Recorded.";
+  return PROVIDER_STATE_WORDS[op?.status ?? "PENDING"] ?? "Recorded.";
 }
 
 export type DecisionResult =
@@ -331,34 +325,45 @@ function plainFailure(e: unknown): string {
   return "It could not be done.";
 }
 
-/** Step B of approving a refund or deposit decision: run the original function as the owner, outside any transaction. */
-async function runApprovedStripeWork(ownerId: string, requestId: string, input: Record<string, unknown>, who: string, resultRef: string): Promise<DecisionResult> {
+/** Plain words for the saved state of an approved Stripe-backed request, from the provider record (never a guess). */
+const PROVIDER_STATE_WORDS: Record<string, string> = {
+  PENDING: "Stripe has been asked and has not confirmed yet. It is retried automatically; check Billing → Waiting for Stripe.",
+  SUCCEEDED: "Stripe confirmed the refund.",
+  FAILED: "Stripe refused it. See Billing → Waiting for Stripe for the reason.",
+  UNKNOWN: "We did not get an answer from Stripe. Do not repeat it; see Billing → Waiting for Stripe.",
+};
+const APPROVAL_TOKEN = (requestId: string) => `[approval ${requestId}]`;
+/** How long an approved request may sit with no sign of the refund before the owner may ask for it to be checked and finished. */
+const RECOVERY_AFTER_MS = 120_000;
+
+/**
+ * Step B of approving a refund or deposit decision: run the original function as the owner, outside any transaction.
+ * The request is marked finished ONLY when the money side is confirmed (Stripe succeeded, or no Stripe step was needed).
+ * Otherwise it stays "approved, not finished" and points at the provider record, which the Stripe recovery pass owns.
+ */
+async function runApprovedStripeWork(ownerId: string, requestId: string, input: Record<string, unknown>, who: string, targetRef: string): Promise<DecisionResult> {
   const suffix = ` (requested by ${who}, approved by the owner)`;
   try {
-    let state: string;
+    let opId: string | null;
     if (input.action === "invoice_refund") {
       const r = await issueInvoiceRefund(ownerId, {
         invoiceId: String(input.invoiceId), amountCents: Number(input.amountCents), reason: input.reason as InvoiceRefundReason,
-        notes: `${String(input.notes)}${suffix}`.slice(0, 500),
+        notes: `${APPROVAL_TOKEN(requestId)} ${String(input.notes)}${suffix}`.slice(0, 500),
       });
-      state = await describeProviderOperation(r.providerOpId);
+      opId = r.providerOpId;
     } else if (input.action === "held_refund") {
       const r = await refundHeldPayment(ownerId, String(input.paymentId));
-      state = r.outcome === "SUCCEEDED" ? "Stripe confirmed the refund." : await describeProviderOperation(r.providerOpId || null);
+      opId = r.providerOpId || null;
     } else if (input.action === "deposit") {
       const r = await decideDepositRefund(ownerId, {
         depositId: String(input.depositId), refundCents: Number(input.refundCents),
         deductionReason: typeof input.deductionReason === "string" && input.deductionReason ? input.deductionReason : undefined,
       });
-      state = await describeProviderOperation(r.providerOpId);
+      opId = r.providerOpId;
     } else {
       throw new Error("This kind of request cannot be approved yet.");
     }
-    await prisma.$transaction(async (tx) => {
-      await tx.approvalRequest.update({ where: { id: requestId }, data: { executedAt: new Date(), resultRef } });
-      await tx.auditLog.create({ data: { userId: ownerId, action: "approval.executed", entityType: "ApprovalRequest", entityId: requestId, newValue: { resultRef, state } } });
-    });
-    return { status: "APPROVED", message: `Approved and done. ${state}` };
+    return await settleApprovedWork(ownerId, requestId, opId, targetRef);
   } catch (e) {
     const message = plainFailure(e);
     await prisma.$transaction(async (tx) => {
@@ -369,20 +374,86 @@ async function runApprovedStripeWork(ownerId: string, requestId: string, input: 
   }
 }
 
+/** Record where the money side stands. Finished only on a confirmed result; otherwise remember the provider record. */
+async function settleApprovedWork(ownerId: string, requestId: string, opId: string | null, targetRef: string): Promise<DecisionResult> {
+  const op = opId ? await prisma.providerOperation.findUnique({ where: { id: opId }, select: { status: true } }) : null;
+  const confirmed = !opId || op?.status === "SUCCEEDED";
+  const state = !opId ? "No Stripe step was needed (the money was not paid through Stripe, so you pay it back yourself and it is recorded)." : PROVIDER_STATE_WORDS[op?.status ?? "PENDING"] ?? "Recorded.";
+  await prisma.$transaction(async (tx) => {
+    await tx.approvalRequest.update({ where: { id: requestId }, data: confirmed ? { executedAt: new Date(), resultRef: targetRef } : { resultRef: `op:${opId}` } });
+    await tx.auditLog.create({ data: { userId: ownerId, action: confirmed ? "approval.executed" : "approval.waiting_on_provider", entityType: "ApprovalRequest", entityId: requestId, newValue: { resultRef: confirmed ? targetRef : `op:${opId}`, state } } });
+  });
+  return { status: "APPROVED", message: confirmed ? `Approved and done. ${state}` : `Approved, but not finished yet. ${state}` };
+}
+
+/**
+ * Owner only. An approved refund or deposit request that shows no sign of work (the server stopped between "approved" and
+ * "sent") can be checked and finished. It first looks for the refund this approval would have made (its marker is in the
+ * refund's notes, or the deposit/held payment already changed) so it can never send the same money twice.
+ */
+export async function finishApprovedRequest(ownerId: string, requestId: string): Promise<DecisionResult> {
+  const claimed = await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, ownerId, ["OWNER"]);
+    await tx.$queryRaw`SELECT "id" FROM "ApprovalRequest" WHERE "id" = ${requestId} FOR UPDATE`;
+    const req = await tx.approvalRequest.findUnique({ where: { id: requestId } });
+    if (!req) throw new ApprovalInputError("That request no longer exists.");
+    if (req.status !== "APPROVED" || req.executedAt || req.resultRef?.startsWith("op:")) throw new ApprovalInputError("Nothing is waiting to be finished on this request.");
+    if (!req.decidedAt || Date.now() - req.decidedAt.getTime() < RECOVERY_AFTER_MS) throw new ApprovalInputError("This was approved moments ago and may still be running. Wait two minutes and check again.");
+    const requester = await tx.user.findUnique({ where: { id: req.requestedByUserId }, select: { name: true, email: true } });
+    // Push the clock so two clicks cannot both start recovery.
+    await tx.approvalRequest.update({ where: { id: requestId }, data: { decidedAt: new Date() } });
+    return { input: req.input as Record<string, unknown>, targetRef: req.targetRef, who: requester?.name || requester?.email || "an admin" };
+  });
+  if (claimed.input.action === "invoice_refund") {
+    const made = await prisma.refund.findFirst({ where: { invoiceId: String(claimed.input.invoiceId), notes: { contains: APPROVAL_TOKEN(requestId) } }, select: { id: true } });
+    if (made) {
+      const op = await prisma.providerOperation.findFirst({ where: { subjectType: "Refund", subjectId: made.id, kind: "REFUND_CREATE" }, select: { id: true } });
+      return settleApprovedWork(ownerId, requestId, op?.id ?? null, claimed.targetRef);
+    }
+  } else if (claimed.input.action === "deposit") {
+    const dep = await prisma.deposit.findUnique({ where: { id: String(claimed.input.depositId) }, select: { refundedAt: true } });
+    if (dep?.refundedAt) {
+      const op = await prisma.providerOperation.findFirst({ where: { subjectType: "Deposit", subjectId: String(claimed.input.depositId), kind: "REFUND_CREATE" }, select: { id: true } });
+      return settleApprovedWork(ownerId, requestId, op?.id ?? null, claimed.targetRef);
+    }
+  } else if (claimed.input.action === "held_refund") {
+    const pay = await prisma.payment.findUnique({ where: { id: String(claimed.input.paymentId) }, select: { status: true, invoice: { select: { id: true } } } });
+    if (pay && pay.status !== HELD_PAYMENT_STATUS) {
+      const refund = await prisma.refund.findFirst({ where: { invoiceId: pay.invoice.id, notes: { contains: "Held payment" } }, orderBy: { createdAt: "desc" }, select: { id: true } });
+      const op = refund ? await prisma.providerOperation.findFirst({ where: { subjectType: "Refund", subjectId: refund.id, kind: "REFUND_CREATE" }, select: { id: true } }) : null;
+      return settleApprovedWork(ownerId, requestId, op?.id ?? null, claimed.targetRef);
+    }
+  }
+  return runApprovedStripeWork(ownerId, requestId, claimed.input, claimed.who, claimed.targetRef);
+}
+
 export type ApprovalRow = {
   id: string; kind: ApprovalKindBuilt | string; summary: string; amountCents: number; requestedBy: string; createdAt: Date;
   expiresAt: Date; status: string; expired: boolean; decisionNote: string | null; failureMessage: string | null; decidedAt: Date | null; finished: boolean;
+  /** For an approved refund/deposit: where the Stripe side stands, in plain words. */
+  stateNote: string | null;
+  /** True when an approved request shows no sign of work and the owner may ask for it to be checked and finished. */
+  canFinish: boolean;
 };
 
 async function rows(where: Prisma.ApprovalRequestWhereInput, take: number): Promise<ApprovalRow[]> {
   const list = await prisma.approvalRequest.findMany({ where, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take });
   const users = await prisma.user.findMany({ where: { id: { in: [...new Set(list.map((r) => r.requestedByUserId))] } }, select: { id: true, name: true, email: true } });
+  const opIds = list.map((r) => r.resultRef).filter((x): x is string => !!x && x.startsWith("op:")).map((x) => x.slice(3));
+  const ops = opIds.length ? await prisma.providerOperation.findMany({ where: { id: { in: opIds } }, select: { id: true, status: true } }) : [];
   const now = Date.now();
-  return list.map((r) => ({
-    id: r.id, kind: r.kind, summary: r.summary, amountCents: r.amountCents, createdAt: r.createdAt, expiresAt: r.expiresAt, status: r.status,
-    requestedBy: (users.find((u) => u.id === r.requestedByUserId)?.name ?? users.find((u) => u.id === r.requestedByUserId)?.email) || "An admin",
-    expired: r.status === "PENDING" && r.expiresAt.getTime() < now, decisionNote: r.decisionNote, failureMessage: r.failureMessage, decidedAt: r.decidedAt, finished: r.executedAt !== null,
-  }));
+  return list.map((r) => {
+    const opStatus = r.resultRef?.startsWith("op:") ? ops.find((o) => o.id === r.resultRef!.slice(3))?.status : undefined;
+    const waitingOnStripe = r.status === "APPROVED" && !r.executedAt && opStatus !== undefined;
+    return {
+      id: r.id, kind: r.kind, summary: r.summary, amountCents: r.amountCents, createdAt: r.createdAt, expiresAt: r.expiresAt, status: r.status,
+      requestedBy: (users.find((u) => u.id === r.requestedByUserId)?.name ?? users.find((u) => u.id === r.requestedByUserId)?.email) || "An admin",
+      expired: r.status === "PENDING" && r.expiresAt.getTime() < now, decisionNote: r.decisionNote, failureMessage: r.failureMessage, decidedAt: r.decidedAt,
+      finished: r.executedAt !== null || opStatus === "SUCCEEDED",
+      stateNote: waitingOnStripe ? PROVIDER_STATE_WORDS[opStatus!] ?? null : null,
+      canFinish: r.status === "APPROVED" && !r.executedAt && !r.resultRef?.startsWith("op:") && !!r.decidedAt && now - r.decidedAt.getTime() >= RECOVERY_AFTER_MS && (r.kind === "REFUND" || r.kind === "DEPOSIT_KEPT"),
+    };
+  });
 }
 export const listWaitingApprovals = () => rows({ status: "PENDING" }, 50);
 export async function listDecidedApprovals() {
