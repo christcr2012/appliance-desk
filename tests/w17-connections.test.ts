@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   purchaseFind: vi.fn(async () => []),
   supplierFind: vi.fn(async () => []),
 }));
+vi.mock("@/lib/job-role-guard", () => ({ jobRoleScreens: async () => null })); // ACC-5: no job role, so the access level alone decides
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
