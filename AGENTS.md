@@ -27,7 +27,7 @@ Start every session: this file → top of [docs/STATUS.md](docs/STATUS.md) → [
   tell Chris so it gets rotated. Do not extend `.gitleaksignore` or the secret-scan allowlist without saying why in
   the PR. No real customer data or private infrastructure identifiers (Neon branch/endpoint ids, Vercel project/team
   ids, URLs with credentials) in this **public** repo.
-- **No manual releases, previews or promotions.** Only the checked workflows release: `main`→`testing` each evening, then that tested version `testing`→`live` that night
+- **No manual releases, previews or promotions.** Only the checked workflows release: `main`→`testing` each night at 10 pm, then that tested version `testing`→`live` that night
   ([.github/RELEASE-POLICY.md](.github/RELEASE-POLICY.md)). Never push to or merge into `live`. Automatic per-PR Vercel previews are off. The owner-approved dedicated testing app uses the checked `testing`
   branch and its isolated credentials; its automatic build allowance is once per Denver day.
 - **Do not widen anyone's access** or change production data/settings without Chris's approval. Public sign-up

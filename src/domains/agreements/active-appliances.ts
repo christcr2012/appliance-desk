@@ -64,7 +64,10 @@ async function queryActiveApplianceOptions(agreementFilter: Prisma.RentalAgreeme
       // actually with the customer, not just reserved for them.
       appliance: { status: { in: ["RENTED", "AWAITING_PICKUP"] } },
     },
-    include: { appliance: { include: { applianceType: true } } },
+    // Only the three fields the option label needs. Loading whole Appliance and
+    // ApplianceType rows (40+ columns each, grown over time) made a 200-appliance
+    // account miss its capacity baseline (f-large-account-owner-read, 2026-10-24).
+    select: { appliance: { select: { id: true, assetNumber: true, applianceType: { select: { name: true } } } } },
   });
 
   return toApplianceOptions(assignments);

@@ -49,7 +49,7 @@ The `appliance-desk-testing` project tracks the `testing` Git branch, uses the e
 This Vercel project's Production target is still a **testing application** (`APP_ENV=testing`).
 The public `appliance-desk` project continues to track `live`; its credentials and daily policy are unchanged.
 
-**Order (owner direction 2026-10-24): main → testing → live.** At 18:05 Denver `testing-deploy.yml` picks the
+**Order (owner direction 2026-10-24): main → testing → live.** At 10 pm Denver `testing-deploy.yml` picks the
 newest first-parent `main` commit with green exact-head `ci` and `release-policy` checks, fast-forwards `testing`
 and creates an atomic dated `testing-promotion/<Denver date>` marker, at most once per scheduled Denver day (an
 owner-dispatched run gets its own marker). The nightly live promotion then uses `testing`, not `main`, as its

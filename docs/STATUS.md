@@ -1,3 +1,13 @@
+## October 24 — Testing release moved to 10 pm; capacity check fix; extra testing release
+
+Testing now updates at 10 pm Denver (backups 10:40 and 11:20 pm); the business site still updates just after
+midnight with that tested version. If GitHub starts the 10 pm job late (after midnight), the business site ships the
+previous tested version that night — never untested code. Testing cost controls checked (one build a night,
+0.25 CU / 5-minute sleep database, nightly job addresses refuse before touching the database). Capacity check
+`f-large-account-owner-read` (17–18ms vs 14.3ms limit): the active-equipment read loaded every column of each
+appliance and appliance type; it now loads only the three fields it shows (same output). No threshold change.
+Chris asked for one extra testing release today after this merges.
+
 ## October 24 — Testing setup audited and fixed: production now only gets what passed on testing
 
 Checked read-only against GitHub, Vercel (both projects), Neon and Stripe Test mode. Correct: separate testing
@@ -6,7 +16,7 @@ refusals, private file store, Stripe testing webhook on and business-site test w
 code. Found and fixed in this PR: (1) the business site was released from `main` every midnight whether or not the
 testing app had it — it now ships only the `testing` version, and only after Vercel reports that exact commit built
 on the testing app; (2) testing advanced only on the first merge of a day and could leave later work stranded — it
-now promotes the newest fully checked `main` every evening at 18:05 Denver; (3) each Vercel project now builds only
+now promotes the newest fully checked `main` every evening at 10 pm Denver; (3) each Vercel project now builds only
 its own branch; (4) the testing build failed after Chris's settings at the "create test owner" step and the log hid
 why — it now names the step and reason without secrets; (5) agents could never sign in to the testing app (Sensitive
 password + required authenticator) — the testing app now starts with two-step not required and the checklist asks for

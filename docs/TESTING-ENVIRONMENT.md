@@ -61,10 +61,20 @@ It refuses live Stripe keys and alternate connection targets. Repeated builds on
 they preserve completed sales/refunds, changed stock, test settings and existing accounts. A deliberate reset
 requires explicit owner approval and verification of the provider branch and endpoint first.
 
+## Cost controls (checked 2026-10-24)
+
+- **Builds:** one scheduled testing build a night (10 pm Denver) plus any extra build Chris asks for; docs/tests-only
+  changes are never built. The business site still builds once a night.
+- **Database:** the testing database compute is capped at 0.25 CU and sleeps after 5 idle minutes, the same verified
+  idle profile as production ([NEON-COST-POLICY](../.github/NEON-COST-POLICY.md)).
+- **Scheduled jobs:** Vercel still calls the 15 nightly job addresses on the testing app, but every one refuses
+  before touching the database, so they cost almost nothing and never wake it.
+- **Email, texts, Twilio usage sync:** off in testing; no provider charges.
+
 ## Deploy, verify and release (the order every change follows)
 
 1. **PR → `main`.** Normal CI on throwaway Postgres; never this hosted database.
-2. **`main` → `testing`, every evening (18:05 Denver).** `testing-deploy.yml` picks the newest `main` commit whose
+2. **`main` → `testing`, every night (10 pm Denver).** `testing-deploy.yml` picks the newest `main` commit whose
    `ci` and `release-policy` checks both passed and fast-forwards `testing` (once per Denver day; Chris can run it
    by hand for an extra build). Vercel then migrates this database, checks schema health, seeds missing fixtures
    and builds the testing app.
