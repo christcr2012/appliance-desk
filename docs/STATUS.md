@@ -1,3 +1,21 @@
+## October 24 — Official Stripe TEST connection selected; matching webhook saved
+
+Owner direction: use the official Stripe connector for Appliance Desk development; the custom Robinson Stripe
+connector remains under testing and is not a prerequisite. Keep the existing Stripe **Test mode**, not a new sandbox.
+The official connector independently lists Robinson Appliance Rentals LLC in Test mode. Chris saved the intended
+account's test server key in Vercel; metadata confirms `STRIPE_SECRET_KEY` was updated, but the protected value
+cannot be read back and its runtime account identity is not yet proved. Created one TEST-only webhook through the
+official connector at `https://robinsonappliancerentals.com/api/webhooks/stripe`, with the seven events handled by
+`webhooks-base.ts`: Checkout completed/async succeeded/async failed, invoice paid/payment failed, charge refunded,
+and subscription deleted. Independent Stripe read-back confirms the endpoint is enabled with that exact URL and
+event list. Saved its returned signing secret directly to the existing Sensitive `STRIPE_WEBHOOK_SECRET` in
+Vercel, preserving its environment targets. No secret is recorded here. The old publishable key was not changed;
+its account pairing must be checked before any future client-side Stripe use.
+These are **saved configuration**, not deployment or end-to-end payment proof. No manual release, payment,
+refund, customer mutation or live-mode action was performed. Next: the scheduled deployment must pick up both
+saved secrets; verify the app's server-key account, then exercise checkout, signed payment update, duplicate-event
+handling and refund using an isolated app/database and the official Test-mode connection. Keep M-3 unchecked.
+
 ## October 24 — Stripe connections restored; checkout still unverified
 
 Both Stripe providers now answer account calls in TEST mode: Robinson Stripe MCP reports a restricted TEST
