@@ -1,6 +1,10 @@
 ## October 24 — Yearly "check your SUTS setup" reminder
 
-In progress (branch `ai/claude/tax-setup-yearly-check`). Your To do list now reminds you each January, and a year after the last time you pressed "I checked this", to compare the filing account's setup with what SUTS shows. An account in use that was never confirmed also shows it. It links straight to that account's setup page; the Owner presses the button, an admin only sees the reminder. Tested: the due dates (January, twelve months, never confirmed, already checked this January). Nothing for Chris to do.
+Merged (#557). Your To do list now reminds you each January, and a year after the last time you pressed "I checked this", to compare the filing account's setup with what SUTS shows. An account in use that was never confirmed also shows it. It links straight to that account's setup page; the Owner presses the button, an admin only sees the reminder. Tested: the due dates (January, twelve months, never confirmed, already checked this January). Nothing for Chris to do.
+
+## October 24 — Phone bill to books expense (COM-N3)
+
+In progress (branch `ai/claude/com-n3-statement-expense`). Settings → Phone, texts and provider costs: once you have verified a Twilio statement against its saved PDF, a **Book as paid expense** form appears. You choose the day you paid, which account it came from, and the category. It then makes ONE expense (vendor Twilio, the statement total and its tax) and posts it to the books through the normal expense path, so closed-month rules still apply. If you had already typed that bill in by hand, pick it from "Already entered by hand?" and it is matched instead, never duplicated. A statement can only ever be booked once (a database rule), and a double click makes one expense. Credits, zero totals and non-dollar statements are refused with a plain message; top-ups are never booked here. Proved on throwaway Postgres: staff refused, unverified refused, one posted expense with the right amounts, repeat changes nothing, two simultaneous clicks make one, match-by-hand works and wrong-amount or already-matched is refused. Not proved: a browser test of the form, and nothing real was booked. Nothing for Chris to do. Next: text-message senders (live sending stays off).
 
 ## October 24 — Nightly phone usage sync (COM-N wiring)
 

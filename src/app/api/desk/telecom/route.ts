@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { twoFactorEnrollmentRequired } from "@/domains/security/two-factor";
 import { uploadTelecomStatement, verifyTelecomStatement, productionStatementStore, parseTelecomStatementDollars } from "@/domains/messaging/telecom-statements";
+import { bookTelecomStatementExpense } from "@/domains/messaging/telecom-statement-books";
 import { communicationsPolicySchema, saveCommunicationsPolicy } from "@/domains/messaging/communications-policy";
 import { prisma } from "@/lib/prisma";
 import { createHash } from "node:crypto";
@@ -39,6 +40,15 @@ export async function POST(req: Request): Promise<Response> {
       if (body.kind === "verify") {
         const result = await verifyTelecomStatement(
           session.user.id, String(body.statementId ?? ""), String(body.hash ?? ""));
+        return NextResponse.json(result);
+      }
+      if (body.kind === "book") {
+        const result = await bookTelecomStatementExpense(session.user.id, {
+          statementId: String(body.statementId ?? ""), paidOn: String(body.paidOn ?? ""),
+          paidFromAccountId: String(body.paidFromAccountId ?? ""), categoryId: String(body.categoryId ?? ""),
+          linkExpenseId: typeof body.linkExpenseId === "string" && body.linkExpenseId ? body.linkExpenseId : undefined,
+          vendorTaxCents: typeof body.taxDollars === "string" && body.taxDollars.trim() ? dollarsToCents(body.taxDollars.trim()) : undefined,
+        });
         return NextResponse.json(result);
       }
       if (body.kind === "budget") {
@@ -88,6 +98,11 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({error:"Select a PDF no larger than 4 MB."},{status:400});
     }
     const invoiceTotalCents = dollarsToCents(form.get("amountDollars"));
+    const taxField = form.get("taxDollars");
+    const vendorTaxCents = typeof taxField === "string" && taxField.trim() ? dollarsToCents(taxField.trim()) : null;
+    if (vendorTaxCents !== null && (vendorTaxCents < 0 || vendorTaxCents > invoiceTotalCents)) {
+      return NextResponse.json({error:"The tax cannot be negative or more than the statement total."},{status:400});
+    }
     const result = await uploadTelecomStatement({
       actorUserId:session.user.id,
       accountId:String(form.get("accountId") ?? ""),
@@ -96,7 +111,7 @@ export async function POST(req: Request): Promise<Response> {
       periodEnd:String(form.get("periodEnd") ?? ""),
       issueDate:String(form.get("issueDate") ?? ""),
       currency:String(form.get("currency") ?? "USD"),
-      invoiceTotalCents,
+      invoiceTotalCents, vendorTaxCents,
       bytes:new Uint8Array(await file.arrayBuffer()),
     });
     return NextResponse.json(result, { status: 201 });
