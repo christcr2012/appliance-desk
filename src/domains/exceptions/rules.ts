@@ -30,6 +30,7 @@ export type ExceptionCategory =
   | "SALES_TAX"
   | "TAX_RETURN_DUE"
   | "TAX_LICENSE_RENEWAL"
+  | "TAX_SETUP_CHECK"
   | "BUSINESS_PAPERWORK"
   | "TAX_AMENDMENT_DUE"
   | "TAX_FILING_NOT_READY"
@@ -830,6 +831,36 @@ export function taxLicenseRenewalException(input: {
     dueOn: input.expiresOn,
     dueDateOnly: true,
     since: input.expiresOn,
+  };
+}
+
+/**
+ * Is it time to re-check that the SUTS setup still matches SUTS? Each January, and whenever the last check is a year old.
+ * An account in use that has never been confirmed is also due. Dates are Colorado business days.
+ */
+export function taxSetupCheckDue(setupCheckedOn: Date | null, inUse: boolean, now: Date): boolean {
+  if (!setupCheckedOn) return inUse;
+  const checked = businessDateKey(setupCheckedOn), today = businessDateKey(now);
+  const thisYear = today.slice(0, 4);
+  if (today.slice(5, 7) === "01" && checked < `${thisYear}-01-01`) return true;
+  const yearLater = `${String(Number(checked.slice(0, 4)) + 1)}${checked.slice(4)}`;
+  return today >= yearLater;
+}
+
+export function taxSetupCheckException(input: {
+  accountId: string; accountName: string; setupCheckedOn: Date | null; now: Date; readOnly: boolean;
+}): ExceptionItem {
+  return {
+    category: "TAX_SETUP_CHECK",
+    severity: "medium",
+    title: `Check your SUTS setup still matches SUTS — ${input.accountName}`,
+    detail: (input.setupCheckedOn
+      ? `Last checked ${businessDateKey(input.setupCheckedOn)}. `
+      : "You have not confirmed this setup against SUTS yet. ") +
+      "Compare the areas, codes and order here with what SUTS shows, then press \"I checked this\"." +
+      (input.readOnly ? " Only the Owner can confirm it." : ""),
+    href: `/desk/sales-tax/setup/accounts/${input.accountId}`,
+    since: input.setupCheckedOn ?? input.now,
   };
 }
 

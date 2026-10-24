@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { businessDateFromKey } from "@/lib/business-date";
 import { taxAmendmentDueException, taxFilingNotReadyException } from "@/domains/exceptions/rules";
-import { taxReturnDueException, taxLicenseRenewalException } from "@/domains/exceptions/rules";
+import { taxReturnDueException, taxLicenseRenewalException, taxSetupCheckDue, taxSetupCheckException } from "@/domains/exceptions/rules";
 const day = (s: string): Date => businessDateFromKey(s)!;
 
 describe("filing Today exception rules", () => {
@@ -53,5 +53,24 @@ describe("T-6b2 filing amendment and readiness attention", () => {
     expect(taxFilingNotReadyException({ ...data, now: day("2026-10-01") }).severity).toBe("medium");
     expect(taxFilingNotReadyException({ ...data, now: day("2026-10-18") }).severity).toBe("high");
     expect(taxFilingNotReadyException({ ...data, now: day("2026-10-18") }).detail).toContain("CPA basis");
+  });
+});
+
+describe("yearly SUTS setup check (BATCH-T 11.13)", () => {
+  it("is due each January and a year after the last check, and for an account in use that was never confirmed", () => {
+    expect(taxSetupCheckDue(null, true, day("2026-10-24"))).toBe(true);
+    expect(taxSetupCheckDue(null, false, day("2026-10-24"))).toBe(false);
+    expect(taxSetupCheckDue(day("2026-03-10"), true, day("2026-10-24"))).toBe(false);
+    expect(taxSetupCheckDue(day("2026-03-10"), true, day("2027-01-05"))).toBe(true); // a new January
+    expect(taxSetupCheckDue(day("2027-01-02"), true, day("2027-01-20"))).toBe(false); // already checked this January
+    expect(taxSetupCheckDue(day("2026-03-10"), true, day("2027-03-10"))).toBe(true); // twelve months later
+    expect(taxSetupCheckDue(day("2026-03-10"), true, day("2027-03-09"))).toBe(false);
+  });
+  it("links to the account's setup page and says only the Owner can confirm when read-only", () => {
+    const item = taxSetupCheckException({ accountId: "acct-1", accountName: "Greeley", setupCheckedOn: day("2026-01-03"), now: day("2027-01-05"), readOnly: true });
+    expect(item.category).toBe("TAX_SETUP_CHECK");
+    expect(item.href).toBe("/desk/sales-tax/setup/accounts/acct-1");
+    expect(item.detail).toContain("Last checked 2026-01-03");
+    expect(item.detail).toContain("Only the Owner");
   });
 });

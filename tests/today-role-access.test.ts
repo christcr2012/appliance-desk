@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
   systemIssueCount: vi.fn(),
   officialRateAttention: vi.fn(async () => []),
   rdfRefundAttention: vi.fn(async () => []),
-  filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } })),
+  filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 }, setupChecks: { rows: [], total: 0 } })),
   amendmentAttention: vi.fn(async () => ({ amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } })),
   acquisitionAttention: vi.fn(async () => []),
 }));

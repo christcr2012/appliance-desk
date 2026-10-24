@@ -1014,7 +1014,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
 
   const filingAttention = canViewFinance
     ? await listTaxFilingAttention(now, (session.user as { role?: string }).role === "ADMIN")
-    : { returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 } };
+    : { returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 }, setupChecks: { rows: [], total: 0 } };
 
   const paperworkItems =
     (session.user as { role?: string }).role === "OWNER" ? await listPaperworkAttention(now) : [];
@@ -1082,6 +1082,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
+    ...filingAttention.setupChecks.rows,
     ...paperworkAttention.rows,
     ...rdfRefundAttention,
     ...amendmentAttention.amendments.rows,
@@ -1116,6 +1117,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["TAX_AMENDMENT_DUE", amendmentAttention.amendments],
       ["TAX_FILING_NOT_READY", amendmentAttention.readiness],
       ["TAX_LICENSE_RENEWAL", filingAttention.licenses],
+      ["TAX_SETUP_CHECK", filingAttention.setupChecks],
       ["BUSINESS_PAPERWORK", paperworkAttention],
       ["STALE_RESERVATION", staleReservations],
       ["PAST_DUE_INVOICE", pastDueInvoices],

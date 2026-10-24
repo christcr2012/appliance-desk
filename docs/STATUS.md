@@ -1,3 +1,7 @@
+## October 24 — Yearly "check your SUTS setup" reminder
+
+In progress (branch `ai/claude/tax-setup-yearly-check`). Your To do list now reminds you each January, and a year after the last time you pressed "I checked this", to compare the filing account's setup with what SUTS shows. An account in use that was never confirmed also shows it. It links straight to that account's setup page; the Owner presses the button, an admin only sees the reminder. Tested: the due dates (January, twelve months, never confirmed, already checked this January). Nothing for Chris to do.
+
 ## October 24 — Two small clean-ups (report label, tax-login guard)
 
 In progress (branch `ai/claude/polish-shop-sales-label`). The revenue reports now call the parts-and-items group "Shop sales (parts and items sold)" instead of "Items sold". A new automatic test fails the build if anyone ever adds a password/login field to a tax table or makes the app send anything to Colorado's tax sites (they are only linked to, for you to open). Nothing for Chris to do.
