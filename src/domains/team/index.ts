@@ -226,6 +226,13 @@ export async function acceptInvitation(code: string, password: string, confirm: 
     // check and the account being created.
     try { await assertActiveTeamActor(tx, inv.invitedById, ["OWNER", "ADMIN"]); } catch { throw new TeamError(INVALID_LINK_MESSAGE); }
 
+    // The job role chosen at invitation time must still be available and fit. Otherwise the link is refused rather than
+    // quietly giving the person more than the owner meant; the owner sends a fresh invitation.
+    let jobRole: Awaited<ReturnType<typeof tx.jobRole.findUnique>> = null;
+    if (inv.jobRoleId) {
+      jobRole = await tx.jobRole.findUnique({ where: { id: inv.jobRoleId } });
+      if (!jobRole || jobRole.archivedAt || jobRole.accessLevel !== inv.accessLevel) throw new TeamError("The job role for this invitation is no longer available. Ask the owner to send you a new invitation.");
+    }
     const user = await createTrustedCredentialUserInTx(tx, { email: inv.email, name: inv.name, role: inv.accessLevel, password, emailVerified: true });
     if (inv.phone) await tx.user.update({ where: { id: user.id }, data: { phone: inv.phone } });
     if (inv.accessLevel === "ADMIN") {
@@ -235,13 +242,10 @@ export async function acceptInvitation(code: string, password: string, confirm: 
       }
     }
     // The job role chosen at invitation time (if it is still available and still fits). It only narrows.
-    if (inv.jobRoleId) {
-      const role = await tx.jobRole.findUnique({ where: { id: inv.jobRoleId } });
-      if (role && !role.archivedAt && role.accessLevel === inv.accessLevel) {
-        await tx.user.update({ where: { id: user.id }, data: { jobRoleId: role.id } });
-        const roleLimits = (Array.isArray(role.capabilityLimits) ? role.capabilityLimits : []).filter((c): c is string => typeof c === "string");
-        await applyCapabilityLimits(tx, user.id, roleLimits, inv.invitedById);
-      }
+    if (jobRole) {
+      await tx.user.update({ where: { id: user.id }, data: { jobRoleId: jobRole.id } });
+      const roleLimits = (Array.isArray(jobRole.capabilityLimits) ? jobRole.capabilityLimits : []).filter((c): c is string => typeof c === "string");
+      await applyCapabilityLimits(tx, user.id, roleLimits, inv.invitedById);
     }
     await tx.teamInvitation.update({ where: { id: inv.id }, data: { status: "ACCEPTED", acceptedUserId: user.id, acceptedAt: new Date() } });
     await tx.auditLog.create({

@@ -140,4 +140,29 @@ describe.skipIf(!enabled)("Job roles on real Postgres", () => {
     await inviteTeamMember(ids.admin, { name: "Office Ollie", email: email("ollie"), accessLevel: "STAFF", jobRoleId: "jobrole-office" });
     await expect(inviteTeamMember(ids.admin, { name: "Nope", email: email("w2"), accessLevel: "STAFF", jobRoleId: "jobrole-manager" })).rejects.toThrow(TeamError);
   });
+
+  it("switching another admin permission off in a job role applies to the people who already have it", async () => {
+    const created = await saveJobRole(ids.owner, { label: `Counter admin ${tag}`, accessLevel: "ADMIN", screens: ["customers"], capabilityLimits: [] });
+    createdRoles.push(created.id);
+    await prisma.staffCapabilityOverride.deleteMany({ where: { userId: ids.admin } });
+    await assignJobRole(ids.owner, ids.admin, created.id);
+    await prisma.$transaction(async (tx) => { await expect(assertCapability(tx, ids.admin, "ISSUE_REFUND")).resolves.toBeTruthy(); });
+    await saveJobRole(ids.owner, { id: created.id, label: `Counter admin ${tag}`, accessLevel: "ADMIN", screens: ["customers"], capabilityLimits: ["ISSUE_REFUND"] });
+    await prisma.$transaction(async (tx) => { await expect(assertCapability(tx, ids.admin, "ISSUE_REFUND")).rejects.toThrow(CapabilityError); });
+    await assignJobRole(ids.owner, ids.admin, null);
+    await prisma.staffCapabilityOverride.deleteMany({ where: { userId: ids.admin } });
+  });
+
+  it("a job role with an invitation waiting cannot be archived, and a link whose job role went away is refused", async () => {
+    const created = await saveJobRole(ids.owner, { label: `Waiting role ${tag}`, accessLevel: "STAFF", screens: ["customers"] });
+    createdRoles.push(created.id);
+    const r = await inviteTeamMember(ids.owner, { name: "Waiting Wes", email: email("wes"), accessLevel: "STAFF", jobRoleId: created.id });
+    await expect(archiveJobRole(ids.owner, created.id)).rejects.toThrow(/invitation is waiting/);
+    // Even if the role is archived some other way, the link must not quietly give more than the owner meant.
+    await prisma.jobRole.update({ where: { id: created.id }, data: { archivedAt: new Date() } });
+    const code = `known-${randomUUID()}-${randomUUID()}`;
+    await prisma.teamInvitation.update({ where: { id: r.invitationId }, data: { codeHash: hashInvitationCode(code) } });
+    await expect(acceptInvitation(code, PASSWORD, PASSWORD)).rejects.toThrow(/job role .* no longer available/);
+    expect(await prisma.user.count({ where: { email: email("wes") } })).toBe(0);
+  });
 });

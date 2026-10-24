@@ -101,6 +101,11 @@ export async function saveJobRole(ownerId: string, input: SaveJobRoleInput) {
     const dup = await tx.jobRole.findFirst({ where: { label: { equals: clean.label, mode: "insensitive" }, archivedAt: null, id: { not: existing.id } }, select: { id: true } });
     if (dup) throw new JobRoleError("There is already a job role with that name.");
     await tx.jobRole.update({ where: { id: existing.id }, data: { label: clean.label, accessLevel: clean.accessLevel, screens: clean.screens, capabilityLimits: clean.capabilityLimits } });
+    // Permissions this job role switches off apply to the people who already have it, at once (locked in a fixed order),
+    // and they are signed out so the change shows right away. Switching one back on never restores a permission here.
+    const members = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE "jobRoleId" = ${existing.id} AND "archivedAt" IS NULL ORDER BY "id" FOR UPDATE`;
+    for (const m of members) await applyCapabilityLimits(tx, m.id, clean.capabilityLimits, ownerId);
+    if (members.length > 0) await tx.session.deleteMany({ where: { userId: { in: members.map((m) => m.id) } } });
     await tx.auditLog.create({
       data: {
         userId: ownerId, action: "team.job_role.update", entityType: "JobRole", entityId: existing.id,
@@ -119,6 +124,8 @@ export async function archiveJobRole(ownerId: string, id: string) {
     if (role.archivedAt) return;
     const using = await tx.user.count({ where: { jobRoleId: id, archivedAt: null } });
     if (using > 0) throw new JobRoleError(`${using} ${using === 1 ? "person has" : "people have"} this job role. Move them to another one first.`);
+    const waiting = await tx.teamInvitation.count({ where: { jobRoleId: id, status: "INVITED" } });
+    if (waiting > 0) throw new JobRoleError(`${waiting} ${waiting === 1 ? "invitation is" : "invitations are"} waiting with this job role. Cancel ${waiting === 1 ? "it" : "them"} or wait until ${waiting === 1 ? "it is" : "they are"} used first.`);
     await tx.jobRole.update({ where: { id }, data: { archivedAt: new Date() } });
     await tx.auditLog.create({ data: { userId: ownerId, action: "team.job_role.archive", entityType: "JobRole", entityId: id, oldValue: { label: role.label } } });
   });
