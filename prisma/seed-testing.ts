@@ -84,7 +84,12 @@ async function main() {
           await createTrustedCredentialUserInTx(tx, { email: "owner@example.test", name: "Testing Owner", role: "OWNER", password, emailVerified: true });
         }
       }, { timeout: 30000 });
-    } catch (error) { throw new SeedStageError("creating the test owner login", error); }
+    } catch (error) {
+      // The optional test login must not hold back the testing build (and with it the nightly release):
+      // the fixtures are in place, so warn loudly and keep going.
+      console.warn("WARNING — test owner login NOT created. " +
+        describeSeedFailure(new SeedStageError("creating the test owner login", error)));
+    }
     console.log("Synthetic testing fixtures ready. Existing test history was preserved.");
     if (!password) console.log("Test owner login awaits TEST_OWNER_PASSWORD; no business identity was copied.");
   } finally { await prisma.$disconnect(); }

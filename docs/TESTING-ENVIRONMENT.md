@@ -77,8 +77,9 @@ So the business site only ever gets code that already built, migrated and ran on
 project builds only its own branch (`scripts/vercel-ignore-build.mjs`): the testing app builds `testing`, the
 business site builds `live`.
 
-If a testing build fails, the build log names the step (fixtures or test owner login) and the reason, without
-printing any secret.
+If a testing build fails, the build log names the step and the reason, without printing any secret. A problem
+creating the optional test owner login only prints a `WARNING — test owner login NOT created` line and does not
+fail the build, so it never holds back the nightly release.
 
 Before hosted acceptance, verify the testing domain resolves to a READY deployment of the intended SHA,
 the testing banner appears, fixture rows are present, messaging/cron refusals hold, and Stripe identity is the
