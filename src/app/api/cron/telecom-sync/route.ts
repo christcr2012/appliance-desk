@@ -1,17 +1,20 @@
 import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
+import type { TelecomSyncResource } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { runAutomation } from "@/domains/automation/runs";
 import { syncTelecomUsage } from "@/domains/messaging/telecom-sync";
+import { telecomReportPeriods } from "@/domains/messaging/telecom-periods";
 
 export const maxDuration = 60;
-
-const RESOURCES = ["USAGE", "MESSAGES", "CALLS"] as const;
-const WINDOW_DAYS = 35;
+const DAY = 86_400_000;
+const PAGES_PER_RUN = 8;
 
 /**
  * Nightly read-only pull of what the phone company says we used and were charged.
  * It never sends a text or places a call, and it stays off until the owner turns it on.
+ * It fetches exactly the two periods the spending report shows, and if a pull is not finished
+ * it keeps the SAME dates the next night until it is, so it can never get stuck on a half-read window.
  */
 export async function GET(request: Request): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
@@ -31,23 +34,39 @@ export async function GET(request: Request): Promise<NextResponse> {
         take: 5,
       });
       if (accounts.length === 0) throw new Error("No phone-company account is set up for production.");
-      // Whole-day window ending today (UTC) so a repeat run the same day resumes the same checkpoint.
-      const end = new Date(Math.floor(Date.now() / 86_400_000) * 86_400_000);
-      const start = new Date(+end - WINDOW_DAYS * 86_400_000);
-      let pages = 0, records = 0, unpriced = 0, busy = 0;
+      const { current, previous } = telecomReportPeriods(new Date());
+      const exclusiveEnd = (d: Date) => new Date(+d + DAY);
+      const monthWindows = [previous, current].map((p) => ({ start: p.start, end: exclusiveEnd(p.end) }))
+        .filter((w) => +w.end > +w.start);
+      const spanning = { start: previous.start, end: exclusiveEnd(current.end) };
+      let pages = 0, records = 0, unpriced = 0, busy = 0, unfinished = 0;
+
       for (const account of accounts) {
-        for (const resource of RESOURCES) {
-          try {
-            const r = await syncTelecomUsage({ accountId: account.id, resource, windowStart: start, windowEnd: end });
-            pages += r.pages; records += r.records; unpriced += r.unknownPrices;
-          } catch (error) {
-            // Another run holds this checkpoint; the next run picks it up. Anything else is a real failure.
-            if (error instanceof Error && error.message === "SYNC_BUSY") { busy++; continue; }
-            throw error;
+        const plan: Array<{ resource: TelecomSyncResource; windows: Array<{ start: Date; end: Date }> }> = [
+          { resource: "USAGE", windows: monthWindows },
+          { resource: "MESSAGES", windows: [spanning] },
+          { resource: "CALLS", windows: [spanning] },
+        ];
+        for (const { resource, windows } of plan) {
+          // A pull that was left half-read keeps its own dates until it is finished.
+          const cursor = await prisma.telecomSyncCursor.findUnique({
+            where: { accountId_resource: { accountId: account.id, resource } },
+            select: { nextPageToken: true, windowStart: true, windowEnd: true },
+          });
+          const todo = cursor?.nextPageToken ? [{ start: cursor.windowStart, end: cursor.windowEnd }, ...windows] : windows;
+          for (const w of todo) {
+            try {
+              const r = await syncTelecomUsage({ accountId: account.id, resource, windowStart: w.start, windowEnd: w.end, maxPages: PAGES_PER_RUN });
+              pages += r.pages; records += r.records; unpriced += r.unknownPrices;
+              if (!r.completed) { unfinished++; break; } // pick up exactly here tomorrow
+            } catch (error) {
+              if (error instanceof Error && error.message === "SYNC_BUSY") { busy++; break; }
+              throw error;
+            }
           }
         }
       }
-      return { counts: { pages, records, unpriced, busy } };
+      return { counts: { pages, records, unpriced, busy, unfinished } };
     },
   });
   return NextResponse.json({ ...result });
