@@ -611,6 +611,7 @@ model Appliance {
   staffTasks  StaffTask[]
   // Batch M-2: what the owner decided to do with it after retiring it, and parts taken from it.
   retiredPlan RetiredAppliancePlan?
+  saleLines InvoiceLineItem[] @relation("ApplianceSaleLine")
   salvagedMovements PartStockMovement[] @relation("SalvageAppliance")
 
   createdAt  DateTime  @default(now())
@@ -2532,10 +2533,14 @@ model InvoiceLineItem {
   rentalLineId String?
   // Batch M: the part a MERCHANDISE line sold (the stock movement points back to this line).
   partRecordId String?
+  // M-2C: the retired appliance a USED_APPLIANCE line sold (at most one live sale per appliance, enforced under a lock).
+  applianceId String?
+  appliance Appliance? @relation("ApplianceSaleLine", fields: [applianceId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
 
   @@index([invoiceId])
+  @@index([applianceId])
 }
 
 model Payment {
@@ -4624,6 +4629,8 @@ model BookAsset {
   retiredOn DateTime?
   retirementIntent String?
   retiredValueCents Int?
+  // M-2C: the day the retired appliance was sold (its book value left the books then); null while still held.
+  disposedOn DateTime?
   version Int @default(1)
   createdByUserId String
   createdAt DateTime @default(now())

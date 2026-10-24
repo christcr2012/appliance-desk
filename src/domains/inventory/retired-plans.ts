@@ -165,6 +165,8 @@ export async function reopenRetiredPlan(actorUserId: string, applianceId: string
     const appliance = await lockRetired(tx, applianceId);
     const plan = appliance.retiredPlan;
     if (!plan?.doneOn) throw new RetiredPlanError("This one isn't marked done.");
+    const liveSale = await tx.invoiceLineItem.findFirst({ where: { applianceId, invoice: { status: { not: "VOID" } } }, select: { invoice: { select: { invoiceNumber: true } } } });
+    if (liveSale) throw new RetiredPlanError(`This appliance was sold on sale #${liveSale.invoice.invoiceNumber}. Cancel that sale first (Money, then Shop sales); that also puts its book value back.`);
     await tx.retiredAppliancePlan.update({
       where: { applianceId },
       data: { doneOn: null, doneNote: null, doneByUserId: null, reopenedAt: now, reopenReason: why },

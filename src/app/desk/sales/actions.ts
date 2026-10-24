@@ -34,8 +34,8 @@ const createSchema = z.object({
   serviceAddressId: z.string().trim().max(64).nullable().optional(),
   items: z
     .array(z.object({ partRecordId: z.string().trim().min(1).max(64), quantity: z.number().int().min(1).max(1000), priceDollars: dollars, priceReason: z.string().trim().max(200).optional() }))
-    .min(1, "Add at least one item to sell.")
     .max(40),
+  usedAppliances: z.array(z.object({ applianceId: z.string().trim().min(1).max(64), priceDollars: dollars })).max(40).optional(),
   deliveryDollars: dollars,
   installationDollars: dollars,
   note: z.string().trim().max(300).optional(),
@@ -54,12 +54,14 @@ export async function createShopSaleAction(raw: unknown): Promise<SaleActionStat
       location: v.location,
       serviceAddressId: v.serviceAddressId || null,
       items: v.items.map((i) => ({ partRecordId: i.partRecordId, quantity: i.quantity, unitPriceCents: cents(i.priceDollars, "A price"), priceReason: i.priceReason })),
+      usedAppliances: (v.usedAppliances ?? []).map((a) => ({ applianceId: a.applianceId, unitPriceCents: cents(a.priceDollars, "A used appliance price") })),
       deliveryChargeCents: cents(v.deliveryDollars, "The delivery charge"),
       installationChargeCents: cents(v.installationDollars, "The installation charge"),
       note: v.note,
     });
     revalidatePath("/desk/sales");
     revalidatePath("/desk/parts");
+    revalidatePath("/desk/inventory");
     revalidatePath("/desk/today");
     return { status: "success", id: result.invoiceId };
   } catch (error) {

@@ -253,6 +253,13 @@
       "paymentSource": false
     },
     {
+      "role": "BOOK_VALUE_OF_APPLIANCES_SOLD",
+      "name": "Book value of retired appliances sold",
+      "type": "EXPENSE",
+      "description": "What a retired appliance was still worth on the books when it was sold (its sale price is in Sales of retired appliances)",
+      "paymentSource": false
+    },
+    {
       "role": "USE_TAX_EXPENSE",
       "name": "Use tax on purchases",
       "type": "EXPENSE",
