@@ -280,7 +280,7 @@ export async function getBookAssets(userId:string) {
   }
   return {settings,candidates,assets:assets.map(asset=>({
    ...asset,postedDepreciationCents:byAsset.get(asset.applianceId)??0,
-   bookCarryingCents:asset.costCents-(byAsset.get(asset.applianceId)??0),
+   bookCarryingCents:asset.disposedOn?0:asset.costCents-(byAsset.get(asset.applianceId)??0),
    isPendingDisposition:!!asset.retiredOn&&!asset.disposedOn,
   }))};
  });
@@ -296,7 +296,14 @@ export async function getBookAssets(userId:string) {
 export async function disposeRetiredBookAssetInTx(tx:Tx,applianceId:string,soldOn:Date,invoiceId:string):Promise<{carriedCents:number}>{
  await tx.$queryRaw`SELECT "applianceId" FROM "BookAsset" WHERE "applianceId" = ${applianceId} FOR UPDATE`;
  const asset=await tx.bookAsset.findUnique({where:{applianceId}});
- if(!asset)return {carriedCents:0};
+ if(!asset){
+  // No book asset is only "nothing capitalised" when there is also no acquisition cost or posted capitalised expense.
+  const app=await tx.appliance.findUnique({where:{id:applianceId},select:{acquisitionCostCents:true}});
+  const capitalised=await tx.expense.count({where:{applianceId,capitalizeToAppliance:true,status:"POSTED"}});
+  if((app?.acquisitionCostCents??0)>0||capitalised>0)
+   throw new BookAssetInputError("This appliance has a recorded cost that is not on the book assets list yet. Add it under Books, then Assets, and stage its retirement; then ring up the sale so its book value can be removed.");
+  return {carriedCents:0};
+ }
  if(!asset.retiredOn)throw new BookAssetInputError("Stage this appliance's book retirement first (Books, then Assets), then ring up the sale so its book value can be removed.");
  if(asset.disposedOn)throw new BookAssetInputError("This appliance's book value was already removed by an earlier sale.");
  if(soldOn<asset.retiredOn)throw new BookAssetInputError("The sale cannot be dated before the appliance was retired.");

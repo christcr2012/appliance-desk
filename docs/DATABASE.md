@@ -1270,3 +1270,5 @@ Expense.categoryId, ApplianceCustodyEpisode.serviceAddressId, OutOfServicePeriod
 
 ## Sign-in attempt counter (October 23, additive migration `20261023170000_auth_rate_limit`)
 New table `RateLimit` (`key` unique, `count`, `lastRequest` in milliseconds). Better Auth keeps its sign-in attempt counts here instead of in each server's memory, so the limit is the same however many server copies are running. Rows hold only a hashed network-address key and a count; they are safe to delete at any time (the counter just starts over). The site's own form limiter still uses the `Verification` table.
+
+Migration `20261024090000_used_appliance_sale` (M-2C) adds nullable `InvoiceLineItem.applianceId` (FK to Appliance, restrict, indexed) so a sale line names the exact used appliance sold, nullable `BookAsset.disposedOn` (set when a sale removes the retired appliance's remaining book value; cleared if that sale is cancelled), and the system chart account `BOOK_VALUE_OF_APPLIANCES_SOLD` (expense). Additive only; no existing row is changed.

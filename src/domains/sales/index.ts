@@ -10,6 +10,7 @@ import { applyPartMovementsInTx, lockPartRecords, OPERATION_KEY_PATTERN, PartOpe
 import { ensureWalkInCustomer } from "./walk-in";
 import { disposeRetiredBookAssetInTx, reverseBookAssetDisposalInTx } from "@/domains/books/fixed-assets";
 import { businessDateFromKey } from "@/lib/business-date";
+import { postForSource } from "@/domains/books/post";
 
 // ---------------------------------------------------------------------------
 // Shop sales (Batch M, design D-M3). A sale is a local invoice: lines are sellable parts (plus an optional delivery or
@@ -263,6 +264,9 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
       });
     }
 
+    // Book the sale's income in the same step as the book-value entry, so the reports never show one without the other.
+    if (applianceLines.length > 0) await postForSource(tx, "INVOICE", invoice.id);
+
     const completed = await tx.invoice.findUniqueOrThrow({ where: { id: invoice.id }, select: { invoiceNumber: true, taxCents: true, amountDueCents: true } });
     await tx.auditLog.create({
       data: {
@@ -335,6 +339,7 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
       });
     }
     await tx.invoice.update({ where: { id: sale.id }, data: { status: "VOID", cancelledAt } });
+    if (soldAppliances.length > 0) await postForSource(tx, "INVOICE", sale.id);
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "sale.cancel", entityType: "Invoice", entityId: sale.id, newValue: { reason: why, restockedLines: sold.length } },
     });

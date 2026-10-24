@@ -21,6 +21,7 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
   const typeId = `uas-type-${tag}`;
   let ownerId: string;
   let previousShopLocations: string[] = [];
+  let savedBooksStart: Date | null = null;
   const createdAppliances: string[] = [];
 
   /** A retired appliance with a plan; `bookValueCents > 0` also gives it a retired book asset holding that value. */
@@ -68,10 +69,13 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     await prisma.addressTaxLocation.create({
       data: { id: shopLocationId, forBusinessLocation: true, isCurrent: true, status: "VERIFIED", source: "MANUAL", lookedUpAt: new Date(), jurisdictions: { create: [{ jurisdictionId: shopJurisdictionId }] } },
     });
+    savedBooksStart = (await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).booksStartDate;
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { booksStartDate: new Date("2026-01-01T07:00:00Z") } });
     void seedTaxReadyContext;
   });
 
   afterAll(async () => {
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { booksStartDate: savedBooksStart } });
     await prisma.addressTaxLocation.update({ where: { id: shopLocationId }, data: { isCurrent: false } });
     await prisma.addressTaxLocation.updateMany({ where: { id: { in: previousShopLocations } }, data: { isCurrent: true } });
   });
@@ -154,5 +158,20 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     await expect(createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: unstaged, unitPriceCents: 4000 }] })).rejects.toThrow(/Stage this appliance's book retirement/);
     expect(await prisma.invoice.count({ where: { saleKind: "SHOP_SALE" } })).toBe(before);
     expect((await prisma.retiredAppliancePlan.findUniqueOrThrow({ where: { applianceId: unstaged } })).doneOn).toBeNull();
+
+    // A recorded cost with no book asset is not "nothing on the books": refused until it is added to the assets list.
+    const costed = await retired();
+    await prisma.appliance.update({ where: { id: costed }, data: { acquisitionCostCents: 25000 } });
+    await expect(createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: costed, unitPriceCents: 4000 }] })).rejects.toThrow(/not on the book assets list/);
+  });
+
+  it("books the sale income together with the book-value entry, and the sold appliance carries no value afterwards", async () => {
+    const id = await retired({ bookValueCents: 7000 });
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 5000 }] });
+    expect(await prisma.journalEntry.count({ where: { sourceType: "INVOICE", sourceId: sale.invoiceId, eventKind: "INVOICE_RECOGNIZED" } })).toBe(1);
+    const row = await prisma.bookAsset.findUniqueOrThrow({ where: { applianceId: id } });
+    expect(row.disposedOn).not.toBeNull();
+    await cancelShopSale(ownerId, sale.invoiceId, "Customer backed out");
+    expect(await prisma.journalEntry.count({ where: { sourceType: "INVOICE", sourceId: sale.invoiceId, eventKind: "INVOICE_VOIDED" } })).toBe(1);
   });
 });

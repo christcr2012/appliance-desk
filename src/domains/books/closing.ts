@@ -299,7 +299,7 @@ export async function yearEndPackage(userId:string,year:number,requestedFile:Yea
     ["taxBasisConfidence","CPA confidence"]),assets.map(a=>({
      asset:a.appliance.assetNumber,inService:businessDateKey(a.placedInServiceOn),
      originalCostCents:a.costCents,postedDepreciationCents:used.get(a.applianceId)??0,
-     carryingCents:a.retiredOn&&a.retiredOn<endDate?a.retiredValueCents:a.costCents-(used.get(a.applianceId)??0),
+     carryingCents:a.disposedOn&&a.disposedOn<endDate?0:a.retiredOn&&a.retiredOn<endDate?a.retiredValueCents:a.costCents-(used.get(a.applianceId)??0),
      retiredIntent:a.retiredOn&&a.retiredOn<endDate?a.retirementIntent??"": "",
      basisClassification:a.taxEvidence[0]?.classification??"UNKNOWN",
      taxBasisConfidence:a.taxEvidence[0]?.confidence??"UNKNOWN",
