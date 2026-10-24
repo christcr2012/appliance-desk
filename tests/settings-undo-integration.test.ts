@@ -109,7 +109,7 @@ describe.skipIf(!enabled)("settings undo on real Postgres", () => {
   it("lists the switches without exposing secrets", async () => {
     const rows = await listSwitches();
     expect(rows.find((r) => r.id === "sms")?.state).toMatch(/^Switched (on|off) \(/);
-    expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["customer-email", "sms", "auto-renew", "payments", "two-factor", "books-start"]));
+    expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["customer-email", "sms", "auto-renew", "payments", "two-factor", "approval-limits", "books-start"]));
     expect(JSON.stringify(rows)).not.toMatch(/sk_(live|test)_/);
   });
 });
