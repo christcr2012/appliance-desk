@@ -4,12 +4,12 @@ In progress (branch `ai/claude/tax-setup-yearly-check`). Your To do list now rem
 
 ## October 24 — Nightly phone usage sync (COM-N wiring)
 
-In progress (branch `ai/claude/com-n-telecom-sync`). The code that reads Twilio usage, message and call records existed but nothing ever ran it. A new nightly job (09:20 UTC, `/api/cron/telecom-sync`) now calls it for the production Twilio account, read-only, and shows on Desk → Automations. It is OFF until `TELECOM_SYNC_ENABLED=true` (checklist row added). It fetches exactly the two periods the spending report shows (this month so far, last month) and, if a pull is left half-read, repeats the same dates the next night until it finishes. Tested: refuses without the secret, wrong secret, does nothing while off, and the period dates (month and year edges). Not proved: a run against real Twilio. Spend alerts are still only a preview; notifying anyone waits on IN-53. Next: text-message senders (live sending stays off).
+Merged (#554). The code that reads Twilio usage, message and call records existed but nothing ever ran it. A new nightly job (09:20 UTC, `/api/cron/telecom-sync`) now calls it for the production Twilio account, read-only, and shows on Desk → Automations. It is OFF until `TELECOM_SYNC_ENABLED=true` (checklist row added). It fetches exactly the two periods the spending report shows (this month so far, last month) and, if a pull is left half-read, repeats the same dates the next night until it finishes. Tested: refuses without the secret, wrong secret, does nothing while off, and the period dates (month and year edges). Not proved: a run against real Twilio. Spend alerts are still only a preview; notifying anyone waits on IN-53. Next: text-message senders (live sending stays off).
 
-## October 24 — Selling a retired appliance (Batch M, step M-2C, in review)
+## October 24 — Selling a retired appliance (Batch M, step M-2C, merged #551)
 ## October 24 — Two small clean-ups (report label, tax-login guard)
 
-In progress (branch `ai/claude/polish-shop-sales-label`). The revenue reports now call the parts-and-items group "Shop sales (parts and items sold)" instead of "Items sold". A new automatic test fails the build if anyone ever adds a password/login field to a tax table or makes the app send anything to Colorado's tax sites (they are only linked to, for you to open). Nothing for Chris to do.
+Merged (#556). The revenue reports now call the parts-and-items group "Shop sales (parts and items sold)" instead of "Items sold". A new automatic test fails the build if anyone ever adds a password/login field to a tax table or makes the app send anything to Colorado's tax sites (they are only linked to, for you to open). Nothing for Chris to do.
 
 ## October 24 — Pay by card for shop sales (M-3)
 
