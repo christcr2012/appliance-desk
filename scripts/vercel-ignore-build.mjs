@@ -23,8 +23,12 @@ const NON_APP = [
 export const isAppFile = file => !NON_APP.some(pattern => pattern.test(file));
 
 /** Returns { build: boolean, reason: string } from the branch, the previous deployed commit and the changed files. */
-export function decide({ branch = '', previousSha = '', changed = null, environment = '' }) {
+export function decide({ branch = '', previousSha = '', changed = null, environment = '', appEnv = '' }) {
   if (branch.startsWith('transfer/')) return { build: false, reason: 'transfer branches only carry upload parts' };
+  // Each Vercel project builds only its own branch (2026-10-24): the testing app builds `testing`,
+  // the business site never builds `testing`.
+  if (appEnv === 'testing' && branch !== 'testing') return { build: false, reason: `the testing app builds only the testing branch, not ${branch || 'this one'}` };
+  if (appEnv !== 'testing' && branch === 'testing') return { build: false, reason: 'the testing branch belongs to the testing app' };
   // Once Vercel's production branch is `live` (daily release, .github/workflows/release.yml), `main` would build as a
   // paid preview after every merge; GitHub Actions already builds and tests it for free.
   if (branch === 'main' && environment === 'preview') return { build: false, reason: 'main is released daily through the live branch' };
@@ -54,7 +58,7 @@ function main() {
         changed = execFileSync('git', ['diff', '--name-only', previousSha, 'HEAD'], { encoding: 'utf8' }).split('\n').filter(Boolean);
     } catch { changed = null; }
   }
-  const { build, reason } = decide({ branch, previousSha, changed, environment: process.env.VERCEL_ENV ?? '' });
+  const { build, reason } = decide({ branch, previousSha, changed, environment: process.env.VERCEL_ENV ?? '', appEnv: process.env.APP_ENV ?? '' });
   console.log(`${build ? 'Building' : 'Skipping build'}: ${reason}.`);
   process.exit(build ? 1 : 0);
 }

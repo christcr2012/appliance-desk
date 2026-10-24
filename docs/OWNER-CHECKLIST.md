@@ -51,17 +51,27 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   type the number and the next renewal date from your own papers, and set where you are with it. Worked: each dated item
   shows on your Today list before it needs renewing. (The app doesn't know your dates or fees; they come from your papers
   and the agency websites linked on each item.)
-- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Use the dedicated testing app and existing
-  preview database described in [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md), not the public business app.
-  Chris approved resetting/seeding this preview database and the $1 TEST payment/update/refund check.
-  The official connector is the selected Robinson Appliance Rentals LLC account in **Test mode**, not a new
-  sandbox; the custom connector is not required. In Vercel project **appliance-desk-testing**, privately save
-  `STRIPE_SECRET_KEY` from that exact Test-mode account and `TEST_OWNER_PASSWORD` (a new testing-only password,
-  16+ characters). The initial seed creates `owner@example.test` only after the password is supplied; enroll its
-  own authenticator normally. Never put either value in chat. A rebuild must pick up newly saved settings.
-  The agent configures the separate signed testing webhook and verifies account/seed/deployment readiness.
-  Worked only when a $1 sale created by the testing app reaches Stripe Checkout, genuine signed payment updates
-  mark it Paid once, and a refund is verified in both systems. **Leave unchecked until actually observed.**
+- [ ] **Fix the testing app's owner password so agents can sign in (about 5 minutes).** On 2026-10-24 your
+  saved settings made the testing build fail at the "create test owner" step, so no test login exists yet (the
+  testing site still runs the earlier build). Steps: Vercel → project **appliance-desk-testing** → Settings →
+  Environment Variables → delete `TEST_OWNER_PASSWORD` → Add New → name `TEST_OWNER_PASSWORD`, a **new** password of
+  **at least 16 characters** used nowhere else, environments Production, **leave "Sensitive" switched off** (agents
+  must be able to read it to sign in; it only opens the fictional testing app) → Save. Then Deployments → the newest
+  one → ⋯ → Redeploy. Never paste it in chat. Also confirm `STRIPE_SECRET_KEY` there was copied from the Stripe
+  dashboard while **Robinson Appliance Rentals LLC** and **Test mode** were selected (it starts with `sk_test_`).
+  Ready when: now. You'll know it worked: the redeploy shows "Ready". The agent can sign in as
+  `owner@example.test` after that evening's testing update (18:05 Denver), which turns the testing-only phone
+  step off.
+- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Agent-run once the row above is done: the agent
+  signs in to the testing app, makes a $1 test sale, pays it on Stripe's test checkout, checks it shows Paid once,
+  refunds it and checks both systems. Nothing for you to do but read the result. Worked only when all of that is
+  observed. **Leave unchecked until actually observed.**
+- [ ] **Protect the `live` and `testing` branches on GitHub (about 3 minutes).** Today anyone with write access could
+  delete or rewrite them (agents won't, but nothing stops it). Steps: github.com/christcr2012/appliance-desk →
+  Settings → Rules → Rulesets → New ruleset → New branch ruleset → name "Release branches" → Enforcement: Active →
+  Target branches → Add target → Include by pattern → `live`, then again `testing` → tick **Restrict deletions** and
+  **Block force pushes** (leave everything else off so the automatic releases keep working) → Create. You'll know it
+  worked: the ruleset lists both branches, and the next nightly release still succeeds.
 
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).
@@ -171,6 +181,7 @@ on readiness).
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
 | 2026-10-23 | Staff-permission decision (section E) | Granting staff reports/expenses would widen access, so it needs the owner's approval. |
+| 2026-10-24 | Testing owner password fix, agent-run M-3 check, GitHub release-branch protection | Audit of the testing setup: the testing build failed at the owner step; `live`/`testing` had no GitHub protection and the connector correctly refuses to change protection without you. |
 | 2026-10-23 | ACC rows: email-code decision (IN-85), build-order decision, second sign-in method, Twilio sign-in-code use case | Chris asked for invitations, account self-service, recovery and text/email codes (design: designs/ACCOUNTS-AND-SIGN-IN.md). |
 | 2026-10-24 | Shop-sale card page in Stripe test mode | M-3 was proved only against a pretend Stripe; a real test-mode payment needs Chris's Stripe test keys. |
 | 2026-10-23 | Vercel "Sensitive" tidy-up | Read-only check of Vercel found two production settings readable by project members. |
