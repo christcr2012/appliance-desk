@@ -1,3 +1,18 @@
+## October 24 — Owner-authorized live TEST checkout attempt: blocked before sale creation
+
+Chris explicitly approved one clearly labeled $1 TEST sale/payment/update/refund in the live business database.
+The manual production rebuild of the already-checked live revision `ef452c3` reached READY; the public domain
+was independently mapped to that deployment and returned HTTP 200. This applied the saved official Stripe
+TEST server-key/webhook configuration without releasing newer main code. Password and authenticator sign-in
+completed; the authenticated Owner desk was observed at `/desk/today` (the attempted `/desk` destination is not a page).
+In the actual browser, Money -> Shop sales showed no sales, and New sale showed **Nothing is ready to sell**.
+Parts showed **No parts logged yet**. Therefore no sale or Checkout Session was created, no test payment was made,
+and no webhook delivery/refund was exercised. The Taxes screen additionally reports CPA-reviewed taxability
+and other business setup still needing attention; no legal/tax answers were entered or invented.
+The official connector and enabled TEST webhook are configuration-verified, not end-to-end accepted.
+Next: supply a clearly isolated test-sale fixture/flow without asserting real CPA approval, then repeat the
+app-created Checkout -> signed payment update -> refund proof. Keep M-3 unchecked; owner permission is already granted.
+
 ## October 24 — Official Stripe TEST connection selected; matching webhook saved
 
 Owner direction: use the official Stripe connector for Appliance Desk development; the custom Robinson Stripe

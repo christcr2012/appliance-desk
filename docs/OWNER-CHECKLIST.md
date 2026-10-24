@@ -64,6 +64,12 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   use an isolated app and disposable Postgres database for a small shop sale → Money → Shop sales → "Pay by card"
   → Stripe test card 4242 4242 4242 4242. Worked only when a genuine signed payment update records "Paid" exactly
   once and Billing refunds that same test charge. **Leave unchecked until actually observed.**
+  **Actual browser attempt after manual rebuild:** Chris approved the $1 TEST sale/payment/update/refund in the
+  live business database. Owner sign-in succeeded. New sale said **Nothing is ready to sell** and Parts said
+  **No parts logged yet**; Taxes also reports CPA-reviewed taxability still needing attention. No sale, Checkout,
+  payment, signed payment-update proof or refund was created. Permission is granted; requesting it again is not
+  the next step. Supply an isolated test-sale fixture/flow without asserting real CPA approval, then rerun.
+
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).
   Stripe → Settings → Business → Branding. Worked: a test checkout page shows your brand.
