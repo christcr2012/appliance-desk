@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { twoFactorEnrollmentRequired } from "@/domains/security/two-factor";
 import { uploadTelecomStatement, verifyTelecomStatement, productionStatementStore, parseTelecomStatementDollars } from "@/domains/messaging/telecom-statements";
+import { bookTelecomStatementExpense } from "@/domains/messaging/telecom-statement-books";
 import { communicationsPolicySchema, saveCommunicationsPolicy } from "@/domains/messaging/communications-policy";
 import { prisma } from "@/lib/prisma";
 import { createHash } from "node:crypto";
@@ -39,6 +40,14 @@ export async function POST(req: Request): Promise<Response> {
       if (body.kind === "verify") {
         const result = await verifyTelecomStatement(
           session.user.id, String(body.statementId ?? ""), String(body.hash ?? ""));
+        return NextResponse.json(result);
+      }
+      if (body.kind === "book") {
+        const result = await bookTelecomStatementExpense(session.user.id, {
+          statementId: String(body.statementId ?? ""), paidOn: String(body.paidOn ?? ""),
+          paidFromAccountId: String(body.paidFromAccountId ?? ""), categoryId: String(body.categoryId ?? ""),
+          linkExpenseId: typeof body.linkExpenseId === "string" && body.linkExpenseId ? body.linkExpenseId : undefined,
+        });
         return NextResponse.json(result);
       }
       if (body.kind === "budget") {

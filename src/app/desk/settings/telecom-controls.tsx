@@ -10,9 +10,11 @@ type AccountOption = { id:string; label:string };
 type StatementItem = {
   id:string; accountLabel:string; externalId:string; revision:number;
   state:string; cents:number; currency:string; period:string; hash:string;
+  booked:boolean; matches:{id:string; label:string}[];
 };
+type Choice = { id:string; name:string };
 type Props = {
-  accounts:AccountOption[]; statements:StatementItem[];
+  accounts:AccountOption[]; statements:StatementItem[]; payAccounts:Choice[]; categories:Choice[];
   canEdit:boolean; canSavePolicy:boolean; bootstrapAccountId:string | null;
   version:number; savedRules:TelecomAlertRules;
 };
@@ -22,7 +24,7 @@ function toCents(value:string):number {
   const [whole, fraction=""] = value.split(".");
   return Number(whole)*100 + Number(fraction.padEnd(2,"0"));
 }
-export function TelecomSettingsControls({accounts,statements,canEdit,canSavePolicy,bootstrapAccountId,version,savedRules}:Props) {
+export function TelecomSettingsControls({accounts,statements,payAccounts,categories,canEdit,canSavePolicy,bootstrapAccountId,version,savedRules}:Props) {
   const router=useRouter();
   const [rules,setRules]=useState<TelecomAlertRules>(savedRules);
   const [currentVersion,setVersion]=useState(version);
@@ -78,6 +80,28 @@ export function TelecomSettingsControls({accounts,statements,canEdit,canSavePoli
       setMessage("Statement verified. No expense or payment was created.");
       router.refresh();
     } catch(error) {setMessage(error instanceof Error?error.message:"Verification failed.");}
+    finally {setWorking(false);}
+  }
+  async function book(e:FormEvent<HTMLFormElement>,row:StatementItem) {
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    const match=String(f.get("match")??"");
+    if (!canEdit || !(await confirmAction(match
+      ? "Match this statement to the bill you already entered? No second expense is made."
+      : "Book this statement as one paid expense? It goes on your books as paid on the day you chose."))) return;
+    setWorking(true);setMessage("");
+    try {
+      const response=await fetch("/api/desk/telecom",{method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({kind:"book",statementId:row.id,paidOn:String(f.get("paidOn")??""),
+          paidFromAccountId:String(f.get("payFrom")??""),categoryId:String(f.get("category")??""),
+          linkExpenseId:match||undefined}),
+      });
+      const data=await response.json();
+      if (!response.ok) throw new Error(data.error??"Couldn't book the statement.");
+      setMessage(data.linkedExisting?"Matched to your existing bill.":"Booked as one expense.");
+      router.refresh();
+    } catch(error) {setMessage(error instanceof Error?error.message:"Couldn't book the statement.");}
     finally {setWorking(false);}
   }
   const changeMoney=(field:"monthlyBudgetCents"|"elevatedCents"|"criticalCents"|"minimumSpikeCents",
@@ -175,6 +199,21 @@ export function TelecomSettingsControls({accounts,statements,canEdit,canSavePoli
               disabled={working} onClick={()=>verify(row)}
               className="underline disabled:opacity-50">Verify after reviewing PDF</button>}
           </div>
+          {row.state==="VERIFIED" && row.booked && <p className="mt-2 text-ink-soft">Booked on your books (one expense).</p>}
+          {canEdit && row.state==="VERIFIED" && !row.booked && row.currency==="USD" && row.cents>0 &&
+            <form onSubmit={e=>book(e,row)} className="mt-3 grid gap-2 sm:grid-cols-2">
+              <p className="col-span-full text-ink-soft">Nothing is on your books until you say when and from where you paid it.
+                Top-ups are never booked here.</p>
+              <label>Paid on <input name="paidOn" type="date" required className="ml-1 rounded border border-line px-2 py-1"/></label>
+              <label>Paid from <select name="payFrom" required className="ml-1 rounded border border-line px-2 py-1">
+                {payAccounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+              <label>Category <select name="category" required className="ml-1 rounded border border-line px-2 py-1">
+                {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+              <label>Already entered by hand? <select name="match" className="ml-1 rounded border border-line px-2 py-1">
+                <option value="">No, make a new expense</option>
+                {row.matches.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}</select></label>
+              <button disabled={working} type="submit" className="rounded bg-ink px-3 py-2 text-surface disabled:opacity-50 sm:col-span-2">Book as paid expense</button>
+            </form>}
         </li>)}
         {statements.length===0 && <li className="text-sm text-ink-soft">No billing statements recorded.</li>}
       </ul>

@@ -82,26 +82,30 @@ function audit(tx: Prisma.TransactionClient, userId: string, id: string, action:
 /** All money and permissions live in the same DB transaction; client role is never accepted. */
 export async function createExpense(userId: string, fields: ExpenseFields, mode: "DRAFT" | "SUBMITTED" | "POSTED" = "SUBMITTED") {
   const input = checked(fields);
-  const id = await prisma.$transaction(async tx => {
-    const actor = await assertActiveTeamActor(tx, userId);
-    if (mode !== "SUBMITTED" && actor.role === "STAFF")
-      throw new ExpenseInputError("Staff may submit expenses only.");
-    await validateReferences(tx, input);
-    // Intent is evidence in the audit log, never an unsupported Expense DB
-    // column or an implicit journal/envelope movement.
-    const {budgetEnvelopeId,...sourceFields}=input;
-    const expense = await tx.expense.create({ data: {
-      ...sourceFields, status: mode === "POSTED" ? "DRAFT" : mode,
-      submittedByUserId: userId,
-    } });
-    await audit(tx, userId, expense.id, "books.expense.create", { mode, amountCents: input.amountCents });
-    if(budgetEnvelopeId)await audit(tx,userId,expense.id,"books.expense.budget-intent",{
-     budgetEnvelopeId,actualPayment:false});
-    return expense.id;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+  const id = await prisma.$transaction(tx => createExpenseInTx(tx, userId, input, mode),
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   if (mode === "POSTED") await postExpense(userId, id, 1);
   return { id };
 }
+/** The creation itself, inside a transaction the caller owns (Serializable). `input` must come from `checkExpenseFields`. */
+export async function createExpenseInTx(tx: Prisma.TransactionClient, userId: string, input: ReturnType<typeof checked>, mode: "DRAFT" | "SUBMITTED" | "POSTED"): Promise<string> {
+  const actor = await assertActiveTeamActor(tx, userId);
+  if (mode !== "SUBMITTED" && actor.role === "STAFF")
+    throw new ExpenseInputError("Staff may submit expenses only.");
+  await validateReferences(tx, input);
+  // Intent is evidence in the audit log, never an unsupported Expense DB
+  // column or an implicit journal/envelope movement.
+  const {budgetEnvelopeId,...sourceFields}=input;
+  const expense = await tx.expense.create({ data: {
+    ...sourceFields, status: mode === "POSTED" ? "DRAFT" : mode,
+    submittedByUserId: userId,
+  } });
+  await audit(tx, userId, expense.id, "books.expense.create", { mode, amountCents: input.amountCents });
+  if(budgetEnvelopeId)await audit(tx,userId,expense.id,"books.expense.budget-intent",{
+   budgetEnvelopeId,actualPayment:false});
+  return expense.id;
+}
+export const checkExpenseFields = checked;
 export const POST_EXPENSE_TX_OPTIONS = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 25_000 } as const;
 export async function postExpense(userId: string, id: string, expectedVersion: number) {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new ExpenseInputError("Invalid expense version.");
