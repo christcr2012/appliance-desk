@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { assertTestingSeedEnvironment } from "../src/lib/testing-environment";
+import { initializeTestingSettings } from "./testing-settings";
 
 // Refuse before importing Prisma/auth or making any database connection.
 assertTestingSeedEnvironment();
@@ -19,6 +20,7 @@ async function main() {
       const actor = await tx.user.upsert({ where: { email: "fixture-system@example.test" }, update: {}, create: {
         id: "testing-fixture-system", email: "fixture-system@example.test", name: "TEST fixture system (no login)", role: "OWNER", emailVerified: true,
       } });
+      await initializeTestingSettings(tx, actor.id);
       for (const [slug, name] of [["washer", "Washer"], ["dryer", "Dryer"]] as const) {
         const type = await tx.applianceType.upsert({ where: { slug }, update: {}, create: { slug, name, monthlyPriceCents: 3500, showOnWebsite: false } });
         await tx.appliance.upsert({ where: { assetNumber: `TEST-${slug.toUpperCase()}-001` }, update: {}, create: {

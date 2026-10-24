@@ -36,6 +36,8 @@ variable is supplied and the account does not exist. Repeated builds never rotat
 `STRIPE_SECRET_KEY` must be an `sk_test_` or correctly scoped `rk_test_` key from the exact account selected in
 the official Stripe connector. `STRIPE_WEBHOOK_SECRET` belongs only to the testing endpoint
 `https://appliance-desk-testing.vercel.app/api/webhooks/stripe`. Never copy the business site's signing secret.
+The old business-site Test-mode webhook is disabled: this shared Stripe Test account routes fixture events
+only to the testing app. The business-site LIVE webhook remains a separate future owner-approved setup.
 Vercel Authentication protects preview deployment URLs; the canonical testing deployment uses the app's
 normal authenticated roles so Stripe can reach its signature-protected callback.
 

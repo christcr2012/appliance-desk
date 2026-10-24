@@ -1,14 +1,19 @@
-## October 24 — Dedicated synthetic testing environment (implementation in progress)
+## October 24 — Dedicated synthetic testing environment (PR #566)
 
-Owner authorized a permanent testing app and specifically directed reset/seed of the existing preview database;
-Chris confirmed there has never been real production data. The existing preview schema was reset after provider
-branch/endpoint verification; the public database connection was not changed. The dedicated Vercel testing app
-and private test file store are provisioned, testing branch tracking is saved, and independent database/auth
-credentials are stored privately. Source adds strict database/project/Stripe isolation, synthetic additive fixtures,
-a visible testing banner, messaging/cron refusals and a checked once-per-day testing deployment workflow.
-See [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) for the authoritative configuration and release process.
-Pending: source CI/review/merge, first migrated/seeded READY deployment, private test-owner/Stripe key entry,
-and real app Checkout/payment-update/refund acceptance. No successful payment acceptance is claimed.
+Owner authorized the testing app and explicitly directed resetting/seeding the existing preview database;
+Chris confirmed there has never been real production data. The dedicated testing app and private file store
+are provisioned. Provider read-back confirmed all 143 migrations, three fictional customers, two appliances,
+a sellable $1 item and ten stock units. The initial deployment reached READY on the testing domain with its
+persistent banner. The reviewer-discovered migration-singleton seed issue is corrected by a guarded one-time
+settings marker; repeat deployments preserve later test edits and history. Both projects' branch tracking
+was independently read back: testing app uses `testing`; public app uses `live`. The old business-site TEST
+webhook is disabled; the separate testing webhook is enabled and its signing secret is saved privately.
+See [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) for the authoritative configuration/release process.
+Remaining private prerequisites: `TEST_OWNER_PASSWORD` and the intended official account's TEST Stripe key
+in the testing project, followed by normal MFA enrollment and real Checkout/payment-update/refund proof.
+The initial exact-head full CI passed; the review correction is separately checked before merge. No successful
+payment acceptance is claimed. One unused empty temporary DB project was disabled after the owner chose
+reuse; its exposed temporary credential was rotated and it is not referenced by either app.
 
 ## October 24 — Owner-authorized live TEST checkout attempt: blocked before sale creation
 
