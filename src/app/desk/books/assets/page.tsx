@@ -53,7 +53,7 @@ export default async function FixedAssets({searchParams}:{searchParams:Promise<{
       </div>
       <div className="text-right tabular-nums"><p>Original book cost: {formatMoney(a.costCents)}</p><p>Recorded depreciation: {formatMoney(a.postedDepreciationCents)}</p><p className="font-semibold">Carrying value: {formatMoney(a.bookCarryingCents)}</p></div>
      </div>
-     <p>Life: {a.lifeMonths} months; salvage: {a.salvagePercent}%; last accounted month: {a.lastDepreciationMonth??"None"}. {a.retiredOn? `Held for ${a.retirementIntent} since ${formatBusinessDate(a.retiredOn)}; retained value ${formatMoney(a.retiredValueCents??0)}. Not a disposal loss.`:"Still in management depreciation."}</p>
+     <p>Life: {a.lifeMonths} months; salvage: {a.salvagePercent}%; last accounted month: {a.lastDepreciationMonth??"None"}. {a.disposedOn? `Sold on ${formatBusinessDate(a.disposedOn)}; its remaining book value (${formatMoney(a.retiredValueCents??0)}) was removed from the books by that sale.`:a.retiredOn? `Held for ${a.retirementIntent} since ${formatBusinessDate(a.retiredOn)}; retained value ${formatMoney(a.retiredValueCents??0)}. Not a disposal loss.`:"Still in management depreciation."}</p>
      {owner&&!a.retiredOn&&<div className="grid gap-3 lg:grid-cols-2">
       <form action={postBookDepreciationAction} className="rounded border border-border p-3 space-y-2">
        <h4 className="font-semibold">Post completed month(s)</h4>

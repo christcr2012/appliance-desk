@@ -8,6 +8,7 @@ import { isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { profitAndLoss } from "./reports";
 import { budgetSnapshotInTx } from "@/domains/budget/protected";
 import { toCsv } from "@/lib/csv";
+import { disposedValueBefore } from "./fixed-assets";
 import {
  BooksClosingError,whole,add,calendarKey,futureBillingDates,recurringDates,
  refundAdjustedCollection,avgRentalMonths,cashTotals,type CashLine,
@@ -289,6 +290,7 @@ export async function yearEndPackage(userId:string,year:number,requestedFile:Yea
     eventKind:{startsWith:"DEPRECIATION:"},entryDate:{lt:endDate}},
     select:{sourceId:true,lines:{select:{debitCents:true,ledgerAccount:{select:{systemRole:true}}}}},take:CAP+1});
    within(depreciation.length,"depreciation journals");
+   const disposed=await disposedValueBefore(tx,endDate);
    const used=new Map<string,number>();
    for(const j of depreciation)for(const line of j.lines)if(line.ledgerAccount.systemRole==="DEPRECIATION")
     used.set(j.sourceId,add(used.get(j.sourceId)??0,line.debitCents));
@@ -299,7 +301,7 @@ export async function yearEndPackage(userId:string,year:number,requestedFile:Yea
     ["taxBasisConfidence","CPA confidence"]),assets.map(a=>({
      asset:a.appliance.assetNumber,inService:businessDateKey(a.placedInServiceOn),
      originalCostCents:a.costCents,postedDepreciationCents:used.get(a.applianceId)??0,
-     carryingCents:a.retiredOn&&a.retiredOn<endDate?a.retiredValueCents:a.costCents-(used.get(a.applianceId)??0),
+     carryingCents:a.retiredOn&&a.retiredOn<endDate?(a.retiredValueCents===null?null:a.retiredValueCents-(disposed.get(a.applianceId)??0)):a.costCents-(used.get(a.applianceId)??0),
      retiredIntent:a.retiredOn&&a.retiredOn<endDate?a.retirementIntent??"": "",
      basisClassification:a.taxEvidence[0]?.classification??"UNKNOWN",
      taxBasisConfidence:a.taxEvidence[0]?.confidence??"UNKNOWN",

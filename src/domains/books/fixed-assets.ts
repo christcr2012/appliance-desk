@@ -280,8 +280,76 @@ export async function getBookAssets(userId:string) {
   }
   return {settings,candidates,assets:assets.map(asset=>({
    ...asset,postedDepreciationCents:byAsset.get(asset.applianceId)??0,
-   bookCarryingCents:asset.costCents-(byAsset.get(asset.applianceId)??0),
-   isPendingDisposition:!!asset.retiredOn,
+   bookCarryingCents:asset.disposedOn?0:asset.costCents-(byAsset.get(asset.applianceId)??0),
+   isPendingDisposition:!!asset.retiredOn&&!asset.disposedOn,
   }))};
  });
+}
+
+/**
+ * M-2C. A retired appliance is sold: its remaining book value leaves the books in ONE balanced entry (book value of
+ * appliances sold, debited; the pending-disposition asset, credited). The sale price is income on the sale invoice
+ * (Sales of retired appliances), so profit or loss on the sale is the two figures side by side, never counted twice
+ * and the original cost is never expensed again. Runs inside the sale's own transaction. An appliance with no book
+ * asset (nothing was ever capitalised) needs no entry.
+ */
+export async function disposeRetiredBookAssetInTx(tx:Tx,applianceId:string,soldOn:Date,invoiceId:string):Promise<{carriedCents:number}>{
+ await tx.$queryRaw`SELECT "applianceId" FROM "BookAsset" WHERE "applianceId" = ${applianceId} FOR UPDATE`;
+ const asset=await tx.bookAsset.findUnique({where:{applianceId}});
+ if(!asset){
+  // No book asset is only "nothing capitalised" when there is also no acquisition cost or posted capitalised expense.
+  const app=await tx.appliance.findUnique({where:{id:applianceId},select:{acquisitionCostCents:true}});
+  const capitalised=await tx.expense.count({where:{applianceId,capitalizeToAppliance:true,status:"POSTED"}});
+  if((app?.acquisitionCostCents??0)>0||capitalised>0)
+   throw new BookAssetInputError("This appliance has a recorded cost that is not on the book assets list yet. Add it under Books, then Assets, and stage its retirement; then ring up the sale so its book value can be removed.");
+  return {carriedCents:0};
+ }
+ if(!asset.retiredOn)throw new BookAssetInputError("Stage this appliance's book retirement first (Books, then Assets), then ring up the sale so its book value can be removed.");
+ if(asset.disposedOn)throw new BookAssetInputError("This appliance's book value was already removed by an earlier sale.");
+ if(soldOn<asset.retiredOn)throw new BookAssetInputError("The sale cannot be dated before the appliance was retired.");
+ const carried=asset.retiredValueCents??0;
+ if(!Number.isSafeInteger(carried)||carried<0)throw new BookAssetInputError("Book carrying value is invalid; reconcile first.");
+ if(carried>0){
+  const plan=balancedPlan(soldOn,"Retired appliance sold: book value removed",[
+   {role:"BOOK_VALUE_OF_APPLIANCES_SOLD",debitCents:carried,creditCents:0},
+   {role:"RETIRED_PENDING_DISPOSITION",debitCents:0,creditCents:carried},
+  ]);
+  if(!plan||!await writeJournal(tx,"APPLIANCE",applianceId,"SOLD:"+invoiceId,plan,{applianceId}))
+   throw new BookAssetInputError("This sale's book entry already exists; investigate.");
+ }
+ await tx.bookAsset.update({where:{applianceId},data:{disposedOn:soldOn,version:{increment:1}}});
+ return {carriedCents:carried};
+}
+
+/** M-2C. The sale was cancelled: put the book value back with one reversing entry. */
+export async function reverseBookAssetDisposalInTx(tx:Tx,applianceId:string,invoiceId:string,voidedAt:Date):Promise<void>{
+ await tx.$queryRaw`SELECT "applianceId" FROM "BookAsset" WHERE "applianceId" = ${applianceId} FOR UPDATE`;
+ const asset=await tx.bookAsset.findUnique({where:{applianceId}});
+ if(!asset?.disposedOn)return;
+ const carried=asset.retiredValueCents??0;
+ if(carried>0){
+  const plan=balancedPlan(voidedAt,"Retired appliance sale cancelled: book value restored",[
+   {role:"RETIRED_PENDING_DISPOSITION",debitCents:carried,creditCents:0},
+   {role:"BOOK_VALUE_OF_APPLIANCES_SOLD",debitCents:0,creditCents:carried},
+  ]);
+  if(!plan||!await writeJournal(tx,"APPLIANCE",applianceId,"SOLD_VOIDED:"+invoiceId,plan,{applianceId}))
+   throw new BookAssetInputError("This sale's reversal already exists; investigate.");
+ }
+ await tx.bookAsset.update({where:{applianceId},data:{disposedOn:null,version:{increment:1}}});
+}
+
+/**
+ * M-2C. How much retained book value had LEFT the books through a sale before a given instant, per appliance, read
+ * from the dated "sold" and "sale cancelled" entries (so a sale that was later cancelled still counts for the dates in
+ * between). Reports subtract this from the retired value.
+ */
+export async function disposedValueBefore(tx:Tx,before:Date):Promise<Map<string,number>>{
+ const entries=await tx.journalEntry.findMany({where:{sourceType:"APPLIANCE",entryDate:{lt:before},
+  OR:[{eventKind:{startsWith:"SOLD:"}},{eventKind:{startsWith:"SOLD_VOIDED:"}}]},
+  select:{sourceId:true,lines:{select:{debitCents:true,creditCents:true,ledgerAccount:{select:{systemRole:true}}}}},take:5001});
+ if(entries.length>5000)throw new BookAssetInputError("Too many appliance sale entries to total safely; narrow the dates.");
+ const out=new Map<string,number>();
+ for(const e of entries)for(const l of e.lines)if(l.ledgerAccount.systemRole==="BOOK_VALUE_OF_APPLIANCES_SOLD")
+  out.set(e.sourceId,(out.get(e.sourceId)??0)+l.debitCents-l.creditCents);
+ return out;
 }

@@ -2,7 +2,7 @@
 
 Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-07: "I plan on also reselling … small items
 
-**Built-status note (2026-10-23):** M-1A…M-1D and M-2A/M-2B are built and merged (#530, #531, #533): `SALE` and `SALVAGE` now exist in `PartMovementKind`, and the real shop-sale test is `tests/shop-sale-integration.test.ts`. M-3 (card payment for shop sales) is built: see `docs/pr-cards/M-3.md` and `src/domains/billing/local-invoice-checkout.ts`; it uses a Stripe idempotency key instead of a `ProviderOperation` row (deliberate, explained on the card).
+**Built-status note (2026-10-23):** M-1A…M-1D and M-2A/M-2B are built and merged (#530, #531, #533): `SALE` and `SALVAGE` now exist in `PartMovementKind`, and the real shop-sale test is `tests/shop-sale-integration.test.ts`. M-2C (selling a retired appliance) is built; M-3 (card payment for shop sales) is built: see `docs/pr-cards/M-3.md` and `src/domains/billing/local-invoice-checkout.ts`; it uses a Stripe idempotency key instead of a `ProviderOperation` row (deliberate, explained on the card). M-2C posts one balanced entry that removes the appliance's remaining book value (account `BOOK_VALUE_OF_APPLIANCES_SOLD`) while the sale price stays income in `RETIRED_APPLIANCE_SALES`, so profit or loss is the two figures side by side and nothing is counted twice. A cancelled sale reverses it and reopens the plan.
 … washer hoses, power cords for dryers … If I retire an appliance, I may choose to sell it … I may tear it down for scrap
 metal … receive a check … or I just have to dispose of it in the garbage, in which case it may cost me money").
 Runs **after Batch K** (Chris, 2026-10-07, IN-47: "Preferably not until after launch … I am really trying to get this
