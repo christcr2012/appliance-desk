@@ -4,11 +4,11 @@ Audited baseline: main after #541, October 24, 2026 (documents re-checked agains
 
 ## Where things stand
 
-Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through V, F2,
-K, K-CASH, M-1A…M-2B, O-1, O-2A, O-3A and O-4…O-7 is merged. The live/provider/owner acceptance checks stay separately PENDING on
+Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through T, S, COM-L, W (except W-11/12/13), V, F2,
+K, K-CASH, M-1A…M-2B, O-1, O-2A, O-2B, O-3A, O-4…O-7 and ACC-1…ACC-5 is merged. The live/provider/owner acceptance checks stay separately PENDING on
 [OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
-Deliberately not built yet: M-2C and M-3 (stopped, see their STRONGER-MODEL-PROMPT files), O-3B refund/credit/deposit
-approvals, COM-N, BP and W-11/12/13. **New 2026-10-23:** ACC (accounts and sign-in) is built and merged (#544–#548).
+Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed),
+W-11/12/13 (owner-gated), MCP-1…11. The full audited list is "What truly remains" in [PLAN](PLAN.md). **New 2026-10-23:** ACC (accounts and sign-in) is built and merged (#544–#548).
 
 **New required implementer reading:** October 13
 [56-subject owner-answer mapping](owner-decisions/2026-10-13-implementation-map.json)
@@ -18,15 +18,10 @@ A 56-subject inventory and 23 updated IN rows represent overlapping owner answer
 approved roadmap unit* becomes active; no redesign from scratch or skipped unfinished
 current unit. Implementation cards must apply corresponding contract invariants.
 
-**Preserved ordering:** W-22FIN (reconcile prior W-21 prepaid-set return behavior
-within current outcome) → W-23 (location and tenant claim/privacy/import) →
-W-24 (driving zones, relocation, preferred dates, controlled booking) →
-W-25 (phone order/customer link and existing communications) →
-W-26 (Spanish after fluent/legal review) → W-14 → W-2 → W-15 → W-3 →
-W-4 → W-5 → W-6 → W-7 → W-8 → W-9 → W-10 → W-19 → W-17 →
-W-20 → V → F-part-2, subject to newer checked approved index changes.
-W-11/12/13 retain their independently scoped provider/CPA prerequisites.
-Completed W-1/W-18, COM-L and earlier features must not be rebuilt.
+**Order of the old W queue (history, audited 2026-10-23):** W-22FIN, W-23, W-24, W-25, W-26, W-14, W-2, W-15, W-3…W-10,
+W-19, W-17, W-20, V and F-part-2 are **all merged** (PRs #466, #470/#472, #473, #474, #478, #480–#486, #487–#494). Do not rebuild them.
+Their live, provider and professional acceptance stays on [OWNER-CHECKLIST](OWNER-CHECKLIST.md). W-11 and W-12 are not built and wait on
+IN-61 and IN-62/IN-44; W-13 is DEFERRED (IN-64).
 
 Later K/M/O follow their approved sequencing and owner gates. **K-CASH was approved
 for source engineering on 2026-10-19** (see the original K-CASH section and frozen

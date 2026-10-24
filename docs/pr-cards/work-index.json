@@ -12,7 +12,7 @@
         "T-6b2"
       ],
       "card": "docs/pr-cards/T-6D1.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "batch_t_acquisition_evidence",
       "budget": 450,
       "units": [
@@ -28,7 +28,7 @@
       "tests": [
         "tests/appliance-acquisition-tax-integration.test.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-6D2",
@@ -38,7 +38,7 @@
         "T-6D1"
       ],
       "card": "docs/pr-cards/T-6D2.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -53,10 +53,9 @@
         "src/domains/tax/filing.ts"
       ],
       "tests": [
-        "tests/tax-engine.test.ts",
-        "tests/appliance-intake-tax-integration.test.ts"
+        "tests/tax-engine.test.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-6D3",
@@ -66,7 +65,7 @@
         "T-6D2"
       ],
       "card": "docs/pr-cards/T-6D3.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "batch_t_use_tax_frequency",
       "budget": 480,
       "units": [
@@ -84,7 +83,7 @@
         "tests/dr0252-fill.test.ts",
         "e2e/appliance-acquisition-tax.spec.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-6C1",
@@ -94,7 +93,7 @@
         "T-6D3"
       ],
       "card": "docs/pr-cards/T-6C1.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "batch_t_retail_delivery_fee",
       "budget": 420,
       "units": [
@@ -110,7 +109,7 @@
         "tests/retail-delivery-fee.test.ts",
         "tests/rdf-migration-integration.test.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-6C2",
@@ -120,7 +119,7 @@
         "T-6C1"
       ],
       "card": "docs/pr-cards/T-6C2.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -135,7 +134,7 @@
       "tests": [
         "tests/retail-delivery-fee-integration.test.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-6C3",
@@ -145,7 +144,7 @@
         "T-6C2"
       ],
       "card": "docs/pr-cards/T-6C3.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -160,7 +159,7 @@
       "tests": [
         "tests/rdf-charge-integration.test.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-6C4",
@@ -170,7 +169,7 @@
         "T-6C3"
       ],
       "card": "docs/pr-cards/T-6C4.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -187,7 +186,7 @@
         "tests/rdf-filing-integration.test.ts",
         "tests/tax-readiness-integration.test.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-7A",
@@ -197,7 +196,7 @@
         "T-6C4"
       ],
       "card": "docs/pr-cards/T-7A.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -214,7 +213,7 @@
         "tests/tax-setup-actions-integration.test.ts",
         "e2e/sales-tax-setup.spec.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-7B",
@@ -224,7 +223,7 @@
         "T-7A"
       ],
       "card": "docs/pr-cards/T-7B.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -240,7 +239,7 @@
         "tests/tax-workspace-queries.test.ts",
         "e2e/sales-tax-areas.spec.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-7C",
@@ -250,7 +249,7 @@
         "T-7B"
       ],
       "card": "docs/pr-cards/T-7C.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -267,7 +266,7 @@
         "tests/tax-return-actions-integration.test.ts",
         "e2e/sales-tax-returns.spec.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "T-7D",
@@ -277,7 +276,7 @@
         "T-7C"
       ],
       "card": "docs/pr-cards/T-7D.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -293,7 +292,7 @@
         "tests/tax-overview.test.ts",
         "e2e/sales-tax.spec.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "S-1A",
@@ -303,7 +302,7 @@
         "T-7D"
       ],
       "card": "docs/pr-cards/S-1A.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "batch_s_system_issues",
       "budget": 440,
       "units": [
@@ -319,7 +318,7 @@
         "tests/system-issues-integration.test.ts",
         "tests/ops-redaction.test.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "S-1B",
@@ -329,7 +328,7 @@
         "S-1A"
       ],
       "card": "docs/pr-cards/S-1B.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -344,7 +343,7 @@
       "tests": [
         "tests/system-issue-sweep-integration.test.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "S-1C",
@@ -354,7 +353,7 @@
         "S-1B"
       ],
       "card": "docs/pr-cards/S-1C.md",
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 430,
       "units": [
@@ -371,7 +370,7 @@
         "tests/system-issue-actions-integration.test.ts",
         "e2e/system-health.spec.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED"
     },
     {
       "id": "S-2",
@@ -381,7 +380,7 @@
         "S-1C"
       ],
       "card": "docs/pr-cards/S-2.md",
-      "status": "APPROVED",
+      "status": "MERGED_ACCEPTANCE_PENDING",
       "migration": "batch_s_ops_keys",
       "budget": 470,
       "units": [
@@ -397,7 +396,7 @@
         "tests/ops-api-integration.test.ts",
         "e2e/system-health-keys.spec.ts"
       ],
-      "readiness": "READY_AFTER_PREREQUISITE"
+      "readiness": "MERGED_ACCEPTANCE_PENDING"
     },
     {
       "id": "V-1",
@@ -468,7 +467,7 @@
       "dependencies": [
         "V-2"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -488,7 +487,7 @@
         "e2e/signature-public.spec.ts",
         "e2e/signature-focus.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/V-3.md",
       "card": "docs/pr-cards/V-3.md"
     },
@@ -499,7 +498,7 @@
       "dependencies": [
         "V-3"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -519,7 +518,7 @@
         "e2e/signature-public.spec.ts",
         "e2e/signature-focus.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/V-3.md",
       "card": "docs/pr-cards/V-3.md"
     },
@@ -530,7 +529,7 @@
       "dependencies": [
         "V-4"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 180,
       "units": [
@@ -563,7 +562,7 @@
         "tests/connection-check.test.ts",
         "e2e/scenario-10-owner-workflow.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/F2-A.md",
       "card": "docs/pr-cards/F2-A.md"
     },
@@ -574,7 +573,7 @@
       "dependencies": [
         "F2-A"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 200,
       "units": [
@@ -594,7 +593,7 @@
         "tests/scenarios/12-late-pickup-company-waiver.test.ts",
         "e2e/scenario-10-owner-workflow.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/F2-A.md",
       "card": "docs/pr-cards/F2-A.md"
     },
@@ -605,7 +604,7 @@
       "dependencies": [
         "F2-B"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 120,
       "units": [
@@ -620,7 +619,7 @@
         "tests/owner-guide-coverage.test.ts",
         "e2e/owner-guide-screenshots.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/F2-C.md",
       "card": "docs/pr-cards/F2-C.md"
     },
@@ -631,7 +630,7 @@
       "dependencies": [
         "F2-C"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 300,
       "units": [
@@ -647,7 +646,7 @@
         "tests/review-dispositions.test.ts",
         "tests/launch-ledger.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/F2-C.md",
       "card": "docs/pr-cards/F2-C.md"
     },
@@ -1259,7 +1258,7 @@
       "dependencies": [
         "K-CASH-7"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "batch_m_shop_stock",
       "budget": 400,
       "units": [
@@ -1274,7 +1273,7 @@
       "tests": [
         "tests/shop-schema-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/M-1A.md"
     },
     {
@@ -1284,7 +1283,7 @@
       "dependencies": [
         "M-1A"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 470,
       "units": [
@@ -1300,7 +1299,7 @@
         "tests/resale-withdrawal-integration.test.ts",
         "tests/parts-ledger-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/M-1B.md"
     },
     {
@@ -1310,7 +1309,7 @@
       "dependencies": [
         "M-1B"
       ],
-      "status": "MERGED",
+      "status": "MERGED_PARTIAL",
       "migration": "batch_m_sale_return_evidence",
       "budget": 500,
       "units": [
@@ -1325,7 +1324,7 @@
       "tests": [
         "tests/shop-sale-integration.test.ts"
       ],
-      "readiness": "MERGED",
+      "readiness": "MERGED_PARTIAL",
       "plannedCard": "docs/pr-cards/M-1C.md",
       "card": "docs/pr-cards/M-1C.md"
     },
@@ -1416,7 +1415,7 @@
       "dependencies": [
         "M-2B"
       ],
-      "status": "APPROVED",
+      "status": "NOT_BUILT",
       "migration": "batch_m_used_asset_sale_claim",
       "budget": 450,
       "units": [
@@ -1441,7 +1440,7 @@
       "dependencies": [
         "M-2C"
       ],
-      "status": "APPROVED",
+      "status": "NOT_BUILT",
       "migration": "batch_m_local_invoice_checkout",
       "budget": 500,
       "units": [
@@ -1467,7 +1466,7 @@
       "dependencies": [
         "M-3"
       ],
-      "status": "MERGED",
+      "status": "MERGED_PARTIAL",
       "migration": "none",
       "budget": 460,
       "units": [
@@ -1483,7 +1482,7 @@
       "tests": [
         "tests/settings-undo-integration.test.ts"
       ],
-      "readiness": "ENGINEERING_MERGED_PARTIAL (impact preview not built)",
+      "readiness": "MERGED_PARTIAL",
       "plannedCard": "docs/pr-cards/O-1.md"
     },
     {
@@ -1519,7 +1518,7 @@
       "dependencies": [
         "O-2A"
       ],
-      "status": "APPROVED",
+      "status": "MERGED_PARTIAL",
       "migration": "none",
       "budget": 400,
       "units": [
@@ -1535,7 +1534,7 @@
         "tests/capabilities-integration.test.ts",
         "tests/lead-scoring-policy.test.ts"
       ],
-      "readiness": "PARTIAL_LIMIT_GAPS_CLOSED_DTO_PROOF_OPEN",
+      "readiness": "MERGED_PARTIAL",
       "card": "docs/pr-cards/O-2B.md"
     },
     {
@@ -1570,7 +1569,7 @@
       "dependencies": [
         "O-3A"
       ],
-      "status": "APPROVED",
+      "status": "NOT_BUILT (write-off/expense approvals merged in O-3A)",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -2148,7 +2147,7 @@
         "O-7",
         "COM-L15"
       ],
-      "status": "APPROVED",
+      "status": "APPROVED — NOT BUILT",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2173,7 +2172,7 @@
       "dependencies": [
         "COM-N1A"
       ],
-      "status": "APPROVED",
+      "status": "APPROVED — NOT BUILT",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2198,7 +2197,7 @@
       "dependencies": [
         "COM-N1B"
       ],
-      "status": "APPROVED",
+      "status": "APPROVED — NOT BUILT",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2223,7 +2222,7 @@
       "dependencies": [
         "COM-N1C"
       ],
-      "status": "APPROVED",
+      "status": "APPROVED — NOT BUILT",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2250,7 +2249,7 @@
         "COM-N2",
         "K-8"
       ],
-      "status": "APPROVED",
+      "status": "APPROVED — NOT BUILT",
       "migration": "com_books_statement_link",
       "budget": 450,
       "units": [
@@ -2275,7 +2274,7 @@
       "dependencies": [
         "COM-N3"
       ],
-      "status": "APPROVED",
+      "status": "APPROVED — NOT BUILT",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2908,7 +2907,7 @@
       "dependencies": [
         "W-20"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "website_revision_content_version",
       "budget": 500,
       "units": [
@@ -2934,7 +2933,7 @@
       "dependencies": [
         "V-C1"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "website_assets",
       "budget": 500,
       "units": [
@@ -2960,7 +2959,7 @@
       "dependencies": [
         "V-C2"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -2986,7 +2985,7 @@
       "dependencies": [
         "V-C3"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -3014,7 +3013,7 @@
       "dependencies": [
         "V-C4"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -3227,7 +3226,7 @@
       "dependencies": [
         "W-2"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3252,7 +3251,7 @@
       "dependencies": [
         "W-3"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "rental_ending_notice",
       "budget": 450,
       "units": [
@@ -3277,7 +3276,7 @@
       "dependencies": [
         "W-4"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "w5_w6_payment_link_and_lead_response",
       "budget": 450,
       "units": [
@@ -3302,7 +3301,7 @@
       "dependencies": [
         "W-5"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "w5_w6_payment_link_and_lead_response",
       "budget": 450,
       "units": [
@@ -3327,7 +3326,7 @@
       "dependencies": [
         "W-6"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3354,7 +3353,7 @@
       "dependencies": [
         "W-7"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3380,7 +3379,7 @@
       "dependencies": [
         "W-8"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3406,7 +3405,7 @@
       "dependencies": [
         "W-9"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3477,7 +3476,7 @@
       "dependencies": [
         "W-2"
       ],
-      "status": "APPROVED",
+      "status": "DEFERRED",
       "migration": "none",
       "budget": 400,
       "units": [
@@ -3524,7 +3523,7 @@
       "dependencies": [
         "W-18"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "20261015100000_w22_signing_charge_settings + 20261015110000_w22_signing_charge_snapshots (W-22 partial; payments pending)",
       "budget": 500,
       "units": [
@@ -3546,7 +3545,7 @@
         "tests/signing-charge-owner-review-w22.test.ts",
         "tests/signing-charge-settings-integration.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-22.md"
     },
     {
@@ -3556,7 +3555,7 @@
       "dependencies": [
         "W-22"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "location_contacts",
       "budget": 500,
       "units": [
@@ -3574,7 +3573,7 @@
         "tests/location-contacts.test.ts",
         "tests/location-contacts-integration.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-23.md"
     },
     {
@@ -3584,7 +3583,7 @@
       "dependencies": [
         "W-23"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "order_link_delivery_choices",
       "budget": 500,
       "units": [
@@ -3596,7 +3595,7 @@
         "src/app/estimate/[id]/page.tsx"
       ],
       "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-24.md"
     },
     {
@@ -3787,7 +3786,7 @@
         "W-10",
         "W-21"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -3815,7 +3814,7 @@
       "dependencies": [
         "W-19"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "appliance_cleaning_status",
       "budget": 500,
       "units": [
@@ -3844,7 +3843,7 @@
       "dependencies": [
         "W-17"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "none",
       "budget": 450,
       "units": [
@@ -3870,7 +3869,7 @@
       "title": "My account: own password, email, name, devices and two-step settings for every desk user",
       "batch": "ACC",
       "dependencies": [],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "user_phone",
       "budget": 450,
       "units": [
@@ -3886,7 +3885,7 @@
         "tests/acc1-my-account-integration.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "risk": "auth",
       "card": "docs/pr-cards/ACC-1.md"
     },
@@ -3897,7 +3896,7 @@
       "dependencies": [
         "ACC-1"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "team_invitation",
       "budget": 500,
       "units": [
@@ -3915,7 +3914,7 @@
         "tests/acc2-team-invitations-integration.test.ts",
         "e2e/team-invitations.spec.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "risk": "auth",
       "card": "docs/pr-cards/ACC-2.md"
     },
@@ -3926,7 +3925,7 @@
       "dependencies": [
         "ACC-2"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "second_step_methods",
       "budget": 480,
       "units": [
@@ -3944,7 +3943,7 @@
         "tests/acc3-second-step-integration.test.ts",
         "e2e/two-factor.spec.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "risk": "auth",
       "card": "docs/pr-cards/ACC-3.md"
     },
@@ -3955,7 +3954,7 @@
       "dependencies": [
         "ACC-3"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "sign_in_recovery",
       "budget": 420,
       "units": [
@@ -3971,7 +3970,7 @@
         "tests/acc4-sign-in-guard-rules.test.ts",
         "tests/acc4-recovery-integration.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "risk": "auth",
       "card": "docs/pr-cards/ACC-4.md"
     },
@@ -3982,7 +3981,7 @@
       "dependencies": [
         "ACC-4"
       ],
-      "status": "APPROVED",
+      "status": "MERGED",
       "migration": "job_roles",
       "budget": 450,
       "units": [
@@ -3999,7 +3998,7 @@
         "tests/acc5-job-roles-integration.test.ts",
         "e2e/job-roles.spec.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "risk": "auth",
       "card": "docs/pr-cards/ACC-5.md"
     }
