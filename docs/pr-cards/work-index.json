@@ -3956,7 +3956,7 @@
         "ACC-3"
       ],
       "status": "APPROVED",
-      "migration": "sign_in_pause",
+      "migration": "sign_in_recovery",
       "budget": 420,
       "units": [
         "ACC-4"
@@ -3968,11 +3968,12 @@
         "scripts/reset-two-factor.ts"
       ],
       "tests": [
+        "tests/acc4-sign-in-guard-rules.test.ts",
         "tests/acc4-recovery-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "risk": "auth",
-      "plannedCard": "docs/pr-cards/ACC-4.md"
+      "card": "docs/pr-cards/ACC-4.md"
     },
     {
       "id": "ACC-5",

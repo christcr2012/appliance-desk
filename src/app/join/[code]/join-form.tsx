@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button, Field } from "@/components/ui";
 import { acceptInvitationAction } from "./actions";
 
-export function JoinForm({ code, name, email, accessLevel }: { code: string; name: string; email: string; accessLevel: string }) {
+export function JoinForm({ code, name, email, accessLevel, reset }: { code: string; name: string; email: string; accessLevel: string; reset: boolean }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +15,7 @@ export function JoinForm({ code, name, email, accessLevel }: { code: string; nam
   if (done) {
     return (
       <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
-        <p>Your account is ready.</p>
+        <p>{reset ? "Your new password is saved. Sign in, then set up your second step again." : "Your account is ready."}</p>
         <p className="mt-2"><Link href="/login" className="text-primary hover:underline">Sign in now</Link></p>
       </div>
     );
@@ -42,7 +42,7 @@ export function JoinForm({ code, name, email, accessLevel }: { code: string; nam
       <Field id="joinPassword" label="Password" help="At least 10 characters." type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       <Field id="joinConfirm" label="Type it again" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
       {error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}
-      <Button type="submit" disabled={pending || !password || !confirm}>{pending ? "Setting up…" : "Create my account"}</Button>
+      <Button type="submit" disabled={pending || !password || !confirm}>{pending ? "Saving…" : reset ? "Save my new password" : "Create my account"}</Button>
     </form>
   );
 }

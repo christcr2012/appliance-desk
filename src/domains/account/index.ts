@@ -83,6 +83,7 @@ export async function updateMyProfile(userId: string, input: { name: string; pho
 
 export type AccountEvent =
   | "account.password_changed"
+  | "account.password_reset"
   | "account.email_change_requested"
   | "account.email_changed"
   | "account.backup_codes_regenerated"
@@ -96,7 +97,8 @@ export async function recordAccountEvent(userId: string, action: AccountEvent, d
   });
 }
 
-export type AccountNoticeKind = "profile" | "password" | "email_requested" | "email_changed" | "backup_codes" | "two_step_off" | "access_changed" | "team_removed" | "team_restored";
+export type AccountNoticeKind = "profile" | "password" | "email_requested" | "email_changed" | "backup_codes" | "two_step_off" | "access_changed" | "team_removed" | "team_restored"
+  | "sign_in_paused" | "new_device" | "sign_in_reset" | "two_step_changed";
 
 const NOTICE_TEXT: Record<AccountNoticeKind, { subject: string; line: (extra?: string) => string }> = {
   profile: { subject: "Your account details were changed", line: () => "Your name or phone number on Appliance Desk was just changed." },
@@ -113,6 +115,10 @@ const NOTICE_TEXT: Record<AccountNoticeKind, { subject: string; line: (extra?: s
   access_changed: { subject: "Your access level was changed", line: (extra) => `Your access level on Appliance Desk was changed${extra ? ` to ${extra}` : ""}. You were signed out; sign in again to continue.` },
   team_removed: { subject: "Your access was removed", line: () => "Your access to Appliance Desk was removed by the owner." },
   team_restored: { subject: "Your access was restored", line: () => "Your access to Appliance Desk was restored. Sign in with your usual email and password." },
+  sign_in_paused: { subject: "Sign-in was paused after wrong passwords", line: () => "Several wrong passwords were tried on your Appliance Desk account, so sign-in is paused for a short while. If that was you, wait and try again or use Forgot password." },
+  new_device: { subject: "New sign-in to your account", line: (extra) => `Your Appliance Desk account was just signed in to from a device we have not seen before${extra ? ` (${extra})` : ""}.` },
+  sign_in_reset: { subject: "Your sign-in was reset by the owner", line: () => "The owner reset your Appliance Desk sign-in: you were signed out everywhere and two-step sign-in was turned off. Use the separate email with the link to choose a new password and set up two-step again." },
+  two_step_changed: { subject: "Your second sign-in step was changed", line: (extra) => `The way you get your second sign-in step on Appliance Desk was changed${extra ? ` to ${extra}` : ""}.` },
   two_step_off: { subject: "Two-step sign-in was turned off", line: () => "Two-step sign-in was turned off for your Appliance Desk account and you were signed out everywhere." },
 };
 

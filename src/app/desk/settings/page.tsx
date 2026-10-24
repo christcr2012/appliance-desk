@@ -46,7 +46,8 @@ import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
 import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
-import { updateSecondStepSettingsAction, updateTwoFactorRequiredRolesAction } from "./actions";
+import { updateSecondStepSettingsAction, updateSignInPauseAction, updateTwoFactorRequiredRolesAction } from "./actions";
+import { getPauseSettings } from "@/domains/security/sign-in-guard";
 import { getMethodSettings, twilioKeysPresent } from "@/domains/security/second-step";
 import { EMAIL_WEAKER_WARNING, METHOD_LABEL } from "@/domains/security/second-step-rules";
 import { listOwnSessions } from "@/domains/security/sessions";
@@ -256,6 +257,7 @@ export default async function DeskSettingsPage({
     const canChange = session.user.role === "OWNER";
     const ownSessions = await listOwnSessions(session.user.id, session.session.token);
     const methodSettings = await getMethodSettings();
+    const pauseSettings = await getPauseSettings();
     content = (
       <Card
         title="Security"
@@ -353,6 +355,25 @@ export default async function DeskSettingsPage({
             <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
           </div>
           {!canChange && <p className="text-sm text-ink-soft">Only the Owner can change these rules.</p>}
+        </form>
+        <form action={updateSignInPauseAction} className="mt-8 space-y-4 border-t border-line pt-6">
+          <fieldset disabled={!canChange} className="space-y-3">
+            <legend className="font-medium text-ink">Wrong passwords</legend>
+            <p className="text-sm text-ink-soft">
+              After this many wrong passwords on one account inside the wait time, that account waits before it can try again and the person gets an email.
+              Starting value: 10 wrong passwords, 15 minutes. It protects against guessing; it also means someone typing a wrong password for you can pause your account for a while, and Forgot password still works.
+            </p>
+            <label className="block text-sm text-ink">Wrong passwords allowed
+              <input name="attempts" type="number" min={3} max={50} defaultValue={pauseSettings.attempts} className="mt-1 block w-28 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink" />
+            </label>
+            <label className="block text-sm text-ink">Wait (minutes)
+              <input name="minutes" type="number" min={1} max={240} defaultValue={pauseSettings.minutes} className="mt-1 block w-28 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink" />
+            </label>
+          </fieldset>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save wrong-password rules</button>
+            <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
+          </div>
         </form>
         <SessionControls
           sessions={ownSessions.map((row) => ({

@@ -52,6 +52,16 @@ export const auth = betterAuth({
     // for the team; our own server code calls the library directly and is not affected. Customers cannot change
     // their sign-in email at all (their customer record is matched on it).
     before: createAuthMiddleware(async (ctx) => {
+      // ACC-4: an account that had too many wrong passwords waits (the per-address rate limit stays as well).
+      if (ctx.path === "/sign-in/email") {
+        const attempted = typeof (ctx.body as { email?: unknown } | undefined)?.email === "string" ? (ctx.body as { email: string }).email : "";
+        if (attempted) {
+          const { pausedMessageFor } = await import("@/domains/security/sign-in-guard");
+          const message = await pausedMessageFor(attempted).catch(() => null);
+          if (message) throw APIError.fromStatus("TOO_MANY_REQUESTS", { message });
+        }
+        return;
+      }
       if (!GUARDED_AUTH_PATHS.has(ctx.path)) return;
       const current = await getSessionFromCtx(ctx).catch(() => null);
       const decision = decideAccountAuthPath({
@@ -60,6 +70,37 @@ export const auth = betterAuth({
         role: (current?.user as { role?: string } | undefined)?.role,
       });
       if (!decision.allow) throw APIError.fromStatus("FORBIDDEN", { message: decision.message });
+    }),
+    // ACC-4: count wrong passwords, clear the count on a right one, and tell the team about a new device. This must
+    // never stop or change a sign-in, so every failure here is swallowed.
+    after: createAuthMiddleware(async (ctx) => {
+      try {
+        const guard = await import("@/domains/security/sign-in-guard");
+        const userAgent = ctx.request?.headers.get("user-agent") ?? null;
+        if (ctx.path === "/sign-in/email") {
+          const attempted = typeof (ctx.body as { email?: unknown } | undefined)?.email === "string" ? (ctx.body as { email: string }).email : "";
+          const returned = ctx.context.returned as unknown;
+          if (returned instanceof APIError) {
+            if (returned.statusCode === 401 && attempted) await guard.recordFailedSignIn(attempted);
+            return;
+          }
+          const signedIn = ctx.context.newSession?.user?.id as string | undefined;
+          const twoStep = Boolean((returned as { twoFactorRedirect?: unknown } | null | undefined)?.twoFactorRedirect);
+          if (signedIn) { await guard.recordPasswordAccepted(signedIn); await guard.noteCompletedSignIn(signedIn, userAgent); }
+          else if (twoStep && attempted) {
+            const { prisma: db } = await import("./prisma");
+            const u = await db.user.findUnique({ where: { email: attempted.trim().toLowerCase() }, select: { id: true } });
+            if (u) await guard.recordPasswordAccepted(u.id);
+          }
+          return;
+        }
+        if (ctx.path.startsWith("/two-factor/verify")) {
+          const signedIn = ctx.context.newSession?.user?.id as string | undefined;
+          if (signedIn) await guard.noteCompletedSignIn(signedIn, userAgent);
+        }
+      } catch (error) {
+        console.error("[auth] sign-in follow-up failed", error instanceof Error ? error.name : "unknown");
+      }
     }),
   },
   // Vercel's production domain (appliance-desk.vercel.app) and every
@@ -107,6 +148,15 @@ export const auth = betterAuth({
     // existing sessions prevents a stolen 14-day session cookie from
     // surviving after the legitimate user changes the credential.
     revokeSessionsOnPasswordReset: true,
+    // ACC-4: tell the person after a forgotten-password reset (no sign-in link in the notice).
+    onPasswordReset: async ({ user }) => {
+      const { sendAccountNotice, recordAccountEvent } = await import("@/domains/account");
+      await recordAccountEvent(user.id, "account.password_reset", {}).catch(() => undefined);
+      // Choosing a new password through the emailed link ends any sign-in pause too (as the card requires).
+      const { prisma: db } = await import("./prisma");
+      await db.user.updateMany({ where: { id: user.id }, data: { failedSignInCount: 0, failedSignInWindowStartedAt: null, signInPausedUntil: null } }).catch(() => undefined);
+      await sendAccountNotice(user.id, "password");
+    },
     // Real "forgot password" flow (Phase 6A item 2 — customer account
     // invitation & password recovery). Better Auth generates and verifies
     // the one-time, expiring token itself (see the Verification table) —

@@ -2,6 +2,7 @@ import type { Prisma, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { sendEmail } from "@/lib/email";
+import { auth } from "@/lib/auth";
 import { createTrustedCredentialUserInTx, normalizeAccountEmail } from "@/lib/account-provisioning";
 import { CAPABILITY_KEYS, isCapability } from "@/domains/capabilities";
 import { cleanName, normalizePhone, noticeWarning } from "@/domains/account";
@@ -49,13 +50,18 @@ function appUrl(): string {
 
 export type InviteEmailOutcome = "SENT" | "NOT_SENT";
 
-async function sendInvitationEmail(input: { to: string; name: string; level: string; code: string; inviterName: string; days: number }): Promise<InviteEmailOutcome> {
+async function sendInvitationEmail(input: { to: string; name: string; level: string; code: string; inviterName: string; days: number; purpose?: string }): Promise<InviteEmailOutcome> {
   try {
     const link = `${appUrl()}/join/${input.code}`;
+    const reset = input.purpose === "RESET";
     const result = await sendEmail({
       to: input.to,
-      subject: "You are invited to join Robinson Appliance Rentals on Appliance Desk",
-      text: [
+      subject: reset ? "Choose a new password for Appliance Desk" : "You are invited to join Robinson Appliance Rentals on Appliance Desk",
+      text: reset ? [
+        `Hello ${input.name},`,
+        `${input.inviterName} reset your sign-in. Open this link to choose a new password; you will set up your second sign-in step again afterwards: ${link}`,
+        `The link works once and stops working after ${input.days} day${input.days === 1 ? "" : "s"}. If you were not expecting this, tell the owner.`,
+      ].join("\n\n") : [
         `Hello ${input.name},`,
         `${input.inviterName} invited you to join the team as ${ACCESS_LEVEL_LABEL[input.level] ?? "Staff"}.`,
         `Open this link to choose your password and finish setting up your account: ${link}`,
@@ -148,42 +154,50 @@ async function assertMayManage(tx: Tx, actorId: string, level: string) {
   return { actor, settings };
 }
 
+async function assertOwnerManage(tx: Tx, actorId: string) {
+  const actor = await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  return { actor, settings: await readSettings(tx) };
+}
+
 /** A new link; the old one stops working at once. Allowed while Invited or Expired. */
 export async function resendInvitation(actorId: string, invitationId: string) {
   const code = newInvitationCode();
   const out = await prisma.$transaction(async (tx) => {
     const inv = await lockedInvitation(tx, invitationId);
-    const { settings } = await assertMayManage(tx, actorId, inv.accessLevel);
+    const { settings } = inv.purpose === "RESET" ? await assertOwnerManage(tx, actorId) : await assertMayManage(tx, actorId, inv.accessLevel);
     if (inv.status !== "INVITED") throw new TeamError("Only an invitation that has not been used or cancelled can be sent again.");
-    await lockEmail(tx, inv.email);
-    await assertEmailFree(tx, inv.email, inv.id);
+    if (inv.purpose !== "RESET") {
+      await lockEmail(tx, inv.email);
+      await assertEmailFree(tx, inv.email, inv.id);
+    }
     await tx.teamInvitation.update({ where: { id: inv.id }, data: { codeHash: hashInvitationCode(code), expiresAt: invitationExpiry(new Date(), settings.invitationLinkDays), invitedById: actorId } });
     // The person sending it now vouches for the new link (the earlier sender may have been removed); the audit row keeps both.
     await tx.auditLog.create({ data: { userId: actorId, action: "team.invite.resend", entityType: "TeamInvitation", entityId: inv.id, oldValue: { invitedById: inv.invitedById }, newValue: { invitedById: actorId } } });
     return { inv, inviter: await inviterLabel(tx, actorId), days: settings.invitationLinkDays };
   });
-  const emailOutcome = await sendInvitationEmail({ to: out.inv.email, name: out.inv.name, level: out.inv.accessLevel, code, inviterName: out.inviter, days: out.days });
+  const emailOutcome = await sendInvitationEmail({ to: out.inv.email, name: out.inv.name, level: out.inv.accessLevel, code, inviterName: out.inviter, days: out.days, purpose: out.inv.purpose });
   return { emailOutcome };
 }
 
 export async function cancelInvitation(actorId: string, invitationId: string) {
   await prisma.$transaction(async (tx) => {
     const inv = await lockedInvitation(tx, invitationId);
-    await assertMayManage(tx, actorId, inv.accessLevel);
+    if (inv.purpose === "RESET") await assertOwnerManage(tx, actorId);
+    else await assertMayManage(tx, actorId, inv.accessLevel);
     if (inv.status !== "INVITED") throw new TeamError("Only an invitation that has not been used can be cancelled.");
     await tx.teamInvitation.update({ where: { id: inv.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
     await tx.auditLog.create({ data: { userId: actorId, action: "team.invite.cancel", entityType: "TeamInvitation", entityId: inv.id } });
   });
 }
 
-export type JoinView = { ok: true; name: string; email: string; accessLevel: string } | { ok: false; message: string };
+export type JoinView = { ok: true; name: string; email: string; accessLevel: string; reset: boolean } | { ok: false; message: string };
 
 /** What the /join page shows. Reveals nothing for a code that does not work. */
 export async function getJoinView(code: string): Promise<JoinView> {
   if (!code || code.length > 200) return { ok: false, message: INVALID_LINK_MESSAGE };
   const inv = await prisma.teamInvitation.findUnique({ where: { codeHash: hashInvitationCode(code) } });
   if (!inv || effectiveInvitationState(inv.status, inv.expiresAt, new Date()) !== "INVITED") return { ok: false, message: INVALID_LINK_MESSAGE };
-  return { ok: true, name: inv.name, email: inv.email, accessLevel: ACCESS_LEVEL_LABEL[inv.accessLevel] ?? "Staff" };
+  return { ok: true, name: inv.name, email: inv.email, accessLevel: ACCESS_LEVEL_LABEL[inv.accessLevel] ?? "Staff", reset: inv.purpose === "RESET" };
 }
 
 /**
@@ -199,6 +213,7 @@ export async function acceptInvitation(code: string, password: string, confirm: 
     if (locked.length === 0) throw new TeamError(INVALID_LINK_MESSAGE);
     const inv = await tx.teamInvitation.findUniqueOrThrow({ where: { id: locked[0].id } });
     if (effectiveInvitationState(inv.status, inv.expiresAt, new Date()) !== "INVITED") throw new TeamError(INVALID_LINK_MESSAGE);
+    if (inv.purpose === "RESET") return finishReset(tx, inv, password);
     await lockEmail(tx, inv.email);
     if (await tx.user.findUnique({ where: { email: inv.email }, select: { id: true } })) throw new TeamError(INVALID_LINK_MESSAGE);
     // The inviter must still be an active owner/admin when the link is used (a removed inviter's links stop working).
@@ -239,7 +254,7 @@ export async function getTeam(): Promise<{ members: TeamMemberRow[]; invitations
   const members = users
     .map((u) => ({ id: u.id, name: u.name || u.email, email: u.email, accessLevel: u.role as string, active: !u.archivedAt, twoStepOn: u.twoFactorEnabled, lastSignIn: u.sessions[0]?.createdAt ?? null }))
     .sort((a, b) => order[a.accessLevel] - order[b.accessLevel]);
-  const rows = await prisma.teamInvitation.findMany({ where: { status: { in: ["INVITED", "CANCELLED"] } }, orderBy: { createdAt: "desc" }, take: 200 });
+  const rows = await prisma.teamInvitation.findMany({ where: { purpose: "INVITE", status: { in: ["INVITED", "CANCELLED"] } }, orderBy: { createdAt: "desc" }, take: 200 });
   const now = new Date();
   const invitations = rows.map((r) => ({
     id: r.id, name: r.name, email: r.email, accessLevel: r.accessLevel as string, state: effectiveInvitationState(r.status, r.expiresAt, now), expiresAt: r.expiresAt,
@@ -320,4 +335,65 @@ export async function changeAccessLevel(ownerId: string, targetId: string, newLe
     });
   });
   return noticeWarning(targetId, "access_changed", { extra: ACCESS_LEVEL_LABEL[level] });
+}
+
+type InvitationRow = Awaited<ReturnType<Tx["teamInvitation"]["findUniqueOrThrow"]>>;
+
+/** Finishing an owner's reset: choose a new password on the existing login. Two-step was already turned off by the reset. */
+async function finishReset(tx: Tx, inv: InvitationRow, password: string) {
+  const targetId = inv.targetUserId;
+  if (!targetId) throw new TeamError(INVALID_LINK_MESSAGE);
+  await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${targetId} FOR UPDATE`;
+  const target = await tx.user.findUnique({ where: { id: targetId }, select: { id: true, email: true, role: true, archivedAt: true } });
+  if (!target || target.archivedAt || target.email !== inv.email || (target.role !== "STAFF" && target.role !== "ADMIN")) throw new TeamError(INVALID_LINK_MESSAGE);
+  // The owner who made the link must still be an active owner, checked under a shared lock on their row.
+  try { await assertActiveTeamActor(tx, inv.invitedById, ["OWNER"]); } catch { throw new TeamError(INVALID_LINK_MESSAGE); }
+  const hash = await (await auth.$context).password.hash(password);
+  const credential = await tx.account.findFirst({ where: { userId: targetId, providerId: "credential" }, select: { id: true } });
+  if (credential) await tx.account.update({ where: { id: credential.id }, data: { password: hash } });
+  else await tx.account.create({ data: { userId: targetId, providerId: "credential", accountId: targetId, password: hash } });
+  await tx.session.deleteMany({ where: { userId: targetId } });
+  await tx.user.update({ where: { id: targetId }, data: { failedSignInCount: 0, failedSignInWindowStartedAt: null, signInPausedUntil: null } });
+  await tx.teamInvitation.update({ where: { id: inv.id }, data: { status: "ACCEPTED", acceptedUserId: targetId, acceptedAt: new Date() } });
+  await tx.auditLog.create({ data: { userId: targetId, action: "team.reset_sign_in.complete", entityType: "TeamInvitation", entityId: inv.id } });
+  return { email: target.email };
+}
+
+/**
+ * Owner only, for staff and admins (never the owner's own account, never an owner). Turns off their second step,
+ * signs them out everywhere and sends a fresh link to choose a new password. Any earlier open reset link stops working.
+ */
+export async function resetTeamSignIn(ownerId: string, targetId: string) {
+  const code = newInvitationCode();
+  const out = await prisma.$transaction(async (tx) => {
+    const { settings } = await assertOwnerManage(tx, ownerId);
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${targetId} FOR UPDATE`;
+    const target = await tx.user.findUnique({ where: { id: targetId }, select: { id: true, email: true, name: true, role: true, archivedAt: true, twoFactorEnabled: true } });
+    if (!target) throw new TeamError("That account no longer exists.");
+    if (target.id === ownerId) throw new TeamError("You cannot reset your own sign-in this way. Use My account, or the recovery steps.");
+    if (target.role !== "STAFF" && target.role !== "ADMIN") throw new TeamError("Only staff and admin sign-ins can be reset here.");
+    if (target.archivedAt) throw new TeamError("Restore this person before resetting their sign-in.");
+    await tx.teamInvitation.updateMany({ where: { purpose: "RESET", targetUserId: targetId, status: "INVITED" }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+    await tx.twoFactor.deleteMany({ where: { userId: targetId } });
+    await tx.user.update({ where: { id: targetId }, data: { twoFactorEnabled: false, secondStepMethod: null, failedSignInCount: 0, failedSignInWindowStartedAt: null, signInPausedUntil: null } });
+    await tx.session.deleteMany({ where: { userId: targetId } });
+    // The old password stops working right now (it is swapped for a random one nobody knows), so nobody who holds it can
+    // walk in with password alone while the reset link is waiting. Choosing a new password through the link, or
+    // "Forgot password", sets a real one.
+    const unusable = await (await auth.$context).password.hash(newInvitationCode() + newInvitationCode());
+    await tx.account.updateMany({ where: { userId: targetId, providerId: "credential" }, data: { password: unusable } });
+    const inv = await tx.teamInvitation.create({
+      data: {
+        email: target.email, name: target.name || target.email, accessLevel: target.role, purpose: "RESET", targetUserId: targetId,
+        codeHash: hashInvitationCode(code), expiresAt: invitationExpiry(new Date(), settings.invitationLinkDays), invitedById: ownerId,
+      },
+    });
+    await tx.auditLog.create({
+      data: { userId: ownerId, action: "team.reset_sign_in", entityType: "User", entityId: targetId, oldValue: { twoFactorEnabled: target.twoFactorEnabled }, newValue: { invitationId: inv.id } },
+    });
+    return { target, inviter: await inviterLabel(tx, ownerId), days: settings.invitationLinkDays };
+  });
+  const emailOutcome = await sendInvitationEmail({ to: out.target.email, name: out.target.name || out.target.email, level: out.target.role, code, inviterName: out.inviter, days: out.days, purpose: "RESET" });
+  const warning = await noticeWarning(targetId, "sign_in_reset");
+  return { emailOutcome, warning };
 }

@@ -510,6 +510,15 @@ export async function updateSecondStepSettingsAction(formData: FormData): Promis
   revalidatePath("/desk/settings/switches");
 }
 
+/** Owner-only (ACC-4): how many wrong passwords one account may have, and how long it waits afterwards. */
+export async function updateSignInPauseAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const { updatePauseSettings } = await import("@/domains/security/sign-in-guard");
+  const restore = formData.get("restoreRecommended") === "1";
+  await updatePauseSettings(session.user.id, restore ? { attempts: 10, minutes: 15 } : { attempts: formData.get("attempts"), minutes: formData.get("minutes") });
+  revalidatePath("/desk/settings");
+}
+
 /** Keeps the caller's current session and revokes every other active/stale session row. */
 export async function signOutOtherSessionsAction(): Promise<
   | { status: "success"; revokedCount: number }

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import {
   TeamError, cancelInvitation, changeAccessLevel, inviteTeamMember, removeTeamMember, resendInvitation,
-  restoreTeamMember, updateTeamSettings,
+  resetTeamSignIn, restoreTeamMember, updateTeamSettings,
 } from "@/domains/team";
 
 // ACC-2 Team actions. The rules (who may do what) are enforced in src/domains/team, inside the transaction; the role
@@ -64,4 +64,16 @@ export async function changeAccessLevelAction(userId: string, level: string, all
 export async function saveTeamSettingsAction(input: { invitationLinkDays: number; adminsMayInviteStaff: boolean }): Promise<TeamActionState> {
   const session = await requireRole("OWNER");
   return run(async () => { await updateTeamSettings(session.user.id, input); return { message: "Saved." }; }, "Couldn't save those settings.");
+}
+
+export async function resetTeamSignInAction(userId: string): Promise<TeamActionState> {
+  const session = await requireRole("OWNER");
+  return run(async () => {
+    const r = await resetTeamSignIn(session.user.id, userId);
+    const sent = r.emailOutcome === "SENT";
+    return {
+      message: sent ? "Sign-in reset. They were signed out everywhere and emailed a link to choose a new password." : "Sign-in reset and they were signed out everywhere.",
+      warning: sent ? r.warning : "The email with the link was not sent. Use Reset sign-in again to send a fresh link." + (r.warning ? ` ${r.warning}` : ""),
+    };
+  }, "Couldn't reset that sign-in.");
 }

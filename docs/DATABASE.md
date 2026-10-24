@@ -1,3 +1,7 @@
+## October 24 — Sign-in recovery (ACC-4, additive)
+
+`User.failedSignInCount`, `failedSignInWindowStartedAt`, `signInPausedUntil` (wrong-password pause). `TeamInvitation.purpose` (INVITE or RESET) and `targetUserId` (the person whose sign-in the owner reset). `BusinessSettings.signInPauseAttempts` (10) and `signInPauseMinutes` (15). Migration `20261024070000_sign_in_recovery`.
+
 ## October 24 — Sign-in code methods (ACC-3, additive)
 
 `User.secondStepMethod` (TOTP, SMS or EMAIL; empty until chosen; existing two-step users set to TOTP). `BusinessSettings.secondStepMethodsByLevel` (JSON: allowed methods per access level; authenticator always allowed) and `securitySmsEnabled` (false: the owner's separate switch for text sign-in codes). Phone-check and method-switch codes live scrambled in the existing `Verification` table for 5 minutes. Migration `20261024060000_second_step_methods`.
