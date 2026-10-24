@@ -1415,22 +1415,22 @@
       "dependencies": [
         "M-2B"
       ],
-      "status": "NOT_BUILT",
-      "migration": "batch_m_used_asset_sale_claim",
+      "status": "MERGED",
+      "migration": "used_appliance_sale",
       "budget": 450,
       "units": [
         "M-2C"
       ],
       "evidence": [
         "docs/designs/BATCH-M.md",
-        "src/domains/purchasing/ledger.ts",
-        "src/domains/purchasing/index.ts",
-        "src/domains/inventory/guided-actions.ts"
+        "src/domains/sales/index.ts",
+        "src/domains/books/fixed-assets.ts",
+        "src/app/desk/sales/new/new-sale-form.tsx"
       ],
       "tests": [
         "tests/used-appliance-sale-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/M-2C.md"
     },
     {

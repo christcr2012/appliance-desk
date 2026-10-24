@@ -417,10 +417,22 @@ export async function finishApprovedRequest(ownerId: string, requestId: string):
       return settleApprovedWork(ownerId, requestId, op?.id ?? null, claimed.targetRef);
     }
   } else if (claimed.input.action === "held_refund") {
-    const pay = await prisma.payment.findUnique({ where: { id: String(claimed.input.paymentId) }, select: { status: true, invoice: { select: { id: true } } } });
+    const paymentId = String(claimed.input.paymentId);
+    const pay = await prisma.payment.findUnique({ where: { id: paymentId }, select: { status: true } });
     if (pay && pay.status !== HELD_PAYMENT_STATUS) {
-      const refund = await prisma.refund.findFirst({ where: { invoiceId: pay.invoice.id, notes: { contains: "Held payment" } }, orderBy: { createdAt: "desc" }, select: { id: true } });
-      const op = refund ? await prisma.providerOperation.findFirst({ where: { subjectType: "Refund", subjectId: refund.id, kind: "REFUND_CREATE" }, select: { id: true } }) : null;
+      // The refund for THIS payment is named in the audit row written when it was sent back; anything else means the
+      // payment was dealt with another way (credit, marked paid) and no money went back to the card.
+      const sent = await prisma.auditLog.findFirst({ where: { action: "billing.held_payment_refunded", entityType: "Payment", entityId: paymentId }, select: { newValue: true } });
+      const refundId = (sent?.newValue as { refundId?: string } | null)?.refundId;
+      if (!refundId) {
+        const message = "That held payment was dealt with another way (turned into credit or marked paid) before the refund went out, so nothing was sent to the card.";
+        await prisma.$transaction(async (tx) => {
+          await tx.approvalRequest.update({ where: { id: requestId }, data: { status: "FAILED", failureMessage: message } });
+          await tx.auditLog.create({ data: { userId: ownerId, action: "approval.failed", entityType: "ApprovalRequest", entityId: requestId, newValue: { message } } });
+        });
+        return { status: "FAILED", message };
+      }
+      const op = await prisma.providerOperation.findFirst({ where: { subjectType: "Refund", subjectId: refundId, kind: "REFUND_CREATE" }, select: { id: true } });
       return settleApprovedWork(ownerId, requestId, op?.id ?? null, claimed.targetRef);
     }
   }

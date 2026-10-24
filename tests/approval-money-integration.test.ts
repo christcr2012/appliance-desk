@@ -247,6 +247,17 @@ describe.skipIf(!enabled)("money approvals on real Postgres with a fake Stripe",
     expect((await prisma.payment.findUniqueOrThrow({ where: { id: f.paymentId } })).status).not.toBe("held");
   });
 
+  it("finishing a held-payment approval that was dealt with another way reports that, and sends nothing", async () => {
+    const f = await fixture({ held: true });
+    const id = request(await submitHeldPaymentRefund(adminId, f.paymentId));
+    await prisma.approvalRequest.update({ where: { id }, data: { status: "APPROVED", decidedByUserId: ownerId, decidedAt: new Date(Date.now() - 300_000) } });
+    await prisma.payment.update({ where: { id: f.paymentId }, data: { status: "held_to_credit" } }); // someone made it credit meanwhile
+    const out = await finishApprovedRequest(ownerId, id);
+    expect(out.status).toBe("FAILED");
+    expect(out.message).toMatch(/another way/);
+    expect(mocks.refundCreate).not.toHaveBeenCalled();
+  });
+
   it("applying a customer credit above the limit waits, then applies once inside the approval", async () => {
     const f = await fixture({ source: "MANUAL" });
     await prisma.invoice.update({ where: { id: f.invoiceId }, data: { status: "OPEN", amountPaidCents: 0 } });

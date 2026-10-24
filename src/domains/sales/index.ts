@@ -8,6 +8,9 @@ import { lockCustomerLedger } from "@/domains/billing/ledger";
 import { applySaleInvoiceTaxInTx } from "@/domains/tax/local-invoice";
 import { applyPartMovementsInTx, lockPartRecords, OPERATION_KEY_PATTERN, PartOperationConflictError } from "@/domains/purchasing/ledger";
 import { ensureWalkInCustomer } from "./walk-in";
+import { disposeRetiredBookAssetInTx, reverseBookAssetDisposalInTx } from "@/domains/books/fixed-assets";
+import { businessDateFromKey } from "@/lib/business-date";
+import { postForSource } from "@/domains/books/post";
 
 // ---------------------------------------------------------------------------
 // Shop sales (Batch M, design D-M3). A sale is a local invoice: lines are sellable parts (plus an optional delivery or
@@ -25,6 +28,9 @@ export type ShopSaleItem = {
   priceReason?: string;
 };
 
+/** M-2C: one retired appliance whose plan is “Sell it”. One unit, priced by the owner (there is no list price). */
+export type ShopSaleAppliance = { applianceId: string; unitPriceCents: number };
+
 export type ShopSaleInput = {
   /** A retry with the same key returns the first sale and changes nothing. */
   operationKey: string;
@@ -35,6 +41,8 @@ export type ShopSaleInput = {
   /** DELIVERED only: one of the customer's saved addresses. */
   serviceAddressId?: string | null;
   items: ShopSaleItem[];
+  /** Retired appliances being sold in this sale (at most one live sale per appliance). */
+  usedAppliances?: ShopSaleAppliance[];
   deliveryChargeCents?: number;
   installationChargeCents?: number;
   note?: string;
@@ -68,14 +76,21 @@ export function saleDescription(part: { modelNumber: string; partNumber: string;
 function validate(input: ShopSaleInput): void {
   if (!OPERATION_KEY_PATTERN.test(input.operationKey)) throw new Error("This request has no valid identity. Reload the page and try again.");
   if (input.location !== "PICKUP" && input.location !== "DELIVERED") throw new Error("Choose pickup or delivery.");
-  if (input.items.length < 1) throw new Error("Add at least one item to sell.");
-  if (input.items.length > MAX_ITEMS) throw new Error(`A sale can have up to ${MAX_ITEMS} different items. Split it into two sales.`);
+  const appliances = input.usedAppliances ?? [];
+  if (input.items.length + appliances.length < 1) throw new Error("Add at least one item to sell.");
+  if (input.items.length + appliances.length > MAX_ITEMS) throw new Error(`A sale can have up to ${MAX_ITEMS} different items. Split it into two sales.`);
   const seen = new Set<string>();
   for (const item of input.items) {
     if (seen.has(item.partRecordId)) throw new Error("Each item can be on a sale once. Change its quantity instead of adding it again.");
     seen.add(item.partRecordId);
     if (!Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > MAX_QUANTITY) throw new Error(`Enter a quantity from 1 to ${MAX_QUANTITY}.`);
     if (!Number.isSafeInteger(item.unitPriceCents) || item.unitPriceCents < 0 || item.unitPriceCents > MAX_UNIT_PRICE_CENTS) throw new Error("Enter a price between $0 and $100,000.");
+  }
+  const seenAppliances = new Set<string>();
+  for (const a of appliances) {
+    if (seenAppliances.has(a.applianceId)) throw new Error("Each used appliance can be on a sale once.");
+    seenAppliances.add(a.applianceId);
+    if (!Number.isSafeInteger(a.unitPriceCents) || a.unitPriceCents < 1 || a.unitPriceCents > MAX_UNIT_PRICE_CENTS) throw new Error("Enter a price between $0.01 and $100,000 for each used appliance.");
   }
   for (const charge of [input.deliveryChargeCents, input.installationChargeCents]) {
     if (charge !== undefined && (!Number.isSafeInteger(charge) || charge < 0 || charge > MAX_UNIT_PRICE_CENTS)) throw new Error("A delivery or installation charge must be between $0 and $100,000.");
@@ -90,7 +105,7 @@ function payloadHash(input: ShopSaleInput): string {
     .sort((a, b) => (a.partRecordId < b.partRecordId ? -1 : 1))
     .map((i) => [i.partRecordId, i.quantity, i.unitPriceCents, cleanText(i.priceReason, 200)]);
   return createHash("sha256")
-    .update(JSON.stringify([input.customerId, cleanText(input.walkInName, 80), input.location, input.serviceAddressId ?? null, items, input.deliveryChargeCents ?? 0, input.installationChargeCents ?? 0, cleanText(input.note, 300)]))
+    .update(JSON.stringify([input.customerId, cleanText(input.walkInName, 80), input.location, input.serviceAddressId ?? null, items, [...(input.usedAppliances ?? [])].sort((a, b) => (a.applianceId < b.applianceId ? -1 : 1)).map((a) => [a.applianceId, a.unitPriceCents]), input.deliveryChargeCents ?? 0, input.installationChargeCents ?? 0, cleanText(input.note, 300)]))
     .digest("hex");
 }
 
@@ -151,9 +166,30 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
       lines.push({ item, part, total: item.quantity * item.unitPriceCents });
     }
 
+    // Used appliances: lock them in id order (after the parts), then check each can really be sold now.
+    const applianceInputs = [...(input.usedAppliances ?? [])].sort((a, b) => (a.applianceId < b.applianceId ? -1 : 1));
+    const applianceLines: Array<{ id: string; assetNumber: string; description: string; priceCents: number }> = [];
+    if (applianceInputs.length > 0) {
+      const ids = applianceInputs.map((a) => a.applianceId);
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${ids}) ORDER BY "id" FOR UPDATE`;
+      if (locked.length !== ids.length) throw new Error("One of those appliances no longer exists. Reload the page.");
+      for (const a of applianceInputs) {
+        const row = await tx.appliance.findUniqueOrThrow({
+          where: { id: a.applianceId },
+          select: { id: true, assetNumber: true, status: true, manufacturer: true, model: true, serialNumber: true, applianceType: { select: { name: true } }, retiredPlan: { select: { choice: true, doneOn: true } } },
+        });
+        if (row.status !== "RETIRED" || row.retiredPlan?.choice !== "SELL") throw new Error(`Appliance ${row.assetNumber} isn't a retired appliance with a “Sell it” plan. Set that on its page first.`);
+        if (row.retiredPlan.doneOn) throw new Error(`Appliance ${row.assetNumber} is already marked done.`);
+        const already = await tx.invoiceLineItem.findFirst({ where: { applianceId: row.id, invoice: { status: { not: "VOID" } } }, select: { id: true } });
+        if (already) throw new Error(`Appliance ${row.assetNumber} is already on a sale. Cancel that sale first if it was a mistake.`);
+        const what = [row.manufacturer, row.model].filter(Boolean).join(" ") || row.applianceType.name;
+        applianceLines.push({ id: row.id, assetNumber: row.assetNumber, description: `Used ${what} (${row.assetNumber}${row.serialNumber ? `, serial ${row.serialNumber}` : ""})`, priceCents: a.unitPriceCents });
+      }
+    }
+
     const delivery = input.deliveryChargeCents ?? 0;
     const installation = input.installationChargeCents ?? 0;
-    const subtotalCents = lines.reduce((sum, l) => sum + l.total, 0) + delivery + installation;
+    const subtotalCents = lines.reduce((sum, l) => sum + l.total, 0) + applianceLines.reduce((sum, l) => sum + l.priceCents, 0) + delivery + installation;
     if (subtotalCents <= 0) throw new Error("The sale total is $0. Enter a price for at least one item.");
 
     const invoice = await tx.invoice.create({
@@ -188,6 +224,9 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
       });
       lineIds.set(part.id, created.id);
     }
+    for (const a of applianceLines) {
+      await tx.invoiceLineItem.create({ data: { invoiceId: invoice.id, kind: "USED_APPLIANCE", description: a.description, amountCents: a.priceCents, quantity: 1, applianceId: a.id } });
+    }
     if (delivery > 0) {
       await tx.invoiceLineItem.create({ data: { invoiceId: invoice.id, kind: "DELIVERY_FEE", description: "Delivery", amountCents: delivery, quantity: 1 } });
     }
@@ -212,6 +251,22 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
       ]);
     }
 
+    // Each used appliance: its “Sell it” plan is finished by the sale, and its remaining book value leaves the books.
+    const saleDay = businessDateFromKey(businessDateKey(now))!;
+    for (const a of applianceLines) {
+      await tx.retiredAppliancePlan.update({
+        where: { applianceId: a.id },
+        data: { doneOn: saleDay, doneNote: `Sold on invoice ${invoice.invoiceNumber}`, doneByUserId: actorUserId, reopenedAt: null, reopenReason: null },
+      });
+      const book = await disposeRetiredBookAssetInTx(tx, a.id, saleDay, invoice.id);
+      await tx.auditLog.create({
+        data: { userId: actorUserId, action: "appliance.retired_plan.sold", entityType: "Appliance", entityId: a.id, newValue: { invoiceId: invoice.id, priceCents: a.priceCents, bookValueRemovedCents: book.carriedCents } },
+      });
+    }
+
+    // Book the sale's income in the same step as the book-value entry, so the reports never show one without the other.
+    if (applianceLines.length > 0) await postForSource(tx, "INVOICE", invoice.id);
+
     const completed = await tx.invoice.findUniqueOrThrow({ where: { id: invoice.id }, select: { invoiceNumber: true, taxCents: true, amountDueCents: true } });
     await tx.auditLog.create({
       data: {
@@ -221,7 +276,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
         entityId: invoice.id,
         newValue: {
           operationKey: input.operationKey, payloadHash: hash, walkIn, location: input.location,
-          itemCount: lines.length, subtotalCents, taxCents: completed.taxCents, saleOn: businessDateKey(now),
+          itemCount: lines.length, usedApplianceCount: applianceLines.length, subtotalCents, taxCents: completed.taxCents, saleOn: businessDateKey(now),
           loweredPrices: lines.filter((l) => l.part.retailPriceCents !== null && l.item.unitPriceCents < l.part.retailPriceCents).map((l) => ({ partRecordId: l.part.id, reason: cleanText(l.item.priceReason, 200) })),
           note: cleanText(input.note, 300),
         },
@@ -253,7 +308,7 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
     await tx.$queryRaw`SELECT id FROM "Invoice" WHERE id = ${found.id} FOR UPDATE`;
     const sale = await tx.invoice.findUniqueOrThrow({
       where: { id: found.id },
-      select: { id: true, invoiceNumber: true, status: true, amountPaidCents: true, lineItems: { select: { id: true } } },
+      select: { id: true, invoiceNumber: true, status: true, amountPaidCents: true, lineItems: { select: { id: true, applianceId: true } } },
     });
     if (sale.status === "VOID") return { invoiceId: sale.id, invoiceNumber: sale.invoiceNumber, restocked: 0, alreadyCancelled: true };
     if (sale.amountPaidCents > 0 || !["DRAFT", "OPEN"].includes(sale.status)) {
@@ -270,7 +325,21 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
         { partRecordId: m.partRecordId, kind: "REVERSAL", quantityDelta: 0, unitCostCents: null, reversesMovementId: m.id, reason: `Sale ${sale.invoiceNumber} cancelled: ${why}` },
       ]);
     }
-    await tx.invoice.update({ where: { id: sale.id }, data: { status: "VOID", cancelledAt: new Date() } });
+    // Used appliances on the sale: the book value comes back and the “Sell it” plan is open again.
+    const soldAppliances = sale.lineItems.map((l) => l.applianceId).filter((id): id is string => !!id).sort();
+    if (soldAppliances.length > 0) {
+      await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${soldAppliances}) ORDER BY "id" FOR UPDATE`;
+    }
+    const cancelledAt = new Date();
+    for (const applianceId of soldAppliances) {
+      await reverseBookAssetDisposalInTx(tx, applianceId, sale.id, cancelledAt);
+      await tx.retiredAppliancePlan.updateMany({
+        where: { applianceId, doneOn: { not: null } },
+        data: { doneOn: null, doneNote: null, doneByUserId: null, reopenedAt: cancelledAt, reopenReason: `Sale ${sale.invoiceNumber} cancelled: ${why}` },
+      });
+    }
+    await tx.invoice.update({ where: { id: sale.id }, data: { status: "VOID", cancelledAt } });
+    if (soldAppliances.length > 0) await postForSource(tx, "INVOICE", sale.id);
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "sale.cancel", entityType: "Invoice", entityId: sale.id, newValue: { reason: why, restockedLines: sold.length } },
     });
@@ -310,7 +379,7 @@ export async function listShopSales(actorUserId: string) {
       id: true, invoiceNumber: true, status: true, subtotalCents: true, taxCents: true, amountDueCents: true, amountPaidCents: true,
       createdAt: true, saleLocation: true, walkInName: true,
       customer: { select: { id: true, isWalkIn: true, user: { select: { name: true } } } },
-      lineItems: { where: { kind: "MERCHANDISE" }, select: { description: true, quantity: true } },
+      lineItems: { where: { kind: { in: ["MERCHANDISE", "USED_APPLIANCE"] } }, select: { description: true, quantity: true } },
     },
   });
 }
@@ -326,7 +395,7 @@ export const SALE_FORM_CUSTOMER_LIMIT = 500;
 /** What the new-sale screen needs: items that can be sold now, and the customers (with addresses) a sale can go to. */
 export async function getSaleFormData(actorUserId: string) {
   await assertActiveTeamActor(prisma, actorUserId, ["OWNER", "ADMIN"]);
-  const [parts, customers] = await Promise.all([
+  const [parts, customers, usedAppliances] = await Promise.all([
     prisma.partRecord.findMany({
       where: { sellable: true, archivedAt: null, quantityOnHand: { gt: 0 } },
       orderBy: [{ partName: "asc" }, { modelNumber: "asc" }, { id: "asc" }],
@@ -343,8 +412,15 @@ export async function getSaleFormData(actorUserId: string) {
         serviceAddresses: { select: { id: true, line1: true, city: true, zip: true, unitLabel: true }, orderBy: { id: "asc" } },
       },
     }),
+    // M-2C: retired appliances with a “Sell it” plan that is not done and not already on a live sale.
+    prisma.appliance.findMany({
+      where: { status: "RETIRED", retiredPlan: { is: { choice: "SELL", doneOn: null } }, saleLines: { none: { invoice: { status: { not: "VOID" } } } } },
+      orderBy: [{ assetNumber: "asc" }],
+      take: 300,
+      select: { id: true, assetNumber: true, manufacturer: true, model: true, serialNumber: true, applianceType: { select: { name: true } } },
+    }),
   ]);
-  return { parts, customers };
+  return { parts, customers, usedAppliances };
 }
 
 /** One sale with its lines, tax breakdown and stock movements, for the sale page. */

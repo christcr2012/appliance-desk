@@ -68,7 +68,6 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 - MCP-1…MCP-11 and the in-app feedback design: nothing built.
 
 **Approved but not built yet (engineering an agent can start)**
-- M-2C: sell a retired appliance (sale, plan auto-complete, recapture warning, disposal posting).
 - M-3: hosted card payment for local invoices.
 - COM-N1A…N4: lead/job/billing text messages, click-to-call, telecom statement to an expense, service metrics.
 - Wiring gaps in built telecom code: nothing calls the usage sync or the spend-alert checks, and no screen sends texts yet.
@@ -282,7 +281,7 @@ Design: `docs/designs/BATCH-K.md`; work coverage and prerequisites: work-index.
 - [x] Every money record the app keeps produces balanced double-entry journal entries exactly once (concurrent runs included); closed months never change.
 - [x] Stripe fees, service fees, disputes and payouts are synced nightly; the Stripe clearing balance is checked against Stripe daily.
 - [x] Expenses with receipt photos; staff submit, owner/admin post; void, never delete; recurring templates create drafts only; use tax recorded.
-- [ ] Straight-line **book** depreciation with owner-set life and salvage; preserve retired appliance book value pending actual disposal instead of automatically expensing all remaining value at rental retirement. **Tax depreciation/adjusted basis** (including Section 179 and bonus) require CPA-backed evidence and are not inferred from book settings. [Resale tax and disposition design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md). _(Audit: depreciation and retirement value are built; the disposal posting waits on M-2C, which is NOT built; CPA sign-off is an owner step)_
+- [ ] Straight-line **book** depreciation with owner-set life and salvage; preserve retired appliance book value pending actual disposal instead of automatically expensing all remaining value at rental retirement. **Tax depreciation/adjusted basis** (including Section 179 and bonus) require CPA-backed evidence and are not inferred from book settings. [Resale tax and disposition design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md). _(Audit: depreciation and retirement value are built; the disposal posting is built in M-2C; CPA sign-off is an owner step)_
 - [x] Profit & loss (accrual and cash), balance snapshot, appliance payback, 90-day cash forecast, customer health, year-end package — each number in the METRICS registry.
 - [x] Deterministic exports for QuickBooks Online, Xero, generic journal and cash-movements formats, daily-summary or detail, blocked until accounts are mapped.
 - [ ] Every item in "Rules that apply to every batch".
@@ -323,8 +322,8 @@ Design: `docs/designs/BATCH-M.md`; work coverage and prerequisites: work-index.
 - [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules. _(Audit: tax by location built; the Colorado retail delivery fee on delivered sales is NOT built)_
 - [x] Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the fixed unit-order rule.
 - [x] Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
-- [ ] Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought). _(Audit: item sales built; used-appliance sales are NOT built (M-2C))_
-- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically. Used rental-asset sales can be priced at whatever the owner sets, even original cost or higher; show potential §1245 depreciation recapture, source-backed adjusted tax basis and CPA follow-up **rather than a resale-price cap**. _(Audit: plans built; selling a retired appliance, plan auto-completion and the recapture display are NOT built (M-2C))_
+- [ ] Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought). _(item sales and used-appliance sales built; M-2C merged)_
+- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically. Used rental-asset sales can be priced at whatever the owner sets, even original cost or higher; show potential §1245 depreciation recapture, source-backed adjusted tax basis and CPA follow-up **rather than a resale-price cap**. _(M-2C: selling a retired appliance finishes its plan and removes its book value; a Section 1245 recapture estimate stays a CPA item, IN-46, and is not shown)_
 - [x] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
 - [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K. _(Audit: scrap income built; writing off remaining book value on a finished plan not confirmed in code)_
 - [x] One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
