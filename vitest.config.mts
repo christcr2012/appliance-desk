@@ -24,6 +24,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/books-depreciation-integration.test.ts", // K-6 adjusts verified opening date and book life defaults in a serial database fixture.
   "tests/books-export-delivery-integration.test.ts", // K-CASH-6 also updates/restores singleton Books opening.
   "tests/books-exports-integration.test.ts", // K-5 temporarily sets shared Books opening date and verifies export provenance.
+  "tests/telecom-statement-books-integration.test.ts", // COM-N3 changes booksStartDate and posts expenses.
   "tests/books-expenses-integration.test.ts", // K-4 modifies the verified business tax context, restores it after the serial DB suite.
   "tests/books-stripe-sync-integration.test.ts", // K-3 fixture temporarily changes the shared books start and Stripe import cursor.
   "tests/site-content-integration.test.ts", // The website pointer and every revision exist once for the whole database.
