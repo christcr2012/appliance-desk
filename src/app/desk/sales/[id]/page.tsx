@@ -19,9 +19,10 @@ const STATUS: Record<string, { label: string; tone: StatusTone }> = {
   REFUNDED: { label: "Refunded", tone: "stopped" },
 };
 
-export default async function ShopSalePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ShopSalePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ card?: string }> }) {
   const session = await requireRole("OWNER", "ADMIN");
   const { id } = await params;
+  const card = (await searchParams).card;
   const sale = await getShopSale(session.user.id, id);
   if (!sale) notFound();
   const status = STATUS[sale.status] ?? { label: sale.status, tone: "pending" as StatusTone };
@@ -33,6 +34,8 @@ export default async function ShopSalePage({ params }: { params: Promise<{ id: s
         description={`${saleBuyerLabel(sale)} · ${sale.saleLocation === "DELIVERED" ? "Delivered" : "Picked up"} · ${sale.createdAt.toLocaleDateString("en-US", { timeZone: "America/Denver" })}`}
         secondaryActions={<Link href="/desk/sales" className="text-sm underline">Back to all sales</Link>}
       />
+      {card === "paid" && <p role="status" className="rounded-md border border-line bg-surface-subtle p-3 text-sm">Card payment sent. This sale shows as paid as soon as Stripe confirms it (usually within seconds). Reload if it still says owed.</p>}
+      {card === "cancelled" && <p role="status" className="rounded-md border border-line bg-surface-subtle p-3 text-sm">The card payment was not completed. Nothing was charged.</p>}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <StatusPill tone={status.tone} label={status.label} />
