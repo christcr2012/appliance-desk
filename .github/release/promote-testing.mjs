@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { checksPass, denverDay } from './promote-live.mjs';
 
-// Evening testing release (owner direction 2026-10-24): once per Denver day the
+// Nightly 10 pm testing release (owner direction 2026-10-24): once per Denver day the
 // newest fully checked main commit goes to the testing app. That night's live
 // release then ships exactly that version, and only if the testing app built it.
 

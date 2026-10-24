@@ -60,18 +60,22 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   one → ⋯ → Redeploy. Never paste it in chat. Also confirm `STRIPE_SECRET_KEY` there was copied from the Stripe
   dashboard while **Robinson Appliance Rentals LLC** and **Test mode** were selected (it starts with `sk_test_`).
   Ready when: now. You'll know it worked: the redeploy shows "Ready". The agent can sign in as
-  `owner@example.test` after that evening's testing update (18:05 Denver), which turns the testing-only phone
+  `owner@example.test` after that night's 10 pm testing update (10 pm Denver), which turns the testing-only phone
   step off.
 - [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Agent-run once the row above is done: the agent
   signs in to the testing app, makes a $1 test sale, pays it on Stripe's test checkout, checks it shows Paid once,
   refunds it and checks both systems. Nothing for you to do but read the result. Worked only when all of that is
   observed. **Leave unchecked until actually observed.**
-- [ ] **Protect the `live` and `testing` branches on GitHub (about 3 minutes).** Today anyone with write access could
-  delete or rewrite them (agents won't, but nothing stops it). Steps: github.com/christcr2012/appliance-desk →
-  Settings → Rules → Rulesets → New ruleset → New branch ruleset → name "Release branches" → Enforcement: Active →
-  Target branches → Add target → Include by pattern → `live`, then again `testing` → tick **Restrict deletions** and
-  **Block force pushes** (leave everything else off so the automatic releases keep working) → Create. You'll know it
-  worked: the ruleset lists both branches, and the next nightly release still succeeds.
+- [ ] **Lock the two "release" branches on GitHub so they can't be deleted or rewritten (about 3 minutes).** This is
+  NOT the "automatically delete head branches" setting (that one is about old work branches and is already on). Your
+  code has two special copies: `testing` (what the testing site runs) and `live` (what your real website runs). Today
+  nothing stops someone with access from deleting or overwriting them, which would change the real website directly.
+  Steps: github.com/christcr2012/appliance-desk → **Settings** tab → left menu **Rules** → **Rulesets** → green
+  **New ruleset** button → **New branch ruleset** → Ruleset name `Release branches` → Enforcement status **Active** →
+  in "Target branches" click **Add target** → **Include by pattern** → type `live` → Add; repeat with `testing` →
+  further down tick only **Restrict deletions** and **Block force pushes** (leave the rest unticked so the automatic
+  nightly releases keep working) → **Create**. You'll know it worked: Rulesets shows "Release branches" next to the
+  existing "Ci and deploy" one.
 
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).
