@@ -345,9 +345,9 @@ async function finishReset(tx: Tx, inv: InvitationRow, password: string) {
   if (!targetId) throw new TeamError(INVALID_LINK_MESSAGE);
   await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${targetId} FOR UPDATE`;
   const target = await tx.user.findUnique({ where: { id: targetId }, select: { id: true, email: true, role: true, archivedAt: true } });
-  const owner = await tx.user.findUnique({ where: { id: inv.invitedById }, select: { role: true, archivedAt: true } });
   if (!target || target.archivedAt || target.email !== inv.email || (target.role !== "STAFF" && target.role !== "ADMIN")) throw new TeamError(INVALID_LINK_MESSAGE);
-  if (!owner || owner.archivedAt || owner.role !== "OWNER") throw new TeamError(INVALID_LINK_MESSAGE);
+  // The owner who made the link must still be an active owner, checked under a shared lock on their row.
+  try { await assertActiveTeamActor(tx, inv.invitedById, ["OWNER"]); } catch { throw new TeamError(INVALID_LINK_MESSAGE); }
   const hash = await (await auth.$context).password.hash(password);
   const credential = await tx.account.findFirst({ where: { userId: targetId, providerId: "credential" }, select: { id: true } });
   if (credential) await tx.account.update({ where: { id: credential.id }, data: { password: hash } });
