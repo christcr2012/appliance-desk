@@ -237,6 +237,20 @@ describe.skipIf(!enabled)("shop sales on real Postgres", () => {
     expect(await findPartLedgerMismatches(prisma, [part])).toEqual([]);
   });
 
+  it("a sale paid partly by card and partly in cash is refused in plain words before anything changes", async () => {
+    const part = await newPart({ quantity: 5 });
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [{ partRecordId: part, quantity: 2, unitPriceCents: 1000 }] });
+    const walkIn = await prisma.customer.findFirstOrThrow({ where: { isWalkIn: true } });
+    await recordManualPayment(walkIn.id, ownerId, { amountCents: 1000, method: "cash", invoiceId: sale.invoiceId, refuseOverpayment: true });
+    const cardCents = sale.amountDueCents - 1000;
+    const receipt = await prisma.receipt.create({ data: { customerId: walkIn.id, source: "STRIPE", amountCents: cardCents, method: "card", stripeChargeId: `ch_test_${randomUUID().slice(0, 8)}`, receivedOn: new Date() } });
+    await prisma.payment.create({ data: { invoiceId: sale.invoiceId, amountCents: cardCents, status: "succeeded", receiptId: receipt.id } });
+    await prisma.invoice.update({ where: { id: sale.invoiceId }, data: { amountPaidCents: sale.amountDueCents, status: "PAID" } });
+    await expect(returnShopSale(ownerId, sale.invoiceId, "Changed mind")).rejects.toThrow(/more than one way/);
+    expect(await prisma.refund.count({ where: { invoiceId: sale.invoiceId } })).toBe(0);
+    expect(await stock(part)).toBe(3);
+  });
+
   it("two simultaneous take-backs make one refund and put the items back once", async () => {
     const { part, sale } = await paidSale(1);
     const results = await Promise.allSettled([returnShopSale(ownerId, sale.invoiceId, "Changed mind"), returnShopSale(ownerId, sale.invoiceId, "Changed mind")]);

@@ -12,6 +12,7 @@ import { disposeRetiredBookAssetInTx, reverseBookAssetDisposalInTx } from "@/dom
 import { businessDateFromKey } from "@/lib/business-date";
 import { postForSource } from "@/domains/books/post";
 import { issueInvoiceRefund } from "@/domains/billing/refunds";
+import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { assertRefundWithinLimit } from "@/domains/approvals";
 
 // ---------------------------------------------------------------------------
@@ -381,6 +382,17 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
     if (sale.status !== "PAID") throw new Error("Only a sale that is paid in full can be taken back here. Finish the payment or cancel the unpaid part first.");
     if (sale.lineItems.some((l) => l.applianceId)) throw new Error("A used appliance is on this sale. Taking an appliance back changes its book value, so that is not done here yet.");
     const refunds = await tx.refund.aggregate({ where: { invoiceId: sale.id }, _sum: { amountCents: true } });
+    if ((refunds._sum.amountCents ?? 0) === 0) {
+      // The refund path sends a card payment back to its own charge and cannot split one refund between a card and cash.
+      const card = await tx.payment.findMany({
+        where: { invoiceId: sale.id, status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] }, receipt: { source: "STRIPE", stripeChargeId: { not: null } } },
+        select: { amountCents: true, receipt: { select: { stripeChargeId: true } } },
+      });
+      const cardCents = card.reduce((n, p) => n + p.amountCents, 0);
+      if (cardCents > 0 && (cardCents !== sale.amountPaidCents || new Set(card.map((p) => p.receipt?.stripeChargeId)).size > 1)) {
+        throw new Error("This sale was paid in more than one way (part card, part cash or check, or more than one card payment), so it can't be taken back in one step yet. Refund each payment from Billing, then ask for help putting the items back. Nothing was changed.");
+      }
+    }
     return { refundable: sale.amountPaidCents - (refunds._sum.amountCents ?? 0), invoiceNumber: sale.invoiceNumber, saleId: sale.id };
   });
   if ("finished" in plan && plan.finished) return plan.finished;
