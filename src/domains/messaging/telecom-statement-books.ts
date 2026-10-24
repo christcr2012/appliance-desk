@@ -49,10 +49,8 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
   // Already linked: finish the job (post it if it is still a draft) and never make another.
   if (statement.expenseId) return finishLinked(actorUserId, statement.expenseId, false);
   const taxCents = statement.vendorTaxCents ?? input.vendorTaxCents;
-  if (!input.linkExpenseId) {
-    if (taxCents === undefined) throw new StatementBooksError("Enter the sales tax shown on the statement (0 if there is none).");
-    if (!Number.isSafeInteger(taxCents) || taxCents < 0 || taxCents > statement.invoiceTotalCents) throw new StatementBooksError("The tax must be between $0 and the statement total.");
-  }
+  if (taxCents === undefined) throw new StatementBooksError("Enter the sales tax shown on the statement (0 if there is none).");
+  if (!Number.isSafeInteger(taxCents) || taxCents < 0 || taxCents > statement.invoiceTotalCents) throw new StatementBooksError("The tax must be between $0 and the statement total.");
   const paidDate = businessDateFromKey(input.paidOn);
   if (!paidDate || businessDateKey(paidDate) !== input.paidOn) throw new StatementBooksError("Enter the day it was paid.");
 
@@ -63,9 +61,10 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
       const fresh = await tx.telecomStatement.findUniqueOrThrow({ where: { id: statement.id }, select: { expenseId: true } });
       if (fresh.expenseId) throw new StatementBooksError("This statement is already booked.");
       await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id" = ${input.linkExpenseId} FOR UPDATE`;
-      const expense = await tx.expense.findUnique({ where: { id: input.linkExpenseId! }, select: { id: true, status: true, amountCents: true } });
+      const expense = await tx.expense.findUnique({ where: { id: input.linkExpenseId! }, select: { id: true, status: true, amountCents: true, vendorTaxCents: true } });
       if (!expense || expense.status === "VOID") throw new StatementBooksError("That expense can't be matched (missing or voided).");
       if (expense.amountCents !== statement.invoiceTotalCents) throw new StatementBooksError("That expense is for a different amount than the statement.");
+      if (expense.vendorTaxCents !== taxCents) throw new StatementBooksError(`That expense records $${(expense.vendorTaxCents / 100).toFixed(2)} of sales tax but the statement shows $${(taxCents / 100).toFixed(2)}. Fix the expense first so the tax is right, then match it.`);
       const taken = await tx.telecomStatement.findFirst({ where: { expenseId: expense.id }, select: { id: true } });
       if (taken) throw new StatementBooksError("That expense is already matched to another statement.");
       await tx.telecomStatement.update({ where: { id: statement.id }, data: { expenseId: expense.id, paidFromAccountId: input.paidFromAccountId, paidOn: paidDate } });

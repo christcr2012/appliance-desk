@@ -30,7 +30,8 @@ export default async function TelecomSettingsPage() {
       select:{id:true,key:true,revision:true,approvedAt:true},
     }),
   ]);
-  const verifiedUnbooked=statements.filter(r=>r.state==="VERIFIED" && !r.expenseId);
+  // Booking is owner-only, so expense and account details are not even fetched for anyone else.
+  const verifiedUnbooked=session.user.role==="OWNER" ? statements.filter(r=>r.state==="VERIFIED" && !r.expenseId) : [];
   const [payAccounts,categories,candidates]=verifiedUnbooked.length===0 ? [[],[],[]] : await Promise.all([
     prisma.ledgerAccount.findMany({where:{active:true,isPaymentSource:true},orderBy:[{sortOrder:"asc"},{name:"asc"}],take:30,select:{id:true,name:true}}),
     prisma.expenseCategory.findMany({where:{active:true},orderBy:[{sortOrder:"asc"},{name:"asc"}],take:60,select:{id:true,name:true}}),

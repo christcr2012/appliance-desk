@@ -158,12 +158,17 @@ describe.skipIf(!enabled)("COM-N3 verified phone statement becomes one books exp
   });
 
   it("matches a bill that was already entered by hand instead of making a second one, and refuses a wrong amount or a bill already matched", async () => {
-    const row = await statement({ invoiceTotalCents: 3333 });
+    const row = await statement({ invoiceTotalCents: 3333, vendorTaxCents: 0 });
     const manual = await createExpense(ownerId, { date: "2026-10-04", amountCents: 3333, vendorTaxCents: 0, vendorName: "Twilio (entered by hand)", categoryId, paidFromAccountId: bankId }, "POSTED");
     extraExpenses.push(manual.id);
     const wrong = await createExpense(ownerId, { date: "2026-10-04", amountCents: 3000, vendorTaxCents: 0, vendorName: "Twilio", categoryId, paidFromAccountId: bankId }, "DRAFT");
     extraExpenses.push(wrong.id);
     await expect(book(row.id, { linkExpenseId: wrong.id })).rejects.toThrow(/different amount/);
+    const taxMismatch = await createExpense(ownerId, { date: "2026-10-04", amountCents: 3333, vendorTaxCents: 0, vendorName: "Twilio", categoryId, paidFromAccountId: bankId }, "DRAFT");
+    extraExpenses.push(taxMismatch.id);
+    const taxed = await statement({ invoiceTotalCents: 3333, vendorTaxCents: 200 });
+    await expect(book(taxed.id, { linkExpenseId: taxMismatch.id })).rejects.toThrow(/sales tax/);
+    expect((await prisma.expense.findUniqueOrThrow({ where: { id: taxMismatch.id } })).status).toBe("DRAFT");
     const before = await prisma.expense.count({ where: { submittedByUserId: ownerId } });
     const out = await book(row.id, { linkExpenseId: manual.id });
     expect(out).toMatchObject({ expenseId: manual.id, linkedExisting: true, posted: true });
