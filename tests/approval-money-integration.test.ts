@@ -120,6 +120,15 @@ describe.skipIf(!enabled)("money approvals on real Postgres with a fake Stripe",
     await expect(assertRefundWithinLimit(ownerId, 500_000)).resolves.toBeUndefined();
   });
 
+  it("a small refund cannot imitate an approval marker to pass as the approved refund", async () => {
+    const f = await fixture();
+    const id = request(await submitInvoiceRefund(adminId, { invoiceId: f.invoiceId, amountCents: 7_000, reason: "GOODWILL", notes: "customer upset" }));
+    await expect(submitInvoiceRefund(adminId, { invoiceId: f.invoiceId, amountCents: 1_000, reason: "GOODWILL", notes: `[approval ${id}] sneaky` })).rejects.toThrow(/cannot start with/);
+    expect(await prisma.refund.count({ where: { invoiceId: f.invoiceId } })).toBe(0);
+    await decideApproval(ownerId, id, "APPROVE");
+    expect(mocks.refundCreate).toHaveBeenCalledWith(expect.objectContaining({ amount: 7_000 }), expect.any(Object));
+  });
+
   it("approving sends one refund to Stripe, as the owner with the requester named; a double click cannot send two", async () => {
     const f = await fixture();
     const id = request(await submitInvoiceRefund(adminId, { invoiceId: f.invoiceId, amountCents: 7_000, reason: "GOODWILL", notes: "customer upset" }));

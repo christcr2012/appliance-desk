@@ -315,7 +315,7 @@ export async function decideApproval(ownerId: string, requestId: string, decisio
     if (e instanceof RunFailure) {
       // The action itself was refused (for example the invoice was paid in the meantime). Record that, once.
       await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT "id" FROM "ApprovalRequest" WHERE "id" = ${requestId} FOR UPDATE`;
+        await lockRequestAsOwner(tx, ownerId, requestId);
         const r = await tx.approvalRequest.findUnique({ where: { id: requestId }, select: { status: true } });
         if (r?.status !== "PENDING") return;
         await tx.approvalRequest.update({ where: { id: requestId }, data: { status: "FAILED", decidedByUserId: ownerId, decidedAt: new Date(), failureMessage: e.message.slice(0, 300) } });
@@ -352,6 +352,12 @@ const RECOVERY_AFTER_MS = 120_000;
  * The request is marked finished ONLY when the money side is confirmed (Stripe succeeded, or no Stripe step was needed).
  * Otherwise it stays "approved, not finished" and points at the provider record, which the Stripe recovery pass owns.
  */
+/** Inside a transaction: re-check the owner is still active and lock the request before saving an outcome. */
+async function lockRequestAsOwner(tx: Prisma.TransactionClient, ownerId: string, requestId: string) {
+  await assertActiveTeamActor(tx, ownerId, ["OWNER"]);
+  await tx.$queryRaw`SELECT "id" FROM "ApprovalRequest" WHERE "id" = ${requestId} FOR UPDATE`;
+}
+
 async function runApprovedStripeWork(ownerId: string, requestId: string, input: Record<string, unknown>, who: string, targetRef: string): Promise<DecisionResult> {
   const suffix = ` (requested by ${who}, approved by the owner)`;
   try {
@@ -384,6 +390,7 @@ async function runApprovedStripeWork(ownerId: string, requestId: string, input: 
       return { status: "APPROVED", state: "UNCERTAIN", message: "Approved, but we could not confirm what happened. Money may already have been sent, so do not repeat it. Use Check and finish in two minutes, or see Billing → Waiting for Stripe." };
     }
     await prisma.$transaction(async (tx) => {
+      await lockRequestAsOwner(tx, ownerId, requestId);
       await tx.approvalRequest.update({ where: { id: requestId }, data: { status: "FAILED", failureMessage: message.slice(0, 300) } });
       await tx.auditLog.create({ data: { userId: ownerId, action: "approval.failed", entityType: "ApprovalRequest", entityId: requestId, newValue: { message: message.slice(0, 300) } } });
     });
@@ -416,6 +423,7 @@ async function settleApprovedWork(ownerId: string, requestId: string, opId: stri
   const confirmed = !opId || op?.status === "SUCCEEDED";
   const state = !opId ? "No Stripe step was needed (the money was not paid through Stripe, so you pay it back yourself and it is recorded)." : PROVIDER_STATE_WORDS[op?.status ?? "PENDING"] ?? "Recorded.";
   await prisma.$transaction(async (tx) => {
+    await lockRequestAsOwner(tx, ownerId, requestId);
     await tx.approvalRequest.update({ where: { id: requestId }, data: confirmed ? { executedAt: new Date(), resultRef: targetRef } : { resultRef: `op:${opId}` } });
     await tx.auditLog.create({ data: { userId: ownerId, action: confirmed ? "approval.executed" : "approval.waiting_on_provider", entityType: "ApprovalRequest", entityId: requestId, newValue: { resultRef: confirmed ? targetRef : `op:${opId}`, state } } });
   });
@@ -453,6 +461,7 @@ export async function finishApprovedRequest(ownerId: string, requestId: string):
       if (dep.refundedAmountCents !== Number(claimed.input.refundCents) || (dep.deductionReason ?? null) !== wantReason) {
         const message = "That deposit was settled a different way (a different amount or reason) before this approval went out, so this approval was not carried out.";
         await prisma.$transaction(async (tx) => {
+          await lockRequestAsOwner(tx, ownerId, requestId);
           await tx.approvalRequest.update({ where: { id: requestId }, data: { status: "FAILED", failureMessage: message } });
           await tx.auditLog.create({ data: { userId: ownerId, action: "approval.failed", entityType: "ApprovalRequest", entityId: requestId, newValue: { message } } });
         });
@@ -472,6 +481,7 @@ export async function finishApprovedRequest(ownerId: string, requestId: string):
       if (!refundId) {
         const message = "That held payment was dealt with another way (turned into credit or marked paid) before the refund went out, so nothing was sent to the card.";
         await prisma.$transaction(async (tx) => {
+          await lockRequestAsOwner(tx, ownerId, requestId);
           await tx.approvalRequest.update({ where: { id: requestId }, data: { status: "FAILED", failureMessage: message } });
           await tx.auditLog.create({ data: { userId: ownerId, action: "approval.failed", entityType: "ApprovalRequest", entityId: requestId, newValue: { message } } });
         });
