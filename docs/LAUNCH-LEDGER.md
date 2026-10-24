@@ -142,11 +142,11 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 - OPEN: Goals with pace on Today; idle-appliance and utilization alerts.
 - OPEN: Read-only page of every live switch with links.
 - OPEN: Every item in "Rules that apply to every batch".
-- OPEN: ACC-1: every desk user (owner first) can change their own password, email (confirmed at the new address, notice to
-- OPEN: ACC-2: owner invites a person with name, email, phone, access level (Staff/Admin), job role and admin limits; the
-- OPEN: ACC-3: each person chooses authenticator, email code or text code within an owner policy per level; text codes
-- OPEN: ACC-4: owner can reset an employee's sign-in (not their own); security notice emails for every account change;
-- OPEN: ACC-5: owner-editable job roles that only narrow an access level, enforced on the server; staff money/report
+- OPEN (ticked, but no evidence file or PR named): ACC-1: every desk user (owner first) can change their own password, email (confirmed at the new address, notice to
+- OPEN (ticked, but no evidence file or PR named): ACC-2: owner invites a person with name, email, phone, access level (Staff/Admin), job role and admin limits; the
+- OPEN (ticked, but no evidence file or PR named): ACC-3: each person chooses authenticator, email code or text code within an owner policy per level; text codes
+- OPEN (ticked, but no evidence file or PR named): ACC-4: owner can reset an employee's sign-in (not their own); security notice emails for every account change;
+- OPEN (ticked, but no evidence file or PR named): ACC-5: owner-editable job roles that only narrow an access level, enforced on the server; staff money/report
 - OPEN: Every item in "Rules that apply to every batch".
 
 ### Launch acceptance (COM-L)
