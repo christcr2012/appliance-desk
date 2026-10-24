@@ -185,7 +185,7 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 | M-2A | Retired plans, salvage and lump scrap ledger | JIT — `M-2A.md` | M-1D — *merged #533* |
 | M-2B | Retired workflow and scrap receipts | JIT — `M-2B.md` | M-2A — *merged #533* |
 | M-2C | Used-appliance sale, owner-set price, recapture warning/CPA evidence, single balanced asset disposition ([design](designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md)) | JIT — `M-2C.md` | M-2B — *NOT BUILT — stopped, see M-2C-STRONGER-MODEL-PROMPT* |
-| M-3 | Hosted card payment for local invoices | JIT — `M-3.md` | M-2C — *NOT BUILT — stopped, see M-3-STRONGER-MODEL-PROMPT* |
+| M-3 | Hosted card payment for local invoices | JIT — `M-3.md` | M-2C — *built; see docs/pr-cards/M-3.md* |
 
 ### O
 

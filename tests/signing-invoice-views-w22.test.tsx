@@ -12,6 +12,7 @@ function fixture(paid = 0, status = "OPEN"): InvoiceDetail {
     subtotalCents: 0, discountCents: 0, taxCents: 480, lateFeeCents: 0,
     amountDueCents: 480, amountPaidCents: paid, balanceCents: Math.max(0, 480 - paid),
     isLocalInvoice: false,
+    isShopSale: false,
     lineItems: [
       { id: "rental", kind: "RENTAL", description: "Washer + dryer rent", amountCents: 6000, quantity: 1 },
       { id: "credit", kind: "CREDIT", description: SIGNING_FIRST_INVOICE_DESCRIPTION, amountCents: -6000, quantity: 1 },
