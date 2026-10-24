@@ -1,3 +1,7 @@
+## October 24 — Extra release done at Chris's request (11:26 am Denver)
+
+Chris asked for one unscheduled release and then gave explicit permission to move `live`. Order followed: the checked testing promoter was run by hand (testing = main = 6e1353a, `ci` and `release-policy` green), Vercel built that exact commit on the testing app (status success), then `live` was fast-forwarded (no force, lease on the old head ef452c3, 20 commits) to 6e1353a. Verified afterwards: the public app's production deployment for 6e1353a is READY and `robinsonappliancerentals.com` is on it. Today's normal daily live marker already existed, so tonight's scheduled run should find nothing new to ship. Not done: no hosted acceptance checks on the testing app yet (the M-3 $1 card test still waits on the owner-password row).
+
 ## October 24 — Testing release moved to 10 pm; capacity check fix; extra testing release
 
 Testing now updates at 10 pm Denver (backups 10:40 and 11:20 pm); the business site still updates just after
