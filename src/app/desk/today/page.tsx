@@ -161,7 +161,7 @@ async function resumeToDoAction(formData: FormData) {
   revalidatePath("/desk/today");
 }
 
-export default async function TodayPage({ searchParams }: { searchParams?: Promise<{ screen?: string }> }) {
+export default async function TodayPage({ searchParams }: { searchParams?: Promise<{ screen?: string }> } = {}) {
   // ACC-5: sent here when a job role does not include the screen they tried to open.
   const notInJobRole = (await searchParams)?.screen === "not-in-job-role";
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
