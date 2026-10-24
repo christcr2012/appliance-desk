@@ -1,25 +1,14 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatCents } from "@/domains/pricing";
+import { telecomReportPeriods } from "@/domains/messaging/telecom-periods";
 import { getTelecomSpend } from "@/domains/messaging/telecom-costs-store";
 import { communicationsPolicySchema } from "@/domains/messaging/communications-policy";
 import { metricDefinition } from "@/domains/reports/definitions";
 
 const DAY=86_400_000;
 const tolerance={absoluteCents:0,percentBasisPoints:null,combination:"ANY" as const};
-function windowGMT(now:Date) {
-  const today=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()));
-  const start=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
-  const lastDay=new Date(+today-DAY);
-  const currentMonthHasFinishedDay = +lastDay >= +start;
-  const currentStart = currentMonthHasFinishedDay ? start : new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-1,1));
-  const priorStart = new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-(currentMonthHasFinishedDay?1:2),1));
-  const priorEnd = new Date(+currentStart-DAY);
-  return {
-    current:{start:currentStart,end:lastDay},
-    previous:{start:priorStart,end:priorEnd},
-  };
-}
+const windowGMT=telecomReportPeriods;
 function money(cents:number|null, currency:string|null):string {
   return cents===null?"Unknown":currency==="USD"?formatCents(cents):currency?String(cents)+" cents "+currency:"Unknown currency";
 }
