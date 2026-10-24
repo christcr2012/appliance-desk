@@ -1,3 +1,5 @@
+import { isTestingEnvironment } from "./testing-environment";
+
 const VERIFIED_PREVIEW_PRIVATE_STORE_ID = "store_6Sttks2ULJ8wG5hl";
 
 function tokenStoreId(token: string | undefined): string | null {
@@ -22,6 +24,7 @@ export function isPrivatePhotoPath(pathname: string): boolean {
 }
 
 export function getPublicPhotoWriteToken(): string | null {
+  if (isTestingEnvironment()) return null;
   return process.env.BLOB_READ_WRITE_TOKEN ?? null;
 }
 
@@ -35,6 +38,12 @@ export function getPublicPhotoWriteToken(): string | null {
 export function getPrivatePhotoStore():
   | { token: string; storeId: string }
   | null {
+  if (isTestingEnvironment()) {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const storeId = process.env.TEST_PRIVATE_BLOB_STORE_ID;
+    if (token && storeId && tokenStoreId(token)?.toLowerCase() === storeId.toLowerCase()) return { token, storeId };
+    return null;
+  }
   if (process.env.VERCEL === "1" && process.env.VERCEL_ENV === "preview") {
     const token = process.env.PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN;
     const storeId = process.env.PREVIEW_PRIVATE_BLOB_STORE_ID;

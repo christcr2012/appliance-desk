@@ -18,7 +18,7 @@ Start every session: this file → top of [docs/STATUS.md](docs/STATUS.md) → [
 - Turning on **live Stripe payments, live SMS or live customer email.**
 - **Buying anything** (domains, plans, add-ons, tiers, storage) or changing a paid plan / hosting capacity.
 - **Deleting or rewriting real customer, billing or signature data.**
-- **Fixtures, seeds or resets against the production database or file storage** (preview/CI/throwaway only).
+- **Fixtures, seeds or resets against the production database or file storage** (isolated testing/CI/throwaway only; see docs/TESTING-ENVIRONMENT.md).
 - Changing anything **outside this project**: other repos, Vercel/Neon projects, Google Workspace settings not in
   the plan. Never touch the Cortiware, Robinson AI Systems toolkit, YardSync, Household Assistant or oldReplit
   repositories, Vercel projects or Neon projects. If a name you are about to create might already exist, ask first.
@@ -28,13 +28,16 @@ Start every session: this file → top of [docs/STATUS.md](docs/STATUS.md) → [
   the PR. No real customer data or private infrastructure identifiers (Neon branch/endpoint ids, Vercel project/team
   ids, URLs with credentials) in this **public** repo.
 - **No manual releases, previews or promotions.** Only the daily checked `main`→`live` workflow releases
-  ([.github/RELEASE-POLICY.md](.github/RELEASE-POLICY.md)). Never push to or merge into `live`. Vercel previews are off.
+  ([.github/RELEASE-POLICY.md](.github/RELEASE-POLICY.md)). Never push to or merge into `live`. Automatic per-PR Vercel previews are off. The owner-approved dedicated testing app uses the checked `testing`
+  branch and its isolated credentials; its automatic build allowance is once per Denver day.
 - **Do not widen anyone's access** or change production data/settings without Chris's approval. Public sign-up
   stays disabled (`disableSignUp` in `src/lib/auth.ts`); never call `/api/auth/sign-up/email` from a test.
 - **Cost:** target about $20/month. Neon stays at the verified idle profile (0.25 CU cap, 5-minute autosuspend —
   [.github/NEON-COST-POLICY.md](.github/NEON-COST-POLICY.md)); more capacity needs measured need and Chris's
-  approved spend. Heavy checks run in GitHub Actions (free, public repo), not in paid sandboxes. Stop sandbox
-  sessions when done. Never test against Neon or production — use throwaway Postgres.
+  approved spend. Heavy automated checks run in GitHub Actions (free, public repo), not in paid sandboxes. Stop sandbox
+  sessions when done. Automated unit/integration/browser suites use throwaway Postgres. Owner-authorized hosted
+  provider/browser acceptance may use the dedicated synthetic preview database in docs/TESTING-ENVIRONMENT.md.
+  Never seed or reset the production database. The testing app is part of this project and is approved scope.
 - **Never touch real accounts to "see if it works"** beyond what Chris has authorized. Never claim something
   works without evidence you actually observed. Never tick an owner box or invent an owner answer.
 - **Missing business decision** (price, policy, wording, preference): ask Chris the smallest possible question,
@@ -168,8 +171,8 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
 The repository is **public**: Actions minutes are free and anything committed is public forever. CI runs secret scan,
 typecheck + lint, 3 unit shards on throwaway Postgres, production build + 4 browser shards (docs-only changes skip
 the heavy jobs but never the secret scan). `.github/workflows/ci.yml` keeps `permissions: contents: read`, uses no
-repository secrets, never `pull_request_target`, never echoes environment values. Only `sandbox-publish.yml` and
-`daily-live.yml` have write access; keep them that narrow. Prefer unit tests (`tests/`) over browser tests (`e2e/`);
+repository secrets, never `pull_request_target`, never echoes environment values. Only `sandbox-publish.yml`,
+`daily-live.yml` and the checked `testing-deploy.yml` promoter have write access; keep them that narrow. Prefer unit tests (`tests/`) over browser tests (`e2e/`);
 every new `e2e/*.spec.ts` goes in a group in `e2e/shards.json`; reuse `e2e/global-setup.ts` sessions.
 
 ## 9. Ending a session

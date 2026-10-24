@@ -51,24 +51,17 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   type the number and the next renewal date from your own papers, and set where you are with it. Worked: each dated item
   shows on your Today list before it needs renewing. (The app doesn't know your dates or fees; they come from your papers
   and the agency websites linked on each item.)
-- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** **Official connector setup updated 2026-10-24:**
-  Chris chose the official Stripe connector for Appliance Desk development and will disconnect the custom connector
-  while it remains under testing. Keep the existing **Test mode** account for Robinson Appliance Rentals LLC;
-  no new sandbox or custom-connector enrollment is required. Chris saved that account's test server key in
-  Vercel (`STRIPE_SECRET_KEY` update confirmed by metadata; protected value/runtime account not yet verified).
-  The agent created a TEST-only webhook at `https://robinsonappliancerentals.com/api/webhooks/stripe`, independently
-  verified it enabled for the seven handled payment/subscription events, and saved its matching signing secret
-  directly in Sensitive `STRIPE_WEBHOOK_SECRET`. These saved settings await the next scheduled deployment.
-  The old publishable key is unchanged; verify its pairing before any client-side Stripe use. No payment or refund
-  has been made. To finish: verify the deployed server key uses the official connector's Test-mode account, then
-  use an isolated app and disposable Postgres database for a small shop sale → Money → Shop sales → "Pay by card"
-  → Stripe test card 4242 4242 4242 4242. Worked only when a genuine signed payment update records "Paid" exactly
-  once and Billing refunds that same test charge. **Leave unchecked until actually observed.**
-  **Actual browser attempt after manual rebuild:** Chris approved the $1 TEST sale/payment/update/refund in the
-  live business database. Owner sign-in succeeded. New sale said **Nothing is ready to sell** and Parts said
-  **No parts logged yet**; Taxes also reports CPA-reviewed taxability still needing attention. No sale, Checkout,
-  payment, signed payment-update proof or refund was created. Permission is granted; requesting it again is not
-  the next step. Supply an isolated test-sale fixture/flow without asserting real CPA approval, then rerun.
+- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Use the dedicated testing app and existing
+  preview database described in [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md), not the public business app.
+  Chris approved resetting/seeding this preview database and the $1 TEST payment/update/refund check.
+  The official connector is the selected Robinson Appliance Rentals LLC account in **Test mode**, not a new
+  sandbox; the custom connector is not required. In Vercel project **appliance-desk-testing**, privately save
+  `STRIPE_SECRET_KEY` from that exact Test-mode account and `TEST_OWNER_PASSWORD` (a new testing-only password,
+  16+ characters). The initial seed creates `owner@example.test` only after the password is supplied; enroll its
+  own authenticator normally. Never put either value in chat. A rebuild must pick up newly saved settings.
+  The agent configures the separate signed testing webhook and verifies account/seed/deployment readiness.
+  Worked only when a $1 sale created by the testing app reaches Stripe Checkout, genuine signed payment updates
+  mark it Paid once, and a refund is verified in both systems. **Leave unchecked until actually observed.**
 
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).

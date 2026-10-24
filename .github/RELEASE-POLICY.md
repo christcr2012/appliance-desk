@@ -41,3 +41,22 @@ If all events are missed, the signed-in owner `christcr2012` can Run workflow on
 branches and invocations fail closed. Recovery retains exact-main CI, ancestry,
 atomic marker and read-back checks and skips if a release already occurred that day.
 No provider production permission, plan, spending limit or preview setting changes.
+
+## Dedicated testing deployment (owner-approved 2026-10-24)
+
+The `appliance-desk-testing` project tracks the `testing` Git branch, uses the existing
+`vercel-preview-2` database with an independent testing role, and runs `vercel-build:testing`.
+This Vercel project's Production target is still a **testing application** (`APP_ENV=testing`).
+The public `appliance-desk` project continues to track `live`; its credentials and daily policy are unchanged.
+
+After successful same-repository main-push CI, `testing-deploy.yml` independently verifies both exact-head
+`ci` and `release-policy` checks and main ancestry. It fast-forwards `testing` and creates an atomic dated
+`testing-promotion/<Denver date>` marker, at most once per Denver day. Stale candidates, forks, PR runs,
+failed/missing checks and divergent history are refused. It cannot write `live`, use repository secrets,
+or deploy a PR. Automatic per-PR previews remain disabled on both Vercel projects.
+
+This records source promotion only; verify Vercel READY, the canonical testing domain, seed read-back and
+actual app behavior separately. Documentation-only builds may be skipped. An additional same-day build,
+manual branch advance or environment-only rebuild needs an explicit owner instruction; this initial setup
+is authorized by the owner's October 24 request. No test rows or fixture tax confirmations migrate into
+production. See [the testing runbook](../docs/TESTING-ENVIRONMENT.md).

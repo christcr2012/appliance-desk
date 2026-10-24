@@ -1,3 +1,15 @@
+## October 24 — Dedicated synthetic testing environment (implementation in progress)
+
+Owner authorized a permanent testing app and specifically directed reset/seed of the existing preview database;
+Chris confirmed there has never been real production data. The existing preview schema was reset after provider
+branch/endpoint verification; the public database connection was not changed. The dedicated Vercel testing app
+and private test file store are provisioned, testing branch tracking is saved, and independent database/auth
+credentials are stored privately. Source adds strict database/project/Stripe isolation, synthetic additive fixtures,
+a visible testing banner, messaging/cron refusals and a checked once-per-day testing deployment workflow.
+See [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) for the authoritative configuration and release process.
+Pending: source CI/review/merge, first migrated/seeded READY deployment, private test-owner/Stripe key entry,
+and real app Checkout/payment-update/refund acceptance. No successful payment acceptance is claimed.
+
 ## October 24 — Owner-authorized live TEST checkout attempt: blocked before sale creation
 
 Chris explicitly approved one clearly labeled $1 TEST sale/payment/update/refund in the live business database.

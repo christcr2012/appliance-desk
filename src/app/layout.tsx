@@ -86,6 +86,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${manrope.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-canvas text-ink">
+        {process.env.APP_ENV === "testing" && (
+          <div role="status" className="bg-amber-100 px-4 py-3 text-center font-bold text-amber-950">
+            Testing environment — fictional data. Payments use Stripe Test mode. Emails and texts are off.
+          </div>
+        )}
         {/* Sets the .dark class (Chris's dark mode, 2026-09-27) before
             the page paints, so there's no flash of the wrong theme
             while the rest of the app loads. beforeInteractive runs this

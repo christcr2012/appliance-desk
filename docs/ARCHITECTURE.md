@@ -1,3 +1,11 @@
+## Dedicated testing environment (owner-approved October 24)
+
+[TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) is authoritative for the hosted testing app, reset/seed contract,
+secret names, separate storage and checked deployment flow. The public app keeps the production database.
+`APP_ENV=testing` applies safety restrictions even on the testing Vercel project's Production target.
+The existing `vercel-preview-2` database was reset with explicit owner authorization and is reserved for
+synthetic hosted acceptance. Do not reset it from its parent or copy business identities into it.
+
 # Architecture
 
 One Next.js 16 (App Router) application. No monorepo, no microservices.

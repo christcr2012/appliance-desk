@@ -1,4 +1,5 @@
 import { isNonProductionDeployment } from "./deployment-safety";
+import { assertTestingDatabaseUrls, isTestingEnvironment } from "./testing-environment";
 
 // Non-secret identities verified through Neon on 2026-09-30:
 // appliance-desk project jolly-term-08991992, vercel-preview-2 branch
@@ -10,6 +11,10 @@ const PREVIEW_POOLED_HOST =
   "ep-silent-hill-b7rpraoc-pooler.c-13.us-east-1.aws.neon.tech";
 
 type DatabaseEnvironment = {
+  APP_ENV?: string;
+  TEST_DATABASE_HOST?: string;
+  TEST_VERCEL_PROJECT_ID?: string;
+  VERCEL_PROJECT_ID?: string;
   VERCEL?: string;
   VERCEL_ENV?: string;
   DATABASE_URL?: string;
@@ -20,12 +25,18 @@ type DatabaseEnvironment = {
  * Error messages never include connection strings or credentials. */
 export function assertPreviewDatabaseUrls(
   env: DatabaseEnvironment = {
+    APP_ENV: process.env.APP_ENV,
+    TEST_DATABASE_HOST: process.env.TEST_DATABASE_HOST,
+    TEST_VERCEL_PROJECT_ID: process.env.TEST_VERCEL_PROJECT_ID,
+    VERCEL_PROJECT_ID: process.env.VERCEL_PROJECT_ID,
     VERCEL: process.env.VERCEL,
     VERCEL_ENV: process.env.VERCEL_ENV,
     DATABASE_URL: process.env.DATABASE_URL,
     DIRECT_URL: process.env.DIRECT_URL,
   },
 ): void {
+  assertTestingDatabaseUrls(env);
+  if (isTestingEnvironment(env)) return;
   if (!isNonProductionDeployment(env)) return;
 
   for (const key of ["DATABASE_URL", "DIRECT_URL"] as const) {

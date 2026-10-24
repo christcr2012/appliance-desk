@@ -1,3 +1,4 @@
+import { isTestingEnvironment } from "@/lib/testing-environment";
 import { createHash } from "node:crypto";
 import { telecomDecimal } from "@/domains/messaging/telecom-decimal";
 import type { TelecomSyncResource } from "@prisma/client";
@@ -245,7 +246,7 @@ export function createTwilioReadAdapter(config: ProviderConfig, requester: Reque
 
 /** No provider client is created in CI, previews or without approved account credentials. */
 export function makeTwilioReadAdapter(accountSid: string): TelecomReadAdapter | null {
-  if (process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production" ||
+  if (isTestingEnvironment() || process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production" ||
       process.env.TWILIO_ACCOUNT_SID !== accountSid || !SID.test(accountSid) ||
       !process.env.TWILIO_API_KEY || !process.env.TWILIO_API_SECRET) return null;
   return createTwilioReadAdapter({
