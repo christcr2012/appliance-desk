@@ -246,9 +246,12 @@ export async function confirmMethodSwitch(userId: string, method: string, code: 
 }
 
 /** Where the most recent sign-in code (made in the last few minutes) went: lets the setup screen say honestly whether it was sent. */
-export async function latestCodeOutcome(userId: string): Promise<DeliveryOutcome | null> {
+export async function latestCodeOutcome(userId: string, sinceMs?: number): Promise<DeliveryOutcome | null> {
+  // Only a code asked for after `sinceMs` counts, so a resend is never judged by the previous code. Clamped to the last 2 minutes.
+  const floor = Date.now() - 2 * 60_000;
+  const since = typeof sinceMs === "number" && Number.isFinite(sinceMs) ? Math.max(floor, sinceMs) : floor;
   const row = await prisma.auditLog.findFirst({
-    where: { userId, action: "security.sign_in_code", createdAt: { gt: new Date(Date.now() - 2 * 60_000) } },
+    where: { userId, action: "security.sign_in_code", createdAt: { gt: new Date(since) } },
     orderBy: { createdAt: "desc" },
     select: { newValue: true },
   });

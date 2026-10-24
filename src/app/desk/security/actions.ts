@@ -49,10 +49,10 @@ export async function savePhoneInSetupAction(phone: string): Promise<StepResult>
 }
 
 /** Set-up screen: did the code that was just requested actually go out? */
-export async function codeDeliveryAction(): Promise<StepResult> {
+export async function codeDeliveryAction(sinceMs?: number): Promise<StepResult> {
   return run(async (id) => {
     for (let i = 0; i < 4; i++) {
-      const outcome = await latestCodeOutcome(id);
+      const outcome = await latestCodeOutcome(id, sinceMs);
       if (outcome === "SENT") return "sent";
       if (outcome) return `failed:${outcome}`;
       await new Promise((r) => setTimeout(r, 700));

@@ -41,9 +41,10 @@ export function TwoFactorSetupForm({ info }: { info: MethodInfo }) {
   /** Ask for a code and say honestly whether it went out (the library cannot tell us; our delivery record can). */
   async function requestCode(which: SecondStepMethod) {
     setBusy(true);
+    const askedAt = Date.now() - 3000; // a little earlier, in case this computer's clock is slightly behind
     const sent = await authClient.twoFactor.sendOtp();
     if (sent.error) { setBusy(false); setError(sent.error.message ?? "We could not send a code. Try again."); return; }
-    const delivery = await codeDeliveryAction();
+    const delivery = await codeDeliveryAction(askedAt);
     setBusy(false);
     if (delivery.status === "success" && delivery.message === "sent") {
       setError(null);
