@@ -77,7 +77,9 @@ describe.skipIf(!enabled)("scheduled price changes on real Postgres", () => {
     const t = await makeType(5_000);
     const key = dayKey(5);
     const row = await scheduleAppliancePriceChange(adminId, { applianceTypeId: t, newPriceCents: 6_000, effectiveOn: key });
-    const rentLinesBefore = await prisma.rentalLine.aggregate({ _sum: { monthlyPriceCents: true }, _count: true });
+    // Other test files share this database and add or remove rental lines while this one runs, so compare line by line:
+    // every line that existed before must still have the same price afterwards.
+    const rentLinesBefore = await prisma.rentalLine.findMany({ select: { id: true, monthlyPriceCents: true }, take: 5000 });
 
     // The evening before: nothing happens.
     const before = new Date(startOf(key).getTime() - 60 * 60 * 1000);
@@ -103,8 +105,10 @@ describe.skipIf(!enabled)("scheduled price changes on real Postgres", () => {
     expect(await prisma.pricingRule.count({ where: { applianceTypeId: t } })).toBe(1);
 
     // Signed rentals keep their own price: this job never touches rental lines.
-    const rentLinesAfter = await prisma.rentalLine.aggregate({ _sum: { monthlyPriceCents: true }, _count: true });
-    expect(rentLinesAfter).toEqual(rentLinesBefore);
+    const rentLinesAfter = new Map((await prisma.rentalLine.findMany({ select: { id: true, monthlyPriceCents: true }, take: 5000 })).map((l) => [l.id, l.monthlyPriceCents]));
+    for (const line of rentLinesBefore) {
+      if (rentLinesAfter.has(line.id)) expect(rentLinesAfter.get(line.id)).toBe(line.monthlyPriceCents);
+    }
   });
 
   it("when two changes for one appliance are both due, the later start day wins", async () => {
