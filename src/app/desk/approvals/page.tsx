@@ -33,7 +33,7 @@ export default async function ApprovalsPage() {
     <main className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-xl font-semibold">Approvals</h1>
       <p className="text-sm text-ink-soft">
-        When an admin starts a write-off or posts an expense at or above your limit, it waits here and nothing happens until
+        When an admin starts a write-off, expense, refund, deposit decision or credit at or above your limit, it waits here and nothing happens until
         you decide. Approving does it right now, as you. <Link href="/desk/settings/approvals" className="underline">Change your limits</Link>.
       </p>
       <section aria-labelledby="waiting-h" className="space-y-3">
@@ -62,7 +62,7 @@ export default async function ApprovalsPage() {
           <ul className="space-y-2 text-sm">
             {decided.map((r) => (
               <li key={r.id} className="rounded-md border p-3">
-                <p>{STATUS_WORDS[r.status] ?? r.status}: {r.summary}</p>
+                <p>{r.status === "APPROVED" && !r.finished ? "Approved, but not confirmed as finished (check Billing → Waiting for Stripe; do not repeat it)" : STATUS_WORDS[r.status] ?? r.status}: {r.summary}</p>
                 <p className="text-xs text-ink-soft">
                   Asked by {r.requestedBy}{r.decidedAt ? ` · decided ${formatBusinessDate(r.decidedAt)}` : ""}
                   {r.decisionNote ? ` · note: ${r.decisionNote}` : ""}{r.failureMessage ? ` · ${r.failureMessage}` : ""}

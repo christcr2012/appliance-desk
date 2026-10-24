@@ -2,7 +2,7 @@
 
 Status: **APPROVED DESIGN — implement from this document** (Chris, 2026-10-06: "I love all of this! Update the repo!"). Run the drift check in section 0 before starting.
 
-**Built-status note (2026-10-24):** O-1, O-2A and O-3A are built and merged (#534–#536; approvals cover write-offs and expenses only). O-4 (scheduled price changes for appliance-type prices), O-5 (monthly goals for cash and new rentals, idle and low-utilization warnings; Today items), O-6 (Manage my business) and O-7 (private shortcuts, hidden optional nudges, saved views) are also built. Only O-3B (refund, credit and deposit approvals) is not built; files named below for it do not exist yet.
+**Built-status note (2026-10-24):** O-1, O-2A and O-3A are built and merged (#534–#536; O-3A approvals cover write-offs and expenses). O-4 (scheduled price changes for appliance-type prices), O-5 (monthly goals for cash and new rentals, idle and low-utilization warnings; Today items), O-6 (Manage my business) and O-7 (private shortcuts, hidden optional nudges, saved views) are also built. O-3B (refund, held-payment refund, kept-deposit and credit approvals) is built in `src/domains/approvals/index.ts`; the separate "command adapter registry" named below was not needed, the same four entry points are called directly by the billing screens.
 Written 2026-10-06 by Claude Opus 5.5 against `main` 23eff64, from Part 3 of
 `docs/reviews/2026-10-06-owner-audit-and-recommendations.md`. Runs after Batch K (approvals cover expense posting).
 Scope and acceptance: `docs/PLAN.md` → Batch O.
