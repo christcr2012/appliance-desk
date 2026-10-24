@@ -1,3 +1,7 @@
+## October 24 — Team invitations (ACC-2, additive)
+
+`TeamInvitation`: email, name, optional phone, access level (STAFF or ADMIN), admin permission limits, a SHA-256 hash of the link code (never the code), expiry, status (INVITED, ACCEPTED, CANCELLED), who invited, and who accepted. It is not a login; the User is created when the link is used. `BusinessSettings.invitationLinkDays` (7) and `adminsMayInviteStaff` (false). Not in backups (short-lived; re-invite after a restore). Migration `20261024050000_team_invitation`.
+
 ## October 24 — User phone (ACC-1, additive)
 
 `User.phone` (text, stored as +1XXXXXXXXXX) and `User.phoneConfirmedAt` (timestamp), both empty until a person saves a phone number on My account. A changed number clears the confirmation. Nothing sends to it until ACC-3. Migration `20261024040000_user_phone`.

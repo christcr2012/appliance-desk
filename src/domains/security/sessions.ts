@@ -90,8 +90,8 @@ export async function revokeStaffSessionsByOwner(
       where: { id: staffUserId },
       select: { id: true, role: true, email: true },
     });
-    if (!target || target.role !== "STAFF") {
-      throw new Error("Only a staff account can be signed out from the Staff screen.");
+    if (!target || (target.role !== "STAFF" && target.role !== "ADMIN")) {
+      throw new Error("Only a staff or admin account can be signed out from the Team screen.");
     }
     const removed = await tx.session.deleteMany({ where: { userId: staffUserId } });
     await tx.auditLog.create({

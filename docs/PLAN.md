@@ -338,7 +338,7 @@ Turning on text-message codes stays Chris's live-SMS switch; nothing else here n
 
 ### Acceptance checklist
 
-- [ ] ACC-1: every desk user (owner first) can change their own password, email (confirmed at the new address, notice to
+- [x] ACC-1: every desk user (owner first) can change their own password, email (confirmed at the new address, notice to
   the old), name and phone, see and sign out their devices, make new backup codes, and manage two-step within the role
   policy. Nobody can reach another person's account through any id.
 - [ ] ACC-2: owner invites a person with name, email, phone, access level (Staff/Admin), job role and admin limits; the

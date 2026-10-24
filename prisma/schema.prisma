@@ -1016,6 +1016,29 @@ model StaffCapabilityOverride {
   @@id([userId, capability])
 }
 
+// ACC-2: an emailed invitation to join the team. It is NOT a login: the person's User row is created only when the
+// link is used (inside the transaction that marks this row ACCEPTED). Only a hash of the link code is stored.
+model TeamInvitation {
+  id                   String    @id @default(cuid())
+  email                String
+  name                 String
+  phone                String?
+  accessLevel          Role      @default(STAFF)
+  adminCapabilityLimits Json     @default("[]")
+  codeHash             String    @unique
+  expiresAt            DateTime
+  status               String    @default("INVITED")
+  invitedById          String
+  acceptedUserId       String?
+  acceptedAt           DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([email])
+  @@index([status, expiresAt])
+}
+
 // One scrap-yard check or ticket (a lump, not split by appliance). Posts to the "Scrap sales" income account.
 model ScrapPayment {
   id               String    @id @default(cuid())
@@ -3143,6 +3166,10 @@ model BusinessSettings {
   pickupDayNotBilled        Boolean @default(true)
   // W-21A: days a machine may be out for repair without a replacement before its To do item turns urgent.
   outOfServiceEscalationDays Int    @default(3)
+
+  // ACC-2: how many days a team invitation link works (1-30), and whether admins may invite staff (never admins).
+  invitationLinkDays  Int     @default(7)
+  adminsMayInviteStaff Boolean @default(false)
 
   updatedAt DateTime @updatedAt
 

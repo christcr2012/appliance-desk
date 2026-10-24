@@ -13,12 +13,6 @@ import {
   setApplianceTypeActive,
   setAppliancePhotoUrl,
 } from "@/domains/settings";
-import {
-  createStaffAccount,
-  deactivateStaffAccount,
-  reactivateStaffAccount,
-  resendStaffActivationEmail,
-} from "@/domains/staff";
 import { dollarsToCents } from "@/domains/pricing";
 import {
   createPackage,
@@ -299,109 +293,6 @@ export async function setPackageVisibilityAction(packageId: string, showOnWebsit
 export async function setPackageActiveAction(packageId: string, isActive: boolean): Promise<SettingsActionState> {
   const session = await requireRole("OWNER", "ADMIN");
   return packageWrite(() => setPackageActive(session.user.id, packageId, isActive));
-}
-
-// ---------------------------------------------------------------------------
-// Staff accounts (Task #66, docs/DECISIONS.md 2026-09-28) — OWNER/ADMIN
-// only, same as everything else in this file.
-// ---------------------------------------------------------------------------
-
-const newStaffAccountSchema = z.object({
-  name: z.string().trim().min(1, "Enter a name.").max(200),
-  email: z.string().trim().email("Enter a valid email address."),
-});
-
-export async function createStaffAccountAction(
-  raw: Record<string, unknown>,
-): Promise<SettingsActionState & { activationEmailSent?: boolean }> {
-  const session = await requireRole("OWNER", "ADMIN");
-
-  const parsed = newStaffAccountSchema.safeParse(raw);
-  if (!parsed.success) {
-    return {
-      status: "error",
-      message:
-        parsed.error.issues[0]?.message ?? "Please fix the highlighted fields.",
-    };
-  }
-
-  try {
-    const result = await createStaffAccount(session.user.id, parsed.data);
-    revalidatePath("/desk/settings");
-    revalidatePath("/desk/activity");
-    return { status: "success", activationEmailSent: result.activationEmailSent };
-  } catch (error) {
-    return {
-      status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Couldn't create that account.",
-    };
-  }
-
-}
-
-export async function resendStaffActivationEmailAction(
-  email: string,
-): Promise<SettingsActionState> {
-  await requireRole("OWNER", "ADMIN");
-
-  const sent = await resendStaffActivationEmail(email);
-  if (!sent) {
-    return {
-      status: "error",
-      message: "Couldn't send that email right now — try again in a minute.",
-    };
-  }
-
-  return { status: "success" };
-}
-
-export async function deactivateStaffAccountAction(
-  staffUserId: string,
-): Promise<SettingsActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
-
-  try {
-    await deactivateStaffAccount(session.user.id, staffUserId);
-  } catch (error) {
-    return {
-      status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Couldn't remove that account's access.",
-    };
-  }
-
-  revalidatePath("/desk/settings");
-  revalidatePath("/desk/activity");
-
-  return { status: "success" };
-}
-
-export async function reactivateStaffAccountAction(
-  staffUserId: string,
-): Promise<SettingsActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
-
-  try {
-    await reactivateStaffAccount(session.user.id, staffUserId);
-  } catch (error) {
-    return {
-      status: "error",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Couldn't restore that account.",
-    };
-  }
-
-  revalidatePath("/desk/settings");
-  revalidatePath("/desk/activity");
-
-  return { status: "success" };
 }
 
 /** Section saves whitelist fields on the server, never write stale fields
