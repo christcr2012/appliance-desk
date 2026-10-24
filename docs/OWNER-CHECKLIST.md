@@ -51,12 +51,14 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   type the number and the next renewal date from your own papers, and set where you are with it. Worked: each dated item
   shows on your Today list before it needs renewing. (The app doesn't know your dates or fees; they come from your papers
   and the agency websites linked on each item.)
-- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Steps: put your Stripe *test* secret key in Vercel as the
-  preview/test `STRIPE_SECRET_KEY` and set up a test webhook to `<site>/api/webhooks/stripe` (never your live key); ring up a
-  small shop sale; open it under Money → Shop sales and press "Pay by card"; pay with Stripe's test card 4242 4242 4242 4242.
-  Ready when: Stripe test keys are in place (not before). You'll know it worked: the sale turns to "Paid" within a minute and
-  the payment shows on the sale; refunding it from Billing sends the refund to the same test charge. Agents proved this only
-  with a pretend Stripe so far.
+- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Vercel already has `STRIPE_SECRET_KEY` and
+  `STRIPE_WEBHOOK_SECRET` entries for Preview, labeled **TEST mode** (checked 2026-10-24; values and provider validity
+  were not verified). **Still not tested with real Stripe:** Chris reported reauthorizing Stripe on 2026-10-24, but a new account read still returned `renewal_outcome_unknown_reconnect_required`. The Stripe cloud adapter must reconnect successfully,
+  and the app test must use an isolated test database, never production customer records. Steps: reconnect the Stripe
+  service, confirm both test keys and the test webhook to `<test-site>/api/webhooks/stripe`, then in an isolated
+  test checkout create a small shop sale → Money → Shop sales → "Pay by card" → test card 4242 4242 4242 4242.
+  You'll know it worked: Stripe confirms the test payment, the sale turns "Paid" and shows the payment, and a refund
+  from Billing reaches the same test charge. Leave unchecked until those outcomes are actually observed.
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).
   Stripe → Settings → Business → Branding. Worked: a test checkout page shows your brand.
@@ -136,10 +138,11 @@ Agents will do the parts they safely can and record what they saw; the rest need
 - [ ] **Stripe balance import (K-3):** approve `BOOKS_STRIPE_SYNC_ENABLED=true` for production only after you have checked
   the opening date and balances.
 
-- [ ] **Phone usage sync (COM-N wiring):** once your Twilio production account is set up under Settings, approve
-  `TELECOM_SYNC_ENABLED=true` in Vercel. It only reads usage and costs once a night; it never sends a text or makes a call.
-  Ready when: the Twilio account shows as production on the desk. You know it worked when Desk → Automations shows
-  "Phone usage sync" ran.
+- [ ] **Phone usage sync (COM-N wiring):** **Switch saved 2026-10-24:** at Chris's request, Vercel Production
+  now has `TELECOM_SYNC_ENABLED=true` (confirmed by a second read). It only reads phone usage and costs; no texts or
+  calls are sent. **Still to verify:** the app has a production Twilio account, a normal scheduled release picks up
+  the changed environment variable (no manual release), and Desk → Automations shows a successful nightly
+  "Phone usage sync" run. Leave this box unchecked until the run is observed.
 
 ## E. Optional / later (no action until you want it)
 

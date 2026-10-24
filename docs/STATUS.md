@@ -1,3 +1,14 @@
+## October 24 — Provider setup checks (runtime proof still pending)
+
+Vercel Production now stores `TELECOM_SYNC_ENABLED=true` at Chris's request; a second environment-variable read
+confirmed the setting. No manual deployment or Twilio sync run was attempted: the scheduled release must pick up
+the setting, and a successful first run plus the production Twilio account remain unverified. Vercel also lists
+Stripe secret and webhook variables labeled TEST mode, but their actual validity was not checked. The connected
+Stripe service still returned `renewal_outcome_unknown_reconnect_required` even after Chris reported
+reauthorizing it; no real Stripe test-mode shop-sale checkout, webhook or refund was run. Both existing owner-checklist rows were updated with the observed state and left unchecked. Live Stripe
+payments, customer email and SMS were not enabled. Next: verify the first phone sync after a scheduled release;
+reconnect Stripe and exercise a shop sale against an isolated test database.
+
 ## October 24 — Taking back a paid shop sale (M-1C follow-up)
 
 Merged (#559). On a paid shop sale (Money → Shop sales → the sale) there is now **Take this sale back**. It refunds everything the customer paid, tax included, through the normal refund path (so the sales-tax return and the books follow it), and puts every item back on the shelf with a reversal entry. A card payment is refunded to the same card; cash or a check is recorded as refunded and you hand the money back yourself. It is safe to repeat: money is never refunded twice, items go back once, and if Stripe has not confirmed a card refund yet the items are held back until it has. An admin at or over your refund limit is told to ask you. A sale with a used appliance on it, or one paid partly by card and partly another way, is refused in plain words before anything changes (those need to be refunded payment by payment). Proved on throwaway Postgres: full refund and restock, repeat changes nothing, two clicks at once make one refund, unpaid/part-paid/cancelled refused, unconfirmed card refund holds the restock. Not proved: a browser test, and nothing was tried against real Stripe. Nothing for Chris to do. Next: the delivery fee on delivered sales, then text senders (still off).
