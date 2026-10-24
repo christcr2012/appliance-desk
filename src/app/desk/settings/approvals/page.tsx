@@ -21,7 +21,7 @@ async function save(form: FormData) {
   const restore = form.get("operation") === "restore";
   try {
     await saveApprovalLimits(session.user.id, {
-      limitsCents: restore ? {} : { WRITE_OFF: cents(form.get("WRITE_OFF")), EXPENSE: cents(form.get("EXPENSE")) },
+      limitsCents: restore ? {} : Object.fromEntries(APPROVAL_KIND_KEYS.map((k) => [k, cents(form.get(k))])),
       expiryDays: restore ? 7 : Number(form.get("expiryDays")),
     });
   } catch (e) {
@@ -42,7 +42,7 @@ export default async function ApprovalLimitsPage() {
         Set a dollar amount for each kind of action. When an admin starts one at or above it, it waits for your yes or no on the{" "}
         <Link href="/desk/approvals" className="underline">Approvals</Link> page instead of happening. Leave a box blank for no limit.
         Your own actions never need approval. Everything starts blank, so nothing changes until you fill one in.
-        Refunds, credits and deposit decisions are not covered yet.
+        A refund waits when its amount is at or above the refund limit; a deposit decision waits when the amount kept is at or above the deposit limit.
       </p>
       <form action={save} className="space-y-5 rounded-md border p-4">
         {APPROVAL_KIND_KEYS.map((k) => (

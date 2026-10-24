@@ -9,6 +9,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/acc5-job-roles-integration.test.ts", // ACC-5 edits the shared starting job roles and the invitation settings.
   "tests/goals-integration.test.ts", // O-5 changes and restores the shared alert settings.
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
+  "tests/approval-money-integration.test.ts", // O-3B changes and restores the shared approval limits.
   "tests/used-appliance-sale-integration.test.ts", // M-2C sets and restores the shared books start date.
   "tests/capabilities-integration.test.ts", // O-2A limits an admin and restores it; reads/writes the shared override table and settings row.
   "tests/settings-undo-integration.test.ts", // O-1 changes and restores shared BusinessSettings fields and reads the settings audit history.

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { resolveHeldPaymentAsCredit, resolveHeldPaymentAsPaid } from "@/domains/billing/held-payments";
-import { refundHeldPayment } from "@/domains/billing/refunds";
+import { submitHeldPaymentRefund } from "@/domains/approvals";
 
 export type HeldPaymentActionState =
   | { status: "success" }
@@ -30,8 +30,12 @@ export async function resolveHeldPaymentAction(input: {
     } else if (parsed.data.option === "CREDIT") {
       await resolveHeldPaymentAsCredit(session.user.id, parsed.data.paymentId);
     } else {
-      const refund = await refundHeldPayment(session.user.id, parsed.data.paymentId);
-      if (refund.outcome !== "SUCCEEDED") {
+      const refund = await submitHeldPaymentRefund(session.user.id, parsed.data.paymentId);
+      if (refund.status !== "DONE") {
+        revalidatePath("/desk/approvals");
+        return { status: "pending", message: refund.message };
+      }
+      if (refund.heldRefundOutcome !== "SUCCEEDED") {
         revalidatePath("/desk/billing/held-payments");
         return {
           status: "pending",

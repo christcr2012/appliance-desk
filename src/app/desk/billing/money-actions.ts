@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { decideDepositRefund, issueInvoiceRefund } from "@/domains/billing/refunds";
-import { applyCreditDecision } from "@/domains/billing/money-decisions";
+import { describeProviderOperation, submitCreditApply, submitDepositDecision, submitInvoiceRefund } from "@/domains/approvals";
 import { recalculateLocalInvoiceTax } from "@/domains/tax/local-invoice";
 
 export type MoneyActionState = { status: "success"; message: string } | { status: "error"; message: string };
@@ -35,18 +34,6 @@ function whole(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
 }
 
-async function operationState(providerOpId: string | null): Promise<string> {
-  if (!providerOpId) return "No Stripe step was needed (the money was not paid through Stripe, so you pay it back yourself and it is recorded).";
-  const op = await prisma.providerOperation.findUnique({ where: { id: providerOpId }, select: { status: true } });
-  const labels: Record<string, string> = {
-    PENDING: "Stripe has been asked and has not confirmed yet. It is retried automatically; check Billing → Waiting for Stripe.",
-    SUCCEEDED: "Stripe confirmed the refund.",
-    FAILED: "Stripe refused it. See Billing → Waiting for Stripe for the reason.",
-    UNKNOWN: "We did not get an answer from Stripe. Do not repeat it; see Billing → Waiting for Stripe.",
-  };
-  return labels[op?.status ?? "PENDING"] ?? "Recorded.";
-}
-
 /** Decide what to give back of a deposit (owner/admin). A partial refund needs a written reason. */
 export async function decideDepositAction(
   depositId: string,
@@ -57,13 +44,15 @@ export async function decideDepositAction(
   if (!cents) return { status: "error", message: "Enter an amount greater than $0.00." };
   if (input.confirmed !== true) return { status: "error", message: "Tick the confirmation box to continue." };
   try {
-    const result = await decideDepositRefund(session.user.id, {
+    const result = await submitDepositDecision(session.user.id, {
       depositId,
       refundCents: cents,
       deductionReason: input.reason?.trim() || undefined,
     });
     revalidatePath("/desk/billing");
-    return { status: "success", message: `Deposit decision recorded. ${await operationState(result.providerOpId)}` };
+    revalidatePath("/desk/approvals");
+    if (result.status !== "DONE") return { status: "success", message: result.message };
+    return { status: "success", message: `Deposit decision recorded. ${await describeProviderOperation(result.providerOpId)}` };
   } catch (error) {
     return { status: "error", message: plainError(error) };
   }
@@ -85,11 +74,13 @@ export async function refundInvoiceAction(
   const notes = input.reason?.trim();
   if (!notes || notes.length < 3) return { status: "error", message: "Write a short note saying why." };
   try {
-    const result = await issueInvoiceRefund(session.user.id, { invoiceId, amountCents: cents, reason, notes });
+    const result = await submitInvoiceRefund(session.user.id, { invoiceId, amountCents: cents, reason, notes });
     const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId }, select: { customerId: true } });
     revalidatePath("/desk/billing");
+    revalidatePath("/desk/approvals");
     if (invoice) revalidatePath(`/desk/billing/customer/${invoice.customerId}`);
-    return { status: "success", message: `Refund recorded. ${await operationState(result.providerOpId)}` };
+    if (result.status !== "DONE") return { status: "success", message: result.message };
+    return { status: "success", message: `Refund recorded. ${await describeProviderOperation(result.providerOpId)}` };
   } catch (error) {
     return { status: "error", message: plainError(error) };
   }
@@ -106,10 +97,12 @@ export async function applyCreditAction(
   if (input.confirmed !== true) return { status: "error", message: "Tick the confirmation box to continue." };
   if (!input.select) return { status: "error", message: "Choose which credit to use." };
   try {
-    await applyCreditDecision(session.user.id, { creditId: input.select, invoiceId, amountCents: cents });
+    const result = await submitCreditApply(session.user.id, { creditId: input.select, invoiceId, amountCents: cents });
     const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId }, select: { customerId: true } });
     revalidatePath("/desk/billing");
+    revalidatePath("/desk/approvals");
     if (invoice) revalidatePath(`/desk/billing/customer/${invoice.customerId}`);
+    if (result.status !== "DONE") return { status: "success", message: result.message };
     return { status: "success", message: "Credit applied. The invoice balance went down by that amount." };
   } catch (error) {
     return { status: "error", message: plainError(error) };

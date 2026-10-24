@@ -68,7 +68,7 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 - MCP-1…MCP-11 and the in-app feedback design: nothing built.
 
 **Approved but not built yet (engineering an agent can start)**
-- O-3B: refund, credit and kept-deposit approvals (write-off and expense approvals are built).
+- O-3B (in review, #552): refund, credit and kept-deposit approvals (write-off and expense approvals are built).
 - COM-N1A…N4: lead/job/billing text messages, click-to-call, telecom statement to an expense, service metrics.
 - Wiring gaps in built telecom code: nothing calls the usage sync or the spend-alert checks, and no screen sends texts yet.
 
@@ -338,7 +338,7 @@ Design: `docs/designs/BATCH-O.md`; work coverage and prerequisites: work-index.
 
 - [x] Settings history in plain words with one-step undo through the normal save path.
 - [x] Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
-- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Audit: write-off and expense approvals built (O-3A); refund, credit and kept-deposit approvals are NOT built (O-3B))_
+- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Built: write-off and expense approvals (O-3A) and refund, held-payment refund, kept-deposit and credit approvals (O-3B, tested with a fake Stripe; no browser test yet))_
 - [x] Scheduled price changes applied once on their start date; agreements unchanged. _(applies to appliance-type prices; package and set prices are not covered)_
 - [x] Goals with pace on Today; idle-appliance and utilization alerts.
 - [x] Read-only page of every live switch with links.
