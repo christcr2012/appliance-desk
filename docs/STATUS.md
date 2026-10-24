@@ -1,6 +1,9 @@
 ## October 24 — Phone bill to books expense (COM-N3)
 
 In progress (branch `ai/claude/com-n3-statement-expense`). Settings → Phone, texts and provider costs: once you have verified a Twilio statement against its saved PDF, a **Book as paid expense** form appears. You choose the day you paid, which account it came from, and the category. It then makes ONE expense (vendor Twilio, the statement total and its tax) and posts it to the books through the normal expense path, so closed-month rules still apply. If you had already typed that bill in by hand, pick it from "Already entered by hand?" and it is matched instead, never duplicated. A statement can only ever be booked once (a database rule), and a double click makes one expense. Credits, zero totals and non-dollar statements are refused with a plain message; top-ups are never booked here. Proved on throwaway Postgres: staff refused, unverified refused, one posted expense with the right amounts, repeat changes nothing, two simultaneous clicks make one, match-by-hand works and wrong-amount or already-matched is refused. Not proved: a browser test of the form, and nothing real was booked. Nothing for Chris to do. Next: text-message senders (live sending stays off).
+## October 24 — Two small clean-ups (report label, tax-login guard)
+
+In progress (branch `ai/claude/polish-shop-sales-label`). The revenue reports now call the parts-and-items group "Shop sales (parts and items sold)" instead of "Items sold". A new automatic test fails the build if anyone ever adds a password/login field to a tax table or makes the app send anything to Colorado's tax sites (they are only linked to, for you to open). Nothing for Chris to do.
 
 ## October 24 — Pay by card for shop sales (M-3)
 

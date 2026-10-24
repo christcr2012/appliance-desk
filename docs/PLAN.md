@@ -73,7 +73,7 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 - Wiring gaps in built telecom code: nothing calls the usage sync or the spend-alert checks, and no screen sends texts yet.
 
 **Partial items inside built units**
-- M-1C: refunds of paid sales; Colorado retail delivery fee on delivered sales. Revenue reports say "Items sold" not "Shop sales".
+- M-1C: refunds of paid sales; Colorado retail delivery fee on delivered sales. (The revenue-report label now reads "Shop sales (parts and items sold)".)
 - O-1: change preview and stale-save conflict; a few switch rows. O-2B: role-shaped DTO proof. O-4: package and set prices.
 - Yearly "check your SUTS setup" Today task. A guard test that nothing stores a tax-site login.
 - Website pricing page does not show the all-in total or $45 fee (hidden on purpose by the owner).
@@ -252,7 +252,7 @@ before V (Amendment A, filing autopilot, adds W-9…W-12; W-11 may run early onc
 - [x] W-10: the use-tax return page has a "File now" panel (opens Revenue Online, each value in screen order with a copy button) and prints the official DR 0252 filled in.
 - [ ] W-11 (after IN-61): new and existing addresses get Colorado's rates automatically from the GIS API; unmatched addresses and a broken key become To do items; billing never uses an unconfirmed rate. _(NOT BUILT: only a manual-only stub exists (colorado-gis.ts returns unavailable); waits on IN-61)_
 - [ ] W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided. _(NOT BUILT: waits on IN-62 and IN-44)_
-- [ ] Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2). _(holds by construction; no dedicated guard test yet)_
+- [x] Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2). _(Guard test `tests/tax-no-site-login-guard.test.ts` now fails the build if a tax table gains a login/password/credential field or code sends anything to Colorado's tax sites.)_
 - [x] W-0C (#359; `docs/pr-cards/W-0C.md`): a failed automatic charge (existing or new invoice, with or without a due date) and a partly paid invoice appear on To do the same day, linked to the invoice (Amendment B 6.1).
 - [x] W-18: dollar-entry kit, two-decimal money displays, accessible glossary InfoTip, converted tax setup inputs and static UI money guard. Additional future screens inherit this shared contract.
 - [x] W-22: source engineering through complete V2 quote/signing/receipt/reserve/cancellation/dispatch/first invoice is delivered by PR #466 subject to exact-head CI/review/merge. Parent remains PARTIAL for checked release, genuine professional/Stripe TEST and authenticated owner/customer acceptance; see STATUS. _(engineering merged in #466 and earlier; real Stripe TEST and CPA ruling on setup-fee tax are owner steps)_
@@ -327,7 +327,7 @@ Design: `docs/designs/BATCH-M.md`; work coverage and prerequisites: work-index.
 - [x] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
 - [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K. _(Audit: scrap income built; writing off remaining book value on a finished plan not confirmed in code)_
 - [x] One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
-- [ ] Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean. _(Audit: sales tax categories feed the engine; revenue reports label it "Items sold" not "Shop sales"; no test ties shop sales onto the return)_
+- [ ] Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean. _(Audit: sales tax categories feed the engine; revenue reports now label it "Shop sales (parts and items sold)"; no test ties shop sales onto the return)_
 - [ ] Every item in "Rules that apply to every batch".
 
 ## Batch O — Owner controls
