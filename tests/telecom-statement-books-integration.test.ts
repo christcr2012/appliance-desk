@@ -106,6 +106,35 @@ describe.skipIf(!enabled)("COM-N3 verified phone statement becomes one books exp
     expect(await prisma.journalEntry.count({ where: { sourceType: "EXPENSE", sourceId: (await prisma.telecomStatement.findUniqueOrThrow({ where: { id: row.id } })).expenseId! } })).toBe(1);
   });
 
+  it("a re-uploaded revision of an already booked statement cannot be booked a second time", async () => {
+    const first = await statement({ externalId: "REV-" + tag, invoiceTotalCents: 4444 });
+    const booked = await book(first.id);
+    const second = await statement({ externalId: "REV-" + tag, revision: 2, invoiceTotalCents: 4444 });
+    await expect(book(second.id)).rejects.toThrow(/Another version/);
+    expect(await prisma.expense.count({ where: { id: booked.expenseId } })).toBe(1);
+    expect((await prisma.telecomStatement.findUniqueOrThrow({ where: { id: second.id } })).expenseId).toBeNull();
+  });
+
+  it("matching a bill that was only a draft posts it, so 'booked' always means on the books; a failed post can be retried", async () => {
+    const row = await statement({ invoiceTotalCents: 5555 });
+    const draft = await createExpense(ownerId, { date: "2026-10-04", amountCents: 5555, vendorTaxCents: 0, vendorName: "Twilio", categoryId, paidFromAccountId: bankId }, "DRAFT");
+    extraExpenses.push(draft.id);
+    const out = await book(row.id, { linkExpenseId: draft.id });
+    expect(out.posted).toBe(true);
+    expect((await prisma.expense.findUniqueOrThrow({ where: { id: draft.id } })).status).toBe("POSTED");
+    expect(await prisma.journalEntry.count({ where: { sourceType: "EXPENSE", sourceId: draft.id } })).toBe(1);
+
+    // Books not set up: the link is saved, posting fails, and a retry with only the statement id finishes it.
+    const row2 = await statement({ invoiceTotalCents: 6666 });
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { booksStartDate: null } });
+    await expect(book(row2.id)).rejects.toThrow(/Initialize books/);
+    const linked = await prisma.telecomStatement.findUniqueOrThrow({ where: { id: row2.id }, include: { expense: true } });
+    expect(linked.expense?.status).toBe("DRAFT");
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { booksStartDate: new Date("2026-01-01T07:00:00.000Z") } });
+    const retry = await bookTelecomStatementExpense(ownerId, { statementId: row2.id, paidOn: "", paidFromAccountId: "", categoryId: "" });
+    expect(retry).toMatchObject({ expenseId: linked.expenseId, posted: true });
+  });
+
   it("matches a bill that was already entered by hand instead of making a second one, and refuses a wrong amount or a bill already matched", async () => {
     const row = await statement({ invoiceTotalCents: 3333 });
     const manual = await createExpense(ownerId, { date: "2026-10-04", amountCents: 3333, vendorTaxCents: 0, vendorName: "Twilio (entered by hand)", categoryId, paidFromAccountId: bankId }, "POSTED");

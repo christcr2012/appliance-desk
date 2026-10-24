@@ -18,6 +18,16 @@ export type BookStatementInput = {
 };
 export type BookStatementResult = { expenseId: string; posted: boolean; linkedExisting: boolean };
 
+/** Lock every revision of this same provider statement, then refuse if any revision was already booked. */
+async function lockRevisionsAndRefuseRepeat(tx: Prisma.TransactionClient, statement: { id: string; accountId: string; externalId: string }) {
+  await tx.$queryRaw`SELECT "id" FROM "TelecomStatement" WHERE "accountId" = ${statement.accountId} AND "externalId" = ${statement.externalId} ORDER BY "id" FOR UPDATE`;
+  const booked = await tx.telecomStatement.findFirst({
+    where: { accountId: statement.accountId, externalId: statement.externalId, id: { not: statement.id }, expenseId: { not: null } },
+    select: { revision: true },
+  });
+  if (booked) throw new StatementBooksError(`Another version (revision ${booked.revision}) of this same statement is already booked. To correct it, void that expense in Books first.`);
+}
+
 const marker = (statementId: string) => `[telecom-statement ${statementId}]`;
 
 /**
@@ -27,9 +37,6 @@ const marker = (statementId: string) => `[telecom-statement ${statementId}]`;
  */
 export async function bookTelecomStatementExpense(actorUserId: string, input: BookStatementInput): Promise<BookStatementResult> {
   await prisma.$transaction((tx) => assertActiveTeamActor(tx, actorUserId, ["OWNER"]));
-  const paidDate = businessDateFromKey(input.paidOn);
-  if (!paidDate || businessDateKey(paidDate) !== input.paidOn) throw new StatementBooksError("Enter the day it was paid.");
-
   const statement = await prisma.telecomStatement.findUnique({ where: { id: input.statementId } });
   if (!statement) throw new StatementBooksError("Couldn't find that statement.");
   if (statement.state !== "VERIFIED") throw new StatementBooksError("Verify the statement against its saved PDF first.");
@@ -38,11 +45,13 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
 
   // Already linked: finish the job (post it if it is still a draft) and never make another.
   if (statement.expenseId) return finishLinked(actorUserId, statement.expenseId, false);
+  const paidDate = businessDateFromKey(input.paidOn);
+  if (!paidDate || businessDateKey(paidDate) !== input.paidOn) throw new StatementBooksError("Enter the day it was paid.");
 
   if (input.linkExpenseId) {
-    return prisma.$transaction(async (tx) => {
+    const matchedId = await prisma.$transaction(async (tx) => {
       await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-      await tx.$queryRaw`SELECT "id" FROM "TelecomStatement" WHERE "id" = ${statement.id} FOR UPDATE`;
+      await lockRevisionsAndRefuseRepeat(tx, statement);
       const fresh = await tx.telecomStatement.findUniqueOrThrow({ where: { id: statement.id }, select: { expenseId: true } });
       if (fresh.expenseId) throw new StatementBooksError("This statement is already booked.");
       await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id" = ${input.linkExpenseId} FOR UPDATE`;
@@ -53,8 +62,10 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
       if (taken) throw new StatementBooksError("That expense is already matched to another statement.");
       await tx.telecomStatement.update({ where: { id: statement.id }, data: { expenseId: expense.id, paidFromAccountId: input.paidFromAccountId, paidOn: paidDate } });
       await tx.auditLog.create({ data: { userId: actorUserId, action: "TELECOM_STATEMENT_MATCHED_EXPENSE", entityType: "TelecomStatement", entityId: statement.id, newValue: { expenseId: expense.id } } });
-      return { expenseId: expense.id, posted: expense.status === "POSTED", linkedExisting: true };
+      return expense.id;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    // A matched bill that was only a draft is posted now, so "booked" always means it is on the books.
+    return finishLinked(actorUserId, matchedId, true);
   }
 
   // One transaction under the statement's lock: reuse a draft an earlier try left behind, or make it, and link it.
@@ -65,7 +76,7 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
   });
   const expenseId = await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-    await tx.$queryRaw`SELECT "id" FROM "TelecomStatement" WHERE "id" = ${statement.id} FOR UPDATE`;
+    await lockRevisionsAndRefuseRepeat(tx, statement);
     const fresh = await tx.telecomStatement.findUniqueOrThrow({ where: { id: statement.id }, select: { expenseId: true } });
     if (fresh.expenseId) return fresh.expenseId;
     const left = await tx.expense.findFirst({ where: { memo: { contains: marker(statement.id) }, status: { not: "VOID" } }, select: { id: true } });

@@ -10,7 +10,7 @@ type AccountOption = { id:string; label:string };
 type StatementItem = {
   id:string; accountLabel:string; externalId:string; revision:number;
   state:string; cents:number; currency:string; period:string; hash:string;
-  booked:boolean; matches:{id:string; label:string}[];
+  booked:boolean; linkedPending:boolean; matches:{id:string; label:string}[];
 };
 type Choice = { id:string; name:string };
 type Props = {
@@ -102,6 +102,20 @@ export function TelecomSettingsControls({accounts,statements,payAccounts,categor
       setMessage(data.linkedExisting?"Matched to your existing bill.":"Booked as one expense.");
       router.refresh();
     } catch(error) {setMessage(error instanceof Error?error.message:"Couldn't book the statement.");}
+    finally {setWorking(false);}
+  }
+  async function finishPosting(row:StatementItem) {
+    setWorking(true);setMessage("");
+    try {
+      const response=await fetch("/api/desk/telecom",{method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({kind:"book",statementId:row.id}),
+      });
+      const data=await response.json();
+      if (!response.ok) throw new Error(data.error??"Couldn't finish posting.");
+      setMessage("Posted to your books.");
+      router.refresh();
+    } catch(error) {setMessage(error instanceof Error?error.message:"Couldn't finish posting.");}
     finally {setWorking(false);}
   }
   const changeMoney=(field:"monthlyBudgetCents"|"elevatedCents"|"criticalCents"|"minimumSpikeCents",
@@ -200,7 +214,10 @@ export function TelecomSettingsControls({accounts,statements,payAccounts,categor
               className="underline disabled:opacity-50">Verify after reviewing PDF</button>}
           </div>
           {row.state==="VERIFIED" && row.booked && <p className="mt-2 text-ink-soft">Booked on your books (one expense).</p>}
-          {canEdit && row.state==="VERIFIED" && !row.booked && row.currency==="USD" && row.cents>0 &&
+          {canEdit && row.state==="VERIFIED" && row.linkedPending && <p className="mt-2">
+            Linked to an expense that is <strong>not on your books yet</strong> (for example books are not set up, or the purchase-tax address is unverified).{" "}
+            <button type="button" disabled={working} onClick={()=>finishPosting(row)} className="underline disabled:opacity-50">Try posting it again</button></p>}
+          {canEdit && row.state==="VERIFIED" && !row.booked && !row.linkedPending && row.currency==="USD" && row.cents>0 &&
             <form onSubmit={e=>book(e,row)} className="mt-3 grid gap-2 sm:grid-cols-2">
               <p className="col-span-full text-ink-soft">Nothing is on your books until you say when and from where you paid it.
                 Top-ups are never booked here.</p>

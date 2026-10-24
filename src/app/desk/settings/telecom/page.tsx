@@ -23,6 +23,7 @@ export default async function TelecomSettingsPage() {
     prisma.telecomStatement.findMany({take:30,orderBy:{createdAt:"desc"},select:{
       id:true,accountId:true,externalId:true,revision:true,state:true,
       invoiceTotalCents:true,currency:true,periodStart:true,periodEnd:true,evidenceHash:true,expenseId:true,
+      expense:{select:{status:true}},
     }}),
     prisma.communicationTemplateRevision.findMany({
       where:{channel:"SMS",isCurrent:true},take:25,orderBy:{createdAt:"desc"},
@@ -108,7 +109,7 @@ export default async function TelecomSettingsPage() {
         externalId:row.externalId,revision:row.revision,state:row.state,
         cents:row.invoiceTotalCents,currency:row.currency,
         period:row.periodStart.toISOString().slice(0,10)+" to "+row.periodEnd.toISOString().slice(0,10),
-        hash:row.evidenceHash,booked:!!row.expenseId,
+        hash:row.evidenceHash,booked:row.expense?.status==='POSTED',linkedPending:!!row.expenseId && row.expense?.status!=='POSTED',
         matches:candidates.filter(c=>c.amountCents===row.invoiceTotalCents).map(c=>({
           id:c.id,label:c.vendorName+", "+c.spentOn.toISOString().slice(0,10)})),
       }))}
