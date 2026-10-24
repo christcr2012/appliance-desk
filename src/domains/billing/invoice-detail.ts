@@ -29,6 +29,8 @@ export type InvoiceDetail = {
   amountPaidCents: number;
   balanceCents: number;
   isLocalInvoice: boolean;
+  /** A counter sale (shop sale): the one kind of local invoice that can be paid by card online. */
+  isShopSale: boolean;
   lineItems: { id: string; kind: string; description: string; amountCents: number; quantity: number }[];
   payments: {
     id: string;
@@ -108,6 +110,7 @@ export async function getInvoiceDetail(
     amountPaidCents: invoice.amountPaidCents,
     balanceCents,
     isLocalInvoice: invoice.stripeInvoiceId === null,
+    isShopSale: invoice.saleKind === "SHOP_SALE",
     lineItems: invoice.lineItems.map((li) => ({
       id: li.id,
       kind: li.kind,

@@ -68,7 +68,7 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 - MCP-1…MCP-11 and the in-app feedback design: nothing built.
 
 **Approved but not built yet (engineering an agent can start)**
-- M-3: hosted card payment for local invoices.
+- O-3B (in review, #552): refund, credit and kept-deposit approvals (write-off and expense approvals are built).
 - COM-N1A…N4: lead/job/billing text messages, click-to-call, telecom statement to an expense, service metrics.
 - Wiring gaps in built telecom code: nothing calls the usage sync or the spend-alert checks, and no screen sends texts yet.
 

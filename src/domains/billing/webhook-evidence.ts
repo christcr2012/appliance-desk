@@ -220,10 +220,22 @@ async function gatherPaidInvoiceEvidence(
   await evidence.fetchCashEvents(invoice);
 }
 
+/** A shop-sale card payment: only a PAID session needs the payment's charge facts, and only if not already recorded. */
+async function gatherLocalInvoicePayment(evidence: WebhookEvidence, session: Stripe.Checkout.Session): Promise<void> {
+  const paymentIntentId = idOf(session.payment_intent);
+  if (!paymentIntentId || session.payment_status !== "paid") return;
+  const recorded = await prisma.payment.findFirst({ where: { stripePaymentIntentId: paymentIntentId }, select: { id: true } });
+  if (!recorded) await evidence.fetchPaymentDetails(paymentIntentId);
+}
+
 async function gatherCheckoutCompleted(
   evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  if (session.metadata?.localInvoiceId) {
+    await gatherLocalInvoicePayment(evidence, session);
+    return;
+  }
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
     const paymentIntentId = idOf(session.payment_intent);
@@ -272,6 +284,10 @@ async function gatherAsyncPaymentSucceeded(
   const paymentIntentId = idOf(session.payment_intent);
   if (!paymentIntentId) return;
 
+  if (session.metadata?.localInvoiceId) {
+    await gatherLocalInvoicePayment(evidence, session);
+    return;
+  }
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
     await gatherEstimateDepositEvidence(evidence, estimateId, paymentIntentId, {

@@ -142,7 +142,7 @@ export default async function AccountBillingPage() {
                           <p className="mt-1 text-sm font-semibold text-warning-ink">
                             {formatCents(invoice.balanceCents)} {t("owed")}
                           </p>
-                          {invoice.isLocalInvoice && (
+                          {invoice.isLocalInvoice && !invoice.isShopSale && (
                             <p className="mt-1 text-sm text-ink-soft">{t("Pay as arranged with Robinson Appliance Rentals.")}</p>
                           )}
                           {isPayNowEligible(invoice, new Date()) && (

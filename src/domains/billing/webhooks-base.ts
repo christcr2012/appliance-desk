@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { processSigningCheckoutEvent } from "./signing-payment-settlement";
+import { isLocalInvoiceSession, recordLocalInvoiceCheckoutFailure, recordLocalInvoiceCheckoutPayment } from "./local-invoice-checkout";
 import { signingInvoiceMirrorProof } from "./signing-invoice-mirror";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -683,6 +684,10 @@ async function handleCheckoutSessionCompleted(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   assertNoUnsettledW22Checkout(session);
+  if (isLocalInvoiceSession(session)) {
+    await recordLocalInvoiceCheckoutPayment(db, evidence, session);
+    return;
+  }
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
     await handleEstimateDepositCheckoutCompleted(db, evidence, session, estimateId);
@@ -752,6 +757,10 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
   if (!paymentIntentId) return;
 
   assertNoUnsettledW22Checkout(session);
+  if (isLocalInvoiceSession(session)) {
+    await recordLocalInvoiceCheckoutPayment(db, evidence, session);
+    return;
+  }
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
     const estimate = await db.estimate.findUniqueOrThrow({
@@ -789,6 +798,10 @@ async function handleCheckoutSessionAsyncPaymentFailed(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   assertNoUnsettledW22Checkout(session);
+  if (isLocalInvoiceSession(session)) {
+    await recordLocalInvoiceCheckoutFailure(db, session);
+    return;
+  }
   const estimateId = session.metadata?.estimateId;
   if (estimateId) {
     await db.auditLog.create({
