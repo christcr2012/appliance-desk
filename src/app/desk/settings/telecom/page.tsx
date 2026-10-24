@@ -21,12 +21,23 @@ export default async function TelecomSettingsPage() {
     prisma.businessSettings.findUnique({where:{id:"singleton"},
       select:{communicationsPolicy:true,communicationsPolicyVersion:true,customerSmsEnabled:true}}),
     prisma.telecomStatement.findMany({take:30,orderBy:{createdAt:"desc"},select:{
-      id:true,accountId:true,externalId:true,revision:true,state:true,
-      invoiceTotalCents:true,currency:true,periodStart:true,periodEnd:true,evidenceHash:true,
+      id:true,accountId:true,externalId:true,revision:true,state:true,vendorTaxCents:true,
+      invoiceTotalCents:true,currency:true,periodStart:true,periodEnd:true,evidenceHash:true,expenseId:true,
+      expense:{select:{status:true}},
     }}),
     prisma.communicationTemplateRevision.findMany({
       where:{channel:"SMS",isCurrent:true},take:25,orderBy:{createdAt:"desc"},
       select:{id:true,key:true,revision:true,approvedAt:true},
+    }),
+  ]);
+  // Booking is owner-only, so expense and account details are not even fetched for anyone else.
+  const verifiedUnbooked=session.user.role==="OWNER" ? statements.filter(r=>r.state==="VERIFIED" && !r.expenseId) : [];
+  const [payAccounts,categories,candidates]=verifiedUnbooked.length===0 ? [[],[],[]] : await Promise.all([
+    prisma.ledgerAccount.findMany({where:{active:true,isPaymentSource:true},orderBy:[{sortOrder:"asc"},{name:"asc"}],take:30,select:{id:true,name:true}}),
+    prisma.expenseCategory.findMany({where:{active:true},orderBy:[{sortOrder:"asc"},{name:"asc"}],take:60,select:{id:true,name:true}}),
+    prisma.expense.findMany({
+      where:{status:{not:"VOID"},telecomStatement:null,amountCents:{in:verifiedUnbooked.map(r=>r.invoiceTotalCents)}},
+      orderBy:{spentOn:"desc"},take:50,select:{id:true,amountCents:true,vendorName:true,spentOn:true},
     }),
   ]);
   const policy = communicationsPolicySchema.safeParse(settings?.communicationsPolicy);
@@ -99,8 +110,11 @@ export default async function TelecomSettingsPage() {
         externalId:row.externalId,revision:row.revision,state:row.state,
         cents:row.invoiceTotalCents,currency:row.currency,
         period:row.periodStart.toISOString().slice(0,10)+" to "+row.periodEnd.toISOString().slice(0,10),
-        hash:row.evidenceHash,
+        hash:row.evidenceHash,booked:row.expense?.status==='POSTED',linkedPending:!!row.expenseId && row.expense?.status!=='POSTED',taxKnown:row.vendorTaxCents!==null,
+        matches:candidates.filter(c=>c.amountCents===row.invoiceTotalCents).map(c=>({
+          id:c.id,label:c.vendorName+", "+c.spentOn.toISOString().slice(0,10)})),
       }))}
+      payAccounts={payAccounts} categories={categories}
       canEdit={canEdit} canSavePolicy={configured || accounts.some(a=>a.numbers.some(n=>n.isPrimary && !n.retiredAt))}
       bootstrapAccountId={accounts.find(a=>a.numbers.some(n=>n.isPrimary && !n.retiredAt))?.id??null}
       version={settings?.communicationsPolicyVersion??0}

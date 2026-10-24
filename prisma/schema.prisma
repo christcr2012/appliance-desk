@@ -4338,6 +4338,10 @@ model TelecomStatement {
   verifiedAt DateTime?
   paidOn DateTime? @db.Date
   vendorTaxCents Int?
+  // COM-N3: the one books Expense this statement became (or was matched to). Unique so a statement is booked once.
+  paidFromAccountId String?
+  expenseId String? @unique
+  expense Expense? @relation(fields:[expenseId],references:[id],onDelete:Restrict)
   createdAt DateTime @default(now())
   costFacts CommunicationCostFact[]
   @@unique([accountId,externalId,revision])
@@ -4596,6 +4600,7 @@ model Expense {
   version               Int             @default(1)
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
+  telecomStatement      TelecomStatement?
 
   @@index([status, spentOn])
   @@index([applianceId])
