@@ -11,8 +11,11 @@ webhook is disabled; the separate testing webhook is enabled and its signing sec
 See [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) for the authoritative configuration/release process.
 Remaining private prerequisites: `TEST_OWNER_PASSWORD` and the intended official account's TEST Stripe key
 in the testing project, followed by normal MFA enrollment and real Checkout/payment-update/refund proof.
-The initial exact-head full CI passed; the review correction is separately checked before merge. No successful
-payment acceptance is claimed. One unused empty temporary DB project was disabled after the owner chose
+The corrected implementation passed the required exact-head CI, all three database/unit and four browser shards;
+the seed review finding is fixed and resolved. A separate non-required capacity benchmark failed twice:
+`f-large-account-owner-read` measured 17.4ms then 18.3ms against its 14.3ms limit (11.9ms baseline +20%).
+The review correction does not modify the timed query path. No threshold override was used; investigate this
+performance follow-up separately. No successful payment acceptance is claimed. One unused empty temporary DB project was disabled after the owner chose
 reuse; its exposed temporary credential was rotated and it is not referenced by either app.
 
 ## October 24 — Owner-authorized live TEST checkout attempt: blocked before sale creation
