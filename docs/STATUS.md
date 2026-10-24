@@ -1,3 +1,15 @@
+## October 24 — Stripe connections restored; checkout still unverified
+
+Both Stripe providers now answer account calls in TEST mode: Robinson Stripe MCP reports a restricted TEST
+profile, and the standard Stripe connector reports the Robinson Appliance Rentals LLC TEST account. These
+are **different provider accounts**. Read-only inspections found zero webhook endpoints and Checkout sessions
+on the standard TEST account; Robinson MCP returned one enabled webhook for the business website, but no Checkout
+sessions. The app's stored Vercel TEST-labeled key/webhook entries were not decrypted or mapped to either
+account. No app Checkout, settled card payment, webhook receipt or refund was run (a real end-to-end test
+needs an isolated app/database and a known matching Stripe TEST account). Updated the existing M-3 owner
+checklist row; it stays unchecked. No live-payment activation, production customer mutation or provider writes.
+Next: determine the test-key/account match, then run an isolated shop-sale checkout and refund.
+
 ## October 24 — Provider setup checks (runtime proof still pending)
 
 Vercel Production now stores `TELECOM_SYNC_ENABLED=true` at Chris's request; a second environment-variable read
