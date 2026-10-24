@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRoleForTwoFactorSetup } from "@/lib/session";
 import {
-  SecondStepError, chooseSecondStepMethod, confirmMethodSwitch, confirmPhone, startMethodSwitch, startPhoneConfirmation,
+  SecondStepError, chooseSecondStepMethod, confirmMethodSwitch, confirmPhone, latestCodeOutcome, savePhoneDuringSetup, startMethodSwitch, startPhoneConfirmation,
   type DeliveryOutcome,
 } from "@/domains/security/second-step";
 
@@ -41,4 +41,22 @@ export async function startSwitchAction(method: string): Promise<StepResult> {
 }
 export async function confirmSwitchAction(method: string, code: string): Promise<StepResult> {
   return run(async (id) => { await confirmMethodSwitch(id, method, code); return "Method changed."; }, "Couldn't change the method.");
+}
+
+/** Set-up screen: save the person's own mobile number so it can be checked (the account page is closed until set-up is done). */
+export async function savePhoneInSetupAction(phone: string): Promise<StepResult> {
+  return run(async (id) => { await savePhoneDuringSetup(id, phone); return "Phone number saved."; }, "Couldn't save that number.");
+}
+
+/** Set-up screen: did the code that was just requested actually go out? */
+export async function codeDeliveryAction(): Promise<StepResult> {
+  return run(async (id) => {
+    for (let i = 0; i < 4; i++) {
+      const outcome = await latestCodeOutcome(id);
+      if (outcome === "SENT") return "sent";
+      if (outcome) return `failed:${outcome}`;
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    return "unknown";
+  }, "Couldn't check whether the code was sent.");
 }

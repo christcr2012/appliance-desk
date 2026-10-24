@@ -11,7 +11,7 @@ vi.mock("@/lib/sms", () => ({ sendSms: sendSmsMock }));
 
 import { prisma } from "@/lib/prisma";
 import {
-  SecondStepError, chooseSecondStepMethod, confirmMethodSwitch, confirmPhone, deliverSignInCode, getMethodSettings, getSecondStepView,
+  SecondStepError, chooseSecondStepMethod, confirmMethodSwitch, confirmPhone, latestCodeOutcome, savePhoneDuringSetup, deliverSignInCode, getMethodSettings, getSecondStepView,
   setMethodSettings, startMethodSwitch, startPhoneConfirmation,
 } from "@/domains/security/second-step";
 import { RECOMMENDED_METHOD_POLICY } from "@/domains/security/second-step-rules";
@@ -114,6 +114,20 @@ describe.skipIf(!enabled)("Sign-in code methods on real Postgres", () => {
       await prisma.user.update({ where: { id: ids.totp }, data: { phone: null, phoneConfirmedAt: null, secondStepMethod: null } });
       await setMethodSettings(ids.owner, { policy: RECOMMENDED_METHOD_POLICY, securitySmsEnabled: false });
     }
+  });
+
+  it("set-up can save the person's own number (unchecked), and the screen can tell whether a code went out", async () => {
+    await prisma.user.update({ where: { id: ids.totp }, data: { phone: null, phoneConfirmedAt: new Date(), twoFactorEnabled: false } });
+    await expect(savePhoneDuringSetup(ids.totp, "nope")).rejects.toThrow(SecondStepError);
+    await savePhoneDuringSetup(ids.totp, "970-555-0140");
+    const row = await prisma.user.findUniqueOrThrow({ where: { id: ids.totp } });
+    expect(row.phone).toMatch(/9705550140$/);
+    expect(row.phoneConfirmedAt).toBeNull();
+    await prisma.user.update({ where: { id: ids.totp }, data: { twoFactorEnabled: true } });
+    await expect(savePhoneDuringSetup(ids.totp, "970-555-0141")).rejects.toThrow(/already on/);
+    await prisma.user.update({ where: { id: ids.totp }, data: { twoFactorEnabled: false, phone: null } });
+    await prisma.auditLog.create({ data: { userId: ids.totp, action: "security.sign_in_code", entityType: "User", entityId: ids.totp, newValue: { method: "EMAIL", outcome: "REJECTED" } } });
+    expect(await latestCodeOutcome(ids.totp)).toBe("REJECTED");
   });
 
   it("switching method needs a working code: wrong tries are counted, a good code works once, a resend waits a minute", async () => {

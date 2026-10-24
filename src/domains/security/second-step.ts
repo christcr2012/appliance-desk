@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { sendEmail } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
+import { AccountError, normalizePhone } from "@/domains/account/rules";
 import {
   METHOD_LABEL, SIGN_IN_CODE_MINUTES, allowedMethodsFor, isSecondStepMethod, makeSixDigitCode,
   methodPolicyFromSetting, normalizeMethodPolicy, textCodesAvailable, type SecondStepMethod,
@@ -242,4 +243,31 @@ export async function confirmMethodSwitch(userId: string, method: string, code: 
     await tx.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
   });
   await record(userId, "security.second_step_switch", { from: user.secondStepMethod, to: method });
+}
+
+/** Where the most recent sign-in code (made in the last few minutes) went: lets the setup screen say honestly whether it was sent. */
+export async function latestCodeOutcome(userId: string): Promise<DeliveryOutcome | null> {
+  const row = await prisma.auditLog.findFirst({
+    where: { userId, action: "security.sign_in_code", createdAt: { gt: new Date(Date.now() - 2 * 60_000) } },
+    orderBy: { createdAt: "desc" },
+    select: { newValue: true },
+  });
+  const outcome = (row?.newValue as { outcome?: string } | null)?.outcome;
+  return typeof outcome === "string" ? (outcome as DeliveryOutcome) : null;
+}
+
+/** During first set-up (before the account page opens): save or change the person's own mobile number. Never confirms it. */
+export async function savePhoneDuringSetup(userId: string, rawPhone: string): Promise<void> {
+  let phone: string | null;
+  try { phone = normalizePhone(rawPhone); } catch (e) { throw new SecondStepError(e instanceof AccountError ? e.message : "Enter a valid mobile phone number."); }
+  if (!phone) throw new SecondStepError("Enter your mobile phone number.");
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true, archivedAt: true, twoFactorEnabled: true, phone: true } });
+    if (!user || user.archivedAt || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF")) throw new SecondStepError("This account no longer has access to make that change.");
+    if (user.twoFactorEnabled) throw new SecondStepError("Two-step sign-in is already on. Change your number on My account.");
+    if (user.phone === phone) return;
+    await tx.user.update({ where: { id: userId }, data: { phone, phoneConfirmedAt: null } });
+    await tx.auditLog.create({ data: { userId, action: "security.phone_saved_in_setup", entityType: "User", entityId: userId, newValue: {} } });
+  });
 }
