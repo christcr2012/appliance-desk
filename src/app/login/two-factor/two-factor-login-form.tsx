@@ -120,6 +120,13 @@ export function TwoFactorLoginForm() {
         className="w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-ink"
       />
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+      <details className="text-sm text-ink-soft">
+        <summary className="cursor-pointer text-ink">I can&rsquo;t get into my account</summary>
+        <p className="mt-2">
+          Staff and admins: ask the owner to reset your sign-in; you will get an email with a link to choose a new password and set up your second step again.
+          Owner: use a backup code, or follow the account recovery steps in the owner guide.
+        </p>
+      </details>
       <button
         type="submit"
         disabled={busy || !value.trim()}

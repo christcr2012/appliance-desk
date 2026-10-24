@@ -1,6 +1,7 @@
 import { createHash, randomInt } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { sendAccountNotice } from "@/domains/account";
 import { sendEmail } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { AccountError, normalizePhone } from "@/domains/account/rules";
@@ -243,6 +244,7 @@ export async function confirmMethodSwitch(userId: string, method: string, code: 
     await tx.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
   });
   await record(userId, "security.second_step_switch", { from: user.secondStepMethod, to: method });
+  await sendAccountNotice(userId, "two_step_changed", { extra: METHOD_LABEL[method].toLowerCase() });
 }
 
 /** Where the most recent sign-in code (made in the last few minutes) went: lets the setup screen say honestly whether it was sent. */

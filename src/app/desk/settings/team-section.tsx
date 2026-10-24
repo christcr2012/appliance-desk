@@ -5,7 +5,7 @@ import { Button, Checkbox, DataList, EmptyState, Field, Select, StatusPill, type
 import { CAPABILITIES, CAPABILITY_KEYS } from "@/domains/capabilities/labels";
 import {
   cancelInvitationAction, changeAccessLevelAction, inviteTeamMemberAction, removeTeamMemberAction,
-  resendInvitationAction, restoreTeamMemberAction, saveTeamSettingsAction, type TeamActionState,
+  resendInvitationAction, resetTeamSignInAction, restoreTeamMemberAction, saveTeamSettingsAction, type TeamActionState,
 } from "./team-actions";
 import { signOutStaffEverywhereAction } from "./actions";
 
@@ -83,6 +83,11 @@ export function TeamSection({
               {canTouch && !m.active && <Button type="button" variant="secondary" disabled={pending} onClick={() => rowAction(m.id, () => restoreTeamMemberAction(m.id))}>Restore access</Button>}
               {isOwner && !self && m.active && m.accessLevel === "STAFF" && <Button type="button" variant="secondary" disabled={pending} onClick={() => { setPromoting(m.id); setTicked([]); }}>Make admin</Button>}
               {isOwner && !self && m.active && m.accessLevel === "ADMIN" && <Button type="button" variant="secondary" disabled={pending} onClick={() => rowAction(m.id, () => changeAccessLevelAction(m.id, "STAFF", []))}>Make staff</Button>}
+              {isOwner && !self && m.active && m.accessLevel !== "OWNER" && (
+                <Button type="button" variant="secondary" disabled={pending} onClick={() => {
+                  if (window.confirm(`Reset ${m.name}'s sign-in? They are signed out everywhere, their second step is turned off, and they get an email link to choose a new password.`)) rowAction(m.id, () => resetTeamSignInAction(m.id));
+                }}>Reset sign-in</Button>
+              )}
               {isOwner && !self && m.active && m.accessLevel !== "OWNER" && (
                 <Button type="button" variant="secondary" disabled={pending} onClick={() => rowAction(m.id, async () => {
                   const r = await signOutStaffEverywhereAction(m.id);

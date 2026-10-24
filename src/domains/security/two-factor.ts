@@ -116,7 +116,7 @@ export async function resetTwoFactorForRecovery(email: string): Promise<string> 
     await tx.twoFactor.deleteMany({ where: { userId: user.id } });
     await tx.user.update({
       where: { id: user.id },
-      data: { twoFactorEnabled: false },
+      data: { twoFactorEnabled: false, secondStepMethod: null },
     });
     await tx.auditLog.create({
       data: {

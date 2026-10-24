@@ -52,6 +52,10 @@ model User {
   phoneConfirmedAt DateTime?
   // ACC-3: how this person gets their second step: TOTP (authenticator app), SMS (text) or EMAIL. Empty until they choose.
   secondStepMethod String?
+  // ACC-4: wrong-password counter for the pause. After the owner's number of wrong tries inside the window the account waits.
+  failedSignInCount           Int       @default(0)
+  failedSignInWindowStartedAt DateTime?
+  signInPausedUntil           DateTime?
 
   // Better Auth's own tables (sessions, accounts, verification tokens / TOTP)
   sessions  Session[]
@@ -1030,6 +1034,9 @@ model TeamInvitation {
   codeHash             String    @unique
   expiresAt            DateTime
   status               String    @default("INVITED")
+  // ACC-4: INVITE (a new person) or RESET (the owner reset an existing person's sign-in; targetUserId is that person).
+  purpose              String    @default("INVITE")
+  targetUserId         String?
   invitedById          String
   acceptedUserId       String?
   acceptedAt           DateTime?
@@ -3173,6 +3180,9 @@ model BusinessSettings {
   // ACC-3: which sign-in code methods each access level may choose, and the separate owner switch for text codes.
   secondStepMethodsByLevel Json    @default("{\"OWNER\":[\"TOTP\",\"SMS\"],\"ADMIN\":[\"TOTP\",\"SMS\"],\"STAFF\":[\"TOTP\",\"SMS\",\"EMAIL\"]}")
   securitySmsEnabled       Boolean @default(false)
+  // ACC-4: wrong passwords allowed on one account inside the window, and how long the account waits afterwards.
+  signInPauseAttempts      Int     @default(10)
+  signInPauseMinutes       Int     @default(15)
   invitationLinkDays  Int     @default(7)
   adminsMayInviteStaff Boolean @default(false)
 
