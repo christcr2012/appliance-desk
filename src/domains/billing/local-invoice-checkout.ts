@@ -38,50 +38,56 @@ function appUrl() {
 }
 
 export async function createLocalInvoiceCheckout(actor: LocalCheckoutActor, invoiceId: string): Promise<{ url: string; amountCents: number }> {
-  let customerFilter: string | null = null;
-  if (actor.kind === "desk") {
-    await prisma.$transaction((tx) => assertActiveTeamActor(tx, actor.userId, ["OWNER", "ADMIN"]));
-  } else {
-    const customer = await prisma.customer.findUnique({ where: { userId: actor.userId }, select: { id: true, archivedAt: true, isWalkIn: true } });
-    if (!customer || customer.archivedAt || customer.isWalkIn) throw new LocalInvoiceCheckoutError("We couldn't find that bill.");
-    customerFilter = customer.id;
-  }
-  const invoice = await prisma.invoice.findFirst({
-    where: { id: invoiceId, ...(customerFilter ? { customerId: customerFilter } : {}) },
-    select: {
-      id: true, invoiceNumber: true, status: true, saleKind: true, stripeInvoiceId: true, amountDueCents: true, amountPaidCents: true, customerId: true,
-      customer: { select: { isWalkIn: true } },
-    },
+  // One short transaction that re-checks who is asking (the actor lock is held while the audit row is written, so a
+  // person deactivated at this moment cannot slip through), validates the sale, and records the request. The Stripe
+  // calls happen after it, never inside it.
+  const prepared = await prisma.$transaction(async (tx) => {
+    let customerFilter: string | null = null;
+    if (actor.kind === "desk") {
+      await assertActiveTeamActor(tx, actor.userId, ["OWNER", "ADMIN"]);
+    } else {
+      const customer = await tx.customer.findUnique({ where: { userId: actor.userId }, select: { id: true, archivedAt: true, isWalkIn: true } });
+      if (!customer || customer.archivedAt || customer.isWalkIn) throw new LocalInvoiceCheckoutError("We couldn't find that bill.");
+      customerFilter = customer.id;
+    }
+    const invoice = await tx.invoice.findFirst({
+      where: { id: invoiceId, ...(customerFilter ? { customerId: customerFilter } : {}) },
+      select: {
+        id: true, invoiceNumber: true, status: true, saleKind: true, stripeInvoiceId: true, amountDueCents: true, amountPaidCents: true, customerId: true,
+        customer: { select: { isWalkIn: true } },
+      },
+    });
+    if (!invoice) throw new LocalInvoiceCheckoutError(actor.kind === "portal" ? "We couldn't find that bill." : "Couldn't find that sale.");
+    if (invoice.saleKind !== "SHOP_SALE" || invoice.stripeInvoiceId) throw new LocalInvoiceCheckoutError("Card payment is only available for shop sales.");
+    if (!PAYABLE.includes(invoice.status)) throw new LocalInvoiceCheckoutError("This sale is paid or closed, so there is nothing to collect.");
+    const owed = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
+    if (owed <= 0) throw new LocalInvoiceCheckoutError("Nothing is owed on this sale.");
+    if (owed > MAX_CARD_CENTS) throw new LocalInvoiceCheckoutError("This amount is too large to take by card here. Record the payment another way.");
+    await tx.auditLog.create({
+      data: { userId: actor.userId, action: "sale.card_page_requested", entityType: "Invoice", entityId: invoice.id, newValue: { amountCents: owed, from: actor.kind } },
+    });
+    return { id: invoice.id, number: invoice.invoiceNumber, customerId: invoice.customerId, isWalkIn: invoice.customer.isWalkIn, owed };
   });
-  if (!invoice) throw new LocalInvoiceCheckoutError(actor.kind === "portal" ? "We couldn't find that bill." : "Couldn't find that sale.");
-  if (invoice.saleKind !== "SHOP_SALE" || invoice.stripeInvoiceId) throw new LocalInvoiceCheckoutError("Card payment is only available for shop sales.");
-  if (!PAYABLE.includes(invoice.status)) throw new LocalInvoiceCheckoutError("This sale is paid or closed, so there is nothing to collect.");
-  const owed = Math.max(0, invoice.amountDueCents - invoice.amountPaidCents);
-  if (owed <= 0) throw new LocalInvoiceCheckoutError("Nothing is owed on this sale.");
-  if (owed > MAX_CARD_CENTS) throw new LocalInvoiceCheckoutError("This amount is too large to take by card here. Record the payment another way.");
 
-  const stripeCustomerId = invoice.customer.isWalkIn ? null : await ensureStripeCustomer(invoice.customerId);
+  const stripeCustomerId = prepared.isWalkIn ? null : await ensureStripeCustomer(prepared.customerId);
   const base = appUrl();
-  const back = actor.kind === "desk" ? `${base}/desk/sales/${invoice.id}` : `${base}/account/billing/invoice/${invoice.id}`;
-  const key = `local-invoice-checkout-${invoice.id}-${owed}-${actor.kind}`;
+  const back = actor.kind === "desk" ? `${base}/desk/sales/${prepared.id}` : `${base}/account/billing/invoice/${prepared.id}`;
+  const key = `local-invoice-checkout-${prepared.id}-${prepared.owed}-${actor.kind}`;
   const session = await getStripeClient().checkout.sessions.create(
     {
       mode: "payment",
       payment_method_types: ["card"],
       ...(stripeCustomerId ? { customer: stripeCustomerId } : {}),
-      line_items: [{ quantity: 1, price_data: { currency: "usd", unit_amount: owed, product_data: { name: `Sale #${invoice.invoiceNumber}` } } }],
+      line_items: [{ quantity: 1, price_data: { currency: "usd", unit_amount: prepared.owed, product_data: { name: `Sale #${prepared.number}` } } }],
       success_url: `${back}?card=paid`,
       cancel_url: `${back}?card=cancelled`,
-      payment_intent_data: { metadata: { localInvoiceId: invoice.id } },
-      metadata: { localInvoiceId: invoice.id, localInvoiceCustomerId: invoice.customerId, localInvoiceOperationKey: key },
+      payment_intent_data: { metadata: { localInvoiceId: prepared.id } },
+      metadata: { localInvoiceId: prepared.id, localInvoiceCustomerId: prepared.customerId, localInvoiceOperationKey: key },
     },
     { idempotencyKey: key },
   );
   if (!session.url) throw new LocalInvoiceCheckoutError("Stripe didn't return a payment page. Nothing was charged. Please try again.");
-  await prisma.auditLog.create({
-    data: { userId: actor.userId, action: "sale.card_page_created", entityType: "Invoice", entityId: invoice.id, newValue: { amountCents: owed, sessionId: session.id, from: actor.kind } },
-  });
-  return { url: session.url, amountCents: owed };
+  return { url: session.url, amountCents: prepared.owed };
 }
 
 /** True when this Checkout session belongs to a shop sale (so the generic handlers must leave it alone). */
@@ -108,7 +114,7 @@ export async function recordLocalInvoiceCheckoutPayment(
   }
   const paidCents = amountCents as number;
 
-  const found = await db.invoice.findUnique({ where: { id: invoiceId }, select: { customerId: true, saleKind: true } });
+  const found = await db.invoice.findUnique({ where: { id: invoiceId }, select: { customerId: true, saleKind: true, customer: { select: { isWalkIn: true } } } });
   if (!found || found.saleKind !== "SHOP_SALE") throw new Error("A card payment named a sale that does not exist here.");
   if (session.metadata?.localInvoiceCustomerId && session.metadata.localInvoiceCustomerId !== found.customerId) {
     throw new Error("A card payment's customer does not match the sale it named.");
@@ -141,6 +147,21 @@ export async function recordLocalInvoiceCheckoutPayment(
     return;
   }
 
+  // All walk-in sales share one customer record, so an overpayment must never become account credit there (anyone could
+  // spend another buyer's money). It is held against the sale for the owner to send back instead.
+  if (found.customer.isWalkIn && paidCents > owed) {
+    await holdReceiptForClosedInvoice(db, {
+      customerId: found.customerId, invoiceId, amountCents: paidCents, method, receivedOn: details.receivedOn,
+      stripeChargeId: details.stripeChargeId, stripePaymentIntentId: paymentIntentId,
+    });
+    await db.auditLog.create({
+      data: {
+        userId: null, action: "billing.payment_on_closed_invoice", entityType: "Invoice", entityId: invoiceId,
+        newValue: { invoiceStatus: invoice.status, receivedCents: paidCents, owedCents: owed, handling: "Held for the owner: the walk-in sale needed less than was paid by card. Send the payment back to the card, or decide otherwise." },
+      },
+    });
+    return;
+  }
   const applied = Math.min(owed, paidCents);
   const { receiptId } = await createReceiptWithAllocations(db, {
     customerId: found.customerId, source: "STRIPE", amountCents: paidCents, method, receivedOn: details.receivedOn,

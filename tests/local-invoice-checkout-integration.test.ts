@@ -200,6 +200,21 @@ describe.skipIf(!enabled)("card payment for shop sales on real Postgres with a f
     expect(credits.some((c) => c.amountCents === 7_000)).toBe(true);
   });
 
+  it("a walk-in's overpayment is held for the owner, never turned into shared account credit", async () => {
+    const walk = await prisma.$transaction((tx) => ensureWalkInCustomer(tx));
+    const id = await sale({ cents: 10_000, customer: walk.customerId });
+    await prisma.invoice.update({ where: { id }, data: { amountPaidCents: 7_000, status: "PARTIALLY_PAID" } }); // cash taken meanwhile
+    const pi = `pi_${randomUUID()}`;
+    const session = await withCustomer(id, paidSession(id, 10_000, pi));
+    await processStripeWebhookEvent(event("checkout.session.completed", session));
+    const inv = await prisma.invoice.findUniqueOrThrow({ where: { id }, include: { payments: true } });
+    expect(inv.amountPaidCents).toBe(7_000);
+    expect(inv.payments.map((p) => p.status)).toEqual(["held"]);
+    expect(await prisma.customerCredit.count({ where: { customerId: walk.customerId, sourceType: "RECEIPT_OVERPAYMENT", amountCents: { in: [3_000, 10_000] } } })).toBe(0);
+    await prisma.payment.deleteMany({ where: { invoiceId: id } });
+    await prisma.receipt.deleteMany({ where: { stripeChargeId: `ch_${pi}` } });
+  });
+
   it("a payment naming a different customer's sale is refused and records nothing", async () => {
     const id = await sale();
     const bad = paidSession(id, 10_000, `pi_${randomUUID()}`, { metadata: { localInvoiceId: id, localInvoiceCustomerId: otherCustomerId } });
