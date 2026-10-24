@@ -51,14 +51,17 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   type the number and the next renewal date from your own papers, and set where you are with it. Worked: each dated item
   shows on your Today list before it needs renewing. (The app doesn't know your dates or fees; they come from your papers
   and the agency websites linked on each item.)
-- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Vercel already has `STRIPE_SECRET_KEY` and
-  `STRIPE_WEBHOOK_SECRET` entries for Preview, labeled **TEST mode** (checked 2026-10-24; values and provider validity
-  were not verified). **Still not tested with real Stripe:** Chris reported reauthorizing Stripe on 2026-10-24, but a new account read still returned `renewal_outcome_unknown_reconnect_required`. The Stripe cloud adapter must reconnect successfully,
-  and the app test must use an isolated test database, never production customer records. Steps: reconnect the Stripe
-  service, confirm both test keys and the test webhook to `<test-site>/api/webhooks/stripe`, then in an isolated
-  test checkout create a small shop sale → Money → Shop sales → "Pay by card" → test card 4242 4242 4242 4242.
-  You'll know it worked: Stripe confirms the test payment, the sale turns "Paid" and shows the payment, and a refund
-  from Billing reaches the same test charge. Leave unchecked until those outcomes are actually observed.
+- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** **Provider connection unblocked 2026-10-24:**
+  both the standard Stripe connector and Robinson Stripe MCP now answer read-only requests in TEST mode. They use
+  **different Stripe accounts**: the standard account shows no Checkout sessions or webhook endpoints; the Robinson
+  TEST account has one enabled webhook whose destination is the business website, but it shows no Checkout sessions
+  and the exact endpoint path was not proved. Vercel has TEST-labeled `STRIPE_SECRET_KEY` and
+  `STRIPE_WEBHOOK_SECRET` entries, but we have **not proved which account those app keys use** or whether the
+  webhook signature matches. No test payment/refund was made. To finish: match the isolated app's test keys
+  and webhook to the intended Stripe TEST account (never put keys in GitHub), use a disposable Postgres database,
+  then create a small shop sale → Money → Shop sales → "Pay by card" → Stripe test card
+  4242 4242 4242 4242. Worked only when the app records "Paid" and the payment exactly once after the
+  Stripe webhook, then Billing refunds that same test charge. **Leave unchecked until actually observed.**
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).
   Stripe → Settings → Business → Branding. Worked: a test checkout page shows your brand.
