@@ -172,6 +172,10 @@ describe.skipIf(!enabled)("COM-N3 verified phone statement becomes one books exp
     const before = await prisma.expense.count({ where: { submittedByUserId: ownerId } });
     const out = await book(row.id, { linkExpenseId: manual.id });
     expect(out).toMatchObject({ expenseId: manual.id, linkedExisting: true, posted: true });
+    // The statement records the bill's own date and account, not the form's.
+    const linkedRow = await prisma.telecomStatement.findUniqueOrThrow({ where: { id: row.id } });
+    expect(linkedRow.paidFromAccountId).toBe(bankId);
+    expect(linkedRow.paidOn?.toISOString().slice(0, 10)).toBe((await prisma.expense.findUniqueOrThrow({ where: { id: manual.id } })).spentOn.toISOString().slice(0, 10));
     expect(await prisma.expense.count({ where: { submittedByUserId: ownerId } })).toBe(before);
     const second = await statement({ invoiceTotalCents: 3333 });
     await expect(book(second.id, { linkExpenseId: manual.id })).rejects.toThrow(/already matched/);

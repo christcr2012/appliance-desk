@@ -232,6 +232,7 @@ export function TelecomSettingsControls({accounts,statements,payAccounts,categor
               <label>Category <select name="category" required className="ml-1 rounded border border-line px-2 py-1">
                 {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
               {!row.taxKnown && <label>Sales tax on the statement (dollars, 0 if none) <input name="taxDollars" type="number" step=".01" min="0" required className="ml-1 w-28 rounded border border-line px-2 py-1"/></label>}
+              <p className="col-span-full text-ink-soft">If you match a bill you already entered, your books keep that bill's own date and account; the two boxes above are used only for a new expense.</p>
               <label>Already entered by hand? <select name="match" className="ml-1 rounded border border-line px-2 py-1">
                 <option value="">No, make a new expense</option>
                 {row.matches.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}</select></label>

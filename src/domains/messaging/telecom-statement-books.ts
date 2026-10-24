@@ -61,13 +61,14 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
       const fresh = await tx.telecomStatement.findUniqueOrThrow({ where: { id: statement.id }, select: { expenseId: true } });
       if (fresh.expenseId) throw new StatementBooksError("This statement is already booked.");
       await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id" = ${input.linkExpenseId} FOR UPDATE`;
-      const expense = await tx.expense.findUnique({ where: { id: input.linkExpenseId! }, select: { id: true, status: true, amountCents: true, vendorTaxCents: true } });
+      const expense = await tx.expense.findUnique({ where: { id: input.linkExpenseId! }, select: { id: true, status: true, amountCents: true, vendorTaxCents: true, paidFromAccountId: true, spentOn: true } });
       if (!expense || expense.status === "VOID") throw new StatementBooksError("That expense can't be matched (missing or voided).");
       if (expense.amountCents !== statement.invoiceTotalCents) throw new StatementBooksError("That expense is for a different amount than the statement.");
       if (expense.vendorTaxCents !== taxCents) throw new StatementBooksError(`That expense records $${(expense.vendorTaxCents / 100).toFixed(2)} of sales tax but the statement shows $${(taxCents / 100).toFixed(2)}. Fix the expense first so the tax is right, then match it.`);
       const taken = await tx.telecomStatement.findFirst({ where: { expenseId: expense.id }, select: { id: true } });
       if (taken) throw new StatementBooksError("That expense is already matched to another statement.");
-      await tx.telecomStatement.update({ where: { id: statement.id }, data: { expenseId: expense.id, paidFromAccountId: input.paidFromAccountId, paidOn: paidDate } });
+      // The books use the bill's OWN account and date, so that is what is recorded here (never a contradicting second answer).
+      await tx.telecomStatement.update({ where: { id: statement.id }, data: { expenseId: expense.id, paidFromAccountId: expense.paidFromAccountId, paidOn: expense.spentOn } });
       await tx.auditLog.create({ data: { userId: actorUserId, action: "TELECOM_STATEMENT_MATCHED_EXPENSE", entityType: "TelecomStatement", entityId: statement.id, newValue: { expenseId: expense.id } } });
       return expense.id;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
