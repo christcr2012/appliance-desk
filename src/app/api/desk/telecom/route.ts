@@ -47,6 +47,7 @@ export async function POST(req: Request): Promise<Response> {
           statementId: String(body.statementId ?? ""), paidOn: String(body.paidOn ?? ""),
           paidFromAccountId: String(body.paidFromAccountId ?? ""), categoryId: String(body.categoryId ?? ""),
           linkExpenseId: typeof body.linkExpenseId === "string" && body.linkExpenseId ? body.linkExpenseId : undefined,
+          vendorTaxCents: typeof body.taxDollars === "string" && body.taxDollars.trim() ? dollarsToCents(body.taxDollars.trim()) : undefined,
         });
         return NextResponse.json(result);
       }
@@ -97,6 +98,11 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({error:"Select a PDF no larger than 4 MB."},{status:400});
     }
     const invoiceTotalCents = dollarsToCents(form.get("amountDollars"));
+    const taxField = form.get("taxDollars");
+    const vendorTaxCents = typeof taxField === "string" && taxField.trim() ? dollarsToCents(taxField.trim()) : null;
+    if (vendorTaxCents !== null && (vendorTaxCents < 0 || vendorTaxCents > invoiceTotalCents)) {
+      return NextResponse.json({error:"The tax cannot be negative or more than the statement total."},{status:400});
+    }
     const result = await uploadTelecomStatement({
       actorUserId:session.user.id,
       accountId:String(form.get("accountId") ?? ""),
@@ -105,7 +111,7 @@ export async function POST(req: Request): Promise<Response> {
       periodEnd:String(form.get("periodEnd") ?? ""),
       issueDate:String(form.get("issueDate") ?? ""),
       currency:String(form.get("currency") ?? "USD"),
-      invoiceTotalCents,
+      invoiceTotalCents, vendorTaxCents,
       bytes:new Uint8Array(await file.arrayBuffer()),
     });
     return NextResponse.json(result, { status: 201 });

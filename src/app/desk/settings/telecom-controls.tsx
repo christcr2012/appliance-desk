@@ -10,7 +10,7 @@ type AccountOption = { id:string; label:string };
 type StatementItem = {
   id:string; accountLabel:string; externalId:string; revision:number;
   state:string; cents:number; currency:string; period:string; hash:string;
-  booked:boolean; linkedPending:boolean; matches:{id:string; label:string}[];
+  booked:boolean; linkedPending:boolean; taxKnown:boolean; matches:{id:string; label:string}[];
 };
 type Choice = { id:string; name:string };
 type Props = {
@@ -95,7 +95,8 @@ export function TelecomSettingsControls({accounts,statements,payAccounts,categor
         headers:{"content-type":"application/json"},
         body:JSON.stringify({kind:"book",statementId:row.id,paidOn:String(f.get("paidOn")??""),
           paidFromAccountId:String(f.get("payFrom")??""),categoryId:String(f.get("category")??""),
-          linkExpenseId:match||undefined}),
+          linkExpenseId:match||undefined,
+          taxDollars:f.get("taxDollars")===null?undefined:String(f.get("taxDollars"))}),
       });
       const data=await response.json();
       if (!response.ok) throw new Error(data.error??"Couldn't book the statement.");
@@ -193,6 +194,10 @@ export function TelecomSettingsControls({accounts,statements,payAccounts,categor
           <input required name="amountDollars" type="number" step=".01"
             className="mt-1 w-full rounded border border-line bg-surface p-2" />
         </label>
+        <label className="text-sm">Sales tax shown on the statement (dollars, leave blank if you are not sure)
+          <input name="taxDollars" type="number" step=".01" min="0"
+            className="mt-1 w-full rounded border border-line bg-surface p-2" />
+        </label>
         <label className="text-sm col-span-full">Statement PDF (4 MB maximum)
           <input required name="file" type="file" accept=".pdf,application/pdf"
             className="mt-1 block w-full" />
@@ -226,6 +231,7 @@ export function TelecomSettingsControls({accounts,statements,payAccounts,categor
                 {payAccounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
               <label>Category <select name="category" required className="ml-1 rounded border border-line px-2 py-1">
                 {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+              {!row.taxKnown && <label>Sales tax on the statement (dollars, 0 if none) <input name="taxDollars" type="number" step=".01" min="0" required className="ml-1 w-28 rounded border border-line px-2 py-1"/></label>}
               <label>Already entered by hand? <select name="match" className="ml-1 rounded border border-line px-2 py-1">
                 <option value="">No, make a new expense</option>
                 {row.matches.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}</select></label>

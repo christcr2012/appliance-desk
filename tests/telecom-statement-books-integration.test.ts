@@ -18,7 +18,7 @@ const extraExpenses: string[] = [];
 async function statement(over: Record<string, unknown> = {}) {
   const row = await prisma.telecomStatement.create({ data: {
     accountId, externalId: "S-" + randomUUID().slice(0, 8), periodStart: new Date("2026-09-01"), periodEnd: new Date("2026-09-30"),
-    currency: "USD", invoiceTotalCents: 1755, issueDate: new Date("2026-10-03"),
+    currency: "USD", invoiceTotalCents: 1755, vendorTaxCents: 0, issueDate: new Date("2026-10-03"),
     privateEvidenceStorageKey: "telecom-statements/x/y.pdf", evidenceHash: "a".repeat(64),
     ...(over.state === "DRAFT" ? {} : { state: "VERIFIED" as const, verifiedByUserId: ownerId, verifiedAt: new Date() }),
     ...over,
@@ -133,6 +133,28 @@ describe.skipIf(!enabled)("COM-N3 verified phone statement becomes one books exp
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { booksStartDate: new Date("2026-01-01T07:00:00.000Z") } });
     const retry = await bookTelecomStatementExpense(ownerId, { statementId: row2.id, paidOn: "", paidFromAccountId: "", categoryId: "" });
     expect(retry).toMatchObject({ expenseId: linked.expenseId, posted: true });
+  });
+
+  it("a statement saved without its tax is never booked with a guessed zero: the owner states it, within the total", async () => {
+    const row = await statement({ invoiceTotalCents: 7777, vendorTaxCents: null });
+    await expect(book(row.id)).rejects.toThrow(/sales tax shown/);
+    await expect(book(row.id, { vendorTaxCents: 9999 })).rejects.toThrow(/between \$0/);
+    const out = await book(row.id, { vendorTaxCents: 250 });
+    expect((await prisma.expense.findUniqueOrThrow({ where: { id: out.expenseId } })).vendorTaxCents).toBe(250);
+  });
+
+  it("after the original expense is voided, a corrected revision of the same statement can be booked", async () => {
+    const first = await statement({ externalId: "FIX-" + tag, invoiceTotalCents: 8888 });
+    const booked = await book(first.id);
+    const corrected = await statement({ externalId: "FIX-" + tag, revision: 2, invoiceTotalCents: 8800 });
+    await expect(book(corrected.id)).rejects.toThrow(/Another version/);
+    const { voidExpense } = await import("@/domains/books/expenses");
+    const current = await prisma.expense.findUniqueOrThrow({ where: { id: booked.expenseId } });
+    await voidExpense(ownerId, booked.expenseId, current.version, "Statement was corrected");
+    const again = await book(corrected.id);
+    expect(again.expenseId).not.toBe(booked.expenseId);
+    expect((await prisma.expense.findUniqueOrThrow({ where: { id: again.expenseId } })).amountCents).toBe(8800);
+    await expect(book(first.id)).rejects.toThrow(/voided/);
   });
 
   it("matches a bill that was already entered by hand instead of making a second one, and refuses a wrong amount or a bill already matched", async () => {

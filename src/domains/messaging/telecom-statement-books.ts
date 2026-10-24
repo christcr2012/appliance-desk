@@ -15,6 +15,8 @@ export type BookStatementInput = {
   categoryId: string;
   /** Match a bill that was already entered by hand instead of making a second one. */
   linkExpenseId?: string;
+  /** Needed only when the statement was saved without its tax: the owner states it (0 if none). Never guessed. */
+  vendorTaxCents?: number;
 };
 export type BookStatementResult = { expenseId: string; posted: boolean; linkedExisting: boolean };
 
@@ -22,10 +24,11 @@ export type BookStatementResult = { expenseId: string; posted: boolean; linkedEx
 async function lockRevisionsAndRefuseRepeat(tx: Prisma.TransactionClient, statement: { id: string; accountId: string; externalId: string }) {
   await tx.$queryRaw`SELECT "id" FROM "TelecomStatement" WHERE "accountId" = ${statement.accountId} AND "externalId" = ${statement.externalId} ORDER BY "id" FOR UPDATE`;
   const booked = await tx.telecomStatement.findFirst({
-    where: { accountId: statement.accountId, externalId: statement.externalId, id: { not: statement.id }, expenseId: { not: null } },
+    // An earlier revision whose expense was voided no longer counts as booked, so a corrected statement can be booked.
+    where: { accountId: statement.accountId, externalId: statement.externalId, id: { not: statement.id }, expenseId: { not: null }, expense: { status: { not: "VOID" } } },
     select: { revision: true },
   });
-  if (booked) throw new StatementBooksError(`Another version (revision ${booked.revision}) of this same statement is already booked. To correct it, void that expense in Books first.`);
+  if (booked) throw new StatementBooksError(`Another version (revision ${booked.revision}) of this same statement is already booked. To correct it, void that expense in Books first, then book this one.`);
 }
 
 const marker = (statementId: string) => `[telecom-statement ${statementId}]`;
@@ -45,6 +48,11 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
 
   // Already linked: finish the job (post it if it is still a draft) and never make another.
   if (statement.expenseId) return finishLinked(actorUserId, statement.expenseId, false);
+  const taxCents = statement.vendorTaxCents ?? input.vendorTaxCents;
+  if (!input.linkExpenseId) {
+    if (taxCents === undefined) throw new StatementBooksError("Enter the sales tax shown on the statement (0 if there is none).");
+    if (!Number.isSafeInteger(taxCents) || taxCents < 0 || taxCents > statement.invoiceTotalCents) throw new StatementBooksError("The tax must be between $0 and the statement total.");
+  }
   const paidDate = businessDateFromKey(input.paidOn);
   if (!paidDate || businessDateKey(paidDate) !== input.paidOn) throw new StatementBooksError("Enter the day it was paid.");
 
@@ -70,7 +78,7 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
 
   // One transaction under the statement's lock: reuse a draft an earlier try left behind, or make it, and link it.
   const fields = checkExpenseFields({
-    date: input.paidOn, amountCents: statement.invoiceTotalCents, vendorTaxCents: statement.vendorTaxCents ?? 0,
+    date: input.paidOn, amountCents: statement.invoiceTotalCents, vendorTaxCents: taxCents ?? 0,
     vendorName: "Twilio", categoryId: input.categoryId, paidFromAccountId: input.paidFromAccountId,
     memo: `Phone-company statement ${statement.externalId} (${businessDateKey(statement.periodStart)} to ${businessDateKey(statement.periodEnd)}) ${marker(statement.id)}`,
   });
@@ -90,7 +98,7 @@ export async function bookTelecomStatementExpense(actorUserId: string, input: Bo
 
 async function finishLinked(actorUserId: string, expenseId: string, linkedExisting: boolean): Promise<BookStatementResult> {
   const expense = await prisma.expense.findUniqueOrThrow({ where: { id: expenseId }, select: { status: true, version: true } });
-  if (expense.status === "VOID") throw new StatementBooksError("The expense linked to this statement was voided. Ask for it to be relinked.");
+  if (expense.status === "VOID") throw new StatementBooksError("The expense linked to this statement was voided. Upload the corrected statement as a new version and book that instead.");
   if (expense.status === "POSTED") return { expenseId, posted: true, linkedExisting };
   await postExpense(actorUserId, expenseId, expense.version);
   return { expenseId, posted: true, linkedExisting };
