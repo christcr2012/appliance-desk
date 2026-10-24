@@ -177,3 +177,86 @@ test('successful no-op records a daily tag and blocks later fallback promotion',
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('live ships the testing version only after the testing app built it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'release-testing-gate-'));
+  const cwd = process.cwd(), fetchBefore = globalThis.fetch;
+  const keys = ['GITHUB_REPOSITORY', 'GITHUB_REF', 'GITHUB_EVENT_NAME', 'GH_TOKEN'];
+  const before = keys.map(key => process.env[key]);
+  const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: 'pipe' }).trim();
+  const ctx = 'Vercel – appliance-desk-testing';
+  try {
+    git('init', '--bare', join(dir, 'remote.git'));
+    git('init', '-b', 'main');
+    git('config', 'user.email', 'test@example.invalid');
+    git('config', 'user.name', 'Release test');
+    git('remote', 'add', 'origin', join(dir, 'remote.git'));
+    writeFileSync(join(dir, 'f.txt'), 'released'); git('add', 'f.txt'); git('commit', '-m', 'released');
+    git('push', 'origin', 'main', 'main:live');
+    const released = git('rev-parse', 'HEAD');
+    writeFileSync(join(dir, 'f.txt'), 'on testing'); git('commit', '-am', 'on testing');
+    const tested = git('rev-parse', 'HEAD');
+    git('push', 'origin', 'main', 'main:testing');
+    writeFileSync(join(dir, 'f.txt'), 'newer, untested'); git('commit', '-am', 'newer');
+    git('push', 'origin', 'main');
+    Object.assign(process.env, { GITHUB_REPOSITORY: 'example/repo', GITHUB_REF: 'refs/heads/main',
+      GITHUB_EVENT_NAME: 'schedule', GH_TOKEN: 'fixture' });
+    process.chdir(dir);
+    const policy = { repository: 'example/repo', requiredChecks: ['ci'], candidateBranch: 'testing', requiredDeploymentStatus: ctx };
+    let deployment = 'failure';
+    globalThis.fetch = async url => ({ ok: true, json: async () => String(url).includes('/statuses')
+      ? [{ id: 1, context: ctx, state: deployment, created_at: '2026-10-24T13:00:00Z', creator: { login: 'vercel[bot]' } }]
+      : { total_count: 1, check_runs: [{ ...good, head_sha: tested }] } });
+    await assert.rejects(run(policy), /testing app failed/);
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], released);
+    deployment = 'pending';
+    await assert.rejects(run(policy, { attempts: 2, pause: async () => {} }), /window exhausted/);
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], released);
+    deployment = 'success';
+    await run(policy);
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], tested);
+  } finally {
+    process.chdir(cwd); globalThis.fetch = fetchBefore;
+    keys.forEach((key, i) => { if (before[i] === undefined) delete process.env[key]; else process.env[key] = before[i]; });
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the deployed policy ships testing, gated on the testing app build', () => {
+  const policy = JSON.parse(readFileSync(new URL('./policy.json', import.meta.url), 'utf8'));
+  assert.equal(policy.candidateBranch, 'testing');
+  assert.equal(policy.requiredDeploymentStatus, 'Vercel – appliance-desk-testing');
+});
+
+test('a docs-only release does not wait for a testing build Vercel skipped', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'release-docs-only-'));
+  const cwd = process.cwd(), fetchBefore = globalThis.fetch;
+  const keys = ['GITHUB_REPOSITORY', 'GITHUB_REF', 'GITHUB_EVENT_NAME', 'GH_TOKEN'];
+  const before = keys.map(key => process.env[key]);
+  const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: 'pipe' }).trim();
+  try {
+    git('init', '--bare', join(dir, 'remote.git'));
+    git('init', '-b', 'main');
+    git('config', 'user.email', 'test@example.invalid');
+    git('config', 'user.name', 'Release test');
+    git('remote', 'add', 'origin', join(dir, 'remote.git'));
+    writeFileSync(join(dir, 'app.ts'), 'x'); git('add', 'app.ts'); git('commit', '-m', 'app');
+    git('push', 'origin', 'main', 'main:live');
+    execFileSync('mkdir', ['-p', join(dir, 'docs')]);
+    writeFileSync(join(dir, 'docs', 'note.md'), 'docs'); git('add', 'docs/note.md'); git('commit', '-m', 'docs');
+    const docs = git('rev-parse', 'HEAD');
+    git('push', 'origin', 'main', 'main:testing');
+    Object.assign(process.env, { GITHUB_REPOSITORY: 'example/repo', GITHUB_REF: 'refs/heads/main',
+      GITHUB_EVENT_NAME: 'schedule', GH_TOKEN: 'fixture' });
+    process.chdir(dir);
+    globalThis.fetch = async url => ({ ok: true, json: async () => String(url).includes('/statuses') ? []
+      : { total_count: 1, check_runs: [{ ...good, head_sha: docs }] } });
+    await run({ repository: 'example/repo', requiredChecks: ['ci'], candidateBranch: 'testing',
+      requiredDeploymentStatus: 'Vercel – appliance-desk-testing' });
+    assert.equal(git('ls-remote', 'origin', 'refs/heads/live').split(/\s+/)[0], docs);
+  } finally {
+    process.chdir(cwd); globalThis.fetch = fetchBefore;
+    keys.forEach((key, i) => { if (before[i] === undefined) delete process.env[key]; else process.env[key] = before[i]; });
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

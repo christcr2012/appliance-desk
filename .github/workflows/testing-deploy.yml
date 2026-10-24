@@ -1,9 +1,13 @@
 name: Checked testing deployment
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+  schedule:
+    # Evening testing release; that night's live release ships this version.
+    - cron: '5 18 * * *'
+      timezone: America/Denver
+    # Backup in case the first event is missed (the daily marker stops a second build).
+    - cron: '35 19 * * *'
+      timezone: America/Denver
+  workflow_dispatch: {}
 permissions:
   contents: read
 concurrency:
@@ -11,9 +15,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   promote-testing:
-    if: github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.actor == 'christcr2012' && github.triggering_actor == 'christcr2012'))
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: write
       checks: read
@@ -22,7 +26,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Promote exact checked main to testing only
+      - name: Promote the newest fully checked main to testing only
         env:
           GH_TOKEN: ${{ github.token }}
         run: node .github/release/promote-testing.mjs

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { assertTestingSeedEnvironment } from "../src/lib/testing-environment";
-import { initializeTestingSettings } from "./testing-settings";
+import { describeSeedFailure, initializeTestingSettings, initializeTestingSignIn, SeedStageError } from "./testing-settings";
 
 // Refuse before importing Prisma/auth or making any database connection.
 assertTestingSeedEnvironment();
@@ -11,6 +11,7 @@ async function main() {
   const simulatedDate = new Date("2020-01-01T00:00:00Z");
   try {
     await prisma.$transaction(async tx => {
+      try {
       // Serialize repeat deployments; add missing fixtures without resetting
       // payments, stock, credentials or completed testing work.
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(174831, 902)::text`;
@@ -21,6 +22,7 @@ async function main() {
         id: "testing-fixture-system", email: "fixture-system@example.test", name: "TEST fixture system (no login)", role: "OWNER", emailVerified: true,
       } });
       await initializeTestingSettings(tx, actor.id);
+      await initializeTestingSignIn(tx, actor.id);
       for (const [slug, name] of [["washer", "Washer"], ["dryer", "Dryer"]] as const) {
         const type = await tx.applianceType.upsert({ where: { slug }, update: {}, create: { slug, name, monthlyPriceCents: 3500, showOnWebsite: false } });
         await tx.appliance.upsert({ where: { assetNumber: `TEST-${slug.toUpperCase()}-001` }, update: {}, create: {
@@ -69,11 +71,12 @@ async function main() {
           operationKey: "testing-initial-stock", payloadHash: createHash("sha256").update("testing-initial-stock").digest("hex"),
           createdByUserId: actor.id, reason: "Synthetic testing inventory" } });
       }
+      } catch (error) { throw new SeedStageError("adding the fictional fixtures", error); }
     }, { timeout: 30000 });
     // Separate owner credential; no production users, hashes or MFA secrets.
     const password = process.env.TEST_OWNER_PASSWORD;
-    if (password) {
-      if (password.length < 16) throw new Error("Testing owner password is too short.");
+    if (password) try {
+      if (password.length < 16) throw new Error("TEST_OWNER_PASSWORD must be at least 16 characters.");
       const { createTrustedCredentialUserInTx } = await import("../src/lib/account-provisioning");
       await prisma.$transaction(async tx => {
         await tx.$queryRaw`SELECT pg_advisory_xact_lock(174831, 903)::text`;
@@ -81,10 +84,10 @@ async function main() {
           await createTrustedCredentialUserInTx(tx, { email: "owner@example.test", name: "Testing Owner", role: "OWNER", password, emailVerified: true });
         }
       }, { timeout: 30000 });
-    }
+    } catch (error) { throw new SeedStageError("creating the test owner login", error); }
     console.log("Synthetic testing fixtures ready. Existing test history was preserved.");
     if (!password) console.log("Test owner login awaits TEST_OWNER_PASSWORD; no business identity was copied.");
   } finally { await prisma.$disconnect(); }
 }
 
-main().catch(() => { console.error("Testing seed failed; inspect configuration without printing credentials."); process.exitCode = 1; });
+main().catch(error => { console.error("Testing seed failed: " + describeSeedFailure(error)); process.exitCode = 1; });

@@ -3,5 +3,7 @@
   "requiredChecks": [
     "release-policy",
     "ci"
-  ]
+  ],
+  "candidateBranch": "testing",
+  "requiredDeploymentStatus": "Vercel – appliance-desk-testing"
 }

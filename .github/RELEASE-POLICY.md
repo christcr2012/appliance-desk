@@ -49,11 +49,16 @@ The `appliance-desk-testing` project tracks the `testing` Git branch, uses the e
 This Vercel project's Production target is still a **testing application** (`APP_ENV=testing`).
 The public `appliance-desk` project continues to track `live`; its credentials and daily policy are unchanged.
 
-After successful same-repository main-push CI, `testing-deploy.yml` independently verifies both exact-head
-`ci` and `release-policy` checks and main ancestry. It fast-forwards `testing` and creates an atomic dated
-`testing-promotion/<Denver date>` marker, at most once per Denver day. Stale candidates, forks, PR runs,
-failed/missing checks and divergent history are refused. It cannot write `live`, use repository secrets,
-or deploy a PR. Automatic per-PR previews remain disabled on both Vercel projects.
+**Order (owner direction 2026-10-24): main → testing → live.** At 18:05 Denver `testing-deploy.yml` picks the
+newest first-parent `main` commit with green exact-head `ci` and `release-policy` checks, fast-forwards `testing`
+and creates an atomic dated `testing-promotion/<Denver date>` marker, at most once per scheduled Denver day (an
+owner-dispatched run gets its own marker). The nightly live promotion then uses `testing`, not `main`, as its
+candidate (`policy.json` `candidateBranch`) and also requires the newest `Vercel – appliance-desk-testing`
+commit status from `vercel[bot]` on that exact commit to be `success` (`requiredDeploymentStatus`); a failed
+testing build stops the release, a pending one is waited for. Docs/tests-only differences skip that wait because
+Vercel's ignore step never builds them. Forks, PR runs, failed/missing checks and divergent history are refused.
+Neither job can use repository secrets or deploy a PR. Automatic per-PR previews remain disabled on both Vercel
+projects, and each project builds only its own branch (`scripts/vercel-ignore-build.mjs`).
 
 This records source promotion only; verify Vercel READY, the canonical testing domain, seed read-back and
 actual app behavior separately. Documentation-only builds may be skipped. An additional same-day build,

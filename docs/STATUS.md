@@ -1,3 +1,18 @@
+## October 24 — Testing setup audited and fixed: production now only gets what passed on testing
+
+Checked read-only against GitHub, Vercel (both projects), Neon and Stripe Test mode. Correct: separate testing
+project on branch `testing`, its own database role on the preview database, banner, no-index, email/text/cron
+refusals, private file store, Stripe testing webhook on and business-site test webhook off, event list matches the
+code. Found and fixed in this PR: (1) the business site was released from `main` every midnight whether or not the
+testing app had it — it now ships only the `testing` version, and only after Vercel reports that exact commit built
+on the testing app; (2) testing advanced only on the first merge of a day and could leave later work stranded — it
+now promotes the newest fully checked `main` every evening at 18:05 Denver; (3) each Vercel project now builds only
+its own branch; (4) the testing build failed after Chris's settings at the "create test owner" step and the log hid
+why — it now names the step and reason without secrets; (5) agents could never sign in to the testing app (Sensitive
+password + required authenticator) — the testing app now starts with two-step not required and the checklist asks for
+a readable password. Not changeable by agents: GitHub protection for `live`/`testing` (checklist row). Still open:
+the M-3 $1 checkout check (agent-run after the password row) and the separate capacity-benchmark finding.
+
 ## October 24 — Dedicated synthetic testing environment (PR #566)
 
 Owner authorized the testing app and explicitly directed resetting/seeding the existing preview database;

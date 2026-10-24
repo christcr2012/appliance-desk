@@ -33,3 +33,14 @@ test('main stops building once it is no longer the production branch', () => {
   assert.equal(decide({ branch: 'main', previousSha: prev, changed: ['src/x.ts'], environment: 'production' }).build, true);
   assert.equal(decide({ branch: 'live', previousSha: prev, changed: ['src/x.ts'], environment: 'production' }).build, true);
 });
+
+test('each Vercel project builds only its own branch', () => {
+  const site = ['src/x.ts'];
+  assert.equal(decide({ branch: 'testing', previousSha: prev, changed: site, environment: 'production', appEnv: 'testing' }).build, true);
+  assert.equal(decide({ branch: 'live', previousSha: prev, changed: site, environment: 'preview', appEnv: 'testing' }).build, false);
+  assert.equal(decide({ branch: 'main', previousSha: prev, changed: site, environment: 'preview', appEnv: 'testing' }).build, false);
+  assert.equal(decide({ branch: 'testing', previousSha: prev, changed: site, environment: 'preview', appEnv: '' }).build, false);
+  assert.equal(decide({ branch: 'live', previousSha: prev, changed: site, environment: 'production', appEnv: '' }).build, true);
+  // Docs-only testing promotions still skip, like everywhere else.
+  assert.equal(decide({ branch: 'testing', previousSha: prev, changed: ['docs/a.md'], environment: 'production', appEnv: 'testing' }).build, false);
+});
