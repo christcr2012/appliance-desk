@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { providerStatus } from "./provider-status";
 import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
+import { parseApprovalThresholds } from "@/domains/approvals";
 
 /**
  * One read-only list of every on/off that affects customers or money (Batch O, O-6 / design D-O6).
@@ -31,11 +32,13 @@ export async function listSwitches(): Promise<SwitchRow[]> {
   const providers = providerStatus();
   const pick = (n: string) => providers.find((p) => p.name === n)?.state ?? "Unknown";
   const roles = twoFactorRolesFromSetting(s?.twoFactorRequiredRoles);
-  const [email, renew, twoFactor, signInCodes] = await Promise.all([
+  const approvalLimitCount = Object.keys(parseApprovalThresholds(s?.approvalThresholds)).length;
+  const [email, renew, twoFactor, signInCodes, approvalLimits] = await Promise.all([
     lastBy(["settings.customer_email_on", "settings.customer_email_off"]),
     lastBy(["settings.auto_renew_on", "settings.auto_renew_off"]),
     lastBy(["security.two_factor.policy"]),
     lastBy(["security.second_step_policy"]),
+    lastBy(["settings.approval_limits"]),
   ]);
   return [
     { id: "customer-email", name: "Email to customers", on: Boolean(s?.customerEmailEnabled), state: s?.customerEmailEnabled ? "On" : "Off", lastChange: email, changeAt: "/desk/settings?section=notifications" },
@@ -46,6 +49,7 @@ export async function listSwitches(): Promise<SwitchRow[]> {
     { id: "paused-automations", name: "Paused automations", on: paused > 0, state: paused === 0 ? "None paused" : `${paused} paused`, lastChange: null, changeAt: "/desk/automations" },
     { id: "payments", name: "Card payments (Stripe)", on: null, state: pick("Payments"), lastChange: null, changeAt: "/desk/settings?section=integrations" },
     { id: "two-factor", name: "Two-step sign-in required for", on: roles.length > 0, state: roles.length ? roles.join(", ") : "Nobody", lastChange: twoFactor, changeAt: "/desk/settings?section=security" },
+    { id: "approval-limits", name: "Owner approval for large money actions", on: approvalLimitCount > 0, state: approvalLimitCount === 0 ? "No limits set, so admins act without waiting for you" : `${approvalLimitCount} kind${approvalLimitCount === 1 ? "" : "s"} of money action wait for your yes above the limit`, lastChange: approvalLimits, changeAt: "/desk/settings/approvals" },
     { id: "books-start", name: "Books start date", on: Boolean(s?.booksStartDate), state: s?.booksStartDate ? s.booksStartDate.toISOString().slice(0, 10) : "Not set, so the books are not posting yet", lastChange: null, changeAt: "/desk/books" },
   ];
 }
