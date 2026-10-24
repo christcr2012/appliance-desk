@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { AccountError, completeEmailChange, getMyAccount, recordAccountEvent, updateMyProfile } from "@/domains/account";
+import { AccountError, completeEmailChange, finishPasswordChange, getMyAccount, noticeWarning, recordAccountEvent, updateMyProfile } from "@/domains/account";
 
 // ACC-1 on real Postgres: My account changes only the signed-in person's own row, records every change, and fails closed.
 const target = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -36,7 +36,7 @@ describe.skipIf(!enabled)("My account on real Postgres", () => {
   it("saves name and phone to the caller's own row only, resets confirmation, and records it", async () => {
     const before = await prisma.user.findUniqueOrThrow({ where: { id: ids.staff }, select: { name: true, phone: true } });
     const saved = await updateMyProfile(ids.admin, { name: "  New   Admin ", phone: "970-555-0123" });
-    expect(saved).toEqual({ changed: true, nameChanged: true, phoneChanged: true });
+    expect(saved).toMatchObject({ changed: true, nameChanged: true, phoneChanged: true });
     const row = await prisma.user.findUniqueOrThrow({ where: { id: ids.admin } });
     expect(row.name).toBe("New Admin");
     expect(row.phone).toBe("+19705550123");
@@ -74,6 +74,28 @@ describe.skipIf(!enabled)("My account on real Postgres", () => {
     ]);
     const row = await prisma.user.findUniqueOrThrow({ where: { id: ids.staff } });
     expect([["Race One", "+19705550111"], ["Race Two", "+19705550222"]]).toContainEqual([row.name, row.phone]);
+  });
+
+  it("a notice email that was not confirmed sent is recorded and reported, and a failed device sign-out is never counted as 'no other devices'", async () => {
+    // The disposable test database never sends real email, so every notice here is "not sent".
+    expect(await noticeWarning(ids.admin, "password")).toMatch(/could not confirm/);
+    const noted = await prisma.auditLog.findMany({ where: { userId: ids.admin, action: "account.notice_not_sent" } });
+    expect(noted.map((row) => (row.newValue as { notice?: string } | null)?.notice)).toContain("password");
+
+    const failed = await finishPasswordChange(ids.admin, "token", true, async () => { throw new Error("database unavailable"); });
+    expect(failed).toMatchObject({ signedOut: 0, signOutFailed: true });
+    expect(failed.warning).toBeTruthy();
+    const worked = await finishPasswordChange(ids.admin, "token", true, async () => 3);
+    expect(worked).toMatchObject({ signedOut: 3, signOutFailed: false });
+    const skipped = await finishPasswordChange(ids.admin, "token", false, async () => { throw new Error("must not be called"); });
+    expect(skipped).toMatchObject({ signedOut: 0, signOutFailed: false });
+
+    const rows = await prisma.auditLog.findMany({ where: { userId: ids.admin, action: "account.password_changed" }, orderBy: { createdAt: "asc" } });
+    expect(rows.map((row) => row.newValue)).toEqual([
+      { signedOutOtherDevices: 0, otherDevicesSignOutFailed: true },
+      { signedOutOtherDevices: 3, otherDevicesSignOutFailed: false },
+      { signedOutOtherDevices: 0, otherDevicesSignOutFailed: false },
+    ]);
   });
 
   it("finishing an email change we started is recorded once; an unrelated verification is ignored", async () => {

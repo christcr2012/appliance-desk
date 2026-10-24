@@ -9,9 +9,10 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import {
   AccountError,
+  finishPasswordChange,
   maskEmail,
+  noticeWarning,
   recordAccountEvent,
-  sendAccountNotice,
   twoFactorRequiredFor,
   updateMyProfile,
 } from "@/domains/account";
@@ -21,10 +22,10 @@ import { revokeOtherSessions } from "@/domains/security/sessions";
 // records the change and tells them by email. Nothing here takes a user id from the browser.
 
 export type AccountActionResult =
-  | { status: "success"; message: string; backupCodes?: string[] }
+  | { status: "success"; message: string; backupCodes?: string[]; /** Something the person should know even though the change went through. */ warning?: string }
   | { status: "error"; message: string };
 
-const ok = (message: string, extra?: { backupCodes?: string[] }): AccountActionResult => ({ status: "success", message, ...extra });
+const ok = (message: string, extra?: { backupCodes?: string[]; warning?: string }): AccountActionResult => ({ status: "success", message, ...extra });
 const fail = (message: string): AccountActionResult => ({ status: "error", message });
 
 function plainError(error: unknown, fallback: string): string {
@@ -56,7 +57,7 @@ export async function saveProfileAction(input: { name: string; phone: string }):
     if (!result.changed) return ok("Nothing was different, so nothing changed.");
     return ok(result.phoneChanged && String(input.phone ?? "").trim() !== ""
       ? "Saved. Your phone number is saved as not confirmed yet."
-      : "Saved.");
+      : "Saved.", { warning: result.warning });
   } catch (error) {
     return fail(plainError(error, "Your details could not be saved."));
   }
@@ -81,20 +82,19 @@ export async function changePasswordAction(input: {
   } catch (error) {
     return fail(plainError(error, "Your password could not be changed."));
   }
-  let signedOut = 0;
-  if (input.signOutOthers) {
-    try {
-      signedOut = await revokeOtherSessions(session.user.id, session.session.token);
-    } catch {
-      signedOut = 0;
-    }
-  }
-  await recordAccountEvent(session.user.id, "account.password_changed", { signedOutOtherDevices: signedOut });
-  await sendAccountNotice(session.user.id, "password");
+  const followUp = await finishPasswordChange(session.user.id, session.session.token, input.signOutOthers, revokeOtherSessions);
   revalidatePath("/desk/account");
-  return ok(signedOut > 0
-    ? `Password changed. ${signedOut} other device${signedOut === 1 ? " was" : "s were"} signed out.`
-    : "Password changed.");
+  if (followUp.signOutFailed) {
+    return ok("Password changed.", {
+      warning: `Your other devices could NOT be signed out. Press "Sign out my other devices" below to try again.${followUp.warning ? ` ${followUp.warning}` : ""}`,
+    });
+  }
+  return ok(
+    followUp.signedOut > 0
+      ? `Password changed. ${followUp.signedOut} other device${followUp.signedOut === 1 ? " was" : "s were"} signed out.`
+      : "Password changed.",
+    { warning: followUp.warning },
+  );
 }
 
 export async function requestEmailChangeAction(input: { newEmail: string; currentPassword: string }): Promise<AccountActionResult> {
@@ -112,9 +112,9 @@ export async function requestEmailChangeAction(input: { newEmail: string; curren
     return fail(plainError(error, "The email change could not be started."));
   }
   await recordAccountEvent(session.user.id, "account.email_change_requested", { newEmail, oldEmail: session.user.email });
-  await sendAccountNotice(session.user.id, "email_requested", { extra: maskEmail(newEmail) });
+  const warning = await noticeWarning(session.user.id, "email_requested", { extra: maskEmail(newEmail) });
   // Same answer whether or not the address can be used, so nobody can probe which addresses already have accounts.
-  return ok(`If ${newEmail} can be used, a link was sent to it. Your sign-in email stays the same until you open that link.`);
+  return ok(`If ${newEmail} can be used, a link was sent to it. Your sign-in email stays the same until you open that link.`, { warning });
 }
 
 export async function makeBackupCodesAction(input: { currentPassword: string }): Promise<AccountActionResult> {
@@ -127,8 +127,8 @@ export async function makeBackupCodesAction(input: { currentPassword: string }):
       body: { password: String(input.currentPassword ?? "") },
     });
     await recordAccountEvent(session.user.id, "account.backup_codes_regenerated");
-    await sendAccountNotice(session.user.id, "backup_codes");
-    return ok("New backup codes are below. Each works once, and the old ones no longer work. They are only shown now.", { backupCodes: result.backupCodes });
+    const warning = await noticeWarning(session.user.id, "backup_codes");
+    return ok("New backup codes are below. Each works once, and the old ones no longer work. They are only shown now.", { backupCodes: result.backupCodes, warning });
   } catch (error) {
     return fail(plainError(error, "New backup codes could not be made."));
   }
@@ -147,7 +147,8 @@ export async function turnOffTwoStepAction(input: { currentPassword: string }): 
   // The library starts a fresh session we cannot hand to the browser, so end every session and sign in again.
   await prisma.session.deleteMany({ where: { userId: session.user.id } });
   await recordAccountEvent(session.user.id, "account.two_step_turned_off");
-  await sendAccountNotice(session.user.id, "two_step_off");
+  // The person is sent to sign in again, so a failed notice cannot be shown on this page; noticeWarning records it.
+  await noticeWarning(session.user.id, "two_step_off");
   redirect("/login");
 }
 

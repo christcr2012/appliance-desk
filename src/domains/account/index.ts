@@ -47,7 +47,7 @@ export async function getMyAccount(userId: string): Promise<MyAccount> {
   };
 }
 
-export type ProfileResult = { changed: boolean; nameChanged: boolean; phoneChanged: boolean };
+export type ProfileResult = { changed: boolean; nameChanged: boolean; phoneChanged: boolean; /** Set when the notice email could not be confirmed sent. */ warning?: string };
 
 /** Name and phone. A new phone number starts as "not confirmed yet" (the code check arrives with ACC-3). */
 export async function updateMyProfile(userId: string, input: { name: string; phone: string }): Promise<ProfileResult> {
@@ -76,8 +76,9 @@ export async function updateMyProfile(userId: string, input: { name: string; pho
     });
     return { changed: true, nameChanged, phoneChanged };
   });
-  if (result.changed) await sendAccountNotice(userId, "profile");
-  return result;
+  if (!result.changed) return result;
+  const warning = await noticeWarning(userId, "profile");
+  return warning ? { ...result, warning } : result;
 }
 
 export type AccountEvent =
@@ -85,7 +86,8 @@ export type AccountEvent =
   | "account.email_change_requested"
   | "account.email_changed"
   | "account.backup_codes_regenerated"
-  | "account.two_step_turned_off";
+  | "account.two_step_turned_off"
+  | "account.notice_not_sent";
 
 /** One audit row for a change made through the sign-in library. Never contains passwords, codes or links. */
 export async function recordAccountEvent(userId: string, action: AccountEvent, detail?: Record<string, string | number | boolean | null>) {
@@ -111,14 +113,16 @@ const NOTICE_TEXT: Record<AccountNoticeKind, { subject: string; line: (extra?: s
   two_step_off: { subject: "Two-step sign-in was turned off", line: () => "Two-step sign-in was turned off for your Appliance Desk account and you were signed out everywhere." },
 };
 
+export type NoticeOutcome = "SENT" | "NOT_ATTEMPTED" | "REJECTED" | "UNKNOWN" | "ERROR";
+
 /**
  * Short "this changed on your account" email so a takeover is noticed. Contains no sign-in link.
- * A failed send never undoes the change; it returns false so callers can note it.
+ * Returns what really happened; a failed send never undoes the change, but callers must not treat it as sent.
  */
-export async function sendAccountNotice(userId: string, kind: AccountNoticeKind, options?: { to?: string; extra?: string }): Promise<boolean> {
+export async function sendAccountNotice(userId: string, kind: AccountNoticeKind, options?: { to?: string; extra?: string }): Promise<NoticeOutcome> {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, role: true } });
-    if (!user) return false;
+    if (!user) return "ERROR";
     const copy = NOTICE_TEXT[kind];
     const help = user.role === "OWNER"
       ? "If this wasn't you, sign in and change your password right away, then follow the account recovery steps."
@@ -128,10 +132,51 @@ export async function sendAccountNotice(userId: string, kind: AccountNoticeKind,
       subject: copy.subject,
       text: [`Hello${user.name ? ` ${user.name}` : ""},`, copy.line(options?.extra), help].join("\n\n"),
     });
-    return result.sent;
+    return result.sent ? "SENT" : (result.outcome && result.outcome !== "SENT" ? result.outcome : "UNKNOWN");
   } catch {
-    return false;
+    return "ERROR";
   }
+}
+
+export const NOTICE_NOT_SENT_WARNING =
+  "We could not confirm that the notice email about this change was sent. The change itself went through.";
+
+/** Sends the notice; when it was not confirmed sent, records that in the activity record and returns a warning to show. */
+export async function noticeWarning(userId: string, kind: AccountNoticeKind, options?: { to?: string; extra?: string }): Promise<string | undefined> {
+  const outcome = await sendAccountNotice(userId, kind, options);
+  if (outcome === "SENT") return undefined;
+  try {
+    await recordAccountEvent(userId, "account.notice_not_sent", { notice: kind, outcome });
+  } catch {
+    // The warning below still reaches the person.
+  }
+  return NOTICE_NOT_SENT_WARNING;
+}
+
+export type PasswordFollowUp = { signedOut: number; signOutFailed: boolean; warning?: string };
+
+/**
+ * After the library accepted a new password: end the other sessions if asked, record it, send the notice.
+ * A failed sign-out is reported (never counted as "no other devices") so the person can retry.
+ */
+export async function finishPasswordChange(
+  userId: string,
+  currentToken: string,
+  signOutOthers: boolean,
+  revoke: (userId: string, currentToken: string) => Promise<number>,
+): Promise<PasswordFollowUp> {
+  let signedOut = 0;
+  let signOutFailed = false;
+  if (signOutOthers) {
+    try {
+      signedOut = await revoke(userId, currentToken);
+    } catch {
+      signOutFailed = true;
+    }
+  }
+  await recordAccountEvent(userId, "account.password_changed", { signedOutOtherDevices: signedOut, otherDevicesSignOutFailed: signOutFailed });
+  const warning = await noticeWarning(userId, "password");
+  return { signedOut, signOutFailed, ...(warning ? { warning } : {}) };
 }
 
 /**
@@ -158,7 +203,7 @@ export async function completeEmailChange(user: { id: string; email: string }): 
     if (later) return;
     const detail = request.newValue as { oldEmail?: string } | null;
     await recordAccountEvent(user.id, "account.email_changed", { newEmail: user.email, oldEmail: detail?.oldEmail ?? null });
-    if (detail?.oldEmail) await sendAccountNotice(user.id, "email_changed", { to: detail.oldEmail, extra: maskEmail(user.email) });
+    if (detail?.oldEmail) await noticeWarning(user.id, "email_changed", { to: detail.oldEmail, extra: maskEmail(user.email) });
   } catch {
     // The change itself already happened; a failed note must never break the sign-in flow.
   }

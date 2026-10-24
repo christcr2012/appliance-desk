@@ -19,10 +19,12 @@ type Device = { id: string; device: string; lastActiveAt: string; current: boole
 
 function Result({ result }: { result: AccountActionResult | null }) {
   if (!result) return null;
-  return result.status === "error" ? (
-    <p role="alert" className="mt-3 text-sm font-semibold text-danger">{result.message}</p>
-  ) : (
-    <p role="status" className="mt-3 text-sm text-success">{result.message}</p>
+  if (result.status === "error") return <p role="alert" className="mt-3 text-sm font-semibold text-danger">{result.message}</p>;
+  return (
+    <>
+      <p role="status" className="mt-3 text-sm text-success">{result.message}</p>
+      {result.warning && <p role="alert" className="mt-2 text-sm font-semibold text-danger">{result.warning}</p>}
+    </>
   );
 }
 

@@ -20,6 +20,7 @@ codes. Staff and admins have none of it either. Today only "forgot password" wor
   (turning it off ends every session and emails a notice).
 - Team members can no longer call change-password, change-email, turn-off-two-step or new-backup-codes straight from the browser
   (they would skip the audit row and the notice); customers can never change a sign-in email. Our own server code is not affected.
+- A notice email that is not confirmed sent, or a failed sign-out of other devices, is never shown as plain success: the page warns and the activity record notes it (`account.notice_not_sent`).
 - Additive migration `20261024040000_user_phone` (`User.phone`, `User.phoneConfirmedAt`).
 
 ## Build contract
