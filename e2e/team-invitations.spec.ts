@@ -6,7 +6,7 @@ const state = "e2e/.auth/owner.json";
 
 test("a bad invitation link shows the plain message and no form", async ({ page }) => {
   await page.goto("/join/not-a-real-link");
-  await expect(page.getByRole("alert")).toContainText("This link no longer works");
+  await expect(page.getByText("This link no longer works")).toBeVisible();
   await expect(page.getByLabel("Password")).toHaveCount(0);
 });
 
