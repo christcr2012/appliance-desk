@@ -1,3 +1,7 @@
+## October 24 — Switches page shows the approval limits (O-1 follow-up)
+
+In review (branch `ai/claude/o-1-approval-switch`). Settings → Switches now has a row "Owner approval for large money actions": it says whether any limit is set (and how many kinds of money action wait for your yes), who last changed the limits and when, and links to where you change them. It only reads; nothing new can be switched. Proved on throwaway Postgres: the row is in the list and the older rows still pass. Nothing for Chris to do.
+
 ## October 24 — Yearly "check your SUTS setup" reminder
 
 Merged (#557). Your To do list now reminds you each January, and a year after the last time you pressed "I checked this", to compare the filing account's setup with what SUTS shows. An account in use that was never confirmed also shows it. It links straight to that account's setup page; the Owner presses the button, an admin only sees the reminder. Tested: the due dates (January, twelve months, never confirmed, already checked this January). Nothing for Chris to do.
