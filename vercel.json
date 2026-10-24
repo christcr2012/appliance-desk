@@ -37,6 +37,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/cron/telecom-sync",
+      "schedule": "20 9 * * *"
+    },
+    {
       "path": "/api/cron/books-nightly",
       "schedule": "40 9 * * *"
     },
