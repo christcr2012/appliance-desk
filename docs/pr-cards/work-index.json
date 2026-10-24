@@ -3886,9 +3886,9 @@
         "tests/acc1-my-account-integration.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "risk": "auth",
-      "plannedCard": "docs/pr-cards/ACC-1.md"
+      "card": "docs/pr-cards/ACC-1.md"
     },
     {
       "id": "ACC-2",

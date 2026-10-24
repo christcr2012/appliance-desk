@@ -1,3 +1,7 @@
+## October 24 — My account for everyone on the desk (Batch ACC, step ACC-1, in review)
+
+In progress: ACC-1, branch `ai/claude/acc-1-my-account`. A new page, **More → My account**, lets the owner, admins and staff change their own name and phone, password and sign-in email, see and sign out their devices, make new backup codes and (where their role allows) turn two-step sign-in off. Every change is recorded and the person gets a short email so a change they did not make is noticed. Changing the sign-in email sends a link to the new address and nothing changes until it is used. These changes can no longer be made by calling the sign-in service directly, so none can skip the record or the email. Checked so far with quick tests only (phone and name rules, which sign-in calls are guarded, menu lists). The tests on real Postgres and in the browser are written but have not run yet; GitHub runs them. Not covered: text/email sign-in codes and phone confirmation (ACC-3), invitations (ACC-2). Next: ACC-2.
+
 ## October 23 — Accounts and sign-in planned (Batch ACC, design only)
 
 Docs only, nothing built. Chris asked for invitation-based team accounts with roles, password reset and recovery, an
