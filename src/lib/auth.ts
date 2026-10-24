@@ -27,6 +27,18 @@ export const auth = betterAuth({
   plugins: [
     twoFactor({
       issuer: "Robinson Appliance Rentals",
+      // ACC-3: 6-digit codes that work 5 minutes, stored scrambled, 5 tries. WHERE a code goes is decided by the person's
+      // stored choice (src/domains/security/second-step.ts), never by anything the browser sends.
+      otpOptions: {
+        digits: 6,
+        period: 5,
+        storeOTP: "hashed",
+        allowedAttempts: 5,
+        sendOTP: async ({ user, otp }) => {
+          const { deliverSignInCode } = await import("@/domains/security/second-step");
+          await deliverSignInCode(user, otp);
+        },
+      },
       backupCodeOptions: {
         amount: 10,
         storeBackupCodes: "encrypted",
@@ -136,6 +148,8 @@ export const auth = betterAuth({
     max: 10,
     // Shared across every running copy of the site (memory would give each copy its own counter).
     storage: "database",
+    // ACC-3: asking for sign-in codes sends an email or text, so it is limited more tightly than the rest.
+    customRules: { "/two-factor/send-otp": { window: 60, max: 3 } },
   },
   user: {
     // ACC-1: the person asks from My account; the link goes to the NEW address and nothing changes until it is used.

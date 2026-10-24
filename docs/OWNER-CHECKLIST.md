@@ -77,9 +77,10 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   purchase), finish carrier/campaign registration, set the Twilio keys in Vercel, register `/api/webhooks/twilio`, set
   the real forwarding phone and hours. Voicemail/recording stay OFF until you approve wording and retention (IN-52).
   Worked: a test text from the app reaches your own phone; STOP is respected. **When registering the campaign, include
-  "one-time sign-in / security codes" as a use case** so sign-in texts are allowed. After ACC-3 is built and texting is
-  live: Settings → Switches → turn on "Send sign-in codes by text", then Desk → My account → Two-step → choose text codes
-  and confirm your phone. Worked: your next sign-in texts you a code.
+  "one-time sign-in / security codes" as a use case** so sign-in texts are allowed. ACC-3 is built (text codes
+  are off). Once texting is live: Settings → Security → tick "Send sign-in codes by text" and save (the Switches page then
+  shows it), save your mobile phone on My account → check it with the text code → My account → "Second step" → switch
+  to text codes. Keep your backup codes. Worked: your next sign-in texts you a code.
 - [ ] **Real business details** (name, phone, email, address, hours, service area) in Desk → Settings; choose a lawful public
   mailing address that is not your home (IN-01); confirm `support@` reply-to works end to end (IN-02);
   `BETTER_AUTH_URL` set to the real domain and emailed links checked.

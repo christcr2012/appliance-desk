@@ -35,6 +35,12 @@ test.describe("two-step login", () => {
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Log in" }).click();
     await page.waitForURL(/\/login\/two-factor$/);
+    // ACC-3: asking for a text or email code is answered the same way whichever method the account uses, and never
+    // blocks the authenticator app (this account's choice is the app, so nothing is sent).
+    await page.getByRole("button", { name: "Text or email code" }).click();
+    await page.getByRole("button", { name: "Send me a code" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "If your account gets codes by text or email" })).toBeVisible();
+    await page.getByRole("button", { name: "Authenticator", exact: true }).click();
     await page.getByLabel("6-digit authenticator code").fill(currentTotpCode(secret));
     await page.getByRole("button", { name: "Continue" }).click();
     await page.waitForURL(/\/desk\/today$/);

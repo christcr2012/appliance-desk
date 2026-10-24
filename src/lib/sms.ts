@@ -19,9 +19,14 @@ export async function sendSms(input: {
   to: string;
   body: string;
   idempotencyKey?: string;
+  /**
+   * "security" is for one-time sign-in and phone-check codes. Those are gated by their own owner switch
+   * ("Send sign-in codes by text"), which the caller must have checked; the customer-texting switch does not apply.
+   */
+  purpose?: "security";
 }): Promise<SmsResult> {
   if (process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production" ||
-      !await isLegacySmsDispatchEnabled()) {
+      (input.purpose !== "security" && !await isLegacySmsDispatchEnabled())) {
     return { sent: false, outcome: "NOT_ATTEMPTED" };
   }
 

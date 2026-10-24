@@ -1,3 +1,7 @@
+## October 24 — Sign-in code methods (ACC-3, additive)
+
+`User.secondStepMethod` (TOTP, SMS or EMAIL; empty until chosen; existing two-step users set to TOTP). `BusinessSettings.secondStepMethodsByLevel` (JSON: allowed methods per access level; authenticator always allowed) and `securitySmsEnabled` (false: the owner's separate switch for text sign-in codes). Phone-check and method-switch codes live scrambled in the existing `Verification` table for 5 minutes. Migration `20261024060000_second_step_methods`.
+
 ## October 24 — Team invitations (ACC-2, additive)
 
 `TeamInvitation`: email, name, optional phone, access level (STAFF or ADMIN), admin permission limits, a SHA-256 hash of the link code (never the code), expiry, status (INVITED, ACCEPTED, CANCELLED), who invited, and who accepted. It is not a login; the User is created when the link is used. `BusinessSettings.invitationLinkDays` (7) and `adminsMayInviteStaff` (false). Not in backups (short-lived; re-invite after a restore). Migration `20261024050000_team_invitation`.

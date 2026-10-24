@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireRoleForTwoFactorSetup } from "@/lib/session";
 import { PageHeader, Card } from "@/components/ui";
+import { getSecondStepView } from "@/domains/security/second-step";
 import { TwoFactorSetupForm } from "./two-factor-setup-form";
 
 export const metadata = {
@@ -15,13 +16,14 @@ export default async function TwoFactorSetupPage() {
     select: { twoFactorEnabled: true },
   });
 
+  const view = await getSecondStepView(session.user.id);
   return (
     <div className="max-w-2xl">
       <PageHeader
         title="Set up two-step login"
-        description="Use an authenticator app so a stolen password alone cannot open the business desk."
+        description="Add a second step after your password so a stolen password alone cannot open the business desk."
       />
-      <Card title="Authenticator app">
+      <Card title="Second step">
         {user?.twoFactorEnabled ? (
           <div className="space-y-3">
             <p className="text-sm text-success">Two-step login is already set up for this account.</p>
@@ -30,7 +32,7 @@ export default async function TwoFactorSetupPage() {
             </p>
           </div>
         ) : (
-          <TwoFactorSetupForm />
+          <TwoFactorSetupForm info={{ allowed: view.allowed, textCodesReady: view.textCodesReady, phone: view.phone, phoneConfirmed: view.phoneConfirmed }} />
         )}
       </Card>
     </div>

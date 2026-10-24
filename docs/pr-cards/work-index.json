@@ -3921,7 +3921,7 @@
     },
     {
       "id": "ACC-3",
-      "title": "Sign-in codes by email or text, per-level method policy and trusted devices",
+      "title": "Sign-in codes by email or text and a per-level method policy (trusted devices deferred)",
       "batch": "ACC",
       "dependencies": [
         "ACC-2"
@@ -3940,11 +3940,13 @@
         "src/app/login/two-factor/two-factor-login-form.tsx"
       ],
       "tests": [
-        "tests/acc3-sign-in-codes-integration.test.ts"
+        "tests/acc3-second-step-rules.test.ts",
+        "tests/acc3-second-step-integration.test.ts",
+        "e2e/two-factor.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "risk": "auth",
-      "plannedCard": "docs/pr-cards/ACC-3.md"
+      "card": "docs/pr-cards/ACC-3.md"
     },
     {
       "id": "ACC-4",

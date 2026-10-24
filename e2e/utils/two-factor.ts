@@ -43,6 +43,8 @@ export async function completeTwoFactorSetup(
   // fully settled. Loading the setup URL explicitly makes both global setup
   // and the focused 2FA spec deterministic.
   await page.goto("/desk/security/setup");
+  // ACC-3: the person first chooses how they get their second step.
+  await page.getByRole("button", { name: "Authenticator app" }).click();
   await page.getByLabel("Current password").waitFor();
   await page.getByLabel("Current password").fill(password);
   await page.getByRole("button", { name: "Start setup" }).click();
