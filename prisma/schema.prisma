@@ -47,6 +47,9 @@ model User {
   role             Role    @default(CUSTOMER)
   image            String?
   twoFactorEnabled Boolean @default(false)
+  // ACC-1: the person's own phone number (kept for sign-in codes later) and when a code sent to it was confirmed.
+  phone            String?
+  phoneConfirmedAt DateTime?
 
   // Better Auth's own tables (sessions, accounts, verification tokens / TOTP)
   sessions  Session[]
