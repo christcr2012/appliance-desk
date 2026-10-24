@@ -11,7 +11,7 @@ vi.mock("@/lib/sms", () => ({ sendSms: sendSmsMock }));
 
 import { prisma } from "@/lib/prisma";
 import {
-  SecondStepError, chooseSecondStepMethod, confirmMethodSwitch, deliverSignInCode, getMethodSettings, getSecondStepView,
+  SecondStepError, chooseSecondStepMethod, confirmMethodSwitch, confirmPhone, deliverSignInCode, getMethodSettings, getSecondStepView,
   setMethodSettings, startMethodSwitch, startPhoneConfirmation,
 } from "@/domains/security/second-step";
 import { RECOMMENDED_METHOD_POLICY } from "@/domains/security/second-step-rules";
@@ -84,6 +84,36 @@ describe.skipIf(!enabled)("Sign-in code methods on real Postgres", () => {
   it("a phone cannot be checked while text codes are switched off", async () => {
     await expect(startPhoneConfirmation(ids.staff)).rejects.toThrow("not switched on");
     expect(sendSmsMock).not.toHaveBeenCalled();
+  });
+
+  it("a phone-check code only confirms the number it was sent to", async () => {
+    vi.stubEnv("VERCEL", "1"); vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("TWILIO_ACCOUNT_SID", "x"); vi.stubEnv("TWILIO_AUTH_TOKEN", "x"); vi.stubEnv("TWILIO_PHONE_NUMBER", "+10000000000");
+    try {
+      await setMethodSettings(ids.owner, { policy: RECOMMENDED_METHOD_POLICY, securitySmsEnabled: true });
+      sendSmsMock.mockResolvedValue({ sent: true, outcome: "SENT" } as never);
+      await prisma.user.update({ where: { id: ids.totp }, data: { phone: "+19705550111", phoneConfirmedAt: null, twoFactorEnabled: false, secondStepMethod: null } });
+      await startPhoneConfirmation(ids.totp);
+      const calls = sendSmsMock.mock.calls as unknown as { body: string }[][];
+      const code = /is (\d{6})\./.exec(calls[calls.length - 1]![0]!.body)![1]!;
+      await prisma.user.update({ where: { id: ids.totp }, data: { phone: "+19705550222" } }); // number changed after the code was sent
+      await expect(confirmPhone(ids.totp, code)).rejects.toThrow(SecondStepError);
+      expect((await prisma.user.findUniqueOrThrow({ where: { id: ids.totp } })).phoneConfirmedAt).toBeNull();
+      await expect(chooseSecondStepMethod(ids.totp, "SMS")).rejects.toThrow("Check your phone");
+      // The right number, with a code sent to it, confirms and lets text be chosen.
+      await resetCooldown(ids.totp);
+      await startPhoneConfirmation(ids.totp);
+      const calls2 = sendSmsMock.mock.calls as unknown as { body: string }[][];
+      const code2 = /is (\d{6})\./.exec(calls2[calls2.length - 1]![0]!.body)![1]!;
+      await confirmPhone(ids.totp, code2);
+      await expect(chooseSecondStepMethod(ids.totp, "SMS")).resolves.toBe("SMS");
+    } finally {
+      vi.unstubAllEnvs();
+      sendSmsMock.mockReset();
+      sendSmsMock.mockResolvedValue({ sent: false, outcome: "NOT_ATTEMPTED" } as never);
+      await prisma.user.update({ where: { id: ids.totp }, data: { phone: null, phoneConfirmedAt: null, secondStepMethod: null } });
+      await setMethodSettings(ids.owner, { policy: RECOMMENDED_METHOD_POLICY, securitySmsEnabled: false });
+    }
   });
 
   it("switching method needs a working code: wrong tries are counted, a good code works once, a resend waits a minute", async () => {

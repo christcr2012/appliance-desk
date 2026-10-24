@@ -165,11 +165,18 @@ export async function getSecondStepView(userId: string): Promise<SecondStepView>
 }
 
 /** Text a code to the saved phone so we know it is theirs. Needs text codes to be switched on. */
+/** A phone-check code is tied to the exact number it was sent to, so changing the saved number cancels it. */
+function phonePurpose(phone: string) {
+  return `phone-${createHash("sha256").update(phone).digest("hex").slice(0, 16)}`;
+}
+
 export async function startPhoneConfirmation(userId: string): Promise<DeliveryOutcome> {
   const user = await activeMember(userId);
   if (!user.phone) throw new SecondStepError("Save your mobile phone number on My account first.");
+  const { policy } = await getMethodSettings();
+  if (!allowedMethodsFor(user.role, policy).includes("SMS")) throw new SecondStepError("Text codes are not allowed for your access level.");
   if (!(await textCodesReady())) throw new SecondStepError("Text codes are not switched on yet, so a phone cannot be checked right now.");
-  const outcome = await issueCode(userId, "phone", (code) => sendCodeBy("SMS", user, code, "phone check"));
+  const outcome = await issueCode(userId, phonePurpose(user.phone), (code) => sendCodeBy("SMS", user, code, "phone check"));
   await record(userId, "security.phone_code", { outcome });
   return outcome;
 }
@@ -177,8 +184,10 @@ export async function startPhoneConfirmation(userId: string): Promise<DeliveryOu
 export async function confirmPhone(userId: string, code: string): Promise<void> {
   const user = await activeMember(userId);
   if (!user.phone) throw new SecondStepError("Save your mobile phone number on My account first.");
-  await checkCode(userId, "phone", code);
-  await prisma.user.update({ where: { id: userId, phone: user.phone }, data: { phoneConfirmedAt: new Date() } });
+  await checkCode(userId, phonePurpose(user.phone), code);
+  // Only the number the code was sent to can be confirmed: if it changed meanwhile, nothing is updated.
+  const done = await prisma.user.updateMany({ where: { id: userId, phone: user.phone, archivedAt: null }, data: { phoneConfirmedAt: new Date() } });
+  if (done.count !== 1) throw new SecondStepError("Your phone number changed. Ask for a new code.");
   await record(userId, "security.phone_confirmed", {});
 }
 
@@ -188,7 +197,15 @@ export async function chooseSecondStepMethod(userId: string, method: string): Pr
   const user = await activeMember(userId);
   if (user.twoFactorEnabled) throw new SecondStepError("Two-step sign-in is already on. Use \"Switch method\" on My account.");
   await assertMethodUsable(user, method);
-  await prisma.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
+  // Recheck under a lock: enrollment finishing or the account being removed between the read above and this write must win.
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    const fresh = await tx.user.findUnique({ where: { id: userId }, select: { role: true, archivedAt: true, twoFactorEnabled: true, phone: true, phoneConfirmedAt: true } });
+    if (!fresh || fresh.archivedAt || (fresh.role !== "OWNER" && fresh.role !== "ADMIN" && fresh.role !== "STAFF")) throw new SecondStepError("This account no longer has access to make that change.");
+    if (fresh.twoFactorEnabled) throw new SecondStepError("Two-step sign-in is already on. Use \"Switch method\" on My account.");
+    if (method === "SMS" && (!fresh.phone || !fresh.phoneConfirmedAt)) throw new SecondStepError("Check your phone number first.");
+    await tx.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
+  });
   await record(userId, "security.second_step_choice", { method });
   return method;
 }
@@ -218,6 +235,11 @@ export async function confirmMethodSwitch(userId: string, method: string, code: 
   const user = await activeMember(userId);
   await assertMethodUsable(user, method);
   await checkCode(userId, `switch-${method}`, code);
-  await prisma.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+    const fresh = await tx.user.findUnique({ where: { id: userId }, select: { role: true, archivedAt: true, twoFactorEnabled: true } });
+    if (!fresh || fresh.archivedAt || (fresh.role !== "OWNER" && fresh.role !== "ADMIN" && fresh.role !== "STAFF") || !fresh.twoFactorEnabled) throw new SecondStepError("This account no longer has access to make that change.");
+    await tx.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
+  });
   await record(userId, "security.second_step_switch", { from: user.secondStepMethod, to: method });
 }

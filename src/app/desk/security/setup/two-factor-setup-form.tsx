@@ -71,6 +71,8 @@ export function TwoFactorSetupForm({ info }: { info: MethodInfo }) {
 
   async function chooseMethod(next: SecondStepMethod) {
     setError(null);
+    // Text codes: the phone is checked first, and the choice is saved only once it has been (see checkPhone).
+    if (next === "SMS" && !phoneChecked) { setMethod(next); setChosen(true); return; }
     setBusy(true);
     const result = await chooseMethodAction(next);
     setBusy(false);
@@ -93,9 +95,12 @@ export function TwoFactorSetupForm({ info }: { info: MethodInfo }) {
     setError(null);
     setBusy(true);
     const result = await confirmPhoneAction(phoneCode);
+    if (result.status === "error") { setBusy(false); setError(result.message); return; }
+    const saved = await chooseMethodAction("SMS");
     setBusy(false);
-    if (result.status === "error") setError(result.message);
-    else { setPhoneChecked(true); setNote(null); }
+    if (saved.status === "error") { setError(saved.message); return; }
+    setPhoneChecked(true);
+    setNote(null);
   }
 
   async function verify(event: React.FormEvent) {
