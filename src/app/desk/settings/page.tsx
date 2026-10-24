@@ -46,7 +46,9 @@ import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
 import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
-import { updateTwoFactorRequiredRolesAction } from "./actions";
+import { updateSecondStepSettingsAction, updateTwoFactorRequiredRolesAction } from "./actions";
+import { getMethodSettings, twilioKeysPresent } from "@/domains/security/second-step";
+import { EMAIL_WEAKER_WARNING, METHOD_LABEL } from "@/domains/security/second-step-rules";
 import { listOwnSessions } from "@/domains/security/sessions";
 import { SessionControls } from "./session-controls";
 export const metadata = {
@@ -253,6 +255,7 @@ export default async function DeskSettingsPage({
     });
     const canChange = session.user.role === "OWNER";
     const ownSessions = await listOwnSessions(session.user.id, session.session.token);
+    const methodSettings = await getMethodSettings();
     content = (
       <Card
         title="Security"
@@ -313,6 +316,43 @@ export default async function DeskSettingsPage({
             <p className="text-sm text-ink-soft">Only the Owner can change which roles are required.</p>
           )}
           <p className="text-xs text-ink-soft">Customer accounts can never be required by this setting.</p>
+        </form>
+        <form action={updateSecondStepSettingsAction} className="mt-8 space-y-4 border-t border-line pt-6">
+          <fieldset disabled={!canChange} className="space-y-4">
+            <legend className="font-medium text-ink">How each access level may get its second step</legend>
+            <p className="text-sm text-ink-soft">
+              The authenticator app is always allowed. Starting value: owner and admins may use the authenticator or text codes; staff may also use email codes.
+              Changing this never signs anyone out: people already using a method keep it and are asked to switch.
+            </p>
+            {(["OWNER", "ADMIN", "STAFF"] as const).map((level) => (
+              <div key={level} className="space-y-1">
+                <p className="text-sm font-medium text-ink">{level === "OWNER" ? "Owner" : level === "ADMIN" ? "Admins" : "Staff"}</p>
+                <label className="flex items-center gap-2 text-sm text-ink-soft"><input type="checkbox" checked disabled className="h-4 w-4" /> {METHOD_LABEL.TOTP} (always)</label>
+                {(["SMS", "EMAIL"] as const).map((m) => (
+                  <label key={m} className="flex items-center gap-2 text-sm text-ink">
+                    <input type="checkbox" name={`method-${level}`} value={m} defaultChecked={methodSettings.policy[level].includes(m)} className="h-4 w-4" />
+                    {METHOD_LABEL[m]}
+                  </label>
+                ))}
+              </div>
+            ))}
+            <p className="text-xs text-ink-soft">{EMAIL_WEAKER_WARNING}</p>
+            <label className="flex items-start gap-2 text-sm text-ink">
+              <input type="checkbox" name="securitySmsEnabled" value="1" defaultChecked={methodSettings.securitySmsEnabled} className="mt-1 h-4 w-4" />
+              <span>
+                Send sign-in codes by text
+                <span className="block text-xs text-ink-soft">
+                  Separate from customer texting. Starting value off. Text codes only go out on the live site, and only when your phone-provider keys are in place
+                  ({twilioKeysPresent() ? "keys are in place" : "keys are not in place yet"}).
+                </span>
+              </span>
+            </label>
+          </fieldset>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save sign-in code rules</button>
+            <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
+          </div>
+          {!canChange && <p className="text-sm text-ink-soft">Only the Owner can change these rules.</p>}
         </form>
         <SessionControls
           sessions={ownSessions.map((row) => ({

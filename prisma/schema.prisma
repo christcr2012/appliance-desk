@@ -50,6 +50,8 @@ model User {
   // ACC-1: the person's own phone number (kept for sign-in codes later) and when a code sent to it was confirmed.
   phone            String?
   phoneConfirmedAt DateTime?
+  // ACC-3: how this person gets their second step: TOTP (authenticator app), SMS (text) or EMAIL. Empty until they choose.
+  secondStepMethod String?
 
   // Better Auth's own tables (sessions, accounts, verification tokens / TOTP)
   sessions  Session[]
@@ -3168,6 +3170,9 @@ model BusinessSettings {
   outOfServiceEscalationDays Int    @default(3)
 
   // ACC-2: how many days a team invitation link works (1-30), and whether admins may invite staff (never admins).
+  // ACC-3: which sign-in code methods each access level may choose, and the separate owner switch for text codes.
+  secondStepMethodsByLevel Json    @default("{\"OWNER\":[\"TOTP\",\"SMS\"],\"ADMIN\":[\"TOTP\",\"SMS\"],\"STAFF\":[\"TOTP\",\"SMS\",\"EMAIL\"]}")
+  securitySmsEnabled       Boolean @default(false)
   invitationLinkDays  Int     @default(7)
   adminsMayInviteStaff Boolean @default(false)
 

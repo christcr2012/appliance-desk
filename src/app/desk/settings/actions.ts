@@ -491,6 +491,25 @@ export async function updateTwoFactorRequiredRolesAction(formData: FormData): Pr
 }
 
 
+/**
+ * Owner-only (ACC-3): which sign-in code methods each access level may choose, and the separate switch for text codes.
+ * Never locks anyone out: the authenticator app is always allowed and people already on a method keep it.
+ */
+export async function updateSecondStepSettingsAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const { setMethodSettings } = await import("@/domains/security/second-step");
+  const { RECOMMENDED_METHOD_POLICY } = await import("@/domains/security/second-step-rules");
+  const restore = formData.get("restoreRecommended") === "1";
+  const pick = (level: "OWNER" | "ADMIN" | "STAFF") =>
+    restore ? RECOMMENDED_METHOD_POLICY[level] : formData.getAll(`method-${level}`).filter((v): v is string => typeof v === "string");
+  await setMethodSettings(session.user.id, {
+    policy: { OWNER: pick("OWNER"), ADMIN: pick("ADMIN"), STAFF: pick("STAFF") },
+    securitySmsEnabled: restore ? false : formData.get("securitySmsEnabled") === "1",
+  });
+  revalidatePath("/desk/settings");
+  revalidatePath("/desk/settings/switches");
+}
+
 /** Keeps the caller's current session and revokes every other active/stale session row. */
 export async function signOutOtherSessionsAction(): Promise<
   | { status: "success"; revokedCount: number }

@@ -31,14 +31,16 @@ export async function listSwitches(): Promise<SwitchRow[]> {
   const providers = providerStatus();
   const pick = (n: string) => providers.find((p) => p.name === n)?.state ?? "Unknown";
   const roles = twoFactorRolesFromSetting(s?.twoFactorRequiredRoles);
-  const [email, renew, twoFactor] = await Promise.all([
+  const [email, renew, twoFactor, signInCodes] = await Promise.all([
     lastBy(["settings.customer_email_on", "settings.customer_email_off"]),
     lastBy(["settings.auto_renew_on", "settings.auto_renew_off"]),
     lastBy(["security.two_factor.policy"]),
+    lastBy(["security.second_step_policy"]),
   ]);
   return [
     { id: "customer-email", name: "Email to customers", on: Boolean(s?.customerEmailEnabled), state: s?.customerEmailEnabled ? "On" : "Off", lastChange: email, changeAt: "/desk/settings?section=notifications" },
     { id: "email-provider", name: "Email service", on: null, state: pick("Email"), lastChange: null, changeAt: "/desk/settings?section=integrations" },
+    { id: "sign-in-code-text", name: "Sign-in codes by text", on: Boolean(s?.securitySmsEnabled), state: s?.securitySmsEnabled ? "Switched on" : "Switched off", lastChange: signInCodes, changeAt: "/desk/settings?section=security" },
     { id: "sms", name: "Text messages (SMS)", on: Boolean(s?.customerSmsEnabled), state: `${s?.customerSmsEnabled ? "Switched on" : "Switched off"} (${pick("SMS")})`, lastChange: null, changeAt: "/desk/settings/telecom" },
     { id: "auto-renew", name: "Automatic renewals", on: Boolean(s?.autoRenewEnabled), state: s?.autoRenewEnabled ? "On" : "Off", lastChange: renew, changeAt: "/desk/settings?section=terms" },
     { id: "paused-automations", name: "Paused automations", on: paused > 0, state: paused === 0 ? "None paused" : `${paused} paused`, lastChange: null, changeAt: "/desk/automations" },
