@@ -1,3 +1,14 @@
+## October 23 — Accounts and sign-in design (Batch ACC, Chris's request)
+
+Team accounts are created by **invitation**: the owner enters the person's details, access level and job role; the app
+emails a single-use link that lasts 7 days (owner setting) and the account is created only when the person uses it.
+Invitations no longer reuse the 1-hour forgot-password link, which stays short on purpose. Only the owner creates or
+promotes admins; there is always one active owner. Every desk user gets a "My account" page (password, email with
+confirmation, name, phone, devices, two-step). Two-step adds **email and text codes** next to the authenticator app,
+through Better Auth's built-in one-time-code mode; text codes have their own switch, separate from customer texting,
+which only Chris turns on. Recommended starting policy: owner/admins use text or app, not email (IN-85). Job roles are
+owner-editable bundles that can only narrow an access level. Full design: `docs/designs/ACCOUNTS-AND-SIGN-IN.md`.
+
 ## October 23 — Bills changed after posting: difference entries (engineering default)
 
 The first journal entry for a bill is never edited. When the bill's amount due no longer matches what the books recorded, the next books run posts one `INVOICE_ADJUSTED_n` entry holding only the difference per ledger account (dated when the bill last changed), then stops. A void reverses the sum of what is actually booked (first entry plus differences), so it can no longer reverse a changed bill incorrectly. Bills that were already voided or fully matched are unaffected. Only the total amount due is compared, so a pure re-split of tax between accounts at the same total is not detected (rare; logged in OPEN-FINDINGS).

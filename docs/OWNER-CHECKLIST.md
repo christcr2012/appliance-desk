@@ -32,7 +32,13 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   areas and codes in your return's order, license number, filing frequency, expiry, deduction names). Ready when: you
   have registered on SUTS. You'll know it worked: the return packet matches your SUTS return.
 - [ ] **Two-step login on every owner/admin account.** Steps: sign in, enroll, store backup codes away from your phone.
-  Ready when: now. You'll know it worked: next sign-in asks for the code.
+  Ready when: now. You'll know it worked: next sign-in asks for the code. (Chris said on 2026-10-23 he already uses the
+  authenticator app; tick it yourself if every admin has it too.) Once ACC-1 is built: Desk → My account → Two-step →
+  add a **second** method and make fresh backup codes kept off your phone, so a lost phone never locks you out.
+- [x] **Decision: may you and your admins use email sign-in codes? (IN-85)** Answered 2026-10-23 in chat: **no** (text
+  codes or the app; staff may use any method). It's a setting you can change later.
+- [x] **Decision: when should accounts and sign-in (ACC-1…ACC-5) be built?** Answered 2026-10-23 in chat: **right after
+  O-2B** (the admin-limits piece now in review).
 - [ ] **Look at the rollback button once (do not use it).** Steps: Vercel → find Instant Rollback and the previous production
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 
@@ -70,7 +76,10 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
 - [ ] **Text messages going live (IN-03, IN-09, IN-51–IN-53):** pick and buy the local Twilio number (you approve the
   purchase), finish carrier/campaign registration, set the Twilio keys in Vercel, register `/api/webhooks/twilio`, set
   the real forwarding phone and hours. Voicemail/recording stay OFF until you approve wording and retention (IN-52).
-  Worked: a test text from the app reaches your own phone; STOP is respected.
+  Worked: a test text from the app reaches your own phone; STOP is respected. **When registering the campaign, include
+  "one-time sign-in / security codes" as a use case** so sign-in texts are allowed. After ACC-3 is built and texting is
+  live: Settings → Switches → turn on "Send sign-in codes by text", then Desk → My account → Two-step → choose text codes
+  and confirm your phone. Worked: your next sign-in texts you a code.
 - [ ] **Real business details** (name, phone, email, address, hours, service area) in Desk → Settings; choose a lawful public
   mailing address that is not your home (IN-01); confirm `support@` reply-to works end to end (IN-02);
   `BETTER_AUTH_URL` set to the real domain and emailed links checked.
@@ -143,4 +152,5 @@ on readiness).
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
 | 2026-10-23 | Staff-permission decision (section E) | Granting staff reports/expenses would widen access, so it needs the owner's approval. |
+| 2026-10-23 | ACC rows: email-code decision (IN-85), build-order decision, second sign-in method, Twilio sign-in-code use case | Chris asked for invitations, account self-service, recovery and text/email codes (design: designs/ACCOUNTS-AND-SIGN-IN.md). |
 | 2026-10-23 | Vercel "Sensitive" tidy-up | Read-only check of Vercel found two production settings readable by project members. |

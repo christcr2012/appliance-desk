@@ -3864,6 +3864,139 @@
       "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/W-17.md",
       "card": "docs/pr-cards/W-17.md"
+    },
+    {
+      "id": "ACC-1",
+      "title": "My account: own password, email, name, devices and two-step settings for every desk user",
+      "batch": "ACC",
+      "dependencies": [],
+      "status": "APPROVED",
+      "migration": "user_phone",
+      "budget": 450,
+      "units": [
+        "ACC-1"
+      ],
+      "evidence": [
+        "docs/designs/ACCOUNTS-AND-SIGN-IN.md",
+        "src/lib/auth.ts",
+        "src/domains/security/two-factor.ts",
+        "src/app/desk/security/setup/page.tsx"
+      ],
+      "tests": [
+        "tests/acc1-my-account-integration.test.ts",
+        "e2e/my-account.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "risk": "auth",
+      "plannedCard": "docs/pr-cards/ACC-1.md"
+    },
+    {
+      "id": "ACC-2",
+      "title": "Team invitations with 7-day links, admin/staff access levels, role changes and admin removal",
+      "batch": "ACC",
+      "dependencies": [
+        "ACC-1"
+      ],
+      "status": "APPROVED",
+      "migration": "team_invitation",
+      "budget": 500,
+      "units": [
+        "ACC-2"
+      ],
+      "evidence": [
+        "docs/designs/ACCOUNTS-AND-SIGN-IN.md",
+        "src/domains/staff/index.ts",
+        "src/app/desk/settings/staff-accounts-section.tsx",
+        "src/domains/capabilities",
+        "src/lib/account-provisioning.ts"
+      ],
+      "tests": [
+        "tests/acc2-team-invitations-integration.test.ts",
+        "e2e/team-invitations.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "risk": "auth",
+      "plannedCard": "docs/pr-cards/ACC-2.md"
+    },
+    {
+      "id": "ACC-3",
+      "title": "Sign-in codes by email or text, per-level method policy and trusted devices",
+      "batch": "ACC",
+      "dependencies": [
+        "ACC-2"
+      ],
+      "status": "APPROVED",
+      "migration": "second_step_methods",
+      "budget": 480,
+      "units": [
+        "ACC-3"
+      ],
+      "evidence": [
+        "docs/designs/ACCOUNTS-AND-SIGN-IN.md",
+        "src/lib/auth.ts",
+        "src/lib/sms.ts",
+        "src/lib/email.ts",
+        "src/app/login/two-factor/two-factor-login-form.tsx"
+      ],
+      "tests": [
+        "tests/acc3-sign-in-codes-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "risk": "auth",
+      "plannedCard": "docs/pr-cards/ACC-3.md"
+    },
+    {
+      "id": "ACC-4",
+      "title": "Account recovery: owner resets an employee's sign-in, security notice emails, failed-attempt pause",
+      "batch": "ACC",
+      "dependencies": [
+        "ACC-3"
+      ],
+      "status": "APPROVED",
+      "migration": "sign_in_pause",
+      "budget": 420,
+      "units": [
+        "ACC-4"
+      ],
+      "evidence": [
+        "docs/designs/ACCOUNTS-AND-SIGN-IN.md",
+        "docs/runbooks/ACCOUNT-RECOVERY.md",
+        "docs/runbooks/two-factor-recovery.md",
+        "scripts/reset-two-factor.ts"
+      ],
+      "tests": [
+        "tests/acc4-recovery-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "risk": "auth",
+      "plannedCard": "docs/pr-cards/ACC-4.md"
+    },
+    {
+      "id": "ACC-5",
+      "title": "Job roles: owner-editable screen bundles that only narrow an access level",
+      "batch": "ACC",
+      "dependencies": [
+        "ACC-4"
+      ],
+      "status": "APPROVED",
+      "migration": "job_roles",
+      "budget": 450,
+      "units": [
+        "ACC-5"
+      ],
+      "evidence": [
+        "docs/designs/ACCOUNTS-AND-SIGN-IN.md",
+        "src/lib/session.ts",
+        "src/lib/desk-navigation.ts",
+        "src/domains/capabilities"
+      ],
+      "tests": [
+        "tests/acc5-job-roles-integration.test.ts",
+        "e2e/job-roles.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "risk": "auth",
+      "plannedCard": "docs/pr-cards/ACC-5.md"
     }
   ],
   "enhancements": [

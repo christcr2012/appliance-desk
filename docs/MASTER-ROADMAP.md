@@ -8,7 +8,7 @@ Day-by-day delivery notes used to live here; they are history now and live in [S
 K, K-CASH, M-1A…M-2B, O-1, O-2A, O-3A and O-4…O-7 is merged. The live/provider/owner acceptance checks stay separately PENDING on
 [OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
 Deliberately not built yet: M-2C and M-3 (stopped, see their STRONGER-MODEL-PROMPT files), O-3B refund/credit/deposit
-approvals, COM-N, BP and W-11/12/13.
+approvals, COM-N, BP and W-11/12/13. **New 2026-10-23:** ACC (accounts and sign-in) is designed and approved; not built.
 
 **New required implementer reading:** October 13
 [56-subject owner-answer mapping](owner-decisions/2026-10-13-implementation-map.json)
@@ -242,6 +242,20 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 | BP-15A | Partner membership and restricted summary APIs | JIT — `BP-15A.md` | BP-14 |
 | BP-15B | Owner partner workflow and private partner portal | JIT — `BP-15B.md` | BP-15A |
 | BP-16 | Campaign cost, business metrics and owner handoff | JIT — `BP-16.md` | BP-15B |
+
+### ACC — accounts and sign-in (`designs/ACCOUNTS-AND-SIGN-IN.md`, approved 2026-10-23)
+
+Chris asked for invitation-based team accounts, roles/permissions, password reset and recovery, an owner account page,
+and email/text sign-in codes. Slot (Chris confirmed 2026-10-23): start right after O-2B finishes, because the owner
+currently cannot change his own password. Text codes need Twilio live and Chris's switch; email codes do not.
+
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| ACC-1 | My account: own password, email, name, phone, devices, two-step settings | JIT — `ACC-1.md` | — |
+| ACC-2 | Team invitations (7-day link), Staff/Admin levels, role changes, admin remove/restore | JIT — `ACC-2.md` | ACC-1 |
+| ACC-3 | Sign-in codes by email or text, method policy per level, trusted devices | JIT — `ACC-3.md` | ACC-2 |
+| ACC-4 | Owner resets an employee's sign-in, security notices, failed-attempt pause | JIT — `ACC-4.md` | ACC-3 |
+| ACC-5 | Job roles (owner-editable screen bundles that only narrow a level) | JIT — `ACC-5.md` | ACC-4 |
 
 ## Owner-facing handoff stays small
 

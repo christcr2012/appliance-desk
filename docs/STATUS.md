@@ -1,3 +1,12 @@
+## October 23 — Accounts and sign-in planned (Batch ACC, design only)
+
+Docs only, nothing built. Chris asked for invitation-based team accounts with roles, password reset and recovery, an
+owner account page and text/email sign-in codes. Checked against the code: admins can't be created in the app, nobody
+can change their own password, invite links expire after 1 hour, two-step is authenticator-only, and text codes will
+**not** appear just by finishing Twilio. Design: `docs/designs/ACCOUNTS-AND-SIGN-IN.md`; five build pieces ACC-1…ACC-5 in
+PLAN, MASTER-ROADMAP and work-index. Chris answered both decisions the same day: no email codes for owner/admins
+(IN-85), and build ACC right after O-2B. Next: finish O-2B, then ACC-1.
+
 ## October 24 — A limited admin really is limited (Batch O, step O-2B, in review)
 
 In progress: O-2B. When you take "Change business settings" away from an admin, they could still change appliance prices, pictures, rental sets, the month-to-month notice rules and the lead scoring policy through their own screens. Those now respect the limit too. Nobody gains anything: the owner and un-limited admins work exactly as before. Proved on throwaway Postgres (nine entry points refuse, nothing is written, restoring brings it back). Still open from O-2B: a role-shaped proof of what each admin page sends to the browser.
