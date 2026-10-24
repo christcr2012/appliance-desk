@@ -257,6 +257,8 @@ type RefundInput = {
   reason: RefundReason;
   notes?: string;
   toCredit?: boolean;
+  /** Set by an owner approval: if a refund carrying this marker already exists on the invoice, it is returned instead of making a second one. */
+  approvalMarker?: string;
 };
 
 /**
@@ -295,9 +297,14 @@ export async function prepareInvoiceRefundInTx(
 
   const priorRefunds = await tx.refund.findMany({
     where: { invoiceId: invoice.id },
-    select: { id: true, amountCents: true, stripeRefundId: true },
+    select: { id: true, amountCents: true, stripeRefundId: true, notes: true },
     orderBy: { createdAt: "asc" },
   });
+  if (input.approvalMarker) {
+    // Same lock as the check above: two runs of one approval can never both make a refund.
+    const already = priorRefunds.find((r) => r.notes?.includes(input.approvalMarker!));
+    if (already) return { refundId: already.id, claim: null };
+  }
   const alreadyRefundedCents = priorRefunds.reduce(
     (sum, refund) => sum + refund.amountCents,
     0,

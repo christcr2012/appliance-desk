@@ -247,6 +247,31 @@ describe.skipIf(!enabled)("money approvals on real Postgres with a fake Stripe",
     expect((await prisma.payment.findUniqueOrThrow({ where: { id: f.paymentId } })).status).not.toBe("held");
   });
 
+  it("a slow original run and a recovery run of the same approval can never make two refunds", async () => {
+    const f = await fixture();
+    const id = request(await submitInvoiceRefund(adminId, { invoiceId: f.invoiceId, amountCents: 6_700, reason: "GOODWILL", notes: "slow" }));
+    await decideApproval(ownerId, id, "APPROVE");
+    expect(mocks.refundCreate).toHaveBeenCalledTimes(1);
+    // The original is "still alive" from the page's view, yet recovery runs: it must find the same refund, not make another.
+    await prisma.approvalRequest.update({ where: { id }, data: { status: "APPROVED", executedAt: null, resultRef: null, decidedAt: new Date(Date.now() - 300_000) } });
+    await prisma.refund.updateMany({ where: { invoiceId: f.invoiceId }, data: { stripeRefundId: null } });
+    mocks.refundCreate.mockClear();
+    await finishApprovedRequest(ownerId, id);
+    expect(await prisma.refund.count({ where: { invoiceId: f.invoiceId } })).toBe(1);
+    expect(mocks.refundCreate).not.toHaveBeenCalled();
+  });
+
+  it("finishing a deposit approval after the owner settled it a different way reports that instead of calling it done", async () => {
+    const f = await fixture();
+    const id = request(await submitDepositDecision(adminId, { depositId: f.depositId, refundCents: 12_000, deductionReason: "Scratched door" }));
+    await prisma.approvalRequest.update({ where: { id }, data: { status: "APPROVED", decidedByUserId: ownerId, decidedAt: new Date(Date.now() - 300_000) } });
+    await prisma.deposit.update({ where: { id: f.depositId }, data: { refundedAt: new Date(), refundedAmountCents: 9_000, deductionReason: "Other" } });
+    const out = await finishApprovedRequest(ownerId, id);
+    expect(out.status).toBe("FAILED");
+    expect(out.message).toMatch(/different way/);
+    expect(mocks.refundCreate).not.toHaveBeenCalled();
+  });
+
   it("finishing a held-payment approval that was dealt with another way reports that, and sends nothing", async () => {
     const f = await fixture({ held: true });
     const id = request(await submitHeldPaymentRefund(adminId, f.paymentId));

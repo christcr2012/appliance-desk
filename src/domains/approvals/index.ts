@@ -349,8 +349,10 @@ async function runApprovedStripeWork(ownerId: string, requestId: string, input: 
       const r = await issueInvoiceRefund(ownerId, {
         invoiceId: String(input.invoiceId), amountCents: Number(input.amountCents), reason: input.reason as InvoiceRefundReason,
         notes: `${APPROVAL_TOKEN(requestId)} ${String(input.notes)}${suffix}`.slice(0, 500),
+        approvalMarker: APPROVAL_TOKEN(requestId),
       });
-      opId = r.providerOpId;
+      // If a parallel run of this same approval already made the refund, the saved Stripe record is the truth.
+      opId = r.providerOpId ?? (await prisma.providerOperation.findFirst({ where: { subjectType: "Refund", subjectId: r.refundId, kind: "REFUND_CREATE" }, select: { id: true } }))?.id ?? null;
     } else if (input.action === "held_refund") {
       const r = await refundHeldPayment(ownerId, String(input.paymentId));
       opId = r.providerOpId || null;
@@ -366,12 +368,35 @@ async function runApprovedStripeWork(ownerId: string, requestId: string, input: 
     return await settleApprovedWork(ownerId, requestId, opId, targetRef);
   } catch (e) {
     const message = plainFailure(e);
+    if (await workAlreadyStarted(input, requestId)) {
+      // Money may already be on its way; the failure was in recording it. Keep the request recoverable, never say "nothing was sent".
+      return { status: "APPROVED", message: "Approved, but we could not confirm what happened. Money may already have been sent, so do not repeat it. Use Check and finish in two minutes, or see Billing → Waiting for Stripe." };
+    }
     await prisma.$transaction(async (tx) => {
       await tx.approvalRequest.update({ where: { id: requestId }, data: { status: "FAILED", failureMessage: message.slice(0, 300) } });
       await tx.auditLog.create({ data: { userId: ownerId, action: "approval.failed", entityType: "ApprovalRequest", entityId: requestId, newValue: { message: message.slice(0, 300) } } });
     });
     return { status: "FAILED", message: `Approved, but it could not be done: ${message} If a Stripe step had already started it shows under Billing → Waiting for Stripe; do not repeat it.` };
   }
+}
+
+/** True when the saved records show this approval's money step has already begun (so it must never be marked "nothing was sent"). */
+async function workAlreadyStarted(input: Record<string, unknown>, requestId: string): Promise<boolean> {
+  try {
+    if (input.action === "invoice_refund") {
+      return !!(await prisma.refund.findFirst({ where: { invoiceId: String(input.invoiceId), notes: { contains: APPROVAL_TOKEN(requestId) } }, select: { id: true } }));
+    }
+    if (input.action === "deposit") {
+      return !!(await prisma.deposit.findFirst({ where: { id: String(input.depositId), refundedAt: { not: null } }, select: { id: true } }));
+    }
+    if (input.action === "held_refund") {
+      const pay = await prisma.payment.findUnique({ where: { id: String(input.paymentId) }, select: { status: true } });
+      return !!pay && pay.status !== HELD_PAYMENT_STATUS;
+    }
+  } catch {
+    return true; // cannot tell: the safe answer is "it may have started"
+  }
+  return false;
 }
 
 /** Record where the money side stands. Finished only on a confirmed result; otherwise remember the provider record. */
@@ -411,8 +436,17 @@ export async function finishApprovedRequest(ownerId: string, requestId: string):
       return settleApprovedWork(ownerId, requestId, op?.id ?? null, claimed.targetRef);
     }
   } else if (claimed.input.action === "deposit") {
-    const dep = await prisma.deposit.findUnique({ where: { id: String(claimed.input.depositId) }, select: { refundedAt: true } });
+    const dep = await prisma.deposit.findUnique({ where: { id: String(claimed.input.depositId) }, select: { refundedAt: true, refundedAmountCents: true, deductionReason: true } });
     if (dep?.refundedAt) {
+      const wantReason = typeof claimed.input.deductionReason === "string" && claimed.input.deductionReason ? claimed.input.deductionReason.trim() : null;
+      if (dep.refundedAmountCents !== Number(claimed.input.refundCents) || (dep.deductionReason ?? null) !== wantReason) {
+        const message = "That deposit was settled a different way (a different amount or reason) before this approval went out, so this approval was not carried out.";
+        await prisma.$transaction(async (tx) => {
+          await tx.approvalRequest.update({ where: { id: requestId }, data: { status: "FAILED", failureMessage: message } });
+          await tx.auditLog.create({ data: { userId: ownerId, action: "approval.failed", entityType: "ApprovalRequest", entityId: requestId, newValue: { message } } });
+        });
+        return { status: "FAILED", message };
+      }
       const op = await prisma.providerOperation.findFirst({ where: { subjectType: "Deposit", subjectId: String(claimed.input.depositId), kind: "REFUND_CREATE" }, select: { id: true } });
       return settleApprovedWork(ownerId, requestId, op?.id ?? null, claimed.targetRef);
     }
