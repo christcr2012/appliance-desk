@@ -19,7 +19,7 @@ async function decide(form: FormData) {
       form.get("decision") === "APPROVE" ? "APPROVE" : "DECLINE",
       String(form.get("note") ?? ""),
     );
-    outcome = result.status === "APPROVED" && result.message.startsWith("Approved, but not finished") ? "waiting" : result.status.toLowerCase();
+    outcome = result.status === "APPROVED" ? ({ WAITING: "waiting", UNCERTAIN: "uncertain" } as Record<string, string>)[result.state ?? "DONE"] ?? "approved" : result.status.toLowerCase();
   } catch (e) {
     if (!(e instanceof ApprovalInputError)) throw e;
   }
@@ -34,7 +34,7 @@ async function finish(form: FormData) {
   let outcome = "refused";
   try {
     const result = await finishApprovedRequest(session.user.id, String(form.get("requestId") ?? ""));
-    outcome = result.status === "APPROVED" && result.message.startsWith("Approved, but not finished") ? "waiting" : result.status.toLowerCase();
+    outcome = result.status === "APPROVED" ? ({ WAITING: "waiting", UNCERTAIN: "uncertain" } as Record<string, string>)[result.state ?? "DONE"] ?? "approved" : result.status.toLowerCase();
   } catch (e) {
     if (!(e instanceof ApprovalInputError)) throw e;
   }
@@ -45,6 +45,7 @@ async function finish(form: FormData) {
 const OUTCOME_WORDS: Record<string, string> = {
   approved: "Approved and done.",
   waiting: "Approved, but not finished: Stripe has not confirmed yet. See the note under Recently decided; do not repeat it.",
+  uncertain: "Approved, but we could not confirm what happened. Money may already have been sent, so do not repeat it. Use Check and finish in two minutes, or see Billing → Waiting for Stripe.",
   failed: "Approved, but it could not be done. The reason is under Recently decided. Nothing was sent.",
   declined: "Declined. Nothing was changed.",
   expired: "That request had expired, so nothing was done.",

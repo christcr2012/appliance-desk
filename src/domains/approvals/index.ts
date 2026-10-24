@@ -253,7 +253,7 @@ export async function describeProviderOperation(providerOpId: string | null | un
 }
 
 export type DecisionResult =
-  | { status: "APPROVED"; message: string }
+  | { status: "APPROVED"; message: string; /** What the money side confirmed. Absent means done (non-money kinds). */ state?: "DONE" | "WAITING" | "UNCERTAIN" }
   | { status: "DECLINED" | "EXPIRED" | "FAILED"; message: string };
 
 class RunFailure extends Error {}
@@ -381,7 +381,7 @@ async function runApprovedStripeWork(ownerId: string, requestId: string, input: 
     const message = plainFailure(e);
     if (await workAlreadyStarted(input, requestId)) {
       // Money may already be on its way; the failure was in recording it. Keep the request recoverable, never say "nothing was sent".
-      return { status: "APPROVED", message: "Approved, but we could not confirm what happened. Money may already have been sent, so do not repeat it. Use Check and finish in two minutes, or see Billing → Waiting for Stripe." };
+      return { status: "APPROVED", state: "UNCERTAIN", message: "Approved, but we could not confirm what happened. Money may already have been sent, so do not repeat it. Use Check and finish in two minutes, or see Billing → Waiting for Stripe." };
     }
     await prisma.$transaction(async (tx) => {
       await tx.approvalRequest.update({ where: { id: requestId }, data: { status: "FAILED", failureMessage: message.slice(0, 300) } });
@@ -419,7 +419,7 @@ async function settleApprovedWork(ownerId: string, requestId: string, opId: stri
     await tx.approvalRequest.update({ where: { id: requestId }, data: confirmed ? { executedAt: new Date(), resultRef: targetRef } : { resultRef: `op:${opId}` } });
     await tx.auditLog.create({ data: { userId: ownerId, action: confirmed ? "approval.executed" : "approval.waiting_on_provider", entityType: "ApprovalRequest", entityId: requestId, newValue: { resultRef: confirmed ? targetRef : `op:${opId}`, state } } });
   });
-  return { status: "APPROVED", message: confirmed ? `Approved and done. ${state}` : `Approved, but not finished yet. ${state}` };
+  return { status: "APPROVED", state: confirmed ? "DONE" : "WAITING", message: confirmed ? `Approved and done. ${state}` : `Approved, but not finished yet. ${state}` };
 }
 
 /**
