@@ -1,3 +1,7 @@
+## October 24 — User phone (ACC-1, additive)
+
+`User.phone` (text, stored as +1XXXXXXXXXX) and `User.phoneConfirmedAt` (timestamp), both empty until a person saves a phone number on My account. A changed number clears the confirmation. Nothing sends to it until ACC-3. Migration `20261024040000_user_phone`.
+
 ## K-CASH-7 immutable budget and monthly review record schema (2026-10-22, engineering candidate)
 
 Migration `20261022160000_k_cash_report_snapshots` adds **BudgetPlanVersion** (unique `monthKey,version`, unique commandKey, immutable JSON payload/SHA, supersedesId, actor, Books/Budget revision watermarks) and **BudgetReviewSnapshot** (unique commandKey, immutable JSON payload/SHA, actor/time and source revisions). Monthly date keys use Colorado civil months. Both tables have row triggers that forbid UPDATE and DELETE even if application code accidentally attempts changes; no existing ledger row, cash account, envelope or provider data is rewritten or activated. Drafts use K-CASH source plans, targets and signed BudgetMove evidence. Monthly actuals use immutable posted JournalEntry/JournalLine source IDs. A report is NOT a journal posting, QBO import, bank transfer or bank-statement assertion.

@@ -56,7 +56,7 @@ export const DESK_NAV_ALIASES: Record<string, string[]> = {
   "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders"],
   "/desk/billing": ["/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
   "/desk/more": [
-    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity", "/desk/paperwork",
+    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity", "/desk/paperwork", "/desk/account",
   ],
 };
 
@@ -72,6 +72,7 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["paperwork", "Business paperwork", "Your LLC, EIN, licenses and insurance, with reminders before anything needs renewing.", "owner"],
   ["privacy", "Privacy requests", "Customers asking to see or delete their information.", "owner"],
   ["activity", "Activity", "Who changed what, and when.", undefined],
+  ["account", "My account", "Your name, phone, password, sign-in email, devices and two-step sign-in.", undefined],
 ];
 /** The rarely used screens, filtered for the role on the server like the menu itself. */
 export function deskMoreLinks(role?: string): DeskMoreLink[] {

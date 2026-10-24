@@ -1,9 +1,11 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { twoFactor } from "better-auth/plugins";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
 import { sendPasswordEmail } from "./password-email";
+import { decideAccountAuthPath, GUARDED_AUTH_PATHS } from "@/domains/account/policy";
 
 function isDisposableCiAuthFixture(): boolean {
   try {
@@ -32,6 +34,22 @@ export const auth = betterAuth({
     }),
   ],
   secret: process.env.BETTER_AUTH_SECRET,
+  hooks: {
+    // ACC-1: password, email, backup-code and two-step changes by team members go through the My account page
+    // (src/app/desk/account), which records them and emails the person. Direct web calls to these routes are refused
+    // for the team; our own server code calls the library directly and is not affected. Customers cannot change
+    // their sign-in email at all (their customer record is matched on it).
+    before: createAuthMiddleware(async (ctx) => {
+      if (!GUARDED_AUTH_PATHS.has(ctx.path)) return;
+      const current = await getSessionFromCtx(ctx).catch(() => null);
+      const decision = decideAccountAuthPath({
+        path: ctx.path,
+        viaHttp: Boolean(ctx.request),
+        role: (current?.user as { role?: string } | undefined)?.role,
+      });
+      if (!decision.allow) throw APIError.fromStatus("FORBIDDEN", { message: decision.message });
+    }),
+  },
   // Vercel's production domain (appliance-desk.vercel.app) and every
   // preview deployment's own generated domain are all different
   // hostnames, and Better Auth rejects sign-in requests whose Origin
@@ -97,6 +115,10 @@ export const auth = betterAuth({
     // any future explicitly-approved support flow.
     sendOnSignUp: false,
     autoSignInAfterVerification: true,
+    afterEmailVerification: async (user) => {
+      const { completeEmailChange } = await import("@/domains/account");
+      await completeEmailChange({ id: user.id, email: user.email });
+    },
     sendVerificationEmail: async ({ user, url }) => {
       await sendEmail({
         to: user.email,
@@ -116,6 +138,8 @@ export const auth = betterAuth({
     storage: "database",
   },
   user: {
+    // ACC-1: the person asks from My account; the link goes to the NEW address and nothing changes until it is used.
+    changeEmail: { enabled: true },
     additionalFields: {
       role: {
         type: "string",
