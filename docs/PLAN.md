@@ -350,7 +350,7 @@ Turning on text-message codes stays Chris's live-SMS switch; nothing else here n
   backup code; trusted-device option.
 - [ ] ACC-4: owner can reset an employee's sign-in (not their own); security notice emails for every account change;
   failed-password pause per account; recovery runbooks updated.
-- [ ] ACC-5: owner-editable job roles that only narrow an access level, enforced on the server; staff money/report
+- [ ] ACC-5 (in review): owner-editable job roles that only narrow an access level, enforced on the server; staff money/report
   access remains impossible until IN-13 is answered.
 - [ ] Every item in "Rules that apply to every batch".
 

@@ -1,3 +1,5 @@
+import { jobRoleAllowsPath } from "@/domains/team/job-role-rules";
+
 export type DeskNavGroup = {
   label: string;
   links: { href: string; label: string }[];
@@ -75,16 +77,17 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["account", "My account", "Your name, phone, password, sign-in email, devices and two-step sign-in.", undefined],
 ];
 /** The rarely used screens, filtered for the role on the server like the menu itself. */
-export function deskMoreLinks(role?: string): DeskMoreLink[] {
+export function deskMoreLinks(role?: string, jobRoleScreens: readonly string[] | null = null): DeskMoreLink[] {
   if (!["OWNER", "ADMIN", "STAFF"].includes(role ?? "")) return [];
   const finance = role === "OWNER" || role === "ADMIN";
   return MORE_LINKS
     .filter(([, , , restriction]) => !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER"))
-    .map(([path, label, detail]) => ({ href: `/desk/${path}`, label, detail }));
+    .map(([path, label, detail]) => ({ href: `/desk/${path}`, label, detail }))
+    .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href));
 }
 
 /** Called on the server: restricted destinations are never serialized to staff. */
-export function deskNavigation(role?: string): DeskNavGroup[] {
+export function deskNavigation(role?: string, jobRoleScreens: readonly string[] | null = null): DeskNavGroup[] {
   if (!["OWNER", "ADMIN", "STAFF"].includes(role ?? "")) return [];
   const finance = role === "OWNER" || role === "ADMIN";
   return groups
@@ -95,7 +98,8 @@ export function deskNavigation(role?: string): DeskNavGroup[] {
           const restriction = link[2];
           return !restriction || (restriction === "finance" && finance) || (restriction === "owner" && role === "OWNER");
         })
-        .map(([path, label]) => ({ href: `/desk/${path}`, label })),
+        .map(([path, label]) => ({ href: `/desk/${path}`, label }))
+        .filter((link) => jobRoleAllowsPath(jobRoleScreens, link.href)),
     }))
     .filter((group) => group.links.length > 0);
 }

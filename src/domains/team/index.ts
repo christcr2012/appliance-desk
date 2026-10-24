@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { createTrustedCredentialUserInTx, normalizeAccountEmail } from "@/lib/account-provisioning";
 import { CAPABILITY_KEYS, isCapability } from "@/domains/capabilities";
 import { cleanName, normalizePhone, noticeWarning } from "@/domains/account";
+import { applyCapabilityLimits, assertJobRoleFits, JobRoleError } from "./job-roles";
 import {
   ACCESS_LEVEL_LABEL, INVALID_LINK_MESSAGE, INVITATION_LINK_DAYS_DEFAULT, TeamError, assertMayInvite,
   assertMayRemoveOrRestore, clampLinkDays, effectiveInvitationState, hashInvitationCode, invitationExpiry,
@@ -85,7 +86,7 @@ function parseLimits(level: InvitableLevel, raw: unknown): string[] {
   return [...out];
 }
 
-export type InviteInput = { name: string; email: string; phone?: string | null; accessLevel: string; adminCapabilityLimits?: unknown };
+export type InviteInput = { name: string; email: string; phone?: string | null; accessLevel: string; adminCapabilityLimits?: unknown; jobRoleId?: string | null };
 
 async function inviterLabel(tx: Tx, id: string) {
   const u = await tx.user.findUnique({ where: { id }, select: { name: true, email: true } });
@@ -124,14 +125,18 @@ export async function inviteTeamMember(actorId: string, input: InviteInput) {
     assertMayInvite(actor.role, level, settings.adminsMayInviteStaff);
     await lockEmail(tx, email);
     await assertEmailFree(tx, email);
+    const jobRoleId = input.jobRoleId || null;
+    if (jobRoleId) {
+      try { await assertJobRoleFits(tx, jobRoleId, level); } catch (e) { throw e instanceof JobRoleError ? new TeamError(e.message) : e; }
+    }
     const inv = await tx.teamInvitation.create({
       data: {
-        email, name, phone, accessLevel: level, adminCapabilityLimits: limits, codeHash: hashInvitationCode(code),
+        email, name, phone, accessLevel: level, adminCapabilityLimits: limits, jobRoleId, codeHash: hashInvitationCode(code),
         expiresAt: invitationExpiry(new Date(), settings.invitationLinkDays), invitedById: actorId,
       },
     });
     await tx.auditLog.create({
-      data: { userId: actorId, action: "team.invite.create", entityType: "TeamInvitation", entityId: inv.id, newValue: { email, accessLevel: level, limits } },
+      data: { userId: actorId, action: "team.invite.create", entityType: "TeamInvitation", entityId: inv.id, newValue: { email, accessLevel: level, limits, jobRoleId } },
     });
     return { inv, inviter: await inviterLabel(tx, actorId), days: settings.invitationLinkDays };
   });
@@ -221,6 +226,13 @@ export async function acceptInvitation(code: string, password: string, confirm: 
     // check and the account being created.
     try { await assertActiveTeamActor(tx, inv.invitedById, ["OWNER", "ADMIN"]); } catch { throw new TeamError(INVALID_LINK_MESSAGE); }
 
+    // The job role chosen at invitation time must still be available and fit. Otherwise the link is refused rather than
+    // quietly giving the person more than the owner meant; the owner sends a fresh invitation.
+    let jobRole: Awaited<ReturnType<typeof tx.jobRole.findUnique>> = null;
+    if (inv.jobRoleId) {
+      jobRole = await tx.jobRole.findUnique({ where: { id: inv.jobRoleId } });
+      if (!jobRole || jobRole.archivedAt || jobRole.accessLevel !== inv.accessLevel) throw new TeamError("The job role for this invitation is no longer available. Ask the owner to send you a new invitation.");
+    }
     const user = await createTrustedCredentialUserInTx(tx, { email: inv.email, name: inv.name, role: inv.accessLevel, password, emailVerified: true });
     if (inv.phone) await tx.user.update({ where: { id: user.id }, data: { phone: inv.phone } });
     if (inv.accessLevel === "ADMIN") {
@@ -228,6 +240,12 @@ export async function acceptInvitation(code: string, password: string, confirm: 
       for (const capability of limits) {
         await tx.staffCapabilityOverride.create({ data: { userId: user.id, capability, allowed: false, updatedByUserId: inv.invitedById } });
       }
+    }
+    // The job role chosen at invitation time (if it is still available and still fits). It only narrows.
+    if (jobRole) {
+      await tx.user.update({ where: { id: user.id }, data: { jobRoleId: jobRole.id } });
+      const roleLimits = (Array.isArray(jobRole.capabilityLimits) ? jobRole.capabilityLimits : []).filter((c): c is string => typeof c === "string");
+      await applyCapabilityLimits(tx, user.id, roleLimits, inv.invitedById);
     }
     await tx.teamInvitation.update({ where: { id: inv.id }, data: { status: "ACCEPTED", acceptedUserId: user.id, acceptedAt: new Date() } });
     await tx.auditLog.create({
@@ -238,7 +256,7 @@ export async function acceptInvitation(code: string, password: string, confirm: 
 }
 
 export type TeamMemberRow = {
-  id: string; name: string; email: string; accessLevel: string; active: boolean; twoStepOn: boolean; lastSignIn: Date | null;
+  id: string; name: string; email: string; accessLevel: string; active: boolean; twoStepOn: boolean; lastSignIn: Date | null; jobRoleId: string | null;
 };
 export type TeamInvitationRow = { id: string; name: string; email: string; accessLevel: string; state: string; expiresAt: Date; limits: string[] };
 
@@ -246,13 +264,13 @@ export type TeamInvitationRow = { id: string; name: string; email: string; acces
 export async function getTeam(): Promise<{ members: TeamMemberRow[]; invitations: TeamInvitationRow[] }> {
   const users = await prisma.user.findMany({
     where: { role: { in: ["OWNER", "ADMIN", "STAFF"] } },
-    select: { id: true, name: true, email: true, role: true, archivedAt: true, twoFactorEnabled: true, sessions: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
+    select: { id: true, name: true, email: true, role: true, archivedAt: true, twoFactorEnabled: true, jobRoleId: true, sessions: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
     orderBy: [{ name: "asc" }, { id: "asc" }],
     take: 500,
   });
   const order: Record<string, number> = { OWNER: 0, ADMIN: 1, STAFF: 2 };
   const members = users
-    .map((u) => ({ id: u.id, name: u.name || u.email, email: u.email, accessLevel: u.role as string, active: !u.archivedAt, twoStepOn: u.twoFactorEnabled, lastSignIn: u.sessions[0]?.createdAt ?? null }))
+    .map((u) => ({ id: u.id, name: u.name || u.email, email: u.email, accessLevel: u.role as string, active: !u.archivedAt, twoStepOn: u.twoFactorEnabled, lastSignIn: u.sessions[0]?.createdAt ?? null, jobRoleId: u.jobRoleId }))
     .sort((a, b) => order[a.accessLevel] - order[b.accessLevel]);
   const rows = await prisma.teamInvitation.findMany({ where: { purpose: "INVITE", status: { in: ["INVITED", "CANCELLED"] } }, orderBy: { createdAt: "desc" }, take: 200 });
   const now = new Date();
@@ -322,7 +340,7 @@ export async function changeAccessLevel(ownerId: string, targetId: string, newLe
     if (target.role !== "STAFF" && target.role !== "ADMIN") throw new TeamError("That account is not a team login.");
     if (target.archivedAt) throw new TeamError("Restore this person before changing their access level.");
     if (target.role === level) throw new TeamError(`That person is already ${ACCESS_LEVEL_LABEL[level]}.`);
-    await tx.user.update({ where: { id: targetId }, data: { role: level as Role } });
+    await tx.user.update({ where: { id: targetId }, data: { role: level as Role, jobRoleId: null } });
     await tx.staffCapabilityOverride.deleteMany({ where: { userId: targetId } });
     if (level === "ADMIN") {
       for (const capability of CAPABILITY_KEYS.filter((c) => !ticked.has(c))) {

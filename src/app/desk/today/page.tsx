@@ -161,7 +161,9 @@ async function resumeToDoAction(formData: FormData) {
   revalidatePath("/desk/today");
 }
 
-export default async function TodayPage() {
+export default async function TodayPage({ searchParams }: { searchParams?: Promise<{ screen?: string }> } = {}) {
+  // ACC-5: sent here when a job role does not include the screen they tried to open.
+  const notInJobRole = (await searchParams)?.screen === "not-in-job-role";
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const role = (session.user as { role?: string }).role ?? "";
   const canCreateVisit = role === "OWNER" || role === "ADMIN";
@@ -261,6 +263,11 @@ export default async function TodayPage() {
 
   return (
     <div>
+      {notInJobRole && (
+        <p role="status" className="mb-4 rounded-card border border-line bg-subtle p-3 text-sm text-ink">
+          That screen is not part of your job role. Ask the owner if you need it.
+        </p>
+      )}
       <PageHeader
         title="Today"
         description={`${formatBusinessDate(now)} · Colorado time`}

@@ -3995,12 +3995,13 @@
         "src/domains/capabilities"
       ],
       "tests": [
+        "tests/acc5-job-role-rules.test.ts",
         "tests/acc5-job-roles-integration.test.ts",
         "e2e/job-roles.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "risk": "auth",
-      "plannedCard": "docs/pr-cards/ACC-5.md"
+      "card": "docs/pr-cards/ACC-5.md"
     }
   ],
   "enhancements": [

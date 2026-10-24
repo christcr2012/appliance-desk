@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
+import { JobRoleError, archiveJobRole, assignJobRole, restoreJobRole, restoreStarterJobRole, saveJobRole } from "@/domains/team/job-roles";
 import {
   TeamError, cancelInvitation, changeAccessLevel, inviteTeamMember, removeTeamMember, resendInvitation,
   resetTeamSignIn, restoreTeamMember, updateTeamSettings,
@@ -21,11 +22,11 @@ async function run(fn: () => Promise<{ message: string; warning?: string }>, fal
     revalidatePath("/desk/activity");
     return { status: "success", ...out };
   } catch (error) {
-    return { status: "error", message: error instanceof TeamError ? error.message : error instanceof Error && error.message.startsWith("This account no longer") ? error.message : fallback };
+    return { status: "error", message: error instanceof TeamError || error instanceof JobRoleError ? error.message : error instanceof Error && error.message.startsWith("This account no longer") ? error.message : fallback };
   }
 }
 
-export async function inviteTeamMemberAction(raw: { name: string; email: string; phone?: string; accessLevel: string; adminCapabilityLimits?: string[] }): Promise<TeamActionState> {
+export async function inviteTeamMemberAction(raw: { name: string; email: string; phone?: string; accessLevel: string; adminCapabilityLimits?: string[]; jobRoleId?: string }): Promise<TeamActionState> {
   const session = await requireRole("OWNER", "ADMIN");
   return run(async () => {
     const r = await inviteTeamMember(session.user.id, raw);
@@ -76,4 +77,33 @@ export async function resetTeamSignInAction(userId: string): Promise<TeamActionS
       warning: sent ? r.warning : "The email with the link was not sent. Use Reset sign-in again to send a fresh link." + (r.warning ? ` ${r.warning}` : ""),
     };
   }, "Couldn't reset that sign-in.");
+}
+
+// ACC-5: job roles. Owner only; the rules are enforced in src/domains/team/job-roles.ts inside the transaction.
+export async function saveJobRoleAction(input: { id?: string; label: string; accessLevel: string; screens: string[]; capabilityLimits: string[] }): Promise<TeamActionState> {
+  const session = await requireRole("OWNER");
+  return run(async () => { await saveJobRole(session.user.id, input); return { message: "Job role saved. It applies to everyone who has it from their next page." }; }, "Couldn't save that job role.");
+}
+
+export async function archiveJobRoleAction(id: string): Promise<TeamActionState> {
+  const session = await requireRole("OWNER");
+  return run(async () => { await archiveJobRole(session.user.id, id); return { message: "Job role archived." }; }, "Couldn't archive that job role.");
+}
+
+export async function restoreJobRoleAction(id: string): Promise<TeamActionState> {
+  const session = await requireRole("OWNER");
+  return run(async () => { await restoreJobRole(session.user.id, id); return { message: "Job role restored." }; }, "Couldn't restore that job role.");
+}
+
+export async function restoreStarterJobRoleAction(id: string): Promise<TeamActionState> {
+  const session = await requireRole("OWNER");
+  return run(async () => { await restoreStarterJobRole(session.user.id, id); return { message: "Back to the recommended screens." }; }, "Couldn't restore that job role.");
+}
+
+export async function assignJobRoleAction(userId: string, jobRoleId: string): Promise<TeamActionState> {
+  const session = await requireRole("OWNER");
+  return run(async () => {
+    const warning = await assignJobRole(session.user.id, userId, jobRoleId || null);
+    return { message: "Job role changed. They were signed out and must sign in again.", warning };
+  }, "Couldn't change that job role.");
 }

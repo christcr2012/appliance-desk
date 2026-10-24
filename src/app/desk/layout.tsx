@@ -6,6 +6,7 @@ import {
 import { AppShell } from "@/components/ui";
 import { IdleLogout } from "@/components/idle-logout";
 import { deskNavigation } from "@/lib/desk-navigation";
+import { enforceJobRoleScreen, jobRoleScreens } from "@/lib/job-role-guard";
 import { isTwoFactorEnrollmentExemptPath } from "@/domains/security/two-factor";
 
 export const metadata = { robots: { index: false, follow: false } };
@@ -21,7 +22,8 @@ export default async function DeskLayout({
   if (!isTwoFactorEnrollmentExemptPath(pathname)) {
     await enforceTwoFactorForDeskPage(session);
   }
-  const groups = deskNavigation(role);
+  await enforceJobRoleScreen(session.user.id, role);
+  const groups = deskNavigation(role, await jobRoleScreens(session.user.id, role));
   return (
     <>
       <AppShell nav={groups} role={role}>{children}</AppShell>

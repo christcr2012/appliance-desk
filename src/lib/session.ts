@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "./auth";
 import { twoFactorEnrollmentRequired } from "@/domains/security/two-factor";
+import { enforceJobRoleScreen } from "./job-role-guard";
 
 export type Role = "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER";
 
@@ -110,5 +111,7 @@ export async function requireRole(...roles: Role[]) {
     }
     redirect("/desk/security/setup");
   }
+  // ACC-5: a job role can only narrow the access level; the screen it does not include is refused here as well as in the layout.
+  await enforceJobRoleScreen(session.user.id, session.user.role);
   return session;
 }

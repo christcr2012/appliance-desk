@@ -56,6 +56,8 @@ model User {
   failedSignInCount           Int       @default(0)
   failedSignInWindowStartedAt DateTime?
   signInPausedUntil           DateTime?
+  // ACC-5: the person's job role (a plain id, no database link, so backups restore in any order). Null = access level alone.
+  jobRoleId                   String?
 
   // Better Auth's own tables (sessions, accounts, verification tokens / TOTP)
   sessions  Session[]
@@ -1031,6 +1033,7 @@ model TeamInvitation {
   phone                String?
   accessLevel          Role      @default(STAFF)
   adminCapabilityLimits Json     @default("[]")
+  jobRoleId            String?
   codeHash             String    @unique
   expiresAt            DateTime
   status               String    @default("INVITED")
@@ -5125,4 +5128,20 @@ model OwnerWorkspacePreference {
   version     Int      @default(1)
   preferences Json
   updatedAt   DateTime @updatedAt
+}
+
+// ACC-5: a named list of desk screens on top of an access level. It can only narrow what the level allows, never widen.
+// The four starting roles are inserted by the migration (isStarter) and can be edited or archived by the owner.
+model JobRole {
+  id               String    @id @default(cuid())
+  label            String
+  accessLevel      Role
+  screens          Json      @default("[]")
+  capabilityLimits Json      @default("[]")
+  isStarter        Boolean   @default(false)
+  archivedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([archivedAt])
 }

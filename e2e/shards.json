@@ -18,7 +18,8 @@
       "scenario-10-owner-workflow.spec.ts",
       "business-paperwork.spec.ts",
       "revenue-records.spec.ts",
-      "website-editor.spec.ts"
+      "website-editor.spec.ts",
+      "job-roles.spec.ts"
     ],
     "browser-b": [
       "accessibility-dark-mode.spec.ts",
