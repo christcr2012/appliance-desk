@@ -53,7 +53,7 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   and the agency websites linked on each item.)
 - [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** Vercel already has `STRIPE_SECRET_KEY` and
   `STRIPE_WEBHOOK_SECRET` entries for Preview, labeled **TEST mode** (checked 2026-10-24; values and provider validity
-  were not verified). **Still not tested with real Stripe:** the connected Stripe service needs owner reauthorization,
+  were not verified). **Still not tested with real Stripe:** Chris reported reauthorizing Stripe on 2026-10-24, but a new account read still returned `renewal_outcome_unknown_reconnect_required`. The Stripe cloud adapter must reconnect successfully,
   and the app test must use an isolated test database, never production customer records. Steps: reconnect the Stripe
   service, confirm both test keys and the test webhook to `<test-site>/api/webhooks/stripe`, then in an isolated
   test checkout create a small shop sale → Money → Shop sales → "Pay by card" → test card 4242 4242 4242 4242.

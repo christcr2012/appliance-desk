@@ -4,8 +4,8 @@ Vercel Production now stores `TELECOM_SYNC_ENABLED=true` at Chris's request; a s
 confirmed the setting. No manual deployment or Twilio sync run was attempted: the scheduled release must pick up
 the setting, and a successful first run plus the production Twilio account remain unverified. Vercel also lists
 Stripe secret and webhook variables labeled TEST mode, but their actual validity was not checked. The connected
-Stripe service reported reauthorization required, so no real Stripe test-mode shop-sale checkout, webhook or refund
-was run. Both existing owner-checklist rows were updated with the observed state and left unchecked. Live Stripe
+Stripe service still returned `renewal_outcome_unknown_reconnect_required` even after Chris reported
+reauthorizing it; no real Stripe test-mode shop-sale checkout, webhook or refund was run. Both existing owner-checklist rows were updated with the observed state and left unchecked. Live Stripe
 payments, customer email and SMS were not enabled. Next: verify the first phone sync after a scheduled release;
 reconnect Stripe and exercise a shop sale against an isolated test database.
 
