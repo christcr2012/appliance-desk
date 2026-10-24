@@ -60,6 +60,17 @@ export async function getApprovalLimits(): Promise<ApprovalLimits> {
 
 export class ApprovalInputError extends Error {}
 
+/**
+ * For screens that send money back as part of a bigger action (such as an early return) and cannot wait for approval
+ * in the middle. A person with a limit who is at or over it is told to ask the owner (or choose credit); the owner is never held.
+ */
+export async function assertRefundWithinLimit(actingUserId: string, amountCents: number): Promise<void> {
+  const actor = await actorRole(actingUserId);
+  const limits = await getApprovalLimits();
+  if (approvalRequired(actor.role, limits.thresholds, "REFUND", amountCents))
+    throw new ApprovalInputError(`A refund of ${dollars(amountCents)} is over your refund limit. Ask the owner to finish this, or give the customer credit instead.`);
+}
+
 /** Owner only. `limitsCents` omitted or null for a kind = no approval needed for it. */
 export async function saveApprovalLimits(ownerId: string, input: { limitsCents: Partial<Record<ApprovalKindBuilt, number | null>>; expiryDays: number }) {
   if (!Number.isSafeInteger(input.expiryDays) || input.expiryDays < 1 || input.expiryDays > 30)

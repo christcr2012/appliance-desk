@@ -16,7 +16,7 @@ vi.mock("@/lib/stripe", () => ({
 
 import { prisma } from "@/lib/prisma";
 import {
-  decideApproval, finishApprovedRequest, listDecidedApprovals, saveApprovalLimits, submitCreditApply, submitDepositDecision, submitHeldPaymentRefund, submitInvoiceRefund,
+  assertRefundWithinLimit, decideApproval, finishApprovedRequest, listDecidedApprovals, saveApprovalLimits, submitCreditApply, submitDepositDecision, submitHeldPaymentRefund, submitInvoiceRefund,
   type SubmitResult,
 } from "@/domains/approvals";
 
@@ -112,6 +112,12 @@ describe.skipIf(!enabled)("money approvals on real Postgres with a fake Stripe",
     expect(big.status).toBe("SENT_FOR_APPROVAL");
     expect(mocks.refundCreate).not.toHaveBeenCalled();
     expect(await prisma.refund.count({ where: { invoiceId: f.invoiceId } })).toBe(1);
+  });
+
+  it("a refund inside a bigger action (early return) is held to the same limit for an admin, never for the owner", async () => {
+    await expect(assertRefundWithinLimit(adminId, 4_999)).resolves.toBeUndefined();
+    await expect(assertRefundWithinLimit(adminId, 5_000)).rejects.toThrow(/over your refund limit/);
+    await expect(assertRefundWithinLimit(ownerId, 500_000)).resolves.toBeUndefined();
   });
 
   it("approving sends one refund to Stripe, as the owner with the requester named; a double click cannot send two", async () => {
