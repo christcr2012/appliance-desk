@@ -6,6 +6,8 @@ import { loadFilingPacket } from "@/domains/tax/filing-packet";
 import {
   taxReturnDueException,
   taxLicenseRenewalException,
+  taxSetupCheckDue,
+  taxSetupCheckException,
   type ExceptionItem,
 } from "@/domains/exceptions/rules";
 
@@ -15,6 +17,8 @@ export const TAX_FILING_AMOUNT_CAP = 12;
 export type FilingAttentionSet = {
   returns: { rows: ExceptionItem[]; total: number };
   licenses: { rows: ExceptionItem[]; total: number };
+  /** Yearly "check your SUTS setup" reminders (BATCH-T 11.13). */
+  setupChecks: { rows: ExceptionItem[]; total: number };
 };
 
 /** Read-only Today projection, limited to visible filing dates and without customer data. */
@@ -43,6 +47,13 @@ export async function listTaxFilingAttention(
     active: true,
     licenseExpiresOn: { not: null, lte: licensesUntil },
   };
+  const setupAccounts = await prisma.taxFilingAccount.findMany({
+    where: { active: true },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+    take: 50,
+    select: { id: true, name: true, setupCheckedOn: true, firstPeriodStart: true },
+  });
+  const setupDue = setupAccounts.filter((a) => taxSetupCheckDue(a.setupCheckedOn, a.firstPeriodStart !== null, now));
   const [returns, licenses, returnCount, licenseCount] = await Promise.all([
     activeStarts.length ? prisma.taxFilingPeriod.findMany({
       where: returnWhere,
@@ -103,6 +114,12 @@ export async function listTaxFilingAttention(
           readOnly,
         })),
       total: licenseCount,
+    },
+    setupChecks: {
+      rows: setupDue.slice(0, TAX_FILING_ATTENTION_CAP).map((a) => taxSetupCheckException({
+        accountId: a.id, accountName: a.name, setupCheckedOn: a.setupCheckedOn, now, readOnly,
+      })),
+      total: setupDue.length,
     },
   };
 }

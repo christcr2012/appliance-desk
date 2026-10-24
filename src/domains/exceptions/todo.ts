@@ -29,6 +29,7 @@ const ACTION_LABEL: Record<string, string> = {
   EARLY_ENDING_NOT_DONE: "Schedule pickup",
   TAX_RETURN_DUE: "File return",
   TAX_LICENSE_RENEWAL: "Renew license",
+  TAX_SETUP_CHECK: "Check setup",
   BUSINESS_PAPERWORK: "Open paperwork",
   TAX_AMENDMENT_DUE: "Review amendment",
   TAX_FILING_NOT_READY: "Prepare filing",
