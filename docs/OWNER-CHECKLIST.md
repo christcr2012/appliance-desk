@@ -51,17 +51,19 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   type the number and the next renewal date from your own papers, and set where you are with it. Worked: each dated item
   shows on your Today list before it needs renewing. (The app doesn't know your dates or fees; they come from your papers
   and the agency websites linked on each item.)
-- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** **Provider connection unblocked 2026-10-24:**
-  both the standard Stripe connector and Robinson Stripe MCP now answer read-only requests in TEST mode. They use
-  **different Stripe accounts**: the standard account shows no Checkout sessions or webhook endpoints; the Robinson
-  TEST account has one enabled webhook whose destination is the business website, but it shows no Checkout sessions
-  and the exact endpoint path was not proved. Vercel has TEST-labeled `STRIPE_SECRET_KEY` and
-  `STRIPE_WEBHOOK_SECRET` entries, but we have **not proved which account those app keys use** or whether the
-  webhook signature matches. No test payment/refund was made. To finish: match the isolated app's test keys
-  and webhook to the intended Stripe TEST account (never put keys in GitHub), use a disposable Postgres database,
-  then create a small shop sale → Money → Shop sales → "Pay by card" → Stripe test card
-  4242 4242 4242 4242. Worked only when the app records "Paid" and the payment exactly once after the
-  Stripe webhook, then Billing refunds that same test charge. **Leave unchecked until actually observed.**
+- [ ] **Try the shop-sale card page in Stripe TEST mode (M-3).** **Official connector setup updated 2026-10-24:**
+  Chris chose the official Stripe connector for Appliance Desk development and will disconnect the custom connector
+  while it remains under testing. Keep the existing **Test mode** account for Robinson Appliance Rentals LLC;
+  no new sandbox or custom-connector enrollment is required. Chris saved that account's test server key in
+  Vercel (`STRIPE_SECRET_KEY` update confirmed by metadata; protected value/runtime account not yet verified).
+  The agent created a TEST-only webhook at `https://robinsonappliancerentals.com/api/webhooks/stripe`, independently
+  verified it enabled for the seven handled payment/subscription events, and saved its matching signing secret
+  directly in Sensitive `STRIPE_WEBHOOK_SECRET`. These saved settings await the next scheduled deployment.
+  The old publishable key is unchanged; verify its pairing before any client-side Stripe use. No payment or refund
+  has been made. To finish: verify the deployed server key uses the official connector's Test-mode account, then
+  use an isolated app and disposable Postgres database for a small shop sale → Money → Shop sales → "Pay by card"
+  → Stripe test card 4242 4242 4242 4242. Worked only when a genuine signed payment update records "Paid" exactly
+  once and Billing refunds that same test charge. **Leave unchecked until actually observed.**
 - [ ] **Stripe account verified for live payments** (business details, bank). Stripe dashboard. Worked: "Live payments enabled".
 - [ ] **Stripe branding** (name Robinson Appliance Rentals, logo, colors, support phone/email, card-statement name).
   Stripe → Settings → Business → Branding. Worked: a test checkout page shows your brand.
