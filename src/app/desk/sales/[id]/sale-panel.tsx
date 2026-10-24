@@ -4,9 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Select } from "@/components/ui";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
-import { cancelShopSaleAction, recordSalePaymentAction, startSaleCardPaymentAction } from "../actions";
+import { cancelShopSaleAction, returnShopSaleAction, recordSalePaymentAction, startSaleCardPaymentAction } from "../actions";
 
-export function SalePanel({ invoiceId, owedCents, canCancel, today }: { invoiceId: string; owedCents: number; canCancel: boolean; today: string }) {
+export function SalePanel({ invoiceId, owedCents, canCancel, canReturn, today }: { invoiceId: string; owedCents: number; canCancel: boolean; canReturn: boolean; today: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [amount, setAmount] = useState(moneyInputValue(owedCents));
@@ -14,6 +14,7 @@ export function SalePanel({ invoiceId, owedCents, canCancel, today }: { invoiceI
   const [date, setDate] = useState(today);
   const [reason, setReason] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [returning, setReturning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function pay(event: React.FormEvent) {
@@ -40,6 +41,16 @@ export function SalePanel({ invoiceId, owedCents, canCancel, today }: { invoiceI
     setError(null);
     start(async () => {
       const r = await cancelShopSaleAction(invoiceId, reason);
+      if (r.status === "error") return setError(r.message);
+      router.refresh();
+    });
+  }
+
+  function takeBack(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    start(async () => {
+      const r = await returnShopSaleAction(invoiceId, reason);
       if (r.status === "error") return setError(r.message);
       router.refresh();
     });
@@ -87,6 +98,26 @@ export function SalePanel({ invoiceId, owedCents, canCancel, today }: { invoiceI
               <div className="flex gap-2">
                 <Button type="submit" disabled={pending}>{pending ? "Cancelling…" : "Yes, cancel the sale"}</Button>
                 <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>Keep it</Button>
+              </div>
+            </form>
+          )}
+        </Card>
+      )}
+      {canReturn && (
+        <Card>
+          {!returning ? (
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">Take this sale back</h2>
+              <p className="text-sm text-ink-soft">Refunds everything the customer paid, sales tax included, and puts every item back on the shelf. Use this when the customer brings the goods back. Items that are damaged need a stock adjustment afterwards.</p>
+              <Button type="button" variant="secondary" onClick={() => setReturning(true)}>Take this sale back…</Button>
+            </div>
+          ) : (
+            <form onSubmit={takeBack} className="grid gap-3 sm:max-w-md">
+              <Field id="sale-return-reason" label="Why is it being taken back?" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} required />
+              <p className="text-sm text-ink-soft">A card payment is refunded to the same card. A cash or check payment is recorded as refunded, and you hand the money back yourself.</p>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={pending}>{pending ? "Working…" : "Yes, refund and restock"}</Button>
+                <Button type="button" variant="secondary" onClick={() => setReturning(false)}>Keep the sale</Button>
               </div>
             </form>
           )}

@@ -11,6 +11,8 @@ import { ensureWalkInCustomer } from "./walk-in";
 import { disposeRetiredBookAssetInTx, reverseBookAssetDisposalInTx } from "@/domains/books/fixed-assets";
 import { businessDateFromKey } from "@/lib/business-date";
 import { postForSource } from "@/domains/books/post";
+import { issueInvoiceRefund } from "@/domains/billing/refunds";
+import { assertRefundWithinLimit } from "@/domains/approvals";
 
 // ---------------------------------------------------------------------------
 // Shop sales (Batch M, design D-M3). A sale is a local invoice: lines are sellable parts (plus an optional delivery or
@@ -347,6 +349,83 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
   });
 }
 
+export type ReturnShopSaleResult = { invoiceId: string; invoiceNumber: number; refundedCents: number; restocked: number; alreadyReturned: boolean };
+
+/**
+ * Takes back a PAID sale of parts and items: the whole amount paid (tax included) is refunded through the normal
+ * refund path (so the tax return and the books follow it), and every item goes back on the shelf with a reversal entry.
+ * Safe to run again after an interruption: money already refunded is never refunded twice, and the items are put back only
+ * once the refund is confirmed (a card refund Stripe has not confirmed yet holds the restock back). A used appliance on
+ * the sale is refused here. An admin at or over the owner's refund limit is told to ask the owner.
+ */
+export async function returnShopSale(actorUserId: string, invoiceId: string, reason: string): Promise<ReturnShopSaleResult> {
+  const why = cleanText(reason, 200);
+  if (!why) throw new Error("Say why the sale is being taken back.");
+  const plan = await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    const found = await tx.invoice.findFirst({ where: { id: invoiceId, saleKind: "SHOP_SALE" }, select: { id: true, customerId: true } });
+    if (!found) throw new Error("Couldn't find that sale.");
+    await lockCustomerLedger(tx, found.customerId);
+    await tx.$queryRaw`SELECT id FROM "Invoice" WHERE id = ${found.id} FOR UPDATE`;
+    const sale = await tx.invoice.findUniqueOrThrow({
+      where: { id: found.id },
+      select: { id: true, invoiceNumber: true, status: true, amountPaidCents: true, lineItems: { select: { applianceId: true } } },
+    });
+    const done = await tx.auditLog.findFirst({ where: { action: "sale.return", entityType: "Invoice", entityId: sale.id }, select: { newValue: true } });
+    if (done) {
+      const v = (done.newValue ?? {}) as { refundedCents?: number; restockedUnits?: number };
+      return { finished: { invoiceId: sale.id, invoiceNumber: sale.invoiceNumber, refundedCents: v.refundedCents ?? 0, restocked: v.restockedUnits ?? 0, alreadyReturned: true } as ReturnShopSaleResult };
+    }
+    if (sale.status === "VOID") throw new Error("This sale was cancelled, so there is nothing to take back.");
+    if (sale.amountPaidCents <= 0) throw new Error("Nothing has been paid on this sale. Cancel it instead.");
+    if (sale.status !== "PAID") throw new Error("Only a sale that is paid in full can be taken back here. Finish the payment or cancel the unpaid part first.");
+    if (sale.lineItems.some((l) => l.applianceId)) throw new Error("A used appliance is on this sale. Taking an appliance back changes its book value, so that is not done here yet.");
+    const refunds = await tx.refund.aggregate({ where: { invoiceId: sale.id }, _sum: { amountCents: true } });
+    return { refundable: sale.amountPaidCents - (refunds._sum.amountCents ?? 0), invoiceNumber: sale.invoiceNumber, saleId: sale.id };
+  });
+  if ("finished" in plan && plan.finished) return plan.finished;
+  const { refundable, invoiceNumber, saleId } = plan as { refundable: number; invoiceNumber: number; saleId: string };
+  if (refundable > 0) {
+    await assertRefundWithinLimit(actorUserId, refundable);
+    await issueInvoiceRefund(actorUserId, { invoiceId: saleId, amountCents: refundable, reason: "OTHER", notes: `Shop sale #${invoiceNumber} taken back: ${why}`.slice(0, 500) });
+  }
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    const found = await tx.invoice.findUniqueOrThrow({ where: { id: saleId }, select: { customerId: true } });
+    await lockCustomerLedger(tx, found.customerId);
+    await tx.$queryRaw`SELECT id FROM "Invoice" WHERE id = ${saleId} FOR UPDATE`;
+    const done = await tx.auditLog.findFirst({ where: { action: "sale.return", entityType: "Invoice", entityId: saleId }, select: { newValue: true } });
+    if (done) {
+      const v = (done.newValue ?? {}) as { refundedCents?: number; restockedUnits?: number };
+      return { invoiceId: saleId, invoiceNumber, refundedCents: v.refundedCents ?? 0, restocked: v.restockedUnits ?? 0, alreadyReturned: true };
+    }
+    const sale = await tx.invoice.findUniqueOrThrow({ where: { id: saleId }, select: { amountPaidCents: true, lineItems: { select: { id: true } } } });
+    const refunds = await tx.refund.findMany({ where: { invoiceId: saleId }, select: { id: true, amountCents: true } });
+    const refundedCents = refunds.reduce((n, r) => n + r.amountCents, 0);
+    if (refundedCents < sale.amountPaidCents) throw new Error("The refund was not fully recorded, so the items were not put back. Please try again.");
+    const unfinished = refunds.length
+      ? await tx.providerOperation.count({ where: { kind: "REFUND_CREATE", subjectType: "Refund", subjectId: { in: refunds.map((r) => r.id) }, status: { not: "SUCCEEDED" } } })
+      : 0;
+    if (unfinished > 0) throw new Error("The card refund is not confirmed by Stripe yet, so the items were not put back. Check Billing → Waiting for Stripe, then try again.");
+    const sold = await tx.partStockMovement.findMany({
+      where: { invoiceLineId: { in: sale.lineItems.map((l) => l.id) }, kind: "SALE" },
+      select: { id: true, partRecordId: true, quantityDelta: true },
+      orderBy: { id: "asc" },
+    });
+    await lockPartRecords(tx, sold.map((m) => m.partRecordId));
+    for (const m of sold) {
+      await applyPartMovementsInTx(tx, actorUserId, `return:${saleId}:${m.id}`, [
+        { partRecordId: m.partRecordId, kind: "REVERSAL", quantityDelta: 0, unitCostCents: null, reversesMovementId: m.id, reason: `Sale ${invoiceNumber} taken back: ${why}` },
+      ]);
+    }
+    const restocked = sold.reduce((n, m) => n + -m.quantityDelta, 0);
+    await tx.auditLog.create({
+      data: { userId: actorUserId, action: "sale.return", entityType: "Invoice", entityId: saleId, newValue: { reason: why, refundedCents, restockedUnits: restocked, restockedLines: sold.length } },
+    });
+    return { invoiceId: saleId, invoiceNumber, refundedCents, restocked, alreadyReturned: false };
+  });
+}
+
 export class SaleTaxBlockedError extends Error {
   constructor(readonly problems: string[]) {
     super(`This sale can't be completed yet. ${problems.join(" ")}`);
@@ -432,7 +511,7 @@ export async function getShopSale(actorUserId: string, invoiceId: string) {
       id: true, invoiceNumber: true, status: true, subtotalCents: true, taxCents: true, amountDueCents: true, amountPaidCents: true,
       createdAt: true, saleLocation: true, walkInName: true, customerId: true,
       customer: { select: { id: true, isWalkIn: true, user: { select: { name: true, email: true } } } },
-      lineItems: { orderBy: { id: "asc" }, select: { id: true, kind: true, description: true, amountCents: true, quantity: true } },
+      lineItems: { orderBy: { id: "asc" }, select: { id: true, kind: true, description: true, amountCents: true, quantity: true, applianceId: true } },
       taxLines: {
         orderBy: { id: "asc" },
         select: { id: true, taxableCents: true, exemptCents: true, taxCents: true, jurisdiction: { select: { name: true } } },

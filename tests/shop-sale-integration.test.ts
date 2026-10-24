@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { createShopSale, cancelShopSale, SaleTaxBlockedError } from "@/domains/sales";
+import { createShopSale, cancelShopSale, returnShopSale, SaleTaxBlockedError } from "@/domains/sales";
 import { recordManualPayment } from "@/domains/billing";
 import { WALK_IN_EMAIL } from "@/domains/sales/walk-in";
 import { PartOperationConflictError, findPartLedgerMismatches } from "@/domains/purchasing/ledger";
@@ -209,5 +209,62 @@ describe.skipIf(!enabled)("shop sales on real Postgres", () => {
     await expect(pay(200)).rejects.toThrow(/more than is still owed/);
     await pay(100);
     expect((await prisma.invoice.findUniqueOrThrow({ where: { id: sale.invoiceId } })).status).toBe("PAID");
+  });
+
+  const paidSale = async (quantity = 2) => {
+    const part = await newPart({ quantity: 5 });
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [{ partRecordId: part, quantity, unitPriceCents: 1000 }] });
+    const walkIn = await prisma.customer.findFirstOrThrow({ where: { isWalkIn: true } });
+    await recordManualPayment(walkIn.id, ownerId, { amountCents: sale.amountDueCents, method: "cash", invoiceId: sale.invoiceId, refuseOverpayment: true });
+    return { part, sale };
+  };
+
+  it("taking back a paid sale refunds everything paid, puts the items back once, and a repeat changes nothing", async () => {
+    const { part, sale } = await paidSale(2);
+    expect(await stock(part)).toBe(3);
+    await expect(returnShopSale(ownerId, sale.invoiceId, "  ")).rejects.toThrow(/Say why/);
+    const r = await returnShopSale(ownerId, sale.invoiceId, "Wrong hose");
+    expect(r).toMatchObject({ refundedCents: sale.amountDueCents, restocked: 2, alreadyReturned: false });
+    expect(await stock(part)).toBe(5);
+    const refunds = await prisma.refund.findMany({ where: { invoiceId: sale.invoiceId } });
+    expect(refunds).toHaveLength(1);
+    expect(refunds[0].amountCents).toBe(sale.amountDueCents);
+    expect(refunds[0].notes).toMatch(/taken back: Wrong hose/);
+    const again = await returnShopSale(ownerId, sale.invoiceId, "Wrong hose");
+    expect(again).toMatchObject({ alreadyReturned: true, refundedCents: sale.amountDueCents });
+    expect(await prisma.refund.count({ where: { invoiceId: sale.invoiceId } })).toBe(1);
+    expect(await stock(part)).toBe(5);
+    expect(await findPartLedgerMismatches(prisma, [part])).toEqual([]);
+  });
+
+  it("two simultaneous take-backs make one refund and put the items back once", async () => {
+    const { part, sale } = await paidSale(1);
+    const results = await Promise.allSettled([returnShopSale(ownerId, sale.invoiceId, "Changed mind"), returnShopSale(ownerId, sale.invoiceId, "Changed mind")]);
+    expect(results.filter((x) => x.status === "fulfilled").length).toBeGreaterThanOrEqual(1);
+    expect(await prisma.refund.count({ where: { invoiceId: sale.invoiceId } })).toBe(1);
+    expect(await stock(part)).toBe(5);
+  });
+
+  it("an unpaid, part-paid or cancelled sale cannot be taken back, and a refund that is not confirmed holds the restock", async () => {
+    const part = await newPart({ quantity: 5 });
+    const unpaid = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [{ partRecordId: part, quantity: 1, unitPriceCents: 1000 }] });
+    await expect(returnShopSale(ownerId, unpaid.invoiceId, "x")).rejects.toThrow(/Nothing has been paid/);
+    const walkIn = await prisma.customer.findFirstOrThrow({ where: { isWalkIn: true } });
+    await recordManualPayment(walkIn.id, ownerId, { amountCents: 100, method: "cash", invoiceId: unpaid.invoiceId, refuseOverpayment: true });
+    await expect(returnShopSale(ownerId, unpaid.invoiceId, "x")).rejects.toThrow(/paid in full/);
+    const cancelled = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [{ partRecordId: part, quantity: 1, unitPriceCents: 1000 }] });
+    await cancelShopSale(ownerId, cancelled.invoiceId, "oops");
+    await expect(returnShopSale(ownerId, cancelled.invoiceId, "x")).rejects.toThrow(/cancelled/);
+
+    const { part: p2, sale } = await paidSale(1);
+    // A refund already exists whose card step Stripe has not confirmed: money must come back before the items do.
+    const refund = await prisma.refund.create({ data: { invoiceId: sale.invoiceId, amountCents: sale.amountDueCents, reason: "OTHER", authorizedByUserId: ownerId } });
+    await prisma.providerOperation.create({ data: { kind: "REFUND_CREATE", subjectType: "Refund", subjectId: refund.id, idempotencyKey: `test-refund-${refund.id}`, status: "PENDING" } });
+    await expect(returnShopSale(ownerId, sale.invoiceId, "Wrong item")).rejects.toThrow(/not confirmed by Stripe/);
+    expect(await stock(p2)).toBe(4);
+    await prisma.providerOperation.updateMany({ where: { subjectId: refund.id }, data: { status: "SUCCEEDED" } });
+    expect(await returnShopSale(ownerId, sale.invoiceId, "Wrong item")).toMatchObject({ alreadyReturned: false, restocked: 1 });
+    expect(await stock(p2)).toBe(5);
+    expect(await prisma.refund.count({ where: { invoiceId: sale.invoiceId } })).toBe(1);
   });
 });
