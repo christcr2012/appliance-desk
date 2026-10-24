@@ -3,11 +3,13 @@
  * deployment with a missing or unknown environment fails closed.
  */
 export function isNonProductionDeployment(
-  env: { VERCEL?: string; VERCEL_ENV?: string } = {
+  env: { VERCEL?: string; VERCEL_ENV?: string; APP_ENV?: string } = {
     VERCEL: process.env.VERCEL,
     VERCEL_ENV: process.env.VERCEL_ENV,
+    APP_ENV: process.env.APP_ENV,
   },
 ): boolean {
+  if (env.APP_ENV === "testing") return true;
   if (env.VERCEL_ENV !== undefined) return env.VERCEL_ENV !== "production";
   return env.VERCEL === "1";
 }

@@ -1,3 +1,23 @@
+## October 24 — Dedicated synthetic testing environment (PR #566)
+
+Owner authorized the testing app and explicitly directed resetting/seeding the existing preview database;
+Chris confirmed there has never been real production data. The dedicated testing app and private file store
+are provisioned. Provider read-back confirmed all 143 migrations, three fictional customers, two appliances,
+a sellable $1 item and ten stock units. The initial deployment reached READY on the testing domain with its
+persistent banner. The reviewer-discovered migration-singleton seed issue is corrected by a guarded one-time
+settings marker; repeat deployments preserve later test edits and history. Both projects' branch tracking
+was independently read back: testing app uses `testing`; public app uses `live`. The old business-site TEST
+webhook is disabled; the separate testing webhook is enabled and its signing secret is saved privately.
+See [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) for the authoritative configuration/release process.
+Remaining private prerequisites: `TEST_OWNER_PASSWORD` and the intended official account's TEST Stripe key
+in the testing project, followed by normal MFA enrollment and real Checkout/payment-update/refund proof.
+The corrected implementation passed the required exact-head CI, all three database/unit and four browser shards;
+the seed review finding is fixed and resolved. A separate non-required capacity benchmark failed twice:
+`f-large-account-owner-read` measured 17.4ms then 18.3ms against its 14.3ms limit (11.9ms baseline +20%).
+The review correction does not modify the timed query path. No threshold override was used; investigate this
+performance follow-up separately. No successful payment acceptance is claimed. One unused empty temporary DB project was disabled after the owner chose
+reuse; its exposed temporary credential was rotated and it is not referenced by either app.
+
 ## October 24 — Owner-authorized live TEST checkout attempt: blocked before sale creation
 
 Chris explicitly approved one clearly labeled $1 TEST sale/payment/update/refund in the live business database.

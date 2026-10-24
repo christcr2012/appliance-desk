@@ -17,6 +17,13 @@ npm run bundle:preflight      # optional: runs the paperwork checks CI runs and 
 
 Never run watch modes, `npm run dev` or `--no-verify`. Wrap slow commands in `timeout 600`.
 
+## Hosted provider acceptance
+
+Use [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md): the dedicated testing app, existing synthetic preview DB,
+independent role/storage/auth and official Stripe Test mode. `npm run db:seed:testing` is guarded, additive and
+never substitutes for unit/integration suites on throwaway Postgres. Do not point the public app at the testing
+DB, reset from the parent, copy production identities, or mark business tax settings approved to unblock a test.
+
 ## The loop
 
 Branch `ai/<tool>/<topic>` from `main` → build with tests → `npm run check:quick` → **one push** → open PR (plain English

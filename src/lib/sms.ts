@@ -1,3 +1,4 @@
+import { isTestingEnvironment } from "@/lib/testing-environment";
 import twilio from "twilio";
 import { isLegacySmsDispatchEnabled } from "@/domains/messaging/sms-activation";
 
@@ -25,7 +26,7 @@ export async function sendSms(input: {
    */
   purpose?: "security";
 }): Promise<SmsResult> {
-  if (process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production" ||
+  if (isTestingEnvironment() || process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production" ||
       (input.purpose !== "security" && !await isLegacySmsDispatchEnabled())) {
     return { sent: false, outcome: "NOT_ATTEMPTED" };
   }
@@ -64,7 +65,7 @@ export type SmsProviderState = "ACCEPTED" | "DELIVERED" | "FAILED" | "UNKNOWN";
 
 /** Small-volume reconciliation fallback for UNKNOWN MessageDelivery rows. */
 export async function getSmsProviderState(messageSid: string): Promise<SmsProviderState> {
-  if (process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production") return "UNKNOWN";
+  if (isTestingEnvironment() || process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production") return "UNKNOWN";
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (!accountSid || !authToken) return "UNKNOWN";

@@ -4,7 +4,8 @@
   "git": {
     "deploymentEnabled": {
       "**": false,
-      "live": true
+      "live": true,
+      "testing": true
     }
   },
   "crons": [

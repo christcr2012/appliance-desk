@@ -10,7 +10,9 @@ this file is archived in [archive/rules-reset-2026-10-23/](archive/rules-reset-2
    starting something new.**
 2. Read the top of [STATUS.md](STATUS.md) and `npm run work -- start` (names the active card). Trust the repo and
    GitHub over any chat handoff — handoffs go stale.
-3. Check [OWNER-CHECKLIST.md](OWNER-CHECKLIST.md) for rows that have become ready (a release landed, an account was
+3. Read [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) before hosted acceptance: use the seeded testing app,
+   never repoint the public site or seed the production database. Check the deployed SHA and provider mode.
+4. Check [OWNER-CHECKLIST.md](OWNER-CHECKLIST.md) for rows that have become ready (a release landed, an account was
    set up). Do the ones you are authorized to do yourself and record real observations; leave Chris's rows alone.
 
 ## 2. Pick the next outcome

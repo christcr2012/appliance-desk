@@ -66,6 +66,14 @@ describe("deployment classification", () => {
 });
 
 describe("configured messaging providers", () => {
+  it("does not email or text from the testing project's production target", async () => {
+    vi.stubEnv("APP_ENV", "testing");
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect(await sendEmail({ to: "customer@example.test", subject: "Test", text: "Test" })).toEqual({ sent: false, outcome: "NOT_ATTEMPTED" });
+    expect(await sendSms({ to: "+13035550100", body: "Test" })).toEqual({ sent: false, outcome: "NOT_ATTEMPTED" });
+    expect(mocks.email).not.toHaveBeenCalled();
+    expect(mocks.sms).not.toHaveBeenCalled();
+  });
   it.each(["preview", "development", "staging"])("does not email or text in %s", async (environment) => {
     vi.stubEnv("VERCEL_ENV", environment);
     const log = vi.spyOn(console, "log").mockImplementation(() => {});

@@ -1,3 +1,4 @@
+import { isTestingEnvironment } from "@/lib/testing-environment";
 import { smsPreview } from "./sms-template";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -37,7 +38,7 @@ function disposableHarness(): boolean {
   }
 }
 function liveDeployment(): boolean {
-  return process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production";
+  return !isTestingEnvironment() && process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production";
 }
 
 /**

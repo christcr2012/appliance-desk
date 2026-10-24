@@ -1,3 +1,4 @@
+import { isTestingEnvironment } from "@/lib/testing-environment";
 import twilio from "twilio";
 import type { TelecomSmsProvider, SmsSubmitOutcome, SmsProviderInput } from "./types";
 
@@ -24,7 +25,7 @@ export function basicLookupProvesUsDestination(
 
 /** No external provider can be constructed outside explicitly configured production. */
 export function makeTwilioSmsProvider(accountSid: string): TelecomSmsProvider | null {
-  if (process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production") return null;
+  if (isTestingEnvironment() || process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production") return null;
   const configuredSid = process.env.TWILIO_ACCOUNT_SID;
   const apiKey = process.env.TWILIO_API_KEY;
   const apiSecret = process.env.TWILIO_API_SECRET;
