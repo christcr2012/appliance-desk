@@ -53,7 +53,11 @@ export async function GET(request: Request): Promise<NextResponse> {
             where: { accountId_resource: { accountId: account.id, resource } },
             select: { nextPageToken: true, windowStart: true, windowEnd: true },
           });
-          const todo = cursor?.nextPageToken ? [{ start: cursor.windowStart, end: cursor.windowEnd }, ...windows] : windows;
+          const resumed = cursor?.nextPageToken ? { start: cursor.windowStart, end: cursor.windowEnd } : null;
+          // The half-read window goes first, and is not repeated from the normal list (so finishing it moves on to the next window).
+          const todo = resumed
+            ? [resumed, ...windows.filter((w) => +w.start !== +resumed.start || +w.end !== +resumed.end)]
+            : windows;
           for (const w of todo) {
             try {
               const r = await syncTelecomUsage({ accountId: account.id, resource, windowStart: w.start, windowEnd: w.end, maxPages: PAGES_PER_RUN });
