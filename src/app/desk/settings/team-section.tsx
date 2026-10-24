@@ -4,12 +4,13 @@ import { useState, useTransition } from "react";
 import { Button, Checkbox, DataList, EmptyState, Field, Select, StatusPill, type DataListColumn } from "@/components/ui";
 import { CAPABILITIES, CAPABILITY_KEYS } from "@/domains/capabilities/labels";
 import {
-  cancelInvitationAction, changeAccessLevelAction, inviteTeamMemberAction, removeTeamMemberAction,
+  assignJobRoleAction, cancelInvitationAction, changeAccessLevelAction, inviteTeamMemberAction, removeTeamMemberAction,
   resendInvitationAction, resetTeamSignInAction, restoreTeamMemberAction, saveTeamSettingsAction, type TeamActionState,
 } from "./team-actions";
 import { signOutStaffEverywhereAction } from "./actions";
+import { JobRolesEditor, type JobRoleView } from "./job-roles-editor";
 
-export type TeamMember = { id: string; name: string; email: string; accessLevel: string; active: boolean; twoStepOn: boolean; lastSignIn: string | null };
+export type TeamMember = { id: string; name: string; email: string; accessLevel: string; active: boolean; twoStepOn: boolean; lastSignIn: string | null; jobRoleId: string | null };
 export type TeamInvitation = { id: string; name: string; email: string; accessLevel: string; state: string; expiresAt: string };
 
 const LEVEL_LABEL: Record<string, string> = { OWNER: "Owner", ADMIN: "Admin", STAFF: "Staff" };
@@ -21,17 +22,20 @@ function formatWhen(iso: string | null) {
 }
 
 export function TeamSection({
-  members, invitations, viewerRole, viewerId, settings,
+  members, invitations, viewerRole, viewerId, settings, jobRoles,
 }: {
   members: TeamMember[]; invitations: TeamInvitation[]; viewerRole: "OWNER" | "ADMIN"; viewerId: string;
   settings: { invitationLinkDays: number; adminsMayInviteStaff: boolean };
+  jobRoles: JobRoleView[];
 }) {
+  const activeRoles = jobRoles.filter((r) => !r.archived);
   const isOwner = viewerRole === "OWNER";
   const [pending, start] = useTransition();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [level, setLevel] = useState("STAFF");
+  const [jobRoleId, setJobRoleId] = useState("");
   const [blocked, setBlocked] = useState<string[]>([]);
   const [formMsg, setFormMsg] = useState<Msg | null>(null);
   const [rowMsg, setRowMsg] = useState<Record<string, Msg>>({});
@@ -53,9 +57,9 @@ export function TeamSection({
     event.preventDefault();
     setFormMsg(null);
     start(async () => {
-      const r = await inviteTeamMemberAction({ name, email, phone, accessLevel: level, adminCapabilityLimits: level === "ADMIN" ? blocked : [] });
+      const r = await inviteTeamMemberAction({ name, email, phone, accessLevel: level, adminCapabilityLimits: level === "ADMIN" ? blocked : [], jobRoleId: jobRoleId || undefined });
       setFormMsg(show(r));
-      if (r.status === "success") { setName(""); setEmail(""); setPhone(""); setBlocked([]); }
+      if (r.status === "success") { setName(""); setEmail(""); setPhone(""); setBlocked([]); setJobRoleId(""); }
     });
   }
 
@@ -68,6 +72,22 @@ export function TeamSection({
     { key: "name", header: "Name", primary: true, cell: (m) => m.name },
     { key: "email", header: "Email", cell: (m) => m.email },
     { key: "level", header: "Access level", cell: (m) => LEVEL_LABEL[m.accessLevel] ?? m.accessLevel },
+    {
+      key: "jobrole", header: "Job role",
+      cell: (m) => {
+        const current = jobRoles.find((r) => r.id === m.jobRoleId);
+        if (m.accessLevel === "OWNER") return "Everything";
+        if (!isOwner || !m.active) return current ? current.label : "None (access level only)";
+        const options = activeRoles.filter((r) => r.accessLevel === m.accessLevel);
+        return (
+          <Select id={`jobRole-${m.id}`} label={`Job role for ${m.name}`} value={m.jobRoleId ?? ""} disabled={pending}
+            onChange={(e) => rowAction(m.id, () => assignJobRoleAction(m.id, e.target.value))}>
+            <option value="">None (access level only)</option>
+            {options.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </Select>
+        );
+      },
+    },
     { key: "twostep", header: "Two-step", cell: (m) => (m.twoStepOn ? "On" : "Off") },
     { key: "last", header: "Last signed in", cell: (m) => formatWhen(m.lastSignIn) },
     { key: "status", header: "Status", cell: (m) => <StatusPill tone={m.active ? "success" : "stopped"} label={m.active ? "Active" : "Removed"} /> },
@@ -161,13 +181,17 @@ export function TeamSection({
           <Field id="inviteEmail" label="Email" help="They get a link to choose their own password. You never see or choose it." type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Field id="invitePhone" label="Phone (optional)" help="Used later for text sign-in codes." type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           {isOwner ? (
-            <Select id="inviteLevel" label="Access level" value={level} onChange={(e) => setLevel(e.target.value)}>
+            <Select id="inviteLevel" label="Access level" value={level} onChange={(e) => { setLevel(e.target.value); setJobRoleId(""); }}>
               <option value="STAFF">Staff</option>
               <option value="ADMIN">Admin</option>
             </Select>
           ) : (
             <p className="text-sm text-ink-soft">Access level: Staff. Only the owner can invite an admin.</p>
           )}
+          <Select id="inviteJobRole" label="Job role (optional)" value={jobRoleId} onChange={(e) => setJobRoleId(e.target.value)}>
+            <option value="">None (access level only)</option>
+            {activeRoles.filter((r) => r.accessLevel === level).map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </Select>
           {isOwner && level === "ADMIN" && (
             <fieldset className="space-y-2 rounded border border-line p-3">
               <legend className="px-1 text-sm font-semibold text-ink">What this admin may do (untick to switch off)</legend>
@@ -183,6 +207,8 @@ export function TeamSection({
       ) : (
         <p className="border-t border-line pt-6 text-sm text-ink-soft">The owner has not allowed admins to invite staff. Ask the owner to invite someone.</p>
       )}
+
+      {isOwner && <JobRolesEditor jobRoles={jobRoles} />}
 
       {isOwner && (
         <form onSubmit={submitSettings} className="max-w-md space-y-4 border-t border-line pt-6">

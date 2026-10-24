@@ -44,6 +44,8 @@ export const BACKUP_MODEL_POLICY = {
   StaffCapabilityOverride: "staffCapabilityOverride",
   // ACC-2: invitations are short-lived and hold only a hash of a link code; a restore re-invites instead.
   TeamInvitation: null,
+  // ACC-5: the owner's job role definitions are business settings and are part of a restore.
+  JobRole: "jobRole",
   ApprovalRequest: "approvalRequest",
   ScheduledPriceChange: "scheduledPriceChange",
   BusinessGoal: "businessGoal",

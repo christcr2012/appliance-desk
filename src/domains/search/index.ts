@@ -1,5 +1,7 @@
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { jobRoleScreens } from "@/lib/job-role-guard";
+import { jobRoleAllowsScreen, type ScreenKey } from "@/domains/team/job-role-rules";
 
 const RESULT_LIMIT = 8;
 
@@ -21,6 +23,9 @@ export type SearchResults = {
  */
 export async function searchAll(rawQuery: string): Promise<SearchResults> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  // ACC-5: a job role only narrows. A category the person's job role does not include is not even queried (take: 0).
+  const screens = await jobRoleScreens(session.user.id, session.user.role);
+  const limitFor = (screen: ScreenKey) => (jobRoleAllowsScreen(screens, screen) ? RESULT_LIMIT : 0);
   const query = rawQuery.trim();
   if (!query) {
     return { query: "", customers: [], appliances: [], leads: [], purchases: [], sellers: [] };
@@ -39,7 +44,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
       },
       select: { id: true, companyName: true, user: { select: { name: true, email: true } } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: RESULT_LIMIT,
+      take: limitFor("customers"),
     }),
     prisma.appliance.findMany({
       where: {
@@ -52,7 +57,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
       },
       select: { id: true, assetNumber: true, manufacturer: true, applianceType: { select: { name: true } } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: RESULT_LIMIT,
+      take: limitFor("inventory"),
     }),
   ]);
 
@@ -68,7 +73,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
           },
           select: { id: true, contactName: true, email: true, status: true },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          take: RESULT_LIMIT,
+          take: limitFor("leads"),
         })
       : [];
 
@@ -85,7 +90,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
         },
         select: { id: true, sellerName: true, reference: true, purchasedOn: true, supplier: { select: { name: true } } },
         orderBy: [{ purchasedOn: "desc" }, { id: "desc" }],
-        take: RESULT_LIMIT,
+        take: limitFor("inventory"),
       })
     : [];
   const sellers = isOwnerOrAdmin
@@ -98,7 +103,7 @@ export async function searchAll(rawQuery: string): Promise<SearchResults> {
         },
         select: { id: true, name: true, contactName: true },
         orderBy: [{ name: "asc" }, { id: "asc" }],
-        take: RESULT_LIMIT,
+        take: limitFor("suppliers"),
       })
     : [];
 

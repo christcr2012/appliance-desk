@@ -1,3 +1,7 @@
+## October 24 — Job roles (ACC-5, additive)
+
+`JobRole` (label, accessLevel STAFF or ADMIN, `screens` JSON list of known screen keys, `capabilityLimits` JSON list of admin permissions switched off, isStarter, archivedAt). Four starting rows are inserted by the migration. `User.jobRoleId` and `TeamInvitation.jobRoleId` are plain ids (no database link) so backups restore in any order; null means "no job role: the access level alone decides". Migration `20261024080000_job_roles`.
+
 ## October 24 — Sign-in recovery (ACC-4, additive)
 
 `User.failedSignInCount`, `failedSignInWindowStartedAt`, `signInPausedUntil` (wrong-password pause). `TeamInvitation.purpose` (INVITE or RESET) and `targetUserId` (the person whose sign-in the owner reset). `BusinessSettings.signInPauseAttempts` (10) and `signInPauseMinutes` (15). Migration `20261024070000_sign_in_recovery`.

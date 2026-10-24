@@ -10,6 +10,7 @@ vi.mock("@/lib/session", () => ({
   getServerSession: async () => ({ user: { role: state.role } }),
   requireSession: async () => ({ user: { role: state.role } }),
 }));
+vi.mock("@/lib/job-role-guard", () => ({ jobRoleScreens: async () => null })); // ACC-5: no job role, so the access level alone decides
 vi.mock("@/components/ui", () => ({
   Card: ({ title, children }: { title: string; children: React.ReactNode }) => <section><h2>{title}</h2>{children}</section>,
   PageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,

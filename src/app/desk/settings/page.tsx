@@ -13,6 +13,7 @@ import { noticeDeliveryDefaults } from "@/domains/settings/notice-delivery";
 import { getBusinessSettings, getAllApplianceTypes } from "@/domains/settings";
 import { getLeadScoringPolicy } from "@/domains/leads/scoring-policy";
 import { getTeam, getTeamSettings } from "@/domains/team";
+import { listJobRoles } from "@/domains/team/job-roles";
 import { requireRole } from "@/lib/session";
 import {
   SETTINGS_SECTIONS,
@@ -207,13 +208,14 @@ export default async function DeskSettingsPage({
       </Card>
     );
   } else if (section === "staff") {
-    const [team, teamSettings] = await Promise.all([getTeam(), getTeamSettings()]);
+    const [team, teamSettings, jobRoles] = await Promise.all([getTeam(), getTeamSettings(), listJobRoles({ includeArchived: session.user.role === "OWNER" })]);
     content = (
       <Card title="Team">
         <TeamSection
           viewerRole={session.user.role === "OWNER" ? "OWNER" : "ADMIN"}
           viewerId={session.user.id}
           settings={teamSettings}
+          jobRoles={jobRoles}
           members={team.members.map((m) => ({ ...m, lastSignIn: m.lastSignIn ? m.lastSignIn.toISOString() : null }))}
           invitations={team.invitations.map((i) => ({ id: i.id, name: i.name, email: i.email, accessLevel: i.accessLevel, state: i.state, expiresAt: i.expiresAt.toISOString() }))}
         />

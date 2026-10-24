@@ -6,6 +6,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/acc2-team-invitations-integration.test.ts", // ACC-2 changes and restores the shared invitation settings.
   "tests/acc3-second-step-integration.test.ts", // ACC-3 changes and restores the shared sign-in method rules and text-code switch.
   "tests/acc4-recovery-integration.test.ts", // ACC-4 changes and restores the shared wrong-password pause numbers and invitation link days.
+  "tests/acc5-job-roles-integration.test.ts", // ACC-5 edits the shared starting job roles and the invitation settings.
   "tests/goals-integration.test.ts", // O-5 changes and restores the shared alert settings.
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
   "tests/capabilities-integration.test.ts", // O-2A limits an admin and restores it; reads/writes the shared override table and settings row.
