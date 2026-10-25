@@ -81,6 +81,7 @@
       "preapproval-estimate-prepare.spec.ts",
       "signature-public.spec.ts",
       "signature-focus.spec.ts",
+      "owner-price-changes.spec.ts",
       "crm-workspace.spec.ts"
     ]
   }

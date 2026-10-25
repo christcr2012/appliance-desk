@@ -1,3 +1,11 @@
+## October 25 — Owner controls: price changes with a start date now cover rental sets (O-4)
+
+In progress (branch `ai/claude/owner-controls-o4`). On Settings → Price changes you can now pick a rental set (like Washer + Dryer
+Set) as well as a single appliance, a new monthly price and a start day. The nightly job applies it once, writes the same price
+history and change-history rows as a typed change, and leaves signed rentals alone; it fails safely if the set was retired or
+the person who scheduled it was since limited. Additive migration `20261025060000_scheduled_package_price_changes`. Proven by real-Postgres tests and a
+real-browser spec (phone width, keyboard, accessibility). Nothing for Chris to do.
+
 ## October 25 — Browser tests for shop sales and retired appliances
 
 In progress (branch `ai/claude/shop-sales-e2e`). New `e2e/shop-sales.spec.ts` (registered in browser-a) drives the real screens on the throwaway test database: ring up two parts with 5% tax, take the cash, take the sale back and see the stock return; and sell a retired appliance at $9,000 (nothing caps the price), see the depreciation-recapture warning and "CPA review needed" with no tax numbers, then close the accountant note. Includes a phone-width accessibility scan of the new-sale screen. Not run locally (the local test launcher refuses this sandbox's root account), so the first real run is this PR's CI. Nothing for Chris to do.
