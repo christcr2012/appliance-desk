@@ -101,7 +101,37 @@ export async function applyAnswers(actorId, answers: ParsedAnswer[], confirmToke
   `expectedValue`; `subject.write(tx, …)` when the value changes; then insert the `DecisionRecord`; audit
   `decision.{kind}` with subject id.
 - `effectiveFrom` must be today or later (Denver business date); refused if earlier ("A change can't apply to the
-  past — signed and billed history stays as it was").
+  past — signed and billed history stays as it was"). Today (or null) → `subject.write` now. Later → section 4a.
+
+### 4a. Changes that start on a later date
+Most settings (and `TaxabilityRule`, `@@unique([jurisdictionId, category])`, read by `src/domains/tax/locations.ts`
+with no date) have no effective dating, so a future change is stored, not written:
+```prisma
+model DecisionScheduledChange {
+  id            String   @id @default(cuid())
+  subjectId     String
+  value         Json
+  effectiveFrom DateTime                  // Denver start of that business date, stored UTC
+  decisionRecordId String                 // the record that scheduled it
+  provisional   Boolean  @default(false)
+  appliedAt     DateTime?
+  cancelledAt   DateTime?                 // a later decision on the same subject cancels it
+  createdAt     DateTime @default(now())
+  @@index([appliedAt, effectiveFrom])
+  @@index([subjectId, effectiveFrom])
+}
+```
+(additive, in DEC-1a's migration). One pending change per subject: scheduling a new one cancels the old (same
+transaction). **Applying:** the nightly `books-nightly` run (after its current work, in `runAutomation`) applies every
+change with `effectiveFrom <= now` through `subject.write` with the same locks and audit, sets `appliedAt`; idempotent
+(locked row, `appliedAt` re-checked). **Tax is exact to the day without waiting for the nightly run:** new
+`getTaxabilityRulesAsOf(at: Date)` in `src/domains/tax/locations.ts` returns the stored rules overlaid with any
+not-yet-applied, not-cancelled taxability change whose `effectiveFrom <= at` (newest per jurisdiction × category);
+the tax engine and the filing screens call it with the charge's service date (invoices) or the period end (returns)
+instead of reading the table directly. A grep test fails if `taxabilityRule.findMany` is used outside
+`locations.ts`. Cards show "Starts {formatShortDate(effectiveFrom)}" until applied. Tests: a change for tomorrow does
+not affect today's invoice and does affect tomorrow's (before the nightly run); nightly applies it once; a newer
+decision cancels the pending one; DST boundary dates.
 - `attachmentUrl` must be a private blob url under `decisions/` (check the prefix and the private store host).
 - `previewAnswers` is pure apart from reads: for each parsed answer → `{ code, title, now: describe(current),
   after: describe(value), effectiveFrom, status: "CHANGE" | "SAME" | "INVALID", reason? }` (INVALID when the code is

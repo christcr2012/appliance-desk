@@ -33,7 +33,7 @@ billed history. Read `docs/AI-PR-READ-FIRST.md` (money, tax and settings writes)
 2. **No way to waive a late fee.** IN-84 says the owner (or admin doing money) may waive one with a reason. Add
    `waiveLateFee(actorId, invoiceId, reason)` in `src/domains/billing/late-fees.ts`, OWNER/ADMIN:
    one transaction; `SELECT … FROM "Invoice" WHERE id = $1 FOR UPDATE`; `assertActiveTeamActor(tx, actorId,
-   ["OWNER","ADMIN"])`; refuse unless the invoice is open and `lateFeeCents > 0` ("There's no late fee on this bill");
+   ["OWNER","ADMIN"])`; re-read the locked row and refuse unless the invoice is open, `lateFeeCents > 0` ("There's no late fee on this bill") **and `lateFeeWaivedAt` is null** ("This late fee was already waived" — so two waivers at once, or a retry, subtract it only once);
    reason 3–500 characters; add a negative invoice line "Late fee waived — {reason}" of `-lateFeeCents`, reduce
    `amountDueCents` by the same amount through the existing invoice-total function (never edit the original fee line),
    keep `lateFeeCents` as the record of what was charged and set the new field `lateFeeWaivedAt` (additive, nullable)
@@ -64,11 +64,13 @@ export async function applyStartingValues(now = new Date()): Promise<{ applied: 
      schema default listed in the subject as `untouchedDefault`, e.g. `lateFeeFlatCents: 0`). If Chris has set
      anything else, record nothing and add `{ id, why: "Already set by you" }` to `skipped` — never overwrite.
   3. Write with `effectiveFrom` = the next Denver business date (never today's already-billed work, never the
-     past). Tax rules use the provisional path (DEC-1 section 5) so they carry `provisional = true`.
+     past), through DEC-1's scheduled-change path (DEC-1 section 4a): tax cells take effect exactly at the start of that
+     date through the date-aware read; other settings apply in the first nightly run on that date. Tax rules use the
+     provisional path (DEC-1 section 5) so they carry `provisional = true`.
   4. Record `STARTING_VALUE_APPLIED` (researched subjects) or `CONFIRMED` (owner-answered subjects) with
      `previousValue`, `value`, `sources`.
 - Nothing already signed or billed changes: agreements keep their snapshot terms; issued invoices keep their tax
-  lines; the tax engine reads rules by effective date.
+  lines; the tax engine reads taxability through `getTaxabilityRulesAsOf(date)` (DEC-1 section 4a).
 - **To do item.** To do items are computed, not stored (`src/domains/exceptions/rules.ts` + `index.ts`). Add
   category `DECISIONS_STARTING_VALUES` (severity `medium`) and a pure rule
   `startingValuesAppliedException({ count, newest })`: title "{count} starting values are now in use", detail

@@ -175,8 +175,12 @@ switch (no live email in development).
 `pruneBackups(now, retentionDays)` (retention = new setting `backupRetentionDays Int @default(30)`, 7–365, explained:
 "How long to keep daily backups. Starting value 30 days. The newest working backup is always kept."):
 - Candidates come from the **database** (`BackupArtifact` where `state in (VERIFIED, UPLOADED_UNVERIFIED, FAILED)`,
-  `createdAt < now − retentionDays`), oldest first, 200 per run — not from `list()`. Never a candidate: the newest
-  VERIFIED DATABASE artifact and its newest MEDIA_MANIFEST, whatever their age.
+  `createdAt < now − retentionDays`), oldest first, 200 per run — not from `list()`. Never a candidate, whatever
+  their age: (a) the newest VERIFIED DATABASE artifact; (b) the newest **complete pair** — the newest VERIFIED
+  DATABASE artifact that has a MEDIA_MANIFEST — and that manifest. (a) and (b) are usually the same backup; after an
+  outage longer than the retention period they differ (the new backup has no photo list yet), and both are kept, so
+  the last complete recovery set survives even if the next photo copy fails. Test: 40-day-old complete pair + new
+  database-only backup + photo copy failing afterwards → the old pair is still there.
 - For each: `del(pathname)`; on success `state PRUNED, prunedAt`; a pair is pruned manifest first, database second.
 - Old files with no artifact row (made before this change): one-time sweep using paginated `list({ cursor })` (loop
   until `hasMore` is false, max 20 pages per run), only files under `backups/` whose date prefix is older than the
