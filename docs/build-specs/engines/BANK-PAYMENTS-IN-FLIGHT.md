@@ -44,14 +44,20 @@ Add two Stripe event types to `processLockedEvent` and `gatherWebhookEvidence`:
 | Event | Evidence gathered before the transaction | Effect inside the locked transaction |
 |---|---|---|
 | `payment_intent.processing` | `stripe.invoicePayments.list({ payment: { type: "payment_intent", payment_intent: pi.id }, limit: 1 })` → the Stripe invoice id (store it on the evidence object as `invoiceForIntent(piId)`); if none and `pi.metadata.localInvoiceId` exists, use that. | Find the local `Invoice` (`stripeInvoiceId` = the Stripe invoice id, or `id` = `localInvoiceId`). If none → do nothing (other payment kinds, e.g. signing payments, keep their own handling). If the invoice already has a successful payment for this intent (`stripePaymentIntentId` + `SUCCESSFUL_PAYMENT_STATUSES`) → do nothing. Else `upsert` by `paymentIntentId` (create only; never reopen a cleared row): source, amount = `pi.amount`, method from `pi.payment_method_types[0] === "us_bank_account" ? "ach" : that type`, startedAt = `event.created`. Audit `billing.bank_payment_in_flight`. |
-| `payment_intent.payment_failed` and `payment_intent.canceled` | none | If a row exists for `pi.id` and is open: set `clearedAt = now`, `clearedReason = "FAILED"` / `"CANCELED"`. Nothing else (the existing `invoice.payment_failed` path keeps doing what it does). |
+| `payment_intent.payment_failed` and `payment_intent.canceled` | none | If a row exists for `pi.id` and is open: set `clearedAt = now`, `clearedReason = "FAILED"` / `"CANCELED"`. **If no row exists** and the intent belongs to a local invoice (`pi.metadata.localInvoiceId`) or a Stripe invoice (same lookup as for processing), create the row **already cleared** (a "tombstone": `clearedAt = now`, the reason, `startedAt = event.created`) so a processing or unpaid-completion event that arrives later cannot open it again (rows are create-only by `paymentIntentId`). Nothing else (the existing `invoice.payment_failed` path keeps doing what it does). |
 
 And in existing handlers (same transaction, after their current work):
 - `checkout.session.completed` for a local invoice session (`isLocalInvoiceSession`) with `payment_status === "unpaid"`
   and a `payment_intent` → create the row (source `LOCAL_CHECKOUT`, amount = `session.amount_total`, method from the
   session's `payment_method_types` resolved PI if already gathered, else `"ach"`), unless one exists.
 - `checkout.session.async_payment_succeeded` / `_failed` for local invoice sessions → clear the row for that intent
-  (`SUCCEEDED` / `FAILED`).
+  (`SUCCEEDED` / `FAILED`); if no row exists yet, create it already cleared (tombstone, as above).
+- **Before creating an open row** (processing or unpaid completion), the evidence step also retrieves the intent
+  (`evidence.fetchPaymentIntentWithMethod`, already available); create the row open only when the intent's status is
+  still `processing`. If Stripe already reports `succeeded`, `requires_payment_method` or `canceled`, create it
+  cleared with the matching reason instead (and the normal settlement/failure events record the money as today).
+- Out-of-order tests (add to the list below): failure before processing → no open row; async_payment_failed before
+  the unpaid completion → no open row; succeeded before processing → no open row; each delivered twice → one row.
 - `invoice.paid` → clear every open row of that invoice (`SUCCEEDED`).
 - `invoice.payment_failed` → clear open rows whose `paymentIntentId` equals the invoice's latest failed intent if the
   evidence has it; otherwise leave them (the nightly check clears them).

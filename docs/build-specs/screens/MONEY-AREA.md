@@ -129,8 +129,13 @@ bottom of the Activity tab.
   customerId, owedCents, suggestedReason })` instead of navigating; the old `#take-payment` anchor keeps working.
   The list needs `suggestedReason`: compute it on the server with `suggestPaymentLinkReason(money)` only for the rows
   on screen (it is pure; pass the same `money` fields).
-- **Record cash or check** = a Sheet titled "Record cash or check" containing the existing `RecordPaymentForm` with
-  `openInvoices` = only this bill (`[{ id, invoiceNumber, balanceCents: owed }]`), so the money is applied to it. On
+- **Record cash or check** = a Sheet titled "Record cash or check" containing the existing `RecordPaymentForm` with a
+  **new optional prop `lockedInvoiceId`**. Passing only this bill in `openInvoices` is *not* enough: the form's
+  invoice selector defaults to "All open invoices, oldest first", which sends an empty `invoiceId`, and
+  `recordManualPayment` then spreads the money over all the customer's open bills. With `lockedInvoiceId` set, the
+  form renders no selector, sends that id in a hidden `invoiceId` field, and shows "For bill #{number}". The server
+  path is unchanged (it already applies an explicit `invoiceId` to that bill). Test: a customer with two open bills,
+  recording from the newer one pays the newer one and leaves the older one untouched. On
   success: close, toast `"Recorded {formatMoney(totalApplied)}"` (+ `" · {formatMoney(overpayment)} kept as credit"`
   when > 0), refresh.
 
