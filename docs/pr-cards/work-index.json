@@ -5158,6 +5158,86 @@
       "units": [
         "ACC-6"
       ]
+    },
+    {
+      "id": "TFA-1",
+      "title": "Tax and fee rule book: dated legal rules with sources, timing rule (costs late, benefits early), Taxes › Rules",
+      "batch": "TFA",
+      "dependencies": [
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
+      "budget": 500,
+      "units": [
+        "TFA-1"
+      ],
+      "evidence": [
+        "docs/designs/TAX-FEE-AUTOPILOT.md",
+        "docs/build-specs/engines/TAX-FEE-AUTOPILOT.md",
+        "docs/research/2026-10-25-tax-fee-rules.md"
+      ],
+      "tests": [
+        "tests/rules-registry.test.ts",
+        "tests/rules-as-of-integration.test.ts",
+        "tests/rules-timing.test.ts",
+        "e2e/tax-rules.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TFA-1.md"
+    },
+    {
+      "id": "TFA-2",
+      "title": "Automatic exemption switches: RDF threshold/start/return rules, yearly use-tax reset, filing-frequency advice, certificates, license",
+      "batch": "TFA",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (Invoice.replacementOfInvoiceId)",
+      "budget": 500,
+      "units": [
+        "TFA-2"
+      ],
+      "evidence": [
+        "docs/designs/TAX-FEE-AUTOPILOT.md",
+        "docs/build-specs/engines/TAX-FEE-AUTOPILOT.md",
+        "docs/research/2026-10-25-tax-fee-rules.md"
+      ],
+      "tests": [
+        "tests/rdf-autopilot-integration.test.ts",
+        "tests/use-tax-year-reset.test.ts",
+        "tests/filing-frequency-advice.test.ts",
+        "tests/exemption-expiry-flow-integration.test.ts",
+        "tests/license-renewal.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TFA-2.md"
+    },
+    {
+      "id": "TFA-3",
+      "title": "Official source watches with strict parsers and guarded self-update",
+      "batch": "TFA",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (LegalRuleObservation, watch rows activated)",
+      "budget": 450,
+      "units": [
+        "TFA-3"
+      ],
+      "evidence": [
+        "docs/designs/TAX-FEE-AUTOPILOT.md",
+        "docs/build-specs/engines/TAX-FEE-AUTOPILOT.md",
+        "docs/research/2026-10-25-tax-fee-rules.md"
+      ],
+      "tests": [
+        "tests/rules-parsers.test.ts",
+        "tests/rules-observation-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TFA-3.md"
     }
   ],
   "enhancements": [
