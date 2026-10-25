@@ -378,6 +378,29 @@ Turning on text-message codes stays Chris's live-SMS switch; nothing else here n
   access remains impossible until IN-13 is answered.
 - [ ] Every item in "Rules that apply to every batch".
 
+## Batch BA — Books on autopilot — DESIGNED 2026-10-25, awaiting Chris's go-ahead
+
+Design: [designs/BOOKS-AUTOPILOT.md](designs/BOOKS-AUTOPILOT.md); units BA-1…BA-6 in work-index. Restores the
+Batch K intent (nightly posting, automatic depreciation, purchase-date in-service) and adds the owner workflow.
+
+### Acceptance checklist
+
+- [ ] BA-1: once books are started, every night records all pending sources, enrolls every eligible appliance and
+  records every completed month of depreciation with no button pressed; retiring an appliance in Equipment stops its
+  depreciation; anything that cannot be recorded becomes a To do item with the reason and a fix link; re-runs never
+  duplicate; Stripe import stays behind its owner switch.
+- [ ] BA-2: a guided setup with a "brand-new business" path; starting balances can be corrected later with an
+  audited correcting entry (never editing the original).
+- [ ] BA-3: on the 1st, "Review <month>'s books" appears on To do; the month page runs four automatic checks, shows
+  the month in plain words, offers the accountant package, and locks the month (owner only); reminder day setting.
+- [ ] BA-4: Books home shows up-to-date status, this month and last month in dollars, what needs attention and four
+  task cards (purpose, when, status) with a matching tab bar; journal, account matching and exports live under "For
+  your accountant"; every old Books URL still works.
+- [ ] BA-5: equipment value page lists every appliance's cost, value recorded, value now and next automatic entry,
+  with no enroll form or "post through" field; totals match the ledger.
+- [ ] BA-6: no desk page shows rows of bare navigation links; a guard test enforces it.
+- [ ] Every item in "Rules that apply to every batch".
+
 ## Batch BP — Business offers operations and partnerships — PROPOSED
 
 Design: `docs/designs/BATCH-BP.md`; work coverage and prerequisites: work-index.

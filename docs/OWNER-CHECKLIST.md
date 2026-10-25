@@ -177,6 +177,11 @@ Agents will do the parts they safely can and record what they saw; the rest need
   the changed environment variable (no manual release), and Desk → Automations shows a successful nightly
   "Phone usage sync" run. Leave this box unchecked until the run is observed.
 
+- [ ] **Decision: build "Books on autopilot" (BA-1…BA-6)?** The design is written (docs/designs/BOOKS-AUTOPILOT.md):
+  the app keeps the books itself, you review once a month from your To do list, and pages lose their rows of bare
+  links. Recommendation: yes, starting with BA-1 (today nothing is recorded unless someone presses a button) and BA-6
+  alongside it. Steps: tell the agent "build BA". Ready when: now.
+
 ## E. Optional / later (no action until you want it)
 
 IN-10 real photos you are comfortable publishing · IN-11 genuine reviews with permission · IN-13 staff roles when you hire ·
@@ -200,6 +205,7 @@ on readiness).
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
 | 2026-10-23 | Staff-permission decision (section E) | Granting staff reports/expenses would widen access, so it needs the owner's approval. |
+| 2026-10-25 | Books on autopilot go-ahead decision | Chris asked for a Books redesign a first-time owner can run; build needs his go-ahead. |
 | 2026-10-24 | Testing owner password fix, agent-run M-3 check, GitHub release-branch protection | Audit of the testing setup: the testing build failed at the owner step; `live`/`testing` had no GitHub protection and the connector correctly refuses to change protection without you. |
 | 2026-10-23 | ACC rows: email-code decision (IN-85), build-order decision, second sign-in method, Twilio sign-in-code use case | Chris asked for invitations, account self-service, recovery and text/email codes (design: designs/ACCOUNTS-AND-SIGN-IN.md). |
 | 2026-10-24 | Shop-sale card page in Stripe test mode | M-3 was proved only against a pretend Stripe; a real test-mode payment needs Chris's Stripe test keys. |

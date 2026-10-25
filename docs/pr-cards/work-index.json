@@ -4014,6 +4014,150 @@
       "readiness": "MERGED",
       "risk": "auth",
       "card": "docs/pr-cards/ACC-5.md"
+    },
+    {
+      "id": "BA-1",
+      "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
+      "batch": "BA",
+      "dependencies": [],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "book_autopilot",
+      "budget": 480,
+      "units": [
+        "BA-1"
+      ],
+      "evidence": [
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/domains/books/post.ts",
+        "src/domains/books/fixed-assets.ts",
+        "src/app/api/cron/books-nightly/route.ts"
+      ],
+      "tests": [
+        "tests/ba1-books-autopilot-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BA-1.md"
+    },
+    {
+      "id": "BA-2",
+      "title": "First-time books setup a new owner can finish, and correcting starting balances",
+      "batch": "BA",
+      "dependencies": [
+        "BA-1"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "opening_correction",
+      "budget": 380,
+      "units": [
+        "BA-2"
+      ],
+      "evidence": [
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/domains/books/management.ts",
+        "src/app/desk/books/page.tsx"
+      ],
+      "tests": [
+        "tests/ba2-books-setup-integration.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BA-2.md"
+    },
+    {
+      "id": "BA-3",
+      "title": "Review this month: guided month-end checks, plain summary, accountant package, lock",
+      "batch": "BA",
+      "dependencies": [
+        "BA-2"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "month_review",
+      "budget": 480,
+      "units": [
+        "BA-3"
+      ],
+      "evidence": [
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/domains/books/management.ts",
+        "src/domains/exceptions/rules.ts",
+        "src/domains/books/reports.ts"
+      ],
+      "tests": [
+        "tests/ba3-month-review-integration.test.ts",
+        "e2e/books-month-review.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BA-3.md"
+    },
+    {
+      "id": "BA-4",
+      "title": "Books home a beginner understands: status, this month, task cards, For your accountant",
+      "batch": "BA",
+      "dependencies": [
+        "BA-3"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "BA-4"
+      ],
+      "evidence": [
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/app/desk/books/page.tsx",
+        "src/app/desk/books/reports/page.tsx",
+        "src/app/desk/books/closing/page.tsx"
+      ],
+      "tests": [
+        "e2e/books-home.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BA-4.md"
+    },
+    {
+      "id": "BA-5",
+      "title": "Equipment value screen with nothing to remember",
+      "batch": "BA",
+      "dependencies": [
+        "BA-4"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 300,
+      "units": [
+        "BA-5"
+      ],
+      "evidence": [
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/app/desk/books/assets/page.tsx",
+        "src/domains/books/fixed-assets.ts"
+      ],
+      "tests": [
+        "tests/ba5-equipment-value.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BA-5.md"
+    },
+    {
+      "id": "BA-6",
+      "title": "No bare link lists anywhere on the desk; guard test",
+      "batch": "BA",
+      "dependencies": [],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "BA-6"
+      ],
+      "evidence": [
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "docs/DESIGN-SYSTEM.md",
+        "src/app/desk/books/page.tsx"
+      ],
+      "tests": [
+        "tests/ba6-no-link-lists.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/BA-6.md"
     }
   ],
   "enhancements": [
