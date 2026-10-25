@@ -14,6 +14,10 @@ import {
   setAppliancePhotoUrl,
 } from "@/domains/settings";
 import { dollarsToCents } from "@/domains/pricing";
+import { prisma } from "@/lib/prisma";
+import { SettingsConflictError } from "@/domains/settings/effects";
+import { previewSettingsUpdate, SECTION_STORED_KEYS, sectionRevision } from "@/domains/settings/preview";
+import type { EditableSettingsSection } from "@/domains/settings/section-config";
 import {
   createPackage,
   updatePackage,
@@ -36,7 +40,7 @@ function splitList(value: string): string[] {
 
 export type SettingsActionState =
   | { status: "idle" }
-  | { status: "success" }
+  | { status: "success"; revision?: string }
   | { status: "error"; message: string };
 
 export async function updateSettingsAction(
@@ -296,18 +300,28 @@ export async function setPackageActiveAction(packageId: string, isActive: boolea
 }
 
 /** Section saves whitelist fields on the server, never write stale fields
- * from other sections, and retain the existing settings/audit source of truth. */
+ * from other sections, and retain the existing settings/audit source of truth.
+ * `expectedRevision` is the fingerprint of this section's stored fields taken when the page was opened: if somebody
+ * else saved those fields since, nothing is written and the person is told to reload. */
 export async function updateSettingsSectionAction(
   section: string,
   raw: Record<string, unknown>,
+  expectedRevision?: string,
 ): Promise<SettingsActionState> {
   const session = await requireRole("OWNER", "ADMIN");
   const { settingsSectionUpdate } = await import("@/domains/settings/sections");
   const parsed = settingsSectionUpdate(section, raw);
   if (!parsed.success) return { status: "error", message: parsed.message };
   try {
-    await updateBusinessSettings(session.user.id, parsed.update);
-  } catch {
+    await updateBusinessSettings(
+      session.user.id,
+      parsed.update,
+      expectedRevision && isEditableSection(section)
+        ? { expectedRevision: { section, value: expectedRevision } }
+        : undefined,
+    );
+  } catch (error) {
+    if (error instanceof SettingsConflictError) return { status: "error", message: error.message };
     return {
       status: "error",
       message:
@@ -316,7 +330,38 @@ export async function updateSettingsSectionAction(
   }
   revalidatePath("/", "layout");
   revalidatePath("/desk/settings");
-  return { status: "success" };
+  // Hand back the fresh fingerprint so a second save from the same open page is not mistaken for a conflict.
+  const saved = await prisma.businessSettings.findUnique({ where: { id: "singleton" } });
+  return {
+    status: "success",
+    revision: isEditableSection(section) ? sectionRevision(saved, section) : undefined,
+  };
+}
+
+export type SettingsPreviewState =
+  | { status: "preview"; lines: { key: string; label: string; from: string; to: string; effect: string }[]; nothingToSave: boolean }
+  | { status: "error"; message: string };
+
+/** Shows what saving this section would change. Reads only: nothing is written, no provider is called. */
+export async function previewSettingsSectionAction(
+  section: string,
+  raw: Record<string, unknown>,
+): Promise<SettingsPreviewState> {
+  await requireRole("OWNER", "ADMIN");
+  const { settingsSectionUpdate } = await import("@/domains/settings/sections");
+  const parsed = settingsSectionUpdate(section, raw);
+  if (!parsed.success) return { status: "error", message: parsed.message };
+  const current = await prisma.businessSettings.findUnique({ where: { id: "singleton" } });
+  const preview = previewSettingsUpdate(current, parsed.update as Record<string, unknown>);
+  return {
+    status: "preview",
+    lines: preview.lines.map((l) => ({ key: l.key, label: l.label, from: l.from, to: l.to, effect: l.effect })),
+    nothingToSave: preview.nothingToSave,
+  };
+}
+
+function isEditableSection(section: string): section is EditableSettingsSection {
+  return Object.hasOwn(SECTION_STORED_KEYS, section);
 }
 
 /** Saves the "Ending and renewing rentals" policy. Blank fields are saved as

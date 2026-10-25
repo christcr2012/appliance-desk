@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
 import { readOfferedSlots } from "@/domains/orders/delivery";
 import { DeliveryOfferPanel } from "./delivery-offer-panel";
 import { DeliveryRouteReview } from "@/components/locations/delivery-route-review";
@@ -58,6 +59,12 @@ export default async function EstimateDetailPage({
       <Link href="/desk/estimates" className="text-sm text-ink-soft hover:underline">
         &larr; All estimates
       </Link>
+
+      <div className="mt-3">
+        <SendTextPanel userId={session.user.id} entityType="Estimate" entityId={estimate.id} path={`/desk/estimates/${estimate.id}`}
+          families={["estimate_ready", "estimate_reminder"]}
+          principal={estimate.customerId ? { customerId: estimate.customerId } : { leadId: estimate.leadId ?? "" }} />
+      </div>
 
       <div className="mt-2 flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">

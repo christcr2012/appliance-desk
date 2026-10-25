@@ -6,6 +6,25 @@ rental-price, repair-cost or purchase-cost values; owner-only pages send nobody 
 control center does not even contain the cards they may not use. A control check shows the planted values really are sent to the
 owner and admins, so the staff result is meaningful. Passes 18 of 18 locally including phone width, keyboard and accessibility. Nothing for Chris to do.
 
+## October 24 — Owner controls: settings preview, stale-save protection, full Switches list (O-1)
+
+In progress (branch `ai/claude/owner-controls-o1`): "Undo this" in Settings history now shows what it will do first and says
+why it refuses; section saves (Business profile, Service area, Rental policies) have a "Preview changes" button and refuse
+to overwrite a change somebody else saved after the page was opened; the Switches page also lists launch-list emails and
+the Colorado tax rate lookup and shows who last changed paused automations and the books start date. Proven by unit and
+throwaway-Postgres tests plus a real-browser spec (phone width, keyboard, accessibility scan) run locally; exact-head CI
+pending. Nothing for Chris to do. Next in this lane: the role-shaped admin page proof (O-2B), package and set price
+changes (O-4), the older review findings, and browser specs for the other owner controls.
+
+
+## October 24 — COM-N1A: staff can text leads, estimates and signatures (in PR, everything OFF)
+
+Staff now get a "Text message" box on the lead, estimate and agreement screens: it shows the exact words and the masked
+phone, and nothing sends until Send is pressed. The Owner approves each wording and switches each kind of text on
+(Settings → Phone, texts and provider costs) and sets quiet hours (starting value 9 pm–8 am Colorado). Still required
+before any text can leave: the master text switch, recorded permission for that number, no STOP, a ready business number.
+Proven on throwaway Postgres with a fake carrier (13 safety tests); no real text was sent and nothing was switched on.
+Next: COM-N1B (job and maintenance texts), then N1C, N2, N4 and the telecom wiring gaps. Branch `ai/claude/com-n1a-lead-estimate-texts`.
 ## October 25 — Delivery fee on delivered shop sales and taking back a used appliance (M-1C, finishing)
 
 Merged (#571). A delivered shop sale now gets Colorado's retail delivery fee decided and recorded exactly once: only for a Colorado address with something the state taxes on the sale, never for pickups or out-of-state deliveries. If you chose "collect from customer" **and** customer charging is switched on, a separate untaxed "Colorado retail delivery fee" line is added to the sale; otherwise the fee is still counted for the return and you pay it. Anything undecided (a setting or the yearly amount) is kept as a waiting record and finished later, never blocking the sale. Cancelling or taking back a sale reverses its fee, and a paid fee is tied to the real refund. Taking back a **used appliance** now works: refund, book value comes back, the "Sell it" plan reopens, the accountant note closes, and the appliance can be sold again. Shop sales also count toward the Colorado sales total used for the small-business exemption. Proved on throwaway Postgres (collect, charging off, pay myself, pickup, out of state, pending rate then finished, take-back, cancel, retry). Not proved: a browser test (next PR) and nothing real was charged. Nothing for Chris to do now.
