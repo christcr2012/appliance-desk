@@ -4,6 +4,9 @@ import { cache } from "react";
 import { assertCapability } from "@/domains/capabilities";
 import { assetIdFromPublicPath } from "@/domains/site-content/asset-paths";
 import { checkExternalUrl } from "@/domains/site-content/links";
+import { SettingsConflictError } from "./effects";
+import { sectionRevision } from "./preview";
+import type { EditableSettingsSection } from "./section-config";
 
 // The single BusinessSettings row's defaults, matching prisma/schema.prisma
 // exactly. Used only if the singleton row is somehow missing (it's created
@@ -186,6 +189,10 @@ export type BusinessSettingsUpdate = Partial<{
 export async function updateBusinessSettings(
   userId: string,
   update: BusinessSettingsUpdate,
+  opts?: {
+    /** Fingerprint of the fields this save covers, taken when the page was opened (see `sectionRevision`). */
+    expectedRevision?: { section: EditableSettingsSection; value: string };
+  },
 ) {
   const after = await prisma.$transaction(async (tx) => {
     // Re-check the person inside the transaction (a deactivated owner/admin
@@ -196,6 +203,12 @@ export async function updateBusinessSettings(
     const before =
       (await tx.businessSettings.findUnique({ where: { id: "singleton" } })) ??
       DEFAULT_SETTINGS;
+    // A page opened before somebody else saved these same fields must not overwrite their decision.
+    if (
+      opts?.expectedRevision &&
+      sectionRevision(before, opts.expectedRevision.section) !== opts.expectedRevision.value
+    )
+      throw new SettingsConflictError();
     const after = await tx.businessSettings.upsert({
       where: { id: "singleton" },
       create: { id: "singleton", ...update },

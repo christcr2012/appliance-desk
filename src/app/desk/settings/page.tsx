@@ -46,6 +46,7 @@ import { pickupBillingDefaults } from "@/domains/settings/pickup-billing";
 import { pickupBillingSettingsFrom } from "@/domains/billing/pickup-billing";
 import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms-policy";
 import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
+import { sectionRevision } from "@/domains/settings/preview";
 import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
 import { updateSecondStepSettingsAction, updateSignInPauseAction, updateTwoFactorRequiredRolesAction } from "./actions";
 import { getPauseSettings } from "@/domains/security/sign-in-guard";
@@ -469,6 +470,7 @@ export default async function DeskSettingsPage({
         <SettingsForm
           key={section}
           section={section}
+          revision={sectionRevision(settings, section)}
           defaultValues={{
             publicBusinessName: settings.publicBusinessName,
             publicPhone: settings.publicPhone,
