@@ -58,9 +58,12 @@ stage contacted + sort next-up; `?page=` ignored.
 6. Empty states: new "No new leads waiting." + "Add lead"; other stages "No leads here"; filtered "No leads match" +
    "Clear filters".
 
-**Row actions (⋯):** "Set follow-up…" (Sheet: date picker default `defaultFollowUpKey(now)`, submit → LD-1
-`updateLeadStatus(…, "CONTACTED", …, followUpOn)` via the existing `updateLeadStatusAction` with the follow-up key;
-optimistic per AR-11 with Undo restoring the old date), "Assign to…" (Sheet: select of assignable people + Unassigned
+**Row actions (⋯):** "Set follow-up…" — **only on contacted leads** (Sheet: date picker default
+`defaultFollowUpKey(now)`, submit → new date-only LD-1 `setLeadFollowUp(actorId, leadId, expectedVersion, dateKey |
+null)` via `setLeadFollowUpAction`: locks the row, changes only `nextFollowUpOn`, never status or `firstContactedAt`;
+optimistic per AR-11 with Undo restoring the old date). A **new** lead has no "Set follow-up"; its "Log a contact…" sheet
+has an optional "Follow up on" date (planning a call without reaching anyone stays a new lead). Test: a new lead can't be
+moved to contacted by scheduling; set and undo a follow-up on a contacted lead leaves status and first-contact untouched. "Assign to…" (Sheet: select of assignable people + Unassigned
 → `reassignLeadAction` (new thin action over LD-1 `reassignLead`)), "Log a contact…" (Sheet: kind "I reached them" /
 "Tried, no answer" + note → new `logLeadContactAction` creating a LeadNote with kind CONTACTED/ATTEMPT; CONTACTED also
 sets stage contacted per LD-1), "Mark lost…" (Sheet: reason select from the existing list in
