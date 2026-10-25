@@ -15,6 +15,18 @@ Design: `docs/designs/BATCH-M.md` M-2C. Built and merged in #551.
   cancelled later still counts for the dates in between).
 - Tests: `tests/used-appliance-sale-integration.test.ts` (real Postgres).
 
+## Added after the first merge (tax warning and accountant evidence)
+- Pure estimate in `src/domains/sales/retired-sale-tax.ts` (`tests/retired-sale-tax.test.ts`, the design's acceptance cases): gain =
+  price − the owner's selling costs − tax basis left; recapture = at most the depreciation taken; the rest is for the accountant.
+  Unknown, expensed or incomplete evidence gives no numbers, only "CPA review needed". It never limits a price.
+- The new-sale screen shows the warning, the book value, an optional "what it cost you to sell it" field and the estimate for each
+  used appliance. Saving freezes the estimate in `RetiredSaleDisposition` (migration `20261025030000`) in the same step as the sale.
+- A sale whose evidence is not CPA-confirmed puts one owner To do item on Today (never blocking). The owner marks it done on the sale
+  page (safe to repeat). Cancelling the sale marks the record cancelled and removes the item.
+- Tests: new cases in `tests/used-appliance-sale-integration.test.ts` (no evidence, confirmed, owner-typed, expensed, replay, cancel,
+  owner-only follow-up, bad selling costs).
+
 ## Not in this card
-- A browser test of the new-sale form with a used appliance.
 - A separate gain/loss account: the sale price stays income (Sales of retired appliances) and the book value is one expense line.
+  (Deliberate difference from the stronger-model prompt; the two sit side by side in reports and nothing is counted twice.)
+- Real tax numbers: only evidence typed in or CPA-confirmed is used; nothing is computed from book depreciation.

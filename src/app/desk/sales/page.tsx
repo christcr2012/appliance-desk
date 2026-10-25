@@ -17,9 +17,10 @@ const STATUS: Record<string, { label: string; tone: StatusTone }> = {
   REFUNDED: { label: "Refunded", tone: "stopped" },
 };
 
-export default async function ShopSalesPage() {
+export default async function ShopSalesPage({ searchParams }: { searchParams: Promise<{ followUp?: string }> }) {
   const session = await requireRole("OWNER", "ADMIN");
-  const sales = await listShopSales(session.user.id);
+  const followUpOnly = (await searchParams).followUp === "1";
+  const sales = await listShopSales(session.user.id, { followUpOnly });
   return (
     <main className="space-y-6">
       <PageHeader
@@ -27,10 +28,15 @@ export default async function ShopSalesPage() {
         description="Parts and used appliances you sell over the counter or deliver. Rental billing is separate and is not affected."
         primaryAction={{ href: "/desk/sales/new", label: "New sale" }}
       />
+      {followUpOnly && (
+        <p role="status" className="rounded-md border border-line bg-surface-subtle p-3 text-sm">
+          Showing only used appliance sales still to go over with your accountant. <Link href="/desk/sales" className="underline">Show all sales</Link>
+        </p>
+      )}
       {sales.length === 0 ? (
         <EmptyState
-          title="No sales yet"
-          description="Mark a part “Sell to customers” on the Parts screen, then ring up your first sale here."
+          title={followUpOnly ? "Nothing to go over" : "No sales yet"}
+          description={followUpOnly ? "Every used appliance sale has been gone over with your accountant." : "Mark a part “Sell to customers” on the Parts screen, then ring up your first sale here."}
         />
       ) : (
         <ul className="divide-y divide-line rounded-card border border-line bg-surface">

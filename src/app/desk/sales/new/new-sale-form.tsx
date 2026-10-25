@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Field, Select, Textarea } from "@/components/ui";
 import { formatMoney, moneyInputValue, parseDollarInput } from "@/lib/money-ui";
 import { createShopSaleAction } from "../actions";
+import { estimateRetiredSale, type TaxEvidence } from "@/domains/sales/retired-sale-tax";
+import { ResaleTaxNote } from "../resale-tax-note";
 
 type PartOption = { id: string; label: string; onHand: number; retailPriceCents: number | null };
 type CustomerOption = { id: string; label: string; addresses: Array<{ id: string; label: string }> };
@@ -19,8 +21,8 @@ function priceCents(text: string): number | null {
   }
 }
 
-type UsedOption = { id: string; label: string };
-type UsedRow = { key: number; applianceId: string; price: string };
+type UsedOption = { id: string; label: string; bookValueCents: number | null; evidence: TaxEvidence | null };
+type UsedRow = { key: number; applianceId: string; price: string; costs: string };
 
 export function NewSaleForm({ parts, customers, usedAppliances }: { parts: PartOption[]; customers: CustomerOption[]; usedAppliances: UsedOption[] }) {
   const router = useRouter();
@@ -69,7 +71,7 @@ export function NewSaleForm({ parts, customers, usedAppliances }: { parts: PartO
         walkInName: customerId ? undefined : walkInName,
         location,
         serviceAddressId: location === "DELIVERED" ? addressId || null : null,
-        usedAppliances: usedRows.filter((r) => r.applianceId).map((r) => ({ applianceId: r.applianceId, priceDollars: r.price })),
+        usedAppliances: usedRows.filter((r) => r.applianceId).map((r) => ({ applianceId: r.applianceId, priceDollars: r.price, sellerCostsDollars: r.costs })),
         items: rows.filter((r) => r.partId).map((r) => ({ partRecordId: r.partId, quantity: Number(r.quantity), priceDollars: r.price, priceReason: r.reason })),
         deliveryDollars: location === "DELIVERED" ? delivery : "",
         installationDollars: location === "DELIVERED" ? installation : "",
@@ -101,13 +103,25 @@ export function NewSaleForm({ parts, customers, usedAppliances }: { parts: PartO
                 ))}
               </Select>
               <Field id={`sale-used-price-${row.key}`} label="Sale price ($)" inputMode="decimal" value={row.price} onChange={(e) => setUsedRows((c) => c.map((r) => (r.key === row.key ? { ...r, price: e.target.value } : r)))} required help="You set the price. Its remaining book value comes off the books when you save." />
+              {row.applianceId && (() => {
+                const option = usedAppliances.find((a) => a.id === row.applianceId);
+                const price = priceCents(row.price);
+                return (
+                  <>
+                    <Field id={`sale-used-costs-${row.key}`} label="What it cost you to sell it ($, optional)" inputMode="decimal" value={row.costs} onChange={(e) => setUsedRows((c) => c.map((r) => (r.key === row.key ? { ...r, costs: e.target.value } : r)))} help="Listing fees, hauling out and the like. Only used for the tax estimate below." />
+                    {option && price !== null && price > 0 && (
+                      <ResaleTaxNote estimate={estimateRetiredSale({ priceCents: price, sellerCostsCents: Math.min(priceCents(row.costs) ?? 0, price), evidence: option.evidence })} bookValueCents={option.bookValueCents} />
+                    )}
+                  </>
+                );
+              })()}
               <div className="sm:col-span-2">
                 <Button type="button" variant="quiet" onClick={() => setUsedRows((c) => c.filter((r) => r.key !== row.key))}>Remove this appliance</Button>
               </div>
             </div>
           ))}
           {usedAppliances.length > 0 && usedRows.length < usedAppliances.length && (
-            <Button type="button" variant="secondary" onClick={() => setUsedRows((c) => [...c, { key: nextKey.current++, applianceId: "", price: "" }])}>
+            <Button type="button" variant="secondary" onClick={() => setUsedRows((c) => [...c, { key: nextKey.current++, applianceId: "", price: "", costs: "" }])}>
               Add a used appliance
             </Button>
           )}

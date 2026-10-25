@@ -33,6 +33,8 @@ export default async function NewSalePage() {
           usedAppliances={usedAppliances.map((a) => ({
             id: a.id,
             label: `${[a.manufacturer, a.model].filter(Boolean).join(" ") || a.applianceType.name} — ${a.assetNumber}${a.serialNumber ? `, serial ${a.serialNumber}` : ""}`,
+            bookValueCents: a.bookAsset?.retiredValueCents ?? null,
+            evidence: a.bookAsset?.taxEvidence[0] ?? null,
           }))}
           customers={customers.map((c) => ({
             id: c.id,
