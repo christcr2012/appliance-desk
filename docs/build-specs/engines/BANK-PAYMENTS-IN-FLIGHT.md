@@ -156,7 +156,12 @@ delivery) and item 2 (delayed settlement) explicitly.
    step and the transaction → refused, nothing recorded, row still open**; a row with no bill yet recovers through the
    `invoice.paid` replay (which creates the bill). The bill
       keeps showing "Being confirmed" (so no late fee or reminder), and To do raises it (section 4).
-   Other PI statuses, in a short transaction per row (`SELECT … FOR UPDATE` on the row, re-check still open):
+   **Stale evidence guard (every branch of step 3):** before asking Stripe, keep the row's `attempt` and `startedAt`; after
+   taking the row lock, if either changed (a webhook cleared and reopened it meanwhile) discard the Stripe answer, write
+   only `lastCheckedAt`, count `changedDuringCheck` — the next night checks the new attempt. Regression test: the check
+   reads `requires_payment_method`, then a failure webhook and a newer processing webhook land before its lock → the
+   reopened attempt stays open.
+   Other PI statuses, in a short transaction per row (`SELECT … FOR UPDATE` on the row, re-check still open and the same attempt):
    `requires_payment_method` / `canceled` → clear `FAILED` / `CANCELED`; still `processing` → only
    `lastCheckedAt`. If the row has a bill and it is no longer open → clear `INVOICE_CLOSED` (rows with no bill yet skip this check). A Stripe error on one row is counted,
    its `lastCheckedAt` is set, and the run continues.
