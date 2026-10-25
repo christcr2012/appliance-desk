@@ -1,3 +1,11 @@
+## October 25 — Owner controls: proof of what each page sends to each role (O-2B)
+
+In progress (branch `ai/claude/owner-controls-o2b`). New browser test `e2e/role-shaped-pages.spec.ts` (browser-d) reads the whole
+server answer of the desk pages as the owner, a full admin, an admin the owner has limited, and staff. Staff get none of the
+rental-price, repair-cost or purchase-cost values; owner-only pages send nobody else any of their content; a limited admin's
+control center does not even contain the cards they may not use. A control check shows the planted values really are sent to the
+owner and admins, so the staff result is meaningful. Passes 18 of 18 locally including phone width, keyboard and accessibility. Nothing for Chris to do.
+
 ## October 25 — Selling a retired appliance: tax warning and accountant notes (M-2C, finishing)
 
 In progress (branch `ai/claude/m2c-recapture-evidence`). On Sales → New sale, each used appliance now shows the warning "Selling above depreciated tax basis may trigger ordinary-income depreciation recapture. You can still sell at your chosen price.", how much book value comes off the books, an optional "what it cost you to sell it" box, and a tax estimate **only** when tax history was recorded (Books → Assets). With nothing recorded it says "CPA review needed" and shows no numbers; numbers you typed yourself are labelled unconfirmed. Nothing ever limits the price or blocks the sale. Saving freezes the estimate with the sale; if the accountant still needs to look, one To do item appears for the owner (the owner marks it done on the sale page; cancelling the sale removes it). Proved on throwaway Postgres: the design's examples ($600 basis/$400 depreciation sold at $600 and $750, fully depreciated, loss, unknown, expensed), repeat-safe saves, owner-only follow-up, cancel. Not proved: a browser test (next PR) and nothing real was entered. Nothing for Chris to do now; his CPA row (IN-56) now also says what the new screen needs.
