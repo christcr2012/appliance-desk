@@ -147,7 +147,11 @@ export async function reassignLead(actorId: string, leadId: string, toUserId: st
   4. Kept lead: keep its own contact fields; fill only empty ones from the merged lead (email, company, address,
      city, zip, best time, how heard, desired term/start, notes appended with "From merged lead: …");
      `firstContactedAt` = the earlier of the two; `lastRealContactAt` = the later; `score` recomputed with the
-     existing scoring function; `nextFollowUpOn` = the earlier non-null.
+     existing scoring function; `nextFollowUpOn` = the earlier non-null. **Status** = the further-along of the two
+     (the `LeadStatus` enum has NEW, CONTACTED, CONVERTED, LOST; CONVERTED can't be merged — step 2 — and a merged-away LOST lead never changes the kept lead's status): CONTACTED wins over NEW, so a kept NEW lead becomes
+     CONTACTED when the merged one was; this keeps the follow-up visible, because `listLeadFollowUps`
+     (`src/domains/exceptions/lead-turning-points.ts`) only picks CONTACTED leads. Test: merge a CONTACTED lead with a
+     follow-up into an older NEW lead → kept lead CONTACTED, follow-up date kept, the To do item still shows.
   5. Merged lead: `mergedIntoLeadId = keepId`, `mergedAt = now`, `status = LOST`, `lostReason = "Merged into another
      lead"`, `possibleDuplicateOfLeadId = null`. Its page shows "This lead was merged into {name}" + link.
   6. Clear `possibleDuplicateOfLeadId` on the kept lead if it pointed at the merged one. Audit `lead.merge` on both.
