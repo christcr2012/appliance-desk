@@ -1,11 +1,10 @@
 {
-  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 generated route coverage replaces the old duplicate axe route loops; focused legacy keyboard/menu/theme regressions remain. Generated scans are split across browser-b/c/d from measured runtimes; no fifth runner. 2026-10-06 (PR #266): the generated route scans and the read-only owner/portal section scans run in Playwright parallel mode (both workers), and groups were rebalanced from measured test-seconds after that change (a 158, b 94, c 105, d 133) to roughly 111-126 each. 2026-10-24 (ACC-3): moved revenue-records and website-editor from browser-b to browser-a because browser-b ran 186s against the 180s budget (a 159, b 341, c 299, d 198 test-seconds). 2026-10-25 (MCP-10a): browser-a ran 179s and browser-d 181s against the 180s budget, so feedback.spec.ts (new, ~18 test-seconds) and crm-workspace.spec.ts (~40-55 test-seconds) moved to browser-c, the lightest group (118s). 2026-10-25 (AR-0a): browser-c ran 3.1m against the 180s budget (a 2.7m, b 1.8m, d 2.6m), so crm-workspace.spec.ts (~45-55 test-seconds) moved to browser-b, the lightest group.",
+  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 generated route coverage replaces the old duplicate axe route loops; focused legacy keyboard/menu/theme regressions remain. Generated scans are split across browser-b/c/d from measured runtimes; no fifth runner. 2026-10-06 (PR #266): the generated route scans and the read-only owner/portal section scans run in Playwright parallel mode (both workers), and groups were rebalanced from measured test-seconds after that change (a 158, b 94, c 105, d 133) to roughly 111-126 each. 2026-10-24 (ACC-3): moved revenue-records and website-editor from browser-b to browser-a because browser-b ran 186s against the 180s budget (a 159, b 341, c 299, d 198 test-seconds). 2026-10-25 (MCP-10a): browser-a ran 179s and browser-d 181s against the 180s budget, so feedback.spec.ts (new, ~18 test-seconds) and crm-workspace.spec.ts (~40-55 test-seconds) moved to browser-c, the lightest group (118s). 2026-10-25 (AR-0a): browser-c ran 3.1m against the 180s budget (a 2.7m, b 1.8m, d 2.6m), so crm-workspace.spec.ts (~45-55 test-seconds) moved to browser-b, the lightest group. 2026-10-25 (MCP-1): measured a 2.7m, b 3.1m (over budget once crm-workspace landed), c 2.5m, d 2.4m; system-health.spec.ts (now ~14 test-seconds) moved to browser-d and fleet-report.spec.ts (~16 test-seconds) from browser-b to browser-c.",
   "groups": {
     "browser-a": [
       "sales-tax-setup.spec.ts",
       "sales-tax-areas.spec.ts",
       "sales-tax-returns.spec.ts",
-      "system-health.spec.ts",
       "appliance-acquisition-tax.spec.ts",
       "owner-portal-workspaces.spec.ts",
       "telecom-settings.spec.ts",
@@ -29,7 +28,6 @@
       "role-shaped-pages.spec.ts",
       "accessibility-dark-mode.spec.ts",
       "accessibility-routes-public.spec.ts",
-      "fleet-report.spec.ts",
       "rental-builder-recovery.spec.ts",
       "two-factor.spec.ts",
       "my-account.spec.ts",
@@ -62,9 +60,11 @@
       "system-health-keys.spec.ts",
       "customer-language-w26.spec.ts",
       "owner-guide-screenshots.spec.ts",
-      "feedback.spec.ts"
+      "feedback.spec.ts",
+      "fleet-report.spec.ts"
     ],
     "browser-d": [
+      "system-health.spec.ts",
       "accessibility.spec.ts",
       "task-assignment.spec.ts",
       "inventory-bulk-feedback.spec.ts",

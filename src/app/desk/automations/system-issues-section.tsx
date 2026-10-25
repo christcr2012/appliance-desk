@@ -40,6 +40,13 @@ export function SystemIssuesSection({ issues, nextCursor, canManage }: {
             <div><dt className="text-ink-soft">Occurrences</dt><dd>{issue.occurrences}</dd></div>
             <div><dt className="text-ink-soft">Review state</dt><dd>{issue.status}</dd></div>
           </dl>
+          {issue.failure && (
+            <div className="mt-4 space-y-1 rounded-control border border-line bg-subtle p-3 text-sm text-ink">
+              <p>{issue.failure.explain}</p>
+              {issue.failure.code && <p><span className="font-semibold">What to do:</span> {issue.failure.next}</p>}
+              <p className="text-ink-soft">Reference {issue.failure.reference ?? "Not recorded"}</p>
+            </div>
+          )}
           <div className="mt-4 rounded-control border border-line bg-subtle p-3">
             <p className="text-sm text-ink">{issue.recovery.instruction}</p>
             <Link className="mt-2 inline-block text-sm font-semibold underline" href={issue.recovery.href}>

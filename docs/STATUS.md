@@ -5,7 +5,15 @@ with the U.S. Census Bureau (server only, 5 s, saved per address in its own tabl
 lookup trouble → "We'll confirm" + a To do. Delivery or "I'll pick it up" ($0) on desk and customer estimate pages;
 frozen once sent, copied to the agreement. `/service-area` is our own SVG map + town list + checker; `/rent/{town}`
 from the town list. Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
-Proof: unit tests here; DB and browser tests in CI only. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
+Proof: unit tests and the zone DB tests run here on a throwaway Postgres; browser tests in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
+
+## October 25 (night) — MCP-1: System health that tells the truth (in review)
+
+Branch `ai/claude/mcp-1-system-health`. One state list (8 states, each with a label, colour and meaning on the page);
+Late comes from each job's real `vercel.json` time (UTC, shown in Colorado time) plus the owner's grace setting (2 hours);
+the issue sweep uses the same rule; health reads three rows per job; failures store a code, step and reference, and
+screens, issues, the backup email and the check-up key show only the code's plain wording. DB and browser tests run in
+CI only (no local Postgres here). Next: MCP-2 (backups).
 
 ## October 25 (night) — AR-0a: application kit + guards (in review)
 

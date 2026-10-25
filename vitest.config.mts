@@ -101,6 +101,7 @@ const SHARED_SETTINGS_TESTS = [
   // tests/shared-state-tests-listed.test.ts fails if a new one is missing.
   "tests/appliance-acquisition-tax-integration.test.ts",
   "tests/automation-runs-integration.test.ts",
+  "tests/automation-health-integration.test.ts", // MCP-1 changes and restores the shared "late" grace setting.
   "tests/batch-b2-migration-integration.test.ts",
   "tests/business-tax-address-confirm-integration.test.ts",
   "tests/communications-intent-integration.test.ts",

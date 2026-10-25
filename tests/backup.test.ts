@@ -158,7 +158,8 @@ describe("exportDatabaseBackup", () => {
 describe("sendBackupFailureAlertToChris", () => {
   it("records one staff alert when the backup failed", async () => {
     const { sendBackupFailureAlertToChris } = await import("@/domains/backup");
-    await sendBackupFailureAlertToChris({ ok: false, error: "connection reset" });
+    // MCP-1 canary: the raw error (planted secret, email, phone) must never reach the email body.
+    await sendBackupFailureAlertToChris({ ok: false, error: "connection reset sk_live_canary_x person@example.test 970-555-0142" });
 
     expect(deliverMessageMock).toHaveBeenCalledTimes(1);
     const [input] = deliverMessageMock.mock.calls[0] as [{
@@ -171,7 +172,9 @@ describe("sendBackupFailureAlertToChris", () => {
     expect(input.templateKey).toBe("backup-failure");
     expect(input.idempotencyKey).toMatch(/^backup-failure-/);
     expect(input.render().subject).toMatch(/backup failed/i);
-    expect(input.render().text).toContain("connection reset");
+    const text = input.render().text;
+    for (const leaked of ["connection reset", "sk_live_canary", "person@example.test", "555-0142"]) expect(text).not.toContain(leaked);
+    expect(text).toContain("System health");
   });
 
   it("stays silent when the backup succeeded", async () => {

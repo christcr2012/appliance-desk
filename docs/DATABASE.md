@@ -1,3 +1,13 @@
+## October 27 — System health that tells the truth (MCP-1, additive)
+
+Migration `20261027031500_mcp1_automation_health`. `AutomationRun.failureCode` (≤60, a key of `FAILURE_CODES` in
+`src/domains/automation/failures.ts`), `failureStage` (≤30, the step it stopped at) and `correlationId` (≤40, a random
+`ref-…` also printed on the private server log line); `SystemIssue` gets the same three (null on old rows, shown as "Not
+recorded"). `AutomationRun.error` stays only as scrubbed legacy text: nothing shows it. Index
+`AutomationRun(ruleKey, state, startedAt)` for the bounded health read (latest, latest success, latest failure per
+rule). `BusinessSettings.automationLateGraceMinutes` (120, CHECK 15–1440): minutes after a job's usual UTC cron time
+before it shows Late. All covered by the existing backups of these three tables.
+
 ## October 26 — Decisions & reviews data (DEC-1a, additive)
 
 Migration `20261026030000_decision_record`. Nothing existing is changed or removed.

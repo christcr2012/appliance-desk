@@ -103,6 +103,38 @@ describe.skipIf(!enabled)("S-1B source scanning and issue lifecycle on isolated 
     expect(snapshot.issues.some((i) => i.kind === "AUTOMATION_STALE" && i.ruleKey === "tax-rate-watch")).toBe(false);
   });
 
+  it("MCP-1: the sweep uses the page's late rule (due time + grace), not a second stale algorithm", async () => {
+    const ruleKey = "late-fees"; // needs only CRON_SECRET; cron 0 15 * * * UTC
+    const priorSecret = process.env.CRON_SECRET;
+    process.env.CRON_SECRET = "test-only-" + fresh();
+    const lateClock = new Date("2025-06-10T20:00:00Z");
+    const old = await prisma.automationRun.create({ data: {
+      ruleKey, runKey: "mcp1-old-" + fresh(), state: "SUCCEEDED", environment: "test",
+      startedAt: new Date("2025-06-01T15:00:00Z"), finishedAt: new Date("2025-06-01T15:01:00Z"),
+    } });
+    try {
+      const stale = await collectSystemIssueInputs(lateClock, { limit: 10 });
+      const issue = stale.issues.find((i) => i.kind === "AUTOMATION_STALE" && i.ruleKey === ruleKey);
+      expect(issue).toMatchObject({ dueAt: new Date("2025-06-10T15:00:00Z"), lastSuccessAt: new Date("2025-06-01T15:01:00Z") });
+      expect(stale.clearFingerprints).not.toContain("automation-stale:" + ruleKey);
+      // A success for today's slot clears it, within the same rule the page uses.
+      const today = await prisma.automationRun.create({ data: {
+        ruleKey, runKey: "mcp1-today-" + fresh(), state: "SUCCEEDED", environment: "test",
+        startedAt: new Date("2025-06-10T15:00:05Z"), finishedAt: new Date("2025-06-10T15:01:00Z"),
+      } });
+      try {
+        const fixed = await collectSystemIssueInputs(lateClock, { limit: 10 });
+        expect(fixed.issues.some((i) => i.kind === "AUTOMATION_STALE" && i.ruleKey === ruleKey)).toBe(false);
+        expect(fixed.clearFingerprints).toContain("automation-stale:" + ruleKey);
+      } finally {
+        await prisma.automationRun.delete({ where: { id: today.id } });
+      }
+    } finally {
+      if (priorSecret === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = priorSecret;
+      await prisma.automationRun.delete({ where: { id: old.id } });
+    }
+  });
+
   it("only an inspected page may clear a source fingerprint", async () => {
     const tag = fresh();
     const ids = ["zza-"+tag, "zzb-"+tag, "zzc-"+tag];

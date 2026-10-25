@@ -3231,6 +3231,8 @@ model BusinessSettings {
   // MCP-10a: app feedback. Pictures allowed per report (0-3) and how many days after a report is done its sender can reopen it.
   feedbackMaxAttachments Int @default(3)
   feedbackReopenDays     Int @default(90)
+  // MCP-1: minutes after a job's usual (UTC cron) time before System health calls it late. Owner-editable, 15-1440.
+  automationLateGraceMinutes Int @default(120)
   inspectionChecklist Json @default("[]")
 
   // Batch B D10: null means policy not set; dependent actions stay unavailable.
@@ -3696,10 +3698,17 @@ model AutomationRun {
   finishedAt    DateTime?
   budgetSeconds Int                @default(300)
   counts        Json?
+  // Legacy scrubbed text for old readers only. Screens, issues, emails and agent output use failureCode instead.
   error         String?
+  // MCP-1: typed failure (code from src/domains/automation/failures.ts), the step it stopped at, and a random
+  // reference that also appears on the private server log line.
+  failureCode   String?            @db.VarChar(60)
+  failureStage  String?            @db.VarChar(30)
+  correlationId String?            @db.VarChar(40)
 
   @@unique([ruleKey, runKey])
   @@index([ruleKey, startedAt])
+  @@index([ruleKey, state, startedAt])
 }
 
 enum MessageChannel {
@@ -3840,6 +3849,10 @@ model SystemIssue {
   lastSeenAt     DateTime            @default(now())
   resolvedAt     DateTime?
   resolvedReason String?
+  // MCP-1: the typed failure behind an AUTOMATION_FAILED issue (null on old rows: shown as "Not recorded").
+  failureCode    String?             @db.VarChar(60)
+  failureStage   String?             @db.VarChar(30)
+  correlationId  String?             @db.VarChar(40)
   notes          SystemIssueNote[]
 
   @@index([status, severity, lastSeenAt])
