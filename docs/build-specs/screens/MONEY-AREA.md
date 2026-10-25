@@ -13,7 +13,7 @@ The Money area's home. AR-1's `DESK_AREAS` money tab `overview` changes to href 
 ```ts
 export type MoneyOverview = {
   collectedThisMonthCents: number; collectedLastMonthCents: number;  // collectedBetween(null, …).netCents, Denver months
-  owedNowCents: number; openBillCount: number;                     // billTabWhere("open")
+  owedNowCents: number; openBillCount: number;                     // billOwedWhere (BILL-1; equals billTabWhere("open") until BILL-1 merges)
   pastDueCents: number; pastDueCount: number;                      // pastDueInvoiceWhere(now)
   expectedNext30Cents: number;                                     // see below
   failedThisMonth: number;                                         // same rule as getRevenueDashboard().failedPaymentsThisMonth

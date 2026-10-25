@@ -44,7 +44,7 @@ export type CustomerSummary = {
   city: string | null;               // first service address (createdAt asc) city
   primaryAddress: string | null;     // "{line1}, {city}" of that address
   monthlyRentCents: number;          // sum of rentForNextBill(lines) over ACTIVE agreements
-  owedCents: number;                 // sum over open bills (billTabWhere("open")) of max(0, due − paid)
+  owedCents: number;                 // sum over owed bills (billOwedWhere — includes bills being confirmed) of max(0, due − paid)
   oldestOpenBillId: string | null;   // open bill with the earliest dueDate (nulls last) — target of "Take payment"
   nextBill: { date: Date; rentCents: number } | null;  // earliest of getNextBills()
   autopay: boolean;                  // Customer.stripeDefaultPaymentMethodId != null
@@ -66,7 +66,7 @@ Rules (pure functions, unit-tested):
   0 → `null` (stat hidden); 1 → that name ("Washer"); 2 → "Washer + dryer" (first as written, second lower-cased);
   3 or more → "{n} appliances". Names come from `assignments.appliance.applianceType.name`; if a line has no
   assignment yet, use the line `label` up to the first " @ " (the label format is `"Washer/Dryer set @ $60/mo"`).
-- **owedCents** uses `billTabWhere("open", now)` from `src/domains/billing/bill-status.ts` (built in the Bills screen,
+- **owedCents** uses `billOwedWhere(now)` (BILL-1; until BILL-1 merges it equals `billTabWhere("open", now)`) from `src/domains/billing/bill-status.ts` (built in the Bills screen,
   same card) filtered by `customerId`. Never re-write the open rule here.
 - **onTimeRecord**: take this customer's last 7 bills (by `dueDate` desc) with status `PAID` or currently past due
   (`pastDueInvoiceWhere(now)`), skipping bills with no `dueDate`. For a PAID bill, `paidAt` = **the date of the last

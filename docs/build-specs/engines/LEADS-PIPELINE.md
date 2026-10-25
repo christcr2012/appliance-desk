@@ -146,6 +146,11 @@ export async function reassignLead(actorId: string, leadId: string, toUserId: st
      lead"`, `possibleDuplicateOfLeadId = null`. Its page shows "This lead was merged into {name}" + link.
   6. Clear `possibleDuplicateOfLeadId` on the kept lead if it pointed at the merged one. Audit `lead.merge` on both.
   Consent is never combined or rewritten — the rows move with their original dates and sources.
+- **A merged lead can't be converted, quoted or edited.** `canConvertLead` (`src/domains/leads/index.ts`) gains
+  `mergedIntoLeadId === null` as a condition, and `convertLeadToCustomerInTx` re-reads the lead **after** its row lock
+  and refuses a merged one with "This lead was merged into {name}. Open that lead instead." The same locked check goes
+  into every lead write (status change, notes, follow-up date, estimate create from a lead). Regression test: open the
+  convert form, merge the lead in another session, submit the stale form → refused, no customer created.
 - Tests: every child kind moves; consent rows keep their timestamps; refused cases; two people merging the same pair
   at once → one succeeds, one gets "This lead changed. Refresh and try again."; merged leads never appear in lists,
   counts, search or To do.

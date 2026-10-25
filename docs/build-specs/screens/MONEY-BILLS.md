@@ -28,11 +28,15 @@ Roles: OWNER and ADMIN only (`requireRole("OWNER","ADMIN")`, unchanged). Everyda
 ```ts
 export type BillTab = "open" | "past-due" | "paid" | "closed" | "drafts";
 export function billTabWhere(tab: BillTab, now: Date): Prisma.InvoiceWhereInput
+export function billOwedWhere(now: Date): Prisma.InvoiceWhereInput   // every bill still owed — use for money totals
 export function billPill(bill: { status: InvoiceStatus; dueDate: Date | null; amountDueCents: number;
   amountPaidCents: number }, now: Date): { label: string; tone: Tone }
 ```
 - **open:** status in `OPEN, PARTIALLY_PAID, DELINQUENT, FAILED` and `amountDueCents > amountPaidCents`.
 - **past-due:** open AND `dueDate < start of today (Denver, businessDayBounds(now).start)`.
+- **owed (`billOwedWhere`):** the open rule above. It is a separate function on purpose: BILL-1 removes bills being
+  confirmed from the Open/Past due **tabs** but not from **money owed**, so every total (customer "Owes now", Money
+  overview) calls `billOwedWhere`, never `billTabWhere("open")`.
 - **"Being confirmed" (bank payment in progress) is built in BILL-1**, not AR-0, because the payment paths must first
   record it ([engines/BANK-PAYMENTS-IN-FLIGHT.md](../engines/BANK-PAYMENTS-IN-FLIGHT.md) section 6 adds the tab and pill
   to this screen). AR-0 builds the tabs below; BILL-1 inserts its tab. Unfinished Stripe requests stay visible through

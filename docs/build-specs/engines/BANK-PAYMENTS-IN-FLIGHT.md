@@ -187,6 +187,14 @@ with it off; FAILED clear → fee on the next run.
 
 ## 6. Readers (screens)
 
+**Money owed never changes.** Add `billOwedWhere(now)` to `src/domains/billing/bill-status.ts`: every bill the
+customer still owes (the Open, Past due **and** Being confirmed tabs together — i.e. `billTabWhere("open")` without the
+in-flight exclusion). **Every total of money owed uses `billOwedWhere`**: the customer record's `owedCents`, Money
+overview's `owedNowCents`/`openBillCount`, statements, and the "Take payment" amount. `billTabWhere("open")` /
+`("past-due")` (which exclude in-flight bills) are only for tab membership and chasing work (To do, reminders, late
+fees). Test: a customer whose only bill is being confirmed still shows "Owes now {amount}" with the detail line
+"{amount} being confirmed", and the Money overview total includes it.
+
 - Bills (`MONEY-BILLS.md`): tab **"Being confirmed" {n}** between Past due and Paid (hidden when 0) = open bills with
   `inFlightWhere`; **Open** and **Past due** exclude them. Pill (first match): in flight → **"Being confirmed"**
   (info) with InfoTip `"bill-processing"` { "Being confirmed", "The customer paid by bank transfer. Banks take up to 4
