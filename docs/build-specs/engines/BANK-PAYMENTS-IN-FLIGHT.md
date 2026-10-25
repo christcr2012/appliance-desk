@@ -176,8 +176,15 @@ the row clears; the same night run twice records it once (event dedupe); no matc
 
 ## 4. To do
 
+**Banking days, not calendar days.** `addBusinessDays` in `src/lib/business-date.ts` actually adds calendar days (its
+other callers rely on that — don't change it). Add `addBankingDays(date, n)` and `bankingDaysBetween(a, b)` there:
+Monday–Friday in Denver, skipping Federal Reserve holidays (New Year's Day, MLK Day, Presidents Day, Memorial Day,
+Juneteenth, Independence Day, Labor Day, Columbus Day, Veterans Day, Thanksgiving, Christmas; a holiday on Sunday is
+observed Monday; on Saturday it is not moved — Fed practice). Tests: a payment started Friday is 4 banking days old on
+Thursday (not 6); Thanksgiving week; a Sunday holiday.
+
 New category **`BANK_PAYMENT_SLOW`** (group `money` in `INBOX_GROUP`, severity medium): an open row with `startedAt`
-more than **`bankPaymentSlowBusinessDays`** business days ago (`addBusinessDays`; starting value 6), **or** any open row with `settledInStripeAt` set (severity
+more than **`bankPaymentSlowBusinessDays`** banking days ago (new `bankingDaysBetween`; starting value 6), **or** any open row with `settledInStripeAt` set (severity
 high; title `"Stripe says the bank payment for bill #{number} cleared, but it isn't recorded yet"`, detail
 `"{formatMoney(amount)} from {customer}. Try recording it again; if it still won't record, compare with Stripe."`,
 primary action **"Record it now"** = a form posting to `recoverBankSettlementAction(rowId)` (OWNER/ADMIN; calls
