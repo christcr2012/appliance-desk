@@ -26,8 +26,12 @@ document Chris does not read.
 Every open business, legal, tax or wording decision has **a researched starting value already in effect** (the most
 likely right answer for a new, one-owner appliance-rental LLC in Greeley, Weld County, Colorado), **changeable in
 Settings**, and **a question waiting in the app** for the right person: Chris, his CPA, his attorney or a translator.
-Answering the question is how the setting gets confirmed or changed. Professionals do not need accounts: Chris
-prints or sends their question set, then records their answers (and attaches their letter or email). Only a true
+Answering the question is how the setting gets confirmed or changed. Professionals never use the app: Chris
+downloads **a questionnaire form** for them (Word or PDF), sends it however he likes, and gets it back filled in with
+their answers and explanations. He then either changes the settings himself in the app, or — the intended path —
+hands the completed form to his coding agent, which reads it, connects to Appliance Desk through its MCP connection,
+compares each answer with what the system does now, and applies the changes (through the MCP for settings, or in
+the repository when an answer needs a code change), with Chris confirming before anything is saved. Only a true
 blocker — something that cannot be built at all, or would be unsafe, illegal or irreversible to run on the default —
 is raised with Chris immediately in conversation, and only that one operation waits.
 
@@ -50,13 +54,29 @@ once a week, never urgent unless a true blocker exists):
     keeps the current value running), and for professional tabs **Enter their answer…**.
   - Professional cards show **"Real use waits for this review"** only when that subject is `REVIEW_REQUIRED` (the
     existing professional-review gate); otherwise "You can use this now; their answer may change it".
-- **Print or send the questions** on each professional tab: a clean printable page (and PDF via the browser) titled
-  "Questions for my CPA — Robinson Appliance Rentals", listing each question, what the app does now, the facts they
-  need (no customer data), and space for their answer. "Copy as email" puts the same text in the clipboard.
-- **Enter their answer…**: who answered (name, firm), date, their answer (the same choices the setting offers, or
-  "Other" with text), effective date ("from today" default; future dates allowed; never backdated over signed or
-  billed history), optional attachment (their letter/email as a stored file), and a note. Saving confirms or changes
-  the setting and records the evidence.
+- **Download the questionnaire** on each professional tab: **Word (.docx)** (fillable in Word or Google Docs) or
+  **PDF**, titled "Questions for my CPA — Robinson Appliance Rentals — {date}". One section per question:
+  - a stable code in brackets, e.g. `[DQ-IN-34-RENT-STATE]`, that never changes;
+  - the question in plain words, the facts they need (no customer data), what the app does now and why, the sources;
+  - the answer choices as checkboxes (exactly the values the setting accepts, in words, plus "Other");
+  - "Effective from" (date), "Your explanation / anything we should know" (free text), and "Answered by, firm,
+    date".
+  A short cover page explains how to fill it in. The last page repeats every code with blank "Answer:" and
+  "Explanation:" lines so even a handwritten or scanned reply can be read back reliably.
+- **Bring the answers back — two ways, both supported:**
+  1. **By hand:** **Enter their answer…** on the card: who answered (name, firm), date, the choice, effective date
+     ("from today" default; future dates allowed; never backdated over signed or billed history), their explanation,
+     and the completed form as an attachment (stored file). Saving confirms or changes the setting and records the
+     evidence.
+  2. **Through the coding agent (intended):** Chris gives the completed form to his agent. Through the MCP
+     connection the agent calls `decisions.list_open` and `decisions.get` to see each coded question with the current
+     value, then `decisions.preview_answers` with what the form says — the app returns, per code, "would change X
+     from A to B from {date}" or "no change" or "can't apply: {reason}" — and, after Chris confirms in the
+     conversation (or in the app's approval screen), `decisions.apply_answers`, which writes through the same save
+     functions as the screen, records each as a `PROFESSIONAL_ANSWER` with the professional's name, date,
+     explanation and the attached form, and returns what changed. If an answer needs new behavior the system does
+     not have (a new tax category, new wording), the tool says so and the agent makes that change in the repository
+     through the normal PR process instead.
 
 ## 4. How it works underneath
 
@@ -94,13 +114,21 @@ Everything else: researched starting value + question.
 ## 6. Units
 
 - **DEC-1 — the center**: registry, `DecisionRecord`, Settings › Decisions & reviews (tabs, cards, Keep/Change/Ask,
-  professional answers with attachments, print/copy), Today card, migration of every open IN-xx from
+  professional answers with attachments), questionnaire download (.docx via the existing docx tooling the app uses
+  for documents, or a server-rendered HTML → PDF; stable codes), a pure `parseQuestionnaireAnswers(text)` that reads a
+  completed form's codes/answers (used by the import screen and the MCP tool), an "Import a completed form" screen
+  (upload .docx/.pdf/text → preview of changes → confirm), Today card, migration of every open IN-xx from
   `docs/OWNER-INPUTS.md` into registry entries (existing answers become `CONFIRMED` records dated to their original
   answer, with the DECISIONS.md reference in the note), tests.
 - **DEC-2 — researched starting values**: for every open subject, the research (official sources with access
   dates, saved in `docs/research/`), the chosen starting value and why, applied through the domain's own save path;
   each subject's card shows it. Done in batches by area (tax; rental terms and notices; money and books; privacy and
   records; wording and Spanish) so each PR is reviewable.
+
+- **MCP tools for decisions** (built with the MCP connection, MCP-3/MCP-5 rules: owner-authorized client, every
+  write journaled and confirmed): `decisions.list_open`, `decisions.get`, `decisions.preview_answers`,
+  `decisions.apply_answers`. They call the same DEC-1 functions; they add no new power the owner screen does not
+  have.
 
 ## 7. Owner decisions
 
