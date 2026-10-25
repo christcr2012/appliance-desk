@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertCapability } from "@/domains/capabilities";
 import type { Prisma } from "@prisma/client";
+import { SettingsConflictError, settingEffect } from "./effects";
 
 /**
  * Settings history (Batch O, O-1 / design D-O1).
@@ -57,7 +58,10 @@ export function formatSettingValue(kind: Kind | undefined, value: unknown): stri
   if (value === null || value === undefined || value === "") return "not set";
   if (kind === "money" && typeof value === "number") return `$${(value / 100).toFixed(2)}`;
   if (kind === "yesno" || typeof value === "boolean") return value ? "On" : "Off";
-  if (Array.isArray(value)) return value.length ? value.map(String).join(", ") : "none";
+  if (Array.isArray(value)) {
+    if (value.some((v) => v !== null && typeof v === "object")) return value.length ? "changed (see the settings screen)" : "none";
+    return value.length ? value.map(String).join(", ") : "none";
+  }
   if (typeof value === "object") return "changed (see the settings screen)";
   return String(value);
 }
@@ -143,30 +147,94 @@ export async function listSettingsHistory(limit = 50): Promise<SettingsHistoryRo
 
 export class SettingsUndoError extends Error {}
 
-/** Undo one change, one field, from one history row. Refuses when the field changed again or is not undoable. */
-export async function undoSettingsChange(userId: string, auditId: string, key: string) {
-  if (!Object.hasOwn(UNDOABLE_SETTINGS, key)) throw new SettingsUndoError("That setting cannot be undone from here.");
+/** The reasons an undo can be refused or conflict, in the words shown to the owner. */
+const MSG = {
+  notUndoable: "That setting cannot be undone from here.",
+  gone: "That change is no longer in the history.",
+  untouched: "That change did not touch this setting.",
+  noSettings: "Settings were not found.",
+  again: "This setting changed again after that change, so it was left alone.",
+} as const;
+
+type DbClient = Pick<typeof prisma, "auditLog" | "businessSettings">;
+
+type UndoCheck =
+  | { ok: false; reason: string }
+  | { ok: true; before: Record<string, unknown>; after: Record<string, unknown>; now: Record<string, unknown>; rowId: string };
+
+/** Every rule for "may this one change be undone right now". Reads only, so the preview and the real undo cannot disagree. */
+async function checkUndo(db: DbClient, auditId: string, key: string): Promise<UndoCheck> {
+  if (!Object.hasOwn(UNDOABLE_SETTINGS, key)) return { ok: false, reason: MSG.notUndoable };
+  const row = await db.auditLog.findUnique({ where: { id: auditId } });
+  if (!row || row.action !== "settings.update") return { ok: false, reason: MSG.gone };
+  const before = (row.oldValue ?? {}) as Record<string, unknown>;
+  const after = (row.newValue ?? {}) as Record<string, unknown>;
+  if (same(before[key], after[key])) return { ok: false, reason: MSG.untouched };
+  const current = await db.businessSettings.findUnique({ where: { id: "singleton" } });
+  if (!current) return { ok: false, reason: MSG.noSettings };
+  const now = current as unknown as Record<string, unknown>;
+  if (!same(now[key], after[key])) return { ok: false, reason: MSG.again };
+  // A newer change that put the same value back still counts as "changed again": it was a newer decision.
+  const newer = await db.auditLog.findMany({
+    where: { action: { in: ["settings.update", "settings.undo"] }, createdAt: { gt: row.createdAt }, id: { not: row.id } },
+    select: { oldValue: true, newValue: true },
+  });
+  if (newer.some((n) => !same(((n.oldValue ?? {}) as Record<string, unknown>)[key], ((n.newValue ?? {}) as Record<string, unknown>)[key])))
+    return { ok: false, reason: MSG.again };
+  return { ok: true, before, after, now, rowId: row.id };
+}
+
+export type SettingsUndoPreview =
+  | { ok: false; reason: string }
+  | {
+      ok: true;
+      key: string;
+      label: string;
+      /** What the setting holds now. */
+      current: string;
+      /** What it will hold after the undo. */
+      restored: string;
+      effect: string;
+      /** Hand this back when confirming: the undo is refused if the setting no longer holds it. */
+      expectedCurrent: string;
+    };
+
+/** Shows what an undo would do. Writes nothing. */
+export async function previewSettingsUndo(auditId: string, key: string): Promise<SettingsUndoPreview> {
+  const checked = await checkUndo(prisma, auditId, key);
+  if (!checked.ok) return checked;
+  const spec = UNDOABLE_SETTINGS[key];
+  return {
+    ok: true,
+    key,
+    label: spec.label,
+    current: formatSettingValue(spec.kind, checked.now[key]),
+    restored: formatSettingValue(spec.kind, checked.before[key]),
+    effect: settingEffect(key),
+    expectedCurrent: JSON.stringify(checked.now[key] ?? null),
+  };
+}
+
+/**
+ * Undo one change, one field, from one history row. Refuses when the field changed again or is not undoable.
+ * `expectedCurrent` is the value the owner saw in the preview; if the setting holds something else when they confirm,
+ * somebody saved in between and the undo is refused as a conflict instead of acting on a screen that is out of date.
+ */
+export async function undoSettingsChange(userId: string, auditId: string, key: string, expectedCurrent?: string) {
+  if (!Object.hasOwn(UNDOABLE_SETTINGS, key)) throw new SettingsUndoError(MSG.notUndoable);
   return prisma.$transaction(async (tx) => {
     await assertCapability(tx, userId, "EDIT_SETTINGS");
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
-    const row = await tx.auditLog.findUnique({ where: { id: auditId } });
-    if (!row || row.action !== "settings.update") throw new SettingsUndoError("That change is no longer in the history.");
-    const before = (row.oldValue ?? {}) as Record<string, unknown>;
-    const after = (row.newValue ?? {}) as Record<string, unknown>;
-    if (same(before[key], after[key])) throw new SettingsUndoError("That change did not touch this setting.");
-    const current = await tx.businessSettings.findUnique({ where: { id: "singleton" } });
-    if (!current) throw new SettingsUndoError("Settings were not found.");
-    const now = current as unknown as Record<string, unknown>;
-    if (!same(now[key], after[key]))
-      throw new SettingsUndoError("This setting changed again after that change, so it was left alone.");
-    // A newer change that put the same value back still counts as "changed again": it was a newer decision.
-    const newer = await tx.auditLog.findMany({
-      where: { action: { in: ["settings.update", "settings.undo"] }, createdAt: { gt: row.createdAt }, id: { not: row.id } },
-      select: { oldValue: true, newValue: true },
-    });
-    if (newer.some((n) => !same(((n.oldValue ?? {}) as Record<string, unknown>)[key], ((n.newValue ?? {}) as Record<string, unknown>)[key])))
-      throw new SettingsUndoError("This setting changed again after that change, so it was left alone.");
-    const restored = (before[key] ?? null) as Prisma.InputJsonValue | null;
+    // First: is the screen the owner confirmed from still true? If the setting moved after the preview, say so as a
+    // conflict ("look again") rather than as a generic refusal.
+    if (expectedCurrent !== undefined) {
+      const now = await tx.businessSettings.findUnique({ where: { id: "singleton" } });
+      const held = (now as unknown as Record<string, unknown> | null)?.[key];
+      if (expectedCurrent !== JSON.stringify(held ?? null)) throw new SettingsConflictError();
+    }
+    const checked = await checkUndo(tx, auditId, key);
+    if (!checked.ok) throw new SettingsUndoError(checked.reason);
+    const restored = (checked.before[key] ?? null) as Prisma.InputJsonValue | null;
     const data = { [key]: restored } as Prisma.BusinessSettingsUpdateInput;
     const updated = await tx.businessSettings.update({ where: { id: "singleton" }, data });
     await tx.auditLog.create({
@@ -175,7 +243,7 @@ export async function undoSettingsChange(userId: string, auditId: string, key: s
         action: "settings.undo",
         entityType: "BusinessSettings",
         entityId: "singleton",
-        oldValue: { [key]: now[key] ?? null } as Prisma.InputJsonObject,
+        oldValue: { [key]: checked.now[key] ?? null } as Prisma.InputJsonObject,
         newValue: { [key]: (updated as unknown as Record<string, unknown>)[key] ?? null } as Prisma.InputJsonObject,
       },
     });

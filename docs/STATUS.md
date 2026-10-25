@@ -4,6 +4,16 @@ The overnight phone-usage job now also runs the spend-alert check as a read-only
 (Settings → Phone, texts and provider costs). It records how many warnings it found on Desk → Automations; it sends nothing and notifies no one,
 because who gets told and when waits on your budget answers (IN-53, already on the checklist). Proven on throwaway Postgres: nothing checked while rules
 are off; with $120 spend against a $100 critical line it counts a warning and creates no message. Branch `ai/claude/com-telecom-alert-check`.
+## October 24 — Owner controls: settings preview, stale-save protection, full Switches list (O-1)
+
+In progress (branch `ai/claude/owner-controls-o1`): "Undo this" in Settings history now shows what it will do first and says
+why it refuses; section saves (Business profile, Service area, Rental policies) have a "Preview changes" button and refuse
+to overwrite a change somebody else saved after the page was opened; the Switches page also lists launch-list emails and
+the Colorado tax rate lookup and shows who last changed paused automations and the books start date. Proven by unit and
+throwaway-Postgres tests plus a real-browser spec (phone width, keyboard, accessibility scan) run locally; exact-head CI
+pending. Nothing for Chris to do. Next in this lane: the role-shaped admin page proof (O-2B), package and set price
+changes (O-4), the older review findings, and browser specs for the other owner controls.
+
 
 ## October 24 — COM-N1A: staff can text leads, estimates and signatures (in PR, everything OFF)
 

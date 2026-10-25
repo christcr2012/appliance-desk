@@ -3,7 +3,9 @@ const m = vi.hoisted(() => ({
   guard: vi.fn(),
   update: vi.fn(),
   revalidate: vi.fn(),
+  findSettings: vi.fn(),
 }));
+vi.mock("@/lib/prisma", () => ({ prisma: { businessSettings: { findUnique: m.findSettings } } }));
 vi.mock("@/lib/session", () => ({ requireRole: m.guard }));
 vi.mock("next/cache", () => ({ revalidatePath: m.revalidate }));
 vi.mock("@/domains/settings", () => ({ updateBusinessSettings: m.update }));
@@ -11,7 +13,9 @@ vi.mock("@/domains/staff", () => ({}));
 vi.mock("@/domains/pricing", () => ({
   dollarsToCents: (v: number) => Math.round(v * 100),
 }));
-import { updateSettingsSectionAction } from "@/app/desk/settings/actions";
+import { updateSettingsSectionAction, previewSettingsSectionAction } from "@/app/desk/settings/actions";
+import { SettingsConflictError } from "@/domains/settings/effects";
+import { sectionRevision } from "@/domains/settings/preview";
 const base = {
   publicBusinessName: "Business",
   publicPhone: "9705550100",
@@ -33,6 +37,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.guard.mockResolvedValue({ user: { id: "owner" } });
   m.update.mockResolvedValue({});
+  m.findSettings.mockResolvedValue({ publicBusinessName: "Business", publicPhone: "9705550100", publicEmail: "support@example.test", publicAddress: "Old address" });
 });
 it("writes only selected fields through existing audited domain and revalidates public content", async () => {
   expect(
@@ -40,14 +45,14 @@ it("writes only selected fields through existing audited domain and revalidates 
       ...profile,
       deliveryFeeDollars: 999,
     }),
-  ).toEqual({ status: "success" });
+  ).toMatchObject({ status: "success", revision: sectionRevision(await m.findSettings(), "profile") });
   expect(m.update).toHaveBeenCalledWith("owner", {
     ...base,
     hours: {},
     holidayClosures: [],
     socialLinks: {},
     logoUrl: null,
-  });
+  }, undefined);
   expect(m.revalidate).toHaveBeenCalledWith("/", "layout");
 });
 it("rejects unauthorized calls before writes", async () => {
@@ -70,4 +75,29 @@ it("invalid inputs never reach storage", async () => {
     status: "error",
   });
   expect(m.update).not.toHaveBeenCalled();
+});
+
+it("passes the page's fingerprint to the save so an out-of-date page is checked inside the transaction", async () => {
+  await updateSettingsSectionAction("profile", profile, "abc123");
+  expect(m.update).toHaveBeenCalledWith("owner", expect.anything(), { expectedRevision: { section: "profile", value: "abc123" } });
+});
+it("tells the person to reload, and saves nothing, when somebody else changed these settings", async () => {
+  m.update.mockRejectedValue(new SettingsConflictError());
+  expect(await updateSettingsSectionAction("profile", profile, "abc123")).toEqual({
+    status: "error",
+    message: expect.stringContaining("Reload the page"),
+  });
+  expect(m.revalidate).not.toHaveBeenCalled();
+});
+it("previews a section save without writing anything", async () => {
+  const result = await previewSettingsSectionAction("profile", profile);
+  expect(result).toMatchObject({ status: "preview", nothingToSave: false });
+  if (result.status === "preview") expect(result.lines.map((l) => l.label)).toContain("Public address");
+  expect(m.update).not.toHaveBeenCalled();
+  expect(m.revalidate).not.toHaveBeenCalled();
+});
+it("refuses a preview for someone without the role, and for bad input", async () => {
+  expect(await previewSettingsSectionAction("profile", {})).toMatchObject({ status: "error" });
+  m.guard.mockRejectedValue(new Error("denied"));
+  await expect(previewSettingsSectionAction("profile", profile)).rejects.toThrow("denied");
 });
