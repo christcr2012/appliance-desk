@@ -123,10 +123,14 @@ change" (auto-applied future versions only). Words pass the plain-words check.
    month after `crossedOn + 90 days` (Denver dates; June 15 → Oct 1). Applies only when the prior year had no Colorado
    retail sales; otherwise the year's status is fixed on Jan 1 by the prior year's total (exempt all year if ≤ the
    threshold, owed all year if over). Status is recomputed on Jan 1 each year (nightly run on the first business day).
-3. **Warning and switch.** When a start date is known: To do `RDF_STARTS` 30 days before ("Retail delivery fees start
-   on {date} for delivered sales. The app will add them.") and an owner email (existing switch); on the date, status
-   becomes APPLIES with no action needed. When a new year's test returns to exempt: To do "Retail delivery fees stop
-   on Jan 1 — your {year} sales were under $500,000." Both are FIXED dates (no timing choice).
+3. **Warning, approval and switch.** Every automatic switch in TFA-2 (fee starts or stops, use tax monthly/yearly,
+   filing frequency, certificate expiry) first appears on To do for Chris to **Approve** (Chris, 2026-10-25). When a
+   start date is known: To do `RDF_STARTS` 30 days before ("Retail delivery fees start on {date} for your delivered
+   sales. Approve so the app adds them from that day.") and an owner email (existing switch). Approved → status becomes
+   APPLIES on the date. Not approved by the date → the item turns high severity and says what the law requires; the
+   app records the fee as owed from the legal date (so the return is right) but changes no customer bill until Chris
+   approves. A new year's test back to exempt: To do "Retail delivery fees stop on Jan 1 — your {year} sales were under
+   $500,000. Approve." Both are FIXED dates (no timing choice).
 4. **What counts** (`recordedRetailSales`): keep counting rent (careful choice; Decisions question `RDF-RENT-COUNTS`,
    audience CPA, starting value "Count rent"); subtract refunds of sales cancelled before delivery; leave voided
    bills out (as today).
@@ -194,17 +198,22 @@ must be **strict**: it finds the exact table/heading it expects, every number pa
 - `IRS_1099_THRESHOLD`: "$X or more" for NEC and rents + the tax year → `us.1099.threshold`.
 - `CO_INTEREST`: the year's regular/discounted rates → `co.interest`.
 
-### 14. What happens with a reading
-Every parse result is stored as an observation (reuse `TaxRateObservation` pattern: new `LegalRuleObservation
-{ ruleKey, value, effectiveFrom, watchId, observedAt, evidence }`). A value is **applied automatically** (new
-`LegalRuleVersion` origin OFFICIAL_WATCH, `autoApplied = true`, `provisional = false`) only when all hold: two
-observations on different days agree; `effectiveFrom` is in the future (or today for a decrease that BENEFITS);
-the change is within the rule's plausibility bound (RDF ±$0.10 vs the last amount; 1099 ±25%; interest ±5 points;
-Greeley ±1.5 points); the owner switch `autoApplyOfficialRateChanges` is on (reuse the existing setting; starting value
-already true). Then To do `RULE_CHANGE_SCHEDULED` "{title} changes to {value} on {date}" with **Undo** (sets
-`undoneAt`). Otherwise To do `RULE_CHANGE_REVIEW` with the page excerpt, the proposed value and **Apply** (OWNER;
-creates an OWNER version) / **Dismiss**. A tax-rate change for Greeley goes through the existing `TaxRateVersion`
-auto-apply/undo path instead (same guards), so bills pick it up the usual way.
+### 14. What happens with a reading — always Chris's approval (Chris, 2026-10-25)
+**Nothing found on an official page is ever applied without Chris approving it** ("it should always put it on the
+todo list for me to review and approve"). Every parse result is stored as an observation (new `LegalRuleObservation
+{ ruleKey, value, effectiveFrom, watchId, observedAt, evidence }`, same pattern as `TaxRateObservation`). When a
+reading differs from the current or scheduled rule, a To do `RULE_CHANGE_REVIEW` appears: "{title}: the official page
+now says {value} from {date}" with the page excerpt and link, how sure the app is ("Read the same way on 2 days" /
+"Read once — check the page"; "Within the usual range" / "Unusually large change — check carefully"), what it will
+change ("New delivered sales from {date} get {value}"), and **Approve** (OWNER; creates a version with origin
+OFFICIAL_WATCH, `provisional = false`, `createdByUserId` = Chris, scheduled for the stated date — never earlier) /
+**Not right** (dismiss with a note; the same reading won't ask again). If the start date passes without approval, the
+item turns high severity ("Colorado's new amount started on {date} — approve it so your records are right") and
+nothing changes on its own. Greeley tax-rate readings go through the existing `TaxRateVersion` review path
+(`officialRateReviewException` with APPLY_OFFICIAL_RATE), never its auto-apply.
+**The existing rate auto-apply is turned off:** the setting `autoApplyOfficialRateChanges` gets starting value
+**false** (migration sets it false; Chris's answer, recorded in DECISIONS) and the setting row explains "Off: every new
+rate waits for your approval on To do". Leave the code path but it only runs if Chris turns it on himself.
 Hash-only watches (DR 1002, SUTS jurisdictions) keep today's "page changed" To do, plus the existing Jan 1/Jul 1
 reminders.
 

@@ -14,14 +14,13 @@ Build spec: `docs/build-specs/engines/TAX-FEE-AUTOPILOT.md`. Units TFA-1, TFA-2,
   date it was checked), and whether it is confirmed by his CPA or a researched starting value.
 - **Automatic switches with warning.** When something about the business changes a rule — sales passing $500,000,
   use tax passing $300 in a year, a customer's exemption certificate expiring, a rental renewed past 36 months — the
-  app records the date it happened, works out the legal start date, puts it on To do ahead of time ("Retail delivery
-  fees start for your delivered sales on Oct 1 — nothing to do, the app will add them"), and switches on that date.
-  When a condition stops applying, it switches back the same way.
-- **Self-updating where the official source is readable.** Weekly (daily in the weeks before a known change), the
-  app reads the official pages. When it can read a new number with certainty (two reads in a row agree, the value is
-  plausible, the start date is in the future), it schedules the change itself and tells Chris with an Undo button.
-  When it can't read it with certainty, it tells him exactly what changed on the page and offers "Apply" with the
-  proposed value.
+  app records the date it happened, works out the legal start date, and puts it on To do ahead of time for Chris to
+  approve ("Retail delivery fees start for your delivered sales on Oct 1 — approve"); approved switches happen on
+  that date. When a condition stops applying, it switches back the same way.
+- **Watching official sources, Chris approves every change.** Weekly (daily in the weeks before a known change), the
+  app reads the official pages. When it finds a new number it puts it on To do with the page excerpt, how sure it is,
+  and what will change — **nothing is applied until Chris taps Approve** (his rule, 2026-10-25). The same goes for the
+  automatic switches above: they are prepared and dated by the app, approved by Chris.
 - **"Pay/file on" dates** for every return: the suggested day is 90% of the way from period end to due date (his
   setting, 85–95%), never after the due date and always a safety margin before it.
 

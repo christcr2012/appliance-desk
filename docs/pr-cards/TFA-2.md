@@ -4,6 +4,7 @@ Build spec: `docs/build-specs/engines/TAX-FEE-AUTOPILOT.md` sections 6–11. Req
 TFA-1. Risk: **retail delivery fees and use tax** (fixes a legal error: fees are refunded on returns today).
 
 ## Acceptance
+- [ ] Every switch is prepared and dated by the app and approved by Chris on To do before it changes a bill.
 - [ ] The date sales pass $500,000 is recorded automatically, once; the fee starts on the statute's date (June 15 → Oct 1).
 - [ ] Jan 1 re-test switches the fee on or off by the prior year's sales, with To do warnings ahead.
 - [ ] Returned sales keep the fee; cancellations before delivery credit it; exchanges add no new fee.

@@ -1,3 +1,9 @@
+## October 25 — Tax and fee changes always wait for Chris's approval (Chris)
+
+"I think it should always put it on the todo list for me to review and approve." Official-page readings and the
+automatic exemption switches are prepared by the app and applied only after Chris taps Approve on To do. The existing
+official-rate auto-apply setting starts **off**. (TFA-2, TFA-3.)
+
 ## October 25 — Timing of rule changes: costs late, benefits early (Chris)
 
 Chris: "if there is a time window for implementation of a rule or change that does not benefit us to implement early,
