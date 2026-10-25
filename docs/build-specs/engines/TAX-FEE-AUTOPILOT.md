@@ -68,7 +68,7 @@ Seeded rules (values exactly from the research file; `origin RESEARCHED`, `sourc
 | `co.license.expiry` | `{ rule: "DEC_31_ODD_YEARS" }` | ANY_DATE |
 | `us.1099.threshold` | 200,000 cents from 2026-01-01 | FIXED_JAN_1 |
 | `us.1099.deadlines` | `{ necBoth: "01-31", miscPayee: "01-31", miscIrsPaper: "02-28", miscIrsElectronic: "03-31" }` | FIXED_JAN_1 |
-| `us.section179` | `{ limitCents: 256000000000, phaseoutCents: 409000000000 }` from 2026-01-01 | FIXED_JAN_1 |
+| `us.section179` | `{ limitCents: 256000000, phaseoutCents: 409000000 }` ($2,560,000 / $4,090,000) from 2026-01-01 | FIXED_JAN_1 |
 | `us.bonus_depreciation` | `{ percent: 100, acquiredAfter: "2025-01-19" }` | ANY_DATE |
 | `records.keep_years` | 7 (counted from disposal) | ANY_DATE |
 Readers switch to `ruleAsOf` (and the old settings fields stay but are no longer read; listed in AR-8's
@@ -129,7 +129,7 @@ Tests: rate increase approved 5 days late → no bill changed, absorbed amount o
 late → credit on the next bill with the text; certificate back-dated → credits; idempotent; history unchanged.
 
 ### 5. Tests (TFA-1)
-`tests/rules-registry.test.ts` (every key seeded, schemas valid, sources present), `tests/rules-as-of-integration.test.ts`
+`tests/rules-registry.test.ts` (every key seeded, schemas valid, sources present, and each seeded money value equals the dollar amount in the research file × 100 — e.g. §179 $2,560,000 → 256000000 cents), `tests/rules-as-of-integration.test.ts`
 (dates, priority, undo, DST), `tests/rules-timing.test.ts`, readers switched (RDF amount on a Jun 30 vs Jul 1 sale;
 1099 list uses the threshold for the payment year), `e2e/tax-rules.spec.ts`.
 

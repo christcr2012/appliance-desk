@@ -92,10 +92,21 @@ export async function notify(event: NotificationEvent): Promise<void>
 - Body and title are cut to their column lengths; `href` must start with `/desk/` or `notify` throws (bug, reported).
 
 ## 5. Reading and marking (`src/domains/notifications/index.ts`, all re-read the session user)
-- `getUnreadCount()` → `count({ where: { userId, readAt: null } })` (index `[userId, readAt, createdAt]`); capped
-  display "99+".
-- `listNotifications({ cursor })` → own rows, newest first, 20 per page (KIT cursor rule); unread rows are shown bold
-  with a dot (no separate unread-first sort).
+- **Current permissions decide what is shown, not the permissions when it was sent.** Every read and count filters by
+  `allowedKindsFor(user)` (pure, `rules.ts`): the kinds the user's **current** role and job role may receive — the same
+  table as section 3's recipients (LEAD_NEW needs `/desk/leads` allowed; QUOTE_VIEWED/SIGNATURE_DONE/PAYMENT_FAILED need
+  OWNER/ADMIN and the job role allowing the linked screen; APPROVAL_REQUESTED needs OWNER) — and drops rows whose
+  `href` the user's job role can't open (`jobRoleAllowsPath`). The session user is re-read (role, job role, archived)
+  per request. In addition, `changeAccessLevel` and the job-role change function (`src/domains/team/index.ts`) delete,
+  in their own transaction, the user's notifications of kinds they can no longer receive (audit
+  `notifications.removed_on_access_change` with the count). Archived users get none.
+- `getUnreadCount()` → `count({ where: { userId, readAt: null, kind: { in: allowedKinds } } })` (index `[userId,
+  readAt, createdAt]`); capped display "99+".
+- `listNotifications({ cursor })` → own rows of allowed kinds, newest first, 20 per page (KIT cursor rule); unread rows
+  are shown bold with a dot (no separate unread-first sort).
+- Regression tests: an ADMIN with PAYMENT_FAILED notifications is demoted to STAFF → count 0, list empty, rows deleted;
+  a job role narrowed to remove `/desk/leads` → LEAD_NEW rows hidden and removed; re-promotion doesn't bring deleted
+  rows back.
 - `markRead(id)` (`updateMany({ where: { id, userId, readAt: null } })` — no lock needed: a single conditional update),
   `markAllRead()` (`updateMany({ where: { userId, readAt: null } })`).
 - Server actions in `src/app/desk/notifications/actions.ts`; every one calls `requireSession()` and passes only the
