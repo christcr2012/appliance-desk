@@ -100,9 +100,13 @@ Builders in `rules.ts`, queried in `getExceptionOverview` with the standard cap;
   first exactly as above); `carried = retiredValueCents`; if `carried > 0` write one balanced entry
   `balancedPlan(onDate, "Retired appliance {assetNumber} {reason words}: book value removed", [{ role:
   "DISPOSAL_LOSS", debitCents: carried }, { role: "RETIRED_PENDING_DISPOSITION", creditCents: carried }])` with
-  eventKind `"DISPOSED:" + onDateKey`; set `disposedOn`; audit `books.asset.dispose`. Scrap money received is already
+  eventKind `"DISPOSED:" + cycle` where `cycle` = new additive field `BookAsset.disposalCycle Int @default(0)`
+  incremented (under the asset lock) every time a disposal is posted, so complete → reopen → complete on the same date
+  gets keys `DISPOSED:1`, `DISPOSAL_REVERSED:1`, `DISPOSED:2` (JournalEntry is unique on sourceType/sourceId/eventKind
+  and `writeJournal` skips an existing key); set `disposedOn`; audit `books.asset.dispose` with the cycle. Scrap money received is already
   income through `recordScrapPayment` (unchanged). `reopenRetiredPlan` → `reverseBookAssetDisposalInTx`-style
-  reversing entry (new eventKind `"DISPOSAL_REVERSED:" + …`) and `disposedOn = null`.
+  reversing entry with eventKind `"DISPOSAL_REVERSED:" + current cycle` and `disposedOn = null`. Test: complete →
+  reopen → complete with the same date → three entries, value removed again, report matches the ledger.
 - **Equipment reports must agree:** extend `disposedValueBefore` (`src/domains/books/fixed-assets.ts`) to read
   `DISPOSED:` and `DISPOSAL_REVERSED:` events too (today it reads only `SOLD:`/`SOLD_VOIDED:` and totals only
   `BOOK_VALUE_OF_APPLIANCES_SOLD`): add `DISPOSAL_LOSS` amounts for DISPOSED and subtract them for DISPOSAL_REVERSED,

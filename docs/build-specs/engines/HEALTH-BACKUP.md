@@ -207,8 +207,12 @@ retention issue; a pair always removed together.
 ### 10. Retry, safely
 `retryBackupNow(actorId)` (OWNER, button "Run the backup again" on System health, shown only when today's backup run
 is FAILED or UNKNOWN): runs `exportDatabaseBackup` + media copy outside the daily slot with run key
-`manual:{uuid}`, refusing if one is already RUNNING (`claimRun` with rule `backup-manual`). It never changes the daily
-slot's contract for other jobs. Audit `backup.manual_run`. Test: two clicks → one run.
+`manual:{uuid}`. Because `claimRun` only checks its own `(ruleKey, runKey)`, the start is serialized first: one
+transaction takes `pg_advisory_xact_lock(hashtext('backup-run'))`, checks there is no `AutomationRun` with `ruleKey in
+('backup','backup-manual','media-copy')` in state RUNNING started within its budget, and only then inserts the
+`backup-manual` run row (RUNNING); otherwise "A backup is already running". The daily `backup` cron takes the same lock
+and check before its own `claimRun`, so a manual run and the nightly run never overlap. It never changes the daily
+slot's contract for other jobs. Audit `backup.manual_run`. Test: two clicks at once (different request ids) → one run; a click during the nightly run → refused.
 
 ### 11. Restore drill (test only)
 Extend `tests/backup-restore-integration.test.ts`: make a backup with the fake Blob client, restore into the CI
