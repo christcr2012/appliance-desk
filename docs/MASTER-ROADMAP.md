@@ -274,6 +274,16 @@ component kit with build guards. It supersedes the screen units BA-4/5/6, LD-2/3
 | AR-9 | Insights tabs | AR-4, AR-6, AR-7 |
 | AR-10 | Sweep and guards | AR-5, AR-6, AR-8, AR-9 |
 
+### DEC — decisions never block the work (`designs/DECISIONS-CENTER.md`, Chris 2026-10-25)
+
+Every open business, legal, tax or wording decision runs on a researched, most-likely starting value that Chris can
+change, and waits as an in-app question for him, his CPA, attorney or translator. Only true blockers interrupt him.
+
+| Unit | Scope | Prerequisite |
+|---|---|---|
+| DEC-1 | Decisions & reviews center (registry, answers with evidence, print/send for professionals, Today card) | — |
+| DEC-2 | Researched starting values for every open decision, replacing `UNDECIDED` defaults, by area | DEC-1 |
+
 ### BA — books on autopilot (`designs/BOOKS-AUTOPILOT.md`, designed 2026-10-25, awaiting go-ahead)
 
 Chris found the Books pages confusing: a raw journal, manual depreciation per appliance, no month-end workflow and rows

@@ -1,3 +1,23 @@
+## October 25 — Decisions never block the work (Chris)
+
+Chris: agents kept postponing features while waiting for owner or professional decisions. New rule (AGENTS.md
+section 1): research official sources and common practice for a new appliance-rental LLC in Greeley, Colorado; run
+the most likely answer as a changeable starting value; file the question in the in-app Decisions & reviews center
+for Chris, his CPA, attorney or translator ([design](designs/DECISIONS-CENTER.md)). Only true blockers (cannot be
+built, or unsafe/illegal/irreversible on the default) are raised with him immediately. Decisions are no longer
+owner-checklist rows; the checklist keeps physical actions only. Supersedes OWNER-INPUTS' 2026-10-14 "do not default
+owner-specific choices" text and the professional-review contract's "no new approval queue" line.
+
+Same day, Chris gave the go-ahead to **build** (not only plan): the app redesign with its engines (AR-0…AR-13,
+LD, CU, BA, BILL-1, the portal redesign), the Decisions & reviews center (DEC-1, DEC-2) and the agent connection with
+the feedback box (MCP-1…MCP-11; people-only feedback first). The partner/portfolio program (BP) stays proposed. He
+also approved applying researched starting values to the **live** app's settings (marked "Starting value — not
+confirmed", changeable, never touching signed or billed history).
+
+Same day, two answers from Chris: the customer portal gets the redesign too (new unit after the desk), and the
+problem-report/suggestion box ships first in its simple, people-only form, ahead of the agent connection (MCP-10
+split: human reporting and triage first, agent tooling with MCP-11).
+
 ## October 25 — The desk becomes an application: five areas, four page types, one inbox (Batch AR design)
 
 Every desk screen moves to one of five areas (Today, Customers, Schedule, Equipment, Money) with Settings in a
