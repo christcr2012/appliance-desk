@@ -7,7 +7,7 @@ Audited baseline: main after #541, October 24, 2026 (documents re-checked agains
 Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through T, S, COM-L, W (except W-11/12/13), V, F2,
 K, K-CASH, M-1A…M-2B, O-1, O-2A, O-2B, O-3A, O-4…O-7 and ACC-1…ACC-5 is merged. The live/provider/owner acceptance checks stay separately PENDING on
 [OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
-Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed), BA books on autopilot and LD leads workspace (designed, awaiting go-ahead),
+Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed), BA books on autopilot, LD leads workspace and CU customers workspace (designed, awaiting go-ahead),
 W-11/12/13 (owner-gated), MCP-1…11. The full audited list is "What truly remains" in [PLAN](PLAN.md). **New 2026-10-23:** ACC (accounts and sign-in) is built and merged (#544–#548).
 
 **New required implementer reading:** October 13
@@ -275,6 +275,14 @@ Stripe switch), contrary to Batch K. BA makes the app keep the books itself and 
 | LD-2 | Work queue: stage tabs, Next-up order, one-tap contact, filter sheet, saved views, bulk, board | JIT — `LD-2.md` | LD-1 |
 | LD-3 | Lead detail workspace | JIT — `LD-3.md` | LD-2 |
 | LD-4 | Lead insights | JIT — `LD-4.md` | LD-3 |
+
+### CU — customers workspace (`designs/CUSTOMERS-WORKSPACE.md`, designed 2026-10-25, awaiting go-ahead)
+
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| CU-1 | Customer list: segments, money and next event per row, filters, saved views, summary model, search, count fix | JIT — `CU-1.md` | — (shares LD-1 search indexes) |
+| CU-2 | Customer record header, next-step card, quick actions | JIT — `CU-2.md` | CU-1 |
+| CU-3 | One Customers area (Leads, Customers, Insights), shared search, insights | JIT — `CU-3.md` | CU-2, LD-4 |
 
 ## Owner-facing handoff stays small
 

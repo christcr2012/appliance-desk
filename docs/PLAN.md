@@ -414,6 +414,17 @@ Design: [designs/LEADS-WORKSPACE.md](designs/LEADS-WORKSPACE.md); units LD-1…L
 - [ ] LD-4: insights (speed to lead, quote rate, win rate, pipeline value, sources, lost reasons) with ⓘ definitions.
 - [ ] Every item in "Rules that apply to every batch".
 
+## Batch CU — Customers workspace — DESIGNED 2026-10-25, awaiting Chris's go-ahead
+
+Design: [designs/CUSTOMERS-WORKSPACE.md](designs/CUSTOMERS-WORKSPACE.md); units CU-1…CU-3 in work-index.
+
+- [ ] CU-1: segment tabs (Active, Owes money, Ending soon, Setting up, Past) from one rule; each row shows monthly
+  rent, balance due, autopay, pays-on-time badge and next event; filter sheet, saved views; summary read model kept
+  in step with every money/agreement/job change; fast search and cursor paging at 20,000 customers; walk-in count bug fixed.
+- [ ] CU-2: customer record summary strip, one next-step card, quick actions; quiet tabs.
+- [ ] CU-3: one Customers area with Leads, Customers and Insights tabs; shared search; customer insights.
+- [ ] Every item in "Rules that apply to every batch".
+
 ## Batch BP — Business offers operations and partnerships — PROPOSED
 
 Design: `docs/designs/BATCH-BP.md`; work coverage and prerequisites: work-index.
