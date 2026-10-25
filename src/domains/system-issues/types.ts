@@ -1,7 +1,9 @@
 /** Typed system events only: never pass raw errors or customer fields. */
 export type SystemIssueInput =
-  | { kind: "AUTOMATION_FAILED"; ruleKey: string; runId: string; startedAt: Date; errorName: string; errorCode?: string }
-  | { kind: "AUTOMATION_STALE"; ruleKey: string; lastSuccessAt: Date | null; expectedEveryHours: number }
+  | { kind: "AUTOMATION_FAILED"; ruleKey: string; runId: string; startedAt: Date; errorName: string; errorCode?: string;
+      /** MCP-1 typed failure: a FAILURE_CODES key, the step, and the random reference on the server log line. */
+      failure?: { code: string; stage: string; correlationId: string } }
+  | { kind: "AUTOMATION_STALE"; ruleKey: string; lastSuccessAt: Date | null; dueAt: Date; graceMinutes: number }
   | { kind: "PROVIDER_OPERATION_STUCK"; operationKind: string; count: number; oldestSince: Date }
   | { kind: "TAX_LOOKUP_UNAVAILABLE"; count: number }
   | { kind: "TAX_PERIOD_MISSING"; count: number }
