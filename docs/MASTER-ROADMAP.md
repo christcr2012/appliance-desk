@@ -308,7 +308,7 @@ Stripe switch), contrary to Batch K. BA makes the app keep the books itself and 
 | LD-1 | Stages, lead owner, speed to lead, duplicates, scale (indexes, search, cursor paging) | JIT — `LD-1.md` | — |
 | LD-2 | Work queue: stage tabs, Next-up order, one-tap contact, filter sheet, saved views, bulk, board | SUPERSEDED by AR-4 | LD-1 |
 | LD-3 | Lead detail workspace | SUPERSEDED by AR-4 | LD-2 |
-| LD-4 | Lead insights | JIT — `LD-4.md` | LD-3 |
+| LD-4 | Lead insights | SUPERSEDED by AR-9 | LD-3 |
 
 ### CU — customers workspace (`designs/CUSTOMERS-WORKSPACE.md`, designed 2026-10-25, awaiting go-ahead)
 

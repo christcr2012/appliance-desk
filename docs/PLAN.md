@@ -433,7 +433,7 @@ Design: [designs/LEADS-WORKSPACE.md](designs/LEADS-WORKSPACE.md); units LD-1…L
 - ~~LD-2: one work queue with stage tabs and counts, "Next up" order, one-tap call/email (text when live), one filter~~ _(superseded by AR-4, Chris 2026-10-25)_
   sheet, saved views, bulk actions and board on desktop; quiet screen (no explanatory paragraphs).
 - ~~LD-3: lead detail with stage stepper, one next-step card, inline edits, quotes, convert or lose.~~ _(superseded by AR-4, Chris 2026-10-25)_
-- [ ] LD-4: insights (speed to lead, quote rate, win rate, pipeline value, sources, lost reasons) with ⓘ definitions.
+- ~~LD-4: insights (speed to lead, quote rate, win rate, pipeline value, sources, lost reasons) with ⓘ definitions.~~ _(superseded by AR-9, Chris 2026-10-25)_
 - [ ] Every item in "Rules that apply to every batch".
 
 ## Batch CU — Customers workspace — DESIGNED 2026-10-25, awaiting Chris's go-ahead

@@ -28,7 +28,7 @@ Missing / wrong (fixes found while specifying):
    (`src/lib/customer-email.ts`) so it stays off while customer email is off (AGENTS section 1) and is recorded as
    not sent.
 
-## 2. Device identity (additive migration `20261030000000_known_devices`)
+## 2. Device identity (additive migration `20261030010000_known_devices`)
 ```prisma
 model KnownDevice {
   id          String   @id @default(cuid())

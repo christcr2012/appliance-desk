@@ -187,7 +187,7 @@ the screen spec), Cancel + confirm button (`danger` → `bg-danger`). Focus star
 bg-primary shadow-raise`, `aria-label={spec.label}`, plus icon. Hidden `lg:`.
 
 ### 4.15 `Toaster` + `toast()`
-In-house: a client provider mounted once in the desk layout; `role="status" aria-live="polite"`; bottom-center on
+In-house: a client provider mounted once in the desk layout **and once in the customer portal layout** (PORTAL-1); `role="status" aria-live="polite"`; bottom-center on
 phone above the bottom bar, bottom-right on desktop; 6 s default, 10 s when `undo`. API:
 `toast({ message: string; tone?: Tone; undo?: () => Promise<void> })`. Undo button label "Undo".
 
@@ -228,6 +228,11 @@ copyright line in a comment at the top of the file): run `npm pack lucide-static
 | IconName | Lucide file | Used for |
 |---|---|---|
 | today | `inbox` | Today area |
+| home | `house` | Portal home (PORTAL-1) |
+| repair | `wrench` | Portal repairs (PORTAL-1) |
+| bill | `receipt` | Portal bills (PORTAL-1) |
+| account | `user` | Portal account (PORTAL-1) |
+| bell | `bell` | Notifications bell (AR-13) |
 | customers | `users` | Customers area |
 | schedule | `calendar-days` | Schedule area |
 | equipment | `washing-machine` | Equipment area |

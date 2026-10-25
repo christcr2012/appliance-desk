@@ -231,8 +231,12 @@ months; recommended the schema default; why "Keeps a former tenant's contact det
 questions, then removes them."; editor = the existing writer used by `customers/[id]/locations`, or the generic row
 save if that page only reads it).
 
-Note: the website banner fields exist in the schema but no page reads or writes them. AR-8 does not add a banner;
-it is listed in `NOT_A_SETTING` and reported as a gap (the website editor unit decides).
+Note: the old website banner fields (`announcementBannerText`, `announcementBannerOn`) exist in the schema but nothing
+reads or writes them; the website editor's **Featured promotion** block (`home.feature.promotion` in
+`src/domains/site-content/fields-public.ts`, with start/end times) already does that job. List both fields in
+`NOT_A_SETTING` with reason "Replaced by the website's Featured promotion" (columns stay; migrations are additive).
+**Every later card that adds a setting adds its catalog row in the same PR** (the coverage test fails otherwise):
+MCP-1, MCP-2, BILL-1, DEC-2, MCP-10a, AR-13, ACC-6 and AR-9 each add settings.
 
 ## 5. `SettingRow` and saving
 

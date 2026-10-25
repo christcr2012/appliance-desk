@@ -4234,7 +4234,7 @@
       "dependencies": [
         "LD-3"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "SUPERSEDED — built in AR-9 (docs/build-specs/screens/INSIGHTS.md)",
       "migration": "none",
       "budget": 320,
       "units": [
@@ -4247,7 +4247,7 @@
       "tests": [
         "tests/ld4-lead-insights.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/LD-4.md"
     },
     {
@@ -4479,7 +4479,7 @@
         "LD-1"
       ],
       "status": "APPROVED — Chris 2026-10-25",
-      "migration": "none",
+      "migration": "additive (RentalAgreement.endReason/endReasonNote, BusinessSettings.rentalEndReasons)",
       "budget": 500,
       "units": [
         "AR-4"
@@ -4594,52 +4594,67 @@
     },
     {
       "id": "AR-8",
-      "title": "Settings: one page with sections, search and setting rows with history",
+      "title": "Settings area: one catalog of every setting, sections, explanations, restore recommended, history and undo",
       "batch": "AR",
       "dependencies": [
-        "AR-1"
+        "AR-1",
+        "AR-12"
       ],
       "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
-      "budget": 420,
+      "budget": 520,
       "units": [
         "AR-8"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/settings/page.tsx"
+        "docs/build-specs/screens/SETTINGS.md",
+        "src/app/desk/settings/page.tsx",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/history.ts",
+        "src/app/desk/settings/actions.ts"
       ],
       "tests": [
-        "tests/ar8-settings.test.ts",
+        "tests/settings-catalog.test.ts",
+        "tests/settings-row-save-integration.test.ts",
+        "tests/settings-history-bounds.test.ts",
         "e2e/ar8-settings.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-8.md"
     },
     {
       "id": "AR-9",
-      "title": "Insights tabs replacing Reports, Revenue, Fleet and Growth pages",
+      "title": "Insights: lead and customer insights (absorbs LD-4, CU-3), fleet insights, rent on Money overview, goal thresholds",
       "batch": "AR",
       "dependencies": [
+        "AR-3",
         "AR-4",
         "AR-6",
-        "AR-7"
+        "LD-1"
       ],
       "status": "APPROVED — Chris 2026-10-25",
-      "migration": "none",
-      "budget": 380,
+      "migration": "20261030000000_lead_closed_at (+ goal threshold settings)",
+      "budget": 520,
       "units": [
         "AR-9"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/reports/page.tsx",
-        "src/app/desk/revenue/page.tsx"
+        "docs/build-specs/screens/INSIGHTS.md",
+        "src/domains/growth/index.ts",
+        "src/domains/reports/index.ts",
+        "src/domains/leads/index.ts",
+        "src/domains/team/job-role-rules.ts"
       ],
       "tests": [
+        "tests/business-hours.test.ts",
+        "tests/lead-insights-integration.test.ts",
+        "tests/customer-insights-integration.test.ts",
+        "tests/lead-closed-at-integration.test.ts",
+        "tests/lead-source-breakdown.test.ts",
+        "tests/insights-roles.test.ts",
         "e2e/ar9-insights.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-9.md"
     },
     {
@@ -4732,23 +4747,33 @@
     },
     {
       "id": "AR-13",
-      "title": "In-app notifications bell: new lead, quote viewed, signature done, payment failed, approval requested; each opens its record",
+      "title": "In-app notifications bell: five kinds, preferences, nightly clean-up",
       "batch": "AR",
       "dependencies": [
         "AR-1",
         "AR-2"
       ],
       "status": "APPROVED — Chris 2026-10-25",
-      "migration": "notifications",
-      "budget": 420,
+      "migration": "20261031000000_notifications",
+      "budget": 450,
       "units": [
         "AR-13"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md"
+        "docs/build-specs/engines/NOTIFICATIONS.md",
+        "src/domains/leads/index.ts",
+        "src/domains/estimates/index-base.ts",
+        "src/domains/agreements/index.ts",
+        "src/domains/billing/webhooks-base.ts",
+        "src/domains/approvals/index.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/notifications-rules.test.ts",
+        "tests/notifications-integration.test.ts",
+        "tests/notification-email.test.ts",
+        "e2e/notifications.spec.ts"
+      ],
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-13.md"
     },
     {
@@ -4979,7 +5004,8 @@
       "batch": "MCP",
       "dependencies": [
         "MCP-5",
-        "MCP-6"
+        "MCP-6",
+        "AR-8"
       ],
       "status": "APPROVED — Chris 2026-10-25",
       "migration": "additive (PerfSample, OptimizationProposal)",
@@ -5115,7 +5141,7 @@
         "ACC-5",
         "DEC-1"
       ],
-      "migration": "20261030000000_known_devices (KnownDevice, BusinessSettings.trustedDeviceDays)",
+      "migration": "20261030010000_known_devices (KnownDevice, BusinessSettings.trustedDeviceDays)",
       "budget": 420,
       "evidence": [
         "docs/build-specs/engines/TRUSTED-DEVICES.md",
@@ -5128,7 +5154,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "APPROVED (ACC batch) — designed 2026-10-23",
+      "status": "DESIGNED — awaiting Chris's go-ahead (ROADMAP)",
       "units": [
         "ACC-6"
       ]

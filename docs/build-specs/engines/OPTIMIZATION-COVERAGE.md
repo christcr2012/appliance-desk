@@ -28,8 +28,9 @@ System health › Improvements) can open a repair case (MCP-6) for the coding ag
 prices, fees, legal/tax values are never "optimized" (refused by a fixed list of setting keys).
 
 ## 3. Settings map and control coverage
-- `src/mcp/settings-map.ts`: every owner-facing setting and control (generated list: every field in the Settings page
-  sections from `src/domains/settings/sections.ts`, every switch on System health, every decision subject), with `{
+- `src/mcp/settings-map.ts`: every owner-facing setting and control (generated from the AR-8 settings
+  catalog `src/domains/settings/catalog.ts` — the one list of every setting — plus every System health switch and every
+  decision subject; never a second hand-kept list), with `{
   key, label, screen href, who can change it, mcpStatus: "TOOL" | "PLANNED" | "NOT_APPLICABLE" | "PROVIDER_MANUAL",
   reason }`. A test fails when a settings section field has no row.
 - Tool `appliance_where_is_setting { query }` (ops:read): fuzzy match label/key → screen, who can change, and whether

@@ -146,6 +146,16 @@ The Sheet's header shows a three-dot stepper "Choose · Decide · Done". Linked 
 via `?from=end` ("Ending {customer}'s rental — step 2 of 3", with "← Back to the rental"); nothing else on those pages
 changes.
 
+**Why they're leaving (new, small).** Every path that ends a rental for good (End it today, month-to-month end,
+early return, cancel before delivery, and the ending decision's "pick up" choice) shows one optional question at its
+confirm step: "Why is it ending?" — a native select of the owner's reasons plus "Other" with a note (≤ 200
+characters). Stored on the agreement: `endReason String?` and `endReasonNote String?` (additive migration in AR-4a).
+Reasons are an owner setting `rentalEndReasons String[]` with starting values "Moving away", "Bought their own",
+"Price", "Not happy with the service", "Didn't need it anymore", "Property sold or tenant left" (why: the common reasons
+rental businesses track; explained on screen; restore recommended). Never required, never shown to the customer,
+editable later on the rental's Details tab (OWNER/ADMIN, audited `agreement.end_reason_set`). AR-9's "why customers
+left" reads this field (falling back to its derived numbers for older rentals).
+
 **Hand-off after it is done** (toast + next-step card, no behavior change): after "End it today" the toast says
 "Rental ended. A pickup visit is in your To do list." with action "Open To do" (`/desk/today?group=rentals`); after the
 ending decision redirects (existing), the new rental's or visit's page shows the next step as usual.
