@@ -21,4 +21,6 @@ export const businessSettingsSchema = z.object({
   twelveMonthPrepayFreeMonthEnabled: z.boolean(),
   referralRewardDollars: z.coerce.number().min(0).max(1000),
   draftReservationHoldDays: z.coerce.number().int().min(1).max(90),
+  receiptFileKeepDays: z.coerce.number().int().min(1).max(365),
+  unsentPhotoKeepDays: z.coerce.number().int().min(1).max(30),
 });

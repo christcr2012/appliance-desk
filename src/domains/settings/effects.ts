@@ -23,6 +23,7 @@ const EFFECTS: Record<string, string> = {
   site: "Shown on the public website and on new paperwork after you save. Paperwork already signed is not rewritten.",
   area: "Decides who can request service from now on. Existing customers and signed agreements are not changed.",
   visits: "Applies to visits scheduled from now on. Visits already scheduled keep their times.",
+  files: "Applies to files removed from now on. Files already waiting keep the deadline they were given.",
   switchlike: "Applies to new quotes and agreements from now on. Signed agreements keep the terms they locked in.",
 };
 const EFFECT_FOR: Record<string, keyof typeof EFFECTS> = {
@@ -36,7 +37,7 @@ const EFFECT_FOR: Record<string, keyof typeof EFFECTS> = {
   twelveMonthPrepayFreeMonthEnabled: "prepay",
   referralRewardCents: "referral",
   damageWaiverEnabled: "switchlike", depositEnabled: "switchlike",
-  draftReservationHoldDays: "visits", defaultJobDurationMinutes: "visits",
+  draftReservationHoldDays: "visits", receiptFileKeepDays: "files", unsentPhotoKeepDays: "files", defaultJobDurationMinutes: "visits",
   staffMayWorkUnassignedJobs: "visits", pickupDayNotBilled: "visits", outOfServiceEscalationDays: "visits",
 };
 

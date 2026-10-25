@@ -858,7 +858,7 @@ export function taxSetupCheckException(input: {
     detail: (input.setupCheckedOn
       ? `Last checked ${businessDateKey(input.setupCheckedOn)}. `
       : "You have not confirmed this setup against SUTS yet. ") +
-      "Compare the areas, codes and order here with what SUTS shows, then press \"I checked this\"." +
+      "Compare the areas, codes and order here with what SUTS shows, then tick \"I checked these details against SUTS today\" and save." +
       (input.readOnly ? " Only the Owner can confirm it." : ""),
     href: `/desk/sales-tax/setup/accounts/${input.accountId}`,
     since: input.setupCheckedOn ?? input.now,

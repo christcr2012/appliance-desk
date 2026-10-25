@@ -31,7 +31,7 @@ describe.skipIf(!enabled)("earnings report reconciles to the invoice, payment an
       },
     });
     const inv = (id: string, status: "PAID" | "OPEN" | "WRITTEN_OFF" | "PARTIALLY_PAID", paid: number) =>
-      prisma.invoice.create({ data: { id: `${id}-${tag}`, customerId, agreementId, status, subtotalCents: 3_000, amountDueCents: 3_000, amountPaidCents: paid } });
+      prisma.invoice.create({ data: { id: `${id}-${tag}`, customerId, agreementId, status, subtotalCents: 3_000, amountDueCents: 3_000, amountPaidCents: paid, lineItems: { create: [{ kind: "RENTAL", description: "Monthly rent", amountCents: 3_000 }] } } });
     await inv("rr-paid", "PAID", 3_000);
     await inv("rr-open", "OPEN", 0);
     await inv("rr-off", "WRITTEN_OFF", 0);
@@ -48,14 +48,15 @@ describe.skipIf(!enabled)("earnings report reconciles to the invoice, payment an
     await prisma.user.deleteMany({ where: { id: userId } });
   });
 
-  it("estimated = agreed monthly total x days / 30; collected = paid - refunded; unpaid and written-off add nothing", async () => {
+  it("estimated = agreed monthly total x whole billing months + the share of the current month; collected = paid - refunded; unpaid and written-off add nothing", async () => {
     const report = await getEarningsReport(asOf);
     const row = report.rows.find((r) => r.agreementId === agreementId)!;
-    // $30.00/month for 60 days = $60.00.
-    expect(row.estimatedCents).toBe(6_000);
+    // Billing started Aug 6 (Colorado). $30.00/month: one whole month (Aug 6 to Sep 6) plus 29.5 of the 30 days of the
+    // month running Sep 6 to Oct 6 = $30.00 x 1.9833 = $59.50. (A flat days/30 would say $60.00 and be wrong.)
+    expect(row.estimatedCents).toBe(5_950);
     // $30.00 paid - $10.00 refunded + $5.00 part-paid = $25.00.
     expect(row.actualCents).toBe(2_500);
-    expect(row.gapCents).toBe(3_500);
+    expect(row.gapCents).toBe(3_450);
   });
 
   it("the totals are the sum of the rows", async () => {

@@ -16,7 +16,7 @@ const validRaw: Record<string, unknown> = {
   deliveryFeeDollars: 45, installationFeeDollars: 0, removalFeeDollars: 0, damageWaiverEnabled: true, depositEnabled: false,
   lateFeeGraceDays: 5, lateFeeFlatDollars: 5, lateFeePercent: 0, sixMonthPrepaySetDollars: 0, sixMonthPrepaySingleDollars: 0,
   twelveMonthPrepaySetDollars: 0, twelveMonthPrepaySingleDollars: 0, twelveMonthPrepayFreeMonthEnabled: false,
-  referralRewardDollars: 25, draftReservationHoldDays: 7,
+  referralRewardDollars: 25, draftReservationHoldDays: 7, receiptFileKeepDays: 30, unsentPhotoKeepDays: 1,
 };
 
 describe("stored fields per settings section", () => {

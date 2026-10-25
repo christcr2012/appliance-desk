@@ -3,6 +3,7 @@
 import { useCustomerTranslation } from "@/domains/language/client-portal";
 import { useId, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
+import { preparePhotoForUpload } from "@/lib/photo-convert";
 
 type Props = {
   /**
@@ -46,14 +47,21 @@ export function PhotoUploadField({
   const [isUploading, setIsUploading] = useState(false);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const chosen = e.target.files?.[0];
     if (inputRef.current) {
       inputRef.current.value = "";
     }
-    if (!file) return;
+    if (!chosen) return;
 
     setIsUploading(true);
     try {
+      // HEIC/HEIF phone pictures become ordinary JPEGs first, so every stored picture can be shown in any browser.
+      const prepared = await preparePhotoForUpload(chosen);
+      if (!prepared.ok) {
+        onError?.(prepared.message);
+        return;
+      }
+      const file = prepared.file;
       const result = await upload(`${pathPrefix}/${file.name}`, file, {
         access,
         handleUploadUrl: "/api/uploads/photo",

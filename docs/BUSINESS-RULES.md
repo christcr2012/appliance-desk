@@ -1090,6 +1090,19 @@ is never replaced by a default.
   `src/domains/billing/tax.ts`. Tax rate versions and the agreement's
   display-only combined snapshot use thousandths of a percent; invoice arithmetic
   uses the per-jurisdiction engine rather than a business-wide or agreement rate.
+- **Earnings report: rent against rent** (2026-10-25, older review findings). Reports → Estimated vs Rent collected compares
+  like with like. "Estimated" is the agreement's agreed monthly price for every whole billing month counted from the same
+  day each month (anniversary billing, `billingPeriodFor`), plus the share of the current month that has passed.
+  "Rent collected" is the rent part of what was paid on the agreement's invoices (rent, late-return rent and the prepay
+  discount; not tax, deposits, setup or delivery fees, late-payment fees, shop items or credits), split in proportion to
+  the invoice total because a payment is not tied to a line, minus refunds recorded on those invoices
+  (`rentShareOfPaidCents`, `src/domains/reports/earnings.ts`).
+- **Stored files nobody needs** (2026-10-25). A removed receipt page, or a photo a customer takes off a request before
+  sending, goes on a clean-up list (`StoredFileCleanup`). The nightly job deletes the file after the owner's waiting period
+  (Settings → Rental policies → Removed files; starting values 30 days for a receipt page, 1 day for an unsent customer
+  photo; a change applies to files removed afterwards) and only if no record still points at it. A file that cannot be
+  deleted after five tries is marked failed and the night's run shows as failing on the automations page. Pictures uploaded from phones in HEIC/HEIF format are
+  converted to JPEG in the browser first; the upload route refuses HEIC/HEIF.
 - **Reports and statements read the ledger** (Batch B, WU-B11). "Collected"
   means money actually received (`Receipt`, by the Colorado day it was
   received, including any overpayment) minus cash refunds (`collectedBetween`

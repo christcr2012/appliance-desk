@@ -269,6 +269,10 @@ describe.skipIf(!enabled)("W-14 + W-2 + W-15 purchases, next step and audit pack
     const extra = await prisma.purchaseDocument.create({ data: { purchaseId: fresh.purchaseId, photoId: p3.id, kind: "RECEIPT", pageOrder: 2 } });
     await removePurchaseDocument(ownerId, extra.id);
     expect(await prisma.photo.count({ where: { id: p3.id } })).toBe(0);
+    // The stored file of the removed page is queued for the nightly clean-up (30 days from now), not left forever.
+    const queued = await prisma.storedFileCleanup.findUniqueOrThrow({ where: { url: "https://example.test/private/m-" + tag } });
+    expect(queued).toMatchObject({ state: "WAITING", reason: "receipt page removed" });
+    expect(queued.deleteAfter.getTime() - queued.queuedAt.getTime()).toBe(30 * 86_400_000);
   });
 
   it("the retention setting starts at 7 years, is owner-only, bounded, audited and compare-and-set", async () => {
