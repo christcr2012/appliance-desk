@@ -4807,7 +4807,8 @@
       "title": "Researched starting values for every open decision (replace UNDECIDED defaults), in reviewable batches by area",
       "batch": "DEC",
       "dependencies": [
-        "DEC-1"
+        "DEC-1",
+        "FEE-1"
       ],
       "status": "DESIGNED — build spec ready 2026-10-25",
       "migration": "additive (Invoice.lateFeeWaivedAt, BusinessSettings.decisionsReviewedAt)",

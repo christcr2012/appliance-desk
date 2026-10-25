@@ -2,7 +2,7 @@
 
 Build spec: `docs/build-specs/engines/STARTING-VALUES.md`. Values and sources: `docs/research/2026-10-25-open-decisions.md`.
 Approved by Chris 2026-10-25 (apply researched starting values live; never touch signed or billed history).
-Depends on DEC-1a. Risk: **tax charged on customer bills, late fees, settings writes** — read
+Depends on DEC-1a and, for the $5 late fee value, FEE-1. Risk: **tax charged on customer bills, late fees, settings writes** — read
 `docs/AI-PR-READ-FIRST.md` and say in the PR how each applicable item is honored.
 
 ## Why

@@ -23,6 +23,9 @@ billed history. Read `docs/AI-PR-READ-FIRST.md` (money, tax and settings writes)
   confirms" and nothing is filed or posted from it.
 
 ## 2. Late-fee gaps found while specifying (fix in this PR — they make IN-84 real)
+**Order:** the $5 starting value is applied to new agreements only after **FEE-1** has merged (warning first, never during a
+payment in progress, fee on the next bill — Chris, 2026-10-25). Until then `applyStartingValues` skips `lateFeeFlatCents`
+with reason "Waiting for fair late fees (FEE-1)".
 1. **New agreements ignore the setting.** `createAgreementDraft`/`createAgreement` (`src/domains/agreements/index.ts`
    ~228 and ~273) default the grace period to a literal `5` and the fee to `0`, and the rental wizard
    (`src/app/desk/agreements/new/rental-wizard.tsx` ~46) starts with an empty fee. Change all three to read
@@ -30,7 +33,7 @@ billed history. Read `docs/AI-PR-READ-FIRST.md` (money, tax and settings writes)
    the wizard pre-fills the dollar box from the setting. Renewals keep copying the old agreement's terms
    (`renewal-data.ts`), unchanged. Quote-to-rental conversion uses the setting too (find the caller with
    `grep -n "createAgreement" src/domains/estimates`).
-2. **No way to waive a late fee.** IN-84 says the owner (or admin doing money) may waive one with a reason. Add
+2. **No way to waive a late fee.** *(Superseded by FEE-1, `engines/LATE-FEES.md`: fees become separate pending charges on the next bill, and the waiver works on the pending charge. Build the waiver there; the text below is kept for history.)* IN-84 says the owner (or admin doing money) may waive one with a reason. Add
    `waiveLateFee(actorId, invoiceId, reason)` in `src/domains/billing/late-fees.ts`, OWNER/ADMIN:
    one transaction; `SELECT … FROM "Invoice" WHERE id = $1 FOR UPDATE`; `assertActiveTeamActor(tx, actorId,
    ["OWNER","ADMIN"])`; re-read the locked row and refuse unless the invoice is open, `lateFeeCents > 0` ("There's no late fee on this bill") **and `lateFeeWaivedAt` is null** ("This late fee was already waived" — so two waivers at once, or a retry, subtract it only once);
