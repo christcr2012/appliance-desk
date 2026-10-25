@@ -13,6 +13,16 @@ maintenance request received / resolved. Owners and admins can send all; staff c
 assigned to them (and cannot record permission). No street address in any text. Same gates as the first batch (master switch,
 Owner-approved wording, per-text switch, recorded permission, STOP, quiet hours). Tested on throwaway Postgres with a fake carrier.
 Next: COM-N1C (billing, renewal and refund texts), then N2, N4, wiring gaps.
+## October 24 — Owner controls: settings preview, stale-save protection, full Switches list (O-1)
+
+In progress (branch `ai/claude/owner-controls-o1`): "Undo this" in Settings history now shows what it will do first and says
+why it refuses; section saves (Business profile, Service area, Rental policies) have a "Preview changes" button and refuse
+to overwrite a change somebody else saved after the page was opened; the Switches page also lists launch-list emails and
+the Colorado tax rate lookup and shows who last changed paused automations and the books start date. Proven by unit and
+throwaway-Postgres tests plus a real-browser spec (phone width, keyboard, accessibility scan) run locally; exact-head CI
+pending. Nothing for Chris to do. Next in this lane: the role-shaped admin page proof (O-2B), package and set price
+changes (O-4), the older review findings, and browser specs for the other owner controls.
+
 
 ## October 24 — COM-N1A: staff can text leads, estimates and signatures (in PR, everything OFF)
 
@@ -22,17 +32,21 @@ phone, and nothing sends until Send is pressed. The Owner approves each wording 
 before any text can leave: the master text switch, recorded permission for that number, no STOP, a ready business number.
 Proven on throwaway Postgres with a fake carrier (13 safety tests); no real text was sent and nothing was switched on.
 Next: COM-N1B (job and maintenance texts), then N1C, N2, N4 and the telecom wiring gaps. Branch `ai/claude/com-n1a-lead-estimate-texts`.
+## October 25 — Delivery fee on delivered shop sales and taking back a used appliance (M-1C, finishing)
+
+Merged (#571). A delivered shop sale now gets Colorado's retail delivery fee decided and recorded exactly once: only for a Colorado address with something the state taxes on the sale, never for pickups or out-of-state deliveries. If you chose "collect from customer" **and** customer charging is switched on, a separate untaxed "Colorado retail delivery fee" line is added to the sale; otherwise the fee is still counted for the return and you pay it. Anything undecided (a setting or the yearly amount) is kept as a waiting record and finished later, never blocking the sale. Cancelling or taking back a sale reverses its fee, and a paid fee is tied to the real refund. Taking back a **used appliance** now works: refund, book value comes back, the "Sell it" plan reopens, the accountant note closes, and the appliance can be sold again. Shop sales also count toward the Colorado sales total used for the small-business exemption. Proved on throwaway Postgres (collect, charging off, pay myself, pickup, out of state, pending rate then finished, take-back, cancel, retry). Not proved: a browser test (next PR) and nothing real was charged. Nothing for Chris to do now.
+
 ## October 25 — M-3 hosted $1 card test: tried, not run
 
 The agent session could not do the hosted check: no browser was connected and the sandbox's network blocks the testing site (checked: the connection is refused before it reaches Vercel). The testing project does have the `TEST_OWNER_PASSWORD` variable (readable, not Sensitive) and its latest build is the 6e1353a release, which already contains the card payment page, so only a session with a browser is missing. Recorded once on the owner checklist as untested (not failed). The same limit means the delivery fee and used-appliance take-back have not been seen on the hosted app; they are proved on throwaway Postgres only.
 
 ## October 25 — Browser tests for shop sales and retired appliances
 
-In progress (branch `ai/claude/shop-sales-e2e`). New `e2e/shop-sales.spec.ts` (registered in browser-a) drives the real screens on the throwaway test database: ring up two parts with 5% tax, take the cash, take the sale back and see the stock return; and sell a retired appliance at $9,000 (nothing caps the price), see the depreciation-recapture warning and "CPA review needed" with no tax numbers, then close the accountant note. Includes a phone-width accessibility scan of the new-sale screen. Not run locally (the local test launcher refuses this sandbox's root account), so the first real run is this PR's CI. Nothing for Chris to do.
+Merged (#572). New `e2e/shop-sales.spec.ts` (registered in browser-a) drives the real screens on the throwaway test database: ring up two parts with 5% tax, take the cash, take the sale back and see the stock return; and sell a retired appliance at $9,000 (nothing caps the price), see the depreciation-recapture warning and "CPA review needed" with no tax numbers, then close the accountant note. Includes a phone-width accessibility scan of the new-sale screen. Not run locally (the local test launcher refuses this sandbox's root account), so the first real run is this PR's CI. Nothing for Chris to do.
 
 ## October 25 — Selling a retired appliance: tax warning and accountant notes (M-2C, finishing)
 
-In progress (branch `ai/claude/m2c-recapture-evidence`). On Sales → New sale, each used appliance now shows the warning "Selling above depreciated tax basis may trigger ordinary-income depreciation recapture. You can still sell at your chosen price.", how much book value comes off the books, an optional "what it cost you to sell it" box, and a tax estimate **only** when tax history was recorded (Books → Assets). With nothing recorded it says "CPA review needed" and shows no numbers; numbers you typed yourself are labelled unconfirmed. Nothing ever limits the price or blocks the sale. Saving freezes the estimate with the sale; if the accountant still needs to look, one To do item appears for the owner (the owner marks it done on the sale page; cancelling the sale removes it). Proved on throwaway Postgres: the design's examples ($600 basis/$400 depreciation sold at $600 and $750, fully depreciated, loss, unknown, expensed), repeat-safe saves, owner-only follow-up, cancel. Not proved: a browser test (next PR) and nothing real was entered. Nothing for Chris to do now; his CPA row (IN-56) now also says what the new screen needs.
+Merged (#570). On Sales → New sale, each used appliance now shows the warning "Selling above depreciated tax basis may trigger ordinary-income depreciation recapture. You can still sell at your chosen price.", how much book value comes off the books, an optional "what it cost you to sell it" box, and a tax estimate **only** when tax history was recorded (Books → Assets). With nothing recorded it says "CPA review needed" and shows no numbers; numbers you typed yourself are labelled unconfirmed. Nothing ever limits the price or blocks the sale. Saving freezes the estimate with the sale; if the accountant still needs to look, one To do item appears for the owner (the owner marks it done on the sale page; cancelling the sale removes it). Proved on throwaway Postgres: the design's examples ($600 basis/$400 depreciation sold at $600 and $750, fully depreciated, loss, unknown, expensed), repeat-safe saves, owner-only follow-up, cancel. Not proved: a browser test (next PR) and nothing real was entered. Nothing for Chris to do now; his CPA row (IN-56) now also says what the new screen needs.
 
 ## October 24 — Extra release done at Chris's request (11:26 am Denver)
 

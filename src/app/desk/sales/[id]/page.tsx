@@ -31,7 +31,7 @@ export default async function ShopSalePage({ params, searchParams }: { params: P
   if (!sale) notFound();
   const status = STATUS[sale.status] ?? { label: sale.status, tone: "pending" as StatusTone };
   const returned = await prisma.auditLog.findFirst({ where: { action: "sale.return", entityType: "Invoice", entityId: sale.id }, select: { id: true } });
-  const canReturn = !returned && sale.status === "PAID" && sale.amountPaidCents > 0 && sale.lineItems.every((l) => !l.applianceId);
+  const canReturn = !returned && sale.status === "PAID" && sale.amountPaidCents > 0;
   const owed = Math.max(0, sale.amountDueCents - sale.amountPaidCents);
   const isOwner = session.user.role === "OWNER";
   return (
