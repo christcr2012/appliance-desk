@@ -89,4 +89,11 @@ deposits/processing to Payments and inline payment sheets (AR-3); any other page
   `ScreenHeader.list`, `Toolbar.saveViewAction`, `DataTable.capReached`/`mobileCardLink`/`currentSort`,
   `InboxCard.severity`, `recordBarActions()` (the page renders `ActionBar` per KIT 5.2). `<Toaster />` is not mounted
   yet — AR-0b mounts it in the desk layout with the first kit screen.
-- **AR-0b (steps 6–10): not started.**
+- **AR-0b (steps 6–10): built** on `ai/claude/ar-0b-screens`. Shared reads and tests (step 6), Today, Money › Bills and
+  the Customer record (7–9), the pages registered with loading/error screens, three browser specs and the owner row
+  (10). Small additive kit changes: `InfoTip` (glossary "i" button) and an optional `href` on `Timeline` items.
+  Differences from the specs, all noted in the PR: `<Toaster />` is mounted on the three screens, not the desk layout
+  (a layout-wide live region broke 15 existing browser checks; AR-1 moves it with the shell); Bills has no "Save this
+  view" yet (Bills is not a saved-view route; AR-12); "Snooze…" and "Add a note" are links (`?snooze=` / `?note=1`)
+  that open their sheets in place; Today task cards keep the existing "Done" button; the budget notice is one Money
+  card; FEEDBACK_WAITING sits in the System group.

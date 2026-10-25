@@ -242,16 +242,19 @@ for (const role of ["owner", "customer"] as const) {
         }
         expect(await publicSeen()).toContain(original);
       });
-      test("All invoices clears filter and invoice opens exact record", async ({
+      test("old delinquent link lands on Past due, Open clears it, and a bill opens its exact record", async ({
         page,
       }) => {
+        // AR-0b: Money › Bills replaced the old filter bar with status tabs; the old link redirects.
+        await page.setViewportSize({ width: 390, height: 844 });
         await page.goto("/desk/billing?filter=delinquent");
+        await expect(page).toHaveURL(/\/desk\/billing\?status=past-due$/);
         await page
-          .getByRole("navigation", { name: "Filter invoices" })
-          .getByRole("link", { name: "All invoices", exact: true })
+          .getByRole("navigation", { name: "Bill status" })
+          .getByRole("link", { name: /^Open/ })
           .click();
-        await expect(page).toHaveURL(/\/desk\/billing$/);
-        const invoice = page.locator('main a[href*="/invoice/"]').first();
+        await expect(page).toHaveURL(/\/desk\/billing\?status=open$/);
+        const invoice = page.locator('main a[href*="/invoice/"]:visible').first();
         const href = await invoice.getAttribute("href");
         await invoice.click();
         await expect(page).toHaveURL(new RegExp(href! + "$"));

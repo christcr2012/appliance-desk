@@ -91,7 +91,7 @@ export default async function CustomerStatementPage({
 
       <StatementReconciliationCard reconciliation={statement.reconciliation} />
 
-      <div className="mt-6">
+      <div className="mt-6 scroll-mt-20" id="record-payment">
         <RecordPaymentForm
           customerId={statement.customerId}
           openInvoices={openInvoices}
@@ -119,7 +119,7 @@ export default async function CustomerStatementPage({
               </div>
               <ul className="mt-3 divide-y divide-line">
                 {property.invoices.map((invoice) => (
-                  <li key={invoice.id} className="py-2 text-sm">
+                  <li key={invoice.id} id={`bill-${invoice.id}`} className="scroll-mt-20 py-2 text-sm">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <Link
