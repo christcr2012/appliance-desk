@@ -8,6 +8,12 @@ built, or unsafe/illegal/irreversible on the default) are raised with him immedi
 owner-checklist rows; the checklist keeps physical actions only. Supersedes OWNER-INPUTS' 2026-10-14 "do not default
 owner-specific choices" text and the professional-review contract's "no new approval queue" line.
 
+Same day, Chris gave the go-ahead to **build** (not only plan): the app redesign with its engines (AR-0…AR-13,
+LD, CU, BA, BILL-1, the portal redesign), the Decisions & reviews center (DEC-1, DEC-2) and the agent connection with
+the feedback box (MCP-1…MCP-11; people-only feedback first). The partner/portfolio program (BP) stays proposed. He
+also approved applying researched starting values to the **live** app's settings (marked "Starting value — not
+confirmed", changeable, never touching signed or billed history).
+
 Same day, two answers from Chris: the customer portal gets the redesign too (new unit after the desk), and the
 problem-report/suggestion box ships first in its simple, people-only form, ahead of the agent connection (MCP-10
 split: human reporting and triage first, agent tooling with MCP-11).

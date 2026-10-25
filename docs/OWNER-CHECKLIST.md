@@ -177,25 +177,20 @@ Agents will do the parts they safely can and record what they saw; the rest need
   the changed environment variable (no manual release), and Desk → Automations shows a successful nightly
   "Phone usage sync" run. Leave this box unchecked until the run is observed.
 
-- [ ] **Decision: rebuild the desk as an application (AR-0…AR-10)?** Design: docs/designs/APP-REDESIGN.md — five
-  areas instead of category pages, one inbox on Today, every customer/rental/invoice/appliance as a proper record with
-  its next step, a search bar that jumps anywhere, and one consistent look. Recommendation: yes; start with AR-0
-  (three finished reference screens) together with the BA-1 books engine. Steps: tell the agent "build AR". Ready when: now.
+- [x] **Answered by Chris 2026-10-25 (in conversation): yes — rebuild the desk as an application (AR-0…AR-10).** Building may start as soon as each
+  build plan is merged (docs/DECISIONS.md, 2026-10-25).
+
 - [ ] **Look at the three reference screens on the testing site (after AR-0 is built, 10 minutes).** Steps: open
   appliance-desk-testing.vercel.app, sign in as the test owner, look at Today, Money → Invoices and one customer; tell
   the agent what you like and don't. Ready when: AR-0 is merged and the 10 pm testing update has run. Nothing waits on this.
-- [ ] **Decision: build "Books on autopilot" (BA-1…BA-6)?** The design is written (docs/designs/BOOKS-AUTOPILOT.md):
-  the app keeps the books itself, you review once a month from your To do list, and pages lose their rows of bare
-  links. Recommendation: yes, starting with BA-1 (today nothing is recorded unless someone presses a button) and BA-6
-  alongside it. Steps: tell the agent "build BA". Ready when: now.
+- [x] **Answered by Chris 2026-10-25 (in conversation): yes — build "Books on autopilot" (BA-1…BA-6).** Building may start as soon as each
+  build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
-- [ ] **Decision: build the Leads workspace (LD-1…LD-4)?** Design: docs/designs/LEADS-WORKSPACE.md — a real sales
-  pipeline (stages, who owns each lead, "answer within 15 minutes", one-tap call, filters in one place, insights) that
-  stays fast at 50,000 leads. Recommendation: yes, after BA-1. Steps: tell the agent "build LD". Ready when: now.
+- [x] **Answered by Chris 2026-10-25 (in conversation): yes — build the Leads workspace (LD-1…LD-4).** Building may start as soon as each
+  build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
-- [ ] **Decision: build the Customers workspace (CU-1…CU-3)?** Design: docs/designs/CUSTOMERS-WORKSPACE.md — one
-  Customers area with Leads inside it, a list that shows who owes money, what each customer pays and what's next, and
-  a customer page that tells you the next step. Recommendation: yes, after LD-1. Steps: tell the agent "build CU".
+- [x] **Answered by Chris 2026-10-25 (in conversation): yes — build the Customers workspace (CU-1…CU-3).** Building may start as soon as each
+  build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
 ## E. Optional / later (no action until you want it)
 
