@@ -107,7 +107,8 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
 - [ ] **Text messages going live (IN-03, IN-09, IN-51–IN-53):** pick and buy the local Twilio number (you approve the
   purchase), finish carrier/campaign registration, set the Twilio keys in Vercel, register `/api/webhooks/twilio`, set
   the real forwarding phone and hours. Voicemail/recording stay OFF until you approve wording and retention (IN-52).
-  Worked: a test text from the app reaches your own phone; STOP is respected. **When registering the campaign, include
+  Then, per kind of text (lead, estimate, signature): Settings → Phone, texts and provider costs → read and approve the wording
+  and switch it on (all start OFF; COM-N1A). Worked: a test text from the app reaches your own phone; STOP is respected. **When registering the campaign, include
   "one-time sign-in / security codes" as a use case** so sign-in texts are allowed. ACC-3 is built (text codes
   are off). Once texting is live: Settings → Security → tick "Send sign-in codes by text" and save (the Switches page then
   shows it), save your mobile phone on My account → check it with the text code → My account → "Second step" → switch
