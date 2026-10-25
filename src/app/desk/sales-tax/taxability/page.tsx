@@ -1,22 +1,24 @@
 import { prisma } from "@/lib/prisma";
+import { listTaxabilityRuleCells } from "@/domains/tax/locations";
 import { requireRole } from "@/lib/session";
 import { TaxChargeCategory } from "@prisma/client";
 import { TaxActionForm } from "../setup/forms";
 import { saveTaxCellAction, addManualRateAction } from "../setup/actions";
 
+/** DEC-1a: a researched starting value runs (and calculates) before the CPA confirms it; say so next to it. */
+function ProvisionalNote() {
+  return <span className="block text-xs text-muted-foreground">Starting value — not confirmed by your CPA</span>;
+}
+
 const css = "w-full rounded border border-input bg-background p-2 text-sm";
 const label = "grid gap-1 text-sm font-medium";
 export default async function TaxabilityMatrixPage() {
   const session = await requireRole("OWNER", "ADMIN");
-  const defaults = await prisma.taxabilityRule.findMany({
-    where: { jurisdictionId: null },
-    select: { id: true, category: true, taxability: true, cpaConfirmedOn: true },
-    orderBy: { category: "asc" },
-  });
+  const defaults = (await listTaxabilityRuleCells(prisma)).filter(rule => rule.jurisdictionId === null);
   const jurisdictions = await prisma.taxJurisdiction.findMany({
     select: {
       id: true, name: true, level: true, administration: true,
-      rules: { select: { id: true, category: true, taxability: true, cpaConfirmedOn: true } },
+      rules: { select: { id: true, category: true, taxability: true, cpaConfirmedOn: true, provisional: true } },
     },
     orderBy: [{ level: "asc" }, { name: "asc" }], take: 75,
   });
@@ -79,13 +81,13 @@ export default async function TaxabilityMatrixPage() {
           <tbody>{defaults.map(r => <tr key={r.id} className="border-t border-border">
             <td className="p-3">All state-collected areas (default)</td>
             <td className="p-3">{r.category.replaceAll("_", " ")}</td>
-            <td className="p-3">{r.taxability}</td>
+            <td className="p-3">{r.taxability}{r.provisional ? <ProvisionalNote /> : null}</td>
             <td className="p-3">{r.cpaConfirmedOn?.toISOString().slice(0, 10) ?? "Not confirmed"}</td>
           </tr>)}{jurisdictions.flatMap(j => j.rules.length ? j.rules.map(r => (
             <tr key={r.id} className="border-t border-border">
               <td className="p-3">{j.name}</td>
               <td className="p-3">{r.category.replaceAll("_"," ")}</td>
-              <td className="p-3">{r.taxability}</td>
+              <td className="p-3">{r.taxability}{r.provisional ? <ProvisionalNote /> : null}</td>
               <td className="p-3">{r.cpaConfirmedOn?.toISOString().slice(0,10) ?? "Not confirmed"}</td>
             </tr>
           )) : [<tr key={j.id} className="border-t border-border"><td className="p-3">{j.name}</td>
