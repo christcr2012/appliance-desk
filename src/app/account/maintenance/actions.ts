@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireSession } from "@/lib/session";
-import { createMaintenanceRequestForUser, createPickupRequestForUser } from "@/domains/portal";
+import { createMaintenanceRequestForUser, createPickupRequestForUser, discardUnsentRequestPhoto } from "@/domains/portal";
 
 export type MaintenanceRequestActionState =
   | { status: "idle" }
@@ -71,4 +71,11 @@ export async function createMaintenanceRequestAction(
   revalidatePath("/desk/maintenance");
   revalidatePath("/desk/today");
   return { status: "success" };
+}
+
+/** The customer took a photo off the request form before sending it: the uploaded file goes on the clean-up list. */
+export async function discardUnsentPhotoAction(url: string): Promise<void> {
+  const session = await requireSession();
+  if (typeof url !== "string" || url.length > 2000) return;
+  await discardUnsentRequestPhoto(session.user.id, url);
 }

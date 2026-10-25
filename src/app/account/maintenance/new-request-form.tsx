@@ -3,7 +3,7 @@
 import { useCustomerTranslation, useCustomerLanguage } from "@/domains/language/client-portal";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createMaintenanceRequestAction } from "./actions";
+import { createMaintenanceRequestAction, discardUnsentPhotoAction } from "./actions";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 import { Button, Select, Textarea } from "@/components/ui";
 
@@ -146,11 +146,13 @@ export function NewRequestForm({
                   key={url}
                   type="button"
                   variant="quiet"
-                  onClick={() =>
+                  onClick={() => {
                     setPhotoUrls((urls) =>
                       urls.filter((savedUrl) => savedUrl !== url),
-                    )
-                  }
+                    );
+                    // The uploaded file is not attached to anything now; let the nightly clean-up remove it.
+                    void discardUnsentPhotoAction(url).catch(() => undefined);
+                  }}
                   aria-label={`${tr("Remove uploaded photo")} ${index + 1}`}
                 >
                   {tr("Remove photo")} {index + 1}

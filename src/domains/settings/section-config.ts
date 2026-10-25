@@ -49,5 +49,7 @@ export const SETTINGS_FIELDS = {
     "twelveMonthPrepayFreeMonthEnabled",
     "referralRewardDollars",
     "draftReservationHoldDays",
+    "receiptFileKeepDays",
+    "unsentPhotoKeepDays",
   ],
 } as const;
