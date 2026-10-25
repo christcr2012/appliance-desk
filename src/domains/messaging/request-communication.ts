@@ -26,6 +26,8 @@ export type RequestCommunicationInput = {
 export type RequestCommunicationOptions = {
   verifiedDestinationCountry?: "US";
   links?: { entityType: CommunicationLinkEntityType; entityId: string }[];
+  /** Runs inside the preparing transaction after the replay check; false means the record changed, so nothing is prepared. */
+  guard?: (tx: Prisma.TransactionClient) => Promise<boolean>;
   now?: Date;
 };
 
@@ -123,6 +125,8 @@ export async function requestCommunication(
       return { kind: "QUEUED", replay: true, deliveryId: prior.id,
         messageId: message.id, attemptId: prior.currentAttemptId } as const;
     }
+
+    if (options.guard && !(await options.guard(tx))) return { kind: "CONFLICT" } as const;
 
     await tx.$queryRaw`SELECT "id" FROM "CommunicationThread" WHERE "id" = ${input.threadId} FOR UPDATE`;
     const thread = await tx.communicationThread.findUnique({

@@ -365,6 +365,12 @@ async function ensureThread(
   return { id: updated.id, version: updated.version };
 }
 
+/** Tables for the row lock taken just before a text is prepared (fixed list, never built from input). */
+const SUBJECT_TABLE: Record<string, string> = {
+  Lead: "Lead", Estimate: "Estimate", RentalAgreement: "RentalAgreement", Job: "Job",
+  MaintenanceRequest: "MaintenanceRequest", Invoice: "Invoice",
+};
+
 export type WorkflowSendInput = {
   family: string; subjectId: string;
   /** One random value per screen load: pressing Send twice on the same screen can never send two texts. */
@@ -441,11 +447,28 @@ export async function sendWorkflowText(
   const template = await currentApprovedTemplate(prisma, family);
   const rendered = template ? renderFor(template, subject.values) : null;
   if (!template || !rendered) return { kind: "BLOCKED", blockers: [block("NOT_APPROVED")] };
+  const finalHash = hashCommunicationContent(rendered.text);
+  if (finalHash !== input.expectedTextHash) {
+    return { kind: "CHANGED", message: "This text changed since you looked at it. Read it again, then send." };
+  }
+  // Inside the preparing transaction: lock the record, and make sure it still fits, the phone is unchanged and the
+  // wording is still the same words the person read. Anything else means "changed", and nothing is prepared.
+  const guard = async (tx: Db): Promise<boolean> => {
+    const table = SUBJECT_TABLE[family.subject];
+    if (!table) return false;
+    await tx.$queryRawUnsafe(`SELECT "id" FROM "${table}" WHERE "id" = $1 FOR UPDATE`, input.subjectId);
+    const current = await loadWorkflowSubject(tx, family.key, input.subjectId, now);
+    if (!current || current.stateProblem || current.phone !== subject.phone) return false;
+    const live = await currentApprovedTemplate(tx, family);
+    if (!live || live.id !== template.id) return false;
+    const again = renderFor(live, current.values);
+    return Boolean(again) && hashCommunicationContent(again!.text) === input.expectedTextHash;
+  };
   const operationKey = `wf-${family.key}-${input.subjectId}-${input.clientToken}`.slice(0, 120);
   const requested = await requestCommunication(actorUserId, {
     threadId: prepared.id, expectedThreadVersion: prepared.version, operationKey,
     templateRevisionId: template.id, variables: rendered.used,
-  }, { verifiedDestinationCountry, links: subject.links, now });
+  }, { verifiedDestinationCountry, links: subject.links, now, guard });
   if (requested.kind === "BLOCKED") {
     const reason = requested.reason;
     return { kind: "BLOCKED", blockers: [mapEligibility(reason, ctx, now)] };

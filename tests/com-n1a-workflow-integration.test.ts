@@ -239,6 +239,28 @@ describe.skipIf(!enabled)("COM-N1A lead and estimate texts (isolated PostgreSQL)
     expect(provider.sendSms).not.toHaveBeenCalled();
   });
 
+  it("wording approved after the preview is never sent unseen", async () => {
+    const preview = await getWorkflowTextPreview(owner, "estimate_ready", estimateId, noon);
+    await approveWorkflowWording(owner, { family: "estimate_ready",
+      body: "Robinson Appliance Rentals: Hi {{name}}, estimate #{{number}} is ready: {{link}} Reply STOP to opt out." });
+    const provider = fake();
+    const result = await sendWorkflowText(owner, { family: "estimate_ready", subjectId: estimateId, clientToken: token(),
+      expectedTextHash: preview.textHash!, sendAgain: true }, { provider, callbackOrigin: "https://example.test", now: noon });
+    expect(result.kind).toBe("CHANGED");
+    expect(provider.sendSms).not.toHaveBeenCalled();
+  });
+
+  it("an estimate that stops being open between preview and send is not texted", async () => {
+    const preview = await getWorkflowTextPreview(owner, "estimate_ready", estimateId, noon);
+    await prisma.estimate.update({ where: { id: estimateId }, data: { status: "DECLINED" } });
+    const provider = fake();
+    const result = await sendWorkflowText(owner, { family: "estimate_ready", subjectId: estimateId, clientToken: token(),
+      expectedTextHash: preview.textHash!, sendAgain: true }, { provider, callbackOrigin: "https://example.test", now: noon });
+    expect(result.kind).toBe("BLOCKED");
+    expect(provider.sendSms).not.toHaveBeenCalled();
+    await prisma.estimate.update({ where: { id: estimateId }, data: { status: "SENT" } });
+  });
+
   it("STOP wins over everything", async () => {
     await setWorkflowTextEnabled(owner, { family: "lead_received", enabled: true, expectedVersion: version }).then((r) => { version = r.version; });
     await prisma.marketingSuppression.create({ data: { channel: "SMS", address: recipient, reason: "STOP", source: "test" } });
