@@ -180,10 +180,13 @@ update; `markFirstContactInTx` when CONTACTED; audit `lead.status` as today (plu
 ```ts
 export type LeadQueueParams = { stage?: LeadStage; q?: string; owner?: "me" | "unassigned" | string;
   source?: string[]; area?: "in" | "out"; highValue?: boolean; appliance?: string[]; created?: DatePreset;
-  hasQuote?: boolean; sort: "next-up" | "newest" | "score" | "value" | "activity"; cursor?: string };
+  hasQuote?: boolean; follow?: "today" | "week"; sort: "next-up" | "newest" | "score" | "value" | "activity"; cursor?: string };
 export async function getLeadQueue(p: LeadQueueParams, now: Date): Promise<{ rows: LeadRow[]; nextCursor: string | null; capped: boolean }>
 export async function getLeadStageCounts(p: Omit<LeadQueueParams, "stage" | "sort" | "cursor">): Promise<Record<LeadStage, number>>
 ```
+- `follow`: `today` → `nextFollowUpOn <= businessDayBounds(now).end` (Denver) and stage not won/lost; `week` → `<= end of
+  the 7th Denver day`. With `follow` and no `stage`, no default stage is applied. Test the returned rows (overdue,
+  today, tomorrow, won-with-date excluded), not just schema acceptance.
 - Search `q` (≥ 2 characters): digits-only input of ≥ 4 digits → `phoneDigits LIKE %q%`; otherwise `contactName
   ILIKE %q%` OR `companyName ILIKE` OR `city ILIKE` OR `emailLower LIKE lower(q)%`. The trigram indexes make
   `ILIKE '%…%'` fast. Use Prisma `contains` + `mode: "insensitive"` (it produces ILIKE).

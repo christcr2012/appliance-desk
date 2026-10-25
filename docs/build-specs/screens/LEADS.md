@@ -16,7 +16,10 @@ stages, owner, first contact, duplicates, queue query. Roles: OWNER and ADMIN on
 default when count > 0, else `contacted`; values new, contacted, quoted, won, lost), `q`, `owner` (`me`, `unassigned`,
 or a user id), `source` (multi, values = distinct `howHeard` values — load the list with one `findMany distinct`),
 `area` (`in`, `out`), `high` (`1`), `appliance` (multi, appliance type ids), `created` (date presets), `quote` (`1`),
-`sort` (`next-up` default, `newest`, `score`, `value`, `activity`), `cursor`. **Old links:** `?status=NEW|CONTACTED|
+`sort` (`next-up` default, `newest`, `score`, `value`, `activity`), `follow` (`today` = `nextFollowUpOn` on or before
+today's Denver date, i.e. due or overdue; `week` = within the next 7 Denver days), `cursor`. When `follow` is set and
+`stage` is not, the stage filter is **not** applied (a follow-up can be on a contacted or quoted lead); `stage` and
+`follow` together both apply. Counts on the stage tabs then count only leads matching `follow`. **Old links:** `?status=NEW|CONTACTED|
 CONVERTED|LOST` → stage new/contacted/won/lost; `?view=awaiting-reply` → stage quoted; `?view=no-next-task` →
 stage contacted + sort next-up; `?page=` ignored.
 

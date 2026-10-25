@@ -218,7 +218,10 @@ applianceType: { name } } } }` (extend the select only; keep 25 per page). One c
 
 **Bills** — the Bills list (MONEY-BILLS.md) filtered to this customer: call `getBills({ status: "open", customerId
 })` then, below, `getBills({ status: "paid", customerId })` limited to 10 — add an optional `customerId` to
-`BillsParams` (one extra `where` field). Two groups: "Open" and "Recent paid". Same mobile cards and row actions as
+`BillsParams` (one extra `where` field). Two groups: "Open" and "Recent paid". **After BILL-1**, a third group
+"Being confirmed" sits first: `getBills({ status: "processing", customerId })` (the BILL-1 tab), so a customer whose only
+bill is being confirmed shows that bill (with its "Being confirmed" pill) and never "No bills yet" while "Owes now" is
+positive. Test (in BILL-1): only bill in flight → the group shows it. Same mobile cards and row actions as
 the Bills screen. Footer link button "Full statement" → `/desk/billing/customer/{id}`. Empty: "No bills yet".
 
 **Visits** — `getCustomerService(id, page)`: group "Open service requests" (cards: problem as title, pill from the
