@@ -66,7 +66,7 @@ test("ring up a part, take the cash, then take the sale back: stock goes down an
   await page.getByRole("button", { name: "Save the sale" }).click();
 
   // $50.00 of goods at 5% tax.
-  await expect(page).toHaveURL(/\/desk\/sales\/[^/]+$/);
+  await expect(page).toHaveURL(/\/desk\/sales\/(?!new)[^/]+$/);
   await expect(page.getByRole("heading", { name: /^Sale #\d+$/ })).toBeVisible();
   await expect(page.getByText("$52.50").first()).toBeVisible();
   expect((await prismaClient.partRecord.findUniqueOrThrow({ where: { id: partId } })).quantityOnHand).toBe(3);
@@ -94,7 +94,7 @@ test("sell a retired appliance: the tax warning shows, the price is not capped, 
   await expect(note).toContainText("No tax estimate is shown");
   await page.getByRole("button", { name: "Save the sale" }).click();
 
-  await expect(page).toHaveURL(/\/desk\/sales\/[^/]+$/);
+  await expect(page).toHaveURL(/\/desk\/sales\/(?!new)[^/]+$/);
   await expect(page.getByText("$9,000.00").first()).toBeVisible();
   await expect(page.getByTestId("resale-tax-note")).toContainText("CPA review needed");
   const plan = await prismaClient.retiredAppliancePlan.findUniqueOrThrow({ where: { applianceId } });
