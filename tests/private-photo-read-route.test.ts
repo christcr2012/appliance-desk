@@ -26,7 +26,9 @@ vi.mock("@vercel/blob", () => ({
   get: (...args: unknown[]) => blobGet(...args),
 }));
 
-vi.mock("@/lib/photo-storage", () => ({
+vi.mock("@/lib/photo-storage", async (importOriginal) => ({
+  // MCP-10a: the real feedback-picture check, so a feedback/ address is refused exactly as in production.
+  isFeedbackPicturePath: (await importOriginal<typeof import("@/lib/photo-storage")>()).isFeedbackPicturePath,
   getPrivatePhotoStore: () => ({ token: "private-token", storeId: "store_teststore" }),
   privatePhotoPathFromUrl: (source: string, storeId: string) => {
     try {
@@ -96,6 +98,16 @@ describe("GET /api/photos/[id]", () => {
     const response = await requestPhoto();
     expect(response.status).toBe(401);
     expect(photoFindUnique).not.toHaveBeenCalled();
+    expect(blobGet).not.toHaveBeenCalled();
+  });
+
+  it("MCP-10a: never serves an app-feedback screenshot as a general photo, even to the owner", async () => {
+    getServerSession.mockResolvedValue({ user: { id: "owner-1", role: "OWNER", archivedAt: null } });
+    photoFindUnique.mockResolvedValue(photoRow({
+      url: "https://teststore.private.blob.vercel-storage.com/feedback/report-1/fa01.webp",
+    }));
+    const response = await requestPhoto();
+    expect(response.status).toBe(404);
     expect(blobGet).not.toHaveBeenCalled();
   });
 

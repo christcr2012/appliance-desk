@@ -386,6 +386,9 @@ async function claimPrivacyDeletion(
       where: { id: request.customerId },
       select: { id: true, userId: true },
     });
+    // MCP-10a: lock the person's row before listing their app-feedback pictures. A picture save locks the same row
+    // (FOR SHARE) and refuses once this claim is recorded, so no picture can slip in between claim and fulfilment.
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${customer.userId} FOR UPDATE`;
     const privateRequestPhotos = await tx.photo.findMany({
       where: {
         applianceId: null,
@@ -590,6 +593,14 @@ export async function fulfillPrivacyDeletion(
       where: { reporterUserId: customer.userId, contentRemovedAt: null },
       select: { id: true, state: true },
     });
+    // Belt and braces: a live picture the claim did not list (and so did not delete with a tombstone) must never stay
+    // behind. Refuse; the retry re-claims and deletes it.
+    const unclaimed = await tx.feedbackAttachment.count({
+      where: { deletedAt: null, report: { reporterUserId: customer.userId }, id: { notIn: claim.feedbackAttachmentIds } },
+    });
+    if (unclaimed > 0) {
+      throw new Error("A new app feedback picture was saved while this deletion was running. Run the deletion again to finish it.");
+    }
     if (claim.feedbackAttachmentIds.length > 0) {
       await tx.feedbackAttachment.updateMany({ where: { id: { in: claim.feedbackAttachmentIds } }, data: { deletedAt: now } });
     }

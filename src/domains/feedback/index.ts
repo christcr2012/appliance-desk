@@ -56,6 +56,16 @@ async function lockReporter(tx: Prisma.TransactionClient, userId: string): Promi
   await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR SHARE`;
   const user = await tx.user.findUnique({ where: { id: userId }, select: { id: true, role: true, archivedAt: true } });
   if (!user || user.archivedAt) throw new FeedbackError("This account no longer has access to make that change.");
+  // A privacy deletion that is being carried out (claimed by the owner) locks this same row first; once it is
+  // claimed, nothing new is saved for this person, so no picture or text can slip in after the deletion's list.
+  const customer = await tx.customer.findUnique({ where: { userId }, select: { id: true } });
+  const deleting = customer
+    ? await tx.privacyRequest.findFirst({
+        where: { kind: "DELETE", status: "VERIFIED", fulfilledByUserId: { not: null }, customerId: customer.id },
+        select: { id: true },
+      })
+    : null;
+  if (deleting) throw new FeedbackError("This account no longer has access to make that change.");
   return { id: user.id, role: user.role };
 }
 

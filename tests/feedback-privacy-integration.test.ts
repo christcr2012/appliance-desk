@@ -3,23 +3,37 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 // MCP-10a privacy (real disposable Postgres): the export holds the person's reports and the replies they were shown,
 // never internal notes; deletion removes the words and pictures (with recovery tombstones) and keeps numbers/dates.
-const m = vi.hoisted(() => ({ deleted: [] as string[] }));
+const m = vi.hoisted(() => ({
+  deleted: [] as string[],
+  actor: "nobody",
+  // Runs once, between the deletion claim and its final step (while the stored files are being removed).
+  duringDelete: null as null | (() => Promise<void>),
+  put: vi.fn(async (pathname: string) => ({ url: `https://fbtest.private.blob.vercel-storage.com/${pathname}`, pathname })),
+  del: vi.fn(async () => undefined),
+}));
+vi.mock("@vercel/blob", () => ({ put: m.put, del: m.del, get: vi.fn(), list: vi.fn(async () => ({ blobs: [], hasMore: false })) }));
 vi.mock("@/lib/customer-email", () => ({ sendCustomerEmail: vi.fn(async () => ({ sent: true, outcome: "SENT" as const })) }));
 vi.mock("@/lib/photo-storage", async (original) => ({
   ...(await original<typeof import("@/lib/photo-storage")>()),
   getPrivatePhotoStore: () => ({ token: "private-test-token", storeId: "store_fbtest" }),
 }));
 vi.mock("@/domains/backup/media-deletion", () => ({
-  deletePrivatePhotoWithRecovery: async (sourceUrl: string) => { m.deleted.push(sourceUrl); },
+  deletePrivatePhotoWithRecovery: async (sourceUrl: string) => {
+    m.deleted.push(sourceUrl);
+    const race = m.duringDelete;
+    m.duringDelete = null;
+    if (race) await race();
+  },
 }));
 vi.mock("@/lib/session", () => ({
-  getServerSession: async () => ({ user: { id: "nobody", role: "CUSTOMER", archivedAt: null } }),
+  getServerSession: async () => ({ user: { id: m.actor, role: "CUSTOMER", archivedAt: null } }),
   requireRole: async () => { throw new Error("not used"); },
 }));
 
 import { prisma } from "@/lib/prisma";
 import { buildPrivacyExport, fulfillPrivacyDeletion } from "@/domains/privacy";
-import { feedbackAttachmentForViewer } from "@/domains/feedback";
+import sharp from "sharp";
+import { addFeedbackScreenshot, feedbackAttachmentForViewer } from "@/domains/feedback";
 
 const databaseUrl = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(databaseUrl.hostname) && databaseUrl.pathname === "/appliance_desk_test";
@@ -87,7 +101,28 @@ describe.skipIf(!enabled)("app feedback privacy export and deletion (real Postgr
 
   it("deletion removes the words and pictures, keeps the number, state and dates, and nothing shows content afterwards", async () => {
     const before = await prisma.feedbackReport.findUniqueOrThrow({ where: { id: reportId } });
+    // The race: once the deletion is claimed, a picture upload by the person (already past sign-in) is refused and
+    // its stored file removed; and a picture row the claim never listed makes the final step refuse until re-run.
+    m.actor = user;
+    const png = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#123456" } }).png().toBuffer();
+    let raceUpload: unknown = null;
+    const sneakyPath = `feedback/${reportId}/fasneaky${tag}.webp`;
+    m.duringDelete = async () => {
+      raceUpload = await addFeedbackScreenshot(reportId, new Blob([new Uint8Array(png)])).catch((error: unknown) => error);
+      await prisma.feedbackAttachment.create({
+        data: { reportId, uploaderId: user, pathname: sneakyPath, sizeBytes: 10, sha256: "b".repeat(64), width: 1, height: 1 },
+      });
+    };
+    await expect(fulfillPrivacyDeletion(owner, deleteRequest, "DELETE")).rejects.toThrow(/Run the deletion again/);
+    expect(String(raceUpload)).toMatch(/no longer has access/);
+    expect(m.put).toHaveBeenCalledTimes(1);
+    expect(m.del).toHaveBeenCalledTimes(1); // the refused upload's stored file is removed
+    expect(await prisma.feedbackAttachment.count({ where: { reportId, deletedAt: null } })).toBe(2);
+    expect((await prisma.feedbackReport.findUniqueOrThrow({ where: { id: reportId } })).contentRemovedAt).toBeNull();
+
     const result = await fulfillPrivacyDeletion(owner, deleteRequest, "DELETE");
+    expect(m.deleted).toContain(`https://fbtest.private.blob.vercel-storage.com/${sneakyPath}`);
+    expect(await prisma.feedbackAttachment.count({ where: { reportId, deletedAt: null } })).toBe(0);
     expect(result.pseudonymized).toEqual(expect.arrayContaining(["FeedbackReport", "FeedbackEntry", "FeedbackAttachment"]));
     expect(m.deleted).toContain(`https://fbtest.private.blob.vercel-storage.com/feedback/${reportId}/fa${tag}.webp`);
 

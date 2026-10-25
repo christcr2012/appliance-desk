@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 // canUploadPhoto refuses feedback/ before it would ever query the database.
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 import { cleanScreenshot, feedbackAttachmentPath, MAX_SCREENSHOT_BYTES, screenshotTypeFromBytes } from "@/domains/feedback/media";
-import { isPrivatePhotoPath, privatePhotoPathFromUrl } from "@/lib/photo-storage";
+import { assertNotFeedbackPicture, isFeedbackPicturePath, isPrivatePhotoPath, privatePhotoPathFromUrl } from "@/lib/photo-storage";
+import { addJobPhoto } from "@/domains/jobs";
+import { addAppliancePhoto } from "@/domains/inventory";
 import { canUploadPhoto } from "@/domains/uploads";
 import { fitInside, SHRINK_STEPS, TARGET_BYTES } from "@/components/feedback/shrink-image";
 
@@ -81,6 +83,25 @@ describe("storage paths", () => {
     for (const role of ["OWNER", "ADMIN", "STAFF", "CUSTOMER"]) {
       expect(await canUploadPhoto({ id: "user-1", role }, "feedback/report123/a.webp"), role).toBe(false);
     }
+  });
+});
+
+describe("feedback pictures never become job or appliance photos", () => {
+  it("recognises a feedback/ address on any host, encoded or not", () => {
+    for (const value of [
+      "https://abc123.private.blob.vercel-storage.com/feedback/r1/a1.webp",
+      "https://other.public.blob.vercel-storage.com/feedback/r1/a1.webp",
+      "https://abc123.private.blob.vercel-storage.com/%66eedback/r1/a1.webp",
+      "feedback/r1/a1.webp",
+      "/FEEDBACK/r1/a1.webp",
+    ]) expect(isFeedbackPicturePath(value), value).toBe(true);
+    expect(isFeedbackPicturePath("https://abc123.private.blob.vercel-storage.com/jobs/j1/a.jpg")).toBe(false);
+    expect(() => assertNotFeedbackPicture("https://x.blob.vercel-storage.com/feedback/r/a.webp")).toThrow(/app feedback report/);
+  });
+  it("addJobPhoto and addAppliancePhoto refuse a feedback address before touching the database", async () => {
+    const url = "https://abc123.private.blob.vercel-storage.com/feedback/r1/a1.webp";
+    await expect(addJobPhoto("owner-1", "job-1", { url })).rejects.toThrow(/app feedback report/);
+    await expect(addAppliancePhoto("owner-1", "appliance-1", { url })).rejects.toThrow(/app feedback report/);
   });
 });
 
