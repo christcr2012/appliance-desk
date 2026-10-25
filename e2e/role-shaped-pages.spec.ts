@@ -86,12 +86,14 @@ async function fetchPage(who: Who, route: string) {
   return { status, finalPath, body };
 }
 
-test("positive control: the planted money values really are sent to an owner and to admins", async () => {
-  // Without this, "staff got none of it" could just mean the values were never there.
+test("positive control: each planted money value really is sent to an owner and to admins", async () => {
+  // Without this, "staff got none of it" could just mean the values were never there. Each planted amount must
+  // appear (raw cents or dollars) somewhere on the money pages; field names alone do not count.
+  const planted = { "a rental price": /782341|7,823\.41/, "repair parts cost": /932187|9,321\.87/, "what an appliance cost": /8675309|86,753\.09/ };
   for (const who of ["owner", "admin", "limited"] as const) {
-    let seen = 0;
-    for (const route of moneyPages) if (MONEY.test((await fetchPage(who, route)).body)) seen += 1;
-    expect(seen, `${who} should receive money values on at least one of ${moneyPages.join(", ")}`).toBeGreaterThan(0);
+    let all = "";
+    for (const route of moneyPages) all += (await fetchPage(who, route)).body;
+    for (const [label, pattern] of Object.entries(planted)) expect(all, `${who} should receive ${label}`).toMatch(pattern);
   }
 });
 
