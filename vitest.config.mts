@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/communications-foundation-integration.test.ts", // reads the shared text master switch, which the COM-N1 tests turn on for a few seconds.
+  "tests/com-n1a-workflow-integration.test.ts", // COM-N1A changes and restores the shared phone/text policy, text switch and approved wording.
   "tests/acc2-team-invitations-integration.test.ts", // ACC-2 changes and restores the shared invitation settings.
   "tests/acc3-second-step-integration.test.ts", // ACC-3 changes and restores the shared sign-in method rules and text-code switch.
   "tests/acc4-recovery-integration.test.ts", // ACC-4 changes and restores the shared wrong-password pause numbers and invitation link days.

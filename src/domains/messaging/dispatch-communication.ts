@@ -6,6 +6,7 @@ import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import { communicationsPolicySchema, evaluateSmsEligibility } from "./communications-policy";
 import { decryptCommunicationContent } from "./communications-content";
 import { applyDeliveryObservationInTx } from "./delivery-state";
+import { workflowTextFamily } from "./workflow-text-catalog";
 import { makeTwilioSmsProvider } from "@/lib/communications/providers/twilio-sms";
 import type { TelecomSmsProvider, SmsSubmitOutcome } from "@/lib/communications/providers/types";
 
@@ -39,6 +40,10 @@ function disposableHarness(): boolean {
 }
 function liveDeployment(): boolean {
   return !isTestingEnvironment() && process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production";
+}
+/** True only on the real business site; the testing app and previews are never live. */
+export function isLiveTelecomDeployment(): boolean {
+  return liveDeployment();
 }
 
 /**
@@ -112,6 +117,15 @@ async function claimPreparedCommunication(
       return { kind: "BLOCKED", deliveryId } as const;
     }
 
+    // A workflow text also needs its own owner switch to still be ON at the moment of sending.
+    if (workflowTextFamily(delivery.templateKey) &&
+        eligible.allowed && eligible.policy.workflowTexts?.families[delivery.templateKey]?.enabled !== true) {
+      await tx.messageAttempt.update({ where: { id: delivery.currentAttempt.id },
+        data: { state: "NOT_SENT", finishedAt: now, errorCode: "FAMILY_OFF" } });
+      await applyDeliveryObservationInTx(tx, { deliveryId, state: "NOT_SENT",
+        observedAt: now, lastError: "FAMILY_OFF" });
+      return { kind: "BLOCKED", deliveryId } as const;
+    }
     if ((thread.account.environment !== "PRODUCTION" && !disposableHarness()) ||
       (thread.account.environment === "PRODUCTION" && !liveDeployment())) {
       await tx.messageAttempt.update({ where: { id: delivery.currentAttempt.id },

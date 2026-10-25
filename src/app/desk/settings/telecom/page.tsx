@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { WorkflowTextsSettings } from "@/app/desk/_text/workflow-texts-settings";
+import { getWorkflowTextSettings } from "@/domains/messaging/workflow-text-settings";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { communicationsPolicySchema } from "@/domains/messaging/communications-policy";
@@ -42,6 +44,7 @@ export default async function TelecomSettingsPage() {
   ]);
   const policy = communicationsPolicySchema.safeParse(settings?.communicationsPolicy);
   const canEdit=session.user.role==="OWNER";
+  const textSettings=canEdit ? await getWorkflowTextSettings(session.user.id) : null;
   const configured=policy.success;
   const accountLabels=new Map(accounts.map(a=>[a.id,a.label]));
   return <div className="mx-auto max-w-5xl space-y-6 pb-12">
@@ -121,6 +124,14 @@ export default async function TelecomSettingsPage() {
       savedRules={configured ? (policy.data.telecomCostAlerts??RECOMMENDED_TELECOM_ALERT_RULES)
         : RECOMMENDED_TELECOM_ALERT_RULES}
     />
+    {canEdit && textSettings && <section aria-labelledby="workflow-texts" className="rounded-card border border-line p-4">
+      <h2 id="workflow-texts" className="text-lg font-semibold">Texts about leads, estimates and signatures</h2>
+      <p className="mt-1 text-sm text-ink-soft">Each kind of text stays off until you approve its wording and switch it on.
+        Staff still preview and press Send for every text, and nothing is sent unless the master text switch above is on,
+        the person has agreed to texts, and it is outside quiet hours.</p>
+      <div className="mt-3"><WorkflowTextsSettings families={textSettings.families} version={textSettings.policyVersion}
+        quietHours={textSettings.quietHours} isRecommended={textSettings.quietHoursIsRecommended} policyReady={textSettings.policyReady} /></div>
+    </section>}
   </div>;
 }
 function observedCapability(value: unknown, key: string): string {
