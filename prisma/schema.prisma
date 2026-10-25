@@ -527,6 +527,7 @@ model RentalPackage {
   rentalLines   RentalLine[]
   estimateLines EstimateLineItem[]
   leadRequests  LeadApplianceRequest[]
+  scheduledPriceChanges ScheduledPriceChange[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -994,8 +995,12 @@ enum ScheduledPriceChangeStatus {
 // price they were made with; only prices shown and quoted from then on change.
 model ScheduledPriceChange {
   id                     String                     @id @default(cuid())
-  applianceTypeId        String
-  applianceType          ApplianceType              @relation(fields: [applianceTypeId], references: [id], onDelete: Restrict)
+  // Exactly one of applianceTypeId / packageId is set (a database check enforces it): the change is for one appliance
+  // type's price or for one rental set's price.
+  applianceTypeId        String?
+  applianceType          ApplianceType?             @relation(fields: [applianceTypeId], references: [id], onDelete: Restrict)
+  packageId              String?
+  package                RentalPackage?             @relation(fields: [packageId], references: [id], onDelete: Restrict)
   newPriceCents          Int
   // Start of the Colorado calendar day the new price starts on (stored as that instant).
   effectiveOn            DateTime
@@ -1012,6 +1017,7 @@ model ScheduledPriceChange {
 
   @@index([status, effectiveOn])
   @@index([applianceTypeId, status])
+  @@index([packageId, status])
 }
 
 // Per-person limits on what an admin may do (Batch O-2A). A row with allowed=false takes a capability away from that

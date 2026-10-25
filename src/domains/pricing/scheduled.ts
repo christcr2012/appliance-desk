@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertCapability } from "@/domains/capabilities";
 import { updateAppliancePriceInTx } from "@/domains/settings";
+import { updatePackagePriceInTx } from "@/domains/packages";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 
 /**
@@ -36,7 +37,7 @@ export function earliestStartDay(now: Date = new Date()): string {
 }
 
 /** Pure rule so the screen and the domain agree. Returns a plain-words problem or null. */
-export function scheduleInputProblem(input: ScheduleInput, now: Date = new Date()): string | null {
+export function scheduleInputProblem(input: Omit<ScheduleInput, "applianceTypeId"> & { applianceTypeId?: string }, now: Date = new Date()): string | null {
   if (!Number.isInteger(input.newPriceCents) || input.newPriceCents < 0) return "Enter a valid price.";
   if (input.newPriceCents > MAX_SCHEDULED_PRICE_CENTS) return "That price is higher than $10,000 a month. Check the amount.";
   const day = businessDateFromKey(input.effectiveOn);
@@ -91,6 +92,51 @@ export async function scheduleAppliancePriceChange(actorId: string, input: Sched
   });
 }
 
+export type SchedulePackageInput = Omit<ScheduleInput, "applianceTypeId"> & { packageId: string };
+
+/** Same rules as an appliance price change, for one rental set (package). */
+export async function schedulePackagePriceChange(actorId: string, input: SchedulePackageInput, now: Date = new Date()) {
+  const problem = scheduleInputProblem(input, now);
+  if (problem) throw new Error(problem);
+  const effectiveOn = businessDateFromKey(input.effectiveOn)!;
+  const note = input.note?.trim() || null;
+
+  return prisma.$transaction(async (tx) => {
+    await assertCapability(tx, actorId, "EDIT_SETTINGS");
+    await tx.$queryRaw`SELECT "id" FROM "RentalPackage" WHERE "id" = ${input.packageId} FOR UPDATE`;
+    const set = await tx.rentalPackage.findUnique({ where: { id: input.packageId } });
+    if (!set) throw new Error("Couldn't find that set.");
+    if (!set.isActive) throw new Error("That set is retired. Pick one that is in use.");
+
+    const existing = await tx.scheduledPriceChange.findFirst({
+      where: { packageId: set.id, status: "PENDING", effectiveOn },
+      select: { id: true },
+    });
+    if (existing) throw new Error("There is already a price change scheduled for that day. Cancel it first if you want a different price.");
+
+    const row = await tx.scheduledPriceChange.create({
+      data: {
+        packageId: set.id,
+        newPriceCents: input.newPriceCents,
+        effectiveOn,
+        note,
+        priceAtSchedulingCents: set.monthlyPriceCents,
+        createdByUserId: actorId,
+      },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId: actorId,
+        action: "pricing.schedule",
+        entityType: "RentalPackage",
+        entityId: set.id,
+        newValue: { scheduledChangeId: row.id, newPriceCents: input.newPriceCents, effectiveOn: input.effectiveOn, priceAtSchedulingCents: set.monthlyPriceCents },
+      },
+    });
+    return row;
+  });
+}
+
 export async function cancelScheduledPriceChange(actorId: string, changeId: string, now: Date = new Date()) {
   return prisma.$transaction(async (tx) => {
     await assertCapability(tx, actorId, "EDIT_SETTINGS");
@@ -107,8 +153,8 @@ export async function cancelScheduledPriceChange(actorId: string, changeId: stri
       data: {
         userId: actorId,
         action: "pricing.schedule_cancel",
-        entityType: "ApplianceType",
-        entityId: row.applianceTypeId,
+        entityType: row.packageId ? "RentalPackage" : "ApplianceType",
+        entityId: (row.packageId ?? row.applianceTypeId)!,
         newValue: { scheduledChangeId: row.id },
       },
     });
@@ -118,8 +164,10 @@ export async function cancelScheduledPriceChange(actorId: string, changeId: stri
 
 export type ScheduledPriceRow = {
   id: string;
-  applianceTypeId: string;
-  applianceTypeName: string;
+  /** What is being repriced: one appliance type or one rental set. */
+  kind: "APPLIANCE" | "SET";
+  targetId: string;
+  targetName: string;
   currentPriceCents: number;
   newPriceCents: number;
   effectiveOn: Date;
@@ -129,21 +177,28 @@ export type ScheduledPriceRow = {
   appliedAt: Date | null;
 };
 
-type RowWithType = {
-  id: string; applianceTypeId: string; newPriceCents: number; effectiveOn: Date; status: ScheduledPriceRow["status"];
-  note: string | null; failureMessage: string | null; appliedAt: Date | null;
-  applianceType: { name: string; monthlyPriceCents: number };
+type RowWithTarget = {
+  id: string; applianceTypeId: string | null; packageId: string | null; newPriceCents: number; effectiveOn: Date;
+  status: ScheduledPriceRow["status"]; note: string | null; failureMessage: string | null; appliedAt: Date | null;
+  applianceType: { name: string; monthlyPriceCents: number } | null;
+  package: { name: string; monthlyPriceCents: number } | null;
 };
 
-function toRow(r: RowWithType): ScheduledPriceRow {
+function toRow(r: RowWithTarget): ScheduledPriceRow {
+  const set = r.package;
+  const target = set ?? r.applianceType;
   return {
-    id: r.id, applianceTypeId: r.applianceTypeId, applianceTypeName: r.applianceType.name,
-    currentPriceCents: r.applianceType.monthlyPriceCents, newPriceCents: r.newPriceCents, effectiveOn: r.effectiveOn,
+    id: r.id, kind: set ? "SET" : "APPLIANCE", targetId: (r.packageId ?? r.applianceTypeId)!,
+    targetName: target?.name ?? "Removed item", currentPriceCents: target?.monthlyPriceCents ?? 0,
+    newPriceCents: r.newPriceCents, effectiveOn: r.effectiveOn,
     status: r.status, note: r.note, failureMessage: r.failureMessage, appliedAt: r.appliedAt,
   };
 }
 
-const withType = { applianceType: { select: { name: true, monthlyPriceCents: true } } } as const;
+const withType = {
+  applianceType: { select: { name: true, monthlyPriceCents: true } },
+  package: { select: { name: true, monthlyPriceCents: true } },
+} as const;
 
 /** Waiting changes (oldest start first) and the most recent finished ones. Bounded reads. */
 export async function listScheduledPriceChanges(): Promise<{ pending: ScheduledPriceRow[]; recent: ScheduledPriceRow[] }> {
@@ -182,15 +237,28 @@ async function applyBatch(ids: string[], now: Date): Promise<{ applied: number; 
         if (rows[0]?.status !== "PENDING") return false;
         const change = await tx.scheduledPriceChange.findUniqueOrThrow({ where: { id } });
         await assertCapability(tx, change.createdByUserId, "EDIT_SETTINGS");
-        const type = await tx.applianceType.findUniqueOrThrow({ where: { id: change.applianceTypeId } });
-        if (!type.isActive) throw new Error("That appliance type has been retired, so its price was left alone.");
-        await updateAppliancePriceInTx(tx, change.createdByUserId, change.applianceTypeId, change.newPriceCents, {
-          scheduledChangeId: change.id,
-        });
-        await tx.scheduledPriceChange.update({
-          where: { id },
-          data: { status: "APPLIED", appliedAt: now, priceBeforeApplyCents: type.monthlyPriceCents },
-        });
+        if (change.packageId) {
+          await tx.$queryRaw`SELECT "id" FROM "RentalPackage" WHERE "id" = ${change.packageId} FOR UPDATE`;
+          const set = await tx.rentalPackage.findUniqueOrThrow({ where: { id: change.packageId } });
+          if (!set.isActive) throw new Error("That set has been retired, so its price was left alone.");
+          await updatePackagePriceInTx(tx, change.createdByUserId, change.packageId, change.newPriceCents, {
+            scheduledChangeId: change.id,
+          });
+          await tx.scheduledPriceChange.update({
+            where: { id },
+            data: { status: "APPLIED", appliedAt: now, priceBeforeApplyCents: set.monthlyPriceCents },
+          });
+        } else {
+          const type = await tx.applianceType.findUniqueOrThrow({ where: { id: change.applianceTypeId! } });
+          if (!type.isActive) throw new Error("That appliance type has been retired, so its price was left alone.");
+          await updateAppliancePriceInTx(tx, change.createdByUserId, change.applianceTypeId!, change.newPriceCents, {
+            scheduledChangeId: change.id,
+          });
+          await tx.scheduledPriceChange.update({
+            where: { id },
+            data: { status: "APPLIED", appliedAt: now, priceBeforeApplyCents: type.monthlyPriceCents },
+          });
+        }
         return true;
       });
       if (ok) applied += 1;

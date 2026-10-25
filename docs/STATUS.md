@@ -5,6 +5,13 @@ server answer of the desk pages as the owner, a full admin, an admin the owner h
 rental-price, repair-cost or purchase-cost values; owner-only pages send nobody else any of their content; a limited admin's
 control center does not even contain the cards they may not use. A control check shows the planted values really are sent to the
 owner and admins, so the staff result is meaningful. Passes 18 of 18 locally including phone width, keyboard and accessibility. Nothing for Chris to do.
+## October 25 — Owner controls: price changes with a start date now cover rental sets (O-4)
+
+In progress (branch `ai/claude/owner-controls-o4`). On Settings → Price changes you can now pick a rental set (like Washer + Dryer
+Set) as well as a single appliance, a new monthly price and a start day. The nightly job applies it once, writes the same price
+history and change-history rows as a typed change, and leaves signed rentals alone; it fails safely if the set was retired or
+the person who scheduled it was since limited. Additive migration `20261025060000_scheduled_package_price_changes`. Proven by real-Postgres tests and a
+real-browser spec (phone width, keyboard, accessibility). Nothing for Chris to do.
 ## October 25 — Phone bookkeeping catch-up (COM-N3 record)
 
 COM-N3 (booking a verified phone-company statement as one expense) was merged earlier in #555, but the plan and work list still said "in review / not built".
