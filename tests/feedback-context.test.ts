@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   appRevisionFrom, browserFromUserAgent, describeRouteTemplate, deviceFromUserAgent, readSafeContext, safeContextFrom,
@@ -122,7 +123,7 @@ describe("states, words and allowed changes", () => {
 });
 
 describe("form limits", () => {
-  const base = { kind: "BUG", title: "Button broken", description: "The Save button does nothing.", requestKey: "abcd-1234-efgh" };
+  const base = { kind: "BUG", title: "Button broken", description: "The Save button does nothing.", requestKey: randomUUID() };
   it("trims and accepts a good report", () => {
     const parsed = submitFeedbackSchema.parse({ ...base, title: "  Button broken  ", expected: "  ", steps: "1. Tap Save" });
     expect(parsed.title).toBe("Button broken");

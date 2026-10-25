@@ -10,3 +10,5 @@ ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stri
 # Reviewed 2026-10-03: made-up string in a test about hiding keys in error text (older branch commit, PR #139); not a real key.
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:195
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:197
+# Reviewed 2026-10-25: made-up request id in a feedback form test (MCP-10a branch commit); not a real key.
+5f62cc2c5ac2482cbf1444131f31acb97a7f4815:tests/feedback-context.test.ts:generic-api-key:125
