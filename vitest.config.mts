@@ -16,6 +16,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
   "tests/approval-money-integration.test.ts", // O-3B changes and restores the shared approval limits.
   "tests/used-appliance-sale-integration.test.ts", // M-2C sets and restores the shared books start date.
+  "tests/shop-sale-delivery-fee-integration.test.ts", // M-1C sets and restores the shared delivery-fee settings and creates a Colorado filing account.
   "tests/capabilities-integration.test.ts", // O-2A limits an admin and restores it; reads/writes the shared override table and settings row.
   "tests/settings-undo-integration.test.ts", // O-1 changes and restores shared BusinessSettings fields and reads the settings audit history.
   "tests/bank-reconciliation-integration.test.ts",

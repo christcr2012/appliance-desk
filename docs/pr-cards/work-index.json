@@ -1309,7 +1309,7 @@
       "dependencies": [
         "M-1B"
       ],
-      "status": "MERGED_PARTIAL",
+      "status": "MERGED",
       "migration": "batch_m_sale_return_evidence",
       "budget": 500,
       "units": [
@@ -1317,14 +1317,17 @@
       ],
       "evidence": [
         "docs/designs/BATCH-M.md",
-        "src/domains/purchasing/ledger.ts",
+        "src/domains/inventory/guided-actions.ts",
         "src/domains/purchasing/index.ts",
-        "src/domains/inventory/guided-actions.ts"
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/tax/rdf-shop-sale.ts"
       ],
       "tests": [
-        "tests/shop-sale-integration.test.ts"
+        "tests/shop-sale-delivery-fee-integration.test.ts",
+        "tests/shop-sale-integration.test.ts",
+        "tests/used-appliance-sale-integration.test.ts"
       ],
-      "readiness": "MERGED_PARTIAL",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/M-1C.md",
       "card": "docs/pr-cards/M-1C.md"
     },
@@ -1468,7 +1471,7 @@
       "dependencies": [
         "M-3"
       ],
-      "status": "MERGED_PARTIAL",
+      "status": "MERGED",
       "migration": "none",
       "budget": 460,
       "units": [
@@ -1479,12 +1482,17 @@
         "docs/designs/BATCH-O.md",
         "src/domains/settings/index.ts",
         "src/domains/settings/section-config.ts",
-        "src/app/desk/settings/actions.ts"
+        "src/app/desk/settings/actions.ts",
+        "src/domains/settings/preview.ts",
+        "src/domains/settings/effects.ts",
+        "src/app/desk/settings/history/page.tsx"
       ],
       "tests": [
-        "tests/settings-undo-integration.test.ts"
+        "tests/settings-undo-integration.test.ts",
+        "tests/settings-preview.test.ts",
+        "e2e/owner-settings-history.spec.ts"
       ],
-      "readiness": "MERGED_PARTIAL",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/O-1.md"
     },
     {

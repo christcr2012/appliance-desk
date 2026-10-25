@@ -6,7 +6,7 @@ import { forwardRef, useState } from "react";
 import { Button, Checkbox, Field, Select, Textarea } from "@/components/ui";
 import { DAYS, SOCIAL_NETWORKS, BRAND_LOGO_FILES, MAX_CLOSURES, type ProfileExtrasForm } from "@/domains/settings/profile-extras";
 import { useForm } from "react-hook-form";
-import { updateSettingsAction, updateSettingsSectionAction } from "./actions";
+import { updateSettingsAction, updateSettingsSectionAction, previewSettingsSectionAction, type SettingsPreviewState } from "./actions";
 
 // Every "...Dollars" field here is entered and displayed in real dollars
 // and cents (e.g. 45.00), matching how Chris actually thinks about
@@ -41,10 +41,15 @@ type FormValues = ProfileExtrasForm & {
 export function SettingsForm({
   defaultValues,
   section,
+  revision,
 }: {
   defaultValues: FormValues;
   section?: EditableSettingsSection;
+  /** Fingerprint of this section's saved values when the page was opened; a save is refused if they changed since. */
+  revision?: string;
 }) {
+  const [currentRevision, setCurrentRevision] = useState(revision);
+  const [preview, setPreview] = useState<SettingsPreviewState | null>(null);
   const [message, setMessage] = useState<{
     kind: "success" | "error";
     text: string;
@@ -52,15 +57,17 @@ export function SettingsForm({
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { isSubmitting },
   } = useForm<FormValues>({ defaultValues });
 
   async function onSubmit(values: FormValues) {
     setMessage(null);
+    setPreview(null);
     let result;
     try {
       result = section
-        ? await updateSettingsSectionAction(section, values)
+        ? await updateSettingsSectionAction(section, values, currentRevision)
         : await updateSettingsAction(values);
     } catch {
       setMessage({
@@ -70,9 +77,20 @@ export function SettingsForm({
       return;
     }
     if (result.status === "success") {
+      if (result.revision) setCurrentRevision(result.revision);
       setMessage({ kind: "success", text: "Settings saved." });
     } else if (result.status === "error") {
       setMessage({ kind: "error", text: result.message });
+    }
+  }
+
+  async function onPreview() {
+    if (!section) return;
+    setMessage(null);
+    try {
+      setPreview(await previewSettingsSectionAction(section, getValues()));
+    } catch {
+      setPreview({ status: "error", message: "The preview could not be built. You can still save." });
     }
   }
 
@@ -339,13 +357,46 @@ export function SettingsForm({
         </fieldset>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting
-          ? "Saving…"
-          : section
-            ? "Save this section"
-            : "Save settings"}
-      </Button>
+      {preview && (
+        <section
+          aria-label="What saving would change"
+          role={preview.status === "error" ? "alert" : "status"}
+          className="rounded-control border border-line bg-subtle px-4 py-3 text-sm"
+        >
+          {preview.status === "error" ? (
+            <p className="font-medium text-danger">{preview.message}</p>
+          ) : preview.nothingToSave ? (
+            <p className="font-medium">Nothing would change. These values are already saved.</p>
+          ) : (
+            <>
+              <p className="font-medium">If you save now, this changes (nothing is saved yet):</p>
+              <ul className="mt-2 space-y-2">
+                {preview.lines.map((l) => (
+                  <li key={l.key}>
+                    <span className="font-medium">{l.label}:</span> {l.from} → {l.to}
+                    <span className="block text-ink-soft">{l.effect}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting
+            ? "Saving…"
+            : section
+              ? "Save this section"
+              : "Save settings"}
+        </Button>
+        {section && (
+          <Button type="button" variant="secondary" disabled={isSubmitting} onClick={onPreview}>
+            Preview changes
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
