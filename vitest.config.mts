@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/job-click-to-call-integration.test.ts", // COM-N2 changes and restores the shared phone policy.
   "tests/com-n1c-workflow-integration.test.ts", // COM-N1C changes and restores the shared phone/text policy, text switch and approved wording.
   "tests/com-n1b-workflow-integration.test.ts", // COM-N1B changes and restores the shared phone/text policy, text switch and approved wording.
   "tests/communications-foundation-integration.test.ts", // reads the shared text master switch, which the COM-N1 tests turn on for a few seconds.

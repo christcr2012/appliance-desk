@@ -1,5 +1,6 @@
 import { ContextCommunicationPanel } from "@/components/desk/context-communication-panel";
 import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
+import { CallPanel } from "@/app/desk/_text/call-panel";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -50,6 +51,7 @@ export default async function MaintenanceDetailPage({
           <SendTextPanel userId={session.user.id} entityType="MaintenanceRequest" entityId={request.id}
             path={`/desk/maintenance/${request.id}`} families={["maintenance_received", "maintenance_resolved"]}
             principal={{ customerId: request.customerId }} />
+          <div className="mt-4"><CallPanel userId={session.user.id} subject={{ type: "MaintenanceRequest", id: request.id }} path={`/desk/maintenance/${request.id}`} /></div>
         </div>
       )}
 

@@ -92,7 +92,10 @@ export async function startClickToCall(
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(input.clientToken)) return { status: "NOT_STARTED", reason: "Reload the page and try again." };
   const rootKey = `pending:${actorId}:${input.clientToken}`;
   const prepared = await prisma.$transaction(async (tx) => {
-    const existing = await tx.callSession.findFirst({ where: { providerRootCallId: rootKey }, select: { id: true, state: true } });
+    const earlier = await tx.auditLog.findFirst({ where: { action: "COMMUNICATION_CALL_STARTED", userId: actorId,
+      newValue: { path: ["clientToken"], equals: input.clientToken } }, select: { newValue: true } });
+    const earlierId = (earlier?.newValue as { callSessionId?: string } | null)?.callSessionId;
+    const existing = earlierId ? await tx.callSession.findUnique({ where: { id: earlierId }, select: { id: true, state: true } }) : null;
     if (existing) return { replay: existing } as const;
     const c = await check(tx, actorId, input.subject, now);
     if (!c.ok) return { refused: c.reason } as const;
@@ -103,7 +106,7 @@ export async function startClickToCall(
       contactPointId: pointId, threadId: thread.id, direction: "OUTBOUND", providerRootCallId: rootKey, actorUserId: actorId,
       routingPolicyVersion: c.ctx.policyVersion, state: "NEW", startedAt: now } });
     await tx.auditLog.create({ data: { userId: actorId, action: "COMMUNICATION_CALL_STARTED", entityType: input.subject.type,
-      entityId: input.subject.id, newValue: { callSessionId: session.id } } });
+      entityId: input.subject.id, newValue: { callSessionId: session.id, clientToken: input.clientToken } } });
     return { session, c } as const;
   });
   if ("refused" in prepared) return { status: "NOT_STARTED", reason: prepared.refused as string };

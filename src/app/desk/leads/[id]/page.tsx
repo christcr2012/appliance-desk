@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/session";
 import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
+import { CallPanel } from "@/app/desk/_text/call-panel";
 import { summarizeApplianceRequests } from "@/domains/leads/requests";
 import { getLeadEstimates } from "@/domains/leads/workspace";
 import { PageHeader, SectionCard } from "@/components/desk/workspace";
@@ -220,6 +221,7 @@ export default async function LeadDetailPage({
         <SendTextPanel userId={session.user.id} entityType="Lead" entityId={lead.id} path={`/desk/leads/${lead.id}`}
           families={["lead_received"]} principal={{ leadId: lead.id }} />
       </div>
+      <div className="mt-4"><CallPanel userId={session.user.id} subject={{ type: "Lead", id: lead.id }} path={`/desk/leads/${lead.id}`} /></div>
 
       <div className="mt-6">
         <MessageHistoryPanel rows={messages} />
