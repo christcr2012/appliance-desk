@@ -52,6 +52,7 @@ export function safeError(cause: unknown): string {
     .replace(/\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9_-]+\b/g, "[secret]")
     .replace(/\b[A-Za-z0-9_-]{40,}\b/g, "[redacted]")
     .replace(/\+?\d[\d\s().-]{8,}\d/g, "[phone]")
+    .replace(/\b\d{1,6}\s+(?:[A-Za-z]+\s+){0,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Lane|Ln|Court|Ct|Way|Pl|Place|Pkwy|Parkway)\b\.?/gi, "[address]")
     .slice(0, 500);
 }
 

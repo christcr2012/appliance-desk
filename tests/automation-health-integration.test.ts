@@ -24,18 +24,18 @@ describe.skipIf(!enabled)("MCP-1 bounded health reads (real Postgres)", () => {
   });
 
   it("reads three rows per rule from 10,000 runs, ties by id, ignores future runs and uses an index", async () => {
-    const rows: Prisma.AutomationRunCreateManyInput[] = [];
-    for (const ruleKey of [ruleA, ruleB]) {
-      for (let i = 0; i < 5000; i += 1) {
-        const startedAt = new Date(start + i * minute);
-        rows.push({
-          ruleKey, runKey: `${ruleKey}:${i}`, environment: "ci", startedAt,
-          finishedAt: new Date(startedAt.getTime() + 1000), state: i % 3 === 0 ? "FAILED" : "SUCCEEDED",
-          ...(i % 3 === 0 ? { failureCode: "TIMEOUT", failureStage: "work", correlationId: `ref-${i.toString(16).padStart(10, "0")}` } : {}),
-        });
-      }
-    }
-    for (let i = 0; i < rows.length; i += 2000) await prisma.automationRun.createMany({ data: rows.slice(i, i + 2000) });
+    // 5,000 runs per rule, one a minute; every third one FAILED with a typed code. One INSERT keeps this fast.
+    await prisma.$executeRaw`
+      INSERT INTO "AutomationRun" ("id", "ruleKey", "runKey", "state", "environment", "startedAt", "finishedAt",
+                                   "failureCode", "failureStage", "correlationId")
+      SELECT ${tag} || '-' || k.rule_key || '-' || i, k.rule_key, k.rule_key || ':' || i,
+             (CASE WHEN i % 3 = 0 THEN 'FAILED' ELSE 'SUCCEEDED' END)::"AutomationRunState", 'ci',
+             ${new Date(start).toISOString()}::timestamp + make_interval(mins => i),
+             ${new Date(start).toISOString()}::timestamp + make_interval(mins => i, secs => 1),
+             CASE WHEN i % 3 = 0 THEN 'TIMEOUT' END, CASE WHEN i % 3 = 0 THEN 'work' END,
+             CASE WHEN i % 3 = 0 THEN 'ref-' || lpad(to_hex(i), 10, '0') END
+      FROM unnest(${[ruleA, ruleB]}::text[]) AS k(rule_key), generate_series(0, 4999) AS i
+    `;
     // Rule A: two runs at the same newest instant; the larger id wins the tie.
     const tie = new Date(start + 6000 * minute);
     await prisma.automationRun.createMany({ data: [
