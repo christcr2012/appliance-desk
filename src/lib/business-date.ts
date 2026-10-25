@@ -266,3 +266,63 @@ export function parseOptionalBusinessDate(
   const date = businessDateFromKey(text);
   return date ? { ok: true, value: date } : { ok: false };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// AR-0 kit date words (docs/build-specs/KIT.md section 8). All America/Denver; never format dates by hand on screens.
+
+const shortDate = new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TIME_ZONE, month: "short", day: "numeric" });
+const shortDateWithYear = new Intl.DateTimeFormat("en-US", {
+  timeZone: BUSINESS_TIME_ZONE,
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+const monthYear = new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TIME_ZONE, month: "long", year: "numeric" });
+const weekdayName = new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TIME_ZONE, weekday: "long" });
+
+/** "Oct 25" when `date` falls in the same Colorado year as `now`, otherwise "Oct 25, 2025". The list/card default. */
+export function formatShortDate(date: Date, now: Date = new Date()): string {
+  const sameYear = businessDateKey(date).slice(0, 4) === businessDateKey(now).slice(0, 4);
+  return (sameYear ? shortDate : shortDateWithYear).format(date);
+}
+
+/** "March 2026" (Colorado time). */
+export function formatMonthYear(date: Date): string {
+  return monthYear.format(date);
+}
+
+/** "Sunday, Oct 25" (Colorado time) — Today's date line. */
+export function formatWeekdayDate(date: Date): string {
+  return `${weekdayName.format(date)}, ${shortDate.format(date)}`;
+}
+
+/**
+ * Colorado calendar-day distance in words: "today", "yesterday", "tomorrow", "in 3 days", "3 days ago". More than six
+ * days away falls back to `formatShortDate`.
+ */
+export function relativeBusinessDay(date: Date, now: Date = new Date()): string {
+  const days = businessDaysBetween(now, date);
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days === -1) return "yesterday";
+  if (days > 1 && days <= 6) return `in ${days} days`;
+  if (days < -1 && days >= -6) return `${-days} days ago`;
+  return formatShortDate(date, now);
+}
+
+/** Monday 00:00 Colorado time of the week that contains `now` (weeks run Monday to Sunday). */
+export function businessWeekStart(now: Date = new Date()): Date {
+  const key = businessDateKey(now);
+  const weekday = new Date(`${key}T00:00:00Z`).getUTCDay(); // 0 = Sunday … 6 = Saturday, of the Colorado date
+  return midnight(addCalendarDays(key, -((weekday + 6) % 7)));
+}
+
+/** 1 → "1st", 2 → "2nd", 3 → "3rd", 4 → "4th", 11 → "11th", 21 → "21st". */
+export function ordinal(n: number): string {
+  const whole = Math.trunc(n);
+  const lastTwo = Math.abs(whole) % 100;
+  const last = Math.abs(whole) % 10;
+  const suffix =
+    lastTwo >= 11 && lastTwo <= 13 ? "th" : last === 1 ? "st" : last === 2 ? "nd" : last === 3 ? "rd" : "th";
+  return `${whole}${suffix}`;
+}

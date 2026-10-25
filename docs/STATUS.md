@@ -1,4 +1,12 @@
-## October 26 — DEC-1a built (Decisions & reviews data; PR open, not merged)
+## October 25 (night) — AR-0a: application kit + guards (in review)
+
+Built the shared kit in `src/components/kit/` (20 components + Icon, unit-tested in `tests/kit/`), the new color
+tokens (light + dark, contrast-tested), the five pinned UI libraries, the kit date words in `src/lib/business-date.ts`
+(tested across both 2026 clock changes and New Year) and the KIT 9 guards (`tests/kit-guards.test.ts`; fail on the
+fixture for every rule). No screen uses the kit yet and no business behavior changed. Branch `ai/claude/ar-0a-kit`.
+Not done here: mounting `<Toaster />` in the desk layout (do it in AR-0b with the first kit screen). Next: AR-0b.
+
+## October 26 — DEC-1a built (Decisions & reviews data; merged)
 
 Branch `ai/claude/dec-1a-decisions-data`. Coded: the decisions table, waiting (dated) changes, taxability history,
 "starting value — not confirmed" tax rules, the registry of 43 open questions, owner-only keep/change/ask/answer/import
@@ -6,7 +14,7 @@ functions (admins read only), and tax that uses the rule of each charge's own da
 researched values yet (DEC-2). Proof: unit tests run here; the database tests run in CI only. Next: DEC-1b screens and
 forms (needs the AR-0a kit), then DEC-2.
 
-## October 25 (night) — MCP-10a app feedback box built (PR open, not merged)
+## October 25 (night) — MCP-10a app feedback box built (merged)
 
 Owners, staff and customers can send "App feedback" (a problem with the app or an idea, up to 3 screenshots) and follow
 "My reports"; Chris and admins read, reply, add team-only notes, change status with reasons and mark copies, with a

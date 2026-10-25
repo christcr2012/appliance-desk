@@ -56,6 +56,12 @@ const textPairs = [
   ["action", "color-on-action", "color-action"],
   ["navigation", "color-nav-ink", "color-nav-bg"],
   ["current navigation", "color-nav-current-ink", "color-nav-current-bg"],
+  // AR-0 kit pills and rows (KIT section 1).
+  ["good pill", "color-success", "color-success-soft"],
+  ["info pill", "color-info-ink", "color-info-soft"],
+  ["attention pill", "color-warning-ink", "color-warning-bg"],
+  ["selected row text", "color-ink", "color-success-soft"],
+  ["selected row muted text", "color-ink-soft", "color-success-soft"],
 ] as const;
 
 const uiPairs = [
@@ -84,4 +90,15 @@ describe.each([
 it("exports the approved brand-kit radii", () => {
   expect(light["radius-control"]).toBe("8px");
   expect(light["radius-card"]).toBe("16px");
+  expect(light["radius-field"]).toBe("12px");
+});
+
+it("defines every AR-0 kit color in both light and dark blocks and maps it into @theme", () => {
+  const darkOnly = tokensFrom(cssBlock(css, ".dark"));
+  for (const token of ["color-success-soft", "color-info-soft", "color-info-ink"]) {
+    expect(light[token], `light ${token}`).toMatch(/^#[0-9a-f]{6}$/);
+    expect(darkOnly[token], `dark ${token}`).toMatch(/^#[0-9a-f]{6}$/);
+    expect(css).toContain(`--${token}: var(--${token});`);
+  }
+  expect(css).toContain("--radius-field: var(--radius-field);");
 });
