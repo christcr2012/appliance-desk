@@ -86,7 +86,8 @@ export function whenToAct(input: { opens: Date; closes: Date; effect: Effect; fi
   percent: number /* 85–95 */; marginBusinessDays: number }): { actOn: Date; reason: string }
 ```
 FIXED → `fixedOn` exactly. BENEFITS → `max(opens, now)`. COSTS (also used for "doesn't help") →
-`opens + round((closes − opens) × percent/100)` business-date, then `min(that, addBusinessDays(closes, −margin))`,
+`opens + round((closes − opens) × percent/100)` business-date, then `min(that, closes minus margin working days)` — working days skip weekends and Colorado legal holidays
+(`coloradoLegalHolidays` in `src/domains/tax/filing-calendar.ts`; note `addBusinessDays` in `business-date.ts` adds calendar days, so don't use it here),
 then `max(that, opens, now)`; never after `closes`. Owner settings (catalog rows in AR-8, section Taxes):
 `costlyChangeTimingPercent Int @default(90)` (85–95; "For things that cost you money or don't help you to do early —
 paying a return, filing 1099s, renewing a license — the app suggests a day this far through the time allowed.
