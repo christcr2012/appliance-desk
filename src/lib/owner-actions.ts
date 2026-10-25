@@ -66,6 +66,8 @@ export const OWNER_ACTIONS: OwnerAction[] = [
     summary: "Repair requests and appliances out for service.", synonyms: ["maintenance", "broken", "fix appliance", "service call"], href: "/desk/maintenance" },
   { id: "lead-response", label: "How fast to answer new inquiries", group: "customers", access: "owner",
     summary: "The reminder that fires when an inquiry sits too long.", synonyms: ["response time", "follow up", "slow answer"], href: "/desk/settings/lead-response" },
+  { id: "app-feedback", label: "App feedback from customers and the team", group: "customers", access: "admin",
+    summary: "Problems with this app and ideas people sent; read and answer them.", synonyms: ["bug report", "suggestion", "website problem", "app problem", "idea"], href: "/desk/feedback" },
   { id: "visit-scheduling", label: "Visit and scheduling rules", group: "customers", access: "admin", capability: "EDIT_SETTINGS",
     summary: "Visit lengths, windows and how jobs are scheduled.", synonyms: ["time window", "appointment", "visit length"], href: "/desk/settings?section=jobs" },
 

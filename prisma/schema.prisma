@@ -91,6 +91,10 @@ model User {
   createdCommunicationTemplates CommunicationTemplateRevision[] @relation("CommunicationTemplateCreator")
   actedCallSessions CallSession[] @relation("CallSessionActor")
   verifiedTelecomStatements TelecomStatement[] @relation("TelecomStatementVerifier")
+
+  // MCP-10a app feedback (reports about the app, never appliance repairs).
+  feedbackReports FeedbackReport[] @relation("FeedbackReporter")
+  feedbackEntries FeedbackEntry[]  @relation("FeedbackEntryAuthor")
 }
 
 model Session {
@@ -3149,6 +3153,9 @@ model BusinessSettings {
   // Older review findings: how long a removed receipt file / an unsent request photo waits before the nightly clean-up deletes it.
   receiptFileKeepDays Int @default(30)
   unsentPhotoKeepDays Int @default(1)
+  // MCP-10a: app feedback. Pictures allowed per report (0-3) and how many days after a report is done its sender can reopen it.
+  feedbackMaxAttachments Int @default(3)
+  feedbackReopenDays     Int @default(90)
   inspectionChecklist Json @default("[]")
 
   // Batch B D10: null means policy not set; dependent actions stay unavailable.
@@ -5218,4 +5225,118 @@ model StoredFileCleanup {
   note       String?
 
   @@index([state, deleteAfter])
+}
+
+// ---------------------------------------------------------------------------
+// MCP-10a: the in-app "App feedback" box (people only). Owners, staff and customers report a problem with this app or
+// suggest an improvement; the owner and admins answer inside the app. Never appliance repairs (those are
+// MaintenanceRequest). No AI or ops access in this unit: every report is HUMAN_ONLY.
+// ---------------------------------------------------------------------------
+model FeedbackReport {
+  id               String             @id @default(cuid())
+  number           Int                @unique @default(autoincrement())
+  reporterUserId   String
+  reporter         User               @relation("FeedbackReporter", fields: [reporterUserId], references: [id], onDelete: Restrict)
+  reporterRole     Role
+  kind             FeedbackKind
+  title            String             @db.VarChar(160)
+  description      String             @db.VarChar(8000)
+  expected         String?            @db.VarChar(2000)
+  steps            String?            @db.VarChar(4000)
+  routeTemplate    String             @db.VarChar(200)
+  appRevision      String?            @db.VarChar(40)
+  safeContext      Json
+  aiReview         FeedbackAiReview   @default(HUMAN_ONLY)
+  state            FeedbackState      @default(SUBMITTED)
+  awaitingTeam     Boolean            @default(true)
+  duplicateOfId    String?
+  duplicateOf      FeedbackReport?    @relation("FeedbackDuplicate", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates       FeedbackReport[]   @relation("FeedbackDuplicate")
+  requestKey       String             @db.VarChar(64)
+  contentRemovedAt DateTime?
+  version          Int                @default(1)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  closedAt         DateTime?
+  entries          FeedbackEntry[]
+  attachments      FeedbackAttachment[]
+  events           FeedbackEvent[]
+
+  @@unique([reporterUserId, requestKey])
+  @@index([reporterUserId, createdAt, id])
+  @@index([state, kind, updatedAt, id])
+}
+
+model FeedbackEntry {
+  id           String             @id @default(cuid())
+  reportId     String
+  report       FeedbackReport     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User               @relation("FeedbackEntryAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  visibility   FeedbackVisibility
+  body         String             @db.VarChar(4000)
+  createdAt    DateTime           @default(now())
+
+  @@index([reportId, createdAt, id])
+}
+
+model FeedbackAttachment {
+  id         String         @id @default(cuid())
+  reportId   String
+  report     FeedbackReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  uploaderId String
+  // feedback/{reportId}/{id}.webp in the PRIVATE store.
+  pathname   String         @unique
+  sizeBytes  Int
+  sha256     String         @db.Char(64)
+  width      Int
+  height     Int
+  deletedAt  DateTime?
+  createdAt  DateTime       @default(now())
+
+  @@index([reportId])
+}
+
+model FeedbackEvent {
+  id          String         @id @default(cuid())
+  reportId    String
+  report      FeedbackReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  actorUserId String?
+  action      String         @db.VarChar(40)
+  fromState   FeedbackState?
+  toState     FeedbackState?
+  // Never report text.
+  reason      String?        @db.VarChar(500)
+  createdAt   DateTime       @default(now())
+
+  @@index([reportId, createdAt])
+}
+
+enum FeedbackKind {
+  BUG
+  IMPROVEMENT
+}
+
+enum FeedbackAiReview {
+  HUMAN_ONLY
+  ALLOWED
+  WITHDRAWN
+}
+
+enum FeedbackVisibility {
+  REPORTER
+  INTERNAL
+}
+
+enum FeedbackState {
+  SUBMITTED
+  TRIAGED
+  NEEDS_INFORMATION
+  ACCEPTED
+  IN_PROGRESS
+  AWAITING_VERIFICATION
+  RESOLVED
+  DUPLICATE
+  DECLINED
+  CLOSED
 }

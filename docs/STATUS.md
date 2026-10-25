@@ -6,6 +6,14 @@ tokens (light + dark, contrast-tested), the five pinned UI libraries, the kit da
 fixture for every rule). No screen uses the kit yet and no business behavior changed. Branch `ai/claude/ar-0a-kit`.
 Not done here: mounting `<Toaster />` in the desk layout (do it in AR-0b with the first kit screen). Next: AR-0b.
 
+## October 25 (night) — MCP-10a app feedback box built (merged)
+
+Owners, staff and customers can send "App feedback" (a problem with the app or an idea, up to 3 screenshots) and follow
+"My reports"; Chris and admins read, reply, add team-only notes, change status with reasons and mark copies, with a
+To do item for new/answered reports. People-only: every report is HUMAN_ONLY; no AI/ops path reads them (test).
+Privacy export/deletion and backups cover reports, replies and pictures. Branch `ai/claude/mcp-10a-feedback`.
+Not observed yet: a picture saved to a real private store (CI has none). Next: merge after `ci` and review; MCP-11 later.
+
 ## October 25 (evening) — PR #596 merged; fee tax plan added (docs only)
 
 Merged #596 (wave 2 build specs, self-reviewed: Codex out of usage; 8 findings fixed). Late fees now one rule for every

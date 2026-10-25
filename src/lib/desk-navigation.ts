@@ -58,7 +58,7 @@ export const DESK_NAV_ALIASES: Record<string, string[]> = {
   "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders"],
   "/desk/billing": ["/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
   "/desk/more": [
-    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity", "/desk/paperwork", "/desk/account",
+    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity", "/desk/paperwork", "/desk/account", "/desk/feedback",
   ],
 };
 
@@ -73,6 +73,7 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
   ["paperwork", "Business paperwork", "Your LLC, EIN, licenses and insurance, with reminders before anything needs renewing.", "owner"],
   ["privacy", "Privacy requests", "Customers asking to see or delete their information.", "owner"],
+  ["feedback", "App feedback", "Problems with the app and ideas sent by customers and your team.", "finance"],
   ["activity", "Activity", "Who changed what, and when.", undefined],
   ["account", "My account", "Your name, phone, password, sign-in email, devices and two-step sign-in.", undefined],
 ];

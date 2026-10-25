@@ -289,6 +289,7 @@ async function restore(file: string, target: string): Promise<void> {
     const cashEventReversalLinks: Array<{ id: string; priorId: string }> = [];
     const deliveryRevisionLinks: Array<{ id: string; priorId: string }> = [];
     const budgetMoveReversalLinks: Array<{ id: string; priorId: string }> = [];
+    const feedbackDuplicateLinks: Array<{ id: string; priorId: string }> = [];
     for (const table of order) {
       const rows = payload.tables[table] ?? [];
       if (rows.length === 0) continue;
@@ -330,6 +331,7 @@ async function restore(file: string, target: string): Promise<void> {
         bookCashEvent: { key: "reversalOfId", links: cashEventReversalLinks },
         accountingDelivery: { key: "replacesDeliveryId", links: deliveryRevisionLinks },
         budgetMove: { key: "reversalOfId", links: budgetMoveReversalLinks },
+        feedbackReport: { key: "duplicateOfId", links: feedbackDuplicateLinks },
       };
       const nullableHistory = historyByTable[table];
       if (nullableHistory) for (const row of data) {
@@ -428,6 +430,10 @@ async function restore(file: string, target: string): Promise<void> {
 
     for (const link of budgetMoveReversalLinks)
       await prisma.budgetMove.update({ where: { id: link.id }, data: { reversalOfId: link.priorId } });
+    // MCP-10a: "already reported" links between app feedback reports, once every report exists.
+    for (const link of feedbackDuplicateLinks)
+      // Raw SQL so the restored "updatedAt" is kept exactly as backed up.
+      await prisma.$executeRaw`UPDATE "FeedbackReport" SET "duplicateOfId" = ${link.priorId} WHERE "id" = ${link.id}`;
 
     await resetAutoincrementSequences(sql, schema);
     await verifySchemaHealth(prisma);

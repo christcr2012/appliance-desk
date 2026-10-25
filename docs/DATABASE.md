@@ -1281,3 +1281,21 @@ New table `RateLimit` (`key` unique, `count`, `lastRequest` in milliseconds). Be
 Migration `20261024090000_used_appliance_sale` (M-2C) adds nullable `InvoiceLineItem.applianceId` (FK to Appliance, restrict, indexed) so a sale line names the exact used appliance sold, nullable `BookAsset.disposedOn` (set when a sale removes the retired appliance's remaining book value; cleared if that sale is cancelled), and the system chart account `BOOK_VALUE_OF_APPLIANCES_SOLD` (expense). Additive only; no existing row is changed.
 
 **COM-N3 (migration `20261024100000_telecom_statement_expense`, additive):** `TelecomStatement.expenseId` (nullable, unique, restricted foreign key to `Expense`) and `TelecomStatement.paidFromAccountId` (nullable). One statement links to at most one expense, and an expense to at most one statement. Set only by the owner when a verified statement is booked or matched; the expense itself is posted through the existing expense path, so the journal source stays EXPENSE.
+
+## App feedback (MCP-10a, additive migration `20261027020000_feedback`)
+
+Four new tables, people only (every report is `aiReview = HUMAN_ONLY`; no AI or ops path reads them):
+- `FeedbackReport` — one report about the app (never an appliance repair): `number` (auto, shown as "#12"), sender
+  (`reporterUserId`, restricted FK to User) and their role at sending, `kind` BUG/IMPROVEMENT, title/description/
+  expected/steps (length-capped), `routeTemplate` (page shape only, ids replaced by `[id]`), `appRevision`,
+  `safeContext` JSON (language, browser family, device class only), `state` (SUBMITTED … CLOSED), `awaitingTeam`,
+  optional `duplicateOfId` (self link, set null on delete; restored in a second pass), `requestKey` (unique per sender,
+  so a double click makes one report), `contentRemovedAt` (privacy deletion), `version`, `closedAt`.
+- `FeedbackEntry` — a reply or the sender's message (`REPORTER`, they see it) or a team-only note (`INTERNAL`).
+- `FeedbackAttachment` — one screenshot in the private store at `feedback/<report>/<id>.webp` (size, sha256,
+  width/height, `deletedAt`). Included in the nightly private-picture copy.
+- `FeedbackEvent` — history (who, action, from/to state, reason); never report text.
+Settings: `BusinessSettings.feedbackMaxAttachments` (0–3, starting 3) and `feedbackReopenDays` (1–365, starting 90).
+The starting Manager job role gains the new owner/admin `feedback` screen. All four tables are in the backup manifest;
+privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
+keeping numbers, states and dates.
