@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { recordStaffTextConsent, sendWorkflowText, CONSENT_METHODS, type ConsentMethod } from "@/domains/messaging/workflow-text";
+import { startClickToCall } from "@/domains/messaging/click-to-call";
 import { saveServiceReportingSettings } from "@/domains/messaging/telecom-reporting-settings";
-import { approveWorkflowWording, confirmWorkflowLegalReview, saveRenewalWindowDays, saveWorkflowQuietHours, setWorkflowTextEnabled } from "@/domains/messaging/workflow-text-settings";
+import { setClickToCallEnabled, approveWorkflowWording, confirmWorkflowLegalReview, saveRenewalWindowDays, saveWorkflowQuietHours, setWorkflowTextEnabled } from "@/domains/messaging/workflow-text-settings";
 
 export type TextActionState = { ok: boolean; message: string } | null;
 const str = (form: FormData, name: string) => { const v = form.get(name); return typeof v === "string" ? v : ""; };
@@ -97,6 +98,29 @@ export async function confirmLegalReviewAction(_prev: TextActionState, form: For
       revision: str(form, "revision") === "" ? null : Number(str(form, "revision")) });
     revalidatePath("/desk/settings/telecom");
     return { ok: true, message: reviewed ? "Review confirmed for these exact words." : "Review confirmation removed; the text is off." };
+  } catch (e) { return { ok: false, message: plain(e) }; }
+}
+
+/** Start a call: the carrier rings the person's own confirmed phone first. */
+export async function startCallAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
+  const actor = await requireRole("OWNER", "ADMIN", "STAFF");
+  const type = str(form, "type");
+  if (type !== "Job" && type !== "Lead" && type !== "MaintenanceRequest") return { ok: false, message: "That record was not found." };
+  try {
+    const r = await startClickToCall(actor.user.id, { subject: { type, id: str(form, "subjectId") }, clientToken: str(form, "clientToken") });
+    const path = str(form, "path"); if (path.startsWith("/desk/")) revalidatePath(path);
+    if (r.status === "STARTED") return { ok: true, message: "Calling your phone now. Answer it and press 1 to reach the customer." };
+    if (r.status === "UNCONFIRMED") return { ok: false, message: "We could not confirm the call started. Check your phone before trying again." };
+    return { ok: false, message: r.reason };
+  } catch (e) { return { ok: false, message: plain(e) }; }
+}
+
+export async function setClickToCallAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
+  const actor = await requireRole("OWNER");
+  try {
+    await setClickToCallEnabled(actor.user.id, { enabled: str(form, "enabled") === "yes", expectedVersion: Number(str(form, "version")) });
+    revalidatePath("/desk/settings/telecom");
+    return { ok: true, message: str(form, "enabled") === "yes" ? "Calls from the desk are on." : "Calls from the desk are off." };
   } catch (e) { return { ok: false, message: plain(e) }; }
 }
 

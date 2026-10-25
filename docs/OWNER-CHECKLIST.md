@@ -108,7 +108,7 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   purchase), finish carrier/campaign registration, set the Twilio keys in Vercel, register `/api/webhooks/twilio`, set
   the real forwarding phone and hours. Voicemail/recording stay OFF until you approve wording and retention (IN-52).
   Then, per kind of text (lead, estimate, signature): Settings → Phone, texts and provider costs → read and approve the wording
-  and switch it on (all start OFF; COM-N1A). Worked: a test text from the app reaches your own phone; STOP is respected. **When registering the campaign, include
+  and switch it on (all start OFF; COM-N1A). Worked: a test text from the app reaches your own phone; STOP is respected. **Calls from the desk (COM-N2, off):** after call routing works, each staff member confirms their own mobile in My account, then Settings → Phone, texts and provider costs → "Calls from the desk" → Switch on. Worked: pressing Call on a visit rings your own phone first; pressing 1 connects you to a test customer number. **When registering the campaign, include
   "one-time sign-in / security codes" as a use case** so sign-in texts are allowed. ACC-3 is built (text codes
   are off). Once texting is live: Settings → Security → tick "Send sign-in codes by text" and save (the Switches page then
   shows it), save your mobile phone on My account → check it with the text code → My account → "Second step" → switch

@@ -96,7 +96,7 @@ export function maskPhone(e164: string): string {
 }
 
 type Db = Prisma.TransactionClient;
-type SendContext = {
+export type SendContext = {
   enabled: boolean;
   policy: CommunicationsPolicy | null;
   policyVersion: number;
@@ -110,7 +110,7 @@ async function loadAccount(db: Db, policy: CommunicationsPolicy | null) {
   return account && account.numbers[0] ? { ...account, number: account.numbers[0] } : null;
 }
 
-async function loadSendContext(db: Db): Promise<SendContext> {
+export async function loadSendContext(db: Db): Promise<SendContext> {
   const settings = await db.businessSettings.findUnique({ where: { id: "singleton" },
     select: { customerSmsEnabled: true, communicationsPolicy: true, communicationsPolicyVersion: true } });
   const parsed = communicationsPolicySchema.safeParse(settings?.communicationsPolicy);
@@ -277,7 +277,7 @@ async function buildPreview(tx: Db, family: WorkflowTextFamily, subjectId: strin
   return base;
 }
 
-async function ensureContact(
+export async function ensureContact(
   tx: Db, actorUserId: string, ctx: SendContext & { account: NonNullable<SendContext["account"]> },
   subject: LoadedSubject, now: Date,
 ): Promise<{ pointId: string }> {
@@ -357,7 +357,7 @@ async function loadSubjectForPrincipal(tx: Db, principal: WorkflowPrincipal): Pr
   return null;
 }
 
-async function ensureThread(
+export async function ensureThread(
   tx: Db, ctx: SendContext & { account: NonNullable<SendContext["account"]> }, subject: LoadedSubject, pointId: string, now: Date,
 ): Promise<{ id: string; version: number }> {
   const key = { accountId: ctx.account.id, businessNumberId: ctx.account.number.id, externalContactPointId: pointId };

@@ -167,7 +167,7 @@ export async function incomingVoice(v: VerifiedVoice): Promise<string> {
   });
 }
 
-async function getSession(tx: Tx, v: VerifiedVoice, rootSid: string) {
+async function getSession(tx: Tx, v: { accountId: string }, rootSid: string) {
   return tx.callSession.findUnique({
     where: { accountId_providerRootCallId: {
       accountId: v.accountId, providerRootCallId: rootSid,
@@ -249,7 +249,7 @@ type StatusSummary = {
 const rank: Record<string, number> = { QUEUED: 1, RINGING: 2, IN_PROGRESS: 3 };
 
 async function applyStatus(
-  tx: Tx, v: VerifiedVoice, eventId: string, summary: StatusSummary,
+  tx: Tx, v: { accountId: string }, eventId: string, summary: StatusSummary,
 ): Promise<boolean> {
   const state = summary.state as "QUEUED" | "RINGING" | "IN_PROGRESS" |
     "COMPLETED" | "BUSY" | "NO_ANSWER" | "CANCELED" | "FAILED";
@@ -267,7 +267,8 @@ async function applyStatus(
       startedAt: at,
       accountId: v.accountId, callSessionId: session.id,
       providerCallId: summary.callSid, providerParentCallId: summary.parentSid,
-      role: summary.parentSid ? "FORWARD" : "INBOUND",
+      role: session.direction === "OUTBOUND" ? (summary.parentSid ? "CUSTOMER" : "STAFF")
+        : summary.parentSid ? "FORWARD" : "INBOUND",
       status: state, sequenceNumber: summary.seq,
       durationSeconds: summary.seconds,
       endedAt: terminal.has(state) ? at : null,
@@ -380,5 +381,120 @@ export async function dialResult(v: VerifiedVoice): Promise<string> {
     }, data: { summary: { step: "dial-result", bridged, childSid,
       status: dialStatus, conflict }, processedAt: new Date() } });
     return response.xml;
+  });
+}
+
+
+/** Applies carrier progress reports that arrived before we knew the call's id. Safe to run again. */
+export async function settlePendingVoiceStatuses(tx: Tx, accountId: string, callSid: string) {
+  const pending = await tx.providerEvent.findMany({
+    where: { provider: "twilio", telecomAccountId: accountId, type: "voice.status", disposition: "PENDING_MATCH",
+      OR: [{ summary: { path: ["parentSid"], equals: callSid } }, { summary: { path: ["callSid"], equals: callSid } }] },
+    orderBy: [{ receivedAt: "asc" }, { id: "asc" }], take: 50, select: { eventId: true, summary: true },
+  });
+  for (const item of pending) {
+    const parsed = item.summary as StatusSummary | null;
+    if (parsed && typeof parsed.callSid === "string" && typeof parsed.state === "string") {
+      await applyStatus(tx, { accountId }, item.eventId, parsed);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Click-to-call (COM-N2). The carrier rings the staff member's own confirmed phone first. Only after they
+// press 1 does it dial the customer, using the business number as caller ID. The customer's number is always
+// read from our own record, never from anything the callback sends.
+// ---------------------------------------------------------------------------------------------
+
+/** Authority is checked again at each step: a person who lost access, or a job moved to someone else, stops the call. */
+async function callAuthorityHolds(tx: Tx, session: { id: string; actorUserId: string | null }): Promise<boolean> {
+  if (!session.actorUserId) return false;
+  const user = await tx.user.findUnique({ where: { id: session.actorUserId }, select: { role: true, archivedAt: true } });
+  if (!user || user.archivedAt || !["OWNER", "ADMIN", "STAFF"].includes(user.role)) return false;
+  if (user.role !== "STAFF") return true;
+  const started = await tx.auditLog.findFirst({
+    where: { action: "COMMUNICATION_CALL_STARTED", newValue: { path: ["callSessionId"], equals: session.id } },
+    select: { entityType: true, entityId: true },
+  });
+  if (!started?.entityId || started.entityType !== "Job") return false;
+  const job = await tx.job.findUnique({ where: { id: started.entityId }, select: { assignedToUserId: true, status: true } });
+  return job?.assignedToUserId === session.actorUserId && (job.status === "SCHEDULED" || job.status === "IN_PROGRESS");
+}
+
+export async function clickToCallStep(
+  v: VerifiedVoice, sessionId: string, step: "prompt" | "decision" | "done",
+): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    await lockAccount(tx, v.accountId);
+    const session = await tx.callSession.findUnique({ where: { id: sessionId },
+      include: { businessNumber: { select: { address: true } }, contactPoint: { select: { address: true } } } });
+    if (!session || session.accountId !== v.accountId || session.direction !== "OUTBOUND") throw new Error("Unknown click-to-call.");
+    const enabled = v.policy.voiceRoutingEnabled === true && v.policy.clickToCallEnabled === true &&
+      v.policy.primaryAccountId === v.accountId && v.policy.primaryNumberId === session.businessNumberId &&
+      v.policyVersion === v.policy.approvedPolicyVersion;
+    const live = enabled && session.state !== "ENDED" && session.state !== "FAILED";
+    if (session.providerRootCallId.startsWith("pending:") && step === "prompt") {
+      // The carrier can ask for instructions before we have saved its call id; bind it now (once).
+      await tx.callSession.update({ where: { id: session.id }, data: { providerRootCallId: v.callSid } });
+    } else if (session.providerRootCallId !== v.callSid && !session.providerRootCallId.startsWith("pending:")) {
+      throw new Error("Call does not match this click-to-call.");
+    }
+    const eventKey = key(v, "c2c-" + step, v.callSid);
+    const authority = live && await callAuthorityHolds(tx, session);
+    let xml: string;
+    if (step === "prompt") {
+      if (!authority) xml = speech("Sorry, this call cannot be placed right now.");
+      else {
+        const t = new twilio.twiml.VoiceResponse();
+        const g = t.gather({ input: ["dtmf"], numDigits: 1, timeout: 8, actionOnEmptyResult: true, method: "POST",
+          action: `${v.canonicalOrigin}/api/webhooks/twilio/voice/click-to-call?op=${session.id}&step=decision` });
+        g.say("This is a Robinson Appliance Rentals business call. Press 1 to place your call.");
+        t.hangup();
+        xml = t.toString();
+      }
+    } else if (step === "decision") {
+      if (!authority || v.form.get("Digits") !== "1" || !session.contactPoint) {
+        xml = authority ? hangup() : speech("Sorry, this call cannot be placed right now.");
+      } else {
+        const t = new twilio.twiml.VoiceResponse();
+        t.say("Connecting your call.");
+        const dial = t.dial({ answerOnBridge: true, timeout: 25, record: "do-not-record", callerId: session.businessNumber.address,
+          method: "POST", action: `${v.canonicalOrigin}/api/webhooks/twilio/voice/click-to-call?op=${session.id}&step=done` });
+        dial.number({ statusCallback: v.canonicalOrigin + "/api/webhooks/twilio/voice/status", statusCallbackMethod: "POST",
+          statusCallbackEvent: ["initiated", "ringing", "answered", "completed"] }, session.contactPoint.address);
+        xml = t.toString();
+      }
+    } else {
+      xml = hangup();
+    }
+    const stored = await storeTwiML(tx, v, eventKey, "c2c." + step, xml);
+    if (!stored.fresh) return stored.xml;
+
+    const now = new Date();
+    if (step === "prompt") {
+      await tx.callLeg.upsert({
+        where: { accountId_providerCallId: { accountId: v.accountId, providerCallId: v.callSid } },
+        create: { accountId: v.accountId, callSessionId: session.id, providerCallId: v.callSid, role: "STAFF",
+          status: "IN_PROGRESS", startedAt: now },
+        update: {},
+      });
+      await settlePendingVoiceStatuses(tx, v.accountId, v.callSid);
+      if (!authority) await tx.callSession.update({ where: { id: session.id }, data: { state: "ENDED", endedAt: now, outcome: "UNKNOWN", version: { increment: 1 } } });
+    } else if (step === "decision") {
+      const pressed = authority && v.form.get("Digits") === "1";
+      if (pressed) {
+        await tx.callLeg.updateMany({ where: { accountId: v.accountId, providerCallId: v.callSid }, data: { answeredByStaffAt: now } });
+      } else {
+        await tx.callSession.update({ where: { id: session.id }, data: { state: "ENDED", endedAt: now,
+          outcome: authority ? "DECLINED" : "UNKNOWN", version: { increment: 1 } } });
+      }
+    } else {
+      const dialStatus = v.form.get("DialCallStatus");
+      const bridged = v.form.get("DialBridged") === "true" && dialStatus === "completed";
+      await tx.callSession.update({ where: { id: session.id }, data: bridged
+        ? { state: "ENDED", endedAt: now, outcome: "ANSWERED", connectedAt: session.connectedAt ?? now, version: { increment: 1 } }
+        : { state: "ENDED", endedAt: now, outcome: "MISSED", version: { increment: 1 } } });
+    }
+    return stored.xml;
   });
 }

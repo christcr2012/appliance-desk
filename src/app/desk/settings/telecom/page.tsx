@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { WorkflowTextsSettings } from "@/app/desk/_text/workflow-texts-settings";
+import { ClickToCallSwitch } from "@/app/desk/_text/call-form";
 import { ServiceReportingForm } from "@/app/desk/_text/service-reporting-form";
 import { RECOMMENDED_SERVICE_REPORTING, getServiceReportingSettings } from "@/domains/messaging/telecom-unit-economics";
 import { getWorkflowTextSettings } from "@/domains/messaging/workflow-text-settings";
@@ -134,6 +135,11 @@ export default async function TelecomSettingsPage() {
         the person has agreed to texts, and it is outside quiet hours.</p>
       <div className="mt-3"><WorkflowTextsSettings families={textSettings.families} version={textSettings.policyVersion}
         quietHours={textSettings.quietHours} isRecommended={textSettings.quietHoursIsRecommended} policyReady={textSettings.policyReady} renewalWindowDays={textSettings.renewalWindowDays} /></div>
+      <h3 className="mt-4 font-semibold">Calls from the desk</h3>
+      <p className="mt-1 text-sm text-ink-soft">Lets assigned staff (and you) press the Call button on a visit, lead or request. The
+        carrier rings that person&apos;s confirmed mobile first; the customer is dialed only after they press 1, and the customer sees the
+        business number. Each person confirms their own mobile in My account. Starting value: off.</p>
+      <ClickToCallSwitch enabled={textSettings.clickToCall.enabled} voiceReady={textSettings.clickToCall.voiceReady} version={textSettings.policyVersion} />
     </section>}
     {canEdit && textSettings && reporting && <section aria-labelledby="service-reporting" className="rounded-card border border-line p-4">
       <h2 id="service-reporting" className="text-lg font-semibold">Cost-per-customer report</h2>

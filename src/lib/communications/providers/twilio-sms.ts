@@ -1,6 +1,6 @@
 import { isTestingEnvironment } from "@/lib/testing-environment";
 import twilio from "twilio";
-import type { TelecomSmsProvider, SmsSubmitOutcome, SmsProviderInput } from "./types";
+import type { TelecomSmsProvider, SmsSubmitOutcome, SmsProviderInput, TelecomVoiceProvider, VoiceCallInput, VoiceCallOutcome } from "./types";
 
 export function classifyTwilioSubmitError(error: unknown): SmsSubmitOutcome {
   const status = (error as { status?: unknown } | null)?.status;
@@ -59,6 +59,36 @@ export function makeTwilioSmsProvider(accountSid: string): TelecomSmsProvider | 
         return row.sid ? { kind: "ACCEPTED", resourceId: row.sid } : { kind: "UNKNOWN" };
       } catch (error) {
         return classifyTwilioSubmitError(error);
+      }
+    },
+  };
+}
+
+/** Same live-only fence as texts. One ambiguous POST is never issued twice. */
+export function makeTwilioVoiceProvider(accountSid: string): TelecomVoiceProvider | null {
+  if (isTestingEnvironment() || process.env.VERCEL !== "1" || process.env.VERCEL_ENV !== "production") return null;
+  const configuredSid = process.env.TWILIO_ACCOUNT_SID;
+  const apiKey = process.env.TWILIO_API_KEY;
+  const apiSecret = process.env.TWILIO_API_SECRET;
+  if (!/^AC[0-9a-fA-F]{32}$/.test(accountSid) || configuredSid !== accountSid || !apiKey || !apiSecret) return null;
+  const client = twilio(apiKey, apiSecret, { accountSid });
+  return {
+    async createCall(input: VoiceCallInput): Promise<VoiceCallOutcome> {
+      if (!/^\+\d{8,15}$/.test(input.from) || !/^\+\d{8,15}$/.test(input.to) || !input.operationId ||
+          !/^https:\/\/[A-Za-z0-9.-]+\//.test(input.url) || input.url.includes("@") ||
+          !/^https:\/\/[A-Za-z0-9.-]+\//.test(input.statusCallback) || input.statusCallback.includes("@")) {
+        return { kind: "NOT_ATTEMPTED", reason: "INVALID_PROVIDER_REQUEST" };
+      }
+      try {
+        const call = await client.calls.create({
+          from: input.from, to: input.to, url: input.url, method: "POST", timeout: 25,
+          statusCallback: input.statusCallback, statusCallbackMethod: "POST",
+          statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+        });
+        return call.sid ? { kind: "ACCEPTED", resourceId: call.sid } : { kind: "UNKNOWN" };
+      } catch (error) {
+        const mapped = classifyTwilioSubmitError(error);
+        return mapped.kind === "REJECTED" ? mapped : { kind: "UNKNOWN" };
       }
     },
   };

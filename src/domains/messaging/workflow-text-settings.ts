@@ -20,6 +20,7 @@ export type FamilySetting = {
 export type WorkflowTextSettings = {
   policyReady: boolean; policyVersion: number; quietHours: QuietHours; quietHoursIsRecommended: boolean;
   families: FamilySetting[];
+  clickToCall: { enabled: boolean; voiceReady: boolean };
   renewalWindowDays: number;
 };
 
@@ -44,6 +45,7 @@ export async function getWorkflowTextSettings(ownerUserId: string): Promise<Work
     return {
       policyReady: Boolean(policy), policyVersion: settings?.communicationsPolicyVersion ?? 0,
       quietHours: quiet, renewalWindowDays: policy?.workflowTexts?.renewalWindowDays ?? 60,
+      clickToCall: { enabled: policy?.clickToCallEnabled === true, voiceReady: policy?.voiceRoutingEnabled === true },
       quietHoursIsRecommended: quiet.startMinute === RECOMMENDED_QUIET_HOURS.startMinute && quiet.endMinute === RECOMMENDED_QUIET_HOURS.endMinute,
       families: WORKFLOW_TEXT_FAMILIES.map((family) => {
         const rev = current.find((r) => r.key === family.key);
@@ -183,6 +185,25 @@ export async function approveWorkflowWording(
     await tx.auditLog.create({ data: { userId: ownerUserId, action: "COMMUNICATION_TEMPLATE_APPROVED",
       entityType: "CommunicationTemplateRevision", entityId: `${family.key}:${revision}`, newValue: { revision } } });
     return { revision, changed: true };
+  });
+}
+
+/** Owner switch for "Call from the desk". Needs call routing set up first; never changes any other switch. */
+export async function setClickToCallEnabled(
+  ownerUserId: string, input: { enabled: boolean; expectedVersion: number },
+): Promise<{ version: number }> {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, ownerUserId, ["OWNER"]);
+    if (input.enabled) {
+      const row = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { communicationsPolicy: true } });
+      const current = communicationsPolicySchema.safeParse(row?.communicationsPolicy);
+      if (!current.success || current.data.voiceRoutingEnabled !== true) {
+        throw new Error("Set up and switch on phone call routing first, then you can allow calls from the desk.");
+      }
+    }
+    const version = await updatePolicy(tx, ownerUserId, input.expectedVersion,
+      (p) => ({ ...p, clickToCallEnabled: input.enabled }), { clickToCallEnabled: input.enabled });
+    return { version };
   });
 }
 

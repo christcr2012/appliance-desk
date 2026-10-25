@@ -20,6 +20,9 @@ vi.mock("@/components/desk/context-communication-panel", () => ({
 vi.mock("@/app/desk/_text/send-text-panel", () => ({
   SendTextPanel: () => null,
 }));
+vi.mock("@/app/desk/_text/call-panel", () => ({
+  CallPanel: () => null,
+}));
 vi.mock("@/domains/maintenance", () => ({
   getMaintenanceRequestById: mocks.maintenance,
 }));
