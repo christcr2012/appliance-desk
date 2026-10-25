@@ -338,7 +338,7 @@ Design: `docs/designs/BATCH-O.md`; work coverage and prerequisites: work-index.
 
 - [x] Settings history in plain words with one-step undo through the normal save path.
 - [x] Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
-- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Built: write-off and expense approvals (O-3A) and refund, held-payment refund, kept-deposit and credit approvals (O-3B, tested with a fake Stripe; the browser test is planned in AR-10))_
+- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Built: write-off and expense approvals (O-3A) and refund, held-payment refund, kept-deposit and credit approvals (O-3B, tested with a fake Stripe; the browser test is planned in AR-10a))_
 - [x] Scheduled price changes applied once on their start date; agreements unchanged. _(applies to appliance-type prices; package and set prices are not covered)_
 - [x] Goals with pace on Today; idle-appliance and utilization alerts.
 - [x] Read-only page of every live switch with links.

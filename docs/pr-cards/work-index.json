@@ -4654,18 +4654,26 @@
       ],
       "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
-      "budget": 420,
+      "budget": 700,
       "units": [
-        "AR-10"
+        "AR-10a",
+        "AR-10b"
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
-        "docs/DESIGN-SYSTEM.md"
+        "docs/DESIGN-SYSTEM.md",
+        "docs/build-specs/screens/FINAL-SWEEP.md",
+        "docs/END-USER-AUTHORITY.md"
       ],
       "tests": [
-        "tests/ar10-sweep-guards.test.ts"
+        "tests/ar10-sweep-guards.test.ts",
+        "tests/server-action-auth-inventory.test.ts",
+        "tests/desk-page-auth-inventory.test.ts",
+        "tests/api-route-auth-inventory.test.ts",
+        "tests/customer-ab-matrix-integration.test.ts",
+        "e2e/approvals.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-10.md"
     },
     {
@@ -5067,6 +5075,63 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/MCP-11.md"
+    },
+    {
+      "id": "PORTAL-1",
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/PORTAL-1.md",
+      "title": "Customer portal redesign on the kit: home, rentals, repairs, bills, properties, account",
+      "batch": "AR",
+      "dependencies": [
+        "AR-0",
+        "AR-1",
+        "AR-12"
+      ],
+      "migration": "none",
+      "budget": 550,
+      "evidence": [
+        "docs/build-specs/screens/PORTAL.md",
+        "src/app/account",
+        "src/domains/portal/workspace.ts"
+      ],
+      "tests": [
+        "tests/agreement-totals.test.ts",
+        "tests/kit-words.test.ts",
+        "tests/customer-isolation.test.ts",
+        "e2e/portal.spec.ts"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "units": [
+        "PORTAL-1"
+      ]
+    },
+    {
+      "id": "ACC-6",
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/ACC-6.md",
+      "title": "Remember this device (owner setting), server-side trust guard, known devices, customer new-device notice",
+      "batch": "ACC",
+      "dependencies": [
+        "ACC-5",
+        "DEC-1"
+      ],
+      "migration": "20261030000000_known_devices (KnownDevice, BusinessSettings.trustedDeviceDays)",
+      "budget": 420,
+      "evidence": [
+        "docs/build-specs/engines/TRUSTED-DEVICES.md",
+        "docs/designs/ACCOUNTS-AND-SIGN-IN.md",
+        "src/lib/auth.ts",
+        "src/domains/security/sign-in-guard.ts"
+      ],
+      "tests": [
+        "tests/trusted-devices-integration.test.ts",
+        "tests/known-devices.test.ts",
+        "e2e/my-account.spec.ts"
+      ],
+      "status": "APPROVED (ACC batch) — designed 2026-10-23",
+      "units": [
+        "ACC-6"
+      ]
     }
   ],
   "enhancements": [

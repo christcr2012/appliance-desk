@@ -14,7 +14,7 @@ pages to `docs/build-specs/migrated-pages.json` only when converted).
 - Entry label everywhere: **"App feedback"**. Form title: **"Tell us about the app"**. Choice: "Something isn't
   working" (BUG) / "I have an idea" (IMPROVEMENT).
 - Under the form title, always: "This is for problems with this website or app. **Appliance not working?** [Request a
-  repair](/account/maintenance/new)" (customers) or "[Open repairs](/desk/maintenance)" (team).
+  repair](/account/maintenance?request=repair)" (customers) or "[Open repairs](/desk/maintenance)" (team).
 - Privacy line above the submit button: "Chris and his team read these. Don't include passwords, card numbers or
   access codes."
 - Reporter-facing state words: SUBMITTED "Received", TRIAGED "Being looked at", NEEDS_INFORMATION "We have a
