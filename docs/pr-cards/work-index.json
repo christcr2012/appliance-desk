@@ -4725,46 +4725,6 @@
     },
     {
       "id": "DEC-1",
-<<<<<<< HEAD
-      "title": "Decisions & reviews center: every open decision runs on a researched starting value and waits as an in-app question for Chris, CPA, attorney or translator",
-      "batch": "DEC",
-      "dependencies": [],
-      "status": "DESIGNED — Chris's direction 2026-10-25",
-      "migration": "decision_record",
-      "budget": 460,
-      "units": [
-        "DEC-1"
-      ],
-      "evidence": [
-        "docs/designs/DECISIONS-CENTER.md",
-        "docs/OWNER-INPUTS.md",
-        "docs/designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md"
-      ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/DEC-1.md"
-    },
-    {
-      "id": "DEC-2",
-      "title": "Researched starting values for every open decision (replace UNDECIDED defaults), in reviewable batches by area",
-      "batch": "DEC",
-      "dependencies": [
-        "DEC-1"
-      ],
-      "status": "DESIGNED — Chris's direction 2026-10-25",
-      "migration": "none",
-      "budget": 460,
-      "units": [
-        "DEC-2"
-      ],
-      "evidence": [
-        "docs/designs/DECISIONS-CENTER.md",
-        "docs/research/2026-10-15-owner-decision-follow-through.md"
-      ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/DEC-2.md"
-=======
       "title": "Decisions & reviews center: registry, answers with evidence, questionnaire forms, import, provisional tax values",
       "batch": "DEC",
       "dependencies": [
@@ -4788,7 +4748,27 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/DEC-1.md"
->>>>>>> 13d8f794 (Build specs: Decisions & reviews center (DEC-1) spec and card)
+    },
+    {
+      "id": "DEC-2",
+      "title": "Researched starting values for every open decision (replace UNDECIDED defaults), in reviewable batches by area",
+      "batch": "DEC",
+      "dependencies": [
+        "DEC-1"
+      ],
+      "status": "DESIGNED — Chris's direction 2026-10-25",
+      "migration": "none",
+      "budget": 460,
+      "units": [
+        "DEC-2"
+      ],
+      "evidence": [
+        "docs/designs/DECISIONS-CENTER.md",
+        "docs/research/2026-10-15-owner-decision-follow-through.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/DEC-2.md"
     }
   ],
   "enhancements": [
