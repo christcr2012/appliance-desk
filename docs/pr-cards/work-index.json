@@ -1622,7 +1622,8 @@
       ],
       "tests": [
         "tests/scheduled-prices.test.ts",
-        "tests/scheduled-prices-integration.test.ts"
+        "tests/scheduled-prices-integration.test.ts",
+        "tests/scheduled-package-prices-integration.test.ts"
       ],
       "readiness": "MERGED",
       "card": "docs/pr-cards/O-4.md"

@@ -17,6 +17,8 @@ const SHARED_SETTINGS_TESTS = [
   "tests/used-appliance-sale-integration.test.ts", // M-2C sets and restores the shared books start date.
   "tests/shop-sale-delivery-fee-integration.test.ts", // M-1C sets and restores the shared delivery-fee settings and creates a Colorado filing account.
   "tests/capabilities-integration.test.ts", // O-2A limits an admin and restores it; reads/writes the shared override table and settings row.
+  "tests/scheduled-prices-integration.test.ts", // O-4 the nightly job applies every due change in the database; it must not overlap the set-price suite.
+  "tests/scheduled-package-prices-integration.test.ts", // O-4 same nightly job as above, for rental sets.
   "tests/settings-undo-integration.test.ts", // O-1 changes and restores shared BusinessSettings fields and reads the settings audit history.
   "tests/bank-reconciliation-integration.test.ts",
   "tests/budget-money-integration.test.ts",
