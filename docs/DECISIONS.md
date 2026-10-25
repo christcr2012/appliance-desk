@@ -1,3 +1,14 @@
+## October 25 — An accountant sign-in, and the system handles the books and tax benefits (Chris)
+
+Chris: the system must handle write-offs and other benefits (small and new businesses included); a CPA will do his
+taxes and check the books periodically. He needs to send a sign-in link to a CPA or other tax professional who can see
+and change the accounting, and to remove that account or reset its login for a new professional. Approved access level
+ACCOUNTANT (ACCT-1, `docs/build-specs/engines/ACCOUNTANT-ACCESS.md`), limited to books/taxes/compliance/CPA decisions
+and records he shares; never the vault. Tax benefits engine: TAXBEN (spec to follow research).
+He also asked (same day) that the app walk him through setting everything up and store due dates, accounts, numbers,
+logins, articles, licenses, permits and TCCs (VAULT-1/2, SETUP-1), and that we decide and design everything else a
+one-person business needs (`docs/designs/OWNER-OPERATING-SYSTEM.md`).
+
 ## October 25 — Late rule changes: the business absorbs, customers get credited (Chris)
 
 "if something like that passes the required, and implementation is past the due date, any customer billing that occurs
