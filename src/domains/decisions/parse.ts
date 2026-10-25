@@ -77,7 +77,7 @@ type Section = {
   headings: number;
 };
 
-type SheetEntry = { answer: string | null; effective: string | null; explanation: string | null };
+type SheetEntry = { answer: string | null; effective: string | null; explanation: string | null; lines: number };
 
 const LABEL = {
   effective: /^\s*effective\s+from\s*:?\s*(.*)$/i,
@@ -124,7 +124,8 @@ export function parseQuestionnaire(text: string): ParsedQuestionnaire {
         const split = /\s+effective\s+from\s*:?\s*/i.exec(body);
         const answer = clean(split ? body.slice(0, split.index) : body) || null;
         const effective = split ? clean(body.slice(split.index + split[0].length)) || null : null;
-        const entry = sheet.get(id) ?? { answer: null, effective: null, explanation: null };
+        const entry = sheet.get(id) ?? { answer: null, effective: null, explanation: null, lines: 0 };
+        entry.lines += 1;
         entry.answer = entry.answer ?? answer;
         entry.effective = entry.effective ?? effective;
         sheet.set(id, entry);
@@ -181,7 +182,8 @@ export function parseQuestionnaire(text: string): ParsedQuestionnaire {
     const section = sections.get(code);
     const entry = sheet.get(code);
     const problems: string[] = [];
-    if (section && section.headings > 1) problems.push("This question appears more than once in the form.");
+    // Two sections or two answer-sheet lines for one code: never pick one of them.
+    if ((section && section.headings > 1) || (entry && entry.lines > 1)) problems.push("This question appears more than once in the form.");
     const ticks = section ? [...section.ticks, ...(section.other !== null ? ["Other"] : [])] : [];
     if (ticks.length > 1) problems.push("Two answers were ticked.");
 

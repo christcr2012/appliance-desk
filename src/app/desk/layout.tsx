@@ -5,7 +5,6 @@ import {
 } from "@/lib/session";
 import { AppShell } from "@/components/ui";
 import { IdleLogout } from "@/components/idle-logout";
-import { Toaster } from "@/components/kit";
 import { deskNavigation } from "@/lib/desk-navigation";
 import { enforceJobRoleScreen, jobRoleScreens } from "@/lib/job-role-guard";
 import { isTwoFactorEnrollmentExemptPath } from "@/domains/security/two-factor";
@@ -29,8 +28,6 @@ export default async function DeskLayout({
     <>
       <AppShell nav={groups} role={role}>{children}</AppShell>
       <IdleLogout timeoutMinutes={20} />
-      {/* KIT 4.15: the one toast region for every desk screen. */}
-      <Toaster />
     </>
   );
 }

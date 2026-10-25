@@ -80,6 +80,15 @@ describe("parseQuestionnaireAnswers", () => {
     expect(answers[1]!.problem).toBe("The question and the answer sheet give different answers.");
   });
 
+  it("two answer-sheet lines for one code are refused, never resolved by picking the first", () => {
+    const [answer] = parseQuestionnaireAnswers([
+      "Answered by: A",
+      "[DQ-IN-34-DELIVERY-STATE] Answer: Charge sales tax on it",
+      "[DQ-IN-34-DELIVERY-STATE] Answer: Don't charge sales tax on it",
+    ].join("\n"));
+    expect(answer!.problem).toBe("This question appears more than once in the form.");
+  });
+
   it("an unreadable effective date is a problem, not a guess", () => {
     const [answer] = parseQuestionnaireAnswers("[DQ-IN-71] x\n☒ 7 years after the appliance leaves the fleet\nEffective from: next spring\nAnswered by: A");
     expect(answer!.problem).toMatch(/couldn't be read/);

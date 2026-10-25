@@ -1,7 +1,11 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import mammoth from "mammoth";
 import { expect, test, type Page } from "@playwright/test";
 import { scanAccessibilityRoute } from "./accessibility-route-helpers";
+import { loginAs } from "./utils/auth";
+import { completeTwoFactorSetup } from "./utils/two-factor";
 
 // DEC-1b: Settings › Decisions & reviews in a real browser. The owner keeps, changes, asks, enters a professional's
 // answer with their form, downloads both questionnaire formats and imports a completed form. Admins see the cards
@@ -134,14 +138,23 @@ test("decisions: keep, change, ask, enter an answer, download and import", async
 });
 
 test("decisions: admins read without buttons; staff are sent away", async ({ browser }) => {
-  const adminState = "e2e/.auth/admin.json";
   const staffState = "e2e/.auth/staff.json";
-  test.skip(!enabled || !fs.existsSync(adminState) || !fs.existsSync(staffState), "Saved admin and staff sessions required.");
-  const admin = await browser.newContext({ storageState: adminState });
+  test.skip(!enabled || !fs.existsSync(staffState), "Disposable Postgres and a saved staff session required.");
+  test.setTimeout(90_000);
+  const { prisma } = await import("../src/lib/prisma");
+  // A fresh admin of this test's own, so other tests that sign admins out or limit them can't affect it.
+  const email = `dec1b-admin-${randomUUID().slice(0, 8)}@example.test`;
+  const password = `Dec1b-${randomUUID()}`;
+  const adminId = execFileSync("npx", ["tsx", "scripts/create-ci-login.ts", email, password, "ADMIN"], { encoding: "utf8", env: process.env }).trim();
+  const admin = await browser.newContext();
   const staff = await browser.newContext({ storageState: staffState });
   try {
     const a = await admin.newPage();
+    await loginAs(a, email, password);
+    await a.goto("/desk/today");
+    if (new URL(a.url()).pathname === "/desk/security/setup") await completeTwoFactorSetup(a, password);
     await a.goto("/desk/settings/decisions?for=CPA");
+    await expect(a).toHaveURL(/\/desk\/settings\/decisions\?for=CPA$/);
     await expect(a.getByRole("heading", { name: "Decisions & reviews", level: 1 })).toBeVisible();
     await expect(a.getByRole("article").first()).toBeVisible();
     await expect(a.getByRole("button", { name: "Keep this" })).toHaveCount(0);
@@ -156,5 +169,6 @@ test("decisions: admins read without buttons; staff are sent away", async ({ bro
   } finally {
     await admin.close();
     await staff.close();
+    await prisma.user.update({ where: { id: adminId }, data: { archivedAt: new Date() } });
   }
 });

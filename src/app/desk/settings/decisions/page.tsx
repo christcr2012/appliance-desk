@@ -8,6 +8,7 @@ import {
   DecisionCard,
   EmptyState,
   ScreenHeader,
+  Toaster,
   StatusTabs,
   Toolbar,
   actionButtonClass,
@@ -86,7 +87,10 @@ export default async function DecisionsPage({ searchParams }: { searchParams: Pr
   const word = params.tab === "ANSWERED" ? "" : audienceWord(params.tab);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    // px-1: the shell's phone gutter is 16 px; the kit's tabs bleed 20 px (KIT spacing), so this keeps them on screen.
+    <div className="mx-auto max-w-3xl px-1 lg:px-0">
+      {/* KIT 4.15 toasts for this screen. AR-0b moves the one Toaster into the desk layout. */}
+      <Toaster />
       <ScreenHeader
         title="Decisions & reviews"
         back={{ href: "/desk/settings", label: "Back to settings" }}
