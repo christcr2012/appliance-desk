@@ -1,3 +1,10 @@
+## October 25 — Security fix: list pages checked access only in the desk frame
+
+Found while writing the build specs: the Customers, Repairs and Parts lists read their data without their own access
+check; only the surrounding desk frame checked. Next.js does not re-run that frame on every navigation, so each read
+must check by itself (AGENTS section 4). Added the check to the six reads, made the customers count match the list
+(it counted the hidden walk-in customer), and a test that each read refuses before touching the database.
+
 ## October 25 — Two-tone logo restored on the website and app
 
 Chris noticed the lime-green leg of his R logo appears nowhere on the site. Cause: the Sept 29 brand-kit commit copied
