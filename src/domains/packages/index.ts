@@ -131,6 +131,44 @@ export async function updatePackage(userId: string, packageId: string, input: Pa
   });
 }
 
+/**
+ * The set price save alone, inside a transaction the caller owns (the caller has already checked who may do this).
+ * Locks the set first. The scheduled-price nightly job (Batch O-4) calls this, so a scheduled change leaves the same
+ * history and audit rows as a typed one. Agreements already signed keep their own prices.
+ */
+export async function updatePackagePriceInTx(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  packageId: string,
+  newPriceCents: number,
+  extraAudit: Record<string, string> = {},
+) {
+  if (!Number.isInteger(newPriceCents) || newPriceCents < 0) throw new PackageInputError("Enter a valid price.");
+  const before = await lockPackage(tx, packageId);
+  if (before.monthlyPriceCents === newPriceCents) return before;
+  const updated = await tx.rentalPackage.update({ where: { id: packageId }, data: { monthlyPriceCents: newPriceCents } });
+  await tx.pricingRule.create({
+    data: {
+      label: `${before.name} — set price`,
+      monthlyPriceCents: newPriceCents,
+      changedBy: userId,
+      oldValueCents: before.monthlyPriceCents,
+      newValueCents: newPriceCents,
+    },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId,
+      action: "package.update",
+      entityType: "RentalPackage",
+      entityId: packageId,
+      oldValue: { monthlyPriceCents: before.monthlyPriceCents },
+      newValue: { monthlyPriceCents: newPriceCents, ...extraAudit },
+    },
+  });
+  return updated;
+}
+
 export async function setPackageVisibility(userId: string, packageId: string, showOnWebsite: boolean) {
   return prisma.$transaction(async (tx) => {
     await assertCapability(tx, userId, "EDIT_SETTINGS");

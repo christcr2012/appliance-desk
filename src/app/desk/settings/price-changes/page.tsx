@@ -11,6 +11,7 @@ import {
   listScheduledPriceChanges,
   previewScheduledPriceChange,
   scheduleAppliancePriceChange,
+  schedulePackagePriceChange,
   type ScheduledPriceRow,
 } from "@/domains/pricing/scheduled";
 
@@ -36,12 +37,17 @@ async function schedule(form: FormData) {
   const session = await requireRole("OWNER", "ADMIN");
   let message: string;
   try {
-    await scheduleAppliancePriceChange(session.user.id, {
-      applianceTypeId: String(form.get("applianceTypeId") ?? ""),
+    // The picker sends "appliance:<id>" or "set:<id>".
+    const [kind, ...rest] = String(form.get("target") ?? "").split(":");
+    const id = rest.join(":");
+    const common = {
       newPriceCents: dollarsToCents(form.get("price")),
       effectiveOn: String(form.get("effectiveOn") ?? ""),
       note: String(form.get("note") ?? ""),
-    });
+    };
+    if (kind === "set") await schedulePackagePriceChange(session.user.id, { packageId: id, ...common });
+    else if (kind === "appliance") await scheduleAppliancePriceChange(session.user.id, { applianceTypeId: id, ...common });
+    else throw new Error("Pick an appliance or a set.");
     message = "saved=1";
   } catch (e) {
     message = `error=${encodeURIComponent(plainMessage(e))}`;
@@ -74,10 +80,16 @@ const STATUS_WORDS: Record<ScheduledPriceRow["status"], string> = {
 export default async function PriceChangesPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; cancelled?: string }> }) {
   await requireRole("OWNER", "ADMIN");
   const query = await searchParams;
-  const [{ pending, recent }, preview, types] = await Promise.all([
+  const [{ pending, recent }, preview, types, sets] = await Promise.all([
     listScheduledPriceChanges(),
     previewScheduledPriceChange(),
     prisma.applianceType.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, monthlyPriceCents: true },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
+      take: 100,
+    }),
+    prisma.rentalPackage.findMany({
       where: { isActive: true },
       select: { id: true, name: true, monthlyPriceCents: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
@@ -90,7 +102,7 @@ export default async function PriceChangesPage({ searchParams }: { searchParams:
       <Link href="/desk/settings" className="text-sm underline">Back to settings</Link>
       <h1 className="text-xl font-semibold">Price changes</h1>
       <p className="text-sm text-ink-soft">
-        Pick a monthly price and the day it starts. Early that morning (Colorado time) the new price is saved for you, the same way as
+        Pick an appliance or a rental set, a monthly price and the day it starts. Early that morning (Colorado time) the new price is saved for you, the same way as
         when you type it on the Settings screen, and it shows in the history. Rentals already signed keep the price they were signed at.
         Estimates you already sent keep the price on them ({preview.openEstimates} open right now). Only prices shown on your website and
         quoted from the start day on are new. You can cancel a change any time before its day.
@@ -103,11 +115,20 @@ export default async function PriceChangesPage({ searchParams }: { searchParams:
       <form action={schedule} className="space-y-4 rounded-md border p-4">
         <h2 className="font-medium">Schedule a change</h2>
         <div className="space-y-1">
-          <label htmlFor="applianceTypeId" className="block text-sm font-medium">Appliance</label>
-          <select id="applianceTypeId" name="applianceTypeId" required className="min-h-11 w-full rounded-md border bg-surface p-2">
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>{t.name} (now {formatMoney(t.monthlyPriceCents)} a month)</option>
-            ))}
+          <label htmlFor="target" className="block text-sm font-medium">Appliance or set</label>
+          <select id="target" name="target" required className="min-h-11 w-full rounded-md border bg-surface p-2">
+            <optgroup label="Single appliances">
+              {types.map((t) => (
+                <option key={t.id} value={`appliance:${t.id}`}>{t.name} (now {formatMoney(t.monthlyPriceCents)} a month)</option>
+              ))}
+            </optgroup>
+            {sets.length > 0 && (
+              <optgroup label="Sets (like a washer and dryer together)">
+                {sets.map((t) => (
+                  <option key={t.id} value={`set:${t.id}`}>{t.name} (now {formatMoney(t.monthlyPriceCents)} a month)</option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
         <div className="space-y-1">
@@ -135,7 +156,7 @@ export default async function PriceChangesPage({ searchParams }: { searchParams:
             {pending.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
                 <div className="text-sm">
-                  <p className="font-medium">{r.applianceTypeName}: {formatMoney(r.currentPriceCents)} → {formatMoney(r.newPriceCents)} a month</p>
+                  <p className="font-medium">{r.targetName}{r.kind === "SET" ? " (set)" : ""}: {formatMoney(r.currentPriceCents)} → {formatMoney(r.newPriceCents)} a month</p>
                   <p>Starts {formatBusinessDate(r.effectiveOn)}</p>
                   {r.note && <p className="text-ink-soft">{r.note}</p>}
                 </div>
@@ -156,7 +177,7 @@ export default async function PriceChangesPage({ searchParams }: { searchParams:
             {recent.map((r) => (
               <li key={r.id} className="rounded-md border p-3 text-sm">
                 <p>
-                  <span className="font-medium">{r.applianceTypeName}</span> to {formatMoney(r.newPriceCents)} a month, start day {formatBusinessDate(r.effectiveOn)} — {STATUS_WORDS[r.status]}
+                  <span className="font-medium">{r.targetName}{r.kind === "SET" ? " (set)" : ""}</span> to {formatMoney(r.newPriceCents)} a month, start day {formatBusinessDate(r.effectiveOn)} — {STATUS_WORDS[r.status]}
                 </p>
                 {r.status === "FAILED" && r.failureMessage && <p className="text-ink-soft">{r.failureMessage} Schedule it again once that is sorted out.</p>}
               </li>

@@ -74,7 +74,7 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 
 **Partial items inside built units**
 - (M-1C is complete: Colorado retail delivery fee on delivered sales and taking back a used appliance are built. Only real-account acceptance remains, see the owner checklist and STATUS.) (The revenue-report label now reads "Shop sales (parts and items sold)".)
-- O-2B: role-shaped DTO proof. O-4: package and set prices. (O-1 change preview, stale-save protection and the full Switches list were finished 2026-10-24.)
+- O-4: package and set prices. (O-1 change preview, stale-save protection and the full Switches list were finished 2026-10-24; O-2B role-shaped proof finished 2026-10-25.)
 - (The yearly "check your SUTS setup" Today task is built: `TAX_SETUP_CHECK`, each January and 12 months after the last check.)
 - Website pricing page does not show the all-in total or $45 fee (hidden on purpose by the owner).
 - Eight older review findings in LAUNCH-LEDGER (photo cleanup, HEIC, earnings report basis, billing-estimate check, narrow-width desk check).
@@ -159,7 +159,7 @@ Design: `docs/designs/BATCH-COM.md`; work coverage and prerequisites: work-index
 ### Near-term acceptance (COM-N)
 
 - [ ] Workflow templates/rules activated individually; click-to-call/STAFF job-scoped actions preserve actor and legal boundaries. _(NOT BUILT: no lead/job/billing SMS senders, no click-to-call (only tel: links))_
-- [ ] Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction. _(Built in COM-N3, PR in review: the link, owner booking form, hand-entered match, one-time booking; closed-period correction uses the normal void path. No browser test yet.)_
+- [ ] Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction. _(Built and merged in COM-N3 (#555): the link, owner booking form, hand-entered match, one-time booking; a correction uses the normal void path (a booking after the original expense is voided is tested; a correction in an already-closed accounting period is NOT separately tested yet). Proven by `tests/telecom-statement-books-integration.test.ts`. No browser test of the booking form yet: it needs a verified statement fixture in the browser database; recorded, not blocking.)_
 - [ ] Service metrics, reliable linked-cost unit economics/forecasts registered in METRICS; sparse data is unavailable, no invented causal attribution. _(NOT BUILT: no service-metrics, unit-economics or forecast code)_
 - [ ] O controls and BP business scenarios consume existing evidence.
 
