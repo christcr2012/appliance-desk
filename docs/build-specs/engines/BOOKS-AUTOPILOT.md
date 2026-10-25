@@ -205,8 +205,12 @@ books", medium, high after `booksReviewReminderDay` of the following month (Denv
    "Not set up yet" passes the check with the line "You haven't connected Stripe or bank statements; you can do it
    later." (`BankReconciliation.status` values in code: DRAFT, COMPLETED, REOPENED; observation status values: UNMATCHED,
    MATCHED, IGNORED, SUPERSEDED — only UNMATCHED counts as not matched.)
-4. **Equipment value recorded** — every BookAsset not retired before the month's end has a `DEPRECIATION:{key}` entry
-   (or its schedule had ended).
+4. **Equipment value recorded** — every BookAsset whose depreciation schedule **includes the reviewed month** has a
+   `DEPRECIATION:{key}` entry. "Includes" = the month is after the asset's placed-in-service month (depreciation starts
+   the following month, `fixed-assets.ts`), not after its `retiredOn` month, and within its life (not past
+   `fullyDepreciatedOn`). Assets placed in service in or after the reviewed month, retired before it, or finished are
+   skipped. Tests: reviewing January with an asset enrolled in February passes; the placed-in-service month passes;
+   a missing entry for a month inside the schedule fails.
 Then "Your month in plain words": billed, collected, spent, profit (existing `profitAndLoss` for the month, accrual)
 vs the previous month, and "Your biggest costs were {top 3 expense accounts}". Then **Send it to your accountant**:
 "Download the month package" (existing `exportMonthReview` CSV + P&L) and, when `accountantEmail` is set, "Email it to

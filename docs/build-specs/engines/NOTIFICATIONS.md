@@ -80,11 +80,12 @@ export async function notify(event: NotificationEvent): Promise<void>
   the work finishes after the response — read `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md`
   first; where `after` is not available — the webhook route already runs inside a request, so it is — call it
   directly.)
-- Resolves recipients (section 3), drops those whose preference has `inApp: false`, then
-  `createMany({ data, skipDuplicates: true })` — the `(userId, dedupeKey)` unique makes webhook retries and double
+- Resolves the permission-eligible recipients (section 3) once; then **per channel**: rows only for recipients with
+  `inApp` on, via `createMany({ data, skipDuplicates: true })` — the `(userId, dedupeKey)` unique makes webhook retries and double
   clicks harmless. `dedupeKey`: `LEAD_NEW:{leadId}`, `QUOTE_VIEWED:{estimateId}`, `SIGNATURE_DONE:{agreementId}`,
   `PAYMENT_FAILED:{stripeEventId}`, `APPROVAL_REQUESTED:{requestId}`.
-- **Email** (only for recipients with `email: true`): one message per recipient through the existing owner/staff
+- **Email** (from the same eligible list, for recipients with `email: true` — independent of `inApp`; test `inApp:
+  false, email: true` → an email and no row): one message per recipient through the existing owner/staff
   internal email path (`deliverMessage` with `customerFacing: false`, `templateKey: "notification"`, `idempotencyKey`
   = `notification:{dedupeKey}:{userId}`), which already respects the email switches; text messages are not offered
   (the preference screen shows "Texts: available when texting is turned on" disabled). No live customer email or SMS
