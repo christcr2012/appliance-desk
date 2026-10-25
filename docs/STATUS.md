@@ -6,6 +6,12 @@ counted once). Anything without enough history says so instead of guessing: unde
 time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
 reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
 Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
+## October 25 — Nightly spend-alert check wired in (in PR, notifies nobody)
+
+The overnight phone-usage job now also runs the spend-alert check as a read-only preview, but only if you have turned the alert rules on
+(Settings → Phone, texts and provider costs). It records how many warnings it found on Desk → Automations; it sends nothing and notifies no one,
+because who gets told and when waits on your budget answers (IN-53, already on the checklist). Proven on throwaway Postgres: nothing checked while rules
+are off; with $120 spend against a $100 critical line it counts a warning and creates no message. Branch `ai/claude/com-telecom-alert-check`.
 ## October 24 — Owner controls: settings preview, stale-save protection, full Switches list (O-1)
 
 In progress (branch `ai/claude/owner-controls-o1`): "Undo this" in Settings history now shows what it will do first and says
