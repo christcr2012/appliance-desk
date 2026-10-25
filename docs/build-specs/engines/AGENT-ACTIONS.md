@@ -71,7 +71,7 @@ type ActionDef<A> = {
 | `RETRY_MEDIA_COPY` | `runMediaCopy({ databaseArtifactId })` | a MEDIA_MANIFEST artifact for that backup exists | in app |
 | `PAUSE_AUTOMATION` / `RESUME_AUTOMATION` | `setAutomationPaused(actorId, ruleKey, pause)` (`src/domains/automation/health.ts`; OWNER) | rule paused state read back | in app |
 | `VERIFY_RECOVERY_ARTIFACT` | read the artifact with the private token, hash it | hash equals stored `sha256` | conversation |
-| `APPLY_DECISION_ANSWERS` | DEC-1 `applyAnswers(actorId, answers, confirmToken)` | for each answer in `verifyIntent`: a PROFESSIONAL_ANSWER `DecisionRecord` for that subject made after the operation started, **and** either (effective today) the current value equals the expected value, or (future date) a not-cancelled `DecisionScheduledChange` with that value and date exists — never activating early to pass the check | conversation |
+| `APPLY_DECISION_ANSWERS` | DEC-1 `applyAnswers(actorId, answers, confirmToken)` | for each answer in `verifyIntent`: a PROFESSIONAL_ANSWER `DecisionRecord` for that subject made after the operation started, **and** either (effective today) the current value equals the expected value, or (future date) a not-cancelled `DecisionScheduledChange` with that value and date exists — never activating early to pass the check; **an "Other" answer** is verified by its PROFESSIONAL_ANSWER record with `value: null` alone (the setting is meant to stay unchanged) | conversation |
 "In app" = Chris taps Approve on System health › Assistant activity (works for anything with storage cost or that
 stops a job). "In conversation" = the assistant shows him the preview and he says yes; the assistant then calls
 execute with the `previewId`. Both kinds require the preview first; there is no "execute without preview" path.
@@ -128,7 +128,8 @@ target (pause the rule elsewhere) → execute → EXPIRED; revoke the connection
 no call; role downgraded → refused; execute throws after its effect → UNKNOWN → nightly verify → SUCCEEDED; stale
 lease worker writes nothing; denied/expired cannot run; approval needs OWNER; kill-between: the fake command commits its effect, then the worker throws before Transaction B →
 nightly verify from `verifyIntent` → SUCCEEDED. `tests/mcp-decisions-apply-integration.test.ts`: a future-dated answer →
-SUCCEEDED via the scheduled change (setting unchanged until its date);
+SUCCEEDED via the scheduled change (setting unchanged until its date); an import mixing applied answers and an "Other"
+answer → SUCCEEDED (record-only branch for Other);
 preview a filled form's answers → apply with the token → settings changed through DEC-1 functions, `DecisionRecord`
 via `MCP`; tampered answers with the old token → refused; "Other" answer recorded, setting untouched.
 `e2e/mcp-activity.spec.ts`: owner approves a waiting backup retry; axe, phone/desktop, light/dark.

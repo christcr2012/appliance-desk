@@ -34,6 +34,11 @@ and `async function assertBooksWriter(tx, w, roles = ["OWNER"])` — a person go
 automatic writer is accepted **only** when called from code paths listed in this spec (it is not reachable from any
 server action: a test greps `src/app` and fails if `{ kind: "automatic" }` appears there). Audit rows for automatic
 work use `userId: null` and `newValue.by = "automatic"` (the pattern `auto-renew.ts` already uses).
+A third writer kind `{ kind: "equipment"; userId }` is for the book steps **inside** Equipment's own commands
+(`retireAppliance`, `completeRetiredPlan`, `reopenRetiredPlan`, the retired-appliance sale): those commands already
+check their own permissions (OWNER and ADMIN — `src/domains/inventory/guided-actions.ts` ~137), so `assertBooksWriter`
+accepts this kind with roles `["OWNER","ADMIN"]` and audits the person; it is not accepted by any public books
+function or server action (same grep test). Public books commands stay OWNER-only.
 
 Refactor, without changing behavior for people:
 - `enrollBookAsset(userId, …)` → body moves to `enrollBookAssetInTx(tx, w, applianceId, placedDateKey, source)`; the
@@ -88,16 +93,17 @@ Builders in `rules.ts`, queried in `getExceptionOverview` with the standard cap;
   and is not retired, `postBookDepreciationInTx(tx, writer, id, min(retireMonth, lastCompletedMonth()), { maxMonths:
   360 })` then `retireBookAssetInTx(tx, writer, id, lockedAsset.version, "DECIDE_LATER", todayKey)` — the person
   writer passes the version it just read under the asset lock in this same transaction (section 1.2 keeps `null`
-  for automatic writers only). The writer is the person who retired it. Test: an owner retiring an enrolled appliance
-  from Equipment stages its book value (no savepoint fallback). If the book step throws (cost changed, missing capital source), the retirement still succeeds (wrap the
+  for automatic writers only). The writer is `{ kind: "equipment", userId }` for the person who retired it (so an ADMIN's retirement works the same
+  as the owner's). Tests: an OWNER and an ADMIN each retiring an enrolled appliance from Equipment stage its book value
+  (no savepoint fallback); the same for completing and reopening a disposal plan. If the book step throws (cost changed, missing capital source), the retirement still succeeds (wrap the
   book part in a savepoint: `tx.$executeRaw\`SAVEPOINT book_retire\`` / `ROLLBACK TO SAVEPOINT` on error) and a
   `BooksProblem` "APPLIANCE_RETIREMENT_NOT_RECORDED" is upserted → To do item. Never block taking a machine out of
   service because of books.
 - `setRetiredPlan` choice changes update `BookAsset.retirementIntent`: `RetiredPlanChoice` is SELL, STRIP, SCRAP,
   DISPOSE, OTHER → intents SELL, STRIP, SCRAP, DISPOSE, DONATE_OTHER; choice `null` ("decide later") → DECIDE_LATER
   (a test asserts the map covers every enum value).
-- **New:** `writeOffRetiredBookAssetInTx(tx, writer, applianceId, onDate, reason)` in `fixed-assets.ts`, called from
-  `completeRetiredPlan` for every outcome that is not a sale (SCRAP, DISPOSE, OTHER, and STRIP once its remainder is
+- **New:** `writeOffRetiredBookAssetInTx(tx, writer, applianceId, onDate, reason)` in `fixed-assets.ts` (writer =
+  `{ kind: "equipment", userId }`), called from `completeRetiredPlan` for every outcome that is not a sale (SCRAP, DISPOSE, OTHER, and STRIP once its remainder is
   SCRAPPED or THROWN_AWAY): lock the asset; require `retiredOn` set and `disposedOn` null (if not retired yet, retire it
   first exactly as above); `carried = retiredValueCents`; if `carried > 0` write one balanced entry
   `balancedPlan(onDate, "Retired appliance {assetNumber} {reason words}: book value removed", [{ role:
