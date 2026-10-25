@@ -72,6 +72,62 @@ describe.skipIf(!enabled)("automation runs (real Postgres)", () => {
     expect(row.error).not.toContain(secret);
   });
 
+  it("MCP-1 canary: a planted secret, email, phone, street address and name never reach any output", async () => {
+    // Built at run time so no key-shaped text is committed.
+    const secret = ["sk", "live", "canary" + randomUUID().replaceAll("-", "")].join("_");
+    const email = `canary-${tag}@example.test`;
+    const phone = "(970) 555-0142";
+    const street = "4321 Canary Street";
+    const person = "Jane Canaryperson";
+    const planted = [secret, email, "555-0142", street, person];
+    const ruleKey = "expense-drafts"; // a real rule, so the run also records a system issue
+    const when = new Date("2025-03-04T18:00:00.000Z"); // a slot no other test uses
+    const owner = await prisma.user.findFirstOrThrow({ where: { role: "OWNER", archivedAt: null }, select: { id: true } });
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => { logged.push(args.map(String).join(" ")); });
+    try {
+      const result = await runAutomation({
+        ruleKey, now: when,
+        work: async () => {
+          throw new Error(`upload failed for ${person} at ${street} ${phone} ${email} {"address":"${street}"} using ${secret}`);
+        },
+      });
+      expect(result.outcome).toBe("FAILED");
+      const run = await prisma.automationRun.findUniqueOrThrow({ where: { id: result.runId! } });
+      expect(run).toMatchObject({ failureCode: "UNCLASSIFIED", failureStage: "work" });
+      expect(run.correlationId).toMatch(/^ref-[0-9a-f]{10}$/);
+      for (const leaked of [secret, email, "555-0142", street]) expect(run.error).not.toContain(leaked);
+      // The server log line carries the same reference and only typed fields.
+      const line = logged.find((entry) => entry.includes("[automation]") && entry.includes(run.correlationId!));
+      expect(line).toBeDefined();
+      for (const leaked of planted) expect(line).not.toContain(leaked);
+
+      const issue = await prisma.systemIssue.findUniqueOrThrow({ where: { fingerprint: "automation:" + ruleKey } });
+      expect(issue).toMatchObject({ failureCode: "UNCLASSIFIED", failureStage: "work", correlationId: run.correlationId });
+      const { listSystemIssues } = await import("@/domains/system-issues/queries");
+      const { getOpsIssues } = await import("@/domains/system-issues/ops-api");
+      const { getAutomationHealth } = await import("@/domains/automation/health");
+      const dto = (await listSystemIssues(owner.id, { limit: 100 })).rows.find((row) => row.id === issue.id);
+      expect(dto?.failure).toMatchObject({ code: "UNCLASSIFIED", reference: run.correlationId });
+      const ops = (await getOpsIssues({ limit: 100 })).issues.find((row) => row.id === issue.id);
+      expect(ops).toMatchObject({ failureCode: "UNCLASSIFIED" });
+      // The legacy check-up key sees the code and its fixed wording only: no stage, reference or raw text.
+      expect(ops).not.toHaveProperty("failureStage");
+      expect(ops).not.toHaveProperty("correlationId");
+      expect(ops).not.toHaveProperty("error");
+      const health = (await getAutomationHealth(new Date(when.getTime() + 60_000))).find((row) => row.ruleKey === ruleKey);
+      for (const output of [issue, dto, ops, health]) {
+        const text = JSON.stringify(output);
+        for (const leaked of planted) expect(text, leaked).not.toContain(leaked);
+      }
+    } finally {
+      spy.mockRestore();
+      await prisma.systemIssueNote.deleteMany({ where: { issue: { fingerprint: "automation:" + ruleKey } } });
+      await prisma.systemIssue.deleteMany({ where: { fingerprint: "automation:" + ruleKey } });
+      await prisma.automationRun.deleteMany({ where: { ruleKey, runKey: { startsWith: `${ruleKey}:2025-03-04` } } });
+    }
+  });
+
   it("tries a failed slot again later the same day, but only twice", async () => {
     const ruleKey = `${prefix}-failed-retry`;
     let calls = 0;
