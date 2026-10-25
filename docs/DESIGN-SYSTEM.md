@@ -61,6 +61,19 @@ required before launch (Phase 2/7).
 - `/desk/**` and `/account/**` are marked `noindex, nofollow` (see
   `next.config.ts`) — they should never appear in search results.
 
+### Application structure (Chris, 2026-10-25)
+
+The desk is an application, not a set of category pages. Five areas (Today, Customers, Schedule, Equipment, Money),
+Settings in the profile menu, and four page types only: work queue, record page, guided flow, settings page — each
+built from the shared kit in `src/components/ui`. Full rules and the page map: [designs/APP-REDESIGN.md](designs/APP-REDESIGN.md). It must also *feel* like software
+(section 4A there): the frame never reloads, every click answers at once, nothing goes blank, keyboard and touch
+patterns, installable desk app, and a measured speed budget. **Mobile first:** design at 390 px first (thumb-reach primary action, cards,
+bottom sheets), then expand to list + side panel, real tables and keyboard on PC (section 4B there). **Progressive disclosure:**
+place each feature by how often it is used and what it belongs to — main menu, area tab, inside its record, ⋯ menu,
+Settings, or a To do item — never more than three taps below its area (section 4C there). **Owner-friendly:** the right control for each
+choice, built-in saved views, no accounting or technical words outside the accountant area, features appear when the
+business needs them, every status says what happens next (section 4D there).
+
 ### Quiet screens (Chris, 2026-10-25)
 
 Screens explain themselves through layout, labels and status, not paragraphs. At most one short line under a page

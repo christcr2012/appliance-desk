@@ -1,3 +1,11 @@
+## October 25 — The desk becomes an application: five areas, four page types, one inbox (Batch AR design)
+
+Every desk screen moves to one of five areas (Today, Customers, Schedule, Equipment, Money) with Settings in a
+profile menu, and is built as a work queue, a record page, a guided flow or a settings page from one shared kit with
+build guards. Today becomes the single inbox; finishing a workflow step offers the next. Patterns follow Jobber
+(lifecycle, next step) and the Stripe Dashboard (status tabs, status-dependent actions). No business behavior changes.
+Supersedes the screen units of BA, LD and CU. Full design: `docs/designs/APP-REDESIGN.md`.
+
 ## October 25 — Customers is one area with Leads inside it (Batch CU design)
 
 Customers keeps its own place but becomes one area with Leads, Customers and Insights tabs and one shared search, so

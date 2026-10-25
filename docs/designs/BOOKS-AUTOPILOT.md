@@ -1,5 +1,9 @@
 # Books on autopilot — the app keeps the books; the owner reviews once a month (Batch BA)
 
+> **2026-10-25:** the screen parts of this design are now built through the app-wide redesign
+> ([APP-REDESIGN.md](APP-REDESIGN.md)); engine/data units here are unchanged.
+
+
 Status: **designed 2026-10-25 at Chris's request; not built.** Units BA-1…BA-6 are listed in `work-index.json`
 (execution cards are written when each one starts). Nothing here turns on a provider, moves money or changes past
 entries. It builds on the merged Batch K / K-CASH engine ([BATCH-K.md](BATCH-K.md), [BATCH-K-CASH.md](BATCH-K-CASH.md));

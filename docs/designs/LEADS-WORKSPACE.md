@@ -1,5 +1,9 @@
 # Leads workspace — a real sales pipeline that still works at 10,000 leads (Batch LD)
 
+> **2026-10-25:** the screen parts of this design are now built through the app-wide redesign
+> ([APP-REDESIGN.md](APP-REDESIGN.md)); engine/data units here are unchanged.
+
+
 Status: **designed 2026-10-25 at Chris's request; not built.** Units LD-1…LD-4 in `work-index.json` (execution cards
 written when each starts). Texting stays dormant until Chris switches it on (AGENTS section 1); everything else is
 ordinary source work. Follows the "quiet screens" rule in [DESIGN-SYSTEM.md](../DESIGN-SYSTEM.md).
