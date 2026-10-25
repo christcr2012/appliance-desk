@@ -1,3 +1,12 @@
+## October 24 — COM-N1A: staff can text leads, estimates and signatures (in PR, everything OFF)
+
+Staff now get a "Text message" box on the lead, estimate and agreement screens: it shows the exact words and the masked
+phone, and nothing sends until Send is pressed. The Owner approves each wording and switches each kind of text on
+(Settings → Phone, texts and provider costs) and sets quiet hours (starting value 9 pm–8 am Colorado). Still required
+before any text can leave: the master text switch, recorded permission for that number, no STOP, a ready business number.
+Proven on throwaway Postgres with a fake carrier (13 safety tests); no real text was sent and nothing was switched on.
+Next: COM-N1B (job and maintenance texts), then N1C, N2, N4 and the telecom wiring gaps. Branch `ai/claude/com-n1a-lead-estimate-texts`.
+
 ## October 24 — Extra release done at Chris's request (11:26 am Denver)
 
 Chris asked for one unscheduled release and then gave explicit permission to move `live`. Order followed: the checked testing promoter was run by hand (testing = main = 6e1353a, `ci` and `release-policy` green), Vercel built that exact commit on the testing app (status success), then `live` was fast-forwarded (no force, lease on the old head ef452c3, 20 commits) to 6e1353a. Verified afterwards: the public app's production deployment for 6e1353a is READY and `robinsonappliancerentals.com` is on it. Today's normal daily live marker already existed, so tonight's scheduled run should find nothing new to ship. Not done: no hosted acceptance checks on the testing app yet (the M-3 $1 card test still waits on the owner-password row).

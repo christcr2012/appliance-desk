@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { voiceRoutingSchema } from "./voice-routing";
+import { isInQuietHours, quietHoursSchema, RECOMMENDED_QUIET_HOURS } from "./quiet-hours";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -29,6 +30,13 @@ export const communicationsPolicySchema = z.object({
     staleAfterHours: z.number().int().min(1).max(744),
   }).strict().refine(v => v.monthlyBudgetCents <= v.elevatedCents &&
     v.elevatedCents <= v.criticalCents).optional(),
+  // COM-N1: quiet hours for template texts, and one on/off switch per workflow text. Absent = recommended
+  // quiet hours apply and every workflow text is OFF.
+  quietHours: quietHoursSchema.optional(),
+  workflowTexts: z.object({
+    families: z.record(z.string().regex(/^[a-z][a-z0-9_]{2,60}$/),
+      z.object({ enabled: z.boolean() }).strict()),
+  }).strict().optional(),
   productionWebhookOrigin: z.string().url().refine((value) => {
     const url = new URL(value);
     return url.protocol === "https:" && !url.username && !url.password &&
@@ -72,7 +80,7 @@ export type SmsEligibility =
   | { allowed: true; policy: CommunicationsPolicy; consentRecordId: string }
   | { allowed: false; reason:
     "MASTER_OFF" | "POLICY_OFF" | "SENDER_NOT_READY" | "NO_RESOLVED_CONTACT" |
-    "SUPPRESSED" | "NO_SCOPED_CONSENT" | "INVALID_DESTINATION" };
+    "SUPPRESSED" | "NO_SCOPED_CONSENT" | "INVALID_DESTINATION" | "QUIET_HOURS" };
 
 function validUsPhone(value: string): boolean {
   // NANP numbers also exist in non-US territories. The provider's validated
@@ -123,6 +131,11 @@ export function evaluateSmsEligibility(input: SmsEligibilityInput): SmsEligibili
       Array.isArray(latest.scope) ||
       (latest.scope as Record<string, unknown>).businessNumberId !== input.number.id) {
     return { allowed: false, reason: "NO_SCOPED_CONSENT" };
+  }
+  // A live reply to someone who just texted us is exempt; every template text waits out quiet hours.
+  if (input.purpose !== "CONVERSATIONAL" &&
+      isInQuietHours(input.now, policy.quietHours ?? RECOMMENDED_QUIET_HOURS)) {
+    return { allowed: false, reason: "QUIET_HOURS" };
   }
   return { allowed: true, policy, consentRecordId: latest.id };
 }
