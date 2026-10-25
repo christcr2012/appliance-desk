@@ -51,7 +51,10 @@ export function billPill(bill: { status: InvoiceStatus; dueDate: Date | null; am
 ```ts
 export type BillRow = { id: string; number: number; customerId: string; customerName: string; companyName: string | null;
   forText: string; amountCents: number; owedCents: number; status: InvoiceStatus; dueDate: Date | null;
-  paidCents: number; autopay: boolean; createdAt: Date };
+  paidCents: number; autopay: boolean; createdAt: Date; payPath: PayPath };
+export type PayPath = "STRIPE_LINK" | "SHOP_CARD" | "MANUAL_ONLY";
+export function payPathFor(b: { status: InvoiceStatus; owedCents: number; stripeInvoiceId: string | null;
+  saleKind: string | null }): PayPath | null   // null = nothing to collect
 export async function getBills(params: BillsParams, now = new Date()): Promise<{ rows: BillRow[]; nextCursor: string | null; capped: boolean }>
 export async function getBillCounts(params: Omit<BillsParams, "status">, now = new Date()): Promise<Record<BillTab, number>>
 export async function getBillTotals(params: BillsParams, now = new Date()): Promise<{ count: number; owedCents: number }>
@@ -85,9 +88,15 @@ export async function getBillTotals(params: BillsParams, now = new Date()): Prom
    (for paid/closed: `"{count} bills"`); right side: current sort label.
 6. Cards (`DataTable.mobileCard`): customer name (title) · `forText` + `" · Bill #{number}"` · right: amount
    (`owedCents` for open tabs, `amountCents` otherwise) and the pill · detail line when PARTIALLY_PAID:
-   `"Paid {paid} of {amount}"`; when FAILED: "Last card payment failed" · actions: **Take payment** (primary, link
-   `/desk/billing/customer/{customerId}/invoice/{id}#take-payment`), **Remind** (link same page
-   `#take-payment`), ⋯ (row actions below). Paid/closed cards have no buttons; the card is a link to the bill.
+   `"Paid {paid} of {amount}"`; when FAILED: "Last card payment failed" · actions by `payPath` (rules below):
+   STRIPE_LINK → **Take payment** (primary, link `/desk/billing/customer/{customerId}/invoice/{id}#take-payment`) and
+   **Remind** (same link); SHOP_CARD → **Take card payment** (primary, link `/desk/sales/{id}`, where the existing
+   `startSaleCardPaymentAction` button lives); MANUAL_ONLY → **Record cash or check** (primary, link
+   `/desk/billing/customer/{customerId}#record-payment`); ⋯ (row actions below).
+   **`payPathFor` rules** (pure, in `bill-status.ts`, unit-tested): not open or nothing owed → null; `stripeInvoiceId`
+   set → STRIPE_LINK (the payment link panel's `assertPayable` requires it — `src/domains/billing/payment-link.ts`);
+   `saleKind === "SHOP_SALE"` and no `stripeInvoiceId` → SHOP_CARD (the only local bills `createLocalInvoiceCheckout`
+   accepts); anything else → MANUAL_ONLY. Select `stripeInvoiceId` and `saleKind` in `getBills` for this. Paid/closed cards have no buttons; the card is a link to the bill.
 7. `Fab` "New bill" → `/desk/sales/new` (the existing local bill/sale creation; if a better existing route for a
    one-off bill exists, use it and note it).
 8. Empty states: open "No open bills"; past-due "Nothing is late"; paid "No paid bills yet"; closed "No closed

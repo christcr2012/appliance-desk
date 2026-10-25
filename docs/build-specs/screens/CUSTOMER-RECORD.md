@@ -16,6 +16,7 @@ Route: **`/desk/customers/[id]` (same URL)**. Visual targets: `samples/CustomerP
 | Param | Values | Default |
 |---|---|---|
 | `tab` | `activity`, `rentals`, `bills`, `visits`, `messages`, `details` | none (see 4.3) |
+| `full` | `1` — with `tab=activity`, show the full activity list in the desktop main column (4.4) | — |
 | `filter` | activity filter: `all`, `notes`, `activity`, `communications` (existing `timelineFilter`) | `all` |
 | `cursor` | activity cursor (existing `readTimelineCursor`) | — |
 | `page` | rentals/visits page (existing `parsePage`, 25 per page) | 1 |
@@ -171,8 +172,8 @@ column (activity is already in the rail) — i.e. desktop treats `activity` like
 
 `lg:` two columns: main `flex-1 min-w-0` = header, StatStrip, tab strip, section; right rail `w-[360px]` =
 Next step card(s) then Activity (4.5 compact: 10 newest entries, "See all activity" →
-`?tab=activity` which on desktop opens the full list in the main column instead of Rentals — **exception to 4.3:**
-when `tab=activity` *and* `full=1`, desktop shows the full activity list in the main column). Phone: one column;
+`?tab=activity&full=1`; **exception to 4.3:** when `tab=activity` *and* `full=1`, desktop shows the full activity list
+(with its filters and paging, which keep `full=1` in their links) in the main column instead of Rentals). Phone: one column;
 Next step card(s) sit between the StatStrip and the tab strip.
 
 ### 4.5 Section contents

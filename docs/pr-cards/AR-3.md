@@ -11,6 +11,11 @@ an Overview that says how the month is going and what needs a decision, one list
 buttons fit the bill's status.
 
 ## Steps (in order)
+0. **Job-role routes.** In `src/domains/team/job-role-rules.ts` `PATH_TO_SCREEN`, add `money: "billing"` and
+   `payments: "billing"` (unknown paths are denied, so without this an admin whose job role includes Money loses the
+   new pages and `enforceJobRoleScreen` sends them to Today). Test in `tests/acc5-job-role-rules.test.ts`: an ADMIN
+   with a billing job role opens `/desk/money`, `/desk/payments`, `/desk/payments?status=deposits` and the redirect
+   from `/desk/billing?view=waiting`; an ADMIN whose job role lacks billing is refused on all four.
 1. Read-only data: `money-overview.ts` (+ `failedPaymentsWhere` extraction), `payment-tabs.ts`, `payments-list.ts`,
    `bill-timeline.ts`, with their tests (MONEY-AREA 1–3, 6).
 2. `/desk/money` Overview page (+ `loading.tsx`, `error.tsx`); update `DESK_AREAS` (overview → `/desk/money`).

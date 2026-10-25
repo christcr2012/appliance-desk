@@ -122,7 +122,12 @@ bottom of the Activity tab.
 
 ## 4. Payment sheets (used by the bill record, the Bills list and the customer record)
 
-- **Take payment** = a Sheet titled `"Take payment · {formatMoney(owed)}"` containing the existing
+- **Which payment button a bill gets** comes only from `payPathFor` (MONEY-BILLS 4): STRIPE_LINK → the Take payment
+  Sheet below; SHOP_CARD → a "Take card payment" button that calls the existing `startSaleCardPaymentAction(id)` and
+  opens the returned Stripe page in a new tab (its own error text on failure); MANUAL_ONLY → only "Record cash or
+  check". Never render `PaymentLinkPanel` for a bill that is not STRIPE_LINK. Test each path from the Bills list,
+  the customer record and the bill record.
+- **Take payment** (STRIPE_LINK only) = a Sheet titled `"Take payment · {formatMoney(owed)}"` containing the existing
   `PaymentLinkPanel invoiceId suggestedReason` unchanged (it already offers the payment link, text/email and the
   phone payment page with its own confirmations). The Bills list "Take payment" and "Remind" buttons and the customer
   record's "Take payment" open this Sheet in place via a small client wrapper `TakePaymentSheet({ invoiceId,
