@@ -8,7 +8,7 @@ Preview-then-send boxes on the invoice screen and the agreement screen:
 - "Friendly reminder: invoice still open" — needs a professional's review
 - "We received your payment"
 - "Your refund was issued" (uses the latest refund on the invoice, shows the amount) — needs a professional's review
-- "Your rental term ends soon" (courtesy heads-up, fixed-term rentals ending within 60 days) — needs a professional's review
+- "Your rental term ends soon" (courtesy heads-up, fixed-term rentals ending within the number of days you choose; starting value 60, set on the telecom settings page) — needs a professional's review
 
 Links go to the existing signed-in invoice page; no payment or signed-document links outside the existing rules.
 These texts are courtesy messages, **not legal notices** (CustomerNotice and the renewal gates stay authoritative).
@@ -25,3 +25,8 @@ intended; removing the review stops the next send. N1A/N1B tests unchanged and p
 
 ## Owner checklist
 New row: have a lawyer read the three wordings before real use (never blocks building).
+
+## Review fixes
+- The refund text is only allowed once the refund has actually finished with the card company (not while it is still processing or if it failed).
+- Confirming a professional's review is tied to the exact wording on screen; if the wording changed in another window the confirmation is refused.
+- The "rental ending soon" window is now an owner setting (1 to 365 days, "Restore recommended" = 60).

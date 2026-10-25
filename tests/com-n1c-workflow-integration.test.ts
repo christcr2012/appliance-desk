@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { TelecomSmsProvider } from "@/lib/communications/providers/types";
 import { getWorkflowTextPreview, recordStaffTextConsent, sendWorkflowText } from "@/domains/messaging/workflow-text";
 import {
-  approveWorkflowWording, confirmWorkflowLegalReview, getWorkflowTextSettings, setWorkflowTextEnabled,
+  saveRenewalWindowDays, approveWorkflowWording, confirmWorkflowLegalReview, getWorkflowTextSettings, setWorkflowTextEnabled,
 } from "@/domains/messaging/workflow-text-settings";
 import { workflowTextFamily } from "@/domains/messaging/workflow-text-catalog";
 
@@ -35,6 +35,11 @@ describe.skipIf(!enabled)("COM-N1C billing, renewal and refund texts (isolated P
   const codes = async (family: string, id: string) => (await getWorkflowTextPreview(owner, family, id, noon)).blockers.map((b) => b.code);
   const approve = async (key: string) => { await approveWorkflowWording(owner, { family: key, body: workflowTextFamily(key)!.defaultBody }); };
   const enable = async (key: string) => { version = (await setWorkflowTextEnabled(owner, { family: key, enabled: true, expectedVersion: version })).version; };
+
+  const revisionOf = async (key: string) => (await getWorkflowTextSettings(owner)).families.find((f) => f.key === key)!.revision;
+  const confirm = async (key: string, reviewed: boolean) => {
+    version = (await confirmWorkflowLegalReview(owner, { family: key, reviewed, expectedVersion: version, revision: await revisionOf(key) })).version;
+  };
 
   beforeAll(async () => {
     process.env.COMMUNICATION_CONTENT_KEY = randomBytes(32).toString("base64");
@@ -107,8 +112,13 @@ describe.skipIf(!enabled)("COM-N1C billing, renewal and refund texts (isolated P
     const reviewKeys = settings.families.filter((f) => f.needsLegalReview).map((f) => f.key).sort();
     expect(reviewKeys).toEqual(["invoice_reminder", "refund_issued", "renewal_heads_up"]);
     await expect(setWorkflowTextEnabled(owner, { family: "refund_issued", enabled: true, expectedVersion: version })).rejects.toThrow(/professional/);
-    await expect(confirmWorkflowLegalReview(owner, { family: "invoice_ready", reviewed: true, expectedVersion: version })).rejects.toThrow();
-    version = (await confirmWorkflowLegalReview(owner, { family: "refund_issued", reviewed: true, expectedVersion: version })).version;
+    await expect(confirmWorkflowLegalReview(owner, { family: "invoice_ready", reviewed: true, expectedVersion: version, revision: 1 })).rejects.toThrow();
+    // a confirmation for words that are no longer the current words is refused
+    const cur = await revisionOf("refund_issued");
+    await expect(confirmWorkflowLegalReview(owner, { family: "refund_issued", reviewed: true, expectedVersion: version, revision: (cur ?? 0) - 1 }))
+      .rejects.toThrow(/wording changed/);
+    await expect(confirmWorkflowLegalReview(owner, { family: "refund_issued", reviewed: true, expectedVersion: version })).rejects.toThrow(/wording changed/);
+    await confirm("refund_issued", true);
     await enable("refund_issued");
     const after = (await getWorkflowTextSettings(owner)).families.find((f) => f.key === "refund_issued")!;
     expect(after).toMatchObject({ enabled: true, legalReviewed: true });
@@ -121,14 +131,14 @@ describe.skipIf(!enabled)("COM-N1C billing, renewal and refund texts (isolated P
     expect(f).toMatchObject({ enabled: false, legalReviewed: false });
     version = (await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" }, select: { communicationsPolicyVersion: true } })).communicationsPolicyVersion;
     expect(await codes("refund_issued", refundInv)).toEqual(expect.arrayContaining(["FAMILY_OFF"]));
-    version = (await confirmWorkflowLegalReview(owner, { family: "refund_issued", reviewed: true, expectedVersion: version })).version;
+    await confirm("refund_issued", true);
     await enable("refund_issued");
   });
 
   it("an unreviewed policy flag cannot slip through at the last moment", async () => {
     await enable("invoice_ready");
     await enable("payment_received");
-    version = (await confirmWorkflowLegalReview(owner, { family: "renewal_heads_up", reviewed: true, expectedVersion: version })).version;
+    await confirm("renewal_heads_up", true);
     await enable("renewal_heads_up");
     // invoice_reminder is approved but neither reviewed nor on
     const blockers = await codes("invoice_reminder", openInv);
@@ -162,8 +172,43 @@ describe.skipIf(!enabled)("COM-N1C billing, renewal and refund texts (isolated P
     }
   });
 
+  it("a refund still being processed or failed is not announced; a finished one is", async () => {
+    await confirm("refund_issued", true);
+    await enable("refund_issued");
+    const refund = await prisma.refund.findFirstOrThrow({ where: { invoiceId: refundInv }, select: { id: true } });
+    const op = await prisma.providerOperation.create({ data: { kind: "REFUND_CREATE", subjectType: "Refund", subjectId: refund.id,
+      idempotencyKey: name + "-op", status: "PENDING" } });
+    try {
+      expect(await codes("refund_issued", refundInv)).toContain("WRONG_STATE");
+      await prisma.providerOperation.update({ where: { id: op.id }, data: { status: "FAILED" } });
+      expect(await codes("refund_issued", refundInv)).toContain("WRONG_STATE");
+      await prisma.providerOperation.update({ where: { id: op.id }, data: { status: "SUCCEEDED" } });
+      expect(await codes("refund_issued", refundInv)).not.toContain("WRONG_STATE");
+    } finally {
+      await prisma.providerOperation.delete({ where: { id: op.id } });
+    }
+  });
+
+  it("the heads-up window is an owner setting, with a recommended value of 60 days", async () => {
+    expect((await getWorkflowTextSettings(owner)).renewalWindowDays).toBe(60);
+    await expect(saveRenewalWindowDays(staff, { days: 90, expectedVersion: version })).rejects.toThrow();
+    await expect(saveRenewalWindowDays(owner, { days: 0, expectedVersion: version })).rejects.toThrow();
+    await expect(saveRenewalWindowDays(owner, { days: 400, expectedVersion: version })).rejects.toThrow();
+    // far agreement ends 2027-08-30, about 314 days after the test clock
+    expect(await codes("renewal_heads_up", farAgreement)).toContain("WRONG_STATE");
+    version = (await saveRenewalWindowDays(owner, { days: 365, expectedVersion: version })).version;
+    expect((await getWorkflowTextSettings(owner)).renewalWindowDays).toBe(365);
+    expect(await codes("renewal_heads_up", farAgreement)).not.toContain("WRONG_STATE");
+    // turning a text on/off keeps the window
+    await approve("invoice_reminder");
+    expect((await getWorkflowTextSettings(owner)).renewalWindowDays).toBe(365);
+    version = (await saveRenewalWindowDays(owner, { days: null, expectedVersion: version })).version;
+    expect((await getWorkflowTextSettings(owner)).renewalWindowDays).toBe(60);
+    expect(await codes("renewal_heads_up", farAgreement)).toContain("WRONG_STATE");
+  });
+
   it("master switch off or review removed stops the next text", async () => {
-    version = (await confirmWorkflowLegalReview(owner, { family: "refund_issued", reviewed: false, expectedVersion: version })).version;
+    await confirm("refund_issued", false);
     const provider = fake();
     const r = await send(owner, "refund_issued", refundInv, provider);
     expect(r.kind).toBe("BLOCKED");

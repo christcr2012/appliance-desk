@@ -503,6 +503,8 @@ export default async function DeskSettingsPage({
               settings.twelveMonthPrepayFreeMonthEnabled,
             referralRewardDollars: centsAsDollars(settings.referralRewardCents),
             draftReservationHoldDays: settings.draftReservationHoldDays,
+            receiptFileKeepDays: settings.receiptFileKeepDays,
+            unsentPhotoKeepDays: settings.unsentPhotoKeepDays,
           }}
         />
       </Card>

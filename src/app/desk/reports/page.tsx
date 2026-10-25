@@ -64,7 +64,7 @@ export default async function ReportsPage() {
     },
     {
       key: "collected",
-      header: "Collected",
+      header: "Rent collected",
       cell: (row) => formatCents(row.actualCents),
     },
     {
@@ -233,9 +233,10 @@ export default async function ReportsPage() {
       <TelecomReportSection actorUserId={session.user.id} />
       <p className="mt-6 max-w-2xl text-xs text-ink-faint">
         “Estimated” is reconstructed from each agreement&apos;s agreed monthly
-        price and how long it has been billing. “Collected” is money received
-        and account credit applied to that agreement&apos;s invoices, minus
-        recorded refunds. This is a reconciliation aid, not a legal record;
+        price and how long it has been billing. “Rent collected” is the rent part of the
+        money received and account credit applied to that agreement&apos;s
+        invoices, minus recorded refunds (tax, fees, deposits and shop items
+        on the same invoice are left out). This is a reconciliation aid, not a legal record;
         the invoice and payment history on each customer&apos;s page remains
         the exact record.
       </p>

@@ -156,6 +156,11 @@ Agents will do the parts they safely can and record what they saw; the rest need
   real bank and record opening balances (IN-55); only then, separately, decide the date to turn on budget funding
   (it stays OFF). Compare one real month of published plan vs actual (K-CASH-7).
 
+- [ ] **Removed receipt files really leave storage** (older review findings): after the version is live, remove one wrong
+  receipt page on a purchase that is allowed to lose a page, then 30 days later open Desk → Automations → "Stored file
+  clean-up" and confirm its last run shows one file deleted. Agents tested the waiting list and the rules against a stand-in
+  for the storage company; the real private store was not touched. Worked: the run shows "deleted" and nothing else is missing.
+
 ## D. Other people's systems (trial companies, provider reviews)
 
 - [ ] **QuickBooks trial company import** of a month of DETAIL CSV journals: counts and debits/credits balance, bank
@@ -198,4 +203,5 @@ on readiness).
 | 2026-10-24 | Testing owner password fix, agent-run M-3 check, GitHub release-branch protection | Audit of the testing setup: the testing build failed at the owner step; `live`/`testing` had no GitHub protection and the connector correctly refuses to change protection without you. |
 | 2026-10-23 | ACC rows: email-code decision (IN-85), build-order decision, second sign-in method, Twilio sign-in-code use case | Chris asked for invitations, account self-service, recovery and text/email codes (design: designs/ACCOUNTS-AND-SIGN-IN.md). |
 | 2026-10-24 | Shop-sale card page in Stripe test mode | M-3 was proved only against a pretend Stripe; a real test-mode payment needs Chris's Stripe test keys. |
+| 2026-10-25 | Removed receipt files really leave storage | The clean-up of removed files was proved against a stand-in, not the real private store. |
 | 2026-10-23 | Vercel "Sensitive" tidy-up | Read-only check of Vercel found two production settings readable by project members. |

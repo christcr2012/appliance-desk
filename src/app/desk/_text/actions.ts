@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { recordStaffTextConsent, sendWorkflowText, CONSENT_METHODS, type ConsentMethod } from "@/domains/messaging/workflow-text";
 import { startClickToCall } from "@/domains/messaging/click-to-call";
-import { setClickToCallEnabled, approveWorkflowWording, confirmWorkflowLegalReview, saveWorkflowQuietHours, setWorkflowTextEnabled } from "@/domains/messaging/workflow-text-settings";
+import { saveServiceReportingSettings } from "@/domains/messaging/telecom-reporting-settings";
+import { setClickToCallEnabled, approveWorkflowWording, confirmWorkflowLegalReview, saveRenewalWindowDays, saveWorkflowQuietHours, setWorkflowTextEnabled } from "@/domains/messaging/workflow-text-settings";
 
 export type TextActionState = { ok: boolean; message: string } | null;
 const str = (form: FormData, name: string) => { const v = form.get(name); return typeof v === "string" ? v : ""; };
@@ -12,7 +13,8 @@ const plain = (e: unknown) => (e instanceof Error ? e.message : "That did not wo
 
 /** Send one previewed text. The screen sends back only ids and the fingerprint of the text the person read. */
 export async function sendTextAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
-  const actor = await requireRole("OWNER", "ADMIN");
+  // Staff may send only the visit texts for a job assigned to them; the send function itself enforces that.
+  const actor = await requireRole("OWNER", "ADMIN", "STAFF");
   const path = str(form, "path");
   try {
     const result = await sendWorkflowText(actor.user.id, {
@@ -70,11 +72,30 @@ export async function saveQuietHoursAction(_prev: TextActionState, form: FormDat
   } catch (e) { return { ok: false, message: plain(e) }; }
 }
 
+/** Owner-only: customer counts for the what-if forecast and how much history is needed. Blank customer counts restores the recommended values. */
+export async function saveServiceReportingAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
+  const actor = await requireRole("OWNER");
+  try {
+    const version = Number(str(form, "version"));
+    if (str(form, "restore") === "yes") {
+      await saveServiceReportingSettings(actor.user.id, { settings: null, expectedVersion: version });
+      revalidatePath("/desk/settings/telecom"); revalidatePath("/desk/reports");
+      return { ok: true, message: "Recommended values restored." };
+    }
+    const counts = str(form, "scenarios").split(/[\s,]+/).filter(Boolean).map(Number);
+    await saveServiceReportingSettings(actor.user.id, { expectedVersion: version, settings: {
+      forecastScenarios: counts, minForecastCustomerDays: Number(str(form, "minDays")), minRateSample: Number(str(form, "minSample")) } });
+    revalidatePath("/desk/settings/telecom"); revalidatePath("/desk/reports");
+    return { ok: true, message: "Saved." };
+  } catch (e) { return { ok: false, message: plain(e) }; }
+}
+
 export async function confirmLegalReviewAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
   const actor = await requireRole("OWNER");
   try {
     const reviewed = str(form, "reviewed") === "yes";
-    await confirmWorkflowLegalReview(actor.user.id, { family: str(form, "family"), reviewed, expectedVersion: Number(str(form, "version")) });
+    await confirmWorkflowLegalReview(actor.user.id, { family: str(form, "family"), reviewed, expectedVersion: Number(str(form, "version")),
+      revision: str(form, "revision") === "" ? null : Number(str(form, "revision")) });
     revalidatePath("/desk/settings/telecom");
     return { ok: true, message: reviewed ? "Review confirmed for these exact words." : "Review confirmation removed; the text is off." };
   } catch (e) { return { ok: false, message: plain(e) }; }
@@ -100,5 +121,15 @@ export async function setClickToCallAction(_prev: TextActionState, form: FormDat
     await setClickToCallEnabled(actor.user.id, { enabled: str(form, "enabled") === "yes", expectedVersion: Number(str(form, "version")) });
     revalidatePath("/desk/settings/telecom");
     return { ok: true, message: str(form, "enabled") === "yes" ? "Calls from the desk are on." : "Calls from the desk are off." };
+  } catch (e) { return { ok: false, message: plain(e) }; }
+}
+
+export async function saveRenewalWindowAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
+  const actor = await requireRole("OWNER");
+  try {
+    const restore = str(form, "restore") === "yes";
+    await saveRenewalWindowDays(actor.user.id, { expectedVersion: Number(str(form, "version")), days: restore ? null : Number(str(form, "days")) });
+    revalidatePath("/desk/settings/telecom");
+    return { ok: true, message: restore ? "Restored the recommended 60 days." : "Saved." };
   } catch (e) { return { ok: false, message: plain(e) }; }
 }

@@ -164,7 +164,7 @@ export const WORKFLOW_TEXT_FAMILIES: readonly WorkflowTextFamily[] = [
   {
     key: "renewal_heads_up", group: "BILLING_RENEWAL", subject: "RentalAgreement", needsLegalReview: true,
     label: "Your rental term ends soon",
-    when: "A courtesy heads-up when a fixed-term rental ends within 60 days. It is not the renewal notice itself.",
+    when: "A courtesy heads-up when a fixed-term rental is close to ending (you choose how many days before; starting value 60). It is not the renewal notice itself.",
     defaultBody: `${BUSINESS}: Hi {{name}}, your rental term ends on {{date}}. Call us if you would like to renew. Reply STOP to opt out.`,
     variables: { name: NAME, date: DATE },
     needsLegalReviewReason: "Renewal wording must not replace or contradict the agreement's own renewal terms.",

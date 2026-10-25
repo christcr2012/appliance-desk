@@ -49,6 +49,8 @@ export const BACKUP_MODEL_POLICY = {
   JobRole: "jobRole",
   ApprovalRequest: "approvalRequest",
   ScheduledPriceChange: "scheduledPriceChange",
+  // Clean-up queue for stored files nobody needs; a restore rebuilds it from the next removals, so it is not restored.
+  StoredFileCleanup: null,
   BusinessGoal: "businessGoal",
   OwnerWorkspacePreference: "ownerWorkspacePreference",
   ApplianceCustodyEpisode: "applianceCustodyEpisode",

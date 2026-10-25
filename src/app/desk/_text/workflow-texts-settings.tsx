@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import type { FamilySetting } from "@/domains/messaging/workflow-text-settings";
 import { WORKFLOW_TEXT_GROUP_LABELS } from "@/domains/messaging/workflow-text-catalog";
-import { approveWordingAction, confirmLegalReviewAction, saveQuietHoursAction, setTextEnabledAction, type TextActionState } from "./actions";
+import { approveWordingAction, confirmLegalReviewAction, saveQuietHoursAction, saveRenewalWindowAction, setTextEnabledAction, type TextActionState } from "./actions";
 
 const allGroups = Object.entries(WORKFLOW_TEXT_GROUP_LABELS);
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -28,6 +28,7 @@ function FamilyRow({ f, version }: { f: FamilySetting; version: number }) {
       <p className="text-sm"><strong>Needs a professional&apos;s review.</strong> {f.legalReason} This text cannot be switched on until you confirm
         that a lawyer or other qualified person has read these exact words. Changing the wording removes the confirmation.</p>
       <input type="hidden" name="family" value={f.key} /><input type="hidden" name="version" value={version} />
+      <input type="hidden" name="revision" value={f.revision ?? ""} />
       <input type="hidden" name="reviewed" value={f.legalReviewed ? "no" : "yes"} />
       <button disabled={reviewing || (!f.approved && !f.legalReviewed)} className="mt-1 rounded border border-line px-3 py-1 text-sm">
         {f.legalReviewed ? "Remove review confirmation" : "Confirm a professional has read this wording"}</button>
@@ -45,11 +46,12 @@ function FamilyRow({ f, version }: { f: FamilySetting; version: number }) {
   </li>;
 }
 
-export function WorkflowTextsSettings({ families, version, quietHours, isRecommended, policyReady }: {
-  families: FamilySetting[]; version: number; quietHours: { startMinute: number; endMinute: number }; isRecommended: boolean; policyReady: boolean;
+export function WorkflowTextsSettings({ families, version, quietHours, isRecommended, policyReady, renewalWindowDays }: {
+  families: FamilySetting[]; version: number; quietHours: { startMinute: number; endMinute: number }; isRecommended: boolean; policyReady: boolean; renewalWindowDays: number;
 }) {
   const groups = allGroups.filter(([g]) => families.some((f) => f.group === g));
   const [quietState, saveQuiet, savingQuiet] = useActionState<TextActionState, FormData>(saveQuietHoursAction, null);
+  const [winState, saveWin, savingWin] = useActionState<TextActionState, FormData>(saveRenewalWindowAction, null);
   return <div className="space-y-4">
     {!policyReady && <p className="text-sm">Finish the phone setup above before switching individual texts on.</p>}
     <form action={saveQuiet} className="rounded border border-line p-3">
@@ -63,6 +65,18 @@ export function WorkflowTextsSettings({ families, version, quietHours, isRecomme
         <button disabled={savingQuiet || !policyReady} name="restore" value="yes" className="rounded border border-line px-3 py-1 text-sm">Restore recommended</button>
       </div>
       {quietState && <p role="status" className="text-sm">{quietState.message}</p>}
+    </form>
+    <form action={saveWin} className="rounded border border-line p-3">
+      <h4 className="font-semibold">Rental-ending heads-up window</h4>
+      <p className="text-sm text-ink-soft">How many days before a fixed-term rental ends the courtesy heads-up text may be sent. Starting value: 60.{renewalWindowDays === 60 ? " You are using the starting value." : ""}</p>
+      <input type="hidden" name="version" value={version} />
+      <label className="text-sm" htmlFor="renewal-window-days">Days before the end </label>
+      <input id="renewal-window-days" type="number" min={1} max={365} name="days" defaultValue={renewalWindowDays} className="w-24 rounded border border-line p-1" />
+      <div className="mt-2 flex gap-2">
+        <button disabled={savingWin || !policyReady} className="rounded border border-line px-3 py-1 text-sm">Save days</button>
+        <button disabled={savingWin || !policyReady} name="restore" value="yes" className="rounded border border-line px-3 py-1 text-sm">Restore recommended</button>
+      </div>
+      {winState && <p role="status" className="text-sm">{winState.message}</p>}
     </form>
     {groups.map(([group, label]) => <div key={group}>
       <h3 className="mb-2 mt-2 font-semibold">{label}</h3>

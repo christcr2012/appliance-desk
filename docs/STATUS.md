@@ -7,6 +7,14 @@ a visit assigned to them; losing the assignment or turning the switch off stops 
 carrier answer is shown as "unconfirmed" and never retried. Proven on throwaway Postgres with a fake carrier (9 tests); no real call was placed.
 Next: COM-N4 (service metrics and forecasts), then telecom wiring. Branch `ai/claude/com-n2-click-to-call`.
 
+## October 25 — COM-N4: service numbers, cost per customer and what-if forecast (in PR)
+
+Reports → "Communications cost evidence" now also shows, for the last full month: text failure rate, STOP (opt-out) rate, median time to a
+person’s first reply, provider-reported spend per active customer, and a what-if monthly spend at 200 / 250 / 500 / 1,000 customers (fixed charges
+counted once). Anything without enough history says so instead of guessing: under 10 final texts, no customers, ended rentals with no recorded end
+time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
+reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
+Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
 ## October 24 — COM-N1C: billing, renewal and refund texts (everything OFF)
 
 Invoice and agreement screens get preview-then-send boxes: invoice ready, friendly reminder, payment received, refund issued,
@@ -15,6 +23,27 @@ confirms a qualified person has read those exact words (changing the words remov
 not legal notices. Tested on throwaway Postgres with a fake carrier. Also fixed a rare test-ordering failure caused by my new
 tests turning the text switch on briefly. Next: COM-N2 (click-to-call), COM-N4, wiring gaps.
 
+## October 25 — Eight older review findings closed (photo clean-up, HEIC, earnings, test and narrow-width checks)
+
+In progress (branch `ai/claude/older-review-findings`). Removed purchase-receipt photos and unsent maintenance-request photos now leave storage for real: they go on a clean-up list (additive migration `20261025070000_stored_file_cleanup`) that the nightly job works through and the health page watches. iPhone HEIC photos are converted to JPEG in the browser; the server no longer accepts HEIC it cannot check. The "estimated earnings" report now uses only the rent part of what was paid and each rental's own billing month. The reviewer's three findings are fixed too: receipt files can now actually be deleted (the "purchases" folder was missing from storage's private list, which would also have refused receipt uploads), a clean-up that keeps failing shows as a failing night, and the waiting periods are owner settings (Rental policies → Removed files). A new phone-width check fails any page that scrolls sideways (113 pages scanned clean). Also: the stale "yearly SUTS check not built" note is corrected (it is built). Throwaway-Postgres tests cover each. New checklist row: confirm removed receipt files really leave storage. CI pending.
+## October 25 — Owner controls: proof of what each page sends to each role (O-2B)
+
+In progress (branch `ai/claude/owner-controls-o2b`). New browser test `e2e/role-shaped-pages.spec.ts` (browser-d) reads the whole
+server answer of the desk pages as the owner, a full admin, an admin the owner has limited, and staff. Staff get none of the
+rental-price, repair-cost or purchase-cost values; owner-only pages send nobody else any of their content; a limited admin's
+control center does not even contain the cards they may not use. A control check shows the planted values really are sent to the
+owner and admins, so the staff result is meaningful. Passes 18 of 18 locally including phone width, keyboard and accessibility. Nothing for Chris to do.
+## October 25 — Owner controls: price changes with a start date now cover rental sets (O-4)
+
+In progress (branch `ai/claude/owner-controls-o4`). On Settings → Price changes you can now pick a rental set (like Washer + Dryer
+Set) as well as a single appliance, a new monthly price and a start day. The nightly job applies it once, writes the same price
+history and change-history rows as a typed change, and leaves signed rentals alone; it fails safely if the set was retired or
+the person who scheduled it was since limited. Additive migration `20261025060000_scheduled_package_price_changes`. Proven by real-Postgres tests and a
+real-browser spec (phone width, keyboard, accessibility). Nothing for Chris to do.
+## October 25 — Phone bookkeeping catch-up (COM-N3 record)
+
+COM-N3 (booking a verified phone-company statement as one expense) was merged earlier in #555, but the plan and work list still said "in review / not built".
+Both now say merged, and a short card records what it proves and the one known gap (no browser test of the booking form yet; not blocking).
 ## October 24 — COM-N1B: job and maintenance texts (everything OFF)
 
 Job and maintenance-request screens get the same preview-then-send box: visit scheduled / reminder / on the way / done, and
@@ -22,6 +51,16 @@ maintenance request received / resolved. Owners and admins can send all; staff c
 assigned to them (and cannot record permission). No street address in any text. Same gates as the first batch (master switch,
 Owner-approved wording, per-text switch, recorded permission, STOP, quiet hours). Tested on throwaway Postgres with a fake carrier.
 Next: COM-N1C (billing, renewal and refund texts), then N2, N4, wiring gaps.
+## October 25 — Owner controls: browser tests for goals, approval limits, permissions and workspace
+
+In progress (branch `ai/claude/owner-controls-browser-tests`). One new real-browser spec (`e2e/owner-controls.spec.ts`, phone width, keyboard, accessibility check) walks the owner through setting and removing a cash goal, filling in and saving approval limits and turning them off, taking one permission away from an admin and giving it back, and pinning/unpinning workspace shortcuts. It passes locally; CI result pending. Switches and price changes already have their own specs. Nothing for Chris to do.
+
+## October 25 — Nightly spend-alert check wired in (in PR, notifies nobody)
+
+The overnight phone-usage job now also runs the spend-alert check as a read-only preview, but only if you have turned the alert rules on
+(Settings → Phone, texts and provider costs). It records how many warnings it found on Desk → Automations; it sends nothing and notifies no one,
+because who gets told and when waits on your budget answers (IN-53, already on the checklist). Proven on throwaway Postgres: nothing checked while rules
+are off; with $120 spend against a $100 critical line it counts a warning and creates no message. Branch `ai/claude/com-telecom-alert-check`.
 ## October 24 — Owner controls: settings preview, stale-save protection, full Switches list (O-1)
 
 In progress (branch `ai/claude/owner-controls-o1`): "Undo this" in Settings history now shows what it will do first and says

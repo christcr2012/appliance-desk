@@ -58,7 +58,7 @@ describe.skipIf(!enabled)("scheduled price changes on real Postgres", () => {
     const audit = await prisma.auditLog.findFirst({ where: { entityId: t, action: "pricing.schedule" } });
     expect(audit?.userId).toBe(adminId);
     const listed = await listScheduledPriceChanges();
-    expect(listed.pending.some((r) => r.id === row.id && r.applianceTypeName.startsWith("Test"))).toBe(true);
+    expect(listed.pending.some((r) => r.id === row.id && r.targetName.startsWith("Test"))).toBe(true);
   });
 
   it("refuses staff, a limited admin and a retired appliance type", async () => {

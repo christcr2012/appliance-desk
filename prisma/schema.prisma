@@ -527,6 +527,7 @@ model RentalPackage {
   rentalLines   RentalLine[]
   estimateLines EstimateLineItem[]
   leadRequests  LeadApplianceRequest[]
+  scheduledPriceChanges ScheduledPriceChange[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -994,8 +995,12 @@ enum ScheduledPriceChangeStatus {
 // price they were made with; only prices shown and quoted from then on change.
 model ScheduledPriceChange {
   id                     String                     @id @default(cuid())
-  applianceTypeId        String
-  applianceType          ApplianceType              @relation(fields: [applianceTypeId], references: [id], onDelete: Restrict)
+  // Exactly one of applianceTypeId / packageId is set (a database check enforces it): the change is for one appliance
+  // type's price or for one rental set's price.
+  applianceTypeId        String?
+  applianceType          ApplianceType?             @relation(fields: [applianceTypeId], references: [id], onDelete: Restrict)
+  packageId              String?
+  package                RentalPackage?             @relation(fields: [packageId], references: [id], onDelete: Restrict)
   newPriceCents          Int
   // Start of the Colorado calendar day the new price starts on (stored as that instant).
   effectiveOn            DateTime
@@ -1012,6 +1017,7 @@ model ScheduledPriceChange {
 
   @@index([status, effectiveOn])
   @@index([applianceTypeId, status])
+  @@index([packageId, status])
 }
 
 // Per-person limits on what an admin may do (Batch O-2A). A row with allowed=false takes a capability away from that
@@ -3140,6 +3146,9 @@ model BusinessSettings {
   pausedAutomations Json @default("[]")
   leadScoringPolicy Json @default("{\"version\":1,\"termPoints\":{\"month-to-month\":0,\"6-month\":10,\"12-month\":20},\"additionalUnitPoints\":5,\"businessAccountPoints\":10,\"multiUnitPropertyManagerPoints\":25,\"highValueThreshold\":30}")
   draftReservationHoldDays Int @default(7)
+  // Older review findings: how long a removed receipt file / an unsent request photo waits before the nightly clean-up deletes it.
+  receiptFileKeepDays Int @default(30)
+  unsentPhotoKeepDays Int @default(1)
   inspectionChecklist Json @default("[]")
 
   // Batch B D10: null means policy not set; dependent actions stay unavailable.
@@ -5191,4 +5200,22 @@ model JobRole {
   updatedAt        DateTime  @updatedAt
 
   @@index([archivedAt])
+}
+
+// A stored picture or receipt file that nothing needs any more (a receipt page that was removed, a photo a customer took
+// off a request before sending it). The file is deleted by the nightly clean-up after a waiting period, and only if no
+// record still points at it. Never holds the file itself.
+model StoredFileCleanup {
+  id         String    @id @default(cuid())
+  url        String    @unique
+  reason     String
+  queuedAt   DateTime  @default(now())
+  deleteAfter DateTime
+  // WAITING -> DELETED, or KEPT (something started using it again), or FAILED (could not be deleted after several tries).
+  state      String    @default("WAITING")
+  attempts   Int       @default(0)
+  finishedAt DateTime?
+  note       String?
+
+  @@index([state, deleteAfter])
 }

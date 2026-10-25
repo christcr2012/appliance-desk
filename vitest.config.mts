@@ -4,8 +4,10 @@ import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
   "tests/job-click-to-call-integration.test.ts", // COM-N2 changes and restores the shared phone policy.
+  "tests/telecom-reporting-settings-integration.test.ts", // COM-N4 changes and restores the shared phone policy.
   "tests/com-n1c-workflow-integration.test.ts", // COM-N1C changes and restores the shared phone/text policy, text switch and approved wording.
   "tests/com-n1b-workflow-integration.test.ts", // COM-N1B changes and restores the shared phone/text policy, text switch and approved wording.
+  "tests/telecom-alert-check-integration.test.ts", // changes and restores the shared phone/alert policy.
   "tests/communications-foundation-integration.test.ts", // reads the shared text master switch, which the COM-N1 tests turn on for a few seconds.
   "tests/com-n1a-workflow-integration.test.ts", // COM-N1A changes and restores the shared phone/text policy, text switch and approved wording.
   "tests/acc2-team-invitations-integration.test.ts", // ACC-2 changes and restores the shared invitation settings.
@@ -18,6 +20,9 @@ const SHARED_SETTINGS_TESTS = [
   "tests/used-appliance-sale-integration.test.ts", // M-2C sets and restores the shared books start date.
   "tests/shop-sale-delivery-fee-integration.test.ts", // M-1C sets and restores the shared delivery-fee settings and creates a Colorado filing account.
   "tests/capabilities-integration.test.ts", // O-2A limits an admin and restores it; reads/writes the shared override table and settings row.
+  "tests/stored-file-cleanup-integration.test.ts", // Older findings: changes and restores the shared file-keeping days settings.
+  "tests/scheduled-prices-integration.test.ts", // O-4 the nightly job applies every due change in the database; it must not overlap the set-price suite.
+  "tests/scheduled-package-prices-integration.test.ts", // O-4 same nightly job as above, for rental sets.
   "tests/settings-undo-integration.test.ts", // O-1 changes and restores shared BusinessSettings fields and reads the settings audit history.
   "tests/bank-reconciliation-integration.test.ts",
   "tests/budget-money-integration.test.ts",

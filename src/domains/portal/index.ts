@@ -1,3 +1,4 @@
+import { queueStoredFileCleanup } from "@/domains/stored-files/cleanup";
 import { lockCanonicalSmsAddress } from "@/domains/messaging/sms-address-lock";
 import { recordPortalSmsChoice } from "@/domains/messaging/portal-consent";
 import { prisma } from "@/lib/prisma";
@@ -408,5 +409,22 @@ export async function getPortalPickupRequests(userId: string): Promise<{ id: str
   return jobs.flatMap((job) => {
     const match = /^Customer asked for a pickup(?: \([^)]*\))?: (.*)$/m.exec(job.notes ?? "");
     return match ? [{ id: job.id, text: "Pickup request: " + match[1], scheduledAt: job.scheduledAt, createdAt: job.createdAt }] : [];
+  });
+}
+
+/**
+ * A customer took a photo off a maintenance or pickup request before sending it. The uploaded file is then not
+ * attached to anything, so it is put on the clean-up list (deleted tomorrow night unless a request now uses it).
+ * Only a file in this customer's own private folder can be named; anything else is ignored without saying why.
+ */
+export async function discardUnsentRequestPhoto(userId: string, url: string): Promise<void> {
+  const customer = await prisma.customer.findUnique({ where: { userId }, select: { id: true } });
+  const store = getPrivatePhotoStore();
+  if (!customer || !store) return;
+  const path = privatePhotoPathFromUrl(url, store.storeId);
+  if (!path || !path.startsWith(`maintenance-requests/${customer.id}/`)) return;
+  await prisma.$transaction(async (tx) => {
+    if (await tx.photo.findFirst({ where: { url }, select: { id: true } })) return;
+    await queueStoredFileCleanup(tx, { url, reason: "customer removed the photo before sending", kind: "unsent-photo" });
   });
 }
