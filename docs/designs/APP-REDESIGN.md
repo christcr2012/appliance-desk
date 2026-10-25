@@ -172,6 +172,35 @@ Sources: [web.dev — PWA app design](https://web.dev/learn/pwa/app-design), [we
 [How is Linear so fast](https://performance.dev/how-is-linear-so-fast-a-technical-breakdown.md),
 [Optimistic updates make apps faster](https://blog.openreplay.com/optimistic-updates-make-apps-faster/).
 
+## 4B. Mobile first, and excellent on a PC (Chris, 2026-10-25)
+
+Chris runs the business mostly from his phone, in the truck and at customers' doors. Every screen is **designed at
+phone size first (390 px wide, one hand, thumb reach)** and then **expanded** for larger screens — never a desktop page
+squeezed down.
+
+**On a phone:**
+- Bottom bar with the five areas; the area's tabs scroll horizontally under the top bar.
+- The primary action sits in the **thumb zone**: a floating "+" or a sticky bottom action bar on records and flows.
+- Lists are **cards** with the 3–4 facts that matter; swipe for the top two actions; long-press or ⋯ for the rest.
+- Filters, sort, menus and confirmations open as **bottom sheets**; records open full screen with a back gesture.
+- Forms are one column, big inputs, the right keyboard per field (number, phone, email), camera for receipts and
+  photos, tap-to-call and tap-to-map everywhere a phone number or address appears.
+- Works with poor signal: skeletons, offline bar, today's route cached read-only (section 4A).
+
+**On a PC (from 1024 px wide):**
+- Sidebar with the five areas, collapsible; top bar with the command bar.
+- **List + side panel**: clicking a row opens the record on the right without leaving the list; "Open full page" when
+  needed. On wide screens (1440 px+), a third column shows the next-step card and activity.
+- Real tables: sortable and resizable columns, column chooser, multi-select with a bulk action bar, hover row actions.
+- Keyboard shortcuts and the command bar (section 4A); right-click context menu on rows.
+- Dialogs instead of full-screen sheets; forms in two columns where it helps.
+
+**Tablet (768–1023 px):** phone patterns with two-column cards and side panels as overlays.
+
+**Proof:** every AR unit's browser specs run at 360 × 740 (small phone), 390 × 844 (standard phone), 820 × 1180
+(tablet), 1280 × 800 and 1920 × 1080, with axe and keyboard checks; the AR-0 reference screens are reviewed at phone size
+first. No horizontal scrolling on phones except inside tables built to scroll.
+
 ## 5. The application kit (shared components — AR-0)
 
 Build or upgrade in `src/components/ui`, documented in DESIGN-SYSTEM, each with axe/keyboard/phone tests:

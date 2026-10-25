@@ -383,7 +383,9 @@ Turning on text-message codes stays Chris's live-SMS switch; nothing else here n
 Design: [designs/APP-REDESIGN.md](designs/APP-REDESIGN.md); units AR-0…AR-11 in work-index. Master design for every
 desk screen; absorbs the screen parts of BA, LD and CU (their engine/data units stay).
 
-- [ ] AR-0: application kit and build guards; three reference screens on the testing app.
+- [ ] AR-0: application kit and build guards; three reference screens on the testing app, designed phone-first.
+- [ ] Every AR unit: phone-first layouts that expand to list + side panel and real tables on PC; browser specs at
+  360, 390, 820, 1280 and 1920 px wide.
 - [ ] AR-11: app feel — installable desk app with shortcuts, instant shell and skeletons, view transitions, optimistic
   actions with Undo (never for money), live freshness, offline shell, keyboard and touch patterns, performance budget in CI.
 - [ ] AR-1: five areas (Today, Customers, Schedule, Equipment, Money), area tabs, profile menu, command bar; More removed; old URLs work.
