@@ -33,12 +33,15 @@ export async function getCustomers() {
 
 /** How many (non-archived) customers exist — used to clamp the page
  * number before fetching that page's rows (src/domains/pagination.ts). */
+/** Same rows the list shows (the hidden built-in walk-in customer is not counted). */
 export async function getCustomersCount(): Promise<number> {
-  return prisma.customer.count({ where: { archivedAt: null } });
+  await requireRole("OWNER", "ADMIN", "STAFF");
+  return prisma.customer.count({ where: { archivedAt: null, isWalkIn: false } });
 }
 
 /** Paginated variant for /desk/customers's own list. */
 export async function getCustomersPage(skip: number, pageSize: number) {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.customer.findMany({
     where: { archivedAt: null, isWalkIn: false },
     include: {

@@ -460,6 +460,7 @@ export async function getPartRecordsForModel(modelNumber: string) {
 }
 
 export async function getAllPartRecords(options: { includeArchived?: boolean } = {}) {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.partRecord.findMany({
     where: options.includeArchived ? {} : { archivedAt: null },
     include: { applianceType: true },

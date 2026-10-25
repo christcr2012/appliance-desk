@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/session")>()),
+  requireRole: vi.fn().mockResolvedValue({ user: { id: "test-owner", role: "OWNER" } }),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { createShopSale, cancelShopSale, returnShopSale, SaleTaxBlockedError } from "@/domains/sales";
 import { recordManualPayment } from "@/domains/billing";

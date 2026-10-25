@@ -33,6 +33,10 @@ function makeTx() {
   };
 }
 
+vi.mock("@/lib/session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/session")>()),
+  requireRole: vi.fn().mockResolvedValue({ user: { id: "test-owner", role: "OWNER" } }),
+}));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     purchaseOrder: {

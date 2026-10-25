@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/session";
 import type { MaintenanceStatus } from "@prisma/client";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { createJobInTx } from "@/domains/jobs";
@@ -34,6 +35,7 @@ export function canTransitionMaintenanceStatus(
 export async function getMaintenanceRequestsCount(
   filter?: { status?: MaintenanceStatus },
 ): Promise<number> {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.maintenanceRequest.count({
     where: filter?.status ? { status: filter.status } : undefined,
   });
@@ -44,6 +46,7 @@ export async function getMaintenanceRequestsPage(
   skip: number,
   pageSize: number,
 ) {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.maintenanceRequest.findMany({
     where: filter?.status ? { status: filter.status } : undefined,
     include: {

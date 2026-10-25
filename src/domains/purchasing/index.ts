@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/session";
 import type { Prisma } from "@prisma/client";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { recordReceiptTaxInTx, validateReceiptTax, type ReceiptTaxInput } from "./receipt-tax";
@@ -604,6 +605,7 @@ export const restoreSupplier = (userId: string, supplierId: string) => setArchiv
  * threshold set (the default) never appears here, since Chris hasn't
  * told the system he tracks stock of it. */
 export async function getLowStockParts() {
+  await requireRole("OWNER", "ADMIN", "STAFF");
   const parts = await prisma.partRecord.findMany({
     where: { reorderThreshold: { not: null }, archivedAt: null },
     include: { applianceType: true },
