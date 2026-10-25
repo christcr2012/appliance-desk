@@ -314,9 +314,8 @@ Build `Icon` first (before StatusPill) in AR-0a step 4.
 
 `interactive-apps.md` (optimistic UI, pending states), `forms.md`, `server-actions.md`, `instant-navigation.md` and
 `prefetching.md` (AR-11), `preserving-ui-state.md` (lists keep state), `offline-support.md` and
-`progressive-web-apps.md` (AR-11), `view-transitions.md` (AR-11 — note it needs React 19.3's `<ViewTransition>`;
-the repo has React 19.2.8: if `import { ViewTransition } from "react"` does not type-check, **skip transitions** and
-record that in STATUS; do not upgrade React in a kit PR).
+`progressive-web-apps.md` (AR-11), `view-transitions.md` (AR-11 — it needs React 19.3's `<ViewTransition>`; AR-11 step 0 upgrades React to 19.3.0
+first; the kit PR AR-0a does not change React).
 
 ## 8. Words (everyday screens)
 

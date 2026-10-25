@@ -5,7 +5,7 @@ Docs only. Chris wants the design decided so completely that a cheaper model can
 word helpers, guards), screen specs for Today, Money › Bills and the Customer record (data functions, URL params,
 layout phone and PC, exact words, tests), and the approved samples. Cards AR-0 (split 0a kit / 0b screens), AR-11
 (app feel) and AR-12 (owner-friendly rules) are now card-ready. Needs Chris: go-ahead to build (checklist).
-AR-1 (navigation), AR-2 (Today finished) and AR-3 (Money area) are card-ready too. Next: AR-4…AR-10.
+AR-1, AR-2, AR-3 and BILL-1 (bank payments "being confirmed", per Chris: no gaps left for later) are card-ready too; AR-11 now upgrades React to 19.3.0 for screen transitions. Next: AR-4…AR-10, AR-13.
 
 ## October 25 — Rule change: decisions never block the work
 

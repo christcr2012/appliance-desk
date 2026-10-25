@@ -32,7 +32,7 @@ buttons fit the bill's status.
 - [ ] Axe + 5 sizes; `ci` green at the exact head; every review comment read.
 
 ## Not in this card
-A "Being confirmed" bill status (needs pending-payment evidence first — `docs/ROADMAP.md`); Expenses, Books and
+The "Being confirmed" tabs on Bills and Payments (BILL-1 adds them); Expenses, Books and
 Taxes screens (AR-7); statement page redesign (stays as is, linked from ⋯); bulk actions.
 
 ## Progress

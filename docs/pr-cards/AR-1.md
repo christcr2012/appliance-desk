@@ -38,7 +38,7 @@ None new (the AR-0 look-over row covers the new look).
 
 ## Not in this card
 Moving pages' content (each area's unit does that); the Money overview page (AR-3); Settings sections (AR-8);
-notifications bell (later, its own card).
+the in-app notifications bell (AR-13, after AR-2).
 
 ## Progress
 Not started.

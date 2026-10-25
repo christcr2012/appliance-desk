@@ -33,11 +33,10 @@ export function billPill(bill: { status: InvoiceStatus; dueDate: Date | null; am
 ```
 - **open:** status in `OPEN, PARTIALLY_PAID, DELINQUENT, FAILED` and `amountDueCents > amountPaidCents`.
 - **past-due:** open AND `dueDate < start of today (Denver, businessDayBounds(now).start)`.
-- **No "Processing" tab in AR-0.** Nothing in the payment paths records "the bank is still confirming this bill's
-  payment" today (no `ProviderOperation` is written for invoice payments, and payments are recorded only once they
-  succeed or fail). A tab built on missing evidence would always be empty, so it is left out. Unfinished Stripe
-  requests stay visible through the existing "Waiting for Stripe" view (`?view=waiting`). Recording that evidence is
-  new payment-path work — it is on `docs/ROADMAP.md`, not in this card.
+- **"Being confirmed" (bank payment in progress) is built in BILL-1**, not AR-0, because the payment paths must first
+  record it ([engines/BANK-PAYMENTS-IN-FLIGHT.md](../engines/BANK-PAYMENTS-IN-FLIGHT.md) section 6 adds the tab and pill
+  to this screen). AR-0 builds the tabs below; BILL-1 inserts its tab. Unfinished Stripe requests stay visible through
+  the existing "Waiting for Stripe" view (`?view=waiting`).
 - **paid:** `PAID`. **closed:** `VOID, WRITTEN_OFF, REFUNDED`. **drafts:** `DRAFT` (tab hidden when 0).
 - **Pill** (first match wins): FAILED → "Payment failed" (attention);
   past due → `"{n} day(s) late"` where n = calendar days between the due date and today in Denver (attention);

@@ -4447,6 +4447,32 @@
       "plannedCard": "docs/pr-cards/AR-3.md"
     },
     {
+      "id": "BILL-1",
+      "title": "Bank payments being confirmed: record processing ACH payments, show 'Being confirmed', pause late fees, slow-payment To do",
+      "batch": "AR",
+      "dependencies": [
+        "AR-0"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "20261026010000_bank_payment_in_flight",
+      "budget": 420,
+      "units": [
+        "BILL-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/BANK-PAYMENTS-IN-FLIGHT.md",
+        "src/domains/billing/webhooks-base.ts",
+        "src/domains/billing/webhook-evidence.ts",
+        "src/domains/billing/late-fees.ts"
+      ],
+      "tests": [
+        "tests/bank-in-flight-webhook-integration.test.ts",
+        "tests/bank-in-flight-nightly.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/BILL-1.md"
+    },
+    {
       "id": "AR-4",
       "title": "Customers area: leads, customers, quotes, rentals, messages; End this rental flow; hand-offs",
       "batch": "AR",
@@ -4673,6 +4699,27 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-12.md"
+    },
+    {
+      "id": "AR-13",
+      "title": "In-app notifications bell: new lead, quote viewed, signature done, payment failed, approval requested; each opens its record",
+      "batch": "AR",
+      "dependencies": [
+        "AR-1",
+        "AR-2"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "notifications",
+      "budget": 420,
+      "units": [
+        "AR-13"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-13.md"
     },
     {
       "id": "DEC-1",

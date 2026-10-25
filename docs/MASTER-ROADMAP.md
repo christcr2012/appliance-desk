@@ -266,12 +266,14 @@ component kit with build guards. It supersedes the screen units BA-4/5/6, LD-2/3
 | AR-1 | Five areas, area tabs, profile menu, command bar, redirects | AR-11, AR-12 |
 | AR-2 | Today inbox | AR-1 |
 | AR-3 | Money area and invoices | AR-2 |
+| BILL-1 | Bank payments being confirmed (record processing ACH payments, "Being confirmed", late-fee pause) — Chris 2026-10-25: address gaps as they are found | AR-0 |
 | AR-4 | Customers area (leads, customers, quotes, rentals, messages) | AR-3 |
 | AR-5 | Schedule area | AR-4 |
 | AR-6 | Equipment area | AR-4 |
 | AR-7 | Books and Taxes screens | AR-3 |
 | AR-8 | Settings | AR-1 |
 | AR-9 | Insights tabs | AR-4, AR-6, AR-7 |
+| AR-13 | In-app notifications bell (design 4.3) | AR-1, AR-2 |
 | AR-10 | Sweep and guards | AR-5, AR-6, AR-8, AR-9 |
 
 ### DEC — decisions never block the work (`designs/DECISIONS-CENTER.md`, Chris 2026-10-25)
