@@ -58,6 +58,8 @@ test("decisions: keep, change, ask, enter an answer, download and import", async
     await sheet.getByLabel("7 years after the appliance leaves the fleet").check();
     await sheet.getByLabel("Note (optional)").fill("Same as now, confirmed in the browser test");
     await sheet.getByRole("button", { name: "Save change" }).click();
+    // Either the success toast or the sheet's plain error, so a refusal shows its reason here.
+    await expect(page.getByText(`Changed: ${title("IN-71")}`).or(sheet.getByRole("alert"))).toBeVisible();
     await expect(page.getByText(`Changed: ${title("IN-71")}`)).toBeVisible();
     await page.goto("/desk/settings/decisions?for=ANSWERED");
     await card(page, title("IN-71")).getByRole("button", { name: "Reopen" }).click();
@@ -124,7 +126,7 @@ test("decisions: keep, change, ask, enter an answer, download and import", async
     ].join("\n"));
     await page.getByRole("button", { name: "Preview answers" }).click();
     await expect(page.getByRole("heading", { name: "What would change" })).toBeVisible();
-    await expect(page.getByText("This code isn't a question in the app.").first()).toBeVisible();
+    await expect(page.getByText("This code isn't a question in the app.").filter({ visible: true }).first()).toBeVisible();
     await page.getByRole("button", { name: "Record their answers" }).click();
     await expect(page.getByRole("heading", { name: "Done" })).toBeVisible();
     await expect(page.getByText("Confirmed with no change: 1")).toBeVisible();

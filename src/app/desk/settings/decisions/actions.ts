@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
+import { businessDateKey } from "@/lib/business-date";
 import {
   changeDecision,
   confirmDecision,
@@ -64,7 +65,8 @@ export async function changeDecisionAction(form: FormData): Promise<DecisionActi
     if (!option) throw new Error("Choose one of the answers.");
     const effectiveFrom = field(form, "effectiveFrom", 10).trim() || null;
     await changeDecision(session.user.id, subject.id, option.value, effectiveFrom, field(form, "note") || null);
-    return effectiveFrom ? `Saved. "${option.label}" starts on the date you chose.` : `Changed: ${subject.title}`;
+    return effectiveFrom && effectiveFrom > businessDateKey(new Date())
+      ? `Saved. "${option.label}" starts on ${effectiveFrom}.` : `Changed: ${subject.title}`;
   });
 }
 
