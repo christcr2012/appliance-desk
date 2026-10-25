@@ -156,10 +156,15 @@ test("decisions: admins read without buttons; staff are sent away", async ({ bro
     // The server's answer first (no scripts run): the page itself, with cards and without any owner button.
     const served = await a.request.get("/desk/settings/decisions?for=CPA", { maxRedirects: 0 });
     const html = await served.text();
-    const redirect = /NEXT_REDIRECT;[a-z]+;([^;"]+)/.exec(html)?.[1] ?? served.headers()["location"] ?? "none";
-    const digest = /"digest":"([^"]+)"/.exec(html)?.[1] ?? "none";
+    const redirect = /NEXT_REDIRECT;[a-z]+;([^;"\\]+)/.exec(html)?.[1] ??
+      /http-equiv="refresh" content="\d+;url=([^"]+)"/.exec(html)?.[1] ?? served.headers()["location"] ??
+      /NEXT_HTTP_ERROR_FALLBACK;\d+/.exec(html)?.[0] ?? "none";
+    const digest = /digest\\?"\s*:\s*\\?"([^"\\]+)/.exec(html)?.[1] ?? "none";
+    const headings = [...html.matchAll(/<h1[^>]*>([\s\S]{0,80}?)<\/h1>/g)].map((m) => m[1]).join(" | ");
+    const pageTitle = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "";
     expect({ status: served.status(), redirect, digest, heading: html.includes("Decisions &amp; reviews</h1>") },
-      "admin's server answer for Decisions & reviews").toEqual({ status: 200, redirect: "none", digest: "none", heading: true });
+      `admin's server answer for Decisions & reviews (title "${pageTitle}", h1: ${headings})`)
+      .toEqual({ status: 200, redirect: "none", digest: "none", heading: true });
     expect(html).not.toContain(">Keep this<");
     await a.goto("/desk/settings/decisions?for=CPA");
     await expect(a.getByRole("heading", { name: "Decisions & reviews", level: 1 }),
