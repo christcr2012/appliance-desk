@@ -1,3 +1,12 @@
+## October 25 — COM-N4: service numbers, cost per customer and what-if forecast (in PR)
+
+Reports → "Communications cost evidence" now also shows, for the last full month: text failure rate, STOP (opt-out) rate, median time to a
+person’s first reply, provider-reported spend per active customer, and a what-if monthly spend at 200 / 250 / 500 / 1,000 customers (fixed charges
+counted once). Anything without enough history says so instead of guessing: under 10 final texts, no customers, ended rentals with no recorded end
+time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
+reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
+Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
+
 ## October 24 — COM-N1A: staff can text leads, estimates and signatures (in PR, everything OFF)
 
 Staff now get a "Text message" box on the lead, estimate and agreement screens: it shows the exact words and the masked

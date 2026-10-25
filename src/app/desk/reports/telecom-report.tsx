@@ -5,6 +5,7 @@ import { telecomReportPeriods } from "@/domains/messaging/telecom-periods";
 import { getTelecomSpend } from "@/domains/messaging/telecom-costs-store";
 import { communicationsPolicySchema } from "@/domains/messaging/communications-policy";
 import { metricDefinition } from "@/domains/reports/definitions";
+import { FORECAST_SCENARIOS, forecastSpend, getServiceMetrics, ratio } from "@/domains/messaging/telecom-unit-economics";
 
 const DAY=86_400_000;
 const tolerance={absoluteCents:0,percentBasisPoints:null,combination:"ANY" as const};
@@ -36,6 +37,16 @@ export async function TelecomReportSection({actorUserId}:{actorUserId:string}) {
     });
     return {label:account.label,current,previous};
   }));
+  // Service numbers and cost per customer use the last complete month (the provider's totals for it are final enough to compare).
+  const primary=policy.success?rows.find((_,i)=>accounts[i]?.id===policy.data.primaryAccountId):rows[0];
+  const metricsFrom=periods.previous.start, metricsTo=periods.previous.end;
+  const service=rows.length>0?await getServiceMetrics(actorUserId,metricsFrom,metricsTo).catch(()=>null):null;
+  const prevTotal=primary?.previous.usage.complete?primary.previous.usage.accountTotalCents:null;
+  const prevFixed=primary?.previous.usage.complete?primary.previous.usage.breakdownCents.FIXED??0:null;
+  const perCustomer=service&&prevTotal!==null&&service.customers.complete?ratio(prevTotal,service.customers.averageDaily):null;
+  const forecast=service&&primary?forecastSpend({totalCents:prevTotal,fixedCents:prevFixed,complete:service.customers.complete,
+    customerDays:service.customers.customerDays,days:service.customers.days}):null;
+  const pct=(v:number|null)=>v===null?"Not enough history":(v*100).toFixed(1)+"%";
   return <section aria-labelledby="telecom-report" className="mt-8 space-y-4">
     <div>
       <h2 id="telecom-report" className="text-xl font-semibold">Communications cost evidence</h2>
@@ -49,6 +60,33 @@ export async function TelecomReportSection({actorUserId}:{actorUserId:string}) {
         View provider setup and private statements
       </Link>
     </div>
+    {service && <article aria-labelledby="telecom-service" className="rounded-card border border-line p-4">
+      <h3 id="telecom-service" className="font-semibold">Service numbers and cost per customer</h3>
+      <p className="text-xs text-ink-soft">Last full month, {gmt(service.window.fromGMT,service.window.throughGMT)}. Observed numbers only; where
+        there is not enough history it says so instead of guessing.</p>
+      <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <div><dt className="font-medium">Text failure rate</dt><dd>{pct(service.texts.failureRate)}</dd>
+          <dd className="text-xs text-ink-soft">{service.texts.delivered} delivered, {service.texts.failed} failed; {service.texts.pending} waiting and {service.texts.unknown} unknown are not counted.</dd></div>
+        <div><dt className="font-medium">Opt-out (STOP) rate</dt><dd>{pct(service.optOuts.rate)}</dd>
+          <dd className="text-xs text-ink-soft">{service.optOuts.count} of {service.optOuts.contacted} people texted.</dd></div>
+        <div><dt className="font-medium">Median time to a person’s first reply</dt>
+          <dd>{service.response.medianMinutes===null?"No replies to measure":Math.round(service.response.medianMinutes)+" minutes"}</dd>
+          <dd className="text-xs text-ink-soft">Based on {service.response.samples} conversation{service.response.samples===1?"":"s"}; plain elapsed time, not business hours.</dd></div>
+        <div><dt className="font-medium">Provider-reported spend per active customer</dt>
+          <dd>{perCustomer===null?"Unavailable":money(Math.round(perCustomer),primary?.previous.usage.currency??null)}</dd>
+          <dd className="text-xs text-ink-soft">{service.customers.complete
+            ?`Average ${service.customers.averageDaily===null?"0":service.customers.averageDaily.toFixed(1)} active customers per day. Provider reported, not invoice reconciled.`
+            :"Unavailable: some ended rentals have no recorded end time, so past customer counts cannot be trusted."}</dd></div>
+      </dl>
+      <h4 className="mt-4 text-sm font-semibold">What-if monthly spend</h4>
+      {forecast&&forecast.available
+        ?<>
+          <ul className="mt-1 text-sm">{forecast.scenarios.map((sc)=><li key={sc.customers}>At {sc.customers.toLocaleString("en-US")} customers: about {money(sc.monthlyCents,primary?.previous.usage.currency??null)} a month</li>)}</ul>
+          <p className="text-xs text-ink-soft">Based on {forecast.customerDays} customer-days and {money(forecast.fixedCents,primary?.previous.usage.currency??null)} of fixed charges counted once. {forecast.limitations.join(" ")}
+            The customer counts ({FORECAST_SCENARIOS.join(", ")}) are examples, not goals.</p></>
+        :<p className="text-sm text-ink-soft">{forecast?forecast.reason:"Unavailable."}</p>}
+      <p className="mt-2 text-xs text-ink-soft">Cost as a share of rental revenue is not shown yet: it needs the recognized revenue in the accounting books for the same month.</p>
+    </article>}
     {limited && <p className="text-sm text-warning-ink">Only the first 20 accounts are shown; this is not a company-wide total.</p>}
     {rows.length===0 && <p className="rounded border border-line p-4 text-sm">
       No telecom account recorded. Provider costs and budgets are unknown.

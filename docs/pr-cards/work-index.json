@@ -2280,7 +2280,7 @@
       "dependencies": [
         "COM-N3"
       ],
-      "status": "APPROVED — NOT BUILT",
+      "status": "BUILT — IN PR",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2294,7 +2294,7 @@
       ],
       "tests": [
         "tests/telecom-unit-economics.test.ts",
-        "e2e/telecom-economics.spec.ts"
+        "tests/telecom-unit-economics-integration.test.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/COM-N4.md"
