@@ -78,7 +78,15 @@ async function claimPreparedCommunication(
     }
 
     const thread = delivery.communicationMessage.thread;
-    await assertActiveTeamActor(tx, delivery.actorUserId, ["OWNER", "ADMIN"]);
+    const sender = await assertActiveTeamActor(tx, delivery.actorUserId, ["OWNER", "ADMIN", "STAFF"]);
+    if (sender.role === "STAFF") {
+      // Assigned staff may only dispatch a fixed visit text about a job still assigned to them.
+      const jobLink = workflowTextFamily(delivery.templateKey ?? "")?.staffAssigned
+        ? await tx.communicationLink.findFirst({ where: { messageId: delivery.communicationMessage.id, entityType: "Job" },
+            select: { entityId: true } }) : null;
+      const job = jobLink ? await tx.job.findUnique({ where: { id: jobLink.entityId }, select: { assignedToUserId: true } }) : null;
+      if (job?.assignedToUserId !== delivery.actorUserId) throw new Error("This account no longer has access to make that change.");
+    }
     await tx.$queryRaw`SELECT "id" FROM "CommunicationThread" WHERE "id" = ${thread.id} FOR UPDATE`;
     const address = await lockCanonicalSmsAddress(tx, thread.externalContactPoint.address);
 

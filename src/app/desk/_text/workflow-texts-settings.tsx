@@ -2,8 +2,10 @@
 
 import { useActionState } from "react";
 import type { FamilySetting } from "@/domains/messaging/workflow-text-settings";
+import { WORKFLOW_TEXT_GROUP_LABELS } from "@/domains/messaging/workflow-text-catalog";
 import { approveWordingAction, saveQuietHoursAction, setTextEnabledAction, type TextActionState } from "./actions";
 
+const allGroups = Object.entries(WORKFLOW_TEXT_GROUP_LABELS);
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 function FamilyRow({ f, version }: { f: FamilySetting; version: number }) {
@@ -35,6 +37,7 @@ function FamilyRow({ f, version }: { f: FamilySetting; version: number }) {
 export function WorkflowTextsSettings({ families, version, quietHours, isRecommended, policyReady }: {
   families: FamilySetting[]; version: number; quietHours: { startMinute: number; endMinute: number }; isRecommended: boolean; policyReady: boolean;
 }) {
+  const groups = allGroups.filter(([g]) => families.some((f) => f.group === g));
   const [quietState, saveQuiet, savingQuiet] = useActionState<TextActionState, FormData>(saveQuietHoursAction, null);
   return <div className="space-y-4">
     {!policyReady && <p className="text-sm">Finish the phone setup above before switching individual texts on.</p>}
@@ -50,6 +53,9 @@ export function WorkflowTextsSettings({ families, version, quietHours, isRecomme
       </div>
       {quietState && <p role="status" className="text-sm">{quietState.message}</p>}
     </form>
-    <ul className="space-y-3">{families.map((f) => <FamilyRow key={f.key} f={f} version={version} />)}</ul>
+    {groups.map(([group, label]) => <div key={group}>
+      <h3 className="mb-2 mt-2 font-semibold">{label}</h3>
+      <ul className="space-y-3">{families.filter((f) => f.group === group).map((f) => <FamilyRow key={f.key} f={f} version={version} />)}</ul>
+    </div>)}
   </div>;
 }

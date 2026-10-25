@@ -125,7 +125,7 @@ export default async function TelecomSettingsPage() {
         : RECOMMENDED_TELECOM_ALERT_RULES}
     />
     {canEdit && textSettings && <section aria-labelledby="workflow-texts" className="rounded-card border border-line p-4">
-      <h2 id="workflow-texts" className="text-lg font-semibold">Texts about leads, estimates and signatures</h2>
+      <h2 id="workflow-texts" className="text-lg font-semibold">Customer text messages</h2>
       <p className="mt-1 text-sm text-ink-soft">Each kind of text stays off until you approve its wording and switch it on.
         Staff still preview and press Send for every text, and nothing is sent unless the master text switch above is on,
         the person has agreed to texts, and it is outside quiet hours.</p>
