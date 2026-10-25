@@ -150,7 +150,9 @@ export async function sendBackupFailureAlertToChris(result: BackupResult): Promi
     subject: { type: "BackupRun", id: day },
     render: () => ({
       subject: "Appliance Desk: today's automatic backup failed",
-      text: `The daily backup of your business data didn't complete today.\n\nError: ${result.error ?? "Unknown error"}\n\nYour data itself is safe and untouched — this only means today's extra safety copy wasn't made. Neon (your database host) still keeps its own automatic recovery point, so nothing is at risk yet, but if this keeps happening it's worth having someone look into it.`,
+      // MCP-1: never the raw error text (it can carry provider replies or private details). The reason and a
+      // reference number are on the System health page.
+      text: `The daily backup of your business data didn't complete today.\n\nThe reason and a reference number are on the System health page (Desk → System health → Daily backup).\n\nYour data itself is safe and untouched — this only means today's extra safety copy wasn't made. Neon (your database host) still keeps its own automatic recovery point, so nothing is at risk yet, but if this keeps happening it's worth having someone look into it.`,
     }),
   });
   if (!["ACCEPTED", "DELIVERED", "NOT_SENT"].includes(delivery.state)) {

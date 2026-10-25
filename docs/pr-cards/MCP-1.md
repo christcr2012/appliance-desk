@@ -24,4 +24,9 @@ page that is still wrong.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+2026-10-25: built on `ai/claude/mcp-1-system-health` (spec sections 1–5). Tests: `tests/automation-health.test.ts`
+(states, vercel.json schedules, DST, skew, failure codes), `tests/system-health-rows.test.tsx` (one row per state),
+`tests/automation-health-integration.test.ts` (10,000 runs, EXPLAIN, grace setting), canary in
+`tests/automation-runs-integration.test.ts`, late rule in `tests/system-issue-sweep-integration.test.ts`, browser in
+`e2e/system-health.spec.ts`. The browser server in CI has no job settings, so most rows there show Needs setup; every
+other state is proved by the component test and the legend. Backup stages, read-back and pruning stay with MCP-2.

@@ -3,6 +3,7 @@ import { resolve, sep } from "node:path";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { verifyOpsAgentKey } from "./ops-auth";
+import { failureExplanation } from "@/domains/automation/failures";
 
 const RECOMMENDATIONS = {
   INVESTIGATE_CODE: "Review the affected code and reproduce the reported behavior with regression tests.",
@@ -36,9 +37,13 @@ export async function getOpsIssues(input: { cursor?: string; limit: number }) {
     orderBy: [{ lastSeenAt: "desc" }, { id: "desc" }],
     select: { id: true, kind: true, severity: true, status: true, version: true,
       summary: true, detail: true, occurrences: true, firstSeenAt: true, lastSeenAt: true,
-      resolvedAt: true },
+      resolvedAt: true, failureCode: true },
   });
-  return { issues: rows.slice(0, input.limit),
+  // MCP-1: the failure code and its fixed explanation only — never the stage, the log reference or any raw text.
+  return { issues: rows.slice(0, input.limit).map(({ failureCode, ...row }) => {
+      const plain = failureExplanation(failureCode);
+      return { ...row, failureCode: plain.code, failureExplanation: row.kind === "AUTOMATION_FAILED" ? plain.explain : null };
+    }),
     nextCursor: rows.length > input.limit ? rows[input.limit - 1]!.id : null };
 }
 

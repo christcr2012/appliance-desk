@@ -53,7 +53,9 @@ const LOADERS: Loader[] = [
       const rows = await getAutomationHealth(now);
       const failing = rows.filter((r) => r.state === "failing").length;
       const setup = rows.filter((r) => r.state === "unconfigured").length;
+      const late = rows.filter((r) => r.state === "late").length;
       if (failing > 0) return { state: "NEEDS_SETUP", detail: `${failing} background job${failing === 1 ? " is" : "s are"} failing.` };
+      if (late > 0) return { state: "NEEDS_SETUP", detail: `${late} background job${late === 1 ? " is" : "s are"} late.` };
       if (setup > 0) return { state: "NEEDS_SETUP", detail: `${setup} background job${setup === 1 ? " needs" : "s need"} a setting before it can run.` };
       return { state: "READY", detail: "No background job is reporting a failure." };
     },
