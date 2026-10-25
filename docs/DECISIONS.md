@@ -1,3 +1,10 @@
+## October 25 — Quiet screens and a real leads pipeline (Batch LD design)
+
+Screens carry at most one short line under a title; explanations go behind an ⓘ tooltip; filters live in stage tabs
+plus one Filter sheet. Leads get derived stages (New, Contacted, Quote sent, Won, Lost) from one rule, an owner per
+lead (starting value: the owner; round-robin later), a 15-business-minute speed-to-lead target, duplicate merge, and
+indexes/search/cursor paging sized for 50,000 leads. Full design: `docs/designs/LEADS-WORKSPACE.md`.
+
 ## October 25 — Books run themselves; owner reviews monthly; no bare link lists (Batch BA design)
 
 The app records every bookkeeping entry, enrolls appliances (in-service = purchase date, or the books start date if

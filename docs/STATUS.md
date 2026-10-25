@@ -1,3 +1,11 @@
+## October 25 — Leads redesign and the "quiet screens" rule (Batch LD, design only)
+
+Docs only. Chris found Leads a jumble of chip rows and explanations, not a pipeline that scales. New design
+`docs/designs/LEADS-WORKSPACE.md` (LD-1…LD-4): derived stages, lead owner and round-robin, speed-to-lead, duplicate
+merge, fast search and cursor paging for 50,000 leads, a "Next up" work queue with one-tap contact, one filter sheet,
+saved views, bulk actions, a detail workspace and insights. New DESIGN-SYSTEM rule "Quiet screens": one short line at
+most, help behind ⓘ tooltips; the Books design was corrected to follow it. Needs Chris: go-ahead (checklist).
+
 ## October 25 — Books redesign written (Batch BA, design only)
 
 Docs only, nothing built. Chris found Books confusing. Checked against the code: entries are recorded only when a
