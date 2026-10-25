@@ -297,26 +297,26 @@ Stripe switch), contrary to Batch K. BA makes the app keep the books itself and 
 | BA-1 | Nightly recording, auto-enroll appliances, automatic monthly depreciation, retirement link | JIT — `BA-1.md` | — |
 | BA-2 | First-time setup for a brand-new business; correct starting balances | JIT — `BA-2.md` | BA-1 |
 | BA-3 | "Review this month": checks, plain summary, accountant package, lock | JIT — `BA-3.md` | BA-2 |
-| BA-4 | Books home: status, this month, task cards, "For your accountant" | JIT — `BA-4.md` | BA-3 |
-| BA-5 | Equipment value screen with nothing to remember | JIT — `BA-5.md` | BA-4 |
-| BA-6 | No bare link lists anywhere on the desk; guard test | JIT — `BA-6.md` | — (parallel) |
+| BA-4 | Books home: status, this month, task cards, "For your accountant" | SUPERSEDED by AR-7 | BA-3 |
+| BA-5 | Equipment value screen with nothing to remember | SUPERSEDED by AR-7 | BA-4 |
+| BA-6 | No bare link lists anywhere on the desk; guard test | SUPERSEDED by AR-0/AR-10 | — (parallel) |
 
 ### LD — leads workspace (`designs/LEADS-WORKSPACE.md`, designed 2026-10-25, awaiting go-ahead)
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
 | LD-1 | Stages, lead owner, speed to lead, duplicates, scale (indexes, search, cursor paging) | JIT — `LD-1.md` | — |
-| LD-2 | Work queue: stage tabs, Next-up order, one-tap contact, filter sheet, saved views, bulk, board | JIT — `LD-2.md` | LD-1 |
-| LD-3 | Lead detail workspace | JIT — `LD-3.md` | LD-2 |
+| LD-2 | Work queue: stage tabs, Next-up order, one-tap contact, filter sheet, saved views, bulk, board | SUPERSEDED by AR-4 | LD-1 |
+| LD-3 | Lead detail workspace | SUPERSEDED by AR-4 | LD-2 |
 | LD-4 | Lead insights | JIT — `LD-4.md` | LD-3 |
 
 ### CU — customers workspace (`designs/CUSTOMERS-WORKSPACE.md`, designed 2026-10-25, awaiting go-ahead)
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| CU-1 | Customer list: segments, money and next event per row, filters, saved views, summary model, search, count fix | JIT — `CU-1.md` | — (shares LD-1 search indexes) |
-| CU-2 | Customer record header, next-step card, quick actions | JIT — `CU-2.md` | CU-1 |
-| CU-3 | One Customers area (Leads, Customers, Insights), shared search, insights | JIT — `CU-3.md` | CU-2, LD-4 |
+| CU-1 | Customer list: segments, money and next event per row, filters, saved views, summary model, search, count fix | SUPERSEDED by AR-4c | — (shares LD-1 search indexes) |
+| CU-2 | Customer record header, next-step card, quick actions | SUPERSEDED by AR-4 | CU-1 |
+| CU-3 | One Customers area (Leads, Customers, Insights), shared search, insights | SUPERSEDED by AR-1/AR-4/AR-9 | CU-2, LD-4 |
 
 ## Owner-facing handoff stays small
 

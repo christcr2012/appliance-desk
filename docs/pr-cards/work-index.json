@@ -4105,7 +4105,7 @@
       "tests": [
         "e2e/books-home.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/BA-4.md"
     },
     {
@@ -4129,7 +4129,7 @@
       "tests": [
         "tests/ba5-equipment-value.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/BA-5.md"
     },
     {
@@ -4151,7 +4151,7 @@
       "tests": [
         "tests/ba6-no-link-lists.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/BA-6.md"
     },
     {
@@ -4200,7 +4200,7 @@
         "tests/ld2-lead-queue.test.ts",
         "e2e/leads-queue.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/LD-2.md"
     },
     {
@@ -4224,7 +4224,7 @@
         "tests/ld3-lead-detail.test.ts",
         "e2e/lead-detail.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/LD-3.md"
     },
     {
@@ -4270,7 +4270,7 @@
         "tests/cu1-customer-list-integration.test.ts",
         "tests/perf/customers-scale.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/AR-4.md"
     },
     {
@@ -4294,7 +4294,7 @@
         "tests/cu2-customer-next-step.test.ts",
         "e2e/customer-record.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/CU-2.md"
     },
     {
@@ -4319,7 +4319,7 @@
       "tests": [
         "tests/cu3-customers-area.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/CU-3.md"
     },
     {

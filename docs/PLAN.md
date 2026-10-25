@@ -318,14 +318,14 @@ Design: `docs/designs/BATCH-M.md`; work coverage and prerequisites: work-index.
 
 ### Acceptance checklist
 
-- [ ] Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests). _(Audit: sales and repairs move stock; refunds of paid sales are NOT built)_
-- [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules. _(Audit: tax by location built; the Colorado retail delivery fee on delivered sales is NOT built)_
+- [ ] Items marked "sold to customers" share the parts stock ledger; sales, refunds and repairs move stock exactly once (integration tests). _(Built: sales, returns of paid sales (`returnShopSale`) and repairs move stock; checked 2026-10-25)_
+- [ ] A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules. _(Built: tax by location, and the retail delivery fee on delivered sales recorded once and returned with a returned sale (`src/domains/tax/rdf-shop-sale.ts`); checked 2026-10-25)_
 - [x] Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the fixed unit-order rule.
 - [x] Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
 - [ ] Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought). _(item sales and used-appliance sales built; M-2C merged)_
-- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically. Used rental-asset sales can be priced at whatever the owner sets, even original cost or higher; show potential §1245 depreciation recapture, source-backed adjusted tax basis and CPA follow-up **rather than a resale-price cap**. _(M-2C: selling a retired appliance finishes its plan and removes its book value; a Section 1245 recapture estimate stays a CPA item, IN-46, and is not shown)_
+- [ ] Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale completes its plan automatically. Used rental-asset sales can be priced at whatever the owner sets, even original cost or higher; show potential §1245 depreciation recapture, source-backed adjusted tax basis and CPA follow-up **rather than a resale-price cap**. _(M-2C: selling a retired appliance finishes its plan and removes its book value; the sale page shows a Section 1245 recapture estimate with a CPA follow-up (`resale-tax-note.tsx`); confirming it stays a CPA item, IN-46/IN-56)_
 - [x] Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
-- [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K. _(Audit: scrap income built; writing off remaining book value on a finished plan not confirmed in code)_
+- [ ] Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Batch K. _(Scrap income built. Writing off the remaining book value when a strip/scrap/dispose plan finishes is NOT built — planned in BA-2/BA-3, `build-specs/engines/BOOKS-AUTOPILOT.md`; checked 2026-10-25)_
 - [x] One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
 - [ ] Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean. _(Audit: sales tax categories feed the engine; revenue reports now label it "Shop sales (parts and items sold)"; no test ties shop sales onto the return)_
 - [ ] Every item in "Rules that apply to every batch".
@@ -338,7 +338,7 @@ Design: `docs/designs/BATCH-O.md`; work coverage and prerequisites: work-index.
 
 - [x] Settings history in plain words with one-step undo through the normal save path.
 - [x] Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
-- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Built: write-off and expense approvals (O-3A) and refund, held-payment refund, kept-deposit and credit approvals (O-3B, tested with a fake Stripe; no browser test yet))_
+- [ ] Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Built: write-off and expense approvals (O-3A) and refund, held-payment refund, kept-deposit and credit approvals (O-3B, tested with a fake Stripe; the browser test is planned in AR-10))_
 - [x] Scheduled price changes applied once on their start date; agreements unchanged. _(applies to appliance-type prices; package and set prices are not covered)_
 - [x] Goals with pace on Today; idle-appliance and utilization alerts.
 - [x] Read-only page of every live switch with links.
@@ -415,12 +415,12 @@ Batch K intent (nightly posting, automatic depreciation, purchase-date in-servic
   audited correcting entry (never editing the original).
 - [ ] BA-3: on the 1st, "Review <month>'s books" appears on To do; the month page runs four automatic checks, shows
   the month in plain words, offers the accountant package, and locks the month (owner only); reminder day setting.
-- [ ] BA-4: Books home shows up-to-date status, this month and last month in dollars, what needs attention and four
+- ~~BA-4: Books home shows up-to-date status, this month and last month in dollars, what needs attention and four~~ _(superseded by AR-7, Chris 2026-10-25)_
   task cards (purpose, when, status) with a matching tab bar; journal, account matching and exports live under "For
   your accountant"; every old Books URL still works.
-- [ ] BA-5: equipment value page lists every appliance's cost, value recorded, value now and next automatic entry,
+- ~~BA-5: equipment value page lists every appliance's cost, value recorded, value now and next automatic entry,~~ _(superseded by AR-7, Chris 2026-10-25)_
   with no enroll form or "post through" field; totals match the ledger.
-- [ ] BA-6: no desk page shows rows of bare navigation links; a guard test enforces it.
+- ~~BA-6: no desk page shows rows of bare navigation links; a guard test enforces it.~~ _(superseded by AR-0/AR-10, Chris 2026-10-25)_
 - [ ] Every item in "Rules that apply to every batch".
 
 ## Batch LD — Leads workspace — DESIGNED 2026-10-25, awaiting Chris's go-ahead
@@ -430,9 +430,9 @@ Design: [designs/LEADS-WORKSPACE.md](designs/LEADS-WORKSPACE.md); units LD-1…L
 - [ ] LD-1: derived stages (New, Contacted, Quote sent, Won, Lost) from one rule; lead owner with "new leads go to"
   setting incl. round-robin; speed-to-lead target in business hours; duplicate flag and merge; indexes, fast search
   and cursor paging proven at 50,000 leads.
-- [ ] LD-2: one work queue with stage tabs and counts, "Next up" order, one-tap call/email (text when live), one filter
+- ~~LD-2: one work queue with stage tabs and counts, "Next up" order, one-tap call/email (text when live), one filter~~ _(superseded by AR-4, Chris 2026-10-25)_
   sheet, saved views, bulk actions and board on desktop; quiet screen (no explanatory paragraphs).
-- [ ] LD-3: lead detail with stage stepper, one next-step card, inline edits, quotes, convert or lose.
+- ~~LD-3: lead detail with stage stepper, one next-step card, inline edits, quotes, convert or lose.~~ _(superseded by AR-4, Chris 2026-10-25)_
 - [ ] LD-4: insights (speed to lead, quote rate, win rate, pipeline value, sources, lost reasons) with ⓘ definitions.
 - [ ] Every item in "Rules that apply to every batch".
 
@@ -440,11 +440,11 @@ Design: [designs/LEADS-WORKSPACE.md](designs/LEADS-WORKSPACE.md); units LD-1…L
 
 Design: [designs/CUSTOMERS-WORKSPACE.md](designs/CUSTOMERS-WORKSPACE.md); units CU-1…CU-3 in work-index.
 
-- [ ] CU-1: segment tabs (Active, Owes money, Ending soon, Setting up, Past) from one rule; each row shows monthly
+- ~~CU-1: segment tabs (Active, Owes money, Ending soon, Setting up, Past) from one rule; each row shows monthly~~ _(superseded by AR-4c, Chris 2026-10-25)_
   rent, balance due, autopay, pays-on-time badge and next event; filter sheet, saved views; summary read model kept
   in step with every money/agreement/job change; fast search and cursor paging at 20,000 customers; walk-in count bug fixed.
-- [ ] CU-2: customer record summary strip, one next-step card, quick actions; quiet tabs.
-- [ ] CU-3: one Customers area with Leads, Customers and Insights tabs; shared search; customer insights.
+- ~~CU-2: customer record summary strip, one next-step card, quick actions; quiet tabs.~~ _(superseded by AR-4, Chris 2026-10-25)_
+- ~~CU-3: one Customers area with Leads, Customers and Insights tabs; shared search; customer insights.~~ _(superseded by AR-1/AR-4/AR-9, Chris 2026-10-25)_
 - [ ] Every item in "Rules that apply to every batch".
 
 ## Batch BP — Business offers operations and partnerships — PROPOSED
