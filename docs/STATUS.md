@@ -1,3 +1,15 @@
+## October 25 (afternoon) — Back-office plans added (docs only)
+
+Chris asked for the app to be his whole back office. Added designs, research (all sourced, accessed 2026-10-25) and
+card-ready build specs: tax and fee autopilot TFA-1…3 (dated rules, automatic exemption switches, official-page
+watching, every change approved by Chris, late changes absorbed/credited), compliance center CMP-1…5 (federal and
+Colorado filings: IRIS 1099s, filled official forms, Weld property declaration, SOS report, accountant packets),
+tax benefits TAXBEN-1/2, accountant sign-in ACCT-1, records vault and guided setup VAULT-1/2 + SETUP-1, and
+OPS-1…8 (recalls, refrigerant records, truck/mileage, insurance, disputes, collections, privacy/security,
+continuity). Found on main (fixed in TFA-2): returned shop sales refund the retail delivery fee, which the law
+doesn't allow (only bites once sales pass $500,000/yr). Overview: `docs/designs/OWNER-OPERATING-SYSTEM.md`.
+Branch `ai/claude/build-specs-wave2` (PR #596, stacked on #593). Next: merge #593 → #596, then build.
+
 ## October 25 — Build specs wave 2 complete (every approved unit is card-ready)
 
 Docs only; nothing built yet. Added build specs + cards for: Books autopilot BA-1…3 and Books/Taxes AR-7; researched
