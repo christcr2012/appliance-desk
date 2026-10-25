@@ -261,10 +261,17 @@ Date } | null; state?: "starting" | "confirmed" | "needs-setup"; editable: boole
 1. `requireRole("OWNER","ADMIN")`; the row must exist in `SETTING_ROWS` with `editor: "row"`; `who: "owner"` and not
    OWNER → refused "Only the owner can change this."
 2. Validate with a per-kind zod schema built from the def (`min`/`max`; money ≥ 0 with two decimals; hours 0–23
-   integers; text trimmed, max from the def); then the extra rule for delivery windows (start < end, reading the
-   other end from current settings).
+   integers; text trimmed, max from the def); the delivery-window rule (start < end) is **not** checked here against a
+   pre-read — it runs inside the save transaction (step 4), so two people changing opposite ends at once can't store
+   an impossible window.
 3. Convert money dollars → cents with `dollarsToCents`; build `{ [key]: stored }`.
 4. Call `updateBusinessSettings(userId, update, { expectedRevision: { keys: [key], value: revision } })`.
+   Inside `updateBusinessSettings`' transaction, **after** it locks the settings row, run the new
+   `validateSettingsCrossFields(lockedBefore, update)` (`src/domains/settings/cross-fields.ts`, pure): for each
+   delivery window (morning/afternoon start/end hours) the merged values must have start < end, else throw
+   `SettingsValidationError("The window must end after it starts.")`; the same function is the single place for any
+   later cross-field rule. Test: from 08:00–12:00, one save sets start 11:00 and another sets end 10:00 concurrently →
+   one succeeds, the other is refused; both orders.
    Extend `updateBusinessSettings`' option to accept `{ keys: string[]; value: string }` (compared with
    `fieldsRevision(before, keys)` — the helper already exists in `preview.ts`) besides the section form; the section
    form keeps working. `SettingsConflictError` → the existing conflict message.

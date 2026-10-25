@@ -102,8 +102,7 @@ enum FeedbackState { SUBMITTED TRIAGED NEEDS_INFORMATION ACCEPTED IN_PROGRESS AW
 ```
 User relations: `feedbackReports @relation("FeedbackReporter")`, `feedbackEntries @relation("FeedbackEntryAuthor")`.
 Settings (BusinessSettings, additive, owner-editable in Settings › App feedback with the usual explanation and
-"restore recommended"): `feedbackMaxAttachments Int @default(3)` (0–3), `feedbackMaxAttachmentMb Int @default(5)`
-(1–5; 5 is also the hard technical ceiling), `feedbackReopenDays Int @default(90)`.
+"restore recommended"): `feedbackMaxAttachments Int @default(3)` (0–3), `feedbackReopenDays Int @default(90)`.
 Backup: add all four models to `BACKUP_MODEL_POLICY` (`src/domains/backup/manifest.ts` — typecheck forces it) as
 recoverable business data. Media: add `feedback` to the `isPrivatePhotoPath` regex (`src/lib/photo-storage.ts`) so the
 nightly media copy includes screenshots; update its test. The client-upload token path (`canUploadPhoto`) must
@@ -150,11 +149,23 @@ markDuplicate(id, expectedVersion, ofNumber)                     // triage; stat
   setting. `appRevision` = first 12 chars of `VERCEL_GIT_COMMIT_SHA` (absent locally → null). Nothing else is
   captured — no full URL, cookies, page content or logs.
 
-## 4. Screenshots (server-side, no client upload token)
-- In `submitFeedback` / `addFeedbackDetails`, the server action receives the files (FormData). Per report at most
-  `feedbackMaxAttachments` in total; each ≤ `feedbackMaxAttachmentMb` MiB before decoding; only `image/png`,
-  `image/jpeg`, `image/webp` by **magic bytes** (check the first bytes, not the browser's type); reject anything else
-  with "Screenshots must be PNG, JPEG or WebP pictures under {n} MB."
+## 4. Screenshots (shrunk in the browser, one upload per picture, no client storage token)
+- **Request size limits:** Next.js Server Actions accept 1 MB by default (`serverActions.bodySizeLimit`,
+  `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/serverActions.md`) and Vercel
+  functions 4.5 MB. Keep the app-wide 1 MB default (don't raise it for every action). So: the report itself is
+  submitted **without** pictures; then each picture is sent by its own call `addFeedbackScreenshot(reportId, formData)`
+  (reporter of that report, report not final, under the count limit).
+- **In the browser first** (`src/components/feedback/shrink-image.ts`): read the chosen file (any size up to 25 MB;
+  HEIC goes through the existing `photo-convert.ts` rule), draw it on a canvas at most 1600 px on the long side, export
+  WebP at quality 0.82, stepping down to 0.6 and then 1280 px until the result is **≤ 900 KB** (room for form
+  overhead); if it can't get there → "This picture is too large to send — try a smaller screenshot." The canvas
+  re-draw also drops the photo's location data before it leaves the phone.
+- On the server, `addFeedbackScreenshot`: total per report ≤ `feedbackMaxAttachments`; each body ≤ 900 KB (check
+  `file.size`); only `image/png`, `image/jpeg`, `image/webp` by **magic bytes** (check the first bytes, not the
+  browser's type); reject anything else with "Screenshots must be PNG, JPEG or WebP pictures." The setting
+  `feedbackMaxAttachmentMb` is dropped from this spec (the 900 KB transport cap is technical, explained in the PR).
+- Browser test: attach a 3 MB PNG screenshot → it is shrunk, uploaded and shown; three pictures → three calls, all
+  saved; a fourth is refused.
 - Decode with `sharp` (already a dependency) with `limitInputPixels: 40_000_000` (decompression-bomb guard),
   `.rotate()` (apply orientation) then `.resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })`
   `.webp({ quality: 82 })` — the re-encode drops EXIF/GPS and all other metadata. Store with `put(pathname, bytes, {
