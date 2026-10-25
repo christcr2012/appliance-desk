@@ -5,6 +5,16 @@ maintenance request received / resolved. Owners and admins can send all; staff c
 assigned to them (and cannot record permission). No street address in any text. Same gates as the first batch (master switch,
 Owner-approved wording, per-text switch, recorded permission, STOP, quiet hours). Tested on throwaway Postgres with a fake carrier.
 Next: COM-N1C (billing, renewal and refund texts), then N2, N4, wiring gaps.
+## October 25 — Owner controls: browser tests for goals, approval limits, permissions and workspace
+
+In progress (branch `ai/claude/owner-controls-browser-tests`). One new real-browser spec (`e2e/owner-controls.spec.ts`, phone width, keyboard, accessibility check) walks the owner through setting and removing a cash goal, filling in and saving approval limits and turning them off, taking one permission away from an admin and giving it back, and pinning/unpinning workspace shortcuts. It passes locally; CI result pending. Switches and price changes already have their own specs. Nothing for Chris to do.
+
+## October 25 — Nightly spend-alert check wired in (in PR, notifies nobody)
+
+The overnight phone-usage job now also runs the spend-alert check as a read-only preview, but only if you have turned the alert rules on
+(Settings → Phone, texts and provider costs). It records how many warnings it found on Desk → Automations; it sends nothing and notifies no one,
+because who gets told and when waits on your budget answers (IN-53, already on the checklist). Proven on throwaway Postgres: nothing checked while rules
+are off; with $120 spend against a $100 critical line it counts a warning and creates no message. Branch `ai/claude/com-telecom-alert-check`.
 ## October 24 — Owner controls: settings preview, stale-save protection, full Switches list (O-1)
 
 In progress (branch `ai/claude/owner-controls-o1`): "Undo this" in Settings history now shows what it will do first and says
