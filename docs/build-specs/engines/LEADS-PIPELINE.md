@@ -97,6 +97,13 @@ the same statement, moves a NEW lead's stored status to CONTACTED** (`status: CA
 eligibility (`setLeadFollowUp` needs CONTACTED) and Today's `listLeadFollowUps` always agree. Test: an outbound text
 accepted for a new lead → stored CONTACTED → Set follow-up works → the follow-up shows on Today. Called by:
 - `recordLeadMessageContactInTx` and the `workflow-text.ts` ACCEPTED branch (outbound messages actually handed over);
+- **sending a quote to a lead**: `sendEstimate` (`src/domains/estimates/index-base.ts`) must pass `recipient: { type:
+  "Lead", id: leadId, … }` to `deliverMessage` (today it omits the id, so nothing can tell which lead was contacted),
+  and when that delivery is ACCEPTED the same transaction-safe hook calls `markFirstContactInTx` — so a quoted lead is
+  stored CONTACTED and "Set follow-up" and Today's follow-ups work. A quote whose delivery fails or is not sent (email
+  off) is **not** contact: the lead stays NEW (stage quoted) and its menu offers "Log a contact…" instead of "Set
+  follow-up…". Regression test: send a quote to a new lead → accepted → CONTACTED → set follow-up → it shows on Today;
+  email off → stays NEW, no follow-up offered;
 - the new "Log a contact" action (LeadNote `kind: "CONTACTED"`);
 - `updateLeadStatus` when the new status is CONTACTED;
 - **not** by `createLead`, `createLeadManually`, plain notes (`kind: "NOTE"`) or attempts (`kind: "ATTEMPT"`).
