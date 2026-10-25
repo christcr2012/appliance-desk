@@ -6,6 +6,13 @@ counted once). Anything without enough history says so instead of guessing: unde
 time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
 reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
 Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
+## October 25 — Owner controls: price changes with a start date now cover rental sets (O-4)
+
+In progress (branch `ai/claude/owner-controls-o4`). On Settings → Price changes you can now pick a rental set (like Washer + Dryer
+Set) as well as a single appliance, a new monthly price and a start day. The nightly job applies it once, writes the same price
+history and change-history rows as a typed change, and leaves signed rentals alone; it fails safely if the set was retired or
+the person who scheduled it was since limited. Additive migration `20261025060000_scheduled_package_price_changes`. Proven by real-Postgres tests and a
+real-browser spec (phone width, keyboard, accessibility). Nothing for Chris to do.
 ## October 25 — Phone bookkeeping catch-up (COM-N3 record)
 
 COM-N3 (booking a verified phone-company statement as one expense) was merged earlier in #555, but the plan and work list still said "in review / not built".
