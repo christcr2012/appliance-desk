@@ -42,6 +42,14 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 - [ ] **Look at the rollback button once (do not use it).** Steps: Vercel → find Instant Rollback and the previous production
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 
+- [ ] **IRS filing code for 1099s (IRIS TCC, about 20 minutes, free).** Needed before your first 1099s (due Jan 31
+  after a year you pay a contractor $2,000+). Steps: irs.gov/iris → "Apply for an IRIS TCC" → sign in with ID.me → choose
+  "Taxpayer Portal" for the business. Ready when the app's Compliance screen shows the 1099 upload file (CMP-3). Worked
+  when IRS shows the TCC as active. Later, for filing straight from the app: apply for an **A2A** TCC the same way.
+- [ ] **Encryption key for tax ids (about 5 minutes).** When CMP-1 ships, add `COMPLIANCE_ENCRYPTION_KEY` (the app's
+  setup page shows how to make one; 32 random bytes) in Vercel → Settings → Environment Variables (Production and
+  Preview). Never paste it in a chat or GitHub. Worked when Compliance › Business facts lets you enter your EIN.
+
 ## B. Before real customers (money, email, texts, legal, accounts)
 
 Order matters: tax answers → money → email/text → the rest. "Live" switches never happen unless you say so in writing.
@@ -224,3 +232,4 @@ on readiness).
 | 2026-10-24 | Shop-sale card page in Stripe test mode | M-3 was proved only against a pretend Stripe; a real test-mode payment needs Chris's Stripe test keys. |
 | 2026-10-25 | Removed receipt files really leave storage | The clean-up of removed files was proved against a stand-in, not the real private store. |
 | 2026-10-23 | Vercel "Sensitive" tidy-up | Read-only check of Vercel found two production settings readable by project members. |
+| 2026-10-25 | IRS IRIS TCC, compliance encryption key | Chris asked the app to file and fill federal and state forms (CMP-1, CMP-3). |
