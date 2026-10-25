@@ -99,7 +99,7 @@ Sources: `docs/research/2026-10-25-tax-fee-rules.md`, `docs/research/2026-10-25-
 | OPS-MEDCARD | A medical card is required at 16,001–26,000 lb GVWR intrastate | Owner (Colorado State Patrol) |
 | OPS-MILEAGE-METHOD | Standard mileage rate in the first year | CPA |
 | OPS-INSURANCE-LIMITS | Ask your agent; no limits assumed | Insurance agent |
-| OPS-LATE-FEE-CAP | No cap found for plain rentals; $5 already at the rent-to-own cap | Attorney |
+| OPS-LATE-FEE-CAP | App caps every late fee at $15 and charges $5 (Colorado UCCC rule applied to all, Chris 2026-10-25); attorney confirms the agreement wording | Attorney |
 | CONT-SUCCESSOR | Add a successor-member clause to the operating agreement | Attorney |
 | VAULT-BANK | Bank logins may be stored in the vault (password manager suggested) | Owner |
 

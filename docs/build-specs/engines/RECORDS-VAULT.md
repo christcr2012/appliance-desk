@@ -125,7 +125,9 @@ field, "Add login", rotation reminders on To do (only when `rotateEveryMonths` s
 Setting `emergencyContact` (name, email, phone) + `emergencyWaitDays Int @default(7)` (1–30). The contact gets no
 account and no access by default. If Chris turns on "Emergency access", the contact can request it from a page
 `/emergency/{token}` (link Chris gives them); the app emails/texts Chris (existing internal switch) and starts the wait;
-Chris can deny any time; after the wait with no denial, the contact gets a time-limited **read-only** export (ZIP of
+Chris can deny any time; the app reminds him on **two channels** (email and text) at the start, halfway and one day
+before the wait ends; the contact must confirm a one-time code sent to the contact's saved phone or email (not to
+the address typed on the request page); after the wait with no denial, the contact gets a time-limited **read-only** export (ZIP of
 records + the vault decrypted into a PDF, delivered by a one-time link valid 24 hours, audited). Building this needs
 Chris's explicit "turn on" (it widens access — AGENTS section 1) — the feature ships off. Attorney question
 `CONT-SUCCESSOR` (who may run or close the LLC if Chris can't) in Decisions.

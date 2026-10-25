@@ -150,7 +150,7 @@ for big editors); "link" = goes to a page that lives elsewhere.
   `missedTripFeeCents` "Trip fee when nobody is home" (money, recommended $0.00 — "Off until you decide to charge
   one"), `damageWaiverEnabled`, `depositEnabled` (yesno).
 - Group "Late payments": `lateFeeGraceDays` (days), `lateFeeFlatCents` (money), `lateFeePercent` (percent) —
-  `decisionId: "IN-84"`; BILL-1's `pauseLateFeesWhileBankConfirms` and `bankPaymentSlowBusinessDays` join here when
+  `decisionId: "IN-84"`; BILL-1's `bankPaymentSlowBusinessDays` joins here (the late-fee pause while a bank payment confirms is a fixed rule, not a setting — LATE-FEES.md Rule 2) when
   that card ships.
 - Group "Prepay discounts": the five prepay rows; `referralRewardCents`.
 - Group "Ending and renewing": panel "Ending terms" → `TermsPolicyForm` (covers the `earlyTermination*`,

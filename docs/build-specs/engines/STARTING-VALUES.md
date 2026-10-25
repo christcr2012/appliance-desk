@@ -108,5 +108,5 @@ export async function applyStartingValues(now = new Date()): Promise<{ applied: 
   pre-fill.
 - `tests/late-fee-waiver-integration.test.ts`: waive → negative line, balance down, `applyLateFees` does not
   re-add; staff refused; no fee → refused; concurrent waive → one wins.
-- `tests/late-fee-day6.test.ts`: the day-6 and DST cases above.
+- `tests/late-fee-day11.test.ts`: the day-11 and DST cases above.
 - `e2e/late-fee-waiver.spec.ts` (add to a shard in `e2e/shards.json`): owner waives from the bill record; axe.

@@ -20,7 +20,7 @@ apply is pointless without the values, and the $5 value does nothing until new a
 - [ ] Signed agreements and issued invoices are unchanged after the run (test compares rows).
 - [ ] New agreements get the late fee, grace days and percent from Settings; renewals keep their old terms.
 - [ ] Owner/admin can waive a late fee with a reason; it never comes back; staff cannot.
-- [ ] Day-6 late fee pinned by a test, including the DST change.
+- [ ] Day-11 late fee (10-day rule for every rental) pinned by a test, including the DST change.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress

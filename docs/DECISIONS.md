@@ -9,8 +9,7 @@ signed agreements keep their own terms. (FEE-1.)
 
 Research (`docs/research/2026-10-25-late-fee-law.md`) found Colorado's consumer credit code applies to household rentals
 with a starting term over 4 months: no late fee until the bill is more than 10 days late, at most $15, once per bill,
-with written notice. So Chris's $5-after-5-days policy runs as written for month-to-month household rentals and
-business renters, and as **$5 after 10 days** for household 6- and 12-month rentals. Autopay amounts that include a fee
+with written notice. (**Superseded the same day by the entry above:** Chris chose the 10-day rule for every rental.) Autopay amounts that include a fee
 get 10 days' notice. Rules enforced in FEE-1. Attorney questions filed (month-to-month coverage, UCCC filing, etc.).
 
 ## October 25 — An accountant sign-in, and the system handles the books and tax benefits (Chris)

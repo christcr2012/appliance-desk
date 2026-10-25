@@ -103,14 +103,15 @@ before expiry → expiry); asking DOR to file less often (BENEFITS, section 6). 
 One row per registry rule: title, "Now: {describe(value)} since {date}", "Next: {describe} from {date}" (if a future
 version), source link + "checked {date}", state pill ("Researched — not confirmed" / "From the official page" /
 "Set by you" / "Confirmed by {name}"), InfoTip `explain`. ⋯: "History" (all versions, undone ones struck through),
-"Change…" (OWNER: value + effective date ≥ today + reason → OWNER version; ConfirmDialog), "Undo this automatic
-change" (auto-applied future versions only). Words pass the plain-words check.
+"Change…" (OWNER: value + effective date ≥ today + reason → OWNER version; ConfirmDialog), "Undo this change"
+(approved versions whose start date has not arrived yet; OWNER; same approval as any change). Words pass the plain-words check.
 
 ### 4a. Late changes: bills stay as issued; the business absorbs, the customer gets credited (Chris, 2026-10-25)
 When a change is put in place **after its legal start date** (approved late, found late on the official page, a
 certificate entered late, an exemption switch approved late), bills already issued in between are **never changed**.
 Instead, `trueUpLateChange(change)` (`src/domains/rules/true-up.ts`, run in the same transaction that applies the
-change) recomputes each affected issued bill line with the rule that should have applied (the engine's normal
+change) locks each affected invoice (`SELECT … FOR UPDATE`, oldest first) and re-checks the approving actor
+(`assertActiveTeamActor`), then recomputes each affected issued bill line with the rule that should have applied (the engine's normal
 calculation with `asOf` = the line's service date) and compares:
 - **Should have cost the customer more** (e.g. a rate increase, an exemption that had ended): the customer is not
   charged. The difference is recorded as the business's cost: a books entry "Tax/fee the business paid for a late
@@ -123,7 +124,8 @@ calculation with `asOf` = the line's service date) and compares:
   sentence. The tax return for the original period is adjusted only as the existing amendment/credit rules allow
   (a credit taken on the current return when allowed, else an amendment To do — existing `amendment-attention`).
 - Per-customer amounts under $0.01 are dropped; each true-up is audited (`rules.true_up`) with the bills, amounts and
-  rule versions; running it twice changes nothing (keyed by change id + bill line id).
+  rule versions; running it twice changes nothing (keyed by change id + bill line id). Test on throwaway Postgres: a true-up
+running at the same moment as a payment on the same bill → both land, balance right, one credit.
 TFA-2's switches and TFA-3's approvals all call it. Section 9's "certificate entered with `validFrom` in the past"
 now credits the customer's bills since that date (it previously said "from now on only").
 Tests: rate increase approved 5 days late → no bill changed, absorbed amount on the return and in books; decrease

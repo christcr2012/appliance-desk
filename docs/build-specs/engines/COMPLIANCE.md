@@ -81,7 +81,9 @@ Tabs: **Coming up** (next 120 days by `actOn`), **Needs you** (READY_FOR_REVIEW,
 files it" / "Upload this file at {portal}" / "Print and mail" / "Type these values at {portal}" / "For your
 accountant"), state pill. Filing page `/desk/compliance/{id}`: prepared numbers with where each came from (links to
 books/records), the output preview, **Approve and file** / **Approve and download** (binds `preparedHash`; if data
-changed since → "Numbers changed — review again"), then "Mark submitted" (confirmation text or "mailed on") and, where
+changed since → "Numbers changed — review again"; the filing row is locked `SELECT … FOR UPDATE`, APPROVED→SUBMITTED
+happens once only, and the submission carries a key from the filing id + `preparedHash` so a retry or double tap can
+never file twice — a retry first asks the agency for the status of that key; test: two concurrent taps → one filing), then "Mark submitted" (confirmation text or "mailed on") and, where
 the channel returns an answer, ACCEPTED/REJECTED automatically. To do category `COMPLIANCE_DUE` (one per filing at
 `actOn`; high when within the safety margin of `dueOn`). Calendar export reuses `tax/calendar-file.ts`.
 

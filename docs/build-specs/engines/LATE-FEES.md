@@ -39,7 +39,9 @@ charged a fee for the days their payment was going through.
   `@@unique([forInvoiceId, kind])` = once per overdue bill) is recorded.
 - It is put on the customer's **next** bill as a separate line "Late fee for bill #{n} (was due {date})": for local
   bills, when the next bill is created; for Stripe subscription bills, as a Stripe invoice item for the **upcoming**
-  invoice created the moment the fee is recorded (so it is on the bill the customer sees before it is charged), with an
+  invoice — **after** the Legal rule 7 autopay check: only if that invoice's automatic charge is at least 10 calendar
+  days away (so the customer gets the new amount and date 10 days ahead); otherwise it waits for the following bill
+  (or a separate bill that is not auto-charged) — with an
   idempotency key from the `PendingCharge` id. If the rental has ended and no next bill will come, a separate one-line
   bill "Late fee" is created with its own due date (`dueDays` setting) and the customer is told.
 - The next bill's reminder (`billing-reminder`) mentions it: "This bill includes a {fee} late fee for bill #{n}."
