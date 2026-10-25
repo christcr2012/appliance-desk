@@ -1,3 +1,14 @@
+## October 24 — Owner controls: settings preview, stale-save protection, full Switches list (O-1)
+
+In progress (branch `ai/claude/owner-controls-o1`): "Undo this" in Settings history now shows what it will do first and says
+why it refuses; section saves (Business profile, Service area, Rental policies) have a "Preview changes" button and refuse
+to overwrite a change somebody else saved after the page was opened; the Switches page also lists launch-list emails and
+the Colorado tax rate lookup and shows who last changed paused automations and the books start date. Proven by unit and
+throwaway-Postgres tests plus a real-browser spec (phone width, keyboard, accessibility scan) run locally; exact-head CI
+pending. Nothing for Chris to do. Next in this lane: the role-shaped admin page proof (O-2B), package and set price
+changes (O-4), the older review findings, and browser specs for the other owner controls.
+
+
 ## October 24 — COM-N1A: staff can text leads, estimates and signatures (in PR, everything OFF)
 
 Staff now get a "Text message" box on the lead, estimate and agreement screens: it shows the exact words and the masked
