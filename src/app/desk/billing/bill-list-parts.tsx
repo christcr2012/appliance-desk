@@ -58,12 +58,13 @@ export function billMobileCard(row: BillRow, now: Date, owing: boolean) {
     <div className="flex flex-col gap-1.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-base font-bold text-ink">
+          {/* A customer with no name shows their email, which has no spaces: let it wrap anywhere on a phone. */}
+          <h3 className="text-base font-bold text-ink [overflow-wrap:anywhere]">
             <Link href={billHref(row)} className="hover:underline">
               {row.customerName}
             </Link>
           </h3>
-          <p className="text-sm text-ink-soft">
+          <p className="text-sm text-ink-soft [overflow-wrap:anywhere]">
             {row.forText} · Bill #{row.number}
           </p>
         </div>
@@ -74,7 +75,7 @@ export function billMobileCard(row: BillRow, now: Date, owing: boolean) {
       </div>
       {detail ? <p className="text-sm text-ink-soft">{detail}</p> : null}
       {actions.length > 0 ? (
-        <div className="mt-1.5 flex gap-2">
+        <div className="mt-1.5 flex flex-wrap gap-2">
           {actions.map((spec, index) => (
             <ActionButton key={spec.label} spec={spec} variant={index === 0 ? "primary" : "secondary"} className={index === 0 ? "flex-1" : undefined} />
           ))}

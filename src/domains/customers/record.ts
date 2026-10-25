@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { businessDayBounds, formatShortDate, ordinal } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
-import { billOwedWhere, pastDueInvoiceWhere } from "@/domains/billing/bill-status";
+import { billOwedWhere, pastDueInvoiceWhere, payPathFor, type PayPath } from "@/domains/billing/bill-status";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { getNextBills, rentForNextBill } from "@/domains/portal/next-bill";
 import {
@@ -40,6 +40,8 @@ export type CustomerSummary = {
   monthlyRentCents: number;
   owedCents: number;
   oldestOpenBillId: string | null;
+  /** How that bill is paid (the same rule as the Bills screen), so "Take payment" opens the right place. */
+  oldestOpenBillPayPath: PayPath | null;
   nextBill: { date: Date; rentCents: number } | null;
   autopay: boolean;
   renting: string | null;
@@ -179,7 +181,7 @@ export async function getCustomerSummary(customerId: string, now = new Date()): 
     prisma.invoice.aggregate({ where: owedWhere, _sum: { amountDueCents: true, amountPaidCents: true } }),
     prisma.invoice.findFirst({
       where: owedWhere,
-      select: { id: true },
+      select: { id: true, status: true, amountDueCents: true, amountPaidCents: true, stripeInvoiceId: true, saleKind: true },
       orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { invoiceNumber: "asc" }],
     }),
     getNextBills(customerId),
@@ -219,6 +221,14 @@ export async function getCustomerSummary(customerId: string, now = new Date()): 
     monthlyRentCents: active.reduce((sum, a) => sum + rentForNextBill(a.lines), 0),
     owedCents: Math.max(0, (owed._sum.amountDueCents ?? 0) - (owed._sum.amountPaidCents ?? 0)),
     oldestOpenBillId: oldestOpen?.id ?? null,
+    oldestOpenBillPayPath: oldestOpen
+      ? payPathFor({
+          status: oldestOpen.status,
+          owedCents: Math.max(0, oldestOpen.amountDueCents - oldestOpen.amountPaidCents),
+          stripeInvoiceId: oldestOpen.stripeInvoiceId,
+          saleKind: oldestOpen.saleKind,
+        })
+      : null,
     nextBill: next ? { date: next.date, rentCents: next.rentCents } : null,
     autopay: customer.stripeDefaultPaymentMethodId != null,
     renting: rentingText(active.flatMap((a) => a.lines.flatMap(lineTypeNames))),
@@ -236,31 +246,39 @@ export async function getCustomerSummary(customerId: string, now = new Date()): 
 export async function getCustomerNextSteps(customerId: string, now = new Date()): Promise<ExceptionItem[]> {
   await requireRole("OWNER", "ADMIN");
   const scope = { customerId };
+  // Snoozed items are dropped after the reads, so each category reads 3 plus however many items of that category are
+  // snoozed right now (business-wide, so never fewer than this customer's): three unsnoozed ones are always reached.
+  const snoozedByCategory = new Map(
+    (
+      await prisma.exceptionSnooze.groupBy({ by: ["category"], where: { snoozedUntil: { gt: now } }, _count: { _all: true } })
+    ).map((row) => [row.category, row._count._all]),
+  );
+  const take = (category: ExceptionItem["category"]) => Math.min(3 + (snoozedByCategory.get(category) ?? 0), 50);
   const [pastDue, overdueJobs, unreviewed, unsigned, delivery, ending, pickup, signing, deposits] = await Promise.all([
     prisma.invoice.findMany({
       where: { AND: [pastDueTodoWhere(now), { customerId }] },
       select: PAST_DUE_TODO_SELECT,
       orderBy: PAST_DUE_TODO_ORDER,
-      take: 3,
+      take: take("PAST_DUE_INVOICE"),
     }),
     prisma.job.findMany({
       where: { AND: [overdueJobTodoWhere(now), { customerId }] },
       select: OVERDUE_JOB_TODO_SELECT,
       orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
-      take: 3,
+      take: take("OVERDUE_JOB"),
     }),
     prisma.maintenanceRequest.findMany({
       where: { AND: [unreviewedRequestTodoWhere(now), { customerId }] },
       select: UNREVIEWED_REQUEST_TODO_SELECT,
       orderBy: [{ openedAt: "asc" }, { id: "asc" }],
-      take: 3,
+      take: take("UNREVIEWED_MAINTENANCE_REQUEST"),
     }),
-    listUnsignedAgreements(3, now, scope),
-    listSignedDeliveryAttention(3, scope),
-    listRentalEndingSoon(3, now, scope),
-    listPickupUnscheduled(3, scope),
-    listSigningPaymentAttention(3, scope),
-    listDepositDecisionAttention(3, now, scope),
+    listUnsignedAgreements(take("UNSIGNED_AGREEMENT"), now, scope),
+    listSignedDeliveryAttention(take("SIGNED_DELIVERY_UNSCHEDULED"), scope),
+    listRentalEndingSoon(take("RENTAL_ENDING_SOON"), now, scope),
+    listPickupUnscheduled(take("PICKUP_UNSCHEDULED"), scope),
+    listSigningPaymentAttention(take("SIGNING_PAYMENT_DUE"), scope),
+    listDepositDecisionAttention(take("DEPOSIT_DECISION"), now, scope),
   ]);
   const items: ExceptionItem[] = [
     ...pastDue.map(pastDueTodoItem),

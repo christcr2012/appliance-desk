@@ -72,4 +72,21 @@ describe.skipIf(!enabled)("customer-scoped next steps", () => {
     const forB = await getCustomerNextSteps(b.customerId);
     expect(forB.map((s) => s.href)).toEqual([`/desk/billing/customer/${b.customerId}/invoice/${bBill}`]);
   });
+
+  it("still finds an unsnoozed bill when the three oldest are snoozed", async () => {
+    const now = Date.now();
+    const ids: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      ids.push((await prisma.invoice.create({ data: { customerId: b.customerId, status: "OPEN", dueDate: new Date(now - (20 + i) * DAY), amountDueCents: 1000 } })).id);
+    }
+    for (const id of ids.slice(1)) {
+      const href = `/desk/billing/customer/${b.customerId}/invoice/${id}`;
+      await prisma.exceptionSnooze.create({
+        data: { key: todoKey({ category: "PAST_DUE_INVOICE", href, title: "" }), category: "PAST_DUE_INVOICE", href, snoozedUntil: new Date(now + 5 * DAY), reason: "Waiting on the customer", actorUserId: ownerId },
+      });
+    }
+    const hrefs = (await getCustomerNextSteps(b.customerId)).map((s) => s.href);
+    expect(hrefs).toContain(`/desk/billing/customer/${b.customerId}/invoice/${ids[0]}`);
+    for (const id of ids.slice(1)) expect(hrefs).not.toContain(`/desk/billing/customer/${b.customerId}/invoice/${id}`);
+  });
 });

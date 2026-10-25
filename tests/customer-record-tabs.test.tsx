@@ -55,6 +55,7 @@ const summary = {
   monthlyRentCents: 7000,
   owedCents: 7000,
   oldestOpenBillId: "i1",
+  oldestOpenBillPayPath: "STRIPE_LINK",
   nextBill: { date: new Date("2026-11-01T18:00:00Z"), rentCents: 7000 },
   autopay: true,
   renting: "Washer + dryer",
@@ -100,6 +101,16 @@ it("with no tab: phone Activity and desktop Rentals, header words, stats and Tak
   const bar = within(screen.getByRole("group", { name: "Customer actions" }));
   expect(bar.getByRole("link", { name: "New quote" })).toHaveAttribute("href", "/desk/estimates/new?customerId=c1");
   expect(bar.getByRole("link", { name: "Schedule visit" })).toHaveAttribute("href", "/desk/jobs/new?customerId=c1");
+});
+
+it("Take payment goes where that bill is actually paid", async () => {
+  m.summary.mockResolvedValue({ ...summary, oldestOpenBillPayPath: "MANUAL_ONLY" });
+  render(await call());
+  expect(screen.getAllByRole("link", { name: "Take payment" })[0]).toHaveAttribute("href", "/desk/billing/customer/c1#record-payment");
+  cleanup();
+  m.summary.mockResolvedValue({ ...summary, oldestOpenBillPayPath: "SHOP_CARD" });
+  render(await call());
+  expect(screen.getAllByRole("link", { name: "Take payment" })[0]).toHaveAttribute("href", "/desk/sales/i1");
 });
 
 it("without anything owed the primary is New quote", async () => {

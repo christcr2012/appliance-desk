@@ -115,7 +115,8 @@ test("property action preselects its own address and history note survives navig
   await sheet.getByRole("textbox", { name: "Add a note" }).fill(note);
   await sheet.getByRole("button", { name: "Add note" }).click();
   await expect(page).toHaveURL(/\?tab=activity$/);
-  await expect(page.getByText(note, { exact: true }).first()).toBeVisible();
+  // The note shows in the phone Activity section or the desktop activity column, whichever this width shows.
+  await expect(page.getByText(note, { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await page
     .getByRole("navigation", { name: "Customer sections" })
     .getByRole("link", { name: "Details", exact: true })
@@ -123,7 +124,7 @@ test("property action preselects its own address and history note survives navig
   await expect(page).toHaveURL(/\?tab=details$/);
   await page.goBack();
   await expect(page).toHaveURL(/\?tab=activity$/);
-  await expect(page.getByText(note, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(note, { exact: true }).filter({ visible: true }).first()).toBeVisible();
 });
 test("lead search/filter URL survives browser back and links its follow-up", async ({
   page,

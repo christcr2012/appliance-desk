@@ -44,8 +44,12 @@ export type BillRow = {
 
 export const BILL_PAGE_SIZE = 50;
 export const BILL_WINDOW_CAP = 500;
-/** The "Most owed first" order is worked out in memory over at most this many matching bills. */
-const OWED_SORT_LIMIT = 2000;
+/**
+ * "Most owed first" can't be ordered in Prisma (it is amount due minus amount paid), so it ranks every matching bill
+ * from four small number columns, then reads full rows only for the window shown. This is only a runaway guard far
+ * above any real bill count for one search (a business with 50,000 matching bills would see the newest ranked).
+ */
+const OWED_SORT_LIMIT = 50_000;
 
 const monthName = new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", month: "long" });
 

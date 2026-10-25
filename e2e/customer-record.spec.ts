@@ -30,7 +30,7 @@ test.describe("Customer record", () => {
       const desktopTabs = page.getByRole("navigation", { name: "Customer sections" }).last();
       await expect(desktopTabs.getByRole("link", { name: /^Rentals/ })).toHaveAttribute("aria-current", "page");
       await expect(page.getByRole("complementary", { name: "Next steps and activity" })).toBeVisible();
-      // Keyboard: from the breadcrumb, Tab reaches the header's Take payment (the oldest open bill) within the header.
+      // Keyboard: from the breadcrumb, Tab reaches the header's Take payment within the header.
       await page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Customers" }).focus();
       let reached = false;
       for (let i = 0; i < 8 && !reached; i++) {
@@ -39,7 +39,8 @@ test.describe("Customer record", () => {
       }
       expect(reached).toBe(true);
       const take = page.getByRole("link", { name: "Take payment" }).first();
-      await expect(take).toHaveAttribute("href", `/desk/billing/customer/${fixture.customerId}/invoice/${fixture.billId}#take-payment`);
+      // The fixture bill is a local bill, so Take payment opens the statement's "record cash or check" form.
+      await expect(take).toHaveAttribute("href", `/desk/billing/customer/${fixture.customerId}#record-payment`);
 
       await page.goto(`${url}?tab=service`, { waitUntil: "load" });
       await expect(page).toHaveURL(new RegExp(`${url}\\?tab=visits$`));

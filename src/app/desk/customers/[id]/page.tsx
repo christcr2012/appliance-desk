@@ -196,7 +196,16 @@ export default async function CustomerDetailPage({
     ? {
         kind: "link",
         label: "Take payment",
-        href: `/desk/billing/customer/${encodeURIComponent(id)}/invoice/${encodeURIComponent(summary.oldestOpenBillId!)}#take-payment`,
+        // Same destinations as the Bills screen's pay buttons (payPathFor): the Stripe payment panel, the shop sale's
+        // card payment, or the statement's "record cash or check" form.
+        href:
+          summary.oldestOpenBillPayPath === "SHOP_CARD"
+            ? `/desk/sales/${encodeURIComponent(summary.oldestOpenBillId!)}`
+            : summary.oldestOpenBillPayPath === "MANUAL_ONLY"
+              ? `/desk/billing/customer/${encodeURIComponent(id)}#record-payment`
+              : `/desk/billing/customer/${encodeURIComponent(id)}/invoice/${encodeURIComponent(summary.oldestOpenBillId!)}${
+                  summary.oldestOpenBillPayPath === "STRIPE_LINK" ? "#take-payment" : ""
+                }`,
         primary: true,
       }
     : null;

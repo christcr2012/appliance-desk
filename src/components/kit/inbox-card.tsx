@@ -23,8 +23,9 @@ export function InboxCard({ eyebrow, eyebrowTone, title, detail, actions, overfl
       className={`rounded-card bg-surface px-4 py-3.5 ${severity === "high" ? "border border-warning-bg" : "border border-transparent"}`}
     >
       <p className={`text-xs font-bold ${TONE_TEXT[eyebrowTone]}`}>{eyebrow}</p>
-      <h3 className="mt-0.5 text-base font-bold text-ink">{title}</h3>
-      {detail ? <p className="mt-0.5 text-sm text-ink-soft">{detail}</p> : null}
+      {/* Titles can hold an email address (a customer with no name): let it wrap so a phone never scrolls sideways. */}
+      <h3 className="mt-0.5 text-base font-bold text-ink [overflow-wrap:anywhere]">{title}</h3>
+      {detail ? <p className="mt-0.5 text-sm text-ink-soft [overflow-wrap:anywhere]">{detail}</p> : null}
       {shown.length > 0 || overflow.length > 0 ? (
         <div className="mt-3 flex items-center gap-2">
           {shown.map((spec, index) => (
