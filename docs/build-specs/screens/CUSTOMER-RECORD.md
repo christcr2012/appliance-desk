@@ -69,12 +69,17 @@ Rules (pure functions, unit-tested):
 - **owedCents** uses `billTabWhere("open", now)` from `src/domains/billing/bill-status.ts` (built in the Bills screen,
   same card) filtered by `customerId`. Never re-write the open rule here.
 - **onTimeRecord**: take this customer's last 7 bills (by `dueDate` desc) with status `PAID` or currently past due
-  (`pastDueInvoiceWhere(now)`), skipping bills with no `dueDate`. `paidAt` = for the last Payment on a PAID bill whose status is in
-  `SUCCESSFUL_PAYMENT_STATUSES` (`src/domains/billing/payment-status.ts` — both the old `SUCCEEDED` and the current
-  `succeeded` spelling; never compare to one spelling): its **Receipt's `receivedOn`** when the payment has a receipt
-  (the date money actually arrived — for a check Chris records days later, the date he entered; for Stripe, the
-  charge date the webhook stores), otherwise the Payment's `createdAt` (older rows without a receipt); `null` for unpaid. A bill counts as on time when `paidAt` ≤ the end of its due day in
-  Denver (`businessDayBounds(dueDate).end`). Return `null` when fewer than 3 bills counted (stat hidden).
+  (`pastDueInvoiceWhere(now)`), skipping bills with no `dueDate`. For a PAID bill, `paidAt` = **the date of the last
+  settlement event that brought it to fully paid**, considering both kinds of settlement:
+  - Payments whose status is in `SUCCESSFUL_PAYMENT_STATUSES` (`src/domains/billing/payment-status.ts` — both
+    `SUCCEEDED` and `succeeded`; never one spelling), dated by their Receipt's `receivedOn` when they have a receipt
+    (the date money arrived — for a check recorded days later, the date Chris entered), otherwise `Payment.createdAt`;
+  - `CreditApplication` rows for the bill (`applyCreditToInvoice` settles bills with account credit and creates no
+    Payment), dated by `CreditApplication.createdAt`.
+  Sort both lists by date and take the first date at which the running total of payments + credits reaches the
+  bill's `amountDueCents`; if it never does (data inconsistent), skip the bill. Unpaid past-due → `paidAt = null`
+  (late). On time when `paidAt` ≤ the end of its due day in Denver (`businessDayBounds(dueDate).end`). Return `null`
+  when fewer than 3 bills counted (stat hidden).
 - Select only the fields needed. One `Promise.all`; no per-row queries.
 
 **Next steps for this customer (customer-scoped, so the business-wide cap never hides them).** Today's
@@ -261,7 +266,8 @@ description, the "Billing and referrals" title and the "Notes, activity and comm
   (0, 1, 2, 3+, label fallback), `onTimeRecord` (fewer than 3 → null; paid 23:59 Denver on due day = on time; 00:01
   next day = late; DST weeks; unpaid past-due counts as late; a bill settled by the current
   payment writer (`recordManualPayment`, lowercase `succeeded`) is found; a check received on the due date but
-  recorded 4 days later counts as on time), `AGREEMENT_PILL` covers every
+  recorded 4 days later counts as on time; a bill paid entirely with credit on time counts as on time; a bill paid
+  half by an early payment and half by late credit counts as late), `AGREEMENT_PILL` covers every
   `RentalAgreementStatus` (exhaustive `Record`), `ordinal`.
 - `tests/customer-params.test.ts`: zod defaults; legacy `tab=overview|properties|service|billing` redirects.
 - `tests/customer-summary-integration.test.ts` (throwaway Postgres): owed equals the Bills screen's open total for
