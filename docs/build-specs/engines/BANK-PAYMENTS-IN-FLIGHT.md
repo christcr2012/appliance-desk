@@ -63,7 +63,12 @@ again, so a later `payment_intent.processing` for an intent whose row is cleared
 true: `event.created > clearedByEventAt` (a newer attempt, not a stale event) **and** the intent retrieved in the
 evidence step is `processing` now. Reopen = `clearedAt = null`, `clearedReason = null`, `clearedByEventAt = null`,
 `startedAt = event.created`, `attempt + 1`, `lastCheckedAt = null`, `settledInStripeAt = null`; audit
-`billing.bank_payment_retry`. Rows cleared `SUCCEEDED`, `CANCELED` (terminal in Stripe) or `INVOICE_CLOSED` never
+`billing.bank_payment_retry`. **Lock order:** the reopen (and every create of an open row) first takes the bill's row
+lock — `SELECT … FROM "Invoice" WHERE id = $1 FOR UPDATE`, the same lock `applyLateFeeBatch` holds while it checks for
+open rows and adds a fee — inside the webhook transaction after the global webhook lock. So a late-fee run and a
+reopen can't interleave: either the fee run finishes first (fee added; the reopen then pauses future fees), or the
+reopen finishes first (the fee run sees the open row and skips). Integration test with two connections for both orders.
+Rows with no bill yet (`invoiceId` null) need no bill lock. Rows cleared `SUCCEEDED`, `CANCELED` (terminal in Stripe) or `INVOICE_CLOSED` never
 reopen. Tests: fail → genuine retry (newer event, intent processing) → row open again, attempt 2, late fees paused,
 nightly check sees it; a stale processing event older than the failure → stays cleared; processing event newer than
 the failure but Stripe now says `requires_payment_method` → stays cleared. Nothing else (the existing `invoice.payment_failed` path keeps doing what it does). |

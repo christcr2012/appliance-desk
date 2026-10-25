@@ -91,7 +91,11 @@ otherwise → contacted. All list/count queries add `mergedIntoLeadId: null`. Un
 `leadStageWhere[x]` selects exactly the leads `leadStage` puts in x (integration test over a fixture of 20 leads).
 
 **First contact** — `markFirstContactInTx(tx, leadId, at)` in `src/domains/leads/contact.ts` sets
-`firstContactedAt = at` only when it is null (one `updateMany` with `firstContactedAt: null` in the where). Called by:
+`firstContactedAt = at` only when it is null (one `updateMany` with `firstContactedAt: null` in the where) **and, in
+the same statement, moves a NEW lead's stored status to CONTACTED** (`status: CASE WHEN status = 'NEW' THEN
+'CONTACTED' ELSE status END`, audited `lead.first_contact`), so the stored status, the screen's stage, follow-up
+eligibility (`setLeadFollowUp` needs CONTACTED) and Today's `listLeadFollowUps` always agree. Test: an outbound text
+accepted for a new lead → stored CONTACTED → Set follow-up works → the follow-up shows on Today. Called by:
 - `recordLeadMessageContactInTx` and the `workflow-text.ts` ACCEPTED branch (outbound messages actually handed over);
 - the new "Log a contact" action (LeadNote `kind: "CONTACTED"`);
 - `updateLeadStatus` when the new status is CONTACTED;
