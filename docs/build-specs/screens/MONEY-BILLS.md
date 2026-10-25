@@ -98,7 +98,11 @@ export async function getBillTotals(params: BillsParams, now = new Date()): Prom
    **Remind** (same link); SHOP_CARD → **Take card payment** (primary, link `/desk/sales/{id}`, where the existing
    `startSaleCardPaymentAction` button lives); MANUAL_ONLY → **Record cash or check** (primary, link
    `/desk/billing/customer/{customerId}#record-payment`); ⋯ (row actions below).
-   **`payPathFor` rules** (pure, in `bill-status.ts`, unit-tested): not open or nothing owed → null; `stripeInvoiceId`
+   **`payPathFor` rules** (pure, in `bill-status.ts`, unit-tested): not open or nothing owed → null; status **FAILED** →
+   MANUAL_ONLY (the existing card paths — `assertPayable` in `payment-link.ts` and `createLocalInvoiceCheckout` — accept
+   only OPEN, PARTIALLY_PAID and DELINQUENT; Stripe retries a subscription card on its own schedule), with the detail
+   line "Stripe will try the card again. You can also record cash or check." — test that FAILED never gets a card
+   button; `stripeInvoiceId`
    set → STRIPE_LINK (the payment link panel's `assertPayable` requires it — `src/domains/billing/payment-link.ts`);
    `saleKind === "SHOP_SALE"` and no `stripeInvoiceId` → SHOP_CARD (the only local bills `createLocalInvoiceCheckout`
    accepts); anything else → MANUAL_ONLY. Select `stripeInvoiceId` and `saleKind` in `getBills` for this. Paid/closed cards have no buttons; the card is a link to the bill.

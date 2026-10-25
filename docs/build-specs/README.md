@@ -2,9 +2,12 @@
 
 These specs turn [designs/APP-REDESIGN.md](../designs/APP-REDESIGN.md) into exact build instructions. They were written
 so a smaller, cheaper model can build every screen **without making design decisions**. Every decision is already
-made here. If something you need is not decided, **stop that one item, write the question in the card's
-"Open questions" section and in STATUS, and continue with the next item** (AGENTS section 2.10). Never invent a rule,
-a price, a word, a color or a layout that is not written here or in the design.
+made here. If a business, tax, legal or wording choice you need is not decided, follow **AGENTS section 1 "Decisions never block
+building"**: research it, build it as an owner setting whose starting value is the most likely right (or, without a
+source, the most careful) answer, explain it on screen, and file the question in Decisions & reviews (until DEC-1
+ships, a `DQ-` entry in `docs/OWNER-INPUTS.md`) — then keep building. Stop only for a true blocker (it can't be built
+at all, or the default would be unsafe or irreversible) and tell Chris at once. A missing **design** detail (color,
+layout, spacing) is not a decision: use the KIT tokens and the nearest existing screen's pattern, and note it in the PR.
 
 ## Read in this order (every session)
 
