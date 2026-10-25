@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { createShopSale, cancelShopSale, getSaleFormData } from "@/domains/sales";
 import { setRetiredPlan, reopenRetiredPlan } from "@/domains/inventory/retired-plans";
 import { addBookTaxEvidence, disposedValueBefore } from "@/domains/books/fixed-assets";
-import { listOpenResaleTaxFollowUps, markResaleTaxFollowUpDone } from "@/domains/sales";
+import { listOpenResaleTaxFollowUps, markResaleTaxFollowUpDone, listShopSales } from "@/domains/sales";
 import { listResaleTaxAttention } from "@/domains/exceptions/resale-tax-attention";
 import { writeJournal } from "@/domains/books/post";
 import { balancedPlan } from "@/domains/books/posting-rules";
@@ -207,6 +207,17 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     expect((await listOpenResaleTaxFollowUps()).map((r) => r.id)).toContain(d.id);
   });
 
+  it("the follow-up filter lists exactly the sales still waiting, chosen before the newest-100 cut-off, and the To do item links to it", async () => {
+    const id = await retired({ bookValueCents: 6000 });
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 50000 }] });
+    const waiting = await listShopSales(ownerId, { followUpOnly: true });
+    expect(waiting.map((r) => r.id)).toContain(sale.invoiceId);
+    const open = await listOpenResaleTaxFollowUps();
+    expect(waiting.map((r) => r.id).sort()).toEqual([...new Set(open.map((r) => r.invoiceId))].sort());
+    await markResaleTaxFollowUpDone(ownerId, (await snapshot(sale.invoiceId)).id);
+    expect((await listShopSales(ownerId, { followUpOnly: true })).map((r) => r.id)).not.toContain(sale.invoiceId);
+  });
+
   it("accountant-confirmed history freezes the estimate with the seller's costs, and later evidence never rewrites it", async () => {
     const id = await retired({ bookValueCents: 6000 });
     await evidence(id);
@@ -255,7 +266,7 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     const items = await listResaleTaxAttention(new Date());
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ category: "RETIRED_SALE_TAX_REVIEW", severity: "medium" });
-    expect(items[0].href).toMatch(/^\/desk\/sales(\/|$)/);
+    expect(items[0].href).toMatch(/^\/desk\/sales(\/|\?followUp=1$|$)/);
     await cancelShopSale(ownerId, sale.invoiceId, "Buyer backed out");
     expect((await snapshot(sale.invoiceId)).cancelledAt).not.toBeNull();
     expect((await listOpenResaleTaxFollowUps()).map((r) => r.invoiceId)).not.toContain(sale.invoiceId);

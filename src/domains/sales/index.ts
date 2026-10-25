@@ -485,10 +485,14 @@ async function replayedSale(tx: Prisma.TransactionClient, operationKey: string, 
 /** For the Sales list and the sale's own page. */
 export const SALE_LIST_LIMIT = 100;
 
-export async function listShopSales(actorUserId: string) {
+/** `followUpOnly` lists every sale (not just the newest 100) that still has a used appliance to go over with the accountant. */
+export async function listShopSales(actorUserId: string, options: { followUpOnly?: boolean } = {}) {
   await assertActiveTeamActor(prisma, actorUserId, ["OWNER", "ADMIN"]);
   return prisma.invoice.findMany({
-    where: { saleKind: "SHOP_SALE" },
+    where: {
+      saleKind: "SHOP_SALE",
+      ...(options.followUpOnly ? { retiredSaleDispositions: { some: { followUpDoneAt: null, cancelledAt: null } } } : {}),
+    },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: SALE_LIST_LIMIT,
     select: {
