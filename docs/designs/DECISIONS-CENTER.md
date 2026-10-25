@@ -69,10 +69,10 @@ once a week, never urgent unless a true blocker exists):
      and the completed form as an attachment (stored file). Saving confirms or changes the setting and records the
      evidence.
   2. **Through the coding agent (intended):** Chris gives the completed form to his agent. Through the MCP
-     connection the agent calls `decisions.list_open` and `decisions.get` to see each coded question with the current
-     value, then `decisions.preview_answers` with what the form says — the app returns, per code, "would change X
+     connection the agent calls `appliance_decisions_list` and `appliance_decisions_get` to see each coded question with the current
+     value, then `appliance_decisions_preview_answers` with what the form says — the app returns, per code, "would change X
      from A to B from {date}" or "no change" or "can't apply: {reason}" — and, after Chris confirms in the
-     conversation (or in the app's approval screen), `decisions.apply_answers`, which writes through the same save
+     conversation (or in the app's approval screen), `appliance_decisions_apply_answers`, which writes through the same save
      functions as the screen, records each as a `PROFESSIONAL_ANSWER` with the professional's name, date,
      explanation and the attached form, and returns what changed. If an answer needs new behavior the system does
      not have (a new tax category, new wording), the tool says so and the agent makes that change in the repository
@@ -126,8 +126,8 @@ Everything else: researched starting value + question.
   records; wording and Spanish) so each PR is reviewable.
 
 - **MCP tools for decisions** (built with the MCP connection, MCP-3/MCP-5 rules: owner-authorized client, every
-  write journaled and confirmed): `decisions.list_open`, `decisions.get`, `decisions.preview_answers`,
-  `decisions.apply_answers`. They call the same DEC-1 functions; they add no new power the owner screen does not
+  write journaled and confirmed): `appliance_decisions_list`, `appliance_decisions_get`, `appliance_decisions_preview_answers`,
+  `appliance_decisions_apply_answers`. They call the same DEC-1 functions; they add no new power the owner screen does not
   have.
 
 ## 7. Owner decisions

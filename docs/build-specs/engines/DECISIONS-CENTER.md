@@ -191,13 +191,16 @@ with the token; the uploaded file is stored as the attachment on every record it
 produced by the download route, filled programmatically, round-trips to the same answers; handwritten-style answer
 sheet text parses; ambiguous tick (two boxes) → INVALID with "Two answers were ticked".
 
-## 8. MCP tools (built in the MCP unit that ships tool auth — MCP-3 — using these functions)
+## 8. MCP tools (read tools in MCP-4, write tools in MCP-5 — see `engines/CONNECT-AGENT.md` and `engines/AGENT-ACTIONS.md`)
 
-`decisions.list_open { audience? }` → cards (no customer data); `decisions.get { id }`; `decisions.preview_answers
-{ answers: [{ code, option | otherText, effectiveFrom?, explanation?, answeredBy?, firm?, answeredOn? }] }` →
-preview + confirmToken; `decisions.apply_answers { answers, confirmToken, attachment? }` → result. Writes require
-the owner-authorized MCP client and are journaled per MCP-5; the tools call `previewAnswers` / `applyAnswers` — no
-other write path.
+Reads (scope `decisions:read`): `appliance_decisions_list { audience?, state? }` → cards (no customer data) and
+`appliance_decisions_get { id }`. Writes (scope `decisions:apply`, journaled operations): `appliance_decisions_preview_answers
+{ answers: [{ code, option | otherText, effectiveFrom?, explanation?, answeredBy?, firm?, answeredOn? }] }` → the
+`previewAnswers` result with its `confirmToken`, and `appliance_decisions_apply_answers { answers, confirmToken,
+requestKey }` → `applyAnswers`. They call these functions only — no other write path. This is how Chris's coding
+agent applies a completed professional form: it reads the document, calls preview, shows Chris the table, and applies
+only after he says yes in the conversation (the confirm token binds the apply to exactly what was previewed). An
+"Other" answer is never applied to a setting; the agent turns it into a code change in the repository instead.
 
 ## 9. Tests summary
 Registry, state rules, each write's locks/actor/refusals (fakes + throwaway Postgres), effective-date refusal,
