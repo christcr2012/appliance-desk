@@ -92,7 +92,12 @@ test.describe("settings history and previews", () => {
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeGraceDays: 10 } });
     await page.goto("/desk/settings?section=policies");
     const grace = page.getByLabel("Late fee grace period (days)");
+    // The form's saved values are put into the inputs when the page's script starts. Filling before that can leave
+    // the saved "10" and the typed "12" joined as "1012" (seen in CI as "Too big: expected number to be <=90"), so
+    // wait until the saved value shows, as the out-of-date test below already does.
+    await expect(grace).toHaveValue("10");
     await grace.fill("12");
+    await expect(grace).toHaveValue("12");
     await page.getByRole("button", { name: "Preview changes" }).click();
     const panel = page.getByLabel("What saving would change");
     await expect(panel).toContainText("Late fee grace days: 10 → 12");
