@@ -9,7 +9,7 @@ rule versions). Risk: **tax and money** — conservative starting rules; Chris c
 - [ ] `OrderServiceChoice` saved with the order under the row lock; agreement and bill lines match it (integration test on throwaway Postgres).
 - [ ] The engine uses the place's optional-and-separate answer only when the order proves the alternative was shown; old orders are treated as not optional (unit tests).
 - [ ] Starting rules seeded as "Researched — not confirmed" with sources; Greeley rent and fees taxed until Greeley confirms.
-- [ ] Admin/setup fee starts at $0 with on-screen explanation; price-vs-cost warning in Settings.
+- [ ] The $45 setup fee (IN-74) unchanged, with an on-screen note that home-rule cities likely tax it; price-vs-cost warning in Settings.
 - [ ] Decisions questions FEETAX-* filed; checklist row "Ask Greeley Sales Tax in writing" with a drafted email.
 - [ ] Customer A cannot read customer B's choices; `ci` green at the exact head; every review comment read.
 

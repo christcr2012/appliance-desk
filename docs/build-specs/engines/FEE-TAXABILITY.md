@@ -4,7 +4,8 @@ Chris, 2026-10-25: fees should offset delivery and installation costs "in a way 
 collection requirements", for Greeley and "any place within 50 miles of the center of the city of Greeley … and a
 way to be sure if I decide to deliver outside of that 50 mile limit." Research:
 `docs/research/2026-10-25-fee-taxability.md` and `docs/research/2026-10-25-tax-jurisdictions-50mi.md`. Builds on the
-existing tax engine (`src/domains/tax/engine.ts`, `categories.ts`, `locations.ts`), the delivery mileage bands
+delivery zones (`docs/build-specs/screens/SERVICE-AREA-MAP.md`, ZONE-1 — zone prices feed the delivery and pickup lines)
+and the existing tax engine (`src/domains/tax/engine.ts`, `categories.ts`, `locations.ts`), the delivery mileage bands
 (`src/domains/orders/delivery.ts`) and TFA-1's dated rule versions (`TaxabilityRuleVersion`). Rules: AGENTS.md
 section 1 (decisions never block; tax wording questions go to Decisions & reviews) and section 4.
 
@@ -15,8 +16,9 @@ section 1 (decisions never block; tax wording questions go to Decisions & review
    each with a real "I'll pick it up / install it myself / no haul-away" choice shown with the price **when the
    customer orders**, and the same lines on the agreement and the bill. Where the law leaves optional, separately
    stated services out of the taxed price (the state for sales; each city once confirmed), they are not taxed.
-3. **No required admin/setup fee** (starting value $0): a required fee is the kind most likely to be taxed and adds
-   nothing a priced service line can't cover. Chris can turn one on; the screen says it is probably taxable.
+3. **The $45 setup fee stays as Chris set it** (IN-74: per new service location, waivable with a reason). Because it
+   is required, home-rule cities are likely to tax it; the Settings screen says so, and Decisions question
+   FEETAX-ADMIN-FEE offers the lower-tax option (fold it into the optional installation price) for Chris to choose.
 4. **Prices near real cost**: the app compares each service price with what the service really costs (truck miles
    and time from OPS-3 route logs) and warns when a price is more than the owner limit above cost (starting 150%),
    because inflating service fees to shrink taxed rent is not allowed.
@@ -48,7 +50,7 @@ model OrderServiceChoice {            // one row per service on an order/agreeme
   rows untouched). `categoryForLineKind` maps it.
 - `TaxabilityRule` (and TFA-1's `TaxabilityRuleVersion`) gains `optionalSeparatedTreatment Taxability?`: the answer
   for a service line when the order proves it was optional and separately stated; null = same as `taxability`.
-- Settings (owner, `restore recommended`): `adminSetupFeeDollars` starting **0**; `serviceFeeCostLimitPercent`
+- Settings (owner, `restore recommended`): the existing $45 setup fee unchanged (IN-74); `serviceFeeCostLimitPercent`
   starting **150**; `selfInstallAllowedCategories` starting `["WASHER","DRYER_ELECTRIC","FRIDGE","FREEZER"]` (gas
   appliances need a pro hookup — the screen says so; never offer self-install for gas).
 
@@ -75,7 +77,9 @@ optional (conservative). Reasons shown on the bill review: "Optional delivery, s
 |---|---|---|---|---|---|
 | Colorado state (and state-collected county/district taxes, pending FEETAX-LOCAL-3YR) | Not taxed (paid at purchase) | Not taxed with a rental; on a sale: not taxed if optional + separate, else taxed | Rental: not taxed; sale: taxed | Not taxed | Not taxed |
 | Greeley (home rule) | **Taxed 4.11%** (city return covers rentals; no pay-at-purchase option verified) | **Taxed** until Greeley confirms (optional-separate answer left blank = taxed) | Taxed | Taxed | Taxed until confirmed (unverified; most conservative) |
-| Other places | From the 50-mile table; anything unverified → "Not ready to deliver" (section 7) | | | | |
+| State-collected towns and counties (S in the 50-mile table) | Not taxed (paid at purchase covers state-administered local tax; DOR Leases, High) | Not taxed | Not taxed | Not taxed | Not taxed |
+| Home-rule cities with a verified rule (Fort Collins, Thornton, Broomfield, Boulder, Aurora, Westminster, Loveland, Denver) | Taxed where verified (H) | **Delivery taxed even when separate** in Fort Collins, Thornton, Broomfield, Boulder, Aurora, Westminster; separately stated **installation not taxed** in Fort Collins, Thornton, Broomfield; others taxed until confirmed | Taxed | Taxed | Taxed until confirmed |
+| Other home-rule cities ("not found") | Not ready to deliver until reviewed (section 9) | | | | |
 
 Most conservative where unverified (AGENTS section 1). When Greeley answers in writing (checklist row below), Chris
 changes the rule on Taxes › Rules; future bills follow; already-issued bills follow the late-change rule (TFA 4a).
@@ -98,7 +102,8 @@ Tax agencies can treat over-priced service fees as part of the taxed price." War
 - FEETAX-LOCAL-3YR: Does the pay-at-purchase rule also cover state-collected county and district taxes? (Starting:
   yes for rent, per DOR lease sourcing guidance; CPA.)
 - FEETAX-SR46: What new Special Rule 46 (effective 2026-08-30) says about charges included in lease payments. (CPA.)
-- FEETAX-ADMIN-FEE: Keep no admin fee? (Starting: $0.)
+- FEETAX-ADMIN-FEE: Keep the required $45 setup fee (likely taxed in home-rule cities) or fold it into the optional
+  installation price? (Starting: keep — Chris's IN-74 answer.)
 - FEETAX-LABOR-RATE: Chris's hourly cost for the price-vs-cost check.
 - FEETAX-2F-EFFECTIVE: If Greeley measure 2F passes, its start date and whether existing rentals change (TFA-3 §15).
 
