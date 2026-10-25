@@ -21,7 +21,8 @@
       "website-editor.spec.ts",
       "job-roles.spec.ts",
       "owner-settings-history.spec.ts",
-      "shop-sales.spec.ts"
+      "shop-sales.spec.ts",
+      "feedback.spec.ts"
     ],
     "browser-b": [
       "owner-controls.spec.ts",

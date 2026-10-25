@@ -151,6 +151,17 @@ export function AppShell({
     }
   }
 
+  // MCP-10a: "App feedback" (a problem with this app or an idea) is always one tap away. The page the person was on
+  // rides along so the report can name it; the form never shows the address and stores only its shape.
+  const feedbackLink = (
+    <Link
+      href={`/desk/feedback/new?from=${encodeURIComponent(pathname)}`}
+      className="flex min-h-11 items-center rounded-control px-3 text-sm font-semibold underline-offset-2 hover:underline"
+    >
+      App feedback
+    </Link>
+  );
+
   const moreAction = (
     <button
       type="button"
@@ -186,6 +197,7 @@ export function AppShell({
         </div>
         <div className="space-y-3 border-t border-line p-4">
           <GlobalSearchBox />
+          {feedbackLink}
           <div className="flex items-center justify-between gap-3">
             <ThemeToggle />
             <Button
@@ -266,6 +278,7 @@ export function AppShell({
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <Navigation nav={nav} pathname={pathname} close={closeMenu} />
           </div>
+          <div className="border-t border-line px-4 pt-3">{feedbackLink}</div>
           <div className="flex items-center justify-between gap-3 border-t border-line p-4">
             <ThemeToggle />
             <Button

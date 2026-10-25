@@ -75,7 +75,8 @@ export type ExceptionCategory =
   | "SUBSCRIPTION_UPDATE_PENDING"
   | "CUSTODY_UNKNOWN"
   | "OLD_SET_APPLIANCE"
-  | "OUT_OF_SERVICE";
+  | "OUT_OF_SERVICE"
+  | "FEEDBACK_WAITING";
 
 export type ExceptionSeverity = "high" | "medium";
 
