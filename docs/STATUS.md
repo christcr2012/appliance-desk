@@ -5,6 +5,10 @@ Set) as well as a single appliance, a new monthly price and a start day. The nig
 history and change-history rows as a typed change, and leaves signed rentals alone; it fails safely if the set was retired or
 the person who scheduled it was since limited. Additive migration `20261025060000_scheduled_package_price_changes`. Proven by real-Postgres tests and a
 real-browser spec (phone width, keyboard, accessibility). Nothing for Chris to do.
+## October 25 — Owner controls: browser tests for goals, approval limits, permissions and workspace
+
+In progress (branch `ai/claude/owner-controls-browser-tests`). One new real-browser spec (`e2e/owner-controls.spec.ts`, phone width, keyboard, accessibility check) walks the owner through setting and removing a cash goal, filling in and saving approval limits and turning them off, taking one permission away from an admin and giving it back, and pinning/unpinning workspace shortcuts. It passes locally; CI result pending. Switches and price changes already have their own specs. Nothing for Chris to do.
+
 ## October 25 — Nightly spend-alert check wired in (in PR, notifies nobody)
 
 The overnight phone-usage job now also runs the spend-alert check as a read-only preview, but only if you have turned the alert rules on

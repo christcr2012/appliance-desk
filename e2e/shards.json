@@ -83,6 +83,7 @@
       "signature-public.spec.ts",
       "signature-focus.spec.ts",
       "owner-price-changes.spec.ts",
+      "owner-controls.spec.ts",
       "crm-workspace.spec.ts"
     ]
   }
