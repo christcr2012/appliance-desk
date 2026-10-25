@@ -153,9 +153,17 @@ test("decisions: admins read without buttons; staff are sent away", async ({ bro
     await loginAs(a, email, password);
     await a.goto("/desk/today");
     if (new URL(a.url()).pathname === "/desk/security/setup") await completeTwoFactorSetup(a, password);
+    // The server's answer first (no scripts run): the page itself, with cards and without any owner button.
+    const served = await a.request.get("/desk/settings/decisions?for=CPA", { maxRedirects: 0 });
+    const html = await served.text();
+    const redirect = /NEXT_REDIRECT;[a-z]+;([^;"]+)/.exec(html)?.[1] ?? served.headers()["location"] ?? "none";
+    const digest = /"digest":"([^"]+)"/.exec(html)?.[1] ?? "none";
+    expect({ status: served.status(), redirect, digest, heading: html.includes("Decisions &amp; reviews</h1>") },
+      "admin's server answer for Decisions & reviews").toEqual({ status: 200, redirect: "none", digest: "none", heading: true });
+    expect(html).not.toContain(">Keep this<");
     await a.goto("/desk/settings/decisions?for=CPA");
-    await expect(a).toHaveURL(/\/desk\/settings\/decisions\?for=CPA$/);
-    await expect(a.getByRole("heading", { name: "Decisions & reviews", level: 1 })).toBeVisible();
+    await expect(a.getByRole("heading", { name: "Decisions & reviews", level: 1 }),
+      `admin page ended at ${a.url()}: ${(await a.locator("body").innerText()).slice(0, 300)}`).toBeVisible();
     await expect(a.getByRole("article").first()).toBeVisible();
     await expect(a.getByRole("button", { name: "Keep this" })).toHaveCount(0);
     await expect(a.getByRole("button", { name: "Change…" })).toHaveCount(0);
