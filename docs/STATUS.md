@@ -1,3 +1,12 @@
+## October 25 — App-wide redesign written (Batch AR, design only)
+
+Docs only. Chris: every desk page is "categories with related functions placed on them", not an application.
+Checked: 119 desk pages; money split across seven places; Billing mixes seven different things as filter chips;
+seven competing overview pages; Settings is a page of links; workflows cross pages with no hand-off. New master
+design `docs/designs/APP-REDESIGN.md` (AR-0…AR-10): five areas, four page types, one Today inbox, record pages with
+status-based actions and next steps, a command bar, one component kit with build guards, and a full page map. It
+supersedes the screen parts of BA, LD and CU. Needs Chris: go-ahead (checklist). Next: AR-0 with BA-1.
+
 ## October 25 — Customers redesign (Batch CU, design only)
 
 Docs only. The Customers list showed only name, email and two counts, with no search, filters, money or next steps,

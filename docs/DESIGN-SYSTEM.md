@@ -61,6 +61,12 @@ required before launch (Phase 2/7).
 - `/desk/**` and `/account/**` are marked `noindex, nofollow` (see
   `next.config.ts`) — they should never appear in search results.
 
+### Application structure (Chris, 2026-10-25)
+
+The desk is an application, not a set of category pages. Five areas (Today, Customers, Schedule, Equipment, Money),
+Settings in the profile menu, and four page types only: work queue, record page, guided flow, settings page — each
+built from the shared kit in `src/components/ui`. Full rules and the page map: [designs/APP-REDESIGN.md](designs/APP-REDESIGN.md).
+
 ### Quiet screens (Chris, 2026-10-25)
 
 Screens explain themselves through layout, labels and status, not paragraphs. At most one short line under a page

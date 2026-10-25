@@ -378,6 +378,21 @@ Turning on text-message codes stays Chris's live-SMS switch; nothing else here n
   access remains impossible until IN-13 is answered.
 - [ ] Every item in "Rules that apply to every batch".
 
+## Batch AR — Appliance Desk as an application (app-wide redesign) — DESIGNED 2026-10-25, awaiting go-ahead
+
+Design: [designs/APP-REDESIGN.md](designs/APP-REDESIGN.md); units AR-0…AR-10 in work-index. Master design for every
+desk screen; absorbs the screen parts of BA, LD and CU (their engine/data units stay).
+
+- [ ] AR-0: application kit and build guards; three reference screens on the testing app.
+- [ ] AR-1: five areas (Today, Customers, Schedule, Equipment, Money), area tabs, profile menu, command bar; More removed; old URLs work.
+- [ ] AR-2: Today is one inbox with inline actions and grouping; dashboard and control center merged.
+- [ ] AR-3: Money area — overview, Stripe-style invoices queue, payments (held/processing/deposits as filters), invoice record.
+- [ ] AR-4: Customers area — leads, customers, quotes, rentals, messages; "End this rental" flow; hand-offs between steps.
+- [ ] AR-5 / AR-6: Schedule and Equipment areas on the kit.
+- [ ] AR-7 / AR-8 / AR-9: Books and Taxes screens, one Settings page, Insights tabs.
+- [ ] AR-10: every screen on the kit; guards with no exceptions beyond required legal text; full browser/axe/phone pass.
+- [ ] No business rule, money, permission or provider behavior changes; every item in "Rules that apply to every batch".
+
 ## Batch BA — Books on autopilot — DESIGNED 2026-10-25, awaiting Chris's go-ahead
 
 Design: [designs/BOOKS-AUTOPILOT.md](designs/BOOKS-AUTOPILOT.md); units BA-1…BA-6 in work-index. Restores the

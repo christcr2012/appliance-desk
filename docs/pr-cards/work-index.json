@@ -4095,7 +4095,7 @@
       "dependencies": [
         "BA-3"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — screens built in AR-7 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4120,7 +4120,7 @@
       "dependencies": [
         "BA-4"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — screens built in AR-7 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 300,
       "units": [
@@ -4142,7 +4142,7 @@
       "title": "No bare link lists anywhere on the desk; guard test",
       "batch": "BA",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — screens built in AR-0/AR-10 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4190,7 +4190,7 @@
       "dependencies": [
         "LD-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -4215,7 +4215,7 @@
       "dependencies": [
         "LD-2"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4285,7 +4285,7 @@
       "dependencies": [
         "CU-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — screens built in AR-4 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 380,
       "units": [
@@ -4310,7 +4310,7 @@
         "CU-2",
         "LD-4"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — screens built in AR-1/AR-4/AR-9 (docs/designs/APP-REDESIGN.md)",
       "migration": "none",
       "budget": 380,
       "units": [
@@ -4326,6 +4326,279 @@
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/CU-3.md"
+    },
+    {
+      "id": "AR-0",
+      "title": "Application kit, guards and three reference screens (Today, Invoices, Customer record) on the testing app",
+      "batch": "AR",
+      "dependencies": [],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "AR-0"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/components/ui/page-header.tsx",
+        "src/components/ui/data-list.tsx",
+        "docs/DESIGN-SYSTEM.md"
+      ],
+      "tests": [
+        "tests/ar0-kit-guards.test.ts",
+        "e2e/ar0-reference-screens.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-0.md"
+    },
+    {
+      "id": "AR-1",
+      "title": "Navigation: five areas, area tabs, profile menu, command bar, redirects, More removed",
+      "batch": "AR",
+      "dependencies": [
+        "AR-0"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "AR-1"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/lib/desk-navigation.ts",
+        "src/lib/desk-sections.ts",
+        "src/components/ui/app-shell.tsx"
+      ],
+      "tests": [
+        "tests/ar1-navigation.test.ts",
+        "e2e/ar1-navigation.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-1.md"
+    },
+    {
+      "id": "AR-2",
+      "title": "Today inbox: every To do category with inline actions and grouping; dashboard and control center merged",
+      "batch": "AR",
+      "dependencies": [
+        "AR-1"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "AR-2"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/app/desk/today/page.tsx",
+        "src/domains/exceptions/rules.ts"
+      ],
+      "tests": [
+        "tests/ar2-today-inbox.test.ts",
+        "e2e/ar2-today.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-2.md"
+    },
+    {
+      "id": "AR-3",
+      "title": "Money area: overview, invoices work queue, payments, invoice record",
+      "batch": "AR",
+      "dependencies": [
+        "AR-2"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "AR-3"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/app/desk/billing/page.tsx"
+      ],
+      "tests": [
+        "tests/ar3-money-area.test.ts",
+        "e2e/ar3-money.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-3.md"
+    },
+    {
+      "id": "AR-4",
+      "title": "Customers area: leads, customers, quotes, rentals, messages; End this rental flow; hand-offs",
+      "batch": "AR",
+      "dependencies": [
+        "AR-3"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "AR-4"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/app/desk/customers/page.tsx",
+        "src/app/desk/leads/page.tsx",
+        "src/app/desk/agreements/page.tsx"
+      ],
+      "tests": [
+        "tests/ar4-customers-area.test.ts",
+        "e2e/ar4-customers.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-4.md"
+    },
+    {
+      "id": "AR-5",
+      "title": "Schedule area: board, visit record, route, repairs",
+      "batch": "AR",
+      "dependencies": [
+        "AR-4"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "AR-5"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/app/desk/dispatch/page.tsx",
+        "src/app/desk/jobs/page.tsx"
+      ],
+      "tests": [
+        "e2e/ar5-schedule.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-5.md"
+    },
+    {
+      "id": "AR-6",
+      "title": "Equipment area: fleet, appliance record actions, purchases, parts, suppliers, retired",
+      "batch": "AR",
+      "dependencies": [
+        "AR-4"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 460,
+      "units": [
+        "AR-6"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/app/desk/inventory/page.tsx",
+        "src/app/desk/purchases/page.tsx"
+      ],
+      "tests": [
+        "e2e/ar6-equipment.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-6.md"
+    },
+    {
+      "id": "AR-7",
+      "title": "Money: Books and Taxes screens on the kit",
+      "batch": "AR",
+      "dependencies": [
+        "AR-3"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 460,
+      "units": [
+        "AR-7"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/app/desk/books/page.tsx",
+        "src/app/desk/sales-tax/page.tsx"
+      ],
+      "tests": [
+        "e2e/ar7-books-taxes.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-7.md"
+    },
+    {
+      "id": "AR-8",
+      "title": "Settings: one page with sections, search and setting rows with history",
+      "batch": "AR",
+      "dependencies": [
+        "AR-1"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "AR-8"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/app/desk/settings/page.tsx"
+      ],
+      "tests": [
+        "tests/ar8-settings.test.ts",
+        "e2e/ar8-settings.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-8.md"
+    },
+    {
+      "id": "AR-9",
+      "title": "Insights tabs replacing Reports, Revenue, Fleet and Growth pages",
+      "batch": "AR",
+      "dependencies": [
+        "AR-4",
+        "AR-6",
+        "AR-7"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 380,
+      "units": [
+        "AR-9"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "src/app/desk/reports/page.tsx",
+        "src/app/desk/revenue/page.tsx"
+      ],
+      "tests": [
+        "e2e/ar9-insights.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-9.md"
+    },
+    {
+      "id": "AR-10",
+      "title": "Sweep: every remaining screen on the kit; guards with empty allow-list; full browser, axe and phone pass",
+      "batch": "AR",
+      "dependencies": [
+        "AR-5",
+        "AR-6",
+        "AR-8",
+        "AR-9"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "AR-10"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "docs/DESIGN-SYSTEM.md"
+      ],
+      "tests": [
+        "tests/ar10-sweep-guards.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-10.md"
     }
   ],
   "enhancements": [

@@ -1,5 +1,9 @@
 # Customers workspace — one place for everyone you sell to (Batch CU)
 
+> **2026-10-25:** the screen parts of this design are now built through the app-wide redesign
+> ([APP-REDESIGN.md](APP-REDESIGN.md)); engine/data units here are unchanged.
+
+
 Status: **designed 2026-10-25 at Chris's request; not built.** Units CU-1…CU-3 in `work-index.json`. Follows the
 "Quiet screens" and "No bare link lists" rules in [DESIGN-SYSTEM.md](../DESIGN-SYSTEM.md) and builds on the Leads
 design ([LEADS-WORKSPACE.md](LEADS-WORKSPACE.md)). No provider or live switch involved.

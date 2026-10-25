@@ -7,7 +7,7 @@ Audited baseline: main after #541, October 24, 2026 (documents re-checked agains
 Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through T, S, COM-L, W (except W-11/12/13), V, F2,
 K, K-CASH, M-1A…M-2B, O-1, O-2A, O-2B, O-3A, O-4…O-7 and ACC-1…ACC-5 is merged. The live/provider/owner acceptance checks stay separately PENDING on
 [OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
-Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed), BA books on autopilot, LD leads workspace and CU customers workspace (designed, awaiting go-ahead),
+Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed), AR app-wide redesign plus BA/LD/CU engines (designed, awaiting go-ahead),
 W-11/12/13 (owner-gated), MCP-1…11. The full audited list is "What truly remains" in [PLAN](PLAN.md). **New 2026-10-23:** ACC (accounts and sign-in) is built and merged (#544–#548).
 
 **New required implementer reading:** October 13
@@ -251,6 +251,26 @@ currently cannot change his own password. Text codes need Twilio live and Chris'
 | ACC-3 | Sign-in codes by email or text, method policy per level, trusted devices | JIT — `ACC-3.md` | ACC-2 |
 | ACC-4 | Owner resets an employee's sign-in, security notices, failed-attempt pause | JIT — `ACC-4.md` | ACC-3 |
 | ACC-5 | Job roles (owner-editable screen bundles that only narrow a level) | JIT — `ACC-5.md` | ACC-4 |
+
+### AR — the app-wide redesign (`designs/APP-REDESIGN.md`, designed 2026-10-25, awaiting go-ahead)
+
+Chris: every page is "categories with related functions placed on them", not an application. AR rebuilds the desk
+around five areas, four page types (work queue, record, guided flow, settings), one inbox, a command bar and a shared
+component kit with build guards. It supersedes the screen units BA-4/5/6, LD-2/3 and CU-2/3.
+
+| Unit | Scope | Prerequisite |
+|---|---|---|
+| AR-0 | Kit + guards + three reference screens on testing | — |
+| AR-1 | Five areas, area tabs, profile menu, command bar, redirects | AR-0 |
+| AR-2 | Today inbox | AR-1 |
+| AR-3 | Money area and invoices | AR-2 |
+| AR-4 | Customers area (leads, customers, quotes, rentals, messages) | AR-3 |
+| AR-5 | Schedule area | AR-4 |
+| AR-6 | Equipment area | AR-4 |
+| AR-7 | Books and Taxes screens | AR-3 |
+| AR-8 | Settings | AR-1 |
+| AR-9 | Insights tabs | AR-4, AR-6, AR-7 |
+| AR-10 | Sweep and guards | AR-5, AR-6, AR-8, AR-9 |
 
 ### BA — books on autopilot (`designs/BOOKS-AUTOPILOT.md`, designed 2026-10-25, awaiting go-ahead)
 

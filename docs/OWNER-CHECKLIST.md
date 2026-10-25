@@ -177,6 +177,13 @@ Agents will do the parts they safely can and record what they saw; the rest need
   the changed environment variable (no manual release), and Desk → Automations shows a successful nightly
   "Phone usage sync" run. Leave this box unchecked until the run is observed.
 
+- [ ] **Decision: rebuild the desk as an application (AR-0…AR-10)?** Design: docs/designs/APP-REDESIGN.md — five
+  areas instead of category pages, one inbox on Today, every customer/rental/invoice/appliance as a proper record with
+  its next step, a search bar that jumps anywhere, and one consistent look. Recommendation: yes; start with AR-0
+  (three finished reference screens) together with the BA-1 books engine. Steps: tell the agent "build AR". Ready when: now.
+- [ ] **Look at the three reference screens on the testing site (after AR-0 is built, 10 minutes).** Steps: open
+  appliance-desk-testing.vercel.app, sign in as the test owner, look at Today, Money → Invoices and one customer; tell
+  the agent what you like and don't. Ready when: AR-0 is merged and the 10 pm testing update has run. Nothing waits on this.
 - [ ] **Decision: build "Books on autopilot" (BA-1…BA-6)?** The design is written (docs/designs/BOOKS-AUTOPILOT.md):
   the app keeps the books itself, you review once a month from your To do list, and pages lose their rows of bare
   links. Recommendation: yes, starting with BA-1 (today nothing is recorded unless someone presses a button) and BA-6
@@ -213,6 +220,7 @@ on readiness).
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
 | 2026-10-23 | Staff-permission decision (section E) | Granting staff reports/expenses would widen access, so it needs the owner's approval. |
+| 2026-10-25 | App-wide redesign go-ahead and reference-screen review | Chris: every page is category pages, not an application. |
 | 2026-10-25 | Customers workspace go-ahead decision | Chris found the Customers list too basic for a real customer system. |
 | 2026-10-25 | Leads workspace go-ahead decision | Chris asked for a robust, scalable leads page without screens full of explanations. |
 | 2026-10-25 | Books on autopilot go-ahead decision | Chris asked for a Books redesign a first-time owner can run; build needs his go-ahead. |
