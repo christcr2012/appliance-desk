@@ -49,7 +49,8 @@
       "budget-money.spec.ts",
       "budget.spec.ts",
       "money-reports.spec.ts",
-      "crm-workspace.spec.ts"
+      "crm-workspace.spec.ts",
+      "service-area-map.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",

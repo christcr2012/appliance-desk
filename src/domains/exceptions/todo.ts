@@ -38,6 +38,8 @@ const ACTION_LABEL: Record<string, string> = {
   UNREVIEWED_MAINTENANCE_REQUEST: "Review request",
   UNINSPECTED_RETURN: "Inspect appliance",
   MISSING_REPAIR_COST: "Enter repair cost",
+  DELIVERY_ZONE_UNKNOWN: "Confirm zone",
+  PICKUP_TO_ARRANGE: "Record pickup plan",
   STALE_RESERVATION: "Review reservation",
   APPLIANCE_MAINTENANCE_DUE: "Schedule service",
   OLD_SET_APPLIANCE: "Split machines",

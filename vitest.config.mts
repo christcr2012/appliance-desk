@@ -25,6 +25,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/scheduled-package-prices-integration.test.ts", // O-4 same nightly job as above, for rental sets.
   "tests/decisions-integration.test.ts", // DEC-1a changes/restores shared tax settings and an all-state default tax rule; runs the same nightly job.
   "tests/settings-undo-integration.test.ts", // O-1 changes and restores shared BusinessSettings fields and reads the settings audit history.
+  "tests/estimate-zone-integration.test.ts", // ZONE-1 changes and restores the shared delivery zones.
   "tests/bank-reconciliation-integration.test.ts",
   "tests/budget-money-integration.test.ts",
   "tests/budget-reports-integration.test.ts", // K-CASH-7 changes/restores Books opening and BudgetState singleton on disposable DB.

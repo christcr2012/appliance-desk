@@ -3,6 +3,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { reviewedDrivingFee,drivingEvidenceSchema } from "./delivery";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
+import { readZoneSettings } from "@/domains/delivery/zone";
+
+// ZONE-1: the road-mile bands come from the owner's delivery zones (same starting numbers as before).
+const ZONE_FIELDS={deliveryZones:true,deliveryMaxMiles:true} as const;
 
 async function ensureOwner(tx: Prisma.TransactionClient,userId:string) {
   const actor=await tx.user.findUnique({where:{id:userId},select:{role:true}});
@@ -33,10 +37,10 @@ export async function recordDeliveryRouteEvidence(userId:string,
   return prisma.$transaction(async tx=>{
     await ensureOwner(tx,userId);
     const setting=await tx.businessSettings.findUnique({where:{id:"singleton"},
-      select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true}});
+      select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true,...ZONE_FIELDS}});
     if(!setting?.drivingOriginVerifiedAt)
       throw new Error("Owner must verify central Greeley origin first.");
-    const fee=reviewedDrivingFee(evidence,setting.drivingOriginAddress);
+    const fee=reviewedDrivingFee(evidence,setting.drivingOriginAddress,new Date(),readZoneSettings(setting));
     if("estimateId" in target){
       const e=await tx.estimate.findUnique({where:{id:target.estimateId},select:{status:true}});
       if(!e||!["DRAFT","CHANGES_REQUESTED","SENT","VIEWED"].includes(e.status))
@@ -62,10 +66,10 @@ export async function recordDeliveryRouteEvidence(userId:string,
 export async function assertRouteMatchesFrozenFeeInTx(
   tx:Prisma.TransactionClient,agreementId:string,raw:unknown) {
   const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},
-    select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true}});
+    select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true,...ZONE_FIELDS}});
   if(!settings?.drivingOriginVerifiedAt)
     throw new Error("Verified driving origin is required for offered delivery.");
-  const band=reviewedDrivingFee(raw,settings.drivingOriginAddress);
+  const band=reviewedDrivingFee(raw,settings.drivingOriginAddress,new Date(),readZoneSettings(settings));
   const frozen=await getFrozenSigningOrderInTx(tx,agreementId);
   const target=frozen.find(x=>x.agreementId===agreementId);
   if(!target||target.schemaVersion!==2)

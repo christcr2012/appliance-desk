@@ -304,6 +304,8 @@ model ServiceAddress {
   estimateLineItems EstimateLineItem[]
   custodyEpisodes ApplianceCustodyEpisode[]
   taxLocations AddressTaxLocation[]
+  // ZONE-1: map position, kept in its own table so no ordinary address read can carry it to a customer.
+  geocode ServiceAddressGeocode?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1124,6 +1126,9 @@ model RentalAgreement {
   deliveryRequested Json?
   deliveryRequestedAt DateTime?
   deliveryRouteProof Json?
+  // ZONE-1: this address's delivery zone, miles, method, prices and delivery/pickup choice, copied from the estimate
+  // when it was converted. Never recalculated: later zone changes don't touch it.
+  deliveryZoneSnapshot Json?
 
 
   termMonths Int? // null = month-to-month
@@ -2124,6 +2129,10 @@ model Estimate {
   phonePreferredAt DateTime?
   // Explicit owner decision for already-prepared single-site self completion.
   customerAutoFinishEnabled Boolean @default(false)
+  // ZONE-1: per delivery address, the zone found from the address (or confirmed by staff), its prices and the
+  // deliver / "I'll pick it up" choice. Frozen once the estimate is sent (src/domains/delivery/estimate-zone.ts).
+  deliveryZoneSnapshot   Json?
+  deliveryZoneSnapshotAt DateTime?
 
   // The OWNER/ADMIN who created this — every Estimate is staff-created,
   // never self-service.
@@ -3283,6 +3292,27 @@ model BusinessSettings {
   // COM-L2 additive communication lineage.
   communicationsPolicy Json @default("{}")
   communicationsPolicyVersion Int @default(1)
+
+  // ZONE-1 delivery zones (Settings › Delivery zones; src/domains/delivery/zone.ts). Starting values are IN-06's.
+  deliveryZones               Json    @default("[{\"name\":\"Local — free delivery\",\"outerMiles\":15,\"deliveryCents\":0,\"pickupCents\":0,\"color\":\"GREEN\"},{\"name\":\"Nearby\",\"outerMiles\":30,\"deliveryCents\":7500,\"pickupCents\":7500,\"color\":\"BLUE\"},{\"name\":\"Extended\",\"outerMiles\":50,\"deliveryCents\":12500,\"pickupCents\":12500,\"color\":\"AMBER\"}]")
+  deliveryMaxMiles            Float   @default(50)
+  zoneCenter                  Json    @default("{\"lat\":40.4233,\"lon\":-104.7091}")
+  zoneDistanceMethod          String  @default("STRAIGHT_LINE")
+  showDeliveryPricesOnWebsite Boolean @default(false)
+}
+
+// ZONE-1: a customer address's map position (U.S. Census Bureau lookup or a staff pin). Internal only: never shown to
+// customers, never logged. Deleted with the customer's other address details on a privacy erasure.
+model ServiceAddressGeocode {
+  serviceAddressId String         @id
+  serviceAddress   ServiceAddress @relation(fields: [serviceAddressId], references: [id], onDelete: Cascade)
+  latitude         Float
+  longitude        Float
+  // SHA-256 of the one-line address that was looked up; a different street means look it up again.
+  addressHash      String
+  source           String // CENSUS | STAFF_PIN
+  geocodedAt       DateTime
+  geocodedByUserId String?
 }
 
 model MonthToMonthTermsVersion {

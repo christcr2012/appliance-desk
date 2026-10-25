@@ -20,6 +20,8 @@ export const BACKUP_MODEL_POLICY = {
   Customer: "customer",
   Referral: "referral",
   ServiceAddress: "serviceAddress",
+  // ZONE-1: an address's map position (looked up again if lost, but kept so restores don't re-send addresses).
+  ServiceAddressGeocode: "serviceAddressGeocode",
   // Privately scoped tenant contact recovery must include history, never a session token.
   LocationContact: "locationContact",
   LocationPortfolioImport: "locationPortfolioImport",

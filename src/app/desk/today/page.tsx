@@ -127,6 +127,8 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   OLD_SET_APPLIANCE: "Old set record to split",
   OUT_OF_SERVICE: "Out for repair, no replacement",
   FEEDBACK_WAITING: "App feedback to read",
+  DELIVERY_ZONE_UNKNOWN: "Delivery zone to confirm",
+  PICKUP_TO_ARRANGE: "Customer pickup to arrange",
   MISSING_REPAIR_COST: "Repair cost missing",
   AGREEMENT_TERM_EXPIRED: "Term ended",
   APPLIANCE_MAINTENANCE_DUE: "Maintenance due",

@@ -78,6 +78,10 @@ vi.mock("@/domains/exceptions/turning-points-attention", () => ({
 vi.mock("@/domains/exceptions/feedback-attention", () => ({
   listFeedbackWaiting: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/delivery-zone-attention", () => ({
+  // ZONE-1 items; covered by tests/delivery-zone-attention.test.ts.
+  listDeliveryZoneAttention: vi.fn(async () => ({ unknown: { rows: [], total: 0 }, pickups: { rows: [], total: 0 } })),
+}));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {

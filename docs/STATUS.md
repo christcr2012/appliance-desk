@@ -1,3 +1,12 @@
+## October 26 — ZONE-1: delivery zones from the address, zone map (in review)
+
+Zones are owner settings (Settings › Delivery zones; starting values IN-06, straight line). An address is looked up
+with the U.S. Census Bureau (server only, 5 s, saved per address in its own table) → zone and price on the estimate;
+lookup trouble → "We'll confirm" + a To do. Delivery or "I'll pick it up" ($0) on desk and customer estimate pages;
+frozen once sent, copied to the agreement. `/service-area` is our own SVG map + town list + checker; `/rent/{town}`
+from the town list. Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
+Proof: unit tests here; DB and browser tests in CI only. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
+
 ## October 25 (night) — AR-0a: application kit + guards (in review)
 
 Built the shared kit in `src/components/kit/` (20 components + Icon, unit-tested in `tests/kit/`), the new color

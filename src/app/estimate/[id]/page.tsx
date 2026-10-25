@@ -20,6 +20,7 @@ import { QuoteLanguageChoice } from "./language-choice";
 import { parseCustomerLanguage } from "@/domains/language/copy";
 import { quoteLanguage } from "@/domains/language/quote-note";
 import { estimateCopy } from "@/domains/language/estimate-copy";
+import { EstimateDeliveryChoice } from "./delivery-choice";
 
 export const metadata = {
   title: "Your estimate",
@@ -32,7 +33,7 @@ export default async function PublicEstimatePage({
   params, searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{deposit?:string;signingPayment?:string;language?:string}>;
+  searchParams?: Promise<{deposit?:string;signingPayment?:string;language?:string;delivery?:string}>;
 }) {
   const { id } = await params;
   const payment = await searchParams;
@@ -124,6 +125,10 @@ export default async function PublicEstimatePage({
         )}
       </div>
 
+      <EstimateDeliveryChoice estimateId={estimate.id} status={estimate.status} snapshot={estimate.deliveryZoneSnapshot}
+        addresses={estimate.lineItems.flatMap((line) => line.serviceAddress
+          ? [{ id: line.serviceAddress.id, label: `${line.serviceAddress.line1}, ${line.serviceAddress.city}` }] : [])}
+        result={typeof payment?.delivery === "string" ? payment.delivery : undefined} />
       {reviewedQuote && <ReviewedPreapprovalQuote quote={reviewedQuote} language={language} />}
       {(estimate.status === "SENT" || estimate.status === "VIEWED") && !reviewedQuote && (
         <section className="mt-4 rounded border border-amber-400 p-4 text-sm" role="alert">

@@ -16,6 +16,7 @@ import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
 import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listFeedbackWaiting } from "./feedback-attention";
+import { listDeliveryZoneAttention } from "./delivery-zone-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
 import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
 import { listUnsignedAgreements } from "./unsigned-agreements";
@@ -1051,6 +1052,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const visitNeedsAssignment = canViewFinance ? await listVisitNeedsAssignment(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   // MCP-10a: app feedback waiting for the team (owner and admins only).
   const feedbackWaiting = canViewFinance ? await listFeedbackWaiting(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
+  // ZONE-1: unknown delivery zones and customer pickups to arrange (owner and admins only).
+  const deliveryZoneAttention = canViewFinance ? await listDeliveryZoneAttention(EXCEPTION_CATEGORY_CAP)
+    : { unknown: noTurningPoints, pickups: noTurningPoints };
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -1085,6 +1089,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...visitNeedsAssignment.rows,
     ...cleaningNeeded.rows,
     ...feedbackWaiting.rows,
+    ...deliveryZoneAttention.unknown.rows,
+    ...deliveryZoneAttention.pickups.rows,
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
@@ -1142,6 +1148,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["VISIT_NEEDS_ASSIGNMENT", visitNeedsAssignment],
       ["CLEANING_NEEDED", cleaningNeeded],
       ["FEEDBACK_WAITING", feedbackWaiting],
+      ["DELIVERY_ZONE_UNKNOWN", deliveryZoneAttention.unknown],
+      ["PICKUP_TO_ARRANGE", deliveryZoneAttention.pickups],
       ["OVERDUE_JOB", overdueJobs],
       ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
       ["UNINSPECTED_RETURN", uninspectedAppliances],

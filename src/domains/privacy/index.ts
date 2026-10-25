@@ -544,6 +544,8 @@ export async function fulfillPrivacyDeletion(
       where: { serviceAddress: { customerId: customer.id } },
       data: { normalizedAddress: null, reviewNote: null },
     });
+    // ZONE-1: an address's map position identifies it, so it goes with the address details.
+    await tx.serviceAddressGeocode.deleteMany({ where: { serviceAddress: { customerId: customer.id } } });
     await tx.serviceAddress.updateMany({
       where: { customerId: customer.id },
       data: { line1: "Deleted address", line2: null, city: "Deleted", state: "CO", zip: "00000" },

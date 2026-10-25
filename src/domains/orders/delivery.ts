@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { bandName, startingZoneSettings, type ZoneSettings } from "@/domains/delivery/zone";
 
 const DENVER = "America/Denver";
 export const slotSchema = z.object({
@@ -45,13 +46,19 @@ export function assertAvailableDeliveryOption(
     throw new Error("That delivery choice is now in the past. Ask for another.");
   return { slot, questions: candidate.questions, offeredVersion: currentVersion };
 }
-export function mileageBand(miles: number): {
+/**
+ * ZONE-1: the bands now come from the owner's delivery zones (Settings › Delivery zones). The starting zones are the
+ * same numbers this function used to hard-code (0–15 free, over 15–30 $75, over 30–50 $125, beyond 50 manual only).
+ * Unlike the zone lookup, these recorded road miles are compared unrounded.
+ */
+export function mileageBand(miles: number, zones: Pick<ZoneSettings, "zones" | "maxMiles"> = startingZoneSettings()): {
   allowed: boolean; amountCents: number | null; band: string;
 } {
   if (!Number.isFinite(miles) || miles < 0) throw new Error("Invalid verified driving distance.");
-  if (miles <= 15) return {allowed:true, amountCents:0, band:"LOCAL"};
-  if (miles <= 30) return {allowed:true, amountCents:7500, band:"MIDDLE"};
-  if (miles <= 50) return {allowed:true, amountCents:12500, band:"OUTER"};
+  if (miles <= zones.maxMiles) {
+    const index = zones.zones.findIndex(zone => miles <= zone.outerMiles);
+    if (index >= 0) return {allowed:true, amountCents:zones.zones[index]!.deliveryCents, band:bandName(index + 1)};
+  }
   return {allowed:false, amountCents:null, band:"MANUAL_ONLY"};
 }
 export const drivingEvidenceSchema = z.object({
@@ -62,7 +69,7 @@ export const drivingEvidenceSchema = z.object({
   origin: z.string().trim().min(5).max(300),
 }).strict();
 export function reviewedDrivingFee(raw: unknown, expectedOrigin: string,
-  now = new Date()) {
+  now = new Date(), zones?: Pick<ZoneSettings, "zones" | "maxMiles">) {
   const evidence = drivingEvidenceSchema.parse(raw);
   if (!expectedOrigin || expectedOrigin.startsWith("UNVERIFIED:") ||
       evidence.origin !== expectedOrigin)
@@ -71,7 +78,7 @@ export function reviewedDrivingFee(raw: unknown, expectedOrigin: string,
   if (!Number.isFinite(measured) || measured > now.getTime()+5*60*1000 ||
       now.getTime()-measured > 7*24*60*60*1000)
     throw new Error("Driving route proof is stale. Reverify or record a reviewed manual route.");
-  const band = mileageBand(evidence.miles);
+  const band = mileageBand(evidence.miles, zones);
   if (!band.allowed) throw new Error("Outside automatic delivery bands. Require separate manual review.");
   return { ...band, evidence };
 }

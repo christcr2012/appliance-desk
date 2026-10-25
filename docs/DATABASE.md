@@ -1325,3 +1325,22 @@ Settings: `BusinessSettings.feedbackMaxAttachments` (0–3, starting 3) and `fee
 The starting Manager job role gains the new owner/admin `feedback` screen. All four tables are in the backup manifest;
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
+
+## Delivery zones (ZONE-1, additive migration `20261027050000_delivery_zones`)
+
+- `BusinessSettings.deliveryZones` (JSON list of `{ name, outerMiles, deliveryCents, pickupCents, color }`, starting
+  Local — free delivery 0–15 / Nearby over 15–30 $75 / Extended over 30–50 $125, IN-06), `deliveryMaxMiles` (50),
+  `zoneCenter` (`{ lat, lon }`, central Greeley 40.4233, -104.7091), `zoneDistanceMethod` (`STRAIGHT_LINE`, Chris
+  2026-10-25; `DRIVING` = staff type the miles), `showDeliveryPricesOnWebsite` (false). Read by
+  `src/domains/delivery/zone.ts` (`readZoneSettings`); saved only by the owner (`saveZoneSettings`, compare-and-set,
+  audited). The old `serviceAreaCities` / `serviceAreaZips` columns stay but are no longer read (except to send an
+  old city-page link that isn't on the town list to `/service-area`).
+- `ServiceAddressGeocode` (new table, one row per address, cascade with the address): the address's map position
+  (`latitude`, `longitude`), `addressHash` (SHA-256 of the one-line address; a new street means look it up again),
+  `source` (`CENSUS`), `geocodedAt`, `geocodedByUserId`. Kept apart from `ServiceAddress` so no ordinary address read
+  (`serviceAddress: true`) can carry a position to a customer. In the backup manifest; deleted on a privacy erasure.
+- `Estimate.deliveryZoneSnapshot` (+ `deliveryZoneSnapshotAt`): `{ version: 1, locations: [{ serviceAddressId, zone
+  (1..n | "OUTSIDE" | "UNKNOWN"), name, miles, method, center, priceCents, pickupPriceCents, choice ("DELIVER" |
+  "CUSTOMER_PICKUP"), unknownReason?, confirmed?, pickupArranged?, checkedAt }] }`. Rechecked only while DRAFT /
+  CHANGES_REQUESTED; frozen once sent. `RentalAgreement.deliveryZoneSnapshot` is that address's entry, copied once at
+  conversion.

@@ -31,6 +31,17 @@ The written agreement between the two is `src/domains/site-content/template-cont
 4. Run `npx vitest run tests/vc5-template-contract.test.ts tests/public-pages-render.test.tsx` and the normal checks.
 5. Merge to `main`. Nothing reaches visitors until the daily release; no manual release.
 
+## Carry-over: signature-1 → signature-2 (ZONE-1, 2026-10-26)
+
+- The service area page became the delivery-zone map, legend, address checker and town list; town pages show the zone.
+- **Removed:** `area.cities.heading`, `area.zips.heading`, `area.empty` (kept aside as retired; a rollback brings them
+  back). **Added, with starting wording:** `area.map.*`, `area.legend.heading`, `area.zone.*`, `area.check.*`,
+  `area.towns.*`, `home.check.served.free`, `home.check.served.noprice`, `home.check.unknown`, `rent.zone`,
+  `rent.zone.outside`, `rent.zone.cta`. New facts `{zone}`, `{price}`, `{miles}` come from Settings › Delivery zones.
+- Changed starting words (only where the owner hadn't edited them): `area.intro`, `home.check.served`,
+  `home.check.notyet`, `home.check.notyet.cta`, `rent.serving.body`.
+- Rolling back is "Layout only": revert the PR. The checker then answers from the old city/ZIP lists again.
+
 ## Carry-over: classic-1 → signature-1 (V-1/V-2, 2026-10-17)
 
 - The home page was recomposed (address check, highlighted heading words, numbered steps, price ticket, two-column FAQ).

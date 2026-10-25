@@ -76,7 +76,9 @@ export type ExceptionCategory =
   | "CUSTODY_UNKNOWN"
   | "OLD_SET_APPLIANCE"
   | "OUT_OF_SERVICE"
-  | "FEEDBACK_WAITING";
+  | "FEEDBACK_WAITING"
+  | "DELIVERY_ZONE_UNKNOWN"
+  | "PICKUP_TO_ARRANGE";
 
 export type ExceptionSeverity = "high" | "medium";
 

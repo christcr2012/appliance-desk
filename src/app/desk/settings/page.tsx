@@ -54,6 +54,11 @@ import { getMethodSettings, twilioKeysPresent } from "@/domains/security/second-
 import { EMAIL_WEAKER_WARNING, METHOD_LABEL } from "@/domains/security/second-step-rules";
 import { listOwnSessions } from "@/domains/security/sessions";
 import { SessionControls } from "./session-controls";
+import { DeliveryZonesForm } from "./delivery-zones-form";
+import { ServiceAreaMap } from "@/components/site/service-area-map";
+import { readZoneSettings } from "@/domains/delivery/zone";
+import { townsWithZones } from "@/domains/delivery/towns";
+import { zoneSettingsRevision } from "@/domains/delivery/settings";
 export const metadata = {
   title: "Settings",
   robots: { index: false, follow: false },
@@ -185,6 +190,34 @@ export default async function DeskSettingsPage({
           defaultValues={noticeDeliveryDefaults(settings as { noticeCertifierRoles?: string; mailNoticeTransitDays?: number })}
           canChange={(session.user as { role?: string }).role === "OWNER"}
         />
+      </Card>
+    );
+  } else if (section === "service-area") {
+    const zones = readZoneSettings(settings);
+    const towns = townsWithZones(zones);
+    content = (
+      <Card
+        title="Delivery zones"
+        description="Delivery zones measured from the center of Greeley. The zone for each customer is found from their address and put on the estimate."
+      >
+        <div className="mb-5 rounded-card border border-line bg-subtle p-4 text-sm text-ink-soft">
+          <p><strong className="text-ink">Starting values (your answer of 2026-10-13):</strong> up to 15 miles free, over 15 to 30 miles $75,
+            over 30 to 50 miles $125, beyond 50 miles pickup only. Distance is a straight line from the center (your answer of 2026-10-25).
+            A 50-mile circle can be 60 or more road miles.</p>
+          <p className="mt-2">Delivery is always optional: every estimate also offers &ldquo;I&rsquo;ll pick it up&rdquo; for $0. Changes apply to estimates
+            checked from now on; sent estimates and signed agreements keep the zone they were given. Only the owner can change these.
+            Delivery prices stay off the website until you switch them on.</p>
+          <p className="mt-2">The old city and ZIP code lists were replaced by these zones; they are kept but no longer used.</p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <DeliveryZonesForm settings={zones} revision={zoneSettingsRevision(zones)}
+            canChange={(session.user as { role?: string }).role === "OWNER"} />
+          <div>
+            <p className="mb-2 text-sm font-semibold text-ink">Map preview (saved zones)</p>
+            <ServiceAreaMap id="settings-zone-map" settings={zones} towns={towns}
+              copy={{ title: "Preview of your delivery zone map", north: "N", scale: "10 miles", center: "Center" }} />
+          </div>
+        </div>
       </Card>
     );
   } else if (section === "pickups") {

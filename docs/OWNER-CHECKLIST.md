@@ -194,6 +194,14 @@ Agents will do the parts they safely can and record what they saw; the rest need
 - [ ] **Xero** (only if you choose it): organization tax-rate names and holding accounts mapped.
 - [ ] **Twilio / carrier registration** and **Resend / Stripe account reviews** as described in section B.
 - [ ] **Metricool:** confirm a real visit shows up; review the updated privacy-page version; compare to interest-list signups.
+- [ ] **Delivery zones (ZONE-1):** (1) Re-approve the privacy page — it gained one line ("To check an address we send it
+  to the U.S. Census Bureau's address lookup; we don't keep addresses typed into the checker"), so until you approve
+  version `2026-10-26-census-1` in Settings › Policies the footer hides the privacy link. (2) After the next nightly
+  release, on the live site's Service area page type your shop address and a Loveland address into "Check your
+  address": the shop should say "Local — free delivery", Loveland "Nearby". It worked if both answers appear; if it says
+  "We couldn't place that address", the Census lookup didn't answer from the live server (tell Claude). (3) Look at the
+  zones in Settings › Delivery zones and, when you're ready, switch on "Show delivery prices on the website". Ready
+  when: the ZONE-1 PR is released. Nothing here blocks building.
 - [ ] **Stripe balance import (K-3):** approve `BOOKS_STRIPE_SYNC_ENABLED=true` for production only after you have checked
   the opening date and balances.
 
@@ -254,3 +262,4 @@ on readiness).
 | 2026-10-25 | Vault encryption key, workers' comp rejection form | Records vault (VAULT-2) and insurance (OPS-4). |
 | 2026-10-25 | UCCC consumer-lease notification | Late-fee law research: Colorado's UCCC covers household rentals over 4 months. |
 | 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |
+| 2026-10-26 | Delivery zones: privacy re-approval, live address check, website prices switch | ZONE-1 changed the privacy wording and calls the Census lookup, which agent sandboxes can't reach. |

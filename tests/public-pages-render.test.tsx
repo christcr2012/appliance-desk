@@ -6,12 +6,13 @@ const state = vi.hoisted(() => ({ legal: false, photos: false, lead: null as nul
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => { throw new Error(`REDIRECT ${to}`); },
   notFound: () => { throw new Error("NOT_FOUND"); },
+  permanentRedirect: (to: string) => { throw new Error(`REDIRECT ${to}`); },
   usePathname: () => "/",
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 // eslint-disable-next-line @next/next/no-img-element -- test stand-in for next/image
 vi.mock("next/image", () => ({ default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} /> }));
-vi.mock("@/domains/settings", async (orig) => ({ ...(await orig<typeof import("@/domains/settings")>()), getBusinessSettings: async () => (state.noCities ? { ...FIXTURE_SETTINGS, serviceAreaCities: [], serviceAreaZips: [] } : FIXTURE_SETTINGS) }));
+vi.mock("@/domains/settings", async (orig) => ({ ...(await orig<typeof import("@/domains/settings")>()), getBusinessSettings: async () => (state.noCities ? { ...FIXTURE_SETTINGS, showDeliveryPricesOnWebsite: true } : FIXTURE_SETTINGS) }));
 vi.mock("@/domains/launch", () => ({ getLaunchSettings: async () => ({ prelaunchMode: state.prelaunch, emailEnabled: false, postalAddress: "", replyToEmail: "" }) }));
 vi.mock("@/domains/pricing", async (orig) => ({ ...(await orig<typeof import("@/domains/pricing")>()), getPublishedCatalog: async () => (state.emptyCatalog ? [] : state.photos ? [{ ...FIXTURE_CATALOG[0] }, { ...FIXTURE_CATALOG[0], id: "t2", slug: "dryer", name: "Dryer" }, { ...FIXTURE_CATALOG[1], slug: "washer-dryer-set" }].map((c) => ({ ...c, photoUrl: "https://photos.example/" + c.slug + ".jpg" })) : FIXTURE_CATALOG) }));
 vi.mock("@/domains/settings/legal-approvals", async (orig) => ({ ...(await orig<typeof import("@/domains/settings/legal-approvals")>()), isLegalPageApproved: () => state.legal }));
@@ -30,6 +31,9 @@ vi.mock("@/app/(public)/check-address-actions", () => ({ checkServiceAddress: as
 vi.mock("@/lib/metricool", () => ({ metricoolConfig: () => null }));
 
 import { SITE_FIELDS, siteDefaults, siteDefaultTypedValues } from "@/domains/site-content/fields";
+import { TOWNS } from "@/domains/delivery/towns";
+import { STARTING_ZONES } from "@/domains/delivery/zone";
+import { HIGHWAYS } from "@/domains/delivery/map";
 import { hoursLines, upcomingClosures } from "@/domains/settings/profile-extras";
 import PublicLayout from "@/app/(public)/layout";
 import HomePage from "@/app/(public)/page";
@@ -105,6 +109,8 @@ function allowedFacts(): Set<string> {
     "Facebook", ...(s.serviceAreaCities as string[]), ...(s.serviceAreaZips as string[]),
     ...FIXTURE_CATALOG.map((c) => c.name), ...FIXTURE_CATALOG.filter((c) => c.contents).map((c) => `${c.name} (${c.contents})`), "$35", "$60", "$25", "$15", "$25.00", "$15.00", "$35.00", "$60.00",
     "01", "02", "03", "04", "© YEAR",
+    // ZONE-1: town names (town list), zone names (Settings › Delivery zones) and road names on the map drawing.
+    ...TOWNS.map((t) => t.name), ...STARTING_ZONES.map((z) => z.name), ...HIGHWAYS.map((h) => h.name),
   ]);
   return set;
 }
@@ -143,7 +149,9 @@ describe("runtime coverage with every editable item replaced by a marker", () =>
     { name: "home-photos", prelaunch: false, page: async () => { state.photos = true; return await HomePage({ searchParams: sp }); } },
     { name: "contact-no-options", prelaunch: false, page: async () => { state.emptyCatalog = true; return await ContactPage({ searchParams: sp }); } },
     { name: "home-legal-approved", prelaunch: false, page: async () => { state.legal = true; return await HomePage({ searchParams: sp }); } },
-    { name: "area-empty", prelaunch: false, page: async () => { state.noCities = true; return await (ServiceAreaPage as (p: unknown) => Promise<React.ReactElement>)({ searchParams: sp }); } },
+    // ZONE-1: delivery prices switched on (noCities now means "prices shown"), and a town just outside the zones.
+    { name: "area-prices", prelaunch: false, page: async () => { state.noCities = true; return await (ServiceAreaPage as (p: unknown) => Promise<React.ReactElement>)({ searchParams: sp }); } },
+    { name: "rent-outside", prelaunch: false, page: async () => await (CityPage as (p: unknown) => Promise<React.ReactElement>)({ params: Promise.resolve({ city: "golden" }), searchParams: sp }) },
   ];
   for (const route of variants) {
     it(`${route.name}: every word is an editable item (marker) or a declared owner fact`, async () => {
@@ -199,13 +207,17 @@ describe("form words that appear after the visitor acts", () => {
     const text = marked();
     const copy = {
       addressLabel: text["home.check.address.label"], zipLabel: text["home.check.zip.label"], button: "Go",
-      served: text["home.check.served"], servedLink: text["home.check.served.cta"], notYet: text["home.check.notyet"],
+      served: text["home.check.served"], servedFree: text["home.check.served.free"], servedNoPrice: text["home.check.served.noprice"],
+      servedLink: text["home.check.served.cta"], notYet: text["home.check.notyet"], unknown: text["home.check.unknown"],
       notYetLink: text["home.check.notyet.cta"], invalid: text["home.check.invalid"], limited: text["home.check.limited"],
     };
-    rtlRender(<AddressCheck copy={copy} quoteHref="/contact" launchHref="/launch" />);
+    rtlRender(<AddressCheck copy={copy} quoteHref="/contact" />);
     const answers: Array<[unknown, string[]]> = [
-      [{ status: "SERVED", zip: "80634", line1: "1 Main St" }, ["home.check.served", "home.check.served.cta"]],
-      [{ status: "NOT_YET", zip: "80202", line1: "1 Main St" }, ["home.check.notyet", "home.check.notyet.cta"]],
+      [{ status: "SERVED", zip: "80634", line1: "1 Main St", zone: "Nearby", free: false, price: "$75" }, ["home.check.served", "home.check.served.cta"]],
+      [{ status: "SERVED", zip: "80634", line1: "1 Main St", zone: "Local", free: true, price: null }, ["home.check.served.free"]],
+      [{ status: "SERVED", zip: "80634", line1: "1 Main St", zone: "Nearby", free: false, price: null }, ["home.check.served.noprice"]],
+      [{ status: "OUTSIDE", zip: "80202", line1: "1 Main St" }, ["home.check.notyet", "home.check.notyet.cta"]],
+      [{ status: "UNKNOWN", zip: "80202", line1: "1 Main St" }, ["home.check.unknown"]],
       [{ status: "INVALID" }, ["home.check.invalid"]],
       [{ status: "LIMITED" }, ["home.check.limited"]],
     ];
@@ -218,7 +230,7 @@ describe("form words that appear after the visitor acts", () => {
       noteMarkers(document.body.textContent ?? "");
     }
     // A yes carries the typed address in the link only.
-    state.check = () => ({ status: "SERVED", zip: "80634", line1: "1 Main St" });
+    state.check = () => ({ status: "SERVED", zip: "80634", line1: "1 Main St", zone: "Nearby", free: false, price: "$75" });
     fireEvent.click(screen.getByRole("button", { name: "Go" }));
     await waitFor(() => expect(screen.getByRole("link", { name: MARK("home.check.served.cta") }).getAttribute("href")).toBe("/contact?address=1+Main+St&zip=80634"));
   });

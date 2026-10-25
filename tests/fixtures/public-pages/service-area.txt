@@ -16,15 +16,190 @@ Log in
 Get a Quote
 [button aria-label] Open menu
 Service area
-We're growing — not sure if we cover your address yet? Ask us on the quote form and we'll tell you honestly.
-Cities we serve
+We deliver within 50 miles of central Greeley. Delivery is always optional — you can pick your appliance up instead.
+Map of our delivery zones, centered on Greeley
+I-25
+US-34
+US-85
+I-76
+Evans
+Eaton
+Kersey
+Windsor
+Ault
+Johnstown
+Platteville
+Loveland
+Nunn
+Berthoud
+Fort Collins
+Fort Lupton
+Keenesburg
+Wellington
+Longmont
+Brighton
+Lyons
+Wiggins
+Thornton
+Boulder
+Estes Park
+Fort Morgan
+Denver
+Center of Greeley
+N
+10 miles
+Delivery zones
+Local — free delivery
+0–15 miles
+Guaranteed free delivery
+Nearby
+15–30 miles
+Delivery price shown on your estimate
+Extended
+30–50 miles
+Delivery price shown on your estimate
+Beyond 50 miles: pickup only
+Delivery is optional everywhere: you can pick your appliance up instead, at a time and place we arrange together.
+Check your address
+Street address
+ZIP code
+Find my zone
+Towns by delivery zone
+A town's zone is based on its center. Your exact address decides your zone.
+Local — free delivery
 [a href] /rent/greeley
 Greeley
+[a href] /rent/garden-city
+Garden City
+[a href] /rent/evans
+Evans
+[a href] /rent/lucerne
+Lucerne
+[a href] /rent/la-salle
+La Salle
+[a href] /rent/eaton
+Eaton
+[a href] /rent/kersey
+Kersey
+[a href] /rent/galeton
+Galeton
+[a href] /rent/milliken
+Milliken
+[a href] /rent/severance
+Severance
+[a href] /rent/gilcrest
+Gilcrest
 [a href] /rent/windsor
 Windsor
-ZIP codes we serve
-80631
-80634
+[a href] /rent/ault
+Ault
+[a href] /rent/johnstown
+Johnstown
+[a href] /rent/pierce
+Pierce
+Nearby
+[a href] /rent/platteville
+Platteville
+[a href] /rent/timnath
+Timnath
+[a href] /rent/loveland
+Loveland
+[a href] /rent/nunn
+Nunn
+[a href] /rent/mead
+Mead
+[a href] /rent/berthoud
+Berthoud
+[a href] /rent/fort-collins
+Fort Collins
+[a href] /rent/fort-lupton
+Fort Lupton
+[a href] /rent/keenesburg
+Keenesburg
+[a href] /rent/hudson
+Hudson
+[a href] /rent/firestone
+Firestone
+[a href] /rent/wellington
+Wellington
+[a href] /rent/frederick
+Frederick
+[a href] /rent/dacono
+Dacono
+[a href] /rent/longmont
+Longmont
+[a href] /rent/lochbuie
+Lochbuie
+Extended
+[a href] /rent/brighton
+Brighton
+[a href] /rent/erie
+Erie
+[a href] /rent/lyons
+Lyons
+[a href] /rent/niwot
+Niwot
+[a href] /rent/lafayette
+Lafayette
+[a href] /rent/wiggins
+Wiggins
+[a href] /rent/louisville
+Louisville
+[a href] /rent/northglenn
+Northglenn
+[a href] /rent/grover
+Grover
+[a href] /rent/broomfield
+Broomfield
+[a href] /rent/superior
+Superior
+[a href] /rent/thornton
+Thornton
+[a href] /rent/boulder
+Boulder
+[a href] /rent/jamestown
+Jamestown
+[a href] /rent/federal-heights
+Federal Heights
+[a href] /rent/estes-park
+Estes Park
+[a href] /rent/commerce-city
+Commerce City
+[a href] /rent/westminster
+Westminster
+[a href] /rent/arvada
+Arvada
+[a href] /rent/new-raymer
+New Raymer
+[a href] /rent/log-lane-village
+Log Lane Village
+[a href] /rent/lakeside
+Lakeside
+[a href] /rent/bennett
+Bennett
+[a href] /rent/aurora
+Aurora
+[a href] /rent/mountain-view
+Mountain View
+[a href] /rent/ward
+Ward
+[a href] /rent/fort-morgan
+Fort Morgan
+[a href] /rent/wheat-ridge
+Wheat Ridge
+[a href] /rent/denver
+Denver
+[a href] /rent/edgewater
+Edgewater
+Just outside — pickup only
+[a href] /rent/glendale
+Glendale
+[a href] /rent/nederland
+Nederland
+[a href] /rent/lakewood
+Lakewood
+[a href] /rent/golden
+Golden
 [a href] /contact
 Check your address
 [img alt] Fixture Rentals Co
