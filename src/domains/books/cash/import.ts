@@ -1,7 +1,7 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { previewToken as signPreviewToken, verifyToken as verifySignedPreviewToken } from "@/lib/preview-token";
 import { CashEvidenceError } from "./accounts";
 import { canonicalMapping, parseBankCsv, type BankCsvMapping, type ParsedObservation } from "./csv";
 
@@ -9,27 +9,12 @@ const MINUTE=60000;
 type PreviewClaims={v:1;uid:string;aid:string;sha:string;mappingHash:string;version:number;exp:number};
 type OverlapChoice="KEEP_EXISTING"|"ADDITIONAL";
 export type BankImportChoices={overlaps?:Record<number,OverlapChoice>;supersedeReason?:string};
-function tokenSecret(){
- const value=process.env.BETTER_AUTH_SECRET??process.env.AUTH_SECRET;
- if(!value||value.length<32)throw new CashEvidenceError("Bank preview signing is not securely configured.");
- return value;
-}
-function sign(payload:string){
- return createHmac("sha256",tokenSecret()).update(payload).digest("base64url");
-}
+const TOKEN_ERRORS={label:"Bank preview",error:(message:string)=>new CashEvidenceError(message)};
 function previewToken(claim:PreviewClaims){
- const value=Buffer.from(JSON.stringify(claim)).toString("base64url");
- return value+"."+sign(value);
+ return signPreviewToken(claim,TOKEN_ERRORS);
 }
 function verifyToken(token:string):PreviewClaims{
- const [payload,sig,extra]=token.split(".");
- if(!payload||!sig||extra||payload.length>3000)throw new CashEvidenceError("Bank preview token is invalid.");
- const signature=Buffer.from(sig,"base64url"),expected=Buffer.from(sign(payload),"base64url");
- if(signature.length!==expected.length||!timingSafeEqual(signature,expected))
-  throw new CashEvidenceError("Bank preview token is not valid.");
- let claim:PreviewClaims;
- try{claim=JSON.parse(Buffer.from(payload,"base64url").toString("utf8")) as PreviewClaims;}
- catch{throw new CashEvidenceError("Bank preview token cannot be read.");}
+ const claim=verifySignedPreviewToken(token,TOKEN_ERRORS) as PreviewClaims;
  if(claim.v!==1||!Number.isSafeInteger(claim.exp)||claim.exp<Date.now()||claim.exp>Date.now()+31*MINUTE||
    typeof claim.uid!=="string"||typeof claim.aid!=="string"||
    !/^[a-f0-9]{64}$/.test(claim.sha)||!/^[a-f0-9]{64}$/.test(claim.mappingHash))

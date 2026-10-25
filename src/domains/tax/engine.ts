@@ -22,6 +22,8 @@ export type EngineJurisdiction = {
   administration: "STATE_COLLECTED" | "SELF_COLLECTED";
   rate: { versionId: string; rateMilliPercent: number } | null;
   rules: Partial<Record<TaxChargeCategory, Taxability>>;
+  /** DEC-1a: categories whose rule here is a starting value the CPA has not confirmed yet. */
+  provisional?: Partial<Record<TaxChargeCategory, boolean>>;
 };
 
 export type EngineInput = {
@@ -29,6 +31,8 @@ export type EngineInput = {
   leaseTermMonths: number | null;
   election: ShortTermLeaseElection;
   defaultRules: Partial<Record<TaxChargeCategory, Taxability>>;
+  /** DEC-1a: default (all state-collected areas) categories that are unconfirmed starting values. */
+  defaultProvisional?: Partial<Record<TaxChargeCategory, boolean>>;
   jurisdictions: EngineJurisdiction[];
   exemptJurisdictionIds: Set<string>;
   lines: {
@@ -49,10 +53,12 @@ export type EngineTaxLine = {
   exemptCents: number;
   exemptReason: string | null;
   taxCents: number;
+  /** Present (true) only when this line used a starting value the CPA has not confirmed ("Starting value — not confirmed"). */
+  provisional?: true;
 };
 
 export type EngineResult =
-  | { ok: true; lines: EngineTaxLine[]; totalTaxCents: number }
+  | { ok: true; lines: EngineTaxLine[]; totalTaxCents: number; provisional?: true }
   | { ok: false; problems: string[] };
 
 const CATEGORY_WORDS: Record<TaxChargeCategory, string> = {
@@ -73,14 +79,16 @@ const CATEGORY_WORDS: Record<TaxChargeCategory, string> = {
 export function resolveTaxability(
   jurisdiction: EngineJurisdiction,
   category: TaxChargeCategory,
-  input: Pick<EngineInput, "election" | "defaultRules" | "leaseTermMonths">,
-): { taxability: Taxability; reason: string } {
+  input: Pick<EngineInput, "election" | "defaultRules" | "leaseTermMonths" | "defaultProvisional">,
+): { taxability: Taxability; reason: string; provisional?: true } {
   const specific = jurisdiction.rules[category];
 
   if (specific && specific !== "UNDECIDED") {
     return {
       taxability: specific,
       reason: `Tax rule configured for ${jurisdiction.name}`,
+      // A provisional TAXABLE/EXEMPT calculates exactly like a confirmed one; the result is only labelled.
+      ...(jurisdiction.provisional?.[category] ? { provisional: true as const } : {}),
     };
   }
 
@@ -130,6 +138,7 @@ export function resolveTaxability(
   return {
     taxability: fallback,
     reason: "Default state-collected tax rule",
+    ...(input.defaultProvisional?.[category] ? { provisional: true as const } : {}),
   };
 }
 
@@ -191,6 +200,7 @@ export function computeTax(input: EngineInput): EngineResult {
           exemptCents: line.amountCents,
           exemptReason: "Customer exemption certificate",
           taxCents: 0,
+          ...(resolution.provisional ? { provisional: true as const } : {}),
         });
         continue;
       }
@@ -244,6 +254,7 @@ export function computeTax(input: EngineInput): EngineResult {
           exemptCents: line.amountCents,
           exemptReason: resolution.reason,
           taxCents: 0,
+          ...(resolution.provisional ? { provisional: true as const } : {}),
         });
         continue;
       }
@@ -260,6 +271,7 @@ export function computeTax(input: EngineInput): EngineResult {
           line.amountCents,
           jurisdiction.rate.rateMilliPercent,
         ),
+        ...(resolution.provisional ? { provisional: true as const } : {}),
       });
     }
   }
@@ -272,5 +284,6 @@ export function computeTax(input: EngineInput): EngineResult {
     ok: true,
     lines: resultLines,
     totalTaxCents: resultLines.reduce((sum, line) => sum + line.taxCents, 0),
+    ...(resultLines.some((line) => line.provisional) ? { provisional: true as const } : {}),
   };
 }

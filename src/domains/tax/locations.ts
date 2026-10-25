@@ -22,6 +22,8 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { recordedRetailSales } from "./rdf-sales-evidence";
 import { retailDeliveryFeeStatus } from "./retail-delivery-fee";
+import { resolveTaxabilityAsOf, type TaxabilityCell } from "./taxability-history";
+import { GREELEY_JURISDICTION_WHERE, taxCellForSubject } from "@/domains/decisions/tax-cells";
 
 const LOOKUP_REUSE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -703,6 +705,64 @@ export async function getSaleTaxContext(
   });
 }
 
+/**
+ * Every stored taxability cell as it is today (the "What gets taxed" screen and the tax overview). This file is the
+ * only place that reads the TaxabilityRule table (tests/decisions-append-only.test.ts checks), so dated reads cannot
+ * be bypassed by accident.
+ */
+export async function listTaxabilityRuleCells(tx: Prisma.TransactionClient) {
+  return tx.taxabilityRule.findMany({
+    select: { id: true, jurisdictionId: true, category: true, taxability: true, cpaConfirmedOn: true,
+      provisional: true },
+    orderBy: [{ category: "asc" }, { id: "asc" }],
+  });
+}
+
+/**
+ * The taxable/exempt rule of every cell on `at` (DEC-1a section 4a): the stored rules, their dated history, and any
+ * decision scheduled for a later date that is due by `at` but not yet applied by the nightly run. Invoices pass the
+ * charge's service date; returns pass the period end. See taxability-history.ts for the exact rule.
+ */
+export async function getTaxabilityRulesAsOf(
+  tx: Prisma.TransactionClient,
+  at: Date,
+): Promise<TaxabilityCell[]> {
+  const [current, versions, pending] = await Promise.all([
+    tx.taxabilityRule.findMany({
+      select: { jurisdictionId: true, category: true, taxability: true, provisional: true },
+    }),
+    tx.taxabilityRuleVersion.findMany({
+      select: { jurisdictionId: true, category: true, taxability: true, provisional: true,
+        effectiveFrom: true, createdAt: true },
+    }),
+    tx.decisionScheduledChange.findMany({
+      where: { appliedAt: null, cancelledAt: null, effectiveFrom: { lte: at } },
+      select: { subjectId: true, value: true, provisional: true, effectiveFrom: true, createdAt: true },
+      orderBy: [{ effectiveFrom: "asc" }, { createdAt: "asc" }],
+      take: 500,
+    }),
+  ]);
+  const cellChanges = pending.flatMap((change) => {
+    const target = taxCellForSubject(change.subjectId);
+    if (!target || (change.value !== "TAXABLE" && change.value !== "EXEMPT")) return [];
+    return [{ target, taxability: change.value as "TAXABLE" | "EXEMPT", provisional: change.provisional,
+      effectiveFrom: change.effectiveFrom, createdAt: change.createdAt }];
+  });
+  let greeleyId: string | null = null;
+  if (cellChanges.some((change) => change.target.scope === "GREELEY")) {
+    greeleyId = (await tx.taxJurisdiction.findFirst({
+      where: GREELEY_JURISDICTION_WHERE, select: { id: true }, orderBy: { id: "asc" },
+    }))?.id ?? null;
+  }
+  const scheduled = cellChanges.flatMap((change) => {
+    const jurisdictionId = change.target.scope === "STATE" ? null : greeleyId;
+    if (change.target.scope === "GREELEY" && !jurisdictionId) return [];
+    return [{ jurisdictionId, category: change.target.category, taxability: change.taxability,
+      provisional: change.provisional, effectiveFrom: change.effectiveFrom, createdAt: change.createdAt }];
+  });
+  return resolveTaxabilityAsOf(at, current, versions, scheduled);
+}
+
 async function buildTaxContext(
   tx: Prisma.TransactionClient,
   agreement: {
@@ -717,13 +777,22 @@ async function buildTaxContext(
     where: { id: "singleton" },
     select: { shortTermLeaseElection: true },
   });
-  const defaultRows = await tx.taxabilityRule.findMany({
-    where: { jurisdictionId: null },
-    select: { category: true, taxability: true },
-  });
+  // Rules of the tax date, not of today (a late bill for last month uses last month's rule).
+  const cells = await getTaxabilityRulesAsOf(tx, taxDate);
+  const defaultRows = cells.filter((row) => row.jurisdictionId === null);
   const defaultRules = Object.fromEntries(
     defaultRows.map((row) => [row.category, row.taxability]),
   ) as EngineInput["defaultRules"];
+  const defaultProvisional = Object.fromEntries(
+    defaultRows.filter((row) => row.provisional).map((row) => [row.category, true]),
+  ) as NonNullable<EngineInput["defaultProvisional"]>;
+  const cellsByJurisdiction = new Map<string, TaxabilityCell[]>();
+  for (const row of cells) {
+    if (row.jurisdictionId === null) continue;
+    const list = cellsByJurisdiction.get(row.jurisdictionId) ?? [];
+    list.push(row);
+    cellsByJurisdiction.set(row.jurisdictionId, list);
+  }
   const activeExemptions = await tx.customerTaxExemption.findMany({
     where: {
       customerId: agreement.customerId,
@@ -743,7 +812,6 @@ async function buildTaxContext(
         include: {
           jurisdiction: {
             include: {
-              rules: { select: { category: true, taxability: true } },
               rates: {
                 where: {
                   effectiveFrom: { lte: taxDate },
@@ -772,8 +840,12 @@ async function buildTaxContext(
           }
         : null,
       rules: Object.fromEntries(
-        jurisdiction.rules.map((row) => [row.category, row.taxability]),
+        (cellsByJurisdiction.get(jurisdiction.id) ?? []).map((row) => [row.category, row.taxability]),
       ) as EngineJurisdiction["rules"],
+      provisional: Object.fromEntries(
+        (cellsByJurisdiction.get(jurisdiction.id) ?? [])
+          .filter((row) => row.provisional).map((row) => [row.category, true]),
+      ) as NonNullable<EngineJurisdiction["provisional"]>,
     })) ?? [];
   const currentJurisdictionIds = new Set(
     jurisdictions.map((jurisdiction) => jurisdiction.id),
@@ -803,6 +875,7 @@ async function buildTaxContext(
     leaseTermMonths: agreement.termMonths,
     election: settings.shortTermLeaseElection,
     defaultRules,
+    defaultProvisional,
     jurisdictions,
     exemptJurisdictionIds,
   };
