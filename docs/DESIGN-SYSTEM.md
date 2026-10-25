@@ -70,7 +70,9 @@ built from the shared kit in `src/components/ui`. Full rules and the page map: [
 patterns, installable desk app, and a measured speed budget. **Mobile first:** design at 390 px first (thumb-reach primary action, cards,
 bottom sheets), then expand to list + side panel, real tables and keyboard on PC (section 4B there). **Progressive disclosure:**
 place each feature by how often it is used and what it belongs to — main menu, area tab, inside its record, ⋯ menu,
-Settings, or a To do item — never more than three taps below its area (section 4C there).
+Settings, or a To do item — never more than three taps below its area (section 4C there). **Owner-friendly:** the right control for each
+choice, built-in saved views, no accounting or technical words outside the accountant area, features appear when the
+business needs them, every status says what happens next (section 4D there).
 
 ### Quiet screens (Chris, 2026-10-25)
 

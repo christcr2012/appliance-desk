@@ -4356,7 +4356,8 @@
       "title": "Navigation: five areas, area tabs, profile menu, command bar, redirects, More removed",
       "batch": "AR",
       "dependencies": [
-        "AR-11"
+        "AR-11",
+        "AR-12"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
       "migration": "none",
@@ -4625,6 +4626,31 @@
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/AR-11.md"
+    },
+    {
+      "id": "AR-12",
+      "title": "Owner-friendly rules: selection patterns, built-in saved views, plain-words dictionary check, grow-into-it feature visibility, status next-step tooltips, visible automation, How-do-I help, Practice link",
+      "batch": "AR",
+      "dependencies": [
+        "AR-0"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "feature_visibility",
+      "budget": 460,
+      "units": [
+        "AR-12"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "scripts/check-owner-wording.mjs",
+        "src/lib/glossary.ts"
+      ],
+      "tests": [
+        "tests/ar12-owner-friendly.test.ts",
+        "scripts/check-owner-wording.test.mjs"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-12.md"
     }
   ],
   "enhancements": [

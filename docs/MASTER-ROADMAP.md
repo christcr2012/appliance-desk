@@ -262,7 +262,8 @@ component kit with build guards. It supersedes the screen units BA-4/5/6, LD-2/3
 |---|---|---|
 | AR-0 | Kit + guards + three reference screens on testing | — |
 | AR-11 | App feel foundations (install, instant shell, optimistic + Undo, offline shell, keyboard/touch, speed budget) | AR-0 |
-| AR-1 | Five areas, area tabs, profile menu, command bar, redirects | AR-11 |
+| AR-12 | Owner-friendly rules (choices, built-in views, plain words, grow-into-it, next-step tooltips, help) | AR-0 |
+| AR-1 | Five areas, area tabs, profile menu, command bar, redirects | AR-11, AR-12 |
 | AR-2 | Today inbox | AR-1 |
 | AR-3 | Money area and invoices | AR-2 |
 | AR-4 | Customers area (leads, customers, quotes, rentals, messages) | AR-3 |

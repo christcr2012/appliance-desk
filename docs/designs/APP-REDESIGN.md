@@ -1,6 +1,6 @@
 # Appliance Desk as an application — app-wide redesign (Batch AR)
 
-Status: **designed 2026-10-25 at Chris's request; not built.** Units AR-0…AR-11 are in `work-index.json`; execution
+Status: **designed 2026-10-25 at Chris's request; not built.** Units AR-0…AR-12 are in `work-index.json`; execution
 cards are written when each one starts. This is the **master design for every desk screen**. It absorbs the screen
 parts of [BOOKS-AUTOPILOT.md](BOOKS-AUTOPILOT.md) (BA-4, BA-5, BA-6), [LEADS-WORKSPACE.md](LEADS-WORKSPACE.md) (LD-2, LD-3)
 and [CUSTOMERS-WORKSPACE.md](CUSTOMERS-WORKSPACE.md) (CU-2, CU-3); their engine and data units (BA-1…BA-3, LD-1, LD-4,
@@ -234,6 +234,99 @@ ending-decision,refund}`, `billing/customer/[id]`, `billing/deposits/[id]`, `sal
 `sales-tax/returns/[periodId]` and `amend`, `notices/[id]/resolve`, `approvals`, `books/budget/review/[id]`,
 `billing/held-payments`, `billing/reconciliation`. Stay as area tabs — the lists in section 4.1.
 
+## 4D. From the owner's chair — everything else a first-time owner needs (Chris, 2026-10-25)
+
+Chris: "everything [must] make sense to inexperienced users and the workflow should be built into the system. The
+user shouldn't have to understand accounting terminology… [or] the technical ways the system works." These rules
+apply to every AR unit and are enforced by AR-12.
+
+### 4D.1 Choosing things: dropdowns, filters and views
+
+| The choice | Use | Never |
+|---|---|---|
+| 2–4 options, picked often | **Segmented control** (e.g. Month-to-month · 6 months · 12 months) | a dropdown that hides 3 options |
+| 5–15 known options | **Dropdown (select)** with the most common first and a sensible default | free text |
+| A long list of records (customers, appliances, suppliers, parts) | **Searchable picker** (type 2 letters, pick; "+ Add new" at the bottom) | a 300-item dropdown |
+| An important choice with consequences | **Option cards** (title + one line + ⓘ), the recommended one marked | radio buttons with paragraphs |
+| Turning something on/off | **Switch** with the effect in its ⓘ and a toast confirming it | a checkbox inside a form you must save |
+| Narrowing a list | **Status tabs with counts** + one **Filter sheet** (dropdowns, date presets "This month / Last month / Custom", multi-select chips); active filters as removable chips; "Clear all" | permanent rows of chips |
+| Coming back to the same list | **Saved views** (built-in ones per role, e.g. "My visits today", "Past due", "Ready to rent"; the owner can save more) and the last-used view remembered | re-filtering every time |
+
+Every list has useful **built-in views** so a beginner never needs to build a filter: e.g. Rentals → "Starting this
+week", "Ending this month", "Waiting for signature"; Equipment → "Ready to rent", "Needs repair", "Out with customers";
+Money → "Past due", "Paid this month".
+
+### 4D.2 The app does the remembering
+- **Smart defaults and pre-fill everywhere:** a new quote starts from the lead's request; a delivery visit starts
+  from the rental's address and preferred dates; an expense starts from the last expense for the same supplier;
+  prices come from the price list; dates default to the next sensible business day.
+- **Address autocomplete** (existing tax address lookup) and "same as billing address" shortcuts.
+- **Scan instead of type:** camera for QR labels and serial numbers on appliances, photos of receipts and damage.
+- **Drafts are never lost:** long forms save as you go; leaving asks "Keep this draft?".
+- **Duplicates caught at entry** (same phone, email or serial) with "Use the existing one".
+
+### 4D.3 Mistakes are hard to make and easy to undo
+- Impossible options are **disabled with the reason in an ⓘ** ("Can't schedule delivery — the rental isn't signed").
+- **Inline validation in plain words** as you type, next to the field, never a list at the top after saving.
+- **Undo** for every reversible action (toast, 10 seconds); **confirmation with a plain summary** only for money and
+  irreversible actions: "Refund $45.00 to Jane Doe's Visa ending 4242? This can't be undone."
+- Every record has a **History** ("Chris changed the price from $35 to $40 on Oct 3").
+
+### 4D.4 The app explains itself without paragraphs
+- **Every status says what happens next** in its tooltip: "Signed — waiting for delivery to be scheduled";
+  "Processing — the bank usually confirms within 2 days; nothing to do."
+- **Automation is visible on the record:** "Automatic: the card on file is charged on Nov 1"; "Automatic: this
+  appliance's value is updated on the 1st". The owner always knows what the app will do by itself, and when.
+- **"How do I…?" in the command bar:** typing "refund", "late fee" or "add a driver" offers the action and a 3-step
+  answer from the in-app help (the glossary plus short task guides).
+- **First-time empty states** say what this screen is for in one line and offer the one button that starts it.
+- **Errors say what to do:** "We couldn't reach Stripe. Your payment was not taken. Try again in a minute." — and the
+  problem is reported to the system issues inbox automatically.
+
+### 4D.5 Grow into it — complexity appears only when it is needed ("simple until you need more")
+Features unlock when the business actually needs them, so a one-person startup sees a small, clean app:
+- **Team** features (assignment, round-robin, permissions, job roles) appear once a second person is added.
+- **Property-manager** features (portfolio, locations, tenant contacts) appear with the first property-manager customer.
+- **Budget envelopes, accounting exports, QuickBooks/Xero matching, Spanish documents, telecom costs** stay under
+  "Turn on more features" in Settings until switched on (several are already off by default).
+- **Insights** show "Not enough data yet — check back after 10 rentals" instead of empty charts.
+Hidden is never removed: everything stays reachable from the command bar and Settings → Features.
+
+### 4D.6 No accounting or technical words on everyday screens
+The existing plain-words check (`scripts/check-owner-wording.mjs`) is extended with this dictionary (the "For your
+accountant" area and legally required wording are exempt):
+
+| Instead of | Say |
+|---|---|
+| invoice (in everyday screens) | bill |
+| accounts receivable / receivable | money customers owe you |
+| accounts payable / payable | bills you owe |
+| debit / credit (ledger) | money in / money out (or show the account names only in the accountant area) |
+| journal, ledger, posting, posted | your records, recorded |
+| accrual / cash basis | "when billed" / "when paid" |
+| depreciation | equipment value going down (Equipment value) |
+| capitalize | count as equipment |
+| reconcile / reconciliation | check against your bank |
+| write-off | give up on this bill |
+| chargeback / dispute | customer disputed the payment with their bank |
+| deferred / unearned revenue | rent paid in advance |
+| payment intent, session, webhook, sync, cron, API | (never shown — say what happened: "the payment is being confirmed") |
+| agreement | rental (the signed document can still be called "rental agreement") |
+| SKU / asset number | item number / appliance number |
+
+### 4D.7 Everyday trust and comfort
+- **One look for documents:** quotes, rental agreements, bills and receipts share a branded layout, preview before
+  sending, PDF download and share from the ⋯ menu.
+- **Notifications you control** (Settings → Notifications): which events, in-app/email/text (text when live).
+- **Consistent formats:** dollars always with cents only where they matter, Colorado dates ("Tue, Nov 3"), relative
+  times ("2 h ago") with exact time on hover/tap.
+- **Accessibility and language:** WCAG 2.2 AA (existing rules), large text support, Spanish for customer-facing
+  documents (existing W-26) with the desk ready for a second language later.
+- **Training without risk:** a "Practice" link in Settings opens the testing app (fictional data, test payments,
+  no emails/texts) so a new owner or employee can try anything safely.
+- **A health check on Today:** "Your business this week" — three plain signals with green/amber/red (money coming
+  in, rentals going out, anything overdue) and what to do about the red one.
+
 ## 5. The application kit (shared components — AR-0)
 
 Build or upgrade in `src/components/ui`, documented in DESIGN-SYSTEM, each with axe/keyboard/phone tests:
@@ -293,6 +386,7 @@ Tabs: **Overview · Invoices · Payments · Expenses · Books · Taxes**.
 |---|---|---|
 | **AR-0** | Application kit + guards + a **reference set** of three finished screens on the testing site: Today inbox, Money › Invoices, Customer record | Chris looks at these on the testing app (checklist row, never blocks); feedback folds into later units |
 | **AR-11** | App feel foundations (section 4A): desk app install + shortcuts, instant shell, skeletons, view transitions, optimistic helper with Undo, live freshness, offline shell, keyboard and touch, state memory, performance budget in CI | Right after AR-0; every later unit uses it |
+| **AR-12** | Owner-friendly rules (section 4D): selection patterns and built-in saved views in the kit, plain-words dictionary added to the wording check, "grow into it" feature visibility with Settings → Features, status-next-step tooltips, visible automation lines, "How do I…" help in the command bar, Practice link | With AR-11; later units must pass its checks |
 | **AR-1** | Navigation: 5 areas, area tabs, profile menu with Settings/account, command bar, redirects, "More" removed | |
 | **AR-2** | Today inbox: all To do categories with inline actions and grouping; setup card; dashboard/control-center merged | |
 | **AR-3** | Money area: Overview, Invoices, Payments (held/processing/deposits as filters), invoice record | Needs no new money rules |
@@ -304,7 +398,7 @@ Tabs: **Overview · Invoices · Payments · Expenses · Books · Taxes**.
 | **AR-9** | Insights tabs (Customers, Equipment, Money overview) replacing Reports/Revenue/Fleet/Growth pages | |
 | **AR-10** | Sweep: every remaining screen on the kit; guards with an empty allow-list except legal text; full browser + axe + phone pass; visual review notes in STATUS | |
 
-**Order:** AR-0 → AR-11 → AR-1 → AR-2 → AR-3 → AR-4 → (AR-5, AR-6 in parallel) → AR-7 → AR-8 → AR-9 → AR-10. Engines BA-1…BA-3,
+**Order:** AR-0 → AR-11 + AR-12 → AR-1 → AR-2 → AR-3 → AR-4 → (AR-5, AR-6 in parallel) → AR-7 → AR-8 → AR-9 → AR-10. Engines BA-1…BA-3,
 LD-1, CU-1 can be built in parallel lanes; screens pick them up when merged. Each unit includes browser specs (phone
 width, keyboard, axe) for the screens it changes and keeps every old URL reachable.
 
