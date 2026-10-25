@@ -83,4 +83,10 @@ plain-words dictionary in the lint check, built-in views for other lists, Settin
 deposits/processing to Payments and inline payment sheets (AR-3); any other page.
 
 ## Progress
-Not started.
+- **AR-0a (steps 1–5): built** on `ai/claude/ar-0a-kit`. Tokens + contrast pairs, five exact dependencies, date
+  helpers, every kit component with a test, guards with an empty page list and the failing fixture. Small additions
+  to the KIT contracts (all optional props, noted in the PR): `ActionSpec.form.successMessage`/`undoAction`,
+  `ScreenHeader.list`, `Toolbar.saveViewAction`, `DataTable.capReached`/`mobileCardLink`/`currentSort`,
+  `InboxCard.severity`, `recordBarActions()` (the page renders `ActionBar` per KIT 5.2). `<Toaster />` is not mounted
+  yet — AR-0b mounts it in the desk layout with the first kit screen.
+- **AR-0b (steps 6–10): not started.**

@@ -1,3 +1,11 @@
+## October 25 (night) — AR-0a: application kit + guards (in review)
+
+Built the shared kit in `src/components/kit/` (20 components + Icon, unit-tested in `tests/kit/`), the new color
+tokens (light + dark, contrast-tested), the five pinned UI libraries, the kit date words in `src/lib/business-date.ts`
+(tested across both 2026 clock changes and New Year) and the KIT 9 guards (`tests/kit-guards.test.ts`; fail on the
+fixture for every rule). No screen uses the kit yet and no business behavior changed. Branch `ai/claude/ar-0a-kit`.
+Not done here: mounting `<Toaster />` in the desk layout (do it in AR-0b with the first kit screen). Next: AR-0b.
+
 ## October 25 (evening) — PR #596 merged; fee tax plan added (docs only)
 
 Merged #596 (wave 2 build specs, self-reviewed: Codex out of usage; 8 findings fixed). Late fees now one rule for every

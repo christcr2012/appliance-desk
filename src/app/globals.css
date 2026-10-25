@@ -69,6 +69,11 @@
   --color-on-accent: #123c2d;
 
   --color-success: #1e6b3e;
+  /* AR-0 kit: soft "good" fill (paid, active, selected row) and the "info" pill (new lead, scheduled). Contrast is
+     checked in tests/contrast-pairs.test.ts. */
+  --color-success-soft: #ddefe3;
+  --color-info-soft: #e3eef8;
+  --color-info-ink: #1d4f7a;
   --color-warning-bg: #fdf1d6;
   --color-warning-ink: #7a4a05;
   --color-danger: #a3271f;
@@ -82,6 +87,7 @@
 
   --radius-control: 8px;
   --radius-card: 16px;
+  --radius-field: 12px; /* AR-0 kit: buttons, inputs, chips */
 
   /* V-1 "Evergreen Signature": a hairline between ledger rows, a quiet tint behind offset panels, and one raised shadow
      tinted toward evergreen. Mixed in srgb on purpose (oklch gave a pink cast). */
@@ -125,6 +131,9 @@
   --color-on-accent: var(--color-on-accent);
 
   --color-success: var(--color-success);
+  --color-success-soft: var(--color-success-soft);
+  --color-info-soft: var(--color-info-soft);
+  --color-info-ink: var(--color-info-ink);
   --color-warning-bg: var(--color-warning-bg);
   --color-warning-ink: var(--color-warning-ink);
   --color-danger: var(--color-danger);
@@ -137,6 +146,7 @@
 
   --radius-control: var(--radius-control);
   --radius-card: var(--radius-card);
+  --radius-field: var(--radius-field);
 
   --color-hairline: var(--color-hairline);
   --color-tint: var(--color-tint);
@@ -246,6 +256,9 @@
   --color-on-accent: #123c2d;
 
   --color-success: #7fd39a;
+  --color-success-soft: #173a27;
+  --color-info-soft: #16314a;
+  --color-info-ink: #cfe3f5;
   --color-warning-bg: #3a2c0e;
   --color-warning-ink: #f0c96b;
   --color-danger: #ff9b8f;
