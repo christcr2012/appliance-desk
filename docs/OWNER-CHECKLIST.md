@@ -66,6 +66,11 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   signs in to the testing app, makes a $1 test sale, pays it on Stripe's test checkout, checks it shows Paid once,
   refunds it and checks both systems. Nothing for you to do but read the result. Worked only when all of that is
   observed. **Leave unchecked until actually observed.**
+  *Status 2026-10-24 (night):* an agent tried and could not run it: that session had no connected browser and its
+  shell cannot reach the testing site, so nothing was signed in, paid or refunded (not tested, not failed). The
+  password variable now exists in the testing project. To let an agent finish this, open the task in the Claude
+  desktop app on your computer with Chrome open and the Claude extension signed in (or choose "Link to this
+  computer"), then ask it to "run the M-3 hosted card test".
 - [ ] **Lock the two "release" branches on GitHub so they can't be deleted or rewritten (about 3 minutes).** This is
   NOT the "automatically delete head branches" setting (that one is about old work branches and is already on). Your
   code has two special copies: `testing` (what the testing site runs) and `live` (what your real website runs). Today
