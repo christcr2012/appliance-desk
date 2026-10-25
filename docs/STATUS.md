@@ -2,6 +2,9 @@
 
 COM-N3 (booking a verified phone-company statement as one expense) was merged earlier in #555, but the plan and work list still said "in review / not built".
 Both now say merged, and a short card records what it proves and the one known gap (no browser test of the booking form yet; not blocking).
+## October 25 — Owner controls: browser tests for goals, approval limits, permissions and workspace
+
+In progress (branch `ai/claude/owner-controls-browser-tests`). One new real-browser spec (`e2e/owner-controls.spec.ts`, phone width, keyboard, accessibility check) walks the owner through setting and removing a cash goal, filling in and saving approval limits and turning them off, taking one permission away from an admin and giving it back, and pinning/unpinning workspace shortcuts. It passes locally; CI result pending. Switches and price changes already have their own specs. Nothing for Chris to do.
 
 ## October 25 — Nightly spend-alert check wired in (in PR, notifies nobody)
 
