@@ -34,6 +34,8 @@ export const communicationsPolicySchema = z.object({
   // quiet hours apply and every workflow text is OFF.
   quietHours: quietHoursSchema.optional(),
   workflowTexts: z.object({
+    // How many days before a fixed-term rental ends the courtesy heads-up text may be sent. Absent = 60.
+    renewalWindowDays: z.number().int().min(1).max(365).optional(),
     families: z.record(z.string().regex(/^[a-z][a-z0-9_]{2,60}$/),
       z.object({ enabled: z.boolean(), legalReviewed: z.boolean().optional() }).strict()),
   }).strict().optional(),
