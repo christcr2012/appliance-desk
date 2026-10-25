@@ -130,7 +130,7 @@ Sources: `docs/research/2026-10-25-tax-fee-rules.md`, `docs/research/2026-10-25-
 | FEETAX-SR46 | New Special Rule 46 (Leases, effective 2026-08-30) doesn't change the above | CPA |
 | FEETAX-ADMIN-FEE | Keep the required $45 setup fee (IN-74); option to fold it into optional installation to lower tax | Owner |
 | ZONE-NAMES | Zone names "Local — free delivery", "Nearby", "Extended", "Outside our delivery area — pickup only" | Owner |
-| ZONE-DISTANCE | Zones measured in a straight line from central Greeley (matches the map; IN-06 said driving miles — a 50-mile circle can be 60+ road miles) | Owner |
+| ZONE-DISTANCE | **Answered by Chris 2026-10-25: straight line, not driving distance, "at least for now"** (matches the map; a 50-mile circle can be 60+ road miles) | Owner — answered |
 | ZONE-PICKUP-PRICE | Picking the appliance up at the end costs the same as delivery in that zone | Owner |
 | ZONE-PUBLISH-PRICES | Delivery prices hidden on the website until Chris switches them on (IN-06) | Owner |
 | FEETAX-LABOR-RATE | Hourly cost for the price-vs-cost check (no source; starts at the IRS mileage rate for miles and $0 labor until set) | Owner |

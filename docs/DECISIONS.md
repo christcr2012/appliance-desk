@@ -1,3 +1,9 @@
+## October 25 — Delivery zones use straight-line miles, not driving distance (Chris)
+
+"I think, at least for now, it is better to not use driving distance." Zones are measured as the crow flies from
+central Greeley (ZONE-1). Driving distance stays possible later as a setting; owner-recorded route evidence remains for
+one-off exceptions. Supersedes the driving-miles wording in IN-06.
+
 ## October 25 — Service area becomes a zone map; delivery always optional (Chris)
 
 Website and app use delivery zones measured from central Greeley instead of city/ZIP lists: Local 0–15 miles

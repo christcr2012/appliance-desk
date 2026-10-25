@@ -29,10 +29,11 @@ applies to new estimates only; sent estimates and signed agreements keep their s
 - `zoneCenter` setting: **40.4233 N, 104.7091 W** (central Greeley; starting value, owner-editable with a "Use my
   shop address instead" button). Replaces the "UNVERIFIED" `drivingOriginAddress` placeholder as the zone center;
   driving-route evidence (`route-evidence.ts`) stays for owner-recorded exceptions.
-- `zoneDistanceMethod`: starting **STRAIGHT_LINE** — "as the crow flies" from the center, the same circles the map
-  shows, automatic and free. IN-06 said driving distance; driving distance needs a routing service (a paid or
-  rate-limited provider), and straight-line matches the map Chris asked for. Decisions question ZONE-DISTANCE explains
-  the difference (a 50-mile circle can be ~60+ road miles) and offers DRIVING later. The method is stored on every
+- `zoneDistanceMethod`: **STRAIGHT_LINE — Chris's answer 2026-10-25 ("at least for now, it is better to not use driving
+  distance")**, so the Decisions entry ZONE-DISTANCE is created already
+  confirmed. "As the crow flies" from the center: the same circles the map shows, automatic and free (driving distance
+  would need a routing service). The setting keeps DRIVING as a later option; the screen notes a 50-mile circle can be
+  ~60+ road miles. The method is stored on every
   estimate.
 
 ## 2. Address → zone (`src/domains/delivery/zone.ts`, pure + one lookup)
