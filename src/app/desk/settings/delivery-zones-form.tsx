@@ -3,9 +3,10 @@
 import { useActionState } from "react";
 import { saveDeliveryZonesAction, type ZoneFormState } from "./delivery-zone-actions";
 import { ZONE_COLORS, ZONE_COLOR_WORDS, type ZoneSettings } from "@/domains/delivery/zone";
+import { centsAsDollars } from "@/lib/money-ui";
 
 const IDLE: ZoneFormState = { status: "idle" };
-const dollars = (cents: number) => (cents / 100).toFixed(2);
+const dollars = (cents: number) => centsAsDollars(cents);
 const input = "mt-1 min-h-11 w-full rounded-control border border-control bg-surface px-3 py-2 text-ink";
 
 /** Settings › Delivery zones form. Prices in dollars on screen, saved as cents. Owner only (others see it read-only). */
