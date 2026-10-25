@@ -2,9 +2,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
-  checkEstimateDeliveryZones, confirmEstimateZoneMiles, recordPickupArranged, setEstimateDeliveryChoiceByCustomer,
-  setEstimateDeliveryChoiceByStaff,
+  checkEstimateDeliveryZones, confirmEstimateZoneMiles, frozenDeliveryCentsInTx, recordPickupArranged,
+  setEstimateDeliveryChoiceByCustomer, setEstimateDeliveryChoiceByStaff,
 } from "@/domains/delivery/estimate-zone";
+import { approveEstimate } from "@/domains/estimates";
 import { saveZoneSettings, zoneSettingsRevision, getZoneSettingsInTx } from "@/domains/delivery/settings";
 import { readZoneSnapshot } from "@/domains/delivery/snapshot";
 import { convertEstimateToAgreements, getEstimateForApproval } from "@/domains/estimates";
@@ -100,6 +101,31 @@ describe("ZONE-1 estimate zones on a real database", () => {
     await expect(setEstimateDeliveryChoiceByCustomer(estimateId, otherAddressId, "DELIVER")).rejects.toThrow(/Check the delivery zone/);
     await prisma.estimate.update({ where: { id: estimateId }, data: { status: "APPROVED" } });
     await expect(setEstimateDeliveryChoiceByCustomer(estimateId, lovelandId, "DELIVER")).rejects.toThrow(/no longer waiting/);
+  });
+
+  it("pickup on a quote that already charged delivery withdraws that quote: the customer can never owe delivery", async () => {
+    const pricedId = await estimateWith([lovelandId], "Priced delivery quote");
+    await checkEstimateDeliveryZones(ownerId, pricedId, { geocode });
+    // A reviewed, sent quote (its delivery charge can't be proven to be $0: no reviewed $0 fee record exists).
+    await prisma.estimate.update({ where: { id: pricedId }, data: { status: "SENT", sentAt: new Date(),
+      reviewedQuoteFingerprint: "a".repeat(64), reviewedOrderFingerprint: "b".repeat(64), reviewedQuoteAt: new Date() } });
+    await expect(setEstimateDeliveryChoiceByStaff(ownerId, pricedId, lovelandId, "CUSTOMER_PICKUP")).rejects.toThrow(/Request changes/);
+    const chosen = await setEstimateDeliveryChoiceByCustomer(pricedId, lovelandId, "CUSTOMER_PICKUP");
+    expect(chosen).toMatchObject({ choice: "CUSTOMER_PICKUP", requote: { by: "CUSTOMER" } });
+    const after = await prisma.estimate.findUniqueOrThrow({ where: { id: pricedId } });
+    expect(after).toMatchObject({ status: "CHANGES_REQUESTED", reviewedQuoteFingerprint: null, reviewedOrderFingerprint: null });
+    expect(after.changesRequestedMessage).toMatch(/pick it up/);
+    await expect(approveEstimate(pricedId, { approverName: "Zone Customer", approverEmail: `zone-cust-${RUN}@example.test`,
+      ipAddress: null, expectedQuoteFingerprint: "a".repeat(64) })).rejects.toThrow();
+    // Re-sent with the same priced quote (no replacement review): still refused.
+    await prisma.estimate.update({ where: { id: pricedId }, data: { status: "SENT",
+      reviewedQuoteFingerprint: "a".repeat(64), reviewedOrderFingerprint: "b".repeat(64) } });
+    await expect(approveEstimate(pricedId, { approverName: "Zone Customer", approverEmail: `zone-cust-${RUN}@example.test`,
+      ipAddress: null, expectedQuoteFingerprint: "a".repeat(64) })).rejects.toThrow();
+    expect((await prisma.estimate.findUniqueOrThrow({ where: { id: pricedId } })).status).not.toBe("APPROVED");
+    // The guard approval uses: no reviewed quote → nothing priced (0); a reviewed quote it can't read → unknown (null).
+    expect(await prisma.$transaction((tx) => frozenDeliveryCentsInTx(tx, { id: pricedId, reviewedQuoteFingerprint: null }, lovelandId))).toBe(0);
+    expect(await prisma.$transaction((tx) => frozenDeliveryCentsInTx(tx, { id: pricedId, reviewedQuoteFingerprint: "a".repeat(64) }, lovelandId))).toBeNull();
   });
 
   it("a stale zone save is refused", async () => {

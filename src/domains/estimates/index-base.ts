@@ -645,11 +645,21 @@ export async function approveEstimate(
     const { readOfferedSlots, recordEstimateDeliverySelectionInTx } =
       await import("@/domains/orders/delivery");
     // ZONE-1: when every address on the estimate is "I'll pick it up", no delivery window is needed or accepted.
-    const { isPickupOnly } = await import("@/domains/delivery/snapshot");
-    const pickupOnly = estimate.deliveryZoneSnapshot !== null && estimate.deliveryZoneSnapshot !== undefined &&
-      isPickupOnly(estimate.deliveryZoneSnapshot, (await tx.estimateLineItem.findMany({
-        where: { estimateId: id }, select: { serviceAddressId: true },
-      })).map((line) => line.serviceAddressId));
+    const { isPickupOnly, currentLocations } = await import("@/domains/delivery/snapshot");
+    const hasZones = estimate.deliveryZoneSnapshot !== null && estimate.deliveryZoneSnapshot !== undefined;
+    const lineAddresses = hasZones ? (await tx.estimateLineItem.findMany({
+      where: { estimateId: id }, select: { serviceAddressId: true },
+    })).map((line) => line.serviceAddressId) : [];
+    const pickupOnly = hasZones && isPickupOnly(estimate.deliveryZoneSnapshot, lineAddresses);
+    // A customer who picks it up ($0) can never owe a delivery charge frozen into the quote they approve.
+    if (hasZones) {
+      const { frozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
+      for (const location of currentLocations(estimate.deliveryZoneSnapshot, lineAddresses)) {
+        if (location.choice !== "CUSTOMER_PICKUP") continue;
+        if ((await frozenDeliveryCentsInTx(tx, estimate, location.serviceAddressId)) !== 0)
+          throw new Error("This quote still includes delivery for an address you'll pick up. We'll send you an updated quote.");
+      }
+    }
     if (pickupOnly) {
       if (input.deliverySelection)
         throw new Error("You chose to pick it up, so no delivery window is needed.");

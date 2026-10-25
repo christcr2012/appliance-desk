@@ -51,6 +51,12 @@ export function DeliveryZonePanel({ estimate, addresses, note, error }: {
                   ? `Chosen: we deliver (${chosen === null ? "price to be confirmed" : zonePriceWords(chosen)})`
                   : "Chosen: customer picks it up ($0)"}
               </p>
+              {location.choice === "CUSTOMER_PICKUP" && location.requote && (
+                <p role="alert" className="mt-1 font-semibold text-warning-ink">
+                  New quote needed: the reviewed quote charged delivery. Remove the delivery charge in the service-fee
+                  review, then send the estimate again. Until then it can&apos;t be approved.
+                </p>
+              )}
               {location.choice === "CUSTOMER_PICKUP" && (
                 <p className="mt-1 text-ink-soft">
                   {location.pickupArranged ? `Pickup plan: ${location.pickupArranged.note}`

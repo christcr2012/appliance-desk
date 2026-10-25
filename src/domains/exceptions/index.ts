@@ -1054,7 +1054,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const feedbackWaiting = canViewFinance ? await listFeedbackWaiting(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   // ZONE-1: unknown delivery zones and customer pickups to arrange (owner and admins only).
   const deliveryZoneAttention = canViewFinance ? await listDeliveryZoneAttention(EXCEPTION_CATEGORY_CAP)
-    : { unknown: noTurningPoints, pickups: noTurningPoints };
+    : { unknown: noTurningPoints, pickups: noTurningPoints, requotes: noTurningPoints };
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -1091,6 +1091,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...feedbackWaiting.rows,
     ...deliveryZoneAttention.unknown.rows,
     ...deliveryZoneAttention.pickups.rows,
+    ...deliveryZoneAttention.requotes.rows,
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
@@ -1150,6 +1151,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["FEEDBACK_WAITING", feedbackWaiting],
       ["DELIVERY_ZONE_UNKNOWN", deliveryZoneAttention.unknown],
       ["PICKUP_TO_ARRANGE", deliveryZoneAttention.pickups],
+      ["PICKUP_REQUOTE", deliveryZoneAttention.requotes],
       ["OVERDUE_JOB", overdueJobs],
       ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
       ["UNINSPECTED_RETURN", uninspectedAppliances],

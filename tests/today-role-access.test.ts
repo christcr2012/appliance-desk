@@ -80,7 +80,7 @@ vi.mock("@/domains/exceptions/feedback-attention", () => ({
 }));
 vi.mock("@/domains/exceptions/delivery-zone-attention", () => ({
   // ZONE-1 items; covered by tests/delivery-zone-attention.test.ts.
-  listDeliveryZoneAttention: vi.fn(async () => ({ unknown: { rows: [], total: 0 }, pickups: { rows: [], total: 0 } })),
+  listDeliveryZoneAttention: vi.fn(async () => ({ unknown: { rows: [], total: 0 }, pickups: { rows: [], total: 0 }, requotes: { rows: [], total: 0 } })),
 }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({

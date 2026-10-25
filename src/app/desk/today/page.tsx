@@ -129,6 +129,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   FEEDBACK_WAITING: "App feedback to read",
   DELIVERY_ZONE_UNKNOWN: "Delivery zone to confirm",
   PICKUP_TO_ARRANGE: "Customer pickup to arrange",
+  PICKUP_REQUOTE: "New quote needed (pickup)",
   MISSING_REPAIR_COST: "Repair cost missing",
   AGREEMENT_TERM_EXPIRED: "Term ended",
   APPLIANCE_MAINTENANCE_DUE: "Maintenance due",

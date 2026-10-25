@@ -27,6 +27,8 @@ export type ZoneSnapshotLocation = {
   confirmed?: { userId: string; reason: string; at: string };
   /** "I'll pick it up": when and where the pickup was arranged (closes the To do). */
   pickupArranged?: { userId: string; note: string; at: string };
+  /** Pickup was chosen on a quote that already charged delivery: a new reviewed quote without delivery is needed. */
+  requote?: { at: string; by: "STAFF" | "CUSTOMER" };
   checkedAt: string;
 };
 export type EstimateZoneSnapshot = { version: 1; locations: ZoneSnapshotLocation[] };

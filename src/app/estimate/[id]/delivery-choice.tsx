@@ -41,6 +41,11 @@ export function EstimateDeliveryChoice({ estimateId, status, snapshot: raw, addr
                 separately. We still need the address where the appliance will be kept.
               </p>
             )}
+            {location.choice === "CUSTOMER_PICKUP" && location.requote && (
+              <p role="status" className="mt-1 font-semibold">
+                Your quote included delivery, so we&apos;ll send you an updated quote without it before you approve.
+              </p>
+            )}
             {waiting && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {location.zone !== "OUTSIDE" && location.choice !== "DELIVER" && (

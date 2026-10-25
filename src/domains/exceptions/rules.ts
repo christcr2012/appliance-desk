@@ -78,7 +78,8 @@ export type ExceptionCategory =
   | "OUT_OF_SERVICE"
   | "FEEDBACK_WAITING"
   | "DELIVERY_ZONE_UNKNOWN"
-  | "PICKUP_TO_ARRANGE";
+  | "PICKUP_TO_ARRANGE"
+  | "PICKUP_REQUOTE";
 
 export type ExceptionSeverity = "high" | "medium";
 
