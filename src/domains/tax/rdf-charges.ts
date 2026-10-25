@@ -261,7 +261,7 @@ export async function processReadyRdfCharges(limit = 30): Promise<{
   if (!rdfChargingEnabled()) return { local: 0, provider: 0, blocked: 0 };
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("Invalid RDF charge limit.");
   const ready = await prisma.retailDeliveryFeeRecord.findMany({
-    where: { status: "READY", collectedFromCustomer: true, invoiceLineId: null },
+    where: { status: "READY", collectedFromCustomer: true, invoiceLineId: null, agreementId: { not: null } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: limit,
     select: { id: true },
