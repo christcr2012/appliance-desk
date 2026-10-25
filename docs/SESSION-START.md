@@ -20,8 +20,10 @@ this file is archived in [archive/rules-reset-2026-10-23/](archive/rules-reset-2
 Take the next item in [MASTER-ROADMAP.md](MASTER-ROADMAP.md) order whose card is approved. A card may be split into
 several PRs when each is independently useful and safe (AGENTS.md rule 5); it may also be one PR. Write or refresh the
 card from the approved design and the real code (`docs/pr-cards/README.md`); the card is a working note, not a gate.
-If the card needs a business decision you cannot find in [OWNER-INPUTS.md](OWNER-INPUTS.md) or `docs/DECISIONS.md`,
-ask Chris one precise question (with a recommendation) or, if nothing depends on it, add a checklist row and go on.
+If the card needs a business, legal, tax or wording decision you cannot find in [OWNER-INPUTS.md](OWNER-INPUTS.md) or
+`docs/DECISIONS.md`, follow AGENTS.md section 1 "Decisions never block building": research, build the most likely
+answer as a changeable starting value, file the question, and keep going. Ask Chris in the conversation only for a
+true blocker.
 
 ## 3. Build and verify
 

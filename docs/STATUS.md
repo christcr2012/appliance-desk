@@ -1,3 +1,10 @@
+## October 25 — Rule change: decisions never block the work
+
+Docs only. AGENTS.md section 1 now says: research, run the most likely answer as a changeable starting value, and
+file the question in the in-app Decisions & reviews center (design `docs/designs/DECISIONS-CENTER.md`, units DEC-1,
+DEC-2); only true blockers interrupt Chris. Owner checklist keeps physical actions only. Recorded Chris's two answers
+(portal redesign yes; simple feedback box first). Next: DEC-1 build spec and the sweep of every open decision.
+
 ## October 25 — Security fix: list pages checked access only in the desk frame
 
 Found while writing the build specs: the Customers, Repairs and Parts lists read their data without their own access

@@ -40,11 +40,19 @@ Start every session: this file → top of [docs/STATUS.md](docs/STATUS.md) → [
   Never seed or reset the production database. The testing app is part of this project and is approved scope.
 - **Never touch real accounts to "see if it works"** beyond what Chris has authorized. Never claim something
   works without evidence you actually observed. Never tick an owner box or invent an owner answer.
-- **Missing business decision** (price, policy, wording, preference): ask Chris the smallest possible question,
-  with a recommendation (or add a checklist row if it blocks nothing). **Missing legal/tax fact:** research the
-  current official sources (note URL and access date), build owner-editable, versioned, effective-dated defaults,
-  and mark any explicitly required CPA/attorney sign-off `REVIEW_REQUIRED`. Professional review locks only the
-  affected **real business use**, never development, tests or merge. Never fabricate a rate, date or opinion.
+- **Decisions never block building (Chris, 2026-10-25).** For any missing business, legal, tax or wording decision:
+  research it (current official sources with URL and access date; common practice for a small, new appliance-rental
+  business in Greeley, Weld County, Colorado, USA); build it as an owner setting whose starting value is the **most
+  likely right answer** for this business now; explain it on screen; and file it as a question in the in-app
+  **Decisions & reviews** center (`docs/designs/DECISIONS-CENTER.md`; until that ships, as a `DQ-` entry in
+  [docs/OWNER-INPUTS.md](docs/OWNER-INPUTS.md)) for Chris, his CPA, attorney or translator to confirm later. A
+  default is never an owner answer: it shows as "Starting value — not confirmed" until someone confirms it. Interrupt
+  Chris **immediately** (in the conversation, not a list) only for a **true blocker**: it cannot be built at all
+  without the answer, or running the default would be unsafe, illegal or irreversible (moving money, a signed
+  document, a real customer message, deleting data) — and then only that one operation waits. Professional review
+  (`REVIEW_REQUIRED`) locks only the affected **real business use**, never development, tests or merge. Never
+  fabricate a rate, date or legal opinion: when no source supports a default, say so in the question and choose the
+  most conservative option.
 - **Developer limits are not product limits** ([docs/END-USER-AUTHORITY.md](docs/END-USER-AUTHORITY.md)): rules
   restricting coding agents (no spend, no live actions) do not become permanent "guide-only" limits for the
   product's authorized users. A customer never gains owner/staff powers because an agent acts for them.
@@ -54,10 +62,11 @@ Start every session: this file → top of [docs/STATUS.md](docs/STATUS.md) → [
 1. **Development never waits for acceptance or verification against real accounts.** When a prerequisite exists
    (a deployed revision, a test account you are authorized to use) do the check yourself with real observations. If
    something blocks it, record it **once** on the checklist and move on to the next piece of work.
-2. **Owner-only items go on ONE plain-English checklist: [docs/OWNER-CHECKLIST.md](docs/OWNER-CHECKLIST.md).**
-   Anything that strictly needs Chris — his sign-in, phone or computer, money, a third-party account or approval,
-   a business decision — becomes a row there (what, exact steps, what makes it ready, how he knows it worked)
-   instead of stopping to ask. **Nothing on it ever blocks building, review or merge.** Never tick a box for him.
+2. **Owner-only actions go on ONE plain-English checklist: [docs/OWNER-CHECKLIST.md](docs/OWNER-CHECKLIST.md).**
+   Anything that strictly needs Chris's hands — his sign-in, phone or computer, money, a third-party account or
+   approval — becomes a row there (what, exact steps, what makes it ready, how he knows it worked) instead of stopping
+   to ask. **Decisions are not checklist rows**: they get a researched default and a Decisions & reviews question
+   (section 1). **Nothing on it ever blocks building, review or merge.** Never tick a box for him.
    Never write "passed" without a real observation. A row is added **once**; update it, don't duplicate it.
 3. **Third-party verification** (another company's sandbox or review, an outside account, an app-store or marketplace
    review, a partner's approval, a trial QuickBooks/Xero company) is a checklist row with exact steps and the

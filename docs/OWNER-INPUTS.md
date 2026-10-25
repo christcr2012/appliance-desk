@@ -1,5 +1,12 @@
 # Owner inputs and launch decisions
 
+> **Rule change 2026-10-25 (Chris): decisions never block building.** Every open question below is built with a
+> researched, most-likely starting value that Chris can change in the app, and is answered later in the in-app
+> Decisions & reviews center ([design](designs/DECISIONS-CENTER.md)). Until that center ships, new questions are
+> added here as `DQ-` entries (question, starting value applied, why, sources with access dates, who should answer).
+> Only true blockers are raised with Chris immediately (AGENTS.md section 1). Older text below that says "do not
+> default owner-specific choices" or "ask, record, resume" is superseded by this rule.
+
 > **Owner-only to-do items live in [OWNER-CHECKLIST.md](OWNER-CHECKLIST.md).** This file is the decision register (IN-xx answers). A missing
 > answer never stops unrelated building; see AGENTS.md section 2.
 
