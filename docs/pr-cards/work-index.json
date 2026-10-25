@@ -5744,6 +5744,57 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/FEE-1.md"
+    },
+    {
+      "id": "FEETAX-1",
+      "title": "Optional, separately stated delivery/installation lines and per-place fee tax rules",
+      "batch": "FEETAX",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (OrderServiceChoice, HAUL_AWAY, optionalSeparatedTreatment)",
+      "budget": 450,
+      "units": [
+        "FEETAX-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/FEE-TAXABILITY.md",
+        "docs/research/2026-10-25-fee-taxability.md",
+        "docs/research/2026-10-25-tax-jurisdictions-50mi.md"
+      ],
+      "tests": [
+        "tests/fee-taxability.test.ts",
+        "tests/order-service-choice-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/FEETAX-1.md"
+    },
+    {
+      "id": "FEETAX-2",
+      "title": "Delivery-area tax readiness for every place within 50 miles and beyond",
+      "batch": "FEETAX",
+      "dependencies": [
+        "FEETAX-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (JurisdictionReadiness, JurisdictionDeliveryCount)",
+      "budget": 450,
+      "units": [
+        "FEETAX-2"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/FEE-TAXABILITY.md",
+        "docs/research/2026-10-25-fee-taxability.md",
+        "docs/research/2026-10-25-tax-jurisdictions-50mi.md"
+      ],
+      "tests": [
+        "tests/delivery-readiness.test.ts",
+        "e2e/delivery-area.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/FEETAX-2.md"
     }
   ],
   "enhancements": [

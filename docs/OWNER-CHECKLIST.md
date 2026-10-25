@@ -62,6 +62,11 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   asks businesses that make consumer leases (household rentals over 4 months) to file a notification with the UCCC
   administrator (Attorney General) within 30 days and every July 1 (C.R.S. 5-6-202; fee set by the state). Ask your
   attorney first (Decisions question FEE-UCCC-FILING). The rental wizard warns until this is marked done.
+- [ ] **Ask Greeley Sales Tax in writing how it taxes rentals and fees.** The app drafts the email (Settings › Taxes →
+  "Email Greeley"): does Greeley tax rentals of 36 months or less when you paid tax buying the appliance, and are
+  optional, separately listed delivery, installation, pickup and haul-away charges taxed? Send it from your own email to
+  Greeley.SalesTax@greeleygov.com (or call 970-350-9733). Ready: you have their written reply. Worked: you record the
+  answer on Taxes › Rules and the questions FEETAX-GREELEY-* show "Confirmed". Until then the app taxes them (safe side).
 
 ## B. Before real customers (money, email, texts, legal, accounts)
 
@@ -248,3 +253,4 @@ on readiness).
 | 2026-10-25 | IRS IRIS TCC, compliance encryption key | Chris asked the app to file and fill federal and state forms (CMP-1, CMP-3). |
 | 2026-10-25 | Vault encryption key, workers' comp rejection form | Records vault (VAULT-2) and insurance (OPS-4). |
 | 2026-10-25 | UCCC consumer-lease notification | Late-fee law research: Colorado's UCCC covers household rentals over 4 months. |
+| 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |

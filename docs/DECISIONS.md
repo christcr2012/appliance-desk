@@ -1,3 +1,12 @@
+## October 25 — Fees that cover delivery and installation with the least tax (Chris)
+
+Chris asked for fees that offset delivery and installation costs with the least tax to collect, for every place within
+50 miles of Greeley and safely beyond. Design (FEETAX-1/2): keep paying tax at purchase (no state tax on rent or rental
+fees); delivery, installation, pickup and haul-away are separate optional lines with a free do-it-yourself choice shown
+at ordering; no required admin fee ($0); service prices kept near real cost (inflating them is not allowed); every
+delivery address must have its places' tax rules and any city license set up before it can be quoted. Greeley's code
+couldn't be read, so Greeley rent and fees are taxed until Greeley answers in writing (owner checklist row).
+
 ## October 25 — One late-fee rule for everyone: more than 10 days late (Chris)
 
 "We should just follow that rule for all late fees for simplicity." Every rental: a $5 late fee only when a bill is not
