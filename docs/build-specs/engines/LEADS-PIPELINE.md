@@ -135,7 +135,13 @@ export async function reassignLead(actorId: string, leadId: string, toUserId: st
      converted (`customerId` set).
   3. Move children from `mergeId` to `keepId`: `LeadNote`, `LeadApplianceRequest`, `Estimate`, `StaffTask`,
      `ContactBinding`, `ConsentRecord`, `CommunicationThread` (all `leadId`), and `MessageDelivery` rows where
-     `recipientType = "Lead"` and `recipientId = mergeId`. These are every table that points at a lead today
+     `recipientType = "Lead"` and `recipientId = mergeId`, and **`CommunicationLink` rows with `entityType = Lead` and
+     `entityId = mergeId`** (workflow-text history and the recent-duplicate check in
+     `src/domains/messaging/workflow-text.ts` read these). Because of `@@unique([messageId, entityType, entityId])`,
+     first find links whose `messageId` is already linked to `keepId` — those are exact duplicates of a link the kept
+     lead already has; remove only those duplicate link rows (the message itself is untouched) — then `updateMany` the
+     rest to `entityId = keepId`. Count both in the `lead.merge` audit. Test: after a merge the kept lead's text
+     history shows the merged lead's texts, and sending the same text again inside the repeat window still warns. These are every table that points at a lead today
      (checked 2026-10-25); a test reads `schema.prisma` and fails if a new `leadId` column appears that merge does not
      move.
   4. Kept lead: keep its own contact fields; fill only empty ones from the merged lead (email, company, address,
