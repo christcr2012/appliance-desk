@@ -5369,6 +5369,303 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-5.md"
+    },
+    {
+      "id": "VAULT-1",
+      "title": "Business records: documents, encrypted numbers, dates, renewals, export packs",
+      "batch": "VAULT",
+      "dependencies": [
+        "CMP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261103000000_business_records",
+      "budget": 450,
+      "units": [
+        "VAULT-1"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/RECORDS-VAULT.md"
+      ],
+      "tests": [
+        "tests/business-records-integration.test.ts",
+        "e2e/business-records.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/VAULT-1.md"
+    },
+    {
+      "id": "VAULT-2",
+      "title": "Logins vault (owner only, fresh code to reveal) and emergency access (ships off)",
+      "batch": "VAULT",
+      "dependencies": [
+        "VAULT-1",
+        "ACC-6"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (VaultCredential, VaultUnlock)",
+      "budget": 450,
+      "units": [
+        "VAULT-2"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/RECORDS-VAULT.md"
+      ],
+      "tests": [
+        "tests/vault-integration.test.ts",
+        "tests/vault-secret-fields-grep.test.ts",
+        "e2e/vault.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/VAULT-2.md"
+    },
+    {
+      "id": "SETUP-1",
+      "title": "Set up your business: guided walkthroughs with automatic checks",
+      "batch": "VAULT",
+      "dependencies": [
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "SETUP-1"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/RECORDS-VAULT.md"
+      ],
+      "tests": [
+        "tests/setup-walkthroughs.test.ts",
+        "e2e/setup-guide.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/SETUP-1.md"
+    },
+    {
+      "id": "ACCT-1",
+      "title": "Accountant sign-in: owner-invited ACCOUNTANT level limited to books, taxes, compliance and shared records",
+      "batch": "ACC",
+      "dependencies": [
+        "ACC-6",
+        "BA-1",
+        "CMP-1",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261104000000_accountant_role",
+      "budget": 500,
+      "units": [
+        "ACCT-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/ACCOUNTANT-ACCESS.md"
+      ],
+      "tests": [
+        "tests/accountant-allowlist.test.ts",
+        "tests/accountant-access-integration.test.ts",
+        "e2e/accountant-access.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/ACCT-1.md"
+    },
+    {
+      "id": "OPS-1",
+      "title": "Product recalls: CPSC watcher, recall hold, renter contact, incident clock",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-1"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-1-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-1.md"
+    },
+    {
+      "id": "OPS-2",
+      "title": "Refrigerant and disposal records with the signed EPA statement",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-2"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-2-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-2.md"
+    },
+    {
+      "id": "OPS-3",
+      "title": "Vehicle profile, driving rules from GVWR, automatic mileage log",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-3"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-3-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-3.md"
+    },
+    {
+      "id": "OPS-4",
+      "title": "Insurance register, renewals, certificates, workers' comp status",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-4"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-4-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-4.md"
+    },
+    {
+      "id": "OPS-5",
+      "title": "Card disputes and bank returns: deadlines, evidence packet, single submission",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-5"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-5-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-5.md"
+    },
+    {
+      "id": "OPS-6",
+      "title": "Collections: past-due ladder, consented pickup, small claims packet, no ownership option",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-6"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-6-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-6.md"
+    },
+    {
+      "id": "OPS-7",
+      "title": "Privacy and security: incident clock, retention and purge with legal hold, vendor reviews, marketing rules",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-7"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-7-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-7.md"
+    },
+    {
+      "id": "OPS-8",
+      "title": "Continuity plan, pause-all-charges switch, yearly business check-up",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-8"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-8-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-8.md"
     }
   ],
   "enhancements": [

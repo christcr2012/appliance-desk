@@ -90,3 +90,15 @@ row stays "Starting value — not confirmed" until the CPA answers.
 | GREELEY-LICENSE | Greeley business license renews every 2 years; reminder 60 days ahead | Owner (call Greeley) |
 | CMP-PAYROLL-HOW | Use a payroll service when hiring; track it in the app | Owner |
 Sources: `docs/research/2026-10-25-tax-fee-rules.md`, `docs/research/2026-10-25-federal-colorado-compliance.md`.
+
+## Added 2026-10-25 (records, operations)
+| Code | Starting value (careful choice) | Audience |
+|---|---|---|
+| OPS-RECALL-RENTAL | Renting counts as distribution: hold recalled units, contact renters, consider CPSC reports | Attorney |
+| OPS-CO-REFRIGERANT | Follow the federal rule; keep the signed statement 6 years | Owner (ask the scrap yard / CDPHE) |
+| OPS-MEDCARD | A medical card is required at 16,001–26,000 lb GVWR intrastate | Owner (Colorado State Patrol) |
+| OPS-MILEAGE-METHOD | Standard mileage rate in the first year | CPA |
+| OPS-INSURANCE-LIMITS | Ask your agent; no limits assumed | Insurance agent |
+| OPS-LATE-FEE-CAP | No cap found for plain rentals; $5 already at the rent-to-own cap | Attorney |
+| CONT-SUCCESSOR | Add a successor-member clause to the operating agreement | Attorney |
+| VAULT-BANK | Bank logins may be stored in the vault (password manager suggested) | Owner |
