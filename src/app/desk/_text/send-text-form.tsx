@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import type { WorkflowTextPreview } from "@/domains/messaging/workflow-text";
 import { recordTextConsentAction, sendTextAction, type TextActionState } from "./actions";
 
@@ -12,10 +12,13 @@ export function SendTextForm({ preview, subjectId, path, principal }: {
   const screenId = useId().replace(/[^A-Za-z0-9]/g, "").padEnd(10, "0").slice(0, 26);
   const [round, setRound] = useState(0);
   const token = `${screenId}r${round}`;
-  const [sendState, send, sending] = useActionState<TextActionState, FormData>(sendTextAction, null);
   // Each finished attempt starts a new round, so a deliberate "send again" is a new text, while a double click
   // inside one round is still recognised as the same send.
-  useEffect(() => { if (sendState) setRound((r) => r + 1); }, [sendState]);
+  const [sendState, send, sending] = useActionState<TextActionState, FormData>(async (prev, form) => {
+    const result = await sendTextAction(prev, form);
+    setRound((r) => r + 1);
+    return result;
+  }, null);
   const [consentState, consent, saving] = useActionState<TextActionState, FormData>(recordTextConsentAction, null);
   const duplicate = preview.blockers.some((b) => b.code === "RECENT_DUPLICATE");
   const hard = preview.blockers.filter((b) => b.code !== "RECENT_DUPLICATE" && b.code !== "NEEDS_CONSENT");
