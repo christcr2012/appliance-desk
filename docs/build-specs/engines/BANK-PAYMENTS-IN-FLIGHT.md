@@ -75,20 +75,41 @@ delivery) and item 2 (delayed settlement) explicitly.
    at most 50 per night. Every row the run looks at — still processing, cleared, **or a Stripe error** — gets
    `lastCheckedAt = now`, so the next night's batch moves on to rows that waited longest.
 2. For each, **outside any transaction**, `stripe.paymentIntents.retrieve(paymentIntentId)`.
-3. Then in a short transaction per row (`SELECT … FOR UPDATE` on the row, re-check still open): PI `succeeded` →
-   clear `SUCCEEDED` (the payment itself is recorded by `invoice.paid` or the existing reconciliation, never here);
+3. **PI `succeeded` — recover the missed settlement first, never just clear the flag.** No other job records a
+   missed incoming payment (`reconcileOne` in `reconciliation-base.ts` handles our own provider operations only), so:
+   a. If the invoice already has a Payment for this intent with a status in `SUCCESSFUL_PAYMENT_STATUSES` → clear the
+      row `SUCCEEDED` (the webhook did arrive).
+   b. Otherwise **replay Stripe's own settlement event** through the normal webhook path: list events with
+      `stripe.events.list({ type, created: { gte: startedAt − 1 day }, limit: 100 })` (paginate, at most 5 pages) for
+      `type = "invoice.paid"` (source `STRIPE_INVOICE`: match `data.object.id` = the bill's `stripeInvoiceId`) or
+      `"checkout.session.async_payment_succeeded"` (source `LOCAL_CHECKOUT`: match the session's `payment_intent` =
+      the row's intent). For the matching event call `processStripeWebhookEvent(event)` (the exact function the
+      webhook route calls — same evidence gathering, global lock, dedupe by event id, so a replay of an
+      already-processed event does nothing), then settle `result.referralIdsToSettle` with `settleReferralCredits`
+      exactly as `src/app/api/webhooks/stripe/route.ts` does. Re-read: if the payment now exists → clear `SUCCEEDED`.
+   c. If no matching event is found, or the replay throws → **leave the row open**, set `lastCheckedAt`, set a new
+      column `settledInStripeAt = now` (add `settledInStripeAt DateTime?` to the model), count `needsCheck`. The bill
+      keeps showing "Being confirmed" (so no late fee or reminder), and To do raises it (section 4).
+   Other PI statuses, in a short transaction per row (`SELECT … FOR UPDATE` on the row, re-check still open):
    `requires_payment_method` / `canceled` → clear `FAILED` / `CANCELED`; still `processing` → only
    `lastCheckedAt`. If the invoice is no longer open → clear `INVOICE_CLOSED`. A Stripe error on one row is counted,
    its `lastCheckedAt` is set, and the run continues.
-4. Counts returned to `automationCounts` (`checked`, `cleared`, `stillProcessing`, `errors`).
-Test with a fake Stripe client: each PI status, error skip, the 50 limit, and **rotation**: with 120 open rows that
+4. Counts returned to `automationCounts` (`checked`, `cleared`, `recovered`, `needsCheck`, `stillProcessing`,
+   `errors`).
+Test with a fake Stripe client: each PI status, error skip, the 50 limit; **a succeeded intent whose `invoice.paid`
+webhook never arrived** → the replay records the payment through `processStripeWebhookEvent`, the bill becomes PAID and
+the row clears; the same night run twice records it once (event dedupe); no matching event → row stays open with
+`settledInStripeAt` set and no late fee; and **rotation**: with 120 open rows that
  stay processing, three nightly runs check 50, 50 and then the remaining 20 plus the 30 checked longest ago; rows that
  error are not re-checked before rows never checked. Add the index `@@index([clearedAt, lastCheckedAt])`.
 
 ## 4. To do
 
 New category **`BANK_PAYMENT_SLOW`** (group `money` in `INBOX_GROUP`, severity medium): an open row with `startedAt`
-more than **6 business days** ago (`addBusinessDays`). Title `"Bank payment for bill #{number} is taking longer than
+more than **6 business days** ago (`addBusinessDays`), **or** any open row with `settledInStripeAt` set (severity
+high; title `"Stripe says the bank payment for bill #{number} cleared, but it isn't recorded yet"`, detail
+`"{formatMoney(amount)} from {customer}. Open Check against Stripe to record it."`, href
+`/desk/billing/reconciliation`). Title `"Bank payment for bill #{number} is taking longer than
 usual"`, detail `"{formatMoney(amount)} from {customer} started {formatShortDate(startedAt)}. Banks usually confirm in
 4 business days. Check it in Stripe if it doesn't clear soon."`, href = the bill page. Built with a new pure builder
 `bankPaymentSlowException` in `rules.ts`; queried in `getExceptionOverview` with the standard cap.
