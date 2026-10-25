@@ -25,6 +25,7 @@ model AgentOperation {
   argsHash         String   @db.Char(64)         // sha256 of canonical JSON args
   previewHash      String?  @db.Char(64)
   preview          Json?                         // safe summary shown to Chris
+  verifyIntent     Json?                         // bounded, safe facts verify() needs: e.g. [{ subjectId, expectedValue, effectiveFrom }] or { artifactAfter: ISO } — written in Transaction A, before dispatch
   state            AgentOperationState           // PREVIEWED | AWAITING_APPROVAL | AUTHORIZED | RUNNING | SUCCEEDED | FAILED | UNKNOWN | DENIED | CANCELLED | EXPIRED
   leaseToken       String?  @db.Char(32)
   leaseExpiresAt   DateTime?
@@ -57,7 +58,8 @@ type ActionDef<A> = {
   roles: ("OWNER" | "ADMIN")[];
   preview(ctx, args): Promise<{ summary: string; changes: { label: string; now: string; after: string }[]; costNote?: string; targetRef: string }>;
   execute(ctx, args, op: { id: string }): Promise<{ safeResult: Json }>;   // calls an existing domain command, never raw SQL
-  verify(ctx, args, result): Promise<{ ok: boolean; observed: Json }>;
+  verifyIntent(ctx, args): Json;                                            // stored before dispatch
+  verify(ctx, intent: Json, result?: Json): Promise<{ ok: boolean; observed: Json }>;
   approval: "OWNER_IN_APP" | "OWNER_IN_CONVERSATION";
 };
 ```
@@ -68,7 +70,7 @@ type ActionDef<A> = {
 | `RETRY_MEDIA_COPY` | `runMediaCopy({ databaseArtifactId })` | a MEDIA_MANIFEST artifact for that backup exists | in app |
 | `PAUSE_AUTOMATION` / `RESUME_AUTOMATION` | `setAutomationPaused(actorId, ruleKey, pause)` (`src/domains/automation/health.ts`; OWNER) | rule paused state read back | in app |
 | `VERIFY_RECOVERY_ARTIFACT` | read the artifact with the private token, hash it | hash equals stored `sha256` | conversation |
-| `APPLY_DECISION_ANSWERS` | DEC-1 `applyAnswers(actorId, answers, confirmToken)` | each subject's current value equals the applied value | conversation |
+| `APPLY_DECISION_ANSWERS` | DEC-1 `applyAnswers(actorId, answers, confirmToken)` | for each answer in `verifyIntent`: a PROFESSIONAL_ANSWER `DecisionRecord` for that subject made after the operation started, **and** either (effective today) the current value equals the expected value, or (future date) a not-cancelled `DecisionScheduledChange` with that value and date exists — never activating early to pass the check | conversation |
 "In app" = Chris taps Approve on System health › Assistant activity (works for anything with storage cost or that
 stops a job). "In conversation" = the assistant shows him the preview and he says yes; the assistant then calls
 execute with the `previewId`. Both kinds require the preview first; there is no "execute without preview" path.
@@ -92,13 +94,16 @@ approved card.
    operation not expired, state `PREVIEWED` (conversation) or `AUTHORIZED` (approved in app); if already `SUCCEEDED`
    / `FAILED` / `UNKNOWN` → return it unchanged (retry-safe). Recompute the preview and compare `previewHash`
    (something changed → `EXPIRED`, tool error "Things changed — preview again"). Set `RUNNING`, `attempt + 1`,
-   `leaseToken = random`, `leaseExpiresAt = now + 5 min`, `startedAt`. Commit.
+   `leaseToken = random`, `leaseExpiresAt = now + 5 min`, `startedAt`, and **`verifyIntent`** (from `def.verifyIntent(ctx,
+   args)`: only ids, expected values and dates — no free text, ≤ 8 KB). Commit.
 2. Run `def.execute` **outside** the transaction (it calls domain commands that take their own locks).
 3. Transaction B: lock the operation; if `leaseToken` no longer matches (a stale worker) → write nothing. Else run
    `def.verify`; `ok` → `SUCCEEDED` with `safeResult`, `verification`; `!ok` → `FAILED` with `failureCode
    VERIFY_FAILED`. An exception from execute → `FAILED` if the command proves no effect (it threw before doing
    anything: domain validation errors), otherwise `UNKNOWN`.
-4. `UNKNOWN` operations (and `RUNNING` past lease) are reconciled by the nightly `system-issues-sweep` run: call
+4. `UNKNOWN` operations (and `RUNNING` past lease) are reconciled by the nightly `system-issues-sweep` run: verify
+   works from the stored `verifyIntent` alone (a process lost between the effect and saving the result is still
+   checked); call
    `def.verify`; ok → `SUCCEEDED`, else leave `UNKNOWN` and raise system issue `ASSISTANT_ACTION_UNCERTAIN` with the
    next step "Check {target} on System health". Never re-execute automatically.
 5. Approve/Deny in app (`approveAgentOperation(actorId, id)` / `deny…`): OWNER only, lock, `AWAITING_APPROVAL` →
@@ -118,7 +123,9 @@ words}". OWNER sees all; ADMIN sees their own connections' items and cannot appr
 20 parallel executes with the same key → one command call; same key different args → CONFLICT; preview → change the
 target (pause the rule elsewhere) → execute → EXPIRED; revoke the connection between approve and execute → refused,
 no call; role downgraded → refused; execute throws after its effect → UNKNOWN → nightly verify → SUCCEEDED; stale
-lease worker writes nothing; denied/expired cannot run; approval needs OWNER. `tests/mcp-decisions-apply-integration.test.ts`:
+lease worker writes nothing; denied/expired cannot run; approval needs OWNER; kill-between: the fake command commits its effect, then the worker throws before Transaction B →
+nightly verify from `verifyIntent` → SUCCEEDED. `tests/mcp-decisions-apply-integration.test.ts`: a future-dated answer →
+SUCCEEDED via the scheduled change (setting unchanged until its date);
 preview a filled form's answers → apply with the token → settings changed through DEC-1 functions, `DecisionRecord`
 via `MCP`; tampered answers with the old token → refused; "Other" answer recorded, setting untouched.
 `e2e/mcp-activity.spec.ts`: owner approves a waiting backup retry; axe, phone/desktop, light/dark.
