@@ -48,22 +48,23 @@ export const HEALTH_PRESENTATION: Record<HealthState, { label: string; tone: "go
 page renders each (component test with one fake row per state).
 
 ### 2. When a job is due (`src/domains/automation/schedule.ts`, pure)
-- Extend `AutomationRuleDefinition` with `schedule: { kind: "daily"; denverHour: number } | { kind: "weekly";
-  weekday: 0-6; denverHour } | { kind: "monthly"; day: 1-28; denverHour }` and remove `expectedEveryHours` (update
-  all 31 rules; derive each `denverHour` from the rule's cron in `vercel.json`, which is in UTC — convert with the
-  Denver offset **of that date**, and add a unit test that reads `vercel.json` and checks every cron path has a rule
-  and the hours agree for a January and a July date).
-- `lastDueAt(rule, now)`: the most recent scheduled Denver time ≤ now (DST-correct via the existing
-  `src/lib/business-date.ts` helpers; add `denverDateTimeToUtc(dateKey, hour)` there if missing, tested on 8 Mar and 1
-  Nov 2026).
+- Extend `AutomationRuleDefinition` with `cron: string` — the rule's schedule **exactly as in `vercel.json`, in UTC**
+  (e.g. backup `"0 9 * * *"`, books-nightly `"40 9 * * *"`) — and remove `expectedEveryHours` (update all 31 rules).
+  Vercel runs crons in UTC, so the Denver time moves with daylight saving (backup = 02:00 Denver in winter, 03:00 in
+  summer); deadlines are computed in UTC from the cron and converted to Denver **only for display**. Support the cron
+  forms actually used (`m h * * *`, `m h * * d`, `m h D * *`); a unit test reads `vercel.json`, checks every cron path has
+  a rule with the identical string, and fails on any unsupported form.
+- `lastDueAt(rule, now)`: the most recent UTC instant matching the cron that is ≤ now (pure; minute precision).
+  Tests: January and July dates, the DST change days (8 Mar and 1 Nov 2026), a run at 09:40 UTC for books-nightly, a
+  weekly Monday rule on a Sunday, a monthly rule on the 1st.
 - `graceMinutes`: new setting `BusinessSettings.automationLateGraceMinutes Int @default(120)` (owner-editable on the
   System health page: "How long after a job's usual time before we call it late. Starting value 2 hours, because a
   few jobs run back-to-back and Vercel can start them a little late.", restore recommended).
 - State rule (first match wins): paused → `paused`; any `requiredEnv` missing → `unconfigured`; no run ever →
   `never-ran` **if** `now < createdOrFirstDue + grace` else `late` (the rule's `addedOn` date in the definition, so a new
   rule doesn't show late on its first day); latest run RUNNING and started < budget ago → `running`; latest run
-  FAILED → `failing`; latest UNKNOWN (or RUNNING past budget) → `unknown`; latest success `finishedAt` <
-  `lastDueAt − 0` and `now > lastDueAt + grace` → `late`; else `healthy`. A clock-skew guard: a run `startedAt` in the
+  FAILED → `failing`; latest UNKNOWN (or RUNNING past budget) → `unknown`; latest success `startedAt` <
+  `lastDueAt − 5 minutes` (it belongs to an earlier slot) and `now > lastDueAt + grace` → `late`; else `healthy`. A clock-skew guard: a run `startedAt` in the
   future by more than 5 minutes is ignored and logged.
 - `sources.ts` stale check is replaced by a call to the same function (`state === "late"` → the existing
   `AUTOMATION_STALE` issue; `never-ran` past grace → `late` → same issue). Keep fingerprints `automation-stale:<rule>`.

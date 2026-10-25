@@ -86,8 +86,10 @@ Builders in `rules.ts`, queried in `getExceptionOverview` with the standard cap;
 ### 1.5 Retirement and disposal connect automatically
 - In `retireAppliance` (Equipment), inside the **same** transaction after the status update: if a `BookAsset` exists
   and is not retired, `postBookDepreciationInTx(tx, writer, id, min(retireMonth, lastCompletedMonth()), { maxMonths:
-  360 })` then `retireBookAssetInTx(tx, writer, id, null, "DECIDE_LATER", todayKey)`. The writer is the person who
-  retired it. If the book step throws (cost changed, missing capital source), the retirement still succeeds (wrap the
+  360 })` then `retireBookAssetInTx(tx, writer, id, lockedAsset.version, "DECIDE_LATER", todayKey)` — the person
+  writer passes the version it just read under the asset lock in this same transaction (section 1.2 keeps `null`
+  for automatic writers only). The writer is the person who retired it. Test: an owner retiring an enrolled appliance
+  from Equipment stages its book value (no savepoint fallback). If the book step throws (cost changed, missing capital source), the retirement still succeeds (wrap the
   book part in a savepoint: `tx.$executeRaw\`SAVEPOINT book_retire\`` / `ROLLBACK TO SAVEPOINT` on error) and a
   `BooksProblem` "APPLIANCE_RETIREMENT_NOT_RECORDED" is upserted → To do item. Never block taking a machine out of
   service because of books.

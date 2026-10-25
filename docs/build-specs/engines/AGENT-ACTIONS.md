@@ -23,6 +23,7 @@ model AgentOperation {
   targetRef        String?  @db.VarChar(120)     // safe ref: rule key, artifact id, "decisions"
   requestKeyDigest String   @db.Char(64)         // sha256(connectionId + ":" + requestKey)
   argsHash         String   @db.Char(64)         // sha256 of canonical JSON args
+  args             Json                          // the canonical args, stored at preview (≤ 64 KB; ids, values, dates — the action schemas allow no secrets); execute reads these, never new ones
   previewHash      String?  @db.Char(64)
   preview          Json?                         // safe summary shown to Chris
   verifyIntent     Json?                         // bounded, safe facts verify() needs: e.g. [{ subjectId, expectedValue, effectiveFrom }] or { artifactAfter: ISO } — written in Transaction A, before dispatch
@@ -82,7 +83,9 @@ approved card.
   expiresAt }`. Creates (or returns, same key + same args) an `AgentOperation` in `PREVIEWED` (conversation) or
   `AWAITING_APPROVAL` (in app; also makes a To do item `ASSISTANT_APPROVAL` "Your assistant wants to {summary}",
   href `/desk/automations#assistant-activity`). Same key + different args → tool error `CONFLICT`.
-- `appliance_action_execute { previewId, requestKey }` → runs section 4; returns the operation.
+- `appliance_action_execute { previewId, requestKey }` → runs section 4 with the operation's **stored** `args`
+  (re-hashed and compared with `argsHash`); returns the operation. Test: preview on one server instance, execute on a
+  fresh one (no in-memory state) → same effect.
 - `appliance_operation_get { operationId }` → state, safe result, verification, next step (own connection's, or any
   for the OWNER's own connections).
 - `appliance_decisions_preview_answers` / `appliance_decisions_apply_answers` are thin names for
