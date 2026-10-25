@@ -3,13 +3,14 @@
 import { useActionState } from "react";
 import type { FamilySetting } from "@/domains/messaging/workflow-text-settings";
 import { WORKFLOW_TEXT_GROUP_LABELS } from "@/domains/messaging/workflow-text-catalog";
-import { approveWordingAction, saveQuietHoursAction, setTextEnabledAction, type TextActionState } from "./actions";
+import { approveWordingAction, confirmLegalReviewAction, saveQuietHoursAction, setTextEnabledAction, type TextActionState } from "./actions";
 
 const allGroups = Object.entries(WORKFLOW_TEXT_GROUP_LABELS);
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 function FamilyRow({ f, version }: { f: FamilySetting; version: number }) {
   const [wordState, approve, approving] = useActionState<TextActionState, FormData>(approveWordingAction, null);
+  const [reviewState, review, reviewing] = useActionState<TextActionState, FormData>(confirmLegalReviewAction, null);
   const [switchState, toggle, toggling] = useActionState<TextActionState, FormData>(setTextEnabledAction, null);
   return <li className="rounded border border-line p-3">
     <h4 className="font-semibold">{f.label} · {f.enabled ? "On" : "Off"}</h4>
@@ -23,10 +24,20 @@ function FamilyRow({ f, version }: { f: FamilySetting; version: number }) {
       <button disabled={approving} className="rounded border border-line px-3 py-1 text-sm">{f.approved ? "Approve this wording" : "Approve starting wording"}</button>
       {wordState && <p role="status" className="text-sm">{wordState.message}</p>}
     </form>
+    {f.needsLegalReview && <form action={review} className="mt-2 rounded border border-line p-2">
+      <p className="text-sm"><strong>Needs a professional&apos;s review.</strong> {f.legalReason} This text cannot be switched on until you confirm
+        that a lawyer or other qualified person has read these exact words. Changing the wording removes the confirmation.</p>
+      <input type="hidden" name="family" value={f.key} /><input type="hidden" name="version" value={version} />
+      <input type="hidden" name="reviewed" value={f.legalReviewed ? "no" : "yes"} />
+      <button disabled={reviewing || (!f.approved && !f.legalReviewed)} className="mt-1 rounded border border-line px-3 py-1 text-sm">
+        {f.legalReviewed ? "Remove review confirmation" : "Confirm a professional has read this wording"}</button>
+      <span className="ml-2 text-sm">{f.legalReviewed ? "Confirmed." : "Not confirmed."}</span>
+      {reviewState && <p role="status" className="text-sm">{reviewState.message}</p>}
+    </form>}
     <form action={toggle} className="mt-2">
       <input type="hidden" name="family" value={f.key} /><input type="hidden" name="version" value={version} />
       <input type="hidden" name="enabled" value={f.enabled ? "no" : "yes"} />
-      <button disabled={toggling || (!f.enabled && !f.approved)} className="rounded border border-line px-3 py-1 text-sm">
+      <button disabled={toggling || (!f.enabled && (!f.approved || (f.needsLegalReview && !f.legalReviewed)))} className="rounded border border-line px-3 py-1 text-sm">
         {f.enabled ? "Switch this text off" : "Switch this text on"}</button>
       {!f.approved && !f.enabled && <span className="ml-2 text-xs">Approve the wording first.</span>}
       {switchState && <p role="status" className="text-sm">{switchState.message}</p>}

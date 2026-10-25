@@ -35,7 +35,7 @@ export const communicationsPolicySchema = z.object({
   quietHours: quietHoursSchema.optional(),
   workflowTexts: z.object({
     families: z.record(z.string().regex(/^[a-z][a-z0-9_]{2,60}$/),
-      z.object({ enabled: z.boolean() }).strict()),
+      z.object({ enabled: z.boolean(), legalReviewed: z.boolean().optional() }).strict()),
   }).strict().optional(),
   productionWebhookOrigin: z.string().url().refine((value) => {
     const url = new URL(value);

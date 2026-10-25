@@ -39,7 +39,7 @@ async function assertTextActor(tx: Db, userId: string, family: WorkflowTextFamil
 
 export type WorkflowBlockerCode =
   | "NOT_FOUND" | "WRONG_STATE" | "NO_PHONE" | "BAD_PHONE" | "MASTER_OFF" | "POLICY_OFF" | "FAMILY_OFF"
-  | "NOT_APPROVED" | "SENDER_NOT_READY" | "STOPPED" | "NEEDS_CONSENT" | "QUIET_HOURS" | "INVALID_DESTINATION"
+  | "LEGAL_REVIEW" | "NOT_APPROVED" | "SENDER_NOT_READY" | "STOPPED" | "NEEDS_CONSENT" | "QUIET_HOURS" | "INVALID_DESTINATION"
   | "SHARED_NUMBER" | "TEXT_PROBLEM" | "RECENT_DUPLICATE";
 export type WorkflowBlocker = { code: WorkflowBlockerCode; message: string };
 
@@ -77,6 +77,7 @@ const MESSAGES: Record<WorkflowBlockerCode, string> = {
   MASTER_OFF: "Text messages are switched off. Turn them on in Settings, Phone, texts and provider costs, when you are ready.",
   POLICY_OFF: "Texting is not set up yet. Finish the phone setup in Settings first.",
   FAMILY_OFF: "This kind of text is switched off. You can switch it on in Settings, Phone, texts and provider costs.",
+  LEGAL_REVIEW: "This wording needs a professional's review first. The Owner confirms that in Settings, Phone, texts and provider costs.",
   NOT_APPROVED: "The wording for this text has not been approved yet. The Owner approves wording in Settings, Phone, texts and provider costs.",
   SENDER_NOT_READY: "The business texting number is not ready yet.",
   STOPPED: "This number replied STOP. No texts can be sent to it unless the person texts START themselves.",
@@ -217,6 +218,9 @@ async function buildPreview(tx: Db, family: WorkflowTextFamily, subjectId: strin
     }
   }
   if (ctx.policy && ctx.policy.workflowTexts?.families[family.key]?.enabled !== true) blockers.push(block("FAMILY_OFF"));
+  else if (ctx.policy && family.needsLegalReview && ctx.policy.workflowTexts?.families[family.key]?.legalReviewed !== true) {
+    blockers.push(block("LEGAL_REVIEW"));
+  }
 
   if (!ctx.enabled) blockers.push(block("MASTER_OFF"));
   else if (!ctx.policy || !ctx.account) blockers.push(block("POLICY_OFF"));
