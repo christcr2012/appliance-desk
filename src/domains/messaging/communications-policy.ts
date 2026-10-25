@@ -19,6 +19,8 @@ export const communicationsPolicySchema = z.object({
   supportedCountries: z.array(z.literal("US")).min(1).max(1),
   inboundSmsEnabled: z.boolean().optional(),
   voiceRoutingEnabled: z.boolean().optional(),
+  // COM-N2: staff may start a call from the desk. Off unless the Owner switches it on; needs voice routing set up too.
+  clickToCallEnabled: z.boolean().optional(),
   voiceRouting: voiceRoutingSchema.optional(),
   telecomCostAlerts: z.object({
     enabled: z.boolean(),

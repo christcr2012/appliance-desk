@@ -273,3 +273,14 @@ export async function loadWorkflowSubject(
     default: return null;
   }
 }
+
+/** Click-to-call (COM-N2): who the record belongs to and their saved phone. Not tied to any text wording. */
+export async function loadCallSubject(
+  tx: Tx, type: "Job" | "Lead" | "MaintenanceRequest", id: string, now: Date,
+): Promise<LoadedSubject | null> {
+  if (!id || id.length > 100) return null;
+  const neutral = { key: "call", subject: type } as unknown as WorkflowTextFamily;
+  if (type === "Lead") return loadLead(tx, id);
+  if (type === "Job") return loadJob(tx, neutral, id, now);
+  return loadMaintenance(tx, neutral, id);
+}
