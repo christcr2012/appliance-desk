@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { reviewedDrivingFee,drivingEvidenceSchema } from "./delivery";
+import { reviewedDrivingFee,drivingEvidenceSchema,frozenRouteZones } from "./delivery";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
 import { readZoneSettings } from "@/domains/delivery/zone";
 
@@ -33,14 +33,16 @@ export async function setVerifiedDrivingOrigin(userId:string,address:string,sour
  * evidence, not a ZIP centroid or a crow-flight distance. */
 export async function recordDeliveryRouteEvidence(userId:string,
   target:{estimateId:string}|{agreementId:string},raw:unknown) {
-  const evidence=drivingEvidenceSchema.parse(raw);
+  const parsed=drivingEvidenceSchema.parse(raw);
   return prisma.$transaction(async tx=>{
     await ensureOwner(tx,userId);
     const setting=await tx.businessSettings.findUnique({where:{id:"singleton"},
       select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true,...ZONE_FIELDS}});
     if(!setting?.drivingOriginVerifiedAt)
       throw new Error("Owner must verify central Greeley origin first.");
-    const fee=reviewedDrivingFee(evidence,setting.drivingOriginAddress,new Date(),readZoneSettings(setting));
+    // The bands come from the current zones (never from the caller) and are frozen with the proof.
+    const evidence={...parsed,zones:frozenRouteZones(readZoneSettings(setting))};
+    const fee=reviewedDrivingFee(evidence,setting.drivingOriginAddress);
     if("estimateId" in target){
       const e=await tx.estimate.findUnique({where:{id:target.estimateId},select:{status:true}});
       if(!e||!["DRAFT","CHANGES_REQUESTED","SENT","VIEWED"].includes(e.status))
@@ -66,10 +68,11 @@ export async function recordDeliveryRouteEvidence(userId:string,
 export async function assertRouteMatchesFrozenFeeInTx(
   tx:Prisma.TransactionClient,agreementId:string,raw:unknown) {
   const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},
-    select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true,...ZONE_FIELDS}});
+    select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true}});
   if(!settings?.drivingOriginVerifiedAt)
     throw new Error("Verified driving origin is required for offered delivery.");
-  const band=reviewedDrivingFee(raw,settings.drivingOriginAddress,new Date(),readZoneSettings(settings));
+  // Uses the bands frozen with the proof, so a later zone change never blocks an offer already made.
+  const band=reviewedDrivingFee(raw,settings.drivingOriginAddress);
   const frozen=await getFrozenSigningOrderInTx(tx,agreementId);
   const target=frozen.find(x=>x.agreementId===agreementId);
   if(!target||target.schemaVersion!==2)

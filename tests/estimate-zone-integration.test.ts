@@ -111,7 +111,8 @@ describe("ZONE-1 estimate zones on a real database", () => {
     const snapshot = await checkEstimateDeliveryZones(ownerId, lostEstimateId, { geocode });
     expect(snapshot.locations[0]).toMatchObject({ zone: "UNKNOWN", priceCents: null });
     const settled = await confirmEstimateZoneMiles(ownerId, lostEstimateId, lostId, 4.2, "Measured on the county map");
-    expect(settled).toMatchObject({ zone: 1, priceCents: 0, method: "STAFF_MILES" });
+    // The zones were raised by $10 in the test above: a new check uses the new prices (sent estimates kept theirs).
+    expect(settled).toMatchObject({ zone: 1, priceCents: 1000, method: "STAFF_MILES" });
     await expect(confirmEstimateZoneMiles(ownerId, lostEstimateId, lostId, 40, "Changed my mind")).rejects.toThrow(/already/);
   });
 

@@ -17,7 +17,7 @@ export async function listDeliveryZoneAttention(limit: number): Promise<{ unknow
   await requireRole("OWNER", "ADMIN");
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error("A bounded task limit is required.");
   const estimates = await prisma.estimate.findMany({
-    where: { status: { in: [...OPEN] }, deliveryZoneSnapshot: { not: { equals: null } } },
+    where: { status: { in: [...OPEN] }, deliveryZoneSnapshotAt: { not: null } },
     select: {
       id: true, status: true, estimateNumber: true, updatedAt: true, deliveryZoneSnapshotAt: true,
       deliveryZoneSnapshot: true,
@@ -40,6 +40,8 @@ export async function listDeliveryZoneAttention(limit: number): Promise<{ unknow
     for (const location of snapshot.locations) {
       const address = estimate.lineItems.map((line) => line.serviceAddress)
         .find((row) => row?.id === location.serviceAddressId);
+      // An address whose lines were removed is no longer part of the estimate.
+      if (!address) continue;
       const label = address ? `${address.line1}, ${address.city}` : `estimate #${estimate.estimateNumber}`;
       if (location.zone === "UNKNOWN" && estimate.status !== "CONVERTED") {
         unknown.push({

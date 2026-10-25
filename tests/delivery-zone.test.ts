@@ -4,9 +4,10 @@ import {
   zoneSettingsProblems, STARTING_CENTER,
 } from "@/domains/delivery/zone";
 import { TOWNS, townBySlug, townByName, townsWithZones } from "@/domains/delivery/towns";
-import { mileageBand } from "@/domains/orders/delivery";
+import { frozenRouteZones, mileageBand, reviewedDrivingFee } from "@/domains/orders/delivery";
 import {
-  buildZoneLocation, choiceAllowed, chosenDeliveryCents, confirmZoneByMiles, readZoneSnapshot, zoneSentence,
+  buildZoneLocation, choiceAllowed, chosenDeliveryCents, confirmZoneByMiles, currentLocations, isPickupOnly,
+  readZoneSnapshot, zoneSentence,
 } from "@/domains/delivery/snapshot";
 import { projectMiles, zoneRangeWords } from "@/domains/delivery/map";
 
@@ -54,6 +55,30 @@ describe("ZONE-1 distances and zones (straight line from central Greeley)", () =
     expect(mileageBand(51).allowed).toBe(false);
     const cheaper = { ...settings, zones: settings.zones.map((z) => ({ ...z, deliveryCents: z.deliveryCents / 2 })) };
     expect(mileageBand(40, cheaper).amountCents).toBe(6250);
+  });
+});
+
+describe("ZONE-1 driving-route proofs keep the bands they were reviewed with", () => {
+  const proof = { miles: 22, source: "OWNER_MANUAL_DRIVING_ROUTE", sourceReference: "Map route reviewed by owner",
+    measuredAt: "2026-10-26T14:00:00.000Z", origin: "Central Greeley, CO" };
+  const at = new Date("2026-10-26T15:00:00Z");
+  it("an old proof (no bands) uses the original IN-06 bands; a new one uses its frozen bands, whatever the zones are now", () => {
+    expect(reviewedDrivingFee(proof, "Central Greeley, CO", at).amountCents).toBe(7500);
+    const frozen = { ...proof, zones: frozenRouteZones({ ...settings, zones: settings.zones.map((z) => ({ ...z, deliveryCents: z.deliveryCents + 500 })) }) };
+    expect(reviewedDrivingFee(frozen, "Central Greeley, CO", at).amountCents).toBe(8000);
+    expect(() => reviewedDrivingFee({ ...proof, zones: { maxMiles: 50, bands: [] } }, "Central Greeley, CO", at)).toThrow();
+  });
+});
+
+describe("ZONE-1 removed addresses", () => {
+  it("are never shown or used", () => {
+    const row = (id: string, choice: "DELIVER" | "CUSTOMER_PICKUP") => ({
+      ...buildZoneLocation({ serviceAddressId: id, settings, now, position: { status: "FOUND", point: town("evans") } }), choice });
+    const raw = { version: 1, locations: [row("a1", "CUSTOMER_PICKUP"), row("gone", "DELIVER")] };
+    expect(currentLocations(raw, ["a1", null]).map((r) => r.serviceAddressId)).toEqual(["a1"]);
+    expect(isPickupOnly(raw, ["a1"])).toBe(true);
+    expect(isPickupOnly(raw, ["a1", "gone"])).toBe(false);
+    expect(isPickupOnly(raw, [])).toBe(false);
   });
 });
 

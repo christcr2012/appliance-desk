@@ -224,6 +224,14 @@ export async function removeEstimateLineItemAction(
       message: error instanceof Error ? error.message : "Couldn't remove that line.",
     };
   }
+  // ZONE-1: rebuild the zone list from the remaining lines, so a removed address drops off (addresses already looked
+  // up are not looked up again). A problem here never undoes the removal; readers ignore removed addresses anyway.
+  try {
+    const { checkEstimateDeliveryZones } = await import("@/domains/delivery/estimate-zone");
+    await checkEstimateDeliveryZones(session.user.id, estimateId);
+  } catch {
+    // The panel's "Check the zone again" button retries.
+  }
 
   revalidatePath(`/desk/estimates/${estimateId}`);
   return { status: "success" };

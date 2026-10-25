@@ -67,9 +67,27 @@ export const drivingEvidenceSchema = z.object({
   sourceReference: z.string().trim().min(8).max(500),
   measuredAt: z.iso.datetime(),
   origin: z.string().trim().min(5).max(300),
+  // ZONE-1: the zone bands in effect when the owner reviewed this route, frozen with the proof so a later zone change
+  // never changes (or blocks) an offer already made. Older proofs have none and use the original IN-06 bands.
+  zones: z.object({
+    maxMiles: z.number().positive().max(200),
+    bands: z.array(z.object({ outerMiles: z.number().positive().max(200),
+      deliveryCents: z.number().int().nonnegative().max(1_000_000) }).strict()).min(1).max(5),
+  }).strict().optional(),
 }).strict();
+export type DrivingEvidence = z.infer<typeof drivingEvidenceSchema>;
+/** The bands to freeze into a new route proof. */
+export function frozenRouteZones(settings: Pick<ZoneSettings, "zones" | "maxMiles">): NonNullable<DrivingEvidence["zones"]> {
+  return { maxMiles: settings.maxMiles,
+    bands: settings.zones.map(zone => ({ outerMiles: zone.outerMiles, deliveryCents: zone.deliveryCents })) };
+}
+function bandsOf(evidence: DrivingEvidence): Pick<ZoneSettings, "zones" | "maxMiles"> {
+  if (!evidence.zones) return startingZoneSettings();
+  return { maxMiles: evidence.zones.maxMiles, zones: evidence.zones.bands.map(band => ({
+    ...band, name: "", pickupCents: 0, color: "GRAY" as const })) };
+}
 export function reviewedDrivingFee(raw: unknown, expectedOrigin: string,
-  now = new Date(), zones?: Pick<ZoneSettings, "zones" | "maxMiles">) {
+  now = new Date()) {
   const evidence = drivingEvidenceSchema.parse(raw);
   if (!expectedOrigin || expectedOrigin.startsWith("UNVERIFIED:") ||
       evidence.origin !== expectedOrigin)
@@ -78,7 +96,7 @@ export function reviewedDrivingFee(raw: unknown, expectedOrigin: string,
   if (!Number.isFinite(measured) || measured > now.getTime()+5*60*1000 ||
       now.getTime()-measured > 7*24*60*60*1000)
     throw new Error("Driving route proof is stale. Reverify or record a reviewed manual route.");
-  const band = mileageBand(evidence.miles, zones);
+  const band = mileageBand(evidence.miles, bandsOf(evidence));
   if (!band.allowed) throw new Error("Outside automatic delivery bands. Require separate manual review.");
   return { ...band, evidence };
 }

@@ -644,7 +644,16 @@ export async function approveEstimate(
     // stale/replaced options cannot be accepted and no scheduling occurs here.
     const { readOfferedSlots, recordEstimateDeliverySelectionInTx } =
       await import("@/domains/orders/delivery");
-    if (readOfferedSlots(estimate.deliveryOffer).length) {
+    // ZONE-1: when every address on the estimate is "I'll pick it up", no delivery window is needed or accepted.
+    const { isPickupOnly } = await import("@/domains/delivery/snapshot");
+    const pickupOnly = estimate.deliveryZoneSnapshot !== null && estimate.deliveryZoneSnapshot !== undefined &&
+      isPickupOnly(estimate.deliveryZoneSnapshot, (await tx.estimateLineItem.findMany({
+        where: { estimateId: id }, select: { serviceAddressId: true },
+      })).map((line) => line.serviceAddressId));
+    if (pickupOnly) {
+      if (input.deliverySelection)
+        throw new Error("You chose to pick it up, so no delivery window is needed.");
+    } else if (readOfferedSlots(estimate.deliveryOffer).length) {
       if (!input.deliverySelection)
         throw new Error("Choose an offered delivery window and provide delivery details.");
       // W-24 cannot accept a delivery route charge that was never frozen

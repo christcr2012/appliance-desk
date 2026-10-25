@@ -99,6 +99,8 @@ async function updateLocation(tx: Prisma.TransactionClient, estimateId: string, 
   const snapshot = readZoneSnapshot(estimate.deliveryZoneSnapshot);
   const index = snapshot?.locations.findIndex((row) => row.serviceAddressId === serviceAddressId) ?? -1;
   if (!snapshot || index < 0) throw new Error("Check the delivery zone for this address first.");
+  if (!addressIdsOf(estimate.lineItems).includes(serviceAddressId))
+    throw new Error("That address is no longer on this estimate.");
   const before = snapshot.locations[index]!;
   const after = change(before);
   snapshot.locations[index] = after;

@@ -101,6 +101,18 @@ export function readZoneSnapshot(raw: unknown): EstimateZoneSnapshot | null {
   return { version: 1, locations };
 }
 
+/** Only the entries for addresses still on the estimate's lines (a removed line's address is never shown or used). */
+export function currentLocations(raw: unknown, addressIds: Iterable<string | null | undefined>): ZoneSnapshotLocation[] {
+  const current = new Set([...addressIds].filter((id): id is string => !!id));
+  return readZoneSnapshot(raw)?.locations.filter((row) => current.has(row.serviceAddressId)) ?? [];
+}
+
+/** True when every current address is "I'll pick it up" (no delivery window needed). */
+export function isPickupOnly(raw: unknown, addressIds: Iterable<string | null | undefined>): boolean {
+  const rows = currentLocations(raw, addressIds);
+  return rows.length > 0 && rows.every((row) => row.choice === "CUSTOMER_PICKUP");
+}
+
 export function snapshotLocation(raw: unknown, serviceAddressId: string): ZoneSnapshotLocation | null {
   return readZoneSnapshot(raw)?.locations.find((row) => row.serviceAddressId === serviceAddressId) ?? null;
 }

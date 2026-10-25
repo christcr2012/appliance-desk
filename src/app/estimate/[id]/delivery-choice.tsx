@@ -1,4 +1,4 @@
-import { readZoneSnapshot, zoneSentence } from "@/domains/delivery/snapshot";
+import { currentLocations, zoneSentence } from "@/domains/delivery/snapshot";
 import { zonePriceWords } from "@/domains/delivery/zone";
 import { chooseDeliveryAction } from "./zone-actions";
 
@@ -16,8 +16,9 @@ const RESULT_WORDS: Record<string, string> = {
 export function EstimateDeliveryChoice({ estimateId, status, snapshot: raw, addresses, result }: {
   estimateId: string; status: string; snapshot: unknown; addresses: { id: string; label: string }[]; result?: string;
 }) {
-  const snapshot = readZoneSnapshot(raw);
-  if (!snapshot || !snapshot.locations.length) return null;
+  // Only addresses still on the estimate (a removed line's address is never shown or offered).
+  const locations = currentLocations(raw, addresses.map((row) => row.id));
+  if (!locations.length) return null;
   const waiting = WAITING.has(status);
   const labels = new Map(addresses.map((row) => [row.id, row.label]));
   return (
@@ -25,7 +26,7 @@ export function EstimateDeliveryChoice({ estimateId, status, snapshot: raw, addr
       <h2 id="delivery-choice-heading" className="font-semibold">Delivery or pickup</h2>
       {result && RESULT_WORDS[result] && <p role="status" className="mt-2 font-semibold">{RESULT_WORDS[result]}</p>}
       <ul className="mt-3 space-y-4">
-        {snapshot.locations.map((location) => (
+        {locations.map((location) => (
           <li key={location.serviceAddressId}>
             <p className="text-ink-faint">{labels.get(location.serviceAddressId) ?? ""}</p>
             <p className="mt-1">{zoneSentence(location)}</p>

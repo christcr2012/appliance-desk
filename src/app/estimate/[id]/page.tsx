@@ -21,6 +21,7 @@ import { parseCustomerLanguage } from "@/domains/language/copy";
 import { quoteLanguage } from "@/domains/language/quote-note";
 import { estimateCopy } from "@/domains/language/estimate-copy";
 import { EstimateDeliveryChoice } from "./delivery-choice";
+import { isPickupOnly } from "@/domains/delivery/snapshot";
 
 export const metadata = {
   title: "Your estimate",
@@ -67,6 +68,8 @@ export default async function PublicEstimatePage({
   const formatBusinessDate=(date:Date)=>originalBusinessDate(date,language);
   const t = (word: Parameters<typeof portalLabel>[1]) => portalLabel(language,word);
   const tr = (key: Parameters<typeof estimateCopy>[1]) => estimateCopy(language, key);
+  // ZONE-1: every address set to "I'll pick it up" → no delivery window to choose.
+  const pickupOnly = isPickupOnly(estimate.deliveryZoneSnapshot, estimate.lineItems.map((line) => line.serviceAddressId));
   const customerName = estimate.customer
     ? (estimate.customer.user.name ?? estimate.customer.user.email)
     : estimate.lead?.contactName;
@@ -201,7 +204,7 @@ export default async function PublicEstimatePage({
         {!RESPONDED_STATUSES.has(estimate.status) && (
           <EstimateResponseForm language={language} estimateId={estimate.id} allowApproval={!!reviewedQuote}
             expectedQuoteFingerprint={reviewedQuote?.quoteFingerprint}
-            deliveryOptions={readOfferedSlots(estimate.deliveryOffer)}
+            deliveryOptions={pickupOnly ? [] : readOfferedSlots(estimate.deliveryOffer)}
             offerVersion={estimate.deliveryOfferVersion}
             phonePrefill={publicPhoneOrderPrefill(estimate)} />
         )}

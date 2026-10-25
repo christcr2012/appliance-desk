@@ -57,10 +57,6 @@ test.describe("service area map", () => {
     await expect(page.getByRole("link", { name: "Evans" })).toBeVisible();
     await context.close();
   });
-
-  test("a town page shows its zone", async ({ page }) => {
-    const response = await page.goto("/rent/loveland", { waitUntil: "load" });
-    if (response?.url().endsWith("/launch")) test.skip(true, "town pages are hidden while the site is preparing to launch");
-    await expect(page.getByText("Delivery to Loveland: Nearby zone")).toBeVisible();
-  });
+  // The town pages' zone line is proven in tests/public-pages-render.test.tsx (CI runs the site in "preparing to
+  // launch" mode, where town pages go to /launch).
 });

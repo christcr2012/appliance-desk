@@ -162,19 +162,20 @@ for (const role of ["owner", "customer"] as const) {
       test("section save survives reload and browser Back restores its selected section", async ({
         page,
       }) => {
+        // ZONE-1: the service-area section is now the delivery zones form. Change only the last zone's end-of-rental
+        // pickup price (nothing else reads it in the browser suite) and put it back.
         await page.goto("/desk/settings?section=service-area");
-        const cities = page.getByLabel("Cities (comma-separated)");
-        const original = await cities.inputValue();
+        const pickup = page.getByLabel("End-of-rental pickup ($)").last();
+        const saved = page.getByText(/Delivery zones saved/);
+        await expect(pickup).toBeEditable();
+        const original = await pickup.inputValue();
+        const changed = String(Number(original) + 1);
         try {
-          await cities.fill(
-            [original, "CI fixture city"].filter(Boolean).join(", "),
-          );
-          await page.getByRole("button", { name: "Save this section" }).click();
-          await expect(page.getByRole("status")).toHaveText("Settings saved.");
+          await pickup.fill(changed);
+          await page.getByRole("button", { name: "Save delivery zones" }).click();
+          await expect(saved).toBeVisible();
           await page.reload();
-          await expect(cities).toHaveValue(
-            [original, "CI fixture city"].filter(Boolean).join(", "),
-          );
+          await expect(pickup).toHaveValue(changed);
           await page
             .getByRole("navigation", { name: "Settings sections" })
             .getByRole("link", { name: "Business profile", exact: true })
@@ -182,12 +183,13 @@ for (const role of ["owner", "customer"] as const) {
           await expect(page).toHaveURL(/section=profile$/);
           await page.goBack();
           await expect(page).toHaveURL(/section=service-area$/);
-          await expect(cities).toBeVisible();
+          await expect(pickup).toBeVisible();
         } finally {
           await page.goto("/desk/settings?section=service-area");
-          await cities.fill(original);
-          await page.getByRole("button", { name: "Save this section" }).click();
-          await expect(page.getByRole("status")).toHaveText("Settings saved.");
+          await expect(pickup).toBeEditable();
+          await pickup.fill(original);
+          await page.getByRole("button", { name: "Save delivery zones" }).click();
+          await expect(saved).toBeVisible();
         }
       });
       test("website editor: draft is private, preview shows it, review and publish update the public page", async ({
