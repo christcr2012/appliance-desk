@@ -1,3 +1,11 @@
+## October 24 — COM-N1C: billing, renewal and refund texts (everything OFF)
+
+Invoice and agreement screens get preview-then-send boxes: invoice ready, friendly reminder, payment received, refund issued,
+rental term ending soon. Owner/Admin only. The reminder, refund and renewal wordings cannot be switched on until the Owner
+confirms a qualified person has read those exact words (changing the words removes the confirmation). They are courtesy texts,
+not legal notices. Tested on throwaway Postgres with a fake carrier. Also fixed a rare test-ordering failure caused by my new
+tests turning the text switch on briefly. Next: COM-N2 (click-to-call), COM-N4, wiring gaps.
+
 ## October 24 — COM-N1B: job and maintenance texts (everything OFF)
 
 Job and maintenance-request screens get the same preview-then-send box: visit scheduled / reminder / on the way / done, and

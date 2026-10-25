@@ -113,6 +113,10 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   are off). Once texting is live: Settings → Security → tick "Send sign-in codes by text" and save (the Switches page then
   shows it), save your mobile phone on My account → check it with the text code → My account → "Second step" → switch
   to text codes. Keep your backup codes. Worked: your next sign-in texts you a code.
+- [ ] **Have the three sensitive text wordings read by a lawyer (COM-N1C, optional until you want them on):** Settings → Phone, texts
+  and provider costs → "Customer text messages": the friendly invoice reminder, the refund-issued text and the rental-ending
+  text each stay locked until you click "Confirm a professional has read this wording". Worked: the switch-on button unlocks for that
+  text only. (The other billing texts are not locked.) Changing the wording removes the confirmation.
 - [ ] **Real business details** (name, phone, email, address, hours, service area) in Desk → Settings; choose a lawful public
   mailing address that is not your home (IN-01); confirm `support@` reply-to works end to end (IN-02);
   `BETTER_AUTH_URL` set to the real domain and emailed links checked.
