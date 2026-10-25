@@ -56,9 +56,13 @@ Refactor, without changing behavior for people:
       `booksStartDate` (use `booksStartDate` then) — design D-K9. Each in its own Serializable transaction via
       `enrollBookAssetInTx(tx, { kind: "automatic" }, id, key, "AUTOMATIC")`. An appliance that fails a condition is
       skipped and counted with its reason (1.4).
-   c. **Depreciation**: for every BookAsset with `retiredOn = null`, `postBookDepreciationInTx(tx, automatic, id,
-      lastCompletedMonth(now), { maxMonths: 360 })`, one transaction per asset, at most 200 assets per night (ordered by
-      `lastDepreciationMonth` asc nulls first, then id — so the oldest catch up first and the batch rotates).
+   c. **Depreciation**: for every BookAsset with `retiredOn = null` **that still has depreciation left** — new
+      additive field `fullyDepreciatedOn DateTime?`, set by `postBookDepreciationInTx` when `remainingSchedule` comes
+      back empty (cleared if the asset's life or salvage is changed) — and whose `lastDepreciationMonth` is before
+      `lastCompletedMonth(now)` (or null): `postBookDepreciationInTx(tx, automatic, id, lastCompletedMonth(now), {
+      maxMonths: 360 })`, one transaction per asset, at most 200 per night (ordered by `lastDepreciationMonth` asc nulls
+      first, then id). Finished and up-to-date assets never take a slot, so the batch really rotates. Test: 200 fully
+      depreciated assets + 1 still owing → the one is posted the first night; 450 owing → all done in 3 nights.
    d. Write `booksLastBroughtUpToDateAt = now`, `booksLastProblemCount = problems`, and
       `booksConsecutiveFailedNights = 0` (or +1 when any step threw) in one small transaction locking the settings row.
    Counts: `posted`, `enrolled`, `depreciated`, `skipped`, `problems`.
@@ -99,6 +103,11 @@ Builders in `rules.ts`, queried in `getExceptionOverview` with the standard cap;
   eventKind `"DISPOSED:" + onDateKey`; set `disposedOn`; audit `books.asset.dispose`. Scrap money received is already
   income through `recordScrapPayment` (unchanged). `reopenRetiredPlan` → `reverseBookAssetDisposalInTx`-style
   reversing entry (new eventKind `"DISPOSAL_REVERSED:" + …`) and `disposedOn = null`.
+- **Equipment reports must agree:** extend `disposedValueBefore` (`src/domains/books/fixed-assets.ts`) to read
+  `DISPOSED:` and `DISPOSAL_REVERSED:` events too (today it reads only `SOLD:`/`SOLD_VOIDED:` and totals only
+  `BOOK_VALUE_OF_APPLIANCES_SOLD`): add `DISPOSAL_LOSS` amounts for DISPOSED and subtract them for DISPOSAL_REVERSED,
+  so `appliancePayback` (`reports.ts`) lowers `retiredValueCents` for scrapped/thrown-away appliances. Tests: report
+  before disposal, after disposal, and after the plan is reopened (value back) — each matches the ledger.
 - Shop sale of a retired appliance (`disposeRetiredBookAssetInTx`) no longer fails for "not staged": if the asset is
   not retired yet, retire it in the same transaction first (as above) — the error stays only for real conflicts.
 
