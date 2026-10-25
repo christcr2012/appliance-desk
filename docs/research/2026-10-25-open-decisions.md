@@ -112,3 +112,15 @@ Sources: `docs/research/2026-10-25-tax-fee-rules.md`, `docs/research/2026-10-25-
 | TAXBEN-BEGAN | Business began on the first day an appliance was available or the first lead, whichever is earlier | CPA |
 | TAXBEN-SOLO401K-DEADLINE | First-year Solo 401(k) by Apr 15 without extensions | CPA |
 | TAXBEN-EZ-FLEET | Delivered fleet doesn't qualify for the enterprise-zone credit | CPA |
+
+## Added 2026-10-25 (late-fee law)
+| Code | Starting value (careful choice) | Audience |
+|---|---|---|
+| FEE-UCCC-6-12 | Household 6/12-month rentals are UCCC consumer leases: fee only after 10 days, ≤ $15, notice | Attorney |
+| FEE-M2M-OUTSIDE | Month-to-month household rentals are outside the UCCC lease rule (5-day grace kept) — alternative: 10 days for every household customer | Attorney |
+| FEE-UCCC-FILING | File the UCCC notification before the first 6/12-month household rental | Attorney / Owner |
+| FEE-REASONABLE | $5 is reasonable (Reg M 1013.4(q), C.R.S. 4-2.5-504) | Attorney |
+| FEE-AUTOPAY-CONSENT | Fee named in the agreement and mandate + 10-day notice is enough; inside 10 days → separate non-auto bill | Attorney |
+| FEE-VISA-CHANGE | Treat a disclosed fee as needing advance notice (10 days) | Attorney |
+| FEE-SCRA | No automatic fee for flagged servicemembers; never take an appliance back without a court order | Attorney |
+| FEE-TAX | Late fee tracked as its own line; Colorado treats a separately stated late fee as not taxed (state), Greeley careful: taxed (see DEC-2) | CPA |

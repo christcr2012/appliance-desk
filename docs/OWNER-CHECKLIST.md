@@ -58,6 +58,11 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   coverage by sending the state's form by certified mail (C.R.S. 8-41-202). The Insurance screen (OPS-4) will hold the
   date and the certified-mail number. Worked when the Division or your insurer confirms.
 
+- [ ] **Before your first 6- or 12-month household rental: Colorado consumer-lease notification (UCCC).** Colorado
+  asks businesses that make consumer leases (household rentals over 4 months) to file a notification with the UCCC
+  administrator (Attorney General) within 30 days and every July 1 (C.R.S. 5-6-202; fee set by the state). Ask your
+  attorney first (Decisions question FEE-UCCC-FILING). The rental wizard warns until this is marked done.
+
 ## B. Before real customers (money, email, texts, legal, accounts)
 
 Order matters: tax answers → money → email/text → the rest. "Live" switches never happen unless you say so in writing.
@@ -242,3 +247,4 @@ on readiness).
 | 2026-10-23 | Vercel "Sensitive" tidy-up | Read-only check of Vercel found two production settings readable by project members. |
 | 2026-10-25 | IRS IRIS TCC, compliance encryption key | Chris asked the app to file and fill federal and state forms (CMP-1, CMP-3). |
 | 2026-10-25 | Vault encryption key, workers' comp rejection form | Records vault (VAULT-2) and insurance (OPS-4). |
+| 2026-10-25 | UCCC consumer-lease notification | Late-fee law research: Colorado's UCCC covers household rentals over 4 months. |

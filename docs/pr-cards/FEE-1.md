@@ -6,6 +6,7 @@ before DEC-2 turns on the $5 starting value for new rentals.** Risk: **money and
 or texts are turned on).
 
 ## Acceptance
+- [ ] Every legal rule in the spec's "Legal rules" section is enforced with a test (class, 10-day minimum for household leases over 4 months, $15 cap, once per bill, payment order, 30-day window, 10-day autopay notice, agreement wording, servicemembers).
 - [ ] No fee without a delivered warning (or Chris's recorded phone call); otherwise a To do to warn or skip.
 - [ ] No fee while any payment is in progress or after a payment made by the fee date; a failed payment gets a fresh warning and a new fee date.
 - [ ] The fee is its own charge on the next bill (or its own bill when the rental ended); the overdue bill's amount never changes.
