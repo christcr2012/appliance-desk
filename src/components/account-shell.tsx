@@ -100,7 +100,7 @@ export function AccountShell({
         <div className="mx-auto flex min-h-16 max-w-screen-2xl items-center gap-3 px-4 sm:px-6">
           <Link href="/account" className="flex min-h-11 items-center gap-3">
             <Image
-              src="/brand/mark.svg"
+              src="/brand/badge.svg"
               alt=""
               width={32}
               height={32}
