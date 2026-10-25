@@ -4723,6 +4723,7 @@
     },
     {
       "id": "DEC-1",
+<<<<<<< HEAD
       "title": "Decisions & reviews center: every open decision runs on a researched starting value and waits as an in-app question for Chris, CPA, attorney or translator",
       "batch": "DEC",
       "dependencies": [],
@@ -4761,30 +4762,31 @@
       "tests": [],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/DEC-2.md"
-    },
-    {
-      "id": "FEE-1",
-      "title": "Fair late fees: warning first, never during a payment in progress, fee as its own charge on the next bill",
-      "batch": "AR",
+=======
+      "title": "Decisions & reviews center: registry, answers with evidence, questionnaire forms, import, provisional tax values",
+      "batch": "DEC",
       "dependencies": [
-        "BILL-1"
+        "AR-0"
       ],
       "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
-      "budget": 450,
+      "migration": "20261026030000_decision_record",
+      "budget": 460,
       "units": [
-        "FEE-1"
+        "DEC-1"
       ],
       "evidence": [
-        "docs/build-specs/engines/LATE-FEES.md",
-        "src/domains/billing/late-fees.ts",
-        "src/domains/billing/reminders.ts"
+        "docs/designs/DECISIONS-CENTER.md",
+        "docs/build-specs/engines/DECISIONS-CENTER.md",
+        "src/domains/tax/setup.ts",
+        "src/domains/tax/engine.ts"
       ],
       "tests": [
-        "tests/late-fees-fair-integration.test.ts"
+        "tests/decisions-registry.test.ts",
+        "e2e/decisions.spec.ts"
       ],
       "readiness": "CARD_READY",
-      "plannedCard": "docs/pr-cards/FEE-1.md"
+      "plannedCard": "docs/pr-cards/DEC-1.md"
+>>>>>>> 13d8f794 (Build specs: Decisions & reviews center (DEC-1) spec and card)
     }
   ],
   "enhancements": [
