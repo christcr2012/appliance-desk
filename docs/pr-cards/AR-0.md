@@ -43,7 +43,7 @@ reviewable only against the kit.*
 6. **Shared domain reads** (no UI yet): `pastDueInvoiceWhere(now)` in `src/domains/billing/index.ts` and switch
    `getRevenueDashboard` to it (TODAY 2); `src/domains/billing/bill-status.ts` and `bills-list.ts` (MONEY-BILLS 2–3,
    plus the optional `customerId` from CUSTOMER-RECORD 4.5); `src/domains/dashboard/weekly-health.ts`;
-   `ExceptionItem.contact` and `ExceptionItem.customerId` (TODAY 2, CUSTOMER-RECORD 3);
+   `ExceptionItem.contact` (TODAY 2); `markTodoItems` refactor and the scoped `list*` parameter (CUSTOMER-RECORD 3);
    `src/domains/exceptions/inbox.ts`; `src/domains/customers/record.ts`. All their tests from the three specs.
 7. **Today** per `screens/TODAY.md`.
 8. **Money › Bills** per `screens/MONEY-BILLS.md`.
@@ -63,7 +63,8 @@ reviewable only against the kit.*
 - [ ] Roles unchanged: STAFF sees the existing operational customer view and no money on Today; STAFF still refused
       on Bills (browser specs).
 - [ ] No business behavior changed: the same server actions are called (review the diff: no edits under
-      `src/domains/**` except the new read-only functions and the two optional `ExceptionItem` fields).
+      `src/domains/**` except the new read-only functions, the optional `ExceptionItem.contact`, the optional `scope`
+      parameter and the `markTodoItems` move).
 - [ ] Browser specs pass at the 5 sizes with axe (README definition of done).
 - [ ] `ci` green at the exact head; every review comment read and answered.
 

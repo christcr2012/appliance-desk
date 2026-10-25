@@ -73,18 +73,39 @@ Rules (pure functions, unit-tested):
   Denver (`businessDayBounds(dueDate).end`). Return `null` when fewer than 3 bills counted (stat hidden).
 - Select only the fields needed. One `Promise.all`; no per-row queries.
 
-**Next step (needs one small change in To do):** add optional `customerId?: string` to `ExceptionItem`
-(`src/domains/exceptions/rules.ts`, the same change that adds `contact` in TODAY.md section 2). Fill it wherever an
-item is built from a row that has a `customerId` (bill, agreement, visit, service request, deposit, refund, held
-payment). Add the field to the existing `select`s only. Then:
+**Next steps for this customer (customer-scoped, so the business-wide cap never hides them).** Today's
+`getExceptionOverview()` caps each category at 50 rows business-wide *inside its queries*
+(`EXCEPTION_CATEGORY_CAP`), so filtering its result by customer would miss this customer's items when the business has
+many. Instead build a scoped read that reuses the same item builders and the same snooze handling:
 
-```ts
-// src/domains/customers/record.ts
-export async function getCustomerNextSteps(customerId: string, now = new Date()): Promise<ExceptionItem[]>
-```
-= `(await getExceptionOverview(now)).items` filtered by `item.customerId === customerId`, sorted with `sortInbox`
-(TODAY.md section 3), first 3. If `getExceptionOverview` does not accept `now`, call it without. The page uses the
-same `inboxActions(item)` as Today, so buttons are identical everywhere.
+1. **Pure refactor (no behavior change):** in `src/domains/exceptions/index.ts`, move the tail of
+   `getExceptionOverview()` — from `const ordered = sortExceptions(visibleItems)…` to the `return` — into
+   `export async function markTodoItems(items: ExceptionItem[], now: Date, canViewFinance: boolean):
+   Promise<{ items: ExceptionItem[]; snoozed: ExceptionItem[] }>` and call it from `getExceptionOverview()`. The
+   existing To do tests must pass unchanged.
+2. Add an optional last parameter `scope?: { customerId?: string }` to `listUnsignedAgreements`,
+   `listSignedDeliveryAttention`, `listRentalEndingSoon`, `listPickupUnscheduled`, `listSigningPaymentAttention` and
+   `listDepositDecisionAttention`. When `scope.customerId` is set, add `customerId` (or `agreement: { customerId }`,
+   whichever the function's root model has) to the query's `where` **before** `take`. Existing calls pass nothing, so
+   Today is unchanged.
+3. `src/domains/customers/record.ts`:
+   ```ts
+   export async function getCustomerNextSteps(customerId: string, now = new Date()): Promise<ExceptionItem[]>
+   ```
+   `await requireRole("OWNER", "ADMIN")`, then in one `Promise.all`, each with `take: 3` and `customerId` in the
+   `where`:
+   - past-due bills: the same `where` and `select` the overview uses for `PAST_DUE_INVOICE`, plus `customerId`,
+     built with `pastDueInvoiceException`;
+   - overdue visits: the overview's `OVERDUE_JOB` query + `customerId`, built with `overdueJobException`;
+   - unreviewed service requests: the overview's `UNREVIEWED_MAINTENANCE_REQUEST` query + `customerId`, built with
+     `unreviewedMaintenanceRequestException`;
+   - the six `list*` functions above with `3, now` (where they take `now`) and `{ customerId }`.
+   Flatten, `markTodoItems(items, now, true)`, keep `.items` (not snoozed), `sortInbox` (TODAY.md 3), first 3.
+4. Test `tests/customer-next-steps-integration.test.ts` (throwaway Postgres): create 55 past-due bills for other
+   customers that are older than this customer's one → this customer still gets its past-due item; a snoozed item is
+   not returned; customer B's items never appear for customer A.
+
+The page renders each with the same `inboxActions(item)` as Today, so buttons are identical everywhere.
 
 ## 4. Layout
 
@@ -230,7 +251,6 @@ description, the "Billing and referrals" title and the "Notes, activity and comm
 - `tests/customer-summary-integration.test.ts` (throwaway Postgres): owed equals the Bills screen's open total for
   that customer; monthly rent sums only ACTIVE agreements; next bill is the earliest; customer A's summary never
   includes customer B's bills or agreements.
-- `tests/exceptions-contact.test.ts` (from TODAY.md) also asserts `customerId` on PAST_DUE_INVOICE.
 - `e2e/customer-record.spec.ts`: owner opens a seeded customer — phone shows Activity first and the bottom bar;
   desktop shows Rentals + right rail; old `?tab=service` lands on Visits; staff still sees the operational view and
   no money; axe + 5 sizes; keyboard reaches Take payment first in the header.

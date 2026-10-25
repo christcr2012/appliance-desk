@@ -722,3 +722,8 @@ consumables price can be checked against what the parts really cost. Not in W-22
 
 - **Trusted-device option for sign-in codes** (skip the second step on a device the person marks as theirs) and **customer new-device notices**: designed in ACC, not built. Needs Chris's go-ahead.
 - **Job roles on /api download/upload routes**: today those routes use the access level only.
+
+- **Bills "Being confirmed" status (2026-10-25, from the build specs review).** Bank payments (ACH) take days to
+  settle, but the payment paths only record a payment once it succeeds or fails, so the app cannot show "the bank is
+  confirming this bill". Showing it needs the Stripe payment paths to record pending payments first. Needs Chris's
+  go-ahead as new payment-path scope.

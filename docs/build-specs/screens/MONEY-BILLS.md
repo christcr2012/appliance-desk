@@ -1,19 +1,20 @@
 # Screen spec — Money › Bills (today's "Billing")
 
 Route: **`/desk/billing` (same URL)**. Visual targets: `samples/InvoicesPhone.dc.html`, `samples/InvoicesDesktop.dc.html`.
-Built in **AR-0** (reference screen); AR-3 adds inline payment sheets and moves deposits/processing to Payments.
+Built in **AR-0** (reference screen); AR-3 adds inline payment sheets and moves deposits and "Waiting for Stripe" to
+Payments.
 Roles: OWNER and ADMIN only (`requireRole("OWNER","ADMIN")`, unchanged). Everyday word: **bill** (never "invoice").
 
 ## 1. URL parameters (`src/app/desk/billing/params.ts`, zod)
 
 | Param | Values | Default |
 |---|---|---|
-| `status` | `open`, `past-due`, `processing`, `paid`, `closed`, `drafts` | `open` |
+| `status` | `open`, `past-due`, `paid`, `closed`, `drafts` (old value `processing` falls back to `open`) | `open` |
 | `q` | text ≤ 80 chars (customer name, company, email, or bill number digits) | — |
 | `type` | `rent`, `sale`, `other` (multi, comma-joined) | all |
 | `due` | `this-month`, `last-month`, `last-30`, `custom` (+ `from`,`to` YYYY-MM-DD) | — |
 | `autopay` | `on`, `off` | — |
-| `sort` | `due-asc`, `due-desc`, `owed-desc`, `customer-asc` | `due-asc` for open/past-due/processing/drafts; `due-desc` for paid/closed |
+| `sort` | `due-asc`, `due-desc`, `owed-desc`, `customer-asc` | `due-asc` for open/past-due/drafts; `due-desc` for paid/closed |
 | `view` | built-in: `by-customer`, `deposits`, `waiting` (legacy tabs kept until AR-3) | — |
 | `open` | a bill id (desktop side panel) | — |
 | `cursor` | see KIT 5.1 | — |
@@ -25,24 +26,25 @@ Roles: OWNER and ADMIN only (`requireRole("OWNER","ADMIN")`, unchanged). Everyda
 ## 2. Status rules (one pure function, `src/domains/billing/bill-status.ts`)
 
 ```ts
-export type BillTab = "open" | "past-due" | "processing" | "paid" | "closed" | "drafts";
+export type BillTab = "open" | "past-due" | "paid" | "closed" | "drafts";
 export function billTabWhere(tab: BillTab, now: Date): Prisma.InvoiceWhereInput
 export function billPill(bill: { status: InvoiceStatus; dueDate: Date | null; amountDueCents: number;
-  amountPaidCents: number; processing: boolean }, now: Date): { label: string; tone: Tone }
+  amountPaidCents: number }, now: Date): { label: string; tone: Tone }
 ```
 - **open:** status in `OPEN, PARTIALLY_PAID, DELINQUENT, FAILED` and `amountDueCents > amountPaidCents`.
 - **past-due:** open AND `dueDate < start of today (Denver, businessDayBounds(now).start)`.
-- **processing:** open AND a `ProviderOperation` exists with `subjectType: "Invoice"`, `subjectId = invoice.id`,
-  `status in (PENDING, UNKNOWN)`. Tab hidden when its count is 0.
+- **No "Processing" tab in AR-0.** Nothing in the payment paths records "the bank is still confirming this bill's
+  payment" today (no `ProviderOperation` is written for invoice payments, and payments are recorded only once they
+  succeed or fail). A tab built on missing evidence would always be empty, so it is left out. Unfinished Stripe
+  requests stay visible through the existing "Waiting for Stripe" view (`?view=waiting`). Recording that evidence is
+  new payment-path work — it is on `docs/ROADMAP.md`, not in this card.
 - **paid:** `PAID`. **closed:** `VOID, WRITTEN_OFF, REFUNDED`. **drafts:** `DRAFT` (tab hidden when 0).
-- **Pill** (first match wins): processing → "Being confirmed" (info); FAILED → "Payment failed" (attention);
+- **Pill** (first match wins): FAILED → "Payment failed" (attention);
   past due → `"{n} day(s) late"` where n = calendar days between the due date and today in Denver (attention);
   due today → "Due today" (neutral); open with due date → `"Due {formatShortDate(dueDate)}"` (neutral);
   open without due date → "Open" (neutral); PAID → "Paid" (good); VOID → "Cancelled" (neutral);
   WRITTEN_OFF → "Given up" (neutral); REFUNDED → "Refunded" (neutral); DRAFT → "Draft" (neutral).
-- InfoTips on pills (add to `GLOSSARY`, shape `{ title, description }`): `"bill-processing"` { "Being confirmed",
-  "The bank is confirming this payment. It usually takes 1–3 business days. Nothing for you to do." },
-  `"bill-failed"` { "Payment failed", "The card or bank refused the payment. Take payment again or send a reminder." },
+- InfoTips on pills (add to `GLOSSARY`, shape `{ title, description }`): `"bill-failed"` { "Payment failed", "The card or bank refused the payment. Take payment again or send a reminder." },
   `"bill-given-up"` { "Given up", "You decided not to collect this bill. It still counts in your records." }.
 
 ## 3. Data (new read functions, `src/domains/billing/bills-list.ts`)
@@ -50,7 +52,7 @@ export function billPill(bill: { status: InvoiceStatus; dueDate: Date | null; am
 ```ts
 export type BillRow = { id: string; number: number; customerId: string; customerName: string; companyName: string | null;
   forText: string; amountCents: number; owedCents: number; status: InvoiceStatus; dueDate: Date | null;
-  paidCents: number; processing: boolean; autopay: boolean; createdAt: Date };
+  paidCents: number; autopay: boolean; createdAt: Date };
 export async function getBills(params: BillsParams, now = new Date()): Promise<{ rows: BillRow[]; nextCursor: string | null; capped: boolean }>
 export async function getBillCounts(params: Omit<BillsParams, "status">, now = new Date()): Promise<Record<BillTab, number>>
 export async function getBillTotals(params: BillsParams, now = new Date()): Promise<{ count: number; owedCents: number }>
@@ -73,7 +75,7 @@ export async function getBillTotals(params: BillsParams, now = new Date()): Prom
 2. Area tabs: **not on this page.** `src/app/desk/billing/layout.tsx` keeps rendering the existing
    `<SectionTabs section="money" />` in AR-0; AR-1 replaces every area layout's tabs at once with the kit `AreaTabs`
    (NAVIGATION.md), so all Money pages change together.
-3. `StatusTabs` label "Bill status": `Open {n}`, `Past due {n}`, `Processing {n}` (hide 0), `Paid`, `Closed`,
+3. `StatusTabs` label "Bill status": `Open {n}`, `Past due {n}`, `Paid`, `Closed`,
    `Drafts {n}` (hide 0). Paid/Closed show no count.
 4. `Toolbar`: search placeholder "Name or bill number", label "Search bills"; filters Type (multi: "Rental bills",
    "Shop sales", "Other"), Due date (date presets), Autopay (select: "On", "Off"); sort options "Oldest due first",
@@ -133,8 +135,7 @@ layout with a one-line title "Who owes money"; `?view=deposits` renders the exis
 
 - `tests/bill-status.test.ts`: tab `where` builders (snapshot of the where objects) and the pill table, including
   DST and "due today" at 23:59 / 00:01 Denver.
-- `tests/bills-list-integration.test.ts` (throwaway Postgres): each tab returns the right bills; processing via a
-  pending ProviderOperation; search by number and name; cursor returns each bill once across pages; counts match rows.
+- `tests/bills-list-integration.test.ts` (throwaway Postgres): each tab returns the right bills; search by number and name; cursor returns each bill once across pages; counts match rows.
 - `tests/billing-params.test.ts`: zod defaults, legacy `filter=` redirects, invalid values fall back.
 - `e2e/money-bills.spec.ts`: owner opens Past due, opens side panel (desktop), phone card buttons present, staff gets
   the existing access refusal; axe + 5 sizes.
