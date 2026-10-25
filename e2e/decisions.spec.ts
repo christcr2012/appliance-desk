@@ -153,6 +153,11 @@ test("decisions: admins read without buttons; staff are sent away", async ({ bro
     await loginAs(a, email, password);
     await a.goto("/desk/today");
     if (new URL(a.url()).pathname === "/desk/security/setup") await completeTwoFactorSetup(a, password);
+    // The read itself, as this admin, straight from the domain (reports the real error if it fails).
+    const { listDecisions } = await import("../src/domains/decisions");
+    const read = await listDecisions(adminId).then((cards) => `${cards.length} cards`, (error: unknown) =>
+      `failed: ${error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 600) : String(error)}`);
+    expect(read).toMatch(/^\d+ cards$/);
     // The server's answer first (no scripts run): the page itself, with cards and without any owner button.
     const served = await a.request.get("/desk/settings/decisions?for=CPA", { maxRedirects: 0 });
     const html = await served.text();

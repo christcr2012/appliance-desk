@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { reportBackgroundError } from "@/lib/report-error";
 import { addBusinessDays, businessDateFromKey, businessDateKey, businessDaysBetween } from "@/lib/business-date";
 import { EMPTY_PREFERENCES, getWorkspace } from "@/domains/workspace";
-import { listDecisions } from "./index";
+import { DECISION_SUBJECTS } from "./registry";
+import { decisionState } from "./rules";
 
 /**
  * The "Decisions waiting" card on Today (DEC-1b, spec section 6): owner only, low priority, shown at most one day in
@@ -38,6 +39,21 @@ async function noteShown(userId: string, todayKey: string) {
         '{decisionsCardShownOn}', to_jsonb(${todayKey}::text), true)`;
 }
 
+/**
+ * How many questions are not confirmed: one light query (the newest record per question) instead of reading every
+ * setting, because Today loads often. Same state rule as the Decisions & reviews screen.
+ */
+async function waitingCount(): Promise<number> {
+  const newest = await prisma.decisionRecord.findMany({
+    distinct: ["subjectId"],
+    orderBy: [{ subjectId: "asc" }, { createdAt: "desc" }, { id: "desc" }],
+    select: { subjectId: true, kind: true, value: true },
+  });
+  const known = new Set(DECISION_SUBJECTS.map((subject) => subject.id));
+  const confirmed = newest.filter((row) => known.has(row.subjectId) && decisionState(true, [row]) === "CONFIRMED").length;
+  return DECISION_SUBJECTS.length - confirmed;
+}
+
 /** The number of decisions waiting when the card should show today, otherwise null. Never throws (Today must load). */
 export async function decisionsTodayCount(owner: { id: string; role: string }, now = new Date()): Promise<number | null> {
   if (owner.role !== "OWNER") return null;
@@ -45,7 +61,7 @@ export async function decisionsTodayCount(owner: { id: string; role: string }, n
     const todayKey = businessDateKey(now);
     const workspace = await getWorkspace(owner.id);
     if (!decisionsCardDue(workspace.prefs.decisionsCardShownOn, todayKey)) return null;
-    const waiting = (await listDecisions(owner.id)).filter((card) => card.state !== "CONFIRMED").length;
+    const waiting = await waitingCount();
     if (waiting === 0) return null;
     if (workspace.prefs.decisionsCardShownOn !== todayKey) await noteShown(owner.id, todayKey);
     return waiting;
