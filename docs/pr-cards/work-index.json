@@ -5744,6 +5744,84 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/FEE-1.md"
+    },
+    {
+      "id": "FEETAX-1",
+      "title": "Optional, separately stated delivery/installation lines and per-place fee tax rules",
+      "batch": "FEETAX",
+      "dependencies": [
+        "TFA-1",
+        "ZONE-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (OrderServiceChoice, HAUL_AWAY, optionalSeparatedTreatment)",
+      "budget": 450,
+      "units": [
+        "FEETAX-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/FEE-TAXABILITY.md",
+        "docs/research/2026-10-25-fee-taxability.md",
+        "docs/research/2026-10-25-tax-jurisdictions-50mi.md"
+      ],
+      "tests": [
+        "tests/fee-taxability.test.ts",
+        "tests/order-service-choice-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/FEETAX-1.md"
+    },
+    {
+      "id": "FEETAX-2",
+      "title": "Delivery-area tax readiness for every place within 50 miles and beyond",
+      "batch": "FEETAX",
+      "dependencies": [
+        "FEETAX-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (JurisdictionReadiness, JurisdictionDeliveryCount)",
+      "budget": 450,
+      "units": [
+        "FEETAX-2"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/FEE-TAXABILITY.md",
+        "docs/research/2026-10-25-fee-taxability.md",
+        "docs/research/2026-10-25-tax-jurisdictions-50mi.md",
+        "docs/build-specs/screens/SERVICE-AREA-MAP.md"
+      ],
+      "tests": [
+        "tests/delivery-readiness.test.ts",
+        "e2e/delivery-area.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/FEETAX-2.md"
+    },
+    {
+      "id": "ZONE-1",
+      "title": "Service area map, delivery zones detected from the address, pickup always offered",
+      "batch": "FEETAX",
+      "dependencies": [],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (ServiceAddress coordinates, deliveryZones/zoneCenter/zoneDistanceMethod settings)",
+      "budget": 500,
+      "units": [
+        "ZONE-1"
+      ],
+      "evidence": [
+        "docs/build-specs/screens/SERVICE-AREA-MAP.md",
+        "docs/research/2026-10-25-tax-jurisdictions-50mi.md",
+        "docs/OWNER-INPUTS.md"
+      ],
+      "tests": [
+        "tests/delivery-zone.test.ts",
+        "tests/geocode.test.ts",
+        "tests/estimate-zone-integration.test.ts",
+        "e2e/service-area-map.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/ZONE-1.md"
     }
   ],
   "enhancements": [

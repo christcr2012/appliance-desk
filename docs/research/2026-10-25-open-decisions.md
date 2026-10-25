@@ -122,4 +122,17 @@ Sources: `docs/research/2026-10-25-tax-fee-rules.md`, `docs/research/2026-10-25-
 | FEE-AUTOPAY-CONSENT | Fee named in the agreement and mandate + 10-day notice is enough; inside 10 days → separate non-auto bill | Attorney |
 | FEE-VISA-CHANGE | Treat a disclosed fee as needing advance notice (10 days) | Attorney |
 | FEE-SCRA | No automatic fee for flagged servicemembers; never take an appliance back without a court order | Attorney |
+| FEETAX-GREELEY-LEASE | Greeley taxes rentals ≤36 months at 4.11% even though tax was paid at purchase (taxed until confirmed) | Greeley Sales Tax / CPA |
+| FEETAX-GREELEY-SERVICE | Optional, separately stated delivery/installation/pickup/haul-away taxed in Greeley until confirmed | Greeley Sales Tax / CPA |
+| FEETAX-GREELEY-OTHER | Damage waiver, late fee, admin fee taxed in Greeley until confirmed | Greeley Sales Tax / CPA |
+| FEETAX-SOURCING | Rentals taxed by the place the customer keeps the appliance | CPA |
+| FEETAX-LOCAL-3YR | Pay-at-purchase also covers state-collected county/district taxes on rent | CPA |
+| FEETAX-SR46 | New Special Rule 46 (Leases, effective 2026-08-30) doesn't change the above | CPA |
+| FEETAX-ADMIN-FEE | Keep the required $45 setup fee (IN-74); option to fold it into optional installation to lower tax | Owner |
+| ZONE-NAMES | Zone names "Local — free delivery", "Nearby", "Extended", "Outside our delivery area — pickup only" | Owner |
+| ZONE-DISTANCE | Zones measured in a straight line from central Greeley (matches the map; IN-06 said driving miles — a 50-mile circle can be 60+ road miles) | Owner |
+| ZONE-PICKUP-PRICE | Picking the appliance up at the end costs the same as delivery in that zone | Owner |
+| ZONE-PUBLISH-PRICES | Delivery prices hidden on the website until Chris switches them on (IN-06) | Owner |
+| FEETAX-LABOR-RATE | Hourly cost for the price-vs-cost check (no source; starts at the IRS mileage rate for miles and $0 labor until set) | Owner |
+| FEETAX-CITY-LICENSES | Don't deliver into a city that needs its own license until Chris has it (per the 50-mile table) | Owner / CPA |
 | FEE-TAX | Late fee tracked as its own line; Colorado treats a separately stated late fee as not taxed (state), Greeley careful: taxed (see DEC-2) | CPA |

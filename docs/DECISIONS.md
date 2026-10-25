@@ -1,3 +1,20 @@
+## October 25 — Service area becomes a zone map; delivery always optional (Chris)
+
+Website and app use delivery zones measured from central Greeley instead of city/ZIP lists: Local 0–15 miles
+(guaranteed free), Nearby 15–30 ($75), Extended 30–50 ($125), none beyond 50 — pickup by arrangement always offered.
+The zone is found from the address (free U.S. Census geocoder) and put on the estimate. Map is our own drawing (no paid
+map service). Starting values: straight-line distance (IN-06 said driving; question ZONE-DISTANCE), zone names, prices
+hidden on the website until Chris turns them on. Spec ZONE-1.
+
+## October 25 — Fees that cover delivery and installation with the least tax (Chris)
+
+Chris asked for fees that offset delivery and installation costs with the least tax to collect, for every place within
+50 miles of Greeley and safely beyond. Design (FEETAX-1/2): keep paying tax at purchase (no state tax on rent or rental
+fees); delivery, installation, pickup and haul-away are separate optional lines with a free do-it-yourself choice shown
+at ordering; the $45 setup fee stays (IN-74) with a lower-tax option offered; service prices kept near real cost (inflating them is not allowed); every
+delivery address must have its places' tax rules and any city license set up before it can be quoted. Greeley's code
+couldn't be read, so Greeley rent and fees are taxed until Greeley answers in writing (owner checklist row).
+
 ## October 25 — One late-fee rule for everyone: more than 10 days late (Chris)
 
 "We should just follow that rule for all late fees for simplicity." Every rental: a $5 late fee only when a bill is not

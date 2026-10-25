@@ -1,3 +1,12 @@
+## October 25 (evening) — PR #596 merged; fee tax plan added (docs only)
+
+Merged #596 (wave 2 build specs, self-reviewed: Codex out of usage; 8 findings fixed). Late fees now one rule for every
+rental: $5 only after a bill is more than 10 days late, ≤ $15, once, after notice. New: FEETAX-1 (optional, separately
+stated delivery/installation/pickup/haul-away; per-place fee tax rules), FEETAX-2 (tax readiness for every delivery
+address, 50-mile place list) and ZONE-1 (website zone map; zone found from the address and put on the estimate; pickup
+always offered). Greeley's code couldn't be fetched — its fee answers wait on a written reply (checklist).
+Branch `ai/claude/fee-taxability`. Next: build AR-0a, DEC-1a, MCP-1, MCP-10a.
+
 ## October 25 (afternoon) — Back-office plans added (docs only)
 
 Chris asked for the app to be his whole back office. Added designs, research (all sourced, accessed 2026-10-25) and
