@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { createShopSale, cancelShopSale, getSaleFormData } from "@/domains/sales";
+import { createShopSale, cancelShopSale, getSaleFormData, returnShopSale } from "@/domains/sales";
+import { recordManualPayment } from "@/domains/billing";
 import { setRetiredPlan, reopenRetiredPlan } from "@/domains/inventory/retired-plans";
 import { addBookTaxEvidence, disposedValueBefore } from "@/domains/books/fixed-assets";
 import { listOpenResaleTaxFollowUps, markResaleTaxFollowUpDone, listShopSales } from "@/domains/sales";
@@ -216,6 +217,30 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     expect(waiting.map((r) => r.id).sort()).toEqual([...new Set(open.map((r) => r.invoiceId))].sort());
     await markResaleTaxFollowUpDone(ownerId, (await snapshot(sale.invoiceId)).id);
     expect((await listShopSales(ownerId, { followUpOnly: true })).map((r) => r.id)).not.toContain(sale.invoiceId);
+  });
+
+  it("taking a paid used appliance back refunds everything, restores its book value, reopens its plan and closes the tax note, once", async () => {
+    const id = await retired({ bookValueCents: 6000 });
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 40000 }] });
+    const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: sale.invoiceId }, select: { customerId: true } });
+    await recordManualPayment(invoice.customerId, ownerId, { amountCents: sale.amountDueCents, method: "cash", invoiceId: sale.invoiceId, refuseOverpayment: true });
+    expect((await prisma.bookAsset.findUniqueOrThrow({ where: { applianceId: id } })).disposedOn).not.toBeNull();
+
+    const back = await returnShopSale(ownerId, sale.invoiceId, "Buyer returned it");
+    expect(back).toMatchObject({ refundedCents: sale.amountDueCents, alreadyReturned: false });
+    expect((await prisma.bookAsset.findUniqueOrThrow({ where: { applianceId: id } })).disposedOn).toBeNull();
+    expect(await prisma.journalEntry.count({ where: { sourceType: "APPLIANCE", sourceId: id, eventKind: { startsWith: "SOLD_VOIDED:" } } })).toBe(1);
+    expect(await prisma.retiredAppliancePlan.findUniqueOrThrow({ where: { applianceId: id } })).toMatchObject({ doneOn: null });
+    const note = await snapshot(sale.invoiceId);
+    expect(note.cancelledAt).not.toBeNull();
+    expect((await listOpenResaleTaxFollowUps()).map((r) => r.id)).not.toContain(note.id);
+    expect(await prisma.auditLog.count({ where: { action: "sale.return", entityId: sale.invoiceId } })).toBe(1);
+
+    // A second tap changes nothing, and the same appliance can be sold again.
+    expect(await returnShopSale(ownerId, sale.invoiceId, "Buyer returned it")).toMatchObject({ alreadyReturned: true });
+    expect(await prisma.journalEntry.count({ where: { sourceType: "APPLIANCE", sourceId: id, eventKind: { startsWith: "SOLD_VOIDED:" } } })).toBe(1);
+    const again = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 30000 }] });
+    expect(again.invoiceId).not.toBe(sale.invoiceId);
   });
 
   it("accountant-confirmed history freezes the estimate with the seller's costs, and later evidence never rewrites it", async () => {
