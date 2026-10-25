@@ -101,8 +101,10 @@ Row click opens the **SidePanel** (`?open=`). Below the table the summary line.
 
 **Row actions (⋯):** "Take payment" (link as above), "Record cash or check" (link
 `/desk/billing/customer/{customerId}#record-payment`), "View customer" (`/desk/customers/{customerId}`),
-"Download PDF" (only if the existing invoice page has a PDF route — otherwise omit), "Give up on this bill…" (link to
-the bill page's existing write-off section; never a direct action here).
+"Frozen bill record" (only for PAID, VOID, WRITTEN_OFF and REFUNDED bills: the existing
+`/api/documents/invoice/{id}` link, new tab), "Give up on this bill…" (open bills with something owed and not already
+given up: link to `/desk/billing/customer/{customerId}#bill-{id}`, the statement row that holds today's
+`WriteOffButton`; never a direct action here — AR-3 later moves it into a Sheet on the bill page).
 
 **Bulk (desktop):** none in AR-0 (no bulk money actions). AR-3 may add "Export selected".
 
@@ -130,6 +132,8 @@ layout with a one-line title "Who owes money"; `?view=deposits` renders the exis
 
 - Wrap `PaymentLinkPanel` on `/desk/billing/customer/[id]/invoice/[invoiceId]` in `<div id="take-payment">`.
 - Wrap `RecordPaymentForm` on `/desk/billing/customer/[id]` in `<div id="record-payment">`.
+- On the same statement page, give each invoice `<li>` (the row that renders `WriteOffButton`) an `id` attribute of `bill-` + the invoice id
+  and `className` `scroll-mt-20` so the anchor lands below the top bar.
 
 ## 8. Tests
 

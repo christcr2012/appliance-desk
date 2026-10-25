@@ -4420,7 +4420,9 @@
       "title": "Money area: overview, invoices work queue, payments, invoice record",
       "batch": "AR",
       "dependencies": [
-        "AR-2"
+        "AR-0",
+        "AR-1",
+        "AR-11"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
       "migration": "none",
@@ -4430,13 +4432,18 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/billing/page.tsx"
+        "docs/build-specs/screens/MONEY-AREA.md",
+        "src/app/desk/billing/customer/[id]/invoice/[invoiceId]/page.tsx",
+        "src/domains/billing/payment-status.ts"
       ],
       "tests": [
-        "tests/ar3-money-area.test.ts",
-        "e2e/ar3-money.spec.ts"
+        "tests/money-overview-integration.test.ts",
+        "tests/payment-tabs.test.ts",
+        "tests/payments-list-integration.test.ts",
+        "tests/bill-actions.test.ts",
+        "e2e/money-area.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-3.md"
     },
     {

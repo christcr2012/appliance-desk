@@ -192,9 +192,17 @@ applianceType: { name } } } }` (extend the select only; keep 25 per page). One c
   (info), SCHEDULED `"Starts {formatShortDate(startDate)}"` (info), ACTIVE "Active" (good), ENDED "Ended" (neutral), CANCELLED "Cancelled"
   (neutral).
 - Appliance chips: one per assignment, `"{type name} {assetNumber}"`, each a link to `/desk/inventory/{appliance.id}`.
-- Automation line (ACTIVE only, small `text-ink-soft`, with a ⚙ icon): autopay → `"Automatic: {rent} is charged to
-  the card on file on the {ordinal day of nextBillingDate} of each month."`; no autopay → `"Automatic: a bill for
-  {rent} is sent on the {ordinal} of each month."` (`ordinal` helper: 1st, 2nd, 3rd, 4th…; put it in
+- Billing line (ACTIVE only). Also select `stripeSubscriptionId` and `billingBlockedReason` on the agreement. Rules
+  (first match wins):
+  1. `billingBlockedReason` set → attention line (no ⚙): "Monthly billing isn't running for this rental." + link
+     button "See why" → `/desk/agreements/{id}`. (The To do item `BILLING_BLOCKED` explains the reason; never print the
+     stored reason code.)
+  2. `stripeSubscriptionId` set and `nextBillingDate` set → AutomationLine: autopay → `"Automatic: {rent} is billed
+     and charged to the card on file on the {ordinal day of nextBillingDate} of each month."`; no autopay →
+     `"Automatic: a {rent} bill is made on the {ordinal} of each month."` (say nothing about how it is paid).
+  3. otherwise → neutral line "Monthly billing hasn't started yet." (no ⚙).
+  Unit-test the three cases. Billing starts or is blocked by `startRecurringBillingForAgreement`
+  (`src/domains/billing/checkout.ts`); this line only reports what is stored. (`ordinal` helper: 1st, 2nd, 3rd, 4th…; put it in
   `src/lib/business-date.ts`, unit-test 1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 31).
 - Card is a link to `/desk/agreements/{id}`. Pagination (existing component) at the end. Empty: `EmptyState`
   "No rentals yet" + action "New rental".

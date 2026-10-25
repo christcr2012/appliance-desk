@@ -268,9 +268,14 @@ Build `Icon` first (before StatusPill) in AR-0a step 4.
 ```
 - URL is the state: `status`, `q`, filter params, `sort`, `view`, `open`, `cursor`. Parse with one zod schema per page
   (`src/app/desk/<route>/params.ts`), unknown values fall back to defaults (never throw).
-- **Cursor rule:** order by `(sortColumn, id)`; page size 50; `cursor` = base64url JSON of the last row's sort value
-  and id; "Load more" link adds the next cursor; the server renders all rows from the start up to the new cursor
-  (simple, no client cache) capped at 500 rows, after which the link says "Narrow your filters to see more".
+- **Cursor rule ("Load more" grows the window):** order by `(sortColumn, id)`; page size 50. With no `cursor` the
+  server renders the first 50 rows. `cursor` = base64url JSON `{ v, id }` of the **last row currently shown**. With a
+  cursor the server renders every row from the start **through the cursor row, plus the next 50 rows after it**
+  (one query: `take: rowsThroughCursor + 50`, or two queries — rows up to and including the cursor, then 50 after it;
+  either is fine). The new "Load more" link carries the new last row as its cursor. Show "Load more" only when one
+  more row exists (fetch 51 and drop the extra). Cap the window at 500 rows; at the cap the link is replaced by the
+  text "Narrow your filters to see more". Test: 120 rows → first render 50, after one Load more 100, after two 120
+  and no link; every row appears exactly once.
 - Counts for StatusTabs come from **one** `groupBy`/`count` query with the same filters except status.
 
 ### 5.2 Record page
