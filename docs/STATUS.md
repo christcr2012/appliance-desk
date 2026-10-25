@@ -1,3 +1,10 @@
+## October 25 — Nightly spend-alert check wired in (in PR, notifies nobody)
+
+The overnight phone-usage job now also runs the spend-alert check as a read-only preview, but only if you have turned the alert rules on
+(Settings → Phone, texts and provider costs). It records how many warnings it found on Desk → Automations; it sends nothing and notifies no one,
+because who gets told and when waits on your budget answers (IN-53, already on the checklist). Proven on throwaway Postgres: nothing checked while rules
+are off; with $120 spend against a $100 critical line it counts a warning and creates no message. Branch `ai/claude/com-telecom-alert-check`.
+
 ## October 24 — COM-N1A: staff can text leads, estimates and signatures (in PR, everything OFF)
 
 Staff now get a "Text message" box on the lead, estimate and agreement screens: it shows the exact words and the masked
