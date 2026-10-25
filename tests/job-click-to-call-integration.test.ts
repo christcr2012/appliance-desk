@@ -128,6 +128,29 @@ describe.skipIf(!enabled)("COM-N2 click-to-call (isolated PostgreSQL)", () => {
     expect(second.status).toBe("NOT_STARTED");
   });
 
+  it("two taps at the same moment make one call; a reused token never starts or reports another record's call", async () => {
+    await prisma.callSession.updateMany({ where: { actorUserId: staffA }, data: { state: "ENDED", endedAt: new Date() } });
+    await prisma.callSession.updateMany({ where: { actorUserId: staffA, outcome: "UNKNOWN" }, data: { outcome: "ANSWERED" } });
+    const p = fake();
+    const results = await Promise.all([
+      startClickToCall(staffA, { subject: job, clientToken: token() }, deps(p)),
+      startClickToCall(staffA, { subject: job, clientToken: token() }, deps(p)),
+      startClickToCall(staffA, { subject: job, clientToken: token() }, deps(p)),
+    ]);
+    expect(results.filter((r) => r.status === "STARTED")).toHaveLength(1);
+    expect(p.createCall).toHaveBeenCalledTimes(1);
+    // same token on a different record is refused, and a finished call is not reported as "calling now"
+    const t = token();
+    await prisma.callSession.updateMany({ where: { actorUserId: staffA }, data: { state: "ENDED", endedAt: new Date() } });
+    const ok = await startClickToCall(staffA, { subject: job, clientToken: t }, deps(fake()));
+    expect(ok.status).toBe("STARTED");
+    await prisma.callSession.updateMany({ where: { actorUserId: staffA }, data: { state: "ENDED", endedAt: new Date() } });
+    const replay = await startClickToCall(staffA, { subject: job, clientToken: t }, deps(fake()));
+    expect(replay).toMatchObject({ status: "NOT_STARTED" });
+    const other = await startClickToCall(owner, { subject: { type: "Lead", id: "no-such-lead" }, clientToken: t }, deps(fake()));
+    expect(other.status).toBe("NOT_STARTED");
+  });
+
   it("the customer is dialed only after the staff member presses 1, using our saved number, and authority is rechecked", async () => {
     await prisma.callSession.updateMany({ where: { accountId }, data: { state: "ENDED", endedAt: new Date(), outcome: "MISSED" } });
     const p = fake();

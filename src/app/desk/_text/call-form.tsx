@@ -1,13 +1,15 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { setClickToCallAction, startCallAction, type TextActionState } from "./actions";
 
 export function CallForm({ type, subjectId, path, customerName, customerPhone, staffPhone, businessNumber }: {
   type: "Job" | "Lead" | "MaintenanceRequest"; subjectId: string; path: string;
   customerName: string; customerPhone: string; staffPhone: string; businessNumber: string;
 }) {
-  const screenId = useId().replace(/[^A-Za-z0-9]/g, "").padEnd(10, "0").slice(0, 26);
+  // A fresh random id for every time this box appears (including after a reload), so an old call can never be mistaken for this one.
+  const [screenId, setScreenId] = useState("");
+  useEffect(() => { setScreenId(crypto.randomUUID().replace(/-/g, "")); }, []);
   const [round, setRound] = useState(0);
   const [state, act, pending] = useActionState<TextActionState, FormData>(async (prev, form) => {
     const result = await startCallAction(prev, form);
@@ -21,7 +23,7 @@ export function CallForm({ type, subjectId, path, customerName, customerPhone, s
     <input type="hidden" name="clientToken" value={`${screenId}r${round}`} />
     <p className="text-sm">Your phone ({staffPhone}) rings first. Press 1 and it connects you to {customerName || "the customer"} at {customerPhone}.
       They see the business number {businessNumber}.</p>
-    <button disabled={pending} className="mt-2 rounded bg-brand px-3 py-1 text-sm text-white disabled:opacity-50">
+    <button disabled={pending || !screenId} className="mt-2 rounded bg-brand px-3 py-1 text-sm text-white disabled:opacity-50">
       {pending ? "Calling…" : "Call from the desk"}</button>
     {state && <p role="status" className="mt-2 text-sm">{state.message}</p>}
   </form>;

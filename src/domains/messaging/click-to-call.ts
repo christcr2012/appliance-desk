@@ -92,14 +92,21 @@ export async function startClickToCall(
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(input.clientToken)) return { status: "NOT_STARTED", reason: "Reload the page and try again." };
   const rootKey = `pending:${actorId}:${input.clientToken}`;
   const prepared = await prisma.$transaction(async (tx) => {
+    // First look only to find the phone account, take its lock, then look again: two taps at the same moment
+    // must queue up here so the second one sees the first call and is refused.
+    const first = await check(tx, actorId, input.subject, now);
+    if (first.ok) await tx.$queryRaw`SELECT "id" FROM "TelecomAccount" WHERE "id" = ${first.ctx.account.id} FOR UPDATE`;
     const earlier = await tx.auditLog.findFirst({ where: { action: "COMMUNICATION_CALL_STARTED", userId: actorId,
-      newValue: { path: ["clientToken"], equals: input.clientToken } }, select: { newValue: true } });
+      newValue: { path: ["clientToken"], equals: input.clientToken } }, select: { newValue: true, entityType: true, entityId: true } });
     const earlierId = (earlier?.newValue as { callSessionId?: string } | null)?.callSessionId;
     const existing = earlierId ? await tx.callSession.findUnique({ where: { id: earlierId }, select: { id: true, state: true } }) : null;
-    if (existing) return { replay: existing } as const;
+    if (existing) {
+      // A token only ever repeats the same call on the same record, and only while that call is still live.
+      if (earlier?.entityType !== input.subject.type || earlier.entityId !== input.subject.id) return { refused: "Reload the page and try again." } as const;
+      return { replay: existing } as const;
+    }
     const c = await check(tx, actorId, input.subject, now);
     if (!c.ok) return { refused: c.reason } as const;
-    await tx.$queryRaw`SELECT "id" FROM "TelecomAccount" WHERE "id" = ${c.ctx.account.id} FOR UPDATE`;
     const { pointId } = await ensureContact(tx, actorId, c.ctx, c.subject, now);
     const thread = await ensureThread(tx, c.ctx, c.subject, pointId, now);
     const session = await tx.callSession.create({ data: { accountId: c.ctx.account.id, businessNumberId: c.ctx.account.number.id,
@@ -112,7 +119,9 @@ export async function startClickToCall(
   if ("refused" in prepared) return { status: "NOT_STARTED", reason: prepared.refused as string };
   if ("replay" in prepared && prepared.replay) {
     const r = prepared.replay;
-    return r.state === "FAILED" ? { status: "NOT_STARTED", reason: "That call did not go through." } : { status: "STARTED", sessionId: r.id };
+    if (r.state === "FAILED") return { status: "NOT_STARTED", reason: "That call did not go through." };
+    if (r.state === "ENDED") return { status: "NOT_STARTED", reason: "That call already finished. Reload the page to start a new one." };
+    return { status: "STARTED", sessionId: r.id };
   }
   if (!("session" in prepared) || !prepared.session) return { status: "NOT_STARTED", reason: "Calling is not available right now." };
   const { session, c } = prepared;
