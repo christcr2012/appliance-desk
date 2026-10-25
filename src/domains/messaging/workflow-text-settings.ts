@@ -14,12 +14,14 @@ import { smsPreview, templateVariables } from "./sms-template";
  */
 export type FamilySetting = {
   key: string; label: string; when: string; group: WorkflowTextFamily["group"];
-  enabled: boolean; approved: boolean; wording: string; sample: string; sampleParts: number;
-  approvedWordingIsStarting: boolean; needsLegalReview: boolean;
+  enabled: boolean; approved: boolean; revision: number | null; wording: string; sample: string; sampleParts: number;
+  approvedWordingIsStarting: boolean; needsLegalReview: boolean; legalReviewed: boolean; legalReason: string | null;
 };
 export type WorkflowTextSettings = {
   policyReady: boolean; policyVersion: number; quietHours: QuietHours; quietHoursIsRecommended: boolean;
   families: FamilySetting[];
+  clickToCall: { enabled: boolean; voiceReady: boolean };
+  renewalWindowDays: number;
 };
 
 function sampleFor(family: WorkflowTextFamily, body: string): { text: string; parts: number } {
@@ -42,23 +44,26 @@ export async function getWorkflowTextSettings(ownerUserId: string): Promise<Work
     const quiet = policy?.quietHours ?? RECOMMENDED_QUIET_HOURS;
     return {
       policyReady: Boolean(policy), policyVersion: settings?.communicationsPolicyVersion ?? 0,
-      quietHours: quiet,
+      quietHours: quiet, renewalWindowDays: policy?.workflowTexts?.renewalWindowDays ?? 60,
+      clickToCall: { enabled: policy?.clickToCallEnabled === true, voiceReady: policy?.voiceRoutingEnabled === true },
       quietHoursIsRecommended: quiet.startMinute === RECOMMENDED_QUIET_HOURS.startMinute && quiet.endMinute === RECOMMENDED_QUIET_HOURS.endMinute,
       families: WORKFLOW_TEXT_FAMILIES.map((family) => {
         const rev = current.find((r) => r.key === family.key);
         const wording = rev?.body ?? family.defaultBody;
         const sample = sampleFor(family, wording);
         return { key: family.key, label: family.label, when: family.when, group: family.group,
-          enabled: policy?.workflowTexts?.families[family.key]?.enabled === true, approved: Boolean(rev),
+          enabled: policy?.workflowTexts?.families[family.key]?.enabled === true, approved: Boolean(rev), revision: rev?.revision ?? null,
           wording, sample: sample.text, sampleParts: sample.parts, approvedWordingIsStarting: rev ? rev.body === family.defaultBody : true,
-          needsLegalReview: Boolean(family.needsLegalReview) };
+          needsLegalReview: Boolean(family.needsLegalReview),
+          legalReviewed: policy?.workflowTexts?.families[family.key]?.legalReviewed === true,
+          legalReason: family.needsLegalReviewReason ?? null };
       }),
     };
   });
 }
 
 type Tx = Prisma.TransactionClient;
-async function updatePolicy(tx: Tx, ownerUserId: string, expectedVersion: number,
+export async function updatePolicy(tx: Tx, ownerUserId: string, expectedVersion: number,
   change: (policy: CommunicationsPolicy) => CommunicationsPolicy, audit: Prisma.InputJsonValue) {
   await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
   const row = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" },
@@ -85,10 +90,40 @@ export async function setWorkflowTextEnabled(
     if (input.enabled) {
       const rev = await tx.communicationTemplateRevision.findFirst({ where: { key: family.key, channel: "SMS", isCurrent: true, approvedAt: { not: null } } });
       if (!rev) throw new Error("Approve the wording before switching this text on.");
+      const row = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { communicationsPolicy: true } });
+      const current = communicationsPolicySchema.safeParse(row?.communicationsPolicy);
+      if (family.needsLegalReview && !(current.success && current.data.workflowTexts?.families[family.key]?.legalReviewed === true)) {
+        throw new Error("This wording needs a professional's review first. Confirm the review below before switching it on.");
+      }
     }
     const version = await updatePolicy(tx, ownerUserId, input.expectedVersion, (p) => ({ ...p,
-      workflowTexts: { families: { ...(p.workflowTexts?.families ?? {}), [family.key]: { enabled: input.enabled } } } }),
+      workflowTexts: { ...p.workflowTexts, families: { ...(p.workflowTexts?.families ?? {}), [family.key]: {
+        enabled: input.enabled, legalReviewed: p.workflowTexts?.families[family.key]?.legalReviewed } } } }),
       { workflowText: family.key, enabled: input.enabled });
+    return { version };
+  });
+}
+
+/**
+ * The Owner confirms that a professional has read this exact wording (collections, refund and renewal texts).
+ * Changing the wording later clears the confirmation and switches the text off.
+ */
+export async function confirmWorkflowLegalReview(
+  ownerUserId: string, input: { family: string; reviewed: boolean; expectedVersion: number; revision?: number | null },
+): Promise<{ version: number }> {
+  const family = workflowTextFamily(input.family);
+  if (!family?.needsLegalReview) throw new Error("This text does not need a professional's review.");
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, ownerUserId, ["OWNER"]);
+    const rev = await tx.communicationTemplateRevision.findFirst({ where: { key: family.key, channel: "SMS", isCurrent: true, approvedAt: { not: null } } });
+    if (input.reviewed && !rev) throw new Error("Approve the wording first, then confirm the review of those exact words.");
+    // The confirmation belongs to the exact wording that was on screen. If it changed in another window, start over.
+    if (input.reviewed && rev && input.revision !== rev.revision) throw new Error("The wording changed since you opened this page. Refresh and read the current words before confirming.");
+    const version = await updatePolicy(tx, ownerUserId, input.expectedVersion, (p) => {
+      const prior = p.workflowTexts?.families[family.key];
+      return { ...p, workflowTexts: { ...p.workflowTexts, families: { ...(p.workflowTexts?.families ?? {}), [family.key]: {
+        enabled: input.reviewed ? prior?.enabled === true : false, legalReviewed: input.reviewed } } } };
+    }, { workflowText: family.key, legalReviewed: input.reviewed, revision: rev?.revision ?? null });
     return { version };
   });
 }
@@ -136,8 +171,56 @@ export async function approveWorkflowWording(
       key: family.key, revision, channel: "SMS", purpose: "TRANSACTIONAL", body,
       triggerKey: family.key, variables: family.variables as unknown as Prisma.InputJsonValue,
       isCurrent: true, approvedAt: new Date(), approvedByUserId: ownerUserId, createdByUserId: ownerUserId } });
+    if (family.needsLegalReview) {
+      // New words were never read by anyone: clear the review and switch the text off until it is confirmed again.
+      const row = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" }, select: { communicationsPolicyVersion: true, communicationsPolicy: true } });
+      const parsed = communicationsPolicySchema.safeParse(row.communicationsPolicy);
+      const prior = parsed.success ? parsed.data.workflowTexts?.families[family.key] : undefined;
+      if (parsed.success && (prior?.enabled || prior?.legalReviewed)) {
+        await updatePolicy(tx, ownerUserId, row.communicationsPolicyVersion, (p) => ({ ...p, workflowTexts: {
+          ...p.workflowTexts, families: { ...(p.workflowTexts?.families ?? {}), [family.key]: { enabled: false, legalReviewed: false } } } }),
+          { workflowText: family.key, wordingChanged: true });
+      }
+    }
     await tx.auditLog.create({ data: { userId: ownerUserId, action: "COMMUNICATION_TEMPLATE_APPROVED",
       entityType: "CommunicationTemplateRevision", entityId: `${family.key}:${revision}`, newValue: { revision } } });
     return { revision, changed: true };
+  });
+}
+
+/** Owner switch for "Call from the desk". Needs call routing set up first; never changes any other switch. */
+export async function setClickToCallEnabled(
+  ownerUserId: string, input: { enabled: boolean; expectedVersion: number },
+): Promise<{ version: number }> {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, ownerUserId, ["OWNER"]);
+    if (input.enabled) {
+      const row = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { communicationsPolicy: true } });
+      const current = communicationsPolicySchema.safeParse(row?.communicationsPolicy);
+      if (!current.success || current.data.voiceRoutingEnabled !== true) {
+        throw new Error("Set up and switch on phone call routing first, then you can allow calls from the desk.");
+      }
+    }
+    const version = await updatePolicy(tx, ownerUserId, input.expectedVersion,
+      (p) => ({ ...p, clickToCallEnabled: input.enabled }), { clickToCallEnabled: input.enabled });
+    return { version };
+  });
+}
+
+/** Owner setting: how many days before a fixed-term rental ends the courtesy heads-up may be sent (null = recommended 60). */
+export async function saveRenewalWindowDays(
+  ownerUserId: string, input: { days: number | null; expectedVersion: number },
+): Promise<{ version: number }> {
+  if (input.days !== null && (!Number.isInteger(input.days) || input.days < 1 || input.days > 365)) {
+    throw new Error("Enter a whole number of days from 1 to 365.");
+  }
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, ownerUserId, ["OWNER"]);
+    const version = await updatePolicy(tx, ownerUserId, input.expectedVersion, (p) => {
+      const families = p.workflowTexts?.families ?? {};
+      const { renewalWindowDays: _drop, ...restWorkflow } = p.workflowTexts ?? { families }; void _drop;
+      return { ...p, workflowTexts: input.days === null ? { ...restWorkflow, families } : { ...restWorkflow, families, renewalWindowDays: input.days } };
+    }, { renewalWindowDays: input.days ?? "recommended" });
+    return { version };
   });
 }

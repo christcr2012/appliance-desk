@@ -19,6 +19,8 @@ export const communicationsPolicySchema = z.object({
   supportedCountries: z.array(z.literal("US")).min(1).max(1),
   inboundSmsEnabled: z.boolean().optional(),
   voiceRoutingEnabled: z.boolean().optional(),
+  // COM-N2: staff may start a call from the desk. Off unless the Owner switches it on; needs voice routing set up too.
+  clickToCallEnabled: z.boolean().optional(),
   voiceRouting: voiceRoutingSchema.optional(),
   telecomCostAlerts: z.object({
     enabled: z.boolean(),
@@ -33,9 +35,17 @@ export const communicationsPolicySchema = z.object({
   // COM-N1: quiet hours for template texts, and one on/off switch per workflow text. Absent = recommended
   // quiet hours apply and every workflow text is OFF.
   quietHours: quietHoursSchema.optional(),
+  // COM-N4: the owner's choices for the cost-per-customer report. Absent = recommended starting values.
+  serviceReporting: z.object({
+    forecastScenarios: z.array(z.number().int().min(1).max(1000000)).min(1).max(6),
+    minForecastCustomerDays: z.number().int().min(1).max(3650),
+    minRateSample: z.number().int().min(1).max(10000),
+  }).strict().optional(),
   workflowTexts: z.object({
+    // How many days before a fixed-term rental ends the courtesy heads-up text may be sent. Absent = 60.
+    renewalWindowDays: z.number().int().min(1).max(365).optional(),
     families: z.record(z.string().regex(/^[a-z][a-z0-9_]{2,60}$/),
-      z.object({ enabled: z.boolean() }).strict()),
+      z.object({ enabled: z.boolean(), legalReviewed: z.boolean().optional() }).strict()),
   }).strict().optional(),
   productionWebhookOrigin: z.string().url().refine((value) => {
     const url = new URL(value);

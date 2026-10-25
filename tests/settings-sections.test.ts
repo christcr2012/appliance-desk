@@ -93,7 +93,7 @@ describe("isolated settings writes", () => {
         k,
         k.endsWith("Enabled")
           ? false
-          : k === "draftReservationHoldDays"
+          : k === "draftReservationHoldDays" || k === "receiptFileKeepDays" || k === "unsentPhotoKeepDays"
             ? 5
             : 0,
       ]),
@@ -125,7 +125,7 @@ describe("isolated settings writes", () => {
         k,
         k.endsWith("Enabled")
           ? false
-          : k === "draftReservationHoldDays"
+          : k === "draftReservationHoldDays" || k === "receiptFileKeepDays" || k === "unsentPhotoKeepDays"
             ? 5
             : 0,
       ]),

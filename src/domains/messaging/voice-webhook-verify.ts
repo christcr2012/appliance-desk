@@ -12,7 +12,11 @@ const VOICE_PATHS = new Set([
   "/api/webhooks/twilio/voice/status",
   "/api/webhooks/twilio/voice/media",
   "/api/webhooks/twilio/voice/record-complete",
+  "/api/webhooks/twilio/voice/click-to-call",
 ]);
+/** Click-to-call callbacks carry only our own call-record id and a fixed step word, nothing caller-controlled. */
+export const CLICK_TO_CALL_PATH = "/api/webhooks/twilio/voice/click-to-call";
+const CLICK_TO_CALL_SEARCH = /^\?op=[A-Za-z0-9_-]{8,40}(&step=(decision|done))?$/;
 
 function isolatedTest() {
   if (process.env.CI !== "true" || !process.env.DATABASE_URL) return false;
@@ -61,9 +65,9 @@ export async function verifyVoiceRequest(
   if (!((process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production") ||
       isolatedTest())) return fail(503);
   const requested = new URL(request.url);
-  if (!VOICE_PATHS.has(path) || requested.pathname !== path ||
-      (requested.search !== "" &&
-        !(path.endsWith("/accept") && requested.search === "?step=decision"))) return fail(400);
+  const searchAllowed = path === CLICK_TO_CALL_PATH ? CLICK_TO_CALL_SEARCH.test(requested.search)
+    : requested.search === "" || (path.endsWith("/accept") && requested.search === "?step=decision");
+  if (!VOICE_PATHS.has(path) || requested.pathname !== path || !searchAllowed) return fail(400);
   if ((request.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase() !==
       "application/x-www-form-urlencoded") return fail(415);
   const size = request.headers.get("content-length");

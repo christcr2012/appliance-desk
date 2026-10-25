@@ -1,5 +1,6 @@
 import { ContextCommunicationPanel } from "@/components/desk/context-communication-panel";
 import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
+import { CallPanel } from "@/app/desk/_text/call-panel";
 import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -110,6 +111,7 @@ export default async function JobDetailPage({
           <SendTextPanel userId={session.user.id} entityType="Job" entityId={job.id} path={`/desk/jobs/${job.id}`}
             families={["job_scheduled", "job_reminder", "job_on_the_way", "job_completed"]}
             principal={{ customerId: "id" in job.customer ? job.customer.id : undefined }} />
+          <div className="mt-4"><CallPanel userId={session.user.id} subject={{ type: "Job", id: job.id }} path={`/desk/jobs/${job.id}`} /></div>
         </div>
       )}
       <p className="mt-1 text-sm text-ink-soft">

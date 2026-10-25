@@ -23,6 +23,8 @@ export type WorkflowTextFamily = {
   variables: VariableRules;
   /** Collections, renewal and refund wording that a lawyer should read before real customers get it. */
   needsLegalReview?: boolean;
+  /** One plain sentence on why a professional should read the wording first. */
+  needsLegalReviewReason?: string;
   /** A STAFF member may send this one, but only for a job assigned to them. Owners and admins may always send it. */
   staffAssigned?: boolean;
 };
@@ -34,6 +36,8 @@ const NAME = { example: "Alex", maxLength: 16 };
 const NUMBER = { example: "1042", maxLength: 6 };
 const VISIT = { example: "delivery", maxLength: 24 };
 const WHEN = { example: "Tue, Oct 27, 2:00 PM MDT", maxLength: 30 };
+const AMOUNT = { example: "$1,250.00", maxLength: 12 };
+const DATE = { example: "Nov 30, 2026", maxLength: 14 };
 const LINK = { example: "https://example.test/estimate/abc123", maxLength: 75 };
 
 export const WORKFLOW_TEXT_GROUP_LABELS: Record<WorkflowTextGroup, string> = {
@@ -126,6 +130,44 @@ export const WORKFLOW_TEXT_FAMILIES: readonly WorkflowTextFamily[] = [
     when: "After a maintenance request is marked resolved.",
     defaultBody: `${BUSINESS}: Hi {{name}}, your maintenance request has been resolved. Reply STOP to opt out.`,
     variables: { name: NAME },
+  },
+  {
+    key: "invoice_ready", group: "BILLING_RENEWAL", subject: "Invoice",
+    label: "Your invoice is ready",
+    when: "After an invoice is issued, to point the customer to it (they sign in to view it).",
+    defaultBody: `${BUSINESS}: Hi {{name}}, invoice #{{number}} is ready. Sign in to view it: {{link}} Reply STOP to opt out.`,
+    variables: { name: NAME, number: NUMBER, link: LINK },
+  },
+  {
+    key: "invoice_reminder", group: "BILLING_RENEWAL", subject: "Invoice", needsLegalReview: true,
+    label: "Friendly reminder: invoice still open",
+    when: "When an invoice is still unpaid. A courtesy reminder only; it is not a legal notice.",
+    defaultBody: `${BUSINESS}: Hi {{name}}, a friendly reminder that invoice #{{number}} is still open: {{link}} Reply STOP to opt out.`,
+    variables: { name: NAME, number: NUMBER, link: LINK },
+    needsLegalReviewReason: "Payment-reminder wording can be treated as debt collection in some places.",
+  },
+  {
+    key: "payment_received", group: "BILLING_RENEWAL", subject: "Invoice",
+    label: "We received your payment",
+    when: "After an invoice is fully paid.",
+    defaultBody: `${BUSINESS}: Hi {{name}}, we received your payment for invoice #{{number}}. Thank you! Reply STOP to opt out.`,
+    variables: { name: NAME, number: NUMBER },
+  },
+  {
+    key: "refund_issued", group: "BILLING_RENEWAL", subject: "Invoice", needsLegalReview: true,
+    label: "Your refund was issued",
+    when: "After a refund is issued on an invoice (the latest refund on it is used).",
+    defaultBody: `${BUSINESS}: Hi {{name}}, a refund of {{amount}} for invoice #{{number}} was issued. It can take several business days to show up. Reply STOP to opt out.`,
+    variables: { name: NAME, number: NUMBER, amount: AMOUNT },
+    needsLegalReviewReason: "Refund wording can create promises about timing; have it read before real use.",
+  },
+  {
+    key: "renewal_heads_up", group: "BILLING_RENEWAL", subject: "RentalAgreement", needsLegalReview: true,
+    label: "Your rental term ends soon",
+    when: "A courtesy heads-up when a fixed-term rental is close to ending (you choose how many days before; starting value 60). It is not the renewal notice itself.",
+    defaultBody: `${BUSINESS}: Hi {{name}}, your rental term ends on {{date}}. Call us if you would like to renew. Reply STOP to opt out.`,
+    variables: { name: NAME, date: DATE },
+    needsLegalReviewReason: "Renewal wording must not replace or contradict the agreement's own renewal terms.",
   },
 ];
 

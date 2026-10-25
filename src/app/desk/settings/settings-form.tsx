@@ -36,6 +36,8 @@ type FormValues = ProfileExtrasForm & {
   twelveMonthPrepayFreeMonthEnabled: boolean;
   referralRewardDollars: number;
   draftReservationHoldDays: number;
+  receiptFileKeepDays: number;
+  unsentPhotoKeepDays: number;
 };
 
 export function SettingsForm({
@@ -353,6 +355,35 @@ export function SettingsForm({
             min={1}
             max={90}
             {...register("draftReservationHoldDays", { valueAsNumber: true })}
+          />
+        </fieldset>
+      )}
+
+      {(!section || section === "policies") && (
+        <fieldset className="space-y-4">
+          <legend className="text-base font-semibold text-ink">
+            Removed files
+          </legend>
+          <p className="text-sm text-ink-soft">
+            When you remove a receipt page, or a customer takes a picture off a request before sending it, the record
+            goes away right away but the file waits here before the nightly clean-up deletes it for good. The wait lets
+            you put a mistake right first. A file that something starts using again is never deleted. Starting values:
+            30 days for receipt pages (long enough to notice a mistake at month end) and 1 day for pictures a customer
+            never sent. Changing a number applies to files removed from now on; files already waiting keep their date.
+          </p>
+          <LabeledInput
+            label="Days to keep a removed receipt file"
+            type="number"
+            min={1}
+            max={365}
+            {...register("receiptFileKeepDays", { valueAsNumber: true })}
+          />
+          <LabeledInput
+            label="Days to keep a photo removed before sending"
+            type="number"
+            min={1}
+            max={30}
+            {...register("unsentPhotoKeepDays", { valueAsNumber: true })}
           />
         </fieldset>
       )}

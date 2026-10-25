@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { WorkflowTextsSettings } from "@/app/desk/_text/workflow-texts-settings";
+import { ClickToCallSwitch } from "@/app/desk/_text/call-form";
+import { ServiceReportingForm } from "@/app/desk/_text/service-reporting-form";
+import { RECOMMENDED_SERVICE_REPORTING, getServiceReportingSettings } from "@/domains/messaging/telecom-unit-economics";
 import { getWorkflowTextSettings } from "@/domains/messaging/workflow-text-settings";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +48,7 @@ export default async function TelecomSettingsPage() {
   const policy = communicationsPolicySchema.safeParse(settings?.communicationsPolicy);
   const canEdit=session.user.role==="OWNER";
   const textSettings=canEdit ? await getWorkflowTextSettings(session.user.id) : null;
+  const reporting=canEdit ? await getServiceReportingSettings() : null;
   const configured=policy.success;
   const accountLabels=new Map(accounts.map(a=>[a.id,a.label]));
   return <div className="mx-auto max-w-5xl space-y-6 pb-12">
@@ -130,7 +134,20 @@ export default async function TelecomSettingsPage() {
         Staff still preview and press Send for every text, and nothing is sent unless the master text switch above is on,
         the person has agreed to texts, and it is outside quiet hours.</p>
       <div className="mt-3"><WorkflowTextsSettings families={textSettings.families} version={textSettings.policyVersion}
-        quietHours={textSettings.quietHours} isRecommended={textSettings.quietHoursIsRecommended} policyReady={textSettings.policyReady} /></div>
+        quietHours={textSettings.quietHours} isRecommended={textSettings.quietHoursIsRecommended} policyReady={textSettings.policyReady} renewalWindowDays={textSettings.renewalWindowDays} /></div>
+      <h3 className="mt-4 font-semibold">Calls from the desk</h3>
+      <p className="mt-1 text-sm text-ink-soft">Lets assigned staff (and you) press the Call button on a visit, lead or request. The
+        carrier rings that person&apos;s confirmed mobile first; the customer is dialed only after they press 1, and the customer sees the
+        business number. Each person confirms their own mobile in My account. Starting value: off.</p>
+      <ClickToCallSwitch enabled={textSettings.clickToCall.enabled} voiceReady={textSettings.clickToCall.voiceReady} version={textSettings.policyVersion} />
+    </section>}
+    {canEdit && textSettings && reporting && <section aria-labelledby="service-reporting" className="rounded-card border border-line p-4">
+      <h2 id="service-reporting" className="text-lg font-semibold">Cost-per-customer report</h2>
+      <p className="mt-1 text-sm text-ink-soft">Controls the what-if forecast and the history needed on Reports → Communications cost evidence. Only the Owner
+        can change these. They change what is shown, nothing is sent or booked.</p>
+      <ServiceReportingForm scenarios={reporting.forecastScenarios} minDays={reporting.minForecastCustomerDays} minSample={reporting.minRateSample}
+        version={textSettings.policyVersion}
+        isRecommended={JSON.stringify(reporting)===JSON.stringify(RECOMMENDED_SERVICE_REPORTING)} />
     </section>}
   </div>;
 }

@@ -281,7 +281,7 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 ## Reports, revenue, fleet and growth
 
-**What it's for.** Every number has a **How this is counted** note: the dates, how it is worked out, whether it is recorded fact or estimate, and a link to the records. **Revenue** shows estimated monthly and yearly rates (from agreed prices, not cash) beside money actually received and refunded. **Reports** shows estimated versus collected per rental, repairs missing a cost, lead sources and the accounting CSV. **Fleet** shows which machines earn or cost the most. **Growth** lists customers and leads worth a call. A cost you never entered shows as "unknown", never zero and never profit. Profit and loss is not built yet.
+**What it's for.** Every number has a **How this is counted** note: the dates, how it is worked out, whether it is recorded fact or estimate, and a link to the records. **Revenue** shows estimated monthly and yearly rates (from agreed prices, not cash) beside money actually received and refunded. **Reports** shows estimated rent versus rent collected per rental (tax, deposits, fees and shop items on an invoice are left out, and billing months are counted from the same day each month), repairs missing a cost, lead sources and the accounting CSV. **Fleet** shows which machines earn or cost the most. **Growth** lists customers and leads worth a call. A cost you never entered shows as "unknown", never zero and never profit. Profit and loss is not built yet.
 
 **Change without code.** Date filters only.
 
@@ -299,7 +299,7 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 ![Settings](owner-guide/screenshots/settings.png)
 
-**What it's for.** Settings is divided into sections, each explained on the screen: Business profile (name, address, opening hours, holiday closures, social links, logo), Rental policies, Products and pricing (types, sets and packages, prepaid discounts), Ending and renewing rentals, Pickups and deliveries, Visits and scheduling, Notifications, Languages, Lead response time, Payment link wording, team accounts (staff and admin) and the prelaunch setting.
+**What it's for.** Settings is divided into sections, each explained on the screen: Business profile (name, address, opening hours, holiday closures, social links, logo), Rental policies (including how long a removed receipt file or an unsent photo waits before it is deleted), Products and pricing (types, sets and packages, prepaid discounts), Ending and renewing rentals, Pickups and deliveries, Visits and scheduling, Notifications, Languages, Lead response time, Payment link wording, team accounts (staff and admin) and the prelaunch setting.
 
 **Change without code.** Everything above. Each setting explains what it does, its starting value and why, who can change it, and offers **restore recommended**. Money is typed in dollars. Changes affect only future agreements and events; signed terms never change.
 

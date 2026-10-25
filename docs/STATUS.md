@@ -2,6 +2,34 @@
 
 Merged (#573, #577, #578, #583, #584): settings change preview and stale-save protection with the full Switches list; scheduled price changes for rental sets as well as single appliances; a role-shaped proof that each admin page sends only what the role may see; browser tests for goals, approval limits, permissions and workspace; and the eight older review findings (removed receipt and unsent photos really leave storage after an owner-editable wait, iPhone photos convert, earnings use rent only on each rental's billing month, a phone-width sideways-scroll check on every page). Also found and fixed: receipt uploads were not on storage's private-folder list. One owner checklist row: confirm removed receipt files really leave storage. Nothing else for Chris.
 
+## October 25 — COM-N2: call a customer from the desk (in PR, OFF)
+
+Assigned staff (and the owner/admin) get a "Call" box on visit, lead and maintenance screens. The phone company rings the person's own
+confirmed mobile first; the customer is dialed only after they press 1, and the customer sees the business number. Off until the Owner
+switches it on (Settings → Phone, texts and provider costs → Calls from the desk, which also needs call routing on). Staff can only call on
+a visit assigned to them; losing the assignment or turning the switch off stops a call that is ringing. A repeat click is one call; an unclear
+carrier answer is shown as "unconfirmed" and never retried. Proven on throwaway Postgres with a fake carrier (9 tests); no real call was placed.
+Next: COM-N4 (service metrics and forecasts), then telecom wiring. Branch `ai/claude/com-n2-click-to-call`.
+
+## October 25 — COM-N4: service numbers, cost per customer and what-if forecast (in PR)
+
+Reports → "Communications cost evidence" now also shows, for the last full month: text failure rate, STOP (opt-out) rate, median time to a
+person’s first reply, provider-reported spend per active customer, and a what-if monthly spend at 200 / 250 / 500 / 1,000 customers (fixed charges
+counted once). Anything without enough history says so instead of guessing: under 10 final texts, no customers, ended rentals with no recorded end
+time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
+reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
+Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
+## October 24 — COM-N1C: billing, renewal and refund texts (everything OFF)
+
+Invoice and agreement screens get preview-then-send boxes: invoice ready, friendly reminder, payment received, refund issued,
+rental term ending soon. Owner/Admin only. The reminder, refund and renewal wordings cannot be switched on until the Owner
+confirms a qualified person has read those exact words (changing the words removes the confirmation). They are courtesy texts,
+not legal notices. Tested on throwaway Postgres with a fake carrier. Also fixed a rare test-ordering failure caused by my new
+tests turning the text switch on briefly. Next: COM-N2 (click-to-call), COM-N4, wiring gaps.
+
+## October 25 — Eight older review findings closed (photo clean-up, HEIC, earnings, test and narrow-width checks)
+
+In progress (branch `ai/claude/older-review-findings`). Removed purchase-receipt photos and unsent maintenance-request photos now leave storage for real: they go on a clean-up list (additive migration `20261025070000_stored_file_cleanup`) that the nightly job works through and the health page watches. iPhone HEIC photos are converted to JPEG in the browser; the server no longer accepts HEIC it cannot check. The "estimated earnings" report now uses only the rent part of what was paid and each rental's own billing month. The reviewer's three findings are fixed too: receipt files can now actually be deleted (the "purchases" folder was missing from storage's private list, which would also have refused receipt uploads), a clean-up that keeps failing shows as a failing night, and the waiting periods are owner settings (Rental policies → Removed files). A new phone-width check fails any page that scrolls sideways (113 pages scanned clean). Also: the stale "yearly SUTS check not built" note is corrected (it is built). Throwaway-Postgres tests cover each. New checklist row: confirm removed receipt files really leave storage. CI pending.
 ## October 25 — Owner controls: proof of what each page sends to each role (O-2B)
 
 In progress (branch `ai/claude/owner-controls-o2b`). New browser test `e2e/role-shaped-pages.spec.ts` (browser-d) reads the whole
