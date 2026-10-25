@@ -32,6 +32,7 @@ export const BACKUP_MODEL_POLICY = {
   Appliance: "appliance",
   BookAsset: "bookAsset",
   BookTaxEvidence: "bookTaxEvidence",
+  RetiredSaleDisposition: "retiredSaleDisposition",
   ApplianceInspection: "applianceInspection",
   PartRecord: "partRecord",
   Supplier: "supplier",

@@ -6,6 +6,9 @@ phone, and nothing sends until Send is pressed. The Owner approves each wording 
 before any text can leave: the master text switch, recorded permission for that number, no STOP, a ready business number.
 Proven on throwaway Postgres with a fake carrier (13 safety tests); no real text was sent and nothing was switched on.
 Next: COM-N1B (job and maintenance texts), then N1C, N2, N4 and the telecom wiring gaps. Branch `ai/claude/com-n1a-lead-estimate-texts`.
+## October 25 — Selling a retired appliance: tax warning and accountant notes (M-2C, finishing)
+
+In progress (branch `ai/claude/m2c-recapture-evidence`). On Sales → New sale, each used appliance now shows the warning "Selling above depreciated tax basis may trigger ordinary-income depreciation recapture. You can still sell at your chosen price.", how much book value comes off the books, an optional "what it cost you to sell it" box, and a tax estimate **only** when tax history was recorded (Books → Assets). With nothing recorded it says "CPA review needed" and shows no numbers; numbers you typed yourself are labelled unconfirmed. Nothing ever limits the price or blocks the sale. Saving freezes the estimate with the sale; if the accountant still needs to look, one To do item appears for the owner (the owner marks it done on the sale page; cancelling the sale removes it). Proved on throwaway Postgres: the design's examples ($600 basis/$400 depreciation sold at $600 and $750, fully depreciated, loss, unknown, expensed), repeat-safe saves, owner-only follow-up, cancel. Not proved: a browser test (next PR) and nothing real was entered. Nothing for Chris to do now; his CPA row (IN-56) now also says what the new screen needs.
 
 ## October 24 — Extra release done at Chris's request (11:26 am Denver)
 

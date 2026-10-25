@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
 import { createLocalInvoiceCheckout, LocalInvoiceCheckoutError } from "@/domains/billing/local-invoice-checkout";
-import { cancelShopSale, createShopSale, returnShopSale, SaleTaxBlockedError } from "@/domains/sales";
+import { cancelShopSale, createShopSale, markResaleTaxFollowUpDone, returnShopSale, SaleTaxBlockedError } from "@/domains/sales";
 import { recordManualPayment } from "@/domains/billing";
 import { prisma } from "@/lib/prisma";
 import { parseDollarInput } from "@/lib/money-ui";
@@ -36,7 +36,7 @@ const createSchema = z.object({
   items: z
     .array(z.object({ partRecordId: z.string().trim().min(1).max(64), quantity: z.number().int().min(1).max(1000), priceDollars: dollars, priceReason: z.string().trim().max(200).optional() }))
     .max(40),
-  usedAppliances: z.array(z.object({ applianceId: z.string().trim().min(1).max(64), priceDollars: dollars })).max(40).optional(),
+  usedAppliances: z.array(z.object({ applianceId: z.string().trim().min(1).max(64), priceDollars: dollars, sellerCostsDollars: dollars })).max(40).optional(),
   deliveryDollars: dollars,
   installationDollars: dollars,
   note: z.string().trim().max(300).optional(),
@@ -55,7 +55,7 @@ export async function createShopSaleAction(raw: unknown): Promise<SaleActionStat
       location: v.location,
       serviceAddressId: v.serviceAddressId || null,
       items: v.items.map((i) => ({ partRecordId: i.partRecordId, quantity: i.quantity, unitPriceCents: cents(i.priceDollars, "A price"), priceReason: i.priceReason })),
-      usedAppliances: (v.usedAppliances ?? []).map((a) => ({ applianceId: a.applianceId, unitPriceCents: cents(a.priceDollars, "A used appliance price") })),
+      usedAppliances: (v.usedAppliances ?? []).map((a) => ({ applianceId: a.applianceId, unitPriceCents: cents(a.priceDollars, "A used appliance price"), sellerCostsCents: cents(a.sellerCostsDollars, "The cost of selling a used appliance") })),
       deliveryChargeCents: cents(v.deliveryDollars, "The delivery charge"),
       installationChargeCents: cents(v.installationDollars, "The installation charge"),
       note: v.note,
@@ -137,5 +137,18 @@ export async function startSaleCardPaymentAction(invoiceId: string): Promise<{ s
     return { status: "success", url };
   } catch (error) {
     return { status: "error", message: error instanceof LocalInvoiceCheckoutError ? error.message : "Couldn't open the card page. Nothing was charged. Please try again." };
+  }
+}
+
+/** The owner says the accountant follow-up for a retired-appliance sale is finished. Safe to repeat. */
+export async function markResaleTaxFollowUpDoneAction(dispositionId: string, invoiceId: string): Promise<SaleActionState> {
+  const session = await requireRole("OWNER");
+  try {
+    await markResaleTaxFollowUpDone(session.user.id, dispositionId);
+    revalidatePath(`/desk/sales/${invoiceId}`);
+    revalidatePath("/desk/today");
+    return { status: "success" };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Couldn't save that." };
   }
 }

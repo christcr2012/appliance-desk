@@ -92,7 +92,7 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   asks for the date your CPA confirmed it; the app cannot make that date up. Until it is entered, every shop sale is
   refused with a plain reason (rentals are not affected). Worked: Desk → Money → Shop sales → New sale saves with tax added.
 - [ ] **CPA, not a launch blocker:** IN-39 (bad debt, 60-month depreciation, 1099 threshold), IN-46 (shop sales, resale
-  certificate, scrap), IN-56 (retired-appliance tax basis), IN-71 (record retention — starts at 7 years).
+  certificate, scrap), IN-56 (retired-appliance tax basis: the used-appliance sale screen shows a tax estimate only from numbers recorded on Desk → Books → Assets; until your CPA confirms them it says "CPA review needed" and adds a To do), IN-71 (record retention — starts at 7 years).
 - [ ] **Attorney: rental terms, early-ending/auto-renew wording, month-to-month notices** (IN-07, IN-21, IN-31); privacy
   policy, terms of use, accessibility statement approved; customer text-consent wording; 3-day cancellation rule only if
   you ever sign people up at their home. Worked: written approval saved before automatic renewals or live notices turn on.

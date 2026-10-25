@@ -14,6 +14,7 @@ import { postForSource } from "@/domains/books/post";
 import { issueInvoiceRefund } from "@/domains/billing/refunds";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { assertRefundWithinLimit } from "@/domains/approvals";
+import { estimateRetiredSale, needsCpaFollowUp } from "./retired-sale-tax";
 
 // ---------------------------------------------------------------------------
 // Shop sales (Batch M, design D-M3). A sale is a local invoice: lines are sellable parts (plus an optional delivery or
@@ -32,7 +33,12 @@ export type ShopSaleItem = {
 };
 
 /** M-2C: one retired appliance whose plan is “Sell it”. One unit, priced by the owner (there is no list price). */
-export type ShopSaleAppliance = { applianceId: string; unitPriceCents: number };
+export type ShopSaleAppliance = {
+  applianceId: string;
+  unitPriceCents: number;
+  /** What it cost the owner to sell it (listing fees, hauling out). Only used for the tax estimate. Default $0. */
+  sellerCostsCents?: number;
+};
 
 export type ShopSaleInput = {
   /** A retry with the same key returns the first sale and changes nothing. */
@@ -94,6 +100,7 @@ function validate(input: ShopSaleInput): void {
     if (seenAppliances.has(a.applianceId)) throw new Error("Each used appliance can be on a sale once.");
     seenAppliances.add(a.applianceId);
     if (!Number.isSafeInteger(a.unitPriceCents) || a.unitPriceCents < 1 || a.unitPriceCents > MAX_UNIT_PRICE_CENTS) throw new Error("Enter a price between $0.01 and $100,000 for each used appliance.");
+    if (a.sellerCostsCents !== undefined && (!Number.isSafeInteger(a.sellerCostsCents) || a.sellerCostsCents < 0 || a.sellerCostsCents > a.unitPriceCents)) throw new Error("The cost of selling a used appliance must be $0 or more and no more than its price.");
   }
   for (const charge of [input.deliveryChargeCents, input.installationChargeCents]) {
     if (charge !== undefined && (!Number.isSafeInteger(charge) || charge < 0 || charge > MAX_UNIT_PRICE_CENTS)) throw new Error("A delivery or installation charge must be between $0 and $100,000.");
@@ -108,7 +115,7 @@ function payloadHash(input: ShopSaleInput): string {
     .sort((a, b) => (a.partRecordId < b.partRecordId ? -1 : 1))
     .map((i) => [i.partRecordId, i.quantity, i.unitPriceCents, cleanText(i.priceReason, 200)]);
   return createHash("sha256")
-    .update(JSON.stringify([input.customerId, cleanText(input.walkInName, 80), input.location, input.serviceAddressId ?? null, items, [...(input.usedAppliances ?? [])].sort((a, b) => (a.applianceId < b.applianceId ? -1 : 1)).map((a) => [a.applianceId, a.unitPriceCents]), input.deliveryChargeCents ?? 0, input.installationChargeCents ?? 0, cleanText(input.note, 300)]))
+    .update(JSON.stringify([input.customerId, cleanText(input.walkInName, 80), input.location, input.serviceAddressId ?? null, items, [...(input.usedAppliances ?? [])].sort((a, b) => (a.applianceId < b.applianceId ? -1 : 1)).map((a) => [a.applianceId, a.unitPriceCents, a.sellerCostsCents ?? 0]), input.deliveryChargeCents ?? 0, input.installationChargeCents ?? 0, cleanText(input.note, 300)]))
     .digest("hex");
 }
 
@@ -171,7 +178,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
 
     // Used appliances: lock them in id order (after the parts), then check each can really be sold now.
     const applianceInputs = [...(input.usedAppliances ?? [])].sort((a, b) => (a.applianceId < b.applianceId ? -1 : 1));
-    const applianceLines: Array<{ id: string; assetNumber: string; description: string; priceCents: number }> = [];
+    const applianceLines: Array<{ id: string; assetNumber: string; description: string; priceCents: number; sellerCostsCents: number }> = [];
     if (applianceInputs.length > 0) {
       const ids = applianceInputs.map((a) => a.applianceId);
       const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${ids}) ORDER BY "id" FOR UPDATE`;
@@ -186,7 +193,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
         const already = await tx.invoiceLineItem.findFirst({ where: { applianceId: row.id, invoice: { status: { not: "VOID" } } }, select: { id: true } });
         if (already) throw new Error(`Appliance ${row.assetNumber} is already on a sale. Cancel that sale first if it was a mistake.`);
         const what = [row.manufacturer, row.model].filter(Boolean).join(" ") || row.applianceType.name;
-        applianceLines.push({ id: row.id, assetNumber: row.assetNumber, description: `Used ${what} (${row.assetNumber}${row.serialNumber ? `, serial ${row.serialNumber}` : ""})`, priceCents: a.unitPriceCents });
+        applianceLines.push({ id: row.id, assetNumber: row.assetNumber, description: `Used ${what} (${row.assetNumber}${row.serialNumber ? `, serial ${row.serialNumber}` : ""})`, priceCents: a.unitPriceCents, sellerCostsCents: a.sellerCostsCents ?? 0 });
       }
     }
 
@@ -262,6 +269,23 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
         data: { doneOn: saleDay, doneNote: `Sold on invoice ${invoice.invoiceNumber}`, doneByUserId: actorUserId, reopenedAt: null, reopenReason: null },
       });
       const book = await disposeRetiredBookAssetInTx(tx, a.id, saleDay, invoice.id);
+      // Freeze what was known about the income-tax side right now. This only informs the owner and the accountant:
+      // it never limits the price and never stops the sale (docs/designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md).
+      const evidence = await tx.bookTaxEvidence.findFirst({ where: { applianceId: a.id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+      const estimate = estimateRetiredSale({ priceCents: a.priceCents, sellerCostsCents: a.sellerCostsCents, evidence });
+      await tx.retiredSaleDisposition.create({
+        data: {
+          applianceId: a.id, invoiceId: invoice.id, saleDate: saleDay, priceCents: a.priceCents, sellerCostsCents: a.sellerCostsCents,
+          bookCarriedCents: book.carriedCents, taxStatus: estimate.status,
+          evidenceId: evidence?.id ?? null, evidenceClassification: evidence?.classification ?? null, evidenceConfidence: evidence?.confidence ?? null,
+          adjustedBasisCents: estimate.adjustedBasisCents, totalDepreciationCents: estimate.totalDepreciationCents,
+          taxGainCents: estimate.taxGainCents, potentialRecaptureCents: estimate.potentialRecaptureCents, otherGainCents: estimate.otherGainCents,
+          reviewReasons: estimate.reasons,
+          // A sale that the accountant has nothing left to check is born finished; anything else waits on the owner's To do list.
+          followUpDoneAt: needsCpaFollowUp(estimate.status) ? null : now,
+          createdByUserId: actorUserId,
+        },
+      });
       await tx.auditLog.create({
         data: { userId: actorUserId, action: "appliance.retired_plan.sold", entityType: "Appliance", entityId: a.id, newValue: { invoiceId: invoice.id, priceCents: a.priceCents, bookValueRemovedCents: book.carriedCents } },
       });
@@ -334,6 +358,7 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
       await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${soldAppliances}) ORDER BY "id" FOR UPDATE`;
     }
     const cancelledAt = new Date();
+    await tx.retiredSaleDisposition.updateMany({ where: { invoiceId: sale.id, cancelledAt: null }, data: { cancelledAt } });
     for (const applianceId of soldAppliances) {
       await reverseBookAssetDisposalInTx(tx, applianceId, sale.id, cancelledAt);
       await tx.retiredAppliancePlan.updateMany({
@@ -460,10 +485,14 @@ async function replayedSale(tx: Prisma.TransactionClient, operationKey: string, 
 /** For the Sales list and the sale's own page. */
 export const SALE_LIST_LIMIT = 100;
 
-export async function listShopSales(actorUserId: string) {
+/** `followUpOnly` lists every sale (not just the newest 100) that still has a used appliance to go over with the accountant. */
+export async function listShopSales(actorUserId: string, options: { followUpOnly?: boolean } = {}) {
   await assertActiveTeamActor(prisma, actorUserId, ["OWNER", "ADMIN"]);
   return prisma.invoice.findMany({
-    where: { saleKind: "SHOP_SALE" },
+    where: {
+      saleKind: "SHOP_SALE",
+      ...(options.followUpOnly ? { retiredSaleDispositions: { some: { followUpDoneAt: null, cancelledAt: null } } } : {}),
+    },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: SALE_LIST_LIMIT,
     select: {
@@ -508,7 +537,11 @@ export async function getSaleFormData(actorUserId: string) {
       where: { status: "RETIRED", retiredPlan: { is: { choice: "SELL", doneOn: null } }, saleLines: { none: { invoice: { status: { not: "VOID" } } } } },
       orderBy: [{ assetNumber: "asc" }],
       take: 300,
-      select: { id: true, assetNumber: true, manufacturer: true, model: true, serialNumber: true, applianceType: { select: { name: true } } },
+      select: {
+        id: true, assetNumber: true, manufacturer: true, model: true, serialNumber: true, applianceType: { select: { name: true } },
+        // The latest tax evidence and what is still on the books, so the sale screen can show the tax warning before saving.
+        bookAsset: { select: { retiredValueCents: true, taxEvidence: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { classification: true, confidence: true, originalBasisCents: true, signedAdjustmentsCents: true, allowedDepreciationCents: true, section179Cents: true, bonusDepreciationCents: true } } } },
+      },
     }),
   ]);
   return { parts, customers, usedAppliances };
@@ -524,10 +557,46 @@ export async function getShopSale(actorUserId: string, invoiceId: string) {
       createdAt: true, saleLocation: true, walkInName: true, customerId: true,
       customer: { select: { id: true, isWalkIn: true, user: { select: { name: true, email: true } } } },
       lineItems: { orderBy: { id: "asc" }, select: { id: true, kind: true, description: true, amountCents: true, quantity: true, applianceId: true } },
+      retiredSaleDispositions: {
+        orderBy: { id: "asc" },
+        select: {
+          id: true, applianceId: true, priceCents: true, sellerCostsCents: true, bookCarriedCents: true, taxStatus: true, evidenceConfidence: true,
+          adjustedBasisCents: true, totalDepreciationCents: true, taxGainCents: true, potentialRecaptureCents: true, otherGainCents: true,
+          reviewReasons: true, followUpDoneAt: true, cancelledAt: true,
+          appliance: { select: { assetNumber: true } },
+        },
+      },
       taxLines: {
         orderBy: { id: "asc" },
         select: { id: true, taxableCents: true, exemptCents: true, taxCents: true, jurisdiction: { select: { name: true } } },
       },
     },
+  });
+}
+
+/**
+ * The owner says the accountant follow-up for one retired-appliance sale is done. Only the owner can (the accountant's
+ * questions are about the owner's tax return). Safe to repeat: the first answer stands, a second click changes nothing.
+ */
+export async function markResaleTaxFollowUpDone(actorUserId: string, dispositionId: string): Promise<{ alreadyDone: boolean }> {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+    const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT "id" FROM "RetiredSaleDisposition" WHERE "id" = ${dispositionId} FOR UPDATE`;
+    if (locked.length === 0) throw new Error("Couldn't find that sale record.");
+    const row = await tx.retiredSaleDisposition.findUniqueOrThrow({ where: { id: dispositionId }, select: { id: true, invoiceId: true, followUpDoneAt: true } });
+    if (row.followUpDoneAt) return { alreadyDone: true };
+    await tx.retiredSaleDisposition.update({ where: { id: row.id }, data: { followUpDoneAt: new Date(), followUpDoneByUserId: actorUserId } });
+    await tx.auditLog.create({ data: { userId: actorUserId, action: "sale.retired_tax_followup_done", entityType: "RetiredSaleDisposition", entityId: row.id, newValue: { invoiceId: row.invoiceId } } });
+    return { alreadyDone: false };
+  });
+}
+
+/** Sales of retired appliances whose accountant follow-up is still open (cancelled sales never count). */
+export async function listOpenResaleTaxFollowUps() {
+  return prisma.retiredSaleDisposition.findMany({
+    where: { followUpDoneAt: null, cancelledAt: null },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: 200,
+    select: { id: true, invoiceId: true, createdAt: true },
   });
 }

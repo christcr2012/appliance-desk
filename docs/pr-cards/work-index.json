@@ -1416,18 +1416,21 @@
         "M-2B"
       ],
       "status": "MERGED",
-      "migration": "used_appliance_sale",
+      "migration": "used_appliance_sale, retired_sale_disposition",
       "budget": 450,
       "units": [
         "M-2C"
       ],
       "evidence": [
         "docs/designs/BATCH-M.md",
-        "src/domains/sales/index.ts",
+        "src/app/desk/sales/new/new-sale-form.tsx",
+        "src/app/desk/sales/resale-tax-note.tsx",
         "src/domains/books/fixed-assets.ts",
-        "src/app/desk/sales/new/new-sale-form.tsx"
+        "src/domains/sales/index.ts",
+        "src/domains/sales/retired-sale-tax.ts"
       ],
       "tests": [
+        "tests/retired-sale-tax.test.ts",
         "tests/used-appliance-sale-integration.test.ts"
       ],
       "readiness": "MERGED",
