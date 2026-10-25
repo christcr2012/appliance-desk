@@ -6,6 +6,10 @@ import {
   describeSettingsChange, formatSettingValue, listSettingsHistory, undoSettingsChange, SettingsUndoError,
 } from "@/domains/settings/history";
 import { listSwitches } from "@/domains/settings/switches";
+import { previewSettingsUndo } from "@/domains/settings/history";
+import { SettingsConflictError } from "@/domains/settings/effects";
+import { sectionRevision } from "@/domains/settings/preview";
+import { setAutomationPaused, AUTOMATION_RULES } from "@/domains/automation/health";
 
 // Batch O-1: settings history with guarded undo, and the read-only switches list.
 const target = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -111,5 +115,97 @@ describe.skipIf(!enabled)("settings undo on real Postgres", () => {
     expect(rows.find((r) => r.id === "sms")?.state).toMatch(/^Switched (on|off) \(/);
     expect(rows.map((r) => r.id)).toEqual(expect.arrayContaining(["customer-email", "sms", "auto-renew", "payments", "two-factor", "approval-limits", "books-start"]));
     expect(JSON.stringify(rows)).not.toMatch(/sk_(live|test)_/);
+  });
+
+  it("previews an undo without writing anything, and the preview shows now and after", async () => {
+    const prior = (await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).lateFeeGraceDays;
+    await updateBusinessSettings(ownerId, { lateFeeGraceDays: prior + 4 });
+    const row = await lastUpdateRow();
+    const auditBefore = await prisma.auditLog.count();
+    const settingsBefore = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    const preview = await previewSettingsUndo(row.id, "lateFeeGraceDays");
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    expect(preview.current).toBe(String(prior + 4));
+    expect(preview.restored).toBe(String(prior));
+    expect(preview.effect).toMatch(/already billed do not change/);
+    expect(await prisma.auditLog.count()).toBe(auditBefore);
+    const settingsAfter = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    expect(settingsAfter.updatedAt).toEqual(settingsBefore.updatedAt);
+    // Confirming with what the preview showed works.
+    await undoSettingsChange(ownerId, row.id, "lateFeeGraceDays", preview.expectedCurrent);
+    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).lateFeeGraceDays).toBe(prior);
+  });
+
+  it("explains why a refused undo cannot be previewed", async () => {
+    const preview = await previewSettingsUndo("no-such-row", "lateFeeGraceDays");
+    expect(preview).toEqual({ ok: false, reason: "That change is no longer in the history." });
+    expect(await previewSettingsUndo("x", "customerEmailEnabled")).toEqual({ ok: false, reason: "That setting cannot be undone from here." });
+  });
+
+  it("refuses an undo as a conflict when the setting changed after the preview was shown", async () => {
+    await updateBusinessSettings(ownerId, { referralRewardCents: original.referralRewardCents + 700 });
+    const row = await lastUpdateRow();
+    const stalePreview = JSON.stringify(original.referralRewardCents + 123); // what some older screen believed it held
+    await expect(undoSettingsChange(ownerId, row.id, "referralRewardCents", stalePreview)).rejects.toThrow(SettingsConflictError);
+    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).referralRewardCents).toBe(original.referralRewardCents + 700);
+    expect(await prisma.auditLog.count({ where: { action: "settings.undo", createdAt: { gt: row.createdAt } } })).toBe(0);
+  });
+
+  it("reports a conflict, not a generic refusal, when the setting moves between the preview and the confirm", async () => {
+    await updateBusinessSettings(ownerId, { referralRewardCents: original.referralRewardCents + 1100 });
+    const row = await lastUpdateRow();
+    const preview = await previewSettingsUndo(row.id, "referralRewardCents");
+    expect(preview.ok).toBe(true);
+    if (!preview.ok) return;
+    await updateBusinessSettings(ownerId, { referralRewardCents: original.referralRewardCents + 1200 });
+    await expect(undoSettingsChange(ownerId, row.id, "referralRewardCents", preview.expectedCurrent)).rejects.toThrow(SettingsConflictError);
+    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).referralRewardCents).toBe(original.referralRewardCents + 1200);
+  });
+
+  it("refuses a section save made from an out-of-date page, writes nothing, and allows it after a reload", async () => {
+    const opened = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    const revision = sectionRevision(opened, "policies");
+    // Somebody else saves the same section after the page was opened.
+    await updateBusinessSettings(ownerId, { lateFeeGraceDays: opened.lateFeeGraceDays + 3 });
+    const auditCount = await prisma.auditLog.count({ where: { action: "settings.update" } });
+    await expect(
+      updateBusinessSettings(ownerId, { referralRewardCents: opened.referralRewardCents + 900 }, { expectedRevision: { section: "policies", value: revision } }),
+    ).rejects.toThrow(SettingsConflictError);
+    const unchanged = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    expect(unchanged.referralRewardCents).toBe(opened.referralRewardCents);
+    expect(unchanged.lateFeeGraceDays).toBe(opened.lateFeeGraceDays + 3);
+    expect(await prisma.auditLog.count({ where: { action: "settings.update" } })).toBe(auditCount);
+    // After reloading, the new fingerprint is accepted.
+    await updateBusinessSettings(ownerId, { referralRewardCents: opened.referralRewardCents + 900 }, { expectedRevision: { section: "policies", value: sectionRevision(unchanged, "policies") } });
+    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).referralRewardCents).toBe(opened.referralRewardCents + 900);
+  });
+
+  it("does not report a conflict for a change in a different section or unrelated bookkeeping", async () => {
+    const opened = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    const revision = sectionRevision(opened, "policies");
+    await updateBusinessSettings(ownerId, { publicPhone: `970${tag.replace(/\D/g, "").padEnd(7, "1").slice(0, 7)}` });
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { pausedAutomations: [] } });
+    await expect(
+      updateBusinessSettings(ownerId, { lateFeeGraceDays: opened.lateFeeGraceDays }, { expectedRevision: { section: "policies", value: revision } }),
+    ).resolves.toBeDefined();
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { publicPhone: opened.publicPhone } });
+  });
+
+  it("shows launch emails and the Colorado tax lookup, and who last changed paused automations", async () => {
+    const rule = AUTOMATION_RULES[0].ruleKey;
+    await setAutomationPaused(ownerId, rule, true);
+    const rows = await listSwitches();
+    const ids = rows.map((r) => r.id);
+    expect(ids).toEqual(expect.arrayContaining(["launch-emails", "tax-lookup", "paused-automations"]));
+    expect(rows.find((r) => r.id === "tax-lookup")?.state).toMatch(/^(Connected|Not connected)/);
+    expect(rows.find((r) => r.id === "launch-emails")?.state).toMatch(/^(On|Off)/);
+    const paused = rows.find((r) => r.id === "paused-automations")!;
+    expect(paused.on).toBe(true);
+    expect(paused.lastChange).not.toBeNull();
+    await setAutomationPaused(ownerId, rule, false);
+    expect((await listSwitches()).find((r) => r.id === "paused-automations")?.on).toBe(false);
+    // Every "where to change it" link points at a real screen, not a guess.
+    for (const r of rows) expect(r.changeAt).toMatch(/^\/desk\//);
   });
 });
