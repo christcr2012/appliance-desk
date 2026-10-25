@@ -359,17 +359,12 @@ Removed 2026-10-09 (withdrawn forecast and dated scope notes; the K-CASH section
 
 ## Owner-requested Appliance Desk MCP architecture — October 17, 2026
 
-The new [MCP design](mcp/README.md) and [ordered subsystem roadmap](mcp/ROADMAP.md)
-cover MCP-1…MCP-11, including private reporter feedback and agent-assisted repair.
-This is documented planned scope, no implemented or accepted MCP capability. The
-first [MCP-1/MCP-2 card](pr-cards/MCP-1.md) starts with health/backup evidence;
-subsequent work adds direct connection, delegated recovery, feedback, monitoring,
-optimization and optional RTC/Hub interoperability. Direct service use needs no Hub.
-Do not replace or edit an in-flight F2 card/packet. On activation register this new
-batch and its original acceptance with work-index and the pinned validator in one
-reviewed change; preserve every existing required unit. Source engineering, merged,
-released and real acceptance remain separate. Design does not authorize production
-configuration changes, live effects, paid infrastructure or manual release.
+The [MCP design](mcp/README.md) and [ordered subsystem roadmap](mcp/ROADMAP.md) cover MCP-1…MCP-11, including
+private reporter feedback and agent-assisted repair. **Approved to build by Chris 2026-10-25**; registered in
+work-index with build specs in `build-specs/engines/` and cards `pr-cards/MCP-*.md`. Order: MCP-10a (people-only
+feedback, no dependencies) and MCP-1 → MCP-2 → MCP-3 → MCP-4 → MCP-5 → MCP-6 / MCP-7 → MCP-8 → MCP-11 → MCP-9. Nothing
+is implemented yet. Building does not authorize production configuration changes, live effects, paid infrastructure
+or manual release; those are owner checklist rows.
 
 ## Universal permissions audit overlay — owner October21
 

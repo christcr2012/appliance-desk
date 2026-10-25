@@ -1,6 +1,6 @@
 # MCP roadmap — finite outcomes for Sol 5.6
 
-Owner-requested design scope; engineering NOT STARTED. This document defines stable batch subsections MCP-1…MCP-11. Internal steps, tools and tests are not additional countable subsections. Current application F2 execution remains intact. The design PR owns only these new planning sections; do not overwrite an in-flight F2 card, status or execution packet. Before MCP engineering, reconcile F2 and current main, register the MCP batch and its original acceptance in the shared work-index plus pinned coverage validator in one reviewed change, then select the first eligible packet. Do not repurpose an old S/F2 unit or silently omit its obligations.
+Owner-requested scope, approved to build by Chris 2026-10-25; engineering NOT STARTED. Stable sections MCP-1…MCP-11 below are the design; the implementation-ready build specs are in `docs/build-specs/engines/` (HEALTH-BACKUP, CONNECT-AGENT, AGENT-ACTIONS, REPAIR-CASES, MONITORING, OPTIMIZATION-COVERAGE, RTC, FEEDBACK, FEEDBACK-AGENT) with cards `docs/pr-cards/MCP-*.md`, all registered in `docs/pr-cards/work-index.json`. The people-only feedback box (MCP-10a) can be built first; it needs no MCP connection.
 
 ## Delivery order and dependencies
 
