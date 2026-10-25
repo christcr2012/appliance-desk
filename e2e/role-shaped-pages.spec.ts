@@ -67,18 +67,23 @@ test.afterAll(async () => {
   await cleanup?.();
 });
 
+/**
+ * The whole server answer for one page as one person, without running the page's scripts. A refusal is either a
+ * redirect status or, when the page had already started streaming, a redirect instruction inside the answer; both
+ * are read as "sent away to <path>". (Reading answers directly keeps this fast: no page is drawn.)
+ */
 async function fetchPage(who: Who, route: string) {
-  const page = await contexts.get(who)!.newPage();
-  try {
-    const response = await page.goto(route);
-    // The page can stream a 200 shell and then redirect, so let it settle before reading where we ended up.
-    await page.waitForLoadState("networkidle");
-    // The full server answer (everything streamed to the browser), read separately with the same sign-in.
-    const full = await page.request.get(route);
-    return { status: response?.status() ?? 0, finalPath: new URL(page.url()).pathname, body: await full.text() };
-  } finally {
-    await page.close();
+  const response = await contexts.get(who)!.request.get(route, { maxRedirects: 0 });
+  const body = await response.text();
+  const status = response.status();
+  let finalPath = route.split("?")[0]!;
+  if (status >= 300 && status < 400) {
+    finalPath = new URL(response.headers()["location"] ?? "/", "http://placeholder.test").pathname;
+  } else {
+    const streamed = /NEXT_REDIRECT;(?:push|replace);([^;]+);/.exec(body) ?? /http-equiv="refresh" content="\d+;url=([^"]+)"/.exec(body);
+    if (streamed) finalPath = new URL(decodeURIComponent(streamed[1]!), "http://placeholder.test").pathname;
   }
+  return { status, finalPath, body };
 }
 
 test("positive control: the planted money values really are sent to an owner and to admins", async () => {
