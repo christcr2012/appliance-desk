@@ -1,4 +1,5 @@
 import { SigningBusinessReviewForm } from "./signing-business-review-form";
+import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
 import { AgreementProgress } from "@/components/desk/agreement-progress";
 import { requireRole } from "@/lib/session";
 import { notFound } from "next/navigation";
@@ -118,6 +119,12 @@ export default async function AgreementDetailPage({
       >
         &larr; Back to agreements
       </Link>
+
+      <div className="mt-3">
+        <SendTextPanel userId={session.user.id} entityType="RentalAgreement" entityId={agreement.id} path={`/desk/agreements/${agreement.id}`}
+          families={["signature_request", "signature_reminder", "signature_received"]}
+          principal={{ customerId: agreement.customer.id }} />
+      </div>
 
       <h1 className="mt-2 text-xl font-semibold">
         Agreement for{" "}

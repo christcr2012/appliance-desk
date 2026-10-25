@@ -1,7 +1,7 @@
 import { reviewedCopyDigest } from "@/domains/language/review";
 import { approvedSpanishSources, translationFromSnapshot } from "@/domains/language/runtime";
 import type { TranslationSource } from "@/domains/language/drafts";
-import type { Prisma } from "@prisma/client";
+import type { CommunicationLinkEntityType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { lockCanonicalSmsAddress } from "./sms-address-lock";
@@ -18,11 +18,24 @@ export type RequestCommunicationInput = {
   body?: string;
 };
 
+/**
+ * Server-only extras. `verifiedDestinationCountry` is passed ONLY by a caller that already ran the free provider lookup
+ * (outside any database transaction); without it a live (production) account always blocks. `links` ties the new
+ * message to the record it is about (a lead, estimate, agreement, job...) inside the same transaction.
+ */
+export type RequestCommunicationOptions = {
+  verifiedDestinationCountry?: "US";
+  links?: { entityType: CommunicationLinkEntityType; entityId: string }[];
+  /** Runs inside the preparing transaction after the replay check; false means the record changed, so nothing is prepared. */
+  guard?: (tx: Prisma.TransactionClient) => Promise<boolean>;
+  now?: Date;
+};
+
 export type RequestCommunicationResult =
   | { kind: "QUEUED"; deliveryId: string; messageId: string; attemptId: string; replay: boolean }
   | { kind: "BLOCKED"; reason:
     "MASTER_OFF" | "POLICY_OFF" | "SENDER_NOT_READY" | "NO_RESOLVED_CONTACT" |
-    "SUPPRESSED" | "NO_SCOPED_CONSENT" | "INVALID_DESTINATION" }
+    "SUPPRESSED" | "NO_SCOPED_CONSENT" | "INVALID_DESTINATION" | "QUIET_HOURS" }
   | { kind: "CONFLICT" };
 
 function isValidInput(input: RequestCommunicationInput): boolean {
@@ -80,8 +93,10 @@ async function preparedText(tx: Prisma.TransactionClient, input: RequestCommunic
 export async function requestCommunication(
   actorUserId: string,
   input: RequestCommunicationInput,
+  options: RequestCommunicationOptions = {},
 ): Promise<RequestCommunicationResult> {
   if (!isValidInput(input)) return { kind: "CONFLICT" };
+  if ((options.links?.length ?? 0) > 5) return { kind: "CONFLICT" };
 
   const spanishSources = input.templateRevisionId ? await approvedSpanishSources() : [];
 
@@ -110,6 +125,8 @@ export async function requestCommunication(
       return { kind: "QUEUED", replay: true, deliveryId: prior.id,
         messageId: message.id, attemptId: prior.currentAttemptId } as const;
     }
+
+    if (options.guard && !(await options.guard(tx))) return { kind: "CONFLICT" } as const;
 
     await tx.$queryRaw`SELECT "id" FROM "CommunicationThread" WHERE "id" = ${input.threadId} FOR UPDATE`;
     const thread = await tx.communicationThread.findUnique({
@@ -153,7 +170,8 @@ export async function requestCommunication(
       thread,
       consents,
       purpose: template.purpose,
-      now: new Date(),
+      verifiedDestinationCountry: options.verifiedDestinationCountry,
+      now: options.now ?? new Date(),
     });
     if (!result.allowed) return { kind: "BLOCKED", reason: result.reason } as const;
 
@@ -185,6 +203,14 @@ export async function requestCommunication(
       deliveryId: delivery.id, bodyHash, occurredAt: new Date(),
       actorUserId, consentRecordId: result.consentRecordId,
     } });
+    if (options.links?.length) {
+      await tx.communicationLink.createMany({
+        data: options.links.map((link) => ({ messageId: message.id,
+          entityType: link.entityType, entityId: link.entityId,
+          source: "WORKFLOW" as const, actorUserId })),
+        skipDuplicates: true,
+      });
+    }
     await tx.messageDelivery.update({
       where: { id: delivery.id }, data: { currentAttemptId: attempt.id },
     });
