@@ -44,7 +44,7 @@ export function billPill(bill: { status: InvoiceStatus; dueDate: Date | null; am
 - **paid:** `PAID`. **closed:** `VOID, WRITTEN_OFF, REFUNDED`. **drafts:** `DRAFT` (tab hidden when 0).
 - **Pill** (first match wins; terminal statuses first): PAID → "Paid" (good); VOID → "Cancelled" (neutral);
   WRITTEN_OFF → "Given up" (neutral); REFUNDED → "Refunded" (neutral); DRAFT → "Draft" (neutral); then, only for open
-  bills with money still owed (the **open** rule above): FAILED → "Payment failed" (attention);
+  bills with money still owed (the **open** rule above): FAILED → "Check this bill" (attention);
   past due → `"{n} day(s) late"` where n = calendar days between the due date and today in Denver (attention);
   due today → "Due today" (neutral); open with due date → `"Due {formatShortDate(dueDate)}"` (neutral);
   open without due date → "Open" (neutral). Test: a bill paid on its due date shows "Paid", not "Due today".
@@ -98,11 +98,12 @@ export async function getBillTotals(params: BillsParams, now = new Date()): Prom
    **Remind** (same link); SHOP_CARD → **Take card payment** (primary, link `/desk/sales/{id}`, where the existing
    `startSaleCardPaymentAction` button lives); MANUAL_ONLY → **Record cash or check** (primary, link
    `/desk/billing/customer/{customerId}#record-payment`); ⋯ (row actions below).
-   **`payPathFor` rules** (pure, in `bill-status.ts`, unit-tested): not open or nothing owed → null; status **FAILED** →
-   MANUAL_ONLY (the existing card paths — `assertPayable` in `payment-link.ts` and `createLocalInvoiceCheckout` — accept
-   only OPEN, PARTIALLY_PAID and DELINQUENT; Stripe retries a subscription card on its own schedule), with the detail
-   line "Stripe will try the card again. You can also record cash or check." — test that FAILED never gets a card
-   button; `stripeInvoiceId`
+   **`payPathFor` rules** (pure, in `bill-status.ts`, unit-tested): not open or nothing owed → null; status **FAILED** → null (no
+   pay button). Checked 2026-10-25: no code ever sets an invoice to FAILED — a failed Stripe payment sets **DELINQUENT**
+   (`webhooks-base.ts` ~919/937), which every payment path accepts (`assertPayable`, `createLocalInvoiceCheckout`,
+   `recordManualPayment`). FAILED stays in the open rule so an old or unexpected row is still visible, with detail
+   "This bill has an old status — open it to check" and a To do item; a test asserts no source file writes
+   `status: "FAILED"` to an invoice (grep over `src/`). DELINQUENT bills keep their normal pay path. `stripeInvoiceId`
    set → STRIPE_LINK (the payment link panel's `assertPayable` requires it — `src/domains/billing/payment-link.ts`);
    `saleKind === "SHOP_SALE"` and no `stripeInvoiceId` → SHOP_CARD (the only local bills `createLocalInvoiceCheckout`
    accepts); anything else → MANUAL_ONLY. Select `stripeInvoiceId` and `saleKind` in `getBills` for this. Paid/closed cards have no buttons; the card is a link to the bill.
