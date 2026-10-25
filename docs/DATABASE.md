@@ -1,3 +1,23 @@
+## October 26 — Decisions & reviews data (DEC-1a, additive)
+
+Migration `20261026030000_decision_record`. Nothing existing is changed or removed.
+- `DecisionRecord` — append-only evidence for every open business, tax, legal or wording question (registry code in
+  `subjectId`, e.g. `IN-34-DELIVERY-STATE`): kind (STARTING_VALUE_APPLIED, CONFIRMED, CHANGED, SENT_TO_PROFESSIONAL,
+  PROFESSIONAL_ANSWER, REOPENED), audience (OWNER, CPA, ATTORNEY, TRANSLATOR), value and previous value as the setting
+  stores them, the start date, who answered (owner user, or the professional's name, firm and answer date), an
+  explanation, a private attached form (`decisions/…` in the private file store), sources, and how it came in (SCREEN,
+  IMPORT, MCP, MIGRATION). No code path updates or deletes a row (a test checks). The setting itself stays where it lives.
+- `DecisionScheduledChange` — a decision that starts on a later Colorado date (stored as that day's midnight instant):
+  the value, the record that scheduled it, whether it is a provisional starting value, applied/cancelled times. A partial
+  unique index allows one waiting change per subject; a newer decision cancels the waiting one. The nightly
+  `scheduled-prices` run applies due rows through the subject's own save.
+- `TaxabilityRuleVersion` — append-only history of each taxable/exempt cell (tax area or all-state default × charge
+  category): value, start date, provisional flag, CPA date, reason, sources, who saved it. The migration copied every
+  existing `TaxabilityRule` with start date 1970-01-01. No foreign key, so history outlives a removed tax area. Tax
+  reads use the rule of the charge's own date (`getTaxabilityRulesAsOf` in `src/domains/tax/locations.ts`).
+- `TaxabilityRule.provisional` (false), `provisionalReason`, `provisionalSources` — a researched starting value that runs
+  before the CPA confirms it; the tax engine calculates with it and labels the result "not confirmed".
+
 ## October 24 — Job roles (ACC-5, additive)
 
 `JobRole` (label, accessLevel STAFF or ADMIN, `screens` JSON list of known screen keys, `capabilityLimits` JSON list of admin permissions switched off, isStarter, archivedAt). Four starting rows are inserted by the migration. `User.jobRoleId` and `TeamInvitation.jobRoleId` are plain ids (no database link) so backups restore in any order; null means "no job role: the access level alone decides". Migration `20261024080000_job_roles`.

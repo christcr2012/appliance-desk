@@ -1,3 +1,11 @@
+## October 26 — DEC-1a built (Decisions & reviews data; PR open, not merged)
+
+Branch `ai/claude/dec-1a-decisions-data`. Coded: the decisions table, waiting (dated) changes, taxability history,
+"starting value — not confirmed" tax rules, the registry of 43 open questions, owner-only keep/change/ask/answer/import
+functions (admins read only), and tax that uses the rule of each charge's own date. No screens yet (DEC-1b), no
+researched values yet (DEC-2). Proof: unit tests run here; the database tests run in CI only. Next: DEC-1b screens and
+forms (needs the AR-0a kit), then DEC-2.
+
 ## October 25 (evening) — PR #596 merged; fee tax plan added (docs only)
 
 Merged #596 (wave 2 build specs, self-reviewed: Codex out of usage; 8 findings fixed). Late fees now one rule for every

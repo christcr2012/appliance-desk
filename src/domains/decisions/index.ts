@@ -1,0 +1,715 @@
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { assertActiveTeamActor } from "@/lib/team-actor";
+import { getPrivatePhotoStore } from "@/lib/photo-storage";
+import { previewToken, verifyToken } from "@/lib/preview-token";
+import { listTaxabilityRuleCells } from "@/domains/tax/locations";
+import {
+  AUDIENCES,
+  DECISION_SUBJECTS,
+  decisionSubject,
+  type Audience,
+  type DecisionContext,
+  type DecisionSourceRef,
+  type DecisionSubject,
+  type DecisionWriteKind,
+} from "./registry";
+import {
+  CHANGED_SINCE_OPENED,
+  cleanText,
+  decisionAttachmentProblem,
+  decisionStart,
+  decisionState,
+  matchOption,
+  needsAppChange,
+  previewFingerprint,
+  sameValue,
+  type DecisionKind,
+  type DecisionState,
+} from "./rules";
+import { GREELEY_JURISDICTION_WHERE } from "./tax-cells";
+
+/**
+ * Decisions & reviews — reads and writes (DEC-1a, docs/build-specs/engines/DECISIONS-CENTER.md sections 3–4a).
+ *
+ * Reads: OWNER and ADMIN (checked in the query transaction; a missing or other role is refused). Writes: OWNER only,
+ * one transaction each: the owner is re-checked, the settings row is locked so decisions happen one at a time, the
+ * subject's own domain save runs (same locks, checks, audit and history as its own screen), then the append-only
+ * DecisionRecord and an audit row are written. Nothing here ever updates or deletes a DecisionRecord.
+ */
+export type { Audience, DecisionState };
+export type DecisionVia = "SCREEN" | "IMPORT" | "MCP" | "MIGRATION";
+
+export type DecisionRecordDTO = {
+  id: string;
+  kind: DecisionKind;
+  audience: Audience;
+  value: Prisma.JsonValue | null;
+  previousValue: Prisma.JsonValue | null;
+  effectiveFrom: Date | null;
+  answeredByName: string | null;
+  professionalName: string | null;
+  professionalFirm: string | null;
+  professionalAnsweredOn: Date | null;
+  explanation: string | null;
+  hasAttachment: boolean;
+  sources: DecisionSourceRef[];
+  via: string;
+  createdAt: Date;
+};
+
+export type DecisionCard = Pick<DecisionSubject,
+  "id" | "legacyIds" | "area" | "title" | "question" | "facts" | "options" | "allowOther" | "recommended" | "affects"
+  | "reviewGate"> & {
+  /** Who the question is with now: the professional it was sent to, otherwise the subject's usual audience. */
+  audience: Audience;
+  defaultAudience: Audience;
+  current: { value: Prisma.JsonValue; words: string };
+  state: DecisionState;
+  /** The newest answer was "Other": the app needs a code change to follow it. */
+  needsAppChange: boolean;
+  last: DecisionRecordDTO | null;
+  history: DecisionRecordDTO[];
+  /** A change waiting for its start date ("Starts {date}"). */
+  pending: { value: Prisma.JsonValue; words: string; effectiveFrom: Date } | null;
+};
+
+const HISTORY_LIMIT = 50;
+const READ_ROLES = ["OWNER", "ADMIN"] as const;
+const TX_OPTIONS = { maxWait: 10_000, timeout: 20_000 };
+
+/** Everything the registry reads, in one pass: settings row once, tax cells once, filing accounts once. */
+export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise<DecisionContext> {
+  const [settings, cells, greeley, accounts] = await Promise.all([
+    tx.businessSettings.findUnique({
+      where: { id: "singleton" },
+      select: { shortTermLeaseElection: true, rdfHandling: true, retailDeliveryFeeDecision: true,
+        badDebtTaxRecovery: true, setupFeeTaxPlanningTreatment: true, setupFeeTaxTreatment: true,
+        recordRetentionYears: true },
+    }),
+    listTaxabilityRuleCells(tx),
+    tx.taxJurisdiction.findFirst({ where: GREELEY_JURISDICTION_WHERE, select: { id: true }, orderBy: { id: "asc" } }),
+    tx.taxFilingAccount.findMany({ select: { basis: true }, orderBy: { id: "asc" } }),
+  ]);
+  return {
+    settings: {
+      shortTermLeaseElection: settings?.shortTermLeaseElection ?? "UNDECIDED",
+      rdfHandling: settings?.rdfHandling ?? "UNDECIDED",
+      retailDeliveryFeeDecision: settings?.retailDeliveryFeeDecision ?? "UNDECIDED",
+      badDebtTaxRecovery: settings?.badDebtTaxRecovery ?? "UNDECIDED",
+      setupFeeTaxPlanningTreatment: settings?.setupFeeTaxPlanningTreatment ?? "TAXABLE",
+      setupFeeTaxTreatment: settings?.setupFeeTaxTreatment ?? "UNDECIDED",
+      recordRetentionYears: settings?.recordRetentionYears ?? 7,
+    },
+    taxCells: cells.map((cell) => ({ jurisdictionId: cell.jurisdictionId, category: cell.category,
+      taxability: cell.taxability, provisional: cell.provisional })),
+    greeleyJurisdictionId: greeley?.id ?? null,
+    filingBases: accounts.map((account) => account.basis),
+  };
+}
+
+type RecordRow = {
+  id: string; subjectId: string; kind: string; audience: string; value: Prisma.JsonValue | null;
+  previousValue: Prisma.JsonValue | null; effectiveFrom: Date | null; professionalName: string | null;
+  professionalFirm: string | null; professionalAnsweredOn: Date | null; explanation: string | null;
+  attachmentUrl: string | null; sources: Prisma.JsonValue | null; via: string; createdAt: Date;
+  answeredBy: { name: string | null } | null;
+};
+
+function sourcesOf(value: Prisma.JsonValue | null): DecisionSourceRef[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const row = item as Record<string, unknown>;
+    return typeof row.title === "string" && typeof row.url === "string" && typeof row.checkedOn === "string"
+      ? [{ title: row.title, url: row.url, checkedOn: row.checkedOn }] : [];
+  });
+}
+
+function toDTO(row: RecordRow): DecisionRecordDTO {
+  return {
+    id: row.id,
+    kind: row.kind as DecisionKind,
+    audience: (AUDIENCES as string[]).includes(row.audience) ? row.audience as Audience : "OWNER",
+    value: row.value,
+    previousValue: row.previousValue,
+    effectiveFrom: row.effectiveFrom,
+    answeredByName: row.answeredBy?.name ?? null,
+    professionalName: row.professionalName,
+    professionalFirm: row.professionalFirm,
+    professionalAnsweredOn: row.professionalAnsweredOn,
+    explanation: row.explanation,
+    // The private file link is never handed to the screen; DEC-1b serves it through an owner-only route.
+    hasAttachment: Boolean(row.attachmentUrl),
+    sources: sourcesOf(row.sources),
+    via: row.via,
+    createdAt: row.createdAt,
+  };
+}
+
+const RECORD_SELECT = {
+  id: true, subjectId: true, kind: true, audience: true, value: true, previousValue: true, effectiveFrom: true,
+  professionalName: true, professionalFirm: true, professionalAnsweredOn: true, explanation: true,
+  attachmentUrl: true, sources: true, via: true, createdAt: true, answeredBy: { select: { name: true } },
+} as const;
+
+async function buildCards(tx: Prisma.TransactionClient, subjects: DecisionSubject[]): Promise<DecisionCard[]> {
+  const ids = subjects.map((subject) => subject.id);
+  const [ctx, records, pending] = await Promise.all([
+    loadDecisionContext(tx),
+    tx.decisionRecord.findMany({
+      where: { subjectId: { in: ids } },
+      select: RECORD_SELECT,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 10_000,
+    }),
+    tx.decisionScheduledChange.findMany({
+      where: { subjectId: { in: ids }, appliedAt: null, cancelledAt: null },
+      select: { subjectId: true, value: true, effectiveFrom: true },
+    }),
+  ]);
+  const bySubject = new Map<string, RecordRow[]>();
+  for (const row of records as RecordRow[]) {
+    const list = bySubject.get(row.subjectId) ?? [];
+    if (list.length < HISTORY_LIMIT) list.push(row);
+    bySubject.set(row.subjectId, list);
+  }
+  const pendingBySubject = new Map(pending.map((row) => [row.subjectId, row]));
+  const cards: DecisionCard[] = [];
+  for (const subject of subjects) {
+    const value = await subject.read(ctx);
+    const rows = bySubject.get(subject.id) ?? [];
+    const state = decisionState(subject.recommended !== null, rows);
+    const sentTo = state === "WITH_PROFESSIONAL" ? rows[0]!.audience : null;
+    const waiting = pendingBySubject.get(subject.id);
+    cards.push({
+      id: subject.id, legacyIds: subject.legacyIds, area: subject.area, title: subject.title,
+      question: subject.question, facts: subject.facts, options: subject.options, allowOther: subject.allowOther,
+      recommended: subject.recommended, affects: subject.affects, reviewGate: subject.reviewGate,
+      audience: sentTo && (AUDIENCES as string[]).includes(sentTo) ? sentTo as Audience : subject.audience,
+      defaultAudience: subject.audience,
+      current: { value, words: subject.describe(value) },
+      state,
+      needsAppChange: needsAppChange(rows),
+      last: rows[0] ? toDTO(rows[0]) : null,
+      history: rows.map(toDTO),
+      pending: waiting
+        ? { value: waiting.value, words: subject.describe(waiting.value), effectiveFrom: waiting.effectiveFrom }
+        : null,
+    });
+  }
+  return cards;
+}
+
+export async function listDecisions(
+  actorId: string,
+  filter: { audience?: Audience; state?: DecisionState; area?: string } = {},
+): Promise<DecisionCard[]> {
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, READ_ROLES);
+    const subjects = filter.area ? DECISION_SUBJECTS.filter((subject) => subject.area === filter.area) : DECISION_SUBJECTS;
+    const cards = await buildCards(tx, subjects);
+    return cards.filter((card) =>
+      (!filter.audience || card.audience === filter.audience) && (!filter.state || card.state === filter.state));
+  }, TX_OPTIONS);
+}
+
+export async function getDecision(actorId: string, id: string): Promise<DecisionCard> {
+  const subject = requireSubject(id);
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, READ_ROLES);
+    return (await buildCards(tx, [subject]))[0]!;
+  }, TX_OPTIONS);
+}
+
+function requireSubject(id: string): DecisionSubject {
+  const subject = decisionSubject(id.replace(/^DQ-/, ""));
+  if (!subject) throw new Error("That question isn't in Decisions & reviews.");
+  return subject;
+}
+
+/** Start of every write: owner only, then the settings row locked so decisions happen one at a time. */
+async function beginWrite(tx: Prisma.TransactionClient, actorId: string) {
+  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
+}
+
+/** A newer decision on the same subject cancels a change still waiting for its start date (same transaction). */
+async function cancelPending(tx: Prisma.TransactionClient, subjectId: string, now: Date) {
+  await tx.decisionScheduledChange.updateMany({
+    where: { subjectId, appliedAt: null, cancelledAt: null },
+    data: { cancelledAt: now },
+  });
+}
+
+async function insertRecord(
+  tx: Prisma.TransactionClient,
+  actorId: string,
+  data: {
+    subjectId: string; kind: DecisionKind; audience: Audience; value: Prisma.JsonValue | null;
+    previousValue: Prisma.JsonValue | null; effectiveFrom: Date | null; via: DecisionVia;
+    professionalName?: string | null; professionalFirm?: string | null; professionalAnsweredOn?: Date | null;
+    explanation?: string | null; attachmentUrl?: string | null; sources?: DecisionSourceRef[] | null;
+  },
+) {
+  const json = (value: Prisma.JsonValue | null | undefined) =>
+    value === null || value === undefined ? Prisma.DbNull : value as Prisma.InputJsonValue;
+  const record = await tx.decisionRecord.create({
+    data: {
+      subjectId: data.subjectId, kind: data.kind, audience: data.audience,
+      value: json(data.value), previousValue: json(data.previousValue),
+      effectiveFrom: data.effectiveFrom, answeredByUserId: actorId,
+      professionalName: data.professionalName ?? null, professionalFirm: data.professionalFirm ?? null,
+      professionalAnsweredOn: data.professionalAnsweredOn ?? null, explanation: data.explanation ?? null,
+      attachmentUrl: data.attachmentUrl ?? null,
+      sources: data.sources?.length ? data.sources : Prisma.DbNull, via: data.via,
+    },
+    select: { id: true },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId: actorId, action: `decision.${data.kind.toLowerCase()}`,
+      entityType: "DecisionRecord", entityId: record.id,
+      newValue: { subjectId: data.subjectId, kind: data.kind, audience: data.audience, via: data.via,
+        effectiveFrom: data.effectiveFrom?.toISOString() ?? null },
+    },
+  });
+  return record.id;
+}
+
+
+type ApplyInput = {
+  subject: DecisionSubject;
+  kind: Exclude<DecisionWriteKind, "CONFIRMED"> | "CONFIRMED";
+  value: Prisma.JsonValue;
+  previous: Prisma.JsonValue;
+  effectiveFrom: string | Date | null | undefined;
+  confirmedOn: Date;
+  reason: string;
+  sources: DecisionSourceRef[];
+  record: Omit<Parameters<typeof insertRecord>[2], "subjectId" | "kind" | "value" | "previousValue" | "effectiveFrom">;
+  now: Date;
+  /** The context `previous` was read from (decides whether saving the same value again changes anything). */
+  ctx: DecisionContext;
+};
+
+/** Record the decision, then save it now or keep it for its start date. Returns the record id. */
+async function applyDecisionInTx(tx: Prisma.TransactionClient, actorId: string, input: ApplyInput) {
+  const start = decisionStart(input.effectiveFrom, input.now);
+  await cancelPending(tx, input.subject.id, input.now);
+  const recordId = await insertRecord(tx, actorId, {
+    ...input.record, subjectId: input.subject.id, kind: input.kind, value: input.value,
+    previousValue: input.previous, effectiveFrom: start.later ? start.start : null,
+  });
+  if (start.later) {
+    await tx.decisionScheduledChange.create({
+      data: { subjectId: input.subject.id, value: input.value as Prisma.InputJsonValue, effectiveFrom: start.start,
+        decisionRecordId: recordId, provisional: input.kind === "STARTING_VALUE_APPLIED" },
+    });
+    return recordId;
+  }
+  const changes = !sameValue(input.value, input.previous);
+  if (changes || input.subject.confirmWrite?.(input.ctx, input.kind)) {
+    await input.subject.write(tx, actorId, input.value, null, {
+      kind: input.kind, confirmedOn: input.confirmedOn, reason: input.reason, sources: input.sources,
+      effectiveFrom: start.start, previousValue: input.previous,
+    });
+  }
+  return recordId;
+}
+
+function checkOption(subject: DecisionSubject, value: Prisma.JsonValue) {
+  const option = matchOption(subject, value);
+  if (!option) throw new Error("That answer isn't one of the choices for this question.");
+  const problem = subject.validate(option.value);
+  if (problem) throw new Error(problem);
+  return option.value;
+}
+
+async function runWrite<T>(actorId: string, subjects: DecisionSubject[], work: (tx: Prisma.TransactionClient) => Promise<T>) {
+  const result = await prisma.$transaction(async (tx) => {
+    await beginWrite(tx, actorId);
+    return work(tx);
+  }, TX_OPTIONS);
+  for (const subject of new Set(subjects)) await subject.afterCommit?.();
+  return result;
+}
+
+/** "Keep this": the owner confirms the value the app uses now. Refused if it changed since the screen was opened. */
+export async function confirmDecision(actorId: string, id: string, expectedValue: Prisma.JsonValue): Promise<void> {
+  const subject = requireSubject(id);
+  const now = new Date();
+  await runWrite(actorId, [], async (tx) => {
+    const ctx = await loadDecisionContext(tx);
+    const current = await subject.read(ctx);
+    if (!sameValue(current, expectedValue)) throw new Error(CHANGED_SINCE_OPENED);
+    if (!matchOption(subject, current)) throw new Error("Nothing is set yet to keep. Choose an answer with Change… instead.");
+    await applyDecisionInTx(tx, actorId, {
+      subject, kind: "CONFIRMED", value: current, previous: current, effectiveFrom: null, confirmedOn: now,
+      reason: "Confirmed by the owner in Decisions & reviews", sources: [],
+      record: { audience: "OWNER", via: "SCREEN" }, now, ctx,
+    });
+  });
+}
+
+export async function changeDecision(
+  actorId: string, id: string, value: Prisma.JsonValue, effectiveFrom: string | Date | null, note?: string | null,
+  via: DecisionVia = "SCREEN",
+): Promise<void> {
+  const subject = requireSubject(id);
+  const chosen = checkOption(subject, value);
+  const explanation = cleanText(note, 4000, "note");
+  const now = new Date();
+  decisionStart(effectiveFrom, now);
+  await runWrite(actorId, [subject], async (tx) => {
+    const ctx = await loadDecisionContext(tx);
+    const previous = await subject.read(ctx);
+    await applyDecisionInTx(tx, actorId, {
+      subject, kind: "CHANGED", value: chosen, previous, effectiveFrom, confirmedOn: now,
+      reason: ("Changed by the owner in Decisions & reviews" + (explanation ? ": " + explanation : "")).slice(0, 500),
+      sources: [], record: { audience: "OWNER", via, explanation }, now, ctx,
+    });
+  });
+}
+
+export async function sendToProfessional(actorId: string, id: string, audience: Audience): Promise<void> {
+  const subject = requireSubject(id);
+  if (audience !== "CPA" && audience !== "ATTORNEY" && audience !== "TRANSLATOR")
+    throw new Error("Choose your CPA, attorney or translator.");
+  await runWrite(actorId, [], async (tx) => {
+    await insertRecord(tx, actorId, {
+      subjectId: subject.id, kind: "SENT_TO_PROFESSIONAL", audience, value: null, previousValue: null,
+      effectiveFrom: null, via: "SCREEN",
+    });
+  });
+}
+
+/** "Reopen": the question goes back to "Starting value"; the value the app uses stays as it is. */
+export async function reopenDecision(actorId: string, id: string): Promise<void> {
+  const subject = requireSubject(id);
+  await runWrite(actorId, [], async (tx) => {
+    await insertRecord(tx, actorId, {
+      subjectId: subject.id, kind: "REOPENED", audience: subject.audience, value: null, previousValue: null,
+      effectiveFrom: null, via: "SCREEN",
+    });
+  });
+}
+
+export type ProfessionalAnswerInput = {
+  /** One of the subject's choices, or null for "Other" (then `otherText` says what they answered). */
+  value: Prisma.JsonValue | null;
+  otherText?: string | null;
+  effectiveFrom: string | Date | null;
+  professionalName: string;
+  professionalFirm?: string | null;
+  answeredOn: string | Date;
+  explanation?: string | null;
+  attachmentUrl?: string | null;
+};
+
+function answeredOnDate(value: string | Date, now: Date): Date {
+  const date = value instanceof Date ? value : new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? value + "T12:00:00Z" : value);
+  if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() < 2000) throw new Error("Enter the date they answered.");
+  if (date.getTime() > now.getTime() + 24 * 60 * 60 * 1000) throw new Error("The answer date can't be in the future.");
+  return date;
+}
+
+function checkAttachment(url: string | null | undefined, subjectId: string): string | null {
+  const clean = cleanText(url, 1000, "attachment link");
+  if (!clean) return null;
+  const problem = decisionAttachmentProblem(clean, getPrivatePhotoStore()?.storeId ?? null, subjectId);
+  if (problem) throw new Error(problem);
+  return clean;
+}
+
+async function professionalAudience(tx: Prisma.TransactionClient, subject: DecisionSubject): Promise<Audience> {
+  const last = await tx.decisionRecord.findFirst({
+    where: { subjectId: subject.id }, select: { kind: true, audience: true },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  return last?.kind === "SENT_TO_PROFESSIONAL" && (AUDIENCES as string[]).includes(last.audience)
+    ? last.audience as Audience : subject.audience;
+}
+
+async function recordProfessionalAnswerInTx(
+  tx: Prisma.TransactionClient, actorId: string, subject: DecisionSubject, input: ProfessionalAnswerInput,
+  via: DecisionVia, now: Date, attachmentUrl: string | null,
+) {
+  const professionalName = cleanText(input.professionalName, 120, "name of who answered");
+  if (!professionalName) throw new Error("Enter who answered.");
+  const professionalFirm = cleanText(input.professionalFirm, 120, "firm");
+  const explanation = cleanText(input.explanation, 4000, "explanation");
+  const answeredOn = answeredOnDate(input.answeredOn, now);
+  const audience = await professionalAudience(tx, subject);
+  const ctx = await loadDecisionContext(tx);
+  const previous = await subject.read(ctx);
+  const professional = { audience, via, professionalName, professionalFirm, professionalAnsweredOn: answeredOn,
+    attachmentUrl };
+  if (input.value === null) {
+    // "Other" is never applied to a setting: it is kept as evidence and becomes a change to the app.
+    const otherText = cleanText(input.otherText, 1000, "other answer");
+    if (!subject.allowOther) throw new Error("This question only accepts one of its choices.");
+    if (!otherText) throw new Error("Write what they answered.");
+    await insertRecord(tx, actorId, {
+      ...professional, subjectId: subject.id, kind: "PROFESSIONAL_ANSWER", value: null, previousValue: previous,
+      effectiveFrom: null, explanation: ["Other: " + otherText, explanation].filter(Boolean).join("\n\n").slice(0, 4000),
+    });
+    return;
+  }
+  const chosen = checkOption(subject, input.value);
+  const who = professionalFirm ? `${professionalName}, ${professionalFirm}` : professionalName;
+  await applyDecisionInTx(tx, actorId, {
+    subject, kind: "PROFESSIONAL_ANSWER", value: chosen, previous, effectiveFrom: input.effectiveFrom,
+    confirmedOn: answeredOn, reason: `Answered by ${who}${explanation ? ": " + explanation : ""}`.slice(0, 500),
+    sources: [], record: { ...professional, explanation }, now, ctx,
+  });
+}
+
+export async function recordProfessionalAnswer(
+  actorId: string, id: string, input: ProfessionalAnswerInput, via: "SCREEN" | "IMPORT" | "MCP",
+): Promise<void> {
+  const subject = requireSubject(id);
+  const now = new Date();
+  if (input.value !== null) checkOption(subject, input.value);
+  decisionStart(input.effectiveFrom, now);
+  const attachmentUrl = checkAttachment(input.attachmentUrl, subject.id);
+  await runWrite(actorId, input.value === null ? [] : [subject], (tx) =>
+    recordProfessionalAnswerInTx(tx, actorId, subject, input, via, now, attachmentUrl));
+}
+
+/**
+ * DEC-2's path for a researched starting value: saved through the subject's own save (a tax cell is saved as
+ * provisional, "Starting value — not confirmed"), with its sources kept on the record.
+ */
+export async function applyStartingValue(
+  actorId: string, id: string,
+  input: { value: Prisma.JsonValue; effectiveFrom: string | Date | null; why: string; sources: DecisionSourceRef[] },
+  via: DecisionVia = "SCREEN",
+): Promise<void> {
+  const subject = requireSubject(id);
+  const chosen = checkOption(subject, input.value);
+  const why = cleanText(input.why, 500, "reason");
+  if (!why) throw new Error("Explain why this starting value was chosen.");
+  if (!Array.isArray(input.sources) || input.sources.length > 20) throw new Error("Invalid source list.");
+  const now = new Date();
+  decisionStart(input.effectiveFrom, now);
+  await runWrite(actorId, [subject], async (tx) => {
+    const ctx = await loadDecisionContext(tx);
+    const previous = await subject.read(ctx);
+    await applyDecisionInTx(tx, actorId, {
+      subject, kind: "STARTING_VALUE_APPLIED", value: chosen, previous, effectiveFrom: input.effectiveFrom,
+      confirmedOn: now, reason: why, sources: input.sources,
+      record: { audience: subject.audience, via, explanation: why, sources: input.sources }, now, ctx,
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Completed questionnaires: preview exactly what would change, then apply exactly that (spec section 4).
+
+/** One answer read from a completed form (the parser and the MCP tool produce these). */
+export type ParsedAnswer = {
+  /** The question's code, with or without the "DQ-" prefix. */
+  code: string;
+  /** The ticked choice (its value or its label), or null when "Other" was written. */
+  option: Prisma.JsonValue | null;
+  otherText?: string | null;
+  effectiveFrom?: string | null;
+  explanation?: string | null;
+  answeredBy?: string | null;
+  firm?: string | null;
+  answeredOn?: string | null;
+};
+
+export type AnswerPreview = {
+  code: string;
+  title: string;
+  now: string;
+  after: string;
+  effectiveFrom: string | null;
+  /** OTHER: recorded as evidence only; the app needs a change to follow it. */
+  status: "CHANGE" | "SAME" | "OTHER" | "INVALID";
+  reason?: string;
+};
+
+type TokenClaims = { v: 1; uid: string; sha: string; exp: number };
+const TOKEN_ERRORS = { label: "Answers preview", error: (message: string) => new Error(message) };
+const PREVIEW_MINUTES = 30;
+
+async function previewInTx(tx: Prisma.TransactionClient, answers: ParsedAnswer[], now: Date): Promise<AnswerPreview[]> {
+  if (!Array.isArray(answers) || answers.length === 0) throw new Error("No answers were found to preview.");
+  if (answers.length > 200) throw new Error("Preview at most 200 answers at a time.");
+  const ctx = await loadDecisionContext(tx);
+  const seen = new Map<string, number>();
+  for (const answer of answers) {
+    const code = String(answer.code ?? "").trim().replace(/^\[?DQ-/, "").replace(/\]$/, "");
+    seen.set(code, (seen.get(code) ?? 0) + 1);
+  }
+  const out: AnswerPreview[] = [];
+  for (const answer of answers) {
+    const code = String(answer.code ?? "").trim().replace(/^\[?DQ-/, "").replace(/\]$/, "");
+    const subject = decisionSubject(code);
+    const effective = answer.effectiveFrom?.trim() || null;
+    const base = { code, title: subject?.title ?? "Unknown question", effectiveFrom: effective };
+    if (!subject) { out.push({ ...base, now: "", after: "", status: "INVALID", reason: "This code isn't a question in the app." }); continue; }
+    const current = await subject.read(ctx);
+    const now_ = subject.describe(current);
+    const invalid = (reason: string) => out.push({ ...base, now: now_, after: "", status: "INVALID", reason });
+    if ((seen.get(code) ?? 0) > 1) { invalid("This question was answered more than once."); continue; }
+    if (!cleanText(answer.answeredBy ?? null, 120, "name of who answered")) { invalid("Fill in who answered."); continue; }
+    try {
+      decisionStart(effective, now);
+      if (answer.answeredOn) answeredOnDate(answer.answeredOn, now);
+    } catch (error) {
+      invalid(error instanceof Error ? error.message : "Check the dates."); continue;
+    }
+    if (answer.option === null || answer.option === undefined) {
+      if (!subject.allowOther) { invalid("This question only accepts one of its choices."); continue; }
+      const other = cleanText(answer.otherText ?? null, 1000, "other answer");
+      if (!other) { invalid("No answer was ticked or written."); continue; }
+      out.push({ ...base, now: now_, after: `Needs a change to the app: ${other}`, status: "OTHER" });
+      continue;
+    }
+    const option = matchOption(subject, answer.option);
+    if (!option || subject.validate(option.value)) {
+      invalid(subject.allowOther ? "That answer isn't one of the choices; write it under Other." : "That answer isn't one of the choices.");
+      continue;
+    }
+    out.push({ ...base, now: now_, after: subject.describe(option.value),
+      status: sameValue(option.value, current) ? "SAME" : "CHANGE" });
+  }
+  return out;
+}
+
+export async function previewAnswers(
+  actorId: string, answers: ParsedAnswer[],
+): Promise<{ preview: AnswerPreview[]; confirmToken: string }> {
+  const now = new Date();
+  return prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+    const preview = await previewInTx(tx, answers, now);
+    const claim: TokenClaims = { v: 1, uid: actorId, sha: previewFingerprint({ answers, preview }),
+      exp: now.getTime() + PREVIEW_MINUTES * 60_000 };
+    return { preview, confirmToken: previewToken(claim, TOKEN_ERRORS) };
+  }, TX_OPTIONS);
+}
+
+function readClaims(token: string, actorId: string): TokenClaims {
+  const claim = verifyToken(token, TOKEN_ERRORS) as Partial<TokenClaims> | null;
+  if (!claim || claim.v !== 1 || claim.uid !== actorId || typeof claim.sha !== "string" ||
+      !/^[a-f0-9]{64}$/.test(claim.sha) || !Number.isSafeInteger(claim.exp) || claim.exp! < Date.now() ||
+      claim.exp! > Date.now() + (PREVIEW_MINUTES + 1) * 60_000)
+    throw new Error("This preview has expired or isn't yours. Preview the answers again.");
+  return claim as TokenClaims;
+}
+
+export type ApplyResult = { applied: number; same: number; other: number; skipped: number; preview: AnswerPreview[] };
+
+/**
+ * Applies exactly what was previewed: the preview is recomputed inside the same transaction and must match the
+ * token, so a setting changed since (or different answers) refuses the whole apply. Each CHANGE/SAME becomes a
+ * PROFESSIONAL_ANSWER (SAME confirms without saving the setting); each OTHER is kept as evidence only.
+ */
+export async function applyAnswers(
+  actorId: string, answers: ParsedAnswer[], confirmToken: string,
+  opts: { via?: "IMPORT" | "MCP" | "SCREEN"; attachmentUrl?: string | null } = {},
+): Promise<ApplyResult> {
+  const claim = readClaims(confirmToken, actorId);
+  const attachmentUrl = checkAttachment(opts.attachmentUrl, "*");
+  const now = new Date();
+  const touched: DecisionSubject[] = [];
+  const result = await runWrite(actorId, touched, async (tx) => {
+    const preview = await previewInTx(tx, answers, now);
+    if (previewFingerprint({ answers, preview }) !== claim.sha)
+      throw new Error("The answers or the app's settings changed since the preview. Preview again before applying.");
+    const counts: ApplyResult = { applied: 0, same: 0, other: 0, skipped: 0, preview };
+    for (const [index, row] of preview.entries()) {
+      const answer = answers[index]!;
+      if (row.status === "INVALID") { counts.skipped += 1; continue; }
+      const subject = requireSubject(row.code);
+      await recordProfessionalAnswerInTx(tx, actorId, subject, {
+        value: row.status === "OTHER" ? null : matchOption(subject, answer.option)!.value,
+        otherText: answer.otherText ?? null,
+        effectiveFrom: answer.effectiveFrom ?? null,
+        professionalName: answer.answeredBy ?? "",
+        professionalFirm: answer.firm ?? null,
+        answeredOn: answer.answeredOn ?? now,
+        explanation: answer.explanation ?? null,
+      }, opts.via ?? "IMPORT", now, attachmentUrl);
+      if (row.status === "CHANGE") { counts.applied += 1; touched.push(subject); }
+      else if (row.status === "SAME") counts.same += 1;
+      else counts.other += 1;
+    }
+    return counts;
+  });
+  return result;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// The nightly run: apply every change whose start date has come (spec section 4a).
+
+/**
+ * Applies each due, not-cancelled scheduled change once, through the subject's own save with the same locks and
+ * audit, as the owner who decided it (re-checked: a deactivated owner's change is not applied). Safe to repeat: the
+ * row is locked and `appliedAt` re-checked inside the same transaction.
+ */
+export async function applyDueDecisionChanges(now: Date = new Date()): Promise<{ applied: number; failed: number }> {
+  const due = await prisma.decisionScheduledChange.findMany({
+    where: { appliedAt: null, cancelledAt: null, effectiveFrom: { lte: now } },
+    select: { id: true }, orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }], take: 500,
+  });
+  let applied = 0;
+  let failed = 0;
+  for (const { id } of due) {
+    try {
+      const subject = await prisma.$transaction(async (tx) => {
+        // Same lock order as every decision write (settings row first, then the waiting change), so the nightly run
+        // and an owner's change at the same moment wait for each other instead of deadlocking.
+        await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
+        const rows = await tx.$queryRaw<Array<{ appliedAt: Date | null; cancelledAt: Date | null }>>`
+          SELECT "appliedAt", "cancelledAt" FROM "DecisionScheduledChange" WHERE "id" = ${id} FOR UPDATE`;
+        if (!rows[0] || rows[0].appliedAt || rows[0].cancelledAt) return null;
+        const change = await tx.decisionScheduledChange.findUniqueOrThrow({ where: { id } });
+        const record = await tx.decisionRecord.findUniqueOrThrow({
+          where: { id: change.decisionRecordId },
+          select: { kind: true, answeredByUserId: true, professionalName: true, professionalFirm: true,
+            professionalAnsweredOn: true, explanation: true, sources: true, createdAt: true },
+        });
+        const subject = decisionSubject(change.subjectId);
+        if (!subject || !record.answeredByUserId) throw new Error("The decision behind this change is missing.");
+        await assertActiveTeamActor(tx, record.answeredByUserId, ["OWNER"]);
+        const previous = await subject.read(await loadDecisionContext(tx));
+        const who = record.professionalName
+          ? (record.professionalFirm ? `${record.professionalName}, ${record.professionalFirm}` : record.professionalName)
+          : "the owner";
+        const kind = (["CHANGED", "PROFESSIONAL_ANSWER", "STARTING_VALUE_APPLIED"].includes(record.kind)
+          ? record.kind : "CHANGED") as DecisionWriteKind;
+        await subject.write(tx, record.answeredByUserId, change.value, change.effectiveFrom, {
+          kind,
+          confirmedOn: record.professionalAnsweredOn ?? record.createdAt,
+          reason: (kind === "STARTING_VALUE_APPLIED" ? record.explanation ?? "Researched starting value"
+            : `Decided by ${who}${record.explanation ? ": " + record.explanation : ""}`).slice(0, 500),
+          sources: sourcesOf(record.sources),
+          effectiveFrom: change.effectiveFrom,
+          previousValue: previous,
+        });
+        await tx.decisionScheduledChange.update({ where: { id }, data: { appliedAt: now } });
+        await tx.auditLog.create({
+          data: { userId: record.answeredByUserId, action: "decision.scheduled_applied",
+            entityType: "DecisionScheduledChange", entityId: id,
+            newValue: { subjectId: change.subjectId, effectiveFrom: change.effectiveFrom.toISOString() } },
+        });
+        return subject;
+      }, TX_OPTIONS);
+      if (subject) {
+        applied += 1;
+        await subject.afterCommit?.();
+      }
+    } catch (error) {
+      failed += 1;
+      console.error("[decisions] scheduled change could not be applied", id,
+        error instanceof Error ? error.message.slice(0, 200) : "unknown");
+    }
+  }
+  return { applied, failed };
+}

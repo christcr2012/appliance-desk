@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { getAgreementTaxContext } from "@/domains/tax/locations";
+import { getAgreementTaxContext, listTaxabilityRuleCells } from "@/domains/tax/locations";
 import { assessPreparedSigningCharges } from "./signing-charge-readiness";
 import { getEffectiveSetupTaxTreatmentInTx } from "./setup-tax-policy-version";
 import { reviewSigningFeeTax, type SigningFeeTaxReview } from "./signing-charge-tax-evidence";
@@ -85,12 +85,12 @@ export async function getDraftSigningTaxReviewInTx(
     }
     const context = await getAgreementTaxContext(tx, charge.agreementId, effectiveOn);
     const ids = context.jurisdictions.map((row) => row.id);
-    const rules = await tx.taxabilityRule.findMany({
-      where: { category: "ADMINISTRATIVE_SETUP", OR: [
-        { jurisdictionId: null }, { jurisdictionId: { in: ids } },
-      ] },
-      select: { category: true, jurisdictionId: true, taxability: true, cpaConfirmedOn: true },
-    });
+    // Today's stored cells (with their CPA dates); the review still requires a CPA-confirmed rule for real use.
+    const rules = (await listTaxabilityRuleCells(tx)).filter((rule) =>
+      rule.category === "ADMINISTRATIVE_SETUP" &&
+      (rule.jurisdictionId === null || ids.includes(rule.jurisdictionId)))
+      .map(({ category, jurisdictionId, taxability, cpaConfirmedOn }) =>
+        ({ category, jurisdictionId, taxability, cpaConfirmedOn }));
     const review = reviewSigningFeeTax({ setupFeeCents: charge.setupFeeCents,
       downPaymentCents: charge.downPaymentCents,
       setupFeeTaxTreatment: charge.setupFeeTaxTreatment,

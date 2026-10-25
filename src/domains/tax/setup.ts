@@ -292,11 +292,12 @@ export async function saveTaxFilingAccount(
   });
 }
 
-export async function saveTaxabilityCell(
-  actorId: string,
-  input: { jurisdictionId: string | null; category: TaxChargeCategory; taxability: Taxability;
-    cpaConfirmedOn: Date; reason: string },
-): Promise<void> {
+export type TaxabilityCellInput = { jurisdictionId: string | null; category: TaxChargeCategory; taxability: Taxability;
+  cpaConfirmedOn: Date; reason: string };
+/** When a decision's change starts (Decisions & reviews): the history version starts then. Default: today. */
+export type TaxabilityCellOptions = { effectiveFrom?: Date };
+
+function checkConfirmedCell(input: TaxabilityCellInput) {
   enumValue(input.category, TaxChargeCategory, "tax category");
   enumValue(input.taxability, Taxability, "taxability");
   if (input.taxability === "UNDECIDED") throw new Error("The confirmed cell must be taxable or exempt.");
@@ -304,33 +305,152 @@ export async function saveTaxabilityCell(
   if (!input.cpaConfirmedOn) throw new Error("Taxability confirmation needs a CPA date.");
   const reason = textField(input.reason, 500, "CPA decision") ?? "";
   if (!reason) throw new Error("Explain the confirmed taxability decision.");
-  await prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-    if (input.jurisdictionId === null) {
-      // Default all-state rules have NULL jurisdictionId; lock singleton
-      // so two owners cannot create duplicate nullable unique rows.
-      await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
-    } else {
-      await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
-      await tx.taxJurisdiction.findUniqueOrThrow({ where: { id: input.jurisdictionId } });
+  return reason;
+}
+
+export async function saveTaxabilityCell(actorId: string, input: TaxabilityCellInput): Promise<void> {
+  checkConfirmedCell(input);
+  await prisma.$transaction(tx => saveTaxabilityCellInTx(tx, actorId, input));
+}
+
+/** Locks the cell's owner row (the tax area, or the settings row for the all-state defaults) like every cell save. */
+async function lockTaxabilityCell(tx: Prisma.TransactionClient, jurisdictionId: string | null) {
+  if (jurisdictionId === null) {
+    // Default all-state rules have NULL jurisdictionId; lock singleton
+    // so two owners cannot create duplicate nullable unique rows.
+    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
+  } else {
+    await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${jurisdictionId} FOR UPDATE`;
+    await tx.taxJurisdiction.findUniqueOrThrow({ where: { id: jurisdictionId } });
+  }
+}
+
+/** Start of a Colorado business day, stored UTC. */
+function businessDayStart(at: Date): Date {
+  return businessDateFromKey(businessDateKey(at))!;
+}
+
+/**
+ * Appends the cell's history version (DEC-1a). The first time a cell that already existed gets a version, the value it
+ * had is kept as "what was true before history existed" (1970-01-01), so old dates keep their old answer.
+ */
+async function appendTaxabilityVersion(
+  tx: Prisma.TransactionClient,
+  existing: { taxability: Taxability; provisional: boolean; cpaConfirmedOn: Date | null; reason: string | null } | null,
+  row: { jurisdictionId: string | null; category: TaxChargeCategory; taxability: Taxability; provisional: boolean;
+    cpaConfirmedOn: Date | null; reason: string | null; sources: Prisma.InputJsonValue | null; actorId: string;
+    effectiveFrom: Date },
+) {
+  if (existing) {
+    const earlier = await tx.taxabilityRuleVersion.count({
+      where: { jurisdictionId: row.jurisdictionId, category: row.category },
+    });
+    if (earlier === 0) {
+      await tx.taxabilityRuleVersion.create({ data: {
+        jurisdictionId: row.jurisdictionId, category: row.category, taxability: existing.taxability,
+        effectiveFrom: new Date(Date.UTC(1970, 0, 1)), provisional: existing.provisional,
+        cpaConfirmedOn: existing.cpaConfirmedOn, reason: existing.reason,
+      } });
     }
-    const existing = await tx.taxabilityRule.findFirst({
-      where: { jurisdictionId: input.jurisdictionId, category: input.category },
-    });
-    const data = { taxability: input.taxability, cpaConfirmedOn: input.cpaConfirmedOn,
-      reason, updatedByUserId: actorId };
-    const rule = existing
-      ? await tx.taxabilityRule.update({ where: { id: existing.id }, data })
-      : await tx.taxabilityRule.create({
-          data: { ...data, category: input.category, jurisdictionId: input.jurisdictionId },
-        });
-    await tx.auditLog.create({
-      data: { userId: actorId, action: "tax.setup.taxability_confirmed",
-        entityType: "TaxabilityRule", entityId: rule.id,
-        oldValue: existing ? { taxability: existing.taxability } : Prisma.JsonNull,
-        newValue: { category: rule.category, jurisdictionId: input.jurisdictionId,
-          taxability: rule.taxability, cpaConfirmedOn: input.cpaConfirmedOn.toISOString() } },
-    });
+  }
+  await tx.taxabilityRuleVersion.create({ data: {
+    jurisdictionId: row.jurisdictionId, category: row.category, taxability: row.taxability,
+    effectiveFrom: row.effectiveFrom, provisional: row.provisional, cpaConfirmedOn: row.cpaConfirmedOn,
+    reason: row.reason, sources: row.sources ?? Prisma.DbNull, createdByUserId: row.actorId,
+  } });
+}
+
+/**
+ * The confirmed-cell save inside a transaction the caller owns (Decisions & reviews runs several steps in one).
+ * Same checks, locks, audit and history as `saveTaxabilityCell`; confirming clears a provisional starting value.
+ */
+export async function saveTaxabilityCellInTx(
+  tx: Prisma.TransactionClient, actorId: string, input: TaxabilityCellInput, opts: TaxabilityCellOptions = {},
+): Promise<void> {
+  const reason = checkConfirmedCell(input);
+  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  await lockTaxabilityCell(tx, input.jurisdictionId);
+  const existing = await tx.taxabilityRule.findFirst({
+    where: { jurisdictionId: input.jurisdictionId, category: input.category },
+  });
+  const data = { taxability: input.taxability, cpaConfirmedOn: input.cpaConfirmedOn,
+    reason, updatedByUserId: actorId,
+    provisional: false, provisionalReason: null, provisionalSources: Prisma.DbNull };
+  const rule = existing
+    ? await tx.taxabilityRule.update({ where: { id: existing.id }, data })
+    : await tx.taxabilityRule.create({
+        data: { ...data, category: input.category, jurisdictionId: input.jurisdictionId },
+      });
+  await appendTaxabilityVersion(tx, existing, {
+    jurisdictionId: input.jurisdictionId, category: input.category, taxability: input.taxability,
+    provisional: false, cpaConfirmedOn: input.cpaConfirmedOn, reason, sources: null, actorId,
+    effectiveFrom: opts.effectiveFrom ?? businessDayStart(new Date()),
+  });
+  await tx.auditLog.create({
+    data: { userId: actorId, action: "tax.setup.taxability_confirmed",
+      entityType: "TaxabilityRule", entityId: rule.id,
+      oldValue: existing ? { taxability: existing.taxability, provisional: existing.provisional } : Prisma.JsonNull,
+      newValue: { category: rule.category, jurisdictionId: input.jurisdictionId,
+        taxability: rule.taxability, cpaConfirmedOn: input.cpaConfirmedOn.toISOString() } },
+  });
+}
+
+export type DecisionSource = { title: string; url: string; checkedOn: string };
+export type ProvisionalTaxabilityInput = { jurisdictionId: string | null; category: TaxChargeCategory;
+  taxability: Taxability; reason: string; sources: DecisionSource[] };
+
+function checkSources(sources: DecisionSource[]): DecisionSource[] {
+  if (!Array.isArray(sources) || sources.length > 20) throw new Error("Invalid source list.");
+  return sources.map(source => {
+    const title = textField(source.title, 200, "source title");
+    if (!title || typeof source.url !== "string" || !/^https:\/\//.test(source.url) || source.url.length > 500 ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(source.checkedOn ?? ""))
+      throw new Error("Each source needs a title, an https link and the date it was checked.");
+    return { title, url: source.url, checkedOn: source.checkedOn };
+  });
+}
+
+/**
+ * DEC-1a section 5: run a researched taxable/exempt starting value before the CPA confirms it. Same locks and owner
+ * check as the confirmed save; the cell is marked provisional (no CPA date) and the tax engine labels results that
+ * use it "not confirmed". Never accepts UNDECIDED.
+ */
+export async function saveProvisionalTaxabilityCell(actorId: string, input: ProvisionalTaxabilityInput): Promise<void> {
+  await prisma.$transaction(tx => saveProvisionalTaxabilityCellInTx(tx, actorId, input));
+}
+
+export async function saveProvisionalTaxabilityCellInTx(
+  tx: Prisma.TransactionClient, actorId: string, input: ProvisionalTaxabilityInput, opts: TaxabilityCellOptions = {},
+): Promise<void> {
+  enumValue(input.category, TaxChargeCategory, "tax category");
+  enumValue(input.taxability, Taxability, "taxability");
+  if (input.taxability === "UNDECIDED") throw new Error("A starting value must be taxable or exempt.");
+  const reason = textField(input.reason, 500, "starting value reason") ?? "";
+  if (!reason) throw new Error("Explain why this starting value was chosen.");
+  const sources = checkSources(input.sources);
+  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  await lockTaxabilityCell(tx, input.jurisdictionId);
+  const existing = await tx.taxabilityRule.findFirst({
+    where: { jurisdictionId: input.jurisdictionId, category: input.category },
+  });
+  const data = { taxability: input.taxability, cpaConfirmedOn: null, reason, updatedByUserId: actorId,
+    provisional: true, provisionalReason: reason, provisionalSources: sources };
+  const rule = existing
+    ? await tx.taxabilityRule.update({ where: { id: existing.id }, data })
+    : await tx.taxabilityRule.create({
+        data: { ...data, category: input.category, jurisdictionId: input.jurisdictionId },
+      });
+  await appendTaxabilityVersion(tx, existing, {
+    jurisdictionId: input.jurisdictionId, category: input.category, taxability: input.taxability,
+    provisional: true, cpaConfirmedOn: null, reason, sources, actorId,
+    effectiveFrom: opts.effectiveFrom ?? businessDayStart(new Date()),
+  });
+  await tx.auditLog.create({
+    data: { userId: actorId, action: "tax.setup.taxability_starting_value",
+      entityType: "TaxabilityRule", entityId: rule.id,
+      oldValue: existing ? { taxability: existing.taxability, provisional: existing.provisional } : Prisma.JsonNull,
+      newValue: { category: rule.category, jurisdictionId: input.jurisdictionId,
+        taxability: rule.taxability, provisional: true, sourceCount: sources.length } },
   });
 }
 

@@ -4,6 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import type { ExceptionItem } from "@/domains/exceptions/rules";
 import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
 import { RENTAL_TAX_CATEGORIES } from "@/domains/tax/categories";
+import { listTaxabilityRuleCells } from "@/domains/tax/locations";
 import {
   allFilingStartsRecorded,
   hasCompleteSalesAccount,
@@ -115,10 +116,7 @@ export async function getTaxWorkspaceOverview(
         tx.appliance.count({ where: { acquisitionTaxStatus: "UNKNOWN" } }),
         tx.businessSettings.findUnique({ where: { id: "singleton" },
           select: { rdfCpaConfirmedOn: true, shortTermLeaseElection: true } }),
-        tx.taxabilityRule.findMany({
-          select: { jurisdictionId: true, category: true,
-            taxability: true, cpaConfirmedOn: true },
-        }),
+        listTaxabilityRuleCells(tx),
         tx.addressTaxJurisdiction.findMany({
           where: { location: { isCurrent: true, status: "VERIFIED",
             serviceAddressId: { not: null } } },

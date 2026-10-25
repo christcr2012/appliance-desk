@@ -198,7 +198,22 @@ export async function updateBusinessSettings(
     expectedRevision?: { section: EditableSettingsSection; value: string };
   },
 ) {
-  const after = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction((tx) => updateBusinessSettingsInTx(tx, userId, update, opts));
+}
+
+/**
+ * The settings save inside a transaction the caller owns (Decisions & reviews runs its record and the save together).
+ * Same checks, lock, conflict rule and audit as `updateBusinessSettings`; locking the row again inside the same
+ * transaction is fine (Postgres row locks are re-entrant within one transaction).
+ */
+export async function updateBusinessSettingsInTx(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  update: BusinessSettingsUpdate,
+  opts?: {
+    expectedRevision?: { section: EditableSettingsSection; value: string };
+  },
+) {
     // Re-check the person inside the transaction (a deactivated owner/admin
     // must not slip a change in after the page-level role check), then lock
     // the settings row so two saves cannot interleave.
@@ -244,9 +259,6 @@ export async function updateBusinessSettings(
     });
 
     return after;
-  });
-
-  return after;
 }
 
 /**

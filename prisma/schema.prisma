@@ -39,6 +39,7 @@ model User {
   budgetMoves BudgetMove[]
   signingBusinessReviews SigningBusinessReview[]
   enteredRdfRates RetailDeliveryFeeRate[] @relation("RdfRateEditor")
+  decisionRecords DecisionRecord[] @relation("DecisionAnsweredBy")
   id            String    @id @default(cuid())
   email         String    @unique
   emailVerified Boolean   @default(false)
@@ -2756,8 +2757,73 @@ model TaxabilityRule {
   cpaConfirmedOn  DateTime?
   updatedByUserId String?
   updatedAt       DateTime         @updatedAt
+  // DEC-1a: a researched starting value that runs before the CPA confirms it ("Starting value — not confirmed").
+  provisional        Boolean @default(false)
+  provisionalReason  String?
+  provisionalSources Json?
 
   @@unique([jurisdictionId, category])
+}
+
+// DEC-1a: append-only history of every taxability cell, so a late bill for an old date is taxed by the rule of its own
+// date. The migration copied every rule that existed then with effectiveFrom 1970-01-01. No foreign key on purpose:
+// history outlives a tax area that is later removed.
+model TaxabilityRuleVersion {
+  id              String            @id @default(cuid())
+  jurisdictionId  String?
+  category        TaxChargeCategory
+  taxability      Taxability
+  effectiveFrom   DateTime
+  provisional     Boolean           @default(false)
+  cpaConfirmedOn  DateTime?
+  reason          String?
+  sources         Json?
+  createdByUserId String?
+  createdAt       DateTime          @default(now())
+
+  @@index([jurisdictionId, category, effectiveFrom])
+}
+
+// DEC-1a: Decisions & reviews. One append-only row per answer, confirmation, question sent or reopening. The setting
+// itself stays where it lives; this is the evidence trail (docs/build-specs/engines/DECISIONS-CENTER.md section 1).
+model DecisionRecord {
+  id                     String    @id @default(cuid())
+  subjectId              String
+  kind                   String
+  audience               String
+  value                  Json?
+  previousValue          Json?
+  effectiveFrom          DateTime?
+  answeredByUserId       String?
+  answeredBy             User?     @relation("DecisionAnsweredBy", fields: [answeredByUserId], references: [id], onDelete: SetNull)
+  professionalName       String?
+  professionalFirm       String?
+  professionalAnsweredOn DateTime?
+  explanation            String?
+  attachmentUrl          String?
+  sources                Json?
+  via                    String
+  createdAt              DateTime  @default(now())
+
+  @@index([subjectId, createdAt])
+  @@index([audience, createdAt])
+}
+
+// DEC-1a: a decision that starts on a later Colorado date. The nightly scheduled-changes run applies it through the
+// subject's own save; tax reads overlay it from its date even before that run.
+model DecisionScheduledChange {
+  id               String    @id @default(cuid())
+  subjectId        String
+  value            Json
+  effectiveFrom    DateTime
+  decisionRecordId String
+  provisional      Boolean   @default(false)
+  appliedAt        DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([appliedAt, effectiveFrom])
+  @@index([subjectId, effectiveFrom])
 }
 
 model AddressTaxLocation {

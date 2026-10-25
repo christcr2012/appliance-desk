@@ -98,6 +98,10 @@ export const BACKUP_MODEL_POLICY = {
   TaxRateObservation: "taxRateObservation",
   OfficialSourceWatch: "officialSourceWatch",
   TaxabilityRule: "taxabilityRule",
+  // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
+  TaxabilityRuleVersion: "taxabilityRuleVersion",
+  DecisionRecord: "decisionRecord",
+  DecisionScheduledChange: "decisionScheduledChange",
   AddressTaxLocation: "addressTaxLocation",
   AddressTaxJurisdiction: "addressTaxJurisdiction",
   InvoiceTaxLine: "invoiceTaxLine",
