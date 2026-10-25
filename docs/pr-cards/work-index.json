@@ -4020,22 +4020,20 @@
       "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
       "batch": "BA",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "book_autopilot",
       "budget": 480,
       "units": [
         "BA-1"
       ],
       "evidence": [
-        "docs/designs/BOOKS-AUTOPILOT.md",
-        "src/domains/books/post.ts",
-        "src/domains/books/fixed-assets.ts",
-        "src/app/api/cron/books-nightly/route.ts"
+        "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
+        "docs/designs/BOOKS-AUTOPILOT.md"
       ],
       "tests": [
         "tests/ba1-books-autopilot-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/BA-1.md"
     },
     {
@@ -4045,21 +4043,20 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
         "BA-2"
       ],
       "evidence": [
-        "docs/designs/BOOKS-AUTOPILOT.md",
-        "src/domains/books/management.ts",
-        "src/app/desk/books/page.tsx"
+        "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
+        "docs/designs/BOOKS-AUTOPILOT.md"
       ],
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {
@@ -4069,23 +4066,21 @@
       "dependencies": [
         "BA-2"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "month_review",
       "budget": 480,
       "units": [
         "BA-3"
       ],
       "evidence": [
-        "docs/designs/BOOKS-AUTOPILOT.md",
-        "src/domains/books/management.ts",
-        "src/domains/exceptions/rules.ts",
-        "src/domains/books/reports.ts"
+        "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
+        "docs/designs/BOOKS-AUTOPILOT.md"
       ],
       "tests": [
         "tests/ba3-month-review-integration.test.ts",
         "e2e/books-month-review.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/BA-3.md"
     },
     {
@@ -4110,7 +4105,7 @@
       "tests": [
         "e2e/books-home.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/BA-4.md"
     },
     {
@@ -4134,7 +4129,7 @@
       "tests": [
         "tests/ba5-equipment-value.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/BA-5.md"
     },
     {
@@ -4156,7 +4151,7 @@
       "tests": [
         "tests/ba6-no-link-lists.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/BA-6.md"
     },
     {
@@ -4164,23 +4159,23 @@
       "title": "Lead stages, ownership, speed to lead, duplicates and scale (indexes, search, cursor paging)",
       "batch": "LD",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "lead_pipeline",
       "budget": 480,
       "units": [
         "LD-1"
       ],
       "evidence": [
-        "docs/designs/LEADS-WORKSPACE.md",
-        "src/domains/leads/workspace.ts",
+        "docs/build-specs/engines/LEADS-PIPELINE.md",
         "src/domains/leads/index.ts",
-        "prisma/schema.prisma"
+        "src/domains/leads/contact.ts"
       ],
       "tests": [
-        "tests/ld1-lead-pipeline-integration.test.ts",
-        "tests/perf/leads-scale.test.ts"
+        "tests/lead-stage.test.ts",
+        "tests/lead-merge-integration.test.ts",
+        "tests/perf/leads-queue.perf.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/LD-1.md"
     },
     {
@@ -4205,7 +4200,7 @@
         "tests/ld2-lead-queue.test.ts",
         "e2e/leads-queue.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/LD-2.md"
     },
     {
@@ -4229,7 +4224,7 @@
         "tests/ld3-lead-detail.test.ts",
         "e2e/lead-detail.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/LD-3.md"
     },
     {
@@ -4239,7 +4234,7 @@
       "dependencies": [
         "LD-3"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — built in AR-9 (docs/build-specs/screens/INSIGHTS.md)",
       "migration": "none",
       "budget": 320,
       "units": [
@@ -4252,7 +4247,7 @@
       "tests": [
         "tests/ld4-lead-insights.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/LD-4.md"
     },
     {
@@ -4260,7 +4255,7 @@
       "title": "Customer list as a working tool: segments, money and next event per row, filter sheet, saved views, summary read model, fast search, count fix",
       "batch": "CU",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — engine and screen built in AR-4c (docs/build-specs/screens/CUSTOMERS.md)",
       "migration": "customer_summary",
       "budget": 500,
       "units": [
@@ -4275,8 +4270,8 @@
         "tests/cu1-customer-list-integration.test.ts",
         "tests/perf/customers-scale.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/CU-1.md"
+      "readiness": "SUPERSEDED",
+      "plannedCard": "docs/pr-cards/AR-4.md"
     },
     {
       "id": "CU-2",
@@ -4299,7 +4294,7 @@
         "tests/cu2-customer-next-step.test.ts",
         "e2e/customer-record.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/CU-2.md"
     },
     {
@@ -4324,7 +4319,7 @@
       "tests": [
         "tests/cu3-customers-area.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "SUPERSEDED",
       "plannedCard": "docs/pr-cards/CU-3.md"
     },
     {
@@ -4332,7 +4327,7 @@
       "title": "Application kit, guards and three reference screens (Today, Invoices, Customer record) on the testing app",
       "batch": "AR",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4366,7 +4361,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4396,7 +4391,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -4424,7 +4419,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -4453,7 +4448,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "20261026010000_bank_payment_in_flight",
       "budget": 420,
       "units": [
@@ -4477,73 +4472,99 @@
       "title": "Customers area: leads, customers, quotes, rentals, messages; End this rental flow; hand-offs",
       "batch": "AR",
       "dependencies": [
-        "AR-3"
+        "AR-0",
+        "AR-1",
+        "AR-11",
+        "AR-12",
+        "LD-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
-      "migration": "none",
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (RentalAgreement.endReason/endReasonNote, BusinessSettings.rentalEndReasons)",
       "budget": 500,
       "units": [
         "AR-4"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/customers/page.tsx",
-        "src/app/desk/leads/page.tsx",
-        "src/app/desk/agreements/page.tsx"
+        "docs/build-specs/screens/RENTALS.md",
+        "docs/build-specs/screens/LEADS.md",
+        "docs/build-specs/screens/CUSTOMERS.md",
+        "docs/build-specs/screens/QUOTES-MESSAGES.md"
       ],
       "tests": [
-        "tests/ar4-customers-area.test.ts",
-        "e2e/ar4-customers.spec.ts"
+        "e2e/rentals.spec.ts",
+        "e2e/leads.spec.ts",
+        "e2e/customers-list.spec.ts",
+        "e2e/quotes-messages.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-4.md"
     },
     {
       "id": "AR-5",
-      "title": "Schedule area: board, visit record, route, repairs",
+      "title": "Schedule area: board, visits, visit record, repairs, My route with offline copy, hand-off toasts",
       "batch": "AR",
       "dependencies": [
-        "AR-4"
+        "AR-0",
+        "AR-1",
+        "AR-11",
+        "AR-12"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
-      "budget": 420,
+      "budget": 650,
       "units": [
         "AR-5"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
+        "docs/build-specs/screens/SCHEDULE.md",
         "src/app/desk/dispatch/page.tsx",
-        "src/app/desk/jobs/page.tsx"
+        "src/app/desk/driver/page.tsx",
+        "src/domains/jobs/index.ts",
+        "src/domains/jobs/completion.ts",
+        "src/domains/maintenance/index.ts"
       ],
       "tests": [
-        "e2e/ar5-schedule.spec.ts"
+        "tests/visits-list-integration.test.ts",
+        "tests/route-for-today-integration.test.ts",
+        "tests/route-snapshot.test.ts",
+        "tests/handoff-toast.test.ts",
+        "e2e/schedule.spec.ts",
+        "e2e/route-offline.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-5.md"
     },
     {
       "id": "AR-6",
-      "title": "Equipment area: fleet, appliance record actions, purchases, parts, suppliers, retired",
+      "title": "Equipment area: fleet list, appliance record, purchases and parts orders, parts, suppliers, retired",
       "batch": "AR",
       "dependencies": [
-        "AR-4"
+        "AR-0",
+        "AR-1",
+        "AR-12"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
-      "budget": 460,
+      "budget": 600,
       "units": [
         "AR-6"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/inventory/page.tsx",
-        "src/app/desk/purchases/page.tsx"
+        "docs/build-specs/screens/EQUIPMENT.md",
+        "src/domains/inventory/index.ts",
+        "src/domains/purchasing/index.ts",
+        "src/domains/purchasing/purchases.ts",
+        "src/app/desk/inventory/[id]/page.tsx",
+        "src/app/desk/parts/page.tsx"
       ],
       "tests": [
-        "e2e/ar6-equipment.spec.ts"
+        "tests/fleet-list-integration.test.ts",
+        "tests/inventory-role-checks.test.ts",
+        "tests/parts-list-integration.test.ts",
+        "tests/appliance-status-retire-guard.test.ts",
+        "e2e/equipment.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-6.md"
     },
     {
@@ -4551,73 +4572,89 @@
       "title": "Money: Books and Taxes screens on the kit",
       "batch": "AR",
       "dependencies": [
-        "AR-3"
+        "AR-0",
+        "AR-1",
+        "AR-12",
+        "BA-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 460,
       "units": [
         "AR-7"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/books/page.tsx",
-        "src/app/desk/sales-tax/page.tsx"
+        "docs/build-specs/screens/BOOKS-TAXES.md"
       ],
       "tests": [
         "e2e/ar7-books-taxes.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-7.md"
     },
     {
       "id": "AR-8",
-      "title": "Settings: one page with sections, search and setting rows with history",
+      "title": "Settings area: one catalog of every setting, sections, explanations, restore recommended, history and undo",
       "batch": "AR",
       "dependencies": [
-        "AR-1"
+        "AR-1",
+        "AR-12"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
-      "budget": 420,
+      "budget": 520,
       "units": [
         "AR-8"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/settings/page.tsx"
+        "docs/build-specs/screens/SETTINGS.md",
+        "src/app/desk/settings/page.tsx",
+        "src/domains/settings/index.ts",
+        "src/domains/settings/history.ts",
+        "src/app/desk/settings/actions.ts"
       ],
       "tests": [
-        "tests/ar8-settings.test.ts",
+        "tests/settings-catalog.test.ts",
+        "tests/settings-row-save-integration.test.ts",
+        "tests/settings-history-bounds.test.ts",
         "e2e/ar8-settings.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-8.md"
     },
     {
       "id": "AR-9",
-      "title": "Insights tabs replacing Reports, Revenue, Fleet and Growth pages",
+      "title": "Insights: lead and customer insights (absorbs LD-4, CU-3), fleet insights, rent on Money overview, goal thresholds",
       "batch": "AR",
       "dependencies": [
+        "AR-3",
         "AR-4",
         "AR-6",
-        "AR-7"
+        "LD-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
-      "migration": "none",
-      "budget": 380,
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261030000000_lead_closed_at (+ goal threshold settings)",
+      "budget": 520,
       "units": [
         "AR-9"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/reports/page.tsx",
-        "src/app/desk/revenue/page.tsx"
+        "docs/build-specs/screens/INSIGHTS.md",
+        "src/domains/growth/index.ts",
+        "src/domains/reports/index.ts",
+        "src/domains/leads/index.ts",
+        "src/domains/team/job-role-rules.ts"
       ],
       "tests": [
+        "tests/business-hours.test.ts",
+        "tests/lead-insights-integration.test.ts",
+        "tests/customer-insights-integration.test.ts",
+        "tests/lead-closed-at-integration.test.ts",
+        "tests/lead-source-breakdown.test.ts",
+        "tests/insights-roles.test.ts",
         "e2e/ar9-insights.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-9.md"
     },
     {
@@ -4630,20 +4667,28 @@
         "AR-8",
         "AR-9"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
-      "budget": 420,
+      "budget": 700,
       "units": [
-        "AR-10"
+        "AR-10a",
+        "AR-10b"
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
-        "docs/DESIGN-SYSTEM.md"
+        "docs/DESIGN-SYSTEM.md",
+        "docs/build-specs/screens/FINAL-SWEEP.md",
+        "docs/END-USER-AUTHORITY.md"
       ],
       "tests": [
-        "tests/ar10-sweep-guards.test.ts"
+        "tests/ar10-sweep-guards.test.ts",
+        "tests/server-action-auth-inventory.test.ts",
+        "tests/desk-page-auth-inventory.test.ts",
+        "tests/api-route-auth-inventory.test.ts",
+        "tests/customer-ab-matrix-integration.test.ts",
+        "e2e/approvals.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-10.md"
     },
     {
@@ -4653,7 +4698,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -4680,7 +4725,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [
@@ -4702,43 +4747,59 @@
     },
     {
       "id": "AR-13",
-      "title": "In-app notifications bell: new lead, quote viewed, signature done, payment failed, approval requested; each opens its record",
+      "title": "In-app notifications bell: five kinds, preferences, nightly clean-up",
       "batch": "AR",
       "dependencies": [
         "AR-1",
         "AR-2"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
-      "migration": "notifications",
-      "budget": 420,
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261031000000_notifications",
+      "budget": 450,
       "units": [
         "AR-13"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md"
+        "docs/build-specs/engines/NOTIFICATIONS.md",
+        "src/domains/leads/index.ts",
+        "src/domains/estimates/index-base.ts",
+        "src/domains/agreements/index.ts",
+        "src/domains/billing/webhooks-base.ts",
+        "src/domains/approvals/index.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/notifications-rules.test.ts",
+        "tests/notifications-integration.test.ts",
+        "tests/notification-email.test.ts",
+        "e2e/notifications.spec.ts"
+      ],
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-13.md"
     },
     {
       "id": "DEC-1",
-      "title": "Decisions & reviews center: every open decision runs on a researched starting value and waits as an in-app question for Chris, CPA, attorney or translator",
+      "title": "Decisions & reviews center: registry, answers with evidence, questionnaire forms, import, provisional tax values",
       "batch": "DEC",
-      "dependencies": [],
-      "status": "DESIGNED — Chris's direction 2026-10-25",
-      "migration": "decision_record",
+      "dependencies": [
+        "AR-0"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261026030000_decision_record",
       "budget": 460,
       "units": [
         "DEC-1"
       ],
       "evidence": [
         "docs/designs/DECISIONS-CENTER.md",
-        "docs/OWNER-INPUTS.md",
-        "docs/designs/PROFESSIONAL-REVIEW-IMPLEMENTATION.md"
+        "docs/build-specs/engines/DECISIONS-CENTER.md",
+        "src/domains/tax/setup.ts",
+        "src/domains/tax/engine.ts"
       ],
-      "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "tests": [
+        "tests/decisions-registry.test.ts",
+        "e2e/decisions.spec.ts"
+      ],
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/DEC-1.md"
     },
     {
@@ -4746,21 +4807,919 @@
       "title": "Researched starting values for every open decision (replace UNDECIDED defaults), in reviewable batches by area",
       "batch": "DEC",
       "dependencies": [
-        "DEC-1"
+        "DEC-1",
+        "FEE-1"
       ],
-      "status": "DESIGNED — Chris's direction 2026-10-25",
-      "migration": "none",
+      "status": "DESIGNED — build spec ready 2026-10-25",
+      "migration": "additive (Invoice.lateFeeWaivedAt, BusinessSettings.decisionsReviewedAt)",
       "budget": 460,
       "units": [
         "DEC-2"
       ],
       "evidence": [
-        "docs/designs/DECISIONS-CENTER.md",
-        "docs/research/2026-10-15-owner-decision-follow-through.md"
+        "docs/build-specs/engines/STARTING-VALUES.md",
+        "docs/research/2026-10-25-open-decisions.md",
+        "docs/designs/DECISIONS-CENTER.md"
       ],
       "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/DEC-2.md"
+    },
+    {
+      "id": "MCP-1",
+      "title": "System health that tells the truth: one state list, real schedules, bounded reads, typed failures",
+      "batch": "MCP",
+      "dependencies": [],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (AutomationRun/SystemIssue failure fields, BusinessSettings.automationLateGraceMinutes, index)",
+      "budget": 450,
+      "units": [
+        "MCP-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/HEALTH-BACKUP.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/automation-health.test.ts",
+        "tests/automation-failures.test.ts",
+        "e2e/system-health.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-1.md"
+    },
+    {
+      "id": "MCP-2",
+      "title": "Backups you can trust: stages, read-back, safe pruning, private store, photo pairing, retry, restore drill",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (BackupArtifact, BusinessSettings.backupRetentionDays)",
+      "budget": 650,
+      "units": [
+        "MCP-2"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/HEALTH-BACKUP.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/backup.test.ts",
+        "tests/backup-prune-integration.test.ts",
+        "tests/media-inventory.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-2.md"
+    },
+    {
+      "id": "MCP-3",
+      "title": "Connect an AI assistant: OAuth provider, consent, instant disconnect",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (OAuth provider tables, jwks, McpConnection)",
+      "budget": 600,
+      "units": [
+        "MCP-3"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/CONNECT-AGENT.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-oauth-security.test.ts",
+        "tests/mcp-auth-integration.test.ts",
+        "e2e/mcp-connections.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-3.md"
+    },
+    {
+      "id": "MCP-4",
+      "title": "Assistant read tools: health, issues, runs, readiness, backups, decisions",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-3",
+        "MCP-2",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "MCP-4"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/CONNECT-AGENT.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-dispatch.test.ts",
+        "tests/mcp-transport-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-4.md"
+    },
+    {
+      "id": "MCP-5",
+      "title": "Assistant actions: preview, approval, once-only execution, verification; decision answers via MCP",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-4",
+        "MCP-2",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (AgentOperation)",
+      "budget": 650,
+      "units": [
+        "MCP-5"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/AGENT-ACTIONS.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-operations-integration.test.ts",
+        "tests/mcp-decisions-apply-integration.test.ts",
+        "e2e/mcp-activity.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-5.md"
+    },
+    {
+      "id": "MCP-6",
+      "title": "Repair cases verified against GitHub and the running app",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-5"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (RepairCase, RepairEvidence)",
+      "budget": 450,
+      "units": [
+        "MCP-6"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/REPAIR-CASES.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-repair-cases-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-6.md"
+    },
+    {
+      "id": "MCP-7",
+      "title": "Self-monitoring rules, heartbeat, optional automatic safe actions",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-1",
+        "MCP-5"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (MonitorRule, MonitorRun)",
+      "budget": 450,
+      "units": [
+        "MCP-7"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/MONITORING.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-monitoring-integration.test.ts",
+        "tests/mcp-monitoring-policy.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-7.md"
+    },
+    {
+      "id": "MCP-8",
+      "title": "Speed evidence, improvement proposals and the settings map",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-5",
+        "MCP-6",
+        "AR-8"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (PerfSample, OptimizationProposal)",
+      "budget": 500,
+      "units": [
+        "MCP-8"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/OPTIMIZATION-COVERAGE.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-observations.test.ts",
+        "tests/mcp-control-coverage.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-8.md"
+    },
+    {
+      "id": "MCP-9",
+      "title": "RTC 1 compatibility with passes, result handles, two-instance limits and the honest client list",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-4",
+        "MCP-5",
+        "MCP-6",
+        "MCP-7",
+        "MCP-8"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (AgentPass, AgentResult, McpConnection.kind)",
+      "budget": 600,
+      "units": [
+        "MCP-9"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/RTC.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-rtc-integration.test.ts",
+        "tests/mcp-two-instance-limits.test.ts",
+        "tests/mcp-client-contract.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-9.md"
+    },
+    {
+      "id": "MCP-10a",
+      "title": "App feedback box, people only: reports, screenshots, triage, privacy",
+      "batch": "MCP",
+      "dependencies": [],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (FeedbackReport, FeedbackEntry, FeedbackAttachment, FeedbackEvent, settings)",
+      "budget": 650,
+      "units": [
+        "MCP-10a"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/FEEDBACK.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/feedback-integration.test.ts",
+        "tests/feedback-media.test.ts",
+        "e2e/feedback.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-10a.md"
+    },
+    {
+      "id": "MCP-11",
+      "title": "Assistant help with app feedback, per-report permission",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-10a",
+        "MCP-5",
+        "MCP-6"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (FeedbackEntry.authorKind, FeedbackCaseLink)",
+      "budget": 450,
+      "units": [
+        "MCP-11"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/FEEDBACK-AGENT.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-feedback-integration.test.ts",
+        "tests/feedback-workflow-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-11.md"
+    },
+    {
+      "id": "PORTAL-1",
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/PORTAL-1.md",
+      "title": "Customer portal redesign on the kit: home, rentals, repairs, bills, properties, account",
+      "batch": "AR",
+      "dependencies": [
+        "AR-0",
+        "AR-1",
+        "AR-12"
+      ],
+      "migration": "none",
+      "budget": 550,
+      "evidence": [
+        "docs/build-specs/screens/PORTAL.md",
+        "src/app/account",
+        "src/domains/portal/workspace.ts"
+      ],
+      "tests": [
+        "tests/agreement-totals.test.ts",
+        "tests/kit-words.test.ts",
+        "tests/customer-isolation.test.ts",
+        "e2e/portal.spec.ts"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "units": [
+        "PORTAL-1"
+      ]
+    },
+    {
+      "id": "ACC-6",
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/ACC-6.md",
+      "title": "Remember this device (owner setting), server-side trust guard, known devices, customer new-device notice",
+      "batch": "ACC",
+      "dependencies": [
+        "ACC-5",
+        "DEC-1"
+      ],
+      "migration": "20261030010000_known_devices (KnownDevice, BusinessSettings.trustedDeviceDays)",
+      "budget": 420,
+      "evidence": [
+        "docs/build-specs/engines/TRUSTED-DEVICES.md",
+        "docs/designs/ACCOUNTS-AND-SIGN-IN.md",
+        "src/lib/auth.ts",
+        "src/domains/security/sign-in-guard.ts"
+      ],
+      "tests": [
+        "tests/trusted-devices-integration.test.ts",
+        "tests/known-devices.test.ts",
+        "e2e/my-account.spec.ts"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "units": [
+        "ACC-6"
+      ]
+    },
+    {
+      "id": "TFA-1",
+      "title": "Tax and fee rule book: dated legal rules with sources, timing rule (costs late, benefits early), Taxes › Rules",
+      "batch": "TFA",
+      "dependencies": [
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
+      "budget": 500,
+      "units": [
+        "TFA-1"
+      ],
+      "evidence": [
+        "docs/designs/TAX-FEE-AUTOPILOT.md",
+        "docs/build-specs/engines/TAX-FEE-AUTOPILOT.md",
+        "docs/research/2026-10-25-tax-fee-rules.md"
+      ],
+      "tests": [
+        "tests/rules-registry.test.ts",
+        "tests/rules-as-of-integration.test.ts",
+        "tests/rules-timing.test.ts",
+        "e2e/tax-rules.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TFA-1.md"
+    },
+    {
+      "id": "TFA-2",
+      "title": "Automatic exemption switches: RDF threshold/start/return rules, yearly use-tax reset, filing-frequency advice, certificates, license",
+      "batch": "TFA",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (Invoice.replacementOfInvoiceId)",
+      "budget": 500,
+      "units": [
+        "TFA-2"
+      ],
+      "evidence": [
+        "docs/designs/TAX-FEE-AUTOPILOT.md",
+        "docs/build-specs/engines/TAX-FEE-AUTOPILOT.md",
+        "docs/research/2026-10-25-tax-fee-rules.md"
+      ],
+      "tests": [
+        "tests/rdf-autopilot-integration.test.ts",
+        "tests/use-tax-year-reset.test.ts",
+        "tests/filing-frequency-advice.test.ts",
+        "tests/exemption-expiry-flow-integration.test.ts",
+        "tests/license-renewal.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TFA-2.md"
+    },
+    {
+      "id": "TFA-3",
+      "title": "Official source watches with strict parsers and guarded self-update",
+      "batch": "TFA",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (LegalRuleObservation, watch rows activated)",
+      "budget": 450,
+      "units": [
+        "TFA-3"
+      ],
+      "evidence": [
+        "docs/designs/TAX-FEE-AUTOPILOT.md",
+        "docs/build-specs/engines/TAX-FEE-AUTOPILOT.md",
+        "docs/research/2026-10-25-tax-fee-rules.md"
+      ],
+      "tests": [
+        "tests/rules-parsers.test.ts",
+        "tests/rules-observation-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TFA-3.md"
+    },
+    {
+      "id": "CMP-1",
+      "title": "Compliance center: obligation registry, business facts (encrypted EIN), Compliance screen, filled official forms engine",
+      "batch": "CMP",
+      "dependencies": [
+        "TFA-1",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261102000000_compliance (ComplianceProfile, ComplianceFiling)",
+      "budget": 550,
+      "units": [
+        "CMP-1"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/compliance-registry.test.ts",
+        "tests/field-crypto.test.ts",
+        "tests/compliance-forms.test.ts",
+        "e2e/compliance.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-1.md"
+    },
+    {
+      "id": "CMP-2",
+      "title": "Income tax helpers: Schedule C packet, 4562/4797 worksheets, quarterly estimates (federal and Colorado), 1099-K tie-out",
+      "batch": "CMP",
+      "dependencies": [
+        "CMP-1",
+        "BA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (account Schedule C line)",
+      "budget": 500,
+      "units": [
+        "CMP-2"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/schedule-c-mapping.test.ts",
+        "tests/estimated-tax.test.ts",
+        "tests/1099k-tieout.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-2.md"
+    },
+    {
+      "id": "CMP-3",
+      "title": "1099s and W-9s: W-9 requests and upload, 1099 preparation, IRIS CSV and recipient copies, IRIS A2A behind a switch, Form 8300 detector",
+      "batch": "CMP",
+      "dependencies": [
+        "CMP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (Supplier TIN fields)",
+      "budget": 600,
+      "units": [
+        "CMP-3"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/w9-integration.test.ts",
+        "tests/1099-prep-integration.test.ts",
+        "tests/iris-csv.test.ts",
+        "tests/form8300-detector.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-3.md"
+    },
+    {
+      "id": "CMP-4",
+      "title": "Colorado and local filings: Weld business personal property declaration, SOS periodic report, trade name, Greeley license, vehicle/USDOT",
+      "batch": "CMP",
+      "dependencies": [
+        "CMP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "CMP-4"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/bpp-declaration-integration.test.ts",
+        "tests/sos-report.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-4.md"
+    },
+    {
+      "id": "CMP-5",
+      "title": "Hiring readiness: dormant payroll obligations and hiring checklist",
+      "batch": "CMP",
+      "dependencies": [
+        "CMP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 200,
+      "units": [
+        "CMP-5"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/hiring-readiness.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-5.md"
+    },
+    {
+      "id": "VAULT-1",
+      "title": "Business records: documents, encrypted numbers, dates, renewals, export packs",
+      "batch": "VAULT",
+      "dependencies": [
+        "CMP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261103000000_business_records",
+      "budget": 450,
+      "units": [
+        "VAULT-1"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/RECORDS-VAULT.md"
+      ],
+      "tests": [
+        "tests/business-records-integration.test.ts",
+        "e2e/business-records.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/VAULT-1.md"
+    },
+    {
+      "id": "VAULT-2",
+      "title": "Logins vault (owner only, fresh code to reveal) and emergency access (ships off)",
+      "batch": "VAULT",
+      "dependencies": [
+        "VAULT-1",
+        "ACC-6"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (VaultCredential, VaultUnlock)",
+      "budget": 450,
+      "units": [
+        "VAULT-2"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/RECORDS-VAULT.md"
+      ],
+      "tests": [
+        "tests/vault-integration.test.ts",
+        "tests/vault-secret-fields-grep.test.ts",
+        "e2e/vault.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/VAULT-2.md"
+    },
+    {
+      "id": "SETUP-1",
+      "title": "Set up your business: guided walkthroughs with automatic checks",
+      "batch": "VAULT",
+      "dependencies": [
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "SETUP-1"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/RECORDS-VAULT.md"
+      ],
+      "tests": [
+        "tests/setup-walkthroughs.test.ts",
+        "e2e/setup-guide.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/SETUP-1.md"
+    },
+    {
+      "id": "ACCT-1",
+      "title": "Accountant sign-in: owner-invited ACCOUNTANT level limited to books, taxes, compliance and shared records",
+      "batch": "ACC",
+      "dependencies": [
+        "ACC-6",
+        "BA-1",
+        "CMP-1",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261104000000_accountant_role",
+      "budget": 500,
+      "units": [
+        "ACCT-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/ACCOUNTANT-ACCESS.md"
+      ],
+      "tests": [
+        "tests/accountant-allowlist.test.ts",
+        "tests/accountant-access-integration.test.ts",
+        "e2e/accountant-access.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/ACCT-1.md"
+    },
+    {
+      "id": "OPS-1",
+      "title": "Product recalls: CPSC watcher, recall hold, renter contact, incident clock",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-1"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-1-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-1.md"
+    },
+    {
+      "id": "OPS-2",
+      "title": "Refrigerant and disposal records with the signed EPA statement",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-2"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-2-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-2.md"
+    },
+    {
+      "id": "OPS-3",
+      "title": "Vehicle profile, driving rules from GVWR, automatic mileage log",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-3"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-3-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-3.md"
+    },
+    {
+      "id": "OPS-4",
+      "title": "Insurance register, renewals, certificates, workers' comp status",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-4"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-4-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-4.md"
+    },
+    {
+      "id": "OPS-5",
+      "title": "Card disputes and bank returns: deadlines, evidence packet, single submission",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-5"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-5-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-5.md"
+    },
+    {
+      "id": "OPS-6",
+      "title": "Collections: past-due ladder, consented pickup, small claims packet, no ownership option",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-6"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-6-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-6.md"
+    },
+    {
+      "id": "OPS-7",
+      "title": "Privacy and security: incident clock, retention and purge with legal hold, vendor reviews, marketing rules",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-7"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-7-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-7.md"
+    },
+    {
+      "id": "OPS-8",
+      "title": "Continuity plan, pause-all-charges switch, yearly business check-up",
+      "batch": "OPS",
+      "dependencies": [
+        "TFA-1",
+        "VAULT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive",
+      "budget": 400,
+      "units": [
+        "OPS-8"
+      ],
+      "evidence": [
+        "docs/designs/OWNER-OPERATING-SYSTEM.md",
+        "docs/build-specs/engines/OWNER-OPERATIONS.md",
+        "docs/research/2026-10-25-operating-risks.md"
+      ],
+      "tests": [
+        "tests/ops-8-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/OPS-8.md"
+    },
+    {
+      "id": "TAXBEN-1",
+      "title": "Automatic write-offs: deduction mapping, de minimis/capitalize rules, start-up costs, benefit list",
+      "batch": "TAXBEN",
+      "dependencies": [
+        "BA-1",
+        "TFA-1",
+        "CMP-2",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (purchase capitalization fields, business-use settings)",
+      "budget": 550,
+      "units": [
+        "TAXBEN-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/TAX-BENEFITS.md",
+        "docs/research/2026-10-25-tax-benefits.md"
+      ],
+      "tests": [
+        "tests/taxben-classification.test.ts",
+        "tests/taxben-startup.test.ts",
+        "tests/taxben-benefits-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TAXBEN-1.md"
+    },
+    {
+      "id": "TAXBEN-2",
+      "title": "Election statements and year-end tax planning for the CPA",
+      "batch": "TAXBEN",
+      "dependencies": [
+        "TAXBEN-1",
+        "CMP-2",
+        "ACCT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "TAXBEN-2"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/TAX-BENEFITS.md",
+        "docs/research/2026-10-25-tax-benefits.md"
+      ],
+      "tests": [
+        "tests/taxben-elections.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TAXBEN-2.md"
     },
     {
       "id": "FEE-1",

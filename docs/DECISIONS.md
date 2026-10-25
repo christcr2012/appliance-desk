@@ -1,3 +1,62 @@
+## October 25 — One late-fee rule for everyone: more than 10 days late (Chris)
+
+"We should just follow that rule for all late fees for simplicity." Every rental: a $5 late fee only when a bill is not
+paid in full within 10 days after its due date (fee on day 11), at most $15, once per bill, with written notice —
+Colorado's UCCC consumer-lease rule applied to all agreements. Replaces the 5-day grace in IN-84 for new agreements;
+signed agreements keep their own terms. (FEE-1.)
+
+## October 25 — Late fees follow the law, class by class (Chris: "make sure our late fees … comply")
+
+Research (`docs/research/2026-10-25-late-fee-law.md`) found Colorado's consumer credit code applies to household rentals
+with a starting term over 4 months: no late fee until the bill is more than 10 days late, at most $15, once per bill,
+with written notice. (**Superseded the same day by the entry above:** Chris chose the 10-day rule for every rental.) Autopay amounts that include a fee
+get 10 days' notice. Rules enforced in FEE-1. Attorney questions filed (month-to-month coverage, UCCC filing, etc.).
+
+## October 25 — An accountant sign-in, and the system handles the books and tax benefits (Chris)
+
+Chris: the system must handle write-offs and other benefits (small and new businesses included); a CPA will do his
+taxes and check the books periodically. He needs to send a sign-in link to a CPA or other tax professional who can see
+and change the accounting, and to remove that account or reset its login for a new professional. Approved access level
+ACCOUNTANT (ACCT-1, `docs/build-specs/engines/ACCOUNTANT-ACCESS.md`), limited to books/taxes/compliance/CPA decisions
+and records he shares; never the vault. Tax benefits engine: TAXBEN (spec to follow research).
+He also asked (same day) that the app walk him through setting everything up and store due dates, accounts, numbers,
+logins, articles, licenses, permits and TCCs (VAULT-1/2, SETUP-1), and that we decide and design everything else a
+one-person business needs (`docs/designs/OWNER-OPERATING-SYSTEM.md`).
+
+## October 25 — Late rule changes: the business absorbs, customers get credited (Chris)
+
+"if something like that passes the required, and implementation is past the due date, any customer billing that occurs
+before the implementation that should have been affected remains unchanged... if the change should have cost the
+customer more money, The business will pay the difference as it was the business' fault. If it should have saved the
+customer money, the customer should receive a credit applied to their next bill and a brief explanation of what its
+for." Built in TFA-1 section 4a (`trueUpLateChange`), used by every tax/fee change.
+
+## October 25 — Tax and fee changes always wait for Chris's approval (Chris)
+
+"I think it should always put it on the todo list for me to review and approve." Official-page readings and the
+automatic exemption switches are prepared by the app and applied only after Chris taps Approve on To do. The existing
+official-rate auto-apply setting starts **off**. (TFA-2, TFA-3.)
+
+## October 25 — Timing of rule changes: costs late, benefits early (Chris)
+
+Chris: "if there is a time window for implementation of a rule or change that does not benefit us to implement early,
+we should implement the change 85-95 percent of the way through the grace period or compliance time window, if allowed
+or not otherwise prohibited. Things that would benefit my business should be implemented as soon as safely possible."
+How the app applies it (tax and fee autopilot, `docs/designs/TAX-FEE-AUTOPILOT.md`): every rule change is classified
+as **fixed date** (the law sets the day — applied exactly then, never early or late), **window, costs the business**
+(applied or scheduled at the owner setting `costlyChangeTimingPercent`, starting value 90%, allowed 85–95%, and always
+at least the owner's safety margin before the window closes), or **window, benefits the business** (applied as soon as
+it is allowed and safe). Payments and filings follow the same rule: the app suggests a "pay/file on" date at the
+timing point, never after the due date. Chris also asked (same day) that tax and fee rules run themselves: exemptions
+applied and removed automatically, rate changes picked up from official sources where possible.
+
+## October 25 — "Remember this device" for sign-in codes (Chris)
+
+Chris approved ACC-6: a team member or customer can tick "Remember this device" after typing the sign-in code, so
+that device skips the code for an owner-set number of days (starting value 30; 0 turns it off). The server refuses a
+"remember" request when the setting is off, every password/two-step/access change forgets remembered devices, and
+customers get new-device notices through the normal customer-email switch. Spec: `docs/build-specs/engines/TRUSTED-DEVICES.md`.
+
 ## October 25 — Late fees: warn first, never during a payment in progress (Chris)
 
 "A late fee should not be charged before the customer is notified, so it should not 'slip in' to a payment method

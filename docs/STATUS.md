@@ -1,3 +1,37 @@
+## October 25 (afternoon) — Back-office plans added (docs only)
+
+Chris asked for the app to be his whole back office. Added designs, research (all sourced, accessed 2026-10-25) and
+card-ready build specs: tax and fee autopilot TFA-1…3 (dated rules, automatic exemption switches, official-page
+watching, every change approved by Chris, late changes absorbed/credited), compliance center CMP-1…5 (federal and
+Colorado filings: IRIS 1099s, filled official forms, Weld property declaration, SOS report, accountant packets),
+tax benefits TAXBEN-1/2, accountant sign-in ACCT-1, records vault and guided setup VAULT-1/2 + SETUP-1, and
+OPS-1…8 (recalls, refrigerant records, truck/mileage, insurance, disputes, collections, privacy/security,
+continuity). Found on main (fixed in TFA-2): returned shop sales refund the retail delivery fee, which the law
+doesn't allow (only bites once sales pass $500,000/yr). Overview: `docs/designs/OWNER-OPERATING-SYSTEM.md`.
+Branch `ai/claude/build-specs-wave2` (PR #596, stacked on #593). Next: merge #593 → #596, then build.
+
+## October 25 — Build specs wave 2 complete (every approved unit is card-ready)
+
+Docs only; nothing built yet. Added build specs + cards for: Books autopilot BA-1…3 and Books/Taxes AR-7; researched
+Colorado/Greeley starting values and the apply-once plan DEC-2 (`docs/research/2026-10-25-open-decisions.md`; also fixes
+found: new rentals ignore the late-fee setting, no late-fee waiver); Schedule AR-5, Equipment AR-6, Settings AR-8,
+Insights AR-9 (absorbs LD-4/CU-3), final sweep AR-10 (incl. the Oct 21 permissions audit), notifications AR-13,
+portal redesign PORTAL-1, remember-this-device ACC-6 (approved by Chris today), and the whole MCP batch MCP-1…11 with
+the people-only feedback box MCP-10a first. All registered in work-index; stale PLAN notes corrected. Blocked only by
+owner actions already on the checklist: W-11 (Colorado GIS key, IN-61), W-12 (XML schema, IN-62). Branch
+`ai/claude/build-specs-wave2`, stacked on PR #593. Next: merge #593, then this PR, then start building (AR-0a, DEC-1a,
+MCP-1, MCP-10a can start in parallel).
+
+## October 25 — Build specs wave 2 (Customers area, decisions center)
+
+Docs only. Specs: Rentals list, rental record and "End this rental" (`screens/RENTALS.md`), Leads engine LD-1
+(`engines/LEADS-PIPELINE.md`, corrects the design: a new website lead was stamped "contacted" at creation), Leads queue
+and record (`screens/LEADS.md`, adds the missing quote-for-an-existing-lead and lead editing), Customers list with a
+live view instead of a stored summary (`screens/CUSTOMERS.md`, CU-1 merged into AR-4c), Quotes and Messages
+(`screens/QUOTES-MESSAGES.md`, adds paging, role checks and "Link to a person…"), Decisions & reviews center
+(`engines/DECISIONS-CENTER.md`). Cards: AR-4 (split a–d), LD-1, DEC-1. Next: Books/Taxes (BA-1…3, AR-7), research-backed
+tax starting values (DEC-2).
+
 ## October 25 — Build specs for the redesign (wave 1: kit + Today, Bills, Customer)
 
 Docs only. Chris wants the design decided so completely that a cheaper model can build it. New
@@ -97,6 +131,7 @@ tests turning the text switch on briefly. Next: COM-N2 (click-to-call), COM-N4, 
 ## October 25 — Eight older review findings closed (photo clean-up, HEIC, earnings, test and narrow-width checks)
 
 In progress (branch `ai/claude/older-review-findings`). Removed purchase-receipt photos and unsent maintenance-request photos now leave storage for real: they go on a clean-up list (additive migration `20261025070000_stored_file_cleanup`) that the nightly job works through and the health page watches. iPhone HEIC photos are converted to JPEG in the browser; the server no longer accepts HEIC it cannot check. The "estimated earnings" report now uses only the rent part of what was paid and each rental's own billing month. The reviewer's three findings are fixed too: receipt files can now actually be deleted (the "purchases" folder was missing from storage's private list, which would also have refused receipt uploads), a clean-up that keeps failing shows as a failing night, and the waiting periods are owner settings (Rental policies → Removed files). A new phone-width check fails any page that scrolls sideways (113 pages scanned clean). Also: the stale "yearly SUTS check not built" note is corrected (it is built). Throwaway-Postgres tests cover each. New checklist row: confirm removed receipt files really leave storage. CI pending.
+
 ## October 25 — Owner controls: proof of what each page sends to each role (O-2B)
 
 In progress (branch `ai/claude/owner-controls-o2b`). New browser test `e2e/role-shaped-pages.spec.ts` (browser-d) reads the whole
@@ -104,6 +139,7 @@ server answer of the desk pages as the owner, a full admin, an admin the owner h
 rental-price, repair-cost or purchase-cost values; owner-only pages send nobody else any of their content; a limited admin's
 control center does not even contain the cards they may not use. A control check shows the planted values really are sent to the
 owner and admins, so the staff result is meaningful. Passes 18 of 18 locally including phone width, keyboard and accessibility. Nothing for Chris to do.
+
 ## October 25 — Owner controls: price changes with a start date now cover rental sets (O-4)
 
 In progress (branch `ai/claude/owner-controls-o4`). On Settings → Price changes you can now pick a rental set (like Washer + Dryer
@@ -111,6 +147,7 @@ Set) as well as a single appliance, a new monthly price and a start day. The nig
 history and change-history rows as a typed change, and leaves signed rentals alone; it fails safely if the set was retired or
 the person who scheduled it was since limited. Additive migration `20261025060000_scheduled_package_price_changes`. Proven by real-Postgres tests and a
 real-browser spec (phone width, keyboard, accessibility). Nothing for Chris to do.
+
 ## October 25 — Phone bookkeeping catch-up (COM-N3 record)
 
 COM-N3 (booking a verified phone-company statement as one expense) was merged earlier in #555, but the plan and work list still said "in review / not built".
@@ -122,6 +159,7 @@ maintenance request received / resolved. Owners and admins can send all; staff c
 assigned to them (and cannot record permission). No street address in any text. Same gates as the first batch (master switch,
 Owner-approved wording, per-text switch, recorded permission, STOP, quiet hours). Tested on throwaway Postgres with a fake carrier.
 Next: COM-N1C (billing, renewal and refund texts), then N2, N4, wiring gaps.
+
 ## October 25 — Owner controls: browser tests for goals, approval limits, permissions and workspace
 
 In progress (branch `ai/claude/owner-controls-browser-tests`). One new real-browser spec (`e2e/owner-controls.spec.ts`, phone width, keyboard, accessibility check) walks the owner through setting and removing a cash goal, filling in and saving approval limits and turning them off, taking one permission away from an admin and giving it back, and pinning/unpinning workspace shortcuts. It passes locally; CI result pending. Switches and price changes already have their own specs. Nothing for Chris to do.
@@ -151,6 +189,7 @@ phone, and nothing sends until Send is pressed. The Owner approves each wording 
 before any text can leave: the master text switch, recorded permission for that number, no STOP, a ready business number.
 Proven on throwaway Postgres with a fake carrier (13 safety tests); no real text was sent and nothing was switched on.
 Next: COM-N1B (job and maintenance texts), then N1C, N2, N4 and the telecom wiring gaps. Branch `ai/claude/com-n1a-lead-estimate-texts`.
+
 ## October 25 — Delivery fee on delivered shop sales and taking back a used appliance (M-1C, finishing)
 
 Merged (#571). A delivered shop sale now gets Colorado's retail delivery fee decided and recorded exactly once: only for a Colorado address with something the state taxes on the sale, never for pickups or out-of-state deliveries. If you chose "collect from customer" **and** customer charging is switched on, a separate untaxed "Colorado retail delivery fee" line is added to the sale; otherwise the fee is still counted for the return and you pay it. Anything undecided (a setting or the yearly amount) is kept as a waiting record and finished later, never blocking the sale. Cancelling or taking back a sale reverses its fee, and a paid fee is tied to the real refund. Taking back a **used appliance** now works: refund, book value comes back, the "Sell it" plan reopens, the accountant note closes, and the appliance can be sold again. Shop sales also count toward the Colorado sales total used for the small-business exemption. Proved on throwaway Postgres (collect, charging off, pay myself, pickup, out of state, pending rate then finished, take-back, cancel, retry). Not proved: a browser test (next PR) and nothing real was charged. Nothing for Chris to do now.

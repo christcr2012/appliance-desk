@@ -28,7 +28,9 @@ export async function getMoneyOverview(now = new Date()): Promise<MoneyOverview>
 
 **Layout**
 - `ScreenHeader` "Money"; ⋯ menu: "Rental income details" (`/desk/revenue`), "Reports" (`/desk/reports`), "Check
-  against Stripe" (`/desk/billing/reconciliation`).
+  against Stripe" (`/desk/billing/reconciliation`). AR-9 later changes the first two to "Income details"
+  (`/desk/money/income`) and "Download transactions (CSV)" (INSIGHTS.md section 2); keep the old pages working until
+  then.
 - `StatStrip` (phone 2×2, desktop 4 in a row): "Money in this month" `formatMoney(collectedThisMonth)` with the line
   `"Last month {formatMoney(last)}"` under the value; "Still owed" `"{formatMoney(owedNow)} · {openBillCount} bills"`;
   "Past due" `"{formatMoney(pastDue)} · {pastDueCount}"` (attention when > 0); "Coming in 30 days"

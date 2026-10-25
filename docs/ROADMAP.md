@@ -720,5 +720,6 @@ consumables price can be checked against what the parts really cost. Not in W-22
 - 2026-10-22 (K-CASH-7): the monthly plan preview adds up opening saved balances from at most 10,000 budget movement rows and refuses with a clear message beyond that. A database-side grouped total would remove the limit; worth doing well before a business reaches that many movements. Not built; no owner decision needed.
 - 2026-10-22 (K-CASH-7): when publishing a monthly plan, the owner can relabel a row whose amounts were not changed from "estimate" to "exact". It is owner-only and recorded in the plan and audit trail, but the label could instead be limited to values the source supports. **Chris decided 2026-10-22:** the owner may replace one estimate with their own estimate (shown as "Owner reviewed manual adjustment"), but a row stays an ESTIMATE until real bank data replaces it; an unchanged row must never be relabelled "exact" by hand. Fixed 2026-10-23 (`assertPublishedQuality` in src/domains/budget/report-math.ts, tests/budget-published-quality.test.ts).
 
-- **Trusted-device option for sign-in codes** (skip the second step on a device the person marks as theirs) and **customer new-device notices**: designed in ACC, not built. Needs Chris's go-ahead.
 - **Job roles on /api download/upload routes**: today those routes use the access level only.
+
+- 2026-10-25 (AR-13): more notification kinds — "your approval request was decided" (to the person who asked) and "a visit was assigned to you" (to staff). Not in AR-13's approved five; needs Chris's go-ahead.
