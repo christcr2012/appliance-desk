@@ -27,9 +27,12 @@ export async function getWeeklyHealth(now = new Date()): Promise<WeeklyHealth>
   (unit-test across both DST changes).
 - `outRenting` = appliances with status `RENTED` or `AWAITING_PICKUP`; `rentableTotal` = all appliances except
   `RETIRED` (use `getApplianceCountsByStatus()` from `src/domains/inventory`).
-- `overdueBills` = count of invoices with status in `OPEN, PARTIALLY_PAID, DELINQUENT`, `dueDate < now` and
-  `amountDueCents > amountPaidCents` (same rule as `getRevenueDashboard`; extract a shared `pastDueInvoiceWhere(now)`
-  in `src/domains/billing/index.ts` and use it in both places).
+- `overdueBills` = count of bills matching **`pastDueInvoiceWhere(now)`** — one shared predicate, defined in
+  `src/domains/billing/bill-status.ts` as exactly the Bills screen's **past-due** rule (MONEY-BILLS section 2: the open
+  rule — status `OPEN, PARTIALLY_PAID, DELINQUENT, FAILED` with money still owed — and `dueDate` before the **start of
+  today in Denver**, so a bill due today is not late yet). `billTabWhere("past-due")` calls it; `getRevenueDashboard`,
+  Money overview and the customer record's on-time record use it too (replace their own `dueDate < now` checks). Test:
+  an unpaid bill due today is not counted anywhere as late; due yesterday is counted everywhere.
 - Only called for OWNER/ADMIN.
 
 **Contact on To do items (needed for the Call button).** Add an optional field to `ExceptionItem` in
