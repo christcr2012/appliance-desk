@@ -2225,7 +2225,7 @@
       "dependencies": [
         "COM-N1C"
       ],
-      "status": "APPROVED — NOT BUILT",
+      "status": "BUILT — IN PR",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2238,8 +2238,7 @@
         "src/lib/sms.ts"
       ],
       "tests": [
-        "tests/job-click-to-call-integration.test.ts",
-        "e2e/job-communications.spec.ts"
+        "tests/job-click-to-call-integration.test.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/COM-N2.md"

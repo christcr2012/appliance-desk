@@ -1,3 +1,12 @@
+## October 25 — COM-N2: call a customer from the desk (in PR, OFF)
+
+Assigned staff (and the owner/admin) get a "Call" box on visit, lead and maintenance screens. The phone company rings the person's own
+confirmed mobile first; the customer is dialed only after they press 1, and the customer sees the business number. Off until the Owner
+switches it on (Settings → Phone, texts and provider costs → Calls from the desk, which also needs call routing on). Staff can only call on
+a visit assigned to them; losing the assignment or turning the switch off stops a call that is ringing. A repeat click is one call; an unclear
+carrier answer is shown as "unconfirmed" and never retried. Proven on throwaway Postgres with a fake carrier (9 tests); no real call was placed.
+Next: COM-N4 (service metrics and forecasts), then telecom wiring. Branch `ai/claude/com-n2-click-to-call`.
+
 ## October 24 — COM-N1C: billing, renewal and refund texts (everything OFF)
 
 Invoice and agreement screens get preview-then-send boxes: invoice ready, friendly reminder, payment received, refund issued,
