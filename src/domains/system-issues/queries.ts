@@ -2,6 +2,7 @@ import { SystemIssueStatus, type SystemIssueSeverity } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertNoKnownPersonNames, redactForOps } from "./ops-redaction";
+import { failureExplanation } from "@/domains/automation/failures";
 
 export type SystemIssueDTO = {
   id: string; fingerprint: string; kind: string; severity: SystemIssueSeverity;
@@ -10,11 +11,19 @@ export type SystemIssueDTO = {
   resolvedAt: Date | null;
   notes: { body: string; createdAt: Date }[];
   recovery: { href: string; instruction: string; role: "OWNER" | "ADMIN" };
+  /** MCP-1: typed failure (null code on old rows → "Not recorded"); only the code's fixed wording, never raw text. */
+  failure: { code: string | null; stage: string | null; reference: string | null; explain: string; next: string; href: string | null } | null;
 };
+
+function failureFor(row: { kind: string; failureCode: string | null; failureStage: string | null; correlationId: string | null }) {
+  if (row.kind !== "AUTOMATION_FAILED") return null;
+  const plain = failureExplanation(row.failureCode);
+  return { code: plain.code, stage: plain.code ? row.failureStage : null, reference: row.correlationId, explain: plain.explain, next: plain.next, href: plain.href };
+}
 
 const INSTRUCTIONS: Record<string, { href: string; instruction: string; role: "OWNER" | "ADMIN" }> = {
   AUTOMATION_FAILED: { href: "/desk/automations", instruction: "Review the last run and task settings before trying again.", role: "ADMIN" },
-  AUTOMATION_STALE: { href: "/desk/automations", instruction: "UNKNOWN: verify the task's last successful run and expected schedule.", role: "ADMIN" },
+  AUTOMATION_STALE: { href: "/desk/automations", instruction: "A job hasn't finished since its usual time. Check its row below; it clears by itself after the next good run.", role: "ADMIN" },
   PROVIDER_OPERATION_STUCK: { href: "/desk/billing", instruction: "UNKNOWN provider result: reconcile the original operation before retrying. Never resend blindly.", role: "OWNER" },
   USE_TAX_FORM_MISSING: { href: "/desk/sales-tax/use-tax", instruction: "Colorado's official DR 0252 form for the new year is not loaded. Ask for it to be added; until then the page shows the numbers without the printable form.", role: "OWNER" },
   TAX_PERIOD_MISSING: { href: "/desk/sales-tax/returns", instruction: "Open the returns list and check each closed period; file or create the missing return.", role: "OWNER" },
@@ -59,11 +68,15 @@ export async function listSystemIssues(actorId: string, input: {
       id: true, fingerprint: true, kind: true, severity: true, status: true,
       version: true, summary: true, detail: true, occurrences: true,
       firstSeenAt: true, lastSeenAt: true, resolvedAt: true,
+      failureCode: true, failureStage: true, correlationId: true,
       notes: { orderBy: { createdAt: "desc" }, take: 10, select: { body: true, createdAt: true } },
     },
   });
   return {
-    rows: list.slice(0, input.limit).map((row) => ({ ...row, recovery: systemIssueRecovery(row.kind, role) })),
+    rows: list.slice(0, input.limit).map(({ failureCode, failureStage, correlationId, ...row }) => ({
+      ...row, recovery: systemIssueRecovery(row.kind, role),
+      failure: failureFor({ kind: row.kind, failureCode, failureStage, correlationId }),
+    })),
     nextCursor: list.length > input.limit ? list[input.limit - 1].id : null,
   };
 }

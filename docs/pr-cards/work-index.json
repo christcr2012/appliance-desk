@@ -2160,7 +2160,7 @@
         "O-7",
         "COM-L15"
       ],
-      "status": "BUILT — IN PR",
+      "status": "MERGED — PR #574 (2026-10-25)",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2186,7 +2186,7 @@
       "dependencies": [
         "COM-N1A"
       ],
-      "status": "BUILT — IN PR",
+      "status": "MERGED — PR #579 (2026-10-25)",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2211,7 +2211,7 @@
       "dependencies": [
         "COM-N1B"
       ],
-      "status": "BUILT — IN PR",
+      "status": "MERGED — PR #585 (2026-10-25)",
       "migration": "none",
       "budget": 440,
       "units": [
@@ -2236,7 +2236,7 @@
       "dependencies": [
         "COM-N1C"
       ],
-      "status": "BUILT — IN PR",
+      "status": "MERGED — PR #587 (2026-10-25)",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -2287,7 +2287,7 @@
       "dependencies": [
         "COM-N3"
       ],
-      "status": "BUILT — IN PR",
+      "status": "MERGED — PR #580 (2026-10-25)",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -4327,7 +4327,7 @@
       "title": "Application kit, guards and three reference screens (Today, Invoices, Customer record) on the testing app",
       "batch": "AR",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — AR-0a merged PR #601 (2026-10-25); AR-0b building",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4783,7 +4783,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — DEC-1a merged PR #600 (2026-10-25); DEC-1b in PR #603",
       "migration": "20261026030000_decision_record",
       "budget": 460,
       "units": [
@@ -5059,7 +5059,7 @@
       "title": "App feedback box, people only: reports, screenshots, triage, privacy",
       "batch": "MCP",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #599 (2026-10-25)",
       "migration": "additive (FeedbackReport, FeedbackEntry, FeedbackAttachment, FeedbackEvent, settings)",
       "budget": 650,
       "units": [

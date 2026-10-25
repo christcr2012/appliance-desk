@@ -158,6 +158,14 @@ test("decisions: admins read without buttons; staff are sent away", async ({ bro
     const read = await listDecisions(adminId).then((cards) => `${cards.length} cards`, (error: unknown) =>
       `failed: ${error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 600) : String(error)}`);
     expect(read).toMatch(/^\d+ cards$/);
+    // TEMPORARY (DEC-1b CI diagnosis): what the screen's error boundary caught, if anything.
+    await a.goto("/desk/settings/decisions?for=CPA");
+    await a.waitForTimeout(1500);
+    const caught = await a.locator("[data-decisions-error]").getAttribute("data-decisions-error", { timeout: 1000 }).catch(() => null);
+    const shell = await a.content();
+    const dgst = /data-dgst="([^"]+)"/.exec(shell)?.[1] ?? "none";
+    const msg = /data-msg="([^"]{0,400})/.exec(shell)?.[1] ?? "none";
+    expect({ caught, dgst, msg }, "decisions page as admin").toEqual({ caught: null, dgst: "none", msg: "none" });
     // The server's answer first (no scripts run): the page itself, with cards and without any owner button.
     const served = await a.request.get("/desk/settings/decisions?for=CPA", { maxRedirects: 0 });
     const html = await served.text();

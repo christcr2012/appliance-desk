@@ -1,7 +1,8 @@
 import { ProviderOperationKind } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
-import { AUTOMATION_RULES } from "@/domains/automation/health";
+import { AUTOMATION_RULES, getAutomationHealth, missingEnvFor } from "@/domains/automation/health";
+import { isFailureCode } from "@/domains/automation/failures";
 import { periodsFor } from "@/domains/tax/filing-calendar";
 import { missingDr0252Years } from "@/domains/tax/dr0252-form";
 import { collectTelecomAttention } from "@/domains/messaging/telecom-health";
@@ -14,8 +15,6 @@ type SourcePage = {
 };
 const ONE_HOUR = 60 * 60 * 1000;
 const validLimit = (n: number) => Number.isInteger(n) && n > 0 && n <= 500;
-const noCustomerData = (v: unknown): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
 /** A bounded read-only snapshot. A partial watch page never clears unseen issues. */
 export async function collectSystemIssueInputs(
@@ -40,49 +39,37 @@ export async function collectSystemIssueInputs(
       kind:"TELECOM_CONTACTS_UNRESOLVED",threadCount:unresolvedThreads,unlinkedMissedCalls,
     });
     else cleared.add("telecom-unresolved");
-    const settings = await prisma.businessSettings.findUnique({
-      where: { id: "singleton" }, select: { pausedAutomations: true },
-    });
-    const paused = new Set(noCustomerData(settings?.pausedAutomations));
-    for (const rule of AUTOMATION_RULES) {
+    // MCP-1: the same bounded read and the same state rule as the System health page — one "late" algorithm.
+    const health = await getAutomationHealth(now);
+    for (const row of health) {
       // The system health sweep cannot recursively warn about its own issue write.
-      if (rule.ruleKey === "system-issues-sweep") continue;
-      const missing = rule.requiredEnv.filter((name) => !process.env[name]);
-      if (paused.has(rule.ruleKey)) {
+      if (row.ruleKey === "system-issues-sweep") continue;
+      const rule = AUTOMATION_RULES.find((item) => item.ruleKey === row.ruleKey)!;
+      if (row.state === "paused") {
         cleared.add("automation-stale:" + rule.ruleKey);
         cleared.add("config:" + rule.ruleKey);
         continue;
       }
+      const missing = missingEnvFor(rule);
       if (missing.length > 0) {
         issues.push({ kind: "CONFIGURATION_MISSING", ruleKey: rule.ruleKey,
           missingVariableNames: missing });
       } else {
         cleared.add("config:" + rule.ruleKey);
       }
-      const latest = await prisma.automationRun.findFirst({
-        where: { ruleKey: rule.ruleKey },
-        orderBy: [{ startedAt: "desc" }, { id: "desc" }],
-        select: { id: true, state: true, startedAt: true },
-      });
-      // No historical run != evidence that an active daily task is overdue.
-      if (!latest) continue;
-      if (latest.state === "SUCCEEDED") {
+      const latest = row.latest;
+      if (latest?.state === "SUCCEEDED") {
         cleared.add("automation:" + rule.ruleKey);
-      } else if (latest.state === "FAILED") {
+      } else if (latest?.state === "FAILED") {
         issues.push({ kind: "AUTOMATION_FAILED", ruleKey: rule.ruleKey,
-          runId: latest.id, startedAt: latest.startedAt, errorName: "UnknownError" });
+          runId: latest.id, startedAt: latest.startedAt, errorName: "UnknownError",
+          ...(isFailureCode(latest.code) && latest.stage && latest.ref
+            ? { failure: { code: latest.code, stage: latest.stage, correlationId: latest.ref } } : {}) });
       }
-      const lastSuccess = await prisma.automationRun.findFirst({
-        where: { ruleKey: rule.ruleKey, state: "SUCCEEDED" },
-        orderBy: [{ finishedAt: "desc" }, { id: "desc" }],
-        select: { finishedAt: true, startedAt: true },
-      });
-      const successAt = lastSuccess?.finishedAt ?? lastSuccess?.startedAt ?? null;
-      if (latest.state === "FAILED") {
-        cleared.add("automation-stale:" + rule.ruleKey);
-      } else if (successAt && now.getTime() - successAt.getTime() > rule.expectedEveryHours * 2 * ONE_HOUR) {
+      // A never-run job past its first due time plus grace is late too (spec 2), so it raises the same issue.
+      if (row.state === "late") {
         issues.push({ kind: "AUTOMATION_STALE", ruleKey: rule.ruleKey,
-          lastSuccessAt: successAt, expectedEveryHours: rule.expectedEveryHours });
+          lastSuccessAt: row.lastSuccessAt, dueAt: row.dueAt, graceMinutes: row.graceMinutes });
       } else {
         cleared.add("automation-stale:" + rule.ruleKey);
       }

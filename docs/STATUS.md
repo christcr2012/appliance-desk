@@ -8,6 +8,14 @@ card. The kit `<Toaster />` is mounted on these two screens only (in the layout 
 one status message; moving it there stays with AR-0b). Proof: unit tests here; browser spec `e2e/decisions.spec.ts` runs in CI only.
 Not observed: a form kept in real private storage (CI has none). Next: DEC-2 researched values; MCP decision tools.
 
+## October 25 (night) — MCP-1: System health that tells the truth (in review)
+
+Branch `ai/claude/mcp-1-system-health`. One state list (8 states, each with a label, colour and meaning on the page);
+Late comes from each job's real `vercel.json` time (UTC, shown in Colorado time) plus the owner's grace setting (2 hours);
+the issue sweep uses the same rule; health reads three rows per job; failures store a code, step and reference, and
+screens, issues, the backup email and the check-up key show only the code's plain wording. DB and browser tests run in
+CI only (no local Postgres here). Next: MCP-2 (backups).
+
 ## October 25 (night) — AR-0a: application kit + guards (in review)
 
 Built the shared kit in `src/components/kit/` (20 components + Icon, unit-tested in `tests/kit/`), the new color

@@ -20,14 +20,19 @@ export async function recordSystemIssue(input: SystemIssueInput): Promise<boolea
       });
       if (!match) throw new Error("Unrecognized official page");
     }
+    // MCP-1: typed failure fields are written only when this signal carries them, so a later sweep that saw the
+    // same failed run does not erase the reference the run itself recorded.
+    const failure = issue.failure
+      ? { failureCode: issue.failure.code, failureStage: issue.failure.stage, correlationId: issue.failure.correlationId }
+      : {};
     await prisma.systemIssue.upsert({
       where: { fingerprint: issue.fingerprint },
       create: {
         fingerprint: issue.fingerprint, kind: issue.kind, severity: issue.severity,
-        summary: issue.summary, detail: issue.detail,
+        summary: issue.summary, detail: issue.detail, ...failure,
       },
       update: {
-        severity: issue.severity, summary: issue.summary, detail: issue.detail,
+        severity: issue.severity, summary: issue.summary, detail: issue.detail, ...failure,
         occurrences: { increment: 1 }, version: { increment: 1 },
         lastSeenAt: new Date(), status: "OPEN", resolvedAt: null, resolvedReason: null,
       },

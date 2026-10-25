@@ -1,8 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { setAutomationPaused } from "@/domains/automation/health";
+import { RECOMMENDED_LATE_GRACE_MINUTES, saveLateGraceMinutes, setAutomationPaused } from "@/domains/automation/health";
 import { requireRole } from "@/lib/session";
+
+/** MCP-1: owner-only "late" grace period (minutes after a job's usual time). */
+export async function saveLateGraceAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const restore = formData.get("operation") === "restore";
+  const next = restore ? RECOMMENDED_LATE_GRACE_MINUTES : Number(formData.get("graceMinutes"));
+  await saveLateGraceMinutes(session.user.id, next, Number(formData.get("expected")));
+  revalidatePath("/desk/automations");
+}
 
 export async function setAutomationPausedAction(formData: FormData): Promise<void> {
   const session = await requireRole("OWNER");

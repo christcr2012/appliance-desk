@@ -1,0 +1,14 @@
+"use client";
+
+import { ErrorPanel } from "@/components/error-panel";
+
+// KIT 5.3: Decisions & reviews keeps the rest of the desk working when this screen fails.
+export default function DecisionsError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  return (
+    <>
+      {/* TEMPORARY (DEC-1b CI diagnosis): removed once the admin failure is understood. */}
+      <span hidden data-decisions-error={`${error.name}: ${error.message}`.slice(0, 400)} />
+      <ErrorPanel error={error} reset={reset} homeHref="/desk/today" homeLabel="Go to Today" />
+    </>
+  );
+}
