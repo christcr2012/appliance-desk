@@ -1,3 +1,7 @@
+## October 25 — Owner controls lane finished
+
+Merged (#573, #577, #578, #583, #584): settings change preview and stale-save protection with the full Switches list; scheduled price changes for rental sets as well as single appliances; a role-shaped proof that each admin page sends only what the role may see; browser tests for goals, approval limits, permissions and workspace; and the eight older review findings (removed receipt and unsent photos really leave storage after an owner-editable wait, iPhone photos convert, earnings use rent only on each rental's billing month, a phone-width sideways-scroll check on every page). Also found and fixed: receipt uploads were not on storage's private-folder list. One owner checklist row: confirm removed receipt files really leave storage. Nothing else for Chris.
+
 ## October 25 — Owner controls: proof of what each page sends to each role (O-2B)
 
 In progress (branch `ai/claude/owner-controls-o2b`). New browser test `e2e/role-shaped-pages.spec.ts` (browser-d) reads the whole

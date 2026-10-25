@@ -74,10 +74,10 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 
 **Partial items inside built units**
 - (M-1C is complete: Colorado retail delivery fee on delivered sales and taking back a used appliance are built. Only real-account acceptance remains, see the owner checklist and STATUS.) (The revenue-report label now reads "Shop sales (parts and items sold)".)
-- O-4: package and set prices. (O-1 change preview, stale-save protection and the full Switches list were finished 2026-10-24; O-2B role-shaped proof finished 2026-10-25.)
+- (Owner controls O-1, O-2B and O-4 are complete: change preview and stale-save protection, the full Switches list, the role-shaped page proof, and scheduled price changes for single appliances and rental sets.)
 - (The yearly "check your SUTS setup" Today task is built: `TAX_SETUP_CHECK`, each January and 12 months after the last check.)
 - Website pricing page does not show the all-in total or $45 fee (hidden on purpose by the owner).
-- Eight older review findings in LAUNCH-LEDGER (photo cleanup, HEIC, earnings report basis, billing-estimate check, narrow-width desk check).
+- (The eight older review findings in LAUNCH-LEDGER are closed, 2026-10-25: photo clean-up, HEIC, earnings basis, billing-estimate check, narrow-width check. Only the real-storage confirmation is on the owner checklist.)
 - No browser specs yet for shop sales or retired appliances. (Approvals, switches, permissions, price changes, goals and workspace now have them: owner-settings-history, owner-price-changes, role-shaped-pages, owner-controls.)
 
 **Owner and provider steps** are only on [OWNER-CHECKLIST](OWNER-CHECKLIST.md) and never block building.
