@@ -6,6 +6,10 @@ counted once). Anything without enough history says so instead of guessing: unde
 time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
 reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
 Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
+## October 25 — Phone bookkeeping catch-up (COM-N3 record)
+
+COM-N3 (booking a verified phone-company statement as one expense) was merged earlier in #555, but the plan and work list still said "in review / not built".
+Both now say merged, and a short card records what it proves and the one known gap (no browser test of the booking form yet; not blocking).
 ## October 24 — COM-N1B: job and maintenance texts (everything OFF)
 
 Job and maintenance-request screens get the same preview-then-send box: visit scheduled / reminder / on the way / done, and

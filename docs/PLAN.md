@@ -159,7 +159,7 @@ Design: `docs/designs/BATCH-COM.md`; work coverage and prerequisites: work-index
 ### Near-term acceptance (COM-N)
 
 - [ ] Workflow templates/rules activated individually; click-to-call/STAFF job-scoped actions preserve actor and legal boundaries. _(NOT BUILT: no lead/job/billing SMS senders, no click-to-call (only tel: links))_
-- [ ] Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction. _(Built in COM-N3, PR in review: the link, owner booking form, hand-entered match, one-time booking; closed-period correction uses the normal void path. No browser test yet.)_
+- [ ] Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction. _(Built and merged in COM-N3 (#555): the link, owner booking form, hand-entered match, one-time booking; a correction uses the normal void path (a booking after the original expense is voided is tested; a correction in an already-closed accounting period is NOT separately tested yet). Proven by `tests/telecom-statement-books-integration.test.ts`. No browser test of the booking form yet: it needs a verified statement fixture in the browser database; recorded, not blocking.)_
 - [ ] Service metrics, reliable linked-cost unit economics/forecasts registered in METRICS; sparse data is unavailable, no invented causal attribution. _(NOT BUILT: no service-metrics, unit-economics or forecast code)_
 - [ ] O controls and BP business scenarios consume existing evidence.
 
