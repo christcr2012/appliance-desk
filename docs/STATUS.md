@@ -5,6 +5,20 @@ server answer of the desk pages as the owner, a full admin, an admin the owner h
 rental-price, repair-cost or purchase-cost values; owner-only pages send nobody else any of their content; a limited admin's
 control center does not even contain the cards they may not use. A control check shows the planted values really are sent to the
 owner and admins, so the staff result is meaningful. Passes 18 of 18 locally including phone width, keyboard and accessibility. Nothing for Chris to do.
+## October 25 — Phone bookkeeping catch-up (COM-N3 record)
+
+COM-N3 (booking a verified phone-company statement as one expense) was merged earlier in #555, but the plan and work list still said "in review / not built".
+Both now say merged, and a short card records what it proves and the one known gap (no browser test of the booking form yet; not blocking).
+## October 24 — COM-N1B: job and maintenance texts (everything OFF)
+
+Job and maintenance-request screens get the same preview-then-send box: visit scheduled / reminder / on the way / done, and
+maintenance request received / resolved. Owners and admins can send all; staff can send only the four visit texts for jobs
+assigned to them (and cannot record permission). No street address in any text. Same gates as the first batch (master switch,
+Owner-approved wording, per-text switch, recorded permission, STOP, quiet hours). Tested on throwaway Postgres with a fake carrier.
+Next: COM-N1C (billing, renewal and refund texts), then N2, N4, wiring gaps.
+## October 25 — Owner controls: browser tests for goals, approval limits, permissions and workspace
+
+In progress (branch `ai/claude/owner-controls-browser-tests`). One new real-browser spec (`e2e/owner-controls.spec.ts`, phone width, keyboard, accessibility check) walks the owner through setting and removing a cash goal, filling in and saving approval limits and turning them off, taking one permission away from an admin and giving it back, and pinning/unpinning workspace shortcuts. It passes locally; CI result pending. Switches and price changes already have their own specs. Nothing for Chris to do.
 
 ## October 25 — Nightly spend-alert check wired in (in PR, notifies nobody)
 

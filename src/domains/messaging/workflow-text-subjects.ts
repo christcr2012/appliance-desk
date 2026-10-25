@@ -1,6 +1,8 @@
 import type { CommunicationLinkEntityType, Prisma } from "@prisma/client";
 import { isEstimatePastValidity } from "@/domains/estimates/validity";
 import { normalizeSmsAddress } from "./suppression";
+import { formatBusinessTime } from "@/lib/business-date";
+import { businessDateKey } from "@/lib/business-date";
 import { workflowTextFamily, type WorkflowTextFamily } from "./workflow-text-catalog";
 
 /**
@@ -24,6 +26,8 @@ export type LoadedSubject = {
   stateProblem: string | null;
   /** When the lead already became a customer, so an old thread can move to the customer record. */
   convertedFromLeadId: string | null;
+  /** Team member the record is assigned to (jobs), so a STAFF member can act only on their own work. */
+  assigneeUserId?: string | null;
 };
 
 type Tx = Prisma.TransactionClient;
@@ -133,6 +137,68 @@ async function loadAgreement(tx: Tx, family: WorkflowTextFamily, id: string): Pr
   };
 }
 
+
+/** The word that follows "your" in the wording: "your delivery is scheduled…". */
+const VISIT_NOUN: Record<string, string> = {
+  DELIVERY: "delivery", INSTALLATION: "installation", SWAP: "appliance swap", REMOVAL: "pickup", MAINTENANCE_VISIT: "maintenance visit",
+};
+
+function whenLabel(at: Date): string {
+  const day = new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", weekday: "short", month: "short", day: "numeric" }).format(at);
+  return `${day}, ${formatBusinessTime(at)}`;
+}
+
+async function loadJob(tx: Tx, family: WorkflowTextFamily, id: string, now: Date): Promise<LoadedSubject | null> {
+  const job = await tx.job.findUnique({ where: { id }, select: {
+    id: true, type: true, status: true, scheduledAt: true, assignedToUserId: true, customerId: true,
+    customer: { select: { phone: true, user: { select: { name: true } } } } } });
+  if (!job || !job.customerId || !job.customer) return null;
+  const phone = usablePhone(job.customer.phone);
+  const visit = VISIT_NOUN[job.type] ?? "visit";
+  let stateProblem: string | null = null;
+  const upcoming = job.status === "SCHEDULED" && job.scheduledAt && job.scheduledAt.getTime() > now.getTime();
+  switch (family.key) {
+    case "job_scheduled": case "job_reminder":
+      if (job.status === "CANCELLED") stateProblem = "This visit was cancelled.";
+      else if (job.status === "COMPLETED") stateProblem = "This visit is already done.";
+      else if (!job.scheduledAt) stateProblem = "Pick a date and time for this visit first.";
+      else if (!upcoming) stateProblem = "This visit time has already passed.";
+      break;
+    case "job_on_the_way":
+      if (job.status !== "SCHEDULED" && job.status !== "IN_PROGRESS") stateProblem = "This visit is not open right now.";
+      else if (!job.scheduledAt || businessDateKey(job.scheduledAt) !== businessDateKey(now)) stateProblem = "This visit is not scheduled for today.";
+      break;
+    case "job_completed":
+      if (job.status !== "COMPLETED") stateProblem = "This visit has not been marked completed yet.";
+      break;
+  }
+  return {
+    principal: { customerId: job.customerId }, displayName: job.customer.user.name ?? "",
+    rawPhone: phone.raw, phone: phone.phone,
+    values: { name: firstNameFor(job.customer.user.name), visit, when: job.scheduledAt ? whenLabel(job.scheduledAt) : "" },
+    links: [{ entityType: "Job", entityId: job.id }], stateProblem, convertedFromLeadId: null,
+    assigneeUserId: job.assignedToUserId,
+  };
+}
+
+async function loadMaintenance(tx: Tx, family: WorkflowTextFamily, id: string): Promise<LoadedSubject | null> {
+  const request = await tx.maintenanceRequest.findUnique({ where: { id }, select: {
+    id: true, status: true, customerId: true, customer: { select: { phone: true, user: { select: { name: true } } } } } });
+  if (!request) return null;
+  const phone = usablePhone(request.customer.phone);
+  let stateProblem: string | null = null;
+  if (family.key === "maintenance_resolved" && request.status !== "RESOLVED" && request.status !== "CLOSED") {
+    stateProblem = "This request has not been marked resolved yet.";
+  } else if (family.key === "maintenance_received" && (request.status === "RESOLVED" || request.status === "CLOSED")) {
+    stateProblem = "This request is already finished.";
+  }
+  return {
+    principal: { customerId: request.customerId }, displayName: request.customer.user.name ?? "",
+    rawPhone: phone.raw, phone: phone.phone, values: { name: firstNameFor(request.customer.user.name) },
+    links: [{ entityType: "MaintenanceRequest", entityId: request.id }], stateProblem, convertedFromLeadId: null,
+  };
+}
+
 /** One loader per record type; the family decides which record type is read. Later batches add job and billing records. */
 export async function loadWorkflowSubject(
   tx: Tx, familyKey: string, subjectId: string, now: Date,
@@ -143,6 +209,8 @@ export async function loadWorkflowSubject(
     case "Lead": return loadLead(tx, subjectId);
     case "Estimate": return loadEstimate(tx, subjectId, now);
     case "RentalAgreement": return loadAgreement(tx, family, subjectId);
+    case "Job": return loadJob(tx, family, subjectId, now);
+    case "MaintenanceRequest": return loadMaintenance(tx, family, subjectId);
     default: return null;
   }
 }
