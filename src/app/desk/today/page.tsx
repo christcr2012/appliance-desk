@@ -39,6 +39,8 @@ import Link from "next/link";
 import { formatMoney } from "@/lib/money-ui";
 import { getWorkspace, describeSavedView, savedViewHref, usablePins } from "@/domains/workspace";
 import { visibleOwnerActions } from "@/lib/owner-actions";
+import { decisionsTodayCount } from "@/domains/decisions/today";
+import { InboxCard } from "@/components/kit";
 
 export const metadata = { title: "Today" };
 
@@ -209,6 +211,8 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const workspace = role === "OWNER" || role === "ADMIN"
     ? await getWorkspace(session.user.id).catch(() => null)
     : null;
+  // DEC-1b: "Decisions waiting" — owner only, low priority, at most one day a week.
+  const decisionsWaiting = await decisionsTodayCount({ id: session.user.id, role }, now);
   const hiddenOptional = new Set(workspace?.prefs.hiddenOptionalCardIds ?? []);
   const exceptions = allExceptions.filter((item) => !hiddenOptional.has(item.category));
   const truncated = allTruncated.filter((item) => !hiddenOptional.has(item.category));
@@ -301,6 +305,17 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
         </p>
       ) : null}
       {setupChecklist ? <SetupCard checklist={setupChecklist} /> : null}
+      {decisionsWaiting ? (
+        <section aria-label="System" className="mb-6">
+          <InboxCard
+            eyebrow="System"
+            eyebrowTone="neutral"
+            title={`Decisions waiting: ${decisionsWaiting}`}
+            detail="The app is running on starting values. Confirm or change them when you have time."
+            actions={[{ kind: "link", label: "Open", href: "/desk/settings/decisions", primary: true }]}
+          />
+        </section>
+      ) : null}
       {budgetAttention&&<section aria-label="Budget source and upcoming cost attention"
        className="mb-6 space-y-2 rounded border border-border p-4">
        <h2 className="text-lg font-semibold">Budget and known upcoming bills</h2>

@@ -1,0 +1,160 @@
+import fs from "node:fs";
+import mammoth from "mammoth";
+import { expect, test, type Page } from "@playwright/test";
+import { scanAccessibilityRoute } from "./accessibility-route-helpers";
+
+// DEC-1b: Settings › Decisions & reviews in a real browser. The owner keeps, changes, asks, enters a professional's
+// answer with their form, downloads both questionnaire formats and imports a completed form. Admins see the cards
+// with no buttons; staff are sent away. Axe at five sizes, light and dark.
+//
+// Only "keep what the app does now" questions and an unchanged retention value are used, so nothing another browser
+// test depends on changes. The records this test adds are removed at the end so it can run again.
+const owner = "e2e/.auth/owner.json";
+const db = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
+const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(db.hostname) && db.pathname === "/appliance_desk_test";
+const SUBJECTS = ["IN-06", "IN-71", "IN-44", "IN-46"];
+// 360 and 1440 are scanned by the generated route scans (route-inventory.ts); these are the other three sizes plus 1920.
+const SIZES = [390, 820, 1280, 1920] as const;
+
+test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
+// The two tests touch different things, so they may run on both workers at once (shard time budget).
+test.describe.configure({ mode: "parallel" });
+
+function card(page: Page, title: string | RegExp) {
+  return page.getByRole("article", { name: title });
+}
+
+test("decisions: keep, change, ask, enter an answer, download and import", async ({ page }) => {
+  test.skip(!enabled, "Disposable Postgres and a saved owner session required.");
+  test.setTimeout(170_000);
+  const { prisma } = await import("../src/lib/prisma");
+  const { decisionSubject } = await import("../src/domains/decisions/registry");
+  const started = new Date();
+  const title = (id: string) => decisionSubject(id)!.title;
+  try {
+    // Start clean for these questions (an earlier run in this database may have answered them).
+    await prisma.decisionRecord.deleteMany({ where: { subjectId: { in: SUBJECTS } } });
+
+    // 1. Keep this — on "For you".
+    await page.goto("/desk/settings/decisions");
+    await expect(page.getByRole("heading", { name: "Decisions & reviews", level: 1 })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^For you \d+/ })).toHaveAttribute("aria-current", "page");
+    const keep = card(page, title("IN-06"));
+    await expect(keep.getByText("No public source — careful choice in use")).toBeVisible();
+    await keep.getByRole("button", { name: "Keep this" }).click();
+    await expect(page.getByText(`Kept: ${title("IN-06")}`)).toBeVisible();
+    await page.goto("/desk/settings/decisions?for=ANSWERED");
+    await expect(card(page, title("IN-06")).getByText(/^Confirmed by .+ on /)).toBeVisible();
+
+    // 2. Change… — the same retention value, so nothing else changes; then Reopen it.
+    await page.goto("/desk/settings/decisions?for=CPA");
+    const retention = card(page, title("IN-71"));
+    await retention.getByRole("button", { name: "Change…" }).click();
+    const sheet = page.getByRole("dialog", { name: `Change: ${title("IN-71")}` });
+    await sheet.getByLabel("7 years after the appliance leaves the fleet").check();
+    await sheet.getByLabel("Note (optional)").fill("Same as now, confirmed in the browser test");
+    await sheet.getByRole("button", { name: "Save change" }).click();
+    await expect(page.getByText(`Changed: ${title("IN-71")}`)).toBeVisible();
+    await page.goto("/desk/settings/decisions?for=ANSWERED");
+    await card(page, title("IN-71")).getByRole("button", { name: "Reopen" }).click();
+    await expect(page.getByText(`Reopened: ${title("IN-71")}`)).toBeVisible();
+
+    // 3. Ask my attorney — moves the CPA question to the attorney tab, value unchanged.
+    await page.goto("/desk/settings/decisions?for=CPA");
+    await card(page, title("IN-44")).getByRole("button", { name: "Ask my…" }).click();
+    await page.getByRole("menuitem", { name: "Ask my attorney" }).click();
+    await expect(page.getByText('Moved to "For your attorney". The app keeps doing what it does now.')).toBeVisible();
+
+    // 4. Download both formats from the attorney tab.
+    await page.goto("/desk/settings/decisions?for=ATTORNEY");
+    const asked = card(page, title("IN-44"));
+    await expect(asked.getByText(/^With your attorney since /)).toBeVisible();
+    await expect(asked.getByText("You can use this now; their answer may change it.")).toBeVisible();
+    const docx = await page.request.get("/desk/settings/decisions/form?for=ATTORNEY&format=docx");
+    expect(docx.status()).toBe(200);
+    expect(docx.headers()["content-disposition"]).toMatch(/decisions-attorney-\d{4}-\d{2}-\d{2}\.docx/);
+    const docxBytes = await docx.body();
+    const { value: text } = await mammoth.extractRawText({ buffer: docxBytes });
+    expect(text.split("[DQ-IN-44]").length - 1).toBe(2);
+    const pdf = await page.request.get("/desk/settings/decisions/form?for=ATTORNEY&format=pdf");
+    expect(pdf.headers()["content-type"]).toBe("application/pdf");
+    expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+    await expect(page.getByRole("link", { name: "Download questions (Word)" })).toBeVisible();
+
+    // 5. Enter their answer…, with their completed form attached.
+    await asked.getByRole("button", { name: "Enter their answer…" }).click();
+    const answer = page.getByRole("dialog", { name: `Enter their answer: ${title("IN-44")}` });
+    await answer.getByLabel("Keep what the app does now").check();
+    await answer.getByLabel("Who answered").fill("Pat Lee");
+    await answer.getByLabel("Firm (optional)").fill("Lee Law");
+    await answer.getByLabel("Their explanation (optional)").fill("Fine as it is.");
+    await answer.getByLabel(/Their completed form/).setInputFiles({ name: "answers.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: docxBytes });
+    await answer.getByRole("button", { name: "Save their answer" }).click();
+    await expect(page.getByText(/^Their answer was saved/)).toBeVisible();
+    const saved = await prisma.decisionRecord.findFirstOrThrow({ where: { subjectId: "IN-44", kind: "PROFESSIONAL_ANSWER" } });
+    expect(saved).toMatchObject({ professionalName: "Pat Lee", professionalFirm: "Lee Law", audience: "ATTORNEY", via: "SCREEN" });
+
+    // A picture renamed .pdf is refused by its content.
+    await page.goto("/desk/settings/decisions?for=CPA");
+    await card(page, title("IN-46")).getByRole("button", { name: "Enter their answer…" }).click();
+    const bad = page.getByRole("dialog", { name: `Enter their answer: ${title("IN-46")}` });
+    await bad.getByLabel("Keep what the app does now").check();
+    await bad.getByLabel("Who answered").fill("Pat Lee");
+    await bad.getByLabel(/Their completed form/).setInputFiles({ name: "form.pdf", mimeType: "application/pdf",
+      buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) });
+    await bad.getByRole("button", { name: "Save their answer" }).click();
+    await expect(bad.getByRole("alert")).toHaveText("Choose a PDF or a Word (.docx) file.");
+    await bad.getByRole("button", { name: "Close" }).click();
+
+    // 6. Import a completed form (pasted answer sheet): preview, then apply.
+    await page.goto("/desk/settings/decisions");
+    await page.getByRole("button", { name: "More for Decisions & reviews" }).click();
+    await page.getByRole("menuitem", { name: "Import a completed form" }).click();
+    await expect(page.getByRole("heading", { name: "Import a completed form", level: 1 })).toBeVisible();
+    await page.getByLabel("Or paste the answers (for a PDF or a scan)").fill([
+      "Answer sheet",
+      "Answered by / firm / date: Pat Lee / Lee CPA / " + started.toISOString().slice(0, 10),
+      "[DQ-IN-46] Answer: Keep what the app does now",
+      "[DQ-NOT-REAL] Answer: Yes",
+    ].join("\n"));
+    await page.getByRole("button", { name: "Preview answers" }).click();
+    await expect(page.getByRole("heading", { name: "What would change" })).toBeVisible();
+    await expect(page.getByText("This code isn't a question in the app.").first()).toBeVisible();
+    await page.getByRole("button", { name: "Record their answers" }).click();
+    await expect(page.getByRole("heading", { name: "Done" })).toBeVisible();
+    await expect(page.getByText("Confirmed with no change: 1")).toBeVisible();
+    await expect(page.getByText("Skipped (couldn't apply): 1")).toBeVisible();
+
+    // 7. Accessibility, light and dark (the import page is scanned by the generated route scans).
+    await scanAccessibilityRoute(page, { path: "/desk/settings/decisions", role: "OWNER", fixture: "/desk/settings/decisions?for=CPA" }, SIZES);
+  } finally {
+    await prisma.decisionRecord.deleteMany({ where: { subjectId: { in: SUBJECTS }, createdAt: { gte: started } } });
+  }
+});
+
+test("decisions: admins read without buttons; staff are sent away", async ({ browser }) => {
+  const adminState = "e2e/.auth/admin.json";
+  const staffState = "e2e/.auth/staff.json";
+  test.skip(!enabled || !fs.existsSync(adminState) || !fs.existsSync(staffState), "Saved admin and staff sessions required.");
+  const admin = await browser.newContext({ storageState: adminState });
+  const staff = await browser.newContext({ storageState: staffState });
+  try {
+    const a = await admin.newPage();
+    await a.goto("/desk/settings/decisions?for=CPA");
+    await expect(a.getByRole("heading", { name: "Decisions & reviews", level: 1 })).toBeVisible();
+    await expect(a.getByRole("article").first()).toBeVisible();
+    await expect(a.getByRole("button", { name: "Keep this" })).toHaveCount(0);
+    await expect(a.getByRole("button", { name: "Change…" })).toHaveCount(0);
+    await expect(a.getByRole("button", { name: "More for Decisions & reviews" })).toHaveCount(0);
+    expect((await a.request.post("/api/desk/decisions/answer", { multipart: { id: "IN-71", option: "0" } })).status()).toBe(403);
+    const s = await staff.newPage();
+    await s.goto("/desk/settings/decisions");
+    await expect(s).not.toHaveURL(/\/desk\/settings\/decisions/);
+    await s.goto("/desk/settings/decisions/import");
+    await expect(s).not.toHaveURL(/\/desk\/settings\/decisions\/import/);
+  } finally {
+    await admin.close();
+    await staff.close();
+  }
+});

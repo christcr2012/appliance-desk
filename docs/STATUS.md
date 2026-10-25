@@ -1,3 +1,12 @@
+## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review)
+
+Branch `ai/claude/dec-1b-decisions-screens`. Coded: Settings › Decisions & reviews (`/desk/settings/decisions`: tabs,
+filters, cards with Keep / Change / Ask / Enter their answer / Reopen — owner acts, admins read only, staff sent away),
+Word and PDF questionnaires, "Import a completed form" (Word file or pasted answers → preview → apply with the signed
+token), private storage of completed forms (type checked by content, 4 MB), weekly "Decisions waiting" Today card, and
+the kit `<Toaster />` in the desk layout. Proof: unit tests here; browser spec `e2e/decisions.spec.ts` runs in CI only.
+Not observed: a form kept in real private storage (CI has none). Next: DEC-2 researched values; MCP decision tools.
+
 ## October 25 (night) — AR-0a: application kit + guards (in review)
 
 Built the shared kit in `src/components/kit/` (20 components + Icon, unit-tested in `tests/kit/`), the new color

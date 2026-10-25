@@ -521,6 +521,8 @@ export type ParsedAnswer = {
   answeredBy?: string | null;
   firm?: string | null;
   answeredOn?: string | null;
+  /** Set by the form reader when the answer can't be read safely (e.g. "Two answers were ticked"): shown as INVALID. */
+  problem?: string | null;
 };
 
 export type AnswerPreview = {
@@ -558,6 +560,7 @@ async function previewInTx(tx: Prisma.TransactionClient, answers: ParsedAnswer[]
     const now_ = subject.describe(current);
     const invalid = (reason: string) => out.push({ ...base, now: now_, after: "", status: "INVALID", reason });
     if ((seen.get(code) ?? 0) > 1) { invalid("This question was answered more than once."); continue; }
+    if (typeof answer.problem === "string" && answer.problem.trim()) { invalid(answer.problem.trim().slice(0, 300)); continue; }
     if (!cleanText(answer.answeredBy ?? null, 120, "name of who answered")) { invalid("Fill in who answered."); continue; }
     try {
       decisionStart(effective, now);
