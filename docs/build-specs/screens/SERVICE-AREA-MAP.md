@@ -75,7 +75,9 @@ applies to new estimates only; sent estimates and signed agreements keep their s
   information. Town names in the list link to the existing `/rent/{city}` pages.
 - The address checker (`check-address-actions.ts`) uses `geocodeAddress` + `zoneForPoint` instead of the ZIP/city
   lists; rate-limited like the existing public form (reuse its limiter); never reveals coordinates or tax details;
-  "We don't deliver there yet — call us" when FEETAX-2 says the address's places aren't set up.
+  "We don't deliver there yet — call us" when FEETAX-2 says the address's places aren't set up. (that part arrives with FEETAX-2; until then
+  the checker answers by zone only). The privacy page gets one line: "To check an address we send it to the U.S. Census
+  Bureau's address lookup; we don't keep addresses typed into the checker." Public checks are not stored.
 - `/rent/{city}` pages: built from the town list (zone shown: "Delivery to Loveland: Nearby zone"), replacing the
   owner's city list. Old city-list URLs keep working (same slugs).
 - Settings › Where you work: panel "Delivery zones" (zone table, center, method, "Show delivery prices on the
