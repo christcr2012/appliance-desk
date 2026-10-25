@@ -1,3 +1,11 @@
+## October 25 — AR-11 installation and public-only offline shell (part 1, in review)
+
+Branch `ai/chatgpt/ar-11-pwa-shell`. Dedicated desk install manifest and four shortcuts; public-only service worker,
+registration gated in browser tests, offline page/bar and disabled kit form writes; unit and browser coverage added.
+No customer HTML, RSC, API data or uploads may be cached. This is the offline/security boundary of AR-11, not the
+finished card. No local checkout/test environment was available; CI and review must verify before merge. Next: the
+remaining AR-11 interactions, React upgrade, loading, shortcuts, and speed checks; AR-12 follows.
+
 ## October 25 (night) — MCP-1: System health that tells the truth (in review)
 
 Branch `ai/claude/mcp-1-system-health`. One state list (8 states, each with a label, colour and meaning on the page);

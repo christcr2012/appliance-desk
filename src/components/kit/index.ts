@@ -37,3 +37,5 @@ export { Timeline, type TimelineItem } from "./timeline";
 export { Fab } from "./fab";
 export { OverflowMenu } from "./overflow-menu";
 export { useMediaQuery, DESKTOP_QUERY } from "./use-media-query";
+export { OfflineBar, useDeskOffline } from "./offline-bar";
+export { RegisterDeskServiceWorker } from "./register-sw";

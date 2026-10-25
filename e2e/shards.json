@@ -86,7 +86,8 @@
       "signing-multilocation-order.spec.ts",
       "preapproval-estimate-prepare.spec.ts",
       "signature-public.spec.ts",
-      "signature-focus.spec.ts"
+      "signature-focus.spec.ts",
+      "desk-offline.spec.ts"
     ]
   }
 }
