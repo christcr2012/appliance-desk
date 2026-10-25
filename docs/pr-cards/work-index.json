@@ -5154,7 +5154,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead (ROADMAP)",
+      "status": "APPROVED — Chris 2026-10-25",
       "units": [
         "ACC-6"
       ]

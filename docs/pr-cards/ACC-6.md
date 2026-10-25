@@ -1,7 +1,7 @@
 # ACC-6 — Remember this device, and real new-device notices
 
 Build spec: `docs/build-specs/engines/TRUSTED-DEVICES.md`. Design: `docs/designs/ACCOUNTS-AND-SIGN-IN.md` sections 6,
-7 and 9 (`trustedDeviceDays (30)` was designed but never built; ACC-3 left it "for a later card"). **Waiting for Chris's go-ahead** (ROADMAP said so; asked 2026-10-25). Depends on ACC-1…ACC-5 (merged #544–#548) and DEC-1a (for the Decisions question; if DEC-1a is
+7 and 9 (`trustedDeviceDays (30)` was designed but never built; ACC-3 left it "for a later card"). **Approved by Chris 2026-10-25** ("Yes, add it", 30-day starting value). Depends on ACC-1…ACC-5 (merged #544–#548) and DEC-1a (for the Decisions question; if DEC-1a is
 not merged, add a `DQ-` entry in `docs/OWNER-INPUTS.md` instead). Risk: **sign-in and second step** — read
 `docs/AI-PR-READ-FIRST.md` and say in the PR how each auth item is honored.
 

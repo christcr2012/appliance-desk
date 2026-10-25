@@ -723,4 +723,3 @@ consumables price can be checked against what the parts really cost. Not in W-22
 - **Job roles on /api download/upload routes**: today those routes use the access level only.
 
 - 2026-10-25 (AR-13): more notification kinds — "your approval request was decided" (to the person who asked) and "a visit was assigned to you" (to staff). Not in AR-13's approved five; needs Chris's go-ahead.
-- **Trusted-device option for sign-in codes** ("remember this device", owner setting) and **customer new-device notices**: build-ready as ACC-6 (`docs/pr-cards/ACC-6.md`); also closes a small gap where the server accepts a hand-made "trust this device" request. Needs Chris's go-ahead.
