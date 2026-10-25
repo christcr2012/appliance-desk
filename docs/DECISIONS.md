@@ -1,3 +1,11 @@
+## October 25 — Late fees: warn first, never during a payment in progress (Chris)
+
+"A late fee should not be charged before the customer is notified, so it should not 'slip in' to a payment method
+going through that the customer would not reasonably expect to be charged a different payment amount." Rules (FEE-1,
+`docs/build-specs/engines/LATE-FEES.md`): no fee without a delivered warning (starting value 2 days before the fee
+date); no fee while any payment is in progress, and a failed payment restarts the warning; the fee is its own charge
+on the next bill, never added to the amount the customer is paying.
+
 ## October 25 — Decisions never block the work (Chris)
 
 Chris: agents kept postponing features while waiting for owner or professional decisions. New rule (AGENTS.md

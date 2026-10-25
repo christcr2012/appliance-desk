@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Money — Bills — PC</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#123C2D}a:hover{color:#0B2A1F}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #F7F5EC; font-family: Manrope, system-ui, sans-serif; color: #17231E; display: flex; overflow: hidden">
+  <aside style="width: 232px; flex: none; background: #123C2D; color: #E8F0EB; display: flex; flex-direction: column; padding: 20px 14px; gap: 4px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 20px">
+      <svg width="32" height="32" viewBox="0 0 1024 1024" aria-label="Robinson logo" role="img"><circle cx="512" cy="512" r="512" fill="#123C2D"/><g transform="translate(260 260) scale(5.04)"><path d="M0 0H57C83 0 98 13 98 33C98 51 87 62 65 65L100 100H64L9 45H55C63 45 67 41 67 35C67 29 63 25 55 25H0Z" fill="#F7F5EC"/><path d="M0 49L49 100H0Z" fill="#B9E66B"/></g></svg>
+      <span style="font-weight: 800; font-size: 16px; color: #FFFFFF">Appliance Desk</span>
+    </div>
+    <a href="#" style="display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #E8F0EB; font-weight: 600; font-size: 15px">Today <span style="font-size: 12px; font-weight: 800; background: #B54708; color: #FFFFFF; padding: 2px 8px; border-radius: 10px">7</span></a>
+    <a href="#" style="display: flex; align-items: center; height: 42px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #E8F0EB; font-weight: 600; font-size: 15px">Customers</a>
+    <a href="#" style="display: flex; align-items: center; height: 42px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #E8F0EB; font-weight: 600; font-size: 15px">Schedule</a>
+    <a href="#" style="display: flex; align-items: center; height: 42px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #E8F0EB; font-weight: 600; font-size: 15px">Equipment</a>
+    <a href="#" aria-current="page" style="display: flex; align-items: center; height: 42px; padding: 0 12px; border-radius: 10px; text-decoration: none; color: #123C2D; background: #F7F5EC; font-weight: 800; font-size: 15px">Money</a>
+    <div style="flex: 1"></div>
+    <button style="display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 10px; border-radius: 10px; border: none; background: rgba(255,255,255,0.08); color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px; text-align: left">
+      <span style="width: 30px; height: 30px; border-radius: 15px; background: #F7F5EC; color: #123C2D; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800">CR</span>Chris Robinson</button>
+  </aside>
+
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 64px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid #E6E2D6; background: #FFFFFF">
+      <button style="width: 460px; height: 40px; border-radius: 10px; border: 1px solid #DAD6C8; background: #F7F5EC; display: flex; align-items: center; gap: 10px; padding: 0 12px; font-family: inherit; font-size: 14px; color: #4E5F57">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4E5F57" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        Search or jump to anything…<span style="margin-left: auto; font-size: 12px; font-weight: 700; border: 1px solid #DAD6C8; border-radius: 6px; padding: 1px 6px; background: #FFFFFF">Ctrl K</span></button>
+      <button aria-label="Notifications" style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid #DAD6C8; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#17231E" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"></path><path d="M10 20a2 2 0 004 0"></path></svg></button>
+    </header>
+
+    <div style="flex: 1; display: flex; min-height: 0">
+      <section style="flex: 1; min-width: 0; padding: 22px 28px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <h1 style="margin: 0; font-size: 26px; font-weight: 800">Money</h1>
+          <button style="height: 40px; padding: 0 16px; border-radius: 10px; border: none; background: #123C2D; color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px">+ New bill</button>
+        </div>
+        <nav aria-label="Money sections" style="display: flex; gap: 28px; border-bottom: 1px solid #E6E2D6">
+          <a href="#" style="padding: 10px 0; text-decoration: none; color: #4E5F57; font-weight: 600; font-size: 15px">Overview</a>
+          <a href="#" aria-current="page" style="padding: 10px 0; text-decoration: none; color: #123C2D; font-weight: 800; font-size: 15px; border-bottom: 3px solid #123C2D">Bills</a>
+          <a href="#" style="padding: 10px 0; text-decoration: none; color: #4E5F57; font-weight: 600; font-size: 15px">Payments</a>
+          <a href="#" style="padding: 10px 0; text-decoration: none; color: #4E5F57; font-weight: 600; font-size: 15px">Expenses</a>
+          <a href="#" style="padding: 10px 0; text-decoration: none; color: #4E5F57; font-weight: 600; font-size: 15px">Books</a>
+          <a href="#" style="padding: 10px 0; text-decoration: none; color: #4E5F57; font-weight: 600; font-size: 15px">Taxes</a>
+        </nav>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div role="tablist" aria-label="Bill status" style="display: flex; gap: 6px; background: #EDEADF; padding: 4px; border-radius: 12px">
+            <button role="tab" aria-selected="false" style="height: 34px; padding: 0 14px; border-radius: 9px; border: none; background: transparent; font-family: inherit; font-weight: 600; font-size: 14px; color: #17231E">Open 9</button>
+            <button role="tab" aria-selected="true" style="height: 34px; padding: 0 14px; border-radius: 9px; border: none; background: #FFFFFF; font-family: inherit; font-weight: 800; font-size: 14px; color: #123C2D; box-shadow: 0 1px 2px rgba(0,0,0,0.08)">Past due 2</button>
+            <button role="tab" aria-selected="false" style="height: 34px; padding: 0 14px; border-radius: 9px; border: none; background: transparent; font-family: inherit; font-weight: 600; font-size: 14px; color: #17231E">Processing 1</button>
+            <button role="tab" aria-selected="false" style="height: 34px; padding: 0 14px; border-radius: 9px; border: none; background: transparent; font-family: inherit; font-weight: 600; font-size: 14px; color: #17231E">Paid</button>
+            <button role="tab" aria-selected="false" style="height: 34px; padding: 0 14px; border-radius: 9px; border: none; background: transparent; font-family: inherit; font-weight: 600; font-size: 14px; color: #17231E">Void</button>
+          </div>
+          <label style="flex: 1; max-width: 320px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #DAD6C8; background: #FFFFFF">
+            <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search bills</span>
+            <input type="search" placeholder="Name or bill number" style="flex: 1; border: none; outline: none; font-family: inherit; font-size: 14px; background: transparent; min-width: 0">
+          </label>
+          <button style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #DAD6C8; background: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px">Filter</button>
+          <button style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #DAD6C8; background: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 14px">View: Past due ▾</button>
+        </div>
+
+        <div style="background: #FFFFFF; border-radius: 14px; border: 1px solid #E6E2D6; overflow: hidden">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+            <thead>
+              <tr style="text-align: left; color: #4E5F57; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; background: #FAF9F4">
+                <th scope="col" style="padding: 12px 16px; width: 28px"><input type="checkbox" aria-label="Select all bills"></th>
+                <th scope="col" style="padding: 12px 8px">Customer</th>
+                <th scope="col" style="padding: 12px 8px">Bill</th>
+                <th scope="col" style="padding: 12px 8px">For</th>
+                <th scope="col" style="padding: 12px 8px; text-align: right">Amount</th>
+                <th scope="col" style="padding: 12px 8px; text-align: right">Still owed</th>
+                <th scope="col" style="padding: 12px 8px">Status</th>
+                <th scope="col" style="padding: 12px 16px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="background: #EEF5F0; border-top: 1px solid #E6E2D6">
+                <td style="padding: 14px 16px"><input type="checkbox" aria-label="Select bill 1042"></td>
+                <td style="padding: 14px 8px; font-weight: 700">Maria Lopez</td>
+                <td style="padding: 14px 8px">#1042</td>
+                <td style="padding: 14px 8px; color: #4E5F57">October rent</td>
+                <td style="padding: 14px 8px; text-align: right">$70.00</td>
+                <td style="padding: 14px 8px; text-align: right; font-weight: 800">$70.00</td>
+                <td style="padding: 14px 8px"><span style="font-size: 12px; font-weight: 700; color: #8A3B06; background: #FCE8D8; padding: 3px 8px; border-radius: 10px">5 days late</span></td>
+                <td style="padding: 14px 16px; text-align: right"><button aria-label="More actions for bill 1042" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #DAD6C8; background: #FFFFFF; font-weight: 700">⋯</button></td>
+              </tr>
+              <tr style="border-top: 1px solid #E6E2D6">
+                <td style="padding: 14px 16px"><input type="checkbox" aria-label="Select bill 1037"></td>
+                <td style="padding: 14px 8px; font-weight: 700">Greenway Properties</td>
+                <td style="padding: 14px 8px">#1037</td>
+                <td style="padding: 14px 8px; color: #4E5F57">October rent · 6 units</td>
+                <td style="padding: 14px 8px; text-align: right">$420.00</td>
+                <td style="padding: 14px 8px; text-align: right; font-weight: 800">$70.00</td>
+                <td style="padding: 14px 8px"><span style="font-size: 12px; font-weight: 700; color: #8A3B06; background: #FCE8D8; padding: 3px 8px; border-radius: 10px">2 days late</span></td>
+                <td style="padding: 14px 16px; text-align: right"><button aria-label="More actions for bill 1037" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #DAD6C8; background: #FFFFFF; font-weight: 700">⋯</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <span style="font-size: 13px; color: #4E5F57; font-weight: 600">2 past-due bills · $140.00 still owed</span>
+      </section>
+
+      <aside aria-label="Bill 1042" style="width: 420px; flex: none; background: #FFFFFF; border-left: 1px solid #E6E2D6; padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; box-sizing: border-box">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 13px; font-weight: 700; color: #4E5F57">Bill #1042</span>
+            <h2 style="margin: 0; font-size: 22px; font-weight: 800">Maria Lopez</h2>
+            <span style="align-self: flex-start; font-size: 12px; font-weight: 700; color: #8A3B06; background: #FCE8D8; padding: 3px 8px; border-radius: 10px">5 days late</span>
+          </div>
+          <button aria-label="Close" style="width: 36px; height: 36px; border-radius: 18px; border: 1px solid #DAD6C8; background: #FFFFFF; font-weight: 700">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; background: #FAF9F4; border-radius: 12px; padding: 14px 16px">
+          <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600; color: #4E5F57">Still owed</span><span style="font-size: 20px; font-weight: 800">$70.00</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600; color: #4E5F57">Was due</span><span style="font-size: 15px; font-weight: 700">Oct 20</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600; color: #4E5F57">For</span><span style="font-size: 15px; font-weight: 700">October rent</span></div>
+          <div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600; color: #4E5F57">Card on file</span><span style="font-size: 15px; font-weight: 700">Visa ···4242</span></div>
+        </div>
+        <div style="display: flex; gap: 8px">
+          <button style="flex: 1; height: 44px; border-radius: 10px; border: none; background: #123C2D; color: #FFFFFF; font-family: inherit; font-weight: 700; font-size: 15px">Take payment</button>
+          <button style="height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #DAD6C8; background: #FFFFFF; font-family: inherit; font-weight: 600; font-size: 15px">Send reminder</button>
+          <button aria-label="More actions" style="width: 44px; height: 44px; border-radius: 10px; border: 1px solid #DAD6C8; background: #FFFFFF; font-weight: 700">⋯</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px">
+          <h3 style="margin: 0; font-size: 14px; font-weight: 800">What happened</h3>
+          <div style="display: flex; gap: 10px"><span style="width: 8px; height: 8px; margin-top: 6px; border-radius: 4px; background: #8C9A93; flex: none"></span><div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 700">Reminder email sent</span><span style="font-size: 12px; color: #4E5F57">Oct 22 · automatic</span></div></div>
+          <div style="display: flex; gap: 10px"><span style="width: 8px; height: 8px; margin-top: 6px; border-radius: 4px; background: #B54708; flex: none"></span><div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 700">Card declined</span><span style="font-size: 12px; color: #4E5F57">Oct 20 · automatic charge</span></div></div>
+          <div style="display: flex; gap: 10px"><span style="width: 8px; height: 8px; margin-top: 6px; border-radius: 4px; background: #8C9A93; flex: none"></span><div style="display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 700">Bill created</span><span style="font-size: 12px; color: #4E5F57">Oct 1 · automatic</span></div></div>
+        </div>
+        <div style="flex: 1"></div>
+        <a href="#" style="font-weight: 700; font-size: 14px">Open full bill →</a>
+      </aside>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

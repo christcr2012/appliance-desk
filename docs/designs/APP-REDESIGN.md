@@ -1,6 +1,6 @@
 # Appliance Desk as an application — app-wide redesign (Batch AR)
 
-Status: **designed 2026-10-25 at Chris's request; not built.** Units AR-0…AR-12 are in `work-index.json`; execution
+Status: **designed 2026-10-25 at Chris's request; not built.** Exact build instructions: [docs/build-specs/](../build-specs/README.md). Units AR-0…AR-12 are in `work-index.json`; execution
 cards are written when each one starts. This is the **master design for every desk screen**. It absorbs the screen
 parts of [BOOKS-AUTOPILOT.md](BOOKS-AUTOPILOT.md) (BA-4, BA-5, BA-6), [LEADS-WORKSPACE.md](LEADS-WORKSPACE.md) (LD-2, LD-3)
 and [CUSTOMERS-WORKSPACE.md](CUSTOMERS-WORKSPACE.md) (CU-2, CU-3); their engine and data units (BA-1…BA-3, LD-1, LD-4,

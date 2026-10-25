@@ -4340,15 +4340,21 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
-        "src/components/ui/page-header.tsx",
-        "src/components/ui/data-list.tsx",
-        "docs/DESIGN-SYSTEM.md"
+        "docs/build-specs/KIT.md",
+        "docs/build-specs/screens/TODAY.md",
+        "docs/build-specs/screens/MONEY-BILLS.md",
+        "docs/build-specs/screens/CUSTOMER-RECORD.md"
       ],
       "tests": [
-        "tests/ar0-kit-guards.test.ts",
-        "e2e/ar0-reference-screens.spec.ts"
+        "tests/kit-guards.test.ts",
+        "tests/today-inbox.test.ts",
+        "tests/bill-status.test.ts",
+        "tests/customer-record.test.ts",
+        "e2e/today.spec.ts",
+        "e2e/money-bills.spec.ts",
+        "e2e/customer-record.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-0.md"
     },
     {
@@ -4356,6 +4362,7 @@
       "title": "Navigation: five areas, area tabs, profile menu, command bar, redirects, More removed",
       "batch": "AR",
       "dependencies": [
+        "AR-0",
         "AR-11",
         "AR-12"
       ],
@@ -4367,15 +4374,17 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
+        "docs/build-specs/screens/NAVIGATION.md",
         "src/lib/desk-navigation.ts",
-        "src/lib/desk-sections.ts",
-        "src/components/ui/app-shell.tsx"
+        "src/lib/desk-sections.ts"
       ],
       "tests": [
-        "tests/ar1-navigation.test.ts",
-        "e2e/ar1-navigation.spec.ts"
+        "tests/desk-areas.test.ts",
+        "tests/kit/command-bar.test.tsx",
+        "tests/command-actions-integration.test.ts",
+        "e2e/navigation.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-1.md"
     },
     {
@@ -4383,7 +4392,9 @@
       "title": "Today inbox: every To do category with inline actions and grouping; dashboard and control center merged",
       "batch": "AR",
       "dependencies": [
-        "AR-1"
+        "AR-0",
+        "AR-1",
+        "AR-11"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
       "migration": "none",
@@ -4393,14 +4404,15 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/today/page.tsx",
-        "src/domains/exceptions/rules.ts"
+        "docs/build-specs/screens/TODAY.md",
+        "src/app/desk/approvals/page.tsx",
+        "src/app/desk/tasks/actions.ts"
       ],
       "tests": [
-        "tests/ar2-today-inbox.test.ts",
-        "e2e/ar2-today.spec.ts"
+        "tests/approvals-inline.test.ts",
+        "e2e/today-inline.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-2.md"
     },
     {
@@ -4408,7 +4420,9 @@
       "title": "Money area: overview, invoices work queue, payments, invoice record",
       "batch": "AR",
       "dependencies": [
-        "AR-2"
+        "AR-0",
+        "AR-1",
+        "AR-11"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
       "migration": "none",
@@ -4418,14 +4432,45 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/billing/page.tsx"
+        "docs/build-specs/screens/MONEY-AREA.md",
+        "src/app/desk/billing/customer/[id]/invoice/[invoiceId]/page.tsx",
+        "src/domains/billing/payment-status.ts"
       ],
       "tests": [
-        "tests/ar3-money-area.test.ts",
-        "e2e/ar3-money.spec.ts"
+        "tests/money-overview-integration.test.ts",
+        "tests/payment-tabs.test.ts",
+        "tests/payments-list-integration.test.ts",
+        "tests/bill-actions.test.ts",
+        "e2e/money-area.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-3.md"
+    },
+    {
+      "id": "BILL-1",
+      "title": "Bank payments being confirmed: record processing ACH payments, show 'Being confirmed', pause late fees, slow-payment To do",
+      "batch": "AR",
+      "dependencies": [
+        "AR-0"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "20261026010000_bank_payment_in_flight",
+      "budget": 420,
+      "units": [
+        "BILL-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/BANK-PAYMENTS-IN-FLIGHT.md",
+        "src/domains/billing/webhooks-base.ts",
+        "src/domains/billing/webhook-evidence.ts",
+        "src/domains/billing/late-fees.ts"
+      ],
+      "tests": [
+        "tests/bank-in-flight-webhook-integration.test.ts",
+        "tests/bank-in-flight-nightly.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/BILL-1.md"
     },
     {
       "id": "AR-4",
@@ -4616,15 +4661,16 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
+        "docs/build-specs/KIT.md",
         "public/manifest.webmanifest",
-        "src/app/desk/loading.tsx",
-        "src/components/ui/app-shell.tsx"
+        "src/app/desk/loading.tsx"
       ],
       "tests": [
-        "tests/ar11-app-feel.test.ts",
-        "e2e/ar11-app-feel.spec.ts"
+        "tests/desk-manifest.test.ts",
+        "tests/desk-sw.test.ts",
+        "e2e/app-feel.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-11.md"
     },
     {
@@ -4635,22 +4681,45 @@
         "AR-0"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
-      "migration": "feature_visibility",
+      "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [
         "AR-12"
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
+        "docs/build-specs/KIT.md",
         "scripts/check-owner-wording.mjs",
-        "src/lib/glossary.ts"
+        "src/domains/workspace/preferences.ts"
       ],
       "tests": [
-        "tests/ar12-owner-friendly.test.ts",
+        "tests/kit/selection.test.tsx",
+        "tests/features-integration.test.ts",
         "scripts/check-owner-wording.test.mjs"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-12.md"
+    },
+    {
+      "id": "AR-13",
+      "title": "In-app notifications bell: new lead, quote viewed, signature done, payment failed, approval requested; each opens its record",
+      "batch": "AR",
+      "dependencies": [
+        "AR-1",
+        "AR-2"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "notifications",
+      "budget": 420,
+      "units": [
+        "AR-13"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md"
+      ],
+      "tests": [],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-13.md"
     },
     {
       "id": "DEC-1",
@@ -4692,6 +4761,30 @@
       "tests": [],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/DEC-2.md"
+    },
+    {
+      "id": "FEE-1",
+      "title": "Fair late fees: warning first, never during a payment in progress, fee as its own charge on the next bill",
+      "batch": "AR",
+      "dependencies": [
+        "BILL-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
+      "budget": 450,
+      "units": [
+        "FEE-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/LATE-FEES.md",
+        "src/domains/billing/late-fees.ts",
+        "src/domains/billing/reminders.ts"
+      ],
+      "tests": [
+        "tests/late-fees-fair-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/FEE-1.md"
     }
   ],
   "enhancements": [
