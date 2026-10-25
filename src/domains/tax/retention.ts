@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { cancelPendingDecisionChangesInTx } from "@/domains/decisions/pending";
 
 import { RECOMMENDED_RETENTION_YEARS, retentionYearsProblem } from "./retention-rules";
 
@@ -26,6 +27,8 @@ export async function saveRecordRetentionYearsInTx(
     where: { id: "singleton", recordRetentionYears: expectedYears }, data: { recordRetentionYears: years },
   });
   if (changed.count !== 1) throw new Error("This setting was changed in another session. Reload before saving.");
+  if (years !== expectedYears)
+    await cancelPendingDecisionChangesInTx(tx, actorId, ["IN-71"], "A newer record-keeping period was saved.");
   await tx.auditLog.create({
     data: { userId: actorId, action: "tax.record_retention.update", entityType: "BusinessSettings", entityId: "singleton",
       oldValue: { recordRetentionYears: expectedYears }, newValue: { recordRetentionYears: years } },

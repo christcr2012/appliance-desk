@@ -48,3 +48,7 @@ kit.
   scheduled changes run in the always-on `scheduled-prices` nightly job, not `books-nightly` (off until Stripe books
   sync is switched on); IN-79 runs on the setup fee's planning value — the CPA-confirmed setup-fee approval stays on
   Settings › Signing charges; a preview row can also be `OTHER` ("needs a change to the app").
+- Review fixes (2026-10-26): a rule saved for a cell with no history is "not decided" for earlier dates; saves on a
+  setting's own screen (tax rules, Tax setup, filing basis, record keeping, Signing charges) cancel a waiting decision
+  for it (audited); the attached form is bound to the preview and kept with a previewed question; a preview applies
+  once; a waiting change whose decider lost owner access is cancelled with a To do instead of failing nightly.

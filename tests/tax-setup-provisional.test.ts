@@ -6,7 +6,12 @@ const m = vi.hoisted(() => {
     $queryRaw: vi.fn(async (strings: TemplateStringsArray) => (calls.push(strings.join("?").includes('"User"')
       ? "lock:user" : "lock:cell"), [])),
     user: { findUnique: vi.fn(async () => ({ id: "owner", role: "OWNER", archivedAt: null })) },
-    taxJurisdiction: { findUniqueOrThrow: vi.fn(async () => ({ id: "greeley" })) },
+    taxJurisdiction: { findUniqueOrThrow: vi.fn(async () =>
+      ({ level: "CITY", administration: "SELF_COLLECTED", name: "Greeley" })) },
+    decisionScheduledChange: {
+      findMany: vi.fn(async () => [] as Array<{ id: string; subjectId: string; effectiveFrom: Date }>),
+      update: vi.fn(async () => (calls.push("pending:cancel"), {})),
+    },
     taxabilityRule: {
       findFirst: vi.fn(async () => ({ id: "rule-1", taxability: "UNDECIDED", provisional: false, cpaConfirmedOn: null,
         reason: null })),
@@ -19,7 +24,7 @@ const m = vi.hoisted(() => {
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => (calls.push(
         `version:${String(data.taxability)}:${(data.effectiveFrom as Date).toISOString().slice(0, 10)}`), {})),
     },
-    auditLog: { create: vi.fn(async () => (calls.push("audit"), {})) },
+    auditLog: { create: vi.fn(async ({ data }: { data: { action: string } }) => (calls.push(`audit:${data.action}`), {})) },
   };
   return { calls, tx, transaction: vi.fn(async (callback: (t: typeof tx) => unknown) => callback(tx)) };
 });
@@ -65,6 +70,27 @@ describe("provisional taxability starting values (DEC-1a section 5)", () => {
         taxability: "TAXABLE", reason: "Researched", sources })).rejects.toThrow(/no longer has access/);
     }
     expect(m.tx.taxabilityRule.update).not.toHaveBeenCalled();
+  });
+
+  it("a rule saved for a cell that had none starts history as 'not decided', so it never reaches back", async () => {
+    m.tx.taxabilityRule.findFirst.mockResolvedValueOnce(null as never);
+    m.tx.taxabilityRule.create.mockResolvedValueOnce({ id: "rule-2", category: "DELIVERY" } as never);
+    await saveProvisionalTaxabilityCell("owner", { jurisdictionId: null, category: "DELIVERY",
+      taxability: "TAXABLE", reason: "Researched", sources });
+    expect(m.calls.filter((call) => call.startsWith("version:"))).toEqual(
+      ["version:UNDECIDED:1970-01-01", expect.stringMatching(/^version:TAXABLE:/)]);
+  });
+
+  it("cancels a Decisions & reviews change still waiting for the same cell (audited), in the same transaction", async () => {
+    m.tx.decisionScheduledChange.findMany.mockResolvedValueOnce([
+      { id: "wait-1", subjectId: "IN-34-DELIVERY-GREELEY", effectiveFrom: new Date("2026-12-01T07:00:00Z") }]);
+    await saveTaxabilityCellInTx(m.tx as never, "owner", { jurisdictionId: "greeley", category: "DELIVERY",
+      taxability: "TAXABLE", cpaConfirmedOn: new Date("2026-10-20T12:00:00Z"), reason: "CPA letter" });
+    expect(m.tx.decisionScheduledChange.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ subjectId: { in: ["IN-34-DELIVERY-GREELEY"] }, appliedAt: null, cancelledAt: null }) }));
+    expect(m.calls).toContain("pending:cancel");
+    expect(m.calls).toContain("audit:decision.scheduled_cancelled");
+    expect(m.calls.indexOf("pending:cancel")).toBeLessThan(m.calls.indexOf("rule:update"));
   });
 
   it("a confirmed save clears the provisional flag and dates its history from the given start", async () => {

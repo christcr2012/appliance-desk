@@ -8,9 +8,15 @@ Migration `20261026030000_decision_record`. Nothing existing is changed or remov
   explanation, a private attached form (`decisions/…` in the private file store), sources, and how it came in (SCREEN,
   IMPORT, MCP, MIGRATION). No code path updates or deletes a row (a test checks). The setting itself stays where it lives.
 - `DecisionScheduledChange` — a decision that starts on a later Colorado date (stored as that day's midnight instant):
-  the value, the record that scheduled it, whether it is a provisional starting value, applied/cancelled times. A partial
-  unique index allows one waiting change per subject; a newer decision cancels the waiting one. The nightly
-  `scheduled-prices` run applies due rows through the subject's own save.
+  the value, the record that scheduled it, whether it is a provisional starting value, applied/cancelled times.
+  **SQL-only index — do not drop:** `DecisionScheduledChange_one_pending_per_subject` (unique `subjectId` where
+  `appliedAt IS NULL AND cancelledAt IS NULL`) allows one waiting change per subject. Prisma's schema can't express it, so
+  it lives only in the migration (like `TaxabilityRule_default_category_key`); a future `prisma migrate dev` diff that
+  wants to drop it must be edited out. A newer decision, or a save on the setting's own screen, cancels the waiting
+  change (audited `decision.scheduled_cancelled`). The nightly `scheduled-prices` run applies due rows through the
+  subject's own save; a change whose decider no longer has owner access is cancelled and the owner gets a To do.
+  Completed-form applies record the used preview token as an `AuditLog` row (`decision.answers_applied`), so one
+  preview applies once.
 - `TaxabilityRuleVersion` — append-only history of each taxable/exempt cell (tax area or all-state default × charge
   category): value, start date, provisional flag, CPA date, reason, sources, who saved it. The migration copied every
   existing `TaxabilityRule` with start date 1970-01-01. No foreign key, so history outlives a removed tax area. Tax

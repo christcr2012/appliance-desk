@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { getPrivatePhotoStore } from "@/lib/photo-storage";
 import { previewToken, verifyToken } from "@/lib/preview-token";
+import { businessDateKey } from "@/lib/business-date";
 import { listTaxabilityRuleCells } from "@/domains/tax/locations";
 import {
   AUDIENCES,
@@ -414,7 +416,7 @@ function answeredOnDate(value: string | Date, now: Date): Date {
   return date;
 }
 
-function checkAttachment(url: string | null | undefined, subjectId: string): string | null {
+function checkAttachment(url: string | null | undefined, subjectId: string | string[]): string | null {
   const clean = cleanText(url, 1000, "attachment link");
   if (!clean) return null;
   const problem = decisionAttachmentProblem(clean, getPrivatePhotoStore()?.storeId ?? null, subjectId);
@@ -581,14 +583,26 @@ async function previewInTx(tx: Prisma.TransactionClient, answers: ParsedAnswer[]
   return out;
 }
 
+/** The completed form attached to every answer: a private file kept with one of the previewed questions. */
+function formAttachment(url: string | null | undefined, preview: AnswerPreview[]): string | null {
+  const subjects = preview.filter((row) => row.status !== "INVALID").map((row) => row.code);
+  return checkAttachment(url, subjects.length ? subjects : ["-"]);
+}
+
+/** What the confirm token binds: the answers, what the app showed for them, and the attached form. */
+function answersFingerprint(answers: ParsedAnswer[], preview: AnswerPreview[], attachmentUrl: string | null) {
+  return previewFingerprint({ answers, preview, attachmentUrl });
+}
+
 export async function previewAnswers(
-  actorId: string, answers: ParsedAnswer[],
+  actorId: string, answers: ParsedAnswer[], opts: { attachmentUrl?: string | null } = {},
 ): Promise<{ preview: AnswerPreview[]; confirmToken: string }> {
   const now = new Date();
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorId, ["OWNER"]);
     const preview = await previewInTx(tx, answers, now);
-    const claim: TokenClaims = { v: 1, uid: actorId, sha: previewFingerprint({ answers, preview }),
+    const attachmentUrl = formAttachment(opts.attachmentUrl, preview);
+    const claim: TokenClaims = { v: 1, uid: actorId, sha: answersFingerprint(answers, preview, attachmentUrl),
       exp: now.getTime() + PREVIEW_MINUTES * 60_000 };
     return { preview, confirmToken: previewToken(claim, TOKEN_ERRORS) };
   }, TX_OPTIONS);
@@ -615,12 +629,18 @@ export async function applyAnswers(
   opts: { via?: "IMPORT" | "MCP" | "SCREEN"; attachmentUrl?: string | null } = {},
 ): Promise<ApplyResult> {
   const claim = readClaims(confirmToken, actorId);
-  const attachmentUrl = checkAttachment(opts.attachmentUrl, "*");
   const now = new Date();
   const touched: DecisionSubject[] = [];
+  // One apply per preview: the token's fingerprint is recorded when it is used (the settings lock serializes this).
+  const used = createHash("sha256").update(confirmToken).digest("hex");
   const result = await runWrite(actorId, touched, async (tx) => {
+    if (await tx.auditLog.findFirst({
+      where: { action: "decision.answers_applied", entityType: "DecisionAnswersPreview", entityId: used },
+      select: { id: true },
+    })) throw new Error("These answers were already applied. Preview the form again to apply it again.");
     const preview = await previewInTx(tx, answers, now);
-    if (previewFingerprint({ answers, preview }) !== claim.sha)
+    const attachmentUrl = formAttachment(opts.attachmentUrl, preview);
+    if (answersFingerprint(answers, preview, attachmentUrl) !== claim.sha)
       throw new Error("The answers or the app's settings changed since the preview. Preview again before applying.");
     const counts: ApplyResult = { applied: 0, same: 0, other: 0, skipped: 0, preview };
     for (const [index, row] of preview.entries()) {
@@ -640,6 +660,11 @@ export async function applyAnswers(
       else if (row.status === "SAME") counts.same += 1;
       else counts.other += 1;
     }
+    await tx.auditLog.create({
+      data: { userId: actorId, action: "decision.answers_applied", entityType: "DecisionAnswersPreview",
+        entityId: used, newValue: { applied: counts.applied, same: counts.same, other: counts.other,
+          skipped: counts.skipped, via: opts.via ?? "IMPORT" } },
+    });
     return counts;
   });
   return result;
@@ -649,17 +674,49 @@ export async function applyAnswers(
 // The nightly run: apply every change whose start date has come (spec section 4a).
 
 /**
- * Applies each due, not-cancelled scheduled change once, through the subject's own save with the same locks and
- * audit, as the owner who decided it (re-checked: a deactivated owner's change is not applied). Safe to repeat: the
- * row is locked and `appliedAt` re-checked inside the same transaction.
+ * A waiting change whose decider no longer has owner access is not applied (that would act for someone who can't
+ * act any more). It is cancelled with an audit row, and the current owner gets a To do to decide it again, so the
+ * nightly run doesn't fail on it every night.
  */
-export async function applyDueDecisionChanges(now: Date = new Date()): Promise<{ applied: number; failed: number }> {
+async function cancelForInactiveDecider(
+  tx: Prisma.TransactionClient, change: { id: string; subjectId: string; effectiveFrom: Date }, now: Date,
+) {
+  await tx.decisionScheduledChange.update({ where: { id: change.id }, data: { cancelledAt: now } });
+  await tx.auditLog.create({
+    data: { userId: null, action: "decision.scheduled_cancelled", entityType: "DecisionScheduledChange",
+      entityId: change.id, newValue: { subjectId: change.subjectId, effectiveFrom: change.effectiveFrom.toISOString(),
+        reason: "The person who decided it no longer has owner access." } },
+  });
+  const owner = await tx.user.findFirst({
+    where: { role: "OWNER", archivedAt: null }, select: { id: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  if (!owner) return;
+  const title = decisionSubject(change.subjectId)?.title ?? change.subjectId;
+  const { createTaskInTx } = await import("@/domains/tasks");
+  await createTaskInTx(tx, { userId: owner.id, role: "OWNER" }, {
+    note: `Decide again: "${title}". A change set to start ${businessDateKey(change.effectiveFrom)} was cancelled ` +
+      "because the person who made it no longer has owner access. Nothing was changed.",
+    priority: "NORMAL", assigneeUserId: owner.id, dueDate: businessDateKey(now),
+    sourceKey: `decision-cancelled:${change.id}`,
+  });
+}
+
+/**
+ * Applies each due, not-cancelled scheduled change once, through the subject's own save with the same locks and
+ * audit, as the owner who decided it (re-checked: a deactivated owner's change is cancelled instead, see above).
+ * Safe to repeat: the row is locked and `appliedAt` re-checked inside the same transaction, and the change is marked
+ * applied before the save runs so the save's own "cancel waiting changes" step never cancels it.
+ */
+export async function applyDueDecisionChanges(
+  now: Date = new Date(),
+): Promise<{ applied: number; failed: number; cancelled: number }> {
   const due = await prisma.decisionScheduledChange.findMany({
     where: { appliedAt: null, cancelledAt: null, effectiveFrom: { lte: now } },
     select: { id: true }, orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }], take: 500,
   });
   let applied = 0;
   let failed = 0;
+  let cancelled = 0;
   for (const { id } of due) {
     try {
       const subject = await prisma.$transaction(async (tx) => {
@@ -676,15 +733,27 @@ export async function applyDueDecisionChanges(now: Date = new Date()): Promise<{
             professionalAnsweredOn: true, explanation: true, sources: true, createdAt: true },
         });
         const subject = decisionSubject(change.subjectId);
-        if (!subject || !record.answeredByUserId) throw new Error("The decision behind this change is missing.");
-        await assertActiveTeamActor(tx, record.answeredByUserId, ["OWNER"]);
+        if (!subject) throw new Error("The question behind this change is no longer in the app.");
+        if (record.answeredByUserId) {
+          await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${record.answeredByUserId} FOR SHARE`;
+        }
+        const decider = record.answeredByUserId ? await tx.user.findUnique({
+          where: { id: record.answeredByUserId }, select: { role: true, archivedAt: true },
+        }) : null;
+        if (!decider || decider.archivedAt || decider.role !== "OWNER") {
+          await cancelForInactiveDecider(tx, change, now);
+          return "CANCELLED" as const;
+        }
+        const actorId = record.answeredByUserId!;
+        await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+        await tx.decisionScheduledChange.update({ where: { id }, data: { appliedAt: now } });
         const previous = await subject.read(await loadDecisionContext(tx));
         const who = record.professionalName
           ? (record.professionalFirm ? `${record.professionalName}, ${record.professionalFirm}` : record.professionalName)
           : "the owner";
         const kind = (["CHANGED", "PROFESSIONAL_ANSWER", "STARTING_VALUE_APPLIED"].includes(record.kind)
           ? record.kind : "CHANGED") as DecisionWriteKind;
-        await subject.write(tx, record.answeredByUserId, change.value, change.effectiveFrom, {
+        await subject.write(tx, actorId, change.value, change.effectiveFrom, {
           kind,
           confirmedOn: record.professionalAnsweredOn ?? record.createdAt,
           reason: (kind === "STARTING_VALUE_APPLIED" ? record.explanation ?? "Researched starting value"
@@ -693,15 +762,15 @@ export async function applyDueDecisionChanges(now: Date = new Date()): Promise<{
           effectiveFrom: change.effectiveFrom,
           previousValue: previous,
         });
-        await tx.decisionScheduledChange.update({ where: { id }, data: { appliedAt: now } });
         await tx.auditLog.create({
-          data: { userId: record.answeredByUserId, action: "decision.scheduled_applied",
+          data: { userId: actorId, action: "decision.scheduled_applied",
             entityType: "DecisionScheduledChange", entityId: id,
             newValue: { subjectId: change.subjectId, effectiveFrom: change.effectiveFrom.toISOString() } },
         });
         return subject;
       }, TX_OPTIONS);
-      if (subject) {
+      if (subject === "CANCELLED") cancelled += 1;
+      else if (subject) {
         applied += 1;
         await subject.afterCommit?.();
       }
@@ -711,5 +780,5 @@ export async function applyDueDecisionChanges(now: Date = new Date()): Promise<{
         error instanceof Error ? error.message.slice(0, 200) : "unknown");
     }
   }
-  return { applied, failed };
+  return { applied, failed, cancelled };
 }

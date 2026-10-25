@@ -6,6 +6,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
 import { parseSetupTaxOwnerApproval } from "@/domains/billing/setup-tax-owner-approval";
+import { cancelPendingDecisionChangesInTx } from "@/domains/decisions/pending";
 export type SigningSettingsState = { error: string; success: string };
 const get = (form: FormData, name: string) => {
   const value = form.get(name);
@@ -48,6 +49,9 @@ export async function saveSigningChargeSettingsAction(
       await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = ${"singleton"} FOR UPDATE`;
       const settings = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
       if (expected.getTime() !== settings.updatedAt.getTime()) throw new Error("Settings changed. Refresh and try again.");
+      if (settings.setupFeeTaxPlanningTreatment !== planningTreatment)
+        await cancelPendingDecisionChangesInTx(tx, session.user.id, ["IN-79"],
+          "A newer setup-fee tax setting was saved in Signing charges.");
       const appliesNow = taxTreatment === "UNDECIDED" ||
         (approval.setupFeeTaxEffectiveFrom !== null &&
           approval.setupFeeTaxEffectiveFrom.getTime() <= new Date().getTime());

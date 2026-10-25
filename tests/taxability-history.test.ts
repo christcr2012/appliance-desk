@@ -82,9 +82,9 @@ describe("taxability rules on a date", () => {
       .toEqual([]);
   });
 
-  it("uses the stored rule when the only history starts later than the date asked about", () => {
+  it("treats a date before any history as not decided (a rule saved today never reaches back)", () => {
     const versions = [{ ...cell("EXEMPT"), effectiveFrom: CHANGE_DAY, createdAt: created }];
     expect(find(resolveTaxabilityAsOf(new Date("2026-10-02T18:00:00Z"), [cell("EXEMPT")], versions, []))
-      ?.taxability).toBe("EXEMPT");
+      ?.taxability).toBe("UNDECIDED");
   });
 });

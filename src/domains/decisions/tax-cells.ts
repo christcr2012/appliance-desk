@@ -49,3 +49,19 @@ export const GREELEY_JURISDICTION_WHERE = {
   administration: "SELF_COLLECTED",
   name: { contains: "Greeley", mode: "insensitive" },
 } as const;
+
+/** Same test as GREELEY_JURISDICTION_WHERE, on a row already read. */
+export function isGreeleyJurisdiction(row: { level: string; administration: string; name: string }): boolean {
+  return row.level === "CITY" && row.administration === "SELF_COLLECTED" && /greeley/i.test(row.name);
+}
+
+/** The Decisions & reviews subject a stored taxability cell belongs to, or null when no subject covers it. */
+export function subjectForTaxCell(
+  category: TaxChargeCategory,
+  jurisdiction: { level: string; administration: string; name: string } | null,
+): string | null {
+  if (jurisdiction === null) {
+    return STATE_CELL_CATEGORIES.includes(category) ? taxCellSubjectId({ scope: "STATE", category }) : null;
+  }
+  return isGreeleyJurisdiction(jurisdiction) ? taxCellSubjectId({ scope: "GREELEY", category }) : null;
+}

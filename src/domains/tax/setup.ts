@@ -2,6 +2,8 @@ import { Prisma, RdfHandling, ShortTermLeaseElection, TaxFilingAccountKind, TaxF
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
+import { cancelPendingDecisionChangesInTx } from "@/domains/decisions/pending";
+import { subjectForTaxCell } from "@/domains/decisions/tax-cells";
 
 function textField(value: string | null, max: number, name: string) {
   if (value !== null && (value.length > max || /[\r\n<>]/.test(value)))
@@ -64,6 +66,11 @@ export async function saveTaxSettings(
     });
     if (before.updatedAt.getTime() !== expectedUpdatedAt.getTime())
       throw new Error("Settings changed in another session. Refresh before saving.");
+    // A choice saved here is newer than one still waiting for its start date in Decisions & reviews.
+    await cancelPendingDecisionChangesInTx(tx, actorId, [
+      before.shortTermLeaseElection !== changed.shortTermLeaseElection ? "IN-33-ELECTION" : null,
+      before.rdfHandling !== changed.rdfHandling ? "IN-37-RDF" : null,
+    ], "A newer choice was saved in Tax setup.");
     const priorAddress = JSON.stringify(before.businessTaxAddress ?? {});
     if (priorAddress !== JSON.stringify(changed.businessTaxAddress)) {
       // Never carry the old jurisdictions forward after an address edit.
@@ -201,12 +208,15 @@ export async function saveTaxFilingAccount(
       await tx.$queryRaw`SELECT "id" FROM "TaxFilingAccount" WHERE "id" = ${input.id} FOR UPDATE`;
       const before = await tx.taxFilingAccount.findUniqueOrThrow({
         where: { id: input.id },
-        select: { updatedAt: true, kind: true, _count: { select: { periods: true } } },
+        select: { updatedAt: true, kind: true, basis: true, _count: { select: { periods: true } } },
       });
       if (before.kind !== data.kind && before._count.periods > 0)
         throw new Error("Filing accounts with recorded returns cannot change return type.");
       if (before.updatedAt.getTime() !== expectedUpdatedAt.getTime())
         throw new Error("Filing account changed in another session.");
+      if (before.basis !== data.basis)
+        await cancelPendingDecisionChangesInTx(tx, actorId, ["IN-35-BASIS"],
+          "A newer reporting basis was saved for a filing account.");
       await tx.taxFilingAccount.update({ where: { id: input.id }, data });
       id = input.id;
     } else {
@@ -313,16 +323,26 @@ export async function saveTaxabilityCell(actorId: string, input: TaxabilityCellI
   await prisma.$transaction(tx => saveTaxabilityCellInTx(tx, actorId, input));
 }
 
-/** Locks the cell's owner row (the tax area, or the settings row for the all-state defaults) like every cell save. */
-async function lockTaxabilityCell(tx: Prisma.TransactionClient, jurisdictionId: string | null) {
+/**
+ * Locks the cell's owner row (the tax area, or the settings row for the all-state defaults) like every cell save, and
+ * cancels a Decisions & reviews change still waiting for this cell: this save is the newer decision.
+ */
+async function lockTaxabilityCell(
+  tx: Prisma.TransactionClient, actorId: string, jurisdictionId: string | null, category: TaxChargeCategory,
+) {
+  let jurisdiction: { level: string; administration: string; name: string } | null = null;
   if (jurisdictionId === null) {
     // Default all-state rules have NULL jurisdictionId; lock singleton
     // so two owners cannot create duplicate nullable unique rows.
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
   } else {
     await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${jurisdictionId} FOR UPDATE`;
-    await tx.taxJurisdiction.findUniqueOrThrow({ where: { id: jurisdictionId } });
+    jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
+      where: { id: jurisdictionId }, select: { level: true, administration: true, name: true },
+    });
   }
+  await cancelPendingDecisionChangesInTx(tx, actorId, [subjectForTaxCell(category, jurisdiction)],
+    "A newer tax rule was saved for this charge.");
 }
 
 /** Start of a Colorado business day, stored UTC. */
@@ -331,8 +351,8 @@ function businessDayStart(at: Date): Date {
 }
 
 /**
- * Appends the cell's history version (DEC-1a). The first time a cell that already existed gets a version, the value it
- * had is kept as "what was true before history existed" (1970-01-01), so old dates keep their old answer.
+ * Appends the cell's history version (DEC-1a). The first time a cell gets a version, what it was before (its stored
+ * value, or "not decided" when no rule was stored) is kept from 1970-01-01, so old dates keep their old answer.
  */
 async function appendTaxabilityVersion(
   tx: Prisma.TransactionClient,
@@ -341,17 +361,16 @@ async function appendTaxabilityVersion(
     cpaConfirmedOn: Date | null; reason: string | null; sources: Prisma.InputJsonValue | null; actorId: string;
     effectiveFrom: Date },
 ) {
-  if (existing) {
-    const earlier = await tx.taxabilityRuleVersion.count({
-      where: { jurisdictionId: row.jurisdictionId, category: row.category },
-    });
-    if (earlier === 0) {
-      await tx.taxabilityRuleVersion.create({ data: {
-        jurisdictionId: row.jurisdictionId, category: row.category, taxability: existing.taxability,
-        effectiveFrom: new Date(Date.UTC(1970, 0, 1)), provisional: existing.provisional,
-        cpaConfirmedOn: existing.cpaConfirmedOn, reason: existing.reason,
-      } });
-    }
+  const earlier = await tx.taxabilityRuleVersion.count({
+    where: { jurisdictionId: row.jurisdictionId, category: row.category },
+  });
+  if (earlier === 0) {
+    // Before this cell had a stored rule it was "not decided": a rule saved today never reaches back to old dates.
+    await tx.taxabilityRuleVersion.create({ data: {
+      jurisdictionId: row.jurisdictionId, category: row.category, taxability: existing?.taxability ?? "UNDECIDED",
+      effectiveFrom: new Date(Date.UTC(1970, 0, 1)), provisional: existing?.provisional ?? false,
+      cpaConfirmedOn: existing?.cpaConfirmedOn ?? null, reason: existing?.reason ?? null,
+    } });
   }
   await tx.taxabilityRuleVersion.create({ data: {
     jurisdictionId: row.jurisdictionId, category: row.category, taxability: row.taxability,
@@ -369,7 +388,7 @@ export async function saveTaxabilityCellInTx(
 ): Promise<void> {
   const reason = checkConfirmedCell(input);
   await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-  await lockTaxabilityCell(tx, input.jurisdictionId);
+  await lockTaxabilityCell(tx, actorId, input.jurisdictionId, input.category);
   const existing = await tx.taxabilityRule.findFirst({
     where: { jurisdictionId: input.jurisdictionId, category: input.category },
   });
@@ -429,7 +448,7 @@ export async function saveProvisionalTaxabilityCellInTx(
   if (!reason) throw new Error("Explain why this starting value was chosen.");
   const sources = checkSources(input.sources);
   await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-  await lockTaxabilityCell(tx, input.jurisdictionId);
+  await lockTaxabilityCell(tx, actorId, input.jurisdictionId, input.category);
   const existing = await tx.taxabilityRule.findFirst({
     where: { jurisdictionId: input.jurisdictionId, category: input.category },
   });

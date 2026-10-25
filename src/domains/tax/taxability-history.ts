@@ -10,7 +10,8 @@ import type { Taxability } from "@/domains/tax/engine";
  * 2. Otherwise the newest history version that started on or before that date — but only while history is
  *    trustworthy: when the stored rule no longer equals the newest version (it was changed outside the dated saves,
  *    e.g. by an older screen), the stored rule is used for every date, exactly as before history existed.
- * 3. With no history at all, or no version that early, the stored rule is used.
+ * 3. With no history at all, the stored rule is used. With history but no version that early, nothing was decided
+ *    on that date ("not decided"), so a rule saved today never reaches back to old service dates.
  */
 export type TaxabilityCell = {
   jurisdictionId: string | null;
@@ -73,8 +74,10 @@ export function resolveTaxabilityAsOf(
       out.push(plain(row));
       continue;
     }
+    // Spec 4a: the newest version that started on or before `at`. None that early means nothing was decided then.
     const then = history.find((version) => version.effectiveFrom.getTime() <= at.getTime());
-    out.push(plain(then ? { ...row, taxability: then.taxability, provisional: then.provisional } : row));
+    out.push(plain(then ? { ...row, taxability: then.taxability, provisional: then.provisional }
+      : { ...row, taxability: "UNDECIDED", provisional: false }));
   }
   return out;
 }

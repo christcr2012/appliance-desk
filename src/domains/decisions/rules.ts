@@ -96,7 +96,9 @@ export function cleanText(value: string | null | undefined, max: number, name: s
 }
 
 /** The attachment must be a file in the private store under decisions/{subject}/ — never a public or outside link. */
-export function decisionAttachmentProblem(url: string, storeId: string | null, subjectId: string): string | null {
+export function decisionAttachmentProblem(
+  url: string, storeId: string | null, subjectId: string | string[],
+): string | null {
   if (!storeId) return "File storage isn't set up here, so the completed form can't be attached.";
   let parsed: URL;
   try {
@@ -116,7 +118,8 @@ export function decisionAttachmentProblem(url: string, storeId: string | null, s
     return "The attached form must be a file uploaded to the app's private storage.";
   }
   const match = /^decisions\/([A-Z0-9-]+)\/[^/]+$/.exec(path);
-  if (!match || (subjectId !== "*" && match[1] !== subjectId)) {
+  const allowed = Array.isArray(subjectId) ? subjectId : [subjectId];
+  if (!match || !allowed.includes(match[1]!)) {
     return "The attached form must be stored with this question's files.";
   }
   return null;

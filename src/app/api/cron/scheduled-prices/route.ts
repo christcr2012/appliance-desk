@@ -35,7 +35,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       if (decisions.failed > 0) {
         throw new Error(`${decisions.failed} decision(s) with a start date could not be applied. Open Settings → Decisions & reviews.`);
       }
-      return { counts: { ...counts, decisionsApplied: decisions.applied } };
+      return { counts: { ...counts, decisionsApplied: decisions.applied, decisionsCancelled: decisions.cancelled } };
     },
   });
   return NextResponse.json(result);

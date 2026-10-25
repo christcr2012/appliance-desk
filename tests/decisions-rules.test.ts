@@ -90,7 +90,8 @@ describe("completed-form attachments", () => {
   const host = "https://abc123.private.blob.vercel-storage.com";
   it("accepts only private files kept with this question", () => {
     expect(decisionAttachmentProblem(`${host}/decisions/IN-71/form.pdf`, store, "IN-71")).toBeNull();
-    expect(decisionAttachmentProblem(`${host}/decisions/IMPORT/form.docx`, store, "*")).toBeNull();
+    expect(decisionAttachmentProblem(`${host}/decisions/IN-79/form.docx`, store, ["IN-71", "IN-79"])).toBeNull();
+    expect(decisionAttachmentProblem(`${host}/decisions/IN-44/form.docx`, store, ["IN-71", "IN-79"])).toMatch(/this question/);
     expect(decisionAttachmentProblem(`${host}/decisions/IN-79/form.pdf`, store, "IN-71")).toMatch(/this question/);
     expect(decisionAttachmentProblem(`${host}/jobs/abc/form.pdf`, store, "IN-71")).toMatch(/this question/);
     expect(decisionAttachmentProblem("https://abc123.public.blob.vercel-storage.com/decisions/IN-71/a.pdf", store, "IN-71"))

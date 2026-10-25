@@ -15,6 +15,7 @@ import {
   sendToProfessional,
 } from "@/domains/decisions";
 import { getTaxabilityRulesAsOf } from "@/domains/tax/locations";
+import { saveTaxabilityCell } from "@/domains/tax/setup";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 
 // Real PostgreSQL (throwaway CI database only). Changes the shared settings row and the all-state default rule for
@@ -185,5 +186,58 @@ describe.skipIf(!enabled)("DEC-1a Decisions & reviews on PostgreSQL", () => {
       .toBe("NOT_LIABLE");
     expect((await getDecision(owner, RDF_SUBJECT)).last).toMatchObject({ kind: "PROFESSIONAL_ANSWER", via: "IMPORT",
       professionalName: "Pat Example", professionalFirm: "Example CPAs" });
+    // One preview applies once.
+    await expect(applyAnswers(owner, answers, confirmToken)).rejects.toThrow(/already applied/);
+    expect(await prisma.decisionRecord.count({ where: { subjectId: RDF_SUBJECT, kind: "PROFESSIONAL_ANSWER",
+      answeredByUserId: owner } })).toBe(1);
   }));
+
+  it("a save on the tax rule's own screen cancels a decision still waiting for that rule", () =>
+    people(async ({ owner }) => {
+      await changeDecision(owner, SUBJECT, "EXEMPT", dayKey(1));
+      const waiting = await prisma.decisionScheduledChange.findFirstOrThrow({
+        where: { subjectId: SUBJECT, appliedAt: null, cancelledAt: null } });
+      await saveTaxabilityCell(owner, { jurisdictionId: null, category: "OTHER_CHARGE", taxability: "TAXABLE",
+        cpaConfirmedOn: new Date(), reason: "Synthetic newer save on the tax screen" });
+      expect((await prisma.decisionScheduledChange.findUniqueOrThrow({ where: { id: waiting.id } })).cancelledAt)
+        .not.toBeNull();
+      expect(await prisma.auditLog.count({ where: { action: "decision.scheduled_cancelled", entityId: waiting.id } }))
+        .toBe(1);
+      // The older waiting value never overwrites the newer save.
+      await applyDueDecisionChanges(noonOf(dayKey(2)));
+      expect((await prisma.taxabilityRule.findFirstOrThrow({ where: { jurisdictionId: null, category: "OTHER_CHARGE" } }))
+        .taxability).toBe("TAXABLE");
+      expect((await otherChargeOn(noonOf(dayKey(2))))?.taxability).toBe("TAXABLE");
+    }));
+
+  it("cancels, with a To do, a waiting change whose decider lost owner access", () =>
+    people(async ({ owner }) => {
+      await changeDecision(owner, RDF_SUBJECT, "COLLECT", dayKey(1));
+      const waiting = await prisma.decisionScheduledChange.findFirstOrThrow({
+        where: { subjectId: RDF_SUBJECT, appliedAt: null, cancelledAt: null } });
+      await prisma.user.update({ where: { id: owner }, data: { archivedAt: new Date() } });
+      try {
+        const result = await applyDueDecisionChanges(noonOf(dayKey(2)));
+        expect(result.failed).toBe(0);
+        expect(result.cancelled).toBeGreaterThanOrEqual(1);
+        expect((await prisma.decisionScheduledChange.findUniqueOrThrow({ where: { id: waiting.id } })).cancelledAt)
+          .not.toBeNull();
+        expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } }))
+          .retailDeliveryFeeDecision).not.toBe("COLLECT");
+        const todo = await prisma.staffTask.findUnique({ where: { sourceKey: `decision-cancelled:${waiting.id}` } });
+        const activeOwner = await prisma.user.findFirst({ where: { role: "OWNER", archivedAt: null },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
+        if (activeOwner) expect(todo?.assigneeUserId).toBe(activeOwner.id);
+        // A second night does nothing more.
+        expect((await applyDueDecisionChanges(noonOf(dayKey(2)))).cancelled).toBe(0);
+      } finally {
+        const task = await prisma.staffTask.findUnique({ where: { sourceKey: `decision-cancelled:${waiting.id}` } });
+        if (task) {
+          await prisma.auditLog.deleteMany({ where: { entityType: "StaffTask", entityId: task.id } });
+          await prisma.staffTask.delete({ where: { id: task.id } });
+        }
+        await prisma.auditLog.deleteMany({ where: { entityType: "DecisionScheduledChange", entityId: waiting.id } });
+        await prisma.user.update({ where: { id: owner }, data: { archivedAt: null } });
+      }
+    }));
 });

@@ -17,6 +17,7 @@ const m = vi.hoisted(() => {
     } as Record<string, unknown>,
     records: [] as Array<Record<string, unknown>>,
     scheduled: [] as Array<Record<string, unknown>>,
+    usedTokens: [] as string[],
   };
   const tx = {
     $queryRaw: vi.fn(async (strings: TemplateStringsArray) => {
@@ -68,7 +69,15 @@ const m = vi.hoisted(() => {
       }),
       findMany: vi.fn(async () => []),
     },
-    auditLog: { create: vi.fn(async ({ data }: { data: { action: string } }) => (log.push(`audit:${data.action}`), {})) },
+    auditLog: {
+      create: vi.fn(async ({ data }: { data: { action: string; entityId?: string } }) => {
+        log.push(`audit:${data.action}`);
+        if (data.action === "decision.answers_applied") state.usedTokens.push(String(data.entityId));
+        return {};
+      }),
+      findFirst: vi.fn(async ({ where }: { where: { entityId: string } }) =>
+        state.usedTokens.includes(where.entityId) ? { id: "used" } : null),
+    },
   };
   return { log, state, tx, transaction: vi.fn(async (callback: (t: typeof tx) => unknown) => callback(tx)) };
 });
@@ -98,6 +107,7 @@ beforeEach(() => {
   m.state.archived = false;
   m.state.records.length = 0;
   m.state.scheduled.length = 0;
+  m.state.usedTokens.length = 0;
   m.state.settings.retailDeliveryFeeDecision = "UNDECIDED";
   m.state.settings.rdfHandling = "UNDECIDED";
   process.env.BETTER_AUTH_SECRET = "a-test-only-secret-that-is-long-enough-123";
@@ -276,6 +286,32 @@ describe("completed forms: preview, then apply exactly what was shown", () => {
     expect(m.state.settings.retailDeliveryFeeDecision).toBe("NOT_LIABLE");
     expect(m.state.records.filter((row) => row.kind === "PROFESSIONAL_ANSWER")).toHaveLength(2);
     expect(m.state.records.every((row) => row.via === "IMPORT")).toBe(true);
+    // One preview applies once: the same token can't add the same evidence again.
+    await expect(applyAnswers("owner", answers, confirmToken)).rejects.toThrow(/already applied/);
+    expect(m.state.records.filter((row) => row.kind === "PROFESSIONAL_ANSWER")).toHaveLength(2);
+  });
+
+  it("binds the attached form to the preview and keeps it with the previewed questions", async () => {
+    const original = { store: process.env.PRIVATE_PHOTO_BLOB_STORE_ID, token: process.env.PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN };
+    process.env.PRIVATE_PHOTO_BLOB_STORE_ID = "store_AbC123";
+    process.env.PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN = ["vercel", "blob", "rw", "AbC123", "testonly"].join("_");
+    try {
+      const host = "https://abc123.private.blob.vercel-storage.com";
+      const form = `${host}/decisions/IN-37-RDF-OWED/form.docx`;
+      await expect(previewAnswers("owner", answers.slice(0, 1), { attachmentUrl: `${host}/decisions/IN-44/form.docx` }))
+        .rejects.toThrow(/this question/);
+      const { confirmToken } = await previewAnswers("owner", answers.slice(0, 1), { attachmentUrl: form });
+      await expect(applyAnswers("owner", answers.slice(0, 1), confirmToken)).rejects.toThrow(/changed since the preview/);
+      await expect(applyAnswers("owner", answers.slice(0, 1), confirmToken,
+        { attachmentUrl: `${host}/decisions/IN-37-RDF-OWED/other.docx` })).rejects.toThrow(/changed since the preview/);
+      await applyAnswers("owner", answers.slice(0, 1), confirmToken, { attachmentUrl: form });
+      expect(m.state.records[0]).toMatchObject({ kind: "PROFESSIONAL_ANSWER", attachmentUrl: form });
+    } finally {
+      if (original.store === undefined) delete process.env.PRIVATE_PHOTO_BLOB_STORE_ID;
+      else process.env.PRIVATE_PHOTO_BLOB_STORE_ID = original.store;
+      if (original.token === undefined) delete process.env.PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN;
+      else process.env.PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN = original.token;
+    }
   });
 
   it("refuses the apply when a setting changed after the preview", async () => {
