@@ -1,3 +1,13 @@
+## October 25 — Build specs wave 2 (Customers area, decisions center)
+
+Docs only. Specs: Rentals list, rental record and "End this rental" (`screens/RENTALS.md`), Leads engine LD-1
+(`engines/LEADS-PIPELINE.md`, corrects the design: a new website lead was stamped "contacted" at creation), Leads queue
+and record (`screens/LEADS.md`, adds the missing quote-for-an-existing-lead and lead editing), Customers list with a
+live view instead of a stored summary (`screens/CUSTOMERS.md`, CU-1 merged into AR-4c), Quotes and Messages
+(`screens/QUOTES-MESSAGES.md`, adds paging, role checks and "Link to a person…"), Decisions & reviews center
+(`engines/DECISIONS-CENTER.md`). Cards: AR-4 (split a–d), LD-1, DEC-1. Next: Books/Taxes (BA-1…3, AR-7), research-backed
+tax starting values (DEC-2).
+
 ## October 25 — Build specs for the redesign (wave 1: kit + Today, Bills, Customer)
 
 Docs only. Chris wants the design decided so completely that a cheaper model can build it. New

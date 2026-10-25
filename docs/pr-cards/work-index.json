@@ -4171,16 +4171,16 @@
         "LD-1"
       ],
       "evidence": [
-        "docs/designs/LEADS-WORKSPACE.md",
-        "src/domains/leads/workspace.ts",
+        "docs/build-specs/engines/LEADS-PIPELINE.md",
         "src/domains/leads/index.ts",
-        "prisma/schema.prisma"
+        "src/domains/leads/contact.ts"
       ],
       "tests": [
-        "tests/ld1-lead-pipeline-integration.test.ts",
-        "tests/perf/leads-scale.test.ts"
+        "tests/lead-stage.test.ts",
+        "tests/lead-merge-integration.test.ts",
+        "tests/perf/leads-queue.perf.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/LD-1.md"
     },
     {
@@ -4260,7 +4260,7 @@
       "title": "Customer list as a working tool: segments, money and next event per row, filter sheet, saved views, summary read model, fast search, count fix",
       "batch": "CU",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "SUPERSEDED — engine and screen built in AR-4c (docs/build-specs/screens/CUSTOMERS.md)",
       "migration": "customer_summary",
       "budget": 500,
       "units": [
@@ -4276,7 +4276,7 @@
         "tests/perf/customers-scale.test.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/CU-1.md"
+      "plannedCard": "docs/pr-cards/AR-4.md"
     },
     {
       "id": "CU-2",
@@ -4477,7 +4477,11 @@
       "title": "Customers area: leads, customers, quotes, rentals, messages; End this rental flow; hand-offs",
       "batch": "AR",
       "dependencies": [
-        "AR-3"
+        "AR-0",
+        "AR-1",
+        "AR-11",
+        "AR-12",
+        "LD-1"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
       "migration": "none",
@@ -4486,16 +4490,18 @@
         "AR-4"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/customers/page.tsx",
-        "src/app/desk/leads/page.tsx",
-        "src/app/desk/agreements/page.tsx"
+        "docs/build-specs/screens/RENTALS.md",
+        "docs/build-specs/screens/LEADS.md",
+        "docs/build-specs/screens/CUSTOMERS.md",
+        "docs/build-specs/screens/QUOTES-MESSAGES.md"
       ],
       "tests": [
-        "tests/ar4-customers-area.test.ts",
-        "e2e/ar4-customers.spec.ts"
+        "e2e/rentals.spec.ts",
+        "e2e/leads.spec.ts",
+        "e2e/customers-list.spec.ts",
+        "e2e/quotes-messages.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-4.md"
     },
     {
