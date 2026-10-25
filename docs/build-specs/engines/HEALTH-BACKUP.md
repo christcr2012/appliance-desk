@@ -164,6 +164,9 @@ public token. If neither is configured → `CONFIG_MISSING` with next step "Conn
 your checklist)". The put already uses `access: "private"`; keep it. Add a checklist row (once) for Chris: confirm
 which store backups use, with steps — the app shows on the System health page which one it uses ("private photo
 store" / "backup store") without ids.
+Also move the hard-coded preview private store id (`VERIFIED_PREVIEW_PRIVATE_STORE_ID` at the top of
+`src/lib/photo-storage.ts`) into the existing `PREVIEW_PRIVATE_*` env names: this public repository must not carry
+private storage identifiers (AGENTS.md section 1). Missing in preview → the same `CONFIG_MISSING` path.
 The failure email (`sendBackupFailureAlertToChris`) states only the stage explanation and reference, removes the
 current sentence claiming the host's recovery guarantees safety, and is still sent only through the existing email
 switch (no live email in development).
