@@ -114,6 +114,7 @@ const CATEGORIES: Record<ExceptionCategory, string> = {
   RENTAL_ENDING_SOON: "Rental ending soon — decide what happens next",
   PICKUP_UNSCHEDULED: "Pickup to schedule",
   RETIRED_APPLIANCE_PLAN: "Retired appliances to decide on",
+  RETIRED_SALE_TAX_REVIEW: "Used appliance sales to go over with your accountant",
   APPROVAL_REQUEST: "Requests waiting for your approval",
   GOAL_BEHIND: "Behind on a monthly goal",
   IDLE_APPLIANCES: "Appliances sitting idle",

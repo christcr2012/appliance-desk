@@ -3,7 +3,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { createShopSale, cancelShopSale, getSaleFormData } from "@/domains/sales";
 import { setRetiredPlan, reopenRetiredPlan } from "@/domains/inventory/retired-plans";
-import { disposedValueBefore } from "@/domains/books/fixed-assets";
+import { addBookTaxEvidence, disposedValueBefore } from "@/domains/books/fixed-assets";
+import { listOpenResaleTaxFollowUps, markResaleTaxFollowUpDone } from "@/domains/sales";
+import { listResaleTaxAttention } from "@/domains/exceptions/resale-tax-attention";
 import { writeJournal } from "@/domains/books/post";
 import { balancedPlan } from "@/domains/books/posting-rules";
 import { seedTaxReadyContext } from "./helpers/tax-ready";
@@ -180,5 +182,90 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     expect(row.disposedOn).not.toBeNull();
     await cancelShopSale(ownerId, sale.invoiceId, "Customer backed out");
     expect(await prisma.journalEntry.count({ where: { sourceType: "INVOICE", sourceId: sale.invoiceId, eventKind: "INVOICE_VOIDED" } })).toBe(1);
+  });
+
+  // ---- M-2C: the income-tax side (warning, estimate and accountant follow-up). It informs; it never limits a sale. ----
+  const today = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10); // safely in the past in Denver too
+  const evidence = (id: string, over: Partial<Parameters<typeof addBookTaxEvidence>[2]> = {}) =>
+    addBookTaxEvidence(ownerId, id, {
+      classification: "RENTAL_ASSET", confidence: "CPA_CONFIRMED", originalBasisCents: 60000, signedAdjustmentsCents: null,
+      allowedDepreciationCents: 40000, section179Cents: null, bonusDepreciationCents: null, evidenceDate: today,
+      sourceReference: "Accountant worksheet 2026", cpaName: "Pat Accountant", ...over,
+    });
+  const snapshot = (invoiceId: string) => prisma.retiredSaleDisposition.findFirstOrThrow({ where: { invoiceId } });
+
+  it("no tax history recorded: the sale still goes through at any price, the estimate has no numbers and the owner gets a follow-up", async () => {
+    const id = await retired({ bookValueCents: 6000 });
+    const form = (await getSaleFormData(ownerId)).usedAppliances.find((a) => a.id === id)!;
+    expect(form.bookAsset).toMatchObject({ retiredValueCents: 6000, taxEvidence: [] });
+
+    // Far above anything the books show: nothing caps the price.
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 900_000 }] });
+    const d = await snapshot(sale.invoiceId);
+    expect(d).toMatchObject({ priceCents: 900_000, bookCarriedCents: 6000, taxStatus: "CPA_REVIEW_NEEDED", adjustedBasisCents: null, taxGainCents: null, potentialRecaptureCents: null, followUpDoneAt: null, cancelledAt: null });
+    expect(d.reviewReasons.length).toBeGreaterThan(0);
+    expect((await listOpenResaleTaxFollowUps()).map((r) => r.id)).toContain(d.id);
+  });
+
+  it("accountant-confirmed history freezes the estimate with the seller's costs, and later evidence never rewrites it", async () => {
+    const id = await retired({ bookValueCents: 6000 });
+    await evidence(id);
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 75000, sellerCostsCents: 5000 }] });
+    const d = await snapshot(sale.invoiceId);
+    // $750 less $50 costs = $700 against $200 left: $500 gain; $400 of it may be recapture; $100 for the accountant.
+    expect(d).toMatchObject({ taxStatus: "CPA_CONFIRMED_ESTIMATE", sellerCostsCents: 5000, adjustedBasisCents: 20000, totalDepreciationCents: 40000, taxGainCents: 50000, potentialRecaptureCents: 40000, otherGainCents: 10000 });
+    expect(d.followUpDoneAt).not.toBeNull(); // nothing left for the accountant, so nothing on the To do list
+    expect((await listOpenResaleTaxFollowUps()).map((r) => r.id)).not.toContain(d.id);
+
+    await evidence(id, { allowedDepreciationCents: 10000 });
+    expect(await snapshot(sale.invoiceId)).toMatchObject({ adjustedBasisCents: 20000, potentialRecaptureCents: 40000 });
+  });
+
+  it("numbers the owner typed in are an unconfirmed estimate; only the owner can finish the follow-up, once", async () => {
+    const id = await retired({ bookValueCents: 3000 });
+    await evidence(id, { confidence: "OWNER_SUPPLIED", cpaName: undefined, sourceReference: "My own notes" });
+    const sale = await createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 60000 }] });
+    const d = await snapshot(sale.invoiceId);
+    expect(d).toMatchObject({ taxStatus: "UNCONFIRMED_ESTIMATE", potentialRecaptureCents: 40000, followUpDoneAt: null });
+
+    const admin = await prisma.user.findFirstOrThrow({ where: { role: "ADMIN" } });
+    await expect(markResaleTaxFollowUpDone(admin.id, d.id)).rejects.toThrow();
+    expect((await snapshot(sale.invoiceId)).followUpDoneAt).toBeNull();
+
+    expect(await markResaleTaxFollowUpDone(ownerId, d.id)).toEqual({ alreadyDone: false });
+    const first = (await snapshot(sale.invoiceId)).followUpDoneAt;
+    expect(first).not.toBeNull();
+    expect(await markResaleTaxFollowUpDone(ownerId, d.id)).toEqual({ alreadyDone: true });
+    expect((await snapshot(sale.invoiceId)).followUpDoneAt).toEqual(first);
+    expect(await prisma.auditLog.count({ where: { action: "sale.retired_tax_followup_done", entityId: d.id } })).toBe(1);
+    expect((await listOpenResaleTaxFollowUps()).map((r) => r.id)).not.toContain(d.id);
+  });
+
+  it("an expensed item is never given an invented depreciation record, and a retry or a cancel keeps exactly one honest snapshot", async () => {
+    const id = await retired({ bookValueCents: 2000 });
+    await evidence(id, { classification: "EXPENSED" });
+    const opKey = key();
+    const input = { operationKey: opKey, customerId: null, location: "PICKUP" as const, items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 40000 }] };
+    const sale = await createShopSale(ownerId, input);
+    expect(await createShopSale(ownerId, input)).toMatchObject({ invoiceId: sale.invoiceId, replayed: true });
+    expect(await prisma.retiredSaleDisposition.count({ where: { invoiceId: sale.invoiceId } })).toBe(1);
+    expect(await snapshot(sale.invoiceId)).toMatchObject({ taxStatus: "CPA_REVIEW_NEEDED", potentialRecaptureCents: null });
+
+    // The To do item is one line, and cancelling the sale takes the follow-up away.
+    const items = await listResaleTaxAttention(new Date());
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ category: "RETIRED_SALE_TAX_REVIEW", severity: "medium" });
+    expect(items[0].href).toMatch(/^\/desk\/sales(\/|$)/);
+    await cancelShopSale(ownerId, sale.invoiceId, "Buyer backed out");
+    expect((await snapshot(sale.invoiceId)).cancelledAt).not.toBeNull();
+    expect((await listOpenResaleTaxFollowUps()).map((r) => r.invoiceId)).not.toContain(sale.invoiceId);
+  });
+
+  it("refuses selling costs that are negative or more than the price", async () => {
+    const id = await retired({ bookValueCents: 1000 });
+    for (const sellerCostsCents of [-1, 5001]) {
+      await expect(createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: id, unitPriceCents: 5000, sellerCostsCents }] })).rejects.toThrow(/cost of selling/);
+    }
+    expect(await prisma.retiredSaleDisposition.count({ where: { applianceId: id } })).toBe(0);
   });
 });

@@ -612,6 +612,7 @@ model Appliance {
   // Batch M-2: what the owner decided to do with it after retiring it, and parts taken from it.
   retiredPlan RetiredAppliancePlan?
   saleLines InvoiceLineItem[] @relation("ApplianceSaleLine")
+  saleDispositions RetiredSaleDisposition[]
   salvagedMovements PartStockMovement[] @relation("SalvageAppliance")
 
   createdAt  DateTime  @default(now())
@@ -2501,6 +2502,7 @@ model Invoice {
   // Local: issue time is its original creation time. Null means evidence is incomplete.
   issuedAt           DateTime?
   lineItems           InvoiceLineItem[]
+  retiredSaleDispositions RetiredSaleDisposition[]
   taxLines            InvoiceTaxLine[]
   payments            Payment[]
   refunds             Refund[]
@@ -4643,6 +4645,39 @@ model BookAsset {
   taxEvidence BookTaxEvidence[]
 
   @@index([retiredOn])
+}
+
+// M-2C: what was known about the income-tax side of selling one retired appliance, frozen when the sale was saved.
+// Estimates only (never a filing). Rows are never edited except to mark the accountant follow-up done or the sale cancelled.
+model RetiredSaleDisposition {
+  id String @id @default(cuid())
+  applianceId String
+  appliance Appliance @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  invoiceId String
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  saleDate DateTime
+  priceCents Int
+  sellerCostsCents Int @default(0)
+  bookCarriedCents Int
+  taxStatus String
+  evidenceId String?
+  evidenceClassification String?
+  evidenceConfidence String?
+  adjustedBasisCents Int?
+  totalDepreciationCents Int?
+  taxGainCents Int?
+  potentialRecaptureCents Int?
+  otherGainCents Int?
+  reviewReasons String[]
+  followUpDoneAt DateTime?
+  followUpDoneByUserId String?
+  cancelledAt DateTime?
+  createdByUserId String
+  createdAt DateTime @default(now())
+
+  @@unique([invoiceId, applianceId])
+  @@index([applianceId])
+  @@index([followUpDoneAt, cancelledAt])
 }
 
 model BookTaxEvidence {
