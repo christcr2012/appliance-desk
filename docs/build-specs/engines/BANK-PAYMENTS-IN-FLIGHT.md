@@ -26,6 +26,7 @@ model BankPaymentInFlight {
   createdAt        DateTime  @default(now())
   @@index([invoiceId, clearedAt])
   @@index([clearedAt, startedAt])
+  @@index([clearedAt, lastCheckedAt])
 }
 ```
 Add `bankPaymentsInFlight BankPaymentInFlight[]` to `Invoice`. Add to `BusinessSettings`:
@@ -69,14 +70,20 @@ delivery) and item 2 (delayed settlement) explicitly.
 `billing-reconcile:bank-in-flight`)
 
 `checkBankPaymentsInFlight(now)` in `src/domains/billing/in-flight.ts`:
-1. Rows open with `startedAt` older than 2 calendar days, oldest first, at most 50 per night.
+1. Rows open with `startedAt` older than 2 calendar days, ordered by **`lastCheckedAt` ascending with never-checked
+   rows first** (`orderBy: [{ lastCheckedAt: { sort: "asc", nulls: "first" } }, { startedAt: "asc" }, { id: "asc" }]`),
+   at most 50 per night. Every row the run looks at — still processing, cleared, **or a Stripe error** — gets
+   `lastCheckedAt = now`, so the next night's batch moves on to rows that waited longest.
 2. For each, **outside any transaction**, `stripe.paymentIntents.retrieve(paymentIntentId)`.
 3. Then in a short transaction per row (`SELECT … FOR UPDATE` on the row, re-check still open): PI `succeeded` →
    clear `SUCCEEDED` (the payment itself is recorded by `invoice.paid` or the existing reconciliation, never here);
-   `requires_payment_method` / `canceled` → clear `FAILED` / `CANCELED`; still `processing` → set `lastCheckedAt`.
-   If the invoice is no longer open → clear `INVOICE_CLOSED`. A Stripe error on one row is counted and skipped.
+   `requires_payment_method` / `canceled` → clear `FAILED` / `CANCELED`; still `processing` → only
+   `lastCheckedAt`. If the invoice is no longer open → clear `INVOICE_CLOSED`. A Stripe error on one row is counted,
+   its `lastCheckedAt` is set, and the run continues.
 4. Counts returned to `automationCounts` (`checked`, `cleared`, `stillProcessing`, `errors`).
-Test with a fake Stripe client: each PI status, error skip, the 50 limit.
+Test with a fake Stripe client: each PI status, error skip, the 50 limit, and **rotation**: with 120 open rows that
+ stay processing, three nightly runs check 50, 50 and then the remaining 20 plus the 30 checked longest ago; rows that
+ error are not re-checked before rows never checked. Add the index `@@index([clearedAt, lastCheckedAt])`.
 
 ## 4. To do
 

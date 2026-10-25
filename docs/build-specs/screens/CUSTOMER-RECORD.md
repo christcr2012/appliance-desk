@@ -68,8 +68,9 @@ Rules (pure functions, unit-tested):
 - **owedCents** uses `billTabWhere("open", now)` from `src/domains/billing/bill-status.ts` (built in the Bills screen,
   same card) filtered by `customerId`. Never re-write the open rule here.
 - **onTimeRecord**: take this customer's last 7 bills (by `dueDate` desc) with status `PAID` or currently past due
-  (`pastDueInvoiceWhere(now)`), skipping bills with no `dueDate`. `paidAt` = `createdAt` of the last `SUCCEEDED`
-  Payment on a PAID bill; `null` for unpaid. A bill counts as on time when `paidAt` ≤ the end of its due day in
+  (`pastDueInvoiceWhere(now)`), skipping bills with no `dueDate`. `paidAt` = `createdAt` of the last Payment on a PAID bill
+  whose status is in `SUCCESSFUL_PAYMENT_STATUSES` (`src/domains/billing/payment-status.ts` — both the old
+  `SUCCEEDED` and the current `succeeded` spelling; never compare to one spelling); `null` for unpaid. A bill counts as on time when `paidAt` ≤ the end of its due day in
   Denver (`businessDayBounds(dueDate).end`). Return `null` when fewer than 3 bills counted (stat hidden).
 - Select only the fields needed. One `Promise.all`; no per-row queries.
 
@@ -255,7 +256,8 @@ description, the "Billing and referrals" title and the "Notes, activity and comm
 
 - `tests/customer-record.test.ts` (pure): `customerStatus` table (every branch, archived wins), `rentingText`
   (0, 1, 2, 3+, label fallback), `onTimeRecord` (fewer than 3 → null; paid 23:59 Denver on due day = on time; 00:01
-  next day = late; DST weeks; unpaid past-due counts as late), `AGREEMENT_PILL` covers every
+  next day = late; DST weeks; unpaid past-due counts as late; a bill settled by the current
+  payment writer (`recordManualPayment`, lowercase `succeeded`) is found), `AGREEMENT_PILL` covers every
   `RentalAgreementStatus` (exhaustive `Record`), `ordinal`.
 - `tests/customer-params.test.ts`: zod defaults; legacy `tab=overview|properties|service|billing` redirects.
 - `tests/customer-summary-integration.test.ts` (throwaway Postgres): owed equals the Bills screen's open total for
