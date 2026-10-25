@@ -1,3 +1,10 @@
+## October 25 — Two-tone logo restored on the website and app
+
+Chris noticed the lime-green leg of his R logo appears nowhere on the site. Cause: the Sept 29 brand-kit commit copied
+the kit's one-color "evergreen"/"white" files instead of the two-tone "light"/"dark" ones. Now exact kit copies, a
+round badge for app headers, icons regenerated from the kit avatar, a test that fails on drift, and the rule in
+DESIGN-SYSTEM.md. Needs Chris: nothing. Next: build specs wave 1 PR.
+
 ## October 25 — App-wide redesign written (Batch AR, design only)
 
 Docs only. Chris: every desk page is "categories with related functions placed on them", not an application.

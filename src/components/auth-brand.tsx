@@ -8,7 +8,7 @@ export async function AuthBrand() {
   const name = settings.publicBusinessName.startsWith("[") ? "Appliance rentals" : settings.publicBusinessName;
   return (
     <Link href="/" className="mb-8 flex min-h-11 items-center gap-3 self-start">
-      <Image src="/brand/mark.svg" alt="" width={36} height={36} className="h-9 w-9" />
+      <Image src="/brand/badge.svg" alt="" width={36} height={36} className="h-9 w-9" />
       <span className="text-lg font-semibold text-ink">{name}</span>
     </Link>
   );

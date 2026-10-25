@@ -134,6 +134,19 @@ token swap, not a rewrite.
 
 Historical status from that brief: the real logo was then unbuilt. This is
 now superseded by `public/brand/logo-light.svg`, `logo-dark.svg` and `mark.svg`.
+
+### Logo rule (2026-10-25, Chris)
+
+The logo is **two-tone**: the R in evergreen (or ivory on dark) with the **lime-green (#B9E66B) leg**. Chris loves
+that lime leg; one-color versions are only for vendors (embroidery, single-color print). Web copies are exact copies
+of the brand kit (`docs/brand/`), never redrawn or recolored:
+- `public/brand/logo-light.svg` = `01_Logos/horizontal/Robinson-horizontal-light.svg` (light backgrounds)
+- `public/brand/logo-dark.svg` = `01_Logos/horizontal/Robinson-horizontal-dark.svg` (dark mode)
+- `public/brand/mark.svg` = `01_Logos/mark/Robinson-mark-light.svg`
+- `public/brand/badge.svg` = `02_Icons/Avatar-evergreen.svg` as a circle — the small logo in the app header,
+  sidebar, account and sign-in pages (it reads on light and dark backgrounds)
+- browser/phone icons (`src/app/icon.svg`, `apple-icon.png`, `favicon.ico`, `public/brand/icon-192/512.png`) are made
+  from `Avatar-evergreen.svg`. `tests/brand-logo.test.ts` fails if a web copy drifts from the kit.
 The remaining overhaul scope includes
 and everything in it beyond colors (owner-desk information
 architecture, customer-portal rebuild, new business-line UI) — see

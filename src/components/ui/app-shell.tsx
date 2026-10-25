@@ -173,7 +173,7 @@ export function AppShell({
           className="flex min-h-16 items-center gap-3 px-5 py-4"
         >
           <Image
-            src="/brand/mark.svg"
+            src="/brand/badge.svg"
             alt=""
             width={32}
             height={32}
@@ -202,7 +202,7 @@ export function AppShell({
       <div className="min-w-0">
         <header className="flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden print:hidden">
           <Image
-            src="/brand/mark.svg"
+            src="/brand/badge.svg"
             alt=""
             width={32}
             height={32}
