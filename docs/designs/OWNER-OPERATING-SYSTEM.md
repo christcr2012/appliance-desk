@@ -14,7 +14,7 @@ early; open questions run on a careful starting value and wait in Decisions & re
 | Logins vault | Usernames, passwords, PINs, recovery codes — encrypted, owner only, fresh sign-in code to reveal, every reveal logged, never shown to AI | VAULT-2 |
 | Tax and fee autopilot | Dated rules with sources, exemptions switching on/off, official-page watching, late changes absorbed by the business or credited to customers | `engines/TAX-FEE-AUTOPILOT.md` · TFA-1…3 |
 | Compliance center | Every federal and Colorado filing: filed directly where allowed (IRS IRIS), upload files, filled official forms, exact values to type, accountant packets | `engines/COMPLIANCE.md` · CMP-1…5 |
-| Tax benefits | Finds write-offs and small/new-business benefits from the books, tracks elections and deadlines, hands the CPA a ready list | `engines/TAX-BENEFITS.md` · TAXBEN-1 |
+| Tax benefits | Finds write-offs and small/new-business benefits from the books, tracks elections and deadlines, hands the CPA a ready list | `engines/TAX-BENEFITS.md` · TAXBEN-1, TAXBEN-2 |
 | Accountant sign-in | A link for his CPA with access to the books and taxes only; remove or reset any time | `engines/ACCOUNTANT-ACCESS.md` · ACCT-1 |
 | Recalls | Watches the federal recall list for his appliances; holds recalled units; helps contact renters | `engines/OWNER-OPERATIONS.md` · OPS-1 |
 | Refrigerant records | The EPA statement scrap yards must get when a fridge is scrapped | OPS-2 |

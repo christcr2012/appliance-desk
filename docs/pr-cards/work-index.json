@@ -5666,6 +5666,59 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-8.md"
+    },
+    {
+      "id": "TAXBEN-1",
+      "title": "Automatic write-offs: deduction mapping, de minimis/capitalize rules, start-up costs, benefit list",
+      "batch": "TAXBEN",
+      "dependencies": [
+        "BA-1",
+        "TFA-1",
+        "CMP-2",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (purchase capitalization fields, business-use settings)",
+      "budget": 550,
+      "units": [
+        "TAXBEN-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/TAX-BENEFITS.md",
+        "docs/research/2026-10-25-tax-benefits.md"
+      ],
+      "tests": [
+        "tests/taxben-classification.test.ts",
+        "tests/taxben-startup.test.ts",
+        "tests/taxben-benefits-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TAXBEN-1.md"
+    },
+    {
+      "id": "TAXBEN-2",
+      "title": "Election statements and year-end tax planning for the CPA",
+      "batch": "TAXBEN",
+      "dependencies": [
+        "TAXBEN-1",
+        "CMP-2",
+        "ACCT-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 250,
+      "units": [
+        "TAXBEN-2"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/TAX-BENEFITS.md",
+        "docs/research/2026-10-25-tax-benefits.md"
+      ],
+      "tests": [
+        "tests/taxben-elections.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/TAXBEN-2.md"
     }
   ],
   "enhancements": [

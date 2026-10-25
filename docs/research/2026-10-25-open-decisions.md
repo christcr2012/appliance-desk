@@ -102,3 +102,13 @@ Sources: `docs/research/2026-10-25-tax-fee-rules.md`, `docs/research/2026-10-25-
 | OPS-LATE-FEE-CAP | No cap found for plain rentals; $5 already at the rent-to-own cap | Attorney |
 | CONT-SUCCESSOR | Add a successor-member clause to the operating agreement | Attorney |
 | VAULT-BANK | Bank logins may be stored in the vault (password manager suggested) | Owner |
+
+## Added 2026-10-25 (tax benefits)
+| Code | Starting value | Audience |
+|---|---|---|
+| TAXBEN-DE-MINIMIS | De minimis safe harbor elected each year ($2,500 per item) | CPA |
+| TAXBEN-179-VS-BONUS | 100% bonus depreciation rather than §179 | CPA |
+| TAXBEN-CLASS | Rental appliances 5-year property | CPA |
+| TAXBEN-BEGAN | Business began on the first day an appliance was available or the first lead, whichever is earlier | CPA |
+| TAXBEN-SOLO401K-DEADLINE | First-year Solo 401(k) by Apr 15 without extensions | CPA |
+| TAXBEN-EZ-FLEET | Delivered fleet doesn't qualify for the enterprise-zone credit | CPA |
