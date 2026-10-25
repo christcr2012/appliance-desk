@@ -6,6 +6,13 @@ counted once). Anything without enough history says so instead of guessing: unde
 time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
 reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
 Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
+## October 25 — Owner controls: proof of what each page sends to each role (O-2B)
+
+In progress (branch `ai/claude/owner-controls-o2b`). New browser test `e2e/role-shaped-pages.spec.ts` (browser-d) reads the whole
+server answer of the desk pages as the owner, a full admin, an admin the owner has limited, and staff. Staff get none of the
+rental-price, repair-cost or purchase-cost values; owner-only pages send nobody else any of their content; a limited admin's
+control center does not even contain the cards they may not use. A control check shows the planted values really are sent to the
+owner and admins, so the staff result is meaningful. Passes 18 of 18 locally including phone width, keyboard and accessibility. Nothing for Chris to do.
 ## October 25 — Owner controls: price changes with a start date now cover rental sets (O-4)
 
 In progress (branch `ai/claude/owner-controls-o4`). On Settings → Price changes you can now pick a rental set (like Washer + Dryer
