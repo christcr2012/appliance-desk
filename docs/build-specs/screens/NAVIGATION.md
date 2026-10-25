@@ -59,8 +59,10 @@ staff). Proof is a browser test, not a text check: signed in as the seeded STAFF
 shows and assert none of them shows the access refusal; and as OWNER, every tab opens.
 
 **Active tab:** for `pathname` + `search`, among all visible tabs pick the one whose `href` path or `matches` prefix
-is the longest match (`pathname === p || pathname.startsWith(p + "/")`); a tab with `query` only matches when the
-param value fits, and then wins over a tab with the same path. Unit-test: `/desk/billing` → bills;
+is the longest match (`pathname === p || pathname.startsWith(p + "/")`). A tab's `query` rule applies **only to its
+own `href` path** (Payments' `/desk/billing`): that path matches only when the param value fits, and then wins over a
+tab with the same path. Its `matches` prefixes (`/desk/billing/held-payments` etc.) match by path alone, with no query
+rule. Unit-test: `/desk/billing` → bills;
 `/desk/billing?view=deposits` → payments; `/desk/billing/held-payments` → payments; `/desk/billing/customer/x` →
 bills; `/desk/inventory/retired` → retired; `/desk/inventory/abc` → fleet; `/desk/settings` → none.
 

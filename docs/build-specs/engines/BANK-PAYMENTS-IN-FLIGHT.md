@@ -94,8 +94,26 @@ delivery) and item 2 (delayed settlement) explicitly.
       webhook route calls — same evidence gathering, global lock, dedupe by event id, so a replay of an
       already-processed event does nothing), then settle `result.referralIdsToSettle` with `settleReferralCredits`
       exactly as `src/app/api/webhooks/stripe/route.ts` does. Re-read: if the payment now exists → clear `SUCCEEDED`.
-   c. If no matching event is found, or the replay throws → **leave the row open**, set `lastCheckedAt`, set a new
-      `settledInStripeAt = now`, count `needsCheck`. The bill
+   c. If no matching event is found (Stripe keeps events about 30 days) → **record it directly from Stripe's current
+      state** with `recoverBankSettlement(rowId)` (`src/domains/billing/in-flight.ts`, below). If that also cannot
+      record it, or anything throws → **leave the row open**, set `lastCheckedAt`, set
+      `settledInStripeAt = now`, count `needsCheck`.
+
+   **`recoverBankSettlement(rowId, actorUserId | null)`** — the one recovery path, used by the nightly check and by
+   the To do button. Outside any lock it gathers evidence exactly like the webhook does for the settlement event:
+   - `STRIPE_INVOICE`: `evidence.fetchInvoice(stripeInvoiceId)` (expands payments) and
+     `evidence.fetchCashEvents(invoice)`; proceed only if Stripe says the invoice `status === "paid"`.
+   - `LOCAL_CHECKOUT`: `stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 1 })`; proceed only if
+     that session has `metadata.localInvoiceId` = the row's bill and `payment_status === "paid"`; gather what
+     `recordLocalInvoiceCheckoutPayment` needs (the same evidence `gatherAsyncPaymentSucceeded` gathers).
+   Then one transaction that takes the **same global webhook lock** (`SELECT pg_advisory_xact_lock(174831, 1)`) and
+   calls the **same local functions** the webhook handlers call: export `recordPaidStripeInvoiceInTx(db, evidence,
+   stripeInvoice)` from `webhooks-base.ts` as the body `handleInvoicePaid` already runs (move the code, keep
+   `handleInvoicePaid` calling it — no behavior change), or `recordLocalInvoiceCheckoutPayment(db, evidence, session)`.
+   Both already refuse to record the same charge or payment intent twice. Then clear the row `SUCCEEDED` and audit
+   `billing.bank_payment_recovered` (actor = the person, or null for the nightly run). Referral settlement after commit
+   like the webhook route. Tests: recovery records once; running it twice records once; a webhook arriving during
+   recovery waits on the lock and then records nothing new; Stripe saying "not paid" leaves the row open. The bill
       keeps showing "Being confirmed" (so no late fee or reminder), and To do raises it (section 4).
    Other PI statuses, in a short transaction per row (`SELECT … FOR UPDATE` on the row, re-check still open):
    `requires_payment_method` / `canceled` → clear `FAILED` / `CANCELED`; still `processing` → only
@@ -115,8 +133,11 @@ the row clears; the same night run twice records it once (event dedupe); no matc
 New category **`BANK_PAYMENT_SLOW`** (group `money` in `INBOX_GROUP`, severity medium): an open row with `startedAt`
 more than **6 business days** ago (`addBusinessDays`), **or** any open row with `settledInStripeAt` set (severity
 high; title `"Stripe says the bank payment for bill #{number} cleared, but it isn't recorded yet"`, detail
-`"{formatMoney(amount)} from {customer}. Open Check against Stripe to record it."`, href
-`/desk/billing/reconciliation`). Title `"Bank payment for bill #{number} is taking longer than
+`"{formatMoney(amount)} from {customer}. Try recording it again; if it still won't record, compare with Stripe."`,
+primary action **"Record it now"** = a form posting to `recoverBankSettlementAction(rowId)` (OWNER/ADMIN; calls
+`recoverBankSettlement(rowId, actorId)`; toast "Recorded {amount}" or the plain reason it could not), secondary
+"Compare with Stripe" → `/desk/billing/reconciliation`, which also lists these rows in a new read-only section "Bank
+payments Stripe says cleared" (customer, bill, amount, date) with the same "Record it now" button per row). Title `"Bank payment for bill #{number} is taking longer than
 usual"`, detail `"{formatMoney(amount)} from {customer} started {formatShortDate(startedAt)}. Banks usually confirm in
 4 business days. Check it in Stripe if it doesn't clear soon."`, href = the bill page. Built with a new pure builder
 `bankPaymentSlowException` in `rules.ts`; queried in `getExceptionOverview` with the standard cap.
