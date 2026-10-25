@@ -36,7 +36,7 @@ ACC-1 ACC-2 ACC-3 ACC-4 ACC-5
 BA-1 BA-2 BA-3 BA-4 BA-5 BA-6
 LD-1 LD-2 LD-3 LD-4
 CU-1 CU-2 CU-3
-AR-0 AR-1 AR-2 AR-3 AR-4 AR-5 AR-6 AR-7 AR-8 AR-9 AR-10
+AR-0 AR-1 AR-2 AR-3 AR-4 AR-5 AR-6 AR-7 AR-8 AR-9 AR-10 AR-11
 K-CASH-1 K-CASH-2 K-CASH-3 K-CASH-4A K-CASH-4B K-CASH-5A K-CASH-5B K-CASH-6 K-CASH-7
 """.split())
 actual_units = {unit for card in CARDS for unit in card['units']}

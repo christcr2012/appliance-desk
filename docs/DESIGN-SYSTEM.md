@@ -65,7 +65,9 @@ required before launch (Phase 2/7).
 
 The desk is an application, not a set of category pages. Five areas (Today, Customers, Schedule, Equipment, Money),
 Settings in the profile menu, and four page types only: work queue, record page, guided flow, settings page — each
-built from the shared kit in `src/components/ui`. Full rules and the page map: [designs/APP-REDESIGN.md](designs/APP-REDESIGN.md).
+built from the shared kit in `src/components/ui`. Full rules and the page map: [designs/APP-REDESIGN.md](designs/APP-REDESIGN.md). It must also *feel* like software
+(section 4A there): the frame never reloads, every click answers at once, nothing goes blank, keyboard and touch
+patterns, installable desk app, and a measured speed budget.
 
 ### Quiet screens (Chris, 2026-10-25)
 

@@ -4356,7 +4356,7 @@
       "title": "Navigation: five areas, area tabs, profile menu, command bar, redirects, More removed",
       "batch": "AR",
       "dependencies": [
-        "AR-0"
+        "AR-11"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
       "migration": "none",
@@ -4599,6 +4599,32 @@
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/AR-10.md"
+    },
+    {
+      "id": "AR-11",
+      "title": "App feel foundations: installable desk app, instant shell, skeletons, transitions, optimistic actions with Undo, live freshness, offline shell, keyboard/touch, performance budget",
+      "batch": "AR",
+      "dependencies": [
+        "AR-0"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 480,
+      "units": [
+        "AR-11"
+      ],
+      "evidence": [
+        "docs/designs/APP-REDESIGN.md",
+        "public/manifest.webmanifest",
+        "src/app/desk/loading.tsx",
+        "src/components/ui/app-shell.tsx"
+      ],
+      "tests": [
+        "tests/ar11-app-feel.test.ts",
+        "e2e/ar11-app-feel.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/AR-11.md"
     }
   ],
   "enhancements": [

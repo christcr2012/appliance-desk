@@ -1,6 +1,6 @@
 # Appliance Desk as an application — app-wide redesign (Batch AR)
 
-Status: **designed 2026-10-25 at Chris's request; not built.** Units AR-0…AR-10 are in `work-index.json`; execution
+Status: **designed 2026-10-25 at Chris's request; not built.** Units AR-0…AR-11 are in `work-index.json`; execution
 cards are written when each one starts. This is the **master design for every desk screen**. It absorbs the screen
 parts of [BOOKS-AUTOPILOT.md](BOOKS-AUTOPILOT.md) (BA-4, BA-5, BA-6), [LEADS-WORKSPACE.md](LEADS-WORKSPACE.md) (LD-2, LD-3)
 and [CUSTOMERS-WORKSPACE.md](CUSTOMERS-WORKSPACE.md) (CU-2, CU-3); their engine and data units (BA-1…BA-3, LD-1, LD-4,
@@ -110,6 +110,68 @@ pages. **"More" disappears**: every former More entry has a home above or in Set
   opens the record. (Email/text delivery of these follows existing switches; nothing goes live automatically.)
 - **Quiet screens and no bare link lists** (DESIGN-SYSTEM rules from 2026-10-25) apply everywhere; enforced by guards.
 
+## 4A. How the best web apps feel like real software — and what Appliance Desk does about it
+
+Chris (2026-10-25): "figure out how the best web apps are made to look and feel like an actual software program, and
+apply that knowledge to Appliance Desk." Research and what it means here:
+
+**What the best ones do** (Linear, Stripe, Shopify admin, Figma, Notion; sources below):
+1. **The frame never reloads.** Sidebar, top bar and bottom bar stay put; only the content area changes, instantly.
+2. **Every click answers immediately.** Changes appear on screen at once (optimistic updates) and save in the
+   background; if a save fails, the change rolls back with a clear message. Linear keeps data in the browser so reads
+   don't wait on the network.
+3. **Nothing ever goes blank.** Skeletons in the exact shape of the content, never a spinner on a white page.
+4. **Keyboard and command bar first on desktop**; touch gestures first on phones (swipe actions, bottom sheets,
+   pull to refresh).
+5. **Installed like an app:** its own icon, opens in its own window without browser bars, a splash colour, app-icon
+   shortcuts, the window title follows the screen, and it respects notches and rounded corners.
+6. **Restrained, purposeful motion:** short transitions using only movement and fade, shown only when they explain
+   where something went; reduced for people who ask the system for less motion.
+7. **Application chrome, not web-page chrome:** controls are not selectable text, no underlined links for navigation,
+   consistent hover/pressed/focus states, menus and dialogs that look like the operating system's.
+8. **State is remembered:** returning to a list restores filters, scroll position and the selected row; drafts are
+   kept; deep links open exactly the record.
+9. **Speed is a product rule**, measured and budgeted like any other requirement, so it doesn't erode.
+
+**Where Appliance Desk is today** (checked 2026-10-25): one manifest shared with the public website (`start_url: "/"`,
+name "Robinson Appliance Rentals"), so an installed icon opens the marketing site; no app-icon shortcuts; no offline
+or "you're offline" handling; one loading screen for the whole desk (`src/app/desk/loading.tsx`); optimistic updates in
+only a couple of places; no command bar or keyboard shortcuts; one fixed theme colour (no dark variant); navigation
+mostly full server round-trips with no transitions; safe-area handled only on the bottom tab bar.
+
+**What we build (AR-11, "app feel foundations", right after AR-0):**
+- **Installable desk app:** a separate desk manifest (`/desk/manifest.webmanifest`, name "Appliance Desk", start
+  `/desk/today`, scope `/desk/`, `display_override: ["window-controls-overlay", "standalone"]`, maskable icons, light and
+  dark theme colours) with app-icon **shortcuts**: New quote, Record payment, Today's route, Add expense. The public
+  site keeps its own. On desktop, the title-bar area holds the search/command bar (window controls overlay).
+- **Instant shell:** persistent `AppShell`; Next.js client navigation with prefetch of the five areas and visible list
+  rows; route-level `loading.tsx` skeletons per area and per record type; cross-fade/slide **view transitions** between
+  list and record (disabled under reduced motion); per-view `<title>`.
+- **Optimistic actions** through one helper around React `useOptimistic` + server actions for safe, reversible actions
+  (mark task done, snooze, set follow-up, assign, change stage, add note, mark visit complete), with **Undo** toasts.
+  Money, signatures, refunds and anything irreversible stay confirm-then-save (no optimistic money, ever).
+- **Live freshness:** lists and Today refresh themselves when the window regains focus and every 60 seconds while
+  visible (cheap count queries), so two people never act on stale screens; "Updated just now" indicator.
+- **Offline-aware:** a small service worker caches the app shell and static assets only (never customer data); when
+  offline, the shell stays up with a clear "You're offline — changes are paused" bar and actions disabled. Drivers'
+  route view caches today's stops read-only for dead zones (explicit, private, cleared at sign-out).
+- **Keyboard:** `⌘K`/`Ctrl K` command bar, `/` focus search, `j`/`k` move in lists, `Enter` open, `Esc` close panel,
+  `g t` / `g c` / `g s` / `g e` / `g m` go to areas, `?` shows shortcuts. All discoverable in the command bar.
+- **Touch:** swipe row actions, bottom sheets for filters and menus, pull-to-refresh on lists (`overscroll-behavior`
+  contained elsewhere), 44px targets, `viewport-fit=cover` with safe-area insets everywhere.
+- **Chrome polish:** `user-select: none` on controls only; consistent pressed/hover/focus tokens; system-native date,
+  time and number inputs styled to the brand; `accent-color` for checkboxes and radios.
+- **State memory:** filters, sort, scroll and selected row restored per list (URL + session storage, wrapped safely);
+  unsaved form drafts kept locally until submitted or discarded.
+- **Performance budget (a test, not a hope):** on a mid-range phone over 4G, desk area switch shows content or a
+  skeleton within 100 ms and usable content within 1 s; record open within 300 ms from a list; JavaScript per area
+  under a fixed budget checked in CI (bundle-size check) alongside the existing capacity baselines.
+
+Sources: [web.dev — PWA app design](https://web.dev/learn/pwa/app-design), [web.dev — PWA enhancements](https://web.dev/learn/pwa/enhancements),
+[Why Linear feels fast](https://dev.to/0xgosu/why-linear-feels-fast-local-data-small-updates-and-product-discipline-1m53),
+[How is Linear so fast](https://performance.dev/how-is-linear-so-fast-a-technical-breakdown.md),
+[Optimistic updates make apps faster](https://blog.openreplay.com/optimistic-updates-make-apps-faster/).
+
 ## 5. The application kit (shared components — AR-0)
 
 Build or upgrade in `src/components/ui`, documented in DESIGN-SYSTEM, each with axe/keyboard/phone tests:
@@ -168,6 +230,7 @@ Tabs: **Overview · Invoices · Payments · Expenses · Books · Taxes**.
 | Unit | Scope | Notes |
 |---|---|---|
 | **AR-0** | Application kit + guards + a **reference set** of three finished screens on the testing site: Today inbox, Money › Invoices, Customer record | Chris looks at these on the testing app (checklist row, never blocks); feedback folds into later units |
+| **AR-11** | App feel foundations (section 4A): desk app install + shortcuts, instant shell, skeletons, view transitions, optimistic helper with Undo, live freshness, offline shell, keyboard and touch, state memory, performance budget in CI | Right after AR-0; every later unit uses it |
 | **AR-1** | Navigation: 5 areas, area tabs, profile menu with Settings/account, command bar, redirects, "More" removed | |
 | **AR-2** | Today inbox: all To do categories with inline actions and grouping; setup card; dashboard/control-center merged | |
 | **AR-3** | Money area: Overview, Invoices, Payments (held/processing/deposits as filters), invoice record | Needs no new money rules |
@@ -179,7 +242,7 @@ Tabs: **Overview · Invoices · Payments · Expenses · Books · Taxes**.
 | **AR-9** | Insights tabs (Customers, Equipment, Money overview) replacing Reports/Revenue/Fleet/Growth pages | |
 | **AR-10** | Sweep: every remaining screen on the kit; guards with an empty allow-list except legal text; full browser + axe + phone pass; visual review notes in STATUS | |
 
-**Order:** AR-0 → AR-1 → AR-2 → AR-3 → AR-4 → (AR-5, AR-6 in parallel) → AR-7 → AR-8 → AR-9 → AR-10. Engines BA-1…BA-3,
+**Order:** AR-0 → AR-11 → AR-1 → AR-2 → AR-3 → AR-4 → (AR-5, AR-6 in parallel) → AR-7 → AR-8 → AR-9 → AR-10. Engines BA-1…BA-3,
 LD-1, CU-1 can be built in parallel lanes; screens pick them up when merged. Each unit includes browser specs (phone
 width, keyboard, axe) for the screens it changes and keeps every old URL reachable.
 
