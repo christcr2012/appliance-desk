@@ -54,10 +54,16 @@ And in existing handlers (same transaction, after their current work):
   (`SUCCEEDED` / `FAILED`); if no row exists yet, create it already cleared (tombstone, as above).
 - **Before creating an open row** (processing or unpaid completion), the evidence step also retrieves the intent
   (`evidence.fetchPaymentIntentWithMethod`, already available); create the row open only when the intent's status is
-  still `processing`. If Stripe already reports `succeeded`, `requires_payment_method` or `canceled`, create it
-  cleared with the matching reason instead (and the normal settlement/failure events record the money as today).
+  still `processing`. If Stripe reports `requires_payment_method` or `canceled`, create it cleared with the matching
+  reason instead. If Stripe reports **`succeeded`**: when the invoice already has a payment for this intent with a
+  status in `SUCCESSFUL_PAYMENT_STATUSES`, create it cleared `SUCCEEDED`; **otherwise create it open with
+  `settledInStripeAt = now`** (the settlement webhook may have been missed — never clear a row whose money is not
+  recorded). Section 3 picks such rows up the same night regardless of age, so recovery (3b/3c) records the payment,
+  and the To do in section 4 still fires if it cannot.
 - Out-of-order tests (add to the list below): failure before processing → no open row; async_payment_failed before
-  the unpaid completion → no open row; succeeded before processing → no open row; each delivered twice → one row.
+  the unpaid completion → no open row; succeeded before processing (settlement recorded) → no open row; **delayed processing after Stripe settled but the
+  settlement webhook was missed → open row with `settledInStripeAt`, and the next nightly run records the payment
+  (replay or `recoverBankSettlement`) and clears it**; each delivered twice → one row.
 - `invoice.paid` → clear every open row of that invoice (`SUCCEEDED`).
 - `invoice.payment_failed` → clear open rows whose `paymentIntentId` equals the invoice's latest failed intent if the
   evidence has it; otherwise leave them (the nightly check clears them).
@@ -77,7 +83,7 @@ delivery) and item 2 (delayed settlement) explicitly.
 `billing-reconcile:bank-in-flight`)
 
 `checkBankPaymentsInFlight(now)` in `src/domains/billing/in-flight.ts`:
-1. Rows open with `startedAt` older than 2 calendar days, ordered by **`lastCheckedAt` ascending with never-checked
+1. Rows open with `startedAt` older than 2 calendar days **or with `settledInStripeAt` set** (any age), ordered by **`lastCheckedAt` ascending with never-checked
    rows first** (`orderBy: [{ lastCheckedAt: { sort: "asc", nulls: "first" } }, { startedAt: "asc" }, { id: "asc" }]`),
    at most 50 per night. Every row the run looks at — still processing, cleared, **or a Stripe error** — gets
    `lastCheckedAt = now`, so the next night's batch moves on to rows that waited longest.

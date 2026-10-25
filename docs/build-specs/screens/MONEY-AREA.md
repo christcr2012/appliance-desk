@@ -78,8 +78,14 @@ decision {n}" (= held; hide 0), "Deposits", "Waiting for Stripe"; Toolbar search
 and When, sorts "Newest first", "Oldest first", "Largest first". Summary line `"{count} payments ·
 {formatMoney(sum)}"` (received only). Rows/cards: customer name · `"Bill #{number} · {method word}"` · amount · pill ·
 date `formatShortDate`; failed rows add `failureReason` as a detail line (plain text as stored). Card/row opens the
-bill record. Held rows: primary action "Decide…" → `/desk/billing/held-payments` (the existing decision page, which
-keeps its cards and actions). Empty states: received "No payments yet"; failed "No failed payments"; held "Nothing
+bill record. Held rows (`HELD_PAYMENT_STATUS`): primary action "Decide…" → `/desk/billing/held-payments` (the existing decision
+page, which keeps its cards and actions; it lists and decides only that status). Conflict rows
+(`HELD_CONFLICT_STATUS` — refunded in Stripe after the money was kept as credit and partly used): pill "Needs a
+check" (attention), detail "Refunded in Stripe after it was used as credit", primary action "Check…" →
+`/desk/billing/reconciliation` (where `detectDrift` already lists these conflicts as `HELD_PAYMENT` rows with the
+explanation "…kept as account credit, partly used, and then refunded in Stripe… review their credit"); ⋯ adds "Open
+customer" (the customer record, where credit is reviewed). They never link to the held-payments page. Test: a
+conflict row's action goes to reconciliation, a held row's to held-payments. Empty states: received "No payments yet"; failed "No failed payments"; held "Nothing
 needs a decision".
 
 ## 3. The bill record — `/desk/billing/customer/[id]/invoice/[invoiceId]` (same URL), redesigned
