@@ -1,3 +1,8 @@
+## October 25 — Phone bookkeeping catch-up (COM-N3 record)
+
+COM-N3 (booking a verified phone-company statement as one expense) was merged earlier in #555, but the plan and work list still said "in review / not built".
+Both now say merged, and a short card records what it proves and the one known gap (no browser test of the booking form yet; not blocking).
+
 ## October 24 — Owner controls: settings preview, stale-save protection, full Switches list (O-1)
 
 In progress (branch `ai/claude/owner-controls-o1`): "Undo this" in Settings history now shows what it will do first and says

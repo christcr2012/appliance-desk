@@ -2260,7 +2260,7 @@
         "COM-N2",
         "K-8"
       ],
-      "status": "APPROVED — NOT BUILT",
+      "status": "MERGED",
       "migration": "com_books_statement_link",
       "budget": 450,
       "units": [
