@@ -122,7 +122,7 @@ export default async function AgreementDetailPage({
 
       <div className="mt-3">
         <SendTextPanel userId={session.user.id} entityType="RentalAgreement" entityId={agreement.id} path={`/desk/agreements/${agreement.id}`}
-          families={["signature_request", "signature_reminder", "signature_received"]}
+          families={["signature_request", "signature_reminder", "signature_received", "renewal_heads_up"]}
           principal={{ customerId: agreement.customer.id }} />
       </div>
 

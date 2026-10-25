@@ -1,3 +1,4 @@
+import { queueStoredFileCleanup } from "@/domains/stored-files/cleanup";
 import { createHash } from "node:crypto";
 import type { AcquisitionTaxStatus, Prisma, PurchaseDocumentKind, PurchaseSellerTaxKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -590,8 +591,11 @@ export async function removePurchaseDocument(actorId: string, documentId: string
         throw new Error(`This is the only receipt page, and records are kept ${years} ${years === 1 ? "year" : "years"} (until ${businessDateKey(keepUntil)}).`);
       }
     }
+    const receiptPhoto = await tx.photo.findUnique({ where: { id: doc.photoId }, select: { url: true } });
     await tx.purchaseDocument.delete({ where: { id: doc.id } });
     await tx.photo.delete({ where: { id: doc.photoId } });
+    // The stored file is deleted by the nightly clean-up after a waiting period, once nothing points at it.
+    if (receiptPhoto) await queueStoredFileCleanup(tx, { url: receiptPhoto.url, reason: "receipt page removed", kind: "receipt", now });
     await tx.auditLog.create({
       data: { userId: actorId, action: "purchase.document_remove", entityType: "Purchase", entityId: doc.purchaseId, oldValue: { photoId: doc.photoId } },
     });

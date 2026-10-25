@@ -151,8 +151,8 @@
  },
  {
   "findingId": "pr39-r4118271833",
-  "status": "open",
-  "evidence": "The desk shell was rebuilt since; no test checks that wide content cannot push the page sideways on a phone. Needs a narrow-width browser check.",
+  "status": "fixed",
+  "evidence": "Fixed 2026-10-25 (older review findings PR): the shared route scan helper e2e/accessibility-route-helpers.ts now fails any page, in light and dark, whose width is more than the screen at 360px (document scrollWidth beyond window width). It runs on every generated desk and public route scan in CI.",
   "pr": 39
  },
  {
@@ -241,14 +241,14 @@
  },
  {
   "findingId": "pr56-r4120027259",
-  "status": "open",
-  "evidence": "src/domains/reports/index.ts still adds all paid invoices less refunds as 'actual' earnings, which is not limited to recurring rent receipts. Needs a decision on what the report should compare.",
+  "status": "fixed",
+  "evidence": "Fixed 2026-10-25: \"Collected\" in the earnings report is now the rent part of what was paid (src/domains/reports/earnings.ts rentShareOfPaidCents): tax, deposits, fees and shop items on the same invoice are left out and refunds come off first. Tests: tests/reports-earnings.test.ts, tests/reports.test.ts. Screen and metric wording say \"Rent collected\".",
   "pr": 56
  },
  {
   "findingId": "pr56-r4120027266",
-  "status": "open",
-  "evidence": "Not re-verified against the current estimate calculation for calendar-month anniversary billing; needs a focused test.",
+  "status": "fixed",
+  "evidence": "Fixed 2026-10-25: the estimate now follows anniversary billing (same day each month via billingPeriodFor; a whole price per completed month plus the share of the current month) instead of 30-day months. Tests in tests/reports-earnings.test.ts cover 28/30/31-day months, a Jan 31 start, end dates and the daylight-saving change; tests/agreements-closed-at-integration.test.ts uses Colorado midnights.",
   "pr": 56
  },
  {
@@ -265,8 +265,8 @@
  },
  {
   "findingId": "pr57-r4123169727",
-  "status": "open",
-  "evidence": "Same as the earlier earnings finding: actual earnings include more than rent while estimated earnings are rent only (src/domains/reports/earnings.ts).",
+  "status": "fixed",
+  "evidence": "Same fix as the earlier earnings finding (rent compared with rent, 2026-10-25): src/domains/reports/earnings.ts.",
   "pr": 57
  },
  {
@@ -289,14 +289,14 @@
  },
  {
   "findingId": "pr58-r4123386805",
-  "status": "open",
-  "evidence": "Ordinary removal or replacement of a stored photo does not delete the stored file; only privacy deletion removes media (src/domains/backup/media-deletion.ts, tests/scenarios/08). Needs a decision and a clean-up job.",
+  "status": "fixed",
+  "evidence": "Fixed 2026-10-25: a removed receipt page now puts its stored file on a clean-up list (StoredFileCleanup) that the nightly job deletes after 30 days if nothing points at it (src/domains/stored-files/cleanup.ts, tests/stored-file-cleanup-integration.test.ts, tests/purchases-w14-w2-w15-integration.test.ts). Website and appliance-type pictures are kept in the database and retired, not stored as separate files, so no file is left behind there. Deleting from the real private store is checked only with a stand-in here; the owner checklist has the real-account step.",
   "pr": 58
  },
  {
   "findingId": "pr58-r4123386818",
-  "status": "open",
-  "evidence": "The upload route accepts HEIC and HEIF (src/app/api/uploads/photo/route.ts) but does not convert them, so some browsers cannot show them.",
+  "status": "fixed",
+  "evidence": "Fixed 2026-10-25: HEIC/HEIF pictures are converted to JPEG in the browser before upload (src/lib/photo-convert.ts, used by PhotoUploadField); when the browser cannot convert, the person gets a plain message and nothing is uploaded. The upload route no longer accepts HEIC/HEIF, so every stored picture can be shown in any browser. Tests: tests/photo-convert.test.ts.",
   "pr": 58
  },
  {
@@ -313,8 +313,8 @@
  },
  {
   "findingId": "pr59-r4123799792",
-  "status": "open",
-  "evidence": "Same as the earlier stored-file clean-up finding: replacing or removing a photo leaves the old stored file.",
+  "status": "fixed",
+  "evidence": "Same fix as the stored-file clean-up finding (2026-10-25): src/domains/stored-files/cleanup.ts.",
   "pr": 59
  },
  {
@@ -325,8 +325,8 @@
  },
  {
   "findingId": "pr60-r4124170420",
-  "status": "open",
-  "evidence": "Same as the earlier stored-file clean-up finding for customer-removed photos.",
+  "status": "fixed",
+  "evidence": "Fixed 2026-10-25: a photo a customer takes off a request before sending is queued for clean-up the next night (discardUnsentRequestPhoto, tests/portal-discard-unsent-photo.test.ts).",
   "pr": 60
  },
  {

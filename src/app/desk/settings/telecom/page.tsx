@@ -133,7 +133,7 @@ export default async function TelecomSettingsPage() {
         Staff still preview and press Send for every text, and nothing is sent unless the master text switch above is on,
         the person has agreed to texts, and it is outside quiet hours.</p>
       <div className="mt-3"><WorkflowTextsSettings families={textSettings.families} version={textSettings.policyVersion}
-        quietHours={textSettings.quietHours} isRecommended={textSettings.quietHoursIsRecommended} policyReady={textSettings.policyReady} /></div>
+        quietHours={textSettings.quietHours} isRecommended={textSettings.quietHoursIsRecommended} policyReady={textSettings.policyReady} renewalWindowDays={textSettings.renewalWindowDays} /></div>
     </section>}
     {canEdit && textSettings && reporting && <section aria-labelledby="service-reporting" className="rounded-card border border-line p-4">
       <h2 id="service-reporting" className="text-lg font-semibold">Cost-per-customer report</h2>

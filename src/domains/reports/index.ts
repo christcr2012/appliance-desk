@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { computeAgreementEarnings } from "./earnings";
+import { computeAgreementEarnings, rentShareOfPaidCents } from "./earnings";
 
 export type { AgreementEarnings } from "./earnings";
 
@@ -36,17 +36,30 @@ export async function getEarningsReport(asOf: Date = new Date()): Promise<Earnin
       closedAt: true,
       customer: { select: { id: true, user: { select: { name: true, email: true } } } },
       lines: { select: { monthlyPriceCents: true } },
-      invoices: { select: { amountPaidCents: true, refunds: { select: { amountCents: true } } } },
+      invoices: {
+        select: {
+          amountPaidCents: true,
+          amountDueCents: true,
+          lineItems: { select: { kind: true, amountCents: true } },
+          refunds: { select: { amountCents: true } },
+        },
+      },
     },
   });
 
   const rows = agreements.map((agreement) => {
-    // "Collected" = money received and credit applied to this agreement's
-    // invoices, minus anything refunded on them, so a refunded month no longer
-    // looks like a month that was paid.
+    // "Collected" = the rent part of the money received and credit applied to this agreement's invoices, minus
+    // anything refunded on them, so a refunded month no longer looks like a month that was paid and tax, deposits,
+    // fees and shop items on the same invoice are not counted as rent earned.
     const invoicePaidCents = agreement.invoices.reduce(
       (sum, inv) =>
-        sum + inv.amountPaidCents - inv.refunds.reduce((refunded, r) => refunded + r.amountCents, 0),
+        sum +
+        rentShareOfPaidCents({
+          amountPaidCents: inv.amountPaidCents,
+          amountDueCents: inv.amountDueCents,
+          lineItems: inv.lineItems,
+          refundedCents: inv.refunds.reduce((refunded, r) => refunded + r.amountCents, 0),
+        }),
       0,
     );
     const earnings = computeAgreementEarnings(

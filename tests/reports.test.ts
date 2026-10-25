@@ -36,7 +36,7 @@ describe("getEarningsReport", () => {
         endDate: null,
         customer: { id: "cust-1", user: { name: "Jane Doe", email: "jane@example.com" } },
         lines: [{ monthlyPriceCents: 6000 }],
-        invoices: [{ amountPaidCents: 1000, refunds: [] }],
+        invoices: [{ amountPaidCents: 1000, amountDueCents: 6000, lineItems: [{ kind: "RENTAL", amountCents: 6000 }], refunds: [] }],
       },
       {
         id: "agr-current",
@@ -44,11 +44,11 @@ describe("getEarningsReport", () => {
         endDate: null,
         customer: { id: "cust-2", user: { name: "Sam Renter", email: "sam@example.com" } },
         lines: [{ monthlyPriceCents: 6000 }],
-        invoices: [{ amountPaidCents: 6000, refunds: [{ amountCents: 1500 }] }],
+        invoices: [{ amountPaidCents: 6000, amountDueCents: 6000, lineItems: [{ kind: "RENTAL", amountCents: 6000 }], refunds: [{ amountCents: 1500 }] }],
       },
     ]);
 
-    const report = await getEarningsReport(new Date("2026-10-01"));
+    const report = await getEarningsReport(new Date("2026-10-02T06:00:00Z"));
 
     expect(report.rows).toHaveLength(2);
     expect(report.rows[0].agreementId).toBe("agr-behind");

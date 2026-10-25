@@ -131,11 +131,11 @@ describe.skipIf(!enabled)("Batch G agreement closure evidence (real Postgres)", 
   });
 
   it("keeps an agreed end date separate from the actual closure timestamp", async () => {
-    const agreedEnd = new Date("2026-09-11T00:00:00Z");
+    const agreedEnd = new Date("2026-09-11T06:00:00Z");
     const agreement = await createAgreement({
-      startDate: new Date("2026-09-01T00:00:00Z"),
+      startDate: new Date("2026-09-01T06:00:00Z"),
       endDate: agreedEnd,
-      billingStartedAt: new Date("2026-09-01T00:00:00Z"),
+      billingStartedAt: new Date("2026-09-01T06:00:00Z"),
     });
 
     const before = Date.now();

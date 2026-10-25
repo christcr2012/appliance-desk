@@ -113,6 +113,10 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   are off). Once texting is live: Settings → Security → tick "Send sign-in codes by text" and save (the Switches page then
   shows it), save your mobile phone on My account → check it with the text code → My account → "Second step" → switch
   to text codes. Keep your backup codes. Worked: your next sign-in texts you a code.
+- [ ] **Have the three sensitive text wordings read by a lawyer (COM-N1C, optional until you want them on):** Settings → Phone, texts
+  and provider costs → "Customer text messages": the friendly invoice reminder, the refund-issued text and the rental-ending
+  text each stay locked until you click "Confirm a professional has read this wording". Worked: the switch-on button unlocks for that
+  text only. (The other billing texts are not locked.) Changing the wording removes the confirmation.
 - [ ] **Real business details** (name, phone, email, address, hours, service area) in Desk → Settings; choose a lawful public
   mailing address that is not your home (IN-01); confirm `support@` reply-to works end to end (IN-02);
   `BETTER_AUTH_URL` set to the real domain and emailed links checked.
@@ -151,6 +155,11 @@ Agents will do the parts they safely can and record what they saw; the rest need
   your real bank statements, Stripe and a trial accounting company (QuickBooks free edition preferred — IN-54); pick the
   real bank and record opening balances (IN-55); only then, separately, decide the date to turn on budget funding
   (it stays OFF). Compare one real month of published plan vs actual (K-CASH-7).
+
+- [ ] **Removed receipt files really leave storage** (older review findings): after the version is live, remove one wrong
+  receipt page on a purchase that is allowed to lose a page, then 30 days later open Desk → Automations → "Stored file
+  clean-up" and confirm its last run shows one file deleted. Agents tested the waiting list and the rules against a stand-in
+  for the storage company; the real private store was not touched. Worked: the run shows "deleted" and nothing else is missing.
 
 ## D. Other people's systems (trial companies, provider reviews)
 
@@ -194,4 +203,5 @@ on readiness).
 | 2026-10-24 | Testing owner password fix, agent-run M-3 check, GitHub release-branch protection | Audit of the testing setup: the testing build failed at the owner step; `live`/`testing` had no GitHub protection and the connector correctly refuses to change protection without you. |
 | 2026-10-23 | ACC rows: email-code decision (IN-85), build-order decision, second sign-in method, Twilio sign-in-code use case | Chris asked for invitations, account self-service, recovery and text/email codes (design: designs/ACCOUNTS-AND-SIGN-IN.md). |
 | 2026-10-24 | Shop-sale card page in Stripe test mode | M-3 was proved only against a pretend Stripe; a real test-mode payment needs Chris's Stripe test keys. |
+| 2026-10-25 | Removed receipt files really leave storage | The clean-up of removed files was proved against a stand-in, not the real private store. |
 | 2026-10-23 | Vercel "Sensitive" tidy-up | Read-only check of Vercel found two production settings readable by project members. |
