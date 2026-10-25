@@ -8,7 +8,7 @@ const STATE_WORDS: Record<string, string> = {
 
 /** "Text this person" box for a lead, estimate or agreement screen. Shows the exact words before anything is sent. */
 export async function SendTextPanel(props: {
-  userId: string; entityType: "Lead" | "Estimate" | "RentalAgreement"; entityId: string; path: string;
+  userId: string; entityType: "Lead" | "Estimate" | "RentalAgreement" | "Job" | "MaintenanceRequest"; entityId: string; path: string;
   families: string[]; principal: { leadId?: string; customerId?: string };
 }) {
   const [previews, history] = await Promise.all([

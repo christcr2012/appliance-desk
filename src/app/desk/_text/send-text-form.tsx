@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 import type { WorkflowTextPreview } from "@/domains/messaging/workflow-text";
 import { recordTextConsentAction, sendTextAction, type TextActionState } from "./actions";
 
@@ -9,8 +9,13 @@ const METHODS: [string, string][] = [["PHONE", "They agreed on the phone"], ["WR
 export function SendTextForm({ preview, subjectId, path, principal }: {
   preview: WorkflowTextPreview; subjectId: string; path: string; principal: { leadId?: string; customerId?: string };
 }) {
-  const token = useId().replace(/[^A-Za-z0-9]/g, "").padEnd(10, "0").slice(0, 30);
+  const screenId = useId().replace(/[^A-Za-z0-9]/g, "").padEnd(10, "0").slice(0, 26);
+  const [round, setRound] = useState(0);
+  const token = `${screenId}r${round}`;
   const [sendState, send, sending] = useActionState<TextActionState, FormData>(sendTextAction, null);
+  // Each finished attempt starts a new round, so a deliberate "send again" is a new text, while a double click
+  // inside one round is still recognised as the same send.
+  useEffect(() => { if (sendState) setRound((r) => r + 1); }, [sendState]);
   const [consentState, consent, saving] = useActionState<TextActionState, FormData>(recordTextConsentAction, null);
   const duplicate = preview.blockers.some((b) => b.code === "RECENT_DUPLICATE");
   const hard = preview.blockers.filter((b) => b.code !== "RECENT_DUPLICATE" && b.code !== "NEEDS_CONSENT");
@@ -22,7 +27,7 @@ export function SendTextForm({ preview, subjectId, path, principal }: {
     {preview.text && <blockquote className="mt-2 rounded bg-surface-soft p-2 text-sm">{preview.text}
       <span className="block text-xs text-ink-soft">{preview.segments} text part{preview.segments === 1 ? "" : "s"}</span></blockquote>}
     <p className="mt-1 text-xs text-ink-soft">{preview.quietHours}</p>
-    {hard.length > 0 && <ul className="mt-2 list-disc pl-5 text-sm" role="status">{hard.map((b) => <li key={b.code}>{b.message}</li>)}</ul>}
+    {hard.length > 0 && <div role="status" className="mt-2 text-sm"><ul className="list-disc pl-5">{hard.map((b) => <li key={b.code}>{b.message}</li>)}</ul></div>}
     {needsConsent && hard.length === 0 && <form action={consent} className="mt-2 space-y-2 rounded border border-line p-2">
       <p className="text-sm">There is no recorded permission to text this number. If they have agreed to get texts from you, record how.</p>
       <input type="hidden" name="path" value={path} />
