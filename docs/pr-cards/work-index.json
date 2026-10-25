@@ -1528,7 +1528,7 @@
       "dependencies": [
         "O-2A"
       ],
-      "status": "MERGED_PARTIAL",
+      "status": "MERGED",
       "migration": "none",
       "budget": 400,
       "units": [
@@ -1538,13 +1538,15 @@
         "docs/designs/BATCH-O.md",
         "src/domains/capabilities/index.ts",
         "src/domains/settings/index.ts",
-        "src/domains/packages/index.ts"
+        "src/domains/packages/index.ts",
+        "e2e/role-shaped-pages.spec.ts"
       ],
       "tests": [
         "tests/capabilities-integration.test.ts",
-        "tests/lead-scoring-policy.test.ts"
+        "tests/lead-scoring-policy.test.ts",
+        "e2e/role-shaped-pages.spec.ts"
       ],
-      "readiness": "MERGED_PARTIAL",
+      "readiness": "MERGED",
       "card": "docs/pr-cards/O-2B.md"
     },
     {
