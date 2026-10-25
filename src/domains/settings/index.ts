@@ -53,6 +53,8 @@ const DEFAULT_SETTINGS = {
   twelveMonthPrepayFreeMonthEnabled: true,
   referralRewardCents: 2500,
   draftReservationHoldDays: 7,
+  receiptFileKeepDays: 30,
+  unsentPhotoKeepDays: 1,
   customerEmailEnabled: false,
   twoFactorRequiredRoles: ["OWNER", "ADMIN"] as unknown,
   autoRenewEnabled: false,
@@ -152,6 +154,8 @@ export type BusinessSettingsUpdate = Partial<{
   twelveMonthPrepayFreeMonthEnabled: boolean;
   referralRewardCents: number;
   draftReservationHoldDays: number;
+  receiptFileKeepDays: number;
+  unsentPhotoKeepDays: number;
   // Rental ending and renewal policy (null = not decided yet).
   earlyTerminationFeeCents: number | null;
   earlyTerminationFeePercent: number | null;

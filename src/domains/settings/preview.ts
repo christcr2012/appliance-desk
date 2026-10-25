@@ -26,7 +26,7 @@ export const SECTION_STORED_KEYS: Record<EditableSettingsSection, readonly strin
     "damageWaiverEnabled", "depositEnabled", "lateFeeGraceDays", "lateFeeFlatCents", "lateFeePercent",
     "sixMonthPrepayDiscountSetCents", "sixMonthPrepayDiscountSingleCents",
     "twelveMonthPrepayDiscountSetCents", "twelveMonthPrepayDiscountSingleCents",
-    "twelveMonthPrepayFreeMonthEnabled", "referralRewardCents", "draftReservationHoldDays",
+    "twelveMonthPrepayFreeMonthEnabled", "referralRewardCents", "draftReservationHoldDays", "receiptFileKeepDays", "unsentPhotoKeepDays",
   ],
 };
 

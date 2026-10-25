@@ -50,6 +50,14 @@ export async function scanAccessibilityRoute(
 
     for (const width of viewports) {
       await page.setViewportSize({ width, height: 900 });
+      // Let the browser finish laying the page out at the new width before measuring.
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      if (width <= 400) {
+        // Older review finding (pr39): wide content must never push the page sideways on a phone. A table or form that
+        // is wider than the screen has to scroll inside its own box, not drag the whole page.
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(overflow, `${route.path} should not scroll sideways at ${width}px in ${theme} mode`).toBeLessThanOrEqual(0);
+      }
       const results = await new AxeBuilder({ page })
         .withTags([...AXE_TAGS])
         .analyze();

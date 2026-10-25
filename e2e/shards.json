@@ -24,6 +24,9 @@
       "shop-sales.spec.ts"
     ],
     "browser-b": [
+      "owner-controls.spec.ts",
+      "owner-price-changes.spec.ts",
+      "role-shaped-pages.spec.ts",
       "accessibility-dark-mode.spec.ts",
       "accessibility-routes-public.spec.ts",
       "fleet-report.spec.ts",
@@ -82,10 +85,7 @@
       "preapproval-estimate-prepare.spec.ts",
       "signature-public.spec.ts",
       "signature-focus.spec.ts",
-      "owner-price-changes.spec.ts",
-      "owner-controls.spec.ts",
-      "crm-workspace.spec.ts",
-      "role-shaped-pages.spec.ts"
+      "crm-workspace.spec.ts"
     ]
   }
 }

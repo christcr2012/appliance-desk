@@ -7,8 +7,8 @@ A line is **PROVEN** only when it is ticked and names its evidence. Anything wit
 ## Summary
 
 - Integrated scenarios proven by a committed test file: 17 of 17
-- Plan acceptance items proven with named evidence: 14 of 161; OPEN: 147
-- Old review findings: 83 resolved, 8 OPEN
+- Plan acceptance items proven with named evidence: 16 of 161; OPEN: 145
+- Old review findings: 91 resolved, 0 OPEN
 - Go-live switches and checks still waiting on Chris: 132
 
 ## Integrated scenarios (F2-A, F2-B)
@@ -37,14 +37,7 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 
 ## Old review findings still open
 
-- OPEN: pr39-r4118271833: The desk shell was rebuilt since; no test checks that wide content cannot push the page sideways on a phone. Needs a narrow-width browser check.
-- OPEN: pr56-r4120027259: src/domains/reports/index.ts still adds all paid invoices less refunds as 'actual' earnings, which is not limited to recurring rent receipts. Needs a decision on what th...
-- OPEN: pr56-r4120027266: Not re-verified against the current estimate calculation for calendar-month anniversary billing; needs a focused test.
-- OPEN: pr57-r4123169727: Same as the earlier earnings finding: actual earnings include more than rent while estimated earnings are rent only (src/domains/reports/earnings.ts).
-- OPEN: pr58-r4123386805: Ordinary removal or replacement of a stored photo does not delete the stored file; only privacy deletion removes media (src/domains/backup/media-deletion.ts, tests/scena...
-- OPEN: pr58-r4123386818: The upload route accepts HEIC and HEIF (src/app/api/uploads/photo/route.ts) but does not convert them, so some browsers cannot show them.
-- OPEN: pr59-r4123799792: Same as the earlier stored-file clean-up finding: replacing or removing a photo leaves the old stored file.
-- OPEN: pr60-r4124170420: Same as the earlier stored-file clean-up finding for customer-removed photos.
+- None.
 
 ## Plan acceptance items still open
 
@@ -62,7 +55,6 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 - OPEN (ticked, but no evidence file or PR named): (Amendment A 11.11) An unfiled return is a Today task that cannot be dismissed and disappears only when the return is marked filed; clicking it opens the guided "File this return" page (c...
 - OPEN (ticked, but no evidence file or PR named): Use tax computed for appliances and purchase-order lines bought without (enough) tax.
 - OPEN (ticked, but no evidence file or PR named): (Amendment D) The appliance entry form records whether sales tax was paid at purchase and how much; untaxed or under-taxed purchases record the use tax owed; each appliance's status decid...
-- OPEN: (Amendment A 11.13) The owner enters and updates the SUTS setup (areas, codes, order, screen names, deduction names, frequency, license expiry) in the app; changes apply to open returns, ...
 - OPEN (ticked, but no evidence file or PR named): (Amendment B) Colorado retail delivery fee: the app decides automatically whether it applies (lease election, small-business exemption), counts one fee per qualifying delivery, charges it...
 - OPEN (ticked, but no evidence file or PR named): Customer exemptions with certificate photo, scope and expiry.
 - OPEN (ticked, but no evidence file or PR named): (D-T14) A prepaid agreement gets one local invoice for its prepaid rent with sales tax at signing, so prepaid rent appears on returns.
@@ -102,7 +94,6 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 - OPEN (ticked, but no evidence file or PR named): W-10: the use-tax return page has a "File now" panel (opens Revenue Online, each value in screen order with a copy button) and prints the official DR 0252 filled in.
 - OPEN: W-11 (after IN-61): new and existing addresses get Colorado's rates automatically from the GIS API; unmatched addresses and a broken key become To do items; billing never uses an unconfir...
 - OPEN: W-12 (after IN-62 and IN-44): the sales tax return page offers an XML file that passes Colorado's schema in a test; not offered while a deduction line is undecided. _(NOT BUILT: waits on ...
-- OPEN: Nothing in the app submits a return, stores a tax-site or bank login, or starts a tax payment (D-WA2). _(guard test added: `tests/tax-no-site-login-guard.test.ts`)_
 - OPEN (ticked, but no evidence file or PR named): W-18: dollar-entry kit, two-decimal money displays, accessible glossary InfoTip, converted tax setup inputs and static UI money guard. Additional future screens inherit this shared contract.
 - OPEN: W-22 (Amendment B 6.2; IN-73, IN-74, IN-80): signing collects a $45 administrative setup fee once per delivery location (owner may change it with a reason) and the first month as a down p...
 - OPEN (ticked, but no evidence file or PR named): W-5 addition (Amendment B 6.7): every unpaid invoice has "Send payment link" (Stripe's secure invoice page by email, plus Copy link) with a short message explaining what it is for, amount...
@@ -121,16 +112,16 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 - OPEN: A pickup sale is taxed at the shop's tax areas and a delivered sale at the customer's; delivered taxable sales follow the delivery-fee rules. _(Audit: tax by location built; the Colorado ...
 - OPEN (ticked, but no evidence file or PR named): Resale is recorded per purchase-order line; resale units create no use tax when bought and record use tax only when used or lost (tax-paid units in the same stock never do), following the...
 - OPEN (ticked, but no evidence file or PR named): Walk-in sales belong to the one built-in walk-in customer (cannot sign in, never emailed, hidden from customer lists); delivered sales need a real customer.
-- OPEN: Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought). _(Audit: item sales built; used-appliance sales are NOT built (M-2C))_
+- OPEN: Item and used-appliance sales post income only (no cost of goods sold — parts are expensed when bought). _(item sales and used-appliance sales built; M-2C merged)_
 - OPEN: Retiring still removes the unit from everything rentable; every retired appliance can get a plan (sell / strip for parts / scrap / throw away / other), changeable until done; a sale compl...
 - OPEN (ticked, but no evidence file or PR named): Parts kept from a stripped appliance enter parts stock at $0 cost exactly once and list on the appliance page.
 - OPEN: Scrap checks are lump "Scrap money received" entries (scrap income); dump fees are normal expenses; no per-appliance fees are asked; a done plan writes off the remaining book value in Bat...
 - OPEN (ticked, but no evidence file or PR named): One Today follow-up item for retired appliances undecided or not done after the owner-set days (starting 30, 0 = off).
-- OPEN: Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean. _(Audit: sales tax categories feed the engine; revenue reports la...
+- OPEN: Shop sales appear on the SUTS return and as "Shop sales" in revenue reports; screens explained in plain words; axe clean. _(Audit: sales tax categories feed the engine; revenue reports no...
 - OPEN: Every item in "Rules that apply to every batch".
 - OPEN (ticked, but no evidence file or PR named): Settings history in plain words with one-step undo through the normal save path.
 - OPEN (ticked, but no evidence file or PR named): Per-person capability overrides whose defaults reproduce today's permissions exactly (table test).
-- OPEN: Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Audit: write-off and expense approvals built (O-3A); refund, credit and kept-deposit approvals ar...
+- OPEN: Approval thresholds per money action; requests execute once, re-validated, with expiry. _(Built: write-off and expense approvals (O-3A) and refund, held-payment refund, kept-deposit and c...
 - OPEN (ticked, but no evidence file or PR named): Scheduled price changes applied once on their start date; agreements unchanged. _(applies to appliance-type prices; package and set prices are not covered)_
 - OPEN (ticked, but no evidence file or PR named): Goals with pace on Today; idle-appliance and utilization alerts.
 - OPEN (ticked, but no evidence file or PR named): Read-only page of every live switch with links.
@@ -159,7 +150,7 @@ Connection check: `tests/connection-check.test.ts` (every To do button and Relat
 ### Near-term acceptance (COM-N)
 
 - OPEN: Workflow templates/rules activated individually; click-to-call/STAFF job-scoped actions preserve actor and legal boundaries. _(NOT BUILT: no lead/job/billing SMS senders, no click-to-call...
-- OPEN: Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction. _(NOT BUILT: TelecomStatement has no link to an Expense yet)_
+- OPEN: Verified paid statement links to one existing K Expense; no usage/top-up/invoice double posting; K closed-period correction. _(Built in COM-N3, PR in review: the link, owner booking form,...
 - OPEN: Service metrics, reliable linked-cost unit economics/forecasts registered in METRICS; sparse data is unavailable, no invented causal attribution. _(NOT BUILT: no service-metrics, unit-eco...
 - OPEN: O controls and BP business scenarios consume existing evidence.
 

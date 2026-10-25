@@ -40,6 +40,8 @@ export const UNDOABLE_SETTINGS: Record<string, Spec> = {
   twelveMonthPrepayFreeMonthEnabled: { label: "Free month with 12-month prepay", kind: "yesno" },
   referralRewardCents: { label: "Referral reward", kind: "money" },
   draftReservationHoldDays: { label: "Days to hold a draft reservation", kind: "days" },
+  receiptFileKeepDays: { label: "Days to keep a removed receipt file", kind: "days" },
+  unsentPhotoKeepDays: { label: "Days to keep a photo removed before sending", kind: "days" },
   defaultJobDurationMinutes: { label: "Default visit length (minutes)", kind: "number" },
   staffMayWorkUnassignedJobs: { label: "Staff may take unassigned visits", kind: "yesno" },
   pickupDayNotBilled: { label: "Pickup day not billed", kind: "yesno" },
