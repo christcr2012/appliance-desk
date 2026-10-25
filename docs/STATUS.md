@@ -6,6 +6,10 @@ counted once). Anything without enough history says so instead of guessing: unde
 time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
 reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
 Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
+## October 25 — Owner controls: browser tests for goals, approval limits, permissions and workspace
+
+In progress (branch `ai/claude/owner-controls-browser-tests`). One new real-browser spec (`e2e/owner-controls.spec.ts`, phone width, keyboard, accessibility check) walks the owner through setting and removing a cash goal, filling in and saving approval limits and turning them off, taking one permission away from an admin and giving it back, and pinning/unpinning workspace shortcuts. It passes locally; CI result pending. Switches and price changes already have their own specs. Nothing for Chris to do.
+
 ## October 25 — Nightly spend-alert check wired in (in PR, notifies nobody)
 
 The overnight phone-usage job now also runs the spend-alert check as a read-only preview, but only if you have turned the alert rules on
