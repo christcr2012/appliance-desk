@@ -47,9 +47,13 @@ for (const role of ["owner", "staff"] as const) {
       await expect(
         dialog.getByRole("link", { name: "Today", exact: true }),
       ).toHaveAttribute("aria-current", "page");
+      // The menu entries (14 owner / 10 staff) plus the "App feedback" link under them (MCP-10a).
       expect(await dialog.getByRole("link").count()).toBe(
-        role === "owner" ? 14 : 10,
+        role === "owner" ? 15 : 11,
       );
+      await expect(
+        dialog.getByRole("link", { name: "App feedback", exact: true }),
+      ).toHaveAttribute("href", "/desk/feedback/new?from=%2Fdesk%2Ftoday");
       await expect(
         dialog.getByRole("link", { name: "Communications", exact: true }),
       ).toHaveCount(1);

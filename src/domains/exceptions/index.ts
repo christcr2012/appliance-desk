@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { listSigningPaymentAttention } from "./signing-payment-attention";
 import { listCancellationRefundAttention } from "./cancellation-refund-attention";
 import { listSignedDeliveryAttention } from "./signed-delivery-attention";
+import { listFeedbackWaiting } from "./feedback-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
 import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
 import { listUnsignedAgreements } from "./unsigned-agreements";
@@ -1048,6 +1049,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const pickupUnscheduled = canViewFinance ? await listPickupUnscheduled(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const cleaningNeeded = canViewFinance ? await listCleaningNeeded(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const visitNeedsAssignment = canViewFinance ? await listVisitNeedsAssignment(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  // MCP-10a: app feedback waiting for the team (owner and admins only).
+  const feedbackWaiting = canViewFinance ? await listFeedbackWaiting(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const salesTaxItems = items
     .filter((item) => item.category === "SALES_TAX")
     .sort((left, right) => left.since.getTime() - right.since.getTime());
@@ -1081,6 +1084,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...pickupUnscheduled.rows,
     ...visitNeedsAssignment.rows,
     ...cleaningNeeded.rows,
+    ...feedbackWaiting.rows,
     ...cappedSalesTaxItems,
     ...filingAttention.returns.rows,
     ...filingAttention.licenses.rows,
@@ -1137,6 +1141,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["PICKUP_UNSCHEDULED", pickupUnscheduled],
       ["VISIT_NEEDS_ASSIGNMENT", visitNeedsAssignment],
       ["CLEANING_NEEDED", cleaningNeeded],
+      ["FEEDBACK_WAITING", feedbackWaiting],
       ["OVERDUE_JOB", overdueJobs],
       ["UNREVIEWED_MAINTENANCE_REQUEST", unreviewedRequests],
       ["UNINSPECTED_RETURN", uninspectedAppliances],

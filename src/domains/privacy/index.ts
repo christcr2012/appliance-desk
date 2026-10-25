@@ -6,6 +6,7 @@ import { isRateLimited } from "@/lib/rate-limit";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getPrivatePhotoStore } from "@/lib/photo-storage";
 import { deletePrivatePhotoWithRecovery } from "@/domains/backup/media-deletion";
+import { privateBlobUrl } from "@/domains/feedback/media";
 
 const TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
 const PRIVACY_RATE_LIMIT = { max: 5, windowMs: 60 * 60 * 1000 } as const;
@@ -291,6 +292,29 @@ export async function buildPrivacyExport(userId: string, requestId: string): Pro
     prisma.privacyRequest.findMany({ where: { customerId }, orderBy: { createdAt: "asc" }, select: { id: true, kind: true, status: true, createdAt: true, verifiedAt: true, fulfilledAt: true, rejectedReason: true } }),
   ]);
   const [serviceAddresses, addressTaxLocations, rentalLines, signatures, maintenanceRequests, invoiceLineItems, payments, refunds, receipts, credits, consents, notices, contacts, notes, jobs, estimates, artifacts, privacyRequests] = data;
+  // MCP-10a: the person's app feedback: their reports, their own messages and the replies they were shown (never the
+  // team's internal notes), and the file names of their pictures.
+  const feedbackReports = await prisma.feedbackReport.findMany({
+    where: { reporterUserId: customer.user.id },
+    orderBy: { createdAt: "asc" },
+    select: {
+      number: true, kind: true, title: true, description: true, expected: true, steps: true, state: true, createdAt: true,
+      entries: {
+        where: { visibility: "REPORTER" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: { body: true, createdAt: true, authorUserId: true },
+      },
+      attachments: { where: { deletedAt: null }, select: { pathname: true } },
+    },
+  });
+  const appFeedback = feedbackReports.map((report) => ({
+    number: report.number, kind: report.kind, title: report.title, description: report.description,
+    expected: report.expected, steps: report.steps, state: report.state, createdAt: report.createdAt,
+    messages: report.entries.map((entry) => ({
+      from: entry.authorUserId === customer.user.id ? "you" : "Robinson Appliance Rentals", body: entry.body, at: entry.createdAt,
+    })),
+    pictureFiles: report.attachments.map((row) => row.pathname.split("/").at(-1)),
+  }));
 
   const exportObject = {
     exportedAt: new Date().toISOString(),
@@ -316,11 +340,12 @@ export async function buildPrivacyExport(userId: string, requestId: string): Pro
     estimates,
     documentArtifacts: artifacts,
     privacyRequests,
+    appFeedback,
   };
   return Buffer.from(JSON.stringify(exportObject, null, 2), "utf8");
 }
 
-const PSEUDONYMIZED = ["User", "Customer", "ServiceAddress", "AddressTaxLocation", "CustomerContact", "Lead"];
+const PSEUDONYMIZED = ["User", "Customer", "ServiceAddress", "AddressTaxLocation", "CustomerContact", "Lead", "FeedbackReport", "FeedbackEntry", "FeedbackAttachment"];
 const RETAINED = ["Invoice", "Payment", "Receipt", "Refund", "CustomerCredit", "SignatureRecord", "DocumentArtifact", "CustomerNotice", "AuditLog"];
 
 type PrivacyDeletionClaim = {
@@ -328,6 +353,8 @@ type PrivacyDeletionClaim = {
   customerId: string | null;
   photoIds: string[];
   blobUrls: string[];
+  /** MCP-10a: the person's app-feedback picture records (their files are in blobUrls, deleted with the same tombstone rule). */
+  feedbackAttachmentIds: string[];
   blobStore: { token: string; storeId: string } | null;
 };
 
@@ -346,7 +373,7 @@ async function claimPrivacyDeletion(
       throw new Error("This is not a customer deletion request.");
     }
     if (request.status === "FULFILLED") {
-      return { fulfilled: true, customerId: null, photoIds: [], blobUrls: [], blobStore: null };
+      return { fulfilled: true, customerId: null, photoIds: [], blobUrls: [], feedbackAttachmentIds: [], blobStore: null };
     }
     if (request.status !== "VERIFIED") {
       throw new Error("Verify the customer's identity before deleting personal data.");
@@ -359,6 +386,9 @@ async function claimPrivacyDeletion(
       where: { id: request.customerId },
       select: { id: true, userId: true },
     });
+    // MCP-10a: lock the person's row before listing their app-feedback pictures. A picture save locks the same row
+    // (FOR SHARE) and refuses once this claim is recorded, so no picture can slip in between claim and fulfilment.
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${customer.userId} FOR UPDATE`;
     const privateRequestPhotos = await tx.photo.findMany({
       where: {
         applianceId: null,
@@ -367,9 +397,14 @@ async function claimPrivacyDeletion(
       },
       select: { id: true, url: true },
     });
-    const blobUrls = privateRequestPhotos.map((row) => row.url).filter(isVercelBlobUrl);
-    const privateStore = blobUrls.length > 0 ? getPrivatePhotoStore() : null;
-    if (blobUrls.length > 0 && !privateStore) {
+    const feedbackAttachments = await tx.feedbackAttachment.findMany({
+      where: { deletedAt: null, report: { reporterUserId: customer.userId } },
+      select: { id: true, pathname: true },
+    });
+    const photoBlobUrls = privateRequestPhotos.map((row) => row.url).filter(isVercelBlobUrl);
+    const needsStore = photoBlobUrls.length > 0 || feedbackAttachments.length > 0;
+    const privateStore = needsStore ? getPrivatePhotoStore() : null;
+    if (needsStore && !privateStore) {
       throw new Error("Private photo storage is unavailable; privacy deletion was not fulfilled.");
     }
 
@@ -396,7 +431,11 @@ async function claimPrivacyDeletion(
       fulfilled: false,
       customerId: customer.id,
       photoIds: privateRequestPhotos.map((row) => row.id),
-      blobUrls,
+      blobUrls: [
+        ...photoBlobUrls,
+        ...(privateStore ? feedbackAttachments.map((row) => privateBlobUrl(privateStore.storeId, row.pathname)) : []),
+      ],
+      feedbackAttachmentIds: feedbackAttachments.map((row) => row.id),
       blobStore: privateStore,
     };
   });
@@ -549,6 +588,38 @@ export async function fulfillPrivacyDeletion(
       await tx.photo.deleteMany({ where: { id: { in: claim.photoIds } } });
     }
 
+    // MCP-10a: app feedback. The words and pictures go; the report number, status and dates stay (needed history).
+    const feedbackReports = await tx.feedbackReport.findMany({
+      where: { reporterUserId: customer.userId, contentRemovedAt: null },
+      select: { id: true, state: true },
+    });
+    // Belt and braces: a live picture the claim did not list (and so did not delete with a tombstone) must never stay
+    // behind. Refuse; the retry re-claims and deletes it.
+    const unclaimed = await tx.feedbackAttachment.count({
+      where: { deletedAt: null, report: { reporterUserId: customer.userId }, id: { notIn: claim.feedbackAttachmentIds } },
+    });
+    if (unclaimed > 0) {
+      throw new Error("A new app feedback picture was saved while this deletion was running. Run the deletion again to finish it.");
+    }
+    if (claim.feedbackAttachmentIds.length > 0) {
+      await tx.feedbackAttachment.updateMany({ where: { id: { in: claim.feedbackAttachmentIds } }, data: { deletedAt: now } });
+    }
+    await tx.feedbackEntry.updateMany({ where: { authorUserId: customer.userId }, data: { body: "Removed" } });
+    if (feedbackReports.length > 0) {
+      await tx.feedbackReport.updateMany({
+        where: { id: { in: feedbackReports.map((row) => row.id) } },
+        data: {
+          title: "Removed", description: "Removed at the person's request", expected: null, steps: null,
+          contentRemovedAt: now, awaitingTeam: false, version: { increment: 1 },
+        },
+      });
+      await tx.feedbackEvent.createMany({
+        data: feedbackReports.map((row) => ({
+          reportId: row.id, actorUserId: userId, action: "CONTENT_REMOVED", fromState: row.state, toState: row.state,
+        })),
+      });
+    }
+
     await tx.privacyRequest.update({
       where: { id: requestId },
       data: {
@@ -568,7 +639,7 @@ export async function fulfillPrivacyDeletion(
         action: "privacy.deletion_fulfilled",
         entityType: "PrivacyRequest",
         entityId: requestId,
-        newValue: { customerId: customer.id, photosDeleted: claim.photoIds.length },
+        newValue: { customerId: customer.id, photosDeleted: claim.photoIds.length, feedbackReportsCleared: feedbackReports.length },
       },
     });
 

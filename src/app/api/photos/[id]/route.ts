@@ -2,7 +2,7 @@ import { get } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "@/lib/session";
-import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
+import { getPrivatePhotoStore, isFeedbackPicturePath, privatePhotoPathFromUrl } from "@/lib/photo-storage";
 
 function expectedPrivateHost(storeId: string): string {
   return `${storeId.slice("store_".length).toLowerCase()}.private.blob.vercel-storage.com`;
@@ -32,7 +32,8 @@ export async function GET(
     },
   });
 
-  if (!photo) {
+  // MCP-10a: app-feedback screenshots are served only by /api/feedback-attachments, never as a general photo.
+  if (!photo || isFeedbackPicturePath(photo.url)) {
     return NextResponse.json({ error: "Photo not found." }, { status: 404 });
   }
 

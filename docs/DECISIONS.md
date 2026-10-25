@@ -1447,3 +1447,18 @@ The answer still has to be entered by the owner on the "What gets taxed" screen,
 because the app never invents a tax opinion or writes tax settings to the live database for him. Delivery and installation
 charges on a sale follow their own existing rules. Recorded on OWNER-CHECKLIST.
 
+
+## 2026-10-25 — MCP-10a app feedback: small engineering choices inside the build spec
+
+- A team member's own report opens at `/desk/feedback/mine/[id]`; `/desk/feedback/[id]` is the owner/admin triage
+  page. The spec named both `/…/feedback/[id]`, which would clash for an owner who also sends feedback.
+- "Already reported" is reached only through "Mark as already reported…" (it needs the other report's number), so the
+  plain "Change status…" list never offers it. Its recorded reason is "Same as report #N".
+- For "and mark as" Fixed / Not planned in a reply, the reply text (first 500 characters) is the recorded reason.
+- Adding a picture does not change the report's version (it changes nothing the other screens would overwrite); the
+  picture count is re-checked under the report's row lock.
+- `/desk/help` does not exist yet, so the desk entry points are the side menu / phone menu link and More › App feedback.
+- Feedback screens are English only until a Spanish reviewer checks the wording (DQ-MCP10A-3); changing the reviewed
+  portal translation set would switch Spanish customers back to English pending review.
+- Pictures upload through the server, never with a browser storage token; 900 KB per picture is the transport cap
+  (the app-wide 1 MB server-action limit stays as it is), so `feedbackMaxAttachmentMb` was dropped as the spec says.

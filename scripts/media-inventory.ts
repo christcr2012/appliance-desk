@@ -8,8 +8,9 @@ import {
 import {
   privacyDeletionTombstonePath,
 } from "../src/domains/backup/media-deletion";
+import { privateBlobUrl } from "../src/domains/feedback/media";
 
-const PRIMARY_PREFIXES = ["jobs/", "appliances/", "maintenance-requests/"] as const;
+const PRIMARY_PREFIXES = ["jobs/", "appliances/", "maintenance-requests/", "feedback/"] as const;
 const MEDIA_MANIFEST_SUFFIX = ".media.json";
 
 export type MediaManifestEntry = {
@@ -195,10 +196,21 @@ export async function runMediaInventoryAndCopy(input: {
     (await listAll("recovery/tombstones/", store.token)).map((blob) => blob.pathname),
   );
 
-  const photos = await prisma.photo.findMany({
+  const photoRows = await prisma.photo.findMany({
     select: { id: true, url: true },
     orderBy: { id: "asc" },
   });
+  // MCP-10a: app-feedback screenshots live in the same private store (feedback/<report>/<id>.webp) but in their own
+  // table. Live ones are copied too; a removed one (privacy deletion) is skipped, and its tombstone blocks a restore.
+  const feedbackRows = await prisma.feedbackAttachment.findMany({
+    where: { deletedAt: null },
+    select: { id: true, pathname: true },
+    orderBy: { id: "asc" },
+  });
+  const photos = [
+    ...photoRows,
+    ...feedbackRows.map((row) => ({ id: `feedback:${row.id}`, url: privateBlobUrl(store.storeId, row.pathname) })),
+  ];
   const referencedPaths = new Set<string>();
   const entries: MediaManifestEntry[] = [];
 

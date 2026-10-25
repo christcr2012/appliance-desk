@@ -15,6 +15,7 @@ import {
 } from "./scheduling";
 import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
 import { assertJobScopeInTx } from "./scope";
+import { assertNotFeedbackPicture } from "@/lib/photo-storage";
 import { lockRentalAgreementInTx } from "@/domains/agreements";
 import { assertSigningPaymentReadyForDispatchInTx } from "@/domains/billing/signing-dispatch-readiness";
 
@@ -382,6 +383,8 @@ export async function addJobPhoto(
   jobId: string,
   input: { url: string; altText?: string | null },
 ) {
+  // MCP-10a: a feedback screenshot address is never attached to a job (team-wide photo reads would expose it).
+  assertNotFeedbackPicture(input.url);
   return prisma.$transaction(async (tx) => {
     const actor = await assertActiveTeamActor(tx, userId);
     await assertJobScopeInTx(tx, { userId, role: actor.role as TeamRole }, { jobId, write: "PHOTO" });

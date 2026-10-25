@@ -24,4 +24,8 @@ collect data nobody can manage.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+2026-10-25 (branch `ai/claude/mcp-10a-feedback`): built in one PR — data + migration `20261027020000_feedback`,
+domain `src/domains/feedback`, screenshots (browser shrink, server magic-byte check, sharp re-encode without
+metadata, private store, read route), reporter and triage screens, Settings › App feedback, To do item, privacy
+export/deletion, backup/restore coverage, tests (unit, real-Postgres, browser). Not yet observed: a screenshot saved
+to a real private store (the disposable CI environment has none; the form then says pictures can't be saved).
