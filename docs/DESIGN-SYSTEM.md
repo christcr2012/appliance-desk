@@ -61,11 +61,19 @@ required before launch (Phase 2/7).
 - `/desk/**` and `/account/**` are marked `noindex, nofollow` (see
   `next.config.ts`) — they should never appear in search results.
 
+### Quiet screens (Chris, 2026-10-25)
+
+Screens explain themselves through layout, labels and status, not paragraphs. At most one short line under a page
+title (often none). Help, definitions and "why" go behind an ⓘ (`src/components/ui/info-tip.tsx`, text in
+`src/lib/glossary.ts`). Empty states are one line plus one button. Filters live in one place (tabs with counts plus a
+single Filter sheet), never in several permanent rows of chips. A page should look like professional business
+software, not a web page of instructions. See [designs/LEADS-WORKSPACE.md](designs/LEADS-WORKSPACE.md) section 3.
+
 ### No bare link lists (Chris, 2026-10-25)
 
 Desk pages must look and behave like an application, not an informational website. Never put rows of underlined
 navigation links on a page. Sibling pages of one feature use a **tab bar**; places to go use **task cards** (short
-title, one sentence saying what it is for and when you would use it, a live status badge, one large tap target);
+title, a live status badge, an ⓘ saying what it is for and when you would use it, one large tap target);
 actions use **buttons** on the To do item or record they belong to. Inline links are allowed only inside a sentence
 that already explains them. See [designs/BOOKS-AUTOPILOT.md](designs/BOOKS-AUTOPILOT.md) principle 7 and BA-6.
 

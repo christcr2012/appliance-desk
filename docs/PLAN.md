@@ -401,6 +401,19 @@ Batch K intent (nightly posting, automatic depreciation, purchase-date in-servic
 - [ ] BA-6: no desk page shows rows of bare navigation links; a guard test enforces it.
 - [ ] Every item in "Rules that apply to every batch".
 
+## Batch LD — Leads workspace — DESIGNED 2026-10-25, awaiting Chris's go-ahead
+
+Design: [designs/LEADS-WORKSPACE.md](designs/LEADS-WORKSPACE.md); units LD-1…LD-4 in work-index.
+
+- [ ] LD-1: derived stages (New, Contacted, Quote sent, Won, Lost) from one rule; lead owner with "new leads go to"
+  setting incl. round-robin; speed-to-lead target in business hours; duplicate flag and merge; indexes, fast search
+  and cursor paging proven at 50,000 leads.
+- [ ] LD-2: one work queue with stage tabs and counts, "Next up" order, one-tap call/email (text when live), one filter
+  sheet, saved views, bulk actions and board on desktop; quiet screen (no explanatory paragraphs).
+- [ ] LD-3: lead detail with stage stepper, one next-step card, inline edits, quotes, convert or lose.
+- [ ] LD-4: insights (speed to lead, quote rate, win rate, pipeline value, sources, lost reasons) with ⓘ definitions.
+- [ ] Every item in "Rules that apply to every batch".
+
 ## Batch BP — Business offers operations and partnerships — PROPOSED
 
 Design: `docs/designs/BATCH-BP.md`; work coverage and prerequisites: work-index.

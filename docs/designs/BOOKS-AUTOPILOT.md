@@ -39,7 +39,10 @@ the owner workflow that was never designed.
    person knows (a receipt, a judgment call, "yes, this month looks right").
 2. **One clear path, shown as To do items.** The owner never has to remember to visit Books. When something needs
    them, it appears on Today with one button that opens the exact step.
-3. **Plain words first, accountant words second.** Every screen leads with what it means for the business ("You made
+3. **Quiet screens** (Chris, 2026-10-25: "I can't have you filling up my screens with explanations"). At most one
+   short line under a title; every explanation goes behind an ⓘ (`InfoTip`). The wording examples in this document
+   are tooltip or label text, not paragraphs to print on the page.
+   **Plain words first, accountant words second.** Every screen leads with what it means for the business ("You made
    $1,240 profit in October"). Debits, credits, journal numbers and account codes live under "For your accountant".
 4. **History never changes.** Unchanged K rules: entries are never edited or deleted; corrections are new entries;
    locked months stay locked; late items go into the next open month with "late for <date>".
@@ -50,8 +53,8 @@ the owner workflow that was never designed.
 7. **No bare link lists — every destination explains itself** (Chris, 2026-10-25: links "plastered" on pages make
    the system look like an informational website, and "nobody knows what they are for … why would somebody need to
    click them and when?"). Navigation inside a feature is a **tab bar** or **task cards**, never a row of underlined
-   words. A task card has: a short title, one sentence starting "Use this when…" or "Do this…", a live status badge
-   ("Up to date", "2 need you", "Not set up yet", "Locked"), and one large tap target. Most visits should start from a
+   words. A task card has: a short title, a live status badge ("Up to date", "2 need you", "Not set up yet",
+   "Locked"), an ⓘ that explains what it is for and when you would use it, and one large tap target. Most visits should start from a
    To do item, not from browsing. Inline text links stay only inside a sentence where they explain themselves. Rule
    recorded in [DESIGN-SYSTEM.md](../DESIGN-SYSTEM.md); BA-6 applies it to the rest of the desk.
 8. **Book value is not tax value.** Keep the existing disclaimers and CPA evidence gates; book depreciation never
@@ -189,8 +192,8 @@ prepare but not lock; reminder severity flips after the reminder day (Denver dat
 - **This month so far** and **last month**: billed, collected, spent, profit — in dollars, with one sentence each.
 - **Needs your attention:** the Books To do items (setup, month reviews, fixes).
 - **Coming up:** next month review, next sales-tax filing (existing tax calendar), year-end package availability.
-- **Four task cards** (replacing today's row of six underlined links), each with what it is for, when to use it,
-  and a live status badge, plus the same four as a tab bar at the top of every Books page:
+- **Four task cards** (replacing today's row of six underlined links): title + status badge + ⓘ (the quoted
+  sentences below are the ⓘ text, not on-screen copy), plus the same four as a tab bar at the top of every Books page:
   1. **Month by month** — "Do this once a month: check, send to your accountant, lock." Badge: "October ready to
      review" / "All months locked". Opens the list of months (Open / Ready to review / Locked) → BA-3 page.
   2. **Reports** — "Use this when you want to know how the business is doing: profit, what you own and owe, which

@@ -4158,6 +4158,102 @@
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/BA-6.md"
+    },
+    {
+      "id": "LD-1",
+      "title": "Lead stages, ownership, speed to lead, duplicates and scale (indexes, search, cursor paging)",
+      "batch": "LD",
+      "dependencies": [],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "lead_pipeline",
+      "budget": 480,
+      "units": [
+        "LD-1"
+      ],
+      "evidence": [
+        "docs/designs/LEADS-WORKSPACE.md",
+        "src/domains/leads/workspace.ts",
+        "src/domains/leads/index.ts",
+        "prisma/schema.prisma"
+      ],
+      "tests": [
+        "tests/ld1-lead-pipeline-integration.test.ts",
+        "tests/perf/leads-scale.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/LD-1.md"
+    },
+    {
+      "id": "LD-2",
+      "title": "Leads work queue: stage tabs, Next-up order, one-tap contact, filter sheet, saved views, bulk actions, board",
+      "batch": "LD",
+      "dependencies": [
+        "LD-1"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 500,
+      "units": [
+        "LD-2"
+      ],
+      "evidence": [
+        "docs/designs/LEADS-WORKSPACE.md",
+        "src/app/desk/leads/page.tsx",
+        "src/domains/workspace/preferences.ts"
+      ],
+      "tests": [
+        "tests/ld2-lead-queue.test.ts",
+        "e2e/leads-queue.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/LD-2.md"
+    },
+    {
+      "id": "LD-3",
+      "title": "Lead detail workspace: stage stepper, next step card, inline edits, quotes, convert or lose",
+      "batch": "LD",
+      "dependencies": [
+        "LD-2"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 420,
+      "units": [
+        "LD-3"
+      ],
+      "evidence": [
+        "docs/designs/LEADS-WORKSPACE.md",
+        "src/app/desk/leads/[id]/page.tsx"
+      ],
+      "tests": [
+        "tests/ld3-lead-detail.test.ts",
+        "e2e/lead-detail.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/LD-3.md"
+    },
+    {
+      "id": "LD-4",
+      "title": "Lead insights: speed to lead, quote and win rates, pipeline value, sources, lost reasons",
+      "batch": "LD",
+      "dependencies": [
+        "LD-3"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 320,
+      "units": [
+        "LD-4"
+      ],
+      "evidence": [
+        "docs/designs/LEADS-WORKSPACE.md",
+        "src/domains/leads/index.ts"
+      ],
+      "tests": [
+        "tests/ld4-lead-insights.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/LD-4.md"
     }
   ],
   "enhancements": [

@@ -7,7 +7,7 @@ Audited baseline: main after #541, October 24, 2026 (documents re-checked agains
 Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through T, S, COM-L, W (except W-11/12/13), V, F2,
 K, K-CASH, M-1A…M-2B, O-1, O-2A, O-2B, O-3A, O-4…O-7 and ACC-1…ACC-5 is merged. The live/provider/owner acceptance checks stay separately PENDING on
 [OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
-Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed), BA books on autopilot (designed, awaiting go-ahead),
+Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed), BA books on autopilot and LD leads workspace (designed, awaiting go-ahead),
 W-11/12/13 (owner-gated), MCP-1…11. The full audited list is "What truly remains" in [PLAN](PLAN.md). **New 2026-10-23:** ACC (accounts and sign-in) is built and merged (#544–#548).
 
 **New required implementer reading:** October 13
@@ -266,6 +266,15 @@ Stripe switch), contrary to Batch K. BA makes the app keep the books itself and 
 | BA-4 | Books home: status, this month, task cards, "For your accountant" | JIT — `BA-4.md` | BA-3 |
 | BA-5 | Equipment value screen with nothing to remember | JIT — `BA-5.md` | BA-4 |
 | BA-6 | No bare link lists anywhere on the desk; guard test | JIT — `BA-6.md` | — (parallel) |
+
+### LD — leads workspace (`designs/LEADS-WORKSPACE.md`, designed 2026-10-25, awaiting go-ahead)
+
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| LD-1 | Stages, lead owner, speed to lead, duplicates, scale (indexes, search, cursor paging) | JIT — `LD-1.md` | — |
+| LD-2 | Work queue: stage tabs, Next-up order, one-tap contact, filter sheet, saved views, bulk, board | JIT — `LD-2.md` | LD-1 |
+| LD-3 | Lead detail workspace | JIT — `LD-3.md` | LD-2 |
+| LD-4 | Lead insights | JIT — `LD-4.md` | LD-3 |
 
 ## Owner-facing handoff stays small
 
