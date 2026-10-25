@@ -19,7 +19,8 @@
       "business-paperwork.spec.ts",
       "revenue-records.spec.ts",
       "website-editor.spec.ts",
-      "job-roles.spec.ts"
+      "job-roles.spec.ts",
+      "shop-sales.spec.ts"
     ],
     "browser-b": [
       "accessibility-dark-mode.spec.ts",
@@ -47,7 +48,6 @@
     ],
     "browser-c": [
       "sales-tax.spec.ts",
-      "crm-workspace.spec.ts",
       "appliance-price-save-feedback.spec.ts",
       "purchasing-review.spec.ts",
       "accessibility-routes-desk-a.spec.ts",
@@ -80,7 +80,8 @@
       "signing-multilocation-order.spec.ts",
       "preapproval-estimate-prepare.spec.ts",
       "signature-public.spec.ts",
-      "signature-focus.spec.ts"
+      "signature-focus.spec.ts",
+      "crm-workspace.spec.ts"
     ]
   }
 }
