@@ -61,6 +61,14 @@ required before launch (Phase 2/7).
 - `/desk/**` and `/account/**` are marked `noindex, nofollow` (see
   `next.config.ts`) — they should never appear in search results.
 
+### No bare link lists (Chris, 2026-10-25)
+
+Desk pages must look and behave like an application, not an informational website. Never put rows of underlined
+navigation links on a page. Sibling pages of one feature use a **tab bar**; places to go use **task cards** (short
+title, one sentence saying what it is for and when you would use it, a live status badge, one large tap target);
+actions use **buttons** on the To do item or record they belong to. Inline links are allowed only inside a sentence
+that already explains them. See [designs/BOOKS-AUTOPILOT.md](designs/BOOKS-AUTOPILOT.md) principle 7 and BA-6.
+
 ### Status badges (added 2026-09-29)
 
 Every status shown anywhere in the app — a lead's stage, an estimate's

@@ -1,3 +1,12 @@
+## October 25 — Books redesign written (Batch BA, design only)
+
+Docs only, nothing built. Chris found Books confusing. Checked against the code: entries are recorded only when a
+button is pressed (the nightly job sits behind the Stripe switch), each appliance must be enrolled and depreciated
+by hand, retiring an appliance in Equipment does not stop its book depreciation, and there is no month-end workflow —
+all contrary to the Batch K design. New design `docs/designs/BOOKS-AUTOPILOT.md` (BA-1…BA-6): the app records
+everything nightly, a guided monthly review on To do, a beginner-friendly Books home with task cards, and no bare link
+lists anywhere on the desk (new rule in DESIGN-SYSTEM). Needs Chris: go-ahead to build (checklist). Next: BA-1 + BA-6.
+
 ## October 25 — Owner controls lane finished
 
 Merged (#573, #577, #578, #583, #584): settings change preview and stale-save protection with the full Switches list; scheduled price changes for rental sets as well as single appliances; a role-shaped proof that each admin page sends only what the role may see; browser tests for goals, approval limits, permissions and workspace; and the eight older review findings (removed receipt and unsent photos really leave storage after an owner-editable wait, iPhone photos convert, earnings use rent only on each rental's billing month, a phone-width sideways-scroll check on every page). Also found and fixed: receipt uploads were not on storage's private-folder list. One owner checklist row: confirm removed receipt files really leave storage. Nothing else for Chris.

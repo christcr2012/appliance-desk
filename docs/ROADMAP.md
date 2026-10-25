@@ -354,6 +354,12 @@ Left out of `docs/designs/ACCOUNTS-AND-SIGN-IN.md` on purpose; Chris decides if 
 transferring ownership to another person; "Sign in with Google"; passkeys / fingerprint or face sign-in (the sign-in
 library supports passkeys); two-step for customers in the portal; codes by voice call; single sign-on.
 
+## Books — later options (2026-10-25, not in Batch BA)
+
+Left out of `docs/designs/BOOKS-AUTOPILOT.md` on purpose; Chris decides if any are wanted later: automatic bank feeds
+(Plaid or similar, a paid provider), payroll, income-tax return preparation, direct QuickBooks Online sync, AI
+expense categorization.
+
 ## Explicitly out of scope for launch (by design, not an oversight)
 
 - Customers reserving inventory, picking installation slots, or

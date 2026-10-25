@@ -7,7 +7,7 @@ Audited baseline: main after #541, October 24, 2026 (documents re-checked agains
 Day-by-day delivery notes used to live here; they are history now and live in [STATUS](STATUS.md). Everything through T, S, COM-L, W (except W-11/12/13), V, F2,
 K, K-CASH, M-1A…M-2B, O-1, O-2A, O-2B, O-3A, O-4…O-7 and ACC-1…ACC-5 is merged. The live/provider/owner acceptance checks stay separately PENDING on
 [OWNER-CHECKLIST](OWNER-CHECKLIST.md); source completion does not supply their missing gates. No manual release is authorized.
-Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed),
+Not built yet: M-2C, M-3, O-3B refund/credit/deposit approvals and COM-N1A…N4 (approved, an agent can start them), BP (proposed), BA books on autopilot (designed, awaiting go-ahead),
 W-11/12/13 (owner-gated), MCP-1…11. The full audited list is "What truly remains" in [PLAN](PLAN.md). **New 2026-10-23:** ACC (accounts and sign-in) is built and merged (#544–#548).
 
 **New required implementer reading:** October 13
@@ -251,6 +251,21 @@ currently cannot change his own password. Text codes need Twilio live and Chris'
 | ACC-3 | Sign-in codes by email or text, method policy per level, trusted devices | JIT — `ACC-3.md` | ACC-2 |
 | ACC-4 | Owner resets an employee's sign-in, security notices, failed-attempt pause | JIT — `ACC-4.md` | ACC-3 |
 | ACC-5 | Job roles (owner-editable screen bundles that only narrow a level) | JIT — `ACC-5.md` | ACC-4 |
+
+### BA — books on autopilot (`designs/BOOKS-AUTOPILOT.md`, designed 2026-10-25, awaiting go-ahead)
+
+Chris found the Books pages confusing: a raw journal, manual depreciation per appliance, no month-end workflow and rows
+of unexplained links. The code also records entries only when a button is pressed (the nightly job is behind the
+Stripe switch), contrary to Batch K. BA makes the app keep the books itself and gives the owner one monthly review.
+
+| Unit | Scope | Execution card | Prerequisite |
+|---|---|---|---|
+| BA-1 | Nightly recording, auto-enroll appliances, automatic monthly depreciation, retirement link | JIT — `BA-1.md` | — |
+| BA-2 | First-time setup for a brand-new business; correct starting balances | JIT — `BA-2.md` | BA-1 |
+| BA-3 | "Review this month": checks, plain summary, accountant package, lock | JIT — `BA-3.md` | BA-2 |
+| BA-4 | Books home: status, this month, task cards, "For your accountant" | JIT — `BA-4.md` | BA-3 |
+| BA-5 | Equipment value screen with nothing to remember | JIT — `BA-5.md` | BA-4 |
+| BA-6 | No bare link lists anywhere on the desk; guard test | JIT — `BA-6.md` | — (parallel) |
 
 ## Owner-facing handoff stays small
 

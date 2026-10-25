@@ -1,3 +1,12 @@
+## October 25 — Books run themselves; owner reviews monthly; no bare link lists (Batch BA design)
+
+The app records every bookkeeping entry, enrolls appliances (in-service = purchase date, or the books start date if
+earlier) and records monthly depreciation itself every night, restoring the Batch K intent that the build left
+manual. Retiring an appliance in Equipment stops its book depreciation in the same step. Month-end becomes one guided
+"Review this month" To do item ending in "Lock". Starting balances can be corrected with an audited correcting entry.
+Desk navigation never uses rows of bare links: tab bars for sibling pages, task cards (purpose, when, status) for
+destinations, buttons for actions. Full design: `docs/designs/BOOKS-AUTOPILOT.md`.
+
 ## October 23 — Accounts and sign-in design (Batch ACC, Chris's request)
 
 Team accounts are created by **invitation**: the owner enters the person's details, access level and job role; the app
