@@ -1,4 +1,4 @@
-# BILL-1 — Bank payments being confirmed: record them, show them, pause late fees
+# BILL-1 — Bank payments being confirmed: record them, show them, no late fees meanwhile
 
 Build spec: `docs/build-specs/engines/BANK-PAYMENTS-IN-FLIGHT.md` (everything is decided there). Depends on **AR-0b**
 (Bills screen) for the screen part; the engine part (steps 1–4) can start any time. Risk: **billing webhooks, late
@@ -24,8 +24,7 @@ a payment" and uses it everywhere, without ever counting it as money received.
 - [ ] A processing bank payment shows "Being confirmed" on the bill and Bills list and is not counted as paid
       anywhere (totals, books, receipts unchanged — integration test compares before/after).
 - [ ] Duplicate and out-of-order webhook deliveries never create two rows or leave a stale open row (tests).
-- [ ] Late fees pause for in-flight bills when the switch is on (default) and apply when it is off; a failed bank
-      payment returns the bill to normal.
+- [ ] No late fee is ever added to a bill while a bank payment is being confirmed (a rule, not a switch); the full late-fee behaviour is FEE-1.
 - [ ] Today shows "taking longer than usual" after 6 business days and does not show the bill as late meanwhile.
 - [ ] `ci` green at the exact head; every review comment read.
 

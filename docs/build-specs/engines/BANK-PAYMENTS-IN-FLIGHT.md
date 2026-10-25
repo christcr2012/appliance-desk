@@ -38,8 +38,7 @@ model BankPaymentInFlight {
 ```
 Add `bankPaymentsInFlight BankPaymentInFlight[]` to `RentalAgreement` as well. A row always has an `invoiceId` or
 an `agreementId` (checked in code and by a test).
-Add `bankPaymentsInFlight BankPaymentInFlight[]` to `Invoice`. Add to `BusinessSettings`:
-`pauseLateFeesWhileBankConfirms Boolean @default(true)` (owner setting, see 5).
+Add `bankPaymentsInFlight BankPaymentInFlight[]` to `Invoice`. (No setting: late fees never apply while a payment is being confirmed — section 5.)
 
 **"In flight" rule (one function, `src/domains/billing/in-flight.ts`):**
 `inFlightWhere = { bankPaymentsInFlight: { some: { clearedAt: null } } }` and
@@ -206,15 +205,12 @@ from 6 to 3 moves a 4-business-day-old payment onto To do. Built with a new pure
 
 ## 5. Late fees
 
-In `applyLateFeeBatch` (`src/domains/billing/late-fees.ts`), when `pauseLateFeesWhileBankConfirms` is true, add
-`notInFlightWhere` to the candidate query **and** re-check after the row lock (`SELECT … FOR UPDATE` already used):
-if the locked invoice has an open in-flight row, skip it. When the row later clears as FAILED, the normal late-fee
-run picks the bill up again on its next run (grace counts from the due date as today — no new rule).
-Setting on the Settings page (Money section; AR-8 moves it): switch **"Pause late fees while a bank payment is being
-confirmed"**, starting value **on**, InfoTip: "When a customer pays by bank transfer it takes a few days to clear.
-While it does, no late fee is added to that bill. Turn this off to charge late fees by the due date no matter what."
-Owner only; audited like the other billing settings. Test: in-flight bill gets no fee with the setting on, gets one
-with it off; FAILED clear → fee on the next run.
+No late fee is ever added while a bank payment is being confirmed — **a rule, not a setting** (Chris, 2026-10-25: a
+fee must never slip into a payment the customer already started). The whole late-fee behaviour, including notice
+first and the fee as a separate charge on the next bill, is FEE-1 (`engines/LATE-FEES.md`); BILL-1 provides the open
+in-flight row it checks under the bill lock. When a row later clears as FAILED, FEE-1 sends a fresh notice and sets a new
+fee date — the customer is never charged for the days their payment was going through. (The earlier switch
+`pauseLateFeesWhileBankConfirms` is not built.)
 
 ## 6. Readers (screens)
 
