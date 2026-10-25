@@ -8,6 +8,10 @@ throwaway-Postgres tests plus a real-browser spec (phone width, keyboard, access
 pending. Nothing for Chris to do. Next in this lane: the role-shaped admin page proof (O-2B), package and set price
 changes (O-4), the older review findings, and browser specs for the other owner controls.
 
+## October 25 — M-3 hosted $1 card test: tried, not run
+
+The agent session could not do the hosted check: no browser was connected and the sandbox's network blocks the testing site (checked: the connection is refused before it reaches Vercel). The testing project does have the `TEST_OWNER_PASSWORD` variable (readable, not Sensitive) and its latest build is the 6e1353a release, which already contains the card payment page, so only a session with a browser is missing. Recorded once on the owner checklist as untested (not failed). The same limit means the delivery fee and used-appliance take-back have not been seen on the hosted app; they are proved on throwaway Postgres only.
+
 ## October 25 — Browser tests for shop sales and retired appliances
 
 In progress (branch `ai/claude/shop-sales-e2e`). New `e2e/shop-sales.spec.ts` (registered in browser-a) drives the real screens on the throwaway test database: ring up two parts with 5% tax, take the cash, take the sale back and see the stock return; and sell a retired appliance at $9,000 (nothing caps the price), see the depreciation-recapture warning and "CPA review needed" with no tax numbers, then close the accountant note. Includes a phone-width accessibility scan of the new-sale screen. Not run locally (the local test launcher refuses this sandbox's root account), so the first real run is this PR's CI. Nothing for Chris to do.
