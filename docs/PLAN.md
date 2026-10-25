@@ -73,8 +73,8 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 - Wiring gaps in built telecom code: nothing calls the usage sync or the spend-alert checks, and no screen sends texts yet.
 
 **Partial items inside built units**
-- M-1C: Colorado retail delivery fee on delivered sales. (Taking back a paid sale of parts and items is built: refund + restock. Taking back a used appliance is not.) (The revenue-report label now reads "Shop sales (parts and items sold)".)
-- O-1: change preview and stale-save conflict; a few switch rows. O-4: package and set prices.
+- (M-1C is complete: Colorado retail delivery fee on delivered sales and taking back a used appliance are built. Only real-account acceptance remains, see the owner checklist and STATUS.) (The revenue-report label now reads "Shop sales (parts and items sold)".)
+- O-1: change preview and stale-save conflict; a few switch rows. O-4: package and set prices. (O-2B role-shaped proof finished 2026-10-25.)
 - (The yearly "check your SUTS setup" Today task is built: `TAX_SETUP_CHECK`, each January and 12 months after the last check.)
 - Website pricing page does not show the all-in total or $45 fee (hidden on purpose by the owner).
 - Eight older review findings in LAUNCH-LEDGER (photo cleanup, HEIC, earnings report basis, billing-estimate check, narrow-width desk check).

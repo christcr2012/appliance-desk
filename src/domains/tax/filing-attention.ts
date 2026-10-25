@@ -137,6 +137,7 @@ export async function listRdfRefundAttention(limit = 50): Promise<ExceptionItem[
     select: {
       id: true, deliveredOn: true, filingPeriodId: true,
       agreement: { select: { customerId: true } },
+      invoice: { select: { customerId: true } },
     },
     orderBy: [{ deliveredOn: "asc" }, { id: "asc" }], take: count,
   });
@@ -163,7 +164,7 @@ export async function listRdfRefundAttention(limit = 50): Promise<ExceptionItem[
   }));
   return records.flatMap(record => {
     const frozen = frozenByPeriod.get(record.filingPeriodId ?? "");
-    if (!frozen?.sourceCollectedFromCustomer?.[record.id] || !record.agreement?.customerId) return [];
+    if (!frozen?.sourceCollectedFromCustomer?.[record.id] || !(record.agreement?.customerId ?? record.invoice?.customerId)) return [];
     const cents = frozen.sourceAmountCents?.[record.id];
     return [{
       category: "SALES_TAX" as const, severity: "high" as const,
@@ -171,7 +172,7 @@ export async function listRdfRefundAttention(limit = 50): Promise<ExceptionItem[
       detail: "Refund the customer " +
         (Number.isSafeInteger(cents) ? "$" + (cents! / 100).toFixed(2) : "the full recorded fee") +
         " before claiming a credit on the Colorado return.",
-      href: "/desk/customers/" + record.agreement.customerId,
+      href: "/desk/customers/" + (record.agreement?.customerId ?? record.invoice?.customerId),
       since: record.deliveredOn,
     }];
   });
