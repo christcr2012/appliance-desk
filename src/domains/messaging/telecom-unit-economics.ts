@@ -1,16 +1,29 @@
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { communicationsPolicySchema } from "./communications-policy";
 
 /**
  * COM-N4: observed service numbers, cost per customer and forecasts. Read-only: it never sends, posts or changes anything.
  * Anything that cannot be worked out honestly (no customers, no history, a zero denominator) is `null`, never zero and never guessed.
  */
 const DAY = 86_400_000;
-export const FORECAST_SCENARIOS = [200, 250, 500, 1000] as const;
+/** Recommended starting values. The owner can change all three in Settings; "restore recommended" puts these back. */
+export const FORECAST_SCENARIOS: readonly number[] = [200, 250, 500, 1000];
 /** At least this many customer-days of history before a forecast is shown. */
 export const MIN_FORECAST_CUSTOMER_DAYS = 14;
 /** At least this many resolved texts before a failure rate is shown. */
 export const MIN_RATE_SAMPLE = 10;
+export type ServiceReportingSettings = { forecastScenarios: readonly number[]; minForecastCustomerDays: number; minRateSample: number };
+export const RECOMMENDED_SERVICE_REPORTING: ServiceReportingSettings = Object.freeze({
+  forecastScenarios: FORECAST_SCENARIOS, minForecastCustomerDays: MIN_FORECAST_CUSTOMER_DAYS, minRateSample: MIN_RATE_SAMPLE });
+
+/** Phone-number rental charges recur no matter how many customers there are; only these provider categories count as fixed. */
+const FIXED_CATEGORIES = ["phonenumbers-local", "phonenumbers-mobile"] as const;
+/** Fixed recurring cents from a provider breakdown, or null when the breakdown cannot be trusted (unknown or unpriced parts, or no breakdown at all). */
+export function fixedChargeCents(usage: { breakdownCents: Record<string, number>; unknownCategories: readonly string[]; incompleteComponents: readonly string[] }): number | null {
+  if (usage.unknownCategories.length > 0 || usage.incompleteComponents.length > 0 || Object.keys(usage.breakdownCents).length === 0) return null;
+  return FIXED_CATEGORIES.reduce((n, c) => n + (usage.breakdownCents[c] ?? 0), 0);
+}
 
 export type AgreementSpan = {
   customerId: string; status: "DRAFT" | "AWAITING_SIGNATURE" | "SCHEDULED" | "ACTIVE" | "ENDED" | "CANCELLED";
@@ -69,11 +82,11 @@ export type Forecast =
  */
 export function forecastSpend(input: {
   totalCents: number | null; fixedCents: number | null; complete: boolean; customerDays: number; days: number;
-  scenarios?: readonly number[];
+  scenarios?: readonly number[]; minCustomerDays?: number;
 }): Forecast {
   if (input.totalCents === null || input.fixedCents === null) return { available: false, reason: "Provider spend is not fully known for this period." };
   if (!input.complete) return { available: false, reason: "Customer history for this period is incomplete." };
-  if (input.customerDays < MIN_FORECAST_CUSTOMER_DAYS) return { available: false, reason: "Not enough customer history yet to forecast." };
+  if (input.customerDays < (input.minCustomerDays ?? MIN_FORECAST_CUSTOMER_DAYS)) return { available: false, reason: "Not enough customer history yet to forecast." };
   const variable = Math.max(0, input.totalCents - input.fixedCents);
   const perDay = variable / input.customerDays;
   return {
@@ -97,7 +110,7 @@ export type ServiceMetrics = {
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Owner/Admin only. Window is whole GMT days, inclusive, so it lines up with the provider's own billing days. */
-export async function getServiceMetrics(actorUserId: string, from: Date, to: Date): Promise<ServiceMetrics> {
+export async function getServiceMetrics(actorUserId: string, from: Date, to: Date, settings: ServiceReportingSettings = RECOMMENDED_SERVICE_REPORTING): Promise<ServiceMetrics> {
   const start = new Date(dayStart(from)), end = new Date(dayStart(to) + DAY);
   if (!(+end > +start) || +end - +start > 93 * DAY) throw new Error("INVALID_METRICS_WINDOW");
   await prisma.$transaction((tx) => assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]));
@@ -123,7 +136,9 @@ export async function getServiceMetrics(actorUserId: string, from: Date, to: Dat
   const threads = [...new Set(inbound.map((m) => m.threadId))].slice(0, 500);
   if (threads.length) {
     const replies = await prisma.communicationMessage.findMany({ where: { threadId: { in: threads }, direction: "OUTBOUND",
-      actorUserId: { not: null }, occurredAt: { gte: start } }, select: { threadId: true, occurredAt: true }, orderBy: { occurredAt: "asc" }, take: 5001 });
+      actorUserId: { not: null }, occurredAt: { gte: start },
+      // A reply that failed, was stopped or never left the building is not a response.
+      delivery: { state: { in: ["ACCEPTED", "DELIVERED"] } } }, select: { threadId: true, occurredAt: true }, orderBy: { occurredAt: "asc" }, take: 5001 });
     const byThread = new Map<string, Date[]>();
     for (const r of replies) byThread.set(r.threadId, [...(byThread.get(r.threadId) ?? []), r.occurredAt]);
     const answered = new Set<string>();
@@ -136,9 +151,17 @@ export async function getServiceMetrics(actorUserId: string, from: Date, to: Dat
   return {
     window: { fromGMT: iso(start), throughGMT: iso(new Date(+end - DAY)) },
     texts: { delivered, failed, pending, unknown, resolved,
-      failureRate: resolved >= MIN_RATE_SAMPLE ? ratio(failed, resolved) : null, sampleEnough: resolved >= MIN_RATE_SAMPLE },
-    optOuts: { count: optOutCount, contacted: contacted.size, rate: contacted.size >= MIN_RATE_SAMPLE ? ratio(optOutCount, contacted.size) : null },
+      failureRate: resolved >= settings.minRateSample ? ratio(failed, resolved) : null, sampleEnough: resolved >= settings.minRateSample },
+    optOuts: { count: optOutCount, contacted: contacted.size, rate: contacted.size >= settings.minRateSample ? ratio(optOutCount, contacted.size) : null },
     response: { medianMinutes: median(times), samples: times.length },
     customers: activeCustomerDays(agreements, start, new Date(+end - DAY)),
   };
+}
+
+export async function getServiceReportingSettings(): Promise<ServiceReportingSettings> {
+  const row = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { communicationsPolicy: true } });
+  const parsed = communicationsPolicySchema.safeParse(row?.communicationsPolicy);
+  const saved = parsed.success ? parsed.data.serviceReporting : undefined;
+  return saved ? { forecastScenarios: [...saved.forecastScenarios].sort((a, b) => a - b), minForecastCustomerDays: saved.minForecastCustomerDays,
+    minRateSample: saved.minRateSample } : RECOMMENDED_SERVICE_REPORTING;
 }

@@ -5,7 +5,7 @@ import { telecomReportPeriods } from "@/domains/messaging/telecom-periods";
 import { getTelecomSpend } from "@/domains/messaging/telecom-costs-store";
 import { communicationsPolicySchema } from "@/domains/messaging/communications-policy";
 import { metricDefinition } from "@/domains/reports/definitions";
-import { FORECAST_SCENARIOS, forecastSpend, getServiceMetrics, ratio } from "@/domains/messaging/telecom-unit-economics";
+import { fixedChargeCents, forecastSpend, getServiceMetrics, getServiceReportingSettings, ratio } from "@/domains/messaging/telecom-unit-economics";
 
 const DAY=86_400_000;
 const tolerance={absoluteCents:0,percentBasisPoints:null,combination:"ANY" as const};
@@ -40,12 +40,14 @@ export async function TelecomReportSection({actorUserId}:{actorUserId:string}) {
   // Service numbers and cost per customer use the last complete month (the provider's totals for it are final enough to compare).
   const primary=policy.success?rows.find((_,i)=>accounts[i]?.id===policy.data.primaryAccountId):rows[0];
   const metricsFrom=periods.previous.start, metricsTo=periods.previous.end;
-  const service=rows.length>0?await getServiceMetrics(actorUserId,metricsFrom,metricsTo).catch(()=>null):null;
+  const reporting=await getServiceReportingSettings();
+  const service=rows.length>0?await getServiceMetrics(actorUserId,metricsFrom,metricsTo,reporting).catch(()=>null):null;
   const prevTotal=primary?.previous.usage.complete?primary.previous.usage.accountTotalCents:null;
-  const prevFixed=primary?.previous.usage.complete?primary.previous.usage.breakdownCents.FIXED??0:null;
+  const prevFixed=primary?.previous.usage.complete?fixedChargeCents(primary.previous.usage):null;
   const perCustomer=service&&prevTotal!==null&&service.customers.complete?ratio(prevTotal,service.customers.averageDaily):null;
   const forecast=service&&primary?forecastSpend({totalCents:prevTotal,fixedCents:prevFixed,complete:service.customers.complete,
-    customerDays:service.customers.customerDays,days:service.customers.days}):null;
+    customerDays:service.customers.customerDays,days:service.customers.days,
+    scenarios:reporting.forecastScenarios,minCustomerDays:reporting.minForecastCustomerDays}):null;
   const pct=(v:number|null)=>v===null?"Not enough history":(v*100).toFixed(1)+"%";
   return <section aria-labelledby="telecom-report" className="mt-8 space-y-4">
     <div>
@@ -83,7 +85,7 @@ export async function TelecomReportSection({actorUserId}:{actorUserId:string}) {
         ?<>
           <ul className="mt-1 text-sm">{forecast.scenarios.map((sc)=><li key={sc.customers}>At {sc.customers.toLocaleString("en-US")} customers: about {money(sc.monthlyCents,primary?.previous.usage.currency??null)} a month</li>)}</ul>
           <p className="text-xs text-ink-soft">Based on {forecast.customerDays} customer-days and {money(forecast.fixedCents,primary?.previous.usage.currency??null)} of fixed charges counted once. {forecast.limitations.join(" ")}
-            The customer counts ({FORECAST_SCENARIOS.join(", ")}) are examples, not goals.</p></>
+            The customer counts ({reporting.forecastScenarios.join(", ")}) are examples you can change in Settings, not goals.</p></>
         :<p className="text-sm text-ink-soft">{forecast?forecast.reason:"Unavailable."}</p>}
       <p className="mt-2 text-xs text-ink-soft">Cost as a share of rental revenue is not shown yet: it needs the recognized revenue in the accounting books for the same month.</p>
     </article>}

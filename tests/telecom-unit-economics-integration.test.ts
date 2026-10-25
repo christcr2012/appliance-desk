@@ -33,8 +33,12 @@ describe.skipIf(!enabled)("COM-N4 service metrics (isolated PostgreSQL)", () => 
         recipientType: "CUSTOMER", recipientAddress: `+1303555${String(2000 + i)}`, state, requestedAt: day, environment: "PRODUCTION" } });
     }
     await prisma.communicationMessage.create({ data: { threadId, accountId, direction: "INBOUND", bodyHash: "h1", redactedAt: new Date("2026-03-10T16:00:01Z"), occurredAt: new Date("2026-03-10T16:00:00Z") } });
+    const failedReply = await prisma.messageDelivery.create({ data: { idempotencyKey: `${name}-failedreply`, channel: "SMS", purpose: "CONVERSATIONAL",
+      templateKey: "t", recipientType: "CUSTOMER", recipientAddress: "+13035559998", telecomAccountId: accountId, state: "FAILED", requestedAt: day, environment: "PRODUCTION" } });
+    await prisma.communicationMessage.create({ data: { threadId, accountId, direction: "OUTBOUND", deliveryId: failedReply.id, bodyHash: "h3", actorUserId: staff,
+      occurredAt: new Date("2026-03-10T16:01:00Z") } });
     const reply = await prisma.messageDelivery.create({ data: { idempotencyKey: `${name}-reply`, channel: "SMS", purpose: "CONVERSATIONAL",
-      templateKey: "t", recipientType: "CUSTOMER", recipientAddress: "+13035559999", telecomAccountId: accountId, state: "NOT_SENT", requestedAt: day, environment: "PRODUCTION" } });
+      templateKey: "t", recipientType: "CUSTOMER", recipientAddress: "+13035559999", telecomAccountId: accountId, state: "DELIVERED", requestedAt: day, environment: "PRODUCTION" } });
     await prisma.communicationMessage.create({ data: { threadId, accountId, direction: "OUTBOUND", deliveryId: reply.id, bodyHash: "h2", actorUserId: staff, occurredAt: new Date("2026-03-10T16:12:00Z") } });
   });
 
@@ -57,6 +61,8 @@ describe.skipIf(!enabled)("COM-N4 service metrics (isolated PostgreSQL)", () => 
     expect(m.texts.failureRate).not.toBeNull();
     expect(m.response.samples).toBeGreaterThanOrEqual(1);
     expect(m.response.medianMinutes).not.toBeNull();
+    // the earlier reply failed to send, so the 12-minute reply is the first real response
+    expect(m.response.medianMinutes).toBeGreaterThanOrEqual(11.9);
     const empty = await getServiceMetrics(owner, new Date("2020-01-01T00:00:00Z"), new Date("2020-01-02T00:00:00Z"));
     expect(empty.texts.failureRate).toBeNull();
     expect(empty.optOuts.rate).toBeNull();

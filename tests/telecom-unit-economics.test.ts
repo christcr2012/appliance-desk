@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeCustomerDays, forecastSpend, median, ratio, type AgreementSpan } from "@/domains/messaging/telecom-unit-economics";
+import { activeCustomerDays, fixedChargeCents, forecastSpend, median, ratio, type AgreementSpan } from "@/domains/messaging/telecom-unit-economics";
 import { metricDefinition } from "@/domains/reports/definitions";
 
 const d = (s: string) => new Date(s + "T12:00:00Z");
@@ -45,6 +45,20 @@ describe("COM-N4 unit economics (pure)", () => {
       expect(f.scenarios.map((s) => s.customers)).toEqual([200, 250, 500, 1000]);
       expect(f.scenarios[0].monthlyCents).toBe(Math.round(5 * 200 * 30 + 200)); // 30,200: fixed once, not scaled
     }
+  });
+  it("fixed charges come from the phone-number rental categories only, and are unknown when the breakdown is not trustworthy", () => {
+    const ok = { breakdownCents: { "sms-outbound": 900, "phonenumbers-local": 115, "phonenumbers-mobile": 200 }, unknownCategories: [], incompleteComponents: [] };
+    expect(fixedChargeCents(ok)).toBe(315);
+    expect(fixedChargeCents({ ...ok, breakdownCents: { "sms-outbound": 900 } })).toBe(0);
+    expect(fixedChargeCents({ ...ok, unknownCategories: ["shortcodes"] })).toBeNull();
+    expect(fixedChargeCents({ ...ok, incompleteComponents: ["calls-inbound"] })).toBeNull();
+    expect(fixedChargeCents({ breakdownCents: {}, unknownCategories: [], incompleteComponents: [] })).toBeNull();
+  });
+  it("owner-set history and scenarios are honored", () => {
+    const base = { totalCents: 5200, fixedCents: 200, complete: true, days: 30 };
+    expect(forecastSpend({ ...base, customerDays: 20, minCustomerDays: 30 }).available).toBe(false);
+    const f = forecastSpend({ ...base, customerDays: 20, minCustomerDays: 10, scenarios: [10, 20] });
+    expect(f.available && f.scenarios.map((x) => x.customers)).toEqual([10, 20]);
   });
   it("the new numbers are registered with honest labels", () => {
     expect(metricDefinition("telecom.projectedSpend").kind).toBe("ESTIMATE");

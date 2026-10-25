@@ -11,7 +11,9 @@ provider-reported spend per active customer, what-if monthly spend at 200/250/50
 ## Honesty rules
 - Active customers = distinct customers with an ACTIVE rental each GMT day (same days as provider billing). An ended/cancelled rental with no recorded end
   time makes history incomplete → unavailable (never divide by today's count).
-- Rates need at least 10 final results / 10 people texted; forecast needs complete history and 14 customer-days.
+- Rates need at least 10 final results / 10 people texted; forecast needs complete history and 14 customer-days. **Owner-editable** (Settings → Phone, texts and provider costs → Cost-per-customer report, with "restore recommended"): the forecast customer counts, the history needed, and the smallest sample.
+- Fixed charges = the provider's phone-number rental categories only; unknown if the breakdown has unknown or unpriced parts.
+- First reply counts only if that reply was actually accepted/delivered.
 - Forecast = observed variable spend per customer-day × scenario × 30 + fixed recurring once; scenarios are editable examples.
 - Rental-revenue share not shown until K supplies recognized revenue. Spend labelled provider reported, not invoice reconciled.
 - Owner/Admin only; no per-employee breakdown.
@@ -20,4 +22,4 @@ provider-reported spend per active customer, what-if monthly spend at 200/250/50
 Cost per contacted customer / per linked job, voice minutes and segments per customer, and the automatic spike/circuit pause (needs IN-53).
 
 ## Acceptance → evidence
-`tests/telecom-unit-economics.test.ts` (7 pure) and `tests/telecom-unit-economics-integration.test.ts` (2, throwaway Postgres).
+`tests/telecom-unit-economics.test.ts` (9 pure), `tests/telecom-unit-economics-integration.test.ts` (2) and `tests/telecom-reporting-settings-integration.test.ts` (2), throwaway Postgres.

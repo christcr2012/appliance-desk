@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { recordStaffTextConsent, sendWorkflowText, CONSENT_METHODS, type ConsentMethod } from "@/domains/messaging/workflow-text";
+import { saveServiceReportingSettings } from "@/domains/messaging/telecom-reporting-settings";
 import { approveWorkflowWording, saveWorkflowQuietHours, setWorkflowTextEnabled } from "@/domains/messaging/workflow-text-settings";
 
 export type TextActionState = { ok: boolean; message: string } | null;
@@ -66,5 +67,23 @@ export async function saveQuietHoursAction(_prev: TextActionState, form: FormDat
       quietHours: restore ? null : { startMinute: minute("start"), endMinute: minute("end") } });
     revalidatePath("/desk/settings/telecom");
     return { ok: true, message: restore ? "Restored the recommended quiet hours." : "Quiet hours saved." };
+  } catch (e) { return { ok: false, message: plain(e) }; }
+}
+
+/** Owner-only: customer counts for the what-if forecast and how much history is needed. Blank customer counts restores the recommended values. */
+export async function saveServiceReportingAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
+  const actor = await requireRole("OWNER");
+  try {
+    const version = Number(str(form, "version"));
+    if (str(form, "restore") === "yes") {
+      await saveServiceReportingSettings(actor.user.id, { settings: null, expectedVersion: version });
+      revalidatePath("/desk/settings/telecom"); revalidatePath("/desk/reports");
+      return { ok: true, message: "Recommended values restored." };
+    }
+    const counts = str(form, "scenarios").split(/[\s,]+/).filter(Boolean).map(Number);
+    await saveServiceReportingSettings(actor.user.id, { expectedVersion: version, settings: {
+      forecastScenarios: counts, minForecastCustomerDays: Number(str(form, "minDays")), minRateSample: Number(str(form, "minSample")) } });
+    revalidatePath("/desk/settings/telecom"); revalidatePath("/desk/reports");
+    return { ok: true, message: "Saved." };
   } catch (e) { return { ok: false, message: plain(e) }; }
 }

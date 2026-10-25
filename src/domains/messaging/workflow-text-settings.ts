@@ -58,7 +58,7 @@ export async function getWorkflowTextSettings(ownerUserId: string): Promise<Work
 }
 
 type Tx = Prisma.TransactionClient;
-async function updatePolicy(tx: Tx, ownerUserId: string, expectedVersion: number,
+export async function updatePolicy(tx: Tx, ownerUserId: string, expectedVersion: number,
   change: (policy: CommunicationsPolicy) => CommunicationsPolicy, audit: Prisma.InputJsonValue) {
   await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
   const row = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" },
