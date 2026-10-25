@@ -117,7 +117,8 @@ chips (segmented style), inbox list; right `w-[340px]` = health strip (stacked),
 Bottom sheet (phone) / dialog (desktop) titled "Snooze this item": date picker "Until" (min tomorrow, max 90 days,
 default 3 business days from today via `addBusinessDays`), reason select: "Waiting on the customer", "Waiting on a
 part", "Handled outside the app", "Other" (free text shown only for Other, max 200). Submit "Snooze" → existing
-`snoozeToDoAction` (fields `key`, `until` as `YYYY-MM-DD`, `reason`). Optimistic: remove the card immediately; on
+`snoozeToDoAction` (defined inside `src/app/desk/today/page.tsx`; keep it there and pass it to the client sheet as
+a prop; it throws on bad input rather than returning a result) (fields `key`, `until` as `YYYY-MM-DD`, `reason`). Optimistic: remove the card immediately; on
 error put it back and toast the error. Success toast "Snoozed until {date}" with Undo (calls `resumeToDoAction`).
 Respect `validateSnoozeInput` messages.
 

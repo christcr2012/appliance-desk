@@ -228,8 +228,10 @@ does not, call `router.refresh()`).
 ### 4.7 Next step card (KIT 4.8)
 
 For each item from `getCustomerNextSteps` (max 3): `NextStepCard` with eyebrow "Next step", title `item.title`
-(existing To do title, e.g. "October rent is 5 days late — card declined"), actions from `inboxActions(item)` (same
-as Today: primary + Call/Email + ⋯ Snooze). None → render nothing (no empty card).
+(existing To do title, e.g. "October rent is 5 days late — card declined"), actions from `inboxActions(item)` **without** the
+"Snooze…" menu item (primary + Call/Email only). Reason: Today's `snoozeToDoAction` only accepts keys that are in
+the business-wide overview, which is capped, so snoozing here could be refused. Snoozing stays on Today. None →
+render nothing (no empty card).
 
 ## 5. Words (exact)
 

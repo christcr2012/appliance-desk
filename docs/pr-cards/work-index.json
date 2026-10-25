@@ -4392,7 +4392,9 @@
       "title": "Today inbox: every To do category with inline actions and grouping; dashboard and control center merged",
       "batch": "AR",
       "dependencies": [
-        "AR-1"
+        "AR-0",
+        "AR-1",
+        "AR-11"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
       "migration": "none",
@@ -4402,14 +4404,15 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/today/page.tsx",
-        "src/domains/exceptions/rules.ts"
+        "docs/build-specs/screens/TODAY.md",
+        "src/app/desk/approvals/page.tsx",
+        "src/app/desk/tasks/actions.ts"
       ],
       "tests": [
-        "tests/ar2-today-inbox.test.ts",
-        "e2e/ar2-today.spec.ts"
+        "tests/approvals-inline.test.ts",
+        "e2e/today-inline.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-2.md"
     },
     {
