@@ -23,6 +23,20 @@ import { hashCommunicationContent } from "./communications-content";
  * STOP, recorded permission for that exact number, and quiet hours. The result of every press is recorded as a delivery.
  */
 
+/**
+ * Who may use a text. Owners and Admins: every text. STAFF: only the "visit" texts, only for a job assigned to them.
+ * Anyone else (and customers) is refused. Re-checked inside every transaction that reads or writes.
+ */
+async function assertTextActor(tx: Db, userId: string, family: WorkflowTextFamily, subjectId: string): Promise<{ role: string }> {
+  const user = await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN", "STAFF"]);
+  if (user.role === "STAFF") {
+    const job = family.staffAssigned && family.subject === "Job"
+      ? await tx.job.findUnique({ where: { id: subjectId }, select: { assignedToUserId: true } }) : null;
+    if (!job || job.assignedToUserId !== userId) throw new Error("This account no longer has access to make that change.");
+  }
+  return { role: user.role };
+}
+
 export type WorkflowBlockerCode =
   | "NOT_FOUND" | "WRONG_STATE" | "NO_PHONE" | "BAD_PHONE" | "MASTER_OFF" | "POLICY_OFF" | "FAMILY_OFF"
   | "NOT_APPROVED" | "SENDER_NOT_READY" | "STOPPED" | "NEEDS_CONSENT" | "QUIET_HOURS" | "INVALID_DESTINATION"
@@ -168,12 +182,12 @@ export async function getWorkflowTextPreview(
   const family = workflowTextFamily(familyKey);
   if (!family) throw new Error("Unknown text message.");
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
-    return buildPreview(tx, family, subjectId, now);
+    const actor = await assertTextActor(tx, actorUserId, family, subjectId);
+    return buildPreview(tx, family, subjectId, now, actor.role);
   });
 }
 
-async function buildPreview(tx: Db, family: WorkflowTextFamily, subjectId: string, now: Date): Promise<WorkflowTextPreview> {
+async function buildPreview(tx: Db, family: WorkflowTextFamily, subjectId: string, now: Date, role: string): Promise<WorkflowTextPreview> {
   const base: WorkflowTextPreview = { family: family.key, label: family.label, ready: false, blockers: [], text: null,
     textHash: null, segments: null, recipientName: null, maskedPhone: null, canRecordConsent: false,
     consentRecorded: false, quietHours: "", earlier: [], needsLegalReview: Boolean(family.needsLegalReview) };
@@ -252,7 +266,9 @@ async function buildPreview(tx: Db, family: WorkflowTextFamily, subjectId: strin
   base.blockers = blockers.filter((b) => (seen.has(b.code) ? false : (seen.add(b.code), true)));
   // Only a missing-permission or repeat-send notice can be handled from the screen; everything else must be fixed first.
   const hard = base.blockers.filter((b) => b.code !== "NEEDS_CONSENT" && b.code !== "RECENT_DUPLICATE");
-  base.canRecordConsent = base.canRecordConsent && hard.length === 0;
+  base.canRecordConsent = base.canRecordConsent && hard.length === 0 && role !== "STAFF";
+  if (role === "STAFF") base.blockers = base.blockers.map((b) => b.code === "NEEDS_CONSENT"
+    ? block("NEEDS_CONSENT", "There is no recorded permission to text this number. Ask the office to record it first.") : b);
   base.ready = base.blockers.length === 0;
   return base;
 }
@@ -413,8 +429,8 @@ export async function sendWorkflowText(
 
   // Step 1 (read only): rebuild exactly what the person previewed and make sure it is still sendable.
   const preview = await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
-    return buildPreview(tx, family, input.subjectId, now);
+    const actor = await assertTextActor(tx, actorUserId, family, input.subjectId);
+    return buildPreview(tx, family, input.subjectId, now, actor.role);
   });
   const outstanding = preview.blockers.filter((b) => b.code !== "RECENT_DUPLICATE" || !input.sendAgain);
   if (outstanding.length || !preview.text || !preview.textHash) return { kind: "BLOCKED", blockers: outstanding };
@@ -440,7 +456,7 @@ export async function sendWorkflowText(
 
   // Step 3: confirm the contact and thread, then freeze the message as one prepared intent.
   const prepared = await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    await assertTextActor(tx, actorUserId, family, input.subjectId);
     const { pointId } = await ensureContact(tx, actorUserId, { ...ctx, account }, subject, now);
     return ensureThread(tx, { ...ctx, account }, subject, pointId, now);
   });
@@ -496,7 +512,13 @@ export async function getWorkflowTextHistory(
   actorUserId: string, entityType: "Lead" | "Estimate" | "RentalAgreement" | "Job" | "MaintenanceRequest" | "Invoice" | "Customer",
   entityId: string,
 ): Promise<{ at: Date; label: string; state: string; threadId: string }[]> {
-  await prisma.$transaction((tx) => assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]));
+  await prisma.$transaction(async (tx) => {
+    const user = await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN", "STAFF"]);
+    if (user.role === "STAFF") {
+      const job = entityType === "Job" ? await tx.job.findUnique({ where: { id: entityId }, select: { assignedToUserId: true } }) : null;
+      if (!job || job.assignedToUserId !== actorUserId) throw new Error("This account no longer has access to make that change.");
+    }
+  });
   const rows = await prisma.communicationLink.findMany({
     where: { entityType, entityId, message: { delivery: { isNot: null } } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 10,

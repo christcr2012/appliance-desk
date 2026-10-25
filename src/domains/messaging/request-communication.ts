@@ -3,6 +3,7 @@ import { approvedSpanishSources, translationFromSnapshot } from "@/domains/langu
 import type { TranslationSource } from "@/domains/language/drafts";
 import type { CommunicationLinkEntityType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { workflowTextFamily } from "./workflow-text-catalog";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import { evaluateSmsEligibility, type SmsEligibility } from "./communications-policy";
@@ -23,6 +24,19 @@ export type RequestCommunicationInput = {
  * (outside any database transaction); without it a live (production) account always blocks. `links` ties the new
  * message to the record it is about (a lead, estimate, agreement, job...) inside the same transaction.
  */
+/** True only for a template that allows assigned staff, plus a link to a job assigned to that staff member. */
+export async function staffMayText(tx: Prisma.TransactionClient, userId: string, templateRevisionId: string | undefined,
+  links: RequestCommunicationOptions["links"]): Promise<boolean> {
+  if (!templateRevisionId || !links?.length) return false;
+  const revision = await tx.communicationTemplateRevision.findUnique({ where: { id: templateRevisionId }, select: { key: true } });
+  const family = revision ? workflowTextFamily(revision.key) : undefined;
+  if (!family?.staffAssigned) return false;
+  const jobIds = links.filter((l) => l.entityType === "Job").map((l) => l.entityId);
+  if (jobIds.length !== 1) return false;
+  const job = await tx.job.findUnique({ where: { id: jobIds[0] }, select: { assignedToUserId: true } });
+  return job?.assignedToUserId === userId;
+}
+
 export type RequestCommunicationOptions = {
   verifiedDestinationCountry?: "US";
   links?: { entityType: CommunicationLinkEntityType; entityId: string }[];
@@ -108,7 +122,11 @@ export async function requestCommunication(
   }));
 
   return prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    const requester = await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN", "STAFF"]);
+    // STAFF may only send a fixed visit text for a job assigned to them (COM-N1B); everything else is Owner/Admin.
+    if (requester.role === "STAFF" && !(await staffMayText(tx, actorUserId, input.templateRevisionId, options.links))) {
+      throw new Error("This account no longer has access to make that change.");
+    }
     // Lock the idempotency key before reading. Concurrent same-key callers
     // observe the first committed intent rather than writing duplicates.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${"com-intent:" + key}, 0))`;
