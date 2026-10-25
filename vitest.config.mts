@@ -5,6 +5,7 @@ import path from "node:path";
 const SHARED_SETTINGS_TESTS = [
   "tests/com-n1c-workflow-integration.test.ts", // COM-N1C changes and restores the shared phone/text policy, text switch and approved wording.
   "tests/com-n1b-workflow-integration.test.ts", // COM-N1B changes and restores the shared phone/text policy, text switch and approved wording.
+  "tests/telecom-alert-check-integration.test.ts", // changes and restores the shared phone/alert policy.
   "tests/communications-foundation-integration.test.ts", // reads the shared text master switch, which the COM-N1 tests turn on for a few seconds.
   "tests/com-n1a-workflow-integration.test.ts", // COM-N1A changes and restores the shared phone/text policy, text switch and approved wording.
   "tests/acc2-team-invitations-integration.test.ts", // ACC-2 changes and restores the shared invitation settings.

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { runAutomation } from "@/domains/automation/runs";
 import { syncTelecomUsage } from "@/domains/messaging/telecom-sync";
 import { telecomReportPeriods } from "@/domains/messaging/telecom-periods";
+import { runTelecomAlertPreview } from "@/domains/messaging/telecom-alert-check";
 
 export const maxDuration = 60;
 const DAY = 86_400_000;
@@ -70,7 +71,11 @@ export async function GET(request: Request): Promise<NextResponse> {
           }
         }
       }
-      return { counts: { pages, records, unpriced, busy, unfinished } };
+      // After the pull, run the spend-alert check as a read-only PREVIEW. Nobody is notified (that waits on the owner's
+      // budget answers, IN-53); the number of warnings shows on the Automations page so the check visibly runs every night.
+      const alerts = await runTelecomAlertPreview(accounts.map((a) => a.id));
+      const alertChecked = alerts.checked, alertWarnings = alerts.warnings;
+      return { counts: { pages, records, unpriced, busy, unfinished, alertChecked, alertWarnings } };
     },
   });
   return NextResponse.json({ ...result });

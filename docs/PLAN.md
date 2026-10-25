@@ -78,7 +78,7 @@ A unit-by-unit audit of the code, tests, migrations and merged PRs replaced the 
 - (The yearly "check your SUTS setup" Today task is built: `TAX_SETUP_CHECK`, each January and 12 months after the last check.)
 - Website pricing page does not show the all-in total or $45 fee (hidden on purpose by the owner).
 - Eight older review findings in LAUNCH-LEDGER (photo cleanup, HEIC, earnings report basis, billing-estimate check, narrow-width desk check).
-- No browser specs yet for shop sales, retired appliances, approvals, switches, permissions, price changes, goals or workspace.
+- No browser specs yet for shop sales or retired appliances. (Approvals, switches, permissions, price changes, goals and workspace now have them: owner-settings-history, owner-price-changes, role-shaped-pages, owner-controls.)
 
 **Owner and provider steps** are only on [OWNER-CHECKLIST](OWNER-CHECKLIST.md) and never block building.
 
