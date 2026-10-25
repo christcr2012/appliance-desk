@@ -1,5 +1,6 @@
 import { ProviderOperationKind } from "@prisma/client";
 import { AUTOMATION_RULES } from "@/domains/automation/health";
+import { CORRELATION_ID, FAILURE_STAGE, failureExplanation, isFailureCode } from "@/domains/automation/failures";
 import type { SystemIssueInput } from "./types";
 
 const identifier = /^[a-zA-Z0-9_.:-]{1,100}$/;
@@ -24,11 +25,13 @@ export type RenderedIssue = {
   summary: string;
   detail: string;
   watch?: { id: string; url: string };
+  failure?: { code: string; stage: string; correlationId: string };
 };
 export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
   let fingerprint = "", summary = "", detail = "";
   let severity: RenderedIssue["severity"] = "MEDIUM";
   let watch: RenderedIssue["watch"];
+  let failure: RenderedIssue["failure"];
   switch (input.kind) {
     case "AUTOMATION_FAILED":
       id(input.ruleKey); id(input.runId); date(input.startedAt);
@@ -37,15 +40,22 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       fingerprint = "automation:" + input.ruleKey;
       severity = /^(billing|backup|media-copy)/.test(input.ruleKey) ? "HIGH" : "MEDIUM";
       summary = "A scheduled task did not complete.";
-      detail = `Rule ${input.ruleKey}; run ${input.runId}; started ${date(input.startedAt)}; class ${input.errorName}; code ${input.errorCode ?? "UNCLASSIFIED"}.`;
+      if (input.failure) {
+        if (!isFailureCode(input.failure.code) || !FAILURE_STAGE.test(input.failure.stage) ||
+            !CORRELATION_ID.test(input.failure.correlationId)) throw new Error("Unrecognized failure record");
+        failure = input.failure;
+      }
+      // Only allowlisted identifiers and the code's fixed explanation: never the original error text.
+      detail = `Rule ${input.ruleKey}; run ${input.runId}; started ${date(input.startedAt)}; class ${input.errorName}; code ${input.failure?.code ?? input.errorCode ?? "UNCLASSIFIED"}.` +
+        (input.failure ? " " + failureExplanation(input.failure.code).explain : "");
       break;
     case "AUTOMATION_STALE":
-      id(input.ruleKey);
+      id(input.ruleKey); date(input.dueAt);
       if (!AUTOMATION_RULES.some((rule) => rule.ruleKey === input.ruleKey)) throw new Error("Unrecognized automation rule");
-      if (![24,168,744].includes(input.expectedEveryHours)) throw new Error("Invalid task frequency");
+      if (!Number.isInteger(input.graceMinutes) || input.graceMinutes < 1 || input.graceMinutes > 1440) throw new Error("Invalid grace period");
       fingerprint = "automation-stale:" + input.ruleKey;
-      summary = "A scheduled task has not completed recently.";
-      detail = `Rule ${input.ruleKey}; expected every ${input.expectedEveryHours} hours; last success ${input.lastSuccessAt ? date(input.lastSuccessAt) : "never"}.`;
+      summary = "A scheduled task is late.";
+      detail = `Rule ${input.ruleKey}; was due ${date(input.dueAt)} (UTC) with ${input.graceMinutes} minutes' grace; last success ${input.lastSuccessAt ? date(input.lastSuccessAt) : "never"}.`;
       break;
     case "PROVIDER_OPERATION_STUCK":
       id(input.operationKind); count(input.count);
@@ -154,5 +164,5 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
     default: { const impossible: never = input; throw new Error("Unknown system issue kind: " + String(impossible)); }
   }
   if (fingerprint.length > 240 || detail.length > 4096) throw new Error("Oversized issue");
-  return { fingerprint, kind: input.kind, severity, summary, detail, watch };
+  return { fingerprint, kind: input.kind, severity, summary, detail, watch, ...(failure ? { failure } : {}) };
 }

@@ -3,6 +3,7 @@ import { Prisma, type AutomationRun } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { recordSystemIssue, resolveSystemIssue } from "@/domains/system-issues";
+import { classifyFailure, newCorrelationId } from "./failures";
 
 export type AutomationOutcome = "RAN" | "ALREADY_RAN" | "FAILED" | "PAUSED";
 
@@ -38,13 +39,20 @@ function pausedRuleKeys(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
-function safeError(cause: unknown): string {
+/**
+ * Legacy scrubbed text kept in `AutomationRun.error` for old readers only. Nothing shows it: screens, issues, emails
+ * and agent output use the typed failure code's explanation instead (MCP-1).
+ */
+export function safeError(cause: unknown): string {
   const raw = cause instanceof Error ? `${cause.name}: ${cause.message}` : "Unknown automation failure";
   return raw
+    .replace(/"address"\s*:\s*"(?:[^"\\]|\\.)*"/gi, '"address":"[address]"')
     .replace(/https?:\/\/\S+/gi, "[url]")
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
     .replace(/\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9_-]+\b/g, "[secret]")
     .replace(/\b[A-Za-z0-9_-]{40,}\b/g, "[redacted]")
+    .replace(/\+?\d[\d\s().-]{8,}\d/g, "[phone]")
+    .replace(/\b\d{1,6}\s+(?:[A-Za-z]+\s+){0,4}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Lane|Ln|Court|Ct|Way|Pl|Place|Pkwy|Parkway)\b\.?/gi, "[address]")
     .slice(0, 500);
 }
 
@@ -178,16 +186,22 @@ export async function runAutomation(input: RunAutomationInput): Promise<RunAutom
     }
     return { outcome: "RAN", runId: run.id };
   } catch (cause) {
-    await reportBackgroundError(cause, "automation:" + input.ruleKey);
+    const { code, stage } = classifyFailure(cause);
+    const failureStage = stage ?? "work";
+    const correlationId = newCorrelationId();
+    // The private server log line carries the same reference as the screen, and only typed fields.
+    console.error("[automation]", JSON.stringify({ rule: input.ruleKey, run: run.id, code, stage: failureStage, ref: correlationId }));
+    await reportBackgroundError(cause, "automation:" + input.ruleKey, { ref: correlationId, code });
     await prisma.automationRun.update({
       where: { id: run.id },
-      data: { state: "FAILED", finishedAt: new Date(), error: safeError(cause) },
+      data: { state: "FAILED", finishedAt: new Date(), error: safeError(cause), failureCode: code, failureStage, correlationId },
     });
     if (input.ruleKey !== "system-issues-sweep") {
       const allowed = new Set(["Error", "TypeError", "TimeoutError", "AbortError", "FetchError", "PrismaClientKnownRequestError", "PrismaClientInitializationError", "TaxLookupUnavailable", "ProviderTimeoutError"]);
       const name = cause instanceof Error && allowed.has(cause.name) ? cause.name : "UnknownError";
       await recordSystemIssue({ kind: "AUTOMATION_FAILED", ruleKey: input.ruleKey,
-        runId: run.id, startedAt: run.startedAt, errorName: name });
+        runId: run.id, startedAt: run.startedAt, errorName: name,
+        failure: { code, stage: failureStage, correlationId } });
     }
     return { outcome: "FAILED", runId: run.id };
   }
