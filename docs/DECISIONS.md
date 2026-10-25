@@ -1,3 +1,16 @@
+## October 25 — Timing of rule changes: costs late, benefits early (Chris)
+
+Chris: "if there is a time window for implementation of a rule or change that does not benefit us to implement early,
+we should implement the change 85-95 percent of the way through the grace period or compliance time window, if allowed
+or not otherwise prohibited. Things that would benefit my business should be implemented as soon as safely possible."
+How the app applies it (tax and fee autopilot, `docs/designs/TAX-FEE-AUTOPILOT.md`): every rule change is classified
+as **fixed date** (the law sets the day — applied exactly then, never early or late), **window, costs the business**
+(applied or scheduled at the owner setting `costlyChangeTimingPercent`, starting value 90%, allowed 85–95%, and always
+at least the owner's safety margin before the window closes), or **window, benefits the business** (applied as soon as
+it is allowed and safe). Payments and filings follow the same rule: the app suggests a "pay/file on" date at the
+timing point, never after the due date. Chris also asked (same day) that tax and fee rules run themselves: exemptions
+applied and removed automatically, rate changes picked up from official sources where possible.
+
 ## October 25 — "Remember this device" for sign-in codes (Chris)
 
 Chris approved ACC-6: a team member or customer can tick "Remember this device" after typing the sign-in code, so
