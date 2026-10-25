@@ -42,6 +42,7 @@ const ACTION_LABEL: Record<string, string> = {
   APPLIANCE_MAINTENANCE_DUE: "Schedule service",
   OLD_SET_APPLIANCE: "Split machines",
   OUT_OF_SERVICE: "Review repair",
+  FEEDBACK_WAITING: "Read",
 };
 export function todoAction(item: ExceptionItem) {
   return item.primaryAction ?? { href: item.href, label: ACTION_LABEL[item.category] ?? "Review item" };

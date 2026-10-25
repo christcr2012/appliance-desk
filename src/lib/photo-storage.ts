@@ -18,9 +18,34 @@ export function isPublicPhotoPath(pathname: string): boolean {
 
 /** Every persisted operational/customer evidence path is private. */
 export function isPrivatePhotoPath(pathname: string): boolean {
-  return /^(jobs|appliances|maintenance-requests|tax-exemptions|tax-filings|expenses|purchases|bank-statements|accounting-confirmations)\/[A-Za-z0-9_-]+\/[^/]+$/.test(
+  return /^(jobs|appliances|maintenance-requests|tax-exemptions|tax-filings|expenses|purchases|bank-statements|accounting-confirmations|feedback)\/[A-Za-z0-9_-]+\/[^/]+$/.test(
     pathname,
   );
+}
+
+/**
+ * MCP-10a: app-feedback screenshots share the private store but are NEVER Photo records. They are only read through
+ * /api/feedback-attachments (owner/admin or the report's own sender). Any address whose path is under feedback/ —
+ * whatever the host — is refused as a job/appliance photo and by the general photo read route.
+ */
+export function isFeedbackPicturePath(value: string): boolean {
+  let path = value;
+  try {
+    path = new URL(value).pathname;
+  } catch {
+    // not a URL: treat the value itself as a path
+  }
+  let decoded = path;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return true; // unreadable address: refuse rather than guess
+  }
+  return /^\/*feedback\//i.test(decoded);
+}
+
+export function assertNotFeedbackPicture(url: string): void {
+  if (isFeedbackPicturePath(url)) throw new Error("That picture belongs to an app feedback report and can't be attached here.");
 }
 
 export function getPublicPhotoWriteToken(): string | null {

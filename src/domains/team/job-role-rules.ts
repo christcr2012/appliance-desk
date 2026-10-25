@@ -22,6 +22,8 @@ export const SCREENS = {
   suppliers: { label: "Suppliers", money: true },
   activity: { label: "Activity (who changed what)", money: false },
   management: { label: "Settings, paperwork, privacy, system health and growth", money: true },
+  // MCP-10a: reading and answering everyone's app feedback. Owner/admin only (reports can hold personal details).
+  feedback: { label: "App feedback from customers and the team", money: true },
 } as const;
 export type ScreenKey = keyof typeof SCREENS;
 export const SCREEN_KEYS = Object.keys(SCREENS) as ScreenKey[];
@@ -40,6 +42,7 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
   "sales-tax": "sales-tax", books: "books", expenses: "expenses", suppliers: "suppliers", activity: "activity",
   settings: "management", paperwork: "management", privacy: "management", automations: "management", growth: "management",
   launch: "management", "control-center": "management", approvals: "management",
+  feedback: "feedback",
 };
 
 export function isScreenKey(value: string): value is ScreenKey {
@@ -54,6 +57,9 @@ export function screenForPath(pathname: string | null | undefined): ScreenKey | 
   if (!clean.startsWith("/desk/")) return null;
   const first = clean.slice("/desk/".length).split("/")[0];
   if ((ALWAYS_ALLOWED as readonly string[]).includes(first)) return "always";
+  // MCP-10a: everyone on the team can send app feedback and follow their own reports, whatever their job role.
+  const second = clean.slice("/desk/".length).split("/")[1];
+  if (first === "feedback" && (second === "new" || second === "mine")) return "always";
   return Object.hasOwn(PATH_TO_SCREEN, first) ? PATH_TO_SCREEN[first] : null;
 }
 

@@ -15,6 +15,7 @@ const BACKUP_HOST = "backup.private.blob.vercel-storage.com";
 
 const state = vi.hoisted(() => ({
   photos: [] as Array<{ id: string; url: string }>,
+  feedback: [] as Array<{ id: string; pathname: string }>,
   stores: new Map<string, Map<string, Stored>>(),
   putOrder: [] as string[],
   delOrder: [] as string[],
@@ -83,6 +84,8 @@ vi.mock("../src/lib/prisma", () => ({
     photo: {
       findMany: vi.fn(async () => [...state.photos].sort((a, b) => a.id.localeCompare(b.id))),
     },
+    // MCP-10a: no app-feedback screenshots in these cases.
+    feedbackAttachment: { findMany: vi.fn(async () => [...state.feedback]) },
   },
 }));
 
@@ -214,6 +217,7 @@ function installBlobFake(): void {
 beforeEach(() => {
   vi.clearAllMocks();
   state.photos.length = 0;
+  state.feedback.length = 0;
   state.stores.clear();
   state.putOrder.length = 0;
   state.delOrder.length = 0;
@@ -275,6 +279,20 @@ describe("Batch F private-media recovery", () => {
       checked: 2,
       skippedTombstoned: 0,
     });
+  });
+
+  it("MCP-10a: copies live app-feedback screenshots too (they are not Photo rows)", async () => {
+    const shot = "feedback/report-1/fa01.webp";
+    seed(PRIVATE_TOKEN, shot, "screenshot", "image/webp");
+    state.feedback.push({ id: "fa01", pathname: shot });
+    const result = await runMediaInventoryAndCopy({
+      databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-2.json`,
+      now: new Date("2026-10-06T09:00:00.000Z"),
+    });
+    expect(result.manifest.entries).toEqual([
+      expect.objectContaining({ photoId: "feedback:fa01", sourcePath: shot, status: "COPIED" }),
+    ]);
+    expect(result.manifest.unreferenced).toEqual([]);
   });
 
   it("keeps old recovery bytes when a source changes later in the same month", async () => {

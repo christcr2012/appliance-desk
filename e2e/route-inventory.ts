@@ -71,6 +71,15 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/account/rentals", role: "CUSTOMER", fixture: "/account/rentals" },
   { path: "/account/settings", role: "CUSTOMER", fixture: "/account/settings" },
   { path: "/account/settings/privacy", role: "CUSTOMER", fixture: "/account/settings/privacy" },
+  // MCP-10a app feedback (people only).
+  { path: "/account/feedback", role: "CUSTOMER", fixture: "/account/feedback" },
+  { path: "/account/feedback/new", role: "CUSTOMER", fixture: "/account/feedback/new?from=/account/rentals" },
+  {
+    path: "/account/feedback/[id]",
+    role: "CUSTOMER",
+    fixture: "A report the CI customer sent (created by e2e/feedback.spec.ts)",
+    manualOnlyReason: "The report id is generated when the browser test sends it; e2e/feedback.spec.ts opens this page with axe on phone and desktop.",
+  },
 
   { path: "/desk/communications", role: "OWNER", fixture: "/desk/communications" },
   { path: "/desk/communications/calls", role: "OWNER", fixture: "/desk/communications/calls" },
@@ -279,6 +288,23 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/settings/rental-endings", role: "OWNER", fixture: "/desk/settings/rental-endings" },
   { path: "/desk/settings/payment-links", role: "OWNER", fixture: "/desk/settings/payment-links" },
   { path: "/desk/settings/lead-response", role: "OWNER", fixture: "/desk/settings/lead-response" },
+  // MCP-10a app feedback: settings, triage (owner/admin), and every team member's own reports.
+  { path: "/desk/settings/feedback", role: "OWNER", fixture: "/desk/settings/feedback" },
+  { path: "/desk/feedback", role: "OWNER", fixture: "/desk/feedback" },
+  { path: "/desk/feedback/new", role: "STAFF", fixture: "/desk/feedback/new?from=/desk/today" },
+  { path: "/desk/feedback/mine", role: "STAFF", fixture: "/desk/feedback/mine" },
+  {
+    path: "/desk/feedback/[id]",
+    role: "OWNER",
+    fixture: "A report sent by the CI customer (created by e2e/feedback.spec.ts)",
+    manualOnlyReason: "The report id is generated when the browser test sends it; e2e/feedback.spec.ts opens this page with axe on phone and desktop.",
+  },
+  {
+    path: "/desk/feedback/mine/[id]",
+    role: "STAFF",
+    fixture: "A report sent by a team member",
+    manualOnlyReason: "Uses the same MyReportView as /account/feedback/[id], which e2e/feedback.spec.ts scans; the id is generated per run.",
+  },
   { path: "/desk/settings/history", role: "OWNER", fixture: "/desk/settings/history" },
   { path: "/desk/settings/switches", role: "OWNER", fixture: "/desk/settings/switches" },
   { path: "/desk/settings/permissions", role: "OWNER", fixture: "/desk/settings/permissions" },

@@ -175,6 +175,13 @@ export function AccountShell({
             )}
           </p>
         )}
+        {/* MCP-10a: problems with this website or app (not appliance repairs, which have their own page). English
+            only for now: Spanish wording waits for a translator's review. */}
+        <p className="mt-4 text-sm text-ink-soft print:hidden" lang="en">
+          <Link className="font-semibold underline" href={`/account/feedback/new?from=${encodeURIComponent(pathname)}`}>
+            App feedback
+          </Link>
+        </p>
       </main>
 
       <div className="md:hidden print:hidden">

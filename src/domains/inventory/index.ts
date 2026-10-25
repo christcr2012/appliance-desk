@@ -1,3 +1,4 @@
+import { assertNotFeedbackPicture } from "@/lib/photo-storage";
 import { allocateAssetNumbers, buildAssetNumber } from "./asset-numbers";
 import { jobPartsCosts } from "@/domains/purchasing/ledger";
 import { requireRole } from "@/lib/session";
@@ -385,6 +386,7 @@ export async function addAppliancePhoto(
   applianceId: string,
   input: { url: string; altText?: string | null },
 ) {
+  assertNotFeedbackPicture(input.url);
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN"]);
     await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;

@@ -62,6 +62,8 @@ export function relationDependencies(schema: string): RelationDependency[] {
         && !(block.name === "BudgetPlanVersion" && field.name === "supersedes")
         && !(block.name === "BudgetMove" && field.name === "reversalOf")
         && !(block.name === "BudgetCostSettlement" && field.name === "reversalOf")
+        // MCP-10a: "already reported" links between feedback reports are restored in a second pass.
+        && !(block.name === "FeedbackReport" && field.name === "duplicateOf")
       ) {
         dependencies.push({ model: block.name, dependsOn: field.type });
       }

@@ -199,6 +199,11 @@ export const BACKUP_MODEL_POLICY = {
   RecurringExpense: "recurringExpense",
   ExportBatch: "exportBatch",
   ExportBatchEntry: "exportBatchEntry",
+  // MCP-10a: app feedback reports, their conversation, screenshots (file records) and history are business records.
+  FeedbackReport: "feedbackReport",
+  FeedbackEntry: "feedbackEntry",
+  FeedbackAttachment: "feedbackAttachment",
+  FeedbackEvent: "feedbackEvent",
 
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
