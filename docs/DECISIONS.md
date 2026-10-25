@@ -1,3 +1,9 @@
+## October 25 — Customers is one area with Leads inside it (Batch CU design)
+
+Customers keeps its own place but becomes one area with Leads, Customers and Insights tabs and one shared search, so
+a person's history is not split at conversion. The list shows segment, monthly rent, balance, autopay, payment habit
+and next event per customer from a transaction-maintained summary table. Full design: `docs/designs/CUSTOMERS-WORKSPACE.md`.
+
 ## October 25 — Quiet screens and a real leads pipeline (Batch LD design)
 
 Screens carry at most one short line under a title; explanations go behind an ⓘ tooltip; filters live in stage tabs

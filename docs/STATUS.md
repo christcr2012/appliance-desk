@@ -1,3 +1,11 @@
+## October 25 — Customers redesign (Batch CU, design only)
+
+Docs only. The Customers list showed only name, email and two counts, with no search, filters, money or next steps,
+and its total counted the hidden walk-in customer (off-by-one; fix is in CU-1). New design
+`docs/designs/CUSTOMERS-WORKSPACE.md` (CU-1…CU-3): one Customers area with Leads inside it, segments, money and next
+event per customer, a record header with the next step, shared search and insights, sized for 20,000 customers.
+Needs Chris: go-ahead (checklist).
+
 ## October 25 — Leads redesign and the "quiet screens" rule (Batch LD, design only)
 
 Docs only. Chris found Leads a jumble of chip rows and explanations, not a pipeline that scales. New design

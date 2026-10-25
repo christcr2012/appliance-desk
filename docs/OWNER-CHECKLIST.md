@@ -186,6 +186,10 @@ Agents will do the parts they safely can and record what they saw; the rest need
   pipeline (stages, who owns each lead, "answer within 15 minutes", one-tap call, filters in one place, insights) that
   stays fast at 50,000 leads. Recommendation: yes, after BA-1. Steps: tell the agent "build LD". Ready when: now.
 
+- [ ] **Decision: build the Customers workspace (CU-1…CU-3)?** Design: docs/designs/CUSTOMERS-WORKSPACE.md — one
+  Customers area with Leads inside it, a list that shows who owes money, what each customer pays and what's next, and
+  a customer page that tells you the next step. Recommendation: yes, after LD-1. Steps: tell the agent "build CU".
+
 ## E. Optional / later (no action until you want it)
 
 IN-10 real photos you are comfortable publishing · IN-11 genuine reviews with permission · IN-13 staff roles when you hire ·
@@ -209,6 +213,7 @@ on readiness).
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |
 | 2026-10-23 | Staff-permission decision (section E) | Granting staff reports/expenses would widen access, so it needs the owner's approval. |
+| 2026-10-25 | Customers workspace go-ahead decision | Chris found the Customers list too basic for a real customer system. |
 | 2026-10-25 | Leads workspace go-ahead decision | Chris asked for a robust, scalable leads page without screens full of explanations. |
 | 2026-10-25 | Books on autopilot go-ahead decision | Chris asked for a Books redesign a first-time owner can run; build needs his go-ahead. |
 | 2026-10-24 | Testing owner password fix, agent-run M-3 check, GitHub release-branch protection | Audit of the testing setup: the testing build failed at the owner step; `live`/`testing` had no GitHub protection and the connector correctly refuses to change protection without you. |

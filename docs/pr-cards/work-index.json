@@ -4254,6 +4254,78 @@
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/LD-4.md"
+    },
+    {
+      "id": "CU-1",
+      "title": "Customer list as a working tool: segments, money and next event per row, filter sheet, saved views, summary read model, fast search, count fix",
+      "batch": "CU",
+      "dependencies": [],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "customer_summary",
+      "budget": 500,
+      "units": [
+        "CU-1"
+      ],
+      "evidence": [
+        "docs/designs/CUSTOMERS-WORKSPACE.md",
+        "src/app/desk/customers/page.tsx",
+        "src/domains/customers/index.ts"
+      ],
+      "tests": [
+        "tests/cu1-customer-list-integration.test.ts",
+        "tests/perf/customers-scale.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/CU-1.md"
+    },
+    {
+      "id": "CU-2",
+      "title": "Customer record header: summary strip, next-step card, quick actions, quiet tabs",
+      "batch": "CU",
+      "dependencies": [
+        "CU-1"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 380,
+      "units": [
+        "CU-2"
+      ],
+      "evidence": [
+        "docs/designs/CUSTOMERS-WORKSPACE.md",
+        "src/app/desk/customers/[id]/page.tsx"
+      ],
+      "tests": [
+        "tests/cu2-customer-next-step.test.ts",
+        "e2e/customer-record.spec.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/CU-2.md"
+    },
+    {
+      "id": "CU-3",
+      "title": "One Customers area (Leads, Customers, Insights), shared search, customer insights",
+      "batch": "CU",
+      "dependencies": [
+        "CU-2",
+        "LD-4"
+      ],
+      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "migration": "none",
+      "budget": 380,
+      "units": [
+        "CU-3"
+      ],
+      "evidence": [
+        "docs/designs/CUSTOMERS-WORKSPACE.md",
+        "src/lib/desk-sections.ts",
+        "src/lib/desk-navigation.ts"
+      ],
+      "tests": [
+        "tests/cu3-customers-area.test.ts"
+      ],
+      "readiness": "WRITE_CARD_AT_START",
+      "plannedCard": "docs/pr-cards/CU-3.md"
     }
   ],
   "enhancements": [
