@@ -201,6 +201,39 @@ squeezed down.
 (tablet), 1280 × 800 and 1920 × 1080, with axe and keyboard checks; the AR-0 reference screens are reviewed at phone size
 first. No horizontal scrolling on phones except inside tables built to scroll.
 
+## 4C. Where each thing lives — progressive disclosure (Chris, 2026-10-25)
+
+Chris: "not everything needs to be on the primary navigation menu… many things are perfectly fine being nestled
+inside another page." The long-standing name for this is **progressive disclosure**: show the most-used things by
+default and move secondary or rarely used features to a secondary place, which makes software easier to learn and less
+error-prone ([NN/g — progressive disclosure](https://www.nngroup.com/videos/progressive-disclosure/)). Menu research also
+finds that neither a very flat nor a very deep structure works best — moderate breadth with clear group labels and only
+2–3 levels below the top does ([Human Factors International — breadth vs depth](https://www.humanfactors.com/newsletters/breadth_vs_depth_we_revisit_this_question.html)).
+(Lazy loading is the same idea for speed — load a part only when it is opened — and section 4A uses it too.)
+
+**Placement rule — by how often it is used and what it belongs to:**
+
+| Tier | Put here | Examples |
+|---|---|---|
+| 1. Main menu (5 areas) | Used most days by most people | Today, Customers, Schedule, Equipment, Money |
+| 2. Area tabs (2–6 per area) | Lists used weekly | Leads, Quotes, Rentals; Invoices, Payments, Books, Taxes |
+| 3. Inside the record it belongs to | Anything about one customer, rental, appliance, invoice, visit | a customer's tax exemption, locations and statements; an appliance's QR label, split, out-of-service, tax proof; a rental's ending, refund, deposit |
+| 4. ⋯ menu on a record or list | Occasional actions | export CSV, print, duplicate, download PDF, resend |
+| 5. Settings (profile menu) | Set once, changed rarely | prices and packages, policies, team, website, message templates, tax setup, record retention, preview storage |
+| 6. Arrives as a To do item (and the command bar) | Event-driven, rare | file a return, amend a return, approve a request, settle a deposit, review a month, acknowledge an official tax-page change |
+
+Guardrails so nested things are never lost: every screen and record is findable from the **command bar**; anything with
+a deadline also arrives as a To do item; nothing sits more than **three taps** below its area; each area has at most
+six tabs; labels are the owner's words ("Rentals", not "Agreements").
+
+**Applied to today's 119 pages (in addition to section 7):** become record tabs/actions — `customers/[id]/locations`,
+`inventory/[id]/qr`, `inventory/[id]/split`, `inventory/[id]/out-of-service`, `agreements/[id]/{cancel,early-return,
+ending-decision,refund}`, `billing/customer/[id]`, `billing/deposits/[id]`, `sales-tax/exemptions` (per customer),
+`jobs/[id]/work-order`. Become settings sections — `settings/*` (16 pages), `sales-tax/setup*`, `sales-tax/record-retention`,
+`sales-tax/use-tax/settings`, `automations`, `privacy`, `preview-storage`, `paperwork`. Become To do-driven screens —
+`sales-tax/returns/[periodId]` and `amend`, `notices/[id]/resolve`, `approvals`, `books/budget/review/[id]`,
+`billing/held-payments`, `billing/reconciliation`. Stay as area tabs — the lists in section 4.1.
+
 ## 5. The application kit (shared components — AR-0)
 
 Build or upgrade in `src/components/ui`, documented in DESIGN-SYSTEM, each with axe/keyboard/phone tests:

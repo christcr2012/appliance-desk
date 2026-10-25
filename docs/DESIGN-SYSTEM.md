@@ -68,7 +68,9 @@ Settings in the profile menu, and four page types only: work queue, record page,
 built from the shared kit in `src/components/ui`. Full rules and the page map: [designs/APP-REDESIGN.md](designs/APP-REDESIGN.md). It must also *feel* like software
 (section 4A there): the frame never reloads, every click answers at once, nothing goes blank, keyboard and touch
 patterns, installable desk app, and a measured speed budget. **Mobile first:** design at 390 px first (thumb-reach primary action, cards,
-bottom sheets), then expand to list + side panel, real tables and keyboard on PC (section 4B there).
+bottom sheets), then expand to list + side panel, real tables and keyboard on PC (section 4B there). **Progressive disclosure:**
+place each feature by how often it is used and what it belongs to — main menu, area tab, inside its record, ⋯ menu,
+Settings, or a To do item — never more than three taps below its area (section 4C there).
 
 ### Quiet screens (Chris, 2026-10-25)
 
