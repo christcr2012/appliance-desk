@@ -1309,7 +1309,7 @@
       "dependencies": [
         "M-1B"
       ],
-      "status": "MERGED_PARTIAL",
+      "status": "MERGED",
       "migration": "batch_m_sale_return_evidence",
       "budget": 500,
       "units": [
@@ -1317,14 +1317,17 @@
       ],
       "evidence": [
         "docs/designs/BATCH-M.md",
-        "src/domains/purchasing/ledger.ts",
+        "src/domains/inventory/guided-actions.ts",
         "src/domains/purchasing/index.ts",
-        "src/domains/inventory/guided-actions.ts"
+        "src/domains/purchasing/ledger.ts",
+        "src/domains/tax/rdf-shop-sale.ts"
       ],
       "tests": [
-        "tests/shop-sale-integration.test.ts"
+        "tests/shop-sale-delivery-fee-integration.test.ts",
+        "tests/shop-sale-integration.test.ts",
+        "tests/used-appliance-sale-integration.test.ts"
       ],
-      "readiness": "MERGED_PARTIAL",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/M-1C.md",
       "card": "docs/pr-cards/M-1C.md"
     },
