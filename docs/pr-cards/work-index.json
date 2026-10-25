@@ -4020,22 +4020,20 @@
       "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
       "batch": "BA",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "book_autopilot",
       "budget": 480,
       "units": [
         "BA-1"
       ],
       "evidence": [
-        "docs/designs/BOOKS-AUTOPILOT.md",
-        "src/domains/books/post.ts",
-        "src/domains/books/fixed-assets.ts",
-        "src/app/api/cron/books-nightly/route.ts"
+        "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
+        "docs/designs/BOOKS-AUTOPILOT.md"
       ],
       "tests": [
         "tests/ba1-books-autopilot-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/BA-1.md"
     },
     {
@@ -4045,21 +4043,20 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
         "BA-2"
       ],
       "evidence": [
-        "docs/designs/BOOKS-AUTOPILOT.md",
-        "src/domains/books/management.ts",
-        "src/app/desk/books/page.tsx"
+        "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
+        "docs/designs/BOOKS-AUTOPILOT.md"
       ],
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {
@@ -4069,23 +4066,21 @@
       "dependencies": [
         "BA-2"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "month_review",
       "budget": 480,
       "units": [
         "BA-3"
       ],
       "evidence": [
-        "docs/designs/BOOKS-AUTOPILOT.md",
-        "src/domains/books/management.ts",
-        "src/domains/exceptions/rules.ts",
-        "src/domains/books/reports.ts"
+        "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
+        "docs/designs/BOOKS-AUTOPILOT.md"
       ],
       "tests": [
         "tests/ba3-month-review-integration.test.ts",
         "e2e/books-month-review.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/BA-3.md"
     },
     {
@@ -4557,7 +4552,10 @@
       "title": "Money: Books and Taxes screens on the kit",
       "batch": "AR",
       "dependencies": [
-        "AR-3"
+        "AR-0",
+        "AR-1",
+        "AR-12",
+        "BA-1"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
       "migration": "none",
@@ -4566,14 +4564,12 @@
         "AR-7"
       ],
       "evidence": [
-        "docs/designs/APP-REDESIGN.md",
-        "src/app/desk/books/page.tsx",
-        "src/app/desk/sales-tax/page.tsx"
+        "docs/build-specs/screens/BOOKS-TAXES.md"
       ],
       "tests": [
         "e2e/ar7-books-taxes.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-7.md"
     },
     {
