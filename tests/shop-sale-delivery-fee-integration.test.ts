@@ -24,7 +24,6 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
   const accountId = `rdfs-acct-${tag}`;
   let ownerId: string;
   let tax1: Awaited<ReturnType<typeof seedTaxReadyContext>>;
-  let tax2: Awaited<ReturnType<typeof seedTaxReadyContext>>;
   let originalSettings: Record<string, unknown>;
   let previousShopLocations: string[] = [];
   let rateId: string | null = null;
@@ -56,7 +55,7 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
     await prisma.serviceAddress.create({ data: { id: coAddress, customerId, line1: "1 Fee Rd", city: "Greeley", state: "CO", zip: "80631" } });
     await prisma.serviceAddress.create({ data: { id: neAddress, customerId, line1: "2 Fee Rd", city: "Kimball", state: "NE", zip: "69145" } });
     tax1 = await seedTaxReadyContext(coAddress, { rateMilliPercent: 8000 });
-    tax2 = await seedTaxReadyContext(neAddress, { rateMilliPercent: 8000 });
+    await seedTaxReadyContext(neAddress, { rateMilliPercent: 8000 });
     // The Colorado address is taxed by the state; the shop (for the pickup case) is taxed by the same state area.
     await prisma.taxJurisdiction.update({ where: { id: tax1.jurisdictionId }, data: { level: "STATE" } });
     previousShopLocations = (await prisma.addressTaxLocation.findMany({ where: { forBusinessLocation: true, isCurrent: true }, select: { id: true } })).map((r) => r.id);
