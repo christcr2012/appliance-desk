@@ -1,3 +1,15 @@
+## October 25 — Build specs wave 2 complete (every approved unit is card-ready)
+
+Docs only; nothing built yet. Added build specs + cards for: Books autopilot BA-1…3 and Books/Taxes AR-7; researched
+Colorado/Greeley starting values and the apply-once plan DEC-2 (`docs/research/2026-10-25-open-decisions.md`; also fixes
+found: new rentals ignore the late-fee setting, no late-fee waiver); Schedule AR-5, Equipment AR-6, Settings AR-8,
+Insights AR-9 (absorbs LD-4/CU-3), final sweep AR-10 (incl. the Oct 21 permissions audit), notifications AR-13,
+portal redesign PORTAL-1, remember-this-device ACC-6 (approved by Chris today), and the whole MCP batch MCP-1…11 with
+the people-only feedback box MCP-10a first. All registered in work-index; stale PLAN notes corrected. Blocked only by
+owner actions already on the checklist: W-11 (Colorado GIS key, IN-61), W-12 (XML schema, IN-62). Branch
+`ai/claude/build-specs-wave2`, stacked on PR #593. Next: merge #593, then this PR, then start building (AR-0a, DEC-1a,
+MCP-1, MCP-10a can start in parallel).
+
 ## October 25 — Build specs wave 2 (Customers area, decisions center)
 
 Docs only. Specs: Rentals list, rental record and "End this rental" (`screens/RENTALS.md`), Leads engine LD-1
