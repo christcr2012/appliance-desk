@@ -1,3 +1,4 @@
+import { recordShopSaleDeliveryFeeInTx, voidShopSaleDeliveryFeeInTx } from "@/domains/tax/rdf-shop-sale";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -244,6 +245,9 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
       await tx.invoiceLineItem.create({ data: { invoiceId: invoice.id, kind: "INSTALLATION_FEE", description: "Installation", amountCents: installation, quantity: 1 } });
     }
 
+    // Colorado retail delivery fee for a delivered sale: recorded once, and added as its own untaxed line when the customer pays it.
+    const deliveryFee = await recordShopSaleDeliveryFeeInTx(tx, { invoiceId: invoice.id, customerId, serviceAddressId, saleOn: now, allowCustomerLine: true });
+
     const tax = await applySaleInvoiceTaxInTx(tx, {
       invoiceId: invoice.id, customerId, serviceAddressId, taxDate: now, actorUserId,
     });
@@ -303,7 +307,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
         entityId: invoice.id,
         newValue: {
           operationKey: input.operationKey, payloadHash: hash, walkIn, location: input.location,
-          itemCount: lines.length, usedApplianceCount: applianceLines.length, subtotalCents, taxCents: completed.taxCents, saleOn: businessDateKey(now),
+          itemCount: lines.length, usedApplianceCount: applianceLines.length, subtotalCents: subtotalCents + deliveryFee.chargedCents, deliveryFeeCents: deliveryFee.chargedCents, taxCents: completed.taxCents, saleOn: businessDateKey(now),
           loweredPrices: lines.filter((l) => l.part.retailPriceCents !== null && l.item.unitPriceCents < l.part.retailPriceCents).map((l) => ({ partRecordId: l.part.id, reason: cleanText(l.item.priceReason, 200) })),
           note: cleanText(input.note, 300),
         },
@@ -312,7 +316,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
 
     return {
       invoiceId: invoice.id, invoiceNumber: completed.invoiceNumber, customerId,
-      subtotalCents, taxCents: completed.taxCents, amountDueCents: completed.amountDueCents, replayed: false,
+      subtotalCents: subtotalCents + deliveryFee.chargedCents, taxCents: completed.taxCents, amountDueCents: completed.amountDueCents, replayed: false,
     };
   });
 }
@@ -367,6 +371,7 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
       });
     }
     await tx.invoice.update({ where: { id: sale.id }, data: { status: "VOID", cancelledAt } });
+    await voidShopSaleDeliveryFeeInTx(tx, { invoiceId: sale.id, refundId: null, at: cancelledAt, actorUserId });
     if (soldAppliances.length > 0) await postForSource(tx, "INVOICE", sale.id);
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "sale.cancel", entityType: "Invoice", entityId: sale.id, newValue: { reason: why, restockedLines: sold.length } },
@@ -405,7 +410,6 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
     if (sale.status === "VOID") throw new Error("This sale was cancelled, so there is nothing to take back.");
     if (sale.amountPaidCents <= 0) throw new Error("Nothing has been paid on this sale. Cancel it instead.");
     if (sale.status !== "PAID") throw new Error("Only a sale that is paid in full can be taken back here. Finish the payment or cancel the unpaid part first.");
-    if (sale.lineItems.some((l) => l.applianceId)) throw new Error("A used appliance is on this sale. Taking an appliance back changes its book value, so that is not done here yet.");
     const refunds = await tx.refund.aggregate({ where: { invoiceId: sale.id }, _sum: { amountCents: true } });
     if ((refunds._sum.amountCents ?? 0) === 0) {
       // The refund path sends a card payment back to its own charge and cannot split one refund between a card and cash.
@@ -436,7 +440,7 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
       const v = (done.newValue ?? {}) as { refundedCents?: number; restockedUnits?: number };
       return { invoiceId: saleId, invoiceNumber, refundedCents: v.refundedCents ?? 0, restocked: v.restockedUnits ?? 0, alreadyReturned: true };
     }
-    const sale = await tx.invoice.findUniqueOrThrow({ where: { id: saleId }, select: { amountPaidCents: true, lineItems: { select: { id: true } } } });
+    const sale = await tx.invoice.findUniqueOrThrow({ where: { id: saleId }, select: { amountPaidCents: true, lineItems: { select: { id: true, applianceId: true } } } });
     const refunds = await tx.refund.findMany({ where: { invoiceId: saleId }, select: { id: true, amountCents: true } });
     const refundedCents = refunds.reduce((n, r) => n + r.amountCents, 0);
     if (refundedCents < sale.amountPaidCents) throw new Error("The refund was not fully recorded, so the items were not put back. Please try again.");
@@ -456,6 +460,26 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
       ]);
     }
     const restocked = sold.reduce((n, m) => n + -m.quantityDelta, 0);
+    // A used appliance comes back: its book value returns, its “Sell it” plan opens again, and the saved tax note is closed
+    // (nothing was really sold, so there is nothing to go over with the accountant). The refund already reversed the income.
+    const takenBack = sale.lineItems.map((l) => l.applianceId).filter((id): id is string => !!id).sort();
+    if (takenBack.length > 0) {
+      await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ANY(${takenBack}) ORDER BY "id" FOR UPDATE`;
+      const at = new Date();
+      for (const applianceId of takenBack) {
+        await reverseBookAssetDisposalInTx(tx, applianceId, saleId, at);
+        await tx.retiredAppliancePlan.updateMany({
+          where: { applianceId, doneOn: { not: null } },
+          data: { doneOn: null, doneNote: null, doneByUserId: null, reopenedAt: at, reopenReason: `Sale ${invoiceNumber} taken back: ${why}` },
+        });
+      }
+      await tx.retiredSaleDisposition.updateMany({ where: { invoiceId: saleId, cancelledAt: null }, data: { cancelledAt: at } });
+      // The line keeps its words and amount for the record, but the appliance is no longer "on a sale", so it can be sold again.
+      await tx.invoiceLineItem.updateMany({ where: { invoiceId: saleId, applianceId: { in: takenBack } }, data: { applianceId: null } });
+    }
+    // The delivery fee goes back with the sale: the customer was refunded everything, fee included.
+    const lastRefund = [...refunds].sort((a, b) => b.amountCents - a.amountCents)[0];
+    await voidShopSaleDeliveryFeeInTx(tx, { invoiceId: saleId, refundId: lastRefund?.id ?? null, at: new Date(), actorUserId });
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "sale.return", entityType: "Invoice", entityId: saleId, newValue: { reason: why, refundedCents, restockedUnits: restocked, restockedLines: sold.length } },
     });
