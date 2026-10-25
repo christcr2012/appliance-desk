@@ -6,6 +6,7 @@ import { resolveTaxability } from "./engine";
 import { rdfRateForSale, retailDeliveryFeeStatus } from "./retail-delivery-fee";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { recordedRetailSales } from "./rdf-sales-evidence";
+import { recordShopSaleDeliveryFeeInTx } from "./rdf-shop-sale";
 
 type Tx = Prisma.TransactionClient;
 type Result = { recordId: string | null; status: RdfRecordStatus | null };
@@ -299,6 +300,26 @@ export async function resolvePendingRdfRecords(
   });
   let resolved = 0,
     blocked = 0;
+  // Delivered shop sales that were waiting on a setting or a rate. The customer has long gone, so the business pays the fee.
+  const shopRows = await prisma.retailDeliveryFeeRecord.findMany({
+    where: { status: { in: ["PENDING_DECISION", "PENDING_RATE"] }, invoiceId: { not: null }, agreementId: null },
+    orderBy: [{ deliveredOn: "asc" }, { id: "asc" }],
+    take: limit,
+    select: { invoiceId: true, invoice: { select: { customerId: true, saleServiceAddressId: true, status: true } } },
+  });
+  for (const row of shopRows) {
+    if (!row.invoiceId || !row.invoice) continue;
+    const invoice = row.invoice;
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Invoice" WHERE "id" = ${row.invoiceId} FOR UPDATE`;
+      return recordShopSaleDeliveryFeeInTx(tx, {
+        invoiceId: row.invoiceId!, customerId: invoice.customerId, serviceAddressId: invoice.saleServiceAddressId,
+        saleOn: _now, allowCustomerLine: false,
+      });
+    });
+    if (result.status === "READY" || result.status === "NOT_DUE") resolved++;
+    else blocked++;
+  }
   for (const row of rows) {
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" = ${row.agreementId} FOR UPDATE`;

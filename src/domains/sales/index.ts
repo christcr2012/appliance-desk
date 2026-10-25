@@ -1,3 +1,4 @@
+import { recordShopSaleDeliveryFeeInTx, voidShopSaleDeliveryFeeInTx } from "@/domains/tax/rdf-shop-sale";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -244,6 +245,9 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
       await tx.invoiceLineItem.create({ data: { invoiceId: invoice.id, kind: "INSTALLATION_FEE", description: "Installation", amountCents: installation, quantity: 1 } });
     }
 
+    // Colorado retail delivery fee for a delivered sale: recorded once, and added as its own untaxed line when the customer pays it.
+    const deliveryFee = await recordShopSaleDeliveryFeeInTx(tx, { invoiceId: invoice.id, customerId, serviceAddressId, saleOn: now, allowCustomerLine: true });
+
     const tax = await applySaleInvoiceTaxInTx(tx, {
       invoiceId: invoice.id, customerId, serviceAddressId, taxDate: now, actorUserId,
     });
@@ -303,7 +307,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
         entityId: invoice.id,
         newValue: {
           operationKey: input.operationKey, payloadHash: hash, walkIn, location: input.location,
-          itemCount: lines.length, usedApplianceCount: applianceLines.length, subtotalCents, taxCents: completed.taxCents, saleOn: businessDateKey(now),
+          itemCount: lines.length, usedApplianceCount: applianceLines.length, subtotalCents: subtotalCents + deliveryFee.chargedCents, deliveryFeeCents: deliveryFee.chargedCents, taxCents: completed.taxCents, saleOn: businessDateKey(now),
           loweredPrices: lines.filter((l) => l.part.retailPriceCents !== null && l.item.unitPriceCents < l.part.retailPriceCents).map((l) => ({ partRecordId: l.part.id, reason: cleanText(l.item.priceReason, 200) })),
           note: cleanText(input.note, 300),
         },
@@ -312,7 +316,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
 
     return {
       invoiceId: invoice.id, invoiceNumber: completed.invoiceNumber, customerId,
-      subtotalCents, taxCents: completed.taxCents, amountDueCents: completed.amountDueCents, replayed: false,
+      subtotalCents: subtotalCents + deliveryFee.chargedCents, taxCents: completed.taxCents, amountDueCents: completed.amountDueCents, replayed: false,
     };
   });
 }
@@ -367,6 +371,7 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
       });
     }
     await tx.invoice.update({ where: { id: sale.id }, data: { status: "VOID", cancelledAt } });
+    await voidShopSaleDeliveryFeeInTx(tx, { invoiceId: sale.id, refundId: null, at: cancelledAt, actorUserId });
     if (soldAppliances.length > 0) await postForSource(tx, "INVOICE", sale.id);
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "sale.cancel", entityType: "Invoice", entityId: sale.id, newValue: { reason: why, restockedLines: sold.length } },
@@ -456,6 +461,9 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
       ]);
     }
     const restocked = sold.reduce((n, m) => n + -m.quantityDelta, 0);
+    // The delivery fee goes back with the sale: the customer was refunded everything, fee included.
+    const lastRefund = [...refunds].sort((a, b) => b.amountCents - a.amountCents)[0];
+    await voidShopSaleDeliveryFeeInTx(tx, { invoiceId: saleId, refundId: lastRefund?.id ?? null, at: new Date(), actorUserId });
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "sale.return", entityType: "Invoice", entityId: saleId, newValue: { reason: why, refundedCents, restockedUnits: restocked, restockedLines: sold.length } },
     });
