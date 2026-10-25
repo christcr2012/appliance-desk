@@ -23,6 +23,7 @@ model BankPaymentInFlight {
   clearedAt        DateTime?
   clearedReason    String?   // "SUCCEEDED" | "FAILED" | "CANCELED" | "INVOICE_CLOSED"
   lastCheckedAt    DateTime?
+  settledInStripeAt DateTime? // Stripe says it succeeded but the app could not record it yet (section 3c)
   createdAt        DateTime  @default(now())
   @@index([invoiceId, clearedAt])
   @@index([clearedAt, startedAt])
@@ -88,7 +89,7 @@ delivery) and item 2 (delayed settlement) explicitly.
       already-processed event does nothing), then settle `result.referralIdsToSettle` with `settleReferralCredits`
       exactly as `src/app/api/webhooks/stripe/route.ts` does. Re-read: if the payment now exists → clear `SUCCEEDED`.
    c. If no matching event is found, or the replay throws → **leave the row open**, set `lastCheckedAt`, set a new
-      column `settledInStripeAt = now` (add `settledInStripeAt DateTime?` to the model), count `needsCheck`. The bill
+      `settledInStripeAt = now`, count `needsCheck`. The bill
       keeps showing "Being confirmed" (so no late fee or reminder), and To do raises it (section 4).
    Other PI statuses, in a short transaction per row (`SELECT … FOR UPDATE` on the row, re-check still open):
    `requires_payment_method` / `canceled` → clear `FAILED` / `CANCELED`; still `processing` → only
