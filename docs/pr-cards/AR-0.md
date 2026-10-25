@@ -26,11 +26,11 @@ reviewable only against the kit.*
 3. **Date and word helpers.** In `src/lib/business-date.ts` add `formatShortDate`, `formatMonthYear`,
    `formatWeekdayDate`, `relativeBusinessDay`, `businessWeekStart`, `ordinal` (KIT 8, TODAY 2). Tests in
    `tests/business-date-display.test.ts`: each helper across both 2026 DST changes (Mar 8, Nov 1) and New Year.
-4. **Kit components.** Create `src/components/kit/` with `types.ts` (KIT 3) and components 4.1–4.17 and 4.19
-   (`Sheet`); `index.ts` exports them all. Logo per KIT 4.20 (no component; use `next/image` with
+4. **Kit components.** Create `src/components/kit/` with `types.ts` (KIT 3) and components 4.1–4.17, 4.19 (`Sheet`) and
+   4.21 (`Icon`); `index.ts` exports them all. Logo per KIT 4.20 (no component; use `next/image` with
    `/brand/badge.svg`). One test per component in `tests/kit/<name>.test.tsx` covering the behaviors KIT lists
    (roles, keyboard, empty states, tone classes). Build in this order because later ones use earlier ones:
-   StatusPill → ActionButton → ActionBar → EmptyState → Skeleton → Toaster → ConfirmDialog → Sheet → ScreenHeader →
+   Icon → StatusPill → ActionButton → ActionBar → EmptyState → Skeleton → Toaster → ConfirmDialog → Sheet → ScreenHeader →
    AreaTabs → StatusTabs → Toolbar → DataTable → SidePanel → RecordHeader/StatStrip → NextStepCard → InboxCard →
    Timeline → Fab.
 5. **Guards.** `tests/kit-guards.test.ts` implementing KIT 9 rules 1–5. Create

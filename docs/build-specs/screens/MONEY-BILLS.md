@@ -70,9 +70,9 @@ export async function getBillTotals(params: BillsParams, now = new Date()): Prom
 
 **Phone:**
 1. `ScreenHeader` title "Money" (the area title), search icon button (command bar later).
-2. `AreaTabs` label "Money sections": Overview → `/desk/revenue` (until AR-3 builds `/desk/money`), **Bills** →
-   `/desk/billing`, Payments → `/desk/billing?view=deposits` (until AR-3), Expenses → `/desk/expenses`,
-   Books → `/desk/books`, Taxes → `/desk/sales-tax`. (Role: all OWNER/ADMIN already.)
+2. Area tabs: **not on this page.** `src/app/desk/billing/layout.tsx` keeps rendering the existing
+   `<SectionTabs section="money" />` in AR-0; AR-1 replaces every area layout's tabs at once with the kit `AreaTabs`
+   (NAVIGATION.md), so all Money pages change together.
 3. `StatusTabs` label "Bill status": `Open {n}`, `Past due {n}`, `Processing {n}` (hide 0), `Paid`, `Closed`,
    `Drafts {n}` (hide 0). Paid/Closed show no count.
 4. `Toolbar`: search placeholder "Name or bill number", label "Search bills"; filters Type (multi: "Rental bills",
@@ -92,7 +92,7 @@ export async function getBillTotals(params: BillsParams, now = new Date()): Prom
 8. Empty states: open "No open bills"; past-due "Nothing is late"; paid "No paid bills yet"; closed "No closed
    bills"; with filters/search: "No bills match" + action "Clear filters".
 
-**Desktop (`lg:`):** sidebar shell (existing AppShell until AR-1); header row "Money" + "+ New bill" button; AreaTabs;
+**Desktop (`lg:`):** sidebar shell (existing AppShell until AR-1); header row "Money" + "+ New bill" button; (area tabs come from the layout);
 one row with StatusTabs (segmented) + search (max 320 px) + Filter + "View: {name} ▾"; table columns:
 ☐ · Customer · Bill (`#number`) · For · Amount (right) · Still owed (right, bold) · Status (pill) · ⋯.
 Row click opens the **SidePanel** (`?open=`). Below the table the summary line.

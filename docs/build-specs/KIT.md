@@ -219,6 +219,39 @@ Use only the brand-kit files ([DESIGN-SYSTEM.md "Logo rule"](../DESIGN-SYSTEM.md
 evergreen badge, ivory R, lime leg) for every small logo in the app (sidebar, phone top bar, sign-in, account);
 `/brand/logo-light.svg` / `logo-dark.svg` for the full logo. Never recolor or redraw it; never one-color on screens.
 
+### 4.21 `Icon` — one small icon set, no icon library
+`<Icon name={IconName} size={20|24} className? />` in `src/components/kit/icons.tsx`; `aria-hidden="true"` always
+(the button or link around it carries the words). Shapes are copied from **Lucide** (ISC license — keep its
+copyright line in a comment at the top of the file): run `npm pack lucide-static@0.468.0` in the scratch folder
+(do **not** add it as a dependency), open `package/icons/<name>.svg`, and paste each icon's inner elements into a
+`Record<IconName, ReactNode>`. Stroke `currentColor`, width 2, round caps and joins, viewBox `0 0 24 24`.
+| IconName | Lucide file | Used for |
+|---|---|---|
+| today | `inbox` | Today area |
+| customers | `users` | Customers area |
+| schedule | `calendar-days` | Schedule area |
+| equipment | `washing-machine` | Equipment area |
+| money | `wallet` | Money area |
+| search | `search` | search / command bar |
+| plus | `plus` | Fab, "+ New …" |
+| more | `ellipsis` | ⋯ menus |
+| back | `chevron-left` | back links |
+| down | `chevron-down` | dropdowns |
+| phone | `phone` | Call |
+| email | `mail` | Email |
+| map | `map-pin` | Map / addresses |
+| filter | `sliders-horizontal` | Filter |
+| sort | `arrow-up-down` | Sort |
+| gear | `settings` | AutomationLine, Settings |
+| check | `check` | done, selected |
+| close | `x` | close, remove chip |
+| info | `info` | InfoTip trigger (replaces the ⓘ character in kit components) |
+| offline | `wifi-off` | OfflineBar |
+| collapse | `panel-left` | collapse the sidebar |
+| help | `circle-help` | Help |
+| signout | `log-out` | Sign out |
+Build `Icon` first (before StatusPill) in AR-0a step 4.
+
 ## 5. Page patterns (copy these structures)
 
 ### 5.1 Work queue page (server component)

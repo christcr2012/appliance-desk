@@ -4362,6 +4362,7 @@
       "title": "Navigation: five areas, area tabs, profile menu, command bar, redirects, More removed",
       "batch": "AR",
       "dependencies": [
+        "AR-0",
         "AR-11",
         "AR-12"
       ],
@@ -4373,15 +4374,17 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
+        "docs/build-specs/screens/NAVIGATION.md",
         "src/lib/desk-navigation.ts",
-        "src/lib/desk-sections.ts",
-        "src/components/ui/app-shell.tsx"
+        "src/lib/desk-sections.ts"
       ],
       "tests": [
-        "tests/ar1-navigation.test.ts",
-        "e2e/ar1-navigation.spec.ts"
+        "tests/desk-areas.test.ts",
+        "tests/kit/command-bar.test.tsx",
+        "tests/command-actions-integration.test.ts",
+        "e2e/navigation.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-1.md"
     },
     {
