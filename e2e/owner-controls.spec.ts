@@ -62,7 +62,11 @@ test("approval limits: fill in the suggested amount, save it, reload to see it k
   await expect(page.getByLabel(/ask me at or above \(dollars\)/).first()).toHaveValue("");
   await page.getByRole("button", { name: /^Fill in \$/ }).first().click();
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByLabel(/ask me at or above \(dollars\)/).first()).toHaveValue(filled);
+  // Reload until the value shown comes from the database (the save may still be finishing), so a broken save is caught.
+  await expect.poll(async () => {
+    await page.reload();
+    return page.getByLabel(/ask me at or above \(dollars\)/).first().inputValue();
+  }, { timeout: 15000 }).toBe(filled);
   await phoneKeyboardAndAxe(page);
   await page.getByRole("button", { name: /Turn all limits off/ }).click();
   await expect(page.getByLabel(/ask me at or above \(dollars\)/).first()).toHaveValue("");
