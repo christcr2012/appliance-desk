@@ -397,7 +397,8 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   ];
 
   return (
-    <div className="lg:flex lg:items-start lg:gap-6">
+    // The kit lays out for a 20 px phone gutter (KIT 1); the current shell gives 16 px, so add the difference until AR-1.
+    <div className="px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
       <div className="flex min-w-0 flex-1 flex-col gap-4 lg:max-w-[760px]">
         {notInJobRole ? (
           <p role="status" className="rounded-card border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink">

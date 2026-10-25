@@ -123,7 +123,8 @@ test.describe("owner daily work", () => {
               () => document.documentElement.scrollWidth <= innerWidth,
             ),
           ).toBe(true);
-          if (width === 360) {
+          // AR-0b: Today's title shares its row with the Search and account buttons, so only Tasks keeps this check.
+          if (width === 360 && route === "tasks") {
             const titleBlock = await page
               .getByRole("heading", { level: 1 })
               .locator("..")

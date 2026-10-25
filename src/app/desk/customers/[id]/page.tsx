@@ -567,8 +567,15 @@ export default async function CustomerDetailPage({
           <div className="hidden lg:block">
             <AreaTabs label="Customer sections" items={desktopTabs} />
           </div>
-          <div className="lg:hidden">{sectionFor(phoneTab)}</div>
-          <div className="hidden lg:block">{sectionFor(desktopTab)}</div>
+          {/* Render a section once when phone and desktop show the same one (no duplicate forms or anchors). */}
+          {phoneTab === desktopTab ? (
+            sectionFor(phoneTab)
+          ) : (
+            <>
+              <div className="lg:hidden">{sectionFor(phoneTab)}</div>
+              <div className="hidden lg:block">{sectionFor(desktopTab)}</div>
+            </>
+          )}
         </div>
         <aside aria-label="Next steps and activity" className="hidden lg:flex lg:w-[360px] lg:shrink-0 lg:flex-col lg:gap-4">
           {nextStepCards("flex flex-col gap-2.5")}

@@ -52,7 +52,8 @@ export function CustomerRecordClient({
   }
 
   return (
-    <div onClickCapture={onClickCapture}>
+    // The kit lays out for a 20 px phone gutter (KIT 1); the current shell gives 16 px, so add the difference until AR-1.
+    <div onClickCapture={onClickCapture} className="px-1 sm:px-0">
       {children}
       <Sheet
         open={open}
