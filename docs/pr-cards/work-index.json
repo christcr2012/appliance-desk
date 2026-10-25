@@ -4340,15 +4340,21 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
-        "src/components/ui/page-header.tsx",
-        "src/components/ui/data-list.tsx",
-        "docs/DESIGN-SYSTEM.md"
+        "docs/build-specs/KIT.md",
+        "docs/build-specs/screens/TODAY.md",
+        "docs/build-specs/screens/MONEY-BILLS.md",
+        "docs/build-specs/screens/CUSTOMER-RECORD.md"
       ],
       "tests": [
-        "tests/ar0-kit-guards.test.ts",
-        "e2e/ar0-reference-screens.spec.ts"
+        "tests/kit-guards.test.ts",
+        "tests/today-inbox.test.ts",
+        "tests/bill-status.test.ts",
+        "tests/customer-record.test.ts",
+        "e2e/today.spec.ts",
+        "e2e/money-bills.spec.ts",
+        "e2e/customer-record.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-0.md"
     },
     {
@@ -4616,15 +4622,16 @@
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
+        "docs/build-specs/KIT.md",
         "public/manifest.webmanifest",
-        "src/app/desk/loading.tsx",
-        "src/components/ui/app-shell.tsx"
+        "src/app/desk/loading.tsx"
       ],
       "tests": [
-        "tests/ar11-app-feel.test.ts",
-        "e2e/ar11-app-feel.spec.ts"
+        "tests/desk-manifest.test.ts",
+        "tests/desk-sw.test.ts",
+        "e2e/app-feel.spec.ts"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-11.md"
     },
     {
@@ -4635,21 +4642,23 @@
         "AR-0"
       ],
       "status": "DESIGNED — awaiting Chris's go-ahead",
-      "migration": "feature_visibility",
+      "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [
         "AR-12"
       ],
       "evidence": [
         "docs/designs/APP-REDESIGN.md",
+        "docs/build-specs/KIT.md",
         "scripts/check-owner-wording.mjs",
-        "src/lib/glossary.ts"
+        "src/domains/workspace/preferences.ts"
       ],
       "tests": [
-        "tests/ar12-owner-friendly.test.ts",
+        "tests/kit/selection.test.tsx",
+        "tests/features-integration.test.ts",
         "scripts/check-owner-wording.test.mjs"
       ],
-      "readiness": "WRITE_CARD_AT_START",
+      "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/AR-12.md"
     },
     {

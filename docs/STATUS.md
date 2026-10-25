@@ -1,3 +1,12 @@
+## October 25 — Build specs for the redesign (wave 1: kit + Today, Bills, Customer)
+
+Docs only. Chris wants the design decided so completely that a cheaper model can build it. New
+`docs/build-specs/`: README (how to build), KIT (tokens, dependencies, every shared component's contract, date and
+word helpers, guards), screen specs for Today, Money › Bills and the Customer record (data functions, URL params,
+layout phone and PC, exact words, tests), and the approved samples. Cards AR-0 (split 0a kit / 0b screens), AR-11
+(app feel) and AR-12 (owner-friendly rules) are now card-ready. Needs Chris: go-ahead to build (checklist).
+Next: specs for AR-1…AR-10.
+
 ## October 25 — Rule change: decisions never block the work
 
 Docs only. AGENTS.md section 1 now says: research, run the most likely answer as a changeable starting value, and
