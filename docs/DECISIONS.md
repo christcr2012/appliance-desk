@@ -42,6 +42,7 @@ Chris approved ACC-6: a team member or customer can tick "Remember this device" 
 that device skips the code for an owner-set number of days (starting value 30; 0 turns it off). The server refuses a
 "remember" request when the setting is off, every password/two-step/access change forgets remembered devices, and
 customers get new-device notices through the normal customer-email switch. Spec: `docs/build-specs/engines/TRUSTED-DEVICES.md`.
+
 ## October 25 — Late fees: warn first, never during a payment in progress (Chris)
 
 "A late fee should not be charged before the customer is notified, so it should not 'slip in' to a payment method

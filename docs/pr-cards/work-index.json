@@ -5720,6 +5720,30 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/TAXBEN-2.md"
+    },
+    {
+      "id": "FEE-1",
+      "title": "Fair late fees: warning first, never during a payment in progress, fee as its own charge on the next bill",
+      "batch": "AR",
+      "dependencies": [
+        "BILL-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
+      "budget": 450,
+      "units": [
+        "FEE-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/LATE-FEES.md",
+        "src/domains/billing/late-fees.ts",
+        "src/domains/billing/reminders.ts"
+      ],
+      "tests": [
+        "tests/late-fees-fair-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/FEE-1.md"
     }
   ],
   "enhancements": [
