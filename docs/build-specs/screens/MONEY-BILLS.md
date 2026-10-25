@@ -42,11 +42,12 @@ export function billPill(bill: { status: InvoiceStatus; dueDate: Date | null; am
   to this screen). AR-0 builds the tabs below; BILL-1 inserts its tab. Unfinished Stripe requests stay visible through
   the existing "Waiting for Stripe" view (`?view=waiting`).
 - **paid:** `PAID`. **closed:** `VOID, WRITTEN_OFF, REFUNDED`. **drafts:** `DRAFT` (tab hidden when 0).
-- **Pill** (first match wins): FAILED → "Payment failed" (attention);
+- **Pill** (first match wins; terminal statuses first): PAID → "Paid" (good); VOID → "Cancelled" (neutral);
+  WRITTEN_OFF → "Given up" (neutral); REFUNDED → "Refunded" (neutral); DRAFT → "Draft" (neutral); then, only for open
+  bills with money still owed (the **open** rule above): FAILED → "Payment failed" (attention);
   past due → `"{n} day(s) late"` where n = calendar days between the due date and today in Denver (attention);
   due today → "Due today" (neutral); open with due date → `"Due {formatShortDate(dueDate)}"` (neutral);
-  open without due date → "Open" (neutral); PAID → "Paid" (good); VOID → "Cancelled" (neutral);
-  WRITTEN_OFF → "Given up" (neutral); REFUNDED → "Refunded" (neutral); DRAFT → "Draft" (neutral).
+  open without due date → "Open" (neutral). Test: a bill paid on its due date shows "Paid", not "Due today".
 - InfoTips on pills (add to `GLOSSARY`, shape `{ title, description }`): `"bill-failed"` { "Payment failed", "The card or bank refused the payment. Take payment again or send a reminder." },
   `"bill-given-up"` { "Given up", "You decided not to collect this bill. It still counts in your records." }.
 
