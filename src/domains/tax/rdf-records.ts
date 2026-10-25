@@ -305,7 +305,7 @@ export async function resolvePendingRdfRecords(
     where: { status: { in: ["PENDING_DECISION", "PENDING_RATE"] }, invoiceId: { not: null }, agreementId: null },
     orderBy: [{ deliveredOn: "asc" }, { id: "asc" }],
     take: limit,
-    select: { invoiceId: true, invoice: { select: { customerId: true, saleServiceAddressId: true, status: true } } },
+    select: { invoiceId: true, invoice: { select: { customerId: true, saleServiceAddressId: true, status: true, issuedAt: true, createdAt: true } } },
   });
   for (const row of shopRows) {
     if (!row.invoiceId || !row.invoice) continue;
@@ -314,7 +314,7 @@ export async function resolvePendingRdfRecords(
       await tx.$queryRaw`SELECT "id" FROM "Invoice" WHERE "id" = ${row.invoiceId} FOR UPDATE`;
       return recordShopSaleDeliveryFeeInTx(tx, {
         invoiceId: row.invoiceId!, customerId: invoice.customerId, serviceAddressId: invoice.saleServiceAddressId,
-        saleOn: _now, allowCustomerLine: false,
+        saleOn: invoice.issuedAt ?? invoice.createdAt, allowCustomerLine: false,
       });
     });
     if (result.status === "READY" || result.status === "NOT_DUE") resolved++;

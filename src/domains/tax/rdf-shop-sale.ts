@@ -38,7 +38,7 @@ function coDate(input: Date): Date {
  * sale. Goods never depend on the rental lease election. Anything the app cannot decide yet is kept as a pending record
  * so nothing owed is lost; it never stops the sale.
  */
-async function decide(tx: Tx, input: { invoiceId: string; customerId: string; serviceAddressId: string; saleOn: Date }): Promise<Decision> {
+async function decide(tx: Tx, input: { invoiceId: string; customerId: string; serviceAddressId: string; saleOn: Date; saleInstant: Date }): Promise<Decision> {
   const address = await tx.serviceAddress.findUniqueOrThrow({ where: { id: input.serviceAddressId }, select: { state: true } });
   if (address.state !== "CO") return none("Delivery address is outside Colorado.");
   const settings = await tx.businessSettings.findUnique({
@@ -46,7 +46,8 @@ async function decide(tx: Tx, input: { invoiceId: string; customerId: string; se
     select: { shortTermLeaseElection: true, rdfThresholdCents: true, rdfThresholdCrossedOn: true, rdfHandling: true, rdfCpaConfirmedOn: true },
   });
   if (!settings) return pending("Complete the business settings before deciding delivery fees.");
-  const context = await getSaleTaxContext(tx, { customerId: input.customerId, serviceAddressId: input.serviceAddressId, taxDate: input.saleOn });
+  // Exemption certificates are checked at the real moment of the sale (like the sale tax itself); the date-only value picks the rate and filing.
+  const context = await getSaleTaxContext(tx, { customerId: input.customerId, serviceAddressId: input.serviceAddressId, taxDate: input.saleInstant });
   const stateRows = await tx.taxJurisdiction.findMany({ where: { id: { in: context.jurisdictions.map((j) => j.id) }, level: "STATE" }, select: { id: true } });
   if (stateRows.length !== 1) return pending("Confirm the Colorado state tax jurisdiction for this address.");
   const stateId = stateRows[0]!.id;
@@ -98,14 +99,14 @@ async function decide(tx: Tx, input: { invoiceId: string; customerId: string; se
  */
 export async function recordShopSaleDeliveryFeeInTx(
   tx: Tx,
-  input: { invoiceId: string; customerId: string; serviceAddressId: string | null; saleOn: Date; allowCustomerLine: boolean },
+  input: { invoiceId: string; customerId: string; serviceAddressId: string | null; /** The real moment of the sale. */ saleOn: Date; allowCustomerLine: boolean },
 ): Promise<ShopSaleFeeResult> {
   if (!input.serviceAddressId) return { recordId: null, status: null, chargedCents: 0 };
   const saleKey = "retail:" + input.invoiceId;
   const prior = await tx.retailDeliveryFeeRecord.findUnique({ where: { saleKey } });
   if (prior && (prior.status === "READY" || prior.status === "NOT_DUE")) return { recordId: prior.id, status: prior.status, chargedCents: 0 };
   const saleOn = prior?.deliveredOn ?? coDate(input.saleOn);
-  const decision = await decide(tx, { invoiceId: input.invoiceId, customerId: input.customerId, serviceAddressId: input.serviceAddressId, saleOn });
+  const decision = await decide(tx, { invoiceId: input.invoiceId, customerId: input.customerId, serviceAddressId: input.serviceAddressId, saleOn, saleInstant: input.saleOn });
   const customerLine = decision.status === "READY" && decision.collect && input.allowCustomerLine && rdfChargingEnabled() && (decision.amountCents ?? 0) > 0;
   const data = {
     status: decision.status, rateId: decision.rateId, saleOn: decision.status === "READY" ? saleOn : null,

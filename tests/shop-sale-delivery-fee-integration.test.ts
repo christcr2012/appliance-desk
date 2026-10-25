@@ -140,6 +140,18 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
     expect((await records(unpaid.invoiceId))[0]).toMatchObject({ status: "NOT_DUE", collectedFromCustomer: false, customerRefundRef: null });
   });
 
+  it("an exemption certificate revoked earlier the same day no longer hides the fee (checked at the real sale moment)", async () => {
+    const exemption = await prisma.customerTaxExemption.create({
+      data: { customerId, reason: "RESALE", jurisdictionIds: [tax1.jurisdictionId], validFrom: new Date(Date.now() - 2 * 86_400_000), revokedAt: new Date(Date.now() - 1000), verifiedByUserId: ownerId },
+    });
+    try {
+      const sale = await sell(await part(), coAddress);
+      expect((await records(sale.invoiceId))[0]).toMatchObject({ status: "READY", amountCents: 37 });
+    } finally {
+      await prisma.customerTaxExemption.delete({ where: { id: exemption.id } });
+    }
+  });
+
   it("with no fee amount entered the sale still goes through; entering it later finishes the record and the business pays it", async () => {
     await dropRate();
     const sale = await sell(await part(), coAddress);
