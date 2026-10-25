@@ -6,6 +6,13 @@ counted once). Anything without enough history says so instead of guessing: unde
 time, or under 14 customer-days. Each number is registered in the definitions list as ACTUAL or ESTIMATE and labelled "provider reported, not invoice
 reconciled". Read-only: sends and posts nothing. Rental-revenue share stays "not shown yet" until the books provide recognized revenue.
 Proven by 9 tests on throwaway Postgres. Branch `ai/claude/com-n4-service-metrics`. Next: telecom wiring (scheduled spend-alert check).
+## October 24 — COM-N1B: job and maintenance texts (everything OFF)
+
+Job and maintenance-request screens get the same preview-then-send box: visit scheduled / reminder / on the way / done, and
+maintenance request received / resolved. Owners and admins can send all; staff can send only the four visit texts for jobs
+assigned to them (and cannot record permission). No street address in any text. Same gates as the first batch (master switch,
+Owner-approved wording, per-text switch, recorded permission, STOP, quiet hours). Tested on throwaway Postgres with a fake carrier.
+Next: COM-N1C (billing, renewal and refund texts), then N2, N4, wiring gaps.
 ## October 25 — Owner controls: browser tests for goals, approval limits, permissions and workspace
 
 In progress (branch `ai/claude/owner-controls-browser-tests`). One new real-browser spec (`e2e/owner-controls.spec.ts`, phone width, keyboard, accessibility check) walks the owner through setting and removing a cash goal, filling in and saving approval limits and turning them off, taking one permission away from an admin and giving it back, and pinning/unpinning workspace shortcuts. It passes locally; CI result pending. Switches and price changes already have their own specs. Nothing for Chris to do.

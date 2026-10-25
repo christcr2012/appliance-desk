@@ -12,7 +12,8 @@ const plain = (e: unknown) => (e instanceof Error ? e.message : "That did not wo
 
 /** Send one previewed text. The screen sends back only ids and the fingerprint of the text the person read. */
 export async function sendTextAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
-  const actor = await requireRole("OWNER", "ADMIN");
+  // Staff may send only the visit texts for a job assigned to them; the send function itself enforces that.
+  const actor = await requireRole("OWNER", "ADMIN", "STAFF");
   const path = str(form, "path");
   try {
     const result = await sendWorkflowText(actor.user.id, {

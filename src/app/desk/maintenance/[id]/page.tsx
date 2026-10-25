@@ -1,4 +1,5 @@
 import { ContextCommunicationPanel } from "@/components/desk/context-communication-panel";
+import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -43,6 +44,14 @@ export default async function MaintenanceDetailPage({
         · Priority: {request.priority} · Submitted{" "}
         {new Date(request.openedAt).toLocaleString()}
       </p>
+
+      {canScheduleJobs && (
+        <div className="mt-4">
+          <SendTextPanel userId={session.user.id} entityType="MaintenanceRequest" entityId={request.id}
+            path={`/desk/maintenance/${request.id}`} families={["maintenance_received", "maintenance_resolved"]}
+            principal={{ customerId: request.customerId }} />
+        </div>
+      )}
 
       <div className="mt-4 rounded-lg border border-line bg-white p-5">
         <p className="text-sm text-ink-soft">{request.problem}</p>
