@@ -37,7 +37,7 @@ billed history. Read `docs/AI-PR-READ-FIRST.md` (money, tax and settings writes)
    reason 3–500 characters; add a negative invoice line "Late fee waived — {reason}" of `-lateFeeCents`, reduce
    `amountDueCents` by the same amount through the existing invoice-total function (never edit the original fee line),
    keep `lateFeeCents` as the record of what was charged and set the new field `lateFeeWaivedAt` (additive, nullable)
-   so `applyLateFees` never adds it again; audit `invoice.late_fee_waived` with amount and reason. If the invoice has
+   so `applyLateFees` never adds it again (its existing `lateFeeCents !== 0` skip already covers this; keep both); audit `invoice.late_fee_waived` with amount and reason. If the invoice has
    an open Stripe payment page, use the same refresh path that partial payments use so the page shows the new amount
    (test mode only; live payments stay off).
    Bill record screen (MONEY-AREA spec): ⋯ menu item "Waive late fee…" (OWNER/ADMIN, only when a fee exists and is not
@@ -69,10 +69,17 @@ export async function applyStartingValues(now = new Date()): Promise<{ applied: 
      `previousValue`, `value`, `sources`.
 - Nothing already signed or billed changes: agreements keep their snapshot terms; issued invoices keep their tax
   lines; the tax engine reads rules by effective date.
-- Afterwards, if anything was applied: one To do for the owner (existing To do writer, type
-  `DECISIONS_STARTING_VALUES`): title "{n} starting values are now in use", detail "Researched answers for tax and
-  rental questions. Review them, or send the tax ones to your CPA.", link `/desk/settings/decisions?state=starting`.
-  Clearing rule: done when Chris opens that page (or taps Done).
+- **To do item.** To do items are computed, not stored (`src/domains/exceptions/rules.ts` + `index.ts`). Add
+  category `DECISIONS_STARTING_VALUES` (severity `medium`) and a pure rule
+  `startingValuesAppliedException({ count, newest })`: title "{count} starting values are now in use", detail
+  "Researched answers for tax and rental questions. Review them, or send the tax ones to your CPA.", href
+  `/desk/settings/decisions?state=starting`, primary action "Review", `since = newest`. `index.ts` counts
+  `DecisionRecord` rows with `kind = STARTING_VALUE_APPLIED` and `via = MIGRATION` created after the new nullable
+  field `BusinessSettings.decisionsReviewedAt` (additive migration, with `Invoice.lateFeeWaivedAt` in one migration
+  `20261027010000_starting_values`); the item shows when that count is > 0. Opening `/desk/settings/decisions` as
+  the OWNER sets `decisionsReviewedAt = now` (server action on page load is not allowed — use a small "Mark as
+  reviewed" button at the top of the page that the To do also mentions, plus setting it on any confirm/change). Add
+  `DECISIONS_STARTING_VALUES: "Review"` to `ACTION_LABEL` in `todo.ts`.
 
 ## 4. What Chris sees change (put this text in the PR body)
 - New rentals show a $5 late fee after a 5-day grace period on the signing page (existing wording). Existing
@@ -89,7 +96,7 @@ export async function applyStartingValues(now = new Date()): Promise<{ applied: 
   every recommended value passes the setting's own validator; every source has `https://` or a `docs/` path and
   `checkedOn`.
 - `tests/starting-values-integration.test.ts` (throwaway Postgres): fresh install → all applied, records written,
-  one To do; second run → nothing; a setting Chris changed → skipped and untouched; a signed agreement and an issued
+  the To do item (until Mark as reviewed); second run → nothing; a setting Chris changed → skipped and untouched; a signed agreement and an issued
   invoice from before → unchanged (compare rows); provisional tax rules calculate and carry `provisional`; more than
   one OWNER → nothing applied.
 - `tests/late-fee-defaults.test.ts`: new draft without a fee gets the setting; renewal keeps old terms; wizard

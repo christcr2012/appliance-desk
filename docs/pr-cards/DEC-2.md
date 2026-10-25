@@ -15,8 +15,8 @@ apply is pointless without the values, and the $5 value does nothing until new a
 
 ## Acceptance
 - [ ] Every registry subject has a researched `recommended` value with sources, or says why none exists (test).
-- [ ] The nightly run applies each value once, only over untouched defaults, with a `DecisionRecord`, and puts one
-      To do on Chris's list (integration test).
+- [ ] The nightly run applies each value once, only over untouched defaults, with a `DecisionRecord`, and shows one
+      To do item until Chris marks them reviewed (integration test).
 - [ ] Signed agreements and issued invoices are unchanged after the run (test compares rows).
 - [ ] New agreements get the late fee, grace days and percent from Settings; renewals keep their old terms.
 - [ ] Owner/admin can waive a late fee with a reason; it never comes back; staff cannot.

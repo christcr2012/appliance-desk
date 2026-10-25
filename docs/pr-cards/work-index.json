@@ -4757,7 +4757,7 @@
         "DEC-1"
       ],
       "status": "DESIGNED — build spec ready 2026-10-25",
-      "migration": "additive (Invoice.lateFeeWaivedAt)",
+      "migration": "additive (Invoice.lateFeeWaivedAt, BusinessSettings.decisionsReviewedAt)",
       "budget": 460,
       "units": [
         "DEC-2"
