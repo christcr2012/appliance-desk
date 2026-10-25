@@ -2273,7 +2273,7 @@
         "src/lib/sms.ts"
       ],
       "tests": [
-        "tests/telecom-books-bridge-integration.test.ts"
+        "tests/telecom-statement-books-integration.test.ts"
       ],
       "readiness": "WRITE_CARD_AT_START",
       "plannedCard": "docs/pr-cards/COM-N3.md"
