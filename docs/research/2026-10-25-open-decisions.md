@@ -77,3 +77,16 @@ Live customer email, live texting and live payments stay **off** regardless of a
 
 DOR letters (GIL/PLR) are not binding on the Department; they are the best public evidence, which is why each tax
 row stays "Starting value — not confirmed" until the CPA answers.
+
+## Added 2026-10-25 (tax/fee autopilot and compliance center)
+| Code | Starting value (careful choice) | Audience |
+|---|---|---|
+| RDF-RENT-COUNTS | Count rent toward the $500,000 test | CPA |
+| RDF-FREE-DELIVERY | A delivery by the business's truck counts as a delivery even when free | CPA |
+| CMP-ENTITY | Single-member LLC taxed on Schedule C | CPA |
+| CMP-BPP-RENTAL-EXEMPT | The rental fleet is **not** exempt from business personal property tax until confirmed | Weld Assessor / CPA |
+| CO-1099-COPY | Colorado does not need 1099 copies when no Colorado tax was withheld | CPA |
+| CO-ESTIMATE-METHOD | Colorado estimates use the same ratio of last year's Colorado tax as the federal safe harbor | CPA |
+| GREELEY-LICENSE | Greeley business license renews every 2 years; reminder 60 days ahead | Owner (call Greeley) |
+| CMP-PAYROLL-HOW | Use a payroll service when hiring; track it in the app | Owner |
+Sources: `docs/research/2026-10-25-tax-fee-rules.md`, `docs/research/2026-10-25-federal-colorado-compliance.md`.

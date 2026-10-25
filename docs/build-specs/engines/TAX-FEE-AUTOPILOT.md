@@ -105,6 +105,29 @@ version), source link + "checked {date}", state pill ("Researched — not confir
 "Change…" (OWNER: value + effective date ≥ today + reason → OWNER version; ConfirmDialog), "Undo this automatic
 change" (auto-applied future versions only). Words pass the plain-words check.
 
+### 4a. Late changes: bills stay as issued; the business absorbs, the customer gets credited (Chris, 2026-10-25)
+When a change is put in place **after its legal start date** (approved late, found late on the official page, a
+certificate entered late, an exemption switch approved late), bills already issued in between are **never changed**.
+Instead, `trueUpLateChange(change)` (`src/domains/rules/true-up.ts`, run in the same transaction that applies the
+change) recomputes each affected issued bill line with the rule that should have applied (the engine's normal
+calculation with `asOf` = the line's service date) and compares:
+- **Should have cost the customer more** (e.g. a rate increase, an exemption that had ended): the customer is not
+  charged. The difference is recorded as the business's cost: a books entry "Tax/fee the business paid for a late
+  change" (expense account `TAX_ABSORBED`, add to `system-chart.json`) and the amount is included in the filing
+  period's return as owed (the return reports what the law required). To do: "You'll pay {amount} more on the {period}
+  return because {change} started on {date} and was put in place on {date}."
+- **Should have saved the customer money** (a decrease, an exemption that had started, a certificate valid earlier):
+  a **credit on the customer's next bill** through the existing credit path (`CreditApplication`), line text "Credit:
+  {short reason} ({period})", e.g. "Credit: sales tax rate went down on Jul 1", and the bill's note explains it in one
+  sentence. The tax return for the original period is adjusted only as the existing amendment/credit rules allow
+  (a credit taken on the current return when allowed, else an amendment To do — existing `amendment-attention`).
+- Per-customer amounts under $0.01 are dropped; each true-up is audited (`rules.true_up`) with the bills, amounts and
+  rule versions; running it twice changes nothing (keyed by change id + bill line id).
+TFA-2's switches and TFA-3's approvals all call it. Section 9's "certificate entered with `validFrom` in the past"
+now credits the customer's bills since that date (it previously said "from now on only").
+Tests: rate increase approved 5 days late → no bill changed, absorbed amount on the return and in books; decrease
+late → credit on the next bill with the text; certificate back-dated → credits; idempotent; history unchanged.
+
 ### 5. Tests (TFA-1)
 `tests/rules-registry.test.ts` (every key seeded, schemas valid, sources present), `tests/rules-as-of-integration.test.ts`
 (dates, priority, undo, DST), `tests/rules-timing.test.ts`, readers switched (RDF amount on a Jun 30 vs Jul 1 sale;
@@ -165,7 +188,8 @@ frequency from the next period.
   a To do "{customer}'s exemption certificate expired on {date}. Ask for a new one (DR 0715 or DR 5002)." with a
   drafted message (email/SMS only through the existing switches).
 - Form names: replace any mention of DR 0563 with DR 0715 / DR 5002 / MTC certificate (grep the repo).
-- A new certificate entered with `validFrom` in the past applies to bills from now on only (history unchanged).
+- A new certificate entered with `validFrom` in the past: past bills are not changed; the customer gets a credit for
+  the tax they were charged since `validFrom` (section 4a).
 
 ### 10. License renewal
 `TaxFilingAccount.licenseExpiresOn` for the state license defaults from `co.license.expiry` (12/31/2027); after Chris

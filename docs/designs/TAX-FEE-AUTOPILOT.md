@@ -32,6 +32,11 @@ window, clamped to at least `timingSafetyMarginBusinessDays` (starting 3) before
 business** (ask to file less often, claim a credit, an exemption starting) → as soon as allowed. Nothing is ever
 applied before it is allowed or after it is due, and nothing rewrites signed or billed history.
 
+## When a change goes in late (Chris, 2026-10-25)
+Bills already sent are never changed. If the change would have cost the customer more, **the business pays the
+difference** (it's the business's mistake). If it would have saved the customer money, **the customer gets a credit
+on their next bill** with a one-line explanation.
+
 ## What it fixes (found 2026-10-25)
 - Returned shop sales currently give back the retail delivery fee; the law says a fee may not be refunded on a return
   (only on a sale cancelled before it is delivered).

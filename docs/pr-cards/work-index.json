@@ -5238,6 +5238,137 @@
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/TFA-3.md"
+    },
+    {
+      "id": "CMP-1",
+      "title": "Compliance center: obligation registry, business facts (encrypted EIN), Compliance screen, filled official forms engine",
+      "batch": "CMP",
+      "dependencies": [
+        "TFA-1",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "20261102000000_compliance (ComplianceProfile, ComplianceFiling)",
+      "budget": 550,
+      "units": [
+        "CMP-1"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/compliance-registry.test.ts",
+        "tests/field-crypto.test.ts",
+        "tests/compliance-forms.test.ts",
+        "e2e/compliance.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-1.md"
+    },
+    {
+      "id": "CMP-2",
+      "title": "Income tax helpers: Schedule C packet, 4562/4797 worksheets, quarterly estimates (federal and Colorado), 1099-K tie-out",
+      "batch": "CMP",
+      "dependencies": [
+        "CMP-1",
+        "BA-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (account Schedule C line)",
+      "budget": 500,
+      "units": [
+        "CMP-2"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/schedule-c-mapping.test.ts",
+        "tests/estimated-tax.test.ts",
+        "tests/1099k-tieout.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-2.md"
+    },
+    {
+      "id": "CMP-3",
+      "title": "1099s and W-9s: W-9 requests and upload, 1099 preparation, IRIS CSV and recipient copies, IRIS A2A behind a switch, Form 8300 detector",
+      "batch": "CMP",
+      "dependencies": [
+        "CMP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (Supplier TIN fields)",
+      "budget": 600,
+      "units": [
+        "CMP-3"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/w9-integration.test.ts",
+        "tests/1099-prep-integration.test.ts",
+        "tests/iris-csv.test.ts",
+        "tests/form8300-detector.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-3.md"
+    },
+    {
+      "id": "CMP-4",
+      "title": "Colorado and local filings: Weld business personal property declaration, SOS periodic report, trade name, Greeley license, vehicle/USDOT",
+      "batch": "CMP",
+      "dependencies": [
+        "CMP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 400,
+      "units": [
+        "CMP-4"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/bpp-declaration-integration.test.ts",
+        "tests/sos-report.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-4.md"
+    },
+    {
+      "id": "CMP-5",
+      "title": "Hiring readiness: dormant payroll obligations and hiring checklist",
+      "batch": "CMP",
+      "dependencies": [
+        "CMP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 200,
+      "units": [
+        "CMP-5"
+      ],
+      "evidence": [
+        "docs/designs/COMPLIANCE-CENTER.md",
+        "docs/build-specs/engines/COMPLIANCE.md",
+        "docs/research/2026-10-25-federal-colorado-compliance.md"
+      ],
+      "tests": [
+        "tests/hiring-readiness.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/CMP-5.md"
     }
   ],
   "enhancements": [

@@ -1,3 +1,11 @@
+## October 25 — Late rule changes: the business absorbs, customers get credited (Chris)
+
+"if something like that passes the required, and implementation is past the due date, any customer billing that occurs
+before the implementation that should have been affected remains unchanged... if the change should have cost the
+customer more money, The business will pay the difference as it was the business' fault. If it should have saved the
+customer money, the customer should receive a credit applied to their next bill and a brief explanation of what its
+for." Built in TFA-1 section 4a (`trueUpLateChange`), used by every tax/fee change.
+
 ## October 25 — Tax and fee changes always wait for Chris's approval (Chris)
 
 "I think it should always put it on the todo list for me to review and approve." Official-page readings and the
