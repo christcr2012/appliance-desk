@@ -20,6 +20,7 @@
       "revenue-records.spec.ts",
       "website-editor.spec.ts",
       "job-roles.spec.ts",
+      "owner-settings-history.spec.ts",
       "shop-sales.spec.ts"
     ],
     "browser-b": [

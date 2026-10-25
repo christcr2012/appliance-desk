@@ -191,7 +191,7 @@ JIT cards reflect actual merged K contracts; preserve the existing two-lane work
 
 | Unit | Scope | Execution card | Prerequisite |
 |---|---|---|---|
-| O-1 | Settings history, guarded undo and live-switch inventory | JIT — `O-1.md` | M-3 — *merged #534; impact preview not built* |
+| O-1 | Settings history, guarded undo and live-switch inventory | JIT — `O-1.md` | M-3 — *merged #534; change preview, stale-save protection and full switch rows added 2026-10-24* |
 | O-2A | Capability defaults and scoped domain guards | JIT — `O-2A.md` | O-1 — *merged #535* |
 | O-2B | Per-person permissions UI and adversarial DTO proof | JIT — `O-2B.md` | O-2A — *permissions screen delivered inside #535; every settings-type save now honours the limit (see `O-2B.md`); a role-shaped DTO proof for the admin pages is still open* |
 | O-3A | Durable approvals and transactional command preparation | JIT — `O-3A.md` | O-2B — *merged #536; write-off and expense kinds only* |
