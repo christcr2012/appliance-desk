@@ -2,7 +2,7 @@
 
 Chris, 2026-10-25: "A late fee should not be charged before the customer is notified, so it should not 'slip in' to
 a payment … going through that the customer would not reasonably expect to be charged a different payment amount."
-His fee policy stays IN-84 within the law: $5 flat after a 5-day grace period (10 days for household leases over 4 months — see Legal rules), once per overdue bill, waivable with a reason (owner
+His fee policy (IN-84, updated by Chris 2026-10-25 "We should just follow that rule for all late fees for simplicity"): $5 flat, **only once a bill is more than 10 days late (fee on day 11)**, for **every** rental, once per overdue bill, waivable with a reason (owner
 settings, DEC-2 makes new agreements read them). This spec replaces the "add the fee to the overdue bill" behaviour
 of `applyLateFeeBatch` (`src/domains/billing/late-fees.ts`) with three rules. Read `docs/AI-PR-READ-FIRST.md` (money,
 customer messages). Depends on BILL-1 (payments being confirmed). No live email or texts are turned on by this.
@@ -54,12 +54,13 @@ Facts: `docs/research/2026-10-25-late-fee-law.md`. These are enforced in code, n
    CONSUMER_LEASE (Colorado UCCC 5-2-203 and federal Reg M apply); household month-to-month (no early-ending charge that
    stretches the commitment past 4 months) → CONSUMER_SHORT; business/organization renter → BUSINESS. Unknown → treated as
    CONSUMER_LEASE.
-2. **Earliest fee day** = the later of the owner's grace setting and the legal minimum for the class: CONSUMER_LEASE —
-   only if the bill isn't paid in full within **10 days** after its due date (fee on day 11 at the earliest); others — the
-   owner setting (Chris's 5-day grace, fee on day 6). The settings screen shows both and never lets the grace go below
-   the legal minimum for a class.
-3. **Cap**: CONSUMER_LEASE fee ≤ **$15** (rule book `co.uccc.lease_delinquency_cap`, seeded 1500 cents); the setting
-   refuses higher. Same fee whatever the payment method (never a card surcharge).
+2. **Earliest fee day — one rule for everyone** (Chris, 2026-10-25): no fee unless the bill isn't paid in full within
+   **10 days** after its due date, so the fee is on day 11 at the earliest, for every agreement class. That is Colorado's
+   UCCC rule for household leases over 4 months (5-2-203), applied to all rentals for simplicity. Setting
+   `lateFeeGraceDays` starts at **10** and the screen refuses anything lower ("Colorado's rule: at least 10 days").
+   The class is still stored (Regulation M disclosures and the UCCC filing need it).
+3. **Cap**: every late fee ≤ **$15** (rule book `co.uccc.lease_delinquency_cap`, seeded 1500 cents) — same rule for all,
+   for simplicity; the setting refuses higher. Same fee whatever the payment method (never a card surcharge).
 4. **Once per bill**, never daily, never a fee on a fee, never because an *older* bill is unpaid. **Payment order**: a
    payment applies to the oldest unpaid rent installments first and to late fees last (never makes a new fee appear).
 5. **Window**: assessed within **30 days** after the due date, otherwise not at all.
@@ -71,7 +72,7 @@ Facts: `docs/research/2026-10-25-late-fee-law.md`. These are enforced in code, n
    The signed agreement, the Stripe bank mandate text and the saved-card terms must name the late fee; if the customer's
    signed version doesn't, **no fee** (To do instead).
 8. **Agreement wording** (agreement template and signing page, English and Spanish with identical figures): the fee
-   amount, the day it applies for this agreement's class, once per bill, can be waived, added to the next bill and may
+   amount, that it applies once a bill is more than 10 days late, once per bill, can be waived, added to the next bill and may
    be included in that bill's automatic payment; plus the returned-payment fee if any (≤ $25 and only if agreed — none
    today). A test checks every template version carries these fields.
 9. **Servicemembers**: a customer flagged "active military" (new optional field, never required) gets no automatic fee

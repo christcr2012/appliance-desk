@@ -43,7 +43,7 @@ OWNER, starting value "4.11% until the city publishes a new rate").
 
 | Code | Starting value | Source | Audience |
 |---|---|---|---|
-| IN-84 | Late fee **$5 flat**, **5 calendar-day grace** (fee on day 6), **0%**, once per overdue bill; owner/admin may waive with a reason. Applies to agreements created from now on (each signed agreement keeps the late-fee terms it shows). | Chris, 2026-10-13 (OWNER-INPUTS IN-84) — **Confirmed by the owner** | ATTORNEY (wording only) |
+| IN-84 | Late fee **$5 flat**, **10-day grace for every rental** (fee on day 11 — Chris 2026-10-25, following Colorado's UCCC rule for simplicity), **0%**, once per overdue bill; owner/admin may waive with a reason. Applies to agreements created from now on (each signed agreement keeps the late-fee terms it shows). | Chris, 2026-10-13 (OWNER-INPUTS IN-84) — **Confirmed by the owner** | ATTORNEY (wording only) |
 | IN-06 | Delivery zones as answered (0–15 mi free, >15–30 $75, >30–50 $125, >50 off) | Chris, 2026-10-13 — Confirmed by the owner | — |
 | IN-76 | Cancellation refunds as answered (full refund before delivery; larger orders 72-hour full refund, then keep setup fee) — each refund still needs the owner's approval | Chris, 2026-10-13 — Confirmed by the owner | ATTORNEY (contract wording) |
 | IN-52 | Voicemail as answered (greeting editable, 90-day retention, transcription off) | Chris, 2026-10-13 — Confirmed by the owner | ATTORNEY (privacy wording) |
@@ -116,8 +116,7 @@ Sources: `docs/research/2026-10-25-tax-fee-rules.md`, `docs/research/2026-10-25-
 ## Added 2026-10-25 (late-fee law)
 | Code | Starting value (careful choice) | Audience |
 |---|---|---|
-| FEE-UCCC-6-12 | Household 6/12-month rentals are UCCC consumer leases: fee only after 10 days, ≤ $15, notice | Attorney |
-| FEE-M2M-OUTSIDE | Month-to-month household rentals are outside the UCCC lease rule (5-day grace kept) — alternative: 10 days for every household customer | Attorney |
+| FEE-UCCC-6-12 | Household 6/12-month rentals are UCCC consumer leases (the app already applies the 10-day / $15 rule to every rental) | Attorney |
 | FEE-UCCC-FILING | File the UCCC notification before the first 6/12-month household rental | Attorney / Owner |
 | FEE-REASONABLE | $5 is reasonable (Reg M 1013.4(q), C.R.S. 4-2.5-504) | Attorney |
 | FEE-AUTOPAY-CONSENT | Fee named in the agreement and mandate + 10-day notice is enough; inside 10 days → separate non-auto bill | Attorney |

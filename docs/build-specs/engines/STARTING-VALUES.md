@@ -47,7 +47,7 @@ with reason "Waiting for fair late fees (FEE-1)".
    waived) → `ConfirmDialog` with a required reason box: "Waive the {amount} late fee on bill #{n}? The customer's
    balance goes down by {amount}."
 3. `applyLateFees` already charges once per bill after the grace days (`todayKey < due + grace` skips), which gives
-   "fee on day 6" for a 5-day grace. Add a test that pins it: due Oct 1 → no fee Oct 5, fee Oct 6 (Denver dates,
+   "fee on day 11" for a 10-day grace (FEE-1: Chris chose the 10-day rule for all late fees). Add a test that pins it: due Oct 1 → no fee Oct 10, fee Oct 11 (Denver dates,
    including the DST change on Nov 1).
 
 ## 3. Applying the values to the live app (`src/domains/decisions/starting-values.ts`)
@@ -87,7 +87,7 @@ export async function applyStartingValues(now = new Date()): Promise<{ applied: 
   `DECISIONS_STARTING_VALUES: "Review"` to `ACTION_LABEL` in `todo.ts`.
 
 ## 4. What Chris sees change (put this text in the PR body)
-- New rentals show a $5 late fee after a 5-day grace period on the signing page (existing wording). Existing
+- New rentals show a $5 late fee once a bill is more than 10 days late on the signing page. Existing
   rentals keep what they signed.
 - Bills start showing state tax as $0 on rent (paid when the appliance was bought) and Greeley city tax on rent and
   fees — the careful choice until the CPA or the city answers.

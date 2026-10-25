@@ -1,3 +1,10 @@
+## October 25 — One late-fee rule for everyone: more than 10 days late (Chris)
+
+"We should just follow that rule for all late fees for simplicity." Every rental: a $5 late fee only when a bill is not
+paid in full within 10 days after its due date (fee on day 11), at most $15, once per bill, with written notice —
+Colorado's UCCC consumer-lease rule applied to all agreements. Replaces the 5-day grace in IN-84 for new agreements;
+signed agreements keep their own terms. (FEE-1.)
+
 ## October 25 — Late fees follow the law, class by class (Chris: "make sure our late fees … comply")
 
 Research (`docs/research/2026-10-25-late-fee-law.md`) found Colorado's consumer credit code applies to household rentals
