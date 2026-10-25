@@ -126,8 +126,10 @@ async function claimPreparedCommunication(
     }
 
     // A workflow text also needs its own owner switch to still be ON at the moment of sending.
-    if (workflowTextFamily(delivery.templateKey) &&
-        eligible.allowed && eligible.policy.workflowTexts?.families[delivery.templateKey]?.enabled !== true) {
+    const dispatchFamily = workflowTextFamily(delivery.templateKey);
+    const familySetting = eligible.allowed ? eligible.policy.workflowTexts?.families[delivery.templateKey] : undefined;
+    if (dispatchFamily && eligible.allowed &&
+        (familySetting?.enabled !== true || (dispatchFamily.needsLegalReview && familySetting.legalReviewed !== true))) {
       await tx.messageAttempt.update({ where: { id: delivery.currentAttempt.id },
         data: { state: "NOT_SENT", finishedAt: now, errorCode: "FAMILY_OFF" } });
       await applyDeliveryObservationInTx(tx, { deliveryId, state: "NOT_SENT",

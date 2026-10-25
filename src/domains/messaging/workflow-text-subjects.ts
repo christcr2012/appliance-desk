@@ -2,7 +2,9 @@ import type { CommunicationLinkEntityType, Prisma } from "@prisma/client";
 import { isEstimatePastValidity } from "@/domains/estimates/validity";
 import { normalizeSmsAddress } from "./suppression";
 import { formatBusinessTime } from "@/lib/business-date";
+import { formatCents } from "@/domains/pricing/money";
 import { businessDateKey } from "@/lib/business-date";
+import { communicationsPolicySchema } from "./communications-policy";
 import { workflowTextFamily, type WorkflowTextFamily } from "./workflow-text-catalog";
 
 /**
@@ -199,6 +201,72 @@ async function loadMaintenance(tx: Tx, family: WorkflowTextFamily, id: string): 
   };
 }
 
+function dateLabel(at: Date): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", month: "short", day: "numeric", year: "numeric" }).format(at);
+}
+
+async function loadInvoice(tx: Tx, family: WorkflowTextFamily, id: string): Promise<LoadedSubject | null> {
+  const invoice = await tx.invoice.findUnique({ where: { id }, select: {
+    id: true, invoiceNumber: true, status: true, amountDueCents: true, amountPaidCents: true, customerId: true,
+    customer: { select: { phone: true, user: { select: { name: true } } } },
+    refunds: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { id: true, amountCents: true, stripeRefundId: true } } } });
+  // A refund row is created BEFORE the card company is asked. Only a finished refund may be announced.
+  const latestRefund = invoice?.refunds[0] ?? null;
+  const refundOp = latestRefund ? await tx.providerOperation.findFirst({ where: { kind: "REFUND_CREATE", subjectType: "Refund", subjectId: latestRefund.id },
+    orderBy: { requestedAt: "desc" }, select: { status: true } }) : null;
+  const refundDone = latestRefund ? (refundOp ? refundOp.status === "SUCCEEDED" : true) : false;
+  if (!invoice) return null;
+  const phone = usablePhone(invoice.customer.phone);
+  const open = ["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(invoice.status) && invoice.amountDueCents > invoice.amountPaidCents;
+  let stateProblem: string | null = null;
+  switch (family.key) {
+    case "invoice_ready":
+      if (!open) stateProblem = invoice.status === "DRAFT" ? "Issue the invoice first, then text it." : "This invoice is not waiting for payment.";
+      break;
+    case "invoice_reminder":
+      if (!open) stateProblem = "This invoice is not open, so there is nothing to remind about.";
+      break;
+    case "payment_received":
+      if (invoice.status !== "PAID") stateProblem = "This invoice is not fully paid yet.";
+      break;
+    case "refund_issued":
+      if (!invoice.refunds[0]) stateProblem = "No refund has been issued on this invoice.";
+      else if (!refundDone) stateProblem = "The latest refund is not finished (it is still being processed or did not go through), so it cannot be announced yet.";
+      break;
+  }
+  return {
+    principal: { customerId: invoice.customerId }, displayName: invoice.customer.user.name ?? "",
+    rawPhone: phone.raw, phone: phone.phone,
+    values: { name: firstNameFor(invoice.customer.user.name), number: String(invoice.invoiceNumber),
+      link: `${appBaseUrl()}/account/billing/invoice/${invoice.id}`,
+      amount: invoice.refunds[0] ? formatCents(invoice.refunds[0].amountCents) : "" },
+    links: [{ entityType: "Invoice", entityId: invoice.id }], stateProblem, convertedFromLeadId: null,
+  };
+}
+
+async function loadRenewal(tx: Tx, id: string, now: Date): Promise<LoadedSubject | null> {
+  const agreement = await tx.rentalAgreement.findUnique({ where: { id }, select: {
+    id: true, status: true, termMonths: true, endDate: true, customerId: true,
+    customer: { select: { phone: true, user: { select: { name: true } } } } } });
+  if (!agreement) return null;
+  const phone = usablePhone(agreement.customer.phone);
+  const days = agreement.endDate ? (agreement.endDate.getTime() - now.getTime()) / 86_400_000 : null;
+  const settingsRow = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { communicationsPolicy: true } });
+  const parsedPolicy = communicationsPolicySchema.safeParse(settingsRow?.communicationsPolicy);
+  const windowDays = (parsedPolicy.success ? parsedPolicy.data.workflowTexts?.renewalWindowDays : undefined) ?? 60;
+  let stateProblem: string | null = null;
+  if (agreement.status !== "ACTIVE") stateProblem = "This rental is not active.";
+  else if (!agreement.termMonths || !agreement.endDate) stateProblem = "This rental is month to month, so it has no end date to mention.";
+  else if (days! < 0) stateProblem = "This rental term already ended.";
+  else if (days! > windowDays) stateProblem = `This rental term ends in more than ${windowDays} days. Try again closer to the end.`;
+  return {
+    principal: { customerId: agreement.customerId }, displayName: agreement.customer.user.name ?? "",
+    rawPhone: phone.raw, phone: phone.phone,
+    values: { name: firstNameFor(agreement.customer.user.name), date: agreement.endDate ? dateLabel(agreement.endDate) : "" },
+    links: [{ entityType: "RentalAgreement", entityId: agreement.id }], stateProblem, convertedFromLeadId: null,
+  };
+}
+
 /** One loader per record type; the family decides which record type is read. Later batches add job and billing records. */
 export async function loadWorkflowSubject(
   tx: Tx, familyKey: string, subjectId: string, now: Date,
@@ -208,7 +276,8 @@ export async function loadWorkflowSubject(
   switch (family.subject) {
     case "Lead": return loadLead(tx, subjectId);
     case "Estimate": return loadEstimate(tx, subjectId, now);
-    case "RentalAgreement": return loadAgreement(tx, family, subjectId);
+    case "RentalAgreement": return family.key === "renewal_heads_up" ? loadRenewal(tx, subjectId, now) : loadAgreement(tx, family, subjectId);
+    case "Invoice": return loadInvoice(tx, family, subjectId);
     case "Job": return loadJob(tx, family, subjectId, now);
     case "MaintenanceRequest": return loadMaintenance(tx, family, subjectId);
     default: return null;

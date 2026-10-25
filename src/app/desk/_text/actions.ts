@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { recordStaffTextConsent, sendWorkflowText, CONSENT_METHODS, type ConsentMethod } from "@/domains/messaging/workflow-text";
-import { approveWorkflowWording, saveWorkflowQuietHours, setWorkflowTextEnabled } from "@/domains/messaging/workflow-text-settings";
+import { approveWorkflowWording, confirmWorkflowLegalReview, saveRenewalWindowDays, saveWorkflowQuietHours, setWorkflowTextEnabled } from "@/domains/messaging/workflow-text-settings";
 
 export type TextActionState = { ok: boolean; message: string } | null;
 const str = (form: FormData, name: string) => { const v = form.get(name); return typeof v === "string" ? v : ""; };
@@ -67,5 +67,26 @@ export async function saveQuietHoursAction(_prev: TextActionState, form: FormDat
       quietHours: restore ? null : { startMinute: minute("start"), endMinute: minute("end") } });
     revalidatePath("/desk/settings/telecom");
     return { ok: true, message: restore ? "Restored the recommended quiet hours." : "Quiet hours saved." };
+  } catch (e) { return { ok: false, message: plain(e) }; }
+}
+
+export async function confirmLegalReviewAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
+  const actor = await requireRole("OWNER");
+  try {
+    const reviewed = str(form, "reviewed") === "yes";
+    await confirmWorkflowLegalReview(actor.user.id, { family: str(form, "family"), reviewed, expectedVersion: Number(str(form, "version")),
+      revision: str(form, "revision") === "" ? null : Number(str(form, "revision")) });
+    revalidatePath("/desk/settings/telecom");
+    return { ok: true, message: reviewed ? "Review confirmed for these exact words." : "Review confirmation removed; the text is off." };
+  } catch (e) { return { ok: false, message: plain(e) }; }
+}
+
+export async function saveRenewalWindowAction(_prev: TextActionState, form: FormData): Promise<TextActionState> {
+  const actor = await requireRole("OWNER");
+  try {
+    const restore = str(form, "restore") === "yes";
+    await saveRenewalWindowDays(actor.user.id, { expectedVersion: Number(str(form, "version")), days: restore ? null : Number(str(form, "days")) });
+    revalidatePath("/desk/settings/telecom");
+    return { ok: true, message: restore ? "Restored the recommended 60 days." : "Saved." };
   } catch (e) { return { ok: false, message: plain(e) }; }
 }

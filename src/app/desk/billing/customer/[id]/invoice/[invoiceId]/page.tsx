@@ -1,4 +1,5 @@
 import { ContextCommunicationPanel } from "@/components/desk/context-communication-panel";
+import { SendTextPanel } from "@/app/desk/_text/send-text-panel";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireRole } from "@/lib/session";
@@ -29,7 +30,7 @@ export default async function DeskInvoicePage({
 }: {
   params: Promise<{ id: string; invoiceId: string }>;
 }) {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN");
   const { id, invoiceId } = await params;
   const invoice = await getInvoiceDetail(invoiceId);
 
@@ -82,6 +83,13 @@ export default async function DeskInvoicePage({
           )}
           <PrintDocumentButton />
         </div>
+      </div>
+
+      <div className="mt-4 print:hidden">
+        <SendTextPanel userId={session.user.id} entityType="Invoice" entityId={invoiceId}
+          path={`/desk/billing/customer/${id}/invoice/${invoiceId}`}
+          families={["invoice_ready", "invoice_reminder", "payment_received", "refund_issued"]}
+          principal={{ customerId: id }} />
       </div>
 
       {canAskForPayment && money && (

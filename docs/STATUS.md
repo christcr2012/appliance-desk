@@ -1,3 +1,11 @@
+## October 24 — COM-N1C: billing, renewal and refund texts (everything OFF)
+
+Invoice and agreement screens get preview-then-send boxes: invoice ready, friendly reminder, payment received, refund issued,
+rental term ending soon. Owner/Admin only. The reminder, refund and renewal wordings cannot be switched on until the Owner
+confirms a qualified person has read those exact words (changing the words removes the confirmation). They are courtesy texts,
+not legal notices. Tested on throwaway Postgres with a fake carrier. Also fixed a rare test-ordering failure caused by my new
+tests turning the text switch on briefly. Next: COM-N2 (click-to-call), COM-N4, wiring gaps.
+
 ## October 25 — Eight older review findings closed (photo clean-up, HEIC, earnings, test and narrow-width checks)
 
 In progress (branch `ai/claude/older-review-findings`). Removed purchase-receipt photos and unsent maintenance-request photos now leave storage for real: they go on a clean-up list (additive migration `20261025070000_stored_file_cleanup`) that the nightly job works through and the health page watches. iPhone HEIC photos are converted to JPEG in the browser; the server no longer accepts HEIC it cannot check. The "estimated earnings" report now uses only the rent part of what was paid and each rental's own billing month. The reviewer's three findings are fixed too: receipt files can now actually be deleted (the "purchases" folder was missing from storage's private list, which would also have refused receipt uploads), a clean-up that keeps failing shows as a failing night, and the waiting periods are owner settings (Rental policies → Removed files). A new phone-width check fails any page that scrolls sideways (113 pages scanned clean). Also: the stale "yearly SUTS check not built" note is corrected (it is built). Throwaway-Postgres tests cover each. New checklist row: confirm removed receipt files really leave storage. CI pending.
