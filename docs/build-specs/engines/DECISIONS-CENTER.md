@@ -56,7 +56,15 @@ export type DecisionSubject = {
 };
 export const DECISION_SUBJECTS: DecisionSubject[];
 ```
-- `write` **must call the domain's existing save function** for that setting with the same locks, actor checks,
+- **Transaction-aware saves.** The center's writes run inside one transaction (section 4), so `write(tx, …)` must not
+  call a public function that opens its own `prisma.$transaction` (it would wait on the row the outer transaction
+  already locked and time out). Extract, without behaviour change, `updateBusinessSettingsInTx(tx, actorId, update,
+  opts)` from `updateBusinessSettings` (`src/domains/settings/index.ts` ~201: the public function becomes
+  `prisma.$transaction((tx) => updateBusinessSettingsInTx(tx, …))`), and the same for `saveTaxabilityCell` →
+  `saveTaxabilityCellInTx`, the setup-fee decision writer and every other save a subject uses. Re-locking a row already
+  locked by the same transaction is fine (Postgres row locks are re-entrant within a transaction). Tests: a decision
+  change saves within 2 s with the outer lock held; existing callers' tests unchanged.
+- `write` **must call the domain's existing save function** (its `…InTx` form) for that setting with the same locks, actor checks,
   audit rows and effective-date rules (e.g. `updateBusinessSettings`, the tax setup functions, the setup-fee
   decision version writer). It never writes the setting table directly. If the existing save function only accepts a
   CPA-confirmed value (section 5), use the new provisional path from section 5.
@@ -121,7 +129,18 @@ model DecisionScheduledChange {
   @@index([subjectId, effectiveFrom])
 }
 ```
-(additive, in DEC-1a's migration). One pending change per subject: scheduling a new one cancels the old (same
+(additive, in DEC-1a's migration).
+**Taxability history (dates stay right after a change is applied).** Add `TaxabilityRuleVersion { id, jurisdictionId?,
+category, taxability, effectiveFrom, provisional, reason, sources Json?, createdByUserId?, createdAt,
+@@index([jurisdictionId, category, effectiveFrom]) }` (append-only). The migration copies every current
+`TaxabilityRule` as a version with `effectiveFrom = 1970-01-01` (what was true before history existed);
+`saveTaxabilityCellInTx` / the provisional save write a version (effective today, or the scheduled date when the
+nightly job applies a change) as well as updating the current cell. `getTaxabilityRulesAsOf(at)` returns, per
+jurisdiction × category, the newest version with `effectiveFrom <= at`, overlaid with not-yet-applied scheduled changes
+due by `at`. So a late Stripe invoice for last period (`src/domains/tax/stripe-invoice-mirror.ts` ~148–167 uses the
+provider's period date) is checked against the rule of its own date. Tests: old-date lookup **after** nightly
+activation returns the old value; new-date returns the new; before activation the overlay works; DST dates.
+One pending change per subject: scheduling a new one cancels the old (same
 transaction). **Applying:** the nightly `books-nightly` run (after its current work, in `runAutomation`) applies every
 change with `effectiveFrom <= now` through `subject.write` with the same locks and audit, sets `appliedAt`; idempotent
 (locked row, `appliedAt` re-checked). **Tax is exact to the day without waiting for the nightly run:** new
