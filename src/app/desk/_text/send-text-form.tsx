@@ -31,7 +31,9 @@ export function SendTextForm({ preview, subjectId, path, principal }: {
       <span className="block text-xs text-ink-soft">{preview.segments} text part{preview.segments === 1 ? "" : "s"}</span></blockquote>}
     <p className="mt-1 text-xs text-ink-soft">{preview.quietHours}</p>
     {hard.length > 0 && <div role="status" className="mt-2 text-sm"><ul className="list-disc pl-5">{hard.map((b) => <li key={b.code}>{b.message}</li>)}</ul></div>}
-    {needsConsent && hard.length === 0 && <form action={consent} className="mt-2 space-y-2 rounded border border-line p-2">
+    {needsConsent && hard.length === 0 && !preview.canRecordConsent && <p role="status" className="mt-2 text-sm">
+      There is no recorded permission to text this number. Ask the office to record it first.</p>}
+    {needsConsent && hard.length === 0 && preview.canRecordConsent && <form action={consent} className="mt-2 space-y-2 rounded border border-line p-2">
       <p className="text-sm">There is no recorded permission to text this number. If they have agreed to get texts from you, record how.</p>
       <input type="hidden" name="path" value={path} />
       {principal.leadId && <input type="hidden" name="leadId" value={principal.leadId} />}

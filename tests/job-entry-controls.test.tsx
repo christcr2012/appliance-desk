@@ -17,6 +17,9 @@ vi.mock("@/domains/jobs", () => ({
 vi.mock("@/components/desk/context-communication-panel", () => ({
   ContextCommunicationPanel: () => null,
 }));
+vi.mock("@/app/desk/_text/send-text-panel", () => ({
+  SendTextPanel: () => null,
+}));
 vi.mock("@/domains/maintenance", () => ({
   getMaintenanceRequestById: mocks.maintenance,
 }));

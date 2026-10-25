@@ -23,6 +23,8 @@ export type WorkflowTextFamily = {
   variables: VariableRules;
   /** Collections, renewal and refund wording that a lawyer should read before real customers get it. */
   needsLegalReview?: boolean;
+  /** A STAFF member may send this one, but only for a job assigned to them. Owners and admins may always send it. */
+  staffAssigned?: boolean;
 };
 
 export const REQUIRED_TEXT_FOOTER = /reply stop/i;
@@ -30,6 +32,8 @@ export const BUSINESS = "Robinson Appliance Rentals";
 
 const NAME = { example: "Alex", maxLength: 16 };
 const NUMBER = { example: "1042", maxLength: 6 };
+const VISIT = { example: "delivery", maxLength: 24 };
+const WHEN = { example: "Tue, Oct 27, 2:00 PM MDT", maxLength: 30 };
 const LINK = { example: "https://example.test/estimate/abc123", maxLength: 75 };
 
 export const WORKFLOW_TEXT_GROUP_LABELS: Record<WorkflowTextGroup, string> = {
@@ -79,6 +83,48 @@ export const WORKFLOW_TEXT_FAMILIES: readonly WorkflowTextFamily[] = [
     label: "We got your signed agreement",
     when: "After a customer signs, to confirm you have it.",
     defaultBody: `${BUSINESS}: Hi {{name}}, thank you. We received your signed rental agreement. Reply STOP to opt out.`,
+    variables: { name: NAME },
+  },
+  {
+    key: "job_scheduled", group: "JOB_MAINTENANCE", subject: "Job", staffAssigned: true,
+    label: "Your visit is scheduled",
+    when: "After a delivery, pickup, installation or maintenance visit is put on the calendar.",
+    defaultBody: `${BUSINESS}: Hi {{name}}, your {{visit}} is scheduled for {{when}}. Reply STOP to opt out.`,
+    variables: { name: NAME, visit: VISIT, when: WHEN },
+  },
+  {
+    key: "job_reminder", group: "JOB_MAINTENANCE", subject: "Job", staffAssigned: true,
+    label: "Reminder of your visit",
+    when: "Before a scheduled visit, to remind the customer.",
+    defaultBody: `${BUSINESS}: Reminder: your {{visit}} is scheduled for {{when}}. Reply STOP to opt out.`,
+    variables: { visit: VISIT, when: WHEN },
+  },
+  {
+    key: "job_on_the_way", group: "JOB_MAINTENANCE", subject: "Job", staffAssigned: true,
+    label: "We are on the way",
+    when: "On the day of the visit, when the team is heading to the customer.",
+    defaultBody: `${BUSINESS}: Our team is on the way for your {{visit}} today. Reply STOP to opt out.`,
+    variables: { visit: VISIT },
+  },
+  {
+    key: "job_completed", group: "JOB_MAINTENANCE", subject: "Job", staffAssigned: true,
+    label: "Your visit is done",
+    when: "After a visit is marked completed.",
+    defaultBody: `${BUSINESS}: Your {{visit}} is complete. Thank you! Reply STOP to opt out.`,
+    variables: { visit: VISIT },
+  },
+  {
+    key: "maintenance_received", group: "JOB_MAINTENANCE", subject: "MaintenanceRequest",
+    label: "We got your maintenance request",
+    when: "After a customer reports a problem, to say you have it.",
+    defaultBody: `${BUSINESS}: Hi {{name}}, we received your maintenance request and will be in touch soon. Reply STOP to opt out.`,
+    variables: { name: NAME },
+  },
+  {
+    key: "maintenance_resolved", group: "JOB_MAINTENANCE", subject: "MaintenanceRequest",
+    label: "Your maintenance request is resolved",
+    when: "After a maintenance request is marked resolved.",
+    defaultBody: `${BUSINESS}: Hi {{name}}, your maintenance request has been resolved. Reply STOP to opt out.`,
     variables: { name: NAME },
   },
 ];
