@@ -4756,19 +4756,20 @@
       "dependencies": [
         "DEC-1"
       ],
-      "status": "DESIGNED — Chris's direction 2026-10-25",
-      "migration": "none",
+      "status": "DESIGNED — build spec ready 2026-10-25",
+      "migration": "additive (Invoice.lateFeeWaivedAt)",
       "budget": 460,
       "units": [
         "DEC-2"
       ],
       "evidence": [
-        "docs/designs/DECISIONS-CENTER.md",
-        "docs/research/2026-10-15-owner-decision-follow-through.md"
+        "docs/build-specs/engines/STARTING-VALUES.md",
+        "docs/research/2026-10-25-open-decisions.md",
+        "docs/designs/DECISIONS-CENTER.md"
       ],
       "tests": [],
-      "readiness": "WRITE_CARD_AT_START",
-      "plannedCard": "docs/pr-cards/DEC-2.md"
+      "readiness": "CARD_READY",
+      "card": "docs/pr-cards/DEC-2.md"
     }
   ],
   "enhancements": [
