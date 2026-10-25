@@ -4159,7 +4159,7 @@
       "title": "Lead stages, ownership, speed to lead, duplicates and scale (indexes, search, cursor paging)",
       "batch": "LD",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "lead_pipeline",
       "budget": 480,
       "units": [
@@ -4234,7 +4234,7 @@
       "dependencies": [
         "LD-3"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 320,
       "units": [
@@ -4327,7 +4327,7 @@
       "title": "Application kit, guards and three reference screens (Today, Invoices, Customer record) on the testing app",
       "batch": "AR",
       "dependencies": [],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4361,7 +4361,7 @@
         "AR-11",
         "AR-12"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4391,7 +4391,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -4419,7 +4419,7 @@
         "AR-1",
         "AR-11"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -4448,7 +4448,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "20261026010000_bank_payment_in_flight",
       "budget": 420,
       "units": [
@@ -4478,7 +4478,7 @@
         "AR-12",
         "LD-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 500,
       "units": [
@@ -4506,7 +4506,7 @@
       "dependencies": [
         "AR-4"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4530,7 +4530,7 @@
       "dependencies": [
         "AR-4"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 460,
       "units": [
@@ -4557,7 +4557,7 @@
         "AR-12",
         "BA-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 460,
       "units": [
@@ -4579,7 +4579,7 @@
       "dependencies": [
         "AR-1"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4605,7 +4605,7 @@
         "AR-6",
         "AR-7"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 380,
       "units": [
@@ -4632,7 +4632,7 @@
         "AR-8",
         "AR-9"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 420,
       "units": [
@@ -4655,7 +4655,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -4682,7 +4682,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "20261026000000_shown_features",
       "budget": 460,
       "units": [
@@ -4710,7 +4710,7 @@
         "AR-1",
         "AR-2"
       ],
-      "status": "DESIGNED — awaiting Chris's go-ahead",
+      "status": "APPROVED — Chris 2026-10-25",
       "migration": "notifications",
       "budget": 420,
       "units": [
@@ -4769,7 +4769,284 @@
       ],
       "tests": [],
       "readiness": "CARD_READY",
-      "card": "docs/pr-cards/DEC-2.md"
+      "plannedCard": "docs/pr-cards/DEC-2.md"
+    },
+    {
+      "id": "MCP-1",
+      "title": "System health that tells the truth: one state list, real schedules, bounded reads, typed failures",
+      "batch": "MCP",
+      "dependencies": [],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (AutomationRun/SystemIssue failure fields, BusinessSettings.automationLateGraceMinutes, index)",
+      "budget": 450,
+      "units": [
+        "MCP-1"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/HEALTH-BACKUP.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/automation-health.test.ts",
+        "tests/automation-failures.test.ts",
+        "e2e/system-health.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-1.md"
+    },
+    {
+      "id": "MCP-2",
+      "title": "Backups you can trust: stages, read-back, safe pruning, private store, photo pairing, retry, restore drill",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (BackupArtifact, BusinessSettings.backupRetentionDays)",
+      "budget": 650,
+      "units": [
+        "MCP-2"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/HEALTH-BACKUP.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/backup.test.ts",
+        "tests/backup-prune-integration.test.ts",
+        "tests/media-inventory.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-2.md"
+    },
+    {
+      "id": "MCP-3",
+      "title": "Connect an AI assistant: OAuth provider, consent, instant disconnect",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (OAuth provider tables, jwks, McpConnection)",
+      "budget": 600,
+      "units": [
+        "MCP-3"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/CONNECT-AGENT.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-oauth-security.test.ts",
+        "tests/mcp-auth-integration.test.ts",
+        "e2e/mcp-connections.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-3.md"
+    },
+    {
+      "id": "MCP-4",
+      "title": "Assistant read tools: health, issues, runs, readiness, backups, decisions",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-3",
+        "MCP-2",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "none",
+      "budget": 450,
+      "units": [
+        "MCP-4"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/CONNECT-AGENT.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-dispatch.test.ts",
+        "tests/mcp-transport-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-4.md"
+    },
+    {
+      "id": "MCP-5",
+      "title": "Assistant actions: preview, approval, once-only execution, verification; decision answers via MCP",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-4",
+        "MCP-2",
+        "DEC-1"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (AgentOperation)",
+      "budget": 650,
+      "units": [
+        "MCP-5"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/AGENT-ACTIONS.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-operations-integration.test.ts",
+        "tests/mcp-decisions-apply-integration.test.ts",
+        "e2e/mcp-activity.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-5.md"
+    },
+    {
+      "id": "MCP-6",
+      "title": "Repair cases verified against GitHub and the running app",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-5"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (RepairCase, RepairEvidence)",
+      "budget": 450,
+      "units": [
+        "MCP-6"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/REPAIR-CASES.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-repair-cases-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-6.md"
+    },
+    {
+      "id": "MCP-7",
+      "title": "Self-monitoring rules, heartbeat, optional automatic safe actions",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-1",
+        "MCP-5"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (MonitorRule, MonitorRun)",
+      "budget": 450,
+      "units": [
+        "MCP-7"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/MONITORING.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-monitoring-integration.test.ts",
+        "tests/mcp-monitoring-policy.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-7.md"
+    },
+    {
+      "id": "MCP-8",
+      "title": "Speed evidence, improvement proposals and the settings map",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-5",
+        "MCP-6"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (PerfSample, OptimizationProposal)",
+      "budget": 500,
+      "units": [
+        "MCP-8"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/OPTIMIZATION-COVERAGE.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-observations.test.ts",
+        "tests/mcp-control-coverage.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-8.md"
+    },
+    {
+      "id": "MCP-9",
+      "title": "RTC 1 compatibility with passes, result handles, two-instance limits and the honest client list",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-4",
+        "MCP-5",
+        "MCP-6",
+        "MCP-7",
+        "MCP-8"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (AgentPass, AgentResult, McpConnection.kind)",
+      "budget": 600,
+      "units": [
+        "MCP-9"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/RTC.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-rtc-integration.test.ts",
+        "tests/mcp-two-instance-limits.test.ts",
+        "tests/mcp-client-contract.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-9.md"
+    },
+    {
+      "id": "MCP-10a",
+      "title": "App feedback box, people only: reports, screenshots, triage, privacy",
+      "batch": "MCP",
+      "dependencies": [],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (FeedbackReport, FeedbackEntry, FeedbackAttachment, FeedbackEvent, settings)",
+      "budget": 650,
+      "units": [
+        "MCP-10a"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/FEEDBACK.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/feedback-integration.test.ts",
+        "tests/feedback-media.test.ts",
+        "e2e/feedback.spec.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-10a.md"
+    },
+    {
+      "id": "MCP-11",
+      "title": "Assistant help with app feedback, per-report permission",
+      "batch": "MCP",
+      "dependencies": [
+        "MCP-10a",
+        "MCP-5",
+        "MCP-6"
+      ],
+      "status": "APPROVED — Chris 2026-10-25",
+      "migration": "additive (FeedbackEntry.authorKind, FeedbackCaseLink)",
+      "budget": 450,
+      "units": [
+        "MCP-11"
+      ],
+      "evidence": [
+        "docs/build-specs/engines/FEEDBACK-AGENT.md",
+        "docs/mcp/README.md"
+      ],
+      "tests": [
+        "tests/mcp-feedback-integration.test.ts",
+        "tests/feedback-workflow-integration.test.ts"
+      ],
+      "readiness": "CARD_READY",
+      "plannedCard": "docs/pr-cards/MCP-11.md"
     }
   ],
   "enhancements": [

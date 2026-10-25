@@ -49,7 +49,7 @@ every non-final operation to `CANCELLED` with `failureCode: "RESTORED"` (test). 
 `decisions:apply` ("Apply answers to your open questions after you approve them"). Existing connections keep their
 old scopes; Chris reconnects (or edits the connection's scopes on the card — OWNER only) to grant new ones.
 
-## 2. The action registry (`src/mcp/actions.ts`)
+## 2. The action registry (`src/domains/agent-control/actions.ts`)
 ```ts
 type ActionDef<A> = {
   action: string; scope: "ops:maintain" | "decisions:apply";
@@ -86,7 +86,7 @@ approved card.
 - `appliance_decisions_preview_answers` / `appliance_decisions_apply_answers` are thin names for
   `APPLY_DECISION_ANSWERS` (DEC-1 section 8) — preview returns DEC-1's table and `confirmToken`; apply = execute.
 
-## 4. Execute (`src/mcp/operations.ts`) — follows DATA-AND-RECOVERY "Durable write algorithm"
+## 4. Execute (`src/domains/agent-control/operations.ts`) — follows DATA-AND-RECOVERY "Durable write algorithm"
 1. Transaction A (short): lock `McpConnection` → `AgentOperation` (`FOR UPDATE`) in that order; recheck connection not
    revoked, scope present, user active with an allowed role (`assertActiveTeamActor(tx, actorUserId, def.roles)`),
    operation not expired, state `PREVIEWED` (conversation) or `AUTHORIZED` (approved in app); if already `SUCCEEDED`

@@ -88,7 +88,7 @@ sees "Only the owner or an admin can connect an assistant." and no Allow button.
   revokedAt: null }`. Audit `mcp.connection_approved`.
 - Words pass the plain-words check; page follows the kit (works without JavaScript except the buttons' form posts).
 
-## 4. Every request to `/api/mcp` (`src/mcp/auth.ts`)
+## 4. Every request to `/api/mcp` (`src/domains/agent-control/authorization.ts`)
 ```ts
 export async function authenticateMcpRequest(req: Request): Promise<AgentContext | Response>
 ```
@@ -127,7 +127,7 @@ export { handle as GET, handle as POST, handle as DELETE };
 Stateless (no session ids): every call authenticates again. OPTIONS → 204 with no CORS allowance for browsers
 (assistants call server-to-server). Body limit 1 MB (check `content-length`, else read with a cap).
 
-## 6. Tools in this unit (`src/mcp/tools/*.ts`, one registry `src/mcp/registry.ts`)
+## 6. Tools in this unit (`src/mcp/tools/*.ts`, one registry `src/mcp/catalog.ts`)
 Each tool: name, title, description, zod input schema (unknown fields rejected), output schema, required scope,
 `annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }`, and a
 handler that receives `AgentContext`. The registry is the only place `buildMcpServer` reads; a test asserts every
