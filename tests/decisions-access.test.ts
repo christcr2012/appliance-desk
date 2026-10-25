@@ -63,6 +63,12 @@ describe("screens and actions", () => {
     expect(read("src/app/api/desk/decisions/import/route.ts")).toContain('["OWNER"], { write: true }');
   });
 
+  it("the server pages never call the kit's client-only helpers (React error 441 took the whole screen down)", () => {
+    for (const file of ["src/app/desk/settings/decisions/page.tsx", "src/app/desk/settings/decisions/import/page.tsx"]) {
+      expect(read(file)).not.toMatch(/actionButtonClass\(/);
+    }
+  });
+
   it("admins get the cards without any buttons", () => {
     expect(read("src/app/desk/settings/decisions/page.tsx")).toMatch(/\{isOwner \? \(\s*<DecisionActions/);
   });

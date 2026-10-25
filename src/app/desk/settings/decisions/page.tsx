@@ -11,7 +11,6 @@ import {
   Toaster,
   StatusTabs,
   Toolbar,
-  actionButtonClass,
   type FilterDef,
   type Tone,
 } from "@/components/kit";
@@ -20,6 +19,12 @@ import { DecisionActions } from "./decision-actions";
 import { decisionsParams, TABS, type DecisionsTab } from "./params";
 
 export const metadata = { title: "Decisions & reviews", robots: { index: false, follow: false } };
+
+// The kit's secondary button look. This is a server component, so it must not call the kit's client-side
+// class helper (the server render fails with React error 441 and the whole screen goes down).
+const DOWNLOAD_BUTTON = "inline-flex min-h-11 items-center justify-center gap-2 rounded-field border border-line-strong " +
+  "bg-surface px-4 text-[15px] font-bold whitespace-nowrap text-ink hover:bg-tint focus-visible:outline-2 " +
+  "focus-visible:outline-offset-2 focus-visible:outline-focus-ring lg:min-h-10";
 
 const AREA_WORDS: Record<string, string> = {
   TAX: "Tax", RENTAL_TERMS: "Rental terms", MONEY: "Money", PRIVACY: "Privacy and records", WORDING: "Wording",
@@ -112,8 +117,8 @@ export default async function DecisionsPage({ searchParams }: { searchParams: Pr
         </div>
         {professional && inTab.length > 0 ? (
           <div className="flex flex-wrap gap-2" aria-label="Download questions" role="group">
-            <a href={`/desk/settings/decisions/form?for=${params.tab}&format=docx`} download className={actionButtonClass({ spec: { kind: "link", label: "", href: "" }, variant: "secondary" })}>Download questions (Word)</a>
-            <a href={`/desk/settings/decisions/form?for=${params.tab}&format=pdf`} download className={actionButtonClass({ spec: { kind: "link", label: "", href: "" }, variant: "secondary" })}>Download questions (PDF)</a>
+            <a href={`/desk/settings/decisions/form?for=${params.tab}&format=docx`} download className={DOWNLOAD_BUTTON}>Download questions (Word)</a>
+            <a href={`/desk/settings/decisions/form?for=${params.tab}&format=pdf`} download className={DOWNLOAD_BUTTON}>Download questions (PDF)</a>
           </div>
         ) : null}
       </div>
