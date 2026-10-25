@@ -20,13 +20,17 @@ describe.skipIf(!enabled)("COM-N4 service metrics (isolated PostgreSQL)", () => 
       await prisma.user.create({ data: { id, email: id + "@example.test", role } });
     }
     await prisma.customer.create({ data: { id: customerId, userId: cust, referralCode: name } });
-    await prisma.telecomAccount.create({ data: { id: accountId, environment: "PRODUCTION", provider: "twilio", externalAccountId: name, label: "n4", status: "READY" } });
+    await prisma.telecomAccount.create({ data: { id: accountId, environment: "TEST", provider: "twilio", externalAccountId: name, label: "n4", status: "READY" } });
     await prisma.businessPhoneNumber.create({ data: { id: numberId, accountId, address: "+13035550188", providerNumberId: numberId, capabilities: {} } });
-    const p = await prisma.contactPoint.create({ data: { environment: "PRODUCTION", channel: "SMS", address: "+13035550166" } });
+    const p = await prisma.contactPoint.create({ data: { environment: "TEST", channel: "SMS", address: "+13035550166" } });
     pointId = p.id;
     const t = await prisma.communicationThread.create({ data: { accountId, businessNumberId: numberId, externalContactPointId: pointId,
       customerId, resolution: "RESOLVED", status: "OPEN" } });
     threadId = t.id;
+  });
+
+  // The message rows exist only for the instant the numbers are read, so no other test can ever see them.
+  async function seedMessages() {
     const states = [...Array(10).fill("DELIVERED"), "FAILED", "FAILED"];
     for (const [i, state] of states.entries()) {
       await prisma.messageDelivery.create({ data: { idempotencyKey: `${name}-${i}`, channel: "SMS", purpose: "TRANSACTIONAL", templateKey: "t",
@@ -40,9 +44,14 @@ describe.skipIf(!enabled)("COM-N4 service metrics (isolated PostgreSQL)", () => 
     const reply = await prisma.messageDelivery.create({ data: { idempotencyKey: `${name}-reply`, channel: "SMS", purpose: "CONVERSATIONAL",
       templateKey: "t", recipientType: "CUSTOMER", recipientAddress: "+13035559999", telecomAccountId: accountId, state: "DELIVERED", requestedAt: day, environment: "PRODUCTION" } });
     await prisma.communicationMessage.create({ data: { threadId, accountId, direction: "OUTBOUND", deliveryId: reply.id, bodyHash: "h2", actorUserId: staff, occurredAt: new Date("2026-03-10T16:12:00Z") } });
-  });
+  }
+  async function removeMessages() {
+    await prisma.communicationMessage.deleteMany({ where: { threadId } });
+    await prisma.messageDelivery.deleteMany({ where: { idempotencyKey: { startsWith: name } } });
+  }
 
   afterAll(async () => {
+    await removeMessages();
     await prisma.communicationMessage.deleteMany({ where: { threadId } });
     await prisma.communicationThread.deleteMany({ where: { id: threadId } });
     await prisma.contactPoint.deleteMany({ where: { id: pointId } });
@@ -54,7 +63,9 @@ describe.skipIf(!enabled)("COM-N4 service metrics (isolated PostgreSQL)", () => 
   });
 
   it("counts final text results and the first person reply; sparse samples are unavailable", async () => {
-    const m = await getServiceMetrics(owner, from, to);
+    let m: Awaited<ReturnType<typeof getServiceMetrics>>;
+    await seedMessages();
+    try { m = await getServiceMetrics(owner, from, to); } finally { await removeMessages(); }
     expect(m.texts.delivered).toBeGreaterThanOrEqual(10);
     expect(m.texts.failed).toBeGreaterThanOrEqual(2);
     expect(m.texts.sampleEnough).toBe(true);
