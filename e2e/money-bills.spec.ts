@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 import { scanAccessibilityRoute } from "./accessibility-route-helpers";
-import { enabled, overdueCustomer, SIZES } from "./support/ar0b-fixtures";
+import { enabled, overdueCustomer, scanWithReport, SIZES } from "./support/ar0b-fixtures";
 
 // AR-0b (docs/build-specs/screens/MONEY-BILLS.md section 8): Money › Bills in a real browser.
 const owner = "e2e/.auth/owner.json";
@@ -63,7 +63,7 @@ test.describe("Money › Bills", () => {
         .map((el) => `${el.tagName}.${String(el.className).slice(0, 90)} right=${Math.round(el.getBoundingClientRect().right)} text=${(el.textContent ?? "").slice(0, 40)}`),
     }));
     expect(layout.scroll, `Bills at 360 px after a wide window: ${JSON.stringify(layout)}`).toBeLessThanOrEqual(360);
-    await scanAccessibilityRoute(page, { path: "/desk/billing", role: "OWNER", fixture: "/desk/billing?status=past-due" }, SIZES);
+    await scanWithReport(page, () => scanAccessibilityRoute(page, { path: "/desk/billing", role: "OWNER", fixture: "/desk/billing?status=past-due" }, SIZES));
   });
 });
 

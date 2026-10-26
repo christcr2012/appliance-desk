@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 import { scanAccessibilityRoute } from "./accessibility-route-helpers";
-import { enabled, overdueCustomer, SIZES } from "./support/ar0b-fixtures";
+import { enabled, overdueCustomer, scanWithReport, SIZES } from "./support/ar0b-fixtures";
 
 // AR-0b (docs/build-specs/screens/TODAY.md section 7): the Today inbox in a real browser.
 const owner = "e2e/.auth/owner.json";
@@ -54,7 +54,7 @@ test.describe("Today inbox", () => {
   test("accessibility at five sizes, light and dark", async ({ page }) => {
     test.skip(!enabled || !fs.existsSync(owner), "Disposable Postgres and a saved owner session required.");
     test.setTimeout(120_000);
-    await scanAccessibilityRoute(page, { path: "/desk/today", role: "OWNER", fixture: "/desk/today" }, SIZES);
+    await scanWithReport(page, () => scanAccessibilityRoute(page, { path: "/desk/today", role: "OWNER", fixture: "/desk/today" }, SIZES));
   });
 });
 
