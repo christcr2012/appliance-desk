@@ -4,6 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { balancedPlan, depreciationAccrued } from "./posting-rules";
 import { postForSource, writeJournal } from "./post";
+import { assertBooksWriter, booksAuditActor, type BooksWriter } from "./actor";
 import { BookAssetInputError, lastBusinessDay, lastCompletedMonth, monthKey, monthlySchedule, nextMonth, remainingSchedule } from "./depreciation";
 
 type Tx=Prisma.TransactionClient;
@@ -71,38 +72,47 @@ async function verifyCapitalSource(tx:Tx,id:string) {
  },select:{id:true}});
  if(!posted)throw new BookAssetInputError("Capitalized expense journal missing; asset requires review.");
 }
-export async function enrollBookAsset(userId:string,applianceId:string,placedDateKey:string){
+/** Called by the owner flow or a trusted background book run. Caller owns the transaction. */
+export async function enrollBookAssetInTx(
+ tx:Tx,writer:BooksWriter,applianceId:string,placedDateKey:string,source:"MANUAL"|"AUTOMATIC"
+):Promise<string>{
  const placed=dateInput(placedDateKey);
- return prisma.$transaction(async tx=>{
-  await actor(tx,userId);
-  await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id"=${applianceId} FOR UPDATE`;
-  const appliance=await tx.appliance.findUnique({where:{id:applianceId},
-   include:{applianceType:{select:{depreciationMonths:true}}}});
-  const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{
-   booksStartDate:true,depreciationMonthsDefault:true,depreciationSalvagePercent:true,
-  }});
-  if(!settings?.booksStartDate)throw new BookAssetInputError("Initialize your Books opening balances first.");
-  if(placed<settings.booksStartDate||placed>new Date())
-   throw new BookAssetInputError("Attest an in-service date on or after the Books start date and not in the future.");
-  if(!appliance||!appliance.acquisitionCostCents||appliance.acquisitionCostCents<=0)
-   throw new BookAssetInputError("This appliance needs a verified positive acquisition cost.");
-  const cost=bounded(appliance.acquisitionCostCents,1,1_000_000_000,"Acquisition cost");
-  const existing=await tx.bookAsset.findUnique({where:{applianceId}});
-  if(existing){
-   if(existing.costCents!==cost||existing.placedInServiceOn.getTime()!==placed.getTime())
-    throw new BookAssetInputError("Original book asset evidence differs; reconcile before continuing.");
-   return existing.applianceId;
-  }
-  const life=bounded(appliance.applianceType.depreciationMonths??settings.depreciationMonthsDefault,1,360,"Life months");
-  const salvage=bounded(settings.depreciationSalvagePercent,0,95,"Salvage percentage");
-  await tx.bookAsset.create({data:{
-   applianceId,costCents:cost,placedInServiceOn:placed,lifeMonths:life,
-   salvagePercent:salvage,createdByUserId:userId,
-  }});
-  await tx.auditLog.create({data:{userId,action:"books.asset.enroll",entityType:"BookAsset",
-   entityId:applianceId,newValue:{costCents:cost,placedDateKey,lifeMonths:life,salvagePercent:salvage}}});
-  return applianceId;
- },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+ await assertBooksWriter(tx,writer);
+ await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id"=${applianceId} FOR UPDATE`;
+ const appliance=await tx.appliance.findUnique({where:{id:applianceId},
+  include:{applianceType:{select:{depreciationMonths:true}}}});
+ const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{
+  booksStartDate:true,depreciationMonthsDefault:true,depreciationSalvagePercent:true,
+ }});
+ if(!settings?.booksStartDate)throw new BookAssetInputError("Initialize your Books opening balances first.");
+ if(placed<settings.booksStartDate||placed>new Date())
+  throw new BookAssetInputError("Attest an in-service date on or after the Books start date and not in the future.");
+ if(!appliance||!appliance.acquisitionCostCents||appliance.acquisitionCostCents<=0)
+  throw new BookAssetInputError("This appliance needs a verified positive acquisition cost.");
+ if(appliance.status==="RETIRED"&&source==="AUTOMATIC")
+  throw new BookAssetInputError("Retired appliances are not enrolled automatically.");
+ const cost=bounded(appliance.acquisitionCostCents,1,1_000_000_000,"Acquisition cost");
+ const existing=await tx.bookAsset.findUnique({where:{applianceId}});
+ if(existing){
+  if(existing.costCents!==cost||existing.placedInServiceOn.getTime()!==placed.getTime())
+   throw new BookAssetInputError("Original book asset evidence differs; reconcile before continuing.");
+  return existing.applianceId;
+ }
+ if(source==="AUTOMATIC")await verifyCapitalSource(tx,applianceId);
+ const life=bounded(appliance.applianceType.depreciationMonths??settings.depreciationMonthsDefault,1,360,"Life months");
+ const salvage=bounded(settings.depreciationSalvagePercent,0,95,"Salvage percentage");
+ const audit=booksAuditActor(writer);
+ await tx.bookAsset.create({data:{
+  applianceId,costCents:cost,placedInServiceOn:placed,lifeMonths:life,
+  salvagePercent:salvage,createdByUserId:audit.userId,enrollmentSource:source,
+ }});
+ await tx.auditLog.create({data:{userId:audit.userId,action:"books.asset.enroll",entityType:"BookAsset",
+  entityId:applianceId,newValue:{costCents:cost,placedDateKey,lifeMonths:life,salvagePercent:salvage,by:audit.by}}});
+ return applianceId;
+}
+export async function enrollBookAsset(userId:string,applianceId:string,placedDateKey:string){
+ return prisma.$transaction(tx=>enrollBookAssetInTx(tx,{kind:"person",userId},applianceId,placedDateKey,"MANUAL"),
+  {isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
 export async function setBookAssetPolicy(userId:string,id:string,expectedVersion:number,lifeMonths:number,salvagePercent:number){
  bounded(lifeMonths,1,360,"Book life");bounded(salvagePercent,0,95,"Book salvage");
@@ -115,7 +125,7 @@ export async function setBookAssetPolicy(userId:string,id:string,expectedVersion
   const next=row.lastDepreciationMonth?nextMonth(row.lastDepreciationMonth):first;
   remainingSchedule({costCents:row.costCents,salvagePercent,months:lifeMonths,
    postedCents:history.total,postedMonths:countMonths(first,next),nextUnpostedMonth:next});
-  await tx.bookAsset.update({where:{applianceId:id},data:{lifeMonths,salvagePercent,version:{increment:1}}});
+  await tx.bookAsset.update({where:{applianceId:id},data:{lifeMonths,salvagePercent,fullyDepreciatedOn:null,version:{increment:1}}});
   await tx.auditLog.create({data:{userId,action:"books.asset.policy",entityType:"BookAsset",entityId:id,
    oldValue:{lifeMonths:row.lifeMonths,salvagePercent:row.salvagePercent},
    newValue:{lifeMonths,salvagePercent}}});
@@ -135,90 +145,110 @@ export async function setBookDepreciationDefaults(userId:string,months:number,sa
    entityId:"singleton",oldValue:old,newValue:{depreciationMonthsDefault:months,depreciationSalvagePercent:salvagePercent}}});
  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
-export async function postBookDepreciation(userId:string,id:string,throughMonth:string){
+/** Months are capped for manual use; nightly catch-up may process the full 360-month schedule. */
+export async function postBookDepreciationInTx(
+ tx:Tx,writer:BooksWriter,id:string,throughMonth:string,options:{maxMonths:number}
+):Promise<{posted:number;lastCompleted:string|null}>{
  monthKey(throughMonth);
  if(throughMonth>lastCompletedMonth())throw new BookAssetInputError("Only completed Colorado months may be depreciated.");
- return prisma.$transaction(async tx=>{
-  await actor(tx,userId);
-  const asset=await lockAsset(tx,id);
-  if(asset.retiredOn)throw new BookAssetInputError("Retired asset book value is frozen pending disposition.");
-  const appliance=await tx.appliance.findUniqueOrThrow({where:{id}});
-  if(appliance.acquisitionCostCents!==asset.costCents)
-   throw new BookAssetInputError("Original acquisition cost changed; resolve before posting.");
-  await verifyCapitalSource(tx,id);
-  const history=await postedEvidence(tx,id);
-  const first=nextMonth(asMonth(asset.placedInServiceOn));
-  const next=asset.lastDepreciationMonth?nextMonth(asset.lastDepreciationMonth):first;
-  const schedule=remainingSchedule({costCents:asset.costCents,salvagePercent:asset.salvagePercent,
-   months:asset.lifeMonths,postedCents:history.total,
-   postedMonths:countMonths(first,next),nextUnpostedMonth:next})
-    .filter(r=>r.periodKey<=throughMonth).slice(0,12);
-  let posted=0,last:string|null=null;
-  for(const r of schedule){
-   if(r.amountCents>0){
-    const plan=depreciationAccrued({date:lastBusinessDay(r.periodKey),
-     amountCents:r.amountCents,periodKey:r.periodKey});
-    if(plan && await writeJournal(tx,"APPLIANCE",id,"DEPRECIATION:"+r.periodKey,plan,{applianceId:id}))posted++;
-   }
-   last=r.periodKey;
+ bounded(options.maxMonths,1,360,"Depreciation month limit");
+ await assertBooksWriter(tx,writer);
+ const asset=await lockAsset(tx,id);
+ if(asset.retiredOn)throw new BookAssetInputError("Retired asset book value is frozen pending disposition.");
+ const appliance=await tx.appliance.findUniqueOrThrow({where:{id}});
+ if(appliance.acquisitionCostCents!==asset.costCents)
+  throw new BookAssetInputError("Original acquisition cost changed; resolve before posting.");
+ await verifyCapitalSource(tx,id);
+ const history=await postedEvidence(tx,id);
+ const first=nextMonth(asMonth(asset.placedInServiceOn));
+ const next=asset.lastDepreciationMonth?nextMonth(asset.lastDepreciationMonth):first;
+ const all=remainingSchedule({costCents:asset.costCents,salvagePercent:asset.salvagePercent,
+  months:asset.lifeMonths,postedCents:history.total,
+  postedMonths:countMonths(first,next),nextUnpostedMonth:next});
+ const schedule=all.filter(r=>r.periodKey<=throughMonth).slice(0,options.maxMonths);
+ let posted=0,last:string|null=null;
+ for(const r of schedule){
+  if(r.amountCents>0){
+   const plan=depreciationAccrued({date:lastBusinessDay(r.periodKey),
+    amountCents:r.amountCents,periodKey:r.periodKey});
+   if(plan && await writeJournal(tx,"APPLIANCE",id,"DEPRECIATION:"+r.periodKey,plan,{applianceId:id}))posted++;
   }
-  if(last){
-   await tx.bookAsset.update({where:{applianceId:id},data:{lastDepreciationMonth:last,version:{increment:1}}});
-   await tx.auditLog.create({data:{userId,action:"books.asset.depreciate",entityType:"BookAsset",entityId:id,
-    newValue:{through:last,newJournalEntries:posted}}});
-  }
-  return {posted,lastCompleted:last};
- },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
+  last=r.periodKey;
+ }
+ const audit=booksAuditActor(writer);
+ if(last){
+  const exhausted=schedule.length===all.length;
+  await tx.bookAsset.update({where:{applianceId:id},data:{
+   lastDepreciationMonth:last,fullyDepreciatedOn:exhausted?lastBusinessDay(last):null,version:{increment:1},
+  }});
+  await tx.auditLog.create({data:{userId:audit.userId,action:"books.asset.depreciate",entityType:"BookAsset",entityId:id,
+   newValue:{through:last,newJournalEntries:posted,by:audit.by}}});
+ }else if(!all.length&&!asset.fullyDepreciatedOn){
+  await tx.bookAsset.update({where:{applianceId:id},data:{fullyDepreciatedOn:new Date()}});
+ }
+ return {posted,lastCompleted:last};
 }
-export async function retireBookAsset(userId:string,id:string,expectedVersion:number,intent:string,retiredDateKey:string){
+export async function postBookDepreciation(userId:string,id:string,throughMonth:string){
+ return prisma.$transaction(tx=>postBookDepreciationInTx(tx,{kind:"person",userId},id,throughMonth,{maxMonths:12}),
+  {isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
+}
+export async function retireBookAssetInTx(
+ tx:Tx,writer:BooksWriter,id:string,expectedVersion:number|null,intent:string,retiredDateKey:string
+):Promise<{carriedCents:number}>{
  if(!intents.some(x=>x===intent))throw new BookAssetInputError("Choose a supported retirement intent.");
  const retired=dateInput(retiredDateKey);
  if(retired>new Date())throw new BookAssetInputError("Retirement cannot be dated in the future.");
- return prisma.$transaction(async tx=>{
-  await actor(tx,userId);
-  const asset=await lockAsset(tx,id);
-  if(asset.version!==expectedVersion)throw new BookAssetInputError("Asset changed; refresh before retiring.");
-  if(asset.retiredOn)throw new BookAssetInputError("Retirement is already documented; later sale belongs to M-2C.");
-  if(retired<asset.placedInServiceOn)throw new BookAssetInputError("Retirement cannot precede service.");
-  const appliance=await tx.appliance.findUniqueOrThrow({where:{id}});
-  if(appliance.status!=="RETIRED")throw new BookAssetInputError("Remove the appliance from rentable service before book retirement.");
-  if(appliance.acquisitionCostCents!==asset.costCents)throw new BookAssetInputError("Acquisition cost changed; owner review required.");
-  const previous=await tx.journalEntry.findFirst({where:{
-   sourceType:"APPLIANCE",sourceId:id,OR:[
-    {eventKind:{contains:"RETIRED"}},{eventKind:{contains:"DISPOSED"}},{eventKind:{contains:"SOLD"}},
-   ],
-  },select:{eventKind:true}});
-  if(previous)throw new BookAssetInputError("Historical asset retirement/disposition journal requires accountant reconciliation.");
-  const first=nextMonth(asMonth(asset.placedInServiceOn));
-  const scheduledEnd=monthlySchedule({costCents:asset.costCents,months:asset.lifeMonths,
-   salvagePercent:asset.salvagePercent,startMonth:first}).at(-1)!.periodKey;
-  const retireMonth=asMonth(retired);
-  const required=[retireMonth,lastCompletedMonth(),scheduledEnd].sort()[0]!;
-  const history=await postedEvidence(tx,id);
-  if((asset.lastDepreciationMonth && asset.lastDepreciationMonth>retireMonth) ||
-     history.months.some(month=>month>retireMonth))
-   throw new BookAssetInputError("Depreciation was recorded past retirement date; review before transferring book value.");
-  if(first<=required && (!asset.lastDepreciationMonth||asset.lastDepreciationMonth<required))
-   throw new BookAssetInputError("Post completed scheduled depreciation before staging retirement.");
-  await verifyCapitalSource(tx,id);
-  const carried=asset.costCents-history.total;
-  if(!Number.isSafeInteger(carried)||carried<0)
-   throw new BookAssetInputError("Book carrying value is invalid; reconcile first.");
-  if(carried>0){
-   const plan=balancedPlan(retired,"Retired rental appliance held pending final disposition",[
-    {role:"RETIRED_PENDING_DISPOSITION",debitCents:carried,creditCents:0},
-    {role:"RENTAL_EQUIPMENT",debitCents:0,creditCents:carried},
-   ]);
-   if(!plan||!await writeJournal(tx,"APPLIANCE",id,"RETIRED_HELD",plan,{applianceId:id}))
-    throw new BookAssetInputError("Retired-asset transfer already exists; investigate.");
-  }
-  await tx.bookAsset.update({where:{applianceId:id},data:{
-   retiredOn:retired,retirementIntent:intent,retiredValueCents:carried,version:{increment:1},
-  }});
-  await tx.auditLog.create({data:{userId,action:"books.asset.retire",entityType:"BookAsset",entityId:id,
-   newValue:{intent,retiredDateKey,carriedCents:carried,notADisposalLoss:true}}});
-  return {carriedCents:carried};
- },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
+ await assertBooksWriter(tx,writer);
+ const asset=await lockAsset(tx,id);
+ if(expectedVersion===null&&writer.kind!=="automatic")
+  throw new BookAssetInputError("A person must check the asset version before retirement.");
+ if(expectedVersion!==null&&asset.version!==expectedVersion)
+  throw new BookAssetInputError("Asset changed; refresh before retiring.");
+ if(asset.retiredOn)throw new BookAssetInputError("Retirement is already documented; later sale belongs to the shop.");
+ if(retired<asset.placedInServiceOn)throw new BookAssetInputError("Retirement cannot precede service.");
+ const appliance=await tx.appliance.findUniqueOrThrow({where:{id}});
+ if(appliance.status!=="RETIRED")throw new BookAssetInputError("Remove the appliance from rentable service before book retirement.");
+ if(appliance.acquisitionCostCents!==asset.costCents)throw new BookAssetInputError("Acquisition cost changed; owner review required.");
+ const previous=await tx.journalEntry.findFirst({where:{
+  sourceType:"APPLIANCE",sourceId:id,OR:[
+   {eventKind:{contains:"RETIRED"}},{eventKind:{contains:"DISPOSED"}},{eventKind:{contains:"SOLD"}},
+  ],
+ },select:{eventKind:true}});
+ if(previous)throw new BookAssetInputError("Historical asset retirement/disposition journal requires accountant reconciliation.");
+ const first=nextMonth(asMonth(asset.placedInServiceOn));
+ const scheduledEnd=monthlySchedule({costCents:asset.costCents,months:asset.lifeMonths,
+  salvagePercent:asset.salvagePercent,startMonth:first}).at(-1)!.periodKey;
+ const retireMonth=asMonth(retired);
+ const required=[retireMonth,lastCompletedMonth(),scheduledEnd].sort()[0]!;
+ const history=await postedEvidence(tx,id);
+ if((asset.lastDepreciationMonth&&asset.lastDepreciationMonth>retireMonth)||
+    history.months.some(month=>month>retireMonth))
+  throw new BookAssetInputError("Depreciation was recorded past retirement date; review before transferring book value.");
+ if(first<=required&&(!asset.lastDepreciationMonth||asset.lastDepreciationMonth<required))
+  throw new BookAssetInputError("Post completed scheduled depreciation before staging retirement.");
+ await verifyCapitalSource(tx,id);
+ const carried=asset.costCents-history.total;
+ if(!Number.isSafeInteger(carried)||carried<0)
+  throw new BookAssetInputError("Book carrying value is invalid; reconcile first.");
+ if(carried>0){
+  const plan=balancedPlan(retired,"Retired rental appliance held pending final disposition",[
+   {role:"RETIRED_PENDING_DISPOSITION",debitCents:carried,creditCents:0},
+   {role:"RENTAL_EQUIPMENT",debitCents:0,creditCents:carried},
+  ]);
+  if(!plan||!await writeJournal(tx,"APPLIANCE",id,"RETIRED_HELD",plan,{applianceId:id}))
+   throw new BookAssetInputError("Retired-asset transfer already exists; investigate.");
+ }
+ const audit=booksAuditActor(writer);
+ await tx.bookAsset.update({where:{applianceId:id},data:{
+  retiredOn:retired,retirementIntent:intent,retiredValueCents:carried,version:{increment:1},
+ }});
+ await tx.auditLog.create({data:{userId:audit.userId,action:"books.asset.retire",entityType:"BookAsset",entityId:id,
+  newValue:{intent,retiredDateKey,carriedCents:carried,notADisposalLoss:true,by:audit.by}}});
+ return {carriedCents:carried};
+}
+export async function retireBookAsset(userId:string,id:string,expectedVersion:number,intent:string,retiredDateKey:string){
+ return prisma.$transaction(tx=>retireBookAssetInTx(tx,{kind:"person",userId},id,expectedVersion,intent,retiredDateKey),
+  {isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
 }
 export async function addBookTaxEvidence(userId:string,id:string,input:{
  classification:string;confidence:string;originalBasisCents:number|null;signedAdjustmentsCents:number|null;
