@@ -5169,7 +5169,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR #616 open. CI all green at head beb787c4; Codex review dispositions: P2 (two-step page prerender) already fixed via force-dynamic, P1 (forget action actor recheck) fixed with an in-transaction assertActiveTeamActor + 3 unit tests, typecheck clean. Awaiting ci at the new exact head, then reply/resolve threads and merge.",
       "units": [
         "ACC-6"
       ]
