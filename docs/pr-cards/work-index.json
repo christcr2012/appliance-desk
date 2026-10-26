@@ -4020,7 +4020,7 @@
       "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
       "batch": "BA",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — ai/chatgpt/ba-1",
       "migration": "book_autopilot",
       "budget": 480,
       "units": [
@@ -4028,12 +4028,19 @@
       ],
       "evidence": [
         "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
-        "docs/designs/BOOKS-AUTOPILOT.md"
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/domains/books/autopilot.ts",
+        "src/domains/books/fixed-assets.ts",
+        "src/domains/exceptions/books-attention.ts",
+        "src/app/api/cron/books-nightly/route.ts"
       ],
       "tests": [
-        "tests/ba1-books-autopilot-integration.test.ts"
+        "tests/ba1-books-autopilot-integration.test.ts",
+        "tests/ba1-books-autopilot-guard.test.ts",
+        "tests/ba1-nightly-autopilot-integration.test.ts",
+        "tests/ba1-books-nightly-route.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "IN_REVIEW",
       "plannedCard": "docs/pr-cards/BA-1.md"
     },
     {
