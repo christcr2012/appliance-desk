@@ -1,3 +1,7 @@
+## October 25 — BA-2 owner Books setup built on stacked branch (not merged)
+
+`ai/chatgpt/ba-2` depends on BA-1 PR #610. Owner-only four-step setup, personal-expense contribution shortcut, initial catch-up, owner-only To do reminder, and append-only numbered opening-balance corrections are coded with real-database tests. BA-2 has not passed its own exact-head CI or review and has no merge. Next: verify the tests and PR, then complete BA-3 after BA-2 is safe.
+
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 
 Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.

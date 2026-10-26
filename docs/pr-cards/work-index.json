@@ -4052,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — ai/chatgpt/ba-2, depends on BA-1 PR #610",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4065,7 +4065,7 @@
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "IN_REVIEW",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {

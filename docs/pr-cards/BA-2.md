@@ -24,4 +24,4 @@ Depends on BA-1 (actor refactor and autopilot).
 **Stack dependency:** this BA-2 branch starts from unmerged BA-1 head `22b255df362b`. PR must target the BA-1 branch until BA-1 is merged, then retarget to main.
 
 ## Progress
-Acceptance recorded before code. No BA-2 behavior yet. Verification pending.
+The setup wizard, owner-only To do, preselected Owner contributions shortcut, and versioned opening-balance correction with reasons are coded on `ai/chatgpt/ba-2`. Disposable PostgreSQL test source is added but not yet proven by CI. No BA-2 PR/merge or owner acceptance claimed. Tests and the dependency update are the next verification steps.
