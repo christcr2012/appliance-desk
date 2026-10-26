@@ -14,6 +14,20 @@ Update 2026-10-26 ~09:40 MDT: a third staff bug turned up while verifying — th
 
 Update 2026-10-26 ~11:40 MDT: the fix is pushed (head 6fc2dc5e) with main merged in. Run 40367161675 passed everything except the secret scan: the browser-c rebalance worked, and the offline test passed (it was timing, not code). The secret scan needed allowlist fingerprints for the merge's own commits (the same refresh TFA-1 needed after its merge) — added. Run 40369165252 then passed the secret scan and everything else except browser-b, which ran 3.2m against the 180s budget with all 165 tests passing (345 test-seconds after the earlier rebalance landed two specs there). Measured a 293/2.6m, c 211/2.1m, d 311/2.8m, so website-editor (~35 test-seconds) moved from b to c, the lightest group. Re-running; on green, the two review comments get answered and the PR merges.
 
+Update 2026-10-26 ~12:40 MDT: run 40370502019 passed every test group; the secret scan then needed the same fingerprints under the ACC-6 lane's merge commits, because the scan reads every branch's history (added). Run 40371581549 passed the secret scan and everything except the offline test, which failed the same way as once before (the 'Try again' link missing after the connection returns; it has passed in three of the last five runs, the same failure has appeared on other lanes' branches, and nothing in this lane touches the offline path). Main moved again (BA-2, PR #613), so main is merged in once more — the only conflict was this file. Final checks running on the merged head; on green, the two review comments get answered and the PR merges.
+
+## October 26 — BA-2 implementation accepted in CI; documentation revalidation next
+
+BA-2 PR #613 has all functional and full-suite checks green on implementation commit `72ac47ff` (run 40355797414). The single Codex issue about corrected Stripe openings was fixed with a real-database regression. This documentation update is the last branch change; exact-head CI and review disposition precede any merge. BA-1 PR #610 is already merged. BA-3 remains a separate branch and is being checked. No live money or provider settings changed.
+
+## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
+
+PR #613 is ready for review. Codex found that a corrected opening Stripe amount was missing from the clearing comparison baseline. The fix includes corrected OPENING journals dated by the reconciliation cutoff, with an actual disposable-Postgres scenario. Prior CI passed, but that was before this fix; the new head still requires CI and review disposition. BA-1 is merged. BA-3 is in a dependent branch. No live Stripe setting or business data changed.
+
+## October 26 — Books Lane 3: BA-1 merged, BA-2 and BA-3 in progress
+
+BA-1 books autopilot merged as PR #610 after full exact-head CI and three Codex findings fixed. BA-2 owner setup is in PR #613, reconciling its branch with main before fresh CI. BA-3 monthly review is a separate dependent branch. No production data, provider settings, or live messages changed.
+
 ## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
 
 CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
