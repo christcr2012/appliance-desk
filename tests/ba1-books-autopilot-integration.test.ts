@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { Prisma } from "@prisma/client";
+import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { enrollBookAsset, disposedValueBefore } from "@/domains/books/fixed-assets";
 import { retireAppliance } from "@/domains/inventory/guided-actions";
@@ -64,10 +64,11 @@ describe.skipIf(!enabled)("BA-1 append-only appliance disposal on disposable Pos
  });
  it("finishing, reopening and finishing again produces exactly three balanced cycle journals",async()=>{
   await setRetiredPlan(owner,asset,{choice:"SCRAP"});
-  await completeRetiredPlan(owner,asset,{doneOnKey:"2026-03-01"});
-  await reopenRetiredPlan(owner,asset,"Correcting the reported disposal date",new Date("2026-03-02T15:00:00Z"));
-  await completeRetiredPlan(owner,asset,{doneOnKey:"2026-03-03"});
-  await completeRetiredPlan(owner,asset,{doneOnKey:"2026-03-03"});
+  const day=businessDateKey(new Date());
+  await completeRetiredPlan(owner,asset,{doneOnKey:day});
+  await reopenRetiredPlan(owner,asset,"Correcting the reported disposal date");
+  await completeRetiredPlan(owner,asset,{doneOnKey:day});
+  await completeRetiredPlan(owner,asset,{doneOnKey:day});
   const rows=await prisma.journalEntry.findMany({
    where:{sourceType:"APPLIANCE",sourceId:asset,eventKind:{in:[
     "DISPOSED:1","DISPOSAL_REVERSED:1","DISPOSED:2"]}},
@@ -78,7 +79,7 @@ describe.skipIf(!enabled)("BA-1 append-only appliance disposal on disposable Pos
   for(const entry of rows)expect(entry.lines.reduce((v,l)=>v+l.debitCents-l.creditCents,0)).toBe(0);
   const row=await prisma.bookAsset.findUniqueOrThrow({where:{applianceId:asset}});
   expect(row.disposalCycle).toBe(2);
-  const before=await prisma.$transaction(tx=>disposedValueBefore(tx,new Date("2026-03-04T23:00:00Z")));
+  const before=await prisma.$transaction(tx=>disposedValueBefore(tx,new Date(Date.now()+86400000)));
   expect(before.get(asset)).toBe(row.retiredValueCents);
  });
  it("a wrong acquisition cost does not prevent Equipment retirement and leaves one actionable problem",async()=>{
