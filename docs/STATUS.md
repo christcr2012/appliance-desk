@@ -1,6 +1,10 @@
-## October 26 — BA-3 monthly review draft PR #624 and final review gaps
+## October 26 — BA-3 draft PR #624 now follows merged BA-2
 
-BA-3 draft PR #624 now sits after BA-2 PR #613. Its merged branch passed type checking, secrets, all unit/real-database shards and three browser shards at `ad2ba219`, but browser-d had an offline reconnect assertion failure. The current patch keeps offline recovery-link proof and covers unresolved source issues in the correct monthly review. Current-head full CI and automated review are still required. BA-2's corrected Stripe reconciliation is in CI, not merged yet. No customer email was sent; accountant email remains owner-triggered.
+BA-1 PR #610 and BA-2 PR #613 are merged into main. BA-3 PR #624 is the remaining Books month-review work. Its code covers four checks, owner locking, accountant CSV and explicit send, no-receipt explanations and reminders. The recent browser run exposed an offline recovery-transition assertion, fixed without dropping offline link coverage. Month reviews now include unresolved warnings for sources dated in that month. This reconciled branch needs fresh exact-head CI and review before merge. No live customer emails or production provider changes were made.
+
+## October 26 — BA-2 implementation accepted in CI; documentation revalidation next
+
+BA-2 PR #613 has all functional and full-suite checks green on implementation commit `72ac47ff` (run 40355797414). The single Codex issue about corrected Stripe openings was fixed with a real-database regression. This documentation update is the last branch change; exact-head CI and review disposition precede any merge. BA-1 PR #610 is already merged. BA-3 remains a separate branch and is being checked. No live money or provider settings changed.
 
 ## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
 
