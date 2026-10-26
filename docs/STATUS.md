@@ -1,3 +1,7 @@
+## October 26 — CI maintenance: scoped secret history and rebalanced browser groups (PR #632)
+
+PR #632 changes Gitleaks from all-branch history scanning to new PR/push commits plus the complete main-only nightly history; the full checked-out-file scan remains. Three complete browser specs moved into the previously lightest group, preserving all 85 specs and four runners. The first full CI run (40416591581, head f591596f) passed all 11 jobs: browser a 164.74s, b 142.41s, c 108.31s, d 164.08s against 180s. No automated review appeared and the diff was self-reviewed. The final evidence documentation revision must pass its own exact-head CI before merge; the PR records the current merge state. No security allowlist, test coverage, provider settings or production data changed.
+
 ## October 26 — OPS-1: product recalls (PR open, branch `ai/claude/ops-1`)
 
 Each night the app reads the government's public recall list (CPSC, read only) and records **possible** matches against your
