@@ -116,6 +116,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/purchase-tax-recalculate-integration.test.ts",
   "tests/rdf-filing-integration.test.ts",
   "tests/rdf-threshold-integration.test.ts",
+  "tests/rdf-autopilot-integration.test.ts", // TFA-2 changes and restores the shared crossing date on the settings row.
   "tests/retail-delivery-fee-integration.test.ts",
   "tests/subscription-end-integration.test.ts",
   "tests/system-issue-sweep-integration.test.ts",
@@ -132,6 +133,10 @@ const SHARED_SETTINGS_TESTS = [
   "tests/voice-webhooks-integration.test.ts",
   "tests/voice-voicemail-integration.test.ts",
   "tests/use-tax-frequency-transition-integration.test.ts",
+  "tests/use-tax-year-reset.test.ts", // TFA-2 creates Colorado use-tax filing accounts and periods.
+  "tests/license-renewal.test.ts", // TFA-2 creates and edits shared filing accounts.
+  "tests/filing-frequency-advice.test.ts", // TFA-2 creates filing accounts, periods and advice.
+  "tests/exemption-expiry-flow-integration.test.ts", // TFA-2 creates customers, certificates and credits.
   "tests/use-tax-unlinked-account-integration.test.ts",
   // Added 2026-10-17 (F2-A/F2-B): the integrated scenarios seed the shared tax settings, switch shared business settings
   // on and off, and work through whole-database queues (billing hand-offs, waiting notices, due terminations), so they
