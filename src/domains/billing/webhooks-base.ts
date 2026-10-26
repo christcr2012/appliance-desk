@@ -53,8 +53,10 @@ async function markProcessed(db: Prisma.TransactionClient, event: Stripe.Event):
   await db.webhookEvent.create({ data: { id: event.id, type: event.type } });
 }
 
-export function inferLineItemKind(description: string | null, rdfRecordId?: string): InvoiceLineItemKind {
+export function inferLineItemKind(description: string | null, rdfRecordId?: string, lateFeeChargeId?: string): InvoiceLineItemKind {
   if (rdfRecordId) return "RETAIL_DELIVERY_FEE";
+  // FEE-1: a late fee the customer was warned about, sent to Stripe as its own invoice item (metadata carries the PendingCharge id).
+  if (lateFeeChargeId) return "LATE_FEE";
   if (description === "Security deposit") return "DEPOSIT";
   if (description === "Damage waiver") return "DAMAGE_WAIVER";
   if (description?.startsWith("Late return – ")) return "LATE_RETURN";
@@ -234,7 +236,7 @@ export async function mirrorStripeInvoiceLines(
     stripeLine: line,
     kind: signingCreditLine !== null && line.id === signingCreditLine.lineId
       ? "CREDIT" as const
-      : inferLineItemKind(line.description, line.metadata?.rdf_record_id),
+      : inferLineItemKind(line.description, line.metadata?.rdf_record_id, line.metadata?.late_fee_pending_charge_id),
     description: signingCreditLine !== null && line.id === signingCreditLine.lineId
       ? signingCreditLine.description
       : line.description ?? "Charge",
@@ -284,6 +286,14 @@ export async function mirrorStripeInvoiceLines(
       select: { id: true },
     });
     await attachRdfInvoiceLineInTx(db, line.stripeLine, created.id, agreementId, invoiceId);
+    const lateFeeChargeId = line.stripeLine.metadata?.late_fee_pending_charge_id;
+    if (lateFeeChargeId) {
+      // FEE-1: this bill now carries the pending late fee. Recorded once; a replay finds it already applied.
+      await db.pendingCharge.updateMany({
+        where: { id: lateFeeChargeId, customerId, appliedToInvoiceId: null },
+        data: { appliedToInvoiceId: invoiceId },
+      });
+    }
     mirroredChargeLines.push({
       stripeLine: line.stripeLine,
       invoiceLineItemId: created.id,

@@ -26,6 +26,7 @@ import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { SigningChargeForm } from "./signing-charge-form";
 import { BankPaymentForm } from "./bank-payment-form";
+import { LateFeeNoticeForm } from "./late-fee-notice-form";
 import { MandatorySigningPolicyForm } from "./mandatory-signing-policy-form";
 import { effectiveMandatorySigningPolicy, parseMandatorySigningPolicyVersions } from "@/domains/billing/signing-mandatory-policy";
 import { businessDateKey } from "@/lib/business-date";
@@ -130,6 +131,9 @@ export default async function DeskSettingsPage({
       </Card>
       <Card title="Bank payments" description="How long a bank transfer can wait before it needs your attention.">
         <BankPaymentForm editable={session.user.role === "OWNER"} days={settings.bankPaymentSlowBusinessDays ?? 6} />
+      </Card>
+      <Card title="Late fee warning" description="A late fee is only added after the customer was told.">
+        <LateFeeNoticeForm editable={session.user.role === "OWNER"} days={settings.lateFeeNoticeDaysBefore ?? 2} />
       </Card>
       <Card title="Mandatory fees on complete estimates" description="Owner-only effective-dated rule revisions; charge collection stays disabled until independent clearance.">
         <MandatorySigningPolicyForm editable={session.user.role === "OWNER"} effectiveDate={businessDateKey(new Date())}

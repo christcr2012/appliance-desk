@@ -175,6 +175,9 @@ model Customer {
   isBusiness      Boolean  @default(false)
   isPropertyManager Boolean @default(false)
   companyName     String?
+  // FEE-1: optional; an active-duty servicemember never gets an automatic late fee (federal SCRA protections).
+  activeMilitary  Boolean  @default(false)
+  pendingCharges  PendingCharge[]
   // W-26: customer-owned language preference. Activation is separately reviewer gated.
   preferredLanguage String @default("en")
 
@@ -1101,6 +1104,8 @@ enum RentalAgreementStatus {
 model RentalAgreement {
   // BILL-1: bank payments being confirmed for a subscription bill that is not mirrored locally yet.
   bankPaymentsInFlight BankPaymentInFlight[]
+  lateFeeClass LateFeeClass?
+  pendingCharges PendingCharge[]
   signingBusinessReviews SigningBusinessReview[]
   rdfRecords RetailDeliveryFeeRecord[] @relation("RdfAgreement")
   outOfServicePeriods OutOfServicePeriod[]
@@ -1145,7 +1150,7 @@ model RentalAgreement {
   // freezes through AgreementSigningCharge, never a second ledger.
   mandatoryChargeReviewVersions Json @default("[]")
   damageWaiverCents Int @default(0)
-  lateFeeGraceDays  Int @default(5)
+  lateFeeGraceDays  Int @default(10)
   lateFeeCents      Int @default(0)
   lateFeePercent    Int @default(0)
   taxRatePermille   Int @default(0) // DEPRECATED: old tenths-of-a-percent value; a database trigger keeps it in step with taxRateMilliPercent until the cleanup batch removes both
@@ -2364,6 +2369,7 @@ enum ProviderOperationKind {
   REFUND_CREATE
   TAX_RATE_CREATE
   SUBSCRIPTION_TAX_UPDATE
+  LATE_FEE_INVOICE_ITEM
 }
 
 enum ProviderOperationStatus {
@@ -2522,6 +2528,14 @@ model Invoice {
   creditApplications  CreditApplication[]
   // BILL-1: bank payments the bank is still confirming for this bill (see BankPaymentInFlight).
   bankPaymentsInFlight BankPaymentInFlight[]
+  // FEE-1: the "your payment is late" warning, the date a late fee may first be recorded, and Chris's phone-call record.
+  lateNoticeDeliveryId String?
+  lateNoticeCount      Int       @default(0)
+  lateFeeDate          DateTime?
+  lateFeeToldOn        DateTime?
+  lateFeeToldByUserId  String?
+  pendingChargesFor     PendingCharge[] @relation("PendingChargeFor")
+  pendingChargesApplied PendingCharge[] @relation("PendingChargeApplied")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2567,6 +2581,44 @@ model BankPaymentInFlight {
   @@index([clearedAt, startedAt])
   @@index([clearedAt, lastCheckedAt])
   @@index([stripeInvoiceId])
+}
+
+enum LateFeeClass {
+  CONSUMER_LEASE
+  CONSUMER_SHORT
+  BUSINESS
+}
+
+enum PendingChargeKind {
+  LATE_FEE
+}
+
+// FEE-1: a late fee is its own charge, never added to the overdue bill. One per overdue bill (unique), put on the
+// customer's next bill (or its own bill when the rental ended). Waivable before or after it is billed.
+model PendingCharge {
+  id                String            @id @default(cuid())
+  customerId        String
+  customer          Customer          @relation(fields: [customerId], references: [id])
+  agreementId       String
+  agreement         RentalAgreement   @relation(fields: [agreementId], references: [id])
+  kind              PendingChargeKind @default(LATE_FEE)
+  amountCents       Int
+  forInvoiceId      String
+  forInvoice        Invoice           @relation("PendingChargeFor", fields: [forInvoiceId], references: [id])
+  noticeDeliveryId  String?
+  addedOn           DateTime          @default(now())
+  appliedToInvoiceId String?
+  appliedToInvoice  Invoice?          @relation("PendingChargeApplied", fields: [appliedToInvoiceId], references: [id])
+  // Set once the fee is on its way to Stripe (a provider operation), so a retry never posts it twice.
+  providerOperationId String?
+  waivedAt          DateTime?
+  waivedReason      String?
+  waivedByUserId    String?
+  createdAt         DateTime          @default(now())
+
+  @@unique([forInvoiceId, kind])
+  @@index([appliedToInvoiceId])
+  @@index([customerId, appliedToInvoiceId, waivedAt])
 }
 
 model InvoiceLineItem {
@@ -3209,11 +3261,13 @@ model BusinessSettings {
   defaultJobDurationMinutes Int @default(120)
   // Can staff work jobs nobody is assigned to (Batch C P2-E). On keeps the old behavior.
   staffMayWorkUnassignedJobs Boolean @default(true)
-  lateFeeGraceDays        Int     @default(5)
+  lateFeeGraceDays        Int     @default(10)
   lateFeeFlatCents        Int     @default(0)
   lateFeePercent          Int     @default(0)
   // BILL-1: banking days a bank payment may take before it goes on To do (2-20; starting value 6, banks usually take up to 4).
   bankPaymentSlowBusinessDays Int @default(6)
+  // FEE-1: how many days before a late fee the customer is warned (1-5).
+  lateFeeNoticeDaysBefore Int @default(2)
   taxRatePermille         Int     @default(0) // DEPRECATED (see taxRateMilliPercent); kept in step by a database trigger until cleanup
   taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
   taxRateConfirmed        Boolean @default(false)
