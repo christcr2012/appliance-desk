@@ -1044,13 +1044,9 @@ export async function assertTaxReadyForAgreement(
         context.jurisdictions.some(j => j.id === state.id &&
           resolveTaxability(j, "RENTAL", context).taxability === "TAXABLE"))) {
         const year = Number(businessDateKey(taxDate).slice(0, 4));
-        const [priorRetail, currentRetail, filingAccount] = await Promise.all([
+        const [priorRetail, currentRetail] = await Promise.all([
           recordedRetailSales(tx, year - 1),
           recordedRetailSales(tx, year),
-          tx.taxFilingAccount.findFirst({
-            where: { kind: "SALES_RETURN", jurisdictions: { some: { level: "STATE" } } },
-            select: { frequency: true },
-          }),
         ]);
         const decision = retailDeliveryFeeStatus({
           today: taxDate, saleType: "RENTAL", election: settings.shortTermLeaseElection,
@@ -1059,7 +1055,6 @@ export async function assertTaxReadyForAgreement(
           thresholdCents: (await ruleAsOf<number>("co.rdf.qualified_threshold", taxDate, tx)).value,
           thresholdCrossedOn: settings.rdfThresholdCrossedOn,
           handling: settings.rdfHandling, cpaConfirmedOn: settings.rdfCpaConfirmedOn,
-          frequency: filingAccount?.frequency ?? "MONTHLY",
         });
         if (decision.status === "UNDECIDED")
           problems.push("Colorado retail delivery fee: " + decision.reason);

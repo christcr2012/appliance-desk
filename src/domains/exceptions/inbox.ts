@@ -109,6 +109,8 @@ export type InboxHandlers = {
   applyOfficialRate?: FormAction;
   undoOfficialRate?: FormAction;
   recordBankPayment?: FormAction;
+  approveRdfSwitch?: FormAction;
+  confirmFilingFrequency?: FormAction;
 };
 
 export type InboxActionOptions = {
@@ -128,6 +130,14 @@ function formPrimary(item: ExceptionItem, handlers: InboxHandlers | undefined): 
     case "APPLY_OFFICIAL_RATE":
       return handlers?.applyOfficialRate
         ? { kind: "form", label: action.label, action: handlers.applyOfficialRate, fields: { observationId: action.id }, primary: true }
+        : null;
+    case "APPROVE_RDF_SWITCH":
+      return handlers?.approveRdfSwitch
+        ? { kind: "form", label: action.label, action: handlers.approveRdfSwitch, fields: { switchId: action.id }, primary: true, pendingLabel: "Approving…", successMessage: "Switch approved" }
+        : null;
+    case "CONFIRM_FILING_FREQUENCY":
+      return handlers?.confirmFilingFrequency
+        ? { kind: "form", label: action.label, action: handlers.confirmFilingFrequency, fields: { adviceId: action.id }, primary: true, pendingLabel: "Confirming…", successMessage: "Filing frequency updated" }
         : null;
     case "RECORD_BANK_PAYMENT":
       return handlers?.recordBankPayment

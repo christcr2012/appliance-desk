@@ -5,6 +5,7 @@ import type {
 
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 
 export type TaxExemptionInput = {
   reason: TaxExemptionReason;
@@ -220,6 +221,55 @@ export async function createCustomerTaxExemption(
         },
       },
     });
+    // TFA-2 §9: a certificate that was already in force while earlier
+    // bills were taxed earns the customer a credit for the tax charged
+    // since it took effect. Issued bills stay exactly as they are; the
+    // credit lands on a future bill (the section 4a pattern).
+    const validKey = businessDateKey(row.validFrom);
+    if (validKey < businessDateKey(new Date())) {
+      const since = businessDateFromKey(validKey);
+      const taxed = await tx.invoiceTaxLine.aggregate({
+        where: {
+          taxCents: { gt: 0 },
+          ...(data.jurisdictionIds.length
+            ? { jurisdictionId: { in: data.jurisdictionIds } }
+            : {}),
+          invoice: {
+            customerId,
+            status: { notIn: ["DRAFT", "VOID", "WRITTEN_OFF"] },
+            issuedAt: { gte: since! },
+          },
+        },
+        _sum: { taxCents: true },
+      });
+      const creditCents = taxed._sum.taxCents ?? 0;
+      if (creditCents > 0) {
+        const credit = await tx.customerCredit.create({
+          data: {
+            customerId,
+            amountCents: creditCents,
+            remainingCents: creditCents,
+            reason: "Exemption certificate covered this tax",
+            authorizedByUserId: actorUserId,
+            sourceType: "EXEMPTION_BACKDATE",
+            sourceId: row.id,
+            side: "CUSTOMER",
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            userId: actorUserId,
+            action: "tax.exemption.backdate_credit",
+            entityType: "CustomerCredit",
+            entityId: credit.id,
+            newValue: {
+              customerId, exemptionId: row.id, creditCents,
+              validFrom: row.validFrom.toISOString(),
+            },
+          },
+        });
+      }
+    }
     return row;
   });
 }

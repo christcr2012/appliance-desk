@@ -130,21 +130,10 @@ async function decide(
   if (rental.taxability === "UNDECIDED") return pending(rental.reason);
   if (rental.taxability === "EXEMPT") return notDue(rental.reason);
   const year = Number(businessDateKey(deliveredOn).slice(0, 4));
-  const [previous, current, account] = await Promise.all([
+  const [previous, current] = await Promise.all([
     recordedRetailSales(tx, year - 1),
     recordedRetailSales(tx, year),
-    tx.taxFilingAccount.findFirst({
-      where: {
-        kind: "SALES_RETURN",
-        jurisdictions: { some: { level: "STATE" } },
-      },
-      select: { frequency: true },
-    }),
   ]);
-  if (!account && previous === 0 && current > thresholdCents)
-    return pending(
-      "Confirm the Colorado filing frequency before calculating the 90-day grace period.",
-    );
   const applicability = retailDeliveryFeeStatus({
     today: deliveredOn,
     saleType: "RENTAL",
@@ -153,7 +142,6 @@ async function decide(
     currentYearRetailCents: current,
     thresholdCents,
     thresholdCrossedOn: settings.rdfThresholdCrossedOn,
-    frequency: account?.frequency ?? "MONTHLY",
     handling: settings.rdfHandling,
     cpaConfirmedOn: settings.rdfCpaConfirmedOn,
   });
