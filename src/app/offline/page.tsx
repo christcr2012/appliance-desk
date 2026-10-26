@@ -1,7 +1,6 @@
 import Image from "next/image";
-import { TryAgain } from "./try-again";
 
-// Public and content-free: safe for a shared service-worker cache.
+// Public and content-free: safe to cache. Recovery is a plain link so no offline JavaScript is required.
 export const metadata = { title: "Offline · Appliance Desk", robots: { index: false, follow: false } };
 
 export default function OfflinePage() {
@@ -10,7 +9,9 @@ export default function OfflinePage() {
       <Image src="/brand/badge.svg" alt="" width={64} height={64} />
       <h1 className="text-[28px] font-extrabold text-ink">You're offline</h1>
       <p className="text-ink-soft">You're offline. Your changes are paused until the connection is back.</p>
-      <TryAgain />
+      <a href="/desk/today" className="inline-flex min-h-11 items-center rounded-field bg-primary px-5 py-3 font-bold text-on-primary focus-visible:outline-2 focus-visible:outline-offset-2">
+        Try again
+      </a>
     </main>
   );
 }
