@@ -5181,7 +5181,7 @@
       "dependencies": [
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #617, squash merge cb1c3618 (2026-10-26); fingerprint refresh PR pending (3 rule-key lines need cb1c3618 fingerprints)",
       "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
       "budget": 500,
       "units": [

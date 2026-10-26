@@ -9,6 +9,7 @@ export function FileAndPayHeadline(props: FileAndPayInput) {
       <p className="text-base font-semibold">
         {line.headline} <InfoTip term="suts" />
       </p>
+      {line.actOn && <p className="text-sm font-medium">{line.actOn}</p>}
       {line.parts.length > 0 && (
         <ul className="text-sm text-muted-foreground">
           {line.parts.map((part) => <li key={part.label}>{part.label}: {part.amount}</li>)}
