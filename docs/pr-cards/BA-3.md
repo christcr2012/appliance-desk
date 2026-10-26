@@ -10,5 +10,16 @@ Depends on BA-1 (actor refactor and autopilot).
 - [ ] People-facing behavior of existing Books actions unchanged except where the spec says.
 - [ ] `ci` green at the exact head; every review comment read.
 
+## Implementation and acceptance checklist
+- [ ] Add additive `AccountingPeriod.reviewNotes`, `accountantSentAt`, `Expense.noReceiptReason`, and configurable accountant email/day fields; document backup/migration.
+- [ ] OWNER/ADMIN read the previous month's four reviews on `/desk/books/months/[month]`; only OWNER overrides checks, mails accountant or locks. Every read is source-based and bounded.
+- [ ] Automatically surface unlocked ended months as To do items, medium before and high after owner's configured reminder day.
+- [ ] Match source posting, expense receipts or documented no-receipt reasons, bank/Stripe reconciliation, and precise equipment depreciation periods without treating an uninitialized provider as an error.
+- [ ] Show a plain profit/collection/expense comparison and three largest expense categories from the existing ledger.
+- [ ] Generate an immutable accountant package and support explicitly requested, outcome-aware accountant email with attachments; never email automatically.
+- [ ] Close with four-check evidence and separately stated override reasons in a locked Serializable transaction; export missing entries atomically, protect closed periods.
+- [ ] Test correctness, OWNER/ADMIN access, duplicate locking, uncertain provider email and edge dates on throwaway PostgreSQL; run browser checks and exact-head CI.
+- [ ] Review every comment before merge; BA-2 must merge first and BA-1 must merge before BA-2.
+
 ## Progress
-Not started.
+Acceptance plan committed first on stacked branch `ai/chatgpt/ba-3` from BA-2. Implementation not yet verified.
