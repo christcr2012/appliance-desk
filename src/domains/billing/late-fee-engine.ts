@@ -58,14 +58,17 @@ export async function loadLateFeeFacts(db: Db, invoiceId: string, now: Date): Pr
     where: { id: invoiceId },
     select: {
       id: true, invoiceNumber: true, status: true, dueDate: true, amountDueCents: true, amountPaidCents: true, lateFeeCents: true,
-      lateNoticeDeliveryId: true, lateNoticeCount: true, lateFeeToldOn: true, agreementId: true,
+      lateNoticeDeliveryId: true, lateNoticeCount: true, lateFeeToldOn: true, lateFeeDate: true, agreementId: true,
       agreement: { select: { lateFeeGraceDays: true, lateFeeCents: true, lateFeePercent: true } },
       customer: { select: { activeMilitary: true, user: { select: { name: true, email: true } } } },
       _count: { select: { pendingChargesFor: true } },
+      lineItems: { select: { kind: true } },
     },
   });
   if (!invoice || !invoice.dueDate || !invoice.agreement || !invoice.agreementId) return null;
   if (!(OPEN_STATUSES as readonly string[]).includes(invoice.status)) return null;
+  // A bill that is only a late fee never earns another late fee (no fee on a fee).
+  if (invoice.lineItems.length > 0 && invoice.lineItems.every((line) => line.kind === "LATE_FEE")) return null;
   const settings = await getBusinessSettings();
   const noticeDays = (settings as { lateFeeNoticeDaysBefore?: number }).lateFeeNoticeDaysBefore ?? LATE_FEE_NOTICE_DAYS_DEFAULT;
 
@@ -112,6 +115,7 @@ export async function loadLateFeeFacts(db: Db, invoiceId: string, now: Date): Pr
       agreementNamesFee: invoice.agreement.lateFeeCents > 0 || invoice.agreement.lateFeePercent > 0,
       paymentInProgress: bankInFlight > 0 || phoneStarted > 0,
       alreadyCharged: invoice._count.pendingChargesFor > 0 || invoice.lateFeeCents > 0,
+      communicatedFeeKey: invoice.lateFeeDate ? businessDateKey(invoice.lateFeeDate) : null,
     },
   };
 }
@@ -232,7 +236,9 @@ function countDecision(counts: LateFeeRunCounts, decision: LateFeeDecision) {
 }
 
 /** Nightly: warn customers whose fee day is near, and record fees for customers who were warned and did not pay. */
-export async function runLateFees(now = new Date()): Promise<{ counts: LateFeeRunCounts; recorded: RecordedLateFee[] }> {
+export type LateFeeScope = { /** Only these customers (used by tests, so a run never touches rows another test owns). */ customerIds?: readonly string[] };
+
+export async function runLateFees(now = new Date(), scope: LateFeeScope = {}): Promise<{ counts: LateFeeRunCounts; recorded: RecordedLateFee[] }> {
   const counts: LateFeeRunCounts = {
     checked: 0, noticesSent: 0, noticesNotSent: 0, feesRecorded: 0, needsWarning: 0, militaryReview: 0, waitingForPayment: 0,
     billedLocal: 0, sentToStripe: 0, waitingForNextBill: 0, stripeBillingOff: 0, errors: 0,
@@ -248,6 +254,7 @@ export async function runLateFees(now = new Date()): Promise<{ counts: LateFeeRu
         lateFeeCents: 0,
         agreementId: { not: null },
         pendingChargesFor: { none: {} },
+        ...(scope.customerIds ? { customerId: { in: [...scope.customerIds] } } : {}),
         ...(afterId ? { id: { gt: afterId } } : {}),
       },
       select: { id: true },
@@ -378,12 +385,66 @@ async function createSeparateFeeBill(chargeId: string, now: Date): Promise<boole
   });
 }
 
+/**
+ * Autopay: before a fee joins the automatic charge, the customer is told the amount and the date, at least 10 days ahead.
+ * Returns "ok" once a delivered notice names this charge date (the caller has already checked the date is 10+ days away).
+ */
+async function ensureAutopayNotice(chargeId: string, nextKey: string, now: Date): Promise<"ok" | "not_sent"> {
+  const charge = await prisma.pendingCharge.findUniqueOrThrow({
+    where: { id: chargeId },
+    select: {
+      amountCents: true, autopayNoticedAt: true, autopayChargeOn: true, providerOperationId: true,
+      forInvoice: { select: { invoiceNumber: true } },
+      customer: { select: { id: true, user: { select: { name: true, email: true } } } },
+    },
+  });
+  if (charge.autopayNoticedAt && charge.autopayChargeOn && businessDateKey(charge.autopayChargeOn) === nextKey) return "ok";
+  const { customerMessageLanguage } = await import("@/domains/language/message-language");
+  const { activeMessageCatalog } = await import("@/domains/language/runtime");
+  const language = await customerMessageLanguage(charge.customer.id);
+  const catalog = await activeMessageCatalog(language);
+  const t = (key: Parameters<typeof messageText>[1], values?: Record<string, string>) => messageText(language, key, values, catalog);
+  const chargeDate = (businessDateFromKey(nextKey) ?? new Date(`${nextKey}T12:00:00Z`)).toLocaleDateString(language === "es" ? "es-US" : "en-US", {
+    timeZone: "America/Denver", month: "long", day: "numeric",
+  });
+  const delivery = await deliverMessage({
+    idempotencyKey: `late-fee-autopay-${chargeId}-${nextKey}`,
+    channel: "EMAIL",
+    purpose: "TRANSACTIONAL",
+    templateKey: "late-fee-autopay-notice",
+    customerFacing: true,
+    recipient: { type: "Customer", id: charge.customer.id, address: charge.customer.user.email },
+    subject: { type: "PendingCharge", id: chargeId },
+    render: () => ({
+      subject: t("lateFeeAutopaySubject"),
+      text: [
+        t("quoteHello", { name: charge.customer.user.name ? ` ${charge.customer.user.name}` : "" }),
+        t("lateFeeAutopayBody", { fee: formatCents(charge.amountCents), number: String(charge.forInvoice.invoiceNumber), chargeDate }),
+        `${t("lateNoticePay")} ${appBaseUrl()}/account/billing`,
+        t("billingReply"),
+      ].join("\n\n"),
+    }),
+  });
+  if (delivery.state !== "ACCEPTED" && delivery.state !== "DELIVERED") return "not_sent";
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "PendingCharge" WHERE "id" = ${chargeId} FOR UPDATE`;
+    await tx.pendingCharge.update({
+      where: { id: chargeId },
+      data: { autopayNoticeDeliveryId: delivery.deliveryId, autopayNoticedAt: now, autopayChargeOn: businessDateFromKey(nextKey) },
+    });
+    await tx.auditLog.create({
+      data: { action: "billing.late_fee_autopay_notice_sent", entityType: "PendingCharge", entityId: chargeId, newValue: { deliveryId: delivery.deliveryId, chargeOn: nextKey } },
+    });
+  });
+  return "ok";
+}
+
 /** Nightly: put recorded fees on the customer's next bill (Stripe item, or a separate local bill). Never on a payment in progress. */
-export async function billPendingLateFees(now = new Date(), stripeClient?: Stripe): Promise<Partial<LateFeeRunCounts>> {
-  const counts = { billedLocal: 0, sentToStripe: 0, waitingForNextBill: 0, stripeBillingOff: 0, errors: 0 };
+export async function billPendingLateFees(now = new Date(), stripeClient?: Stripe, scope: LateFeeScope = {}): Promise<Partial<LateFeeRunCounts>> {
+  const counts = { billedLocal: 0, sentToStripe: 0, waitingForNextBill: 0, stripeBillingOff: 0, noticesNotSent: 0, errors: 0 };
   const todayKey = businessDateKey(now);
   const charges = await prisma.pendingCharge.findMany({
-    where: { kind: "LATE_FEE", waivedAt: null, appliedToInvoiceId: null },
+    where: { kind: "LATE_FEE", waivedAt: null, appliedToInvoiceId: null, ...(scope.customerIds ? { customerId: { in: [...scope.customerIds] } } : {}) },
     select: {
       id: true,
       agreement: { select: { status: true, stripeSubscriptionId: true, nextBillingDate: true, terminationEffectiveOn: true } },
@@ -411,6 +472,10 @@ export async function billPendingLateFees(now = new Date(), stripeClient?: Strip
         counts.stripeBillingOff += 1;
         continue;
       }
+      if (nextKey && (await ensureAutopayNotice(charge.id, nextKey, now)) !== "ok") {
+        counts.noticesNotSent += 1; // the customer was not told about the higher charge yet: nothing is posted, tried again tomorrow
+        continue;
+      }
       const outcome = await sendFeeToStripe(charge.id, stripeClient ?? getStripeClient());
       if (outcome === "sent") counts.sentToStripe += 1;
     } catch (error) {
@@ -421,10 +486,37 @@ export async function billPendingLateFees(now = new Date(), stripeClient?: Strip
   return counts;
 }
 
-/** Waive a recorded fee. Before it is billed it is simply never billed; if it is already on a bill, a credit line removes it. */
-export async function waiveLateFee(chargeId: string, actorUserId: string, reason: string, now = new Date()): Promise<"waived" | "credited" | "already"> {
+/**
+ * Waive a recorded fee. Before it is sent to Stripe it is simply never billed. If it was sent to Stripe but is not on a bill
+ * yet, the Stripe item is deleted first (and the waiver waits while the send is still in progress). If it is already on a
+ * bill the customer received, a credit removes it.
+ */
+export async function waiveLateFee(chargeId: string, actorUserId: string, reason: string, now = new Date(), stripeClient?: Stripe): Promise<"waived" | "credited" | "already"> {
   const cleaned = reason.trim();
   if (cleaned.length < 3) throw new Error("Add a short reason for waiving the fee.");
+
+  // Look at Stripe BEFORE taking the lock: a network call never runs inside the database transaction.
+  const before = await prisma.pendingCharge.findUnique({
+    where: { id: chargeId },
+    select: { waivedAt: true, appliedToInvoiceId: true, providerOperationId: true },
+  });
+  let stripeItemOnBill = false;
+  if (before && !before.waivedAt && !before.appliedToInvoiceId && before.providerOperationId) {
+    const op = await prisma.providerOperation.findUnique({ where: { id: before.providerOperationId }, select: { status: true, providerObjectId: true } });
+    if (op?.status === "PENDING" || op?.status === "UNKNOWN" || op?.status === "DRIFT") {
+      throw new Error("This fee is being sent to Stripe right now. Try again in a few minutes.");
+    }
+    if (op?.status === "SUCCEEDED" && op.providerObjectId) {
+      const stripe = stripeClient ?? getStripeClient();
+      const removed = await runProviderCall(() => stripe.invoiceItems.del(op.providerObjectId!));
+      if (!removed.ok) {
+        const looked = await runProviderCall(() => stripe.invoiceItems.retrieve(op.providerObjectId!));
+        if (looked.ok && looked.value.invoice) stripeItemOnBill = true; // already on a bill Stripe made: the credit path below covers it
+        else throw new Error("Stripe could not remove the fee just now, so nothing was waived. Try again in a few minutes.");
+      }
+    }
+  }
+
   return prisma.$transaction(async (tx) => {
     const { assertActiveTeamActor } = await import("@/lib/team-actor");
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
@@ -436,7 +528,7 @@ export async function waiveLateFee(chargeId: string, actorUserId: string, reason
     if (charge.waivedAt) return "already" as const;
     await tx.pendingCharge.update({ where: { id: chargeId }, data: { waivedAt: now, waivedReason: cleaned, waivedByUserId: actorUserId } });
     let outcome: "waived" | "credited" = "waived";
-    if (charge.appliedToInvoiceId) {
+    if (charge.appliedToInvoiceId || stripeItemOnBill) {
       // Already on a bill the customer received: the bill keeps showing it, and the customer gets the same amount back as a credit.
       await tx.customerCredit.create({
         data: {

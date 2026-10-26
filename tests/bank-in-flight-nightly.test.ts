@@ -30,7 +30,7 @@ vi.mock("@/domains/settings", () => ({ getBusinessSettings: async () => ({ bankP
 
 import { prisma } from "@/lib/prisma";
 import { checkBankPaymentsInFlight, recoverBankSettlement } from "@/domains/billing/in-flight-check";
-import { runLateFees } from "@/domains/billing/late-fee-engine";
+import { runLateFees as runLateFeesAll } from "@/domains/billing/late-fee-engine";
 import { pastDueTodoWhere } from "@/domains/exceptions";
 import { listBankPaymentSlow } from "@/domains/exceptions/bank-payment-attention";
 import { bankPaymentSlowException } from "@/domains/exceptions/rules";
@@ -65,6 +65,8 @@ describe.skipIf(!enabled)("bank payments being confirmed — nightly check, reco
   const adminId = `bn-admin-${tag}`;
   const demotedId = `bn-demoted-${tag}`;
   const customerId = `bn-customer-${tag}`;
+  // Limited to this file's own customer: other test files share the database and run at the same time.
+  const runLateFees = (at?: Date) => runLateFeesAll(at, { customerIds: [customerId] });
   const addressId = `bn-address-${tag}`;
   const agreements: string[] = [];
   const invoices: string[] = [];

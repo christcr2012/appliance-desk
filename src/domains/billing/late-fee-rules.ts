@@ -92,6 +92,8 @@ export type LateFeeFacts = {
   /** A bank payment is being confirmed, or a payment page was started and has not expired. */
   paymentInProgress: boolean;
   alreadyCharged: boolean;
+  /** The fee date already promised to the customer in a delivered warning. A later change to the notice setting never moves it earlier. */
+  communicatedFeeKey?: string | null;
 };
 
 export type LateFeeDecision =
@@ -129,7 +131,8 @@ export function decideLateFee(facts: LateFeeFacts): LateFeeDecision {
     return { kind: "NONE", reason: "NOT_YET_NOTICE_DAY" };
   }
 
-  const feeDateKey = feeDateAfterNoticeKey(baseKey, warnedKey, facts.noticeDays);
+  const computedKey = feeDateAfterNoticeKey(baseKey, warnedKey, facts.noticeDays);
+  const feeDateKey = facts.communicatedFeeKey && facts.communicatedFeeKey > computedKey ? facts.communicatedFeeKey : computedKey;
   if (feeDateKey > windowEnd) return { kind: "NONE", reason: "WINDOW_PASSED" };
   if (facts.todayKey < feeDateKey) return { kind: "WAIT", reason: "FEE_DAY_NOT_REACHED" };
   if (facts.paymentInProgress) return { kind: "WAIT", reason: "PAYMENT_IN_PROGRESS" };

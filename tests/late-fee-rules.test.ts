@@ -116,3 +116,15 @@ describe("autopay (rule 7: 10 days' notice of a new amount)", () => {
     expect(canJoinNextCharge({ todayKey: "2026-10-12", nextChargeKey: null, autopay: true })).toBe(false);
   });
 });
+
+describe("a fee date already promised is never moved earlier (setting change after the warning)", () => {
+  it("warned Oct 12 with 5 days' notice promised Oct 17; the owner later lowers the notice to 1 day: still not before Oct 17", () => {
+    const promised = facts({ todayKey: "2026-10-13", warnedKey: "2026-10-12", noticeDays: 1, communicatedFeeKey: "2026-10-17" });
+    expect(decideLateFee(promised)).toEqual({ kind: "WAIT", reason: "FEE_DAY_NOT_REACHED" });
+    expect(decideLateFee({ ...promised, todayKey: "2026-10-17" })).toEqual({ kind: "RECORD_FEE", feeCents: 500 });
+  });
+  it("raising the notice later never makes the fee earlier either", () => {
+    const f = facts({ todayKey: "2026-10-14", warnedKey: "2026-10-12", noticeDays: 3, communicatedFeeKey: "2026-10-14" });
+    expect(decideLateFee(f)).toEqual({ kind: "WAIT", reason: "FEE_DAY_NOT_REACHED" }); // 12 + 3 = 15 is later than the promised 14
+  });
+});

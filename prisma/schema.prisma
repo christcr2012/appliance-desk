@@ -2611,6 +2611,10 @@ model PendingCharge {
   appliedToInvoice  Invoice?          @relation("PendingChargeApplied", fields: [appliedToInvoiceId], references: [id])
   // Set once the fee is on its way to Stripe (a provider operation), so a retry never posts it twice.
   providerOperationId String?
+  // Autopay: the delivered notice of the higher automatic charge, when it was sent, and the charge date it named.
+  autopayNoticeDeliveryId String?
+  autopayNoticedAt  DateTime?
+  autopayChargeOn   DateTime?
   waivedAt          DateTime?
   waivedReason      String?
   waivedByUserId    String?

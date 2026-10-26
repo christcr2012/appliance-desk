@@ -31,7 +31,7 @@ vi.mock("@/domains/messaging/deliver", () => ({
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import {
-  billPendingLateFees, lateFeeBillingEnabled, loadLateFeeFacts, recordToldByPhone, runLateFees, sendLateNotice, waiveLateFee,
+  billPendingLateFees as billPendingLateFeesAll, lateFeeBillingEnabled, loadLateFeeFacts, recordToldByPhone, runLateFees as runLateFeesAll, sendLateNotice, waiveLateFee,
 } from "@/domains/billing/late-fee-engine";
 import { addDaysToKey } from "@/domains/billing/late-fee-rules";
 import { inferLineItemKind } from "@/domains/billing/webhooks-base";
@@ -52,6 +52,9 @@ describe.skipIf(!enabled)("fair late fees (real Postgres, fake messages and Stri
   const ownerId = `lf-owner-${tag}`;
   const demotedId = `lf-demoted-${tag}`;
   const customers: string[] = [];
+  // Every run is limited to this file's own customers: other test files share this database and run at the same time.
+  const runLateFees = (at?: Date) => runLateFeesAll(at, { customerIds: customers });
+  const billPendingLateFees = (at?: Date, client?: Parameters<typeof billPendingLateFeesAll>[1]) => billPendingLateFeesAll(at, client, { customerIds: customers });
   const agreements: string[] = [];
   const invoices: string[] = [];
   let n = 0;
@@ -318,8 +321,20 @@ describe.skipIf(!enabled)("fair late fees (real Postgres, fake messages and Stri
     }
     function fakeStripe() {
       const calls: Array<{ params: Stripe.InvoiceItemCreateParams; key: string }> = [];
-      const client = { invoiceItems: { create: async (params: Stripe.InvoiceItemCreateParams, options: { idempotencyKey: string }) => { calls.push({ params, key: options.idempotencyKey }); return { id: `ii_${calls.length}` }; } } };
-      return { calls, client: client as unknown as Stripe };
+      const deleted: string[] = [];
+      const behavior = { delFails: false, onInvoice: false };
+      const client = {
+        invoiceItems: {
+          create: async (params: Stripe.InvoiceItemCreateParams, options: { idempotencyKey: string }) => { calls.push({ params, key: options.idempotencyKey }); return { id: `ii_${tag}_${calls.length}` }; },
+          del: async (id: string) => {
+            if (behavior.delFails) throw Object.assign(new Error("invoice item is on an invoice"), { type: "StripeInvalidRequestError" });
+            deleted.push(id);
+            return { id, deleted: true };
+          },
+          retrieve: async (id: string) => ({ id, invoice: behavior.onInvoice ? "in_made" : null }),
+        },
+      };
+      return { calls, deleted, behavior, client: client as unknown as Stripe };
     }
 
     it("a rental with no card subscription gets a separate one-line bill, once, that is never charged automatically", async () => {
@@ -363,6 +378,36 @@ describe.skipIf(!enabled)("fair late fees (real Postgres, fake messages and Stri
       expect(calls.filter((c) => (c.params.metadata as Record<string, string> | undefined)?.late_fee_pending_charge_id === r.chargeId)).toHaveLength(1);
       const op = await prisma.providerOperation.findFirstOrThrow({ where: { subjectId: r.chargeId, kind: "LATE_FEE_INVOICE_ITEM" } });
       expect(op.status).toBe("SUCCEEDED");
+    });
+
+    it("autopay: the customer is told the amount and the date before anything is posted; no delivered notice, nothing posted", async () => {
+      process.env.LATE_FEE_CUSTOMER_CHARGING_ENABLED = "true";
+      const r = await recorded({ dueDaysAgo: 12, subscription: true, nextBillingInDays: 20 });
+      const { client, calls } = fakeStripe();
+      m.keys.length = 0;
+      m.state = "NOT_SENT";
+      const blocked = await billPendingLateFees(now(), client);
+      expect(blocked.noticesNotSent).toBeGreaterThanOrEqual(1);
+      expect(calls.filter((c) => (c.params.metadata as Record<string, string> | undefined)?.late_fee_pending_charge_id === r.chargeId)).toHaveLength(0);
+      m.state = "ACCEPTED";
+      await billPendingLateFees(now(), client);
+      const charge = await prisma.pendingCharge.findUniqueOrThrow({ where: { id: r.chargeId } });
+      expect(charge.autopayNoticedAt).toBeTruthy();
+      expect(charge.autopayChargeOn).toBeTruthy();
+      expect(m.keys.some((k) => k.startsWith(`late-fee-autopay-${r.chargeId}-`))).toBe(true);
+      expect(calls.filter((c) => (c.params.metadata as Record<string, string> | undefined)?.late_fee_pending_charge_id === r.chargeId)).toHaveLength(1);
+      expect(m.texts.some((text) => text.includes(formatCents(500)) && text.includes("automatic payment"))).toBe(true);
+    });
+
+    it("a bill that is only a late fee never earns another late fee", async () => {
+      const r = await recorded({ dueDaysAgo: 12 });
+      await billPendingLateFees(); // makes the separate one-line fee bill
+      const feeBillId = (await prisma.pendingCharge.findUniqueOrThrow({ where: { id: r.chargeId } })).appliedToInvoiceId!;
+      await prisma.invoice.update({ where: { id: feeBillId }, data: { dueDate: dueAgo(20) } });
+      await runLateFees();
+      await runLateFees(new Date(Date.now() + 5 * 86_400_000));
+      expect(await prisma.pendingCharge.count({ where: { forInvoiceId: feeBillId } })).toBe(0);
+      expect(await prisma.invoice.count({ where: { customerId: r.customerId } })).toBe(2);
     });
 
     it("autopay: when the next automatic charge is less than 10 days away the fee waits for the one after", async () => {
@@ -419,6 +464,60 @@ describe.skipIf(!enabled)("fair late fees (real Postgres, fake messages and Stri
       expect(await waiveLateFee(charge!.id, ownerId, "Goodwill")).toBe("credited");
       const credit = await prisma.customerCredit.findFirstOrThrow({ where: { customerId: b.customerId, sourceId: charge!.id } });
       expect(credit).toMatchObject({ amountCents: 500, remainingCents: 500 });
+    });
+  });
+
+  describe("waiving a fee already sent to Stripe", () => {
+    async function sentToStripe() {
+      process.env.LATE_FEE_CUSTOMER_CHARGING_ENABLED = "true";
+      const b = await bill({ dueDaysAgo: 12, subscription: true, nextBillingInDays: 20 });
+      await toldDaysAgo(b.invoiceId, 5);
+      await runLateFees();
+      const stripe = (() => {
+        const calls: string[] = [];
+        const deleted: string[] = [];
+        const behavior = { delFails: false, onInvoice: false };
+        const client = {
+          invoiceItems: {
+            create: async () => { calls.push("create"); return { id: `ii_w_${tag}_${n++}` }; },
+            del: async (id: string) => { if (behavior.delFails) throw Object.assign(new Error("on an invoice"), { type: "StripeInvalidRequestError" }); deleted.push(id); return { id, deleted: true }; },
+            retrieve: async (id: string) => ({ id, invoice: behavior.onInvoice ? "in_made" : null }),
+          },
+        };
+        return { calls, deleted, behavior, client: client as unknown as Stripe };
+      })();
+      await billPendingLateFees(now(), stripe.client);
+      const [charge] = await charges(b.invoiceId);
+      return { b, charge: charge!, stripe };
+    }
+
+    it("the Stripe item is deleted first, so Stripe never collects a waived fee", async () => {
+      const { b, charge, stripe } = await sentToStripe();
+      expect(charge.appliedToInvoiceId).toBeNull();
+      expect(await waiveLateFee(charge.id, ownerId, "Customer called", now(), stripe.client)).toBe("waived");
+      expect(stripe.deleted).toHaveLength(1);
+      expect(await prisma.customerCredit.count({ where: { customerId: b.customerId, sourceId: charge.id } })).toBe(0);
+    });
+
+    it("if Stripe already put the item on a bill, the customer gets a credit instead", async () => {
+      const { b, charge, stripe } = await sentToStripe();
+      stripe.behavior.delFails = true;
+      stripe.behavior.onInvoice = true;
+      expect(await waiveLateFee(charge.id, ownerId, "Goodwill", now(), stripe.client)).toBe("credited");
+      expect(await prisma.customerCredit.count({ where: { customerId: b.customerId, sourceId: charge.id } })).toBe(1);
+    });
+
+    it("if Stripe cannot be reached, nothing is waived and the owner is told to try again", async () => {
+      const { charge, stripe } = await sentToStripe();
+      stripe.behavior.delFails = true;
+      await expect(waiveLateFee(charge.id, ownerId, "Goodwill", now(), stripe.client)).rejects.toThrow(/Stripe could not remove/);
+      expect((await prisma.pendingCharge.findUniqueOrThrow({ where: { id: charge.id } })).waivedAt).toBeNull();
+    });
+
+    it("while the send to Stripe is still in progress the waiver waits", async () => {
+      const { charge, stripe } = await sentToStripe();
+      await prisma.providerOperation.updateMany({ where: { subjectId: charge.id, kind: "LATE_FEE_INVOICE_ITEM" }, data: { status: "PENDING" } });
+      await expect(waiveLateFee(charge.id, ownerId, "Goodwill", now(), stripe.client)).rejects.toThrow(/being sent to Stripe/);
     });
   });
 

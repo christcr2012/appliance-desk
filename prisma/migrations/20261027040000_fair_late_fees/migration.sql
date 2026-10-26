@@ -60,3 +60,8 @@ ALTER TABLE "BusinessSettings" ADD CONSTRAINT "BusinessSettings_lateFeeFlatCents
 
 -- Colorado consumer-lease notification: the day Chris confirmed it was filed (null = not yet).
 ALTER TABLE "BusinessSettings" ADD COLUMN "ucccNotificationFiledOn" TIMESTAMP(3);
+
+-- Autopay customers get a notice of the higher automatic charge (amount and date) at least 10 days before it.
+ALTER TABLE "PendingCharge" ADD COLUMN "autopayNoticeDeliveryId" TEXT;
+ALTER TABLE "PendingCharge" ADD COLUMN "autopayNoticedAt" TIMESTAMP(3);
+ALTER TABLE "PendingCharge" ADD COLUMN "autopayChargeOn" TIMESTAMP(3);
