@@ -2,7 +2,6 @@ import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import mammoth from "mammoth";
-import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { scanAccessibilityRoute } from "./accessibility-route-helpers";
 import { loginAs } from "./utils/auth";
@@ -150,33 +149,22 @@ test("decisions: a renamed picture is refused; import a completed form; layout a
     await expect(page.getByText("Confirmed with no change: 1")).toBeVisible();
     await expect(page.getByText("Skipped (couldn't apply): 1")).toBeVisible();
 
-    // Back from a desktop width to a phone, the way the shared scan does it (light at 360, 1440, dark, 360, two
-    // frames): nothing may stick out sideways. Repeated, and it names what sticks out if anything does.
-    await page.goto("/desk/settings/decisions");
-    await page.setViewportSize({ width: 360, height: 900 });
-    const offenders: string[] = [];
-    for (let round = 0; round < 2; round += 1) {
-      await page.evaluate(() => document.documentElement.classList.remove("dark"));
-      await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
-      // The shared scan runs axe at each width; axe scrolls and reads every element, so do the same here.
-      await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
-      await page.evaluate(() => document.documentElement.classList.add("dark"));
-      await page.setViewportSize({ width: 360, height: 900 });
-      await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+    // Back from a desktop width to a phone: the shared scan itself (360 and 1440, light then dark). If something sticks
+    // out sideways, say exactly what, measured at the moment it failed.
+    try {
+      await scanAccessibilityRoute(page, { path: "/desk/settings/decisions", role: "OWNER", fixture: "/desk/settings/decisions" });
+    } catch (error) {
       const found = await page.evaluate(() => {
         const sideways = document.documentElement.scrollWidth - window.innerWidth;
-        if (sideways <= 0) return null;
         const wide = [...document.querySelectorAll("body *")]
           .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
-          .slice(-6).map((el) => `${el.tagName.toLowerCase()}[${String(el.getAttribute("class") ?? "").slice(0, 70)}] right=${Math.round(el.getBoundingClientRect().right)} pos=${getComputedStyle(el).position}`);
-        return `sideways=${sideways}: ${wide.join(" | ")}`;
+          .slice(-6).map((el) => `${el.tagName.toLowerCase()}[${String(el.getAttribute("class") ?? "").slice(0, 70)}] ` +
+            `right=${Math.round(el.getBoundingClientRect().right)} w=${Math.round(el.getBoundingClientRect().width)} ` +
+            `pos=${getComputedStyle(el).position} text=${(el.textContent ?? "").trim().slice(0, 40)}`);
+        return `width=${window.innerWidth} sideways=${sideways}: ${wide.join(" | ")}`;
       });
-      if (found) offenders.push(`round ${round}: ${found}`);
+      throw new Error(`${error instanceof Error ? error.message.split("\n")[0] : String(error)} — ${found}`);
     }
-    await page.evaluate(() => document.documentElement.classList.remove("dark"));
-    expect(offenders).toEqual([]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 7. Accessibility, light and dark (the import page is scanned by the generated route scans).
