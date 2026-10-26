@@ -401,14 +401,14 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
 
   return (
     // The kit lays out for a 20 px phone gutter (KIT 1); the current shell gives 16 px, so add the difference until AR-1.
-    <div className="px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
-      <div className="flex min-w-0 flex-1 flex-col gap-4 lg:max-w-[760px]">
+    <div className="w-full min-w-0 max-w-full px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
+      <div className="flex w-full min-w-0 max-w-full flex-1 flex-col gap-4 lg:max-w-[760px]">
         {notInJobRole ? (
           <p role="status" className="rounded-card border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink">
             You don&apos;t have access to that screen.
           </p>
         ) : null}
-        <header className="flex items-start gap-3">
+        <header className="flex w-full min-w-0 items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-ink-soft">{formatWeekdayDate(now)}</p>
             <h1 tabIndex={-1} className="text-[28px] leading-8 font-extrabold tracking-[-0.5px] text-ink lg:text-[26px]">
@@ -418,14 +418,14 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
           <Link
             href="/desk/search"
             aria-label="Search"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-tint"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-tint"
           >
             <Icon name="search" />
           </Link>
           <Link
             href="/desk/account"
             aria-label="Your account"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-on-primary"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-on-primary"
           >
             {initials(session.user.name, session.user.email)}
           </Link>
@@ -476,7 +476,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
         ) : null}
       </div>
       <Toaster />
-      <aside aria-label="Today at a glance" className="mt-6 flex flex-col gap-6 lg:mt-0 lg:w-[340px] lg:shrink-0">
+      <aside aria-label="Today at a glance" className="mt-6 flex w-full min-w-0 max-w-full flex-col gap-6 lg:mt-0 lg:w-[340px] lg:shrink-0">
         {health ? (
           <div className="hidden lg:block">
             <HealthStrip health={health} />

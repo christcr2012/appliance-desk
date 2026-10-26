@@ -272,7 +272,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
         where: { applianceId: a.id },
         data: { doneOn: saleDay, doneNote: `Sold on invoice ${invoice.invoiceNumber}`, doneByUserId: actorUserId, reopenedAt: null, reopenReason: null },
       });
-      const book = await disposeRetiredBookAssetInTx(tx, a.id, saleDay, invoice.id);
+      const book = await disposeRetiredBookAssetInTx(tx, a.id, saleDay, invoice.id, actorUserId);
       // Freeze what was known about the income-tax side right now. This only informs the owner and the accountant:
       // it never limits the price and never stops the sale (docs/designs/RETIRED-APPLIANCE-RESALE-TAX-2026-10-08.md).
       const evidence = await tx.bookTaxEvidence.findFirst({ where: { applianceId: a.id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });

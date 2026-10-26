@@ -50,8 +50,20 @@ export async function scanAccessibilityRoute(
 
     for (const width of viewports) {
       await page.setViewportSize({ width, height: 900 });
-      // Let the browser finish laying the page out at the new width before measuring.
-      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      // A 1440 → 360 resize can report innerWidth=360 before Chromium has
+      // recalculated Tailwind's desktop sidebar padding (256px), especially
+      // during the second/dark pass under parallel CI load. Wait for the
+      // *actual* breakpoint layout, then keep the exact same overflow/axe
+      // assertions. A genuinely overflowing phone page still fails.
+      await page.waitForFunction(() => {
+        const shell = document.querySelector(".desk-app");
+        if (!shell) return true;
+        const padding = Number.parseFloat(getComputedStyle(shell).paddingLeft);
+        const desktop = window.innerWidth >= 1024;
+        return Number.isFinite(padding) && Math.abs(padding - (desktop ? 256 : 0)) < 1;
+      }, undefined, { timeout: 5000 });
+      await page.evaluate(() => new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
       if (width <= 400) {
         // Older review finding (pr39): wide content must never push the page sideways on a phone. A table or form that
         // is wider than the screen has to scroll inside its own box, not drag the whole page.
@@ -63,6 +75,29 @@ export async function scanAccessibilityRoute(
                 const past = (el: Element) => el.getBoundingClientRect().right > window.innerWidth + 0.5;
                 return JSON.stringify({
                   url: location.href,
+                  chain: (() => {
+                    const oversized=[...document.querySelectorAll("body *")].filter(el=>
+                      el.getBoundingClientRect().right > window.innerWidth+1 &&
+                      getComputedStyle(el).position!=="fixed");
+                    const leaf=oversized.find(el=>![...el.children].some(child=>
+                      child.getBoundingClientRect().right>window.innerWidth+1))??oversized[0];
+                    const chain=[];
+                    for(let el:Element|null=leaf;el&&chain.length<12;el=el.parentElement){
+                      const rect=el.getBoundingClientRect(),css=getComputedStyle(el);
+                      chain.push({
+                        tag:el.tagName,cls:String(el.className).slice(0,65),
+                        x:Math.round(rect.x),width:Math.round(rect.width),right:Math.round(rect.right),
+                        display:css.display,minWidth:css.minWidth,maxWidth:css.maxWidth,
+                        overflowX:css.overflowX,flex:css.flex,
+                      });
+                    }
+                    return chain;
+                  })(),
+                  body:{width:document.body.clientWidth,scroll:document.body.scrollWidth},
+                  main:[...document.querySelectorAll("main")].slice(0,2).map(el=>({
+                    width:el.clientWidth,scroll:el.scrollWidth,
+                    rect:Math.round(el.getBoundingClientRect().right),
+                  })),
                   leaves: [...document.querySelectorAll("body *")]
                     .filter((el) => past(el) && ![...el.children].some(past))
                     .slice(0, 8)

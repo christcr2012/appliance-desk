@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { businessDateFromKey } from "@/lib/business-date";
+import { postBookSourceAfterCommit } from "@/domains/books/immediate";
 import { parseDollarInput } from "@/lib/money-ui";
 import { requireRole } from "@/lib/session";
 import {
@@ -89,6 +90,11 @@ export async function recordPurchaseAction(raw: unknown): Promise<PurchaseAction
         priceCents: cents(row.price, `a price for appliance ${index + 1}`, true)!,
       })),
     });
+    // The purchase is committed: record each appliance's capital source independently.
+    // Book errors go to nightly catch-up and never undo the saved purchase.
+    for (const appliance of recorded.appliances)
+      await postBookSourceAfterCommit("APPLIANCE",appliance.id);
+
     revalidatePath("/desk/purchases");
     revalidatePath("/desk/inventory");
     revalidatePath("/desk/tasks");
