@@ -22,9 +22,9 @@ test("draft and reserved line survive refresh with discounted pricing and one ch
     .first();
   await expect(customerRow).toBeVisible();
   await customerRow.getByRole("link").first().click();
-  await page
-    .getByRole("link", { name: "+ New agreement", exact: true })
-    .click();
+  // AR-0b: on the customer record, "New rental" is in the ⋯ menu at the top.
+  await page.getByRole("button", { name: /^More for / }).first().click();
+  await page.getByRole("menuitem", { name: "New rental", exact: true }).click();
   await page.getByRole("button", { name: "Next: term & fees" }).click();
   await page.getByLabel("Term (months, optional)").fill("6");
   await page.getByRole("button", { name: "Next: appliances" }).click();

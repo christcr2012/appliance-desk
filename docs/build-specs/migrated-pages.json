@@ -1,1 +1,5 @@
-[]
+[
+  { "file": "src/app/desk/today/page.tsx", "kind": "other" },
+  "src/app/desk/billing/page.tsx",
+  "src/app/desk/customers/[id]/page.tsx"
+]

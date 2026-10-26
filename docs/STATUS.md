@@ -1,3 +1,11 @@
+## October 25 (night) — AR-0b: Today, Money › Bills and Customer record rebuilt with the kit (in review)
+
+Branch `ai/claude/ar-0b-screens`. Coded: the shared bill rules (`bill-status.ts`, one past-due rule now used by Today,
+Bills and the revenue dashboard), the Bills list reads, Today's weekly health, Call/Email on To do items, the inbox
+grouping, the customer-scoped next steps and summary, and the three screens with loading/error screens. Same server
+actions and role checks as before (staff: no money on Today, refused on Bills, operational customer view). Proof: unit
+tests here; database and browser tests run in CI only. Your look-over row is on the checklist. Next: AR-1.
+
 ## October 25 (night) — MCP-1: System health that tells the truth (in review)
 
 Branch `ai/claude/mcp-1-system-health`. One state list (8 states, each with a label, colour and meaning on the page);
@@ -6,7 +14,7 @@ the issue sweep uses the same rule; health reads three rows per job; failures st
 screens, issues, the backup email and the check-up key show only the code's plain wording. DB and browser tests run in
 CI only (no local Postgres here). Next: MCP-2 (backups).
 
-## October 25 (night) — AR-0a: application kit + guards (in review)
+## October 25 (night) — AR-0a: application kit + guards (merged)
 
 Built the shared kit in `src/components/kit/` (20 components + Icon, unit-tested in `tests/kit/`), the new color
 tokens (light + dark, contrast-tested), the five pinned UI libraries, the kit date words in `src/lib/business-date.ts`

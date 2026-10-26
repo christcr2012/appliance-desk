@@ -35,7 +35,8 @@ test("customer communications timeline filter is navigable on mobile",async({pag
     await page.setViewportSize({width:390,height:844});
     await page.goto("/desk/customers/"+encodeURIComponent(customerId)+
       "?tab=activity&filter=communications");
-    await expect(page.getByRole("heading",{name:"Notes, activity and communications"})).toBeVisible();
+    // AR-0b: on phones, Activity › "Texts and calls" shows the message history above the timeline.
+    await expect(page.getByRole("heading",{name:"Messages"}).first()).toBeVisible();
     await expect(page.getByRole("link",{name:"Texts and calls"})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     const violations=(await new AxeBuilder({page})

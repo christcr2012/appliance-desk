@@ -119,7 +119,25 @@ export type ExceptionItem = {
   snoozeHistory?: { at: Date; reason: string; until: Date; actorName: string }[];
   /** For sorting oldest-first within a category. */
   since: Date;
+  /** AR-0b: how to reach the related customer or lead (Today's Call / Email buttons). */
+  contact?: { phone?: string; email?: string };
 };
+
+/** AR-0b: a customer's phone and login email as an ExceptionItem contact (blank values left out). */
+export function customerContact(customer: { phone?: string | null; user: { email: string } } | null | undefined): ExceptionItem["contact"] {
+  if (!customer) return undefined;
+  const phone = customer.phone?.trim() || undefined;
+  const email = customer.user.email?.trim() || undefined;
+  return phone || email ? { ...(phone ? { phone } : {}), ...(email ? { email } : {}) } : undefined;
+}
+
+/** AR-0b: a lead's phone and email as an ExceptionItem contact. */
+export function leadContact(lead: { phone?: string | null; email?: string | null } | null | undefined): ExceptionItem["contact"] {
+  if (!lead) return undefined;
+  const phone = lead.phone?.trim() || undefined;
+  const email = lead.email?.trim() || undefined;
+  return phone || email ? { ...(phone ? { phone } : {}), ...(email ? { email } : {}) } : undefined;
+}
 
 // Thresholds — deliberately simple, explainable numbers (docs/BUSINESS-
 // RULES.md's lead-scoring section sets the same expectation for any rule

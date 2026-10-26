@@ -6,10 +6,13 @@ const m = vi.hoisted(() => ({
   exceptions: vi.fn(),
   jobs: vi.fn(),
   tasks: vi.fn(),
-  requests: vi.fn(),
   setup: vi.fn(),
+  health: vi.fn(),
+  budget: vi.fn(),
+  workspace: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => import("./kit/kit-test-env"));
 vi.mock("@/lib/session", () => ({ requireRole: m.role }));
 vi.mock("@/domains/exceptions", () => ({
   getExceptionOverview: m.exceptions,
@@ -17,159 +20,131 @@ vi.mock("@/domains/exceptions", () => ({
 }));
 vi.mock("@/domains/tasks/workspace", () => ({ getDueTaskSummary: m.tasks }));
 vi.mock("@/domains/setup/checklist", () => ({ getSetupChecklist: m.setup }));
-vi.mock("@/lib/prisma", () => ({
-  prisma: { maintenanceRequest: { count: m.requests } },
-}));
-vi.mock("@/app/desk/tasks/task-row", () => ({ TaskRow: () => null }));
+vi.mock("@/domains/dashboard/weekly-health", () => ({ getWeeklyHealth: m.health }));
+vi.mock("@/domains/budget/planning", () => ({ getBudgetPlanning: m.budget }));
+vi.mock("@/domains/workspace", async (original) => ({ ...(await original<object>()), getWorkspace: m.workspace }));
+vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
 import TodayPage from "@/app/desk/today/page";
 
-const stepRow = (key: string, title: string, done: boolean, detail: string, href: string) =>
-  ({ key, title, done, detail, href });
+const stepRow = (key: string, title: string, done: boolean, href: string) => ({ key, title, done, detail: "", href });
 const incompleteChecklist = {
   steps: [
-    stepRow("business", "Business details", true, "Your business name, phone, email and address are filled in.", "/desk/settings?section=profile"),
-    stepRow("service-area", "Service area", false, "Add the cities or ZIP codes you serve.", "/desk/settings?section=service-area"),
-    stepRow("prices", "Prices", false, "Set a monthly price for at least one appliance or set.", "/desk/settings?section=products"),
-    stepRow("tax", "Tax setup", false, "Add your Colorado sales tax account. 2 more after that.", "/desk/sales-tax/setup"),
-    stepRow("payments", "Payments", true, "Connected in test mode, so no real money moves yet.", "/desk/settings?section=integrations"),
-    stepRow("email", "Email", false, "Customer emails are switched off. Turn them on in Settings → Notifications when you're ready.", "/desk/settings?section=notifications"),
+    stepRow("business", "Business details", true, "/desk/settings?section=profile"),
+    stepRow("service-area", "Service area", false, "/desk/settings?section=service-area"),
+    stepRow("prices", "Prices", false, "/desk/settings?section=products"),
   ],
-  doneCount: 2,
-  total: 6,
+  doneCount: 1,
+  total: 3,
   complete: false,
 };
-const completeChecklist = {
-  steps: incompleteChecklist.steps.map(step => ({ ...step, done: true })),
-  doneCount: 6,
-  total: 6,
-  complete: true,
-};
+const completeChecklist = { ...incompleteChecklist, steps: incompleteChecklist.steps.map((s) => ({ ...s, done: true })), doneCount: 3, complete: true };
+
+const item = (over: Record<string, unknown> = {}) => ({
+  category: "OVERDUE_JOB" as const,
+  severity: "medium" as const,
+  title: "Delivery is overdue",
+  detail: "Scheduled and not done.",
+  href: "/desk/jobs/j1",
+  since: new Date("2026-09-01T12:00:00Z"),
+  todoKey: "a".repeat(64),
+  ...over,
+});
 
 beforeEach(() => {
   cleanup();
   vi.resetAllMocks();
-  m.role.mockResolvedValue({ user: { role: "STAFF" } });
+  m.role.mockResolvedValue({ user: { id: "staff-1", role: "STAFF", name: "Sam Staff", email: "staff@example.test" } });
   m.exceptions.mockResolvedValue({ items: [], snoozed: [], truncated: [] });
   m.jobs.mockResolvedValue([]);
   m.tasks.mockResolvedValue({ tasks: [], totalCount: 0, overdueCount: 0 });
-  m.requests.mockResolvedValue(3);
   m.setup.mockResolvedValue(completeChecklist);
+  m.health.mockResolvedValue({ moneyInCents: 184000, outRenting: 24, rentableTotal: 27, overdueBills: 2 });
+  m.budget.mockResolvedValue({ upcoming: [], envelopes: [], sourceReasons: [], sourceStatus: "ok", revision: 1 });
+  m.workspace.mockResolvedValue({ version: 1, prefs: { pinnedActionIds: [], hiddenOptionalCardIds: [], savedViews: [] } });
 });
 
-it("shows honest empty states and excludes restricted staff create links", async () => {
+it("staff see no money: no health strip is asked for or shown; empty states are plain", async () => {
   render(await TodayPage());
-
-  expect(screen.getByText("Nothing needs attention right now.")).toBeVisible();
+  expect(screen.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
+  expect(screen.getByText("You're all caught up")).toBeVisible();
   expect(screen.getByText("No visits today")).toBeVisible();
-  expect(screen.getByText("No follow-ups due")).toBeVisible();
-  expect(screen.queryByRole("link", { name: "New visit" })).toBeNull();
-  expect(
-    screen.getByRole("link", { name: /Open service requests/ }),
-  ).toHaveTextContent("3");
-  expect(m.requests).toHaveBeenCalledWith({
-    where: {
-      status: { in: ["SUBMITTED", "REVIEWING", "SCHEDULED", "IN_PROGRESS"] },
-    },
-  });
+  expect(m.health).not.toHaveBeenCalled();
+  expect(m.budget).not.toHaveBeenCalled();
+  expect(screen.queryByText("Money in")).toBeNull();
+  expect(screen.queryByText(/\$/)).toBeNull();
 });
 
-it("offers owners a visit action and excludes cancelled jobs from Today", async () => {
-  m.role.mockResolvedValue({ user: { role: "OWNER" } });
+it("owners see the health strip words and numbers", async () => {
+  m.role.mockResolvedValue({ user: { id: "owner-1", role: "OWNER", name: "Chris Robinson", email: "owner@example.test" } });
+  render(await TodayPage());
+  expect(screen.getAllByText("Money in").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("$1,840.00").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("24 of 27").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("2 bills").length).toBeGreaterThan(0);
+  expect(screen.getByRole("link", { name: "Your account" })).toHaveTextContent("CR");
+});
+
+it("shows today's visits as cards and leaves out cancelled ones", async () => {
   m.jobs.mockResolvedValue(
-    ["SCHEDULED", "CANCELLED", "IN_PROGRESS", "COMPLETED"].map((status, i) => ({
+    ["SCHEDULED", "CANCELLED"].map((status, i) => ({
       id: `j${i}`,
       type: "DELIVERY",
       status,
+      durationMinutes: 60,
       scheduledAt: new Date("2026-09-30T16:00:00Z"),
-      customer: { user: { name: `Customer ${i}`, email: "test@example.test" } },
-      serviceAddress: null,
+      customer: { user: { name: `Customer ${i}`, email: "c@example.test" } },
+      serviceAddress: { line1: "1402 10th Ave", city: "Greeley" },
     })),
   );
-
   render(await TodayPage());
-
-  expect(screen.getByRole("link", { name: "New visit" })).toHaveAttribute(
-    "href",
-    "/desk/jobs/new",
-  );
-  expect(
-    screen.getByRole("link", { name: /Visits today/ }),
-  ).toHaveTextContent("3");
-  expect(screen.queryByText("Customer 1")).toBeNull();
-  expect(screen.getAllByText("Customer 0").length).toBeGreaterThan(0); // the wide-screen timeline and the phone list both carry the visit; CSS shows one
-  expect(screen.getAllByText("Customer 2").length).toBeGreaterThan(0); // the wide-screen timeline and the phone list both carry the visit; CSS shows one
-  expect(screen.getAllByText("Customer 3").length).toBeGreaterThan(0); // the wide-screen timeline and the phone list both carry the visit; CSS shows one
+  const visits = within(screen.getByRole("region", { name: "Today's visits" }));
+  expect(visits.getByText(/— Customer 0/)).toBeVisible();
+  expect(screen.queryByText(/Customer 1/)).toBeNull();
+  expect(visits.getByRole("link", { name: "Open visit" })).toHaveAttribute("href", "/desk/jobs/j0");
+  expect(visits.getByRole("link", { name: "Directions" }).getAttribute("href")).toContain("maps.google.com");
 });
 
-it("says plainly when a group has more items than are shown", async () => {
-  const items = Array.from({ length: 50 }, (_, index) => ({
-    category: "OVERDUE_JOB" as const,
-    severity: "high" as const,
-    title: `Delivery is overdue ${index + 1}`,
-    detail: "Scheduled and not done.",
-    href: `/desk/jobs/j${index + 1}`,
-    since: new Date("2026-09-01T12:00:00Z"),
-  }));
-  m.exceptions.mockResolvedValue({
-    items,
-    snoozed: [],
-    truncated: [{ category: "OVERDUE_JOB", total: 73, shown: 50 }],
-  });
-
+it("groups the inbox with counts and says when a group has more than is shown", async () => {
+  const items = Array.from({ length: 50 }, (_, index) => item({ title: `Delivery is overdue ${index + 1}`, href: `/desk/jobs/j${index + 1}`, todoKey: undefined }));
+  m.exceptions.mockResolvedValue({ items, snoozed: [], truncated: [{ category: "OVERDUE_JOB", total: 73, shown: 50 }] });
   render(await TodayPage());
-
-  expect(screen.getByText("and 23 more")).toBeVisible();
-  expect(
-    screen.getByRole("heading", { name: "Overdue job" }),
-  ).toBeVisible();
+  const chips = within(screen.getByRole("navigation", { name: "Inbox groups" }));
+  expect(chips.getByRole("link", { name: "All 73" })).toHaveAttribute("aria-current", "page");
+  expect(chips.getByRole("link", { name: "Rentals & visits 73" })).toBeVisible();
+  expect(screen.getByText("Rentals & visits: Showing 50 of 73")).toBeVisible();
 });
 
-it("shows the owner a Get set up card in order, with Done or the one missing thing and a working link", async () => {
-  m.role.mockResolvedValue({ user: { id: "owner-1", role: "OWNER" } });
+it("offers Snooze to owners as a link that opens the sheet, never to staff", async () => {
+  m.exceptions.mockResolvedValue({ items: [item()], snoozed: [item({ title: "Waiting one", snooze: { until: new Date("2026-11-01T12:00:00Z"), reason: "x", actorName: "Chris" } })], truncated: [] });
+  render(await TodayPage());
+  expect(screen.queryByRole("link", { name: /Snoozed \(1\)/ })).toBeVisible();
+  cleanup();
+  m.role.mockResolvedValue({ user: { id: "owner-1", role: "OWNER", name: "Chris", email: "o@example.test" } });
+  render(await TodayPage({ searchParams: Promise.resolve({ group: "snoozed" }) }));
+  expect(screen.getByRole("button", { name: "Bring back" })).toBeVisible();
+});
+
+it("shows the owner the one-line setup card with Continue to the first undone step", async () => {
+  m.role.mockResolvedValue({ user: { id: "owner-1", role: "OWNER", name: "Chris", email: "o@example.test" } });
   m.setup.mockResolvedValue(incompleteChecklist);
-
   render(await TodayPage());
-
   expect(m.setup).toHaveBeenCalledWith("owner-1");
   const card = within(screen.getByTestId("setup-card"));
-  expect(card.getByRole("heading", { name: "Get set up" })).toBeVisible();
-  expect(card.getByText(/2 of 6 steps done/)).toBeVisible();
-  const rows = card.getAllByRole("listitem");
-  const titles = ["Business details", "Service area", "Prices", "Tax setup", "Payments", "Email"];
-  expect(rows).toHaveLength(6);
-  rows.forEach((row, index) => {
-    expect(row.querySelector("p")?.textContent).toMatch(new RegExp(`^${index + 1}\\. ${titles[index]}`));
-  });
-  expect(within(rows[0]).getByText("Done ✓")).toBeVisible();
-  expect(within(rows[1]).getByText("Not done yet")).toBeVisible();
-  expect(within(rows[1]).getByText("Add the cities or ZIP codes you serve.")).toBeVisible();
-  expect(within(rows[3]).getByText("Add your Colorado sales tax account. 2 more after that.")).toBeVisible();
-  expect(card.getByRole("link", { name: "Finish this, service area" })).toHaveAttribute("href", "/desk/settings?section=service-area");
-  expect(card.getByRole("link", { name: "Finish this, tax setup" })).toHaveAttribute("href", "/desk/sales-tax/setup");
-  expect(card.getByRole("link", { name: "Review, business details" })).toHaveAttribute("href", "/desk/settings?section=profile");
-  expect(card.getByRole("link", { name: "Finish this, email" })).toHaveAttribute("href", "/desk/settings?section=notifications");
+  expect(card.getByText(/Set up your business/)).toHaveTextContent("Set up your business · 1 of 3 done");
+  expect(card.getByRole("link", { name: "Continue" })).toHaveAttribute("href", "/desk/settings?section=service-area");
 });
 
-it("hides the card once every step is done", async () => {
-  m.role.mockResolvedValue({ user: { id: "owner-1", role: "OWNER" } });
-  m.setup.mockResolvedValue(completeChecklist);
-
+it("hides the card once every step is done, and never asks for it for admins or staff", async () => {
+  m.role.mockResolvedValue({ user: { id: "owner-1", role: "OWNER", name: "Chris", email: "o@example.test" } });
   render(await TodayPage());
-
-  expect(m.setup).toHaveBeenCalledTimes(1);
   expect(screen.queryByTestId("setup-card")).toBeNull();
-  expect(screen.queryByRole("heading", { name: "Get set up" })).toBeNull();
-});
-
-it("never asks for, or shows, the checklist to admins or staff", async () => {
-  m.setup.mockResolvedValue(incompleteChecklist);
+  m.setup.mockClear();
   for (const role of ["ADMIN", "STAFF"]) {
     cleanup();
-    m.role.mockResolvedValue({ user: { id: role + "-1", role } });
+    m.role.mockResolvedValue({ user: { id: role + "-1", role, name: null, email: "x@example.test" } });
     render(await TodayPage());
     expect(screen.queryByTestId("setup-card"), role).toBeNull();
-    expect(screen.queryByText("Get set up"), role).toBeNull();
   }
   expect(m.setup).not.toHaveBeenCalled();
 });
@@ -177,15 +152,18 @@ it("never asks for, or shows, the checklist to admins or staff", async () => {
 it("keeps Today working, without the card, when the checklist cannot be read", async () => {
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   try {
-    m.role.mockResolvedValue({ user: { id: "owner-1", role: "OWNER" } });
+    m.role.mockResolvedValue({ user: { id: "owner-1", role: "OWNER", name: "Chris", email: "o@example.test" } });
     m.setup.mockRejectedValue(new Error("database unavailable"));
-
     render(await TodayPage());
-
     expect(screen.getByText("No visits today")).toBeVisible();
     expect(screen.queryByTestId("setup-card")).toBeNull();
     expect(log).toHaveBeenCalledWith("Setup checklist unavailable:", "database unavailable");
   } finally {
     log.mockRestore();
   }
+});
+
+it("shows the not-in-job-role notice as one line", async () => {
+  render(await TodayPage({ searchParams: Promise.resolve({ screen: "not-in-job-role" }) }));
+  expect(screen.getAllByRole("status").some((el) => el.textContent === "You don't have access to that screen.")).toBe(true);
 });

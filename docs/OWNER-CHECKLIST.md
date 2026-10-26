@@ -206,9 +206,10 @@ Agents will do the parts they safely can and record what they saw; the rest need
 - [x] **Answered by Chris 2026-10-25 (in conversation): yes — rebuild the desk as an application (AR-0…AR-10).** Building may start as soon as each
   build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
-- [ ] **Look at the three reference screens on the testing site (after AR-0 is built, 10 minutes).** Steps: open
-  appliance-desk-testing.vercel.app, sign in as the test owner, look at Today, Money → Invoices and one customer; tell
-  the agent what you like and don't. Ready when: AR-0 is merged and the 10 pm testing update has run. Nothing waits on this.
+- [ ] **Look at the new Today, Bills and Customer screens on the testing app (10 minutes).** Steps: sign in to the
+  testing app on your phone (owner@example.test), open Today, then Money › Bills, then any customer. Ready when: AR-0b
+  is merged and the 10 pm testing release has run. Worked if: the screens look like the samples you approved; tell the
+  agent anything you want changed. This never blocks building.
 - [x] **Answered by Chris 2026-10-25 (in conversation): yes — build "Books on autopilot" (BA-1…BA-6).** Building may start as soon as each
   build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
