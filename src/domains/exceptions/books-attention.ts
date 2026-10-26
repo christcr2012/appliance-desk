@@ -36,3 +36,13 @@ export async function listBooksAttention(now = new Date()):Promise<ExceptionItem
  }
  return items;
 }
+
+/** Owner-only setup reminder; never exposes financial details to staff/admin. */
+export async function listBooksSetupAttention(now=new Date()):Promise<ExceptionItem[]>{
+ const settings=await prisma.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}});
+ if(settings?.booksStartDate)return [];
+ const bills=await prisma.invoice.count({where:{status:{not:"DRAFT"}}});
+ return [{category:"BOOKS_SETUP",severity:bills>0?"medium":"low",
+  title:"Set up your books (5 minutes)",detail:"Tell us when the business started and whether you had money in its accounts.",
+  href:"/desk/books/setup",since:now}];
+}

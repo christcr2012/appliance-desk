@@ -294,6 +294,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/books/closing", role: "OWNER", fixture: "/desk/books/closing" },
   { path: "/desk/books/assets", role: "OWNER", fixture: "/desk/books/assets" },
   { path: "/desk/books/reports", role: "OWNER", fixture: "/desk/books/reports" },
+  { path: "/desk/books/setup", role: "OWNER", fixture: "/desk/books/setup" },
   { path: "/desk/books/exports", role: "OWNER", fixture: "/desk/books/exports" },
   { path: "/desk/expenses", role: "STAFF", fixture: "/desk/expenses" },
   { path: "/desk/search", role: "OWNER", fixture: "/desk/search?q=washer" },

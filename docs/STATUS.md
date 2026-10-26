@@ -10,6 +10,18 @@ Migration `20261102000000_recalls` (additive). Proof: unit tests plus 11 databas
 Not done: no real call to the government list was possible from the build machine, so the live answer shape is on the
 checklist; browser test runs only in CI.
 
+## October 26 — BA-2 implementation accepted in CI; documentation revalidation next
+
+BA-2 PR #613 has all functional and full-suite checks green on implementation commit `72ac47ff` (run 40355797414). The single Codex issue about corrected Stripe openings was fixed with a real-database regression. This documentation update is the last branch change; exact-head CI and review disposition precede any merge. BA-1 PR #610 is already merged. BA-3 remains a separate branch and is being checked. No live money or provider settings changed.
+
+## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
+
+PR #613 is ready for review. Codex found that a corrected opening Stripe amount was missing from the clearing comparison baseline. The fix includes corrected OPENING journals dated by the reconciliation cutoff, with an actual disposable-Postgres scenario. Prior CI passed, but that was before this fix; the new head still requires CI and review disposition. BA-1 is merged. BA-3 is in a dependent branch. No live Stripe setting or business data changed.
+
+## October 26 — Books Lane 3: BA-1 merged, BA-2 and BA-3 in progress
+
+BA-1 books autopilot merged as PR #610 after full exact-head CI and three Codex findings fixed. BA-2 owner setup is in PR #613, reconciling its branch with main before fresh CI. BA-3 monthly review is a separate dependent branch. No production data, provider settings, or live messages changed.
+
 ## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
 
 CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.

@@ -23,7 +23,7 @@ function plainCapitalProblem(message:string):string {
  * serializable transaction: a bad appliance must not prevent other assets from updating.
  * A run can be retried; the immutable journal event keys prevent duplicate entries.
  */
-export async function runBooksAutopilot(now = new Date()):Promise<Counts> {
+export async function runBooksAutopilot(now = new Date(), options?:{maxSources?:number;maxEnrollments?:number;maxDepreciations?:number}):Promise<Counts> {
  const counts:Counts={posted:0,enrolled:0,depreciated:0,skipped:0,problems:0};
  const settings=await prisma.businessSettings.findUnique({
   where:{id:"singleton"},select:{booksStartDate:true},
@@ -33,7 +33,7 @@ export async function runBooksAutopilot(now = new Date()):Promise<Counts> {
  let failed=false;
  const add=(p:Problem)=>{seen.set(problemKey(p),p);counts.skipped++;};
  try{
-  const posted=await postPending({limit:500});
+  const posted=await postPending({limit:options?.maxSources??500});
   counts.posted=posted.posted;
   for(const p of posted.problems){
    add({kind:"SOURCE_NOT_RECORDED",subjectType:p.sourceType,subjectId:p.sourceId,
@@ -44,7 +44,7 @@ export async function runBooksAutopilot(now = new Date()):Promise<Counts> {
   const candidates=await prisma.appliance.findMany({
    where:{status:{not:"RETIRED"},bookAsset:{is:null},acquisitionCostCents:{gt:0}},
    select:{id:true,assetNumber:true,acquisitionCostCents:true,purchaseDate:true,createdAt:true},
-   orderBy:[{createdAt:"asc"},{id:"asc"}],take:MAX_ENROLLMENTS,
+   orderBy:[{createdAt:"asc"},{id:"asc"}],take:Math.min(MAX_ENROLLMENTS,options?.maxEnrollments??MAX_ENROLLMENTS),
   });
   const missingCosts=await prisma.appliance.findMany({
    where:{status:{not:"RETIRED"},bookAsset:{is:null},
@@ -75,7 +75,7 @@ export async function runBooksAutopilot(now = new Date()):Promise<Counts> {
    where:{retiredOn:null,fullyDepreciatedOn:null,placedInServiceOn:{lt:firstOfCompleted},
     OR:[{lastDepreciationMonth:null},{lastDepreciationMonth:{lt:completed}}]},
    select:{applianceId:true},
-   orderBy:[{lastDepreciationMonth:"asc"},{applianceId:"asc"}],take:MAX_DEPRECIATIONS,
+   orderBy:[{lastDepreciationMonth:"asc"},{applianceId:"asc"}],take:Math.min(MAX_DEPRECIATIONS,options?.maxDepreciations??MAX_DEPRECIATIONS),
   });
   for(const asset of owing){
    try {
