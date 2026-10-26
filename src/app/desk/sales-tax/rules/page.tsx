@@ -157,8 +157,10 @@ export default async function RulesPage({
   const historyCard = params.historyKey ? byKey.get(params.historyKey) ?? null : null;
   const changeCard = owner && params.changeKey ? byKey.get(params.changeKey) ?? null : null;
 
+  // The desk shell already renders the page's <main> landmark; this page
+  // must not add a second one (axe: landmark-no-duplicate-main).
   return (
-    <main className="space-y-5">
+    <div className="space-y-5">
       <ScreenHeader title="Tax and fee rules" count={rows.length} list />
       <Toolbar
         search={{ param: "q", placeholder: "Search rules", label: "Search tax rules" }}
@@ -190,11 +192,21 @@ export default async function RulesPage({
       {changeCard && (
         <RuleChangeSheet
           ruleKey={changeCard.key}
-          def={changeCard.def}
+          // Only plain data crosses to this client component: the full
+          // RuleDef carries a zod schema (a class) and a describe
+          // function, which React refuses to pass from a Server
+          // Component (the Change sheet never opened; the server logged
+          // "Only plain objects ... can be passed to Client Components").
+          def={{
+            title: changeCard.def.title,
+            explain: changeCard.def.explain,
+            change: changeCard.def.change,
+            fields: changeCard.def.fields,
+          }}
           current={changeCard.current?.value ?? null}
         />
       )}
       <Toaster />
-    </main>
+    </div>
   );
 }
