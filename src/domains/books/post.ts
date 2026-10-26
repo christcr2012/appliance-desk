@@ -379,10 +379,14 @@ export function selectFairBooksCandidates<T extends {type:string;id:string;at:Da
   // Reserve a single newest item per type only when capacity is ample;
   // do not displace the oldest financial evidence in tiny focused batches.
   if(limit < types.length*2)return ordered.slice(0,limit);
+  // Give each category enough current source slots to avoid a large historical
+  // backlog hiding an invoice adjustment or today's multiple real payments.
+  // At least half the batch remains available for oldest-first catch-up.
   const fresh=new Set<string>();
+  const recentPerType=Math.max(1,Math.floor(limit/(Math.max(1,types.length)*2)));
   for(const type of types){
-    const newest=[...ordered].reverse().find(x=>x.type===type);
-    if(newest)fresh.add(type+"\0"+newest.id);
+    const newest=ordered.filter(x=>x.type===type).slice(-recentPerType);
+    for(const x of newest)fresh.add(type+"\0"+x.id);
   }
   const picked=ordered.filter(x=>fresh.has(x.type+"\0"+x.id));
   for(const x of ordered){
@@ -498,41 +502,61 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
   ];
   const sources:Candidate[]=[];
   const problems:BooksProblem[]=[];
-  // A bounded anti-join scans past already posted rows instead of always replaying
-  // the first 500 and starving later invoices. Never materialize the full table.
+  // Bounded anti-join: keep oldest unfinished records for catch-up and
+  // independently check the invoice tail so new bills aren't hidden
+  // behind hundreds of older pending invoices. Every source is deduped.
+  const queuedIds=new Set<string>();
   for(const source of querySources) {
-    let scanned=0, queuedForSource=0;
-    // Keep each source type independently bounded. The global oldest-first
-    // ranking must not be defeated by invoices filling the whole limit.
-    while(scanned<10000 && queuedForSource<limit) {
-      const page=await source.load(scanned,Math.min(200,10000-scanned));
-      if(!page.length)break;
-      scanned+=page.length;
-      const existing=await prisma.journalEntry.findMany({where:{sourceType:source.type,sourceId:{in:page.map(x=>x.id)}},
-        select:{sourceId:true,eventKind:true}});
+    let scanned=0,queuedForSource=0;
+    const collect=async(page:Candidate[])=>{
+      if(!page.length)return;
+      const existing=await prisma.journalEntry.findMany({where:{
+        sourceType:source.type,sourceId:{in:page.map(x=>x.id)},
+      },select:{sourceId:true,eventKind:true}});
       const byId=new Map<string,Set<string>>();
-      for(const row of existing) {
+      for(const row of existing){
         if(!byId.has(row.sourceId))byId.set(row.sourceId,new Set());
         byId.get(row.sourceId)!.add(row.eventKind);
       }
-      const unresolvedStripe = source.type === "STRIPE_BALANCE_TXN"
-        ? new Set((await prisma.systemIssue.findMany({where:{
-            kind:"BOOKS_POSTING_FAILURE",status:"OPEN",
-            fingerprint:{in:page.map(x=>"books-post:STRIPE_BALANCE_TXN:"+x.id)},
-          },select:{fingerprint:true}})).map(x=>x.fingerprint))
-        : new Set<string>();
-      for(const candidate of page) {
+      const unresolvedStripe=source.type==="STRIPE_BALANCE_TXN"
+        ?new Set((await prisma.systemIssue.findMany({where:{
+          kind:"BOOKS_POSTING_FAILURE",status:"OPEN",
+          fingerprint:{in:page.map(x=>"books-post:STRIPE_BALANCE_TXN:"+x.id)},
+        },select:{fingerprint:true}})).map(x=>x.fingerprint))
+        :new Set<string>();
+      for(const candidate of page){
+        const key=candidate.type+"\\0"+candidate.id;
         const complete=candidate.required.length>0 &&
           candidate.required.every(kind=>byId.get(candidate.id)?.has(kind));
-        if(complete && unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
+        if(complete&&unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
           await resolveSystemIssue("books-post:STRIPE_BALANCE_TXN:"+candidate.id,"SOURCE_SUCCEEDED");
-        if(candidate.required.length&&!complete) {
+        if(candidate.required.length&&!complete&&!queuedIds.has(key)){
+          queuedIds.add(key);
           sources.push(candidate);
           queuedForSource++;
-          if(queuedForSource>=limit)break;
         }
       }
+    };
+    while(scanned<10000&&queuedForSource<limit) {
+      const page=await source.load(scanned,Math.min(200,10000-scanned));
+      if(!page.length)break;
+      scanned+=page.length;
+      await collect(page);
       if(page.length<200)break;
+    }
+    // A second, small window at the newest end is essential for a
+    // bounded backlog: fresh invoices and corrections cannot depend
+    // on clearing 500 old invoices in previous nightly runs.
+    if(source.type==="INVOICE"){
+      const invoiceWhere={status:{not:"DRAFT" as const},OR:[
+        {createdAt:{gte:since}},{issuedAt:{gte:since}},
+        {billingPeriodStart:{gte:since}},{cancelledAt:{gte:since}},
+        {writtenOffAt:{gte:since}},
+      ]};
+      const total=await prisma.invoice.count({where:invoiceWhere});
+      const recent=Math.min(limit,200);
+      const skip=Math.max(0,total-recent);
+      if(skip>0)await collect(await source.load(skip,recent));
     }
     if(scanned>=10000)problems.push({sourceType:source.type,sourceId:"backlog",
       message:"Accounting backlog scan cap reached; continue the next bounded run."});
