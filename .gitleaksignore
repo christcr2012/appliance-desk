@@ -42,3 +42,11 @@ cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-a
 d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:162
 d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:189
 fc4ad1efe73a9b499610c531ca28c7501fab248f:tests/books-closing-integration.test.ts:generic-api-key:28
+# Reviewed 2026-10-26 (ACC-6): the same three false-positive rule-key lines as
+# they entered this branch's history in the merge push commits — the dated-rules
+# registry file arrived in e993e882 and the books-closing test in 89630f49 when
+# main was merged in through the GitHub API. Same lines, same verdict: legal
+# rule names, not credentials; each flagged line was read and verified.
+e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:162
+e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:189
+89630f49bd63734294fc11926f9dc93c5fdb15fa:tests/books-closing-integration.test.ts:generic-api-key:28
