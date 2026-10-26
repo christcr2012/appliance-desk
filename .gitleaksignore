@@ -71,3 +71,5 @@ e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-a
 # ai/vivienne/ld-1 branch re-committed the migration in 3d86add, so the same
 # line needs a fingerprint under that commit too.
 3d86adda6fe28e5128160187509bac6b54d9c43f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# Same line as above, under the LD-1 squash-merge commit on main (PR #625).
+50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
