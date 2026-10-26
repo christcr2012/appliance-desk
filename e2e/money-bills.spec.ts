@@ -48,6 +48,21 @@ test.describe("Money › Bills", () => {
   test("accessibility at five sizes, light and dark", async ({ page }) => {
     test.skip(!enabled || !fs.existsSync(owner), "Disposable Postgres and a saved owner session required.");
     test.setTimeout(120_000);
+    // A phone must never scroll sideways, also after the web font has loaded and after the window was wide. If it
+    // does, name the elements that stick out so the cause is visible in the CI annotation.
+    await page.setViewportSize({ width: 1920, height: 900 });
+    await page.goto("/desk/billing?status=past-due", { waitUntil: "load" });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await page.setViewportSize({ width: 360, height: 900 });
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const layout = await page.evaluate(() => ({
+      scroll: document.documentElement.scrollWidth,
+      overflowing: [...document.querySelectorAll("body *")]
+        .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 0.5)
+        .slice(0, 10)
+        .map((el) => `${el.tagName}.${String(el.className).slice(0, 90)} right=${Math.round(el.getBoundingClientRect().right)} text=${(el.textContent ?? "").slice(0, 40)}`),
+    }));
+    expect(layout.scroll, `Bills at 360 px after a wide window: ${JSON.stringify(layout)}`).toBeLessThanOrEqual(360);
     await scanAccessibilityRoute(page, { path: "/desk/billing", role: "OWNER", fixture: "/desk/billing?status=past-due" }, SIZES);
   });
 });
