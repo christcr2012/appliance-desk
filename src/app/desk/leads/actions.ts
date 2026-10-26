@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
+import { jobRoleScreens, JobRoleScreenError } from "@/lib/job-role-guard";
 import {
   updateLeadStatus,
   convertLeadToCustomer,
@@ -32,6 +33,22 @@ const NON_CONVERTED_STATUSES: Exclude<LeadStatus, "CONVERTED">[] = [
   "LOST",
 ];
 
+/**
+ * LD-1: check this actor's Leads screen directly. The job-role check inside
+ * requireRole looks at the address the request was posted from, and a server
+ * action can be posted to any page address — so a job role without Leads
+ * (for example Driver) could otherwise run these actions from an allowed
+ * page such as Today. null screens = no job-role limit (owner, or no role).
+ */
+async function requireLeadsScreen(session: {
+  user: { id: string; role: string };
+}): Promise<void> {
+  const screens = await jobRoleScreens(session.user.id, session.user.role);
+  if (screens !== null && !screens.includes("leads")) {
+    throw new JobRoleScreenError();
+  }
+}
+
 export async function updateLeadStatusAction(
   leadId: string,
   status: string,
@@ -39,6 +56,7 @@ export async function updateLeadStatusAction(
   followUpKey?: string,
 ): Promise<LeadActionState> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   if (
     !NON_CONVERTED_STATUSES.includes(status as (typeof NON_CONVERTED_STATUSES)[number])
@@ -88,6 +106,7 @@ export async function createLeadAction(
   raw: Record<string, unknown>,
 ): Promise<{ status: "success"; leadId: string } | { status: "error"; message: string }> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   const parsed = newLeadSchema.safeParse(raw);
   if (!parsed.success) {
@@ -128,6 +147,7 @@ export async function convertLeadAction(
   leadId: string,
 ): Promise<LeadActionState> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   try {
     const { customer, isNewAccount, activationEmailSent } = await convertLeadToCustomer(
@@ -160,6 +180,7 @@ export async function addLeadNoteAction(
   body: string,
 ): Promise<{ status: "success" } | { status: "error"; message: string }> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   try {
     await addLeadNote(leadId, session.user.id, body);
@@ -182,6 +203,7 @@ export async function logLeadContactAction(
   body: string,
 ): Promise<{ status: "success" } | { status: "error"; message: string }> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   try {
     await logLeadContact(session.user.id, leadId, body);
@@ -201,6 +223,7 @@ export async function logLeadContactAction(
 /** Supply the missing account email without overwriting existing identity. */
 export async function addLeadEmailAction(leadId: string, rawEmail: string): Promise<LeadActionState> {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
   const parsed = z.string().trim().email("Enter a valid email address.").max(254).safeParse(rawEmail);
   if (!parsed.success) return { status: "error", message: "Enter a valid email address." };
   try {

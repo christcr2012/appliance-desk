@@ -94,6 +94,12 @@ export async function mergeLeads(actorId: string, keepId: string, mergeId: strin
         : kept.firstContactEstimated;
     const status =
       kept.status === "CONTACTED" || merged.status === "CONTACTED" ? "CONTACTED" : kept.status;
+    // LD-1: same rule as updateLeadStatus — a merge that moves the kept
+    // lead's follow-up date advances its version, so a stale follow-up
+    // save from another session is refused instead of overwriting it.
+    const nextFollowUpOn = earlier(kept.nextFollowUpOn, merged.nextFollowUpOn);
+    const followUpChanged =
+      (kept.nextFollowUpOn?.getTime() ?? null) !== (nextFollowUpOn?.getTime() ?? null);
     const scored = scoreLead(
       {
         desiredTerm: kept.desiredTerm ?? merged.desiredTerm,
@@ -124,7 +130,8 @@ export async function mergeLeads(actorId: string, keepId: string, mergeId: strin
         firstContactedAt,
         firstContactEstimated,
         lastRealContactAt: later(kept.lastRealContactAt, merged.lastRealContactAt),
-        nextFollowUpOn: earlier(kept.nextFollowUpOn, merged.nextFollowUpOn),
+        nextFollowUpOn,
+        ...(followUpChanged ? { version: { increment: 1 } } : {}),
         status,
         lostReason: status === "LOST" ? kept.lostReason : null,
         score: scored.score,

@@ -13,7 +13,7 @@ import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domain
 import { scoreLead } from "./scoring";
 import { leadContactKeys } from "./keys";
 import { recordRealContactInTx, markFirstContactInTx } from "./contact";
-import { chooseOwnerForNewLeadInTx } from "./assignment";
+import { chooseOwnerForNewLeadInTx, lockLeadAssignmentInTx } from "./assignment";
 import { findDuplicateForNewLeadInTx } from "./duplicates";
 import { lockLiveLeadInTx } from "./lock";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -68,6 +68,10 @@ export async function createLead(input: LeadFormInput) {
     const packageRequests = packages.flatMap((p) =>
       p.components.map((c) => ({ applianceTypeId: c.applianceTypeId, packageId: p.id, quantity: input.quantity * c.quantity })),
     );
+    // LD-1: serialize creation on the settings row BEFORE the duplicate
+    // check, so a concurrent create of the same phone/email cannot slip
+    // past it — the second check runs after the first create commits.
+    await lockLeadAssignmentInTx(tx);
     // LD-1: duplicate check before the create (same phone or email as a live
     // lead flags it; a customer-only match is audited after the create).
     const duplicate = await findDuplicateForNewLeadInTx(tx, {
@@ -211,6 +215,10 @@ export async function createLeadManually(userId: string, input: ManualLeadInput)
   // LD-1: one transaction, so the owner choice and the lead are never split
   // (in ROTATE mode the settings-row lock also keeps concurrent creates apart).
   return prisma.$transaction(async (tx) => {
+    // LD-1: serialize creation on the settings row BEFORE the duplicate
+    // check, so a concurrent create of the same phone/email cannot slip
+    // past it — the second check runs after the first create commits.
+    await lockLeadAssignmentInTx(tx);
     // LD-1: duplicate check before the create (same phone or email as a live
     // lead flags it; a customer-only match is audited after the create).
     const duplicate = await findDuplicateForNewLeadInTx(tx, {
@@ -336,12 +344,19 @@ export async function updateLeadStatus(
     }
 
     const nextFollowUpOn = status === "CONTACTED" ? followUpOn ?? null : null;
+    // LD-1: the follow-up version guards setLeadFollowUp's compare-and-set,
+    // so every write that changes the follow-up date must advance it — a
+    // stale follow-up save from another session is then refused instead of
+    // overwriting this change. An unchanged date leaves the version alone.
+    const followUpChanged =
+      (locked.nextFollowUpOn?.getTime() ?? null) !== (nextFollowUpOn?.getTime() ?? null);
     const updated = await tx.lead.update({
       where: { id: leadId },
       data: {
         status,
         lostReason: status === "LOST" ? lostReason!.trim() : null,
         nextFollowUpOn,
+        ...(followUpChanged ? { version: { increment: 1 } } : {}),
       },
     });
 

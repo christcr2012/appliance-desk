@@ -57,6 +57,20 @@ async function oldestOwnerId(tx: Prisma.TransactionClient): Promise<string | nul
 }
 
 /**
+ * LD-1: serialize lead creation on the settings row. Every create takes
+ * this lock before its duplicate check, so two creates of the same phone
+ * or email cannot both read "no match" and both insert unflagged: the
+ * second create's check runs only after the first create has committed.
+ * chooseOwnerForNewLeadInTx takes the same lock again to pick the owner
+ * (a no-op inside a transaction that already holds it).
+ */
+export async function lockLeadAssignmentInTx(tx: Prisma.TransactionClient): Promise<void> {
+  await tx.$queryRaw`
+    SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE
+  `;
+}
+
+/**
  * Picks the owner for a new lead, inside the lead's own create transaction.
  * Locks the settings row first, so two leads created at the same moment in
  * ROTATE mode get different people. Returns null only when nobody can be
@@ -65,9 +79,7 @@ async function oldestOwnerId(tx: Prisma.TransactionClient): Promise<string | nul
 export async function chooseOwnerForNewLeadInTx(
   tx: Prisma.TransactionClient,
 ): Promise<string | null> {
-  await tx.$queryRaw`
-    SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE
-  `;
+  await lockLeadAssignmentInTx(tx);
   const settings = await tx.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
   const mode = (settings.leadAssignmentMode ?? "OWNER") as LeadAssignmentMode;
   const owners = await assignableLeadOwners(tx);

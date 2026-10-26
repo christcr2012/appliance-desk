@@ -9,7 +9,17 @@ let lockedRow: {
   contactName: string;
   assignedToUserId: string | null;
   mergedIntoLeadId: string | null;
-} = { id: "lead-1", status: "NEW", contactName: "Ada", assignedToUserId: null, mergedIntoLeadId: null };
+  nextFollowUpOn: Date | null;
+  version: number;
+} = {
+  id: "lead-1",
+  status: "NEW",
+  contactName: "Ada",
+  assignedToUserId: null,
+  mergedIntoLeadId: null,
+  nextFollowUpOn: null,
+  version: 1,
+};
 let actorRow: { id: string; role: string; archivedAt: Date | null } = {
   id: "owner-1",
   role: "OWNER",
@@ -44,7 +54,15 @@ import { updateLeadStatus } from "@/domains/leads";
 const followUp = new Date("2026-01-10T00:00:00Z");
 
 beforeEach(() => {
-  lockedRow = { id: "lead-1", status: "NEW", contactName: "Ada", assignedToUserId: null, mergedIntoLeadId: null };
+  lockedRow = {
+    id: "lead-1",
+    status: "NEW",
+    contactName: "Ada",
+    assignedToUserId: null,
+    mergedIntoLeadId: null,
+    nextFollowUpOn: null,
+    version: 1,
+  };
   actorRow = { id: "owner-1", role: "OWNER", archivedAt: null };
   queryRaw.mockClear().mockImplementation(async (strings: TemplateStringsArray) => {
     const sql = strings.join("?");
@@ -71,7 +89,13 @@ describe("updateLeadStatus in one transaction", () => {
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(leadUpdate).toHaveBeenCalledWith({
       where: { id: "lead-1" },
-      data: { status: "CONTACTED", lostReason: null, nextFollowUpOn: followUp },
+      data: {
+        status: "CONTACTED",
+        lostReason: null,
+        nextFollowUpOn: followUp,
+        // The follow-up changed (none → set), so its version advances.
+        version: { increment: 1 },
+      },
     });
     // First contact: the raw UPDATE runs, then the audit.
     expect(executeRaw).toHaveBeenCalledTimes(1);
@@ -87,6 +111,7 @@ describe("updateLeadStatus in one transaction", () => {
   });
 
   it("LOST clears the follow-up, keeps the reason, and never marks first contact", async () => {
+    lockedRow = { ...lockedRow, status: "CONTACTED", nextFollowUpOn: followUp };
     leadUpdate.mockResolvedValue({
       id: "lead-1",
       status: "LOST",
@@ -96,7 +121,13 @@ describe("updateLeadStatus in one transaction", () => {
     await updateLeadStatus("owner-1", "lead-1", "LOST", "No longer needed");
     expect(leadUpdate).toHaveBeenCalledWith({
       where: { id: "lead-1" },
-      data: { status: "LOST", lostReason: "No longer needed", nextFollowUpOn: null },
+      data: {
+        status: "LOST",
+        lostReason: "No longer needed",
+        nextFollowUpOn: null,
+        // Clearing a set follow-up is a change, so its version advances.
+        version: { increment: 1 },
+      },
     });
     expect(executeRaw).not.toHaveBeenCalled();
     expect(auditCreate).toHaveBeenCalledWith({
@@ -111,6 +142,15 @@ describe("updateLeadStatus in one transaction", () => {
       /Give a reason/,
     );
     expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("re-saving the same follow-up date does not advance its version", async () => {
+    lockedRow = { ...lockedRow, status: "CONTACTED", nextFollowUpOn: followUp };
+    await updateLeadStatus("owner-1", "lead-1", "CONTACTED", undefined, followUp);
+    expect(leadUpdate).toHaveBeenCalledWith({
+      where: { id: "lead-1" },
+      data: { status: "CONTACTED", lostReason: null, nextFollowUpOn: followUp },
+    });
   });
 
   it("a merged lead is refused with the merged message", async () => {

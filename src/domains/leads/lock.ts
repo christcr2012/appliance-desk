@@ -9,11 +9,26 @@ import type { Prisma } from "@prisma/client";
 export async function lockLiveLeadInTx(
   tx: Prisma.TransactionClient,
   leadId: string,
-): Promise<{ id: string; status: string; contactName: string; assignedToUserId: string | null }> {
+): Promise<{
+  id: string;
+  status: string;
+  contactName: string;
+  assignedToUserId: string | null;
+  nextFollowUpOn: Date | null;
+  version: number;
+}> {
   const locked = await tx.$queryRaw<
-    { id: string; status: string; contactName: string; assignedToUserId: string | null; mergedIntoLeadId: string | null }[]
+    {
+      id: string;
+      status: string;
+      contactName: string;
+      assignedToUserId: string | null;
+      mergedIntoLeadId: string | null;
+      nextFollowUpOn: Date | null;
+      version: number;
+    }[]
   >`
-    SELECT "id", "status", "contactName", "assignedToUserId", "mergedIntoLeadId"
+    SELECT "id", "status", "contactName", "assignedToUserId", "mergedIntoLeadId", "nextFollowUpOn", "version"
     FROM "Lead" WHERE "id" = ${leadId} FOR UPDATE
   `;
   if (locked.length !== 1) throw new Error("That lead no longer exists.");
@@ -27,5 +42,12 @@ export async function lockLiveLeadInTx(
       `This lead was merged into ${target?.contactName ?? "another lead"}. Open that lead instead.`,
     );
   }
-  return { id: lead.id, status: lead.status, contactName: lead.contactName, assignedToUserId: lead.assignedToUserId };
+  return {
+    id: lead.id,
+    status: lead.status,
+    contactName: lead.contactName,
+    assignedToUserId: lead.assignedToUserId,
+    nextFollowUpOn: lead.nextFollowUpOn,
+    version: lead.version,
+  };
 }
