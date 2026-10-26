@@ -108,11 +108,20 @@ export async function updateTrustedDeviceSettingsInTx(tx: Prisma.TransactionClie
  * Forget remembered devices for one person: every library trust row for them is removed, and their devices stop
  * being remembered. The library's rows cannot be tied to one device, so forgetting one device forgets them all;
  * when deviceId is given, that device alone is also marked forgotten. Callers pass their own transaction when
- * the forget is part of a bigger change (password change, removal, and so on).
+ * the forget is part of a bigger change (password change, removal, and so on). When assertActor is set (the
+ * staff-facing forget on My account), the actor is re-checked inside the transaction first: if the person was
+ * deactivated after the page's role check but before this runs, nothing is deleted. Internal cleanup callers
+ * (password, reset, email, method changes, owner actions) do not pass it, so they are unchanged.
  */
-export async function forgetTrustedDevices(userId: string, options?: { deviceId?: string }): Promise<void> {
+export async function forgetTrustedDevices(
+  userId: string,
+  options?: { deviceId?: string; assertActor?: boolean },
+): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await forgetTrustedDevicesInTx(tx, userId, options);
+    if (options?.assertActor) {
+      await assertActiveTeamActor(tx, userId);
+    }
+    await forgetTrustedDevicesInTx(tx, userId, { deviceId: options?.deviceId });
   });
 }
 

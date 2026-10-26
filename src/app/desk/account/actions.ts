@@ -170,7 +170,9 @@ export async function forgetRememberedDevicesAction(): Promise<AccountActionResu
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   try {
     const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
-    await forgetTrustedDevices(session.user.id);
+    // Re-check the actor inside the forget's transaction: if the person was deactivated after the role
+    // check above but before this runs, the forget refuses instead of deleting their trust rows.
+    await forgetTrustedDevices(session.user.id, { assertActor: true });
     revalidatePath("/desk/account");
     return ok("Remembered devices forgotten. You will be asked for a code next time on every device.");
   } catch {

@@ -44,7 +44,7 @@ function matches(row: Record<string, unknown>, where: Record<string, unknown>): 
 }
 
 const fake = (() => {
-  const users = new Map<string, { id: string; email: string; role: string }>();
+  const users = new Map<string, { id: string; email: string; role: string; archivedAt: Date | null }>();
   const devices = new Map<string, DeviceRow>();
   const verifications = new Map<string, VerificationRow>();
   const audit: Record<string, unknown>[] = [];
@@ -137,8 +137,8 @@ const fake = (() => {
       verifications.clear();
       audit.length = 0;
       settings = { trustedDeviceDays: 30 };
-      users.set("owner-1", { id: "owner-1", email: "owner@test", role: "OWNER" });
-      users.set("customer-1", { id: "customer-1", email: "customer@test", role: "CUSTOMER" });
+      users.set("owner-1", { id: "owner-1", email: "owner@test", role: "OWNER", archivedAt: null });
+      users.set("customer-1", { id: "customer-1", email: "customer@test", role: "CUSTOMER", archivedAt: null });
     },
     seedDevice: (userId: string, cookie: string, trustedUntil: Date | null) => {
       const row: DeviceRow = {
@@ -378,5 +378,41 @@ describe("completeSignInFollowUp", () => {
     } finally {
       (fake.tx.knownDevice as { upsert: unknown }).upsert = upsert;
     }
+  });
+});
+
+describe("forgetTrustedDevices", () => {
+  it("forgets a person's devices and trust rows when the actor is still active", async () => {
+    const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
+    fake.seedDevice("owner-1", "device-a", new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000));
+    fake.seedTrustRow("trust-device-abc", "owner-1", new Date(NOW.getTime() + 90 * 24 * 60 * 60 * 1000));
+    await forgetTrustedDevices("owner-1", { assertActor: true });
+    expect(fake.verifications.size).toBe(0);
+    expect([...fake.devices.values()][0]!.trustedUntil).toBeNull();
+    expect([...fake.devices.values()][0]!.forgottenAt).not.toBeNull();
+    expect(fake.audit.some((row) => row.action === "security.trusted_devices_forgotten")).toBe(true);
+  });
+
+  it("refuses to forget when the actor was deactivated, and deletes nothing", async () => {
+    const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
+    fake.seedDevice("owner-1", "device-a", new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000));
+    fake.seedTrustRow("trust-device-abc", "owner-1", new Date(NOW.getTime() + 90 * 24 * 60 * 60 * 1000));
+    fake.users.get("owner-1")!.archivedAt = new Date();
+    await expect(forgetTrustedDevices("owner-1", { assertActor: true })).rejects.toThrow(
+      "This account no longer has access to make that change.",
+    );
+    expect(fake.verifications.size).toBe(1);
+    expect([...fake.devices.values()][0]!.trustedUntil).not.toBeNull();
+    expect(fake.audit.length).toBe(0);
+  });
+
+  it("the internal cleanup path still forgets without re-checking the actor", async () => {
+    const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
+    fake.seedDevice("owner-1", "device-a", new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000));
+    fake.seedTrustRow("trust-device-abc", "owner-1", new Date(NOW.getTime() + 90 * 24 * 60 * 60 * 1000));
+    fake.users.get("owner-1")!.archivedAt = new Date();
+    await forgetTrustedDevices("owner-1");
+    expect(fake.verifications.size).toBe(0);
+    expect([...fake.devices.values()][0]!.trustedUntil).toBeNull();
   });
 });

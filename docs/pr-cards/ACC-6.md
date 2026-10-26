@@ -83,3 +83,15 @@ Two deviations from `docs/build-specs/engines/TRUSTED-DEVICES.md`, both from wha
   `recommended` to stay null until DEC-2 adds researched values with sources. The subject is registered with
   `recommended: null`; the 30-day starting value lives in the setting itself and on the Settings screen, and Chris
   approved 30 days on 2026-10-25.
+
+CI then came back all green at head beb787c4 (run 40350332943). Codex's review (written against the opening head
+8f703069) left two findings, both now disposed: a P2 — the two-step login page could be prerendered, so it kept
+offering "Remember this device" after the owner turned remembering off — already fixed in the earlier round by
+making the page request-rendered (`force-dynamic`), verified at the current head; and a P1 — the My account
+"Forget remembered devices" action did not re-check the person inside its transaction, so someone deactivated
+between the page's role check and the write could still have their trust rows deleted. Fixed:
+`forgetTrustedDevices` now takes an `assertActor` option and the My account action passes it, so the forget
+re-checks the actor inside the transaction (the repo's row-lock rule); the internal cleanup paths (password
+change, reset, email change, method switch, owner actions) do not pass it and are unchanged. Three unit tests
+cover the active, deactivated, and internal-cleanup paths (27 focused unit tests pass; typecheck clean). Pushed
+for an exact-head rerun; on green, reply to and resolve both threads, then merge.
