@@ -150,7 +150,27 @@ jobs:
           rm gitleaks.tar.gz
 
       - name: gitleaks scan of the full git history
-        run: ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1
+        run: |
+          # Preserve the scanner's exact exit status and full-history scope.
+          # Print only detection locations (never secrets or matched lines).
+          report="${RUNNER_TEMP}/gitleaks-report.json"
+          ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner \\
+            --report-format json --report-path "$report" --exit-code 1
+          status=$?
+          if [ "$status" -ne 0 ] && [ -f "$report" ]; then
+            GITLEAKS_REPORT="$report" node - <<'NODE'
+          const fs = require("node:fs");
+          const rows = JSON.parse(fs.readFileSync(process.env.GITLEAKS_REPORT, "utf8"));
+          if (Array.isArray(rows)) for (const x of rows) {
+            const path = String(x.File ?? "").replace(/[\r\n]/g, "");
+            const rule = String(x.RuleID ?? "").replace(/[\r\n]/g, "");
+            const line = Number(x.StartLine ?? 0);
+            const commit = String(x.Commit ?? "").slice(0, 12);
+            console.log(`::error::Secret scan finding: ${path}:${line} rule=${rule} commit=${commit} (contents withheld)`);
+          }
+          NODE
+          fi
+          exit "$status"
 
   static:
     # Type-check and lint share one install and run side by side.
