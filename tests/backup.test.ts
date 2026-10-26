@@ -88,7 +88,7 @@ beforeEach(() => {
   }));
   getMock.mockImplementation(async (pathname: string) => ({
     statusCode: 200, blob: { pathname },
-    stream: new Blob([putMock.mock.calls.at(-1)?.[1] as Uint8Array]).stream(),
+    stream: new Blob([Buffer.from(putMock.mock.calls.at(-1)?.[1] as Uint8Array).toString("utf8")]).stream(),
   }));
 });
 
