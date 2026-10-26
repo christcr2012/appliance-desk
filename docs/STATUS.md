@@ -1,6 +1,50 @@
-## October 25 — BA-2 owner Books setup built on stacked branch (not merged)
+## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
 
-`ai/chatgpt/ba-2` depends on BA-1 PR #610. Owner-only four-step setup, personal-expense contribution shortcut, initial catch-up, owner-only To do reminder, and append-only numbered opening-balance corrections are coded with real-database tests. BA-2 has not passed its own exact-head CI or review and has no merge. Next: verify the tests and PR, then complete BA-3 after BA-2 is safe.
+PR #613 is ready for review. Codex found that a corrected opening Stripe amount was missing from the clearing comparison baseline. The fix includes corrected OPENING journals dated by the reconciliation cutoff, with an actual disposable-Postgres scenario. Prior CI passed, but that was before this fix; the new head still requires CI and review disposition. BA-1 is merged. BA-3 is in a dependent branch. No live Stripe setting or business data changed.
+
+## October 26 — Books Lane 3: BA-1 merged, BA-2 and BA-3 in progress
+
+BA-1 books autopilot merged as PR #610 after full exact-head CI and three Codex findings fixed. BA-2 owner setup is in PR #613, reconciling its branch with main before fresh CI. BA-3 monthly review is a separate dependent branch. No production data, provider settings, or live messages changed.
+
+## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
+
+CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
+
+## October 26 — BA-1 Codex findings addressed, exact-head rerun pending
+
+PR #610 passed full CI at `0d17ac10`, then automated review found three material gaps. The new patch retains the existing books-nightly Stripe pause/health key, reports unenrolled recorded-cost retirements, and refuses disposal before retirement; route and real-Postgres regressions added. Next: exact-head CI, disposition each review thread and merge only when green. BA-2 PR #613 and BA-3 stacked branch still depend on this. No live provider or production settings changed.
+
+## October 26 — BA-1 source posting verified, merge reconciliation in progress
+
+PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
+
+## October 27 — FEE-1: fair late fees (merged PR #614)
+
+Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
+at most $15, once per bill, only after the customer was warned (2 days' notice, Settings), never while a payment is in progress
+or a bank payment is being confirmed, and autopay customers get 10 days' notice. The fee is its own charge on the next bill
+(its own one-line bill if the rental ended); the overdue bill never changes. Owner screens: warn / "told by phone" / skip /
+waive on the bill, servicemember checkbox, a Settings card for the warning days and for the Colorado lease filing, To do items.
+Migration `20261027040000_fair_late_fees` (additive; lifts old settings below 10 days / over $15). Proof: unit tests plus about
+45 database tests with a pretend Stripe on a throwaway Postgres; CI green at the merged head; twelve automatic-review findings fixed (waiving removes the Stripe item or credits Stripe, autopay notice first, no fee on a fee bill, promised date never earlier, failed bank payment re-warns, reconciler for unknown Stripe requests).
+Not done: no browser test; no real Stripe test-mode fee observed; fees do not attach to an arbitrary next local bill; "payment
+in progress" is approximated (open bank flag or phone payment in the last 24 h). Next: DEC-2 — waiting: it needs DEC-1 fully merged and DEC-1b (PR #603) is still open with merge conflicts.
+
+## October 26 — BILL-1: bank payments being confirmed (merged PR #612)
+
+Branch `ai/claude/bill-1-bank-in-flight`. A bank transfer now shows **Being confirmed** instead of late: Stripe's "processing"
+event is recorded as a flag (never as money), the Bills list has a new **Being confirmed** tab and pill, the bill and customer
+record say so, no late fee is added and no past-due To do appears while it waits, and a calm **bank payment is taking a while**
+To do appears after the owner's number of banking days (starting value 6, Settings › Bank payments). A nightly check asks Stripe
+about up to 50 waiting payments; one Stripe says cleared but we missed is recorded through the normal payment handlers, or shows
+a **Record it now** button (Today and Billing › Reconciliation). Migration `20261026010000_bank_payment_in_flight` (additive).
+Proof: unit tests plus 41 database tests with a pretend Stripe, run on a throwaway Postgres here; CI results pending.
+Not done: the **Payments** tab — AR-3 adds it. Until the three Stripe events are added (checklist row), the screens only
+learn about a payment from events already sent; the nightly check can only follow payments that already have a flag. Next: FEE-1.
+
+## October 26 — Tax and fee rule book (TFA-1, merged PR #617)
+
+Branch `ai/marley/tfa-1`: every tax and fee number is now a dated rule version with its source (migration `20261101000000_legal_rules`), read by date — RDF amount, thresholds, 1099 limit, record-keeping years — plus the timing rule (file and pay on 90% through the window, 3 business days before the deadline), the late-change true-up (issued bills never change; the business absorbs extra cost, customers get a credit kept for their next bill), and Taxes › Rules with now/next/source/state, history, owner change with reason and undo. Proof: 20 unit tests pass here; 53 database tests pass on a fresh database migrated from scratch. First CI run came back red (secret scan, two unit shards, two browser shards, 4 review comments); one fix patch follows: the owner's existing settings are carried into the rule book, a second value for the same start date supersedes the first, late changes adjust incrementally, the credit is kept for the next bill instead of an old open one, the database check that blocked rule-versioned delivery-fee records is relaxed, and the Rules browser tests use the right labels. Two more fixes after that: the carry-over only carries a setting the owner actually changed (an unguarded carry created default OWNER rows on every fresh database and blocked other versions for the same date), and the branch merged main (BA-1 #610) to clear a merge conflict. The checks never started on the fix commit — snapshot pushes don't reliably start them — so the run was started by hand (run #2618) and came back red with 2 failures: the secret scan flagged the `.gitleaksignore` comment itself (it spelled out the flagged pattern), and the Rules browser tests failed on an accessibility duplicate-`<main>` and on the Change sheet never opening. Second fix patch: the comment is rewritten so it no longer spells out the pattern, with a fingerprint entry covering the historical occurrence; the page no longer renders its own `<main>` (the desk shell already provides one); and the Change sheet now receives only plain data — the full rule definition carries a zod schema and a `describe` function, which React refuses to pass from a Server Component, so the sheet never opened at all. Proof: all 3 Rules browser tests pass locally against a production build on the lane's own database (port 5434). That patch was pushed through the custom GitHub MCP, which started CI on its own; run 40346700557 came back all green at head `98da4545`. All 4 Codex review threads were answered and resolved. The PR would not merge at first — GitHub's test merge conflicted on `.gitleaksignore` alone (the branch and main had both appended allowlist blocks after the same base line). Fixed by taking main's block verbatim on the branch and moving the 463b1043 entry to the middle of the file, where it merges cleanly (verified with a local test merge); that push also started CI on its own and went green at head `af3fda28`. **Merged 2026-10-26 as `cb1c3618` (squash, PR #617).** The merge commit's secret scan flagged the three rule-key lines under the merge commit, so a small follow-up PR refreshes those three fingerprints to `cb1c3618`. Next: TFA-2.
 
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 

@@ -70,6 +70,7 @@ const VIEWS: ViewDef[] = [
 const EMPTY: Record<BillsPageParams["status"], string> = {
   open: "No open bills",
   "past-due": "Nothing is late",
+  "being-confirmed": "No bank payments are being confirmed",
   paid: "No paid bills yet",
   closed: "No closed bills",
   drafts: "No draft bills",
@@ -113,8 +114,9 @@ function hrefWith(params: URLSearchParams, changes: Record<string, string | null
 }
 
 function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row: BillRow | undefined; closeHref: string; now: Date }) {
+  const beingConfirmed = row?.beingConfirmed ?? detail.beingConfirmedCents > 0;
   const pill = billPill(
-    { status: detail.status as BillRow["status"], dueDate: detail.dueDate, amountDueCents: detail.amountDueCents, amountPaidCents: detail.amountPaidCents },
+    { status: detail.status as BillRow["status"], dueDate: detail.dueDate, amountDueCents: detail.amountDueCents, amountPaidCents: detail.amountPaidCents, beingConfirmed },
     now,
   );
   const fullHref = `/desk/billing/customer/${encodeURIComponent(detail.customer.id)}/invoice/${encodeURIComponent(detail.id)}`;
@@ -142,7 +144,7 @@ function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row
           <p className="text-xs font-bold text-ink-soft">Bill #{detail.invoiceNumber}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-lg font-extrabold text-ink">{detail.customer.name}</p>
-            <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(detail.status as BillRow["status"])} />
+            <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(detail.status as BillRow["status"], beingConfirmed)} />
           </div>
         </div>
         {/* The StatStrip's two-column look, kept at two columns inside the 420 px panel. */}
@@ -250,11 +252,12 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     getBillTotals(params, now),
     params.open ? getInvoiceDetail(params.open) : Promise.resolve(null),
   ]);
-  const owing = params.status === "open" || params.status === "past-due";
+  const owing = params.status === "open" || params.status === "past-due" || params.status === "being-confirmed";
   const filtered = hasBillFilters(params);
   const tabs = [
     { value: "open", label: "Open", count: counts.open },
     { value: "past-due", label: "Past due", count: counts["past-due"] },
+    { value: "being-confirmed", label: "Being confirmed", count: counts["being-confirmed"], hideWhenZero: true },
     { value: "paid", label: "Paid" },
     { value: "closed", label: "Closed" },
     { value: "drafts", label: "Drafts", count: counts.drafts, hideWhenZero: true },

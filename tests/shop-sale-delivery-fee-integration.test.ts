@@ -26,17 +26,26 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
   let tax1: Awaited<ReturnType<typeof seedTaxReadyContext>>;
   let originalSettings: Record<string, unknown>;
   let previousShopLocations: string[] = [];
-  let rateId: string | null = null;
+  let ruleVersionId: string | null = null;
+  let thresholdRuleVersionId: string | null = null;
   const created = new Set<string>();
   const today = () => businessDateFromKey(businessDateKey(new Date()))!;
   const settings = (data: Record<string, unknown>) => prisma.businessSettings.update({ where: { id: "singleton" }, data });
-  const addRate = async () => { rateId = (await prisma.retailDeliveryFeeRate.create({ data: { effectiveOn: today(), amountCents: 37, enteredByUserId: ownerId } })).id; };
+  // TFA-1: the fee amount is a dated OWNER rule version (37 cents from
+  // today), not a RetailDeliveryFeeRate row.
+  const addRate = async () => {
+    ruleVersionId = (await prisma.legalRuleVersion.create({ data: {
+      id: `rdfs-rule-${tag}`, ruleKey: "co.rdf.amount", value: 37,
+      effectiveFrom: today(), origin: "OWNER", provisional: false,
+      createdByUserId: ownerId,
+    } })).id;
+  };
   const purge = async () => {
     const recs = await prisma.retailDeliveryFeeRecord.findMany({ where: { invoiceId: { in: [...created] } }, select: { id: true } });
     await prisma.auditLog.deleteMany({ where: { entityType: "RetailDeliveryFeeRecord", entityId: { in: recs.map((r) => r.id) } } });
     await prisma.retailDeliveryFeeRecord.deleteMany({ where: { id: { in: recs.map((r) => r.id) } } });
   };
-  const dropRate = async () => { await purge(); if (rateId) await prisma.retailDeliveryFeeRate.delete({ where: { id: rateId } }); rateId = null; };
+  const dropRate = async () => { await purge(); if (ruleVersionId) await prisma.legalRuleVersion.delete({ where: { id: ruleVersionId } }); ruleVersionId = null; };
   const part = async () => (await prisma.partRecord.create({ data: { modelNumber: `RDFS-${tag}-${randomUUID().slice(0, 6)}`, partNumber: tag, partName: "Dryer hose", quantityOnHand: 1000, sellable: true, retailPriceCents: 1000 } })).id;
   const sell = async (partId: string, address: string | null) => {
     const r = await createShopSale(ownerId, address
@@ -62,7 +71,15 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
     await prisma.addressTaxLocation.updateMany({ where: { id: { in: previousShopLocations } }, data: { isCurrent: false } });
     await prisma.addressTaxLocation.create({ data: { id: `rdfs-shop-${tag}`, forBusinessLocation: true, isCurrent: true, status: "VERIFIED", source: "MANUAL", lookedUpAt: new Date(), jurisdictions: { create: [{ jurisdictionId: tax1.jurisdictionId }] } } });
     await prisma.taxFilingAccount.create({ data: { id: accountId, name: `Fee test ${tag}`, kind: "SALES_RETURN", frequency: "MONTHLY", jurisdictions: { connect: { id: tax1.jurisdictionId } } } });
-    await settings({ shortTermLeaseElection: "COLLECT_ON_RENTALS", rdfThresholdCents: 0, rdfThresholdCrossedOn: new Date("2020-01-01T12:00:00Z"), rdfHandling: "COLLECT_FROM_CUSTOMER", rdfCpaConfirmedOn: new Date("2026-01-01T12:00:00Z") });
+    await settings({ shortTermLeaseElection: "COLLECT_ON_RENTALS", rdfThresholdCrossedOn: new Date("2020-01-01T12:00:00Z"), rdfHandling: "COLLECT_FROM_CUSTOMER", rdfCpaConfirmedOn: new Date("2026-01-01T12:00:00Z") });
+    // TFA-1: the small-seller limit is a dated rule. The seeded rule is
+    // 50,000,000 cents; a zero OWNER version makes every sale exceed it, so
+    // the fee applies (the 2020 crossing date above covers the grace period).
+    thresholdRuleVersionId = (await prisma.legalRuleVersion.create({ data: {
+      id: `rdfs-threshold-${tag}`, ruleKey: "co.rdf.qualified_threshold", value: 0,
+      effectiveFrom: businessDateFromKey("2026-01-01")!, origin: "OWNER",
+      provisional: false, createdByUserId: ownerId,
+    } })).id;
     process.env.RDF_CUSTOMER_CHARGING_ENABLED = "true";
     await addRate();
     // One counted pickup sale so current-year Colorado retail sales are above the (zero) test threshold.
@@ -72,6 +89,7 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
   afterAll(async () => {
     delete process.env.RDF_CUSTOMER_CHARGING_ENABLED;
     await dropRate();
+    if (thresholdRuleVersionId) await prisma.legalRuleVersion.delete({ where: { id: thresholdRuleVersionId } });
     await prisma.taxFilingAccount.deleteMany({ where: { id: accountId } });
     await prisma.addressTaxLocation.deleteMany({ where: { id: `rdfs-shop-${tag}` } }).catch(() => undefined);
     await prisma.addressTaxLocation.updateMany({ where: { id: { in: previousShopLocations } }, data: { isCurrent: true } });
@@ -154,12 +172,30 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
 
   it("with no fee amount entered the sale still goes through; entering it later finishes the record and the business pays it", async () => {
     await dropRate();
-    const sale = await sell(await part(), coAddress);
-    expect(sale.amountDueCents).toBe(5400);
-    expect((await records(sale.invoiceId))[0]).toMatchObject({ status: "PENDING_RATE", amountCents: null, invoiceLineId: null });
-    await addRate();
-    await resolvePendingRdfRecords(new Date(), 100);
-    expect((await records(sale.invoiceId))[0]).toMatchObject({ status: "READY", amountCents: 37, collectedFromCustomer: false, invoiceLineId: null });
-    expect((await prisma.invoice.findUniqueOrThrow({ where: { id: sale.invoiceId } })).amountDueCents).toBe(5400);
+    // TFA-1: the seeded amount versions cover every 2026 sale, so "no fee
+    // amount entered" means hiding them for this sale. They are restored in
+    // the finally below; this file runs in the serial shared-settings project.
+    const hidden = await prisma.legalRuleVersion.findMany({
+      where: { ruleKey: "co.rdf.amount", undoneAt: null },
+      select: { id: true },
+    });
+    try {
+      await prisma.legalRuleVersion.updateMany({
+        where: { id: { in: hidden.map((r) => r.id) } },
+        data: { undoneAt: new Date() },
+      });
+      const sale = await sell(await part(), coAddress);
+      expect(sale.amountDueCents).toBe(5400);
+      expect((await records(sale.invoiceId))[0]).toMatchObject({ status: "PENDING_RATE", amountCents: null, invoiceLineId: null });
+      await addRate();
+      await resolvePendingRdfRecords(new Date(), 100);
+      expect((await records(sale.invoiceId))[0]).toMatchObject({ status: "READY", amountCents: 37, collectedFromCustomer: false, invoiceLineId: null });
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: sale.invoiceId } })).amountDueCents).toBe(5400);
+    } finally {
+      await prisma.legalRuleVersion.updateMany({
+        where: { id: { in: hidden.map((r) => r.id) } },
+        data: { undoneAt: null },
+      });
+    }
   });
 });

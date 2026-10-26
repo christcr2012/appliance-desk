@@ -16,15 +16,15 @@ describe.skipIf(!enabled)("T-6D3 use-tax frequency migration on real Postgres", 
     const accountId = "t6d3-acct-" + tag;
     const jurisdictionId = "t6d3-jur-" + tag;
     const sourceBase = "t6d3-pur-" + tag;
-    const settings = await prisma.businessSettings.findUnique({
-      where: { id: "singleton" }, select: { useTaxMonthlyThresholdCents: true },
-    });
+    let ruleVersionId = "";
     try {
-      await prisma.businessSettings.upsert({
-        where: { id: "singleton" },
-        create: { useTaxMonthlyThresholdCents: 30000 },
-        update: { useTaxMonthlyThresholdCents: 30000 },
-      });
+      // TFA-1: the monthly use-tax limit is a dated rule, not a setting. The
+      // owner version pins the $300 limit for the September month-end this
+      // run checks (the seeded rule already says $300).
+      ruleVersionId = (await prisma.legalRuleVersion.create({ data: {
+        ruleKey: "co.use.monthly_threshold", value: 30000,
+        effectiveFrom: day("2026-01-01"), origin: "OWNER", provisional: false,
+      } })).id;
       await prisma.taxFilingAccount.create({
         data: { id: accountId, name: "State consumer use tax",
           kind: "USE_TAX_RETURN", frequency: "ANNUAL", basis: "ACCRUAL",
@@ -111,12 +111,7 @@ describe.skipIf(!enabled)("T-6D3 use-tax frequency migration on real Postgres", 
       await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
       await prisma.taxFilingAccount.deleteMany({ where: { id: accountId } });
       await prisma.auditLog.deleteMany({ where: { entityId: accountId, action: "tax.use_tax_frequency.transition" } });
-      if (settings) {
-        await prisma.businessSettings.update({
-          where: { id: "singleton" },
-          data: { useTaxMonthlyThresholdCents: settings.useTaxMonthlyThresholdCents },
-        });
-      }
+      if (ruleVersionId) await prisma.legalRuleVersion.delete({ where: { id: ruleVersionId } });
     }
   });
 });

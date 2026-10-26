@@ -4,6 +4,7 @@ import { captureDepositProvenanceFromWebhook } from "./deposit-provenance";
 import {
   processStripeWebhookEvent as processStripeWebhookEventBase,
   type StripeWebhookProcessingResult,
+  type WebhookReplayOptions,
 } from "./webhooks-base";
 
 export type { StripeWebhookProcessingResult } from "./webhooks-base";
@@ -16,8 +17,9 @@ export type { StripeWebhookProcessingResult } from "./webhooks-base";
  */
 export async function processStripeWebhookEvent(
   event: Stripe.Event,
+  options: WebhookReplayOptions = {},
 ): Promise<StripeWebhookProcessingResult> {
-  const result = await processStripeWebhookEventBase(event);
+  const result = await processStripeWebhookEventBase(event, options);
   await captureDepositProvenanceFromWebhook(event);
   return result;
 }

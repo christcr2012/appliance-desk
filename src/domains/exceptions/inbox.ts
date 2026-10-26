@@ -13,6 +13,8 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   BOOKS_SETUP: "taxes",
   BOOKS_MONTH_REVIEW: "taxes",
   PAST_DUE_INVOICE: "money",
+  BANK_PAYMENT_SLOW: "money",
+  LATE_FEE_REVIEW: "money",
   HELD_PAYMENT_DECISION: "money",
   DEPOSIT_DECISION: "money",
   CANCELLATION_REFUND_DUE: "money",
@@ -107,6 +109,7 @@ export type InboxHandlers = {
   acknowledgeTaxSource?: FormAction;
   applyOfficialRate?: FormAction;
   undoOfficialRate?: FormAction;
+  recordBankPayment?: FormAction;
 };
 
 export type InboxActionOptions = {
@@ -126,6 +129,10 @@ function formPrimary(item: ExceptionItem, handlers: InboxHandlers | undefined): 
     case "APPLY_OFFICIAL_RATE":
       return handlers?.applyOfficialRate
         ? { kind: "form", label: action.label, action: handlers.applyOfficialRate, fields: { observationId: action.id }, primary: true }
+        : null;
+    case "RECORD_BANK_PAYMENT":
+      return handlers?.recordBankPayment
+        ? { kind: "form", label: action.label, action: handlers.recordBankPayment, fields: { rowId: action.id }, primary: true, pendingLabel: "Recording…", successMessage: "Payment recorded" }
         : null;
     case "UNDO_OFFICIAL_RATE":
       return handlers?.undoOfficialRate

@@ -324,6 +324,14 @@ export async function stageEquipmentBookRetirementInTx(
  await tx.$executeRaw`SAVEPOINT book_retire`;
  try{
   const existing=await tx.bookAsset.findUnique({where:{applianceId}});
+  if(!existing){
+   // Operational retirement must succeed; an equipment purchase already
+   // recognized in the ledger must never disappear from the review queue.
+   const appliance=await tx.appliance.findUnique({where:{id:applianceId},
+    select:{acquisitionCostCents:true}});
+   if(appliance?.acquisitionCostCents&&appliance.acquisitionCostCents>0)
+    throw new BookAssetInputError("Recorded-cost appliance was retired before book enrollment; reconcile acquisition and disposal.");
+  }
   if(existing&&!existing.retiredOn){
    const needed=[asMonth(onDate),lastCompletedMonth()].sort()[0]!;
    await postBookDepreciationInTx(tx,{kind:"equipment",userId},applianceId,needed,{maxMonths:360});
@@ -352,10 +360,18 @@ export async function writeOffRetiredBookAssetInTx(
 ):Promise<void>{
  await assertBooksWriter(tx,writer,["OWNER","ADMIN"]);
  const existing=await tx.bookAsset.findUnique({where:{applianceId}});
- if(!existing)return;
+ if(!existing){
+  const appliance=await tx.appliance.findUnique({where:{id:applianceId},
+   select:{acquisitionCostCents:true}});
+  if(appliance?.acquisitionCostCents&&appliance.acquisitionCostCents>0)
+   throw new BookAssetInputError("Retired appliance has a recorded acquisition cost but no book asset; review before disposal.");
+  return;
+ }
  const locked=await lockAsset(tx,applianceId);
  if(!locked.retiredOn)throw new BookAssetInputError("Book retirement must be staged before final disposal.");
  if(locked.disposedOn)return;
+ if(onDate<locked.retiredOn)
+  throw new BookAssetInputError("Disposal date cannot be before the recorded retirement date.");
  const carried=locked.retiredValueCents??0,cycle=locked.disposalCycle+1;
  if(!Number.isSafeInteger(carried)||carried<0)throw new BookAssetInputError("Book carrying value requires review.");
  if(carried>0){

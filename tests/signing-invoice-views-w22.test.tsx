@@ -10,7 +10,7 @@ function fixture(paid = 0, status = "OPEN"): InvoiceDetail {
     id: "in-internal", invoiceNumber: 1001, status, createdAt: new Date("2026-10-12T12:00:00Z"),
     billingPeriodStart: null, billingPeriodEnd: null, dueDate: null,
     subtotalCents: 0, discountCents: 0, taxCents: 480, lateFeeCents: 0,
-    amountDueCents: 480, amountPaidCents: paid, balanceCents: Math.max(0, 480 - paid),
+    amountDueCents: 480, amountPaidCents: paid, balanceCents: Math.max(0, 480 - paid), beingConfirmedCents: 0, lateFee: null,
     isLocalInvoice: false,
     isShopSale: false,
     lineItems: [

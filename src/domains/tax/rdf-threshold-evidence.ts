@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
+import { ruleAsOf } from "@/domains/rules/reads";
 
 function verifyCents(value: number, field: string) {
   if (!Number.isSafeInteger(value) || value < 0) {
@@ -27,12 +28,14 @@ export async function recordFirstRetailDeliveryFeeThresholdCrossing(input: {
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const settings = await tx.businessSettings.findUnique({
       where: { id: "singleton" },
-      select: { rdfThresholdCents: true, rdfThresholdCrossedOn: true },
+      select: { rdfThresholdCrossedOn: true },
     });
     if (!settings) throw new Error("BusinessSettings must be initialized.");
     if (settings.rdfThresholdCrossedOn) return settings.rdfThresholdCrossedOn;
+    // TFA-1: the small-seller limit is a dated rule, not a setting.
+    const thresholdCents = (await ruleAsOf<number>("co.rdf.qualified_threshold", day, tx)).value;
     if (input.previousYearRetailCents !== 0 ||
-        input.currentYearRetailCents <= settings.rdfThresholdCents) return null;
+        input.currentYearRetailCents <= thresholdCents) return null;
     await tx.businessSettings.update({
       where: { id: "singleton" },
       data: { rdfThresholdCrossedOn: day },
@@ -45,7 +48,7 @@ export async function recordFirstRetailDeliveryFeeThresholdCrossing(input: {
         newValue: {
           date: dateKey,
           currentYearRetailCents: input.currentYearRetailCents,
-          thresholdCents: settings.rdfThresholdCents,
+          thresholdCents,
         },
       },
     });

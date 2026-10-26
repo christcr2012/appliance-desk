@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
-import { enrollBookAsset, disposedValueBefore } from "@/domains/books/fixed-assets";
+import { enrollBookAsset, disposedValueBefore, writeOffRetiredBookAssetInTx } from "@/domains/books/fixed-assets";
 import { retireAppliance } from "@/domains/inventory/guided-actions";
 import { setRetiredPlan, completeRetiredPlan, reopenRetiredPlan } from "@/domains/inventory/retired-plans";
 
@@ -10,7 +10,7 @@ const url=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
 const enabled=process.env.CI==="true"&&["localhost","127.0.0.1"].includes(url.hostname)
  &&url.pathname==="/appliance_desk_test";
 const tag=randomUUID().slice(0,10),owner="ba1-owner-"+tag,admin="ba1-admin-"+tag;
-const typeId="ba1-type-"+tag,asset="ba1-asset-"+tag,broken="ba1-broken-"+tag;
+const typeId="ba1-type-"+tag,asset="ba1-asset-"+tag,broken="ba1-broken-"+tag,unenrolled="ba1-before-enrolled-"+tag;
 const bought=new Date("2026-01-15T07:00:00.000Z");
 let original:{booksStartDate:Date|null;depreciationMonthsDefault:number;depreciationSalvagePercent:number;
  booksConsecutiveFailedNights:number;booksLastProblemCount:number;booksLastBroughtUpToDateAt:Date|null};
@@ -35,10 +35,12 @@ describe.skipIf(!enabled)("BA-1 append-only appliance disposal on disposable Pos
     acquisitionCostCents:12000,purchaseDate:bought,status:"AVAILABLE"},
    {id:broken,assetNumber:"BA1-B-"+tag,applianceTypeId:typeId,
     acquisitionCostCents:12000,purchaseDate:bought,status:"AVAILABLE"},
+   {id:unenrolled,assetNumber:"BA1-U-"+tag,applianceTypeId:typeId,
+    acquisitionCostCents:12500,purchaseDate:bought,status:"AVAILABLE"},
   ]});
  });
  afterAll(async()=>{
-  const ids=[asset,broken];
+  const ids=[asset,broken,unenrolled];
   await prisma.retiredAppliancePlan.deleteMany({where:{applianceId:{in:ids}}});
   await prisma.booksProblem.deleteMany({where:{subjectType:"APPLIANCE",subjectId:{in:ids}}});
   await prisma.bookTaxEvidence.deleteMany({where:{applianceId:{in:ids}}});
@@ -61,6 +63,28 @@ describe.skipIf(!enabled)("BA-1 append-only appliance disposal on disposable Pos
   expect(await prisma.journalEntry.count({where:{sourceType:"APPLIANCE",sourceId:asset,
    eventKind:"RETIRED_HELD"}})).toBe(1);
   expect(await prisma.booksProblem.count({where:{subjectId:asset,resolvedAt:null}})).toBe(0);
+ });
+ it("rejects a disposal date earlier than book retirement without changing journals",async()=>{
+  const prior=new Date("2026-01-18T07:00:00.000Z");
+  await expect(prisma.$transaction(tx=>writeOffRetiredBookAssetInTx(
+   tx,{kind:"equipment",userId:owner},asset,prior,"scrap"),
+  )).rejects.toThrow(/before the recorded retirement/i);
+  expect(await prisma.journalEntry.count({where:{
+   sourceType:"APPLIANCE",sourceId:asset,eventKind:{startsWith:"DISPOSED:"},
+  }})).toBe(0);
+ });
+ it("retires an unenrolled acquired appliance without hiding missing disposal accounting",async()=>{
+  expect(await prisma.bookAsset.findUnique({where:{applianceId:unenrolled}})).toBeNull();
+  await retireAppliance(admin,unenrolled,"Unsafe for further use.");
+  expect((await prisma.appliance.findUniqueOrThrow({where:{id:unenrolled}})).status).toBe("RETIRED");
+  const key={kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:unenrolled};
+  expect(await prisma.booksProblem.count({where:{...key,resolvedAt:null}})).toBe(1);
+  await setRetiredPlan(owner,unenrolled,{choice:"SCRAP"});
+  await completeRetiredPlan(owner,unenrolled,{doneOnKey:businessDateKey(new Date())});
+  expect(await prisma.bookAsset.findUnique({where:{applianceId:unenrolled}})).toBeNull();
+  expect(await prisma.booksProblem.count({where:{...key,resolvedAt:null}})).toBe(1);
+  expect(await prisma.journalEntry.count({where:{sourceType:"APPLIANCE",
+   sourceId:unenrolled,eventKind:{startsWith:"DISPOSED:"}}})).toBe(0);
  });
  it("finishing, reopening and finishing again produces exactly three balanced cycle journals",async()=>{
   await setRetiredPlan(owner,asset,{choice:"SCRAP"});

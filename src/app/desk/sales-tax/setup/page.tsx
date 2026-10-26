@@ -5,21 +5,25 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "./forms";
 import { TAXES_SETUP_LINKS } from "@/lib/taxes-tabs";
+import { ruleAsOf } from "@/domains/rules/reads";
 import { addRdfRateAction, saveTaxAccountAction, saveTaxSettingsAction, lookUpBusinessTaxAreasAction, confirmBusinessTaxAreasAction } from "./actions";
 const css = "w-full rounded border border-input bg-background p-2 text-sm";
 const field = "grid gap-1 text-sm font-medium";
 export default async function TaxSetupPage() {
   const session = await requireRole("OWNER", "ADMIN");
   const owner = session.user.role === "OWNER";
-  const [settings, accounts, rates, sources, businessLocation, knownAreas] = await Promise.all([
+  const [settings, accounts, rates, rdfThresholdCents, sources, businessLocation, knownAreas] = await Promise.all([
     prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{
       updatedAt:true,shortTermLeaseElection:true,shortTermLeaseElectionNote:true,
-      rdfHandling:true,rdfThresholdCents:true,rdfCpaConfirmedOn:true,
+      rdfHandling:true,rdfCpaConfirmedOn:true,
       autoApplyOfficialRateChanges:true,autoRateChangeMaxMilliPercent:true,businessTaxAddress:true,
     }}),
     prisma.taxFilingAccount.findMany({orderBy:[{kind:"asc"},{name:"asc"}],take:70,
       select:{id:true,name:true,kind:true,basis:true,frequency:true,active:true,accountNumber:true,firstPeriodStart:true}}),
-    prisma.retailDeliveryFeeRate.findMany({orderBy:{effectiveOn:"desc"},take:10}),
+    // TFA-1: recorded fee rates are dated rule versions, not rate-table rows.
+    prisma.legalRuleVersion.findMany({where:{ruleKey:"co.rdf.amount",undoneAt:null},
+      orderBy:{effectiveFrom:"desc"},take:10,select:{id:true,effectiveFrom:true,value:true}}),
+    ruleAsOf<number>("co.rdf.qualified_threshold", new Date()).then(r => r.value),
     prisma.officialSourceWatch.findMany({orderBy:{createdAt:"asc"},take:30}),
     prisma.addressTaxLocation.findFirst({
       where: { forBusinessLocation: true, isCurrent: true },
@@ -69,7 +73,7 @@ export default async function TaxSetupPage() {
           <label className={field}>Who pays<select name="rdfHandling" className={css} defaultValue={settings.rdfHandling}>
             <option value="UNDECIDED">Undecided</option><option value="COLLECT_FROM_CUSTOMER">Customer</option><option value="PAY_MYSELF">Business</option>
           </select></label>
-          <label className={field}>Delivery fee threshold ($) <InfoTip term="rdf-threshold" /><MoneyInput name="rdfThresholdDollars" cents={settings.rdfThresholdCents} className={css} /></label>
+          <label className={field}>Delivery fee threshold ($) <InfoTip term="rdf-threshold" /><MoneyInput name="rdfThresholdDollars" cents={rdfThresholdCents} className={css} /></label>
           <label className={field}>CPA confirmed on<input name="rdfCpaConfirmedOn" type="date" className={css} defaultValue={settings.rdfCpaConfirmedOn?.toISOString().slice(0,10)} /></label>
         </div>
       </fieldset>
@@ -122,7 +126,7 @@ export default async function TaxSetupPage() {
     </section>
     <section id="fee-rates" className="space-y-3">
       <h2 className="font-semibold">Recorded fee rates</h2>
-      <ul className="space-y-1 text-sm">{rates.map(rate => <li key={rate.id}>{rate.effectiveOn.toISOString().slice(0,10)} — <Money cents={rate.amountCents} /></li>)}</ul>
+      <ul className="space-y-1 text-sm">{rates.map(rate => <li key={rate.id}>{rate.effectiveFrom.toISOString().slice(0,10)} — <Money cents={typeof rate.value === "number" ? rate.value : 0} /></li>)}</ul>
       {owner && <TaxActionForm action={addRdfRateAction} title="Add a July 1 statutory fee rate" submitLabel="Record rate">
         <div className="grid gap-3 md:grid-cols-2">
           <label className={field}>Effective July 1<input className={css} name="effectiveOn" type="date" required /></label>

@@ -4,6 +4,7 @@ import { runAutomation } from "@/domains/automation/runs";
 import { sweepSystemIssues } from "@/domains/system-issues/sources";
 import { automationCounts } from "@/domains/automation/counts";
 import { finishPendingProviderOperations } from "@/domains/billing/reconciliation";
+import { checkBankPaymentsInFlight } from "@/domains/billing/in-flight-check";
 import { runPendingHandoffs } from "@/domains/jobs/completion";
 import { freezeFinalInvoiceArtifacts } from "@/domains/documents/artifacts";
 import { reconcileUnknownDeliveries } from "@/domains/messaging/deliver";
@@ -29,6 +30,11 @@ export async function GET(request: Request): Promise<NextResponse> {
   const providerOps = await runAutomation({
     ruleKey: "billing-reconcile:provider-ops",
     work: async () => ({ counts: automationCounts(await finishPendingProviderOperations()) }),
+  });
+  // BILL-1: bank payments that are still "being confirmed" (50 a night, oldest check first).
+  const bankInFlight = await runAutomation({
+    ruleKey: "billing-reconcile:bank-in-flight",
+    work: async () => ({ counts: automationCounts(await checkBankPaymentsInFlight()) }),
   });
   const handoffs = await runAutomation({
     ruleKey: "billing-reconcile:job-handoffs",
@@ -70,5 +76,5 @@ export async function GET(request: Request): Promise<NextResponse> {
     ruleKey: "system-issues-sweep",
     work: async () => ({ counts: automationCounts(await sweepSystemIssues(new Date(), 100)) }),
   });
-  return NextResponse.json({ systemIssues, providerOps, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });
+  return NextResponse.json({ systemIssues, providerOps, bankInFlight, handoffs, invoiceArtifacts, messageDeliveries, retailDeliveryFees, retailDeliveryFeeCharges });
 }

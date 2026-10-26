@@ -8,7 +8,7 @@ Depends on BA-1 (actor refactor and autopilot).
 ## Acceptance
 - [ ] Every test listed in spec section 2 passes on throwaway Postgres.
 - [ ] People-facing behavior of existing Books actions unchanged except where the spec says.
-- [ ] `ci` green at the exact head; every review comment read.
+- [ ] `ci` green at the exact head; every review comment read. Codex finding on opening Stripe corrections has a concrete fix and real-Postgres regression; verify at the new exact head.
 
 ## BA-2 implementation and evidence plan
 - [ ] Provide the owner-only four-step setup wizard; an admin sees an owner-help message.

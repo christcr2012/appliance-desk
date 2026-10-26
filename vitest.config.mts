@@ -56,6 +56,8 @@ const SHARED_SETTINGS_TESTS = [
   "tests/w9-filing-autopilot-integration.test.ts", // W-9 creates Colorado filing accounts and periods that the whole-database filing list and health check read.
   "tests/w19-flow-gaps-integration.test.ts", // W-19 changes and restores the shared unsigned-agreement reminder setting.
   // Tax-ready fixtures also write/restore BusinessSettings.singleton through their helper.
+  "tests/bank-in-flight-nightly.test.ts", // BILL-1: the nightly check looks at every open bank-payment flag in the database, so it must not overlap the webhook suite that creates them.
+  "tests/bank-in-flight-webhook-integration.test.ts", // BILL-1: same shared flag rows as the nightly suite above.
   "tests/billing-webhooks.test.ts",
   "tests/pickup-billing-end-integration.test.ts",
   "tests/signing-manual-payment-w22-integration.test.ts",
@@ -65,6 +67,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-exemptions-integration.test.ts",
   "tests/tax-prepaid-invoice-integration.test.ts",
   "tests/tax-rate-change-integration.test.ts",
+  "tests/rules-as-of-integration.test.ts", // TFA-1 changes and restores the shared timing settings; its rule versions are test-scoped.
   "tests/tax-refund-evidence-integration.test.ts",
   "tests/tax-stripe-invoice-mirror-integration.test.ts",
   "tests/agreements-term-integration.test.ts",

@@ -54,6 +54,7 @@ const summary = {
   primaryAddress: "1402 10th Ave, Greeley",
   monthlyRentCents: 7000,
   owedCents: 7000,
+  beingConfirmedCents: 0,
   oldestOpenBillId: "i1",
   oldestOpenBillPayPath: "STRIPE_LINK",
   nextBill: { date: new Date("2026-11-01T18:00:00Z"), rentCents: 7000 },
