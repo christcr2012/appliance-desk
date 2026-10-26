@@ -35,7 +35,7 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
   switch (input.kind) {
     case "AUTOMATION_FAILED":
       id(input.ruleKey); id(input.runId); date(input.startedAt);
-      if (!AUTOMATION_RULES.some((rule) => rule.ruleKey === input.ruleKey)) throw new Error("Unrecognized automation rule");
+      if (input.ruleKey !== "backup-manual" && !AUTOMATION_RULES.some((rule) => rule.ruleKey === input.ruleKey)) throw new Error("Unrecognized automation rule");
       if (!knownErrorNames.has(input.errorName) || (input.errorCode && !knownErrorCodes.has(input.errorCode))) throw new Error("Unrecognized error code");
       fingerprint = "automation:" + input.ruleKey;
       severity = /^(billing|backup|media-copy)/.test(input.ruleKey) ? "HIGH" : "MEDIUM";

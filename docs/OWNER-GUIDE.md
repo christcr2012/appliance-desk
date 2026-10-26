@@ -336,6 +336,21 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 **If it fails.** An email marked Needs review may be in progress; check Resend's sending activity before resending anything and do not reset the sequence. "Sent" means the provider accepted it, not that it reached an inbox.
 
+## System health — backups you can trust (MCP-2; pending checked release)
+
+Open **Desk → System health → Backup and recovery** to see which **private** store receives backups (the
+dedicated backup store or your existing private photo store), whether the photo store can be reached,
+the date of the latest hash-checked database copy and the last database copy with a hash-checked photo list.
+A file that uploaded but could not be read back is **not** considered a working backup. A failure cleaning
+up old copies leaves today's verified copy intact and creates a visible tidy-up issue.
+
+**Keep daily backups for** starts at **30 days**, owner-configurable from 7–365 days, with **Restore
+recommended**. The latest verified database copy and the latest complete database+photos set are never
+deleted regardless of age. Only the owner sees **Run the backup again**, and only after today's backup
+failed or ended uncertainly; repeated clicks cannot run copies simultaneously. An isolated restore rehearsal
+uses fictional data only. Confirm live private-store setup on your checklist after the checked nightly release.
+Do not copy backup links, tokens, or files into public messages.
+
 ## Backup, restore and privacy
 
 **What it's for.** A backup of the database runs every day with a paired list of the private photos; photos are copied inside private storage under a fingerprint. **Privacy requests** (owner only, `/desk/privacy`) handles a customer asking to see or delete their data: confirm identity, review what must be kept by law or open money, download the export, then fulfil the deletion. Fulfilling writes an audit entry (who, which request, which customer, how many photos) with no personal data. Another customer's data never appears in an export.

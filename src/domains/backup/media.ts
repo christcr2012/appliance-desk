@@ -190,7 +190,10 @@ export async function runMediaInventoryAndCopy(input: {
   }
   const databaseBackupUrl = input.databaseBackupUrl ||
     `https://${getBackupStore()?.storeId.slice(6).toLowerCase()}.private.blob.vercel-storage.com/${artifact.pathname}`;
-  if (blobPathFromUrl(databaseBackupUrl) !== artifact.pathname) {
+  const backupStore = getBackupStore();
+  if (!backupStore || new URL(databaseBackupUrl).hostname !==
+      `${backupStore.storeId.slice(6).toLowerCase()}.private.blob.vercel-storage.com` ||
+      blobPathFromUrl(databaseBackupUrl) !== artifact.pathname) {
     throw new AutomationFailure("BACKUP_CAPTURE", "media-pair");
   }
   const backupPath = blobPathFromUrl(databaseBackupUrl);
@@ -198,6 +201,7 @@ export async function runMediaInventoryAndCopy(input: {
     throw new Error("Media inventory requires a database backup under backups/.");
   }
 
+  try {
   const now = input.now ?? new Date();
   const previous = await latestPriorManifest(backupToken);
   const previousByPath = new Map(
@@ -350,25 +354,26 @@ export async function runMediaInventoryAndCopy(input: {
     token: backupToken,
     contentType: "application/json",
     addRandomSuffix: false,
-    allowOverwrite: true,
+    allowOverwrite: false,
   });
 
+  const counts = inventoryCounts(entries, unreferenced.length);
   const verified = await verifyBackupReadback(manifestPath, backupToken, backupDigest(manifestBytes));
+  const complete = verified && counts.missing === 0;
   await prisma.backupArtifact.create({ data: {
-    kind: "MEDIA_MANIFEST", state: verified ? "VERIFIED" : "FAILED",
+    kind: "MEDIA_MANIFEST", state: complete ? "VERIFIED" : "FAILED",
     databaseArtifactId: artifact.id, pathname: manifestPath, formatVersion: manifest.formatVersion,
     sizeBytes: manifestBytes.length, sha256: backupDigest(manifestBytes),
-    verifiedAt: verified ? new Date() : undefined, failureStage: verified ? undefined : "READBACK",
-    photoCounts: inventoryCounts(entries, unreferenced.length),
+    verifiedAt: complete ? new Date() : undefined,
+    failureStage: !verified ? "READBACK" : !complete ? "MISSING_MEDIA" : undefined,
+    photoCounts: counts,
   } });
-  if (!verified) throw new AutomationFailure("MEDIA_COPY", "media-readback");
-  const counts = inventoryCounts(entries, unreferenced.length);
-  if (counts.missing + counts.tombstoned > 0) {
-    throw new Error(
-      `Media inventory found ${counts.missing + counts.tombstoned} referenced private object problem(s) (${counts.missing} missing, ${counts.tombstoned} privacy-tombstoned). Review the paired media manifest.`,
-    );
-  }
+  if (!complete) throw new AutomationFailure("MEDIA_COPY", verified ? "media-missing" : "media-readback");
   return { manifest, manifestUrl: written.url, counts };
+  } catch (cause) {
+    if (cause instanceof AutomationFailure) throw cause;
+    throw new AutomationFailure("MEDIA_COPY", "media-copy", { cause });
+  }
 }
 
 export async function restoreMediaFromManifest(

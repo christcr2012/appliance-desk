@@ -58,6 +58,7 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     costRevision: "restore-cost-revision-" + tag,
   };
   const numberAddress = "+13035550189";
+  const backupLedger = { database: "restore-db-" + tag, media: "restore-media-" + tag };
 
 
 
@@ -88,6 +89,19 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       deliveredOn: businessDateFromKey("2026-07-01")!, saleOn: businessDateFromKey("2026-06-30")!,
       status: "READY", amountCents: 31, collectedFromCustomer: false } });
 
+    await prisma.backupArtifact.create({ data: {
+      id: backupLedger.database, kind: "DATABASE", state: "VERIFIED",
+      pathname: "backups/2026-10-17-" + tag + ".json",
+      sizeBytes: 42, sha256: "a".repeat(64), formatVersion: 2,
+      migrationId: "synthetic-restorable", verifiedAt: new Date("2026-10-17T00:00:00Z"),
+    } });
+    await prisma.backupArtifact.create({ data: {
+      id: backupLedger.media, kind: "MEDIA_MANIFEST", state: "VERIFIED",
+      pathname: "backups/2026-10-17-" + tag + ".json.media.json",
+      sizeBytes: 43, sha256: "b".repeat(64), formatVersion: 1,
+      databaseArtifactId: backupLedger.database,
+      verifiedAt: new Date("2026-10-17T00:00:00Z"),
+    } });
     // COM-L2 recovery proof: nonempty new lineage survives a full backup/restore.
     await prisma.telecomAccount.create({ data: {
       id: telecom.account, provider: "twilio", environment: "TEST",
@@ -198,6 +212,8 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
   });
 
   afterAll(async () => {
+    await prisma.backupArtifact.deleteMany({ where: { id: backupLedger.media } });
+    await prisma.backupArtifact.deleteMany({ where: { id: backupLedger.database } });
     await prisma.communicationCostFact.deleteMany({
       where: { id: { in: [telecom.costBase, telecom.costRevision] } },
     });
@@ -260,6 +276,14 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       expect(count, table).toBe(snapshot.payload.tables[table]!.length);
     }
 
+    expect(await target.backupArtifact.findUniqueOrThrow({where:{id:backupLedger.database}}))
+      .toMatchObject({state:"VERIFIED",kind:"DATABASE",sha256:"a".repeat(64)});
+    expect(await target.backupArtifact.findUniqueOrThrow({where:{id:backupLedger.media}}))
+      .toMatchObject({state:"VERIFIED",kind:"MEDIA_MANIFEST",databaseArtifactId:backupLedger.database});
+    expect(await target.rentalAgreement.findUniqueOrThrow({where:{id:"w26-agreement-"+tag}}))
+      .toMatchObject({customerId:rdfFixture.customer});
+    expect(await target.invoice.findUniqueOrThrow({where:{id:rdfFixture.invoice}}))
+      .toMatchObject({customerId:rdfFixture.customer});
     expect(await target.customer.findUniqueOrThrow({where:{id:rdfFixture.customer}})).toMatchObject({preferredLanguage:"es"});
     expect(await target.signatureRecord.findUniqueOrThrow({where:{id:"w26-signature-"+tag}})).toMatchObject({shownLanguage:"en",interfaceLanguage:"es",translationCopyDigest:"a".repeat(64),informationalTerms:[{english:"Recorded English",spanish:"Español informativo"}]});
     expect(await target.customerLanguageReviewEvent.count({where:{language:"w26-restore-"+tag}})).toBe(1);

@@ -148,15 +148,21 @@ export async function exportDatabaseBackup(input: { runId?: string } = {}): Prom
   } catch {
     return stageFailure("BACKUP_UPLOAD", "upload");
   }
-  const artifact = await prisma.backupArtifact.create({
-    data: {
-      kind: "DATABASE", state: "UPLOADED_UNVERIFIED", pathname: filename,
-      formatVersion: snapshot.payload.formatVersion,
-      runId: input.runId, migrationId: snapshot.payload.migrationId,
-      appRevision: snapshot.payload.appVersion, sizeBytes: bytes.length,
-      sha256: digest, tableCounts: snapshot.tableCounts,
-    },
-  });
+  let artifact: { id: string };
+  try {
+    artifact = await prisma.backupArtifact.create({
+      data: {
+        kind: "DATABASE", state: "UPLOADED_UNVERIFIED", pathname: filename,
+        formatVersion: snapshot.payload.formatVersion,
+        runId: input.runId, migrationId: snapshot.payload.migrationId,
+        appRevision: snapshot.payload.appVersion, sizeBytes: bytes.length,
+        sha256: digest, tableCounts: snapshot.tableCounts,
+      },
+    });
+  } catch {
+    // The blob uploaded, but without a durable ledger it is not a verified backup.
+    return stageFailure("BACKUP_UPLOAD", "upload");
+  }
 
   let verified = false;
   try {
@@ -171,10 +177,15 @@ export async function exportDatabaseBackup(input: { runId?: string } = {}): Prom
     });
     return { ...stageFailure("BACKUP_READBACK", "readback"), artifactId: artifact.id, bytes: bytes.length, captureMs };
   }
-  await prisma.backupArtifact.update({
-    where: { id: artifact.id },
-    data: { state: "VERIFIED", verifiedAt: new Date() },
-  });
+  try {
+    await prisma.backupArtifact.update({
+      where: { id: artifact.id },
+      data: { state: "VERIFIED", verifiedAt: new Date() },
+    });
+  } catch {
+    return { ...stageFailure("BACKUP_READBACK", "readback"), artifactId: artifact.id,
+      bytes: bytes.length, captureMs };
+  }
 
   let prunedCount = 0, pruneFailed = 0;
   try {

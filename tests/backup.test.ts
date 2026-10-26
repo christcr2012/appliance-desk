@@ -166,6 +166,53 @@ describe("exportDatabaseBackup", () => {
     expect(JSON.stringify(result)).not.toContain("connection reset");
     expect(putMock).not.toHaveBeenCalled();
   });
+  it("refuses to start when private storage isn't configured", async () => {
+    vi.stubEnv("BACKUP_BLOB_STORE_ID", undefined);
+    vi.stubEnv("BACKUP_BLOB_READ_WRITE_TOKEN", undefined);
+    vi.stubEnv("PRIVATE_PHOTO_BLOB_STORE_ID", undefined);
+    vi.stubEnv("PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN", undefined);
+    const { exportDatabaseBackup } = await import("@/domains/backup");
+    const result = await exportDatabaseBackup();
+    expect(result).toMatchObject({ok:false,failureCode:"CONFIG_MISSING",failureStage:"config"});
+    expect(putMock).not.toHaveBeenCalled();
+  });
+
+  it("reports an upload failure, without pretending to have a backup", async () => {
+    putMock.mockRejectedValueOnce(new Error("synthetic provider rejection"));
+    const { exportDatabaseBackup } = await import("@/domains/backup");
+    const result = await exportDatabaseBackup();
+    expect(result).toMatchObject({ok:false,failureCode:"BACKUP_UPLOAD",failureStage:"upload"});
+    expect(JSON.stringify(result)).not.toContain("synthetic provider rejection");
+    expect(getMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a mismatched readback hash and records the artifact as failed", async () => {
+    getMock.mockImplementationOnce(async (pathname: string) => ({
+      statusCode:200, blob:{ pathname },stream:new Blob(["corrupted copy"]).stream(),
+    }));
+    const { exportDatabaseBackup } = await import("@/domains/backup");
+    const result = await exportDatabaseBackup();
+    expect(result).toMatchObject({ok:false,failureCode:"BACKUP_READBACK",failureStage:"readback"});
+    expect((prismaMock.backupArtifact! as unknown as Record<string, ReturnType<typeof vi.fn>>).update).toHaveBeenCalledWith(expect.objectContaining({
+      data:{state:"FAILED",failureStage:"READBACK"},
+    }));
+  });
+
+  it("treats failed old-copy cleanup as a successful verified backup plus an issue", async () => {
+    const fake = prismaMock.backupArtifact! as unknown as Record<string, ReturnType<typeof vi.fn>>;
+    fake.findFirst.mockResolvedValue({ id: "protected-copy",kind:"DATABASE",state:"VERIFIED",
+      pathname:"backups/2026-10-25-protected.json",createdAt:new Date() });
+    listMock.mockRejectedValueOnce(new Error("synthetic old-copy cleanup unavailable"));
+    (prismaMock.systemIssue! as unknown as Record<string, ReturnType<typeof vi.fn>>).upsert = vi.fn().mockResolvedValue({});
+    const { exportDatabaseBackup } = await import("@/domains/backup");
+    const result = await exportDatabaseBackup();
+    expect(result).toMatchObject({ok:true,pruneFailed:1});
+    expect(fake.update).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({state:"VERIFIED"})}));
+    expect((prismaMock.systemIssue! as unknown as Record<string, ReturnType<typeof vi.fn>>).upsert).toHaveBeenCalledWith(
+      expect.objectContaining({where:{fingerprint:"backup-prune"}}),
+    );
+  });
+
   it("does not upload or prune when a newly covered table cannot be read", async () => {
     prismaMock.purchaseOrderLineItem!.findMany = vi.fn().mockRejectedValue(new Error("purchase order read failed"));
     const { exportDatabaseBackup } = await import("@/domains/backup");

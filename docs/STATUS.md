@@ -3,8 +3,9 @@
 Separate sandbox worktree `ai/chatgpt/mcp-2-backup-reliability` from main after merged security PR #609.
 The environment workaround is verified: `npm ci`, schema validation, typecheck and 20 focused synthetic tests passed.
 Backup ledger, private destination and media pairing are **partially implemented locally, not published**.
-Full MCP-2 acceptance still needs owner-only retry and UI, disposable Postgres/restore tests, exhaustive failures, CI and review.
-Next: resume the named sandbox worktree without overwriting other work; finish the entire card before publishing.
+Owner-only serialized retry/UI, restore parent ordering, staged failures and real-DB/browser tests are coded.
+26 focused synthetic unit tests passed; real-Postgres/browser CI and review are pending.
+Next: publish PR, correct all CI/review failures, and merge only with exact-head green.
 
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 

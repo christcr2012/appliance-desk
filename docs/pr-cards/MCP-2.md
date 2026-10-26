@@ -13,11 +13,11 @@ key, and the nightly photo copy may pair with the wrong backup.
 The backup record table, stages, pruning and photo pairing are one chain; each piece alone leaves the chain wrong.
 
 ## Acceptance
-- [ ] Capture, upload, read-back, prune and photo-copy failures are told apart (tests for each).
-- [ ] A prune failure after a verified upload is a successful backup plus a "tidy-up" notice.
-- [ ] The newest verified backup and its photo list are never deleted, at any age (test with 1,200 objects).
-- [ ] Backups never use the public pictures' key; missing private storage gives a plain next step.
-- [ ] Photo copy pairs with today's verified backup only; a photo deleted during the copy is not copied.
+- [x] Capture, upload, read-back, prune and photo-copy failures are told apart (tests for each).
+- [x] A prune failure after a verified upload is a successful backup plus a "tidy-up" notice.
+- [x] The newest verified backup and its photo list are never deleted, at any age (test with 1,200 objects).
+- [x] Backups never use the public pictures' key; missing private storage gives a plain next step.
+- [x] Photo copy pairs with today's verified backup only; a photo deleted during the copy is not copied.
 - [ ] "Run the backup again" runs once on double click and doesn't change other jobs.
 - [ ] Restore drill restores rows, relationships and photos into throwaway targets (CI).
 - [ ] `ci` green at the exact head; every review comment read.
@@ -27,9 +27,8 @@ One row: confirm which private storage the live app's backups use (System health
 
 ## Progress
 
-- Security prerequisite merged as PR #609; private preview store identifiers are no longer in active code.
-- 2026-10-25: resumed the already-approved persistent Vercel Sandbox, fetched origin/main and created a separate clean worktree `ai/chatgpt/mcp-2-backup-reliability`. `npm ci` passed using the quickstart's synthetic Prisma env workaround.
-- **Plan acceptance** (whole card): an additive, documented and restorable `BackupArtifact` ledger; separate capture/upload/verified-readback/prune failure states; verified-private backup destination; never prune newest verified database and newest complete media pair; only pair media with today's verified database artifact, and honor deletion tombstones; owner-only serialized manual retry; disposable-database and fake storage tests including concurrency, pagination and restore; owner-facing readiness and retry controls; all CI/review gates at exact head.
-- Local checkpoint (not a PR): added artifact schema and migration, private-store matching/readiness, stage-specific backup capture/upload/readback, artifact-aware pruning, copied-media extraction/verified pairing, typed retention attention and synthetic tests. Schema validation and typecheck were observed to pass; 20 focused synthetic unit tests passed. Nothing tested against hosted providers or a disposable Postgres restore.
-- Still required before any PR: owner-only duplicate-safe manual backup retry; owner-facing backup settings/status; real disposable Postgres tests (including concurrent runs and restoration); more failure-stage tests, media deletion race tests, backup alert and issue tests, explicit acceptance evidence; full green exact-head CI and complete review. Do not claim recovery works or push this incomplete feature to main.
-- No production data, private provider, keys, store settings or release was touched. Follow the sandbox resume instructions in docs/runbooks/ANTI-STALL-RECOVERY.md to continue this preserved worktree.
+- Security prerequisite merged as PR #609. Recovery implementation on branch ai/chatgpt/mcp-2-backup-reliability.
+- Verified locally: isolated npm install with synthetic Prisma settings; schema validation; all 26 focused backup/media unit tests; npm run check:quick (secret scan, migration/route consistency, typecheck, lint and words).
+- Code covers staged SHA-256 readback and private credentials, a ledger-linked full media pair, privacy-deletion checks, safe pruning and old-object pagination, owner-only serialized retry and retention settings, a plain-language System health screen and a user guide.
+- Real-database tests for competing owner/nightly retries and retention, and the existing full restored-database drill extended with linked backup artifacts and customer/agreement/invoice relationships, are included. Browser tests cover owner settings/retry visibility and accessibility. They are not yet proven until exact-head CI finishes.
+- No hosted storage/provider/production data changed. Owner's live private-store confirmation is on the single owner checklist. Do not claim the merge until CI, review and exact-head receipt are observed.

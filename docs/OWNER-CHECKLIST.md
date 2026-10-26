@@ -39,6 +39,13 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   codes or the app; staff may use any method). It's a setting you can change later.
 - [x] **Decision: when should accounts and sign-in (ACC-1…ACC-5) be built?** Answered 2026-10-23 in chat: **right after
   O-2B** (the admin-limits piece now in review).
+- [ ] **Confirm your private backup storage (MCP-2).** When the recovery update reaches the testing app,
+  open Desk → System health → Backup and recovery; confirm it says **backup store** or **private photo store**
+  (never public pictures), and the private photo check says Connected. If it says not set up, ask whoever manages
+  Vercel to connect a private store using only the setting names the screen needs — do not paste any storage
+  credential in chat or source control. Ready when: the checked nightly release has installed MCP-2.
+  You'll know it worked when a daily backup has a checked date and the last complete recovery set shows a date;
+  do not tick this for a local test or until that hosted evidence appears.
 - [ ] **Look at the rollback button once (do not use it).** Steps: Vercel → find Instant Rollback and the previous production
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 

@@ -334,6 +334,49 @@ describe("Batch F private-media recovery", () => {
     });
   });
 
+  it("restores a missing photo from a verified fake recovery copy and checks its hash", async () => {
+    const path = "jobs/test-restored/photo.jpg";
+    const sourceUrl = seed(PRIVATE_TOKEN, path, "synthetic-image-original");
+    state.photos.push({id:"photo-to-restore",url:sourceUrl});
+    const copy = await runMediaInventoryAndCopy({
+      databaseArtifactId:"backups/2026-10-06-restore.json",
+      databaseBackupUrl:`https://${BACKUP_HOST}/backups/2026-10-06-restore.json`,
+      now:new Date("2026-10-06T09:00:00.000Z"),
+    });
+    const recovery = copy.manifest.entries[0]!.recoveryPath!;
+    const expected = createHash("sha256").update("synthetic-image-original").digest("hex");
+    storeFor(PRIVATE_TOKEN).delete(path);
+    expect(storeFor(PRIVATE_TOKEN).has(path)).toBe(false);
+    expect(await restoreMediaFromManifest(copy.manifestUrl)).toEqual({
+      restored:1,alreadyPresent:0,skippedTombstoned:0,
+    });
+    expect(createHash("sha256").update(storeFor(PRIVATE_TOKEN).get(path)!.bytes).digest("hex")).toBe(expected);
+    expect(storeFor(PRIVATE_TOKEN).has(recovery)).toBe(true);
+  });
+
+  it("never copies a photo that receives a privacy deletion tombstone during inventory", async () => {
+    const path="jobs/delete-during-copy/photo.jpg";
+    const sourceUrl=seed(PRIVATE_TOKEN,path,"to-be-erased");
+    state.photos.push({id:"photo-deleting",url:sourceUrl});
+    const prior=blob.get.getMockImplementation()!;
+    let tombstoned=false;
+    blob.get.mockImplementation(async (...args: unknown[])=>{
+      const result=await prior(...args);
+      if(!tombstoned && typeof args[0]==="string" && args[0]===sourceUrl){
+        tombstoned=true;
+        seed(PRIVATE_TOKEN,privacyDeletionTombstonePath(path),"{}","application/json");
+      }
+      return result;
+    });
+    const manifest=await runMediaInventoryAndCopy({
+      databaseArtifactId:"backups/2026-10-06-deleted.json",
+      databaseBackupUrl:`https://${BACKUP_HOST}/backups/2026-10-06-deleted.json`,
+      now:new Date("2026-10-06T09:00:00.000Z"),
+    });
+    expect(manifest.manifest.entries[0]).toMatchObject({status:"TOMBSTONED",recoveryPath:null});
+    expect(blob.copy).not.toHaveBeenCalled();
+  });
+
   it("writes a tombstone before deleting primary and recovery bytes", async () => {
     const sourcePath = "maintenance-requests/request-delete/private.jpg";
     const sourceUrl = seed(PRIVATE_TOKEN, sourcePath, "private");
