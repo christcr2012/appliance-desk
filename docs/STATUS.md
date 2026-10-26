@@ -44,15 +44,20 @@ positives, missing from the remote tree's stale allowlist (restored by the corre
 allowlist entry itself being flagged for its own commit SHA — allowlisted with a fingerprint entry, verified clean
 by scanning the entry text. Next: push the corrected tree, then the checks need starting again (the GitHub MCP's
 `github_actions_dispatch` now starts them — no browser sign-in needed). Update, same day: the corrected run
-(#2617's replacement, head 1005486e, started with the MCP) is green everywhere except browser-a and browser-d.
-Unit shards, typecheck, secret scan, browser-b and browser-c all pass. The two browser-a failures are both the
-ACC-6 my-account tests: the forget-confirm text uses a curly apostrophe the test didn't match, and — a real bug —
-the two-factor login page was prerendered at build time, so it kept offering "Remember this device" after the
-owner turned remembering off. Fixed (page is now force-dynamic; test matches without the apostrophe) and pushed;
-the remaining browser-d failure is the offline-fallback test, which also failed on the FEE-1 branch and passed on
-this branch before — it looks like a timing flake, not an ACC-6 regression, so it is being watched on the re-run
-rather than "fixed". Next: re-run the checks, then read reviews and merge. Next card: VAULT-1, once CMP-1
-(lane 5) is merged.
+(head 1005486e, started with the MCP) is green everywhere except browser-a and browser-d. Unit shards, typecheck,
+secret scan, browser-b and browser-c all pass. The two browser-a failures are both the ACC-6 my-account tests: the
+forget-confirm text uses a curly apostrophe the test didn't match, and — a real bug — the two-factor login page
+was prerendered at build time, so it kept offering "Remember this device" after the owner turned remembering off.
+Fixed (page is now force-dynamic; test matches without the apostrophe) and pushed; the remaining browser-d failure
+is the offline-fallback test, which also failed on the FEE-1 branch and passed on this branch before — it looks
+like a timing flake, not an ACC-6 regression, so it is being watched on the re-run rather than "fixed". Update,
+same day: the re-run (head 2aaea9e7, MCP dispatch) passed browser-a and browser-d — both my-account fixes work and
+the offline test passed — but browser-c failed with no test failing: all 106 tests passed and the shard ran 3.1m
+against the 180s phase budget. That is a shard-balance problem, not a code problem, so the fix is the repo's
+established rebalance: staff-security (~18 test-seconds) and fleet-report (~14) moved from browser-c to browser-b,
+the lightest group (1.9m), with no test omitted and the budget unchanged. Pushed through the custom GitHub MCP
+(the original connector is disconnected; the MCP's API push starts the checks on its own). Next: read the checks,
+then reviews, then merge. Next card: VAULT-1, once CMP-1 (lane 5) is merged.
 
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 
