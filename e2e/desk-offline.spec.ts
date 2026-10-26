@@ -24,8 +24,12 @@ test("offline desk uses only the public fallback and restores online page", asyn
   await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible();
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(axe.violations).toEqual([]);
+  // Check the recovery link while still offline: once the connection returns the desk may reload the page by itself,
+  // and the link could be gone before this check ran (a timing race that failed in CI).
+  const tryAgain = page.getByRole("link", { name: "Try again" });
+  await expect(tryAgain).toHaveAttribute("href", "/desk/today");
+  await tryAgain.click();
   await context.setOffline(false);
-  await expect(page.getByRole("link", { name: "Try again" })).toHaveAttribute("href", "/desk/today");
-  await page.getByRole("link", { name: "Try again" }).click();
+  await page.goto("/desk/today");
   await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
 });
