@@ -51,7 +51,10 @@ describe("R11 purchase date is a strict Colorado business date", () => {
     });
 
     it("records each appliance after a saved purchase, not before it", async()=>{
-      m.record.mockResolvedValue({purchaseId:"p1",purchasedOn:new Date(),appliances:[{id:"ap-1"},{id:"ap-2"}]});
+      m.record.mockResolvedValue({purchaseId:"p1",purchasedOn:new Date(),appliances:[
+        {id:"ap-1",step:{headline:"Tax checked",detail:"Recorded",done:true}},
+        {id:"ap-2",step:{headline:"Tax checked",detail:"Recorded",done:true}},
+      ]});
       const result=await recordPurchaseAction({...base,purchasedOn:"2026-07-15"});
       expect(result.status).toBe("success");
       expect(m.post.mock.calls).toEqual([

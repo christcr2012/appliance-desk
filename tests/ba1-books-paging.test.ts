@@ -36,7 +36,7 @@ vi.mock("@/lib/prisma",()=>{
    return mocks.due.slice(0,take).map(applianceId=>({applianceId}));
   })},
   booksProblem:{upsert:vi.fn(),findMany:vi.fn().mockResolvedValue([]),update:vi.fn()},
-  $transaction:vi.fn((fn:(tx:typeof tx)=>Promise<unknown>)=>fn(tx)),
+  $transaction:vi.fn((fn:(database:unknown)=>Promise<unknown>)=>fn(tx)),
  }};
 });
 import { runBooksAutopilot } from "@/domains/books/autopilot";
