@@ -1345,3 +1345,8 @@ null for background operations; automatic audit records explicitly say `by: auto
 `BusinessSettings` records when the nightly book catch-up last ran and how many issues remain;
 `BooksProblem` tracks durable unresolved source/appliance problems by their unique subject key.
 Existing financial entries remain append-only and closed months stay immutable.
+
+
+### BA-3 review evidence (implementation branch)
+
+Additive migration `20261026070000_books_month_review` retains review reasons and accountant-send evidence per month, owner review reminder day (default 15), optional accountant destination, and expense no-receipt explanations. It never rewrites the original ledger or opens a provider connection. Accountants receive a report only when the OWNER explicitly selects Send.
