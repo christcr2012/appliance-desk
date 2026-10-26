@@ -1,3 +1,7 @@
+## October 26 — BA-3 second Codex review: date-sensitive events and read-only previews
+
+The new Codex pass surfaced three more material review issues. Source records now track missing refund, invoice void/write-off, expense void and scrap void entries by their actual event month, with pure regression tests plus a disposable-Postgres January-invoice/February-void scenario. Stripe clearing evaluation from the review page does not update health issues; nightly reconciliation retains issue persistence. Previous-month comparison uses true calendar bounds, including mid-month Books opening. All changes are on PR #624; exact-head CI and review disposition required before merge. No provider settings or customer data touched.
+
 ## October 26 — BA-3 phone/desktop browser regression fixed at source
 
 The exact-head CI run passed secret scanning, repo checks, all 3 unit/real-Postgres shards and 3 of 4 browser shards. New BA-3 month-review browser tests uncovered the screen's legacy double-escaped month-display regex (both responsive widths showed the numeric month). Replaced with explicit numeric month/year validation and Colorado-independent UTC formatting; all browser assertions remain in place. Final head needs fresh CI and review before merge. No production/provider actions.

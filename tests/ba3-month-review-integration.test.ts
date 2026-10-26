@@ -3,7 +3,7 @@ import { beforeAll,afterAll,describe,expect,it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
 import { openingBalance } from "@/domains/books/posting-rules";
-import { writeJournal, postForSource } from "@/domains/books/post";
+import { writeJournal, postForSource, postPending } from "@/domains/books/post";
 import { monthReview } from "@/domains/books/month-review";
 import { buildMonthPacket } from "@/domains/books/accountant-packet";
 import { closeAccountingMonthWithReview, type BooksActor } from "@/domains/books/management";
@@ -126,6 +126,30 @@ describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated P
     .not.toMatchObject({status:"CLOSED"});
   }finally{
    await prisma.user.update({where:{id:owner.id},data:{role:"OWNER"}});
+  }
+ });
+ it("reports a February invoice void even when the invoice began and was paid in January",async()=>{
+  const id="ba3-cross-month-void-"+tag;
+  const customer=await prisma.customer.findFirstOrThrow({select:{id:true}});
+  await prisma.invoice.create({data:{
+   id,customerId:customer.id,status:"OPEN",createdAt:dates("2020-01-12"),
+   amountDueCents:900,
+   lineItems:{create:{kind:"RENTAL",description:"Synthetic prior-month invoice",amountCents:900}},
+  }});
+  try{
+   await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+   await prisma.invoice.update({where:{id},data:{
+    status:"VOID",cancelledAt:dates("2020-02-09"),
+   }});
+   const january=await postPending({limit:500,inspectMonth:"2020-01"});
+   expect(january.problems.filter(x=>x.sourceId===id)).toHaveLength(0);
+   const february=await postPending({limit:500,inspectMonth:"2020-02"});
+   expect(february.problems.some(x=>x.sourceId===id&&x.sourceType==="INVOICE")).toBe(true);
+  }finally{
+   await prisma.journalLine.deleteMany({where:{entry:{sourceType:"INVOICE",sourceId:id}}});
+   await prisma.journalEntry.deleteMany({where:{sourceType:"INVOICE",sourceId:id}});
+   await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+   await prisma.invoice.deleteMany({where:{id}});
   }
  });
  it("rejects admin locking and an expense override without a stated reason",async()=>{
