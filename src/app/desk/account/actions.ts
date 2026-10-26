@@ -146,6 +146,9 @@ export async function turnOffTwoStepAction(input: { currentPassword: string }): 
   }
   // The library starts a fresh session we cannot hand to the browser, so end every session and sign in again.
   await prisma.session.deleteMany({ where: { userId: session.user.id } });
+  // ACC-6: turning two-step off forgets remembered devices, so the next sign-in asks for a code again.
+  const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
+  await forgetTrustedDevices(session.user.id);
   await recordAccountEvent(session.user.id, "account.two_step_turned_off");
   // The person is sent to sign in again, so a failed notice cannot be shown on this page; noticeWarning records it.
   await noticeWarning(session.user.id, "two_step_off");
@@ -160,5 +163,19 @@ export async function signOutOtherDevicesAction(): Promise<AccountActionResult> 
     return ok(count === 0 ? "No other devices were signed in." : `Signed out ${count} other device${count === 1 ? "" : "s"}.`);
   } catch {
     return fail("Other devices could not be signed out.");
+  }
+}
+
+export async function forgetRememberedDevicesAction(): Promise<AccountActionResult> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  try {
+    const { forgetTrustedDevices } = await import("@/domains/security/trusted-devices");
+    // Re-check the actor inside the forget's transaction: if the person was deactivated after the role
+    // check above but before this runs, the forget refuses instead of deleting their trust rows.
+    await forgetTrustedDevices(session.user.id, { assertActor: true });
+    revalidatePath("/desk/account");
+    return ok("Remembered devices forgotten. You will be asked for a code next time on every device.");
+  } catch {
+    return fail("Remembered devices could not be forgotten.");
   }
 }

@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+// Static import on purpose: every test used to import the customers domain inside the test, so the first
+// test paid the whole import cost inside its 5s timeout and timed out under CI load (5.09s). The mocked
+// prisma below still applies — vitest hoists vi.mock above this import.
+import { addServiceAddress } from "@/domains/customers";
 
 // Adding a property to a customer who already exists (2026-09-28) — the
 // "still open" gap from docs/BUSINESS-RULES.md's "Property managers /
@@ -34,8 +38,6 @@ describe("addServiceAddress — adding a property to an existing customer", () =
   });
 
   it("creates a ServiceAddress under the given customer", async () => {
-    const { addServiceAddress } = await import("@/domains/customers");
-
     await addServiceAddress("cust-1", "owner-1", {
       line1: "2 Main St",
       city: "Greeley",
@@ -53,16 +55,12 @@ describe("addServiceAddress — adding a property to an existing customer", () =
   });
 
   it("defaults state to CO when not given, same as customer creation", async () => {
-    const { addServiceAddress } = await import("@/domains/customers");
-
     await addServiceAddress("cust-1", "owner-1", { line1: "9 Elm St", city: "Fort Collins", zip: "80521" });
 
     expect(serviceAddressCreate.mock.calls[0][0].data.state).toBe("CO");
   });
 
   it("logs an audit entry distinct from customer.create", async () => {
-    const { addServiceAddress } = await import("@/domains/customers");
-
     await addServiceAddress("cust-1", "owner-1", { line1: "2 Main St", city: "Greeley", zip: "80631" });
 
     expect(auditLogCreate).toHaveBeenCalledTimes(1);
@@ -74,8 +72,6 @@ describe("addServiceAddress — adding a property to an existing customer", () =
 
   it("refuses to add an address to a customer that doesn't exist", async () => {
     customerFindUnique.mockResolvedValue(null);
-    const { addServiceAddress } = await import("@/domains/customers");
-
     await expect(
       addServiceAddress("missing-cust", "owner-1", { line1: "2 Main St", city: "Greeley", zip: "80631" }),
     ).rejects.toThrow(/couldn't find that customer/i);
