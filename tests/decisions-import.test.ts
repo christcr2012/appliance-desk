@@ -48,6 +48,11 @@ const m = vi.hoisted(() => {
       count: vi.fn(async () => 1),
       create: vi.fn(async () => (log.push("write:version"), {})),
     },
+    // TFA-1: how long records are kept is a dated rule, read when the context loads.
+    legalRuleVersion: {
+      findMany: vi.fn(async () => [{ id: "rule-version-1", ruleKey: "records.keep_years", value: 7,
+        effectiveFrom: new Date("2026-01-01"), origin: "RESEARCHED", undoneAt: null }]),
+    },
     taxJurisdiction: { findFirst: vi.fn(async () => null) },
     taxFilingAccount: { findMany: vi.fn(async () => []) },
     decisionRecord: {
