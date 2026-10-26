@@ -1,12 +1,14 @@
-## October 25 (night) — AR-0b: Today, Money › Bills and Customer record rebuilt with the kit (in review)
+## October 25 (night) — AR-0b: Today, Money › Bills and Customer record rebuilt with the kit (merged PR #606)
 
 Branch `ai/claude/ar-0b-screens`. Coded: the shared bill rules (`bill-status.ts`, one past-due rule now used by Today,
 Bills and the revenue dashboard), the Bills list reads, Today's weekly health, Call/Email on To do items, the inbox
 grouping, the customer-scoped next steps and summary, and the three screens with loading/error screens. Same server
 actions and role checks as before (staff: no money on Today, refused on Bills, operational customer view). Proof: unit
 tests here; database and browser tests run in CI only. Your look-over row is on the checklist. Next: AR-1.
+**Open (unexplained):** one CI run (a3ba20f2) found Bills scrolling sideways at 360 px; the next run passed. The
+phone-width scan now names the element that overflows, so the next occurrence identifies the cause — fix it then.
 
-## October 25 (night) — MCP-1: System health that tells the truth (in review)
+## October 25 (night) — MCP-1: System health that tells the truth (merged PR #602)
 
 Branch `ai/claude/mcp-1-system-health`. One state list (8 states, each with a label, colour and meaning on the page);
 Late comes from each job's real `vercel.json` time (UTC, shown in Colorado time) plus the owner's grace setting (2 hours);
