@@ -4,6 +4,8 @@ PR #618 (leads pipeline engine) at `ac70fedc`. The first check run was red in 4 
 
 Update 2026-10-26 ~07:20 MDT: Chris started the run by hand (40328842401) and it failed in all 11 jobs — but that run's tree was missing the books work's files the leads branch never touched (the upload only sent files differing from current main, while the branch was built on older main). That explains every failure: typecheck, the seed, the schema check and the secret scan. The remote tree is repaired (all 86 files changed since the branch base, verified file-for-file) at head `ac70fedc`; it needs one more manual start on the new head.
 
+Update 2026-10-26 ~07:45 MDT: trigger hunt — the connector has no start-checks action, the CLI has no raw-API command, and there is no git login in this shell. Tested: snapshot push, close/reopen, draft PR #619 and non-draft PR #620 on the same head — none started a run (the very first run appeared 2s after PR #618 was created and can't be reproduced). Only a manual start works. Both throwaway PRs closed again. Still needs one manual start on `ac7e23eb`.
+
 ## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
 
 CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
