@@ -316,6 +316,86 @@ export async function getBookAssets(userId:string) {
  });
 }
 
+
+/** A failed accounting step must not stop Equipment from retiring a machine. */
+export async function stageEquipmentBookRetirementInTx(
+ tx:Tx,userId:string,applianceId:string,onDate:Date,intent:string="DECIDE_LATER"
+):Promise<boolean>{
+ await tx.$executeRaw`SAVEPOINT book_retire`;
+ try{
+  const existing=await tx.bookAsset.findUnique({where:{applianceId}});
+  if(existing&&!existing.retiredOn){
+   const needed=[asMonth(onDate),lastCompletedMonth()].sort()[0]!;
+   await postBookDepreciationInTx(tx,{kind:"equipment",userId},applianceId,needed,{maxMonths:360});
+   const current=await tx.bookAsset.findUniqueOrThrow({where:{applianceId}});
+   await retireBookAssetInTx(tx,{kind:"equipment",userId},applianceId,current.version,intent,businessDateKey(onDate));
+  }
+  await tx.booksProblem.updateMany({where:{kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",
+   subjectType:"APPLIANCE",subjectId:applianceId,resolvedAt:null},data:{resolvedAt:onDate}});
+  await tx.$executeRaw`RELEASE SAVEPOINT book_retire`;
+  return true;
+ }catch{
+  await tx.$executeRaw`ROLLBACK TO SAVEPOINT book_retire`;
+  await tx.$executeRaw`RELEASE SAVEPOINT book_retire`;
+  await tx.booksProblem.upsert({where:{kind_subjectType_subjectId:{
+   kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:applianceId,
+  }},create:{kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:applianceId,
+   message:"The appliance is retired, but its book value needs review."},
+   update:{message:"The appliance is retired, but its book value needs review.",lastSeenAt:onDate,resolvedAt:null}});
+  return false;
+ }
+}
+
+/** Non-sale disposal removes value with one balanced, uniquely keyed journal. */
+export async function writeOffRetiredBookAssetInTx(
+ tx:Tx,writer:BooksWriter,applianceId:string,onDate:Date,reason:string
+):Promise<void>{
+ await assertBooksWriter(tx,writer,["OWNER","ADMIN"]);
+ const existing=await tx.bookAsset.findUnique({where:{applianceId}});
+ if(!existing)return;
+ const locked=await lockAsset(tx,applianceId);
+ if(!locked.retiredOn)throw new BookAssetInputError("Book retirement must be staged before final disposal.");
+ if(locked.disposedOn)return;
+ const carried=locked.retiredValueCents??0,cycle=locked.disposalCycle+1;
+ if(!Number.isSafeInteger(carried)||carried<0)throw new BookAssetInputError("Book carrying value requires review.");
+ if(carried>0){
+  const plan=balancedPlan(onDate,`Retired appliance ${reason}: book value removed`,[
+   {role:"DISPOSAL_LOSS",debitCents:carried,creditCents:0},
+   {role:"RETIRED_PENDING_DISPOSITION",debitCents:0,creditCents:carried},
+  ]);
+  if(!plan||!await writeJournal(tx,"APPLIANCE",applianceId,"DISPOSED:"+cycle,plan,{applianceId}))
+   throw new BookAssetInputError("Appliance disposal journal already recorded; review before retry.");
+ }
+ await tx.bookAsset.update({where:{applianceId},data:{disposedOn:onDate,disposalCycle:cycle,version:{increment:1}}});
+ const audit=booksAuditActor(writer);
+ await tx.auditLog.create({data:{userId:audit.userId,action:"books.asset.dispose",entityType:"BookAsset",
+  entityId:applianceId,newValue:{cycle,reason,carriedCents:carried,by:audit.by}}});
+}
+
+/** Reopening is a new entry, never an edit or deletion of the original journal. */
+export async function reverseBookAssetNonSaleDisposalInTx(
+ tx:Tx,writer:BooksWriter,applianceId:string,onDate:Date
+):Promise<void>{
+ await assertBooksWriter(tx,writer,["OWNER","ADMIN"]);
+ const existing=await tx.bookAsset.findUnique({where:{applianceId}});
+ if(!existing?.disposedOn)return;
+ const locked=await lockAsset(tx,applianceId);
+ if(locked.disposalCycle<1)throw new BookAssetInputError("This disposal requires review.");
+ const carried=locked.retiredValueCents??0;
+ if(carried>0){
+  const plan=balancedPlan(onDate,"Retired appliance plan reopened: book value restored",[
+   {role:"RETIRED_PENDING_DISPOSITION",debitCents:carried,creditCents:0},
+   {role:"DISPOSAL_LOSS",debitCents:0,creditCents:carried},
+  ]);
+  if(!plan||!await writeJournal(tx,"APPLIANCE",applianceId,"DISPOSAL_REVERSED:"+locked.disposalCycle,plan,{applianceId}))
+   throw new BookAssetInputError("Disposal reversal already recorded; review before retry.");
+ }
+ await tx.bookAsset.update({where:{applianceId},data:{disposedOn:null,version:{increment:1}}});
+ const audit=booksAuditActor(writer);
+ await tx.auditLog.create({data:{userId:audit.userId,action:"books.asset.disposal.reversed",entityType:"BookAsset",
+  entityId:applianceId,newValue:{cycle:locked.disposalCycle,by:audit.by}}});
+}
+
 /**
  * M-2C. A retired appliance is sold: its remaining book value leaves the books in ONE balanced entry (book value of
  * appliances sold, debited; the pending-disposition asset, credited). The sale price is income on the sale invoice
