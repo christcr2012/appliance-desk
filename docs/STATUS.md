@@ -1,3 +1,11 @@
+## October 25 — BA-1 books autopilot in progress (REST branch, not merged)
+
+Branch `ai/chatgpt/ba-1`: schema, automatic nightly posting and appliance depreciation, books To do issues,
+Equipment retirement/disposal reconciliation and post-commit manual payment/write-off posting are coded with
+initial tests. These changes have **not** passed CI or been merged. Pending: confirm compile and disposable-DB
+tests in Actions, finish immediate hooks and remaining acceptance cases, review all findings; then PR/merge
+only when exact-head `ci` is green. No production settings, customer data or external providers touched.
+
 ## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
 
 Branch `ai/chatgpt/ar-11-pwa-shell`: separate desk install manifest; private-data-safe offline worker,
