@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { recordSystemIssue } from "@/domains/system-issues";
 import { businessDateFromKey } from "@/lib/business-date";
 import { writeJournal, postPending } from "@/domains/books/post";
-import { openingBalance, receiptReceived } from "@/domains/books/posting-rules";
+import { openingBalance, receiptReceived, balancedPlan } from "@/domains/books/posting-rules";
 import {
   syncStripeBalanceTransactions, checkStripeClearing,
   type StripeBooksClient, StripeBooksEvidenceError,
@@ -118,6 +118,16 @@ describe("K-3 provider evidence to Stripe clearing", () => {
   it("uses one cutoff; later receipts do not fake mismatches, real cent gaps are reviewable", async () => {
     // Existing opening is 500 cents, no older Stripe transaction yet.
     expect((await checkStripeClearing(today)).state).toBe("MATCH");
+    // A BA-2 owner correction changes the clearing account AND the attested
+    // opening amount, not the provider's transaction history.
+    const revised = balancedPlan(start, "Corrected opening Stripe balance", [
+      {role:"STRIPE_CLEARING",debitCents:125,creditCents:0},
+      {role:"OWNER_CONTRIBUTIONS",debitCents:0,creditCents:125},
+    ])!;
+    await prisma.$transaction(tx=>writeJournal(tx,"OPENING",startDate,"OPENING_CORRECTED_1",revised));
+    const corrected = await checkStripeClearing(today);
+    expect(corrected.state).toBe("MATCH");
+    if(corrected.state==="MATCH")expect(corrected.differenceCents).toBe(0);
     const gap = transaction("gap", 1, 0);
     await syncStripeBalanceTransactions(fake([[gap]]).client);
     const result = await checkStripeClearing(today);
