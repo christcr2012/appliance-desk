@@ -12,12 +12,11 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 
 ## A. Quick things only you can do (minutes each)
 
-- [ ] **Start the automatic checks on the leads change (PR #618).** Steps: open
-  github.com/christcr2012/appliance-desk/actions/workflows/ci.yml → "Run workflow" → branch
-  `ai/marley/ld-1` → Run workflow. Ready when: now (the fix is already uploaded). You'll know it worked: a new
-  run appears on that page and turns green in about 10 minutes; tell the agent and it will finish the review
-  and merge. Why this is needed: the checks never started on the fixed code by themselves — the way the fix was
-  uploaded doesn't start them — so they need this one manual start.
+- [ ] **Set the compliance encryption key (CMP-1).** Steps: have your developer generate a random 32-byte key
+  (base64) and save it in Vercel as `COMPLIANCE_ENCRYPTION_KEY` (Production and Preview) — never in a chat,
+  email or GitHub. Ready when: before you store a real EIN in Compliance › Business facts. You'll know it
+  worked: the EIN box on Business facts is enabled and saving an EIN shows "ending" plus its last 4 digits.
+  Until then the EIN box stays off on purpose, so a tax ID is never stored unprotected.
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
   Environments → Production → Branch Tracking → choose `live` → Save; also turn automatic Preview deployments off.
   Ready when: now (`live` exists). You'll know it worked: Branch Tracking shows `live`.
