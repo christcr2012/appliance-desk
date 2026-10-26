@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { deliverMessage } from "@/domains/messaging/deliver";
+import { leadContactKeys } from "@/domains/leads/keys";
 import { getPrivatePhotoStore } from "@/lib/photo-storage";
 import { deletePrivatePhotoWithRecovery } from "@/domains/backup/media-deletion";
 import { privateBlobUrl } from "@/domains/feedback/media";
@@ -568,6 +569,7 @@ export async function fulfillPrivacyDeletion(
         contactName: "Deleted customer",
         phone: "deleted",
         email: deletedEmail,
+        ...leadContactKeys({ phone: "deleted", email: deletedEmail }),
         bestTimeToContact: null,
         notes: null,
         addressLine1: null,
