@@ -149,17 +149,30 @@ test("decisions: a renamed picture is refused; import a completed form; layout a
     await expect(page.getByText("Confirmed with no change: 1")).toBeVisible();
     await expect(page.getByText("Skipped (couldn't apply): 1")).toBeVisible();
 
-    // Back from a desktop width to a phone: nothing may stick out sideways (names what does, if anything).
+    // Back from a desktop width to a phone, the way the shared scan does it (light at 360, 1440, dark, 360, two
+    // frames): nothing may stick out sideways. Repeated, and it names what sticks out if anything does.
     await page.goto("/desk/settings/decisions");
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.waitForTimeout(300);
     await page.setViewportSize({ width: 360, height: 900 });
-    await page.waitForTimeout(300);
-    const wide = await page.evaluate(() => [...document.querySelectorAll("body *")]
-      .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
-      .slice(0, 5).map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 80)} right=${Math.round(el.getBoundingClientRect().right)}`));
-    const sideways = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect({ sideways, wide: sideways > 0 ? wide : [] }).toEqual({ sideways: 0, wide: [] });
+    const offenders: string[] = [];
+    for (let round = 0; round < 4; round += 1) {
+      await page.evaluate(() => document.documentElement.classList.remove("dark"));
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+      await page.evaluate(() => document.documentElement.classList.add("dark"));
+      await page.setViewportSize({ width: 360, height: 900 });
+      await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+      const found = await page.evaluate(() => {
+        const sideways = document.documentElement.scrollWidth - window.innerWidth;
+        if (sideways <= 0) return null;
+        const wide = [...document.querySelectorAll("body *")]
+          .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
+          .slice(-6).map((el) => `${el.tagName.toLowerCase()}[${String(el.getAttribute("class") ?? "").slice(0, 70)}] right=${Math.round(el.getBoundingClientRect().right)} pos=${getComputedStyle(el).position}`);
+        return `sideways=${sideways}: ${wide.join(" | ")}`;
+      });
+      if (found) offenders.push(`round ${round}: ${found}`);
+    }
+    await page.evaluate(() => document.documentElement.classList.remove("dark"));
+    expect(offenders).toEqual([]);
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 7. Accessibility, light and dark (the import page is scanned by the generated route scans).
