@@ -1,6 +1,6 @@
-## October 26 — CI maintenance: scoped secret history and rebalanced browser groups (PR pending)
+## October 26 — CI maintenance: scoped secret history and rebalanced browser groups (PR #632)
 
-Chris requested that secret scanning stop examining every unrelated branch's history on each PR and that browser groups be balanced. Branch `ai/chatgpt/ci-scan-shard-balance` scopes Gitleaks to commits added by the PR or main push, retains a full-main-only nightly history scan and the independent full checked-out-file scan, and moves three complete browser specs into the lightest group using main CI run 40414391902. Local commit-range regression tests passed (5 tests); exact-head CI, review and merge are still pending. No security allowlist, tests, CI time budget, provider settings or production data were removed or changed.
+PR #632 changes Gitleaks from all-branch history scanning to new PR/push commits plus the complete main-only nightly history; the full checked-out-file scan remains. Three complete browser specs moved into the previously lightest group, preserving all 85 specs and four runners. The first full CI run (40416591581, head f591596f) passed all 11 jobs: browser a 164.74s, b 142.41s, c 108.31s, d 164.08s against 180s. No automated review appeared and the diff was self-reviewed. The final evidence documentation revision must pass its own exact-head CI before merge; the PR records the current merge state. No security allowlist, test coverage, provider settings or production data changed.
 
 ## October 26 — ACC-6: CI green; Codex findings fixed, exact-head rerun
 
