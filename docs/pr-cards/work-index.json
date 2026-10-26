@@ -4168,7 +4168,7 @@
       "title": "Lead stages, ownership, speed to lead, duplicates and scale (indexes, search, cursor paging)",
       "batch": "LD",
       "dependencies": [],
-      "status": "IN PROGRESS — PR #618 open at d936c3c5; first CI red in 4 jobs, fixes pushed; GitHub never started a run on the fix (snapshot push does not fire the event; close/reopen did not either); local verify green on a private DB (18 files, 95 tests); manual workflow run needed, checklist row added (2026-10-26)",
+      "status": "IN PROGRESS — PR #618 open at ac70fedc; first CI red in 4 jobs, fixes pushed; manual dispatch run 40328842401 failed in all 11 jobs because the remote tree was missing BA-1 files the branch never touched (snapshot manifests were diffed against current main, not the branch base 0516a31); tree repaired by uploading all 86 files changed since 0516a31, verified file-for-file; fresh manual workflow run needed (2026-10-26)",
       "migration": "lead_pipeline",
       "budget": 480,
       "units": [

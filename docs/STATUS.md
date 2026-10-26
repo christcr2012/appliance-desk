@@ -1,6 +1,8 @@
 ## October 26 — LD-1: fix pushed, checks never started — needs one manual start
 
-PR #618 (leads pipeline engine) at `d936c3c5`. The first check run was red in 4 jobs; all four causes are fixed and pushed, and the branch is verified green locally on a private database (18 files, 95 tests). But GitHub never started a new check run on the fix — the upload method doesn't fire the event, and closing/reopening the PR didn't start one either. Needs Chris: one manual start (Actions → CI → Run workflow on `ai/marley/ld-1`; row on the checklist). Once the run is green, review threads get answered and it merges. No production data or settings changed.
+PR #618 (leads pipeline engine) at `ac70fedc`. The first check run was red in 4 jobs; all four causes are fixed and pushed, and the branch is verified green locally on a private database (18 files, 95 tests). But GitHub never started a new check run on the fix — the upload method doesn't fire the event, and closing/reopening the PR didn't start one either. Needs Chris: one manual start (Actions → CI → Run workflow on `ai/marley/ld-1`; row on the checklist). Once the run is green, review threads get answered and it merges. No production data or settings changed.
+
+Update 2026-10-26 ~07:20 MDT: Chris started the run by hand (40328842401) and it failed in all 11 jobs — but that run's tree was missing the books work's files the leads branch never touched (the upload only sent files differing from current main, while the branch was built on older main). That explains every failure: typecheck, the seed, the schema check and the secret scan. The remote tree is repaired (all 86 files changed since the branch base, verified file-for-file) at head `ac70fedc`; it needs one more manual start on the new head.
 
 ## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
 
