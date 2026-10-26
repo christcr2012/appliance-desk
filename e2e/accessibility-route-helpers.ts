@@ -50,8 +50,20 @@ export async function scanAccessibilityRoute(
 
     for (const width of viewports) {
       await page.setViewportSize({ width, height: 900 });
-      // Let the browser finish laying the page out at the new width before measuring.
-      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      // A 1440 → 360 resize can report innerWidth=360 before Chromium has
+      // recalculated Tailwind's desktop sidebar padding (256px), especially
+      // during the second/dark pass under parallel CI load. Wait for the
+      // *actual* breakpoint layout, then keep the exact same overflow/axe
+      // assertions. A genuinely overflowing phone page still fails.
+      await page.waitForFunction(() => {
+        const shell = document.querySelector(".desk-app");
+        if (!shell) return true;
+        const padding = Number.parseFloat(getComputedStyle(shell).paddingLeft);
+        const desktop = window.innerWidth >= 1024;
+        return Number.isFinite(padding) && Math.abs(padding - (desktop ? 256 : 0)) < 1;
+      }, undefined, { timeout: 5000 });
+      await page.evaluate(() => new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
       if (width <= 400) {
         // Older review finding (pr39): wide content must never push the page sideways on a phone. A table or form that
         // is wider than the screen has to scroll inside its own box, not drag the whole page.
