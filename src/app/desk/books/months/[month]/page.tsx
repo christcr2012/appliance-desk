@@ -129,7 +129,15 @@ export default async function BooksMonthPage({params,searchParams}:{params:Promi
 
      </div>
     </form>
-    <p className="text-sm">The recommended reminder day is 15. You can enter 15 and save it at any time.</p>
+    <form action={accountantReviewSettingsAction} className="space-y-2">
+     <input type="hidden" name="month" value={month}/>
+     <input type="hidden" name="accountantEmail" value={model.accountantEmail??""}/>
+     <input type="hidden" name="reminderDay" value="15"/>
+     <button className="min-h-11 rounded border border-border px-4 py-2" type="submit">
+      Restore recommended reminder (day 15)
+     </button>
+    </form>
+    <p className="text-sm">The recommended reminder is day 15 after the previous month ends. Only the owner can change it.</p>
    </section>}
   </>}
  </div>;
