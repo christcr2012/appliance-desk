@@ -42,3 +42,9 @@ fc4ad1efe73a9b499610c531ca28c7501fab248f:tests/books-closing-integration.test.ts
 e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:162
 e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:189
 89630f49bd63734294fc11926f9dc93c5fdb15fa:tests/books-closing-integration.test.ts:generic-api-key:28
+# The LD-1 migration header comment (the leads_pipeline migration names its
+# card in a comment; the words match the generic API-key pattern). It was
+# allowlisted under the original branch's commit by BA-1; the rebuilt
+# ai/vivienne/ld-1 branch re-committed the migration in 3d86add, so the same
+# line needs a fingerprint under that commit too.
+3d86adda6fe28e5128160187509bac6b54d9c43f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
