@@ -68,6 +68,7 @@
       "accessibility.spec.ts",
       "task-assignment.spec.ts",
       "inventory-bulk-feedback.spec.ts",
+      "recalls.spec.ts",
       "session-deactivation.spec.ts",
       "dispatch-calendar-recovery.spec.ts",
       "staff-job-follow-up.spec.ts",

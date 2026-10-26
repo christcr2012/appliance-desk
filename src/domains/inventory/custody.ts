@@ -1,3 +1,4 @@
+import { assertNotRecallHeld } from "@/domains/recalls/guard";
 import type { ApplianceCustodyEpisode, ApplianceStatus, Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -91,6 +92,10 @@ export async function assertStatusChangeKeepsCustody(tx: Prisma.TransactionClien
   if (newStatus !== "RENTED" && newStatus !== "AWAITING_PICKUP" && newStatus !== "AVAILABLE" && newStatus !== "CLEANING" && newStatus !== "RESERVED" && newStatus !== "RETIRED") return;
   // Hold the appliance row first, so a custody write cannot slip in between this check and the status write.
   await tx.$queryRaw`SELECT "id" FROM "Appliance" WHERE "id" = ${applianceId} FOR UPDATE`;
+  // OPS-1: a machine on a recall hold can't become rentable (Available, Reserved) or go out to a customer (Rented).
+  if (newStatus === "AVAILABLE" || newStatus === "RESERVED" || newStatus === "RENTED") {
+    await assertNotRecallHeld(tx, applianceId, newStatus === "AVAILABLE" ? "made available" : newStatus === "RESERVED" ? "reserved" : "rented");
+  }
   const open = await getOpenCustody(tx, applianceId);
   if ((newStatus === "RENTED" || newStatus === "AWAITING_PICKUP") && !open) {
     throw new CustodyConflictError("This appliance has no customer recorded, so it can't be marked as out with a customer. Complete a delivery job for it, or record who has it on this page first.");

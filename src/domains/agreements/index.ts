@@ -1,3 +1,4 @@
+import { assertNotRecallHeld } from "@/domains/recalls/guard";
 import { LATE_FEE_CAP_CENTS, LATE_FEE_MIN_GRACE_DAYS, classifyLateFeeAgreement } from "@/domains/billing/late-fee-rules";
 import { draftRequestId } from "./draft-request";
 import { ensurePickupDraftInTx } from "./pickup-draft";
@@ -386,8 +387,9 @@ export async function addRentalLine(
     });
 
     for (const applianceId of input.applianceIds) {
+      await assertNotRecallHeld(tx, applianceId, "reserved");
       const reserved = await tx.appliance.updateMany({
-        where: { id: applianceId, status: "AVAILABLE" },
+        where: { id: applianceId, status: "AVAILABLE", recallHold: false },
         data: { status: "RESERVED" },
       });
       if (reserved.count !== 1) {

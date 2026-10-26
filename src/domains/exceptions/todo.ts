@@ -13,6 +13,8 @@ const ACTION_LABEL: Record<string, string> = {
   RENTAL_ENDING_SOON: "Decide",
   PICKUP_UNSCHEDULED: "Schedule pickup",
   RETIRED_APPLIANCE_PLAN: "Decide",
+  RECALL_POSSIBLE: "Check recall",
+  SAFETY_INCIDENT: "Decide",
   RETIRED_SALE_TAX_REVIEW: "Open sale",
   APPROVAL_REQUEST: "Approve or decline",
   GOAL_BEHIND: "See goals",

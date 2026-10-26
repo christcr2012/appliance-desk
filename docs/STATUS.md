@@ -1,3 +1,15 @@
+## October 26 — OPS-1: product recalls (PR open, branch `ai/claude/ops-1`)
+
+Each night the app reads the government's public recall list (CPSC, read only) and records **possible** matches against your
+fleet (same maker, and the model number appears in the notice). Nothing is held or sent automatically. On **Equipment › Recalls**
+the owner or an admin presses "It's ours" (machine goes on hold: cannot be rented, reserved, swapped in, sold or listed for
+parts) or "Not ours" (a reason is required). A confirmed recall puts a high-priority To do on the list for each current renter
+with a drafted message; the app never sends it. Extra step beyond the spec: "Fixed" ends a hold after the repair. A
+"Safety incident" button on repairs and visits starts a 24-hour To do to decide whether to report to the government.
+Migration `20261102000000_recalls` (additive). Proof: unit tests plus 11 database tests on a throwaway Postgres, typecheck and lint clean.
+Not done: no real call to the government list was possible from the build machine, so the live answer shape is on the
+checklist; browser test runs only in CI.
+
 ## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
 
 CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.

@@ -210,7 +210,10 @@ export const BACKUP_MODEL_POLICY = {
   // BILL-1: "the bank is confirming a payment" flags. Business state (a bill shows "Being confirmed" and gets no late fee while one is open), restored after bills and agreements.
   BankPaymentInFlight: "bankPaymentInFlight",
   PendingCharge: "pendingCharge",
-
+  // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
+  RecallMatch: "recallMatch",
+  RecallWatchState: "recallWatchState",
+  SafetyIncident: "safetyIncident",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(
