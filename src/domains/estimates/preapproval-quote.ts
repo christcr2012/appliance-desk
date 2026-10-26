@@ -141,7 +141,7 @@ export async function getPreparedEstimateQuoteInTx(
 ): Promise<EstimatePreparedQuote> {
   const estimate = await tx.estimate.findUnique({
     where: { id: estimateId },
-    select: { id: true, status: true, customerId: true, depositCents: true,
+    select: { id: true, status: true, customerId: true, depositCents: true, deliveryZoneSnapshot: true,
       lineItems: { select: {
         id: true, packageId: true, serviceAddressId: true,
         quantity: true, monthlyPriceCents: true, oneTimeFeeCents: true,
@@ -159,7 +159,7 @@ export async function getPreparedEstimateQuoteInTx(
   const agreements = await tx.rentalAgreement.findMany({
     where: { sourceEstimateId: estimateId }, orderBy: { id: "asc" },
     select: { id: true, customerId: true, sourceEstimateId: true, serviceAddressId: true, status: true,
-      depositCents:true,
+      depositCents:true, mandatoryChargeReviewVersions: true,
       lines: { select: { packageId: true, monthlyPriceCents: true } } },
   });
   let agreementIds: string[];
@@ -250,11 +250,35 @@ export async function getPreparedEstimateQuoteInTx(
         totals.advanceCents !== frozen.totals.downPaymentCents ||
         totals.dueAtSigningCents !== frozen.totals.signingAmountCents)
       return rejected(["Calculated and frozen order amounts do not reconcile."]);
+    // ZONE-1: each address's zone, delivery/pickup choice and zone prices are part of the reviewed quote, so any
+    // change in either direction makes it stale (approval then refuses until a replacement is reviewed and sent).
+    const { zoneQuoteIdentity, currentLocations, expectedZoneDeliveryCents, unresolvedDeliveryAddresses,
+      UNRESOLVED_ZONE_MESSAGE } = await import("@/domains/delivery/snapshot");
+    const lineAddresses = estimate.lineItems.map(line => line.serviceAddressId);
+    const deliveryZones = zoneQuoteIdentity(estimate.deliveryZoneSnapshot, lineAddresses);
+    if (deliveryZones) {
+      // The priced order's delivery charge must be exactly the zone price for each address ($0 for pickup).
+      if (unresolvedDeliveryAddresses(estimate.deliveryZoneSnapshot, lineAddresses).length)
+        return rejected([UNRESOLVED_ZONE_MESSAGE]);
+      const { agreementFrozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
+      for (const location of currentLocations(estimate.deliveryZoneSnapshot, lineAddresses)) {
+        const expected = expectedZoneDeliveryCents(location);
+        let actual = 0;
+        for (const agreement of agreements.filter(row => row.serviceAddressId === location.serviceAddressId)) {
+          const one = await agreementFrozenDeliveryCentsInTx(tx, agreement);
+          if (one === null) return rejected(["The delivery charge in the service-fee review can't be read."]);
+          actual += one;
+        }
+        if (expected === null || actual !== expected)
+          return rejected(["The delivery charge in the service-fee review doesn't match this address's delivery zone or pickup choice. Review the service fees again."]);
+      }
+    }
     const quoteFingerprint = createHash("sha256").update(JSON.stringify({
       estimateId: estimate.id, customerId: estimate.customerId,
       orderFingerprint: frozen.orderFingerprint, policyRevision: policy.revision,
       originalEstimateLines: [...estimate.lineItems].sort((a, b) => a.id.localeCompare(b.id)),
       depositCents: estimate.depositCents, rows, totals,
+      ...(deliveryZones ? { deliveryZones } : {}),
     })).digest("hex");
     return {
       status: "READY", reasons: [], quoteFingerprint,

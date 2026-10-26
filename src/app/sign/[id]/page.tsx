@@ -1,3 +1,4 @@
+import { isPickupAddress } from "@/domains/delivery/pickup-guard";
 import { authPageLanguage } from "@/domains/language/auth-page";
 import { portalLabel, portalStatement } from "@/domains/language/portal-copy";
 import { agreementLanguage, agreementLegalTexts } from "@/domains/language/legal";
@@ -154,7 +155,7 @@ export default async function SignPage({
 
       <div className="mt-6">
         <SignForm translationCopyDigest={translationCopyDigest} displayLanguage={language} initialLanguage={preference} signatureRecordId={signature.id}
-          deliveryOptions={readOfferedSlots(agreement.deliveryOffer)}
+          deliveryOptions={isPickupAddress(agreement.deliveryZoneSnapshot, null, null) ? [] : readOfferedSlots(agreement.deliveryOffer)}
           offerVersion={agreement.deliveryOfferVersion}/>
       </div>
     </main>

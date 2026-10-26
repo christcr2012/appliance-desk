@@ -137,6 +137,20 @@ export function expectedZoneDeliveryCents(location: ZoneSnapshotLocation | null 
   return location.zone === "UNKNOWN" || location.zone === "OUTSIDE" ? null : location.priceCents;
 }
 
+/**
+ * What of the zone list is part of a reviewed quote: per current address, its zone, choice and both prices. Included in
+ * the reviewed-quote fingerprint (preapproval-quote.ts), so ANY change — pickup↔delivery, a zone or price settled
+ * later — makes the reviewed quote stale and needs a replacement review. null for estimates with no zone list (older
+ * estimates keep their fingerprints unchanged).
+ */
+export function zoneQuoteIdentity(raw: unknown, addressIds: Iterable<string | null | undefined>) {
+  if (!readZoneSnapshot(raw)) return null;
+  return currentLocations(raw, addressIds)
+    .map((row) => ({ serviceAddressId: row.serviceAddressId, zone: row.zone, choice: row.choice,
+      priceCents: row.priceCents, pickupPriceCents: row.pickupPriceCents }))
+    .sort((a, b) => a.serviceAddressId.localeCompare(b.serviceAddressId));
+}
+
 /** True when every current address is "I'll pick it up" (no delivery window needed). */
 export function isPickupOnly(raw: unknown, addressIds: Iterable<string | null | undefined>): boolean {
   const rows = currentLocations(raw, addressIds);

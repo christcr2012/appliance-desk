@@ -616,17 +616,30 @@ export async function signAgreement(
     // current window, never book an appointment or alter frozen money.
     const { readOfferedSlots, assertAvailableDeliveryOption } =
       await import("@/domains/orders/delivery");
-    const choices=readOfferedSlots(agreement.deliveryOffer);
-    if(choices.length){
-      if(!input.deliverySelection)
-        throw new Error("Select an offered delivery choice before signing.");
-      // ZONE-1: priced by this address's frozen zone (copied from the estimate); a recorded driving-route
-      // exception is checked with its own bands. Older agreements with neither still need the owner's route review.
+    // ZONE-1: the address's frozen zone (copied from the estimate at conversion) decides delivery first.
+    const { readZoneSnapshot, expectedZoneDeliveryCents } = await import("@/domains/delivery/snapshot");
+    const ownZone = readZoneSnapshot({ version: 1, locations: agreement.deliveryZoneSnapshot ? [agreement.deliveryZoneSnapshot] : [] })
+      ?.locations[0] ?? null;
+    if (ownZone) {
+      // Always, windows offered or not: the frozen order's delivery charge is exactly the zone price ($0 pickup).
+      const { agreementFrozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
+      const expected = expectedZoneDeliveryCents(ownZone);
+      const actual = await agreementFrozenDeliveryCentsInTx(tx, agreement);
+      if (expected === null || actual !== expected)
+        throw new Error("The delivery charge in this agreement doesn't match its delivery zone or pickup choice. Ask us for an updated agreement.");
+    }
+    const pickupOnly = ownZone ? ownZone.choice === "CUSTOMER_PICKUP"
+      : agreement.sourceEstimateId
+        ? await (await import("@/domains/delivery/pickup-guard")).isAgreementPickupInTx(tx, agreement.id)
+        : false;
+    const { deliveryWindowStep } = await import("@/domains/delivery/pickup-guard");
+    const step = deliveryWindowStep({ pickup: pickupOnly,
+      offeredCount: readOfferedSlots(agreement.deliveryOffer).length, hasSelection: !!input.deliverySelection });
+    if(step==="CHOOSE"&&input.deliverySelection){ // deliveryWindowStep already refused the other combinations
+      // ZONE-1: priced by this address's frozen zone; a recorded driving-route exception is checked with its own
+      // bands. Older agreements with neither still need the owner's route review.
       const { assertDeliveryFeeMatchesFrozenOrderInTx } =
         await import("@/domains/orders/route-evidence");
-      const { readZoneSnapshot } = await import("@/domains/delivery/snapshot");
-      const ownZone = readZoneSnapshot({ version: 1, locations: agreement.deliveryZoneSnapshot ? [agreement.deliveryZoneSnapshot] : [] })
-        ?.locations[0] ?? null;
       if(!ownZone&&!agreement.deliveryRouteProof)
         throw new Error("Owner road-route fee evidence is required before signing.");
       await assertDeliveryFeeMatchesFrozenOrderInTx(tx,agreement.id,
@@ -635,8 +648,6 @@ export async function signAgreement(
         agreement.deliveryOfferVersion,input.deliverySelection);
       await tx.rentalAgreement.update({where:{id:agreement.id},
         data:{deliveryRequested:selected,deliveryRequestedAt:new Date()}});
-    }else if(input.deliverySelection){
-      throw new Error("This agreement has no current offered delivery choices.");
     }
     let informationalTerms: Array<{english:string;spanish:string}> = [];
     if (input.interfaceLanguage === "es") {

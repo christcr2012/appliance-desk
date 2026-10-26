@@ -117,10 +117,15 @@ export async function saveDeliveryOffers(userId: string, estimateId: string,
     if (!actor || !["OWNER","ADMIN"].includes(actor.role))
       throw new Error("Owner/admin permission required.");
     const estimate = await tx.estimate.findUnique({
-      where:{id:estimateId},select:{status:true,deliveryOfferVersion:true},
+      where:{id:estimateId},select:{status:true,deliveryOfferVersion:true,deliveryZoneSnapshot:true,
+        lineItems:{select:{serviceAddressId:true}}},
     });
     if (!estimate || !["DRAFT","CHANGES_REQUESTED","SENT","VIEWED"].includes(estimate.status))
       throw new Error("Cannot change delivery choices on an accepted order.");
+    // ZONE-1: an order the customer picks up has no delivery windows.
+    const { isPickupOnly } = await import("@/domains/delivery/snapshot");
+    if (isPickupOnly(estimate.deliveryZoneSnapshot, estimate.lineItems.map(line => line.serviceAddressId)))
+      throw new Error("This order is set to customer pickup, so it has no delivery windows.");
     // An existing linked offer must be refreshed when choices change.
     const row = await tx.estimate.update({
       where:{id:estimateId},data:{deliveryOffer:options,
@@ -196,6 +201,9 @@ export async function saveAgreementDeliveryOffers(userId:string, agreementId:str
       where:{id:agreementId},select:{status:true,signature:{select:{signedAt:true}}}});
     if(!a||!["DRAFT","AWAITING_SIGNATURE"].includes(a.status)||a.signature?.signedAt)
       throw new Error("Signed agreements cannot change offered delivery options.");
+    const { isAgreementPickupInTx } = await import("@/domains/delivery/pickup-guard");
+    if(await isAgreementPickupInTx(tx,agreementId))
+      throw new Error("This rental is set to customer pickup, so it has no delivery windows.");
     const updated=await tx.rentalAgreement.update({where:{id:agreementId},
       data:{deliveryOffer:options,deliveryOfferVersion:{increment:1},
         deliveryOfferActorUserId:userId},

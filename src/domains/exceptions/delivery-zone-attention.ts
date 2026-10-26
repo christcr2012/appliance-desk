@@ -63,15 +63,18 @@ export async function listDeliveryZoneAttention(limit: number): Promise<{ unknow
             href, since, primaryAction: { label: "Confirm zone", href },
           });
         }
-        if (location.choice !== "CUSTOMER_PICKUP") continue;
         if (location.requote && EDITABLE.has(estimate.status)) {
+          const pickup = location.choice === "CUSTOMER_PICKUP";
           requotes.push({
             category: "PICKUP_REQUOTE", severity: "high",
-            title: "Send a new quote without delivery to " + name,
-            detail: `Estimate #${estimate.estimateNumber}: they'll pick it up (${label}), but the quote charged delivery. Remove the delivery charge in the service-fee review, then send it again.`,
+            title: (pickup ? "Send a new quote without delivery to " : "Send a new quote with delivery to ") + name,
+            detail: `Estimate #${estimate.estimateNumber} (${label}): the delivery details changed after the quote was reviewed. Review the service fees again (delivery ${pickup ? "$0 for pickup" : "at the zone price"}), then send it again.`,
             href, since, primaryAction: { label: "Open estimate", href },
           });
-        } else if (!location.pickupArranged) {
+          continue;
+        }
+        if (location.choice !== "CUSTOMER_PICKUP") continue;
+        if (!location.pickupArranged) {
           pickups.push({
             category: "PICKUP_TO_ARRANGE", severity: "medium",
             title: "Arrange pickup with " + name,

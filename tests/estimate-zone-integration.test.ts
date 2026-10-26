@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { requestPaidDeliveryInTx } from "@/domains/orders/settled-delivery";
 import { ensureSignedDeliveryDraftInTx } from "@/domains/agreements/signed-delivery";
+import { saveAgreementDeliveryOffers, saveDeliveryOffers } from "@/domains/orders/delivery";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -116,7 +117,7 @@ describe("ZONE-1 estimate zones on a real database", () => {
     // A reviewed, sent quote (its delivery charge can't be proven to be $0: no reviewed $0 fee record exists).
     await prisma.estimate.update({ where: { id: pricedId }, data: { status: "SENT", sentAt: new Date(),
       reviewedQuoteFingerprint: "a".repeat(64), reviewedOrderFingerprint: "b".repeat(64), reviewedQuoteAt: new Date() } });
-    await expect(setEstimateDeliveryChoiceByStaff(ownerId, pricedId, lovelandId, "CUSTOMER_PICKUP")).rejects.toThrow(/Request changes/);
+    await expect(setEstimateDeliveryChoiceByStaff(ownerId, pricedId, lovelandId, "CUSTOMER_PICKUP")).rejects.toThrow(/customer requests changes/);
     const chosen = await setEstimateDeliveryChoiceByCustomer(pricedId, lovelandId, "CUSTOMER_PICKUP");
     expect(chosen).toMatchObject({ choice: "CUSTOMER_PICKUP", requote: { by: "CUSTOMER" } });
     const after = await prisma.estimate.findUniqueOrThrow({ where: { id: pricedId } });
@@ -187,7 +188,7 @@ describe("ZONE-1 every path to pickup (real database)", () => {
     const approvedId = await estimateWith([lostId], "Path: miles on approved");
     await checkEstimateDeliveryZones(ownerId, approvedId, { geocode });
     await prisma.estimate.update({ where: { id: approvedId }, data: { status: "APPROVED", ...priced, ...requested } });
-    await expect(confirmEstimateZoneMiles(ownerId, approvedId, lostId, 60, "Measured on the county map")).rejects.toThrow(/includes delivery/);
+    await expect(confirmEstimateZoneMiles(ownerId, approvedId, lostId, 60, "Measured on the county map")).rejects.toThrow(/already sent/);
     const stillUnknown = readZoneSnapshot((await prisma.estimate.findUniqueOrThrow({ where: { id: approvedId } })).deliveryZoneSnapshot)!;
     expect(stillUnknown.locations[0]).toMatchObject({ zone: "UNKNOWN" });
 
@@ -259,6 +260,30 @@ describe("ZONE-1 every path to pickup (real database)", () => {
     await checkEstimateDeliveryZones(ownerId, id, { geocode });
     expect(await prisma.serviceAddressGeocode.findUniqueOrThrow({ where: { serviceAddressId: fresh.id } }))
       .toMatchObject({ geocodedByUserId: ownerId, source: "CENSUS" });
+  });
+
+  it("pickup → paid delivery on a sent reviewed quote also withdraws it (both directions need a new reviewed quote)", async () => {
+    const id = await estimateWith([lovelandId], "Pickup to delivery");
+    await checkEstimateDeliveryZones(ownerId, id, { geocode });
+    await setEstimateDeliveryChoiceByStaff(ownerId, id, lovelandId, "CUSTOMER_PICKUP");
+    await prisma.estimate.update({ where: { id }, data: { status: "SENT", sentAt: new Date(), ...priced } });
+    const chosen = await setEstimateDeliveryChoiceByCustomer(id, lovelandId, "DELIVER");
+    expect(chosen).toMatchObject({ choice: "DELIVER", priceCents: 8500, requote: { by: "CUSTOMER" } });
+    const after = await prisma.estimate.findUniqueOrThrow({ where: { id } });
+    expect(after).toMatchObject({ status: "CHANGES_REQUESTED", reviewedQuoteFingerprint: null, reviewedOrderFingerprint: null });
+    expect(after.changesRequestedMessage).toMatch(/delivered instead/);
+    await expect(approveEstimate(id, { approverName: "Zone Customer", approverEmail: `zone-cust-${RUN}@example.test`,
+      ipAddress: null, expectedQuoteFingerprint: "c".repeat(64) })).rejects.toThrow();
+  });
+
+  it("delivery windows can't be offered for a pickup-only order or a pickup rental", async () => {
+    const id = await estimateWith([lovelandId], "No windows for pickup");
+    await checkEstimateDeliveryZones(ownerId, id, { geocode });
+    await setEstimateDeliveryChoiceByStaff(ownerId, id, lovelandId, "CUSTOMER_PICKUP");
+    await expect(saveDeliveryOffers(ownerId, id, [{ date: "2099-05-01", window: "AM" }])).rejects.toThrow(/customer pickup/);
+    const agreement = await prisma.rentalAgreement.create({ data: { customerId, serviceAddressId: lovelandId, status: "DRAFT",
+      deliveryZoneSnapshot: { choice: "CUSTOMER_PICKUP", serviceAddressId: lovelandId } } });
+    await expect(saveAgreementDeliveryOffers(ownerId, agreement.id, [{ date: "2099-05-01", window: "AM" }])).rejects.toThrow(/customer pickup/);
   });
 
   it("an unknown zone blocks approval and conversion with a clear message (the To do can't be dropped)", async () => {

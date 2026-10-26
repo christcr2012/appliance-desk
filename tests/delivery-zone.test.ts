@@ -7,9 +7,10 @@ import { TOWNS, townBySlug, townByName, townsWithZones } from "@/domains/deliver
 import { frozenRouteZones, mileageBand, reviewedDrivingFee } from "@/domains/orders/delivery";
 import {
   buildZoneLocation, choiceAllowed, chosenDeliveryCents, confirmZoneByMiles, currentLocations, isPickupOnly,
-  readZoneSnapshot, unresolvedDeliveryAddresses, zoneSentence,
+  readZoneSnapshot, unresolvedDeliveryAddresses, zoneQuoteIdentity, zoneSentence,
 } from "@/domains/delivery/snapshot";
 import { expectedDeliveryFeeCents } from "@/domains/orders/route-evidence";
+import { deliveryWindowStep, isPickupAddress } from "@/domains/delivery/pickup-guard";
 import { projectMiles, zoneRangeWords } from "@/domains/delivery/map";
 
 const settings = startingZoneSettings();
@@ -101,6 +102,28 @@ describe("ZONE-1 approval/signing delivery fee comes from the frozen zone (strai
     expect(unresolvedDeliveryAddresses(raw, ["a1", "a2", "a3"])).toEqual(["a1", "a3"]);
     expect(unresolvedDeliveryAddresses({ version: 1, locations: [{ ...unknown, choice: "CUSTOMER_PICKUP" }, known] }, ["a1", "a2"])).toEqual([]);
     expect(unresolvedDeliveryAddresses(null, ["a1"])).toEqual([]);
+  });
+});
+
+describe("ZONE-1 the zone list is part of the reviewed quote; signing needs no window for pickup", () => {
+  it("any change in either direction (pickup↔delivery, zone price settled) changes the reviewed-quote identity", () => {
+    const deliver = buildZoneLocation({ serviceAddressId: "a1", settings, now, position: { status: "FOUND", point: town("loveland") } });
+    const base = zoneQuoteIdentity({ version: 1, locations: [deliver] }, ["a1"]);
+    const pickup = zoneQuoteIdentity({ version: 1, locations: [{ ...deliver, choice: "CUSTOMER_PICKUP" }] }, ["a1"]);
+    const cheaper = zoneQuoteIdentity({ version: 1, locations: [{ ...deliver, priceCents: 5000 }] }, ["a1"]);
+    expect(JSON.stringify(base)).not.toBe(JSON.stringify(pickup));
+    expect(JSON.stringify(pickup)).not.toBe(JSON.stringify(base));
+    expect(JSON.stringify(base)).not.toBe(JSON.stringify(cheaper));
+    expect(zoneQuoteIdentity(null, ["a1"])).toBeNull(); // older estimates keep their fingerprints
+  });
+  it("pickup: no window needed or accepted, even with an expired offer still stored; delivery: an offered window is required", () => {
+    const expiredOffer = [{ id: "11111111-1111-4111-8111-111111111111", date: "2020-01-02", window: "AM" }];
+    expect(deliveryWindowStep({ pickup: true, offeredCount: expiredOffer.length, hasSelection: false })).toBe("NONE");
+    expect(() => deliveryWindowStep({ pickup: true, offeredCount: expiredOffer.length, hasSelection: true })).toThrow(/picking the appliance up/);
+    expect(() => deliveryWindowStep({ pickup: false, offeredCount: 1, hasSelection: false })).toThrow(/Select an offered/);
+    expect(deliveryWindowStep({ pickup: false, offeredCount: 1, hasSelection: true })).toBe("CHOOSE");
+    expect(deliveryWindowStep({ pickup: false, offeredCount: 0, hasSelection: false })).toBe("NONE");
+    expect(isPickupAddress({ choice: "CUSTOMER_PICKUP" }, null, null)).toBe(true);
   });
 });
 

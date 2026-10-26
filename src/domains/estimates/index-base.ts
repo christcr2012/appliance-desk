@@ -661,10 +661,16 @@ export async function approveEstimate(
     // A customer who picks it up ($0) can never owe a delivery charge frozen into the quote they approve.
     if (hasZones) {
       const { frozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
+      // Always (delivery windows offered or not): the priced order's delivery charge must be exactly this
+      // address's frozen zone price, $0 for pickup — in either direction.
+      const { expectedZoneDeliveryCents } = await import("@/domains/delivery/snapshot");
       for (const location of currentLocations(estimate.deliveryZoneSnapshot, lineAddresses)) {
-        if (location.choice !== "CUSTOMER_PICKUP") continue;
-        if ((await frozenDeliveryCentsInTx(tx, estimate, location.serviceAddressId)) !== 0)
-          throw new Error("This quote still includes delivery for an address you'll pick up. We'll send you an updated quote.");
+        const expected = expectedZoneDeliveryCents(location);
+        const actual = await frozenDeliveryCentsInTx(tx, estimate, location.serviceAddressId);
+        if (expected === null || actual !== expected)
+          throw new Error(location.choice === "CUSTOMER_PICKUP"
+            ? "This quote still includes delivery for an address you'll pick up. We'll send you an updated quote."
+            : "This quote's delivery charge doesn't match your delivery zone. We'll send you an updated quote.");
       }
     }
     if (pickupOnly) {

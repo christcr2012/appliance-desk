@@ -17,6 +17,7 @@ import {
 } from "@/domains/billing/mandatory-charge-assessment";
 import { readCommercialReserveHistory } from "./commercial-reserve-policy";
 import { lockPreparedEstimatePolicyScopeInTx } from "./prepared-policy-scope";
+import { expectedZoneDeliveryCents, snapshotLocation, UNRESOLVED_ZONE_MESSAGE } from "@/domains/delivery/snapshot";
 
 export type PreparedMandatoryChargeLocation={
   agreementId:string;
@@ -192,6 +193,7 @@ export async function savePreparedMandatoryChargeReview(input:{
     if(input.choices.some(row=>row.retailDeliveryEvent&&!byId.has(row.agreementId)))
       throw new Error("An RDF event does not belong to this exact estimate.");
     const rdf=await provisionalRdfOrderDecisionInTx(tx,asOf);
+    const zoneSource=await tx.estimate.findUnique({where:{id:estimate.id},select:{deliveryZoneSnapshot:true}});
     const versions=new Map(input.expectedRevisions.map(row=>[row.agreementId,row.revision]));
     const changed:string[]=[];
     const audit:Array<{
@@ -213,10 +215,15 @@ export async function savePreparedMandatoryChargeReview(input:{
       const prior=history.at(-1);
       if((prior?.revision??null)!==versions.get(agreement.id))
         throw new Error("An owner changed reviewed service fees. Refresh the full order.");
+      // ZONE-1: the delivery price is this address's frozen zone price ($0 for pickup) when the estimate has
+      // zones; older estimates keep the single configured delivery fee.
+      const zoneLocation=snapshotLocation(zoneSource?.deliveryZoneSnapshot,agreement.serviceAddressId);
+      const zoneDelivery=zoneLocation?expectedZoneDeliveryCents(zoneLocation):undefined;
+      if(zoneDelivery===null)throw new Error(UNRESOLVED_ZONE_MESSAGE);
       const charges=mandatoryChargeAmounts({
         global:global.decision,choice,
         settings:{
-          delivery:settings.oneTimeDeliveryFeeCents,
+          delivery:zoneDelivery??settings.oneTimeDeliveryFeeCents,
           installation:settings.oneTimeInstallationFeeCents,
           removal:settings.oneTimeRemovalFeeCents,
           waiverEnabled:settings.damageWaiverEnabled,

@@ -28,5 +28,23 @@ export async function isAgreementPickupInTx(tx: Prisma.TransactionClient, agreem
     isPickupAddress(null, estimate.deliveryZoneSnapshot, agreement.serviceAddressId);
 }
 
+/**
+ * Signing (server and page) and phone orders: what the delivery window step needs. Pickup addresses need and accept
+ * no window — even when windows were offered earlier, and even when those offers have since expired.
+ */
+export function deliveryWindowStep(input: { pickup: boolean; offeredCount: number; hasSelection: boolean }):
+  "NONE" | "CHOOSE" {
+  if (input.pickup) {
+    if (input.hasSelection) throw new Error("You're picking the appliance up, so no delivery window is needed.");
+    return "NONE";
+  }
+  if (input.offeredCount > 0) {
+    if (!input.hasSelection) throw new Error("Select an offered delivery choice before signing.");
+    return "CHOOSE";
+  }
+  if (input.hasSelection) throw new Error("This agreement has no current offered delivery choices.");
+  return "NONE";
+}
+
 export const PICKUP_NO_DELIVERY_MESSAGE =
   "This rental is set to customer pickup, so it has no delivery visit. Arrange the pickup instead (or send a new quote with delivery).";
