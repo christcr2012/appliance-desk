@@ -11,7 +11,7 @@ type Counts = { posted: number; enrolled: number; depreciated: number; skipped: 
 const MAX_ENROLLMENTS = 200;
 const MAX_DEPRECIATIONS = 200;
 
-function problemKey(p:Pick<Problem,"kind"|"subjectType"|"subjectId">) { return [p.kind,p.subjectType,p.subjectId].join("|"); }
+function problemKey(p:{kind:string;subjectType:string;subjectId:string}) { return [p.kind,p.subjectType,p.subjectId].join("|"); }
 function plainCapitalProblem(message:string):string {
  if(message.includes("acquisition") || message.includes("Capitalized expense") || message.includes("capital"))
   return "Record how it was paid for (an expense or 'paid personally').";
