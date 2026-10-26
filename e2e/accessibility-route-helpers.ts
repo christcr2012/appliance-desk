@@ -56,7 +56,21 @@ export async function scanAccessibilityRoute(
         // Older review finding (pr39): wide content must never push the page sideways on a phone. A table or form that
         // is wider than the screen has to scroll inside its own box, not drag the whole page.
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-        expect(overflow, `${route.path} should not scroll sideways at ${width}px in ${theme} mode`).toBeLessThanOrEqual(0);
+        // When it fails, name the innermost elements that stick out (and the URL) so CI shows the cause.
+        const culprits =
+          overflow > 0
+            ? await page.evaluate(() => {
+                const past = (el: Element) => el.getBoundingClientRect().right > window.innerWidth + 0.5;
+                return JSON.stringify({
+                  url: location.href,
+                  leaves: [...document.querySelectorAll("body *")]
+                    .filter((el) => past(el) && ![...el.children].some(past))
+                    .slice(0, 8)
+                    .map((el) => `${el.tagName}.${String(el.className).slice(0, 70)} right=${Math.round(el.getBoundingClientRect().right)} parent=${String(el.parentElement?.className ?? "").slice(0, 70)} text=${(el.textContent ?? "").slice(0, 50)}`),
+                });
+              })
+            : "";
+        expect(overflow, `${route.path} should not scroll sideways at ${width}px in ${theme} mode ${culprits}`).toBeLessThanOrEqual(0);
       }
       const results = await new AxeBuilder({ page })
         .withTags([...AXE_TAGS])
