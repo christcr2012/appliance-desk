@@ -38,7 +38,7 @@ function utcDate(year: number, month: number, day: number): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-function addCalendarDays(value: string, days: number): string {
+export function addCalendarDays(value: string, days: number): string {
   const [year, month, day] = parseKey(value);
   const date = utcDate(year, month, day);
   date.setUTCDate(date.getUTCDate() + days);
@@ -49,7 +49,7 @@ function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-function startOfContainingPeriod(
+export function startOfContainingPeriod(
   value: string,
   frequency: FilingFrequency,
 ): string {
@@ -62,7 +62,7 @@ function startOfContainingPeriod(
   return key(year, 1, 1);
 }
 
-function endOfPeriod(start: string, frequency: FilingFrequency): string {
+export function endOfPeriod(start: string, frequency: FilingFrequency): string {
   const [year, month] = parseKey(start);
   const months = frequency === "MONTHLY" ? 1 : frequency === "QUARTERLY" ? 3 : 12;
   const next = utcDate(year, month + months, 1);
