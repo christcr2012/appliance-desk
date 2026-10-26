@@ -46,7 +46,7 @@ describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated P
   const batches=await prisma.exportBatch.findMany({where:{
    fileName:"books-review-"+key+".csv",createdByUserId:owner.id,
   },select:{id:true}});
-  await prisma.exportBatchEntry.deleteMany({where:{batchId:{in:batches.map(x=>x.id)}}});
+  await prisma.exportBatchEntry.deleteMany({where:{exportBatchId:{in:batches.map(x=>x.id)}}});
   await prisma.exportBatch.deleteMany({where:{id:{in:batches.map(x=>x.id)}}});
   await prisma.journalLine.deleteMany({where:{entry:where}});
   await prisma.journalEntry.deleteMany({where});
@@ -95,7 +95,7 @@ describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated P
   const period=await prisma.accountingPeriod.findUniqueOrThrow({where:{periodKey:key}});
   expect(period.status).toBe("CLOSED");
   expect(JSON.stringify(period.reviewNotes)).toContain("Synthetic missing receipt reviewed");
-  expect(await prisma.exportBatchEntry.count({where:{journalEntry:{...where}}})).toBeGreaterThan(0);
+  expect(await prisma.exportBatchEntry.count({where:{entry:where}})).toBeGreaterThan(0);
   const again=await closeAccountingMonthWithReview(owner,key);
   expect(again.alreadyClosed).toBe(true);
   expect(await prisma.auditLog.count({where:{action:"books.period.close-review",entityId:key,
