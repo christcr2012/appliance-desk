@@ -22,4 +22,4 @@ Depends on BA-1 (actor refactor and autopilot).
 - [ ] Review every comment before merge; BA-2 must merge first and BA-1 must merge before BA-2.
 
 ## Progress
-Acceptance plan committed first on stacked branch `ai/chatgpt/ba-3` from BA-2. Implementation not yet verified.
+BA-3 implementation is in draft PR #624 stacked after BA-2 PR #613. The four-check review, owner lock and overrides, accountant CSV, explicit provider-outcome email, missing-receipt reasons, and reminder items are implemented. CI on reconciled head `ad2ba219` passed source checks, three unit/database shards and three browser shards, with one pre-existing offline reconnect test failing on browser-d. This patch keeps the offline recovery-link assertion while accepting a page already restored online, and adds real-database coverage for previously posted sources with unresolved warnings. New exact-head CI and review remain required.

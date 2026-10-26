@@ -34,7 +34,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
  if(!settings.booksStartDate)throw new Error("Start your books before reviewing a month.");
  if(key<businessDateKey(settings.booksStartDate).slice(0,7))
   throw new Error("This month is before your Books start.");
- const [status,expenses,assets,accounts,problems,postedDepreciations]=await Promise.all([
+ const [status,expenses,assets,accounts,postedDepreciations]=await Promise.all([
   prisma.accountingPeriod.findUnique({where:{periodKey:key}}),
   prisma.expense.findMany({where:{spentOn:{gte:first,lt:next}},
    select:{id:true,status:true,receiptPhotoId:true,noReceiptReason:true,amountCents:true,
@@ -45,13 +45,11 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
    imports:{select:{id:true},take:1},
    reconciliations:{where:{isCurrent:true,status:"COMPLETED",
     fromOn:{lte:first},toOn:{gte:last}},select:{id:true},take:1}},take:501}),
-  prisma.booksProblem.findMany({where:{kind:"SOURCE_NOT_RECORDED",resolvedAt:null},
-   select:{subjectId:true,subjectType:true},take:501}),
   prisma.journalEntry.findMany({where:{sourceType:"APPLIANCE",
    eventKind:"DEPRECIATION:"+key},select:{sourceId:true},take:10001}),
  ]);
  const limitsExceeded=expenses.length>10000||assets.length>10000||accounts.length>500||
-  postedDepreciations.length>10000||problems.length>500;
+  postedDepreciations.length>10000;
  const pending=await postPending({limit:500,inspectMonth:key});
  const sourceCount=pending.problems.length;
  const sources:ReviewCheck={label:"Everything was recorded",ok:!limitsExceeded&&!sourceCount,

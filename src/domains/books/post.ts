@@ -505,6 +505,15 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string}):Pr
   ];
   const sources:Candidate[]=[];
   const problems:BooksProblem[]=[];
+  // A successfully posted source can still carry a durable unresolved issue.
+  // During month inspection, match that issue to the original source date
+  // instead of silently reporting a complete month or flagging other months.
+  const unresolved = opts?.inspectMonth ? await prisma.booksProblem.findMany({
+    where:{kind:"SOURCE_NOT_RECORDED",resolvedAt:null},
+    select:{subjectType:true,subjectId:true},take:1001,
+  }) : [];
+  if(unresolved.length>1000)throw new Error("Too many unresolved Books source issues for one review.");
+  const unresolvedKeys=new Set(unresolved.map(x=>x.subjectType+"\\0"+x.subjectId));
   // Bounded anti-join: keep oldest unfinished records for catch-up and
   // independently check the invoice tail so new bills aren't hidden
   // behind hundreds of older pending invoices. Every source is deduped.
@@ -529,6 +538,12 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string}):Pr
         :new Set<string>();
       for(const candidate of page){
         const key=candidate.type+"\\0"+candidate.id;
+        if(opts?.inspectMonth&&unresolvedKeys.has(key)&&
+          businessDateKey(candidate.at).slice(0,7)===opts.inspectMonth){
+          problems.push({sourceType:candidate.type,sourceId:candidate.id,
+            message:"A previous accounting source problem still needs review."});
+          unresolvedKeys.delete(key);
+        }
         const complete=candidate.required.length>0 &&
           candidate.required.every(kind=>byId.get(candidate.id)?.has(kind));
         if(!opts?.inspectMonth&&complete&&unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))

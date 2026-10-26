@@ -1,3 +1,7 @@
+## October 26 — BA-3 monthly review draft PR #624 and final review gaps
+
+BA-3 draft PR #624 now sits after BA-2 PR #613. Its merged branch passed type checking, secrets, all unit/real-database shards and three browser shards at `ad2ba219`, but browser-d had an offline reconnect assertion failure. The current patch keeps offline recovery-link proof and covers unresolved source issues in the correct monthly review. Current-head full CI and automated review are still required. BA-2's corrected Stripe reconciliation is in CI, not merged yet. No customer email was sent; accountant email remains owner-triggered.
+
 ## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
 
 PR #613 is ready for review. Codex found that a corrected opening Stripe amount was missing from the clearing comparison baseline. The fix includes corrected OPENING journals dated by the reconciliation cutoff, with an actual disposable-Postgres scenario. Prior CI passed, but that was before this fix; the new head still requires CI and review disposition. BA-1 is merged. BA-3 is in a dependent branch. No live Stripe setting or business data changed.

@@ -3,7 +3,7 @@ import { beforeAll,afterAll,describe,expect,it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey } from "@/lib/business-date";
 import { openingBalance } from "@/domains/books/posting-rules";
-import { writeJournal } from "@/domains/books/post";
+import { writeJournal, postForSource } from "@/domains/books/post";
 import { monthReview } from "@/domains/books/month-review";
 import { closeAccountingMonthWithReview, type BooksActor } from "@/domains/books/management";
 import { listBooksMonthReviewAttention } from "@/domains/exceptions/books-attention";
@@ -69,6 +69,33 @@ describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated P
   expect(review.profit.netProfitCents).toBe(0);
   expect((await monthReview(admin,key)).checks.sources.ok).toBe(true);
   expect((await listBooksMonthReviewAttention()).some(x=>x.href==="/desk/books/months/"+key)).toBe(true);
+ });
+ it("flags an unresolved source issue dated in this month even when its journal was posted",async()=>{
+  const id="ba3-reviewed-invoice-"+tag;
+  const customer=await prisma.customer.findFirstOrThrow({select:{id:true}});
+  const issue={kind:"SOURCE_NOT_RECORDED",subjectType:"INVOICE",subjectId:id};
+  await prisma.invoice.create({data:{
+   id,customerId:customer.id,status:"OPEN",createdAt:dates("2020-01-12"),
+   amountDueCents:1000,
+   lineItems:{create:{kind:"RENTAL",description:"Month review synthetic bill",amountCents:1000}},
+  }});
+  try{
+   await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+   expect((await monthReview(owner,key)).checks.sources.ok).toBe(true);
+   await prisma.booksProblem.create({data:{...issue,message:"Unresolved historical source warning"}});
+   const warning=await monthReview(owner,key);
+   expect(warning.checks.sources.ok).toBe(false);
+   expect(warning.checks.sources.count).toBeGreaterThanOrEqual(1);
+   await prisma.booksProblem.update({where:{kind_subjectType_subjectId:issue},
+    data:{resolvedAt:new Date()}});
+   expect((await monthReview(owner,key)).checks.sources.ok).toBe(true);
+  }finally{
+   await prisma.booksProblem.deleteMany({where:{subjectId:id}});
+   await prisma.journalLine.deleteMany({where:{entry:{sourceType:"INVOICE",sourceId:id}}});
+   await prisma.journalEntry.deleteMany({where:{sourceType:"INVOICE",sourceId:id}});
+   await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+   await prisma.invoice.deleteMany({where:{id}});
+  }
  });
  it("rejects admin locking and an expense override without a stated reason",async()=>{
   await expect(closeAccountingMonthWithReview(admin,key)).rejects.toThrow(/OWNER/);
