@@ -11,7 +11,7 @@ TFA-1. Risk: **retail delivery fees and use tax** (fixes a legal error: fees are
 - [x] Line reads "Retail delivery fees"; the pay-instead choice locks at the first qualifying sale.
 - [x] Use tax starts each year as yearly and switches to monthly only when that year passes the threshold.
 - [x] Filing-frequency advice (ask for less often / expect more often); certificate-expiry flow; license renewal roll.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
 Built on branch `ai/vivienne/tfa-2` (from main `38e92a98`; main merged in at `50e265e`, merge `27397b9`). All spec sections are coded and tested:
