@@ -1,3 +1,7 @@
+## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
+
+PR #613 is ready for review. Codex found that a corrected opening Stripe amount was missing from the clearing comparison baseline. The fix includes corrected OPENING journals dated by the reconciliation cutoff, with an actual disposable-Postgres scenario. Prior CI passed, but that was before this fix; the new head still requires CI and review disposition. BA-1 is merged. BA-3 is in a dependent branch. No live Stripe setting or business data changed.
+
 ## October 26 — Books Lane 3: BA-1 merged, BA-2 and BA-3 in progress
 
 BA-1 books autopilot merged as PR #610 after full exact-head CI and three Codex findings fixed. BA-2 owner setup is in PR #613, reconciling its branch with main before fresh CI. BA-3 monthly review is a separate dependent branch. No production data, provider settings, or live messages changed.
