@@ -9,15 +9,18 @@ export async function LinkedTasksPanel({
   linkType,
   linkId,
   tasks,
+  title = "Follow-up tasks",
 }: {
   linkType: "lead" | "customer";
   linkId: string;
   tasks: LinkedTask[];
+  /** AR-0b: the customer record names this section "Linked tasks". */
+  title?: string;
 }) {
   const assignees = await getTaskAssignees();
   return (
     <SectionCard
-      title="Follow-up tasks"
+      title={title}
       description="These tasks stay linked to this record in every team view."
     >
       {tasks.length ? (

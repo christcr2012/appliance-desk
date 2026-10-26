@@ -55,6 +55,7 @@ test("new rental customer address has keyboard-accessible labels and persists", 
   expect(href).toMatch(/^\/desk\/customers\//);
   await page.goto(`${href}?tab=properties`);
   await page.reload();
-  await expect(page.getByText(/123 Labelled Lane/).first()).toBeVisible();
-  await expect(page.getByText(/Unit 7/).first()).toBeVisible();
+  // AR-0b: the record header also carries the address (desktop-only line), so look at the visible copies.
+  await expect(page.getByText(/123 Labelled Lane/).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText(/Unit 7/).filter({ visible: true }).first()).toBeVisible();
 });

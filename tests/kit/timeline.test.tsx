@@ -27,6 +27,17 @@ describe("kit Timeline (KIT 4.10)", () => {
     expect(items[1].querySelector('[data-tone="good"]')!.className).toContain("h-2 w-2");
   });
 
+  it("links an item's title when it has an href (AR-0b)", () => {
+    render(
+      <Timeline
+        now={now}
+        emptyLabel="Nothing"
+        items={[{ id: "a", at: now, title: "Visit scheduled", tone: "info", actor: "Chris", href: "/desk/jobs/j1" }]}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Visit scheduled" })).toHaveAttribute("href", "/desk/jobs/j1");
+  });
+
   it("shows the empty label when there is nothing", () => {
     render(<Timeline items={[]} emptyLabel="Nothing has happened yet" />);
     expect(screen.getByText("Nothing has happened yet")).toBeInTheDocument();

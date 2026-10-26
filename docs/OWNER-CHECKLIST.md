@@ -68,11 +68,7 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   Greeley.SalesTax@greeleygov.com (or call 970-350-9733). Ready: you have their written reply. Worked: you record the
   answer on Taxes › Rules and the questions FEETAX-GREELEY-* show "Confirmed". Until then the app taxes them (safe side).
 
-- [ ] **Install the desk app on your phone (AR-11).** Steps: once AR-11 is fully merged and the 10 pm testing
-  release completes, open the testing app's `/desk/today` in Chrome on Android or Safari on iPhone. Android: choose
-  Install app; iPhone: Share → Add to Home Screen. Worked when the round green R icon opens Today without browser
-  bars and changing screens has no blank flash; Android icon long-press shows New quote, Take a payment,
-  Today's route, Add an expense. **Not ready until the rest of AR-11 is merged.**
+- [ ] **Install the desk app on your phone (AR-11).** Steps: after the full AR-11 card is merged and the nightly testing release runs, open the testing app's `/desk/today` in Chrome (Android: Install app) or Safari (iPhone: Share → Add to Home Screen). Worked when the round green R opens Today without browser bars, navigation never flashes blank, and Android icon long-press shows New quote, Take a payment, Today's route and Add an expense. Not ready until all AR-11 work is merged.
 
 ## B. Before real customers (money, email, texts, legal, accounts)
 
@@ -212,9 +208,10 @@ Agents will do the parts they safely can and record what they saw; the rest need
 - [x] **Answered by Chris 2026-10-25 (in conversation): yes — rebuild the desk as an application (AR-0…AR-10).** Building may start as soon as each
   build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
-- [ ] **Look at the three reference screens on the testing site (after AR-0 is built, 10 minutes).** Steps: open
-  appliance-desk-testing.vercel.app, sign in as the test owner, look at Today, Money → Invoices and one customer; tell
-  the agent what you like and don't. Ready when: AR-0 is merged and the 10 pm testing update has run. Nothing waits on this.
+- [ ] **Look at the new Today, Bills and Customer screens on the testing app (10 minutes).** Steps: sign in to the
+  testing app on your phone (owner@example.test), open Today, then Money › Bills, then any customer. Ready when: AR-0b
+  is merged and the 10 pm testing release has run. Worked if: the screens look like the samples you approved; tell the
+  agent anything you want changed. This never blocks building.
 - [x] **Answered by Chris 2026-10-25 (in conversation): yes — build "Books on autopilot" (BA-1…BA-6).** Building may start as soon as each
   build plan is merged (docs/DECISIONS.md, 2026-10-25).
 

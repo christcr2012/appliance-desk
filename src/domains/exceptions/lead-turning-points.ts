@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { addBusinessDays } from "@/lib/business-date";
 import { getLeadResponseDays } from "@/domains/leads/follow-up";
-import type { ExceptionItem } from "./rules";
+import { customerContact, leadContact, type ExceptionItem } from "./rules";
 
 type Rows = { rows: ExceptionItem[]; total: number };
 
@@ -17,7 +17,7 @@ export async function listNewLeadContact(limit: number): Promise<Rows> {
   const days = await getLeadResponseDays();
   const where = { status: "NEW" as const };
   const leads = await prisma.lead.findMany({
-    where, select: { id: true, contactName: true, createdAt: true },
+    where, select: { id: true, contactName: true, createdAt: true, phone: true, email: true },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: limit,
   });
   return {
@@ -26,6 +26,7 @@ export async function listNewLeadContact(limit: number): Promise<Rows> {
       detail: "A new lead came in. Call or email them, then mark the lead contacted.",
       href: "/desk/leads/" + encodeURIComponent(l.id), since: l.createdAt,
       dueOn: addBusinessDays(l.createdAt, days), dueDateOnly: true,
+      contact: leadContact(l),
     })),
     total: leads.length < limit ? leads.length : await prisma.lead.count({ where }),
   };
@@ -37,7 +38,7 @@ export async function listLeadFollowUps(limit: number, now: Date): Promise<Rows>
   bounded(limit);
   const where = { status: "CONTACTED" as const, nextFollowUpOn: { not: null, lt: addBusinessDays(now, 1) } };
   const leads = await prisma.lead.findMany({
-    where, select: { id: true, contactName: true, nextFollowUpOn: true },
+    where, select: { id: true, contactName: true, nextFollowUpOn: true, phone: true, email: true },
     orderBy: [{ nextFollowUpOn: "asc" }, { id: "asc" }], take: limit,
   });
   return {
@@ -46,6 +47,7 @@ export async function listLeadFollowUps(limit: number, now: Date): Promise<Rows>
       detail: "You chose this date to follow up. After you reach them, mark the lead and pick the next date.",
       href: "/desk/leads/" + encodeURIComponent(l.id), since: l.nextFollowUpOn as Date,
       dueOn: l.nextFollowUpOn as Date, dueDateOnly: true,
+      contact: leadContact(l),
     })),
     total: leads.length < limit ? leads.length : await prisma.lead.count({ where }),
   };
@@ -58,8 +60,8 @@ export async function listApprovedQuoteToRental(limit: number, now: Date): Promi
   const where = { status: "APPROVED" as const };
   const quotes = await prisma.estimate.findMany({
     where, select: { id: true, respondedAt: true, updatedAt: true,
-      lead: { select: { contactName: true } },
-      customer: { select: { user: { select: { name: true, email: true } } } } },
+      lead: { select: { contactName: true, phone: true, email: true } },
+      customer: { select: { phone: true, user: { select: { name: true, email: true } } } } },
     orderBy: [{ respondedAt: "asc" }, { id: "asc" }], take: limit,
   });
   return {
@@ -69,6 +71,7 @@ export async function listApprovedQuoteToRental(limit: number, now: Date): Promi
       detail: "The customer approved this quote. Open it to set up the rental.",
       href: "/desk/estimates/" + encodeURIComponent(q.id), since: q.respondedAt ?? q.updatedAt,
       dueOn: addBusinessDays(now, 0), dueDateOnly: true,
+      contact: q.customer ? customerContact(q.customer) : leadContact(q.lead),
     })),
     total: quotes.length < limit ? quotes.length : await prisma.estimate.count({ where }),
   };
