@@ -195,6 +195,7 @@ export const BACKUP_MODEL_POLICY = {
   BudgetPlanVersion: "budgetPlanVersion",
   BudgetReviewSnapshot: "budgetReviewSnapshot",
   AccountingPeriod: "accountingPeriod",
+  BooksProblem: "booksProblem",
   StripeBalanceTransaction: "stripeBalanceTransaction",
   IntegrationCursor: "integrationCursor",
   ExpenseCategory: "expenseCategory",

@@ -1,19 +1,29 @@
-## October 26 — ACC-6: remember this device (built; push blocked on the GitHub app)
+## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
+
+CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
+
+## October 26 — BA-1 Codex findings addressed, exact-head rerun pending
+
+PR #610 passed full CI at `0d17ac10`, then automated review found three material gaps. The new patch retains the existing books-nightly Stripe pause/health key, reports unenrolled recorded-cost retirements, and refuses disposal before retirement; route and real-Postgres regressions added. Next: exact-head CI, disposition each review thread and merge only when green. BA-2 PR #613 and BA-3 stacked branch still depend on this. No live provider or production settings changed.
+
+## October 26 — BA-1 source posting verified, merge reconciliation in progress
+
+PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
+
+## October 26 — ACC-6: remember this device (built; PR #616 open, CI red — fixed, re-running)
 
 Owner setting "Remember devices for {n} days" (starting 30, 0 = off) on Settings › Security, a "Remember this device"
 box on the two-step login, remembered devices with "Forget remembered devices" on My account, a device cookie behind
 the new-device notice (a second phone of the same kind is new), customers noticed only through the customer-email
 switch, and every security change (password, reset, email, second step, removal, role change, sign-out-everywhere,
 lowering the setting) asking for a code again. Built with unit tests (fakes), a throwaway-Postgres integration test
-and two browser tests; database and browser proof runs in CI only. The work is committed on branch `ai/marley/acc-6`
-(local commit ad48de7) but the PR is not opened yet: pushing needs the Muse GitHub app to be able to write to this
-repo, and it currently cannot create a branch (GitHub answers 403). Chris needs to add this repo to the app's
-installation (link in the chat) — then the branch goes up and the PR opens. Update, same night: main moved (BILL-1
-#612 and preview-storage #609 merged), so main was merged into this branch (commit 164c968) and re-checked locally —
-typecheck clean, lint 0 errors, 41 unit tests pass. The branch-creation approval was requested and timed out
-unanswered (01:39 MDT), so the branch still isn't on GitHub. Update, morning: main moved again (FEE-1 #614 merged),
-merged in, and Chris has now added the repo to the app's installation — branch pushed and PR #616 opened
-(head 8f703069); CI pending. Next: VAULT-1, once CMP-1 (lane 5) is merged.
+and two browser tests; database and browser proof runs in CI only. PR #616 opened (head 8b0199f9); CI came back red:
+two My account browser tests (a locator matching two elements, and a settings save cancelled by an immediate reload),
+the customer session-deactivation test (ACC-6 records customer sign-ins in the audit log, so the fixture now deletes
+its audit rows before deleting the user), the Bills sideways-scroll check at 360px in dark mode (a resize reporting
+the phone width before the desktop sidebar padding was recalculated — BA-1 fixed the same thing in the shared scan
+helper; this branch now uses that fix), and one unit test that timed out importing the customers domain inside the
+test (import hoisted to the top of the file). Fixes in commit 6405616f; main (BA-1 #610) merged in. Next: VAULT-1, once CMP-1 (lane 5) is merged.
 
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 
@@ -42,6 +52,15 @@ learn about a payment from events already sent; the nightly check can only follo
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 
 Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
+
+## October 25 — BA-1 books autopilot in draft PR #610 (not merged)
+
+Branch `ai/chatgpt/ba-1` (PR #610): nightly recording, automatic appliance enrollment/depreciation,
+books To do issues, Equipment retirement/disposal reversals and post-commit source recording coded.
+Run 40269991085 passed all CI shards at earlier head `6be9cfac`, **not** the current head;
+later changes and their new concurrency/long-life tests are awaiting exact-head CI and review.
+Remaining BA-1 hook/edge proof is on its card; BA-2 and BA-3 await BA-1 merge.
+No production settings, real accounts or customer data touched.
 
 ## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
 

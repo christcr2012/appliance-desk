@@ -35,6 +35,8 @@ const SHARED_SETTINGS_TESTS = [
   "tests/books-closing-integration.test.ts", // K-8 toggles Books start during isolated real-database source tests.
   "tests/books-reports-integration.test.ts", // K-7 read-only reports fixture temporarily seeds an isolated Books opening date.
   "tests/books-depreciation-integration.test.ts", // K-6 adjusts verified opening date and book life defaults in a serial database fixture.
+  "tests/ba1-books-autopilot-integration.test.ts", // BA-1 modifies singleton Books dates and depreciation.
+  "tests/ba1-nightly-autopilot-integration.test.ts", // BA-1 changes the singleton Books start and health settings.
   "tests/books-export-delivery-integration.test.ts", // K-CASH-6 also updates/restores singleton Books opening.
   "tests/books-exports-integration.test.ts", // K-5 temporarily sets shared Books opening date and verifies export provenance.
   "tests/telecom-statement-books-integration.test.ts", // COM-N3 changes booksStartDate and posts expenses.

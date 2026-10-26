@@ -39,7 +39,13 @@ off, owner reset, removal, access change and sign-out-everywhere; device rows ar
 privacy deletion. Tests: `tests/trusted-devices.test.ts` (pure rules), `tests/known-devices.test.ts` (fakes),
 `tests/trusted-devices-integration.test.ts` (throwaway Postgres, full sign-in flow), `e2e/my-account.spec.ts`
 (remembered device shown and forgotten; checkbox hidden at 0). Unit tests pass locally; database and browser tests
-run in CI only (no local Postgres here). `ci` green at the exact head and every review comment read are still to do.
+run in CI only (no local Postgres here). PR #616 opened (head 8b0199f9); `ci` came back red — two My account browser
+tests (a locator matching two elements; a settings save cancelled by an immediate reload), the customer
+session-deactivation test (ACC-6 records customer sign-ins in the audit log, so the fixture deletes its audit rows
+before deleting the user), the Bills sideways-scroll check at 360px in dark mode (a resize reporting the phone width
+before the desktop sidebar padding was recalculated — fixed in the shared scan helper by BA-1, now reused here), and
+one unit test timing out on a slow first import (import hoisted). Fixes in commit 6405616f; main (BA-1 #610) merged
+in (a39ae329). `ci` green at the exact head and every review comment read are still to do.
 Update 2026-10-26 (night): `main` moved (BILL-1 #612, preview-storage #609), merged into this branch as 164c968
 (conflicts only in STATUS.md and DATABASE.md, both kept both entries); re-checked locally — typecheck clean, lint
 0 errors, 41 unit tests pass. Push still blocked: the branch-creation approval timed out unanswered (01:39 MDT).

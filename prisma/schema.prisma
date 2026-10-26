@@ -3214,6 +3214,9 @@ model BusinessSettings {
   budgetUpcomingWindowDays Int @default(30)
   budgetReminderLeadDays Int @default(7)
   booksStartDate DateTime?
+  booksLastBroughtUpToDateAt DateTime?
+  booksLastProblemCount Int @default(0)
+  booksConsecutiveFailedNights Int @default(0)
   depreciationMonthsDefault Int @default(60)
   depreciationSalvagePercent Int @default(0)
   badDebtTaxRecovery String @default("UNDECIDED")
@@ -4853,18 +4856,36 @@ model BookAsset {
   lifeMonths Int
   salvagePercent Int
   lastDepreciationMonth String?
+  fullyDepreciatedOn DateTime?
   retiredOn DateTime?
   retirementIntent String?
   retiredValueCents Int?
   // M-2C: the day the retired appliance was sold (its book value left the books then); null while still held.
   disposedOn DateTime?
+  disposalCycle Int @default(0)
+  enrollmentSource String @default("MANUAL")
   version Int @default(1)
-  createdByUserId String
+  createdByUserId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   taxEvidence BookTaxEvidence[]
 
   @@index([retiredOn])
+}
+
+// Unresolved books exceptions are held separately from journals. They can be resolved, never silently forgotten.
+model BooksProblem {
+  id String @id @default(cuid())
+  kind String
+  subjectType String
+  subjectId String
+  message String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  resolvedAt DateTime?
+
+  @@unique([kind, subjectType, subjectId])
+  @@index([resolvedAt, kind])
 }
 
 // M-2C: what was known about the income-tax side of selling one retired appliance, frozen when the sale was saved.

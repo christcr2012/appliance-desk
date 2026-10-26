@@ -4020,7 +4020,7 @@
       "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
       "batch": "BA",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN REVIEW — PR #610; exact-head CI green before main reconciliation",
       "migration": "book_autopilot",
       "budget": 480,
       "units": [
@@ -4028,12 +4028,21 @@
       ],
       "evidence": [
         "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
-        "docs/designs/BOOKS-AUTOPILOT.md"
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/domains/books/autopilot.ts",
+        "src/domains/books/fixed-assets.ts",
+        "src/domains/exceptions/books-attention.ts",
+        "src/app/api/cron/books-nightly/route.ts"
       ],
       "tests": [
-        "tests/ba1-books-autopilot-integration.test.ts"
+        "tests/ba1-books-autopilot-integration.test.ts",
+        "tests/ba1-books-autopilot-guard.test.ts",
+        "tests/ba1-nightly-autopilot-integration.test.ts",
+        "tests/ba1-books-nightly-route.test.ts",
+        "tests/ba1-books-paging.test.ts",
+        "tests/ba1-immediate-webhook.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "IN_REVIEW",
       "plannedCard": "docs/pr-cards/BA-1.md"
     },
     {
@@ -5155,7 +5164,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "IN PROGRESS — built on branch ai/marley/acc-6; PR #616 open (head 8f703069, base main), CI pending",
+      "status": "IN PROGRESS — built on branch ai/marley/acc-6; PR #616 open, CI red at head 8b0199f9 (4 failures); fixes in commit 6405616f, main (BA-1 #610) merged, CI re-run pending",
       "units": [
         "ACC-6"
       ]

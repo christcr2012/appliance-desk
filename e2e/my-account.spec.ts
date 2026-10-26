@@ -86,7 +86,7 @@ test.describe("My account", () => {
     await page.waitForURL(/\/desk\/today$/);
 
     await page.goto("/desk/account");
-    await expect(page.getByText("Remembered devices")).toBeVisible();
+    await expect(page.getByText("Remembered devices", { exact: true })).toBeVisible();
     await expect(page.getByText(/Remembered until/)).toBeVisible();
 
     // Signing out keeps the remembered device: the next password login skips the code.
@@ -118,7 +118,13 @@ test.describe("My account", () => {
       // page is signed in as the owner from the shared fixture.
       await page.goto("/desk/settings?section=security");
       await page.getByLabel("Remember devices for (days)").fill("0");
+      // The save is a server action: wait for its POST to finish before reloading, or the reload can
+      // cancel the write and the page still shows the old value.
+      const turnedOff = page.waitForResponse(
+        (response) => response.request().method() === "POST" && response.url().includes("/desk/settings"),
+      );
       await page.getByRole("button", { name: "Save remember-device rules" }).click();
+      await turnedOff;
       await page.reload();
       await expect(page.getByLabel("Remember devices for (days)")).toHaveValue("0");
 
@@ -149,7 +155,11 @@ test.describe("My account", () => {
       // The owner turns remembering back on, so later tests see the starting value.
       await page.goto("/desk/settings?section=security");
       await page.getByLabel("Remember devices for (days)").fill("30");
+      const turnedOn = page.waitForResponse(
+        (response) => response.request().method() === "POST" && response.url().includes("/desk/settings"),
+      );
       await page.getByRole("button", { name: "Save remember-device rules" }).click();
+      await turnedOn;
       await page.reload();
       await expect(page.getByLabel("Remember devices for (days)")).toHaveValue("30");
     });
