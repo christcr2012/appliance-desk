@@ -1,3 +1,4 @@
+import { assertNotRecalledForSale } from "@/domains/recalls/guard";
 import { recordShopSaleDeliveryFeeInTx, voidShopSaleDeliveryFeeInTx } from "@/domains/tax/rdf-shop-sale";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
@@ -189,6 +190,8 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
           where: { id: a.applianceId },
           select: { id: true, assetNumber: true, status: true, manufacturer: true, model: true, serialNumber: true, applianceType: { select: { name: true } }, retiredPlan: { select: { choice: true, doneOn: true } } },
         });
+        // OPS-1: it is illegal to sell a recalled product, so a confirmed recall for this machine or its model refuses the sale.
+        await assertNotRecalledForSale(tx, row.id, "sold");
         if (row.status !== "RETIRED" || row.retiredPlan?.choice !== "SELL") throw new Error(`Appliance ${row.assetNumber} isn't a retired appliance with a “Sell it” plan. Set that on its page first.`);
         if (row.retiredPlan.doneOn) throw new Error(`Appliance ${row.assetNumber} is already marked done.`);
         const already = await tx.invoiceLineItem.findFirst({ where: { applianceId: row.id, invoice: { status: { not: "VOID" } } }, select: { id: true } });

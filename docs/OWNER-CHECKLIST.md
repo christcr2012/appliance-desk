@@ -201,6 +201,12 @@ Agents will do the parts they safely can and record what they saw; the rest need
   test bank payment (Stripe's test bank account) shows **Being confirmed** on the bill within a minute, and **Paid** after
   Stripe settles it. Until you do this, bank payments are only noticed from events already sent.
 
+- [ ] **Check the recall list answers the way the app expects.** The build machine could not reach the government's recall
+  site, so the reader was tested on sample data shaped from the published field names. Steps: ask your agent to open
+  **Equipment › Recalls** after the first night, and look at "Recall check": it should say the last check worked and show
+  how many appliances were checked. Then press **Check my whole fleet**. Ready when: OPS-1 is merged and deployed. Worked if:
+  the page shows a recent good check with no error, and any listed recall opens its government page.
+
 - [ ] **Turn on late fees for real card customers (only when you are ready).** Late fees are recorded and shown, and customers are
   warned first, but a fee only goes onto a customer's real automatic charge when you switch it on. In Stripe test mode it
   already works. Steps: ask your agent to set `LATE_FEE_CUSTOMER_CHARGING_ENABLED` to `true` for the live site, after you have
@@ -278,3 +284,4 @@ on readiness).
 | 2026-10-26 | Turn on late fees for real card customers | FEE-1: fees only reach a customer's real automatic charge when you switch it on. |
 | 2026-10-26 | Add three payment events to your Stripe webhook | BILL-1: the app can only show "Being confirmed" for bank payments if Stripe sends those events. |
 | 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |
+| 2026-10-26 | Check the recall list answers as expected | OPS-1: the live government recall answer could not be fetched while building. |

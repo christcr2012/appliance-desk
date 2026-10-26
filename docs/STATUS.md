@@ -12,6 +12,18 @@ Not observed: a form kept in real private storage (CI has none). Next: DEC-2 res
 
 PR #632 changes Gitleaks from all-branch history scanning to new PR/push commits plus the complete main-only nightly history; the full checked-out-file scan remains. Three complete browser specs moved into the previously lightest group, preserving all 85 specs and four runners. The first full CI run (40416591581, head f591596f) passed all 11 jobs: browser a 164.74s, b 142.41s, c 108.31s, d 164.08s against 180s. No automated review appeared and the diff was self-reviewed. The final evidence documentation revision must pass its own exact-head CI before merge; the PR records the current merge state. No security allowlist, test coverage, provider settings or production data changed.
 
+## October 26 — OPS-1: product recalls (PR open, branch `ai/claude/ops-1`)
+
+Each night the app reads the government's public recall list (CPSC, read only) and records **possible** matches against your
+fleet (same maker, and the model number appears in the notice). Nothing is held or sent automatically. On **Equipment › Recalls**
+the owner or an admin presses "It's ours" (machine goes on hold: cannot be rented, reserved, swapped in, sold or listed for
+parts) or "Not ours" (a reason is required). A confirmed recall puts a high-priority To do on the list for each current renter
+with a drafted message; the app never sends it. Extra step beyond the spec: "Fixed" ends a hold after the repair. A
+"Safety incident" button on repairs and visits starts a 24-hour To do to decide whether to report to the government.
+Migration `20261102000000_recalls` (additive). Proof: unit tests plus 11 database tests on a throwaway Postgres, typecheck and lint clean.
+Not done: no real call to the government list was possible from the build machine, so the live answer shape is on the
+checklist; browser test runs only in CI.
+
 ## October 26 — ACC-6: CI green; Codex findings fixed, exact-head rerun
 
 PR #616's checks came back all green at head beb787c4. Codex's review left two findings: a P2 — the two-step login page could be prerendered, so it kept offering "Remember this device" after the owner turned remembering off (already fixed in an earlier round by making the page request-rendered) — and a P1 — the My account "Forget remembered devices" action did not re-check the person inside its transaction, so someone deactivated between the page check and the write could still have their trust rows deleted. The forget now re-checks the actor inside the transaction (row lock + active-team check, the repo's rule), with unit tests for the active, deactivated, and internal-cleanup paths; internal cleanup (password, reset, email, owner actions) is unchanged. Typecheck clean, 27 focused unit tests pass. The rerun on the fix head then failed only the secret scan: the full-history scan reads every branch, and it flagged the same legal rule-name lines under main's TFA-1 merge commit (already allowlisted on main — this branch's copy was older) and under the leads lane's merge commits (not allowlisted anywhere). Main has been merged in, bringing the refreshed allowlist, and the four leads-branch fingerprints were added with the reason recorded in `.gitleaksignore` and the PR; every flagged line was read — they are tax rule names and a migration comment, not credentials. Next: exact-head CI, then reply to and resolve both review threads and merge.

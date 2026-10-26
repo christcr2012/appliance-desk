@@ -23,6 +23,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { LateReturnWaiverForm } from "./late-return-waiver-form";
 import { getLateReturnWaiverState } from "@/domains/billing/late-return-waiver";
 import { RecordConnections } from "@/components/desk/record-connections";
+import { SafetyIncidentButton } from "@/components/desk/safety-incident-button";
 
 export const metadata = { title: "Job" };
 
@@ -106,6 +107,7 @@ export default async function JobDetailPage({
           View / print work order &rarr;
         </Link>
       </div>
+      <SafetyIncidentButton jobId={job.id} />
       {job.customer && (canViewFinance || job.assignedToUserId === session.user.id) && (
         <div className="mt-3">
           <SendTextPanel userId={session.user.id} entityType="Job" entityId={job.id} path={`/desk/jobs/${job.id}`}

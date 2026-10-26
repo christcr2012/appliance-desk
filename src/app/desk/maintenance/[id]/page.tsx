@@ -7,6 +7,7 @@ import Image from "next/image";
 import { requireRole } from "@/lib/session";
 import { getMaintenanceRequestById } from "@/domains/maintenance";
 import { MaintenanceDetailPanel } from "./maintenance-detail-panel";
+import { SafetyIncidentButton } from "@/components/desk/safety-incident-button";
 import { privatePhotoReadPath } from "@/lib/photo-storage";
 
 export const metadata = { title: "Maintenance request" };
@@ -108,6 +109,8 @@ export default async function MaintenanceDetailPage({
           </ul>
         </div>
       )}
+
+      <SafetyIncidentButton maintenanceRequestId={request.id} applianceId={request.applianceId} />
 
       <div className="mt-6">
         <MaintenanceDetailPanel

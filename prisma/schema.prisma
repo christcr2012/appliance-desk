@@ -561,6 +561,10 @@ model ApplianceType {
   // until Chris supplies one — the site falls back to a generic icon.
   photoUrl String?
 
+  // OPS-1: words used to search the government recall list for this kind of appliance ("washer", "washing machine").
+  // Empty means the nightly check falls back to the type's own name.
+  recallProductTerms String[] @default([])
+
   // Soft-delete: an appliance type is never hard-deleted once it's been
   // referenced by a Lead/PricingRule/Appliance (that would break history).
   // Retiring a category sets isActive=false instead, which hides it from
@@ -684,6 +688,10 @@ model Appliance {
   saleLines InvoiceLineItem[] @relation("ApplianceSaleLine")
   saleDispositions RetiredSaleDisposition[]
   salvagedMovements PartStockMovement[] @relation("SalvageAppliance")
+  // OPS-1: true while a CONFIRMED safety recall covers this machine. Blocks renting, reserving, swapping, selling and parts listing.
+  recallHold Boolean @default(false)
+  recallMatches RecallMatch[]
+  safetyIncidents SafetyIncident[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -5660,4 +5668,79 @@ enum FeedbackState {
   DUPLICATE
   DECLINED
   CLOSED
+}
+
+
+// ---------------------------------------------------------------------------
+// OPS-1 (docs/build-specs/engines/OWNER-OPERATIONS.md): product recalls.
+// The nightly check only ever creates POSSIBLE matches. Only Chris confirms one (CONFIRMED puts the machine on hold).
+// REMEDIED is the one state beyond the spec: without it a hold could never end after the maker's fix is done.
+// ---------------------------------------------------------------------------
+enum RecallMatchState {
+  POSSIBLE
+  CONFIRMED
+  NOT_OURS
+  REMEDIED
+}
+
+model RecallMatch {
+  id           String           @id @default(cuid())
+  recallId     String
+  recallNumber String
+  title        String
+  url          String
+  hazard       String?
+  remedy       String?
+  publishedAt  DateTime?
+  applianceId  String
+  appliance    Appliance        @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  matchReason  String
+  state        RecallMatchState @default(POSSIBLE)
+  decidedByUserId String?
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([recallId, applianceId])
+  @@index([state])
+  @@index([applianceId])
+}
+
+// One row: when the nightly recall check last finished, and whether Chris asked for a whole-fleet check.
+model RecallWatchState {
+  id                    String    @id @default("singleton")
+  lastSuccessAt         DateTime?
+  fullFleetRequestedAt  DateTime?
+  fullFleetCheckedAt    DateTime?
+  fullFleetCursor       Int       @default(0)
+  lastError             String?
+  updatedAt             DateTime  @updatedAt
+}
+
+enum SafetyIncidentDecision {
+  PENDING
+  REPORTED
+  NOT_REPORTED
+}
+
+// An injury or safety incident Chris marked on a repair request or visit. Stays on his To do until he decides about CPSC.
+model SafetyIncident {
+  id          String   @id @default(cuid())
+  applianceId String?
+  appliance   Appliance? @relation(fields: [applianceId], references: [id], onDelete: SetNull)
+  maintenanceRequestId String?
+  jobId       String?
+  description String
+  markedByUserId String
+  decision    SafetyIncidentDecision @default(PENDING)
+  decidedByUserId String?
+  decidedAt   DateTime?
+  decisionNote String?
+  createdAt   DateTime @default(now())
+
+  @@index([decision])
+  @@index([applianceId])
+  @@index([maintenanceRequestId])
+  @@index([jobId])
 }

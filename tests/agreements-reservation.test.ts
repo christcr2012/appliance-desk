@@ -78,7 +78,7 @@ describe("addRentalLine — atomic reservation", () => {
     });
 
     expect(applianceUpdateMany).toHaveBeenCalledWith({
-      where: { id: "appl-1", status: "AVAILABLE" },
+      where: { id: "appl-1", status: "AVAILABLE", recallHold: false },
       data: { status: "RESERVED" },
     });
     expect(applianceAssignmentCreate).toHaveBeenCalledWith({

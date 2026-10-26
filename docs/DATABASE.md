@@ -1391,3 +1391,15 @@ null for background operations; automatic audit records explicitly say `by: auto
 `BusinessSettings` records when the nightly book catch-up last ran and how many issues remain;
 `BooksProblem` tracks durable unresolved source/appliance problems by their unique subject key.
 Existing financial entries remain append-only and closed months stay immutable.
+
+
+### OPS-1: recalls (additive migration `20261102000000_recalls`)
+
+- `ApplianceType.recallProductTerms` (search words, starting values for washer and dryer) and `Appliance.recallHold`
+  (true while any CONFIRMED recall covers the machine).
+- `RecallMatch` — one row per (recall, appliance), unique. States POSSIBLE, CONFIRMED, NOT_OURS, REMEDIED (REMEDIED is added
+  beyond the spec so a hold can end). Appliance link is Restrict. Who decided, when, and the note are kept.
+- `RecallWatchState` — one row ("singleton"): last good check, whole-fleet request and progress, last error.
+- `SafetyIncident` — a marked injury or safety event (appliance, repair request or job), decision PENDING / REPORTED /
+  NOT_REPORTED with the owner's note.
+All three tables are in the backup manifest.
