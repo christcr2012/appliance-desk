@@ -56,8 +56,8 @@ describe.skipIf(!enabled)("product recalls (real Postgres, fake government list)
     const customer = await prisma.customer.create({ data: { userId: customerUserId, referralCode: `OPS1${tag}` } });
     customerId = customer.id;
     addressId = (await prisma.serviceAddress.create({ data: { customerId, line1: "1 Test St", city: "Greeley", zip: "80631" } })).id;
-    await prisma.applianceType.create({ data: { id: typeId, name: "Refrigerator", slug: `ops1-fridge-${tag}`, recallProductTerms: ["refrigerator"] } });
-    await prisma.applianceType.create({ data: { id: otherTypeId, name: "Washer", slug: `ops1-washer-${tag}`, recallProductTerms: ["washer"] } });
+    await prisma.applianceType.create({ data: { id: typeId, name: `Refrigerator ${tag}`, slug: `ops1-fridge-${tag}`, recallProductTerms: ["refrigerator"] } });
+    await prisma.applianceType.create({ data: { id: otherTypeId, name: `Washer ${tag}`, slug: `ops1-washer-${tag}`, recallProductTerms: ["washer"] } });
     await mk({ id: idOf("fridge") });                                   // maker + model in the notice
     await mk({ id: idOf("fridge-nomodel"), model: null });              // maker only
     await mk({ id: idOf("fridge-otherModel"), model: "TM-ZZ99" });      // maker, different model
