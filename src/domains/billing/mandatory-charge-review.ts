@@ -33,6 +33,8 @@ export type ReviewedMandatoryChargeRevision={
   retailDelivery:{
     event:boolean;status:"APPLIES"|"EXEMPT"|"UNDECIDED";
     amountCents:number|null;rateId:string|null;
+    /** TFA-1: the dated rule version that set the amount (absent on rows written before TFA-1). */
+    ruleVersionId?:string|null;
     handling:"COLLECT_FROM_CUSTOMER"|"PAY_MYSELF"|"UNDECIDED";
     reason:string;
   };
@@ -74,7 +76,7 @@ export function mandatoryReviewFingerprint(input:Readonly<ReturnType<typeof norm
         a.rateVersionId.localeCompare(b.rateVersionId)),
       reasons:input.tax.reasons,
     },
-    retailDelivery:{event:input.retailDelivery.event,status:input.retailDelivery.status,amountCents:input.retailDelivery.amountCents,rateId:input.retailDelivery.rateId,handling:input.retailDelivery.handling,reason:input.retailDelivery.reason},reserveCents:input.reserveCents,
+    retailDelivery:{event:input.retailDelivery.event,status:input.retailDelivery.status,amountCents:input.retailDelivery.amountCents,rateId:input.retailDelivery.rateId,ruleVersionId:input.retailDelivery.ruleVersionId??null,handling:input.retailDelivery.handling,reason:input.retailDelivery.reason},reserveCents:input.reserveCents,
     reserveRevision:input.reserveRevision,
   };
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");

@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { assertActiveTeamActor } from "@/lib/team-actor";
 import { parseDollarInput } from "@/lib/money-ui";
 import { MoneyInput, Money } from "@/components/ui/money";
 import { InfoTip } from "@/components/ui/info-tip";
+import { getUseTaxThreshold, saveUseTaxThreshold as saveUseTaxThresholdRule } from "@/domains/tax/use-tax";
 
 export const metadata = { title: "Consumer use-tax threshold", robots: { index: false, follow: false } };
 
@@ -21,36 +20,13 @@ async function saveUseTaxThreshold(form: FormData) {
       !Number.isSafeInteger(old) || old < 0) {
     throw new Error("Enter a valid threshold in dollars.");
   }
-  await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, session.user.id, ["OWNER"]);
-    const changed = await tx.businessSettings.updateMany({
-      where: { id: "singleton", useTaxMonthlyThresholdCents: old },
-      data: { useTaxMonthlyThresholdCents: next },
-    });
-    if (changed.count !== 1) {
-      throw new Error("The threshold was updated in another session. Refresh before saving.");
-    }
-    await tx.auditLog.create({
-      data: {
-        userId: session.user.id,
-        action: "tax.use_tax_threshold.update",
-        entityType: "BusinessSettings",
-        entityId: "singleton",
-        oldValue: { useTaxMonthlyThresholdCents: old },
-        newValue: { useTaxMonthlyThresholdCents: next },
-      },
-    });
-  });
+  await saveUseTaxThresholdRule(session.user.id, next, old);
   revalidatePath("/desk/sales-tax/use-tax/settings");
 }
 
 export default async function UseTaxThresholdPage() {
   await requireRole("OWNER");
-  const settings = await prisma.businessSettings.findUnique({
-    where: { id: "singleton" },
-    select: { useTaxMonthlyThresholdCents: true },
-  });
-  const cents = settings?.useTaxMonthlyThresholdCents ?? 30000;
+  const cents = await getUseTaxThreshold();
   return (
     <main className="mx-auto max-w-2xl space-y-5">
       <Link href="/desk/inventory" className="text-sm underline">Back to inventory</Link>
