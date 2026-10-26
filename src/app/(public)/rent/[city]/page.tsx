@@ -82,7 +82,8 @@ export default async function CityLandingPage({
   const facts = siteFacts(settings, { city });
   const c = siteCopy(site.text, facts);
   const profile = { phone: settings.publicPhone, email: settings.publicEmail };
-  const zone = zoneForPoint({ lat: town.lat, lon: town.lon }, readZoneSettings(settings));
+  const zoneSettings = readZoneSettings(settings);
+  const zone = zoneForPoint({ lat: town.lat, lon: town.lon }, zoneSettings);
 
   return (
     <>
@@ -133,7 +134,8 @@ export default async function CityLandingPage({
             {c("rent.serving.heading")}
           </h2>
           <p className="mx-auto mt-3 max-w-xl font-semibold text-ink">
-            {zone.kind === "ZONE" ? c("rent.zone", { zone: zone.name }) : c("rent.zone.outside")}
+            {zoneSettings.method === "DRIVING" ? c("area.zone.driving")
+              : zone.kind === "ZONE" ? c("rent.zone", { zone: zone.name }) : c("rent.zone.outside")}
           </p>
           <p className="mx-auto mt-2 max-w-xl text-ink-soft">
             {c("rent.serving.body")}

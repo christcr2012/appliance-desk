@@ -47,10 +47,10 @@ export function DeliveryZonesForm({ settings, revision, canChange }: { settings:
             <input name="maxMiles" type="number" step="0.1" min="1" max="200" defaultValue={settings.maxMiles} required className={input} />
           </label>
           <label className="block text-sm font-semibold text-ink">Center latitude
-            <input name="centerLat" type="number" step="0.0001" min="-90" max="90" defaultValue={settings.center.lat} required className={input} />
+            <input name="centerLat" type="number" step="any" min="-90" max="90" defaultValue={settings.center.lat} required className={input} />
           </label>
           <label className="block text-sm font-semibold text-ink">Center longitude
-            <input name="centerLon" type="number" step="0.0001" min="-180" max="180" defaultValue={settings.center.lon} required className={input} />
+            <input name="centerLon" type="number" step="any" min="-180" max="180" defaultValue={settings.center.lon} required className={input} />
           </label>
         </div>
         <fieldset className="space-y-2">

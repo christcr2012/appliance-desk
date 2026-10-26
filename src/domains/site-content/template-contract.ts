@@ -219,6 +219,7 @@ export const CONTENT_SLOTS: ReadonlyArray<ContentSlot> = [
   ["area.zone.price", "text", 120],
   ["area.zone.hidden", "text", 120],
   ["area.zone.outside", "text", 120],
+  ["area.zone.driving", "text", 120],
   ["area.zone.pickup", "text", 120],
   ["area.check.heading", "text", 120],
   ["area.check.button", "text", 120],
@@ -308,7 +309,7 @@ export function contractFingerprint(slots: ReadonlyArray<ContentSlot> = CONTENT_
   }
   return hash.toString(16).padStart(8, "0");
 }
-export const CONTRACT_FINGERPRINT = "2a4085e6";
+export const CONTRACT_FINGERPRINT = "5bb98566";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Compatibility plan: what happens to the owner's content when the layout changes (or is rolled back).

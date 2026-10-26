@@ -4,7 +4,7 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { getBusinessSettings } from "@/domains/settings";
-import { readZoneSettings, zoneSettingsProblems, type ZoneSettings } from "./zone";
+import { readZoneSettings, roundGeoPoint, zoneSettingsProblems, type ZoneSettings } from "./zone";
 
 /**
  * ZONE-1: read and save the owner's delivery zones (Settings › Delivery zones). Only the owner saves; a save locks the
@@ -48,7 +48,7 @@ export async function saveZoneSettings(actorId: string, next: ZoneSettings, expe
         pickupCents: zone.pickupCents, color: zone.color,
       })),
       deliveryMaxMiles: next.maxMiles,
-      zoneCenter: { lat: next.center.lat, lon: next.center.lon },
+      zoneCenter: roundGeoPoint(next.center),
       zoneDistanceMethod: next.method,
       showDeliveryPricesOnWebsite: next.showPricesOnWebsite,
     };

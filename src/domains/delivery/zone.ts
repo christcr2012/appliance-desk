@@ -94,6 +94,12 @@ export function zoneSettingsProblems(input: Pick<ZoneSettings, "zones" | "maxMil
   return problems;
 }
 
+/** Map positions are stored to 6 decimals (about 10 cm) — what the settings screen shows and accepts. */
+export function roundGeoPoint(point: GeoPoint): GeoPoint {
+  const round = (n: number) => Math.round(n * 1e6) / 1e6;
+  return { lat: round(point.lat), lon: round(point.lon) };
+}
+
 export function isGeoPoint(value: unknown): value is GeoPoint {
   const point = value as GeoPoint | null;
   return !!point && typeof point === "object" && Number.isFinite(point.lat) && Number.isFinite(point.lon) &&
@@ -126,7 +132,7 @@ export function readZoneSettings(source: object | null | undefined): ZoneSetting
   const candidate: ZoneSettings = {
     zones,
     maxMiles: typeof row.deliveryMaxMiles === "number" ? row.deliveryMaxMiles : start.maxMiles,
-    center: isGeoPoint(row.zoneCenter) ? { lat: (row.zoneCenter as GeoPoint).lat, lon: (row.zoneCenter as GeoPoint).lon } : start.center,
+    center: isGeoPoint(row.zoneCenter) ? roundGeoPoint(row.zoneCenter as GeoPoint) : start.center,
     method: (DISTANCE_METHODS as readonly string[]).includes(String(row.zoneDistanceMethod))
       ? row.zoneDistanceMethod as DistanceMethod : start.method,
     showPricesOnWebsite: row.showDeliveryPricesOnWebsite === true,

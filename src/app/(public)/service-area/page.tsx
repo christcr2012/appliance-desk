@@ -40,6 +40,8 @@ export default async function ServiceAreaPage({
   const lastOuter = zones.zones[zones.zones.length - 1]!.outerMiles;
   const reach = milesWords(Math.min(zones.maxMiles, lastOuter));
   const outsideTowns = towns.filter((town) => town.zone.kind === "OUTSIDE");
+  // Driving-distance zones: the straight-line circles are only an illustration, so no price or free-delivery promise.
+  const driving = zones.method === "DRIVING";
 
   return (
     <>
@@ -62,7 +64,8 @@ export default async function ServiceAreaPage({
                       <span className="block font-semibold text-ink">{zone.name}</span>
                       <span className="block text-sm text-ink-soft">{c("area.zone.miles", { miles: zoneRangeWords(zones.zones, index) })}</span>
                       <span className="block text-sm font-semibold text-ink">
-                        {zone.deliveryCents === 0 ? c("area.zone.free")
+                        {driving ? c("area.zone.driving")
+                          : zone.deliveryCents === 0 ? c("area.zone.free")
                           : zones.showPricesOnWebsite ? c("area.zone.price", { price: zonePriceWords(zone.deliveryCents) })
                             : c("area.zone.hidden")}
                       </span>
@@ -85,6 +88,7 @@ export default async function ServiceAreaPage({
         <section aria-labelledby="zone-towns" className="mt-16">
           <h2 id="zone-towns" className="text-h2 text-ink">{c("area.towns.heading")}</h2>
           <p className="mt-2 max-w-2xl text-ink-soft">{c("area.towns.note")}</p>
+          {driving && <p className="mt-2 max-w-2xl font-semibold text-ink">{c("area.zone.driving")}</p>}
           <div className="mt-6 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
             {zones.zones.map((zone, index) => {
               const inZone = towns.filter((town) => town.zone.kind === "ZONE" && town.zone.zone === index + 1);

@@ -36,7 +36,7 @@ The written agreement between the two is `src/domains/site-content/template-cont
 - The service area page became the delivery-zone map, legend, address checker and town list; town pages show the zone.
 - **Removed:** `area.cities.heading`, `area.zips.heading`, `area.empty` (kept aside as retired; a rollback brings them
   back). **Added, with starting wording:** `area.map.*`, `area.legend.heading`, `area.zone.*`, `area.check.*`,
-  `area.towns.*`, `home.check.served.free`, `home.check.served.noprice`, `home.check.unknown`, `rent.zone`,
+  `area.towns.*`, `area.zone.driving`, `home.check.served.free`, `home.check.served.noprice`, `home.check.unknown`, `rent.zone`,
   `rent.zone.outside`, `rent.zone.cta`. New facts `{zone}`, `{price}`, `{miles}` come from Settings › Delivery zones.
 - Changed starting words (only where the owner hadn't edited them): `area.intro`, `home.check.served`,
   `home.check.notyet`, `home.check.notyet.cta`, `rent.serving.body`.

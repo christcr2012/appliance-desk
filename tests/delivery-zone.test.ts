@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  greatCircleMiles, readZoneSettings, startingZoneSettings, zoneForMiles, zoneForPoint, zonePriceWords,
+  greatCircleMiles, readZoneSettings, roundGeoPoint, startingZoneSettings, zoneForMiles, zoneForPoint, zonePriceWords,
   zoneSettingsProblems, STARTING_CENTER,
 } from "@/domains/delivery/zone";
 import { TOWNS, townBySlug, townByName, townsWithZones } from "@/domains/delivery/towns";
@@ -135,6 +135,11 @@ describe("ZONE-1 settings validation", () => {
     expect(readZoneSettings({ deliveryZones: [{ name: "Only", outerMiles: 10, deliveryCents: 0, pickupCents: 0, color: "GREEN" }],
       deliveryMaxMiles: 10, showDeliveryPricesOnWebsite: true, zoneDistanceMethod: "DRIVING" }))
       .toMatchObject({ maxMiles: 10, method: "DRIVING", showPricesOnWebsite: true, zones: [{ name: "Only" }] });
+  });
+  it("keeps map positions to 6 decimals (Census gives more), on read and on save", () => {
+    expect(roundGeoPoint({ lat: 40.422501212867, lon: -104.694521952776 })).toEqual({ lat: 40.422501, lon: -104.694522 });
+    expect(readZoneSettings({ zoneCenter: { lat: 40.422501212867, lon: -104.694521952776 } }).center)
+      .toEqual({ lat: 40.422501, lon: -104.694522 });
   });
   it("words prices plainly", () => {
     expect(zonePriceWords(0)).toBe("Free");

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FIXTURE_CATALOG, FIXTURE_SETTINGS, visibleLines } from "./helpers/public-pages";
 
-const state = vi.hoisted(() => ({ legal: false, photos: false, lead: null as null | ((v: unknown) => Promise<unknown>), check: null as null | ((f: FormData) => unknown), launch: null as null | ((s: unknown, f: unknown) => Promise<unknown>), prelaunch: false, emptyCatalog: false, noCities: false, content: {} as Record<string, string>, values: {} as Record<string, unknown> }));
+const state = vi.hoisted(() => ({ legal: false, photos: false, lead: null as null | ((v: unknown) => Promise<unknown>), check: null as null | ((f: FormData) => unknown), launch: null as null | ((s: unknown, f: unknown) => Promise<unknown>), prelaunch: false, emptyCatalog: false, noCities: false, driving: false, content: {} as Record<string, string>, values: {} as Record<string, unknown> }));
 
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => { throw new Error(`REDIRECT ${to}`); },
@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
 }));
 // eslint-disable-next-line @next/next/no-img-element -- test stand-in for next/image
 vi.mock("next/image", () => ({ default: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} /> }));
-vi.mock("@/domains/settings", async (orig) => ({ ...(await orig<typeof import("@/domains/settings")>()), getBusinessSettings: async () => (state.noCities ? { ...FIXTURE_SETTINGS, showDeliveryPricesOnWebsite: true } : FIXTURE_SETTINGS) }));
+vi.mock("@/domains/settings", async (orig) => ({ ...(await orig<typeof import("@/domains/settings")>()), getBusinessSettings: async () => (state.driving ? { ...FIXTURE_SETTINGS, zoneDistanceMethod: "DRIVING" } : state.noCities ? { ...FIXTURE_SETTINGS, showDeliveryPricesOnWebsite: true } : FIXTURE_SETTINGS) }));
 vi.mock("@/domains/launch", () => ({ getLaunchSettings: async () => ({ prelaunchMode: state.prelaunch, emailEnabled: false, postalAddress: "", replyToEmail: "" }) }));
 vi.mock("@/domains/pricing", async (orig) => ({ ...(await orig<typeof import("@/domains/pricing")>()), getPublishedCatalog: async () => (state.emptyCatalog ? [] : state.photos ? [{ ...FIXTURE_CATALOG[0] }, { ...FIXTURE_CATALOG[0], id: "t2", slug: "dryer", name: "Dryer" }, { ...FIXTURE_CATALOG[1], slug: "washer-dryer-set" }].map((c) => ({ ...c, photoUrl: "https://photos.example/" + c.slug + ".jpg" })) : FIXTURE_CATALOG) }));
 vi.mock("@/domains/settings/legal-approvals", async (orig) => ({ ...(await orig<typeof import("@/domains/settings/legal-approvals")>()), isLegalPageApproved: () => state.legal }));
@@ -72,7 +72,7 @@ async function render(route: Route) {
   return visibleLines(layout as React.ReactElement).join("\n") + "\n";
 }
 
-beforeEach(() => { state.content = siteDefaults(); state.values = {}; state.emptyCatalog = false; state.noCities = false; state.legal = false; state.photos = false; state.lead = null; state.launch = null; });
+beforeEach(() => { state.content = siteDefaults(); state.values = {}; state.emptyCatalog = false; state.noCities = false; state.driving = false; state.legal = false; state.photos = false; state.lead = null; state.launch = null; });
 
 describe("public pages show exactly today's words when nothing has been changed", () => {
   for (const route of ROUTES) {
@@ -139,6 +139,22 @@ function strayLines(lines: string[]): string[] {
 const seen = new Set<string>();
 function noteMarkers(text: string) { for (const m of text.matchAll(/⟦([^⟧]+)⟧/g)) seen.add(m[1]); }
 
+describe("ZONE-1 service area wording by distance method", () => {
+  it("straight line (the current setting) promises free delivery; driving distance shows the map as an illustration only", async () => {
+    const straight = await render(ROUTES.find((r) => r.name === "service-area")!);
+    expect(straight).toContain("Guaranteed free delivery");
+    expect(straight).not.toContain("Your exact delivery price is confirmed on your estimate.");
+    state.driving = true;
+    const driving = await render(ROUTES.find((r) => r.name === "service-area")!);
+    expect(driving).not.toContain("Guaranteed free delivery");
+    expect(driving).not.toContain("Delivery price shown on your estimate");
+    expect(driving).toContain("Your exact delivery price is confirmed on your estimate.");
+    const town = await render(ROUTES.find((r) => r.name === "rent-greeley")!);
+    expect(town).toContain("Your exact delivery price is confirmed on your estimate.");
+    expect(town).not.toMatch(/Delivery to Greeley: .* zone/);
+  });
+});
+
 describe("runtime coverage with every editable item replaced by a marker", () => {
   const variants: Route[] = [
     ...ROUTES,
@@ -151,6 +167,7 @@ describe("runtime coverage with every editable item replaced by a marker", () =>
     { name: "home-legal-approved", prelaunch: false, page: async () => { state.legal = true; return await HomePage({ searchParams: sp }); } },
     // ZONE-1: delivery prices switched on (noCities now means "prices shown"), and a town just outside the zones.
     { name: "area-prices", prelaunch: false, page: async () => { state.noCities = true; return await (ServiceAreaPage as (p: unknown) => Promise<React.ReactElement>)({ searchParams: sp }); } },
+    { name: "area-driving", prelaunch: false, page: async () => { state.driving = true; return await (ServiceAreaPage as (p: unknown) => Promise<React.ReactElement>)({ searchParams: sp }); } },
     { name: "rent-outside", prelaunch: false, page: async () => await (CityPage as (p: unknown) => Promise<React.ReactElement>)({ params: Promise.resolve({ city: "golden" }), searchParams: sp }) },
   ];
   for (const route of variants) {

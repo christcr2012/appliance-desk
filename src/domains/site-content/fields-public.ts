@@ -245,6 +245,7 @@ const area: SiteField[] = [
   text(AREA, "Legend", "area.zone.price", "Zone price", "short", "Delivery {price}", { placeholders: ["price"], help: "Shown for a zone with a delivery price, only after you switch on “Show delivery prices on the website”." }),
   text(AREA, "Legend", "area.zone.hidden", "Zone price while hidden", "short", "Delivery price shown on your estimate", { help: "Shown for a zone with a delivery price while delivery prices are not shown on the website." }),
   text(AREA, "Legend", "area.zone.outside", "Beyond the last zone", "short", "Beyond {miles} miles: pickup only", { placeholders: ["miles"] }),
+  text(AREA, "Legend", "area.zone.driving", "Note when zones use driving distance", "short", "Your exact delivery price is confirmed on your estimate.", { help: "Shown instead of zone prices and the free-delivery promise when Settings › Delivery zones measures driving distance: the circles on the map are then only an illustration." }),
   text(AREA, "Legend", "area.zone.pickup", "Pickup note", "short", "Delivery is optional everywhere: you can pick your appliance up instead, at a time and place we arrange together."),
   text(AREA, "Address check", "area.check.heading", "Address check heading", "short", "Check your address"),
   text(AREA, "Address check", "area.check.button", "Address check button", "short", "Find my zone"),

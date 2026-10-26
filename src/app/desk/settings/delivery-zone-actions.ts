@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/session";
 import { getBusinessSettings } from "@/domains/settings";
 import { saveZoneSettings, getZoneSettings, ZoneSettingsError } from "@/domains/delivery/settings";
 import { geocodeAddress } from "@/domains/delivery/geocode";
-import { startingZoneSettings, ZONE_COLORS, type DistanceMethod, type ZoneColor, type ZoneSettings } from "@/domains/delivery/zone";
+import { roundGeoPoint, startingZoneSettings, ZONE_COLORS, type DistanceMethod, type ZoneColor, type ZoneSettings } from "@/domains/delivery/zone";
 import { dollarsToCents } from "@/domains/pricing/money";
 
 export type ZoneFormState = { status: "idle" } | { status: "saved"; message: string } | { status: "error"; message: string };
@@ -33,7 +33,7 @@ export async function saveDeliveryZonesAction(_previous: ZoneFormState, form: Fo
       if (found.status !== "FOUND") {
         return { status: "error", message: "The address lookup couldn't place your business address. The center was not changed." };
       }
-      next = { ...current, center: found.point };
+      next = { ...current, center: roundGeoPoint(found.point) };
     } else {
       const count = Math.min(5, Math.max(1, Number(form.get("zoneCount") ?? current.zones.length) || current.zones.length));
       const zones = Array.from({ length: count }, (_, index) => ({
