@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { requestPaidDeliveryInTx } from "@/domains/orders/settled-delivery";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -52,6 +54,10 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma.businessSettings.update({ where: { id: "singleton" }, data: { deliveryZones: savedZones as Prisma.InputJsonValue } });
   const agreements = await prisma.rentalAgreement.findMany({ where: { customerId }, select: { id: true } });
+  await prisma.staffTask.deleteMany({ where: { customerId } });
+  await prisma.job.deleteMany({ where: { customerId } });
+  await prisma.agreementSigningPayment.deleteMany({ where: { agreementId: { in: agreements.map((a) => a.id) } } });
+  await prisma.receipt.deleteMany({ where: { customerId } });
   await prisma.auditLog.deleteMany({ where: { OR: [{ userId: ownerId }, { entityId: { in: [estimateId, lostEstimateId, ...agreements.map((a) => a.id)] } }] } });
   await prisma.rentalAgreement.deleteMany({ where: { customerId } });
   await prisma.estimate.deleteMany({ where: { customerId } });
@@ -154,5 +160,75 @@ describe("ZONE-1 estimate zones on a real database", () => {
     expect(text).not.toMatch(/latitude|longitude|addressHash/);
     // The other customer's identical street was never looked up or linked to this customer.
     expect(await prisma.serviceAddressGeocode.count({ where: { serviceAddressId: otherAddressId } })).toBe(0);
+  });
+});
+
+// Every way an address becomes pickup goes through becomePickupInTx: priced quotes are refused or withdrawn and any
+// retained delivery request is cleared; payment settlement never books a delivery visit for a pickup address.
+describe("ZONE-1 every path to pickup (real database)", () => {
+  const slot = { id: randomUUID(), date: "2099-04-19", window: "AM" as const };
+  const request = { slot, questions: { dryerOutlet: "UNKNOWN", stairs: false, washerHookups: "YES", crewNotes: "" } };
+  const priced = { reviewedQuoteFingerprint: "c".repeat(64), reviewedOrderFingerprint: "d".repeat(64), reviewedQuoteAt: new Date() };
+  const requested = { deliveryOffer: [slot], deliveryOfferVersion: 1, deliveryRequested: request, deliveryRequestedAt: new Date() };
+
+  it("customer choice: clears the estimate's and the agreement's delivery request", async () => {
+    const id = await estimateWith([lovelandId], "Path: customer choice");
+    await checkEstimateDeliveryZones(ownerId, id, { geocode });
+    await prisma.estimate.update({ where: { id }, data: { status: "SENT", ...requested } });
+    const agreement = await prisma.rentalAgreement.create({ data: { customerId, serviceAddressId: lovelandId, sourceEstimateId: id,
+      status: "DRAFT", deliveryOffer: [slot], deliveryRequested: request, deliveryRequestedAt: new Date() } });
+    await setEstimateDeliveryChoiceByCustomer(id, lovelandId, "CUSTOMER_PICKUP");
+    expect(await prisma.estimate.findUniqueOrThrow({ where: { id } })).toMatchObject({ deliveryRequested: null, deliveryRequestedAt: null });
+    expect(await prisma.rentalAgreement.findUniqueOrThrow({ where: { id: agreement.id } })).toMatchObject({ deliveryRequested: null, deliveryRequestedAt: null });
+  });
+
+  it("staff typing miles outside the area: refused on an approved priced order, pickup and cleared request on a draft", async () => {
+    const approvedId = await estimateWith([lostId], "Path: miles on approved");
+    await checkEstimateDeliveryZones(ownerId, approvedId, { geocode });
+    await prisma.estimate.update({ where: { id: approvedId }, data: { status: "APPROVED", ...priced, ...requested } });
+    await expect(confirmEstimateZoneMiles(ownerId, approvedId, lostId, 60, "Measured on the county map")).rejects.toThrow(/includes delivery/);
+    const stillUnknown = readZoneSnapshot((await prisma.estimate.findUniqueOrThrow({ where: { id: approvedId } })).deliveryZoneSnapshot)!;
+    expect(stillUnknown.locations[0]).toMatchObject({ zone: "UNKNOWN" });
+
+    const draftId = await estimateWith([lostId], "Path: miles on draft");
+    await checkEstimateDeliveryZones(ownerId, draftId, { geocode });
+    await prisma.estimate.update({ where: { id: draftId }, data: requested });
+    const settled = await confirmEstimateZoneMiles(ownerId, draftId, lostId, 60, "Measured on the county map");
+    expect(settled).toMatchObject({ zone: "OUTSIDE", choice: "CUSTOMER_PICKUP" });
+    expect(await prisma.estimate.findUniqueOrThrow({ where: { id: draftId } })).toMatchObject({ deliveryRequested: null });
+  });
+
+  it("outside the area on a lookup (first lookup or after a zone change): withdraws a priced quote and clears the request", async () => {
+    const id = await estimateWith([goldenId], "Path: lookup outside");
+    await prisma.estimate.update({ where: { id }, data: { status: "CHANGES_REQUESTED", ...priced, ...requested } });
+    const snapshot = await checkEstimateDeliveryZones(ownerId, id, { geocode });
+    expect(snapshot.locations[0]).toMatchObject({ zone: "OUTSIDE", choice: "CUSTOMER_PICKUP", requote: { by: "STAFF" } });
+    expect(await prisma.estimate.findUniqueOrThrow({ where: { id } }))
+      .toMatchObject({ reviewedQuoteFingerprint: null, reviewedOrderFingerprint: null, deliveryRequested: null });
+  });
+
+  it("after payment, settlement books no delivery for a pickup address (and still does for delivery)", async () => {
+    async function paidOrder(choice: "DELIVER" | "CUSTOMER_PICKUP") {
+      const id = await estimateWith([lovelandId], "Path: settlement " + choice);
+      await checkEstimateDeliveryZones(ownerId, id, { geocode });
+      if (choice === "CUSTOMER_PICKUP") await setEstimateDeliveryChoiceByStaff(ownerId, id, lovelandId, "CUSTOMER_PICKUP");
+      // A request kept from before (e.g. written by an older code path) must still be ignored for pickup.
+      await prisma.estimate.update({ where: { id }, data: { status: "CONVERTED", ...requested } });
+      const agreement = await prisma.rentalAgreement.create({ data: { customerId, serviceAddressId: lovelandId, sourceEstimateId: id, status: "ACTIVE" } });
+      const receipt = await prisma.receipt.create({ data: { customerId, source: "MANUAL", amountCents: 10500, method: "check",
+        receivedOn: new Date(), recordedByUserId: ownerId } });
+      await prisma.agreementSigningPayment.create({ data: { agreementId: agreement.id, orderFingerprint: "e".repeat(64),
+        evidenceVersion: 1, setupFeeCents: 4500, setupTaxCents: 0, downPaymentCents: 6000, totalCents: 10500,
+        status: "SETTLED", signedAt: new Date(), receiptId: receipt.id, settledAt: new Date() } });
+      const job = await prisma.job.create({ data: { type: "DELIVERY", status: "SCHEDULED", agreementId: agreement.id,
+        serviceAddressId: lovelandId, customerId } });
+      return { agreement, job };
+    }
+    const pickup = await paidOrder("CUSTOMER_PICKUP");
+    expect(await prisma.$transaction((tx) => requestPaidDeliveryInTx(tx, pickup.agreement.id))).toBeNull();
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: pickup.job.id } })).requestedDeliveryAt).toBeNull();
+    expect(await prisma.staffTask.count({ where: { sourceKey: "w24-confirm-delivery:" + pickup.job.id } })).toBe(0);
+    const delivered = await paidOrder("DELIVER");
+    expect(await prisma.$transaction((tx) => requestPaidDeliveryInTx(tx, delivered.agreement.id))).toBe(delivered.job.id);
   });
 });

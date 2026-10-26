@@ -1,5 +1,13 @@
 import type { Prisma } from "@prisma/client";
 import { readOfferedSlots, slotSchema } from "./delivery";
+import { snapshotLocation } from "@/domains/delivery/snapshot";
+
+/** The agreement's frozen zone, or else the estimate's entry for that address, says "I'll pick it up". */
+export function isPickupAddress(agreementZone: unknown, estimateZone: unknown, serviceAddressId: string): boolean {
+  const own = agreementZone as { choice?: unknown } | null | undefined;
+  if (own && typeof own === "object" && own.choice === "CUSTOMER_PICKUP") return true;
+  return snapshotLocation(estimateZone, serviceAddressId)?.choice === "CUSTOMER_PICKUP";
+}
 
 /**
  * Only verified receipt-backed settlement calls this, in the same transaction
@@ -13,7 +21,7 @@ export async function requestPaidDeliveryInTx(
     where: { id: agreementId },
     select: { id: true, customerId: true, sourceEstimateId: true,
       serviceAddressId: true, deliveryRequested: true, deliveryOffer: true,
-      deliveryOfferActorUserId: true,
+      deliveryOfferActorUserId: true, deliveryZoneSnapshot: true,
       signingPaymentObligation: {
         select: { status: true, receiptId: true },
       },
@@ -26,9 +34,12 @@ export async function requestPaidDeliveryInTx(
     ? await tx.estimate.findUnique({
         where:{id:agreement.sourceEstimateId},
         select:{customerId:true,createdByUserId:true,
-          deliveryRequested:true,deliveryOffer:true},
+          deliveryRequested:true,deliveryOffer:true,deliveryZoneSnapshot:true},
       })
     : null;
+  // ZONE-1: an address the customer picks up never gets a delivery visit, whatever request was kept.
+  if (isPickupAddress(agreement.deliveryZoneSnapshot, estimate?.deliveryZoneSnapshot, agreement.serviceAddressId))
+    return null;
   const source = estimate && estimate.customerId === agreement.customerId &&
     estimate.deliveryRequested
     ? {choice:estimate.deliveryRequested,offer:estimate.deliveryOffer,

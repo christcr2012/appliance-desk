@@ -87,6 +87,11 @@ export async function checkEstimateDeliveryZones(actorId: string, estimateId: st
     const snapshot: EstimateZoneSnapshot = { version: 1, locations };
     await tx.estimate.update({ where: { id: estimateId },
       data: { deliveryZoneSnapshot: snapshot as unknown as Prisma.InputJsonObject, deliveryZoneSnapshotAt: now } });
+    // An address that is now outside the area (first lookup, or after a zone change) becomes pickup the one way.
+    for (const location of [...snapshot.locations]) {
+      const earlier = previous?.locations.find((row) => row.serviceAddressId === location.serviceAddressId);
+      await becomePickupInTx(tx, { estimate, snapshot, before: earlier, after: location }, location.serviceAddressId, "STAFF");
+    }
     await tx.auditLog.create({ data: { userId: actorId, action: "estimate.delivery_zone.check", entityType: "Estimate",
       entityId: estimateId, newValue: { locations: auditLocations(snapshot) } as Prisma.InputJsonObject } });
     return snapshot;
@@ -169,7 +174,7 @@ export async function setEstimateDeliveryChoiceByStaff(actorId: string, estimate
     await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
     const changed = await updateLocation(tx, estimateId, serviceAddressId, CHOOSABLE_BY_STAFF,
       "This estimate is finished, so the delivery choice can't change.", (row) => applyChoice(row, choice));
-    const after = await reconcilePricedDeliveryInTx(tx, changed, serviceAddressId, "STAFF");
+    const after = await becomePickupInTx(tx, changed, serviceAddressId, "STAFF");
     await tx.auditLog.create({ data: { userId: actorId, action: "estimate.delivery_choice", entityType: "Estimate",
       entityId: estimateId, oldValue: { serviceAddressId, choice: changed.before.choice },
       newValue: { serviceAddressId, choice: after.choice, by: "STAFF", requote: !!after.requote } } });
@@ -185,23 +190,43 @@ export async function setEstimateDeliveryChoiceByStaff(actorId: string, estimate
  *  - staff on a draft get the same To do; staff can't switch a sent or approved priced order to pickup (request
  *    changes first). Approval also re-checks this (index-base.ts approveEstimate).
  */
-async function reconcilePricedDeliveryInTx(tx: Prisma.TransactionClient,
-  changed: Awaited<ReturnType<typeof updateLocation>>, serviceAddressId: string, by: "STAFF" | "CUSTOMER") {
-  const { before, after, snapshot, estimate } = changed;
-  if (after.choice !== "CUSTOMER_PICKUP" || before.choice === "CUSTOMER_PICKUP") return after;
+/**
+ * THE one place an address becomes "I'll pick it up" (explicit customer/staff choice, staff miles outside the area,
+ * outside the area on a lookup — zone setting changes reach estimates only through a lookup). Called under the
+ * estimate row lock after the snapshot is written. It:
+ *  1. refuses or withdraws a reviewed quote that charges delivery for this address (above);
+ *  2. clears any retained delivery request for this address — the agreement's, and the estimate's once no current
+ *     address is delivered — so payment settlement can't turn it into a delivery visit (settled-delivery.ts also
+ *     ignores pickup addresses).
+ * A no-op when the address was already pickup.
+ */
+export async function becomePickupInTx(tx: Prisma.TransactionClient,
+  changed: { estimate: { id: string; status: string; reviewedQuoteFingerprint: string | null;
+    lineItems: { serviceAddressId: string | null }[] }; snapshot: EstimateZoneSnapshot;
+    before?: ZoneSnapshotLocation; after: ZoneSnapshotLocation },
+  serviceAddressId: string, by: "STAFF" | "CUSTOMER"): Promise<ZoneSnapshotLocation> {
+  const { before, snapshot, estimate } = changed;
+  let after = changed.after;
+  if (after.choice !== "CUSTOMER_PICKUP" || before?.choice === "CUSTOMER_PICKUP") return after;
   const priced = await frozenDeliveryCentsInTx(tx, estimate, serviceAddressId);
-  if (priced === 0) return after;
-  if (by === "STAFF" && !(CHECKABLE as readonly string[]).includes(estimate.status))
-    throw new Error("This quote includes delivery. Request changes and send a new quote without delivery before switching to pickup.");
-  const flagged = { ...after, requote: { at: new Date().toISOString(), by } };
-  snapshot.locations = snapshot.locations.map((row) => row.serviceAddressId === serviceAddressId ? flagged : row);
+  const data: Prisma.EstimateUpdateInput = {};
+  if (priced !== 0) {
+    if (by === "STAFF" && !(CHECKABLE as readonly string[]).includes(estimate.status))
+      throw new Error("This quote includes delivery. Request changes and send a new quote without delivery before switching to pickup.");
+    after = { ...after, requote: { at: new Date().toISOString(), by } };
+    Object.assign(data, { reviewedQuoteFingerprint: null, reviewedOrderFingerprint: null, reviewedQuoteAt: null,
+      ...(by === "CUSTOMER" ? { status: "CHANGES_REQUESTED" as const, respondedAt: new Date(),
+        changesRequestedMessage: PICKUP_REQUOTE_MESSAGE } : {}) });
+  }
+  snapshot.locations = snapshot.locations.map((row) => row.serviceAddressId === serviceAddressId ? after : row);
+  const current = addressIdsOf(estimate.lineItems);
+  const anyDelivered = snapshot.locations.some((row) => current.includes(row.serviceAddressId) && row.choice === "DELIVER");
+  if (!anyDelivered) Object.assign(data, { deliveryRequested: Prisma.DbNull, deliveryRequestedAt: null });
   await tx.estimate.update({ where: { id: estimate.id }, data: {
-    deliveryZoneSnapshot: snapshot as unknown as Prisma.InputJsonObject,
-    reviewedQuoteFingerprint: null, reviewedOrderFingerprint: null, reviewedQuoteAt: null,
-    ...(by === "CUSTOMER" ? { status: "CHANGES_REQUESTED" as const, respondedAt: new Date(),
-      changesRequestedMessage: PICKUP_REQUOTE_MESSAGE } : {}),
-  } });
-  return flagged;
+    ...data, deliveryZoneSnapshot: snapshot as unknown as Prisma.InputJsonObject } });
+  await tx.rentalAgreement.updateMany({ where: { sourceEstimateId: estimate.id, serviceAddressId },
+    data: { deliveryRequested: Prisma.DbNull, deliveryRequestedAt: null } });
+  return after;
 }
 
 /**
@@ -213,7 +238,7 @@ export async function setEstimateDeliveryChoiceByCustomer(estimateId: string, se
   return prisma.$transaction(async (tx) => {
     const changed = await updateLocation(tx, estimateId, serviceAddressId, CHOOSABLE_BY_CUSTOMER,
       "This estimate is no longer waiting for your answer.", (row) => applyChoice(row, choice), { customer: true });
-    const after = await reconcilePricedDeliveryInTx(tx, changed, serviceAddressId, "CUSTOMER");
+    const after = await becomePickupInTx(tx, changed, serviceAddressId, "CUSTOMER");
     await tx.auditLog.create({ data: { userId: null, action: "estimate.delivery_choice", entityType: "Estimate",
       entityId: estimateId, oldValue: { serviceAddressId, choice: changed.before.choice },
       newValue: { serviceAddressId, choice: after.choice, by: "CUSTOMER", requote: !!after.requote } } });
@@ -227,11 +252,14 @@ export async function confirmEstimateZoneMiles(actorId: string, estimateId: stri
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
     const settings = await getZoneSettingsInTx(tx);
-    const { after } = await updateLocation(tx, estimateId, serviceAddressId, CONFIRMABLE,
+    const changed = await updateLocation(tx, estimateId, serviceAddressId, CONFIRMABLE,
       "This estimate is finished, so its delivery zone can't change.", (row) => {
         const settled = confirmZoneByMiles(row, { miles, reason, userId: actorId, settings, now });
         return { ...settled, choice: choiceAllowed(settled, settled.choice) ? settled.choice : "CUSTOMER_PICKUP" };
       });
+    // Outside the area → pickup only: the same reconciliation as an explicit choice (refused on a sent or approved
+    // priced order, which rolls back the confirmation too).
+    const after = await becomePickupInTx(tx, changed, serviceAddressId, "STAFF");
     await tx.auditLog.create({ data: { userId: actorId, action: "estimate.delivery_zone.confirm", entityType: "Estimate",
       entityId: estimateId, newValue: { serviceAddressId, zone: after.zone, miles: after.miles,
         priceCents: after.priceCents, reason: after.confirmed?.reason ?? null } } });
