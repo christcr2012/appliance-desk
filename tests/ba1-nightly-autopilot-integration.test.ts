@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { runBooksAutopilot } from "@/domains/books/autopilot";
 import { enrollBookAsset, postBookDepreciation, postBookDepreciationInTx } from "@/domains/books/fixed-assets";
+import { postForSource } from "@/domains/books/post";
 import { listBooksAttention } from "@/domains/exceptions/books-attention";
 
 const url=new URL(process.env.DATABASE_URL??"postgresql://localhost/unset");
@@ -125,13 +126,29 @@ describe.skipIf(!enabled)("BA-1 nightly recording on disposable PostgreSQL",()=>
    else await prisma.accountingPeriod.delete({where:{periodKey:"2026-05"}});
   }
  });
- it("resolves an old failed source only after its journal can be safely retried",async()=>{
-  const key={kind:"SOURCE_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:eligible};
-  await prisma.booksProblem.upsert({where:{kind_subjectType_subjectId:key},
-   create:{...key,message:"Earlier source issue"},
-   update:{message:"Earlier source issue",resolvedAt:null}});
-  await runBooksAutopilot(new Date("2026-05-06T15:00:00Z"));
-  expect((await prisma.booksProblem.findUniqueOrThrow({where:{kind_subjectType_subjectId:key}})).resolvedAt).not.toBeNull();
+ it("resolves a real paid-for source only after its journal can be retried",async()=>{
+  const id="ba1-recovered-invoice-"+tag;
+  const customer=await prisma.customer.findFirstOrThrow({select:{id:true}});
+  const key={kind:"SOURCE_NOT_RECORDED",subjectType:"INVOICE",subjectId:id};
+  await prisma.invoice.create({data:{
+   id,customerId:customer.id,status:"OPEN",amountDueCents:1000,
+   lineItems:{create:{kind:"RENTAL",description:"Synthetic recovered source",amountCents:1000}},
+  }});
+  try{
+   await prisma.$transaction(tx=>postForSource(tx,"INVOICE",id));
+   expect(await prisma.journalEntry.count({where:{sourceType:"INVOICE",sourceId:id}})).toBe(1);
+   await prisma.booksProblem.upsert({where:{kind_subjectType_subjectId:key},
+    create:{...key,message:"Earlier source problem",lastSeenAt:new Date("1999-01-01T00:00:00Z")},
+    update:{message:"Earlier source problem",resolvedAt:null,lastSeenAt:new Date("1999-01-01T00:00:00Z")}});
+   await runBooksAutopilot(new Date("2026-05-06T15:00:00Z"));
+   expect((await prisma.booksProblem.findUniqueOrThrow({where:{kind_subjectType_subjectId:key}})).resolvedAt).not.toBeNull();
+  }finally{
+   await prisma.booksProblem.deleteMany({where:{subjectId:id}});
+   await prisma.journalLine.deleteMany({where:{entry:{sourceType:"INVOICE",sourceId:id}}});
+   await prisma.journalEntry.deleteMany({where:{sourceType:"INVOICE",sourceId:id}});
+   await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
+   await prisma.invoice.delete({where:{id}});
+  }
  });
  it("does not enroll a missing-price appliance, leaving a single visible To do issue",async()=>{
   expect(await prisma.bookAsset.findUnique({where:{applianceId:noCost}})).toBeNull();

@@ -370,6 +370,28 @@ function stripeExpectedEvents(x:{type:string;reportingCategory:string;feeCents:n
   if(!kinds.length&&!["charge","payment","refund","payment_refund","transfer"].includes(x.type))kinds.push("STRIPE_UNMAPPED");
   return kinds;
 }
+export function selectFairBooksCandidates<T extends {type:string;id:string;at:Date}>(
+  input: readonly T[], limit: number,
+): T[] {
+  const ordered=[...input].sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
+  if(limit<=0)return [];
+  const types=[...new Set(ordered.map(x=>x.type))];
+  // Reserve a single newest item per type only when capacity is ample;
+  // do not displace the oldest financial evidence in tiny focused batches.
+  if(limit < types.length*2)return ordered.slice(0,limit);
+  const fresh=new Set<string>();
+  for(const type of types){
+    const newest=[...ordered].reverse().find(x=>x.type===type);
+    if(newest)fresh.add(type+"\0"+newest.id);
+  }
+  const picked=ordered.filter(x=>fresh.has(x.type+"\0"+x.id));
+  for(const x of ordered){
+    if(picked.length>=limit)break;
+    if(!fresh.has(x.type+"\0"+x.id))picked.push(x);
+  }
+  return picked.sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
+}
+
 export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
   const settings=await prisma.businessSettings.findFirst({select:{booksStartDate:true}});
   if(!settings?.booksStartDate)return {posted:0,problems:[]};
@@ -515,9 +537,12 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
     if(scanned>=10000)problems.push({sourceType:source.type,sourceId:"backlog",
       message:"Accounting backlog scan cap reached; continue the next bounded run."});
   }
-  sources.sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
+  // Reserve a fresh candidate of each source type so a persistent old
+  // equipment backlog cannot hide today's invoice/payment from the nightly
+  // bounded pass. Fill the rest oldest-first for fair backlog catch-up.
+  const selected=selectFairBooksCandidates(sources,limit);
   let posted=0;
-  for(const x of sources.slice(0,limit)) {
+  for(const x of selected) {
     try {
       const result=await prisma.$transaction(async tx=>{
         const before=await tx.journalEntry.count({where:{sourceType:x.type,sourceId:x.id}});
