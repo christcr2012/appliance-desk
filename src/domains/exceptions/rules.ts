@@ -879,6 +879,8 @@ export function taxReturnDueException(input: {
   /** W-9: when the period's total is known the To do says exactly what to file and pay. */
   amountCents?: number | null;
   kind?: "SALES_RETURN" | "USE_TAX_RETURN" | "RETAIL_DELIVERY_FEE_RETURN";
+  /** TFA-1: the day the timing rule says to act, shown next to the due date. */
+  actOnKey?: string;
 }): ExceptionItem {
   const daysUntilLegalDue = businessDaysBetween(input.now, input.legalDueOn);
   const daysUntilBaseDue = businessDaysBetween(input.now, input.dueOn);
@@ -895,7 +897,9 @@ export function taxReturnDueException(input: {
     severity: urgent ? "high" : "medium",
     title: taxReturnTitle(input, daysUntilLegalDue < 0),
     detail: `${input.zeroReturn ? "A zero return may still be required. " : ""}` +
-      `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
+      `Filing period ended ${businessDateKey(input.periodEnd)}. ` +
+      (input.actOnKey ? `File and pay on ${shortDateLabel(input.actOnKey)}. ` : "") +
+      `Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
       (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),
     href: input.periodId ? `/desk/sales-tax/returns/${input.periodId}` : "/desk/sales-tax/returns",
     dueOn: input.dueOn,

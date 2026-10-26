@@ -6,6 +6,7 @@ import { getPrivatePhotoStore } from "@/lib/photo-storage";
 import { previewToken, verifyToken } from "@/lib/preview-token";
 import { businessDateKey } from "@/lib/business-date";
 import { listTaxabilityRuleCells } from "@/domains/tax/locations";
+import { ruleAsOf } from "@/domains/rules/reads";
 import {
   AUDIENCES,
   DECISION_SUBJECTS,
@@ -82,16 +83,17 @@ const TX_OPTIONS = { maxWait: 10_000, timeout: 20_000 };
 
 /** Everything the registry reads, in one pass: settings row once, tax cells once, filing accounts once. */
 export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise<DecisionContext> {
-  const [settings, cells, greeley, accounts] = await Promise.all([
+  const [settings, cells, greeley, accounts, retentionYears] = await Promise.all([
     tx.businessSettings.findUnique({
       where: { id: "singleton" },
       select: { shortTermLeaseElection: true, rdfHandling: true, retailDeliveryFeeDecision: true,
-        badDebtTaxRecovery: true, setupFeeTaxPlanningTreatment: true, setupFeeTaxTreatment: true,
-        recordRetentionYears: true },
+        badDebtTaxRecovery: true, setupFeeTaxPlanningTreatment: true, setupFeeTaxTreatment: true },
     }),
     listTaxabilityRuleCells(tx),
     tx.taxJurisdiction.findFirst({ where: GREELEY_JURISDICTION_WHERE, select: { id: true }, orderBy: { id: "asc" } }),
     tx.taxFilingAccount.findMany({ select: { basis: true }, orderBy: { id: "asc" } }),
+    // TFA-1: how long records are kept is a dated rule, not a setting.
+    ruleAsOf<number>("records.keep_years", new Date(), tx).then((row) => row.value),
   ]);
   return {
     settings: {
@@ -101,7 +103,7 @@ export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise
       badDebtTaxRecovery: settings?.badDebtTaxRecovery ?? "UNDECIDED",
       setupFeeTaxPlanningTreatment: settings?.setupFeeTaxPlanningTreatment ?? "TAXABLE",
       setupFeeTaxTreatment: settings?.setupFeeTaxTreatment ?? "UNDECIDED",
-      recordRetentionYears: settings?.recordRetentionYears ?? 7,
+      recordRetentionYears: retentionYears,
     },
     taxCells: cells.map((cell) => ({ jurisdictionId: cell.jurisdictionId, category: cell.category,
       taxability: cell.taxability, provisional: cell.provisional })),

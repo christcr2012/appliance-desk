@@ -5167,7 +5167,7 @@
       "dependencies": [
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/marley/tfa-1, PR to open",
       "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
       "budget": 500,
       "units": [

@@ -30,7 +30,6 @@ const locationId = `sc13-location-${tag}`;
 describe.skipIf(!enabled)("scenario 13: purchase receipt to use tax, filing and the audit pack", () => {
   let oldLocations: string[] = [];
   let oldElection: "UNDECIDED" | "PAY_ON_ACQUISITION" | "COLLECT_ON_RENTALS" | null = null;
-  let oldRetention = 7;
   const purchaseIds: string[] = [];
   const periodIds: string[] = [];
   const prices = [40000, 25000, 20000, 15000];
@@ -38,13 +37,12 @@ describe.skipIf(!enabled)("scenario 13: purchase receipt to use tax, filing and 
 
   beforeAll(async () => {
     oldLocations = (await prisma.addressTaxLocation.findMany({ where: { forBusinessLocation: true, isCurrent: true }, select: { id: true } })).map((r) => r.id);
-    const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { shortTermLeaseElection: true, recordRetentionYears: true } });
+    const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { shortTermLeaseElection: true } });
     oldElection = settings?.shortTermLeaseElection ?? null;
-    oldRetention = settings?.recordRetentionYears ?? 7;
     await prisma.user.create({ data: { id: ownerId, email: `sc13-${tag}@example.test`, name: "SC13 Owner", role: "OWNER" } });
     await prisma.applianceType.create({ data: { id: typeId, name: "SC13 washer", slug: `sc13-${tag}`, monthlyPriceCents: 1500 } });
     await prisma.supplier.create({ data: { id: supplierId, name: `Scenario Supplier ${tag}` } });
-    await prisma.businessSettings.upsert({ where: { id: "singleton" }, create: { shortTermLeaseElection: "PAY_ON_ACQUISITION" }, update: { shortTermLeaseElection: "PAY_ON_ACQUISITION", recordRetentionYears: 7 } });
+    await prisma.businessSettings.upsert({ where: { id: "singleton" }, create: { shortTermLeaseElection: "PAY_ON_ACQUISITION" }, update: { shortTermLeaseElection: "PAY_ON_ACQUISITION" } });
     await prisma.addressTaxLocation.updateMany({ where: { id: { in: oldLocations } }, data: { isCurrent: false } });
     await prisma.taxFilingAccount.create({ data: { id: accountId, name: `Scenario use tax ${tag}`, kind: "USE_TAX_RETURN", basis: "ACCRUAL", firstPeriodStart: day("2026-01-01") } });
     await prisma.taxJurisdiction.create({ data: { id: jurId, code: `S13-${tag.slice(0, 6)}`, name: "Scenario city", level: "CITY", administration: "SELF_COLLECTED", reviewStatus: "REVIEWED", useTaxFilingAccountId: accountId } });
@@ -70,7 +68,7 @@ describe.skipIf(!enabled)("scenario 13: purchase receipt to use tax, filing and 
     await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId: jurId } });
     await prisma.taxJurisdiction.deleteMany({ where: { id: jurId } });
     await prisma.taxFilingAccount.deleteMany({ where: { id: accountId } });
-    if (oldElection !== null) await prisma.businessSettings.update({ where: { id: "singleton" }, data: { shortTermLeaseElection: oldElection, recordRetentionYears: oldRetention } });
+    if (oldElection !== null) await prisma.businessSettings.update({ where: { id: "singleton" }, data: { shortTermLeaseElection: oldElection } });
     await prisma.user.deleteMany({ where: { id: ownerId } });
   });
 
