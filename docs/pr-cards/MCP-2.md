@@ -26,14 +26,8 @@ The backup record table, stages, pruning and photo pairing are one chain; each p
 One row: confirm which private storage the live app's backups use (System health shows it). Never blocks merging.
 
 ## Progress
-Private preview-storage security prerequisite in progress on branch `ai/chatgpt/mcp-2-preview-storage-safety` (separate PR required by AGENTS.md §6 for an existing public-repository exposure).
 
-Plan acceptance for the independently safe security fix:
-- [ ] Remove the real private-store identifier and hostname from current application code, test fixtures and public setup examples; do not embed a replacement identifier.
-- [ ] In preview, require its explicitly named token and store ID to match before any private access; no fallback to production/public credentials.
-- [ ] Build the allowed private hostname from the validated store ID, and reject responses from a wrong host or path before using an unsigned URL.
-- [ ] Unit tests cover matching credentials, missing or mismatched values, wrong-host responses, unauthorized roles, and cleanup failures; no real credentials or store identifiers in fixtures.
-- [ ] CI passes at the exact head and all reviews are addressed before merge.
-
-The code for this prerequisite removes live identifiers from source/test fixtures and preserves fail-closed checks; CI and review still pending. The remainder of MCP-2 (backup artifacts, recovery, pruning, paired media, owner retry and restore drill) is NOT implemented by this preliminary security fix and remains open on this card.
-
+- Security prerequisite merged as PR #609; private preview store identifiers are no longer in active code.
+- 2026-10-25: resumed the already-approved persistent Vercel Sandbox, fetched origin/main and created a separate clean worktree `ai/chatgpt/mcp-2-backup-reliability`. `npm ci` passed using the quickstart's synthetic Prisma env workaround.
+- **Plan acceptance** (whole card): an additive, documented and restorable `BackupArtifact` ledger; separate capture/upload/verified-readback/prune failure states; verified-private backup destination; never prune newest verified database and newest complete media pair; only pair media with today's verified database artifact, and honor deletion tombstones; owner-only serialized manual retry; disposable-database and fake storage tests including concurrency, pagination and restore; owner-facing readiness and retry controls; all CI/review gates at exact head.
+- Full feature implementation and tests: not yet verified. Never contact production storage during this work; owner only confirms private-store setup after deployment.
