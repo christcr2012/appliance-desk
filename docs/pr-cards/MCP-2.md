@@ -35,5 +35,5 @@ Plan acceptance for the independently safe security fix:
 - [ ] Unit tests cover matching credentials, missing or mismatched values, wrong-host responses, unauthorized roles, and cleanup failures; no real credentials or store identifiers in fixtures.
 - [ ] CI passes at the exact head and all reviews are addressed before merge.
 
-The remainder of MCP-2 (backup artifacts, recovery, pruning, paired media, owner retry and restore drill) is NOT implemented by this preliminary security fix and remains open on this card.
+The code for this prerequisite removes live identifiers from source/test fixtures and preserves fail-closed checks; CI and review still pending. The remainder of MCP-2 (backup artifacts, recovery, pruning, paired media, owner retry and restore drill) is NOT implemented by this preliminary security fix and remains open on this card.
 
