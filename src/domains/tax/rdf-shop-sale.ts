@@ -4,7 +4,8 @@ import { getSaleTaxContext } from "./locations";
 import { resolveTaxability } from "./engine";
 import { retailDeliveryFeeStatus } from "./retail-delivery-fee";
 import { recordedRetailSales } from "./rdf-sales-evidence";
-import { rdfChargingEnabled } from "./rdf-charges";
+import { RDF_LINE_DESCRIPTION, rdfChargingEnabled } from "./rdf-charges";
+import { rdfBillingHeldBySwitch } from "./rdf-switches";
 import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
 
 type Tx = Prisma.TransactionClient;
@@ -40,6 +41,13 @@ function coDate(input: Date): Date {
  * so nothing owed is lost; it never stops the sale.
  */
 async function decide(tx: Tx, input: { invoiceId: string; customerId: string; serviceAddressId: string; saleOn: Date; saleInstant: Date }): Promise<Decision> {
+  // TFA-2 §6.6: an exchange is one purchase. A replacement sale never gets a
+  // second fee, whatever the replacement's own delivery looks like.
+  const invoice = await tx.invoice.findUniqueOrThrow({
+    where: { id: input.invoiceId }, select: { replacementOfInvoiceId: true },
+  });
+  if (invoice.replacementOfInvoiceId)
+    return none("This sale replaces another sale, so no new delivery fee is due.");
   const address = await tx.serviceAddress.findUniqueOrThrow({ where: { id: input.serviceAddressId }, select: { state: true } });
   if (address.state !== "CO") return none("Delivery address is outside Colorado.");
   const settings = await tx.businessSettings.findUnique({
@@ -69,18 +77,14 @@ async function decide(tx: Tx, input: { invoiceId: string; customerId: string; se
   const year = Number(businessDateKey(input.saleOn).slice(0, 4));
   // TFA-1: the small-seller limit is a dated rule, not a setting.
   const thresholdCents = (await ruleAsOf<number>("co.rdf.qualified_threshold", input.saleOn, tx)).value;
-  const [previous, current, account] = await Promise.all([
+  const [previous, current] = await Promise.all([
     recordedRetailSales(tx, year - 1),
     recordedRetailSales(tx, year),
-    tx.taxFilingAccount.findFirst({ where: { kind: "SALES_RETURN", jurisdictions: { some: { level: "STATE" } } }, select: { frequency: true } }),
   ]);
-  if (!account && previous === 0 && current > thresholdCents) {
-    return pending("Confirm the Colorado filing frequency before calculating the 90-day grace period.");
-  }
   const applicability = retailDeliveryFeeStatus({
     today: input.saleOn, saleType: "GOODS", election: settings.shortTermLeaseElection,
     previousYearRetailCents: previous, currentYearRetailCents: current, thresholdCents,
-    thresholdCrossedOn: settings.rdfThresholdCrossedOn, frequency: account?.frequency ?? "MONTHLY",
+    thresholdCrossedOn: settings.rdfThresholdCrossedOn,
     handling: settings.rdfHandling, cpaConfirmedOn: settings.rdfCpaConfirmedOn,
   });
   if (applicability.status === "UNDECIDED") return pending(applicability.reason);
@@ -112,7 +116,10 @@ export async function recordShopSaleDeliveryFeeInTx(
   if (prior && (prior.status === "READY" || prior.status === "NOT_DUE")) return { recordId: prior.id, status: prior.status, chargedCents: 0 };
   const saleOn = prior?.deliveredOn ?? coDate(input.saleOn);
   const decision = await decide(tx, { invoiceId: input.invoiceId, customerId: input.customerId, serviceAddressId: input.serviceAddressId, saleOn, saleInstant: input.saleOn });
-  const customerLine = decision.status === "READY" && decision.collect && input.allowCustomerLine && rdfChargingEnabled() && (decision.amountCents ?? 0) > 0;
+  // TFA-2 §6.3: an unapproved START switch holds the customer line (the fee is
+  // owed and reported; the business carries it for this sale).
+  const held = decision.status === "READY" ? await rdfBillingHeldBySwitch(tx, input.saleOn) : false;
+  const customerLine = decision.status === "READY" && decision.collect && input.allowCustomerLine && rdfChargingEnabled() && (decision.amountCents ?? 0) > 0 && !held;
   const data = {
     status: decision.status, ruleVersionId: decision.ruleVersionId, rateId: null, saleOn: decision.status === "READY" ? saleOn : null,
     amountCents: decision.amountCents,
@@ -128,7 +135,7 @@ export async function recordShopSaleDeliveryFeeInTx(
   if (customerLine) {
     chargedCents = decision.amountCents!;
     const line = await tx.invoiceLineItem.create({
-      data: { invoiceId: input.invoiceId, kind: "RETAIL_DELIVERY_FEE", description: "Colorado retail delivery fee", amountCents: chargedCents, quantity: 1 },
+      data: { invoiceId: input.invoiceId, kind: "RETAIL_DELIVERY_FEE", description: RDF_LINE_DESCRIPTION, amountCents: chargedCents, quantity: 1 },
       select: { id: true },
     });
     await tx.retailDeliveryFeeRecord.update({ where: { id: row.id }, data: { invoiceLineId: line.id } });
@@ -138,7 +145,7 @@ export async function recordShopSaleDeliveryFeeInTx(
     await tx.auditLog.create({
       data: {
         action: "tax.rdf.record", entityType: "RetailDeliveryFeeRecord", entityId: row.id,
-        newValue: { saleKey, status: row.status, reason: decision.reason, amountCents: row.amountCents, chargedToCustomer: customerLine },
+        newValue: { saleKey, status: row.status, reason: decision.reason, amountCents: row.amountCents, chargedToCustomer: customerLine, heldForApproval: held },
       },
     });
   }
@@ -146,9 +153,28 @@ export async function recordShopSaleDeliveryFeeInTx(
 }
 
 /**
- * A shop sale was cancelled (never paid) or taken back (paid and refunded): no delivery happened, so its fee is no longer
- * due (design BATCH-T 12.5). A fee the customer paid is marked refunded with the real refund record, which is what lets
- * a fee already reported to Colorado be claimed back as a credit; one never paid simply stops counting.
+ * TFA-2 §6.5: on a return after delivery the delivery fee is still owed, so the
+ * part of what the customer paid that IS the fee is kept, not refunded. Returns
+ * the cents to keep (0 unless the fee was decided due and the customer paid it
+ * as its own line).
+ */
+export async function shopSaleFeeKeptOnReturnInTx(tx: Tx, invoiceId: string): Promise<number> {
+  const record = await tx.retailDeliveryFeeRecord.findUnique({
+    where: { saleKey: "retail:" + invoiceId },
+    select: { status: true, amountCents: true, collectedFromCustomer: true, invoiceLineId: true },
+  });
+  if (!record || record.status !== "READY" || record.collectedFromCustomer !== true || !record.invoiceLineId)
+    return 0;
+  return record.amountCents ?? 0;
+}
+
+/**
+ * A shop sale was cancelled before delivery (never paid): its fee is no longer
+ * due (design BATCH-T 12.5). A fee the customer paid is marked refunded with
+ * the real refund record, which is what lets a fee already reported to
+ * Colorado be claimed back as a credit; one never paid simply stops counting.
+ * Returns after delivery do NOT come through here (TFA-2 §6.5): the fee stays
+ * owed, so nothing is voided.
  */
 export async function voidShopSaleDeliveryFeeInTx(
   tx: Tx,
