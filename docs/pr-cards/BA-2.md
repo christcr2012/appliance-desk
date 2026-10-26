@@ -10,5 +10,18 @@ Depends on BA-1 (actor refactor and autopilot).
 - [ ] People-facing behavior of existing Books actions unchanged except where the spec says.
 - [ ] `ci` green at the exact head; every review comment read.
 
+## BA-2 implementation and evidence plan
+- [ ] Provide the owner-only four-step setup wizard; an admin sees an owner-help message.
+- [ ] Derive the recommended start date from the first purchase, invoice, expense or today; default zero opening balances for a new business and accept verified nonzero balances for an existing one.
+- [ ] Show the owner-contribution path and preselect the matching expense account without taking or sending money.
+- [ ] Initialize exactly once using the existing authenticated Books command; kick off bounded, best-effort catch-up without blocking the successful setup.
+- [ ] Add a Books setup To do item for the owner only, with urgency rising after the first invoice, and clear it on successful setup.
+- [ ] Support owner-only, locked, append-only corrections to opening balances, numbered by correction cycle, safe across retries and across closed periods.
+- [ ] Replace old irreversible-opening wording on Books home and add a correction form with a reason.
+- [ ] Cover authorization, defaults, zero and nonzero opening, corrections, double-submit, closed periods and Today with throwaway PostgreSQL tests.
+- [ ] Pass exact-head CI and read every review comment before merge, keeping BA-1 ahead of BA-2.
+
+**Stack dependency:** this BA-2 branch starts from unmerged BA-1 head `22b255df362b`. PR must target the BA-1 branch until BA-1 is merged, then retarget to main.
+
 ## Progress
-Not started.
+Acceptance recorded before code. No BA-2 behavior yet. Verification pending.
