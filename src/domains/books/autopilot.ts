@@ -40,17 +40,22 @@ export async function runBooksAutopilot(now = new Date()):Promise<Counts> {
     message:"This source could not be recorded. Open the original record and check its details."});
    failed=true;
   }
+  // A missing purchase price must never take one of the limited auto-enrollment slots.
   const candidates=await prisma.appliance.findMany({
-   where:{status:{not:"RETIRED"},bookAsset:{is:null}},
+   where:{status:{not:"RETIRED"},bookAsset:{is:null},acquisitionCostCents:{gt:0}},
    select:{id:true,assetNumber:true,acquisitionCostCents:true,purchaseDate:true,createdAt:true},
    orderBy:[{createdAt:"asc"},{id:"asc"}],take:MAX_ENROLLMENTS,
   });
+  const missingCosts=await prisma.appliance.findMany({
+   where:{status:{not:"RETIRED"},bookAsset:{is:null},
+    OR:[{acquisitionCostCents:null},{acquisitionCostCents:{lte:0}}]},
+   select:{id:true},
+   orderBy:[{createdAt:"asc"},{id:"asc"}],take:MAX_ENROLLMENTS,
+  });
+  for(const appliance of missingCosts)
+   add({kind:"APPLIANCE_NOT_ENROLLED",subjectType:"APPLIANCE",subjectId:appliance.id,
+    message:"Add what you paid for it on the appliance page."});
   for(const appliance of candidates){
-   if(!appliance.acquisitionCostCents||appliance.acquisitionCostCents<=0){
-    add({kind:"APPLIANCE_NOT_ENROLLED",subjectType:"APPLIANCE",subjectId:appliance.id,
-     message:"Add what you paid for it on the appliance page."});
-    continue;
-   }
    const candidateKey=businessDateKey(appliance.purchaseDate??appliance.createdAt);
    const startKey=businessDateKey(settings.booksStartDate);
    const placedDateKey=candidateKey<startKey?startKey:candidateKey;
@@ -92,7 +97,7 @@ export async function runBooksAutopilot(now = new Date()):Promise<Counts> {
     update:{message:p.message,lastSeenAt:now,resolvedAt:null},
    });
   }
-  const processedIds=new Set([...candidates.map(x=>x.id),...owing.map(x=>x.applianceId)]);
+  const processedIds=new Set([...candidates.map(x=>x.id),...missingCosts.map(x=>x.id),...owing.map(x=>x.applianceId)]);
   const old=await prisma.booksProblem.findMany({where:{kind:"APPLIANCE_NOT_ENROLLED",resolvedAt:null,
    subjectId:{in:[...processedIds]}},select:{id:true,subjectId:true,kind:true,subjectType:true}});
   for(const p of old)if(!seen.has(problemKey(p))){

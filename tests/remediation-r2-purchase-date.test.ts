@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const m = vi.hoisted(() => ({ record: vi.fn() }));
+const m = vi.hoisted(() => ({ record: vi.fn(), post: vi.fn() }));
+vi.mock("@/domains/books/immediate", () => ({ postBookSourceAfterCommit: m.post }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/session", () => ({
   requireRole: vi.fn().mockResolvedValue({ user: { id: "owner-1" } }),
@@ -39,14 +40,23 @@ describe("R11 purchase date is a strict Colorado business date", () => {
       sellerTax: "", otherState: "", otherCharges: "", receiptSubtotal: "", receiptTotal: "", notes: "",
       documents: [], appliances: [{ applianceTypeId: "type-1", price: "100.00" }],
     };
-    beforeEach(() => m.record.mockReset().mockResolvedValue({
+    beforeEach(() => { m.post.mockReset().mockResolvedValue(undefined); m.record.mockReset().mockResolvedValue({
       purchaseId: "p1", purchasedOn: new Date(), appliances: [],
-    }));
+    }); });
 
     it("refuses an impossible date and records nothing", async () => {
       const result = await recordPurchaseAction({ ...base, purchasedOn: "2026-02-30" });
       expect(result.status).toBe("error");
       expect(m.record).not.toHaveBeenCalled();
+    });
+
+    it("records each appliance after a saved purchase, not before it", async()=>{
+      m.record.mockResolvedValue({purchaseId:"p1",purchasedOn:new Date(),appliances:[{id:"ap-1"},{id:"ap-2"}]});
+      const result=await recordPurchaseAction({...base,purchasedOn:"2026-07-15"});
+      expect(result.status).toBe("success");
+      expect(m.post.mock.calls).toEqual([
+        ["APPLIANCE","ap-1"],["APPLIANCE","ap-2"],
+      ]);
     });
 
     it("passes a valid date as Colorado midnight, never midnight UTC", async () => {
