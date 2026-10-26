@@ -33,6 +33,7 @@ export const GLOSSARY = {
   "out-renting": { title: "Out renting", description: "Appliances with a customer now, out of all the appliances you can rent." },
   "overdue-bills": { title: "Overdue", description: "Bills past their due date that are not fully paid." },
   "bill-failed": { title: "Payment failed", description: "The card or bank refused the payment. Take payment again or send a reminder." },
+  "bill-processing": { title: "Being confirmed", description: "The customer paid by bank transfer. Banks take up to 4 business days to confirm. Nothing for you to do." },
   "bill-given-up": { title: "Given up", description: "You decided not to collect this bill. It still counts in your records." },
   "owes-now": { title: "Owes now", description: "Bills that are sent and not fully paid." },
   "pays-on-time": { title: "Pays on time", description: "Bills paid by the end of their due day, out of the last few bills." },

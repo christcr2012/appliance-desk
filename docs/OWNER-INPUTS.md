@@ -166,6 +166,7 @@ Only ask for the inputs needed by the next release. Do not ask all at once.
 | DQ-MCP10A-1 | How many pictures may someone attach to one App feedback report? | **3** (owner can set 0–3 in Settings › App feedback) | Enough for a few screenshots of one problem while keeping private storage small. Business preference; no law or official source governs it (checked 2026-10-25). | Chris |
 | DQ-MCP10A-2 | For how many days after a report is finished may its sender reopen it ("It's still not right")? | **90 days** (owner can set 1–365) | About one season — long enough to notice a fix didn't hold. Business preference; no official source (2026-10-25). | Chris |
 | DQ-MCP10A-3 | Spanish wording for the App feedback screens and the portal's "App feedback" link | **English only** for now (pages are marked as English) | Adding Spanish text changes the reviewed portal translation set, which needs a fluent reviewer first (IN-83). | Chris's Spanish reviewer |
+| DQ-BILL1-1 | How many banking days should a bank payment wait before it goes on your To do list? | **6 banking days** (owner can set 2–20 in Settings › Bank payments) | Bank (ACH) debits normally settle within 1–4 banking days; 6 leaves slack before you are asked to check Stripe. Business preference. The 4-banking-day figure comes from the build spec; no official source was checked for this number in this session, so Chris or his bank contact should confirm it. | Chris |
 
 ## Confirmed facts — do not ask again
 

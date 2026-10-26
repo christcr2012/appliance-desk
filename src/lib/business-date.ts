@@ -198,6 +198,80 @@ export function addBusinessDays(date: Date, days: number): Date {
   return midnight(addCalendarDays(businessDateKey(date), days));
 }
 
+// ---- Banking days (BILL-1) ----
+// A bank payment is confirmed on banking days: Monday to Friday in Colorado, skipping Federal Reserve holidays.
+// (`addBusinessDays` above adds CALENDAR days and its other callers rely on that, so it is left alone.)
+
+const WEEKDAY_OF_KEY = (key: string): number => new Date(`${key}T00:00:00Z`).getUTCDay(); // 0 = Sunday … 6 = Saturday
+
+function nthWeekdayKey(year: number, month: number, weekday: number, nth: number): string {
+  const first = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const day = 1 + ((weekday - first + 7) % 7) + (nth - 1) * 7;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function lastWeekdayKey(year: number, month: number, weekday: number): string {
+  const last = new Date(Date.UTC(year, month, 0));
+  const back = (last.getUTCDay() - weekday + 7) % 7;
+  return `${year}-${String(month).padStart(2, "0")}-${String(last.getUTCDate() - back).padStart(2, "0")}`;
+}
+
+const holidayCache = new Map<number, Set<string>>();
+
+/** Federal Reserve holidays that fall in `year`. A Sunday holiday is observed Monday; a Saturday holiday is NOT moved (Fed practice). */
+function federalReserveHolidays(year: number): Set<string> {
+  const known = holidayCache.get(year);
+  if (known) return known;
+  const fixed = [`${year}-01-01`, `${year}-06-19`, `${year}-07-04`, `${year}-11-11`, `${year}-12-25`].map((key) =>
+    WEEKDAY_OF_KEY(key) === 0 ? addCalendarDays(key, 1) : key,
+  );
+  const set = new Set<string>([
+    ...fixed,
+    nthWeekdayKey(year, 1, 1, 3), // Martin Luther King Jr. Day
+    nthWeekdayKey(year, 2, 1, 3), // Presidents Day
+    lastWeekdayKey(year, 5, 1), // Memorial Day
+    nthWeekdayKey(year, 9, 1, 1), // Labor Day
+    nthWeekdayKey(year, 10, 1, 2), // Columbus Day
+    nthWeekdayKey(year, 11, 4, 4), // Thanksgiving
+  ]);
+  holidayCache.set(year, set);
+  return set;
+}
+
+function isBankingDayKey(key: string): boolean {
+  const weekday = WEEKDAY_OF_KEY(key);
+  if (weekday === 0 || weekday === 6) return false;
+  // A Sunday New Year's Day observed Monday Jan 1 is in this year's set; a Sunday Dec 31 never matters (Jan 1 is Monday then).
+  return !federalReserveHolidays(Number(key.slice(0, 4))).has(key);
+}
+
+/** The Colorado date `days` banking days after (or, when negative, before) `date`'s date, as that day's Colorado midnight. */
+export function addBankingDays(date: Date, days: number): Date {
+  let key = businessDateKey(date);
+  const step = days < 0 ? -1 : 1;
+  for (let left = Math.abs(days); left > 0; ) {
+    key = addCalendarDays(key, step);
+    if (isBankingDayKey(key)) left -= 1;
+  }
+  return midnight(key);
+}
+
+/**
+ * Whole banking days from `from`'s Colorado date to `to`'s: the banking days after `from`'s date up to and including
+ * `to`'s date (negative when `to` is earlier). A payment started Friday is 4 banking days old on Thursday.
+ */
+export function bankingDaysBetween(from: Date, to: Date): number {
+  const a = businessDateKey(from);
+  const b = businessDateKey(to);
+  if (a === b) return 0;
+  const [early, late, sign] = a < b ? [a, b, 1] : [b, a, -1];
+  let count = 0;
+  for (let key = addCalendarDays(early, 1); key <= late; key = addCalendarDays(key, 1)) {
+    if (isBankingDayKey(key)) count += 1;
+  }
+  return sign * count;
+}
+
 export function formatBusinessDate(date: Date, language: "en"|"es" = "en") {
   return new Intl.DateTimeFormat(language==="es"?"es-US":"en-US", {
     timeZone: BUSINESS_TIME_ZONE,

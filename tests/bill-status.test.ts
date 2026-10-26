@@ -2,9 +2,12 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/prisma", () => ({ prisma: { invoice: { fields: { amountPaidCents: "FIELD:amountPaidCents" } } } }));
-import { billOwedWhere, billPill, billTabWhere, pastDueInvoiceWhere, payPathFor } from "@/domains/billing/bill-status";
+import { billOwedWhere, billPill, billPillInfo, billTabWhere, pastDueInvoiceWhere, payPathFor } from "@/domains/billing/bill-status";
 
-const OPEN = { status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT", "FAILED"] }, amountDueCents: { gt: "FIELD:amountPaidCents" } };
+const NOT_CONFIRMING = { bankPaymentsInFlight: { none: { clearedAt: null } } };
+const CONFIRMING = { bankPaymentsInFlight: { some: { clearedAt: null } } };
+const OWED = { status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT", "FAILED"] }, amountDueCents: { gt: "FIELD:amountPaidCents" } };
+const OPEN = { ...OWED, ...NOT_CONFIRMING };
 // 2026-10-25 is MDT (UTC-6); 2026-11-02 is MST (UTC-7, after the Nov 1 change).
 const at = (iso: string) => new Date(iso);
 
@@ -16,13 +19,33 @@ describe("bill tab filters (MONEY-BILLS 2)", () => {
     expect(billTabWhere("paid", now)).toEqual({ status: "PAID" });
     expect(billTabWhere("closed", now)).toEqual({ status: { in: ["VOID", "WRITTEN_OFF", "REFUNDED"] } });
     expect(billTabWhere("drafts", now)).toEqual({ status: "DRAFT" });
-    expect(billOwedWhere(now)).toEqual(OPEN);
+    expect(billTabWhere("being-confirmed", now)).toEqual({ ...OWED, ...CONFIRMING });
+    // What the customer owes never drops a bill just because the bank is confirming a payment.
+    expect(billOwedWhere(now)).toEqual(OWED);
     expect(pastDueInvoiceWhere(now)).toEqual(billTabWhere("past-due", now));
+  });
+
+  it("a bill whose bank payment is being confirmed is never open-tab or past-due work", () => {
+    const now = at("2026-10-25T18:00:00Z");
+    expect(billTabWhere("open", now)).toMatchObject(NOT_CONFIRMING);
+    expect(pastDueInvoiceWhere(now)).toMatchObject(NOT_CONFIRMING);
+    expect(billTabWhere("being-confirmed", now)).toMatchObject(CONFIRMING);
   });
 
   it("past due starts at Colorado midnight, across the November DST change", () => {
     expect(pastDueInvoiceWhere(at("2026-11-02T07:30:00Z")).dueDate).toEqual({ lt: at("2026-11-02T07:00:00Z") });
     expect(pastDueInvoiceWhere(at("2026-03-09T12:00:00Z")).dueDate).toEqual({ lt: at("2026-03-09T06:00:00Z") });
+  });
+});
+
+describe("being confirmed pill", () => {
+  it("says Being confirmed instead of late, and explains it", () => {
+    const now = at("2026-10-25T18:00:00Z");
+    const late = { status: "OPEN" as const, dueDate: at("2026-10-01T06:00:00Z"), amountDueCents: 7000, amountPaidCents: 0 };
+    expect(billPill(late, now).label).toMatch(/days late/);
+    expect(billPill({ ...late, beingConfirmed: true }, now)).toEqual({ label: "Being confirmed", tone: "info" });
+    expect(billPillInfo("OPEN", true)).toBe("bill-processing");
+    expect(billPillInfo("OPEN", false)).toBeUndefined();
   });
 });
 

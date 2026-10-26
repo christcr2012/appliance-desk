@@ -103,7 +103,7 @@ function stats(summary: CustomerSummary, withOnTime: boolean): StatItem[] {
   if (summary.monthlyRentCents > 0) items.push({ label: "Monthly rent", value: formatMoney(summary.monthlyRentCents) });
   items.push({
     label: "Owes now",
-    value: formatMoney(summary.owedCents),
+    value: summary.beingConfirmedCents > 0 ? `${formatMoney(summary.owedCents)} · ${formatMoney(summary.beingConfirmedCents)} being confirmed` : formatMoney(summary.owedCents),
     tone: summary.owedCents > 0 ? "attention" : "good",
     info: "owes-now",
   });

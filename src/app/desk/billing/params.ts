@@ -7,7 +7,7 @@ import type { BillTab } from "@/domains/billing/bill-status";
 export type BillsView = "by-customer" | "deposits" | "waiting";
 export type BillsPageParams = BillsParams & { view?: BillsView; open?: string };
 
-const TABS = ["open", "past-due", "paid", "closed", "drafts"] as const satisfies readonly BillTab[];
+const TABS = ["open", "past-due", "being-confirmed", "paid", "closed", "drafts"] as const satisfies readonly BillTab[];
 const SORTS = ["due-asc", "due-desc", "owed-desc", "customer-asc"] as const satisfies readonly BillSort[];
 const TYPES = ["rent", "sale", "other"] as const satisfies readonly BillType[];
 const PRESETS = ["this-month", "last-month", "last-30", "custom"] as const satisfies readonly BillDuePreset[];

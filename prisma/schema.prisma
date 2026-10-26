@@ -1099,6 +1099,8 @@ enum RentalAgreementStatus {
 }
 
 model RentalAgreement {
+  // BILL-1: bank payments being confirmed for a subscription bill that is not mirrored locally yet.
+  bankPaymentsInFlight BankPaymentInFlight[]
   signingBusinessReviews SigningBusinessReview[]
   rdfRecords RetailDeliveryFeeRecord[] @relation("RdfAgreement")
   outOfServicePeriods OutOfServicePeriod[]
@@ -2518,6 +2520,8 @@ model Invoice {
   payments            Payment[]
   refunds             Refund[]
   creditApplications  CreditApplication[]
+  // BILL-1: bank payments the bank is still confirming for this bill (see BankPaymentInFlight).
+  bankPaymentsInFlight BankPaymentInFlight[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2529,6 +2533,40 @@ model Invoice {
   // Owner billing lists sort newest first with stable ID tie-breaker.
   // Without this compound order index, 5k invoices need a heap scan + sort.
   @@index([createdAt(sort: Desc), id(sort: Desc)], map: "Invoice_createdAt_id_idx")
+}
+
+/// BILL-1: "the bank is confirming a payment of $X for this bill". It is only a flag: it never counts as money received
+/// and changes no total, book entry or receipt. One row per Stripe PaymentIntent, ever (a retried bank payment reopens it).
+model BankPaymentInFlight {
+  id                String    @id @default(cuid())
+  /// Null until the local bill exists (the first attempt of a rental-subscription bill is mirrored only when paid or failed).
+  invoiceId         String?
+  invoice           Invoice?  @relation(fields: [invoiceId], references: [id])
+  stripeInvoiceId   String?
+  agreementId       String?
+  agreement         RentalAgreement? @relation(fields: [agreementId], references: [id])
+  /// "STRIPE_INVOICE" | "LOCAL_CHECKOUT"
+  source            String
+  paymentIntentId   String    @unique
+  amountCents       Int
+  /// "ach" (or the Stripe payment type when it is not us_bank_account)
+  method            String
+  startedAt         DateTime
+  clearedAt         DateTime?
+  /// "SUCCEEDED" | "FAILED" | "CANCELED" | "INVOICE_CLOSED"
+  clearedReason     String?
+  /// Stripe `event.created` of the event that cleared it (orders later events).
+  clearedByEventAt  DateTime?
+  attempt           Int       @default(1)
+  lastCheckedAt     DateTime?
+  /// Stripe says it succeeded but the app could not record it yet.
+  settledInStripeAt DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([invoiceId, clearedAt])
+  @@index([clearedAt, startedAt])
+  @@index([clearedAt, lastCheckedAt])
+  @@index([stripeInvoiceId])
 }
 
 model InvoiceLineItem {
@@ -3174,6 +3212,8 @@ model BusinessSettings {
   lateFeeGraceDays        Int     @default(5)
   lateFeeFlatCents        Int     @default(0)
   lateFeePercent          Int     @default(0)
+  // BILL-1: banking days a bank payment may take before it goes on To do (2-20; starting value 6, banks usually take up to 4).
+  bankPaymentSlowBusinessDays Int @default(6)
   taxRatePermille         Int     @default(0) // DEPRECATED (see taxRateMilliPercent); kept in step by a database trigger until cleanup
   taxRateMilliPercent     Int     @default(0) // thousandths of one percent: 7375 = 7.375%
   taxRateConfirmed        Boolean @default(false)

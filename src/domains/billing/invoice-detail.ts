@@ -28,6 +28,8 @@ export type InvoiceDetail = {
   amountDueCents: number;
   amountPaidCents: number;
   balanceCents: number;
+  /** BILL-1: money the bank is still confirming for this bill (not received; the customer still owes it until it clears). 0 when none. */
+  beingConfirmedCents: number;
   isLocalInvoice: boolean;
   /** A counter sale (shop sale): the one kind of local invoice that can be paid by card online. */
   isShopSale: boolean;
@@ -83,6 +85,7 @@ export async function getInvoiceDetail(
         payments: { orderBy: [{ createdAt: "asc" }] },
         customer: { select: { id: true, companyName: true, user: { select: { name: true, email: true } } } },
         agreement: { select: { serviceAddress: true } },
+        bankPaymentsInFlight: { where: { clearedAt: null }, select: { amountCents: true } },
       },
     }),
     getBusinessSettings(),
@@ -109,6 +112,7 @@ export async function getInvoiceDetail(
     amountDueCents: invoice.amountDueCents,
     amountPaidCents: invoice.amountPaidCents,
     balanceCents,
+    beingConfirmedCents: balanceCents > 0 ? invoice.bankPaymentsInFlight.reduce((sum, row) => sum + row.amountCents, 0) : 0,
     isLocalInvoice: invoice.stripeInvoiceId === null,
     isShopSale: invoice.saleKind === "SHOP_SALE",
     lineItems: invoice.lineItems.map((li) => ({

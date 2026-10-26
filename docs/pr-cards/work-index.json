@@ -4448,7 +4448,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN REVIEW — PR pending (branch ai/claude/bill-1-bank-in-flight)",
       "migration": "20261026010000_bank_payment_in_flight",
       "budget": 420,
       "units": [
