@@ -311,7 +311,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [browser-a, browser-b, browser-c, browser-d]
+        shard: [browser-a, browser-b, browser-c, browser-d, browser-e]
 
     services:
       postgres:
