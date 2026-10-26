@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import {
   initializeBooks, correctOpeningBalances, renameAccount, addCustomAccount, mapExportAccount,
-  closeAccountingMonth, reopenAccountingMonth, closeAccountingMonthWithReview,
+  reopenAccountingMonth, closeAccountingMonthWithReview,
 } from "@/domains/books/management";
 import { postPending } from "@/domains/books/post";
 import { runBooksAutopilot } from "@/domains/books/autopilot";
@@ -108,7 +108,7 @@ export async function postBooksAction() {
 }
 export async function closeMonthAction(form:FormData) {
   const session=await requireRole("OWNER");
-  await handle("Close month",()=>closeAccountingMonth(actor(session.user),str(form,"month")));
+  await handle("Close month",()=>closeAccountingMonthWithReview(actor(session.user),str(form,"month")));
 }
 export async function reopenMonthAction(form:FormData) {
   const session=await requireRole("OWNER");
