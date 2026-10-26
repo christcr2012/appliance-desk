@@ -17,7 +17,7 @@ entries (money records)** — never edit or delete entries; corrections are new 
 - [x] Run nightly source posting even when Stripe sync is off; automatically enroll eligible appliances and post completed-month depreciation (nightly integration and route tests).
 - [x] Surface missing acquisition evidence, unposted sources and nightly failures as actionable To do items (durable problem model and Today integration).
 - [x] Connect equipment retirement, scrap/disposal, reopening and retired-appliance sales to balanced, reversible book entries without blocking equipment removal on a books error (disposal integration test).
-- [ ] Record qualifying money events promptly, best-effort after the business transaction commits (implemented for purchases, receipts, refunds, write-offs and paid-invoice webhook; final provider-path review pending).
+- [x] Record qualifying money events promptly, best-effort after the business transaction commits (purchases, receipts, direct and approved write-offs/expenses, refunds, and paid-invoice/Checkout/refund webhooks; hooks are independent of live payment switches).
 - [ ] Cover concurrency, 360-month catch-up, batch rotation, locked months, permissions and disposal cycles in focused throwaway-Postgres tests (tests added; current-head CI proof pending).
 - [ ] Run exact-head CI and review every comment before an authorized merge.
 
@@ -40,6 +40,5 @@ their latest head**. Exact-head PR CI/review required before any merge.
 **Still to verify before BA-1 acceptance:** The paid-invoice webhook, 360-month
 catch-up, batch rotation, locked-month and auto/manual concurrency tests are now
 in the PR, but the latest head has not completed all CI and review.
-Expense posting already writes the source in its own transaction; inspect that
-remaining exception against the best-effort requirement before acceptance.
+Expense approvals now commit before best-effort posting; pending journal errors remain visible and retry nightly.
 No real business or production data touched.

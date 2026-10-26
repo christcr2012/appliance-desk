@@ -108,12 +108,12 @@ export async function runBooksAutopilot(now = new Date()):Promise<Counts> {
   const unresolved=await prisma.booksProblem.findMany({where:{
    kind:"SOURCE_NOT_RECORDED",resolvedAt:null,
   },orderBy:[{lastSeenAt:"asc"},{id:"asc"}],
-   select:{id:true,kind:true,subjectType:true,subjectId:true},take:50});
+   select:{id:true,kind:true,subjectType:true,subjectId:true},take:3});
   for(const stale of unresolved){
    if(seen.has(problemKey(stale)))continue;
    try{
     await prisma.$transaction(tx=>postForSource(tx,stale.subjectType as JournalSourceType,stale.subjectId),
-     {isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:15000});
+     {isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:3000});
     await prisma.booksProblem.update({where:{id:stale.id},data:{resolvedAt:now}});
    }catch{
     // Keep the problem visible; rotate it behind another unfinished source.
