@@ -70,7 +70,7 @@ export async function scanAccessibilityRoute(
                     const leaf=oversized.find(el=>![...el.children].some(child=>
                       child.getBoundingClientRect().right>window.innerWidth+1))??oversized[0];
                     const chain=[];
-                    for(let el=leaf;el&&chain.length<12;el=el.parentElement){
+                    for(let el:Element|null=leaf;el&&chain.length<12;el=el.parentElement){
                       const rect=el.getBoundingClientRect(),css=getComputedStyle(el);
                       chain.push({
                         tag:el.tagName,cls:String(el.className).slice(0,65),
