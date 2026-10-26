@@ -92,4 +92,33 @@ describe("rule registry", () => {
     expect(MIGRATION).toContain("FROM \"RetailDeliveryFeeRate\"");
     expect(MIGRATION).toContain("'OWNER'");
   });
+
+  it("carries the owner's existing settings into OWNER versions in the migration", () => {
+    // The readers stop consulting these four settings, so the migration must
+    // preserve them as OWNER versions (Codex review on PR #617).
+    for (const [column, key] of [
+      ["recordRetentionYears", "records.keep_years"],
+      ["useTaxMonthlyThresholdCents", "co.use.monthly_threshold"],
+      ["rdfThresholdCents", "co.rdf.qualified_threshold"],
+      ["vendor1099ThresholdCents", "us.1099.threshold"],
+    ] as const) {
+      expect(MIGRATION).toContain(`to_jsonb("${column}")`);
+      expect(MIGRATION).toContain(`'${key}'`);
+    }
+    expect(MIGRATION).toContain("FROM \"BusinessSettings\"");
+  });
+
+  it("lets a READY delivery-fee record cite a rule version, not only a rate row", () => {
+    // The old check demanded rateId; the new readers write ruleVersionId with
+    // rateId null, so the migration must relax it (PR #617 CI failure).
+    expect(MIGRATION).toContain("DROP CONSTRAINT \"RetailDeliveryFeeRecord_ready_requires_evidence\"");
+    expect(MIGRATION).toContain("(\"rateId\" IS NOT NULL OR \"ruleVersionId\" IS NOT NULL)");
+  });
+
+  it("keeps only one ACTIVE version per rule, date and origin", () => {
+    // Undone versions stay as history and must not block a replacement for
+    // the same start date (Codex review on PR #617).
+    expect(MIGRATION).toContain("LegalRuleVersion_one_active_per_key_date_origin");
+    expect(MIGRATION).toContain("WHERE \"undoneAt\" IS NULL");
+  });
 });

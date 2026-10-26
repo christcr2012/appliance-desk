@@ -2916,7 +2916,10 @@ model LegalRuleVersion {
 
   rdfRecords    RetailDeliveryFeeRecord[] @relation("RdfRuleVersion")
 
-  @@unique([ruleKey, effectiveFrom, origin])
+  // No @@unique here: uniqueness is one ACTIVE version per
+  // (ruleKey, effectiveFrom, origin), enforced by the SQL-only partial unique
+  // index in migration 20261101000000_legal_rules (an undone version stays
+  // as history and must not block its replacement). See DATABASE.md.
   @@index([ruleKey, effectiveFrom])
 }
 

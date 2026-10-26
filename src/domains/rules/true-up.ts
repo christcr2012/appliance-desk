@@ -3,7 +3,6 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { formatMonthYear, formatShortDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import { createTaskInTx } from "@/domains/tasks";
-import { applyCreditToInvoice } from "@/domains/billing/ledger-base";
 import { balancedPlan } from "@/domains/books/posting-rules";
 import { writeJournal } from "@/domains/books/post";
 import { ruleAsOf } from "./reads";
@@ -15,17 +14,22 @@ import { ruleAsOf } from "./reads";
  *
  * In TFA-1 the only bill-affecting rule is `co.rdf.amount`, so only delivery
  * fees are true-up'd here. For each affected issued bill, recompute the fee
- * with the rule that should have applied on the sale date:
+ * with the rule that should have applied on the sale date, and compare it
+ * against the record's CURRENT amount — the amount already corrected by any
+ * earlier true-up, not the original charge. A second late change therefore
+ * adjusts incrementally (31 then 35 then 37 absorbs 4 and then 2, not 4
+ * and 6); consecutive decreases likewise credit only the new difference.
  * - should have cost the customer more: the customer is not charged. The
  *   difference is the business's cost — the record's amount is corrected
  *   (filing evidence only), a balanced journal debits TAX_ABSORBED and
  *   credits RETAIL_DELIVERY_FEE_PAYABLE so the return reports it, and the
  *   owner gets a To do. A filed period picks the correction up through the
  *   existing amendment/credit scan.
- * - should have saved the customer money: a credit on the customer's next
- *   bill through the existing credit path, with the reason as the line text.
- * Amounts under $0.01 are dropped. Each true-up is audited (`rules.true_up`)
- * and keyed by change id + record id, so running it twice changes nothing.
+ * - should have saved the customer money: a credit kept for the customer's
+ *   next bill (a CustomerCredit row, not applied to any bill already sent —
+ *   applying it to an older open bill would rewrite billed history; the same
+ *   pattern as a waived late fee). The bill's note explains it in one
+ *   sentence when the credit is used.
  * Every affected invoice is locked first (oldest first) and the approving
  * actor is re-checked, so a payment landing at the same moment serializes
  * cleanly: both land, the balance is right, one credit.
@@ -108,10 +112,9 @@ export async function trueUpLateChange(
     // same bill serializes instead of racing the true-up.
     let invoiceId: string | null = null;
     let customerId: string | null = null;
-    let chargedCents = 0;
     if (record.invoiceLineId) {
-      const lineRows = await tx.$queryRaw<Array<{ id: string; invoiceId: string; amountCents: number }>>`
-        SELECT "id", "invoiceId", "amountCents" FROM "InvoiceLineItem"
+      const lineRows = await tx.$queryRaw<Array<{ id: string; invoiceId: string }>>`
+        SELECT "id", "invoiceId" FROM "InvoiceLineItem"
         WHERE "id" = ${record.invoiceLineId} FOR UPDATE
       `;
       const line = lineRows[0];
@@ -124,7 +127,6 @@ export async function trueUpLateChange(
       if (!invoice || !invoice.issuedAt) continue;
       invoiceId = invoice.id;
       customerId = invoice.customerId;
-      chargedCents = line.amountCents;
     }
 
     // Re-check after the lock: a concurrent true-up may have finished while
@@ -140,7 +142,9 @@ export async function trueUpLateChange(
     });
     if (alreadyLocked) continue;
 
-    const diff = correct - (record.invoiceLineId ? chargedCents : recorded);
+    // Baseline is the record's current amount, already corrected by any
+    // earlier true-up — never the original invoice line, which never changes.
+    const diff = correct - recorded;
     if (diff === 0) continue;
 
     const label = await periodLabel(tx, record.deliveredOn);
@@ -162,9 +166,14 @@ export async function trueUpLateChange(
       });
       result.absorbedCents += diff;
     } else {
-      // The customer was overcharged: a credit on their next bill. A record
-      // the business paid itself has no customer to credit; its amount is
-      // still corrected below so the return reports the lower fee.
+      // The customer was overcharged: a credit kept for their next bill. A
+      // record the business paid itself has no customer to credit; its amount
+      // is still corrected below so the return reports the lower fee. The
+      // credit is deliberately NOT applied to any bill already sent — the
+      // oldest open bill is usually an earlier period's bill, and putting a
+      // credit line on it would rewrite billed history (Codex review on PR
+      // #617). It stays available (remainingCents) for the next bill, the
+      // same pattern as a waived late fee.
       const creditCents = -diff;
       if (customerId) {
         const reason = `Credit: delivery fee went down on ${startWords} (${label})`;
@@ -184,29 +193,8 @@ export async function trueUpLateChange(
               sourceId: `${change.id}:${record.id}`,
             },
           });
-          let appliedInvoiceId: string | null = null;
-          const nextBill = await tx.invoice.findFirst({
-            where: {
-              customerId,
-              status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] },
-              ...(invoiceId ? { id: { not: invoiceId } } : {}),
-            },
-            select: { id: true, amountDueCents: true, amountPaidCents: true },
-            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          });
-          if (nextBill) {
-            const outstanding = Math.max(0, nextBill.amountDueCents - nextBill.amountPaidCents);
-            const applyCents = Math.min(creditCents, outstanding);
-            if (applyCents > 0) {
-              await applyCreditToInvoice(tx, {
-                creditId: credit.id, invoiceId: nextBill.id,
-                amountCents: applyCents, appliedByUserId: actorId,
-              });
-              appliedInvoiceId = nextBill.id;
-            }
-          }
           result.creditedCents += creditCents;
-          result.credits.push({ customerId, creditId: credit.id, amountCents: creditCents, appliedInvoiceId });
+          result.credits.push({ customerId, creditId: credit.id, amountCents: creditCents, appliedInvoiceId: null });
         }
       }
     }

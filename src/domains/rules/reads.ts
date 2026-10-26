@@ -33,8 +33,9 @@ export async function ruleAsOf<T>(
   key: RuleKey, at: Date, db: RuleDb = prisma,
 ): Promise<{ value: T; version: LegalRuleVersion }> {
   const def = ruleDef(key);
-  // At most one row per origin shares a start date (unique index), so four
-  // rows cover every candidate at the newest start date.
+  // At most one ACTIVE row per origin shares a start date (partial unique
+  // index, undone rows excluded), so four rows cover every candidate at the
+  // newest start date.
   const rows = await db.legalRuleVersion.findMany({
     where: { ruleKey: key, effectiveFrom: { lte: at }, undoneAt: null },
     orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],

@@ -100,6 +100,30 @@ export async function saveRuleVersionInTx(
     if (!(error instanceof RuleMissingError)) throw error;
   }
 
+  // A second save for the same start date supersedes the earlier one: the
+  // earlier version stays as history (undoneAt set) and the new one takes
+  // its place. Without this the unique key blocks correcting a value that
+  // was just entered, and an undone future change blocks its replacement
+  // (Codex review on PR #617). The partial unique index only constrains
+  // ACTIVE rows, so the supersede must happen before the insert.
+  const superseded = await tx.legalRuleVersion.findMany({
+    where: { ruleKey: input.key, effectiveFrom, origin: input.origin ?? "OWNER", undoneAt: null },
+    select: { id: true },
+  });
+  for (const old of superseded) {
+    await tx.legalRuleVersion.update({ where: { id: old.id }, data: { undoneAt: now } });
+    await tx.auditLog.create({
+      data: {
+        userId: actorId,
+        action: "rules.supersede",
+        entityType: "LegalRuleVersion",
+        entityId: old.id,
+        oldValue: { ruleKey: input.key, effectiveFrom: effectiveKey },
+        newValue: { undoneAt: now.toISOString(), reason: "Superseded by a newer value for the same start date." },
+      },
+    });
+  }
+
   const version = await tx.legalRuleVersion.create({
     data: {
       ruleKey: input.key,

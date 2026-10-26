@@ -39,13 +39,31 @@ CREATE TABLE "LegalRuleVersion" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "LegalRuleVersion_ruleKey_effectiveFrom_origin_key" ON "LegalRuleVersion"("ruleKey", "effectiveFrom", "origin");
+-- Uniqueness is one ACTIVE version per (ruleKey, effectiveFrom, origin):
+-- an undone version stays as history and must not block a replacement for
+-- the same start date (Codex review on PR #617: saving a second value for a
+-- date, or replacing an undone change, failed on the unique key). Prisma
+-- cannot express a partial unique index, so it lives here in SQL only (the
+-- same pattern as DecisionScheduledChange_one_pending_per_subject, DEC-1a);
+-- there is no @@unique on LegalRuleVersion in the schema.
+CREATE UNIQUE INDEX "LegalRuleVersion_one_active_per_key_date_origin" ON "LegalRuleVersion"("ruleKey", "effectiveFrom", "origin") WHERE "undoneAt" IS NULL;
 CREATE INDEX "LegalRuleVersion_ruleKey_effectiveFrom_idx" ON "LegalRuleVersion"("ruleKey", "effectiveFrom");
 
 -- AlterTable: the dated rule version that set the amount on new RDF records.
 ALTER TABLE "RetailDeliveryFeeRecord" ADD COLUMN "ruleVersionId" TEXT;
 ALTER TABLE "RetailDeliveryFeeRecord" ADD CONSTRAINT "RetailDeliveryFeeRecord_ruleVersionId_fkey"
   FOREIGN KEY ("ruleVersionId") REFERENCES "LegalRuleVersion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- A READY record's evidence is a rule version as well as a rate row: the old
+-- check demanded rateId, so a READY record written by the new rule readers
+-- (ruleVersionId set, rateId null) was refused by the database. Relax it to
+-- either parent. (Found by the PR #617 CI run: the rules-as-of and RDF
+-- integration tests failed on this check.)
+ALTER TABLE "RetailDeliveryFeeRecord" DROP CONSTRAINT "RetailDeliveryFeeRecord_ready_requires_evidence";
+ALTER TABLE "RetailDeliveryFeeRecord" ADD CONSTRAINT "RetailDeliveryFeeRecord_ready_requires_evidence" CHECK (
+  "status" <> 'READY' OR
+  ("saleOn" IS NOT NULL AND ("rateId" IS NOT NULL OR "ruleVersionId" IS NOT NULL) AND "amountCents" IS NOT NULL)
+);
 
 -- AlterTable: timing for changes that cost the business (TFA-1 section 3).
 -- Starting values 90% and 3 business days (owner choice, Oct 25, 2026).
@@ -131,3 +149,43 @@ VALUES
   ('rule-greeley-sales-rate-20260101', 'greeley.sales_rate', '4110', '2026-01-01T07:00:00Z', 'RESEARCHED',
    NULL, 'Greeley address: state 2.9% + Greeley 4.11% (Weld County none, not in RTD) = 7.01%',
    '2026-10-25T12:00:00Z', true, false, NULL, NULL, now());
+
+-- Carry over the owner's existing settings (Codex review on PR #617): the
+-- readers stop consulting these four BusinessSettings fields, so a setting
+-- the owner already changed would silently stop taking effect. Each becomes
+-- an OWNER version from 2026-01-01, so it wins over the researched seed at
+-- the same date (origin priority) until the owner changes it. A later save
+-- for the same date supersedes it (see saveRuleVersionInTx). On a fresh
+-- install BusinessSettings is empty and nothing is carried over.
+INSERT INTO "LegalRuleVersion"
+  ("id", "ruleKey", "value", "effectiveFrom", "origin", "sourceUrl", "sourceQuote",
+   "checkedOn", "provisional", "autoApplied", "undoneAt", "createdByUserId", "createdAt")
+SELECT 'rule-carry-records-keep-years', 'records.keep_years', to_jsonb("recordRetentionYears"),
+  '2026-01-01T07:00:00Z', 'OWNER', NULL,
+  'Carried from your previous setting when the rule book was created (TFA-1).',
+  now(), false, false, NULL, NULL, now()
+FROM "BusinessSettings" WHERE "recordRetentionYears" IS NOT NULL;
+INSERT INTO "LegalRuleVersion"
+  ("id", "ruleKey", "value", "effectiveFrom", "origin", "sourceUrl", "sourceQuote",
+   "checkedOn", "provisional", "autoApplied", "undoneAt", "createdByUserId", "createdAt")
+SELECT 'rule-carry-use-monthly-threshold', 'co.use.monthly_threshold', to_jsonb("useTaxMonthlyThresholdCents"),
+  '2026-01-01T07:00:00Z', 'OWNER', NULL,
+  'Carried from your previous setting when the rule book was created (TFA-1).',
+  now(), false, false, NULL, NULL, now()
+FROM "BusinessSettings" WHERE "useTaxMonthlyThresholdCents" IS NOT NULL;
+INSERT INTO "LegalRuleVersion"
+  ("id", "ruleKey", "value", "effectiveFrom", "origin", "sourceUrl", "sourceQuote",
+   "checkedOn", "provisional", "autoApplied", "undoneAt", "createdByUserId", "createdAt")
+SELECT 'rule-carry-rdf-qualified-threshold', 'co.rdf.qualified_threshold', to_jsonb("rdfThresholdCents"),
+  '2026-01-01T07:00:00Z', 'OWNER', NULL,
+  'Carried from your previous setting when the rule book was created (TFA-1).',
+  now(), false, false, NULL, NULL, now()
+FROM "BusinessSettings" WHERE "rdfThresholdCents" IS NOT NULL;
+INSERT INTO "LegalRuleVersion"
+  ("id", "ruleKey", "value", "effectiveFrom", "origin", "sourceUrl", "sourceQuote",
+   "checkedOn", "provisional", "autoApplied", "undoneAt", "createdByUserId", "createdAt")
+SELECT 'rule-carry-1099-threshold', 'us.1099.threshold', to_jsonb("vendor1099ThresholdCents"),
+  '2026-01-01T07:00:00Z', 'OWNER', NULL,
+  'Carried from your previous setting when the rule book was created (TFA-1).',
+  now(), false, false, NULL, NULL, now()
+FROM "BusinessSettings" WHERE "vendor1099ThresholdCents" IS NOT NULL;

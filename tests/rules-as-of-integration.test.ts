@@ -58,7 +58,7 @@ async function fixture(): Promise<Fixture> {
       saleKey: "rules-sale-" + token,
       deliveredOn: day("2026-07-02"), saleOn: day("2026-07-02"),
       status: "READY", ruleVersionId: RDF_JUL_2026, amountCents: 31,
-      collectedFromCustomer: true, invoiceLineId: line.id,
+      collectedFromCustomer: true, invoiceLineId: line.id, invoiceId: invoice.id,
     },
   });
   return { ownerId, customerId, invoiceId: invoice.id, lineId: line.id, nextBillId: nextBill.id, recordId: record.id, token };
@@ -189,17 +189,114 @@ describe.skipIf(!enabled)("TFA-1 dated rules (isolated PostgreSQL)", () => {
         where: { customerId: f.customerId, sourceType: "RULE_TRUE_UP" },
       });
       expect(credit.amountCents).toBe(3);
+      expect(credit.remainingCents).toBe(3);
       expect(credit.reason).toContain("Credit: delivery fee went down on Jul 1");
-      const application = await prisma.creditApplication.findFirstOrThrow({
-        where: { creditId: credit.id, invoiceId: f.nextBillId },
-      });
-      expect(application.amountCents).toBe(3);
-      const nextBillLine = await prisma.invoiceLineItem.findFirst({
+      // The credit is kept for the customer's next bill: no bill already
+      // sent is touched, so there is no application and the open bill is
+      // exactly as it was.
+      expect(await prisma.creditApplication.count({ where: { creditId: credit.id } })).toBe(0);
+      const nextBill = await prisma.invoice.findUniqueOrThrow({ where: { id: f.nextBillId } });
+      expect(nextBill.amountDueCents).toBe(5000);
+      expect(nextBill.amountPaidCents).toBe(0);
+      expect(await prisma.invoiceLineItem.findFirst({
         where: { invoiceId: f.nextBillId, kind: "CREDIT" },
-      });
-      expect(nextBillLine?.description).toContain("Credit: delivery fee went down on Jul 1");
+      })).toBeNull();
     } finally {
       await cleanup(f, changeId ? [changeId] : []);
+    }
+  });
+
+  it("a second late increase absorbs only the new difference", async () => {
+    const f = await fixture();
+    const changeIds: string[] = [];
+    try {
+      const first = await saveRuleVersion(f.ownerId, {
+        key: "co.rdf.amount", value: 35, effectiveFrom: day("2026-07-01"),
+        reason: "Test-only first late increase.",
+      });
+      changeIds.push(first.versionId);
+      expect(first.trueUp.absorbedCents).toBe(4);
+      const second = await saveRuleVersion(f.ownerId, {
+        key: "co.rdf.amount", value: 37, effectiveFrom: day("2026-07-01"),
+        reason: "Test-only second late increase.",
+      });
+      changeIds.push(second.versionId);
+      // The record was already corrected to 35, so only 2 more is absorbed —
+      // not 6 against the original 31 charge.
+      expect(second.trueUp.recordsChanged).toBe(1);
+      expect(second.trueUp.absorbedCents).toBe(2);
+      expect((await prisma.retailDeliveryFeeRecord.findUniqueOrThrow({ where: { id: f.recordId } })).amountCents).toBe(37);
+      const journal = await prisma.journalEntry.findFirst({
+        where: { sourceId: second.versionId, eventKind: "RULE_TRUE_UP_ABSORBED:" + f.recordId },
+        include: { lines: { include: { ledgerAccount: { select: { systemRole: true } } } } },
+      });
+      expect(journal!.lines.map((line) => [line.ledgerAccount.systemRole, line.debitCents, line.creditCents]))
+        .toEqual(expect.arrayContaining([
+          ["TAX_ABSORBED", 2, 0],
+          ["RETAIL_DELIVERY_FEE_PAYABLE", 0, 2],
+        ]));
+    } finally {
+      await cleanup(f, changeIds);
+    }
+  });
+
+  it("a second late decrease credits only the new difference", async () => {
+    const f = await fixture();
+    const changeIds: string[] = [];
+    try {
+      const first = await saveRuleVersion(f.ownerId, {
+        key: "co.rdf.amount", value: 28, effectiveFrom: day("2026-07-01"),
+        reason: "Test-only first late decrease.",
+      });
+      changeIds.push(first.versionId);
+      expect(first.trueUp.creditedCents).toBe(3);
+      const second = await saveRuleVersion(f.ownerId, {
+        key: "co.rdf.amount", value: 25, effectiveFrom: day("2026-07-01"),
+        reason: "Test-only second late decrease.",
+      });
+      changeIds.push(second.versionId);
+      expect(second.trueUp.recordsChanged).toBe(1);
+      expect(second.trueUp.creditedCents).toBe(3);
+      const credits = await prisma.customerCredit.findMany({
+        where: { customerId: f.customerId, sourceType: "RULE_TRUE_UP" },
+        orderBy: { createdAt: "asc" },
+      });
+      expect(credits.map((c) => c.amountCents)).toEqual([3, 3]);
+      expect(credits.map((c) => c.remainingCents)).toEqual([3, 3]);
+      expect(await prisma.creditApplication.count({ where: { creditId: { in: credits.map((c) => c.id) } } })).toBe(0);
+    } finally {
+      await cleanup(f, changeIds);
+    }
+  });
+
+  it("saving a second value for the same start date supersedes the first; undo then re-save works", async () => {
+    const f = await fixture();
+    const changeIds: string[] = [];
+    try {
+      const first = await saveRuleVersion(f.ownerId, {
+        key: "co.rdf.amount", value: 40, effectiveFrom: day("2027-07-01"),
+        reason: "Test-only future value.",
+      });
+      changeIds.push(first.versionId);
+      const second = await saveRuleVersion(f.ownerId, {
+        key: "co.rdf.amount", value: 41, effectiveFrom: day("2027-07-01"),
+        reason: "Test-only corrected future value.",
+      });
+      changeIds.push(second.versionId);
+      expect((await ruleAsOf<number>("co.rdf.amount", day("2027-07-01"))).value).toBe(41);
+      // The first version stays as history, struck through.
+      expect((await prisma.legalRuleVersion.findUniqueOrThrow({ where: { id: first.versionId } })).undoneAt).not.toBeNull();
+      expect((await prisma.legalRuleVersion.findUniqueOrThrow({ where: { id: second.versionId } })).undoneAt).toBeNull();
+      await undoRuleVersion(f.ownerId, second.versionId);
+      expect((await ruleAsOf<number>("co.rdf.amount", day("2027-07-01"))).value).toBe(31);
+      const third = await saveRuleVersion(f.ownerId, {
+        key: "co.rdf.amount", value: 42, effectiveFrom: day("2027-07-01"),
+        reason: "Test-only replacement after undo.",
+      });
+      changeIds.push(third.versionId);
+      expect((await ruleAsOf<number>("co.rdf.amount", day("2027-07-01"))).value).toBe(42);
+    } finally {
+      await cleanup(f, changeIds);
     }
   });
 

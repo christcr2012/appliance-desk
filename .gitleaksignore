@@ -12,3 +12,12 @@ f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stri
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:197
 # Reviewed 2026-10-25: made-up request id in a feedback form test (MCP-10a branch commit); not a real key.
 5f62cc2c5ac2482cbf1444131f31acb97a7f4815:tests/feedback-context.test.ts:generic-api-key:125
+# Reviewed 2026-10-26 (TFA-1): rule keys, not credentials. The registry names
+# its rules `key: "us.1099.threshold"` and the 1099 test pins the same key;
+# gitleaks reads `key:` + a quoted string as a generic API key. Fingerprints
+# use the commit that introduced these lines on this branch (the d34a2ef
+# snapshot push). After the squash merge lands, refresh them to the merge
+# commit or the scan on main will flag them again.
+d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:162
+d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:189
+d34a2efc1e6d7797451fc638cd6e0fc0120b7613:tests/books-closing-integration.test.ts:generic-api-key:28

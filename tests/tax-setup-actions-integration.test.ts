@@ -93,7 +93,16 @@ describe.skipIf(!enabled)("T-7A tax settings (isolated PostgreSQL)", () => {
     if (first) expect((await prisma.legalRuleVersion.findUniqueOrThrow({
       where: { id: first.id },
     })).value).toBe(first.value);
-    await expect(addRdfRate(owner, { effectiveOn: when, amountCents: 43 })).rejects.toThrow();
+    // A second value for the same July 1 supersedes the first (Codex review
+    // on PR #617): the 42 version stays as history, struck through, and 43
+    // becomes the value in force — the earliest researched version is still
+    // untouched.
+    const secondId = await addRdfRate(owner, { effectiveOn: when, amountCents: 43 });
+    const second = await prisma.legalRuleVersion.findUniqueOrThrow({ where: { id: secondId } });
+    expect(second).toMatchObject({ ruleKey: "co.rdf.amount", origin: "OWNER", provisional: false });
+    expect(second.value).toBe(43);
+    expect(second.effectiveFrom).toEqual(when);
+    expect((await prisma.legalRuleVersion.findUniqueOrThrow({ where: { id } })).undoneAt).not.toBeNull();
   }));
   it("manual jurisdiction rates append a version without replacing history", async () => isolated(async (owner) => {
     const code = "T7A-" + randomUUID().replaceAll("-", "");
