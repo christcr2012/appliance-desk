@@ -28,6 +28,8 @@ const m = vi.hoisted(() => {
     user: { findUnique: vi.fn(async () => (log.push("read:user"),
       { id: "owner", role: state.role, archivedAt: state.archived ? new Date() : null })) },
     businessSettings: {
+      // DEC-2: acting on a question marks the starting values reviewed.
+      updateMany: vi.fn(async () => ({ count: 1 })),
       findUnique: vi.fn(async () => (log.push("read:settings"), { ...state.settings })),
       findUniqueOrThrow: vi.fn(async () => (log.push("read:settings"), { ...state.settings })),
       update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {

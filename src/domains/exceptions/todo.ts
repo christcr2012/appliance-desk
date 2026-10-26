@@ -26,6 +26,7 @@ const ACTION_LABEL: Record<string, string> = {
   PAST_DUE_INVOICE: "Review unpaid invoice",
   BANK_PAYMENT_SLOW: "See bank payment",
   LATE_FEE_REVIEW: "Open the bill",
+  DECISIONS_STARTING_VALUES: "Review",
   HELD_PAYMENT_DECISION: "Decide",
   DEPOSIT_DECISION: "Decide",
   NEW_LEAD_CONTACT: "Contact lead",

@@ -10,6 +10,7 @@ import {
   sendToProfessional,
   type Audience,
 } from "@/domains/decisions";
+import { markStartingValuesReviewed } from "@/domains/decisions/attention";
 import { decisionSubject } from "@/domains/decisions/registry";
 import { decisionErrorMessage } from "@/domains/decisions/messages";
 
@@ -92,4 +93,12 @@ export async function reopenDecisionAction(form: FormData): Promise<DecisionActi
     await reopenDecision(session.user.id, subject.id);
     return `Reopened: ${subject.title}`;
   });
+}
+
+/** "Mark as reviewed": the owner has looked at the starting values, so the To do item goes away (DEC-2). */
+export async function markStartingValuesReviewedAction(): Promise<void> {
+  const session = await requireRole("OWNER");
+  await markStartingValuesReviewed(session.user.id);
+  revalidatePath("/desk/settings/decisions");
+  revalidatePath("/desk/today");
 }

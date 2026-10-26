@@ -1,3 +1,18 @@
+## October 26 — DEC-2: researched starting values in the live app (in review)
+
+Branch `ai/claude/dec-2-starting-values`, stacked on DEC-1b (PR #603, which I took over and merged with main; it must merge first).
+Coded: every question in Decisions & reviews has a researched value with sources (tax-by-charge, Greeley careful choices,
+filing basis, delivery fee, bad debt, setup fee, record years, remembered-device days, and the "as built" wording
+answers); new questions for Greeley's measure 2F city rate and the late fee amount. The nightly run (inside the existing
+books-nightly cron, before the Books check) applies each value once, from the next Denver day, only over untouched
+settings, as the one active owner, with a record that names no person; questions Chris already answered are recorded as
+confirmed. One To do item ("N starting values are now in use") until the owner presses Mark as reviewed (or keeps/changes any
+question). New rental agreements and quote conversions take the late fee from Settings; the form pre-fills it; renewals keep old terms.
+Proof: unit tests here (registry, defaults, day 11 with the clock changes, screens) and `tests/starting-values-integration.test.ts`
+on throwaway Postgres; the waiver browser spec `e2e/late-fee-waiver.spec.ts` runs in CI only. Not done on purpose: the
+`Invoice.lateFeeWaivedAt` field from the old spec (FEE-1's waiver on the pending charge replaced it).
+Needs Chris: nothing new on the checklist; the starting values show on his For you / For your CPA tabs.
+
 ## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review, merged with latest main)
 
 Branch `ai/claude/dec-1b-decisions-screens`. Coded: Settings › Decisions & reviews (`/desk/settings/decisions`: tabs,

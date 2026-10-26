@@ -88,7 +88,7 @@ export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise
       where: { id: "singleton" },
       select: { shortTermLeaseElection: true, rdfHandling: true, retailDeliveryFeeDecision: true,
         badDebtTaxRecovery: true, setupFeeTaxPlanningTreatment: true, setupFeeTaxTreatment: true,
-        trustedDeviceDays: true },
+        trustedDeviceDays: true, lateFeeFlatCents: true },
     }),
     listTaxabilityRuleCells(tx),
     tx.taxJurisdiction.findFirst({ where: GREELEY_JURISDICTION_WHERE, select: { id: true }, orderBy: { id: "asc" } }),
@@ -96,6 +96,13 @@ export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise
     // TFA-1: how long records are kept is a dated rule, not a setting.
     ruleAsOf<number>("records.keep_years", new Date(), tx).then((row) => row.value),
   ]);
+  // DEC-2: Greeley's city rate as of today (only looked up once the Greeley area exists).
+  const greeleyRate = greeley
+    ? await tx.taxRateVersion.findFirst({
+      where: { jurisdictionId: greeley.id, effectiveFrom: { lte: new Date() } },
+      orderBy: { effectiveFrom: "desc" }, select: { rateMilliPercent: true },
+    })
+    : null;
   return {
     settings: {
       shortTermLeaseElection: settings?.shortTermLeaseElection ?? "UNDECIDED",
@@ -106,10 +113,12 @@ export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise
       setupFeeTaxTreatment: settings?.setupFeeTaxTreatment ?? "UNDECIDED",
       recordRetentionYears: retentionYears,
       trustedDeviceDays: settings?.trustedDeviceDays ?? 30,
+      lateFeeFlatCents: settings?.lateFeeFlatCents ?? 0,
     },
     taxCells: cells.map((cell) => ({ jurisdictionId: cell.jurisdictionId, category: cell.category,
       taxability: cell.taxability, provisional: cell.provisional })),
     greeleyJurisdictionId: greeley?.id ?? null,
+    greeleyRateMilliPercent: greeleyRate?.rateMilliPercent ?? null,
     filingBases: accounts.map((account) => account.basis),
   };
 }
@@ -248,6 +257,11 @@ async function cancelPending(tx: Prisma.TransactionClient, subjectId: string, no
   });
 }
 
+/** DEC-2: the owner acting on a question counts as having looked at the starting values (clears the To do item). */
+async function markReviewedInTx(tx: Prisma.TransactionClient, now: Date) {
+  await tx.businessSettings.updateMany({ where: { id: "singleton" }, data: { decisionsReviewedAt: now } });
+}
+
 async function insertRecord(
   tx: Prisma.TransactionClient,
   actorId: string,
@@ -256,6 +270,8 @@ async function insertRecord(
     previousValue: Prisma.JsonValue | null; effectiveFrom: Date | null; via: DecisionVia;
     professionalName?: string | null; professionalFirm?: string | null; professionalAnsweredOn?: Date | null;
     explanation?: string | null; attachmentUrl?: string | null; sources?: DecisionSourceRef[] | null;
+    /** DEC-2: the app's own nightly run records the answer; no person answered, so nobody is named. */
+    noAnswerer?: boolean;
   },
 ) {
   const json = (value: Prisma.JsonValue | null | undefined) =>
@@ -264,7 +280,7 @@ async function insertRecord(
     data: {
       subjectId: data.subjectId, kind: data.kind, audience: data.audience,
       value: json(data.value), previousValue: json(data.previousValue),
-      effectiveFrom: data.effectiveFrom, answeredByUserId: actorId,
+      effectiveFrom: data.effectiveFrom, answeredByUserId: data.noAnswerer ? null : actorId,
       professionalName: data.professionalName ?? null, professionalFirm: data.professionalFirm ?? null,
       professionalAnsweredOn: data.professionalAnsweredOn ?? null, explanation: data.explanation ?? null,
       attachmentUrl: data.attachmentUrl ?? null,
@@ -355,6 +371,7 @@ export async function confirmDecision(actorId: string, id: string, expectedValue
       reason: "Confirmed by the owner in Decisions & reviews", sources: [],
       record: { audience: "OWNER", via: "SCREEN" }, now, ctx,
     });
+    await markReviewedInTx(tx, now);
   });
 }
 
@@ -375,6 +392,7 @@ export async function changeDecision(
       reason: ("Changed by the owner in Decisions & reviews" + (explanation ? ": " + explanation : "")).slice(0, 500),
       sources: [], record: { audience: "OWNER", via, explanation }, now, ctx,
     });
+    await markReviewedInTx(tx, now);
   });
 }
 
@@ -489,7 +507,11 @@ export async function recordProfessionalAnswer(
  */
 export async function applyStartingValue(
   actorId: string, id: string,
-  input: { value: Prisma.JsonValue; effectiveFrom: string | Date | null; why: string; sources: DecisionSourceRef[] },
+  input: {
+    value: Prisma.JsonValue; effectiveFrom: string | Date | null; why: string; sources: DecisionSourceRef[];
+    /** CONFIRMED for a question the owner already answered (DEC-2); the default is a starting value. */
+    kind?: "STARTING_VALUE_APPLIED" | "CONFIRMED";
+  },
   via: DecisionVia = "SCREEN",
 ): Promise<void> {
   const subject = requireSubject(id);
@@ -503,9 +525,10 @@ export async function applyStartingValue(
     const ctx = await loadDecisionContext(tx);
     const previous = await subject.read(ctx);
     await applyDecisionInTx(tx, actorId, {
-      subject, kind: "STARTING_VALUE_APPLIED", value: chosen, previous, effectiveFrom: input.effectiveFrom,
+      subject, kind: input.kind ?? "STARTING_VALUE_APPLIED", value: chosen, previous, effectiveFrom: input.effectiveFrom,
       confirmedOn: now, reason: why, sources: input.sources,
-      record: { audience: subject.audience, via, explanation: why, sources: input.sources }, now, ctx,
+      record: { audience: subject.audience, via, explanation: why, sources: input.sources,
+        ...(via === "MIGRATION" ? { noAnswerer: true } : {}) }, now, ctx,
     });
   });
 }

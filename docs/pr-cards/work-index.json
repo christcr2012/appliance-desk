@@ -4824,8 +4824,8 @@
         "DEC-1",
         "FEE-1"
       ],
-      "status": "DESIGNED — build spec ready 2026-10-25",
-      "migration": "additive (Invoice.lateFeeWaivedAt, BusinessSettings.decisionsReviewedAt)",
+      "status": "IN PROGRESS — built on ai/claude/dec-2-starting-values, stacked on DEC-1b (PR #603)",
+      "migration": "additive (BusinessSettings.decisionsReviewedAt; Invoice.lateFeeWaivedAt dropped, FEE-1 waiver replaced it)",
       "budget": 460,
       "units": [
         "DEC-2"
