@@ -53,12 +53,22 @@ async function fixture(tx: Tx) {
     id: jobId, type: "DELIVERY", status: "COMPLETED",
     agreementId, customerId, serviceAddressId: addressId,
   } });
-  const rate = await tx.retailDeliveryFeeRate.create({
-    data: {
-      effectiveOn: day("2026-07-01"),
-      amountCents: 31, enteredByUserId: ownerId,
-    },
-  });
+  // TFA-1: the July 2026 fee amount is the seeded co.rdf.amount rule version
+  // (31 cents from 2026-07-01), not a RetailDeliveryFeeRate row.
+  const seededRuleVersionId = "rule-co-rdf-amount-20260701";
+  async function addRuleAmount(effectiveOn: Date, cents: number) {
+    return tx.legalRuleVersion.create({
+      data: {
+        id: "rdf4-rule-" + randomUUID().replaceAll("-", ""),
+        ruleKey: "co.rdf.amount",
+        value: cents,
+        effectiveFrom: effectiveOn,
+        origin: "OWNER",
+        provisional: false,
+        createdByUserId: ownerId,
+      },
+    });
+  }
   const account = await tx.taxFilingAccount.create({ data: {
     kind: "RETAIL_DELIVERY_FEE_RETURN",
     name: "Colorado RDF fixture " + token,
@@ -74,7 +84,7 @@ async function fixture(tx: Tx) {
   async function record(
     deliveredOn: string, saleOn: string,
     status: "READY" | "NOT_DUE" | "PENDING_RATE" = "READY",
-    opts: { collected?: boolean; rateId?: string; cents?: number } = {},
+    opts: { collected?: boolean; ruleVersionId?: string; cents?: number } = {},
   ) {
     const id = "rdf4-record-" + randomUUID().replaceAll("-", "");
     return tx.retailDeliveryFeeRecord.create({
@@ -83,7 +93,7 @@ async function fixture(tx: Tx) {
         saleKey: "agreement:" + agreementId + ":" + id,
         deliveredOn: day(deliveredOn), saleOn: day(saleOn),
         status, ...(status === "READY" ? {
-          rateId: opts.rateId ?? rate.id,
+          ruleVersionId: opts.ruleVersionId ?? seededRuleVersionId,
           amountCents: opts.cents ?? 31,
           collectedFromCustomer: opts.collected ?? false,
         } : {}),
@@ -102,18 +112,18 @@ async function fixture(tx: Tx) {
       where: { id: recordId }, data: { filingPeriodId: sourcePeriodId },
     });
   }
-  return { tx, rate, account, ownerId, customerId, agreementId, record, period, frozenOriginal };
+  return { tx, account, ownerId, customerId, agreementId, record, period, frozenOriginal, addRuleAmount };
 }
 
 describe.skipIf(!enabled)("T-6C4 RDF filing with isolated PostgreSQL", () => {
   it("uses delivery month, but the sale-date's previously chosen rate", async () => {
     await withEvidence(async f => {
-      const juneRate = await f.tx.retailDeliveryFeeRate.create({
-        data: { effectiveOn: day("2026-01-01"), amountCents: 30, enteredByUserId: f.ownerId },
-      });
+      // TFA-1: an OWNER version of 30 cents from 2026-01-01 wins over the
+      // seeded 28-cent version from 2025-07-01 for January–June 2026 sales.
+      const juneRule = await f.addRuleAmount(day("2026-01-01"), 30);
       const period = await f.period("2026-07-01", "2026-07-31");
       const fee = await f.record("2026-07-02", "2026-06-30", "READY", {
-        rateId: juneRate.id, cents: 30,
+        ruleVersionId: juneRule.id, cents: 30,
       });
       const packet = await buildRdfPacketInTx(f.tx, period.id);
       expect(packet).toMatchObject({
@@ -121,7 +131,7 @@ describe.skipIf(!enabled)("T-6C4 RDF filing with isolated PostgreSQL", () => {
         priorPeriodCreditCents: 0,
       });
       expect(packet.rows).toEqual([{
-        rateId: juneRate.id, amountCents: 30, count: 1, totalCents: 30,
+        rateKey: juneRule.id, amountCents: 30, count: 1, totalCents: 30,
       }]);
       expect(packet.sourceRecordIds).toEqual([fee.id]);
     });
@@ -135,7 +145,7 @@ describe.skipIf(!enabled)("T-6C4 RDF filing with isolated PostgreSQL", () => {
       await f.frozenOriginal(fee.id, old.id);
       await f.tx.retailDeliveryFeeRecord.update({
         where: { id: fee.id }, data: {
-          status: "NOT_DUE", rateId: null, amountCents: null, collectedFromCustomer: null,
+          status: "NOT_DUE", rateId: null, ruleVersionId: null, amountCents: null, collectedFromCustomer: null,
         },
       });
       await f.record("2026-09-03", "2026-09-01");
@@ -182,7 +192,7 @@ describe.skipIf(!enabled)("T-6C4 RDF filing with isolated PostgreSQL", () => {
       await f.frozenOriginal(fee.id, old.id);
       await f.tx.retailDeliveryFeeRecord.update({
         where: { id: fee.id }, data: {
-          status: "NOT_DUE", rateId: null, amountCents: null, collectedFromCustomer: null,
+          status: "NOT_DUE", rateId: null, ruleVersionId: null, amountCents: null, collectedFromCustomer: null,
         },
       });
       await f.record("2026-09-03", "2026-09-01");
@@ -232,7 +242,7 @@ describe.skipIf(!enabled)("T-6C4 RDF filing with isolated PostgreSQL", () => {
       expect(previous.status).toBe("READY");
       if (previous.status !== "READY") return;
       await f.tx.retailDeliveryFeeRecord.update({
-        where: { id: removed.id }, data: { status: "NOT_DUE", amountCents: null, rateId: null },
+        where: { id: removed.id }, data: { status: "NOT_DUE", amountCents: null, rateId: null, ruleVersionId: null },
       });
       await f.record("2026-08-04", "2026-08-02");
       const corrected = await loadFilingPacketInTx(f.tx, period.id);
@@ -294,12 +304,12 @@ describe.skipIf(!enabled)("T-6C4 RDF filing with isolated PostgreSQL", () => {
       const date = new Date(refund.createdAt.getTime() + 1000);
       await f.tx.retailDeliveryFeeRecord.update({
         where: { id: a.id }, data: { status: "NOT_DUE", amountCents: null,
-          collectedFromCustomer: null, rateId: null, invoiceLineId: invoice.lineItems[0]!.id,
+          collectedFromCustomer: null, rateId: null, ruleVersionId: null, invoiceLineId: invoice.lineItems[0]!.id,
           customerRefundRef: refund.id, customerRefundedAt: date },
       });
       await f.tx.retailDeliveryFeeRecord.update({
         where: { id: b.id }, data: { status: "NOT_DUE", amountCents: null,
-          collectedFromCustomer: null, rateId: null, invoiceLineId: invoice.lineItems[1]!.id },
+          collectedFromCustomer: null, rateId: null, ruleVersionId: null, invoiceLineId: invoice.lineItems[1]!.id },
       });
       await f.record("2026-09-03", "2026-09-01");
       await f.record("2026-10-03", "2026-10-01");

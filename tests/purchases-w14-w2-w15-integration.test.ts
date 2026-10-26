@@ -13,6 +13,7 @@ import { loadReceiptTaxSteps, updateReceiptTaxAnswer } from "@/domains/purchasin
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { buildAuditPack, auditPackCsv, getApplianceTaxProof } from "@/domains/tax/tax-proof";
 import { saveRecordRetentionYears } from "@/domains/tax/retention";
+import { ruleAsOf } from "@/domains/rules/reads";
 import { loadFilingPacket } from "@/domains/tax/filing-packet";
 import { detectTaxFilingAmendments, markPeriodFiled } from "@/domains/tax/filing";
 import { canUploadPhoto } from "@/domains/uploads";
@@ -36,7 +37,6 @@ const key = () => "form-" + randomUUID();
 describe.skipIf(!enabled)("W-14 + W-2 + W-15 purchases, next step and audit pack on real PostgreSQL", () => {
   let oldLocations: string[] = [];
   let oldElection: "UNDECIDED" | "PAY_ON_ACQUISITION" | "COLLECT_ON_RENTALS" | null = null;
-  let oldRetention = 7;
   const purchaseIds: string[] = [];
   const periodIds: string[] = [];
   const orderIds: string[] = [];
@@ -53,9 +53,8 @@ describe.skipIf(!enabled)("W-14 + W-2 + W-15 purchases, next step and audit pack
 
   beforeAll(async () => {
     oldLocations = (await prisma.addressTaxLocation.findMany({ where: { forBusinessLocation: true, isCurrent: true }, select: { id: true } })).map((r) => r.id);
-    const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { shortTermLeaseElection: true, recordRetentionYears: true } });
+    const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { shortTermLeaseElection: true } });
     oldElection = settings?.shortTermLeaseElection ?? null;
-    oldRetention = settings?.recordRetentionYears ?? 7;
     await prisma.user.createMany({ data: [
       { id: ownerId, email: "o-" + tag + "@example.test", name: "Owner", role: "OWNER" },
       { id: adminId, email: "a-" + tag + "@example.test", name: "Admin", role: "ADMIN" },
@@ -66,7 +65,7 @@ describe.skipIf(!enabled)("W-14 + W-2 + W-15 purchases, next step and audit pack
     ] });
     await prisma.supplier.create({ data: { id: supplierId, name: "Acme Appliance " + tag } });
     await prisma.businessSettings.upsert({
-      where: { id: "singleton" }, create: { shortTermLeaseElection: "PAY_ON_ACQUISITION" }, update: { shortTermLeaseElection: "PAY_ON_ACQUISITION", recordRetentionYears: 7 },
+      where: { id: "singleton" }, create: { shortTermLeaseElection: "PAY_ON_ACQUISITION" }, update: { shortTermLeaseElection: "PAY_ON_ACQUISITION" },
     });
     await prisma.addressTaxLocation.updateMany({ where: { id: { in: oldLocations } }, data: { isCurrent: false } });
     await prisma.taxFilingAccount.create({ data: { id: accountId, name: "Purchases tax " + tag, kind: "USE_TAX_RETURN", basis: "ACCRUAL", firstPeriodStart: day("2026-01-01") } });
@@ -106,7 +105,7 @@ describe.skipIf(!enabled)("W-14 + W-2 + W-15 purchases, next step and audit pack
     await prisma.taxJurisdiction.deleteMany({ where: { id: jurId } });
     await prisma.taxFilingAccount.deleteMany({ where: { id: accountId } });
     if (oldElection !== null) {
-      await prisma.businessSettings.update({ where: { id: "singleton" }, data: { shortTermLeaseElection: oldElection, recordRetentionYears: oldRetention } });
+      await prisma.businessSettings.update({ where: { id: "singleton" }, data: { shortTermLeaseElection: oldElection } });
     }
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, adminId] } } });
   });
@@ -276,14 +275,25 @@ describe.skipIf(!enabled)("W-14 + W-2 + W-15 purchases, next step and audit pack
   });
 
   it("the retention setting starts at 7 years, is owner-only, bounded, audited and compare-and-set", async () => {
-    await expect(saveRecordRetentionYears(adminId, 8, 7)).rejects.toThrow();
-    await expect(saveRecordRetentionYears(ownerId, 0, 7)).rejects.toThrow(/1 to 50/);
-    await expect(saveRecordRetentionYears(ownerId, 51, 7)).rejects.toThrow(/1 to 50/);
-    await saveRecordRetentionYears(ownerId, 10, 7);
-    expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).recordRetentionYears).toBe(10);
-    await expect(saveRecordRetentionYears(ownerId, 9, 7)).rejects.toThrow(/another session/);
-    expect(await prisma.auditLog.count({ where: { userId: ownerId, action: "tax.record_retention.update" } })).toBe(1);
-    await saveRecordRetentionYears(ownerId, 7, 10);
+    try {
+      await expect(saveRecordRetentionYears(adminId, 8, 7)).rejects.toThrow();
+      await expect(saveRecordRetentionYears(ownerId, 0, 7)).rejects.toThrow(/1 to 50/);
+      await expect(saveRecordRetentionYears(ownerId, 51, 7)).rejects.toThrow(/1 to 50/);
+      await saveRecordRetentionYears(ownerId, 10, 7);
+      // TFA-1: how long records are kept is a dated rule, not a setting.
+      expect((await ruleAsOf<number>("records.keep_years", new Date())).value).toBe(10);
+      await expect(saveRecordRetentionYears(ownerId, 9, 7)).rejects.toThrow(/another session/);
+      expect(await prisma.auditLog.count({ where: { userId: ownerId, action: "tax.record_retention.update" } })).toBe(1);
+    } finally {
+      // The save above wrote an OWNER version for today, and a second OWNER
+      // version for the same day would break the one-version-per-day rule —
+      // so the restore deletes the owner versions and the seeded 7-year rule
+      // applies again.
+      await prisma.legalRuleVersion.deleteMany({
+        where: { ruleKey: "records.keep_years", createdByUserId: ownerId },
+      });
+    }
+    expect((await ruleAsOf<number>("records.keep_years", new Date())).value).toBe(7);
   });
 
   it("only owner and admin may upload purchase receipts, and only into a plausible folder", async () => {

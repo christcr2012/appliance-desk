@@ -66,6 +66,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-exemptions-integration.test.ts",
   "tests/tax-prepaid-invoice-integration.test.ts",
   "tests/tax-rate-change-integration.test.ts",
+  "tests/rules-as-of-integration.test.ts", // TFA-1 changes and restores the shared timing settings; its rule versions are test-scoped.
   "tests/tax-refund-evidence-integration.test.ts",
   "tests/tax-stripe-invoice-mirror-integration.test.ts",
   "tests/agreements-term-integration.test.ts",

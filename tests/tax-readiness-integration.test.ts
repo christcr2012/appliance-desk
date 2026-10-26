@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { businessDateFromKey } from "@/lib/business-date";
 import { assertTaxReadyForAgreement } from "@/domains/tax/locations";
 const u = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && u.pathname === "/appliance_desk_test" && ["localhost","127.0.0.1"].includes(u.hostname);
@@ -18,7 +19,16 @@ describe.skipIf(!enabled)("T-6C4 conditional Colorado delivery fee readiness", (
       rules:{create:{category:"RENTAL",taxability:"TAXABLE",reason:"synthetic test"}}
    }});
    await tx.businessSettings.update({where:{id:"singleton"},data:{
-      shortTermLeaseElection:"COLLECT_ON_RENTALS",rdfThresholdCents:1,rdfHandling:"UNDECIDED",rdfCpaConfirmedOn:null
+      shortTermLeaseElection:"COLLECT_ON_RENTALS",rdfHandling:"UNDECIDED",rdfCpaConfirmedOn:null
+   }});
+   // TFA-1: the small-seller limit is a dated rule, not a setting. A one-cent
+   // limit means the recorded rent already passes it, so the fee decision
+   // stays undecided until the owner and CPA answer. The whole transaction
+   // rolls back, so no cleanup is needed.
+   await tx.legalRuleVersion.create({data:{
+      ruleKey:"co.rdf.qualified_threshold",value:1,
+      effectiveFrom:businessDateFromKey("2026-01-01")!,origin:"OWNER",
+      provisional:false,createdByUserId:user.id,
    }});
    async function agreement(state:string) {
      const address=await tx.serviceAddress.create({data:{customerId:customer.id,line1:"1 Test Road",city:"Greeley",state,zip:"80631"}});
