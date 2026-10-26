@@ -36,3 +36,9 @@ cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-a
 d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:162
 d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:189
 fc4ad1efe73a9b499610c531ca28c7501fab248f:tests/books-closing-integration.test.ts:generic-api-key:28
+# Same three lines again: the full-history scan reads every branch, and the
+# ACC-6 lane's merge of main (e993e88, 89630f4, 2026-10-26) re-committed the
+# same files, so the lines are attributed to those commits too.
+e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:162
+e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:189
+89630f49bd63734294fc11926f9dc93c5fdb15fa:tests/books-closing-integration.test.ts:generic-api-key:28
