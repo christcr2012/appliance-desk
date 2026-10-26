@@ -62,7 +62,10 @@ failed on the two ACC-6 my-account tests — the forget-confirm text uses a curl
 and the two-factor login page was prerendered at build time so it kept offering "Remember this device" after the
 owner turned it off (a real bug: the page is now force-dynamic). Both fixed; browser-d failed on the
 offline-fallback test, which also failed on the FEE-1 branch and passed on this branch before — a timing flake,
-watched on the re-run. `ci` green at the exact head and every review comment read are still to do.
+watched on the re-run. The re-run (head 2aaea9e7) passed browser-a and browser-d, but browser-c failed with no test
+failing — all 106 tests passed and the shard ran 3.1m against the 180s phase budget, so staff-security (~18
+test-seconds) and fleet-report (~14) moved from browser-c to browser-b, the lightest group, with no test omitted
+and the budget unchanged. `ci` green at the exact head and every review comment read are still to do.
 Update 2026-10-26 (night): `main` moved (BILL-1 #612, preview-storage #609), merged into this branch as 164c968
 (conflicts only in STATUS.md and DATABASE.md, both kept both entries); re-checked locally — typecheck clean, lint
 0 errors, 41 unit tests pass. Push still blocked: the branch-creation approval timed out unanswered (01:39 MDT).
