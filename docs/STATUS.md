@@ -1,3 +1,8 @@
+## October 26 — ACC-6: CI green; Codex findings fixed, exact-head rerun
+
+PR #616's checks came back all green at head beb787c4. Codex's review left two findings: a P2 — the two-step login page could be prerendered, so it kept offering "Remember this device" after the owner turned remembering off (already fixed in an earlier round by making the page request-rendered) — and a P1 — the My account "Forget remembered devices" action did not re-check the person inside its transaction, so someone deactivated between the page check and the write could still have their trust rows deleted. The forget now re-checks the actor inside the transaction (row lock + active-team check, the repo's rule), with unit tests for the active, deactivated, and internal-cleanup paths; internal cleanup (password, reset, email, owner actions) is unchanged. Typecheck clean, 27 focused unit tests pass. The rerun on the fix head then failed only the secret scan: the full-history scan reads every branch, and it flagged the same legal rule-name lines under main's TFA-1 merge commit (already allowlisted on main — this branch's copy was older) and under the leads lane's merge commits (not allowlisted anywhere). Main has been merged in, bringing the refreshed allowlist, and the four leads-branch fingerprints were added with the reason recorded in `.gitleaksignore` and the PR; every flagged line was read — they are tax rule names and a migration comment, not credentials. Next: exact-head CI, then reply to and resolve both review threads and merge.
+
+Update 2026-10-26 ~13:45 MDT: three more runs, each red on exactly one thing, all diagnosed and fixed in turn. Run 40370951794 (head 0627b5c2): everything green except browser-b — 164 passed but 3.0m against the 180s phase budget; feedback and staff-security moved b to c. Run 40386761485 (head 52207003): the scanner flagged the leads migration comment under LD-1's merge commit (50e265ec — one fingerprint added, reason recorded) and browser-c ran 3.1m with 109 passing (the desk-a route scan varies 120–183 test-seconds between runs). LD-1 then merged to main (#625), so main was merged in again here: conflicts in `.gitleaksignore` (union of both lanes' fingerprints), this file (both top entries kept) and the shard file resolved; LD-1's new lead-staff-detail spec assigned to browser-b, revenue-records moved c to a and my-account d to c from run 40386761485's measured times (a 2.3m, b 2.6m, d 2.9m). Next: exact-head CI on the merged tree, then reply to and resolve both review threads and merge.
 ## October 26 — LD-1: fix pushed, checks never started — needs one manual start
 
 PR #618 (leads pipeline engine) at `ac70fedc`. The first check run was red in 4 jobs; all four causes are fixed and pushed, and the branch is verified green locally on a private database (18 files, 95 tests). But GitHub never started a new check run on the fix — the upload method doesn't fire the event, and closing/reopening the PR didn't start one either. Needs Chris: one manual start (Actions → CI → Run workflow on `ai/marley/ld-1`; row on the checklist). Once the run is green, review threads get answered and it merges. No production data or settings changed.
@@ -43,6 +48,55 @@ PR #610 passed full CI at `0d17ac10`, then automated review found three material
 ## October 26 — BA-1 source posting verified, merge reconciliation in progress
 
 PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
+
+## October 26 — ACC-6: remember this device (built; PR #616 open, CI red — fixed, re-running)
+
+Owner setting "Remember devices for {n} days" (starting 30, 0 = off) on Settings › Security, a "Remember this device"
+box on the two-step login, remembered devices with "Forget remembered devices" on My account, a device cookie behind
+the new-device notice (a second phone of the same kind is new), customers noticed only through the customer-email
+switch, and every security change (password, reset, email, second step, removal, role change, sign-out-everywhere,
+lowering the setting) asking for a code again. Built with unit tests (fakes), a throwaway-Postgres integration test
+and two browser tests; database and browser proof runs in CI only. PR #616 opened (head 8b0199f9); CI came back red:
+two My account browser tests (a locator matching two elements, and a settings save cancelled by an immediate reload),
+the customer session-deactivation test (ACC-6 records customer sign-ins in the audit log, so the fixture now deletes
+its audit rows before deleting the user), the Bills sideways-scroll check at 360px in dark mode (a resize reporting
+the phone width before the desktop sidebar padding was recalculated — BA-1 fixed the same thing in the shared scan
+helper; this branch now uses that fix), and one unit test that timed out importing the customers domain inside the
+test (import hoisted to the top of the file). Fixes in commit 6405616f; main (BA-1 #610) merged in. Pushed as head
+7df70d47 — but no check run has started on it in 45 minutes (snapshot pushes do not reliably start CI; the leads and
+tax lanes are hitting the same thing). While waiting, the lane's own test database (port 5435) was used to run the
+device integration test for the first time: it failed 8 of 10, a fifth failure the unit shard's bare "exit code 1"
+had hidden. Causes, all in the test (the feature works): the test used mixed-case email addresses but the app stores
+emails lowercased, so the code email was never found; it replayed a stale trust cookie after the sign-in rotated it,
+and it did not present the device cookie the gate needs; and it read the session token from the (signed) session
+cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. Next: push the fix, then the
+checks need a manual start (Actions → CI → Run workflow) if they do not start on their own. Update, same day: the
+run was started by hand (browser, signed in as Chris) and came back red in 2 minutes — no test ran. Causes, all
+found by reading the job logs: (1) the seed and schema-health steps fail because the BusinessSettings column
+`booksLastBroughtUpToDateAt` does not exist — the snapshot push had been diffed against current main, so it omitted
+the BA-1 migration and 38 other main files the remote branch (created from 0516a31) did not have; the remote tree
+was a mix of new and old files. Fixed by pushing with the manifest diffed against the branch-creation commit
+0516a31 (76 files), per the snapshot-push rule. (2) Three type errors in the device test from the fix round
+(`string | null` passed where `string | undefined` was wanted) — the typecheck had not been re-run after that
+edit; fixed and typecheck is clean. (3) The secret scan found 5 leaks: four are the BA-1 historical false
+positives, missing from the remote tree's stale allowlist (restored by the corrected push), and the fifth is the
+allowlist entry itself being flagged for its own commit SHA — allowlisted with a fingerprint entry, verified clean
+by scanning the entry text. Next: push the corrected tree, then the checks need starting again (the GitHub MCP's
+`github_actions_dispatch` now starts them — no browser sign-in needed). Update, same day: the corrected run
+(head 1005486e, started with the MCP) is green everywhere except browser-a and browser-d. Unit shards, typecheck,
+secret scan, browser-b and browser-c all pass. The two browser-a failures are both the ACC-6 my-account tests: the
+forget-confirm text uses a curly apostrophe the test didn't match, and — a real bug — the two-factor login page
+was prerendered at build time, so it kept offering "Remember this device" after the owner turned remembering off.
+Fixed (page is now force-dynamic; test matches without the apostrophe) and pushed; the remaining browser-d failure
+is the offline-fallback test, which also failed on the FEE-1 branch and passed on this branch before — it looks
+like a timing flake, not an ACC-6 regression, so it is being watched on the re-run rather than "fixed". Update,
+same day: the re-run (head 2aaea9e7, MCP dispatch) passed browser-a and browser-d — both my-account fixes work and
+the offline test passed — but browser-c failed with no test failing: all 106 tests passed and the shard ran 3.1m
+against the 180s phase budget. That is a shard-balance problem, not a code problem, so the fix is the repo's
+established rebalance: staff-security (~18 test-seconds) and fleet-report (~14) moved from browser-c to browser-b,
+the lightest group (1.9m), with no test omitted and the budget unchanged. Pushed through the custom GitHub MCP
+(the original connector is disconnected; the MCP's API push starts the checks on its own). Next: read the checks,
+then reviews, then merge. Next card: VAULT-1, once CMP-1 (lane 5) is merged.
 
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 

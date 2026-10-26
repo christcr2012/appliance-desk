@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button, Card, Checkbox, Field } from "@/components/ui";
 import { signOut } from "@/lib/auth-client";
+import { formatShortDate, relativeBusinessDay } from "@/lib/business-date";
 import {
   changePasswordAction,
+  forgetRememberedDevicesAction,
   makeBackupCodesAction,
   requestEmailChangeAction,
   saveProfileAction,
@@ -16,6 +18,7 @@ import {
 } from "./actions";
 
 type Device = { id: string; device: string; lastActiveAt: string; current: boolean };
+type KnownDeviceRow = { id: string; label: string; lastSeenAt: string; trustedUntil: string | null };
 
 function Result({ result }: { result: AccountActionResult | null }) {
   if (!result) return null;
@@ -119,9 +122,11 @@ export function EmailCard({ email }: { email: string }) {
   );
 }
 
-export function DevicesCard({ devices }: { devices: Device[] }) {
+export function DevicesCard({ devices, knownDevices }: { devices: Device[]; knownDevices: KnownDeviceRow[] }) {
   const [result, setResult] = useState<AccountActionResult | null>(null);
   const [rows, setRows] = useState(devices);
+  const [knownRows, setKnownRows] = useState(knownDevices);
+  const [confirmForget, setConfirmForget] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
   return (
@@ -149,6 +154,54 @@ export function DevicesCard({ devices }: { devices: Device[] }) {
         <Button variant="secondary" onClick={() => { void signOut({ fetchOptions: { onSuccess: () => router.push("/login") } }); }}>
           Sign out this device
         </Button>
+      </div>
+      <div className="mt-6 border-t border-line pt-4">
+        <p className="font-medium text-ink">Remembered devices</p>
+        <p className="mt-1 text-sm text-ink-soft">
+          Devices where you ticked &quot;Remember this device&quot; skip the code until the date shown. Forgetting them asks for a code again on every device.
+        </p>
+        {knownRows.length === 0 ? (
+          <p className="mt-3 text-sm text-ink-soft">No devices remembered.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-line">
+            {knownRows.map((row) => (
+              <li key={row.id} className="py-2 text-sm first:pt-0">
+                <span className="font-semibold text-ink">{row.label}</span>
+                <span className="block text-ink-soft">
+                  Last used {relativeBusinessDay(new Date(row.lastSeenAt))}
+                  {row.trustedUntil ? ` · Remembered until ${formatShortDate(new Date(row.trustedUntil))}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {confirmForget ? (
+          <div className="mt-4 rounded-card border border-line bg-subtle p-4">
+            <p className="text-sm text-ink">Forget all remembered devices? You&rsquo;ll be asked for a code next time on every device.</p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Button
+                variant="secondary"
+                disabled={pending}
+                onClick={() => start(async () => {
+                  const answer = await forgetRememberedDevicesAction();
+                  setResult(answer);
+                  if (answer.status === "success") { setKnownRows([]); setConfirmForget(false); }
+                })}
+              >
+                Yes, forget them
+              </Button>
+              <Button variant="secondary" disabled={pending} onClick={() => setConfirmForget(false)}>
+                Keep them
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4">
+            <Button variant="secondary" disabled={pending || knownRows.length === 0} onClick={() => setConfirmForget(true)}>
+              Forget remembered devices
+            </Button>
+          </div>
+        )}
       </div>
       <Result result={result} />
     </Card>
