@@ -22,7 +22,7 @@ Proof: unit tests plus 41 database tests with a pretend Stripe, run on a throwaw
 Not done: the **Payments** tab — AR-3 adds it. Until the three Stripe events are added (checklist row), the screens only
 learn about a payment from events already sent; the nightly check can only follow payments that already have a flag. Next: FEE-1.
 
-## October 26 — Tax and fee rule book (TFA-1, PR to open)
+## October 26 — Tax and fee rule book (TFA-1, PR #617, in review)
 
 Branch `ai/marley/tfa-1`: every tax and fee number is now a dated rule version with its source (migration `20261101000000_legal_rules`), read by date — RDF amount, thresholds, 1099 limit, record-keeping years — plus the timing rule (file and pay on 90% through the window, 3 business days before the deadline), the late-change true-up (issued bills never change; the business absorbs extra cost, customers get a credit on the next bill), and Taxes › Rules with now/next/source/state, history, owner change with reason and undo. Proof: 17 new unit tests pass here; database and browser tests run in CI only. Next: open the PR, wait for `ci`, then TFA-2.
 

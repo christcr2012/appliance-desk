@@ -5167,7 +5167,7 @@
       "dependencies": [
         "DEC-1"
       ],
-      "status": "IN PROGRESS — branch ai/marley/tfa-1, PR to open",
+      "status": "IN PROGRESS — branch ai/marley/tfa-1, PR #617",
       "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
       "budget": 500,
       "units": [
