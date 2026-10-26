@@ -231,4 +231,21 @@ describe("ZONE-1 every path to pickup (real database)", () => {
     const delivered = await paidOrder("DELIVER");
     expect(await prisma.$transaction((tx) => requestPaidDeliveryInTx(tx, delivered.agreement.id))).toBe(delivered.job.id);
   });
+
+  it("an unknown zone blocks approval and conversion with a clear message (the To do can't be dropped)", async () => {
+    const id = await estimateWith([lostId], "Unknown zone blocks");
+    await checkEstimateDeliveryZones(ownerId, id, { geocode });
+    await prisma.estimate.update({ where: { id }, data: { status: "SENT", ...priced } });
+    await expect(approveEstimate(id, { approverName: "Zone Customer", approverEmail: `zone-cust-${RUN}@example.test`,
+      ipAddress: null, expectedQuoteFingerprint: "c".repeat(64) })).rejects.toThrow(/Confirm the delivery zone/);
+    await prisma.estimate.update({ where: { id }, data: { status: "APPROVED" } });
+    await expect(convertEstimateToAgreements(ownerId, id, { mode: "single", serviceAddressId: lostId }))
+      .rejects.toThrow(/Confirm the delivery zone/);
+    expect(await prisma.rentalAgreement.count({ where: { sourceEstimateId: id } })).toBe(0);
+    // Settled as pickup, conversion goes ahead.
+    await prisma.estimate.update({ where: { id }, data: { status: "DRAFT", reviewedQuoteFingerprint: null, reviewedOrderFingerprint: null } });
+    await setEstimateDeliveryChoiceByStaff(ownerId, id, lostId, "CUSTOMER_PICKUP");
+    await prisma.estimate.update({ where: { id }, data: { status: "APPROVED" } });
+    expect(await convertEstimateToAgreements(ownerId, id, { mode: "single", serviceAddressId: lostId })).toHaveLength(1);
+  });
 });

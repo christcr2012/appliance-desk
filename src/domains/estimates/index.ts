@@ -34,6 +34,15 @@ export async function convertEstimateToAgreements(
   estimateId: string,
   input: ConvertEstimateInput,
 ) {
+  // ZONE-1: never convert while an address would be delivered without a known zone (the confirm-zone To do would be
+  // dropped with nothing taking over). An approved estimate's zones can only be settled, not changed.
+  const { prisma } = await import("@/lib/prisma");
+  const { unresolvedDeliveryAddresses, UNRESOLVED_ZONE_MESSAGE } = await import("@/domains/delivery/snapshot");
+  const zoneCheck = await prisma.estimate.findUnique({ where: { id: estimateId },
+    select: { status: true, deliveryZoneSnapshot: true, lineItems: { select: { serviceAddressId: true } } } });
+  if (zoneCheck && zoneCheck.status !== "CONVERTED" &&
+      unresolvedDeliveryAddresses(zoneCheck.deliveryZoneSnapshot, zoneCheck.lineItems.map((line) => line.serviceAddressId)).length)
+    throw new Error(UNRESOLVED_ZONE_MESSAGE);
   const agreementIds = await convertEstimateToAgreementsBase(
     userId,
     estimateId,

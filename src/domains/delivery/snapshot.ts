@@ -109,6 +109,34 @@ export function currentLocations(raw: unknown, addressIds: Iterable<string | nul
   return readZoneSnapshot(raw)?.locations.filter((row) => current.has(row.serviceAddressId)) ?? [];
 }
 
+/**
+ * Current addresses that would be delivered without a known zone (no entry, or "UNKNOWN" and not pickup). Approval and
+ * conversion refuse while any remain, so the "Confirm the delivery zone" To do can never be dropped unresolved.
+ * An estimate that never had its zone checked (raw is null, older estimates) has none.
+ */
+export function unresolvedDeliveryAddresses(raw: unknown, addressIds: Iterable<string | null | undefined>): string[] {
+  const snapshot = readZoneSnapshot(raw);
+  if (!snapshot) return [];
+  const ids = [...new Set([...addressIds].filter((id): id is string => !!id))];
+  return ids.filter((id) => {
+    const row = snapshot.locations.find((location) => location.serviceAddressId === id);
+    return !row || (row.zone === "UNKNOWN" && row.choice !== "CUSTOMER_PICKUP");
+  });
+}
+
+export const UNRESOLVED_ZONE_MESSAGE =
+  "Confirm the delivery zone for every address first (or set it to pickup) — the delivery price isn't known yet.";
+
+/**
+ * The delivery fee the frozen order must show for one address: the zone price frozen on the estimate (0 for pickup).
+ * null when the zone isn't known (refuse). A recorded driving-route exception is checked separately with its own bands.
+ */
+export function expectedZoneDeliveryCents(location: ZoneSnapshotLocation | null | undefined): number | null {
+  if (!location) return null;
+  if (location.choice === "CUSTOMER_PICKUP") return 0;
+  return location.zone === "UNKNOWN" || location.zone === "OUTSIDE" ? null : location.priceCents;
+}
+
 /** True when every current address is "I'll pick it up" (no delivery window needed). */
 export function isPickupOnly(raw: unknown, addressIds: Iterable<string | null | undefined>): boolean {
   const rows = currentLocations(raw, addressIds);

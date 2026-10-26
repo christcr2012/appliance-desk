@@ -7,8 +7,9 @@ import { TOWNS, townBySlug, townByName, townsWithZones } from "@/domains/deliver
 import { frozenRouteZones, mileageBand, reviewedDrivingFee } from "@/domains/orders/delivery";
 import {
   buildZoneLocation, choiceAllowed, chosenDeliveryCents, confirmZoneByMiles, currentLocations, isPickupOnly,
-  readZoneSnapshot, zoneSentence,
+  readZoneSnapshot, unresolvedDeliveryAddresses, zoneSentence,
 } from "@/domains/delivery/snapshot";
+import { expectedDeliveryFeeCents } from "@/domains/orders/route-evidence";
 import { projectMiles, zoneRangeWords } from "@/domains/delivery/map";
 
 const settings = startingZoneSettings();
@@ -67,6 +68,39 @@ describe("ZONE-1 driving-route proofs keep the bands they were reviewed with", (
     const frozen = { ...proof, zones: frozenRouteZones({ ...settings, zones: settings.zones.map((z) => ({ ...z, deliveryCents: z.deliveryCents + 500 })) }) };
     expect(reviewedDrivingFee(frozen, "Central Greeley, CO", at).amountCents).toBe(8000);
     expect(() => reviewedDrivingFee({ ...proof, zones: { maxMiles: 50, bands: [] } }, "Central Greeley, CO", at)).toThrow();
+  });
+});
+
+describe("ZONE-1 approval/signing delivery fee comes from the frozen zone (straight line)", () => {
+  const origin = "Central Greeley, CO";
+  const at = new Date();
+  it("12 straight-line miles / 20 road miles: free in the Local zone, and later zone changes don't change it", () => {
+    const local = { ...buildZoneLocation({ serviceAddressId: "a1", settings, now, position: { status: "FOUND",
+      point: { lat: STARTING_CENTER.lat + 12 / 69, lon: STARTING_CENTER.lon } } }) };
+    expect(local).toMatchObject({ zone: 1, priceCents: 0, choice: "DELIVER" });
+    expect(expectedDeliveryFeeCents({ zone: local, routeProof: null, origin: null })).toBe(0);
+    // The guard reads only the frozen snapshot, never today's zone settings.
+    const pricierToday = startingZoneSettings();
+    pricierToday.zones[0]!.deliveryCents = 5000;
+    expect(expectedDeliveryFeeCents({ zone: local, routeProof: null, origin: null })).toBe(0);
+    // Only an explicitly recorded driving-route exception uses road miles (with its own frozen bands).
+    const proof = { miles: 20, source: "OWNER_MANUAL_DRIVING_ROUTE", sourceReference: "Owner-recorded road route",
+      measuredAt: new Date(at.getTime() - 60_000).toISOString(), origin };
+    expect(expectedDeliveryFeeCents({ zone: local, routeProof: proof, origin })).toBe(7500);
+  });
+  it("pickup is $0; an unknown or outside zone can't be priced (refused)", () => {
+    const unknown = buildZoneLocation({ serviceAddressId: "a1", settings, now, position: { status: "UNAVAILABLE" } });
+    expect(() => expectedDeliveryFeeCents({ zone: unknown, routeProof: null, origin: null })).toThrow(/Confirm the delivery zone/);
+    expect(expectedDeliveryFeeCents({ zone: { ...unknown, choice: "CUSTOMER_PICKUP" }, routeProof: null, origin: null })).toBe(0);
+    expect(() => expectedDeliveryFeeCents({ zone: null, routeProof: null, origin: null })).toThrow();
+  });
+  it("lists addresses that would be delivered without a known zone", () => {
+    const unknown = buildZoneLocation({ serviceAddressId: "a1", settings, now, position: { status: "UNAVAILABLE" } });
+    const known = buildZoneLocation({ serviceAddressId: "a2", settings, now, position: { status: "FOUND", point: town("evans") } });
+    const raw = { version: 1, locations: [unknown, known] };
+    expect(unresolvedDeliveryAddresses(raw, ["a1", "a2", "a3"])).toEqual(["a1", "a3"]);
+    expect(unresolvedDeliveryAddresses({ version: 1, locations: [{ ...unknown, choice: "CUSTOMER_PICKUP" }, known] }, ["a1", "a2"])).toEqual([]);
+    expect(unresolvedDeliveryAddresses(null, ["a1"])).toEqual([]);
   });
 });
 

@@ -620,11 +620,17 @@ export async function signAgreement(
     if(choices.length){
       if(!input.deliverySelection)
         throw new Error("Select an offered delivery choice before signing.");
-      const { assertRouteMatchesFrozenFeeInTx } =
+      // ZONE-1: priced by this address's frozen zone (copied from the estimate); a recorded driving-route
+      // exception is checked with its own bands. Older agreements with neither still need the owner's route review.
+      const { assertDeliveryFeeMatchesFrozenOrderInTx } =
         await import("@/domains/orders/route-evidence");
-      if(!agreement.deliveryRouteProof)
+      const { readZoneSnapshot } = await import("@/domains/delivery/snapshot");
+      const ownZone = readZoneSnapshot({ version: 1, locations: agreement.deliveryZoneSnapshot ? [agreement.deliveryZoneSnapshot] : [] })
+        ?.locations[0] ?? null;
+      if(!ownZone&&!agreement.deliveryRouteProof)
         throw new Error("Owner road-route fee evidence is required before signing.");
-      await assertRouteMatchesFrozenFeeInTx(tx,agreement.id,agreement.deliveryRouteProof);
+      await assertDeliveryFeeMatchesFrozenOrderInTx(tx,agreement.id,
+        {zone:ownZone,routeProof:agreement.deliveryRouteProof});
       const selected=assertAvailableDeliveryOption(agreement.deliveryOffer,
         agreement.deliveryOfferVersion,input.deliverySelection);
       await tx.rentalAgreement.update({where:{id:agreement.id},

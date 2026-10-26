@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { reviewedDrivingFee,drivingEvidenceSchema,frozenRouteZones } from "./delivery";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
 import { readZoneSettings } from "@/domains/delivery/zone";
+import { expectedZoneDeliveryCents, UNRESOLVED_ZONE_MESSAGE, type ZoneSnapshotLocation } from "@/domains/delivery/snapshot";
 
 // ZONE-1: the road-mile bands come from the owner's delivery zones (same starting numbers as before).
 const ZONE_FIELDS={deliveryZones:true,deliveryMaxMiles:true} as const;
@@ -73,14 +74,48 @@ export async function assertRouteMatchesFrozenFeeInTx(
     throw new Error("Verified driving origin is required for offered delivery.");
   // Uses the bands frozen with the proof, so a later zone change never blocks an offer already made.
   const band=reviewedDrivingFee(raw,settings.drivingOriginAddress);
+  if(await frozenDeliveryShownInTx(tx,agreementId)!==band.amountCents)
+    throw new Error("Frozen signed delivery fee disagrees with verified driving band. Owner must review all-in price.");
+  return band;
+}
+
+/** The DELIVERY fee due now in the agreement's frozen V2 order. */
+async function frozenDeliveryShownInTx(tx:Prisma.TransactionClient,agreementId:string):Promise<number>{
   const frozen=await getFrozenSigningOrderInTx(tx,agreementId);
   const target=frozen.find(x=>x.agreementId===agreementId);
   if(!target||target.schemaVersion!==2)
     throw new Error("A reviewed V2 all-in order is required before booking delivery.");
   const lines=target.v2Extension.components.filter(x=>x.category==="DELIVERY");
   if(lines.length!==1)throw new Error("Frozen delivery fee component is missing.");
-  const shown=lines[0].disposition==="DUE_NOW"?lines[0].amountCents:0;
-  if(shown!==band.amountCents)
-    throw new Error("Frozen signed delivery fee disagrees with verified driving band. Owner must review all-in price.");
-  return band;
+  return lines[0].disposition==="DUE_NOW"?lines[0].amountCents:0;
+}
+
+/**
+ * ZONE-1: the approval/signing guard for an offered delivery. Normal delivery is priced by the address's frozen zone
+ * (straight line, Chris 2026-10-25): the frozen order's delivery fee must equal that zone price (0 for pickup). Only
+ * when the owner recorded a driving-route exception is the fee checked against that proof's own frozen bands.
+ * Zone settings changed later never change either answer.
+ */
+export function expectedDeliveryFeeCents(input:{zone:ZoneSnapshotLocation|null|undefined;
+  routeProof:unknown;origin:string|null}):number{
+  if(input.routeProof){
+    if(!input.origin) throw new Error("Verified driving origin is required for offered delivery.");
+    return reviewedDrivingFee(input.routeProof,input.origin).amountCents ?? 0;
+  }
+  const cents=expectedZoneDeliveryCents(input.zone);
+  if(cents===null) throw new Error(UNRESOLVED_ZONE_MESSAGE);
+  return cents;
+}
+export async function assertDeliveryFeeMatchesFrozenOrderInTx(tx:Prisma.TransactionClient,
+  agreementId:string,input:{zone:ZoneSnapshotLocation|null|undefined;routeProof:unknown}){
+  let origin:string|null=null;
+  if(input.routeProof){
+    const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},
+      select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true}});
+    origin=settings?.drivingOriginVerifiedAt?settings.drivingOriginAddress:null;
+  }
+  const expected=expectedDeliveryFeeCents({zone:input.zone,routeProof:input.routeProof,origin});
+  if(await frozenDeliveryShownInTx(tx,agreementId)!==expected)
+    throw new Error("The frozen delivery fee doesn't match this address's delivery zone. Owner must review the all-in price.");
+  return expected;
 }

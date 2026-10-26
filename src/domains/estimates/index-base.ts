@@ -629,6 +629,13 @@ export async function approveEstimate(
       throw new Error("This estimate isn't available to approve right now.");
     }
     if (await expireIfPastValidityInTx(tx, estimate)) return { expired: true as const };
+    // ZONE-1: no approval while an address would be delivered without a known zone (price not known yet).
+    if (estimate.deliveryZoneSnapshot !== null && estimate.deliveryZoneSnapshot !== undefined) {
+      const { unresolvedDeliveryAddresses, UNRESOLVED_ZONE_MESSAGE } = await import("@/domains/delivery/snapshot");
+      const lines = await tx.estimateLineItem.findMany({ where: { estimateId: id }, select: { serviceAddressId: true } });
+      if (unresolvedDeliveryAddresses(estimate.deliveryZoneSnapshot, lines.map((line) => line.serviceAddressId)).length)
+        throw new Error(UNRESOLVED_ZONE_MESSAGE);
+    }
     const approvedOffer = await getPreparedEstimateQuoteInTx(tx, id);
     if (approvedOffer.status !== "READY" || !approvedOffer.quoteFingerprint ||
         typeof input.expectedQuoteFingerprint !== "string" ||
@@ -669,14 +676,20 @@ export async function approveEstimate(
       // W-24 cannot accept a delivery route charge that was never frozen
       // into the exact signed all-in V2 order. No fee from ZIP/air miles.
       const preparedAgreements=await tx.rentalAgreement.findMany({
-        where:{sourceEstimateId:id},select:{id:true},
+        where:{sourceEstimateId:id},select:{id:true,serviceAddressId:true},
       });
-      if(preparedAgreements.length!==1||!estimate.deliveryRouteProof)
+      if(preparedAgreements.length!==1)
         throw new Error("Owner route/fee review required for this delivery order.");
-      const { assertRouteMatchesFrozenFeeInTx } =
+      // ZONE-1: the delivery fee comes from this address's frozen zone; a recorded driving-route exception (if any)
+      // is checked with its own bands. Older estimates with neither still need the owner's route review.
+      const { snapshotLocation } = await import("@/domains/delivery/snapshot");
+      const zone = snapshotLocation(estimate.deliveryZoneSnapshot, preparedAgreements[0].serviceAddressId);
+      if(!zone&&!estimate.deliveryRouteProof)
+        throw new Error("Owner route/fee review required for this delivery order.");
+      const { assertDeliveryFeeMatchesFrozenOrderInTx } =
         await import("@/domains/orders/route-evidence");
-      await assertRouteMatchesFrozenFeeInTx(tx,preparedAgreements[0].id,
-        estimate.deliveryRouteProof);
+      await assertDeliveryFeeMatchesFrozenOrderInTx(tx,preparedAgreements[0].id,
+        {zone,routeProof:estimate.deliveryRouteProof});
       await recordEstimateDeliverySelectionInTx(tx, estimate, input.deliverySelection);
     } else if (input.deliverySelection) {
       throw new Error("No current owner-offered delivery choice is available.");
