@@ -5176,7 +5176,7 @@
       "dependencies": [
         "DEC-1"
       ],
-      "status": "IN PROGRESS — branch ai/marley/tfa-1, PR #617, second CI run (#2618) red with 2 failures (secret scan self-flag, Rules browser tests); second fix patch ready, verified locally (3/3 Rules browser tests pass), push + dispatch via custom GitHub MCP next",
+      "status": "MERGED — PR #617, squash merge cb1c3618 (2026-10-26); fingerprint refresh PR pending (3 rule-key lines need cb1c3618 fingerprints)",
       "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
       "budget": 500,
       "units": [
