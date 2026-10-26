@@ -1,5 +1,6 @@
-# gitleaks configuration. This repository is public: CI scans the whole git
-# history for credentials on every run. Default rules plus the allowlist of
+# gitleaks configuration for this public repository. PR/push CI scans new
+# commits, nightly CI scans the history reachable from main (not all branches),
+# and scripts/check-secrets.mjs checks every current file. Default rules plus
 # reviewed fake test strings in .gitleaksignore (by fingerprint).
 title = "appliance-desk"
 
