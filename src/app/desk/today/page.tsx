@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { getExceptionOverview, getTodaysJobs, type ExceptionItem } from "@/domains/exceptions";
+import { syncComplianceFilings } from "@/domains/compliance/filings";
 import {
   INBOX_GROUP,
   INBOX_GROUP_LABEL,
@@ -163,6 +164,9 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const role = (session.user as { role?: string }).role ?? "";
   const canManage = role === "OWNER" || role === "ADMIN";
   const now = new Date();
+  // CMP-1: keep the compliance filing rows fresh on the attention surface
+  // itself, so a filing reminder never depends on opening Compliance first.
+  if (canManage) await syncComplianceFilings(now);
   const group = parseGroup(query.group);
 
   // The first-time setup checklist is for the owner only. getSetupChecklist refuses anyone else itself;

@@ -63,6 +63,9 @@ vi.mock("@/domains/exceptions/lead-turning-points", () => ({
   listLeadFollowUps: vi.fn(async () => ({ rows: [], total: 0 })),
   listApprovedQuoteToRental: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/compliance-attention", () => ({
+  listComplianceDue: vi.fn(async () => ({ rows: [], total: 0 })), // covered by tests/compliance-filings-integration.test.ts
+}));
 vi.mock("@/domains/exceptions/goal-attention", () => ({
   listGoalAttention: vi.fn(async () => []), // covered by tests/goals-integration.test.ts
 }));

@@ -87,7 +87,8 @@ export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise
     tx.businessSettings.findUnique({
       where: { id: "singleton" },
       select: { shortTermLeaseElection: true, rdfHandling: true, retailDeliveryFeeDecision: true,
-        badDebtTaxRecovery: true, setupFeeTaxPlanningTreatment: true, setupFeeTaxTreatment: true },
+        badDebtTaxRecovery: true, setupFeeTaxPlanningTreatment: true, setupFeeTaxTreatment: true,
+        trustedDeviceDays: true },
     }),
     listTaxabilityRuleCells(tx),
     tx.taxJurisdiction.findFirst({ where: GREELEY_JURISDICTION_WHERE, select: { id: true }, orderBy: { id: "asc" } }),
@@ -104,6 +105,7 @@ export async function loadDecisionContext(tx: Prisma.TransactionClient): Promise
       setupFeeTaxPlanningTreatment: settings?.setupFeeTaxPlanningTreatment ?? "TAXABLE",
       setupFeeTaxTreatment: settings?.setupFeeTaxTreatment ?? "UNDECIDED",
       recordRetentionYears: retentionYears,
+      trustedDeviceDays: settings?.trustedDeviceDays ?? 30,
     },
     taxCells: cells.map((cell) => ({ jurisdictionId: cell.jurisdictionId, category: cell.category,
       taxability: cell.taxability, provisional: cell.provisional })),
