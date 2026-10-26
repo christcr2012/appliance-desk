@@ -163,15 +163,21 @@ describe.skipIf(!enabled)("W-5 payment links and W-6 lead To dos on real Postgre
     expect(() => parseFollowUpKey("2020-01-01", now)).toThrow(/past/);
     expect(() => parseFollowUpKey("nope", now)).toThrow(/real/);
     const find = async () => (await listLeadFollowUps(50, now)).rows.find((r) => r.href.includes(lead.id));
-    await setLeadFollowUp(ownerId, lead.id, parseFollowUpKey(defaultFollowUpKey(now), now));
+    const version = async () =>
+      (await prisma.lead.findUniqueOrThrow({ where: { id: lead.id }, select: { version: true } }))
+        .version;
+    await setLeadFollowUp(ownerId, lead.id, await version(), defaultFollowUpKey(now));
     expect(await find()).toBeUndefined(); // not due yet
-    await setLeadFollowUp(ownerId, lead.id, parseFollowUpKey(businessDateKey(now), now));
+    await setLeadFollowUp(ownerId, lead.id, await version(), businessDateKey(now));
     const row = await find();
     expect(row?.title).toBe("Follow up with " + lead.contactName);
     expect(row?.dueDateOnly).toBe(true);
-    await setLeadFollowUp(ownerId, lead.id, null);
+    await setLeadFollowUp(ownerId, lead.id, await version(), null);
     expect(await find()).toBeUndefined();
-    await expect(setLeadFollowUp(staffId, lead.id, null)).rejects.toThrow();
+    // Staff with the Leads screen can set the follow-up too (DQ-LD1-1,
+    // answered yes by Chris 2026-10-26).
+    await setLeadFollowUp(staffId, lead.id, await version(), businessDateKey(now));
+    expect(await find()).toBeDefined();
   });
 
   it("a customer-approved quote becomes 'Turn <name>'s approved quote into a rental', due today", async () => {

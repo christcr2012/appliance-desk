@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { addBusinessDays, businessDateFromKey, businessDateKey } from "@/lib/business-date";
+import { lockLiveLeadInTx } from "./lock";
 
 export const RECOMMENDED_LEAD_RESPONSE_DAYS = 0;
 export const DEFAULT_FOLLOW_UP_DAYS = 2;
@@ -40,16 +41,62 @@ export function parseFollowUpKey(key: string, now: Date): Date {
   return date;
 }
 
-/** Owner/admin sets (or clears with null) the next follow-up date; audited. */
-export async function setLeadFollowUp(actorId: string, leadId: string, followUpOn: Date | null): Promise<void> {
+/**
+ * LD-1: owner, admin, staff with the Leads screen, or the lead's assignee
+ * sets (or clears with null) the next follow-up date. One transaction: the
+ * row is locked, the lead must be CONTACTED (and not merged), and the version
+ * must match the one the screen showed — a stale save is refused instead of
+ * overwriting someone else's change. Only nextFollowUpOn (and the version)
+ * change; status and firstContactedAt are never touched here.
+ */
+export async function setLeadFollowUp(
+  actorId: string,
+  leadId: string,
+  expectedVersion: number,
+  dateKey: string | null,
+): Promise<void> {
+  const followUpOn = dateKey === null ? null : parseFollowUpKey(dateKey, new Date());
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
-    const before = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { nextFollowUpOn: true } });
-    await tx.lead.update({ where: { id: leadId }, data: { nextFollowUpOn: followUpOn } });
+    const locked = await lockLiveLeadInTx(tx, leadId);
+    // Owner/admin/staff with the Leads screen first; an assignee whose role
+    // changed since they were given the lead can still set the follow-up on
+    // their own lead.
+    let allowed = false;
+    try {
+      await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "STAFF"]);
+      allowed = true;
+    } catch {
+      if (locked.assignedToUserId === actorId) {
+        await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "STAFF"]);
+        allowed = true;
+      }
+    }
+    if (!allowed) {
+      throw new Error("This account no longer has access to make that change.");
+    }
+    if (locked.status !== "CONTACTED") {
+      throw new Error("Only a contacted lead can have a follow-up date.");
+    }
+    const before = await tx.lead.findUniqueOrThrow({
+      where: { id: leadId },
+      select: { nextFollowUpOn: true, version: true },
+    });
+    if (before.version !== expectedVersion) {
+      throw new Error("This lead changed in another session. Reload before saving.");
+    }
+    await tx.lead.update({
+      where: { id: leadId },
+      data: { nextFollowUpOn: followUpOn, version: { increment: 1 } },
+    });
     await tx.auditLog.create({
-      data: { userId: actorId, action: "lead.follow_up", entityType: "Lead", entityId: leadId,
+      data: {
+        userId: actorId,
+        action: "lead.follow_up_set",
+        entityType: "Lead",
+        entityId: leadId,
         oldValue: { nextFollowUpOn: before.nextFollowUpOn?.toISOString() ?? null },
-        newValue: { nextFollowUpOn: followUpOn?.toISOString() ?? null } },
+        newValue: { nextFollowUpOn: followUpOn?.toISOString() ?? null },
+      },
     });
   });
 }
