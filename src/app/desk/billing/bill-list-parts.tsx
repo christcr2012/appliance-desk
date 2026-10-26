@@ -77,7 +77,7 @@ export function billMobileCard(row: BillRow, now: Date, owing: boolean) {
       {actions.length > 0 ? (
         <div className="mt-1.5 flex flex-wrap gap-2">
           {actions.map((spec, index) => (
-            <ActionButton key={spec.label} spec={spec} variant={index === 0 ? "primary" : "secondary"} className={index === 0 ? "flex-1" : undefined} />
+            <ActionButton key={spec.label} spec={spec} variant={index === 0 ? "primary" : "secondary"} className={index === 0 ? "min-w-0 flex-1 whitespace-normal! text-center" : "whitespace-normal! text-center"} />
           ))}
         </div>
       ) : null}

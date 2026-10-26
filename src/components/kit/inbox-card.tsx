@@ -27,13 +27,14 @@ export function InboxCard({ eyebrow, eyebrowTone, title, detail, actions, overfl
       <h3 className="mt-0.5 text-base font-bold text-ink [overflow-wrap:anywhere]">{title}</h3>
       {detail ? <p className="mt-0.5 text-sm text-ink-soft [overflow-wrap:anywhere]">{detail}</p> : null}
       {shown.length > 0 || overflow.length > 0 ? (
-        <div className="mt-3 flex items-center gap-2">
+        // Long button words (e.g. "Reconcile uncertain payment") wrap instead of pushing a phone screen sideways.
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {shown.map((spec, index) => (
             <ActionButton
               key={`${spec.kind}-${spec.label}`}
               spec={spec}
               variant={index === 0 ? "primary" : "secondary"}
-              className={index === 0 ? "flex-1" : undefined}
+              className={index === 0 ? "min-w-0 flex-1 whitespace-normal! text-center" : "whitespace-normal! text-center"}
             />
           ))}
           <OverflowMenu items={overflow} label={`More for ${title}`} />
