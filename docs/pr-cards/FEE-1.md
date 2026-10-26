@@ -11,9 +11,9 @@ or texts are turned on).
 - [x] No fee while any payment is in progress or after a payment made by the fee date; a failed payment gets a fresh warning and a new fee date.
 - [x] The fee is its own charge on the next bill (or its own bill when the rental ended); the overdue bill's amount never changes.
 - [x] Waive before or after billing; once per overdue bill even with two runs at once.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Built on branch `ai/claude/fee-1-fair-late-fees` (PR pending). Items 1-5 checked with database tests on a throwaway Postgres
+Built on branch `ai/claude/fee-1-fair-late-fees` (merged PR #614). Items 1-5 checked with database tests on a throwaway Postgres
 (tests/late-fee-rules.test.ts, late-fee-engine-integration.test.ts, late-fee-terms.test.ts, late-fee-wording.test.ts).
 Not covered: browser test; a real Stripe test-mode fee; attaching to an arbitrary next local bill (separate one-line bill used).
