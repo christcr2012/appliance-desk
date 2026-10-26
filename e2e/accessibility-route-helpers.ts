@@ -63,6 +63,29 @@ export async function scanAccessibilityRoute(
                 const past = (el: Element) => el.getBoundingClientRect().right > window.innerWidth + 0.5;
                 return JSON.stringify({
                   url: location.href,
+                  chain: (() => {
+                    const oversized=[...document.querySelectorAll("body *")].filter(el=>
+                      el.getBoundingClientRect().right > window.innerWidth+1 &&
+                      getComputedStyle(el).position!=="fixed");
+                    const leaf=oversized.find(el=>![...el.children].some(child=>
+                      child.getBoundingClientRect().right>window.innerWidth+1))??oversized[0];
+                    const chain=[];
+                    for(let el=leaf;el&&chain.length<12;el=el.parentElement){
+                      const rect=el.getBoundingClientRect(),css=getComputedStyle(el);
+                      chain.push({
+                        tag:el.tagName,cls:String(el.className).slice(0,65),
+                        x:Math.round(rect.x),width:Math.round(rect.width),right:Math.round(rect.right),
+                        display:css.display,minWidth:css.minWidth,maxWidth:css.maxWidth,
+                        overflowX:css.overflowX,flex:css.flex,
+                      });
+                    }
+                    return chain;
+                  })(),
+                  body:{width:document.body.clientWidth,scroll:document.body.scrollWidth},
+                  main:[...document.querySelectorAll("main")].slice(0,2).map(el=>({
+                    width:el.clientWidth,scroll:el.scrollWidth,
+                    rect:Math.round(el.getBoundingClientRect().right),
+                  })),
                   leaves: [...document.querySelectorAll("body *")]
                     .filter((el) => past(el) && ![...el.children].some(past))
                     .slice(0, 8)
