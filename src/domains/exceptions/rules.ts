@@ -27,6 +27,7 @@ import { shortDateLabel } from "@/domains/tax/file-and-pay";
 export type ExceptionCategory =
   | "BOOKS_NOT_UP_TO_DATE"
   | "BOOKS_NEEDS_FIX"
+  | "BOOKS_SETUP"
   | "SYSTEM_ISSUE"
   | "BILLING_BLOCKED"
   | "SALES_TAX"
@@ -80,7 +81,7 @@ export type ExceptionCategory =
   | "OUT_OF_SERVICE"
   | "FEEDBACK_WAITING";
 
-export type ExceptionSeverity = "high" | "medium";
+export type ExceptionSeverity = "high" | "medium" | "low";
 
 export type ExceptionItem = {
   category: ExceptionCategory;
@@ -922,7 +923,7 @@ export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {
     if (a.dueOn && b.dueOn && a.dueOn.getTime() !== b.dueOn.getTime())
       return a.dueOn.getTime() - b.dueOn.getTime();
     if (!!a.dueOn !== !!b.dueOn) return a.dueOn ? -1 : 1;
-    if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;
+    if (a.severity !== b.severity) return ({high:0,medium:1,low:2}[a.severity])-({high:0,medium:1,low:2}[b.severity]);
     return a.since.getTime() - b.since.getTime();
   });
 }
