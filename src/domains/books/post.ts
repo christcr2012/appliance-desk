@@ -392,7 +392,10 @@ export function selectFairBooksCandidates<T extends {type:string;id:string;at:Da
   return picked.sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
 }
 
-export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
+/** `inspectMonth` is a strictly read-only snapshot for the owner's review page. */
+export async function postPending(opts?:{limit?:number;inspectMonth?:string}):Promise<BooksResult> {
+  if(opts?.inspectMonth&&!/^\\d{4}-(0[1-9]|1[0-2])$/.test(opts.inspectMonth))
+   throw new Error("Choose a real accounting month.");
   const settings=await prisma.businessSettings.findFirst({select:{booksStartDate:true}});
   if(!settings?.booksStartDate)return {posted:0,problems:[]};
   const limit=Math.max(1,Math.min(500,opts?.limit??500));
@@ -524,11 +527,13 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
       for(const candidate of page) {
         const complete=candidate.required.length>0 &&
           candidate.required.every(kind=>byId.get(candidate.id)?.has(kind));
-        if(complete && unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
+        if(!opts?.inspectMonth && complete && unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
           await resolveSystemIssue("books-post:STRIPE_BALANCE_TXN:"+candidate.id,"SOURCE_SUCCEEDED");
         if(candidate.required.length&&!complete) {
-          sources.push(candidate);
-          queuedForSource++;
+          if(!opts?.inspectMonth||businessDateKey(candidate.at).slice(0,7)===opts.inspectMonth){
+            sources.push(candidate);
+            queuedForSource++;
+          }
           if(queuedForSource>=limit)break;
         }
       }
@@ -541,6 +546,10 @@ export async function postPending(opts?:{limit?:number}):Promise<BooksResult> {
   // equipment backlog cannot hide today's invoice/payment from the nightly
   // bounded pass. Fill the rest oldest-first for fair backlog catch-up.
   const selected=selectFairBooksCandidates(sources,limit);
+  if(opts?.inspectMonth)return {posted:0,problems:[
+   ...problems,...selected.map(row=>({sourceType:row.type,sourceId:row.id,
+    message:"This record is not fully posted for the reviewed month."})),
+  ]};
   let posted=0;
   for(const x of selected) {
     try {
