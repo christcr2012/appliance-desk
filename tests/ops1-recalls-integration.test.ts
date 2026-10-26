@@ -68,6 +68,7 @@ describe.skipIf(!enabled)("product recalls (real Postgres, fake government list)
     await prisma.recallWatchState.deleteMany();
     await prisma.staffTask.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.safetyIncident.deleteMany({ where: { applianceId: { in: applianceIds } } });
+    await prisma.maintenanceRequest.deleteMany({ where: { OR: [{ applianceId: { in: applianceIds } }, { customerId }] } });
     await prisma.recallMatch.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.rentalLine.deleteMany({ where: { agreement: { customerId } } });
@@ -211,6 +212,17 @@ describe.skipIf(!enabled)("product recalls (real Postgres, fake government list)
     const after = await prisma.appliance.findUniqueOrThrow({ where: { id: idOf("fridge") } });
     expect(after.recallHold).toBe(false);
     expect((await prisma.recallMatch.findUniqueOrThrow({ where: { id: match.id } })).state).toBe("REMEDIED");
+  });
+
+  it("two people marking the same repair request at the same moment make one incident", async () => {
+    const request = await prisma.maintenanceRequest.create({ data: { customerId, applianceId: idOf("fridge-nomodel"), problem: "Sparks at the plug" } });
+    const results = await Promise.all([
+      markSafetyIncident(staffId, { maintenanceRequestId: request.id, description: "Sparks at the plug" }),
+      markSafetyIncident(ownerId, { maintenanceRequestId: request.id, description: "Sparks at the plug (second person)" }),
+    ]);
+    expect(results.filter((row) => row.created)).toHaveLength(1);
+    expect(results[0]!.id).toBe(results[1]!.id);
+    expect(await prisma.safetyIncident.count({ where: { maintenanceRequestId: request.id } })).toBe(1);
   });
 
   it("an injury or safety incident is recorded once and waits on Chris's decision (owner or admin only)", async () => {

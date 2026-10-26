@@ -129,6 +129,13 @@ export async function markSafetyIncident(
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId);
     let applianceId = input.applianceId ?? null;
+    // Lock the repair request or visit first, so two people marking the same one at the same moment make one incident.
+    if (input.maintenanceRequestId) {
+      await tx.$queryRaw`SELECT "id" FROM "MaintenanceRequest" WHERE "id" = ${input.maintenanceRequestId} FOR UPDATE`;
+    }
+    if (input.jobId) {
+      await tx.$queryRaw`SELECT "id" FROM "Job" WHERE "id" = ${input.jobId} FOR UPDATE`;
+    }
     if (input.maintenanceRequestId) {
       const request = await tx.maintenanceRequest.findUnique({ where: { id: input.maintenanceRequestId }, select: { applianceId: true } });
       if (!request) throw new RecallError("Couldn't find that repair request.");

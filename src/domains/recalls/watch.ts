@@ -79,7 +79,8 @@ export async function runRecallWatch(
   });
   const fleet = await loadFleet();
   if (fleet.length === 0) {
-    await prisma.recallWatchState.update({ where: { id: "singleton" }, data: { lastSuccessAt: now, lastError: null } });
+    // Nothing to check yet: leave the first-run marker unset so the first real night still does the full 15-year look-back.
+    await prisma.recallWatchState.update({ where: { id: "singleton" }, data: { lastError: null } });
     return { searches: 0, failedSearches: 0, newPossibleMatches: 0, fleetChecked: 0 };
   }
 
