@@ -6,6 +6,10 @@ import { recordManualPayment } from "@/domains/billing";
 import { resolvePendingRdfRecords } from "@/domains/tax/rdf-records";
 import { processReadyRdfCharges } from "@/domains/tax/rdf-charges";
 import { recordedRetailSales } from "@/domains/tax/rdf-sales-evidence";
+import { approveRdfSwitch } from "@/domains/tax/rdf-switches";
+import { rdfHandlingLockedSince } from "@/domains/tax/rdf-handling-lock";
+import { saveTaxPolicyChoiceInTx } from "@/domains/tax/policy-choices";
+import { saveTaxSettings } from "@/domains/tax/setup";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { seedTaxReadyContext } from "./helpers/tax-ready";
 
@@ -104,7 +108,7 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
     const [record] = await records(sale.invoiceId);
     expect(record).toMatchObject({ saleKey: `retail:${sale.invoiceId}`, status: "READY", amountCents: 37, collectedFromCustomer: true, agreementId: null, firstJobId: null });
     const line = await prisma.invoiceLineItem.findUniqueOrThrow({ where: { id: record!.invoiceLineId! } });
-    expect(line).toMatchObject({ kind: "RETAIL_DELIVERY_FEE", amountCents: 37, description: "Colorado retail delivery fee", invoiceId: sale.invoiceId });
+    expect(line).toMatchObject({ kind: "RETAIL_DELIVERY_FEE", amountCents: 37, description: "Retail delivery fees", invoiceId: sale.invoiceId });
     expect((await prisma.invoiceTaxLine.findMany({ where: { invoiceId: sale.invoiceId, invoiceLineItemId: line.id } }))).toHaveLength(0);
 
     const again = await createShopSale(ownerId, { operationKey: (await prisma.invoice.findUniqueOrThrow({ where: { id: sale.invoiceId }, select: { saleOperationKey: true } })).saleOperationKey!, customerId, location: "DELIVERED", serviceAddressId: coAddress, items: [{ partRecordId: p, quantity: 1, unitPriceCents: 5000 }] });
@@ -142,20 +146,85 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
     expect(total).toBeGreaterThanOrEqual(5000);
   });
 
-  it("taking a paid sale back refunds the fee with everything else and the fee stops counting; cancelling an unpaid sale does the same", async () => {
+  it("taking a paid sale back keeps the delivery fee (it is still owed) and refunds the rest; cancelling an unpaid sale voids the fee", async () => {
     const sale = await sell(await part(), coAddress);
     await recordManualPayment(customerId, ownerId, { amountCents: sale.amountDueCents, method: "cash", invoiceId: sale.invoiceId, refuseOverpayment: true });
     const back = await returnShopSale(ownerId, sale.invoiceId, "Changed mind");
-    expect(back.refundedCents).toBe(5437);
-    const refund = await prisma.refund.findFirstOrThrow({ where: { invoiceId: sale.invoiceId } });
+    // TFA-2 §6.5: $54.37 paid, the $0.37 fee is kept, $54.00 comes back.
+    expect(back.refundedCents).toBe(5400);
     const [record] = await records(sale.invoiceId);
-    expect(record).toMatchObject({ status: "NOT_DUE", customerRefundRef: refund.id });
-    expect(record!.customerRefundedAt).not.toBeNull();
+    expect(record).toMatchObject({ status: "READY", amountCents: 37, collectedFromCustomer: true, customerRefundRef: null });
+    expect(record!.customerRefundedAt).toBeNull();
+    const audit = await prisma.auditLog.findFirstOrThrow({ where: { action: "sale.return", entityType: "Invoice", entityId: sale.invoiceId } });
+    expect((audit.newValue as { deliveryFeeKeptCents?: number }).deliveryFeeKeptCents).toBe(37);
     expect(await returnShopSale(ownerId, sale.invoiceId, "Changed mind")).toMatchObject({ alreadyReturned: true });
 
     const unpaid = await sell(await part(), coAddress);
     await cancelShopSale(ownerId, unpaid.invoiceId, "Customer cancelled");
     expect((await records(unpaid.invoiceId))[0]).toMatchObject({ status: "NOT_DUE", collectedFromCustomer: false, customerRefundRef: null });
+  });
+
+  it("a replacement sale (an exchange) gets no second delivery fee", async () => {
+    const original = await sell(await part(), coAddress);
+    const replacement = await createShopSale(ownerId, {
+      operationKey: key(), customerId, location: "DELIVERED", serviceAddressId: coAddress,
+      items: [{ partRecordId: await part(), quantity: 1, unitPriceCents: 5000 }],
+      replacementOfInvoiceId: original.invoiceId,
+    });
+    created.add(replacement.invoiceId);
+    expect(replacement.amountDueCents).toBe(5400);
+    expect((await records(replacement.invoiceId))[0]).toMatchObject({ status: "NOT_DUE", amountCents: null });
+    expect(await prisma.invoiceLineItem.findMany({
+      where: { invoiceId: replacement.invoiceId, kind: "RETAIL_DELIVERY_FEE" },
+    })).toHaveLength(0);
+    // A replacement pointing at a sale that is not this customer's is refused.
+    await expect(createShopSale(ownerId, {
+      operationKey: key(), customerId, location: "DELIVERED", serviceAddressId: coAddress,
+      items: [{ partRecordId: await part(), quantity: 1, unitPriceCents: 5000 }],
+      replacementOfInvoiceId: `rdfs-missing-${tag}`,
+    })).rejects.toThrow(/Couldn't find the sale this one replaces/);
+  });
+
+  it("an unapproved switch holds the customer line (owed, not billed) until the owner approves it", async () => {
+    const sw = await prisma.retailDeliveryFeeSwitch.create({
+      data: { kind: "START", startsOn: today() },
+    });
+    try {
+      const held = await sell(await part(), coAddress);
+      expect(held.amountDueCents).toBe(5400);
+      expect((await records(held.invoiceId))[0]).toMatchObject({ status: "READY", amountCents: 37, collectedFromCustomer: false, invoiceLineId: null });
+
+      await approveRdfSwitch(ownerId, sw.id);
+      const charged = await sell(await part(), coAddress);
+      expect(charged.amountDueCents).toBe(5437);
+      expect((await records(charged.invoiceId))[0]).toMatchObject({ status: "READY", amountCents: 37, collectedFromCustomer: true });
+    } finally {
+      await prisma.retailDeliveryFeeSwitch.delete({ where: { id: sw.id } });
+    }
+  });
+
+  it("once the fee applies to a sale, who pays it is locked on both save paths", async () => {
+    const lockedSince = await prisma.$transaction((tx) => rdfHandlingLockedSince(tx));
+    expect(lockedSince).toBeInstanceOf(Date);
+    await expect(prisma.$transaction((tx) =>
+      saveTaxPolicyChoiceInTx(tx, ownerId, "rdfHandling", "PAY_MYSELF"),
+    )).rejects.toThrow(/can't change now/);
+    const current = await prisma.businessSettings.findUniqueOrThrow({
+      where: { id: "singleton" },
+      select: { updatedAt: true, shortTermLeaseElection: true, shortTermLeaseElectionNote: true, rdfHandling: true, rdfCpaConfirmedOn: true, autoApplyOfficialRateChanges: true, autoRateChangeMaxMilliPercent: true },
+    });
+    await expect(saveTaxSettings(ownerId, {
+      shortTermLeaseElection: current.shortTermLeaseElection,
+      shortTermLeaseElectionNote: current.shortTermLeaseElectionNote,
+      rdfHandling: "PAY_MYSELF",
+      rdfThresholdCents: 0,
+      rdfCpaConfirmedOn: current.rdfCpaConfirmedOn,
+      autoApplyOfficialRateChanges: current.autoApplyOfficialRateChanges,
+      autoRateChangeMaxMilliPercent: current.autoRateChangeMaxMilliPercent,
+      businessLocation: null,
+    }, current.updatedAt)).rejects.toThrow(/can't change now/);
+    // Saving the SAME choice is not a change and still works.
+    await prisma.$transaction((tx) => saveTaxPolicyChoiceInTx(tx, ownerId, "rdfHandling", "COLLECT_FROM_CUSTOMER"));
   });
 
   it("an exemption certificate revoked earlier the same day no longer hides the fee (checked at the real sale moment)", async () => {
