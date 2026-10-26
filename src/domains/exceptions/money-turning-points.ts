@@ -38,7 +38,7 @@ export async function listHeldPaymentAttention(limit: number): Promise<Rows> {
 export async function listDepositDecisionAttention(limit: number, now: Date, scope?: { customerId?: string }): Promise<Rows> {
   await requireRole("OWNER", "ADMIN");
   bounded(limit);
-  const liability = await getDepositLiability(now);
+  const liability = await getDepositLiability(now, 500, scope?.customerId);
   const ended = liability.rows.filter(
     (r) => r.bucket !== "STILL_RENTING" && (!scope?.customerId || r.customerId === scope.customerId),
   );

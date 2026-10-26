@@ -57,6 +57,9 @@ describe.skipIf(!enabled)("customer-scoped next steps", () => {
   afterAll(async () => {
     const customerIds = people.map((p) => p.customerId);
     await prisma.exceptionSnooze.deleteMany({ where: { actorUserId: ownerId } });
+    await prisma.deposit.deleteMany({ where: { agreement: { customerId: { in: customerIds } } } });
+    await prisma.rentalAgreement.deleteMany({ where: { customerId: { in: customerIds } } });
+    await prisma.serviceAddress.deleteMany({ where: { customerId: { in: customerIds } } });
     await prisma.invoice.deleteMany({ where: { customerId: { in: customerIds } } });
     await prisma.customer.deleteMany({ where: { id: { in: customerIds } } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, ...people.map((p) => p.userId)] } } });
@@ -71,6 +74,28 @@ describe.skipIf(!enabled)("customer-scoped next steps", () => {
     expect(steps.length).toBeLessThanOrEqual(3);
     const forB = await getCustomerNextSteps(b.customerId);
     expect(forB.map((s) => s.href)).toEqual([`/desk/billing/customer/${b.customerId}/invoice/${bBill}`]);
+  });
+
+  it("finds this customer's deposit decision even when 500+ older deposits exist elsewhere", async () => {
+    const now = Date.now();
+    const address = await prisma.serviceAddress.create({ data: { customerId: crowd.customerId, line1: "1 Crowd St", city: "Greeley", zip: "80631" } });
+    const crowdAgreement = await prisma.rentalAgreement.create({
+      data: { customerId: crowd.customerId, serviceAddressId: address.id, status: "ENDED", endDate: new Date(now - 30 * DAY) },
+    });
+    await prisma.deposit.createMany({
+      data: Array.from({ length: 505 }, (_, i) => ({ agreementId: crowdAgreement.id, amountCents: 1000, createdAt: new Date(now - (5000 - i) * DAY) })),
+    });
+    const aAddress = await prisma.serviceAddress.create({ data: { customerId: a.customerId, line1: "2 Own St", city: "Greeley", zip: "80631" } });
+    const aAgreement = await prisma.rentalAgreement.create({
+      data: { customerId: a.customerId, serviceAddressId: aAddress.id, status: "ENDED", endDate: new Date(now - 10 * DAY) },
+    });
+    const deposit = await prisma.deposit.create({ data: { agreementId: aAgreement.id, amountCents: 7500 } });
+    const hrefs = (await getCustomerNextSteps(a.customerId)).map((s) => s.href);
+    // Next steps keep the three most pressing; the past-due bill is high and the deposit medium, so check the read directly too.
+    const { listDepositDecisionAttention } = await import("@/domains/exceptions/money-turning-points");
+    const scoped = await listDepositDecisionAttention(50, new Date(), { customerId: a.customerId });
+    expect(scoped.rows.map((r) => r.href)).toEqual([`/desk/billing/deposits/${encodeURIComponent(deposit.id)}`]);
+    expect(hrefs.length).toBeGreaterThan(0);
   });
 
   it("still finds an unsnoozed bill when the three oldest are snoozed", async () => {

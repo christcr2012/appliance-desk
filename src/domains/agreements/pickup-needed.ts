@@ -10,7 +10,8 @@ export async function agreementIdsNeedingPickup(
   customerId?: string,
 ): Promise<{ id: string; name: string; since: Date; dueOn: Date | null; customer: { phone: string | null; user: { email: string } } }[]> {
   const held = await prisma.applianceCustodyEpisode.findMany({
-    where: { endedOn: null, agreementId: { not: null } }, select: { agreementId: true }, distinct: ["agreementId"], take: 500,
+    // AR-0b: a customer-scoped read filters before the 500 limit.
+    where: { endedOn: null, agreementId: { not: null }, ...(customerId ? { customerId } : {}) }, select: { agreementId: true }, distinct: ["agreementId"], take: 500,
   });
   const ids = held.map((h) => h.agreementId as string);
   if (ids.length === 0) return [];
