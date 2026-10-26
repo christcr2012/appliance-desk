@@ -1356,3 +1356,13 @@ Settings: `BusinessSettings.feedbackMaxAttachments` (0–3, starting 3) and `fee
 The starting Manager job role gains the new owner/admin `feedback` screen. All four tables are in the backup manifest;
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
+
+
+### BA-1: books autopilot (implementation branch)
+
+The additive `20261026050000_books_autopilot` migration adds an automatic-enrollment marker,
+a completion marker for depreciation and a disposal cycle to `BookAsset`. Its actor reference may be
+null for background operations; automatic audit records explicitly say `by: automatic`.
+`BusinessSettings` records when the nightly book catch-up last ran and how many issues remain;
+`BooksProblem` tracks durable unresolved source/appliance problems by their unique subject key.
+Existing financial entries remain append-only and closed months stay immutable.

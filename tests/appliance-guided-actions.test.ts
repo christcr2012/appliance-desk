@@ -25,6 +25,10 @@ function makeTx() {
   return {
     // The commands now check the acting team member and lock the appliance inside the transaction (R13).
     $queryRaw: vi.fn().mockResolvedValue([]),
+    $executeRaw: vi.fn().mockResolvedValue(0),
+    bookAsset: { findUnique: vi.fn().mockResolvedValue(null) },
+    booksProblem: { updateMany: vi.fn().mockResolvedValue({count:0}),
+      upsert: vi.fn().mockResolvedValue({}) },
     user: { findUnique: vi.fn().mockResolvedValue({ id: "user-1", role: "OWNER", archivedAt: null }) },
     appliance: {
       updateMany: (...args: unknown[]) => applianceUpdateMany(...args),
