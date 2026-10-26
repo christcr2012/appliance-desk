@@ -236,7 +236,12 @@ function countDecision(counts: LateFeeRunCounts, decision: LateFeeDecision) {
 }
 
 /** Nightly: warn customers whose fee day is near, and record fees for customers who were warned and did not pay. */
-export type LateFeeScope = { /** Only these customers (used by tests, so a run never touches rows another test owns). */ customerIds?: readonly string[] };
+export type LateFeeScope = {
+  /** Only these customers (used by tests, so a run never touches rows another test owns). */
+  customerIds?: readonly string[];
+  /** How many bills or fees are read at a time (tests use a small number to check that every batch is visited). */
+  batchSize?: number;
+};
 
 export async function runLateFees(now = new Date(), scope: LateFeeScope = {}): Promise<{ counts: LateFeeRunCounts; recorded: RecordedLateFee[] }> {
   const counts: LateFeeRunCounts = {
@@ -259,7 +264,7 @@ export async function runLateFees(now = new Date(), scope: LateFeeScope = {}): P
       },
       select: { id: true },
       orderBy: { id: "asc" },
-      take: BATCH_SIZE,
+      take: scope.batchSize ?? BATCH_SIZE,
     });
     for (const candidate of batch) {
       try {
@@ -284,7 +289,7 @@ export async function runLateFees(now = new Date(), scope: LateFeeScope = {}): P
         console.error("[billing] Late-fee check failed for one bill", candidate.id, error instanceof Error ? error.message : error);
       }
     }
-    if (batch.length < BATCH_SIZE) break;
+    if (batch.length < (scope.batchSize ?? BATCH_SIZE)) break;
     afterId = batch[batch.length - 1]!.id;
   }
   return { counts, recorded };
@@ -443,45 +448,59 @@ async function ensureAutopayNotice(chargeId: string, nextKey: string, now: Date)
 export async function billPendingLateFees(now = new Date(), stripeClient?: Stripe, scope: LateFeeScope = {}): Promise<Partial<LateFeeRunCounts>> {
   const counts = { billedLocal: 0, sentToStripe: 0, waitingForNextBill: 0, stripeBillingOff: 0, noticesNotSent: 0, errors: 0 };
   const todayKey = businessDateKey(now);
-  const charges = await prisma.pendingCharge.findMany({
-    where: { kind: "LATE_FEE", waivedAt: null, appliedToInvoiceId: null, ...(scope.customerIds ? { customerId: { in: [...scope.customerIds] } } : {}) },
-    select: {
-      id: true,
-      agreement: { select: { status: true, stripeSubscriptionId: true, nextBillingDate: true, terminationEffectiveOn: true } },
-      customer: { select: { stripeCustomerId: true } },
-    },
-    orderBy: { createdAt: "asc" },
-    take: BATCH_SIZE,
-  });
-  for (const charge of charges) {
-    try {
-      const agreement = charge.agreement;
-      const nextKey = agreement.nextBillingDate ? businessDateKey(agreement.nextBillingDate) : null;
-      const ending = agreement.status !== "ACTIVE"
-        || Boolean(agreement.terminationEffectiveOn && agreement.nextBillingDate && agreement.terminationEffectiveOn.getTime() <= agreement.nextBillingDate.getTime());
-      const onStripe = Boolean(agreement.stripeSubscriptionId && charge.customer.stripeCustomerId);
-      if (!onStripe || ending) {
-        if (await createSeparateFeeBill(charge.id, now)) counts.billedLocal += 1;
-        continue;
+  // Every waiting fee is looked at, batch after batch: fees that must wait (next charge too close, billing off) never crowd out newer ones.
+  let afterId: string | null = null;
+  for (;;) {
+    const charges: Array<{
+      id: string;
+      agreement: { status: string; stripeSubscriptionId: string | null; nextBillingDate: Date | null; terminationEffectiveOn: Date | null };
+      customer: { stripeCustomerId: string | null };
+    }> = await prisma.pendingCharge.findMany({
+      where: {
+        kind: "LATE_FEE", waivedAt: null, appliedToInvoiceId: null,
+        ...(scope.customerIds ? { customerId: { in: [...scope.customerIds] } } : {}),
+        ...(afterId ? { id: { gt: afterId } } : {}),
+      },
+      select: {
+        id: true,
+        agreement: { select: { status: true, stripeSubscriptionId: true, nextBillingDate: true, terminationEffectiveOn: true } },
+        customer: { select: { stripeCustomerId: true } },
+      },
+      orderBy: { id: "asc" },
+      take: scope.batchSize ?? BATCH_SIZE,
+    });
+    for (const charge of charges) {
+      try {
+        const agreement = charge.agreement;
+        const nextKey = agreement.nextBillingDate ? businessDateKey(agreement.nextBillingDate) : null;
+        const ending = agreement.status !== "ACTIVE"
+          || Boolean(agreement.terminationEffectiveOn && agreement.nextBillingDate && agreement.terminationEffectiveOn.getTime() <= agreement.nextBillingDate.getTime());
+        const onStripe = Boolean(agreement.stripeSubscriptionId && charge.customer.stripeCustomerId);
+        if (!onStripe || ending) {
+          if (await createSeparateFeeBill(charge.id, now)) counts.billedLocal += 1;
+          continue;
+        }
+        if (!canJoinNextCharge({ todayKey, nextChargeKey: nextKey, autopay: true })) {
+          counts.waitingForNextBill += 1; // the next automatic charge is less than 10 days away: wait for the one after
+          continue;
+        }
+        if (!lateFeeBillingEnabled()) {
+          counts.stripeBillingOff += 1;
+          continue;
+        }
+        if (nextKey && (await ensureAutopayNotice(charge.id, nextKey, now)) !== "ok") {
+          counts.noticesNotSent += 1; // the customer was not told about the higher charge yet: nothing is posted, tried again tomorrow
+          continue;
+        }
+        const outcome = await sendFeeToStripe(charge.id, stripeClient ?? getStripeClient());
+        if (outcome === "sent") counts.sentToStripe += 1;
+      } catch (error) {
+        counts.errors += 1;
+        console.error("[billing] Could not put a late fee on the next bill", charge.id, error instanceof Error ? error.message : error);
       }
-      if (!canJoinNextCharge({ todayKey, nextChargeKey: nextKey, autopay: true })) {
-        counts.waitingForNextBill += 1; // the next automatic charge is less than 10 days away: wait for the one after
-        continue;
-      }
-      if (!lateFeeBillingEnabled()) {
-        counts.stripeBillingOff += 1;
-        continue;
-      }
-      if (nextKey && (await ensureAutopayNotice(charge.id, nextKey, now)) !== "ok") {
-        counts.noticesNotSent += 1; // the customer was not told about the higher charge yet: nothing is posted, tried again tomorrow
-        continue;
-      }
-      const outcome = await sendFeeToStripe(charge.id, stripeClient ?? getStripeClient());
-      if (outcome === "sent") counts.sentToStripe += 1;
-    } catch (error) {
-      counts.errors += 1;
-      console.error("[billing] Could not put a late fee on the next bill", charge.id, error instanceof Error ? error.message : error);
     }
+    if (charges.length < (scope.batchSize ?? BATCH_SIZE)) break;
+    afterId = charges[charges.length - 1]!.id;
   }
   return counts;
 }
@@ -494,6 +513,10 @@ export async function billPendingLateFees(now = new Date(), stripeClient?: Strip
 export async function waiveLateFee(chargeId: string, actorUserId: string, reason: string, now = new Date(), stripeClient?: Stripe): Promise<"waived" | "credited" | "already"> {
   const cleaned = reason.trim();
   if (cleaned.length < 3) throw new Error("Add a short reason for waiving the fee.");
+
+  // The person must still be an active owner/admin BEFORE anything is removed at Stripe (re-checked again under the lock below).
+  const { assertActiveTeamActor: assertActorFirst } = await import("@/lib/team-actor");
+  await assertActorFirst(prisma, actorUserId, ["OWNER", "ADMIN"]);
 
   // Look at Stripe BEFORE taking the lock: a network call never runs inside the database transaction.
   const before = await prisma.pendingCharge.findUnique({
@@ -517,7 +540,7 @@ export async function waiveLateFee(chargeId: string, actorUserId: string, reason
     }
   }
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const { assertActiveTeamActor } = await import("@/lib/team-actor");
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
     await tx.$queryRaw`SELECT "id" FROM "PendingCharge" WHERE "id" = ${chargeId} FOR UPDATE`;
@@ -525,25 +548,39 @@ export async function waiveLateFee(chargeId: string, actorUserId: string, reason
       where: { id: chargeId },
       select: { amountCents: true, waivedAt: true, appliedToInvoiceId: true, customerId: true, forInvoiceId: true },
     });
-    if (charge.waivedAt) return "already" as const;
+    if (charge.waivedAt) return { outcome: "already" as const, creditId: null };
     await tx.pendingCharge.update({ where: { id: chargeId }, data: { waivedAt: now, waivedReason: cleaned, waivedByUserId: actorUserId } });
     let outcome: "waived" | "credited" = "waived";
+    let creditId: string | null = null;
     if (charge.appliedToInvoiceId || stripeItemOnBill) {
       // Already on a bill the customer received: the bill keeps showing it, and the customer gets the same amount back as a credit.
-      await tx.customerCredit.create({
+      const credit = await tx.customerCredit.create({
         data: {
           customerId: charge.customerId, amountCents: charge.amountCents, remainingCents: charge.amountCents,
           reason: "Late fee waived", notes: cleaned, authorizedByUserId: actorUserId,
           sourceType: "LATE_FEE_WAIVER", sourceId: chargeId, side: "CUSTOMER",
         },
+        select: { id: true },
       });
+      creditId = credit.id;
       outcome = "credited";
     }
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "billing.late_fee_waived", entityType: "PendingCharge", entityId: chargeId, newValue: { reason: cleaned, outcome, amountCents: charge.amountCents, forInvoiceId: charge.forInvoiceId } },
     });
-    return outcome;
+    return { outcome, creditId };
   });
+  if (result.creditId) {
+    // After the commit: a card customer's credit goes to Stripe as account-balance credit (the same durable operation late-delivery
+    // credits use), so the next automatic charge really is lower. If this attempt does not finish, the nightly reconciler retries it.
+    try {
+      const { pushLateDeliveryCreditToStripe } = await import("./pickup-billing-events");
+      await pushLateDeliveryCreditToStripe(result.creditId);
+    } catch (error) {
+      console.error("[billing] Late-fee waiver credit not sent to Stripe yet; it will be retried", result.creditId, error instanceof Error ? error.message : error);
+    }
+  }
+  return result.outcome;
 }
 
 /** "Skip the fee": no fee for this bill, on purpose. Kept as a waived charge so the bill can never get a fee later. */

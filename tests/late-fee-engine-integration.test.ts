@@ -4,7 +4,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 // FEE-1 on real Postgres: warn first, fee only for warned customers, never during a payment, its own charge on the next bill.
 // Messages and Stripe are fakes; the message fake writes the same MessageDelivery row the real sender would.
-const m = vi.hoisted(() => ({ state: "ACCEPTED" as "ACCEPTED" | "NOT_SENT", keys: [] as string[], texts: [] as string[] }));
+const m = vi.hoisted(() => ({
+  state: "ACCEPTED" as "ACCEPTED" | "NOT_SENT", keys: [] as string[], texts: [] as string[], pushed: [] as string[],
+  reconcileClient: {} as unknown,
+}));
 vi.mock("@/domains/messaging/deliver", () => ({
   deliverMessage: async (input: {
     idempotencyKey: string; channel: "EMAIL" | "SMS"; purpose: "TRANSACTIONAL" | "MARKETING"; templateKey: string;
@@ -27,6 +30,9 @@ vi.mock("@/domains/messaging/deliver", () => ({
     return { state: row.state, deliveryId: row.id, providerMessageId: null };
   },
 }));
+
+vi.mock("@/domains/billing/pickup-billing-events", () => ({ pushLateDeliveryCreditToStripe: async (creditId: string) => { m.pushed.push(creditId); } }));
+vi.mock("@/lib/stripe", () => ({ getStripeClient: () => m.reconcileClient }));
 
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
@@ -518,6 +524,82 @@ describe.skipIf(!enabled)("fair late fees (real Postgres, fake messages and Stri
       const { charge, stripe } = await sentToStripe();
       await prisma.providerOperation.updateMany({ where: { subjectId: charge.id, kind: "LATE_FEE_INVOICE_ITEM" }, data: { status: "PENDING" } });
       await expect(waiveLateFee(charge.id, ownerId, "Goodwill", now(), stripe.client)).rejects.toThrow(/being sent to Stripe/);
+    });
+  });
+
+  describe("review fixes", () => {
+    async function recorded(opts: Parameters<typeof bill>[0]) {
+      const b = await bill(opts);
+      await toldDaysAgo(b.invoiceId, 5);
+      await runLateFees();
+      const [charge] = await charges(b.invoiceId);
+      expect(charge).toBeTruthy();
+      return { ...b, chargeId: charge!.id };
+    }
+    it("a waiver by someone who is no longer an owner or admin removes nothing at Stripe", async () => {
+      process.env.LATE_FEE_CUSTOMER_CHARGING_ENABLED = "true";
+      const b = await bill({ dueDaysAgo: 12, subscription: true, nextBillingInDays: 20 });
+      await toldDaysAgo(b.invoiceId, 5);
+      await runLateFees();
+      const deleted: string[] = [];
+      const client = {
+        invoiceItems: {
+          create: async () => ({ id: `ii_a_${tag}_${n++}` }),
+          del: async (id: string) => { deleted.push(id); return { id, deleted: true }; },
+          retrieve: async (id: string) => ({ id, invoice: null }),
+        },
+      } as unknown as Stripe;
+      await billPendingLateFees(now(), client);
+      const [charge] = await charges(b.invoiceId);
+      await expect(waiveLateFee(charge!.id, demotedId, "Kind customer", now(), client)).rejects.toThrow(/no longer has access/);
+      expect(deleted).toHaveLength(0);
+      expect((await prisma.pendingCharge.findUniqueOrThrow({ where: { id: charge!.id } })).waivedAt).toBeNull();
+    });
+
+    it("a credit for a fee that was already billed is sent to Stripe as balance credit", async () => {
+      const b = await bill({ dueDaysAgo: 12 });
+      await toldDaysAgo(b.invoiceId, 5);
+      await runLateFees();
+      await billPendingLateFees();
+      const [charge] = await charges(b.invoiceId);
+      m.pushed.length = 0;
+      expect(await waiveLateFee(charge!.id, ownerId, "Goodwill")).toBe("credited");
+      const credit = await prisma.customerCredit.findFirstOrThrow({ where: { customerId: b.customerId, sourceId: charge!.id } });
+      expect(m.pushed).toEqual([credit.id]);
+    });
+
+    it("fees that must wait never crowd out newer ones: every batch is visited", async () => {
+      process.env.LATE_FEE_CUSTOMER_CHARGING_ENABLED = "true";
+      const waiting = await recorded({ dueDaysAgo: 12, subscription: true, nextBillingInDays: 5 });
+      const second = await recorded({ dueDaysAgo: 12 });
+      const third = await recorded({ dueDaysAgo: 12 });
+      const mine = [waiting, second, third].map((r) => r.chargeId).sort();
+      const { client } = (() => ({ client: { invoiceItems: { create: async () => ({ id: `ii_b_${tag}_${n++}` }) } } as unknown as Stripe }))();
+      // one charge per batch: the waiting one is first or not, either way all three must be looked at
+      const out = await billPendingLateFeesAll(now(), client, { customerIds: customers, batchSize: 1 });
+      expect(out.waitingForNextBill).toBeGreaterThanOrEqual(1);
+      const rows = await prisma.pendingCharge.findMany({ where: { id: { in: mine } }, select: { id: true, appliedToInvoiceId: true } });
+      expect(rows.filter((row) => row.appliedToInvoiceId).length).toBe(2);
+    });
+
+    it("a fee whose Stripe request timed out is found, or released to be sent again, by the nightly reconciler", async () => {
+      process.env.LATE_FEE_CUSTOMER_CHARGING_ENABLED = "true";
+      const { reconcileLateFeeInvoiceItem } = await import("@/domains/billing/reconciliation-base");
+      const r = await recorded({ dueDaysAgo: 12, subscription: true, nextBillingInDays: 20 });
+      const op = await prisma.providerOperation.create({
+        data: { kind: "LATE_FEE_INVOICE_ITEM", status: "UNKNOWN", subjectType: "PendingCharge", subjectId: r.chargeId, idempotencyKey: `late-fee-${r.chargeId}`, requestedAt: new Date() },
+      });
+      const items: Array<{ id: string; amount: number; metadata: Record<string, string> }> = [];
+      m.reconcileClient = { invoiceItems: { list: async function* () { for (const item of items) yield item; } } };
+      // not at Stripe: released (FAILED) so the next billing pass sends it again
+      expect(await reconcileLateFeeInvoiceItem({ id: op.id, subjectId: r.chargeId, status: "UNKNOWN", requestedAt: op.requestedAt })).toBe(true);
+      expect((await prisma.providerOperation.findUniqueOrThrow({ where: { id: op.id } })).status).toBe("FAILED");
+      // at Stripe: the operation succeeded and keeps the Stripe id
+      await prisma.providerOperation.update({ where: { id: op.id }, data: { status: "UNKNOWN" } });
+      items.push({ id: `ii_found_${tag}`, amount: 500, metadata: { late_fee_pending_charge_id: r.chargeId } });
+      expect(await reconcileLateFeeInvoiceItem({ id: op.id, subjectId: r.chargeId, status: "UNKNOWN", requestedAt: op.requestedAt })).toBe(true);
+      const done = await prisma.providerOperation.findUniqueOrThrow({ where: { id: op.id } });
+      expect(done).toMatchObject({ status: "SUCCEEDED", providerObjectId: `ii_found_${tag}` });
     });
   });
 
