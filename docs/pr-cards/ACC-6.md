@@ -28,4 +28,29 @@ browser-type comparison.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Built on branch `ai/marley/acc-6` (PR TBD): KnownDevice table + `BusinessSettings.trustedDeviceDays` (migration
+`20261030010000_known_devices`); owner setting on Settings › Security with the 30-day starting value and a Decisions
+& reviews question (`TRUSTED-DEVICE-DAYS`); the login two-step form offers "Remember this device for {n} days"
+(hidden at 0); My account › Devices lists remembered devices with "Forget remembered devices"; a sign-in gate removes
+a trust row whose device is no longer remembered; a hooks-only plugin registered after the two-factor plugin records
+finished sign-ins (device cookie, new-device notice, remembered-until date) and clamps the library's trust row;
+forgetting is wired into password change, forgot-password reset, email change, second-step change, turning two-step
+off, owner reset, removal, access change and sign-out-everywhere; device rows are left out of backups and removed by
+privacy deletion. Tests: `tests/trusted-devices.test.ts` (pure rules), `tests/known-devices.test.ts` (fakes),
+`tests/trusted-devices-integration.test.ts` (throwaway Postgres, full sign-in flow), `e2e/my-account.spec.ts`
+(remembered device shown and forgotten; checkbox hidden at 0). Unit tests pass locally; database and browser tests
+run in CI only (no local Postgres here). `ci` green at the exact head and every review comment read are still to do.
+Update 2026-10-26 (night): `main` moved (BILL-1 #612, preview-storage #609), merged into this branch as 164c968
+(conflicts only in STATUS.md and DATABASE.md, both kept both entries); re-checked locally — typecheck clean, lint
+0 errors, 41 unit tests pass. Push still blocked: the branch-creation approval timed out unanswered (01:39 MDT).
+
+Two deviations from `docs/build-specs/engines/TRUSTED-DEVICES.md`, both from what the library actually does:
+- The spec's rotation clamp in the app's global `after` hook cannot work: the app's hook runs BEFORE the two-factor
+  plugin's sign-in hook, which rotates the trust row afterwards (a fresh row, full 90-day expiry). The follow-up
+  lives instead in a hooks-only plugin registered after the two-factor plugin, whose `after` hook runs after the
+  rotation. This also fixes a pre-existing issue: the old global hook recorded a new-device notice for a sign-in
+  still waiting for its code (at that point the session still looks finished).
+- The spec's Decisions subject has `recommended: 30`, but DEC-1a's registry test requires every subject's
+  `recommended` to stay null until DEC-2 adds researched values with sources. The subject is registered with
+  `recommended: null`; the 30-day starting value lives in the setting itself and on the Settings screen, and Chris
+  approved 30 days on 2026-10-25.

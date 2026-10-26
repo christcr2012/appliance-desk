@@ -17,6 +17,9 @@ export const BACKUP_MODEL_POLICY = {
   Verification: null,
   RateLimit: null,
   TwoFactor: null,
+  // ACC-6: device rows are only identifiers for the sign-in notice and "remember this device"; a restore
+  // re-records devices as people sign in, so they are never restored.
+  KnownDevice: null,
   Customer: "customer",
   Referral: "referral",
   ServiceAddress: "serviceAddress",

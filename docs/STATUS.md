@@ -1,3 +1,20 @@
+## October 26 — ACC-6: remember this device (built; push blocked on the GitHub app)
+
+Owner setting "Remember devices for {n} days" (starting 30, 0 = off) on Settings › Security, a "Remember this device"
+box on the two-step login, remembered devices with "Forget remembered devices" on My account, a device cookie behind
+the new-device notice (a second phone of the same kind is new), customers noticed only through the customer-email
+switch, and every security change (password, reset, email, second step, removal, role change, sign-out-everywhere,
+lowering the setting) asking for a code again. Built with unit tests (fakes), a throwaway-Postgres integration test
+and two browser tests; database and browser proof runs in CI only. The work is committed on branch `ai/marley/acc-6`
+(local commit ad48de7) but the PR is not opened yet: pushing needs the Muse GitHub app to be able to write to this
+repo, and it currently cannot create a branch (GitHub answers 403). Chris needs to add this repo to the app's
+installation (link in the chat) — then the branch goes up and the PR opens. Update, same night: main moved (BILL-1
+#612 and preview-storage #609 merged), so main was merged into this branch (commit 164c968) and re-checked locally —
+typecheck clean, lint 0 errors, 41 unit tests pass. The branch-creation approval was requested and timed out
+unanswered (01:39 MDT), so the branch still isn't on GitHub. Update, morning: main moved again (FEE-1 #614 merged),
+merged in, and Chris has now added the repo to the app's installation — pushing again. Next: VAULT-1, once CMP-1
+(lane 5) is merged.
+
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 
 Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),

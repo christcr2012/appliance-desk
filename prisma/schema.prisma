@@ -64,6 +64,8 @@ model User {
   sessions  Session[]
   accounts  Account[]
   twoFactor TwoFactor?
+  // ACC-6: devices this person has signed in from (one row per device cookie).
+  knownDevices KnownDevice[] @relation("KnownDevices")
 
   customer Customer?
 
@@ -159,6 +161,27 @@ model TwoFactor {
   verified                Boolean  @default(true)
   failedVerificationCount Int      @default(0)
   lockedUntil             DateTime?
+}
+
+// ACC-6: devices a person has signed in from, keyed by a device cookie.
+// The cookie value itself is never stored — only its SHA-256 hash — and the
+// cookie is only an identifier: it never signs anyone in on its own.
+// trustedUntil is set when the person ticks "Remember this device" and is
+// never extended by later sign-ins; forgottenAt marks a device the person
+// (or the owner, or a security change) has forgotten.
+model KnownDevice {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation("KnownDevices", fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash   String   @db.Char(64)
+  label        String   @db.VarChar(80)
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  trustedUntil DateTime?
+  forgottenAt  DateTime?
+
+  @@unique([userId, deviceHash])
+  @@index([userId, lastSeenAt])
 }
 
 // ---------------------------------------------------------------------------
@@ -3377,6 +3400,8 @@ model BusinessSettings {
   // ACC-4: wrong passwords allowed on one account inside the window, and how long the account waits afterwards.
   signInPauseAttempts      Int     @default(10)
   signInPauseMinutes       Int     @default(15)
+  // ACC-6: days a ticked "Remember this device" skips the sign-in code (0-90; 0 = always ask). Starting value 30.
+  trustedDeviceDays        Int     @default(30)
   invitationLinkDays  Int     @default(7)
   adminsMayInviteStaff Boolean @default(false)
 

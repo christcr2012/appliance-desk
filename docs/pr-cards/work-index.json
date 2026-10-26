@@ -5155,7 +5155,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — built on branch ai/marley/acc-6 (2026-10-26, local commit ad48de7); main merged into the branch (164c968, BILL-1 #612 + preview-storage #609) and re-checked locally (typecheck clean, lint 0 errors, 41 unit tests pass). PR not opened yet — push blocked: the Muse GitHub app cannot create a branch in this repo (403), Chris needs to add the repo to the app's installation; the branch-creation approval requested the same night timed out unanswered (01:39 MDT), retry once Chris is back",
       "units": [
         "ACC-6"
       ]

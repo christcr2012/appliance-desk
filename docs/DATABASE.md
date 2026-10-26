@@ -1,3 +1,7 @@
+## October 26 — Remember this device (ACC-6, additive)
+
+`KnownDevice` — one row per person per device cookie: `deviceHash` (SHA-256 of the device cookie value; the value itself is never stored), `label` (kind of device and browser, for the list only), first/last seen, `trustedUntil` (set when the person ticks "Remember this device", never extended by later sign-ins) and `forgottenAt`. Unique on (`userId`, `deviceHash`); rows are removed with the user and left out of backups (a restore re-records devices as people sign in). `BusinessSettings.trustedDeviceDays` (30, CHECK 0–90; 0 = always ask for the code). The library's own trust rows live in the existing `Verification` table (`trust-device-…` identifiers, user id as the value) and are clamped to the device's remembered-until date. Migration `20261030010000_known_devices`.
+
 ## October 27 — Fair late fees (FEE-1, additive)
 
 Migration `20261027040000_fair_late_fees`. New table `PendingCharge`: a late fee recorded as its own charge (`kind` LATE_FEE,

@@ -1,11 +1,13 @@
 import { TwoFactorLoginForm } from "./two-factor-login-form";
+import { getTrustedDeviceSettings } from "@/domains/security/trusted-devices";
 
 export const metadata = {
   title: "Two-step login",
   robots: { index: false, follow: false },
 };
 
-export default function TwoFactorLoginPage() {
+export default async function TwoFactorLoginPage() {
+  const { days: rememberDays } = await getTrustedDeviceSettings();
   return (
     <main
       id="main-content"
@@ -15,7 +17,7 @@ export default function TwoFactorLoginPage() {
       <p className="mb-6 text-sm text-ink-soft">
         Your password was accepted. Enter the code from your authenticator app, or use one backup code.
       </p>
-      <TwoFactorLoginForm />
+      <TwoFactorLoginForm rememberDays={rememberDays} />
     </main>
   );
 }

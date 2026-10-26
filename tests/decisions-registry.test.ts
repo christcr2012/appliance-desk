@@ -123,7 +123,7 @@ describe("Decisions & reviews registry", () => {
     const ctx = {
       settings: { shortTermLeaseElection: "PAY_ON_ACQUISITION", rdfHandling: "UNDECIDED",
         retailDeliveryFeeDecision: "NOT_LIABLE", badDebtTaxRecovery: "NO", setupFeeTaxPlanningTreatment: "TAXABLE",
-        setupFeeTaxTreatment: "UNDECIDED", recordRetentionYears: 7 },
+        setupFeeTaxTreatment: "UNDECIDED", recordRetentionYears: 7, trustedDeviceDays: 30 },
       taxCells: [
         { jurisdictionId: null, category: "DELIVERY" as const, taxability: "TAXABLE", provisional: true },
         { jurisdictionId: "greeley", category: "RENTAL" as const, taxability: "EXEMPT", provisional: false },
@@ -140,6 +140,7 @@ describe("Decisions & reviews registry", () => {
     expect(await decisionSubject("IN-35-BASIS")!.read({ ...ctx, filingBases: [] })).toBe("UNDECIDED");
     expect(await decisionSubject("IN-33-GREELEY")!.read({ ...ctx, greeleyJurisdictionId: null })).toBe("UNDECIDED");
     expect(await decisionSubject("IN-71")!.read(ctx)).toBe(7);
+    expect(await decisionSubject("TRUSTED-DEVICE-DAYS")!.read(ctx)).toBe(30);
     expect(await decisionSubject("IN-84")!.read(ctx)).toBe("AS_BUILT");
   });
 });

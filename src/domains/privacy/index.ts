@@ -414,6 +414,8 @@ async function claimPrivacyDeletion(
     // VERIFIED and claimed, so the owner can safely retry without duplicating
     // the database pseudonymization.
     await tx.session.deleteMany({ where: { userId: customer.userId } });
+    // ACC-6: device rows are per-person identifiers, so they go with the rest of the person's sign-in data.
+    await tx.knownDevice.deleteMany({ where: { userId: customer.userId } });
     if (!request.fulfilledByUserId) {
       const claimed = await tx.privacyRequest.updateMany({
         where: { id: requestId, status: "VERIFIED", fulfilledByUserId: null },
@@ -521,6 +523,8 @@ export async function fulfillPrivacyDeletion(
     const deletedEmail = `deleted-${customer.userId}@invalid`;
 
     await tx.session.deleteMany({ where: { userId: customer.userId } });
+    // ACC-6: device rows are per-person identifiers, so they go with the rest of the person's sign-in data.
+    await tx.knownDevice.deleteMany({ where: { userId: customer.userId } });
     await tx.account.updateMany({
       where: { userId: customer.userId },
       data: { accessToken: null, refreshToken: null, idToken: null, password: null },
