@@ -568,6 +568,55 @@ describe.skipIf(!enabled)("fair late fees (real Postgres, fake messages and Stri
       expect(m.pushed).toEqual([credit.id]);
     });
 
+    it("a bank payment that came back failed after the warning needs a fresh warning (no fee on the old one)", async () => {
+      const b = await bill({ dueDaysAgo: 15 });
+      await toldDaysAgo(b.invoiceId, 5);
+      await prisma.bankPaymentInFlight.create({
+        data: {
+          paymentIntentId: `pi_bankfail_${tag}`, invoiceId: b.invoiceId, agreementId: b.agreementId, source: "STRIPE_INVOICE", amountCents: 4000, method: "ach",
+          startedAt: new Date(Date.now() - 3 * 86_400_000), clearedAt: new Date(Date.now() - 86_400_000), clearedReason: "FAILED",
+        },
+      });
+      const loaded = await loadLateFeeFacts(prisma, b.invoiceId, now());
+      expect(loaded!.facts.failedPaymentAfterWarning).toBe(true);
+      await runLateFees();
+      expect(await charges(b.invoiceId)).toHaveLength(0);
+      expect(m.keys.some((k) => k === `late-notice-${b.invoiceId}-1`)).toBe(true); // a fresh warning goes out instead
+    });
+
+    it("a fee already at Stripe is taken back before the rental's ending turns it into a separate bill", async () => {
+      process.env.LATE_FEE_CUSTOMER_CHARGING_ENABLED = "true";
+      const r = await recorded({ dueDaysAgo: 12, subscription: true, nextBillingInDays: 20 });
+      const deleted: string[] = [];
+      const client = {
+        invoiceItems: {
+          create: async () => ({ id: `ii_r_${tag}_${n++}` }),
+          del: async (id: string) => { deleted.push(id); return { id, deleted: true }; },
+          retrieve: async (id: string) => ({ id, invoice: null }),
+        },
+      } as unknown as Stripe;
+      await billPendingLateFees(now(), client);
+      expect((await prisma.pendingCharge.findUniqueOrThrow({ where: { id: r.chargeId } })).appliedToInvoiceId).toBeNull();
+      await prisma.rentalAgreement.update({ where: { id: r.agreementId }, data: { status: "ENDED" } }); // the rental ends before the next charge
+      await billPendingLateFees(now(), client);
+      expect(deleted).toHaveLength(1);
+      const charge = await prisma.pendingCharge.findUniqueOrThrow({ where: { id: r.chargeId } });
+      expect(charge.appliedToInvoiceId).toBeTruthy();
+      expect((await prisma.providerOperation.findFirstOrThrow({ where: { subjectId: r.chargeId, kind: "LATE_FEE_INVOICE_ITEM" } })).status).toBe("SUPERSEDED");
+    });
+
+    it("while a fee's Stripe send has no answer yet, no separate bill is made", async () => {
+      process.env.LATE_FEE_CUSTOMER_CHARGING_ENABLED = "true";
+      const r = await recorded({ dueDaysAgo: 12, subscription: true, nextBillingInDays: 20 });
+      const client = { invoiceItems: { create: async () => ({ id: `ii_u_${tag}_${n++}` }), del: async () => ({}), retrieve: async () => ({ invoice: null }) } } as unknown as Stripe;
+      await billPendingLateFees(now(), client);
+      await prisma.providerOperation.updateMany({ where: { subjectId: r.chargeId, kind: "LATE_FEE_INVOICE_ITEM" }, data: { status: "UNKNOWN" } });
+      await prisma.rentalAgreement.update({ where: { id: r.agreementId }, data: { status: "ENDED" } });
+      const out = await billPendingLateFees(now(), client);
+      expect(out.billedLocal).toBe(0);
+      expect((await prisma.pendingCharge.findUniqueOrThrow({ where: { id: r.chargeId } })).appliedToInvoiceId).toBeNull();
+    });
+
     it("fees that must wait never crowd out newer ones: every batch is visited", async () => {
       process.env.LATE_FEE_CUSTOMER_CHARGING_ENABLED = "true";
       const waiting = await recorded({ dueDaysAgo: 12, subscription: true, nextBillingInDays: 5 });

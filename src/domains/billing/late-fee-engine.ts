@@ -84,8 +84,10 @@ export async function loadLateFeeFacts(db: Db, invoiceId: string, now: Date): Pr
       if (!warnedAt || at.getTime() > warnedAt.getTime()) warnedAt = at;
     }
   }
+  // A failed card payment, or a bank payment that came back failed, after the warning means the customer needs a fresh warning.
   const failedAfter = warnedAt
     ? (await db.payment.count({ where: { invoiceId, status: "failed", createdAt: { gt: warnedAt } } })) > 0
+      || (await db.bankPaymentInFlight.count({ where: { invoiceId, clearedReason: "FAILED", clearedAt: { gt: warnedAt } } })) > 0
     : false;
   const bankInFlight = await db.bankPaymentInFlight.count({ where: { invoiceId, clearedAt: null } });
   const phoneStarted = await db.auditLog.count({
@@ -444,6 +446,28 @@ async function ensureAutopayNotice(chargeId: string, nextKey: string, now: Date)
   return "ok";
 }
 
+/**
+ * A fee that was already sent to Stripe must be taken back before it is billed some other way, so the customer is never
+ * charged twice. "none": nothing at Stripe. "removed": the Stripe item was deleted. "on_stripe_bill": Stripe already put it
+ * on a bill, so it will be collected there (leave it). "wait": the send has no final answer yet; try again later.
+ */
+async function releaseStripeFeeItem(chargeId: string, getClient: () => Stripe): Promise<"none" | "removed" | "on_stripe_bill" | "wait"> {
+  const charge = await prisma.pendingCharge.findUnique({ where: { id: chargeId }, select: { providerOperationId: true } });
+  if (!charge?.providerOperationId) return "none";
+  const op = await prisma.providerOperation.findUnique({ where: { id: charge.providerOperationId }, select: { id: true, status: true, providerObjectId: true } });
+  if (!op || op.status === "FAILED" || op.status === "SUPERSEDED") return "none";
+  if (op.status !== "SUCCEEDED" || !op.providerObjectId) return "wait"; // pending, unknown or drift: the reconciler settles it first
+  const stripe = getClient();
+  const removed = await runProviderCall(() => stripe.invoiceItems.del(op.providerObjectId!));
+  if (!removed.ok) {
+    const looked = await runProviderCall(() => stripe.invoiceItems.retrieve(op.providerObjectId!));
+    if (looked.ok && looked.value.invoice) return "on_stripe_bill";
+    throw new Error("Stripe could not take the late fee back just now; it will be tried again.");
+  }
+  await prisma.providerOperation.updateMany({ where: { id: op.id, status: "SUCCEEDED" }, data: { status: "SUPERSEDED", completedAt: new Date() } });
+  return "removed";
+}
+
 /** Nightly: put recorded fees on the customer's next bill (Stripe item, or a separate local bill). Never on a payment in progress. */
 export async function billPendingLateFees(now = new Date(), stripeClient?: Stripe, scope: LateFeeScope = {}): Promise<Partial<LateFeeRunCounts>> {
   const counts = { billedLocal: 0, sentToStripe: 0, waitingForNextBill: 0, stripeBillingOff: 0, noticesNotSent: 0, errors: 0 };
@@ -477,6 +501,11 @@ export async function billPendingLateFees(now = new Date(), stripeClient?: Strip
           || Boolean(agreement.terminationEffectiveOn && agreement.nextBillingDate && agreement.terminationEffectiveOn.getTime() <= agreement.nextBillingDate.getTime());
         const onStripe = Boolean(agreement.stripeSubscriptionId && charge.customer.stripeCustomerId);
         if (!onStripe || ending) {
+          const released = await releaseStripeFeeItem(charge.id, () => stripeClient ?? getStripeClient());
+          if (released === "wait" || released === "on_stripe_bill") {
+            counts.waitingForNextBill += 1; // Stripe still owns this fee (or has not answered): never also bill it here
+            continue;
+          }
           if (await createSeparateFeeBill(charge.id, now)) counts.billedLocal += 1;
           continue;
         }
