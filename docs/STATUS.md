@@ -1,3 +1,7 @@
+## October 26 — LD-1: fix pushed, checks never started — needs one manual start
+
+PR #618 (leads pipeline engine) at `d936c3c5`. The first check run was red in 4 jobs; all four causes are fixed and pushed, and the branch is verified green locally on a private database (18 files, 95 tests). But GitHub never started a new check run on the fix — the upload method doesn't fire the event, and closing/reopening the PR didn't start one either. Needs Chris: one manual start (Actions → CI → Run workflow on `ai/marley/ld-1`; row on the checklist). Once the run is green, review threads get answered and it merges. No production data or settings changed.
+
 ## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
 
 CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
