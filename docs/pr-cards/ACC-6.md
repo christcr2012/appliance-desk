@@ -50,8 +50,13 @@ reliably start CI). While waiting, the device integration test was run for the f
 database (port 5435): it failed 8 of 10, a fifth failure the unit shard's bare "exit code 1" had hidden. Causes,
 all in the test (the feature works): mixed-case fixture emails vs the app's lowercase storage, a stale trust cookie
 replayed after rotation, the device cookie not presented to the gate, and the session token read from the signed
-cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. `ci` green at the exact
-head and every review comment read are still to do.
+cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. The hand-started run
+(#2617) then came back red in 2 minutes with no test run: the seed fails on a missing `booksLastBroughtUpToDateAt`
+column (the snapshot manifest had been diffed against current main, omitting the BA-1 migration and 38 other main
+files from the remote branch created at 0516a31 — re-pushed with the manifest diffed against 0516a31, 76 files);
+three type errors in the test from that fix round (typecheck not re-run after the edit — fixed, typecheck clean);
+and 5 secret-scan leaks (four BA-1 false positives restored by the corrected push, plus the allowlist entry itself
+flagged for its own SHA — allowlisted). `ci` green at the exact head and every review comment read are still to do.
 Update 2026-10-26 (night): `main` moved (BILL-1 #612, preview-storage #609), merged into this branch as 164c968
 (conflicts only in STATUS.md and DATABASE.md, both kept both entries); re-checked locally — typecheck clean, lint
 0 errors, 41 unit tests pass. Push still blocked: the branch-creation approval timed out unanswered (01:39 MDT).

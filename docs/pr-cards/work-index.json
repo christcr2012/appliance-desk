@@ -5164,7 +5164,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "IN PROGRESS — built on branch ai/marley/acc-6; PR #616 open, CI red at head 8b0199f9 (4 failures); fixes in commit 6405616f, main (BA-1 #610) merged, CI re-run pending",
+      "status": "IN PROGRESS — built on branch ai/marley/acc-6; PR #616 open, CI red at head 8b0199f9 (5 failures: 2 my-account, session-deactivation, money-bills, 1 unit timeout, device integration test); fixes pushed as head c96e480c, CI start pending (snapshot pushes do not reliably start CI)",
       "units": [
         "ACC-6"
       ]

@@ -31,8 +31,19 @@ had hidden. Causes, all in the test (the feature works): the test used mixed-cas
 emails lowercased, so the code email was never found; it replayed a stale trust cookie after the sign-in rotated it,
 and it did not present the device cookie the gate needs; and it read the session token from the (signed) session
 cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. Next: push the fix, then the
-checks need a manual start (Actions → CI → Run workflow) if they do not start on their own. Next card: VAULT-1,
-once CMP-1 (lane 5) is merged.
+checks need a manual start (Actions → CI → Run workflow) if they do not start on their own. Update, same day: the
+run was started by hand (browser, signed in as Chris) and came back red in 2 minutes — no test ran. Causes, all
+found by reading the job logs: (1) the seed and schema-health steps fail because the BusinessSettings column
+`booksLastBroughtUpToDateAt` does not exist — the snapshot push had been diffed against current main, so it omitted
+the BA-1 migration and 38 other main files the remote branch (created from 0516a31) did not have; the remote tree
+was a mix of new and old files. Fixed by pushing with the manifest diffed against the branch-creation commit
+0516a31 (76 files), per the snapshot-push rule. (2) Three type errors in the device test from the fix round
+(`string | null` passed where `string | undefined` was wanted) — the typecheck had not been re-run after that
+edit; fixed and typecheck is clean. (3) The secret scan found 5 leaks: four are the BA-1 historical false
+positives, missing from the remote tree's stale allowlist (restored by the corrected push), and the fifth is the
+allowlist entry itself being flagged for its own commit SHA — allowlisted with a fingerprint entry, verified clean
+by scanning the entry text. Next: push the corrected tree, then the checks need starting again (browser work is
+now handled by Chris's other agent). Next card: VAULT-1, once CMP-1 (lane 5) is merged.
 
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 

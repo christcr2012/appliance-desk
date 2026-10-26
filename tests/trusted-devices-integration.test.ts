@@ -50,8 +50,9 @@ function cookieBySuffix(jar: string, suffix: string): string | null {
 /** Only the trust and device cookies from a jar: what the next password sign-in presents. */
 // The cookies a real browser would present on the next password sign-in: the trust cookie from the latest
 // response (it rotates on every trusted sign-in, so a stale jar points at a deleted row) plus the device
-// cookie in force (the server only sets it when it is new, so it is not in every jar).
-function signInCookies(jar: string, deviceCookie?: string): string {
+// cookie in force (the server only sets it when it is new, so it is not in every jar). The device cookie
+// is null when the verify did not set or receive one.
+function signInCookies(jar: string, deviceCookie?: string | null): string {
   const parts = [cookieBySuffix(jar, "trust_device")];
   parts.push(deviceCookie ? `ad_device=${deviceCookie}` : cookieBySuffix(jar, "ad_device"));
   return parts.filter(Boolean).join("; ");

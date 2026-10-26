@@ -12,3 +12,14 @@ f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stri
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:197
 # Reviewed 2026-10-25: made-up request id in a feedback form test (MCP-10a branch commit); not a real key.
 5f62cc2c5ac2482cbf1444131f31acb97a7f4815:tests/feedback-context.test.ts:generic-api-key:125
+
+# Reviewed 2026-10-26: false generic-api-key matches in historical (now renamed/removed)
+# rule identifiers and an SQL migration comment. They are not credentials.
+12dcced1286354a19575483096b8c419f9b11923:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+d34a2efc1e6d7797451fc638cd6e0fc0120b7613:tests/books-closing-integration.test.ts:generic-api-key:28
+d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:162
+d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:189
+# Reviewed 2026-10-26 (ACC-6): the allowlist entry above for the leads migration is itself flagged — the
+# "secret" it matches is the entry's own commit SHA, not a credential. Verified by reading the finding
+# (generic-api-key, .gitleaksignore:16, commit 463b1043) and by scanning the entry text with gitleaks: clean.
+463b1043edefe4fdd233f001a7cf01963e8fddc2:.gitleaksignore:generic-api-key:16

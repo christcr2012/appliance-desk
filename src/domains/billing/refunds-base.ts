@@ -1,3 +1,4 @@
+import { postBookSourceAfterCommit } from "@/domains/books/immediate";
 import type { Prisma, RefundReason } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
@@ -517,6 +518,7 @@ export async function issueInvoiceRefund(
   });
 
   if (!prepared.claim) {
+    await postBookSourceAfterCommit("REFUND",prepared.refundId);
     return { refundId: prepared.refundId, providerOpId: null };
   }
 
@@ -526,6 +528,8 @@ export async function issueInvoiceRefund(
     invoiceId: input.invoiceId,
     amountCents: input.amountCents,
   });
+  // Pending Stripe refunds do not generate a ledger entry until provider evidence exists.
+  await postBookSourceAfterCommit("REFUND",prepared.refundId);
 
   return {
     refundId: prepared.refundId,
@@ -608,7 +612,10 @@ export async function refundHeldPayment(
     };
   });
 
-  if (!prepared.claim) return { refundId: prepared.refundId, providerOpId: "", outcome: "SUCCEEDED" };
+  if (!prepared.claim) {
+    await postBookSourceAfterCommit("REFUND",prepared.refundId);
+    return { refundId: prepared.refundId, providerOpId: "", outcome: "SUCCEEDED" };
+  }
 
   const outcome = await executeStripeRefund({
     claim: prepared.claim,
@@ -618,5 +625,6 @@ export async function refundHeldPayment(
       await tx.refund.update({ where: { id: prepared.refundId }, data: { stripeRefundId } });
     },
   });
+  await postBookSourceAfterCommit("REFUND",prepared.refundId);
   return { refundId: prepared.refundId, providerOpId: prepared.claim.providerOpId, outcome };
 }

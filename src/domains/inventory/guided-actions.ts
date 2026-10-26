@@ -1,3 +1,4 @@
+import { stageEquipmentBookRetirementInTx } from "@/domains/books/fixed-assets";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/business-date";
 import type { ApplianceStatus, Prisma } from "@prisma/client";
@@ -156,6 +157,9 @@ export async function retireAppliance(
     if (moved.count !== 1) {
       throw new Error("This appliance was just changed by someone else — refresh and try again.");
     }
+
+    // Financial book evidence cannot block an operational retirement.
+    await stageEquipmentBookRetirementInTx(tx,userId,applianceId,new Date());
 
     await tx.auditLog.create({
       data: {
