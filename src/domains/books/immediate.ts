@@ -35,3 +35,38 @@ export async function postPaidInvoiceAfterWebhook(stripeInvoiceId:string):Promis
   catch{console.error("[books] Could not record a webhook Books issue.");}
  }
 }
+
+/**
+ * A successful signed Checkout event is not sufficient payment evidence by itself.
+ * Read only locally committed invoice/payment IDs after the webhook has finished.
+ */
+export async function postCheckoutPaymentAfterWebhook(stripePaymentIntentId:string):Promise<void>{
+ try{
+  const payments=await prisma.payment.findMany({
+   where:{stripePaymentIntentId},
+   select:{receiptId:true,invoiceId:true},
+  });
+  const receipts=new Set(payments.map(p=>p.receiptId).filter((x):x is string=>Boolean(x)));
+  const invoices=new Set(payments.map(p=>p.invoiceId));
+  for(const receiptId of receipts)await postBookSourceAfterCommit("RECEIPT",receiptId);
+  for(const invoiceId of invoices)await postBookSourceAfterCommit("INVOICE",invoiceId);
+ }catch{
+  try{await recordSystemIssue({kind:"BOOKS_POSTING_FAILURE",sourceType:"RECEIPT",sourceId:stripePaymentIntentId});}
+  catch{console.error("[books] Could not record a Checkout books issue.");}
+ }
+}
+
+/** Stripe refunds are journaled only when matched to refund rows saved by the webhook. */
+export async function postRefundsAfterWebhook(stripeRefundIds:string[]):Promise<void>{
+ if(!stripeRefundIds.length)return;
+ try{
+  const refunds=await prisma.refund.findMany({
+   where:{stripeRefundId:{in:stripeRefundIds}},
+   select:{id:true},
+  });
+  for(const refund of refunds)await postBookSourceAfterCommit("REFUND",refund.id);
+ }catch{
+  try{await recordSystemIssue({kind:"BOOKS_POSTING_FAILURE",sourceType:"REFUND",sourceId:stripeRefundIds[0]!});}
+  catch{console.error("[books] Could not record a refund books issue.");}
+ }
+}

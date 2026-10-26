@@ -1,4 +1,5 @@
-import { postPaidInvoiceAfterWebhook } from "@/domains/books/immediate";
+import { postPaidInvoiceAfterWebhook, postCheckoutPaymentAfterWebhook,
+ postRefundsAfterWebhook } from "@/domains/books/immediate";
 import type Stripe from "stripe";
 import { processSigningCheckoutEvent } from "./signing-payment-settlement";
 import { isLocalInvoiceSession, recordLocalInvoiceCheckoutFailure, recordLocalInvoiceCheckoutPayment } from "./local-invoice-checkout";
@@ -1224,6 +1225,18 @@ export async function processStripeWebhookEvent(
       // This follows the committed webhook transaction and never changes its result.
       if(event.type==="invoice.paid")await postPaidInvoiceAfterWebhook(
        (event.data.object as Stripe.Invoice).id as string);
+      if(event.type==="checkout.session.completed"||event.type==="checkout.session.async_payment_succeeded"){
+       const session=event.data.object as Stripe.Checkout.Session;
+       if(session.payment_status==="paid"){
+        const paymentIntentId=idOf(session.payment_intent);
+        if(paymentIntentId)await postCheckoutPaymentAfterWebhook(paymentIntentId);
+       }
+      }
+      if(event.type==="charge.refunded"){
+       const charge=event.data.object as Stripe.Charge;
+       const ids=charge.refunds?.data.map(refund=>refund.id).filter((id):id is string=>typeof id==="string")??[];
+       if(ids.length)await postRefundsAfterWebhook(ids);
+      }
       return { referralIdsToSettle };
     } catch (error) {
       if (!(error instanceof MissingWebhookEvidenceError) || refill >= MAX_EVIDENCE_REFILLS) {
