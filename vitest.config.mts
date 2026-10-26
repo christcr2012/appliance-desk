@@ -51,6 +51,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/purchases-w14-w2-w15-integration.test.ts", // Purchase tax answers use the shared tax settings and filing calendar.
   "tests/rental-turning-points-w4-integration.test.ts", // Changes and restores the shared rental-ending reminder setting.
   "tests/w5-w6-integration.test.ts", // Changes and restores the shared lead response time and payment-link wording settings.
+  "tests/lead-assignment-integration.test.ts", // LD-1 changes and restores the shared lead-assignment settings (mode, person, rotation cursor).
   "tests/setup-checklist-integration.test.ts", // W-7 blanks and restores shared settings, prices, filing accounts and the business address.
   "tests/w9-filing-autopilot-integration.test.ts", // W-9 creates Colorado filing accounts and periods that the whole-database filing list and health check read.
   "tests/w19-flow-gaps-integration.test.ts", // W-19 changes and restores the shared unsigned-agreement reminder setting.

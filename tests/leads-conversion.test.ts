@@ -24,9 +24,14 @@ const signUpEmail = vi.fn();
 const userCreate = vi.fn();
 const hashPassword = vi.fn();
 const requestPasswordReset = vi.fn();
+// LD-1: convertLeadToCustomerInTx locks the lead row first
+// (lockLiveLeadInTx, via tx.$queryRaw). The fake tx must provide it, with
+// the same row the lead read returns.
+const queryRaw = vi.fn();
 
 function makeTx() {
   return {
+    $queryRaw: queryRaw,
     user: { findUnique: userFindUnique, create: userCreate },
     customer: { findUnique: customerFindUnique, create: customerCreate },
     serviceAddress: { create: serviceAddressCreate },
@@ -88,6 +93,7 @@ const LEAD = {
 describe("convertLeadToCustomer — customer activation, no relayed passwords", () => {
   beforeEach(() => {
     leadFindUniqueOrThrow.mockReset().mockResolvedValue({ ...LEAD });
+    queryRaw.mockReset().mockResolvedValue([{ id: LEAD.id, status: LEAD.status, contactName: LEAD.contactName, assignedToUserId: null, mergedIntoLeadId: null }]);
     userFindUnique.mockReset();
     userUpdate.mockReset().mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
     customerFindUnique.mockReset().mockResolvedValue(null);
