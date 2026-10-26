@@ -77,7 +77,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date(),tx?
  }
  const stripeCheck=process.env.BOOKS_STRIPE_SYNC_ENABLED==="true"
   // Stripe compares through the day *before* this argument, so pass next-month start.
-  ?await checkStripeClearing(next):null;
+  ?await checkStripeClearing(next,tx):null;
  const stripe:PaymentPart=!stripeCheck
   ?{state:"NOT_SET_UP",detail:"Stripe sync has not been switched on.",unmatchedCents:0}
   :stripeCheck.state==="MATCH"

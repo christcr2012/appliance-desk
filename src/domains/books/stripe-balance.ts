@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessDateKey, businessDayBounds } from "@/lib/business-date";
@@ -153,29 +154,30 @@ export type ClearingResult =
  * Never compare yesterday's journal to Stripe's live balance today.
  * Require a successful full import today and owner-attested opening evidence.
  */
-export async function checkStripeClearing(now = new Date()): Promise<ClearingResult> {
+export async function checkStripeClearing(now = new Date(), tx?:Prisma.TransactionClient): Promise<ClearingResult> {
+  const db=tx??prisma;
   const todayStart = businessDayBounds(now).start;
   const cutoff = new Date(todayStart.getTime() - 1);
   const unknown = (reason: string): ClearingResult => ({ state: "UNKNOWN", reason, cutoff });
   const [settings, cursor] = await Promise.all([
-    prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { booksStartDate: true } }),
-    prisma.integrationCursor.findUnique({ where: { key: CURSOR_KEY } }),
+    db.businessSettings.findUnique({ where: { id: "singleton" }, select: { booksStartDate: true } }),
+    db.integrationCursor.findUnique({ where: { key: CURSOR_KEY } }),
   ]);
   if (!settings?.booksStartDate) return unknown("Books have not been initialized by the owner.");
   if (settings.booksStartDate > cutoff) return unknown("No completed accounting day since the books start.");
   if (!cursor || cursor.updatedAt < todayStart)
     return unknown("Stripe import has not completed for this Colorado day.");
-  const opening = await prisma.journalEntry.findUnique({
+  const opening = await db.journalEntry.findUnique({
     where: { sourceType_sourceId_eventKind: {
       sourceType: "OPENING", sourceId: businessDateKey(settings.booksStartDate), eventKind: "OPENING_BALANCE",
     } }, include: { lines: { include: { ledgerAccount: { select: { systemRole: true } } } } },
   });
   if (!opening) return unknown("Opening Stripe balance is not owner-attested.");
-  const clearing = await prisma.ledgerAccount.findUnique({
+  const clearing = await db.ledgerAccount.findUnique({
     where: { systemRole: "STRIPE_CLEARING" }, select: { id: true },
   });
   if (!clearing) return unknown("Stripe clearing account is missing.");
-  const unknownStripeRows = await prisma.stripeBalanceTransaction.count({
+  const unknownStripeRows = await db.stripeBalanceTransaction.count({
     where: {
       createdAtStripe: { gte: settings.booksStartDate, lte: cutoff },
       NOT: [{ type: { in: ["charge", "payment", "refund", "payment_refund", "transfer", "payout",
@@ -183,21 +185,21 @@ export async function checkStripeClearing(now = new Date()): Promise<ClearingRes
     },
   });
   if (unknownStripeRows) return unknown("Unrecognized Stripe transactions require owner review.");
-  const openStripeIssues = await prisma.systemIssue.count({
+  const openStripeIssues = await db.systemIssue.count({
     where: { kind: "BOOKS_POSTING_FAILURE", status: "OPEN",
       fingerprint: { startsWith: "books-post:STRIPE_BALANCE_TXN:" } },
   });
   if (openStripeIssues) return unknown("A Stripe source could not be posted; review Books.");
   const [imported, journal, pending] = await Promise.all([
-    prisma.stripeBalanceTransaction.aggregate({
+    db.stripeBalanceTransaction.aggregate({
       where: { createdAtStripe: { gte: settings.booksStartDate, lte: cutoff } },
       _sum: { netCents: true },
     }),
-    prisma.journalLine.aggregate({
+    db.journalLine.aggregate({
       where: { ledgerAccountId: clearing.id, entry: { entryDate: { lte: cutoff } } },
       _sum: { debitCents: true, creditCents: true },
     }),
-    prisma.stripeBalanceTransaction.findMany({
+    db.stripeBalanceTransaction.findMany({
       where: { createdAtStripe: { gte: settings.booksStartDate, lte: cutoff } },
       select: { id: true, type: true, feeCents: true, reportingCategory: true },
       take: 10_000,
@@ -213,7 +215,7 @@ export async function checkStripeClearing(now = new Date()): Promise<ClearingRes
     return kinds;
   };
   if (pending.length === 10_000) return unknown("Stripe journal coverage exceeds the bounded daily review.");
-  const journalEvidence = await prisma.journalEntry.findMany({
+  const journalEvidence = await db.journalEntry.findMany({
     where: { sourceType: "STRIPE_BALANCE_TXN", sourceId: { in: pending.map(x => x.id) } },
     select: { sourceId: true, eventKind: true },
   });
@@ -225,7 +227,7 @@ export async function checkStripeClearing(now = new Date()): Promise<ClearingRes
   // recorded within this cutoff must adjust BOTH the journal balance and the
   // Stripe comparison baseline, or a valid correction appears as a false gap.
   // Later-dated corrections do not affect an older reconciliation day.
-  const corrections = await prisma.journalLine.aggregate({
+  const corrections = await db.journalLine.aggregate({
     where: { ledgerAccountId: clearing.id, entry: {
       sourceType: "OPENING", sourceId: businessDateKey(settings.booksStartDate),
       eventKind: { startsWith: "OPENING_CORRECTED_" },
@@ -244,10 +246,10 @@ export async function checkStripeClearing(now = new Date()): Promise<ClearingRes
   const differenceCents = actual - expected;
   const period = businessDateKey(cutoff);
   if (differenceCents !== 0) {
-    await recordSystemIssue({ kind: "BOOKS_STRIPE_CLEARING_DIFFERENCE", period, differenceCents });
+    if(!tx)await recordSystemIssue({ kind: "BOOKS_STRIPE_CLEARING_DIFFERENCE", period, differenceCents });
     return { state: "DIFFERENCE", cutoff, differenceCents };
   }
-  await resolveSystemIssue("books-stripe-clearing:" + period, "SOURCE_SUCCEEDED");
+  if(!tx)await resolveSystemIssue("books-stripe-clearing:" + period, "SOURCE_SUCCEEDED");
   return { state: "MATCH", cutoff, differenceCents: 0 };
 }
 

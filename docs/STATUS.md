@@ -1,3 +1,7 @@
+## October 26 — BA-3 month-close Stripe consistency improvement
+
+Stripe clearing is now also checked in the closing transaction's database snapshot. Monthly review checks do not create or resolve Stripe system issues; the separate nightly reconciliation continues to do that. This patch awaits exact-head CI; no live providers or production data touched.
+
 ## October 26 — BA-3 monthly review Codex feedback patched (CI not yet verified)
 
 PR #624 is open. Five exact-head Codex findings were addressed: real month form validation; reports starting on the actual Books opening date; no impossible depreciation requirement in the retirement month; live OWNER authorization and four-check revalidation in the same Serializable month-close transaction. Added owner action, opening-month, role change and depreciation regression tests. CI also reported six historical generic-key false positives on previously reviewed rule/test wording from two merged branches; their exact fingerprints were added with evidence notes. Current head must pass CI and review before merge. No provider switches, customer mail, or production data changed.
