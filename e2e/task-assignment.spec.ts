@@ -26,7 +26,8 @@ test("assign, preserve competing text, complete and reopen the same linked follo
   await expect(customerRow).toBeVisible();
   const customerLink = customerRow.getByRole("link").first();
   const customerUrl = (await customerLink.getAttribute("href"))!;
-  await page.goto(customerUrl);
+  // AR-0b: the customer's linked tasks are in the Details section.
+  await page.goto(`${customerUrl}?tab=details`);
   await page.getByLabel("New task", { exact: true }).fill(note);
   await page
     .getByLabel("Due date (optional)")
@@ -36,7 +37,8 @@ test("assign, preserve competing text, complete and reopen the same linked follo
     .getByLabel("Assigned to", { exact: true })
     .selectOption({ label: "Chris Robinson" });
   await page.getByRole("button", { name: "Add task", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Task added.");
+  // The record page also has the kit's (empty) message area, so pick the task form's own status line.
+  await expect(page.getByRole("status").filter({ hasText: "Task added." })).toHaveText("Task added.");
   await page.goto("/desk/tasks?view=mine&due=today");
   const row = page.getByRole("listitem").filter({ hasText: note });
   await expect(row).toBeVisible();

@@ -61,6 +61,7 @@ import {
   oldSetApplianceException,
   outOfServiceException,
   unreviewedMaintenanceRequestException,
+  customerContact,
   type ExceptionCategory,
   type ExceptionItem,
 } from "./rules";
@@ -149,6 +150,100 @@ export async function returnedEarlyRows(take: number, now: Date): Promise<Return
 
 const empty = <T,>(): Promise<Capped<T>> => Promise.resolve({ rows: [], total: 0 });
 
+// AR-0b: the past-due, overdue-visit and unreviewed-request To do reads, shared by Today (getExceptionOverview) and
+// the customer record's customer-scoped next steps (src/domains/customers/record.ts), so both build the same items.
+export function pastDueTodoWhere(now: Date) {
+  return {
+    OR: [
+      { status: { in: ["DELINQUENT", "PARTIALLY_PAID"] } },
+      { status: "OPEN", dueDate: { lt: now } },
+    ],
+  } satisfies Prisma.InvoiceWhereInput;
+}
+export const PAST_DUE_TODO_SELECT = {
+  id: true,
+  customerId: true,
+  status: true,
+  dueDate: true,
+  updatedAt: true,
+  amountDueCents: true,
+  amountPaidCents: true,
+  payments: {
+    where: { status: "failed" },
+    select: { createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+  },
+  customer: { select: { phone: true, user: { select: { name: true, email: true } } } },
+} satisfies Prisma.InvoiceSelect;
+export const PAST_DUE_TODO_ORDER = [
+  { dueDate: "asc" },
+  { updatedAt: "asc" },
+  { id: "asc" },
+] satisfies Prisma.InvoiceOrderByWithRelationInput[];
+export function pastDueTodoItem(inv: Prisma.InvoiceGetPayload<{ select: typeof PAST_DUE_TODO_SELECT }>): ExceptionItem {
+  return {
+    ...pastDueInvoiceException({
+      id: inv.id,
+      customerId: inv.customerId,
+      customerName: customerDisplayName(inv.customer),
+      status: inv.status,
+      dueDate: inv.dueDate,
+      // Auto-charge invoices have no due date; use the actual failed
+      // attempt rather than silently dropping them from To do.
+      attentionAt: inv.payments[0]?.createdAt ?? inv.updatedAt,
+      amountDueCents: inv.amountDueCents,
+      amountPaidCents: inv.amountPaidCents,
+    }),
+    contact: customerContact(inv.customer),
+  };
+}
+export function overdueJobTodoWhere(now: Date) {
+  return { status: "SCHEDULED", scheduledAt: { lt: now } } satisfies Prisma.JobWhereInput;
+}
+export const OVERDUE_JOB_TODO_SELECT = {
+  id: true,
+  type: true,
+  scheduledAt: true,
+  customer: { select: { user: { select: { name: true, email: true } } } },
+} satisfies Prisma.JobSelect;
+export function overdueJobTodoItems(rows: Prisma.JobGetPayload<{ select: typeof OVERDUE_JOB_TODO_SELECT }>[]): ExceptionItem[] {
+  return rows
+    .filter((j): j is typeof j & { scheduledAt: Date } => j.scheduledAt !== null)
+    .map((j) =>
+      overdueJobException({
+        id: j.id,
+        type: j.type,
+        scheduledAt: j.scheduledAt,
+        customerName: j.customer ? customerDisplayName(j.customer) : null,
+      }),
+    );
+}
+export function unreviewedRequestTodoWhere(now: Date) {
+  return {
+    status: "SUBMITTED",
+    openedAt: { lt: addDays(now, -UNREVIEWED_MAINTENANCE_REQUEST_DAYS) },
+  } satisfies Prisma.MaintenanceRequestWhereInput;
+}
+export const UNREVIEWED_REQUEST_TODO_SELECT = {
+  id: true,
+  openedAt: true,
+  problem: true,
+  customer: { select: { user: { select: { name: true, email: true } } } },
+} satisfies Prisma.MaintenanceRequestSelect;
+export function unreviewedRequestTodoItems(
+  rows: Prisma.MaintenanceRequestGetPayload<{ select: typeof UNREVIEWED_REQUEST_TODO_SELECT }>[],
+): ExceptionItem[] {
+  return rows.map((r) =>
+    unreviewedMaintenanceRequestException({
+      id: r.id,
+      openedAt: r.openedAt,
+      customerName: customerDisplayName(r.customer),
+      problem: r.problem,
+    }),
+  );
+}
+
 // A timestamp-without-time-zone column holds UTC. Passing the instant as text and casting it keeps the
 // comparison in UTC whatever the database session's time zone is.
 const utc = (date: Date) => date.toISOString();
@@ -219,17 +314,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     status: { in: ["DRAFT", "AWAITING_SIGNATURE"] },
     reservationExpiresAt: { lt: now },
   } satisfies Prisma.RentalAgreementWhereInput;
-  const pastDueWhere = {
-    OR: [
-      { status: { in: ["DELINQUENT", "PARTIALLY_PAID"] } },
-      { status: "OPEN", dueDate: { lt: now } },
-    ],
-  } satisfies Prisma.InvoiceWhereInput;
-  const overdueJobWhere = { status: "SCHEDULED", scheduledAt: { lt: now } } satisfies Prisma.JobWhereInput;
-  const unreviewedWhere = {
-    status: "SUBMITTED",
-    openedAt: { lt: addDays(now, -UNREVIEWED_MAINTENANCE_REQUEST_DAYS) },
-  } satisfies Prisma.MaintenanceRequestWhereInput;
+  const pastDueWhere = pastDueTodoWhere(now);
+  const overdueJobWhere = overdueJobTodoWhere(now);
+  const unreviewedWhere = unreviewedRequestTodoWhere(now);
   const oldSetWhere = {
     applianceType: { slug: OLD_SET_TYPE_SLUG, isActive: false },
     archivedAt: null,
@@ -457,23 +544,8 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ? capped(
           (take) => prisma.invoice.findMany({
             where: pastDueWhere,
-            select: {
-              id: true,
-              customerId: true,
-              status: true,
-              dueDate: true,
-              updatedAt: true,
-              amountDueCents: true,
-              amountPaidCents: true,
-              payments: {
-                where: { status: "failed" },
-                select: { createdAt: true },
-                orderBy: { createdAt: "desc" },
-                take: 1,
-              },
-              ...customerSelect,
-            },
-            orderBy: [{ dueDate: "asc" }, { updatedAt: "asc" }, { id: "asc" }],
+            select: PAST_DUE_TODO_SELECT,
+            orderBy: PAST_DUE_TODO_ORDER,
             take,
           }),
           () => prisma.invoice.count({ where: pastDueWhere }),
@@ -482,7 +554,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     capped(
       (take) => prisma.job.findMany({
         where: overdueJobWhere,
-        select: { id: true, type: true, scheduledAt: true, ...customerSelect },
+        select: OVERDUE_JOB_TODO_SELECT,
         orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
         take,
       }),
@@ -491,7 +563,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     capped(
       (take) => prisma.maintenanceRequest.findMany({
         where: unreviewedWhere,
-        select: { id: true, openedAt: true, problem: true, ...customerSelect },
+        select: UNREVIEWED_REQUEST_TODO_SELECT,
         orderBy: [{ openedAt: "asc" }, { id: "asc" }],
         take,
       }),
@@ -933,38 +1005,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           customerName: customerDisplayName(a.customer),
         }),
       ),
-    ...pastDueInvoices.rows.map((inv) =>
-      pastDueInvoiceException({
-        id: inv.id,
-        customerId: inv.customerId,
-        customerName: customerDisplayName(inv.customer),
-        status: inv.status,
-        dueDate: inv.dueDate,
-        // Auto-charge invoices have no due date; use the actual failed
-        // attempt rather than silently dropping them from To do.
-        attentionAt: inv.payments[0]?.createdAt ?? inv.updatedAt,
-        amountDueCents: inv.amountDueCents,
-        amountPaidCents: inv.amountPaidCents,
-      }),
-    ),
-    ...overdueJobs.rows
-      .filter((j): j is typeof j & { scheduledAt: Date } => j.scheduledAt !== null)
-      .map((j) =>
-        overdueJobException({
-          id: j.id,
-          type: j.type,
-          scheduledAt: j.scheduledAt,
-          customerName: j.customer ? customerDisplayName(j.customer) : null,
-        }),
-      ),
-    ...unreviewedRequests.rows.map((r) =>
-      unreviewedMaintenanceRequestException({
-        id: r.id,
-        openedAt: r.openedAt,
-        customerName: customerDisplayName(r.customer),
-        problem: r.problem,
-      }),
-    ),
+    ...pastDueInvoices.rows.map(pastDueTodoItem),
+    ...overdueJobTodoItems(overdueJobs.rows),
+    ...unreviewedRequestTodoItems(unreviewedRequests.rows),
     ...outOfServicePeriods.rows.map((p) =>
       outOfServiceException({
         applianceId: p.applianceId,
@@ -1175,6 +1218,19 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     .filter(([, c]) => c.total > c.rows.length)
     .map(([category, c]) => ({ category, total: c.total, shown: c.rows.length }));
 
+  const { items: activeItems, snoozed } = await markTodoItems(visibleItems, now, canViewFinance);
+  return { items: activeItems, snoozed, truncated };
+}
+
+/**
+ * AR-0b: the end of getExceptionOverview, moved unchanged so the customer record's scoped next steps reuse it: sort, give
+ * each item its To do key, action and deadline label, then split off the snoozed ones (with their snooze history).
+ */
+export async function markTodoItems(
+  visibleItems: ExceptionItem[],
+  now: Date,
+  canViewFinance: boolean,
+): Promise<{ items: ExceptionItem[]; snoozed: ExceptionItem[] }> {
   const ordered = sortExceptions(visibleItems).map((item) => ({
     ...item, todoKey: todoKey(item), primaryAction: todoAction(item), dueLabel: todoDeadlineLabel(item.dueOn, now, item.dueDateOnly) ?? undefined,
   }));
@@ -1211,9 +1267,9 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     } } : withHistory;
   });
   return { items: marked.filter((item) => !item.snooze),
-    snoozed: marked.filter((item) => !!item.snooze), truncated };
-
+    snoozed: marked.filter((item) => !!item.snooze) };
 }
+
 
 export async function getExceptions(): Promise<ExceptionItem[]> {
   return (await getExceptionOverview()).items;

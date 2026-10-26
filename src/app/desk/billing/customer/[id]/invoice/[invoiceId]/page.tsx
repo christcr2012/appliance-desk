@@ -93,7 +93,7 @@ export default async function DeskInvoicePage({
       </div>
 
       {canAskForPayment && money && (
-        <div className="mt-4 print:hidden">
+        <div className="mt-4 scroll-mt-20 print:hidden" id="take-payment">
           <PaymentLinkPanel invoiceId={invoiceId} suggestedReason={suggestPaymentLinkReason(money)} />
         </div>
       )}

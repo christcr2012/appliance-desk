@@ -43,6 +43,9 @@ export type DepositLiabilityRow = {
   daysSinceEnd: number | null;
   /** True once a deposit has been held more than 90 days after the rental ended. */
   overdue: boolean;
+  /** AR-0b: how to reach the customer (Today's Call / Email button). */
+  customerPhone?: string | null;
+  customerEmail?: string;
 };
 
 export type DepositLiability = {
@@ -65,9 +68,10 @@ export function summarizeDepositLiability(rows: DepositLiabilityRow[]): DepositL
   return { totalCents, count: rows.length, byBucket, rows };
 }
 
-export async function getDepositLiability(now = new Date(), limit = 500): Promise<DepositLiability> {
+export async function getDepositLiability(now = new Date(), limit = 500, customerId?: string): Promise<DepositLiability> {
   const deposits = await prisma.deposit.findMany({
-    where: { refundable: true, refundedAt: null, amountCents: { gt: 0 } },
+    // AR-0b: a customer-scoped read filters before the limit, so one customer's deposits are never cut off.
+    where: { refundable: true, refundedAt: null, amountCents: { gt: 0 }, ...(customerId ? { agreement: { customerId } } : {}) },
     orderBy: { createdAt: "asc" },
     take: limit,
     select: {
@@ -80,7 +84,7 @@ export async function getDepositLiability(now = new Date(), limit = 500): Promis
           endDate: true,
           updatedAt: true,
           customerId: true,
-          customer: { select: { user: { select: { name: true, email: true } } } },
+          customer: { select: { phone: true, user: { select: { name: true, email: true } } } },
         },
       },
     },
@@ -99,6 +103,8 @@ export async function getDepositLiability(now = new Date(), limit = 500): Promis
         bucket,
         daysSinceEnd,
         overdue: bucket === "OVER_90",
+        customerPhone: d.agreement.customer.phone ?? null,
+        customerEmail: d.agreement.customer.user.email,
       };
     });
   return summarizeDepositLiability(rows);
