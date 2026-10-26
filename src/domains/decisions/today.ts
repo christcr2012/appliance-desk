@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { reportBackgroundError } from "@/lib/report-error";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { addBusinessDays, businessDateFromKey, businessDateKey, businessDaysBetween } from "@/lib/business-date";
 import { EMPTY_PREFERENCES, getWorkspace } from "@/domains/workspace";
 import { DECISION_SUBJECTS } from "./registry";
@@ -28,15 +29,24 @@ export function nextDecisionsCardDay(shownOn: string): string {
   return day ? businessDateKey(addBusinessDays(day, DECISIONS_CARD_EVERY_DAYS)) : shownOn;
 }
 
-/** Remember today as the day the card was shown. Not a settings change: the workspace version is not bumped. */
-async function noteShown(userId: string, todayKey: string) {
-  const empty = JSON.stringify({ ...EMPTY_PREFERENCES, decisionsCardShownOn: todayKey });
-  await prisma.$executeRaw`
-    INSERT INTO "OwnerWorkspacePreference" ("userId", "version", "preferences", "updatedAt")
-    VALUES (${userId}, 1, ${empty}::jsonb, now())
-    ON CONFLICT ("userId") DO UPDATE
-      SET "preferences" = jsonb_set(COALESCE("OwnerWorkspacePreference"."preferences", '{}'::jsonb),
-        '{decisionsCardShownOn}', to_jsonb(${todayKey}::text), true)`;
+/**
+ * Remember today as the day the card was shown. Not a settings change: the workspace version is not bumped. Same
+ * pattern as the workspace saves (src/domains/workspace/index.ts): one transaction, the owner re-checked (a
+ * deactivated owner writes nothing), the row created if missing and locked before it is changed.
+ */
+export async function noteDecisionsCardShown(userId: string, todayKey: string): Promise<void> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(todayKey)) throw new Error("Invalid date.");
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, userId, ["OWNER"]);
+    const empty = JSON.stringify(EMPTY_PREFERENCES);
+    await tx.$executeRaw`INSERT INTO "OwnerWorkspacePreference" ("userId","version","preferences","updatedAt") VALUES (${userId}, 1, ${empty}::jsonb, now()) ON CONFLICT ("userId") DO NOTHING`;
+    await tx.$queryRaw`SELECT "userId" FROM "OwnerWorkspacePreference" WHERE "userId" = ${userId} FOR UPDATE`;
+    await tx.$executeRaw`
+      UPDATE "OwnerWorkspacePreference"
+      SET "preferences" = jsonb_set(COALESCE("preferences", '{}'::jsonb), '{decisionsCardShownOn}', to_jsonb(${todayKey}::text), true),
+          "updatedAt" = now()
+      WHERE "userId" = ${userId}`;
+  });
 }
 
 /**
@@ -63,7 +73,7 @@ export async function decisionsTodayCount(owner: { id: string; role: string }, n
     if (!decisionsCardDue(workspace.prefs.decisionsCardShownOn, todayKey)) return null;
     const waiting = await waitingCount();
     if (waiting === 0) return null;
-    if (workspace.prefs.decisionsCardShownOn !== todayKey) await noteShown(owner.id, todayKey);
+    if (workspace.prefs.decisionsCardShownOn !== todayKey) await noteDecisionsCardShown(owner.id, todayKey);
     return waiting;
   } catch (error) {
     await reportBackgroundError(error, "decisions-today-card");
