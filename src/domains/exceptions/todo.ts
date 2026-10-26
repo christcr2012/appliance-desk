@@ -11,6 +11,7 @@ const ACTION_LABEL: Record<string, string> = {
   BOOKS_NOT_UP_TO_DATE: "Open books",
   BOOKS_NEEDS_FIX: "Fix books",
   BOOKS_SETUP: "Start books",
+  BOOKS_MONTH_REVIEW: "Review books",
   RENTAL_ENDING_SOON: "Decide",
   PICKUP_UNSCHEDULED: "Schedule pickup",
   RETIRED_APPLIANCE_PLAN: "Decide",
