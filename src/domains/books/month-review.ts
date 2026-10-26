@@ -84,7 +84,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
    :stripeCheck.state==="DIFFERENCE"
     ?{state:"NEEDS_REVIEW",detail:"Stripe is off by the recorded amount.",
       unmatchedCents:stripeCheck.differenceCents}
-    :{state:"NEEDS_REVIEW",detail:stripeCheck.reason,unmatchedCents:0};
+    :{state:"NEEDS_REVIEW",detail:"reason" in stripeCheck ? stripeCheck.reason : "Stripe needs review.",unmatchedCents:0};
  const paymentBlocked=bankStates.filter(x=>x.state==="NEEDS_REVIEW").length+
   (stripe.state==="NEEDS_REVIEW"?1:0);
  const payments:ReviewCheck={label:"Payments add up",ok:paymentBlocked===0&&accounts.length<=500,

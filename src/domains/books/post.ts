@@ -394,7 +394,7 @@ export function selectFairBooksCandidates<T extends {type:string;id:string;at:Da
 
 /** `inspectMonth` is a strictly read-only snapshot for the owner's review page. */
 export async function postPending(opts?:{limit?:number;inspectMonth?:string}):Promise<BooksResult> {
-  if(opts?.inspectMonth&&!/^\\d{4}-(0[1-9]|1[0-2])$/.test(opts.inspectMonth))
+  if(opts?.inspectMonth&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(opts.inspectMonth))
    throw new Error("Choose a real accounting month.");
   const settings=await prisma.businessSettings.findFirst({select:{booksStartDate:true}});
   if(!settings?.booksStartDate)return {posted:0,problems:[]};
