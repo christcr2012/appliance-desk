@@ -16,6 +16,7 @@ export type ExpenseFields = {
   applianceId?: string; jobId?: string; purchaseOrderId?: string;
   capitalizeToAppliance?: boolean;
   budgetEnvelopeId?: string;
+  noReceipt?: boolean; noReceiptReason?: string;
 };
 export const cents = (n: number, field: string) => {
   if (!Number.isSafeInteger(n) || n < 0 || n > 1_000_000_000)
@@ -40,6 +41,8 @@ function checked(input: ExpenseFields) {
   if (amountCents === 0) throw new ExpenseInputError("Expense must be greater than zero.");
   const vendorTaxCents = cents(input.vendorTaxCents, "Seller's tax");
   if (vendorTaxCents > amountCents) throw new ExpenseInputError("Seller's tax exceeds the total paid.");
+  if(input.noReceipt&&!input.noReceiptReason?.trim())
+    throw new ExpenseInputError("Explain why there is no receipt (up to 200 characters).");
   if (input.capitalizeToAppliance && !input.applianceId)
     throw new ExpenseInputError("Choose the purchased rental appliance to capitalize.");
   return {
@@ -47,6 +50,7 @@ function checked(input: ExpenseFields) {
     vendorName: name(input.vendorName, "vendor"), categoryId: name(input.categoryId, "category"),
     paidFromAccountId: name(input.paidFromAccountId, "payment account"),
     memo: optional(input.memo),
+    ...(input.noReceipt?{noReceiptReason:optional(input.noReceiptReason,200)}:{}),
     applianceId: optional(input.applianceId, 100),
     jobId: optional(input.jobId, 100),
     purchaseOrderId: optional(input.purchaseOrderId, 100),
@@ -278,6 +282,29 @@ export type RecurringFields = {
   name: string; vendorName: string; amountCents: number; categoryId: string;
   paidFromAccountId: string; dayOfMonth: number; active: boolean;
 };
+/** A source explanation is evidence only; never changes an already-posted journal. */
+export async function recordExpenseNoReceiptReason(userId:string,expenseId:string,
+ expectedVersion:number,reason:string){
+ const explanation=name(reason,"no-receipt explanation",200);
+ if(!Number.isSafeInteger(expectedVersion)||expectedVersion<1)
+  throw new ExpenseInputError("Refresh this expense before saving the explanation.");
+ return prisma.$transaction(async tx=>{
+  const actor=await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","STAFF"]);
+  await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id"=${expenseId} FOR UPDATE`;
+  const row=await tx.expense.findUnique({where:{id:expenseId}});
+  if(!row||row.version!==expectedVersion||row.status==="VOID")
+   throw new ExpenseInputError("Expense changed or was voided; refresh it.");
+  if(actor.role==="STAFF"&&row.submittedByUserId!==userId)
+   throw new ExpenseInputError("Staff may document only their own receipts.");
+  if(row.receiptPhotoId||row.noReceiptReason)
+   throw new ExpenseInputError("Receipt evidence already recorded; corrections require review.");
+  await tx.expense.update({where:{id:expenseId},data:{
+   noReceiptReason:explanation,version:{increment:1},
+  }});
+  await audit(tx,userId,expenseId,"books.expense.no-receipt",
+   {reason:explanation,oldVersion:expectedVersion});
+ },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+}
 export async function saveRecurringExpense(userId: string, input: RecurringFields, existingId?: string) {
   const fields = {
     name: name(input.name, "template name"), vendorName: name(input.vendorName, "vendor"),
