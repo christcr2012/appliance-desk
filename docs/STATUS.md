@@ -1,4 +1,4 @@
-## October 27 — FEE-1: fair late fees (PR pending)
+## October 27 — FEE-1: fair late fees (merged PR #614)
 
 Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
 at most $15, once per bill, only after the customer was warned (2 days' notice, Settings), never while a payment is in progress
@@ -6,9 +6,9 @@ or a bank payment is being confirmed, and autopay customers get 10 days' notice.
 (its own one-line bill if the rental ended); the overdue bill never changes. Owner screens: warn / "told by phone" / skip /
 waive on the bill, servicemember checkbox, a Settings card for the warning days and for the Colorado lease filing, To do items.
 Migration `20261027040000_fair_late_fees` (additive; lifts old settings below 10 days / over $15). Proof: unit tests plus about
-30 database tests with a pretend Stripe on a throwaway Postgres; CI pending.
+45 database tests with a pretend Stripe on a throwaway Postgres; CI green at the merged head; twelve automatic-review findings fixed (waiving removes the Stripe item or credits Stripe, autopay notice first, no fee on a fee bill, promised date never earlier, failed bank payment re-warns, reconciler for unknown Stripe requests).
 Not done: no browser test; no real Stripe test-mode fee observed; fees do not attach to an arbitrary next local bill; "payment
-in progress" is approximated (open bank flag or phone payment in the last 24 h). Next: DEC-2 (waits for DEC-1b, PR #603).
+in progress" is approximated (open bank flag or phone payment in the last 24 h). Next: DEC-2 — waiting: it needs DEC-1 fully merged and DEC-1b (PR #603) is still open with merge conflicts.
 
 ## October 26 — BILL-1: bank payments being confirmed (merged PR #612)
 

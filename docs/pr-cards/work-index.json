@@ -5728,7 +5728,7 @@
       "dependencies": [
         "BILL-1"
       ],
-      "status": "IN REVIEW — PR pending (branch ai/claude/fee-1-fair-late-fees)",
+      "status": "DONE — merged PR #614 (2026-10-26)",
       "migration": "20261027040000_fair_late_fees (additive: PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
       "budget": 450,
       "units": [
