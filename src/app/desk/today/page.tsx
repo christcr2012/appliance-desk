@@ -166,7 +166,9 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const now = new Date();
   // CMP-1: keep the compliance filing rows fresh on the attention surface
   // itself, so a filing reminder never depends on opening Compliance first.
-  if (canManage) await syncComplianceFilings(now);
+  // A sync failure must never take Today down — the reminders simply wait
+  // for the next load, like the setup checklist below.
+  if (canManage) await syncComplianceFilings(now).catch(() => undefined);
   const group = parseGroup(query.group);
 
   // The first-time setup checklist is for the owner only. getSetupChecklist refuses anyone else itself;

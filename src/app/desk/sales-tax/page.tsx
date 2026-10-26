@@ -13,8 +13,9 @@ const label: Record<TaxAttentionKind, string> = {
 };
 export default async function SalesTaxRootPage() {
   const actor = await requireRole("OWNER", "ADMIN");
-  // CMP-1: this page shows Today attention too — keep the filing rows fresh.
-  await syncComplianceFilings();
+  // CMP-1: this page shows Today attention too — keep the filing rows fresh,
+  // and never let a sync failure take the Taxes home down.
+  await syncComplianceFilings().catch(() => undefined);
   const [projection, inbox] = await Promise.all([
     getTaxWorkspaceOverview(actor.user.id), getExceptionOverview(),
   ]);
