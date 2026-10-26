@@ -12,6 +12,8 @@ import {
   type InboxGroup,
 } from "@/domains/exceptions/inbox";
 import { manuallyApplyObservedRate, undoAutoAppliedRateVersion } from "@/domains/tax/official-rate-auto-apply";
+import { approveRdfSwitch } from "@/domains/tax/rdf-switches";
+import { confirmFilingFrequencyAdvice } from "@/domains/tax/filing-frequency-advice";
 import { acknowledgeOfficialSourceChange } from "@/domains/tax/official-source-watch";
 import { snoozeTodo, todoDeadlineLabel, unsnoozeTodo } from "@/domains/exceptions/todo";
 import { getDueTaskSummary } from "@/domains/tasks/workspace";
@@ -74,6 +76,28 @@ async function applyOfficialRateAction(formData: FormData) {
     observationId,
     actorUserId: session.user.id,
   });
+  revalidatePath("/desk/today");
+}
+
+async function approveRdfSwitchAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER");
+  const switchId = formData.get("switchId");
+  if (typeof switchId !== "string" || !switchId || switchId.length > 200) {
+    return;
+  }
+  await approveRdfSwitch(session.user.id, switchId);
+  revalidatePath("/desk/today");
+}
+
+async function confirmFilingFrequencyAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER");
+  const adviceId = formData.get("adviceId");
+  if (typeof adviceId !== "string" || !adviceId || adviceId.length > 200) {
+    return;
+  }
+  await confirmFilingFrequencyAdvice(session.user.id, adviceId);
   revalidatePath("/desk/today");
 }
 
@@ -204,7 +228,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
 
   const handlers =
     role === "OWNER"
-      ? { acknowledgeTaxSource: acknowledgeTaxSourceAction, applyOfficialRate: applyOfficialRateAction, undoOfficialRate: undoOfficialRateAction, recordBankPayment: recordBankPaymentAction }
+      ? { acknowledgeTaxSource: acknowledgeTaxSourceAction, applyOfficialRate: applyOfficialRateAction, undoOfficialRate: undoOfficialRateAction, recordBankPayment: recordBankPaymentAction, approveRdfSwitch: approveRdfSwitchAction, confirmFilingFrequency: confirmFilingFrequencyAction }
       : role === "ADMIN"
         ? { recordBankPayment: recordBankPaymentAction }
         : undefined;

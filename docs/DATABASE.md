@@ -1,3 +1,10 @@
+## November 2 — Tax and fee autopilot switches (TFA-2, additive)
+
+Migrations `20261102000000_tfa2_switches` and `20261103000000_tfa2_filing_advice`.
+- `RetailDeliveryFeeSwitch` — one prepared delivery-fee switch: `kind` (START/STOP, new enum `RdfSwitchKind`), `startsOn`, `basisRetailCents` (the prior-year Colorado retail total behind a Jan 1 switch; null for the new-business start), `approvedAt` / `approvedByUserId`, `createdAt`. Unique on (`kind`, `startsOn`); index on `startsOn`. The app prepares and dates each switch; it changes a customer bill only after the owner approves it on Today, and until then the fee is owed but not billed. In `BACKUP_MODEL_POLICY`.
+- `Invoice.replacementOfInvoiceId` — nullable, no foreign key: the original bill a replacement (exchange) sale replaces, so the exchange charges no second delivery fee.
+- `FilingFrequencyAdvice` — one filing-frequency advice: `filingAccountId` (FK to `TaxFilingAccount`, restrict on delete), `currentFrequency` / `advisedFrequency` (`TaxFilingFrequency`), `averageMonthlyCents` (trailing-12-month average of state and state-collected tax), `computedOn`, `confirmedAt` / `confirmedByUserId`. Index on (`filingAccountId`, `computedOn`). The app never changes frequency itself; the owner's confirm sets the account frequency for future periods and marks the advice. In `BACKUP_MODEL_POLICY`.
+
 ## November 1 — Tax and fee rule book (TFA-1, additive)
 
 Migration `20261101000000_legal_rules`.
