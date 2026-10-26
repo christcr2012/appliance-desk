@@ -23,7 +23,16 @@ the customer session-deactivation test (ACC-6 records customer sign-ins in the a
 its audit rows before deleting the user), the Bills sideways-scroll check at 360px in dark mode (a resize reporting
 the phone width before the desktop sidebar padding was recalculated — BA-1 fixed the same thing in the shared scan
 helper; this branch now uses that fix), and one unit test that timed out importing the customers domain inside the
-test (import hoisted to the top of the file). Fixes in commit 6405616f; main (BA-1 #610) merged in. Next: VAULT-1, once CMP-1 (lane 5) is merged.
+test (import hoisted to the top of the file). Fixes in commit 6405616f; main (BA-1 #610) merged in. Pushed as head
+7df70d47 — but no check run has started on it in 45 minutes (snapshot pushes do not reliably start CI; the leads and
+tax lanes are hitting the same thing). While waiting, the lane's own test database (port 5435) was used to run the
+device integration test for the first time: it failed 8 of 10, a fifth failure the unit shard's bare "exit code 1"
+had hidden. Causes, all in the test (the feature works): the test used mixed-case email addresses but the app stores
+emails lowercased, so the code email was never found; it replayed a stale trust cookie after the sign-in rotated it,
+and it did not present the device cookie the gate needs; and it read the session token from the (signed) session
+cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. Next: push the fix, then the
+checks need a manual start (Actions → CI → Run workflow) if they do not start on their own. Next card: VAULT-1,
+once CMP-1 (lane 5) is merged.
 
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 

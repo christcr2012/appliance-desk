@@ -48,14 +48,22 @@ function cookieBySuffix(jar: string, suffix: string): string | null {
 }
 
 /** Only the trust and device cookies from a jar: what the next password sign-in presents. */
-function signInCookies(jar: string): string {
-  return [cookieBySuffix(jar, "trust_device"), cookieBySuffix(jar, "ad_device")].filter(Boolean).join("; ");
+// The cookies a real browser would present on the next password sign-in: the trust cookie from the latest
+// response (it rotates on every trusted sign-in, so a stale jar points at a deleted row) plus the device
+// cookie in force (the server only sets it when it is new, so it is not in every jar).
+function signInCookies(jar: string, deviceCookie?: string): string {
+  const parts = [cookieBySuffix(jar, "trust_device")];
+  parts.push(deviceCookie ? `ad_device=${deviceCookie}` : cookieBySuffix(jar, "ad_device"));
+  return parts.filter(Boolean).join("; ");
 }
 
 describe.skipIf(!enabled)("Remember this device on real Postgres", () => {
   const tag = randomUUID().slice(0, 8);
   const ids = { owner: "", staffA: "", staffB: "", staffC: "", staffNotice: "", customer2fa: "", customerPlain: "" };
-  const email = (who: string) => `${tag}-${who}@example.test`;
+  const email = (who: string) => `${tag}-${who}@example.test`.toLowerCase();
+  // The app stores every email lowercased (normalizeAccountEmail), so the fixture addresses must be
+  // lowercase too: a mixed-case address (staffA) is stored as staffa, and the test's exact-match
+  // lookups for the code email and the signed-in address would otherwise miss every time.
   let before: {
     trustedDeviceDays: number | null; customerEmailEnabled: boolean | null;
     secondStepMethodsByLevel: unknown; securitySmsEnabled: boolean | null;
@@ -198,19 +206,21 @@ describe.skipIf(!enabled)("Remember this device on real Postgres", () => {
     expect((await listOwnKnownDevices(ids.staffA))[0]?.trustedUntil).not.toBeNull();
 
     // The next sign-in on the same device skips the code.
-    const again = await signInPassword("staffA", signInCookies(jar));
+    const again = await signInPassword("staffA", signInCookies(jar, deviceCookie));
     expect(again.response.twoFactorRedirect, "the code is skipped").toBeUndefined();
     expect(again.response.user?.email).toBe(email("staffA"));
 
     // Once the remembered-until date has passed, the code is asked for again (and the trust row is gone).
     await prisma.knownDevice.update({ where: { id: device!.id }, data: { trustedUntil: new Date(Date.now() - 1000) } });
-    const expired = await signInPassword("staffA", signInCookies(jar));
+    // The trust cookie rotated at the skipped sign-in, so the stale verify jar points at a deleted row; the
+    // gate must see the current trust cookie (from the skipped sign-in) with the same device cookie.
+    const expired = await signInPassword("staffA", signInCookies(cookiesFrom(again.headers), deviceCookie));
     expect(expired.response.twoFactorRedirect, "the code is asked for again").toBe(true);
     expect((await trustDeviceRows(ids.staffA)).trust).toBeNull();
   });
 
   it("rotation never extends a remembered device past its remembered-until date", async () => {
-    const { jar } = await verifyWithOtp("staffA", "acc6-device-rot", true);
+    const { jar, deviceCookie } = await verifyWithOtp("staffA", "acc6-device-rot", true);
     await updateTrustedDeviceSettings(ids.owner, { days: 7 });
     const shortened = await trustDeviceRows(ids.staffA);
     expect(shortened.device?.trustedUntil?.getTime()).toBeGreaterThan(Date.now() + 6 * DAY_MS);
@@ -218,7 +228,8 @@ describe.skipIf(!enabled)("Remember this device on real Postgres", () => {
     expect(shortened.trust?.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + 7 * DAY_MS);
 
     // Signing in again rotates the trust row; it must stay at the shortened date, not 7 more days.
-    const again = await signInPassword("staffA", signInCookies(jar));
+    // The verify response sets no device cookie (one was already presented), so it is passed along.
+    const again = await signInPassword("staffA", signInCookies(jar, deviceCookie));
     expect(again.response.twoFactorRedirect, "the code is still skipped").toBeUndefined();
     const rotated = await trustDeviceRows(ids.staffA);
     expect(rotated.trust?.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + 7 * DAY_MS);
@@ -305,9 +316,10 @@ describe.skipIf(!enabled)("Remember this device on real Postgres", () => {
 
     // Signing out my other devices from My account.
     ({ jar } = await verifyWithOtp("staffA", "acc6-device-pw", true));
-    const token = cookieValue(jar, "better-auth.session_token");
-    expect(token, "the verify set a session").toBeTruthy();
-    await revokeOtherSessions(ids.staffA, token!);
+    // The session cookie is signed, so its value is not the token the session row stores; read the row.
+    const session = await prisma.session.findFirst({ where: { userId: ids.staffA }, orderBy: { createdAt: "desc" }, select: { token: true } });
+    expect(session?.token, "the verify set a session").toBeTruthy();
+    await revokeOtherSessions(ids.staffA, session!.token);
     await expectForgotten(ids.staffA);
     expect((await signInPassword("staffA", signInCookies(jar))).response.twoFactorRedirect).toBe(true);
   });
