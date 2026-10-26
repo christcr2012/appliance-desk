@@ -56,7 +56,13 @@ column (the snapshot manifest had been diffed against current main, omitting the
 files from the remote branch created at 0516a31 — re-pushed with the manifest diffed against 0516a31, 76 files);
 three type errors in the test from that fix round (typecheck not re-run after the edit — fixed, typecheck clean);
 and 5 secret-scan leaks (four BA-1 false positives restored by the corrected push, plus the allowlist entry itself
-flagged for its own SHA — allowlisted). `ci` green at the exact head and every review comment read are still to do.
+flagged for its own SHA — allowlisted). The corrected run (head 1005486e, started with the GitHub MCP's
+`github_actions_dispatch`) is green on unit shards, typecheck, secret scan, browser-b and browser-c; browser-a
+failed on the two ACC-6 my-account tests — the forget-confirm text uses a curly apostrophe the test didn't match,
+and the two-factor login page was prerendered at build time so it kept offering "Remember this device" after the
+owner turned it off (a real bug: the page is now force-dynamic). Both fixed; browser-d failed on the
+offline-fallback test, which also failed on the FEE-1 branch and passed on this branch before — a timing flake,
+watched on the re-run. `ci` green at the exact head and every review comment read are still to do.
 Update 2026-10-26 (night): `main` moved (BILL-1 #612, preview-storage #609), merged into this branch as 164c968
 (conflicts only in STATUS.md and DATABASE.md, both kept both entries); re-checked locally — typecheck clean, lint
 0 errors, 41 unit tests pass. Push still blocked: the branch-creation approval timed out unanswered (01:39 MDT).

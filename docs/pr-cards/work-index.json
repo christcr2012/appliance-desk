@@ -5164,7 +5164,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "IN PROGRESS — built on branch ai/marley/acc-6; PR #616 open, CI red at head 8b0199f9 (5 failures: 2 my-account, session-deactivation, money-bills, 1 unit timeout, device integration test); fixes pushed as head c96e480c, CI start pending (snapshot pushes do not reliably start CI)",
+      "status": "IN PROGRESS — PR #616 open, CI red at head c96e480c (no test ran: stale snapshot manifest hid the BA-1 migration; 3 type errors; 5 secret-scan leaks). Fixed and pushed as head 1005486e (manifest diffed vs branch base 0516a31, 76 files; typecheck clean; allowlist entry for the self-flagged .gitleaksignore line). CI start needed.",
       "units": [
         "ACC-6"
       ]

@@ -98,7 +98,8 @@ test.describe("My account", () => {
     // Forgetting asks for the code again.
     await page.goto("/desk/account");
     await page.getByRole("button", { name: "Forget remembered devices" }).click();
-    await expect(page.getByText("You'll be asked for a code next time on every device.")).toBeVisible();
+    // The confirm text uses a curly apostrophe (You'll), so match without it.
+    await expect(page.getByText(/asked for a code next time on every device/)).toBeVisible();
     await page.getByRole("button", { name: "Yes, forget them" }).click();
     await expect(page.getByText(/Remembered devices forgotten/)).toBeVisible();
     await expect(page.getByText("No devices remembered.")).toBeVisible();

@@ -1,6 +1,11 @@
 import { TwoFactorLoginForm } from "./two-factor-login-form";
 import { getTrustedDeviceSettings } from "@/domains/security/trusted-devices";
 
+// The remember-days setting is an owner setting that can change between deploys, so this page must read it
+// on every request. Without this, Next.js prerenders the page at build time and the checkbox keeps the
+// build-time value even after the owner turns remembering off.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Two-step login",
   robots: { index: false, follow: false },
