@@ -1,15 +1,17 @@
 "use server";
 
-import { setLeadFollowUp, parseFollowUpKey } from "@/domains/leads/follow-up";
+import { parseFollowUpKey } from "@/domains/leads/follow-up";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/session";
+import { jobRoleScreens, JobRoleScreenError } from "@/lib/job-role-guard";
 import {
   updateLeadStatus,
   convertLeadToCustomer,
   createLeadManually,
   addLeadNote,
+  logLeadContact,
 } from "@/domains/leads";
 import { recordRealContact } from "@/domains/leads/contact";
 import type { LeadStatus } from "@prisma/client";
@@ -31,13 +33,30 @@ const NON_CONVERTED_STATUSES: Exclude<LeadStatus, "CONVERTED">[] = [
   "LOST",
 ];
 
+/**
+ * LD-1: check this actor's Leads screen directly. The job-role check inside
+ * requireRole looks at the address the request was posted from, and a server
+ * action can be posted to any page address — so a job role without Leads
+ * (for example Driver) could otherwise run these actions from an allowed
+ * page such as Today. null screens = no job-role limit (owner, or no role).
+ */
+async function requireLeadsScreen(session: {
+  user: { id: string; role: string };
+}): Promise<void> {
+  const screens = await jobRoleScreens(session.user.id, session.user.role);
+  if (screens !== null && !screens.includes("leads")) {
+    throw new JobRoleScreenError();
+  }
+}
+
 export async function updateLeadStatusAction(
   leadId: string,
   status: string,
   lostReason?: string,
   followUpKey?: string,
 ): Promise<LeadActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   if (
     !NON_CONVERTED_STATUSES.includes(status as (typeof NON_CONVERTED_STATUSES)[number])
@@ -48,18 +67,14 @@ export async function updateLeadStatusAction(
   try {
     // W-6: check the follow-up date first so a bad date never leaves the lead half-updated.
     const followUpOn = status === "CONTACTED" && followUpKey ? parseFollowUpKey(followUpKey, new Date()) : null;
+    // LD-1: status, follow-up date and first contact move in one transaction.
     await updateLeadStatus(
       session.user.id,
       leadId,
       status as Exclude<LeadStatus, "CONVERTED">,
       lostReason,
+      followUpOn,
     );
-    // Only "Contacted" carries a follow-up date; every other status clears it.
-    if (followUpOn) {
-      await setLeadFollowUp(session.user.id, leadId, followUpOn);
-    } else {
-      await setLeadFollowUp(session.user.id, leadId, null);
-    }
   } catch (error) {
     return {
       status: "error",
@@ -90,7 +105,8 @@ const newLeadSchema = z.object({
 export async function createLeadAction(
   raw: Record<string, unknown>,
 ): Promise<{ status: "success"; leadId: string } | { status: "error"; message: string }> {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   const parsed = newLeadSchema.safeParse(raw);
   if (!parsed.success) {
@@ -130,7 +146,8 @@ export async function createLeadAction(
 export async function convertLeadAction(
   leadId: string,
 ): Promise<LeadActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   try {
     const { customer, isNewAccount, activationEmailSent } = await convertLeadToCustomer(
@@ -162,7 +179,8 @@ export async function addLeadNoteAction(
   leadId: string,
   body: string,
 ): Promise<{ status: "success" } | { status: "error"; message: string }> {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
 
   try {
     await addLeadNote(leadId, session.user.id, body);
@@ -179,16 +197,40 @@ export async function addLeadNoteAction(
   return { status: "success" };
 }
 
+/** LD-1: "Log a contact" — records a real outbound contact (call, visit, message sent outside the app). The lead leaves "New" and a follow-up date can then be set. No screen calls this yet; AR-4b wires the button. */
+export async function logLeadContactAction(
+  leadId: string,
+  body: string,
+): Promise<{ status: "success" } | { status: "error"; message: string }> {
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
+
+  try {
+    await logLeadContact(session.user.id, leadId, body);
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Couldn't save that contact.",
+    };
+  }
+
+  revalidatePath(`/desk/leads/${leadId}`);
+  revalidatePath("/desk/leads");
+  revalidatePath("/desk/dashboard");
+  return { status: "success" };
+}
+
 /** Supply the missing account email without overwriting existing identity. */
 export async function addLeadEmailAction(leadId: string, rawEmail: string): Promise<LeadActionState> {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
+  await requireLeadsScreen(session);
   const parsed = z.string().trim().email("Enter a valid email address.").max(254).safeParse(rawEmail);
   if (!parsed.success) return { status: "error", message: "Enter a valid email address." };
   try {
     await prisma.$transaction(async tx => {
       const changed = await tx.lead.updateMany({
         where: { id: leadId, status: { not: "CONVERTED" }, OR: [{ email: null }, { email: "" }] },
-        data: { email: parsed.data.toLowerCase() },
+        data: { email: parsed.data.toLowerCase(), emailLower: parsed.data.toLowerCase() },
       });
       if (changed.count !== 1) throw new Error("This lead changed. Refresh before adding an email.");
       await tx.auditLog.create({ data: { userId: session.user.id, action: "lead.email", entityType: "Lead", entityId: leadId, newValue: { email: parsed.data.toLowerCase() } } });

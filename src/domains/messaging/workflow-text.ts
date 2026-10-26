@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { recordRealContact } from "@/domains/leads/contact";
+import { markFirstContact, recordRealContact } from "@/domains/leads/contact";
 import { makeTwilioSmsProvider } from "@/lib/communications/providers/twilio-sms";
 import type { TelecomSmsProvider } from "@/lib/communications/providers/types";
 import { communicationsPolicySchema, evaluateSmsEligibility, type CommunicationsPolicy } from "./communications-policy";
@@ -501,7 +501,11 @@ export async function sendWorkflowText(
   const outcome = await dispatchCommunication(requested.deliveryId, { provider: deps.provider, callbackOrigin: deps.callbackOrigin, now });
   const delivery = await prisma.messageDelivery.findUniqueOrThrow({ where: { id: requested.deliveryId }, select: { state: true, lastError: true } });
   if (outcome.kind === "ACCEPTED") {
-    if (subject.principal.leadId) await recordRealContact(subject.principal.leadId, now);
+    if (subject.principal.leadId) {
+      await recordRealContact(subject.principal.leadId, now);
+      // An accepted text is a real outbound contact: the lead leaves "New".
+      await markFirstContact(subject.principal.leadId, now);
+    }
     return { kind: "ACCEPTED", deliveryId: requested.deliveryId, message: "Handed to the phone carrier. Delivery is not confirmed yet; the Communications page shows the final result." };
   }
   if (outcome.kind === "REJECTED") return { kind: "FAILED", deliveryId: requested.deliveryId, message: "The phone carrier refused this text. Nothing was delivered." };

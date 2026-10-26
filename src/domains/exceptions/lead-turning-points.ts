@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { addBusinessDays } from "@/lib/business-date";
 import { getLeadResponseDays } from "@/domains/leads/follow-up";
+import { leadStageWhere } from "@/domains/leads/stage";
 import { customerContact, leadContact, type ExceptionItem } from "./rules";
 
 type Rows = { rows: ExceptionItem[]; total: number };
@@ -15,7 +16,9 @@ export async function listNewLeadContact(limit: number): Promise<Rows> {
   await requireRole("OWNER", "ADMIN");
   bounded(limit);
   const days = await getLeadResponseDays();
-  const where = { status: "NEW" as const };
+  // LD-1: "New" means never really contacted (firstContactedAt is null),
+  // not merely stored NEW — a lead stamped contacted at creation is gone.
+  const where = leadStageWhere.new;
   const leads = await prisma.lead.findMany({
     where, select: { id: true, contactName: true, createdAt: true, phone: true, email: true },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: limit,
@@ -36,7 +39,7 @@ export async function listNewLeadContact(limit: number): Promise<Rows> {
 export async function listLeadFollowUps(limit: number, now: Date): Promise<Rows> {
   await requireRole("OWNER", "ADMIN");
   bounded(limit);
-  const where = { status: "CONTACTED" as const, nextFollowUpOn: { not: null, lt: addBusinessDays(now, 1) } };
+  const where = { status: "CONTACTED" as const, mergedIntoLeadId: null, nextFollowUpOn: { not: null, lt: addBusinessDays(now, 1) } };
   const leads = await prisma.lead.findMany({
     where, select: { id: true, contactName: true, nextFollowUpOn: true, phone: true, email: true },
     orderBy: [{ nextFollowUpOn: "asc" }, { id: "asc" }], take: limit,

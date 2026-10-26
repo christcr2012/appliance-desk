@@ -9,7 +9,11 @@ vi.mock("@/lib/auth", () => ({ auth: {
 } }));
 vi.mock("@/lib/email", () => ({ sendEmail: vi.fn().mockResolvedValue({ sent: true }) }));
 import { prisma } from "@/lib/prisma";
-import { convertLeadToCustomer, updateLeadStatus } from "@/domains/leads";
+import {
+  convertLeadToCustomer,
+  convertLeadToCustomerInTx,
+  updateLeadStatus,
+} from "@/domains/leads";
 
 // Disposable CI Postgres only; never creates fixtures or attempts rollback on Neon.
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
@@ -61,6 +65,37 @@ describe.skipIf(!enabled)("lead conversion atomic recovery", () => {
     expect(reset).not.toHaveBeenCalled();
     await convertLeadToCustomer(ownerId, leadIds[1]);
     expect(reset).toHaveBeenCalledTimes(1);
+  });
+  it("converting a phone-entered lead with an approver email keeps its phone search key", async () => {
+    // LD-1 review (Codex P2): quote approval supplies emailOverride for a
+    // lead that had no email. The conversion must not erase the phone key
+    // the lead already had, or the converted lead vanishes from numeric
+    // phone searches in the queue.
+    const overrideEmail = `conversion-override-${tag}@example.com`;
+    const lead = await prisma.lead.create({
+      data: {
+        contactName: "Phone lead",
+        phone: "(970) 555-0134",
+        phoneDigits: "9705550134",
+        email: null,
+        emailLower: null,
+        status: "NEW",
+      },
+    });
+    leadIds.push(lead.id);
+    emails.push(overrideEmail);
+    await prisma.$transaction((tx) =>
+      convertLeadToCustomerInTx(tx, ownerId, lead.id, {
+        emailOverride: overrideEmail,
+      }),
+    );
+    const converted = await prisma.lead.findUniqueOrThrow({
+      where: { id: lead.id },
+    });
+    expect(converted.status).toBe("CONVERTED");
+    expect(converted.email).toBe(overrideEmail);
+    expect(converted.emailLower).toBe(overrideEmail);
+    expect(converted.phoneDigits).toBe("9705550134");
   });
   it("reopening a lost lead clears the persisted reason", async () => {
     await updateLeadStatus(ownerId, leadIds[2], "LOST", "No longer needed");
