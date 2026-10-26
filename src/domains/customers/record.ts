@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/session";
 import { businessDayBounds, formatShortDate, ordinal } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import { listBankPaymentSlow } from "@/domains/exceptions/bank-payment-attention";
+import { listLateFeeReview } from "@/domains/exceptions/late-fee-attention";
 import { inFlightWhere } from "@/domains/billing/in-flight";
 import { billOwedWhere, pastDueInvoiceWhere, payPathFor, type PayPath } from "@/domains/billing/bill-status";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
@@ -262,7 +263,7 @@ export async function getCustomerNextSteps(customerId: string, now = new Date())
     ).map((row) => [row.category, row._count._all]),
   );
   const take = (category: ExceptionItem["category"]) => Math.min(3 + (snoozedByCategory.get(category) ?? 0), 50);
-  const [pastDue, overdueJobs, unreviewed, unsigned, delivery, ending, pickup, signing, deposits, bankSlow] = await Promise.all([
+  const [pastDue, overdueJobs, unreviewed, unsigned, delivery, ending, pickup, signing, deposits, bankSlow, lateFeeReview] = await Promise.all([
     prisma.invoice.findMany({
       where: { AND: [pastDueTodoWhere(now), { customerId }] },
       select: PAST_DUE_TODO_SELECT,
@@ -288,6 +289,7 @@ export async function getCustomerNextSteps(customerId: string, now = new Date())
     listSigningPaymentAttention(take("SIGNING_PAYMENT_DUE"), scope),
     listDepositDecisionAttention(take("DEPOSIT_DECISION"), now, scope),
     listBankPaymentSlow(take("BANK_PAYMENT_SLOW"), now, scope),
+    listLateFeeReview(take("LATE_FEE_REVIEW"), now, scope),
   ]);
   const items: ExceptionItem[] = [
     ...pastDue.map(pastDueTodoItem),
@@ -300,6 +302,7 @@ export async function getCustomerNextSteps(customerId: string, now = new Date())
     ...signing.rows,
     ...deposits.rows,
     ...bankSlow.rows,
+    ...lateFeeReview.rows,
   ];
   const marked = await markTodoItems(items, now, true);
   return sortInbox(marked.items).slice(0, 3);

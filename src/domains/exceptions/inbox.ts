@@ -10,6 +10,7 @@ export type InboxGroup = "money" | "sales" | "rentals" | "equipment" | "taxes" |
 export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   PAST_DUE_INVOICE: "money",
   BANK_PAYMENT_SLOW: "money",
+  LATE_FEE_REVIEW: "money",
   HELD_PAYMENT_DECISION: "money",
   DEPOSIT_DECISION: "money",
   CANCELLATION_REFUND_DUE: "money",

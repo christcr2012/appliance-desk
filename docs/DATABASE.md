@@ -1,3 +1,15 @@
+## October 27 — Fair late fees (FEE-1, additive)
+
+Migration `20261027040000_fair_late_fees`. New table `PendingCharge`: a late fee recorded as its own charge (`kind` LATE_FEE,
+`amountCents`, `customerId`, `agreementId`, `forInvoiceId` = the overdue bill, `noticeDeliveryId`, `appliedToInvoiceId` = the bill it
+was put on, `providerOperationId`, `waivedAt` / `waivedReason` / `waivedByUserId`); `@@unique([forInvoiceId, kind])` is what keeps it
+to once per overdue bill. New enums `LateFeeClass` (CONSUMER_LEASE, CONSUMER_SHORT, BUSINESS) and `PendingChargeKind`; provider
+operation kind `LATE_FEE_INVOICE_ITEM`. `Invoice.lateNoticeDeliveryId`, `lateNoticeCount`, `lateFeeDate`, `lateFeeToldOn`,
+`lateFeeToldByUserId`. `RentalAgreement.lateFeeClass` (set when sent for signature). `Customer.activeMilitary`.
+`BusinessSettings.lateFeeNoticeDaysBefore` (default 2, CHECK 1–5), `ucccNotificationFiledOn`; the late-fee grace days now default to 10
+(CHECK at least 10 on the settings row) and the flat fee is at most 1500 cents (CHECK). The migration moves an older settings row
+below those limits up to them; signed agreements and billed history are not rewritten. Covered by backups (`PendingCharge`).
+
 ## October 26 — Bank payments being confirmed (BILL-1, additive)
 
 Migration `20261026010000_bank_payment_in_flight`. New table `BankPaymentInFlight`: one row per Stripe PaymentIntent for a

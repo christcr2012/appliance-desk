@@ -4448,7 +4448,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN REVIEW — PR pending (branch ai/claude/bill-1-bank-in-flight)",
+      "status": "DONE — merged PR #612 (2026-10-26)",
       "migration": "20261026010000_bank_payment_in_flight",
       "budget": 420,
       "units": [
@@ -5728,8 +5728,8 @@
       "dependencies": [
         "BILL-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
+      "status": "IN REVIEW — PR pending (branch ai/claude/fee-1-fair-late-fees)",
+      "migration": "20261027040000_fair_late_fees (additive: PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
       "budget": 450,
       "units": [
         "FEE-1"
@@ -5740,7 +5740,9 @@
         "src/domains/billing/reminders.ts"
       ],
       "tests": [
-        "tests/late-fees-fair-integration.test.ts"
+        "tests/late-fee-rules.test.ts",
+        "tests/late-fee-engine-integration.test.ts",
+        "tests/late-fee-digest.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/FEE-1.md"

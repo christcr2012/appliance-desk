@@ -22,6 +22,7 @@ export async function getCustomerIdentity(id: string) {
       phone: true,
       companyName: true,
       archivedAt: true,
+      activeMilitary: true,
       user: { select: { name: true, email: true } },
     },
   });

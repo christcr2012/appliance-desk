@@ -40,6 +40,7 @@ function agreement(overrides: {
       id: `customer-${overrides.id}`,
       user: { name: "Jane Doe", email: overrides.email ?? "jane@example.com" },
     },
+    pendingCharges: [],
     invoices: overrides.amountDueCents == null ? [] : [{ amountDueCents: overrides.amountDueCents }],
   };
 }

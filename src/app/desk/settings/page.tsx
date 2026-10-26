@@ -27,6 +27,7 @@ import { SettingsForm } from "./settings-form";
 import { SigningChargeForm } from "./signing-charge-form";
 import { BankPaymentForm } from "./bank-payment-form";
 import { LateFeeNoticeForm } from "./late-fee-notice-form";
+import { UcccFilingForm } from "./uccc-filing-form";
 import { MandatorySigningPolicyForm } from "./mandatory-signing-policy-form";
 import { effectiveMandatorySigningPolicy, parseMandatorySigningPolicyVersions } from "@/domains/billing/signing-mandatory-policy";
 import { businessDateKey } from "@/lib/business-date";
@@ -134,6 +135,9 @@ export default async function DeskSettingsPage({
       </Card>
       <Card title="Late fee warning" description="A late fee is only added after the customer was told.">
         <LateFeeNoticeForm editable={session.user.role === "OWNER"} days={settings.lateFeeNoticeDaysBefore ?? 2} />
+      </Card>
+      <Card title="Colorado consumer lease filing" description="Needed before the first household rental over 4 months.">
+        <UcccFilingForm editable={session.user.role === "OWNER"} filedOn={settings.ucccNotificationFiledOn ? businessDateKey(settings.ucccNotificationFiledOn) : null} />
       </Card>
       <Card title="Mandatory fees on complete estimates" description="Owner-only effective-dated rule revisions; charge collection stays disabled until independent clearance.">
         <MandatorySigningPolicyForm editable={session.user.role === "OWNER"} effectiveDate={businessDateKey(new Date())}

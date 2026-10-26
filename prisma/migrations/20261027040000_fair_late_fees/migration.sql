@@ -57,3 +57,6 @@ UPDATE "BusinessSettings" SET "lateFeeGraceDays" = 10 WHERE "lateFeeGraceDays" <
 UPDATE "BusinessSettings" SET "lateFeeFlatCents" = 1500 WHERE "lateFeeFlatCents" > 1500;
 ALTER TABLE "BusinessSettings" ADD CONSTRAINT "BusinessSettings_lateFeeGraceDays_min10" CHECK ("lateFeeGraceDays" >= 10);
 ALTER TABLE "BusinessSettings" ADD CONSTRAINT "BusinessSettings_lateFeeFlatCents_max1500" CHECK ("lateFeeFlatCents" <= 1500);
+
+-- Colorado consumer-lease notification: the day Chris confirmed it was filed (null = not yet).
+ALTER TABLE "BusinessSettings" ADD COLUMN "ucccNotificationFiledOn" TIMESTAMP(3);

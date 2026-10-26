@@ -1,3 +1,4 @@
+import { setActiveMilitaryAction } from "../military-actions";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
@@ -509,6 +510,14 @@ export default async function CustomerDetailPage({
           <SectionCard title="Account">
             {customer.archivedAt ? <p className="text-sm font-semibold text-ink">This customer is archived.</p> : null}
             {summary.hasPortalLogin ? <ResendActivationButton customerId={id} /> : null}
+            <form action={setActiveMilitaryAction} className="mt-3 flex flex-wrap items-center gap-3">
+              <input type="hidden" name="customerId" value={id} />
+              <label className="flex min-h-11 items-center gap-2 text-sm font-medium text-ink">
+                <input type="checkbox" name="activeMilitary" defaultChecked={customer.activeMilitary} className="size-5" />
+                Active-duty military (no automatic late fee)
+              </label>
+              <button type="submit" className="min-h-11 rounded-control border border-line px-4 text-sm font-medium">Save</button>
+            </form>
           </SectionCard>
         </div>
         <RecordConnections kind="customer" id={id} />

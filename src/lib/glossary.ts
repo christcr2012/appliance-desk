@@ -36,6 +36,7 @@ export const GLOSSARY = {
   "bill-processing": { title: "Being confirmed", description: "The customer paid by bank transfer. Banks take up to 4 business days to confirm. Nothing for you to do." },
   "late-fee-warning": { title: "Late fee warning", description: "Before any late fee, the customer gets a message with the date the fee will be added. Starting value 2 days before. If they were not warned, there is no fee." },
   "late-fee-next-bill": { title: "Late fee on the next bill", description: "A late fee never goes on the bill the customer is paying. It is added to their next bill, once per late bill, and can be waived." },
+  "uccc-filing": { title: "Colorado consumer lease filing", description: "Colorado asks a business that leases to households for more than 4 months to file a short notice with the state first (Uniform Consumer Credit Code, 5-6-202). Confirm with your attorney, then enter the day it was filed here." },
   "bill-given-up": { title: "Given up", description: "You decided not to collect this bill. It still counts in your records." },
   "owes-now": { title: "Owes now", description: "Bills that are sent and not fully paid." },
   "pays-on-time": { title: "Pays on time", description: "Bills paid by the end of their due day, out of the last few bills." },

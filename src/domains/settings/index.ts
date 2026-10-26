@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS = {
   depositEnabled: false,
   lateFeeGraceDays: 10,
   lateFeeNoticeDaysBefore: 2,
+  ucccNotificationFiledOn: null as Date | null,
   bankPaymentSlowBusinessDays: 6,
   lateFeeFlatCents: 0,
   lateFeePercent: 0,
@@ -146,6 +147,7 @@ export type BusinessSettingsUpdate = Partial<{
   depositEnabled: boolean;
   lateFeeGraceDays: number;
   lateFeeNoticeDaysBefore: number;
+  ucccNotificationFiledOn: Date | null;
   lateFeeFlatCents: number;
   lateFeePercent: number;
   announcementBannerText: string | null;

@@ -15,6 +15,7 @@ import { formatCents } from "@/domains/pricing";
 import { PaymentLinkPanel } from "@/components/desk/payment-link-panel";
 import { suggestPaymentLinkReason } from "@/domains/billing/payment-link-message";
 import { RecordConnections } from "@/components/desk/record-connections";
+import { LateFeeSection } from "@/components/desk/late-fee-section";
 
 export const metadata = { title: "Invoice" };
 
@@ -105,6 +106,8 @@ export default async function DeskInvoicePage({
           </p>
         </section>
       )}
+
+      <LateFeeSection invoiceId={invoiceId} standing={invoice.lateFee} />
 
       {canAskForPayment && money && (
         <div className="mt-4 scroll-mt-20 print:hidden" id="take-payment">
