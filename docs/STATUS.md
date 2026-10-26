@@ -1,3 +1,15 @@
+## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
+
+CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
+
+## October 26 — BA-1 Codex findings addressed, exact-head rerun pending
+
+PR #610 passed full CI at `0d17ac10`, then automated review found three material gaps. The new patch retains the existing books-nightly Stripe pause/health key, reports unenrolled recorded-cost retirements, and refuses disposal before retirement; route and real-Postgres regressions added. Next: exact-head CI, disposition each review thread and merge only when green. BA-2 PR #613 and BA-3 stacked branch still depend on this. No live provider or production settings changed.
+
+## October 26 — BA-1 source posting verified, merge reconciliation in progress
+
+PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
+
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 
 Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
@@ -24,11 +36,20 @@ learn about a payment from events already sent; the nightly check can only follo
 
 ## October 26 — Tax and fee rule book (TFA-1, PR #617, in review)
 
-Branch `ai/marley/tfa-1`: every tax and fee number is now a dated rule version with its source (migration `20261101000000_legal_rules`), read by date — RDF amount, thresholds, 1099 limit, record-keeping years — plus the timing rule (file and pay on 90% through the window, 3 business days before the deadline), the late-change true-up (issued bills never change; the business absorbs extra cost, customers get a credit kept for their next bill), and Taxes › Rules with now/next/source/state, history, owner change with reason and undo. Proof: 17 new unit tests pass here; database and browser tests run in CI only. First CI run came back red (secret scan, two unit shards, two browser shards, 4 review comments); one fix patch follows: the owner's existing settings are carried into the rule book, a second value for the same start date supersedes the first, late changes adjust incrementally, the credit is kept for the next bill instead of an old open one, the database check that blocked rule-versioned delivery-fee records is relaxed, and the Rules browser tests use the right labels. Next: push the fix, wait for `ci` green at the exact head, merge, then TFA-2.
+Branch `ai/marley/tfa-1`: every tax and fee number is now a dated rule version with its source (migration `20261101000000_legal_rules`), read by date — RDF amount, thresholds, 1099 limit, record-keeping years — plus the timing rule (file and pay on 90% through the window, 3 business days before the deadline), the late-change true-up (issued bills never change; the business absorbs extra cost, customers get a credit kept for their next bill), and Taxes › Rules with now/next/source/state, history, owner change with reason and undo. Proof: 20 unit tests pass here; 53 database tests pass on a fresh database migrated from scratch. First CI run came back red (secret scan, two unit shards, two browser shards, 4 review comments); one fix patch follows: the owner's existing settings are carried into the rule book, a second value for the same start date supersedes the first, late changes adjust incrementally, the credit is kept for the next bill instead of an old open one, the database check that blocked rule-versioned delivery-fee records is relaxed, and the Rules browser tests use the right labels. Two more fixes after that: the carry-over only carries a setting the owner actually changed (an unguarded carry created default OWNER rows on every fresh database and blocked other versions for the same date), and the branch merged main (BA-1 #610) to clear a merge conflict. The checks never started on the fix commit — snapshot pushes don't reliably start them — so the run has to be started by hand from the Actions tab. Next: push, start the checks, wait for `ci` green at the exact head, merge, then TFA-2.
 
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 
 Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
+
+## October 25 — BA-1 books autopilot in draft PR #610 (not merged)
+
+Branch `ai/chatgpt/ba-1` (PR #610): nightly recording, automatic appliance enrollment/depreciation,
+books To do issues, Equipment retirement/disposal reversals and post-commit source recording coded.
+Run 40269991085 passed all CI shards at earlier head `6be9cfac`, **not** the current head;
+later changes and their new concurrency/long-life tests are awaiting exact-head CI and review.
+Remaining BA-1 hook/edge proof is on its card; BA-2 and BA-3 await BA-1 merge.
+No production settings, real accounts or customer data touched.
 
 ## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
 

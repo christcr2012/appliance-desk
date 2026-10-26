@@ -5,6 +5,7 @@ import { assertCapability } from "@/domains/capabilities";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { getPrivatePhotoStore, privatePhotoPathFromUrl } from "@/lib/photo-storage";
 import { postForSource, writeJournal } from "./post";
+import { postBookSourceAfterCommit } from "./immediate";
 import { recordUseTaxForPurchase } from "@/domains/tax/use-tax";
 import { synchronizeLinkedRecurringPlanInTx } from "@/domains/budget/planning";
 
@@ -109,7 +110,9 @@ export const checkExpenseFields = checked;
 export const POST_EXPENSE_TX_OPTIONS = { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 25_000 } as const;
 export async function postExpense(userId: string, id: string, expectedVersion: number) {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new ExpenseInputError("Invalid expense version.");
-  return prisma.$transaction(tx => postExpenseInTx(tx, userId, id, expectedVersion), POST_EXPENSE_TX_OPTIONS);
+  await prisma.$transaction(tx => postExpenseInTx(tx, userId, id, expectedVersion), POST_EXPENSE_TX_OPTIONS);
+  // Books errors are handled after the business expense has committed.
+  await postBookSourceAfterCommit("EXPENSE", id);
 }
 /** The whole post, inside a transaction the caller owns (run it with POST_EXPENSE_TX_OPTIONS). Approvals use this too. */
 export async function postExpenseInTx(tx: Prisma.TransactionClient, userId: string, id: string, expectedVersion: number) {
@@ -157,7 +160,6 @@ export async function postExpenseInTx(tx: Prisma.TransactionClient, userId: stri
     await tx.expense.update({ where: { id }, data: {
       status: "POSTED", postedByUserId: userId, postedAt: new Date(), version: { increment: 1 },
     } });
-    await postForSource(tx, "EXPENSE", id);
     await audit(tx, userId, id, "books.expense.post", { version: expectedVersion, amountCents: expense.amountCents, acquisitionCostAssigned });
   }
 }

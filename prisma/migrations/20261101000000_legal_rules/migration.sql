@@ -155,8 +155,13 @@ VALUES
 -- the owner already changed would silently stop taking effect. Each becomes
 -- an OWNER version from 2026-01-01, so it wins over the researched seed at
 -- the same date (origin priority) until the owner changes it. A later save
--- for the same date supersedes it (see saveRuleVersionInTx). On a fresh
--- install BusinessSettings is empty and nothing is carried over.
+-- for the same date supersedes it (see saveRuleVersionInTx). Only a value
+-- the owner actually changed is carried: the init migration seeds
+-- BusinessSettings with the schema defaults, so without the "<> default"
+-- guard every fresh database would gain default-valued OWNER rows that
+-- occupy the (ruleKey, effectiveFrom, OWNER) slot and block any later
+-- version for the same date. A value equal to the default needs no OWNER
+-- row — the researched seed already has it.
 INSERT INTO "LegalRuleVersion"
   ("id", "ruleKey", "value", "effectiveFrom", "origin", "sourceUrl", "sourceQuote",
    "checkedOn", "provisional", "autoApplied", "undoneAt", "createdByUserId", "createdAt")
@@ -164,7 +169,7 @@ SELECT 'rule-carry-records-keep-years', 'records.keep_years', to_jsonb("recordRe
   '2026-01-01T07:00:00Z', 'OWNER', NULL,
   'Carried from your previous setting when the rule book was created (TFA-1).',
   now(), false, false, NULL, NULL, now()
-FROM "BusinessSettings" WHERE "recordRetentionYears" IS NOT NULL;
+FROM "BusinessSettings" WHERE "recordRetentionYears" IS NOT NULL AND "recordRetentionYears" <> 7;
 INSERT INTO "LegalRuleVersion"
   ("id", "ruleKey", "value", "effectiveFrom", "origin", "sourceUrl", "sourceQuote",
    "checkedOn", "provisional", "autoApplied", "undoneAt", "createdByUserId", "createdAt")
@@ -172,7 +177,7 @@ SELECT 'rule-carry-use-monthly-threshold', 'co.use.monthly_threshold', to_jsonb(
   '2026-01-01T07:00:00Z', 'OWNER', NULL,
   'Carried from your previous setting when the rule book was created (TFA-1).',
   now(), false, false, NULL, NULL, now()
-FROM "BusinessSettings" WHERE "useTaxMonthlyThresholdCents" IS NOT NULL;
+FROM "BusinessSettings" WHERE "useTaxMonthlyThresholdCents" IS NOT NULL AND "useTaxMonthlyThresholdCents" <> 30000;
 INSERT INTO "LegalRuleVersion"
   ("id", "ruleKey", "value", "effectiveFrom", "origin", "sourceUrl", "sourceQuote",
    "checkedOn", "provisional", "autoApplied", "undoneAt", "createdByUserId", "createdAt")
@@ -180,7 +185,7 @@ SELECT 'rule-carry-rdf-qualified-threshold', 'co.rdf.qualified_threshold', to_js
   '2026-01-01T07:00:00Z', 'OWNER', NULL,
   'Carried from your previous setting when the rule book was created (TFA-1).',
   now(), false, false, NULL, NULL, now()
-FROM "BusinessSettings" WHERE "rdfThresholdCents" IS NOT NULL;
+FROM "BusinessSettings" WHERE "rdfThresholdCents" IS NOT NULL AND "rdfThresholdCents" <> 50000000;
 INSERT INTO "LegalRuleVersion"
   ("id", "ruleKey", "value", "effectiveFrom", "origin", "sourceUrl", "sourceQuote",
    "checkedOn", "provisional", "autoApplied", "undoneAt", "createdByUserId", "createdAt")
@@ -188,4 +193,4 @@ SELECT 'rule-carry-1099-threshold', 'us.1099.threshold', to_jsonb("vendor1099Thr
   '2026-01-01T07:00:00Z', 'OWNER', NULL,
   'Carried from your previous setting when the rule book was created (TFA-1).',
   now(), false, false, NULL, NULL, now()
-FROM "BusinessSettings" WHERE "vendor1099ThresholdCents" IS NOT NULL;
+FROM "BusinessSettings" WHERE "vendor1099ThresholdCents" IS NOT NULL AND "vendor1099ThresholdCents" <> 200000;

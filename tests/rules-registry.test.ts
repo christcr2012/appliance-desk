@@ -106,6 +106,18 @@ describe("rule registry", () => {
       expect(MIGRATION).toContain(`'${key}'`);
     }
     expect(MIGRATION).toContain("FROM \"BusinessSettings\"");
+    // Only a value the owner actually changed is carried: the init migration
+    // seeds BusinessSettings with the schema defaults, so carrying the
+    // defaults would occupy the (ruleKey, effectiveFrom, OWNER) slot and
+    // block any later version for the same date.
+    for (const [column, def] of [
+      ["recordRetentionYears", 7],
+      ["useTaxMonthlyThresholdCents", 30000],
+      ["rdfThresholdCents", 50000000],
+      ["vendor1099ThresholdCents", 200000],
+    ] as const) {
+      expect(MIGRATION).toContain(`"${column}" <> ${def}`);
+    }
   });
 
   it("lets a READY delivery-fee record cite a rule version, not only a rate row", () => {

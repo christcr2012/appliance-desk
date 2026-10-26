@@ -21,3 +21,6 @@ f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stri
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:162
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:189
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:tests/books-closing-integration.test.ts:generic-api-key:28
+# Reviewed 2026-10-26 (BA-1, from main): false generic-api-key match in a
+# historical leads-pipeline migration comment. Not a credential.
+12dcced1286354a19575483096b8c419f9b11923:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
