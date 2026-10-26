@@ -1,3 +1,7 @@
+## October 26 — BA-3 phone/desktop browser regression fixed at source
+
+The exact-head CI run passed secret scanning, repo checks, all 3 unit/real-Postgres shards and 3 of 4 browser shards. New BA-3 month-review browser tests uncovered the screen's legacy double-escaped month-display regex (both responsive widths showed the numeric month). Replaced with explicit numeric month/year validation and Colorado-independent UTC formatting; all browser assertions remain in place. Final head needs fresh CI and review before merge. No production/provider actions.
+
 ## October 26 — BA-3 month-close Stripe consistency improvement
 
 Stripe clearing is now also checked in the closing transaction's database snapshot. Monthly review checks do not create or resolve Stripe system issues; the separate nightly reconciliation continues to do that. This patch awaits exact-head CI; no live providers or production data touched.

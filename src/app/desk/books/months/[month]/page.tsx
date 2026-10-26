@@ -18,9 +18,11 @@ export default async function BooksMonthPage({params,searchParams}:{params:Promi
   model=await monthReview({id:session.user.id,
    role:session.user.role as "OWNER"|"ADMIN"},month);
  }catch(e){error=e instanceof Error?e.message:"Could not load your month review.";}
- const display=/^\\d{4}-(0[1-9]|1[0-2])$/.test(month)
+ const [year,monthNumber]=month.split("-").map(Number);
+ const display=Number.isInteger(year)&&Number.isInteger(monthNumber)&&
+  year>=1000&&year<=9999&&monthNumber>=1&&monthNumber<=12
   ?new Intl.DateTimeFormat("en-US",{month:"long",year:"numeric",timeZone:"UTC"})
-   .format(new Date(month+"-01T12:00:00Z")):month;
+   .format(new Date(Date.UTC(year,monthNumber-1,1))):month;
  return <div className="mx-auto max-w-4xl space-y-6">
   <Link href="/desk/books" className="underline">Back to Your books</Link>
   <header className="space-y-2">
