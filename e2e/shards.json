@@ -20,7 +20,9 @@
       "job-roles.spec.ts",
       "owner-settings-history.spec.ts",
       "shop-sales.spec.ts",
-      "crm-workspace.spec.ts"
+      "crm-workspace.spec.ts",
+      "feedback.spec.ts",
+      "desk-workspace.spec.ts"
     ],
     "browser-b": [
       "owner-controls.spec.ts",
@@ -46,24 +48,22 @@
       "bank-checks.spec.ts",
       "budget-money.spec.ts",
       "budget.spec.ts",
-      "money-reports.spec.ts"
+      "money-reports.spec.ts",
+      "system-health.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",
       "appliance-price-save-feedback.spec.ts",
       "purchasing-review.spec.ts",
       "accessibility-routes-desk-a.spec.ts",
-      "desk-workspace.spec.ts",
       "staff-security.spec.ts",
       "system-health-keys.spec.ts",
       "customer-language-w26.spec.ts",
       "owner-guide-screenshots.spec.ts",
-      "feedback.spec.ts",
       "fleet-report.spec.ts",
       "revenue-records.spec.ts"
     ],
     "browser-d": [
-      "system-health.spec.ts",
       "accessibility.spec.ts",
       "task-assignment.spec.ts",
       "inventory-bulk-feedback.spec.ts",
