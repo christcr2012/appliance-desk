@@ -47,6 +47,7 @@
       "money-reports.spec.ts",
       "system-health.spec.ts",
       "feedback.spec.ts",
+      "tax-rules.spec.ts",
       "website-editor.spec.ts"
     ],
     "browser-c": [

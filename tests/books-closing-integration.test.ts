@@ -13,14 +13,21 @@ const tag=randomUUID().slice(0,12),owner="k8-owner-"+tag,staff="k8-staff-"+tag,
  category="k8-category-"+tag,filing="k8-filing-"+tag,period="k8-period-"+tag,
  account="k8-expacct-"+tag,lead="k8-lead-"+tag;
 const day=(s:string)=>businessDateFromKey(s)!;
-let oldStart:Date|null=null,oldThreshold=200000,bank="",entryId="";
+let oldStart:Date|null=null,bank="",entryId="",ruleVersionId="";
 describe.skipIf(!enabled)("K-8 real sources and privacy in disposable PostgreSQL",()=>{
  beforeAll(async()=>{
   const old=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"}});
-  oldStart=old.booksStartDate;oldThreshold=old.vendor1099ThresholdCents;
+  oldStart=old.booksStartDate;
   await prisma.businessSettings.update({where:{id:"singleton"},data:{
-   booksStartDate:day("2026-01-01"),vendor1099ThresholdCents:200000,
+   booksStartDate:day("2026-01-01"),
   }});
+  // TFA-1: the 1099 review limit is a dated rule, not a setting. The owner
+  // version pins the $2,000 limit for the payment year this fixture checks
+  // (the seeded rule already says $2,000).
+  ruleVersionId=(await prisma.legalRuleVersion.create({data:{
+   ruleKey:"us.1099.threshold",value:200000,effectiveFrom:day("2026-01-01"),
+   origin:"OWNER",provisional:false,
+  }})).id;
   await prisma.user.createMany({data:[
    {id:owner,email:owner+"@example.test",role:"OWNER"},
    {id:staff,email:staff+"@example.test",role:"STAFF"},
@@ -74,8 +81,9 @@ describe.skipIf(!enabled)("K-8 real sources and privacy in disposable PostgreSQL
   await prisma.lead.deleteMany({where:{id:lead}});
   await prisma.customer.deleteMany({where:{id:customer}});
   await prisma.user.deleteMany({where:{id:{in:[owner,staff,customerUser]}}});
+  if (ruleVersionId) await prisma.legalRuleVersion.delete({where:{id:ruleVersionId}});
   await prisma.businessSettings.update({where:{id:"singleton"},data:{
-   booksStartDate:oldStart,vendor1099ThresholdCents:oldThreshold,
+   booksStartDate:oldStart,
   }});
  });
  it("refuses staff and customer for all domain views and annual downloads",async()=>{

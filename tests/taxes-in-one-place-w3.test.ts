@@ -40,6 +40,7 @@ describe("one Taxes menu entry with four tabs (W-3)", () => {
     ["/desk/sales-tax/taxability", "setup"],
     ["/desk/sales-tax/audit-pack", "setup"],
     ["/desk/sales-tax/record-retention", "setup"],
+    ["/desk/sales-tax/rules", "setup"],
     ["/desk/billing", null],
     ["/desk/sales-taxes", null],
   ])("puts %s on the %s tab", (pathname, tab) => {
@@ -88,6 +89,15 @@ describe("the file-and-pay line every return page opens with (W-3)", () => {
     expect(line.headline).toBe("File and pay $1,234.56 on Colorado's sales tax website (SUTS) by Oct 20.");
     expect(line.link).toEqual({ href: SUTS_LOGIN_URL, label: "Open SUTS" });
     expect(line.overdue).toBe(false);
+  });
+  it("suggests the day to file and pay, from the timing rule", () => {
+    expect(fileAndPayLine({ ...base, actOnKey: "2026-10-17" }).actOn).toBe("File and pay on Oct 17.");
+  });
+  it("has no suggested day when the timing rule gives none", () => {
+    expect(fileAndPayLine(base).actOn).toBeNull();
+  });
+  it("has no suggested day once the return is filed", () => {
+    expect(fileAndPayLine({ ...base, filed: true, actOnKey: "2026-10-17" }).actOn).toBeNull();
   });
   it("tells the owner a $0 return still has to be filed", () => {
     expect(fileAndPayLine({ ...base, amountCents: 0 }).headline).toBe("File a $0 return on Colorado's sales tax website (SUTS) by Oct 20. A return with nothing owed still has to be filed.");

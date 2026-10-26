@@ -32,9 +32,22 @@ export async function getPrivateReturn(periodId: string): Promise<{
   });
   if (!period) throw new Error("Filing period not found.");
   if (period.status === "FILED") {
-    return { period, result: isFrozenPacket(period.worksheet)
-      ? { status: "READY", packet: period.worksheet }
-      : { status: "BLOCKED", problems: ["The original frozen worksheet cannot be read. Do not recalculate filed returns from today's tax rules."] } };
+    if (!isFrozenPacket(period.worksheet)) {
+      return { period, result: { status: "BLOCKED", problems: ["The original frozen worksheet cannot be read. Do not recalculate filed returns from today's tax rules."] } };
+    }
+    const packet = period.worksheet as FilingPacket;
+    // Worksheets frozen before TFA-1 name the RDF grouping key rateId; the
+    // current packet names it rateKey. Display only — the frozen row is never edited.
+    if (packet.rdf) {
+      packet.rdf = {
+        ...packet.rdf,
+        rows: packet.rdf.rows.map((row) => ({
+          ...row,
+          rateKey: row.rateKey ?? (row as unknown as { rateId?: string }).rateId ?? "",
+        })),
+      };
+    }
+    return { period, result: { status: "READY", packet } };
   }
   return { period, result: await loadFilingPacket(periodId) };
 }

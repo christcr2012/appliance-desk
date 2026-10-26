@@ -87,12 +87,29 @@ async function runIsolated(
           where: { id: "singleton" },
           data: {
             shortTermLeaseElection: "COLLECT_ON_RENTALS",
-            rdfThresholdCents: options.applicable ? 1 : 50000000,
             rdfThresholdCrossedOn: null,
             rdfHandling: "PAY_MYSELF",
             rdfCpaConfirmedOn: day("2026-01-01"),
           },
         });
+        if (options.applicable) {
+          // TFA-1: the small-seller limit is a dated rule, not the
+          // rdfThresholdCents setting. The seeded rule is 50,000,000 cents;
+          // a 1-cent OWNER version makes this fixture's prior-year sales
+          // (4,000 cents) exceed it, so the fee applies. The fixture
+          // transaction rolls back, so this version needs no cleanup.
+          await tx.legalRuleVersion.create({
+            data: {
+              id: "rdf2-threshold-" + token,
+              ruleKey: "co.rdf.qualified_threshold",
+              value: 1,
+              effectiveFrom: day("2026-01-01"),
+              origin: "OWNER",
+              provisional: false,
+              createdByUserId: ownerId,
+            },
+          });
+        }
         const account = await tx.taxFilingAccount.create({
           data: {
             name: "Colorado RDF test " + token,
@@ -193,8 +210,19 @@ async function runIsolated(
           }
         };
         const addRate = async (effectiveOn: Date, cents: number) => {
-          await tx.retailDeliveryFeeRate.create({
-            data: { effectiveOn, amountCents: cents, enteredByUserId: ownerId },
+          // TFA-1: the fee amount is a dated OWNER rule version, not a
+          // RetailDeliveryFeeRate row. A same-date OWNER version beats the
+          // seeded RESEARCHED one, so 41 cents wins for July 2026 sales.
+          await tx.legalRuleVersion.create({
+            data: {
+              id: "rdf2-rule-" + token + "-" + businessDateKey(effectiveOn),
+              ruleKey: "co.rdf.amount",
+              value: cents,
+              effectiveFrom: effectiveOn,
+              origin: "OWNER",
+              provisional: false,
+              createdByUserId: ownerId,
+            },
           });
         };
         if (options.applicable) {
@@ -338,6 +366,10 @@ describe.skipIf(!enabled)(
     it("missing rate retains sale evidence and leaves billing untouched", async () => {
       await runIsolated(
         async (f) => {
+          // TFA-1: a missing rate now means no rule version covers the sale
+          // date. The seeded versions are removed inside this fixture's
+          // transaction (which rolls back), so the July 2026 sale has none.
+          await f.tx.legalRuleVersion.deleteMany({ where: { ruleKey: "co.rdf.amount" } });
           await f.addInvoice(day("2026-07-20"));
           const result = await recordRentalDeliveryFeeInTx(f.tx, {
             jobId: f.jobId,

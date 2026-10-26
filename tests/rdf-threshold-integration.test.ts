@@ -14,14 +14,17 @@ describe.skipIf(!enabled)("T-6C1 RDF first crossing (real Postgres)", () => {
   it("locks the threshold date once, preserves original evidence on retry", async () => {
     const old = await prisma.businessSettings.findUnique({
       where: { id: "singleton" },
-      select: { rdfThresholdCents: true, rdfThresholdCrossedOn: true },
+      select: { rdfThresholdCrossedOn: true },
     });
     const marker = randomUUID();
     try {
+      // TFA-1: the small-seller limit is the seeded co.rdf.qualified_threshold
+      // rule (50,000,000 cents), not the rdfThresholdCents setting. Only the
+      // crossing date itself still lives on the settings row.
       await prisma.businessSettings.upsert({
         where: { id: "singleton" },
-        create: { rdfThresholdCents: 50000000, rdfThresholdCrossedOn: null },
-        update: { rdfThresholdCents: 50000000, rdfThresholdCrossedOn: null },
+        create: { rdfThresholdCrossedOn: null },
+        update: { rdfThresholdCrossedOn: null },
       });
       const below = await recordFirstRetailDeliveryFeeThresholdCrossing({
         previousYearRetailCents: 0, currentYearRetailCents: 50000000,
@@ -53,7 +56,6 @@ describe.skipIf(!enabled)("T-6C1 RDF first crossing (real Postgres)", () => {
     } finally {
       if (old) await prisma.businessSettings.update({
         where: { id: "singleton" }, data: {
-          rdfThresholdCents: old.rdfThresholdCents,
           rdfThresholdCrossedOn: old.rdfThresholdCrossedOn,
         },
       });

@@ -7,6 +7,11 @@
 681b062a713c8d7cbc770434f463b84c5b480eca:tests/deployment-safety.test.ts:stripe-access-token:38
 ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:193
 ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:195
+# Reviewed 2026-10-26 (TFA-1): an earlier allowlist comment on this branch
+# spelled out the flagged pattern itself, so the scanner flagged this file
+# at line 16 in the 463b1043 fix push. That comment was rewritten; this
+# entry covers the historical occurrence on that branch commit.
+463b1043edefe4fdd233f001a7cf01963e8fddc2:.gitleaksignore:generic-api-key:16
 # Reviewed 2026-10-03: made-up string in a test about hiding keys in error text (older branch commit, PR #139); not a real key.
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:195
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:197
@@ -19,3 +24,9 @@ f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stri
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:tests/books-closing-integration.test.ts:generic-api-key:28
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:162
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:189
+# Same three lines as merged (squash merge cb1c3618): the scanner attributes
+# them to the merge commit now, so they need fingerprints under that commit
+# too. The d34a2efc entries above still cover the branch history.
+cb1c36184ec8ac534647ed41fb6ea68e8819f863:tests/books-closing-integration.test.ts:generic-api-key:28
+cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:162
+cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:189

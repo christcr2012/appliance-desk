@@ -9,6 +9,9 @@ import { filingStepKeys } from "@/domains/tax/filing-step-keys";
 import { saveReturnProgressAction, recordFiledReturnAction } from "../actions";
 import { businessDateKey } from "@/lib/business-date";
 import { FileAndPayHeadline } from "../../file-and-pay-headline";
+import { getRuleTimingSettings } from "@/domains/rules/reads";
+import { fileAndPayOnDate } from "@/domains/rules/timing";
+import { legalDueOn } from "@/domains/tax/filing-calendar";
 
 const money = (value: number) => moneyInputValue(value);
 const label = "block space-y-1 text-sm font-medium";
@@ -21,6 +24,15 @@ export default async function ReturnDetailPage({
   const owner = session.user.role === "OWNER";
   const { periodId } = await params;
   const { period, result } = await getPrivateReturn(periodId);
+  // TFA-1: the day the timing rule says to act, shown next to the legal due date.
+  const timing = await getRuleTimingSettings();
+  const actOnKey = result.status === "READY"
+    ? businessDateKey(fileAndPayOnDate({
+        periodEnd: period.periodEnd,
+        legalDueOn: period.legalDueOn ?? legalDueOn(period.dueOn),
+        now: new Date(), percent: timing.percent, marginBusinessDays: timing.marginBusinessDays,
+      }))
+    : undefined;
   const stepKeys = result.status === "READY" ? filingStepKeys(result.packet.steps) : [];
   const saved = period.entryProgress && typeof period.entryProgress === "object" &&
     !Array.isArray(period.entryProgress) ? period.entryProgress as Record<string, unknown> : {};
@@ -48,6 +60,7 @@ export default async function ReturnDetailPage({
       filed={period.status === "FILED"}
       portalUrl={result.packet.account.portalUrl}
       useTax={result.packet.useTax.map(row => ({ name: row.name, useTaxCents: row.useTaxCents }))}
+      actOnKey={actOnKey}
     />}
     {result.status === "BLOCKED" ? <section className="space-y-2 rounded-lg border border-destructive p-4">
       <h3 className="font-semibold">Not ready to file</h3>
@@ -79,7 +92,7 @@ export default async function ReturnDetailPage({
         {result.packet.rdf && <section className="space-y-1 rounded border border-border p-3 text-sm">
           <h4 className="font-semibold">Colorado retail delivery fee — separate return</h4>
           <p>{result.packet.rdf.deliveries} deliveries · Prior credits {"$"}{money(result.packet.rdf.priorPeriodCreditCents)} · Total due {"$"}{money(result.packet.rdf.taxDueCents)}</p>
-          {result.packet.rdf.rows.map((r,i) => <p key={r.rateId+i}>{r.count} at {"$"}{money(r.amountCents)} = {"$"}{money(r.totalCents)}</p>)}
+          {result.packet.rdf.rows.map((r,i) => <p key={r.rateKey+i}>{r.count} at {"$"}{money(r.amountCents)} = {"$"}{money(r.totalCents)}</p>)}
         </section>}
         <div className="rounded border border-border p-3 text-sm">
           <p>On-time remit {"$"}{money(result.packet.totals.remitIfOnTimeCents)}</p>

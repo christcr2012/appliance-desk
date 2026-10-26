@@ -4,6 +4,8 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { cancelPendingDecisionChangesInTx } from "@/domains/decisions/pending";
 import { subjectForTaxCell } from "@/domains/decisions/tax-cells";
+import { ruleAsOf } from "@/domains/rules/reads";
+import { saveRuleVersion, saveRuleVersionInTx } from "@/domains/rules/changes";
 
 function textField(value: string | null, max: number, name: string) {
   if (value !== null && (value.length > max || /[\r\n<>]/.test(value)))
@@ -45,7 +47,6 @@ export async function saveTaxSettings(
     shortTermLeaseElection: enumValue(input.shortTermLeaseElection, ShortTermLeaseElection, "lease election"),
     shortTermLeaseElectionNote: textField(input.shortTermLeaseElectionNote, 500, "lease decision note"),
     rdfHandling: enumValue(input.rdfHandling, RdfHandling, "fee handling"),
-    rdfThresholdCents: cents(input.rdfThresholdCents, 1_000_000_000_00, "delivery fee threshold"),
     rdfCpaConfirmedOn: date(input.rdfCpaConfirmedOn, "CPA date"),
     autoApplyOfficialRateChanges: input.autoApplyOfficialRateChanges === true,
     autoRateChangeMaxMilliPercent: cents(input.autoRateChangeMaxMilliPercent, 100_000, "automatic rate change ceiling"),
@@ -56,16 +57,28 @@ export async function saveTaxSettings(
       zip: textField(input.businessLocation.zip, 12, "business ZIP") ?? "",
     } : {},
   };
+  // TFA-1: the delivery-fee threshold is a dated rule, not a setting. The
+  // form still sends it; a changed value becomes an OWNER rule version.
+  const thresholdCents = cents(input.rdfThresholdCents, 1_000_000_000_00, "delivery fee threshold");
   await prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx, actorId, ["OWNER"]);
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const before = await tx.businessSettings.findUniqueOrThrow({
       where: { id: "singleton" },
       select: { updatedAt: true, shortTermLeaseElection: true, rdfHandling: true,
-        rdfThresholdCents: true, rdfCpaConfirmedOn: true, businessTaxAddress: true },
+        rdfCpaConfirmedOn: true, businessTaxAddress: true },
     });
     if (before.updatedAt.getTime() !== expectedUpdatedAt.getTime())
       throw new Error("Settings changed in another session. Refresh before saving.");
+    const beforeThreshold = (await ruleAsOf<number>("co.rdf.qualified_threshold", new Date(), tx)).value;
+    if (beforeThreshold !== thresholdCents) {
+      await saveRuleVersionInTx(tx, actorId, {
+        key: "co.rdf.qualified_threshold",
+        value: thresholdCents,
+        effectiveFrom: businessDateFromKey(businessDateKey(new Date()))!,
+        reason: "Changed on the tax setup screen.",
+      });
+    }
     // A choice saved here is newer than one still waiting for its start date in Decisions & reviews.
     await cancelPendingDecisionChangesInTx(tx, actorId, [
       before.shortTermLeaseElection !== changed.shortTermLeaseElection ? "IN-33-ELECTION" : null,
@@ -92,9 +105,9 @@ export async function saveTaxSettings(
       data: { userId: actorId, action: "tax.setup.settings_updated",
         entityType: "BusinessSettings", entityId: "singleton",
         oldValue: { leaseElection: before.shortTermLeaseElection, rdfHandling: before.rdfHandling,
-          rdfThresholdCents: before.rdfThresholdCents, rdfCpaConfirmedOn: before.rdfCpaConfirmedOn?.toISOString() ?? null },
+          rdfThresholdCents: beforeThreshold, rdfCpaConfirmedOn: before.rdfCpaConfirmedOn?.toISOString() ?? null },
         newValue: { leaseElection: changed.shortTermLeaseElection, rdfHandling: changed.rdfHandling,
-          rdfThresholdCents: changed.rdfThresholdCents,
+          rdfThresholdCents: thresholdCents,
           rdfCpaConfirmedOn: changed.rdfCpaConfirmedOn?.toISOString() ?? null,
           businessAddressChanged: priorAddress !== JSON.stringify(changed.businessTaxAddress) } },
     });
@@ -238,7 +251,7 @@ export async function saveTaxFilingAccount(
         await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" IN (${Prisma.join(keys)}) ORDER BY "id" FOR UPDATE`;
         const matched = await tx.taxJurisdiction.findMany({
           where: { id: { in: keys } },
-          select: { id: true, filingAccountId: true, useTaxFilingAccountId: true,
+          select: { id: true, level: true, filingAccountId: true, useTaxFilingAccountId: true,
             filingCode: true, filingOrder: true, serviceFeeMilliPercent: true },
         });
         if (matched.length !== keys.length) throw new Error("A selected tax jurisdiction was not found.");
@@ -254,7 +267,11 @@ export async function saveTaxFilingAccount(
             throw new Error("Tax jurisdiction belongs to a different filing account.");
           const code = textField(row.filingCode, 40, "SUTS filing code");
           const order = cents(row.filingOrder, 10000, "SUTS filing order");
-          const fee = cents(row.serviceFeeMilliPercent, 100000, "area service fee");
+          // TFA-1: the state line's service fee is set by the dated rule, not
+          // by this form. Keep the stored value so a crafted submit cannot change it.
+          const fee = before.level === "STATE"
+            ? before.serviceFeeMilliPercent
+            : cents(row.serviceFeeMilliPercent, 100000, "area service fee");
           const modified = salesId !== before.filingAccountId || useId !== before.useTaxFilingAccountId ||
             (row.mode !== "NONE" && (code !== before.filingCode || order !== before.filingOrder ||
               fee !== before.serviceFeeMilliPercent));
@@ -479,19 +496,15 @@ export async function addRdfRate(
   const key = businessDateKey(input.effectiveOn);
   if (!key.endsWith("-07-01")) throw new Error("Colorado retail delivery fee rates start July 1.");
   const amountCents = cents(input.amountCents, 1000, "RDF amount");
-  return prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-    const row = await tx.retailDeliveryFeeRate.create({
-      data: { effectiveOn: businessDateFromKey(key)!, amountCents, enteredByUserId: actorId },
-      select: { id: true },
-    });
-    await tx.auditLog.create({ data: {
-      userId: actorId, action: "tax.setup.rdf_rate_created",
-      entityType: "RetailDeliveryFeeRate", entityId: row.id,
-      newValue: { effectiveOn: key, amountCents },
-    } });
-    return row.id;
+  // TFA-1: a July rate is an OWNER rule version, not a rate-table row. A
+  // past July 1 runs the late-change true-up in the same transaction.
+  const { versionId } = await saveRuleVersion(actorId, {
+    key: "co.rdf.amount",
+    value: amountCents,
+    effectiveFrom: businessDateFromKey(key)!,
+    reason: "Recorded on the tax setup screen.",
   });
+  return versionId;
 }
 
 

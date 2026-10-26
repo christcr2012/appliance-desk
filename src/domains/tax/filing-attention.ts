@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { legalDueOn } from "@/domains/tax/filing-calendar";
 import { loadFilingPacket } from "@/domains/tax/filing-packet";
+import { getRuleTimingSettings } from "@/domains/rules/reads";
+import { fileAndPayOnDate } from "@/domains/rules/timing";
 import {
   taxReturnDueException,
   taxLicenseRenewalException,
@@ -86,6 +88,21 @@ export async function listTaxFilingAttention(
     }
   }));
 
+  // TFA-1: the day the timing rule says to act. A missing rule never blocks Today.
+  const timing = await getRuleTimingSettings().catch(() => null);
+  const actOnKeyFor = (period: (typeof returns)[number]): string | undefined => {
+    if (!timing) return undefined;
+    try {
+      return businessDateKey(fileAndPayOnDate({
+        periodEnd: period.periodEnd,
+        legalDueOn: period.legalDueOn ?? legalDueOn(period.dueOn),
+        now, percent: timing.percent, marginBusinessDays: timing.marginBusinessDays,
+      }));
+    } catch {
+      return undefined;
+    }
+  };
+
   return {
     returns: {
       rows: closed
@@ -97,6 +114,7 @@ export async function listTaxFilingAttention(
           periodEnd: period.periodEnd,
           dueOn: period.dueOn,
           legalDueOn: period.legalDueOn ?? legalDueOn(period.dueOn),
+          actOnKey: actOnKeyFor(period),
           reminderDaysBefore: period.filingAccount.reminderDaysBefore,
           zeroReturn: period.zeroReturn,
           readOnly,

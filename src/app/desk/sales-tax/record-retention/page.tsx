@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { saveRecordRetentionYears, RECOMMENDED_RETENTION_YEARS } from "@/domains/tax/retention";
+import { getRecordRetentionYears, saveRecordRetentionYears, RECOMMENDED_RETENTION_YEARS } from "@/domains/tax/retention";
 import { InfoTip } from "@/components/ui/info-tip";
 
 export const metadata = { title: "Record keeping", robots: { index: false, follow: false } };
@@ -19,8 +18,7 @@ async function saveRetention(form: FormData) {
 
 export default async function RecordRetentionPage() {
   await requireRole("OWNER");
-  const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { recordRetentionYears: true } });
-  const years = settings?.recordRetentionYears ?? RECOMMENDED_RETENTION_YEARS;
+  const years = await getRecordRetentionYears();
   return (
     <main className="mx-auto max-w-2xl space-y-5">
       <Link href="/desk/purchases" className="text-sm underline">Back to purchases</Link>
