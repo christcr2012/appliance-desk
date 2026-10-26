@@ -1,10 +1,10 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { lastBusinessDay, lastCompletedMonth, monthKey, nextMonth } from "./depreciation";
 import { postPending } from "./post";
 import { profitAndLoss } from "./reports";
+import { checkStripeClearing } from "./stripe-balance";
 import type { BooksActor } from "./management";
 
 type ReviewCheck = { ok:boolean; label:string; detail:string; count:number };
@@ -74,9 +74,16 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
   bankStates.push({state:"NEEDS_REVIEW",detail:account.name+": "+unmatched._count._all+" bank lines not matched yet",
    unmatchedCents:unmatched._sum.signedCents??0});
  }
- const stripe:PaymentPart=process.env.BOOKS_STRIPE_SYNC_ENABLED==="true"
-  ? {state:"NEEDS_REVIEW",detail:"Stripe clearing check must be confirmed before locking.",unmatchedCents:0}
-  : {state:"NOT_SET_UP",detail:"Stripe sync has not been switched on.",unmatchedCents:0};
+ const stripeCheck=process.env.BOOKS_STRIPE_SYNC_ENABLED==="true"
+  ?await checkStripeClearing(last):null;
+ const stripe:PaymentPart=!stripeCheck
+  ?{state:"NOT_SET_UP",detail:"Stripe sync has not been switched on.",unmatchedCents:0}
+  :stripeCheck.state==="MATCH"
+   ?{state:"MATCHED",detail:"Stripe clearing matches the recorded balance.",unmatchedCents:0}
+   :stripeCheck.state==="DIFFERENCE"
+    ?{state:"NEEDS_REVIEW",detail:"Stripe is off by the recorded amount.",
+      unmatchedCents:stripeCheck.differenceCents}
+    :{state:"NEEDS_REVIEW",detail:stripeCheck.reason,unmatchedCents:0};
  const paymentBlocked=bankStates.filter(x=>x.state==="NEEDS_REVIEW").length+
   (stripe.state==="NEEDS_REVIEW"?1:0);
  const payments:ReviewCheck={label:"Payments add up",ok:paymentBlocked===0&&accounts.length<=500,
