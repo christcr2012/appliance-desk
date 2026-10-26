@@ -14,7 +14,7 @@ export default async function RecallsPage() {
   const [recalls, watch, types] = await Promise.all([listRecallSummaries(), getWatchStatus(), listApplianceTypeTerms()]);
   const lastCheck = watch.state?.lastSuccessAt;
   return (
-    <main className="space-y-8">
+    <div className="space-y-8">
       <PageHeader title="Recalls" />
       <Card title="Recall check">
         <p className="text-sm text-ink-soft" data-testid="recall-check-status">
@@ -55,6 +55,6 @@ export default async function RecallsPage() {
           ))}
         </div>
       </Card>
-    </main>
+    </div>
   );
 }

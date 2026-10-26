@@ -16,7 +16,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
   if (!incident) notFound();
   const deadline = new Date(incident.createdAt.getTime() + 24 * 60 * 60 * 1000);
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <Link href="/desk/today" className="text-sm text-ink-soft hover:underline">&larr; Back to To do</Link>
       <PageHeader title="Injury or safety incident" />
       <Card>
@@ -43,6 +43,6 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
           <p className="text-sm">{incident.decision === "REPORTED" ? "You reported it." : "You decided not to report it."} {incident.decisionNote}</p>
         </Card>
       )}
-    </main>
+    </div>
   );
 }

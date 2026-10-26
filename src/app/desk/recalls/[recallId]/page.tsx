@@ -15,7 +15,7 @@ export default async function RecallPage({ params }: { params: Promise<{ recallI
   const recall = await getRecallDetail(decodeURIComponent(recallId));
   if (!recall) notFound();
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <Link href="/desk/recalls" className="text-sm text-ink-soft hover:underline">&larr; Back to recalls</Link>
       <PageHeader title={recall.title} />
       <Card title="What the government says">
@@ -54,6 +54,6 @@ export default async function RecallPage({ params }: { params: Promise<{ recallI
           ))}
         </ul>
       </section>
-    </main>
+    </div>
   );
 }
