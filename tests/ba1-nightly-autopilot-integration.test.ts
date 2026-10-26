@@ -96,18 +96,34 @@ describe.skipIf(!enabled)("BA-1 nightly recording on disposable PostgreSQL",()=>
    }});
   }
  });
- it("manual and automatic posting race for the same month without creating duplicate financial entries",async()=>{
+ it("manual and automatic writes race once, and a locked month posts late in the next open period",async()=>{
   const owner=await prisma.user.findFirstOrThrow({where:{role:"OWNER"},select:{id:true}});
-  const result=await Promise.allSettled([
-   postBookDepreciation(owner.id,eligible,"2026-05"),
-   prisma.$transaction(tx=>postBookDepreciationInTx(tx,{kind:"automatic"},
-    eligible,"2026-05",{maxMonths:360}),{
-     isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000,
-   }),
-  ]);
-  expect(result.some(x=>x.status==="fulfilled")).toBe(true);
-  expect(await prisma.journalEntry.count({where:{sourceType:"APPLIANCE",
-   sourceId:eligible,eventKind:"DEPRECIATION:2026-05"}})).toBe(1);
+  const old=await prisma.accountingPeriod.findUnique({where:{periodKey:"2026-05"}});
+  await prisma.accountingPeriod.upsert({where:{periodKey:"2026-05"},
+   create:{periodKey:"2026-05",status:"CLOSED",closedAt:new Date("2026-06-10T10:00:00Z")},
+   update:{status:"CLOSED",closedAt:new Date("2026-06-10T10:00:00Z")},
+  });
+  try{
+   const results=await Promise.allSettled([
+    postBookDepreciation(owner.id,eligible,"2026-05"),
+    prisma.$transaction(tx=>postBookDepreciationInTx(tx,{kind:"automatic"},
+     eligible,"2026-05",{maxMonths:360}),{
+      isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000,
+    }),
+   ]);
+   expect(results.some(x=>x.status==="fulfilled")).toBe(true);
+   const rows=await prisma.journalEntry.findMany({where:{sourceType:"APPLIANCE",
+    sourceId:eligible,eventKind:"DEPRECIATION:2026-05"}});
+   expect(rows).toHaveLength(1);
+   expect(rows[0]!.periodKey).toBe("2026-06");
+   expect(rows[0]!.lateForDate).not.toBeNull();
+   expect(rows[0]!.memo).toContain("Late entry for");
+  }finally{
+   if(old)await prisma.accountingPeriod.update({where:{periodKey:"2026-05"},
+    data:{status:old.status,closedAt:old.closedAt,closedByUserId:old.closedByUserId,
+     reopenedReason:old.reopenedReason}});
+   else await prisma.accountingPeriod.delete({where:{periodKey:"2026-05"}});
+  }
  });
  it("does not enroll a missing-price appliance, leaving a single visible To do issue",async()=>{
   expect(await prisma.bookAsset.findUnique({where:{applianceId:noCost}})).toBeNull();
