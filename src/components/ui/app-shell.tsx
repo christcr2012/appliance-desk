@@ -216,13 +216,13 @@ export function AppShell({
 
       <div className="min-w-0 w-full max-w-full">
         <OfflineBar />
-        <header className="flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden print:hidden">
+        <header className="flex w-full min-w-0 max-w-full min-h-16 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden print:hidden">
           <Image
             src="/brand/badge.svg"
             alt=""
             width={32}
             height={32}
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
           />
           <span className="min-w-0 flex-1 truncate font-semibold text-ink">
             {current}
@@ -230,6 +230,7 @@ export function AppShell({
           <ButtonLink
             href="/desk/search"
             variant="quiet"
+            className="shrink-0"
             aria-label="Search"
           >
             Search
