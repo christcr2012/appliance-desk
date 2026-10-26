@@ -8,6 +8,7 @@ import { assignDueUseTaxRowsToPeriod } from "./use-tax";
 import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { legalDueOn } from "./filing-calendar";
 import { buildRdfPacketInTx, type RdfPacket } from "./rdf-filing";
+import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
 
 export type FilingPacketRow = {
   jurisdictionId: string;
@@ -368,6 +369,24 @@ export async function loadFilingPacketInTx(
       }
     }
     const issued: Prisma.InvoiceWhereInput = { status: { notIn: ["DRAFT", "VOID"] } };
+    // TFA-1: Colorado allows no service fee on state sales tax from Jan 1,
+    // 2026. The dated rule, not the stored jurisdiction value, decides the
+    // state line for periods starting then; local lines keep their own fee.
+    let stateServiceFee: number | null = null;
+    if (period.periodStart >= new Date("2026-01-01T07:00:00Z")) {
+      try {
+        stateServiceFee = (await ruleAsOf<number>("co.sales.state_service_fee", period.periodStart, tx)).value;
+      } catch (error) {
+        if (error instanceof RuleMissingError) {
+          return { status: "BLOCKED", problems: ["The state service-fee rule is missing. Check Taxes › Rules before filing."] };
+        }
+        throw error;
+      }
+    }
+    const stateFeeTax = <T extends { jurisdiction: { level: string; serviceFeeMilliPercent: number } }>(tax: T): T =>
+      stateServiceFee === null || tax.jurisdiction.level !== "STATE"
+        ? tax
+        : { ...tax, jurisdiction: { ...tax.jurisdiction, serviceFeeMilliPercent: stateServiceFee } };
     const where = basis === "ACCRUAL"
       ? { invoice: {
           ...issued,
@@ -400,7 +419,7 @@ export async function loadFilingPacketInTx(
     for (const line of lines) {
       const amount = line.invoice.amountDueCents;
       if (account.basis === "ACCRUAL") {
-        evidence.push({ tax: line, taxableCents: line.taxableCents,
+        evidence.push({ tax: stateFeeTax(line), taxableCents: line.taxableCents,
           exemptCents: line.exemptCents, taxCents: line.taxCents });
         continue;
       }
@@ -454,7 +473,7 @@ export async function loadFilingPacketInTx(
         countTaxable += taxableShares[i]!;
         countExempt += exemptShares[i]!;
       }
-      evidence.push({ tax: line, taxableCents: countTaxable, exemptCents: countExempt, taxCents: countTax });
+      evidence.push({ tax: stateFeeTax(line), taxableCents: countTaxable, exemptCents: countExempt, taxCents: countTax });
     }
     // A refund belongs to its OWN reporting period, which may differ from
     // the original invoice's issue/receipt month. Never block future returns
@@ -515,7 +534,7 @@ export async function loadFilingPacketInTx(
           : [0, 0];
         const taxable = allocateAcrossLines(totalTaxable, weights)[refundIndex]!;
         const exempt = allocateAcrossLines(totalExempt, weights)[refundIndex]!;
-        evidence.push({ tax: line, taxableCents: -taxable,
+        evidence.push({ tax: stateFeeTax(line), taxableCents: -taxable,
           exemptCents: -exempt, taxCents: -tax });
       }
     }

@@ -2,9 +2,10 @@ import type { Prisma, RdfRecordStatus } from "@prisma/client";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { getSaleTaxContext } from "./locations";
 import { resolveTaxability } from "./engine";
-import { rdfRateForSale, retailDeliveryFeeStatus } from "./retail-delivery-fee";
+import { retailDeliveryFeeStatus } from "./retail-delivery-fee";
 import { recordedRetailSales } from "./rdf-sales-evidence";
 import { rdfChargingEnabled } from "./rdf-charges";
+import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
 
 type Tx = Prisma.TransactionClient;
 
@@ -18,13 +19,13 @@ export type ShopSaleFeeResult = {
 type Decision = {
   status: RdfRecordStatus;
   reason: string;
-  rateId: string | null;
+  ruleVersionId: string | null;
   amountCents: number | null;
   collect: boolean;
 };
 
-const none = (reason: string): Decision => ({ status: "NOT_DUE", reason, rateId: null, amountCents: null, collect: false });
-const pending = (reason: string, status: RdfRecordStatus = "PENDING_DECISION"): Decision => ({ status, reason, rateId: null, amountCents: null, collect: false });
+const none = (reason: string): Decision => ({ status: "NOT_DUE", reason, ruleVersionId: null, amountCents: null, collect: false });
+const pending = (reason: string, status: RdfRecordStatus = "PENDING_DECISION"): Decision => ({ status, reason, ruleVersionId: null, amountCents: null, collect: false });
 
 function coDate(input: Date): Date {
   const date = businessDateFromKey(businessDateKey(input));
@@ -43,7 +44,7 @@ async function decide(tx: Tx, input: { invoiceId: string; customerId: string; se
   if (address.state !== "CO") return none("Delivery address is outside Colorado.");
   const settings = await tx.businessSettings.findUnique({
     where: { id: "singleton" },
-    select: { shortTermLeaseElection: true, rdfThresholdCents: true, rdfThresholdCrossedOn: true, rdfHandling: true, rdfCpaConfirmedOn: true },
+    select: { shortTermLeaseElection: true, rdfThresholdCrossedOn: true, rdfHandling: true, rdfCpaConfirmedOn: true },
   });
   if (!settings) return pending("Complete the business settings before deciding delivery fees.");
   // Exemption certificates are checked at the real moment of the sale (like the sale tax itself); the date-only value picks the rate and filing.
@@ -66,30 +67,34 @@ async function decide(tx: Tx, input: { invoiceId: string; customerId: string; se
   if (!taxable) return undecided ? pending(undecided) : none("Nothing on this sale is taxed by the state, so no delivery fee is due.");
 
   const year = Number(businessDateKey(input.saleOn).slice(0, 4));
+  // TFA-1: the small-seller limit is a dated rule, not a setting.
+  const thresholdCents = (await ruleAsOf<number>("co.rdf.qualified_threshold", input.saleOn, tx)).value;
   const [previous, current, account] = await Promise.all([
     recordedRetailSales(tx, year - 1),
     recordedRetailSales(tx, year),
     tx.taxFilingAccount.findFirst({ where: { kind: "SALES_RETURN", jurisdictions: { some: { level: "STATE" } } }, select: { frequency: true } }),
   ]);
-  if (!account && previous === 0 && current > settings.rdfThresholdCents) {
+  if (!account && previous === 0 && current > thresholdCents) {
     return pending("Confirm the Colorado filing frequency before calculating the 90-day grace period.");
   }
   const applicability = retailDeliveryFeeStatus({
     today: input.saleOn, saleType: "GOODS", election: settings.shortTermLeaseElection,
-    previousYearRetailCents: previous, currentYearRetailCents: current, thresholdCents: settings.rdfThresholdCents,
+    previousYearRetailCents: previous, currentYearRetailCents: current, thresholdCents,
     thresholdCrossedOn: settings.rdfThresholdCrossedOn, frequency: account?.frequency ?? "MONTHLY",
     handling: settings.rdfHandling, cpaConfirmedOn: settings.rdfCpaConfirmedOn,
   });
   if (applicability.status === "UNDECIDED") return pending(applicability.reason);
   if (applicability.status !== "APPLIES") return none(applicability.reason);
 
-  const rates = await tx.retailDeliveryFeeRate.findMany({
-    where: { effectiveOn: { lte: input.saleOn } }, orderBy: [{ effectiveOn: "desc" }, { id: "desc" }],
-    select: { id: true, effectiveOn: true, amountCents: true },
-  });
-  const rate = rdfRateForSale(input.saleOn, rates);
+  // TFA-1: the fee amount is the dated rule in force on the sale date.
+  let rate: { value: number; version: { id: string } } | null = null;
+  try {
+    rate = await ruleAsOf<number>("co.rdf.amount", input.saleOn, tx);
+  } catch (error) {
+    if (!(error instanceof RuleMissingError)) throw error;
+  }
   if (!rate) return pending("Enter the delivery fee rate effective on the sale date.", "PENDING_RATE");
-  return { status: "READY", reason: applicability.reason, rateId: rate.id, amountCents: rate.amountCents, collect: settings.rdfHandling === "COLLECT_FROM_CUSTOMER" };
+  return { status: "READY", reason: applicability.reason, ruleVersionId: rate.version.id, amountCents: rate.value, collect: settings.rdfHandling === "COLLECT_FROM_CUSTOMER" };
 }
 
 /**
@@ -109,7 +114,7 @@ export async function recordShopSaleDeliveryFeeInTx(
   const decision = await decide(tx, { invoiceId: input.invoiceId, customerId: input.customerId, serviceAddressId: input.serviceAddressId, saleOn, saleInstant: input.saleOn });
   const customerLine = decision.status === "READY" && decision.collect && input.allowCustomerLine && rdfChargingEnabled() && (decision.amountCents ?? 0) > 0;
   const data = {
-    status: decision.status, rateId: decision.rateId, saleOn: decision.status === "READY" ? saleOn : null,
+    status: decision.status, ruleVersionId: decision.ruleVersionId, rateId: null, saleOn: decision.status === "READY" ? saleOn : null,
     amountCents: decision.amountCents,
     // Collected only when a customer line really goes on this invoice; otherwise the business pays it (still reported).
     collectedFromCustomer: decision.status === "READY" ? customerLine : null,

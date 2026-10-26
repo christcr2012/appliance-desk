@@ -1,7 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { cancelPendingDecisionChangesInTx } from "@/domains/decisions/pending";
+import { ruleAsOf } from "@/domains/rules/reads";
+import { saveRuleVersionInTx } from "@/domains/rules/changes";
+import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 
 import { RECOMMENDED_RETENTION_YEARS, retentionYearsProblem } from "./retention-rules";
 
@@ -23,19 +25,26 @@ export async function saveRecordRetentionYearsInTx(
   if (problem) throw new Error(problem);
   if (!Number.isInteger(expectedYears)) throw new Error("Reload the page and try again.");
   await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-  const changed = await tx.businessSettings.updateMany({
-    where: { id: "singleton", recordRetentionYears: expectedYears }, data: { recordRetentionYears: years },
-  });
-  if (changed.count !== 1) throw new Error("This setting was changed in another session. Reload before saving.");
-  if (years !== expectedYears)
-    await cancelPendingDecisionChangesInTx(tx, actorId, ["IN-71"], "A newer record-keeping period was saved.");
-  await tx.auditLog.create({
-    data: { userId: actorId, action: "tax.record_retention.update", entityType: "BusinessSettings", entityId: "singleton",
-      oldValue: { recordRetentionYears: expectedYears }, newValue: { recordRetentionYears: years } },
-  });
+  // TFA-1: the keep-years value is a dated rule version, not a setting. The
+  // compare-and-set still guards against two sessions overwriting each other.
+  // (The pending IN-71 change is cancelled by the rule-version save itself.)
+  const current = (await ruleAsOf<number>("records.keep_years", new Date(), tx)).value;
+  if (current !== expectedYears) throw new Error("This setting was changed in another session. Reload before saving.");
+  if (years !== expectedYears) {
+    const today = businessDateFromKey(businessDateKey(new Date()))!;
+    await saveRuleVersionInTx(tx, actorId, {
+      key: "records.keep_years",
+      value: years,
+      effectiveFrom: today,
+      reason: "Changed on the record-keeping screen.",
+    });
+    await tx.auditLog.create({
+      data: { userId: actorId, action: "tax.record_retention.update", entityType: "BusinessSettings", entityId: "singleton",
+        oldValue: { recordRetentionYears: expectedYears }, newValue: { recordRetentionYears: years } },
+    });
+  }
 }
 
 export async function getRecordRetentionYears(): Promise<number> {
-  const settings = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { recordRetentionYears: true } });
-  return settings?.recordRetentionYears ?? RECOMMENDED_RETENTION_YEARS;
+  return (await ruleAsOf<number>("records.keep_years", new Date())).value;
 }

@@ -82,7 +82,7 @@ describe("W-22FIN owner-reviewed mandatory location policy",()=>{
   });
   it("assigns a synthetic RDF event exactly once, never as a hidden rent credit",()=>{
     const assessed={status:"APPLIES" as const,amountCents:31,
-      rateId:"synthetic-2026",handling:"COLLECT_FROM_CUSTOMER" as const,
+      rateId:"synthetic-2026",ruleVersionId:null,handling:"COLLECT_FROM_CUSTOMER" as const,
       reason:"Synthetic reviewed fee event"};
     expect(allocateReviewedRdfForLocation(assessed,"REQUIRED",true))
       .toMatchObject({status:"APPLIES",amountCents:31,rateId:"synthetic-2026"});

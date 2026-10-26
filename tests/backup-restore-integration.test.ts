@@ -36,7 +36,8 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
   let target: PrismaClient;
   const tag = randomUUID();
   const rdfFixture = { user: "restore-rdf-user-" + tag, customer: "restore-rdf-customer-" + tag,
-    invoice: "restore-rdf-invoice-" + tag, rate: "restore-rdf-rate-" + tag, record: "restore-rdf-record-" + tag };
+    invoice: "restore-rdf-invoice-" + tag, rate: "restore-rdf-rate-" + tag, record: "restore-rdf-record-" + tag,
+    rule: "restore-rule-version-" + tag };
   const telecom = {
     account: "restore-com-account-" + tag,
     number: "restore-com-number-" + tag,
@@ -87,6 +88,13 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       saleKey: "restore:" + tag, invoiceId: rdfFixture.invoice, rateId: rdfFixture.rate,
       deliveredOn: businessDateFromKey("2026-07-01")!, saleOn: businessDateFromKey("2026-06-30")!,
       status: "READY", amountCents: 31, collectedFromCustomer: false } });
+    // TFA-1: the dated rule book is a backed-up table now. A synthetic key keeps
+    // this proof row out of every real rule read — no ruleAsOf or nextRuleChange
+    // call can see "restore.proof.only" — while still proving a rule version,
+    // including its JSON value, survives a full backup/restore.
+    await prisma.legalRuleVersion.create({ data: { id: rdfFixture.rule,
+      ruleKey: "restore.proof.only", value: 99, effectiveFrom: businessDateFromKey("2026-10-01")!,
+      origin: "OWNER", provisional: false, createdByUserId: rdfFixture.user } });
 
     // COM-L2 recovery proof: nonempty new lineage survives a full backup/restore.
     await prisma.telecomAccount.create({ data: {
@@ -219,6 +227,7 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
     await prisma.contactPoint.deleteMany({ where: { id: telecom.point } });
     await prisma.businessPhoneNumber.deleteMany({ where: { id: telecom.number } });
     await prisma.telecomAccount.deleteMany({ where: { id: telecom.account } });
+    await prisma.legalRuleVersion.deleteMany({ where: { id: rdfFixture.rule } });
     await prisma.retailDeliveryFeeRecord.deleteMany({ where: { id: rdfFixture.record } });
     await prisma.retailDeliveryFeeRate.deleteMany({ where: { id: rdfFixture.rate } });
     await prisma.invoice.deleteMany({ where: { id: rdfFixture.invoice } });
@@ -272,6 +281,10 @@ describe.skipIf(!enabled)("backup restore drill (real Postgres)", () => {
       invoiceId: rdfFixture.invoice, rateId: rdfFixture.rate, status: "READY", amountCents: 31,
       saleOn: businessDateFromKey("2026-06-30"), deliveredOn: businessDateFromKey("2026-07-01"),
       collectedFromCustomer: false,
+    });
+    expect(await target.legalRuleVersion.findUniqueOrThrow({ where: { id: rdfFixture.rule } })).toMatchObject({
+      ruleKey: "restore.proof.only", value: 99, origin: "OWNER", provisional: false,
+      effectiveFrom: businessDateFromKey("2026-10-01"),
     });
     expect(await target.telecomAccount.findUniqueOrThrow({ where: { id: telecom.account } }))
       .toMatchObject({ provider: "twilio", environment: "TEST", status: "UNCONFIGURED" });
