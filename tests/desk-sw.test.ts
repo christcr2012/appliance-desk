@@ -4,15 +4,21 @@ import { runInNewContext } from "node:vm";
 
 const script = readFileSync("public/desk-sw.js", "utf8");
 
+type WorkerEvent = {
+  request?: { url: string; method: string; mode: string };
+  respondWith?: (promise: Promise<Response>) => void;
+  waitUntil?: (promise: Promise<unknown>) => void;
+};
+
 function worker() {
-  const listeners: Record<string, (event: any) => void> = {};
+  const listeners: Record<string, (event: WorkerEvent) => void> = {};
   const put = vi.fn(async () => {});
-  const match = vi.fn(async (url: any) =>
+  const match = vi.fn(async (url: unknown) =>
     url === "/offline" ? new Response("<h1>You're offline</h1>", { headers: { "content-type": "text/html" } }) : undefined);
   const cache = { match, put, add: vi.fn(async () => {}), addAll: vi.fn(async () => {}) };
   const caches = { open: vi.fn(async () => cache), keys: vi.fn(async () => ["desk-shell-v0"]), delete: vi.fn(async () => true) };
   const fetch = vi.fn(async () => new Response("online"));
-  const self = { location: { origin: "https://example.test" }, addEventListener: (name: string, cb: any) => { listeners[name] = cb; },
+  const self = { location: { origin: "https://example.test" }, addEventListener: (name: string, cb: (event: WorkerEvent) => void) => { listeners[name] = cb; },
     skipWaiting: vi.fn(), clients: { claim: vi.fn() } };
   runInNewContext(script, { self, caches, fetch, URL, Response });
   function fire(url: string, mode = "cors", method = "GET") {
