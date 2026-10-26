@@ -88,7 +88,7 @@ vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     rentalAgreement: { findMany: mocks.agreement },
-    invoice: { findMany: mocks.invoice },
+    invoice: { findMany: mocks.invoice, count: vi.fn().mockResolvedValue(0) },
     job: { findMany: mocks.job },
     businessSettings: { findUnique: mocks.settings },
     maintenanceRequest: { findMany: mocks.request },

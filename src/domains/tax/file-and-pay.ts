@@ -27,6 +27,8 @@ export type FileAndPayInput = {
   portalUrl: string | null;
   /** Use tax is shown by area (state and Greeley separate). */
   useTax: ReadonlyArray<{ name: string; useTaxCents: number }>;
+  /** TFA-1: the day the timing rule says to act (90% through the window by default). */
+  actOnKey?: string;
 };
 
 export type FileAndPayLine = {
@@ -34,6 +36,8 @@ export type FileAndPayLine = {
   overdue: boolean;
   link: { href: string; label: string } | null;
   parts: { label: string; amount: string }[];
+  /** "File and pay on Oct 17", when the timing rule gives a day. */
+  actOn: string | null;
 };
 
 function httpsOnly(url: string | null): string | null {
@@ -51,11 +55,12 @@ export function fileAndPayLine(input: FileAndPayInput): FileAndPayLine {
   const amount = formatMoney(input.amountCents);
   const due = shortDateLabel(input.legalDueOn);
   const overdue = !input.filed && input.todayKey > input.legalDueOn;
+  const actOn = !input.filed && input.actOnKey ? `File and pay on ${shortDateLabel(input.actOnKey)}.` : null;
   const parts = input.kind === "USE_TAX_RETURN"
     ? input.useTax.filter((row) => row.useTaxCents !== 0).map((row) => ({ label: `${row.name} use tax`, amount: formatMoney(row.useTaxCents) }))
     : [];
   if (input.filed) {
-    return { headline: `Filed and paid. This return was due ${due}.`, overdue: false, link: null, parts: [] };
+    return { headline: `Filed and paid. This return was due ${due}.`, overdue: false, link: null, parts: [], actOn: null };
   }
   const stored = httpsOnly(input.portalUrl);
   const isSuts = input.kind !== "RETAIL_DELIVERY_FEE_RETURN";
@@ -66,5 +71,5 @@ export function fileAndPayLine(input: FileAndPayInput): FileAndPayLine {
     ? `File a $0 return on ${where} by ${due}. A return with nothing owed still has to be filed.`
     : `File and pay ${amount} on ${where} by ${due}. ${overdue ? when : ""}`.trim();
   const href = stored ?? (isSuts ? SUTS_LOGIN_URL : null);
-  return { headline, overdue, link: href ? { href, label: isSuts && !stored ? "Open SUTS" : "Open the filing website" } : null, parts };
+  return { headline, overdue, link: href ? { href, label: isSuts && !stored ? "Open SUTS" : "Open the filing website" } : null, parts, actOn };
 }

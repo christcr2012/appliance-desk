@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { dueOnFor, legalDueOn } from "./filing-calendar";
 import { chooseUseTaxFrequency } from "./use-tax-frequency";
+import { ruleAsOf } from "@/domains/rules/reads";
 
 function fromKey(value: string): Date {
   const result = businessDateFromKey(value);
@@ -45,11 +46,8 @@ export async function advanceColoradoUseTaxFrequency(
         account.frequency !== "ANNUAL" || !account.firstPeriodStart ||
         !account.useTaxJurisdictions.some(j => j.level === "STATE")) return false;
 
-    const settings = await tx.businessSettings.findUnique({
-      where: { id: "singleton" },
-      select: { useTaxMonthlyThresholdCents: true },
-    });
-    const threshold = settings?.useTaxMonthlyThresholdCents ?? 30000;
+    // TFA-1: the monthly-filing limit is a dated rule, not a setting.
+    const threshold = (await ruleAsOf<number>("co.use.monthly_threshold", monthEnd, tx)).value;
     const due = await tx.purchaseUseTax.aggregate({
       where: {
         status: { in: ["DUE", "FILED"] },

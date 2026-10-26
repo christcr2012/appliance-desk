@@ -37,6 +37,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/books-depreciation-integration.test.ts", // K-6 adjusts verified opening date and book life defaults in a serial database fixture.
   "tests/ba1-books-autopilot-integration.test.ts", // BA-1 modifies singleton Books dates and depreciation.
   "tests/ba1-nightly-autopilot-integration.test.ts", // BA-1 changes the singleton Books start and health settings.
+  "tests/ba2-books-setup-integration.test.ts", // BA-2 owns the Books singleton and closes/reopens historical periods.
   "tests/books-export-delivery-integration.test.ts", // K-CASH-6 also updates/restores singleton Books opening.
   "tests/books-exports-integration.test.ts", // K-5 temporarily sets shared Books opening date and verifies export provenance.
   "tests/telecom-statement-books-integration.test.ts", // COM-N3 changes booksStartDate and posts expenses.
@@ -66,6 +67,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-exemptions-integration.test.ts",
   "tests/tax-prepaid-invoice-integration.test.ts",
   "tests/tax-rate-change-integration.test.ts",
+  "tests/rules-as-of-integration.test.ts", // TFA-1 changes and restores the shared timing settings; its rule versions are test-scoped.
   "tests/tax-refund-evidence-integration.test.ts",
   "tests/tax-stripe-invoice-mirror-integration.test.ts",
   "tests/agreements-term-integration.test.ts",
