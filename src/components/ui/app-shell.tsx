@@ -180,7 +180,7 @@ export function AppShell({
   );
 
   return (
-    <div className="desk-app min-h-screen bg-canvas lg:pl-64 print:block print:bg-white print:pl-0">
+    <div className="desk-app min-h-screen w-full min-w-0 max-w-full bg-canvas lg:pl-64 print:block print:bg-white print:pl-0">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-nav-bg text-nav-ink lg:flex print:hidden">
         <Link
           href="/desk/today"
@@ -214,7 +214,7 @@ export function AppShell({
         </div>
       </aside>
 
-      <div className="min-w-0">
+      <div className="min-w-0 w-full max-w-full">
         <OfflineBar />
         <header className="flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden print:hidden">
           <Image
