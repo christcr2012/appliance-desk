@@ -2564,6 +2564,9 @@ model Invoice {
   saleServiceAddressId String?
   walkInName           String?
   saleOperationKey     String? @unique
+  // TFA-2: a replacement sale (an exchange) points at the sale it replaces, so
+  // the delivery fee is never charged twice for one purchase.
+  replacementOfInvoiceId String?
   // Stripe: finalized_at from the signed provider invoice, never webhook-receipt time.
   // Local: issue time is its original creation time. Null means evidence is incomplete.
   issuedAt           DateTime?
