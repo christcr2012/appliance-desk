@@ -35,7 +35,7 @@ describe("TFA-2 §8 frequency thresholds (pure)", () => {
 });
 
 describe.skipIf(!enabled)("TFA-2 §8 filing-frequency advice on real Postgres", () => {
-  async function fixture(frequency: "MONTHLY" | "QUARTERLY") {
+  async function fixture(frequency: "MONTHLY" | "QUARTERLY" | "ANNUAL") {
     const tag = randomUUID().slice(0, 8);
     const ownerId = "tfa2-ff-owner-" + tag;
     const staffId = "tfa2-ff-staff-" + tag;
@@ -249,6 +249,35 @@ describe.skipIf(!enabled)("TFA-2 §8 filing-frequency advice on real Postgres", 
         expect(all[i]!.periodStart.getTime())
           .toBe(all[i - 1]!.periodEnd.getTime() + 24 * 3600 * 1000);
       }
+    } finally {
+      await f.cleanup();
+    }
+  });
+
+  it("a yearly account still gets December advice to file more often", async () => {
+    const f = await fixture("ANNUAL");
+    try {
+      // A quiet year, then a big one. The yearly periods straddle the
+      // trailing-twelve-months window edges, so whole-period selection
+      // would see no evidence at all; overlap selection prorates them.
+      await f.addPeriod("2030-01-01", "2030-12-31", 12000);
+      await f.addPeriod("2031-01-01", "2031-12-31", 1600000);
+      // Mid-year: more-often advice is December-only, nothing appears.
+      await computeFilingFrequencyAdvice(day("2031-10-15"));
+      expect(await prisma.filingFrequencyAdvice.count({
+        where: { filingAccountId: f.account.id },
+      })).toBe(0);
+      // December: 1 month of the quiet year (1,000) plus 11 months of the
+      // big year (1,466,667) over 12 months averages 122,305 — over the
+      // quarterly limit, so Colorado may move this account to monthly.
+      await computeFilingFrequencyAdvice(day("2031-12-15"));
+      const advice = await prisma.filingFrequencyAdvice.findFirst({
+        where: { filingAccountId: f.account.id },
+      });
+      expect(advice).toMatchObject({
+        currentFrequency: "ANNUAL", advisedFrequency: "MONTHLY",
+        averageMonthlyCents: 122305,
+      });
     } finally {
       await f.cleanup();
     }

@@ -6,6 +6,7 @@ import type {
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey, businessDayBounds } from "@/lib/business-date";
+import { allocateAcrossLines } from "@/domains/tax/allocate";
 
 export type TaxExemptionInput = {
   reason: TaxExemptionReason;
@@ -234,21 +235,43 @@ export async function createCustomerTaxExemption(
       // Only tax the certificate actually covered counts: nothing charged
       // after its expiration day.
       const until = row.expiresOn ? businessDayBounds(row.expiresOn).end : null;
-      const taxed = await tx.invoiceTaxLine.aggregate({
+      const taxedInvoices = await tx.invoice.findMany({
         where: {
-          taxCents: { gt: 0 },
-          ...(data.jurisdictionIds.length
-            ? { jurisdictionId: { in: data.jurisdictionIds } }
-            : {}),
-          invoice: {
-            customerId,
-            status: { notIn: ["DRAFT", "VOID", "WRITTEN_OFF"] },
-            issuedAt: { gte: since!, ...(until ? { lt: until } : {}) },
-          },
+          customerId,
+          status: { notIn: ["DRAFT", "VOID", "WRITTEN_OFF"] },
+          issuedAt: { gte: since!, ...(until ? { lt: until } : {}) },
+          taxLines: { some: { taxCents: { gt: 0 } } },
         },
-        _sum: { taxCents: true },
+        select: {
+          id: true, amountDueCents: true,
+          taxLines: { select: { jurisdictionId: true, taxCents: true } },
+          refunds: { select: { amountCents: true } },
+        },
       });
-      let creditCents = taxed._sum.taxCents ?? 0;
+      let creditCents = 0;
+      for (const invoice of taxedInvoices) {
+        const lines = invoice.taxLines;
+        const totalTax = lines.reduce((sum, line) => sum + line.taxCents, 0);
+        const totalRefunds = invoice.refunds.reduce((sum, refund) => sum + refund.amountCents, 0);
+        // Mirror the filing packet's refund allocation: a refund returns
+        // tax and principal in proportion, so only the unrefunded share
+        // of each tax line can still be credited here — the customer must
+        // never receive the same tax back twice. An invoice whose numbers
+        // do not reconcile earns no credit (the packet blocks filing on
+        // it for the same reason; the owner can credit by hand).
+        if (invoice.amountDueCents <= 0 || totalTax < 0 || totalTax > invoice.amountDueCents
+          || totalRefunds < 0 || totalRefunds > invoice.amountDueCents
+          || lines.some((line) => line.taxCents < 0)) continue;
+        const taxRefunded = totalRefunds === 0 ? 0
+          : allocateAcrossLines(totalRefunds, [totalTax, invoice.amountDueCents - totalTax])[0]!;
+        const perLineRefunded = taxRefunded === 0 ? lines.map(() => 0)
+          : allocateAcrossLines(taxRefunded, lines.map((line) => line.taxCents));
+        lines.forEach((line, index) => {
+          if (line.taxCents <= 0) return;
+          if (data.jurisdictionIds.length && !data.jurisdictionIds.includes(line.jurisdictionId)) return;
+          creditCents += line.taxCents - perLineRefunded[index]!;
+        });
+      }
       if (creditCents > 0) {
         // Never credit the same tax twice: subtract back-dated credits
         // already granted for certificates whose covered days and areas

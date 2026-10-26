@@ -323,4 +323,71 @@ describe.skipIf(!enabled)("TFA-2 §9 exemption expiry flow on real Postgres", ()
       await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
     }
   });
+
+  it("credits only the unrefunded share of the tax (refunded tax is never credited twice)", async () => {
+    const tag = randomUUID().slice(0, 8);
+    const ownerId = "tfa2-ex5-owner-" + tag;
+    const userId = "tfa2-ex5-user-" + tag;
+    const customerId = "tfa2-ex5-customer-" + tag;
+    const jurisdictionId = "tfa2-ex5-jur-" + tag;
+    try {
+      await prisma.user.createMany({
+        data: [
+          { id: ownerId, email: tag + "-owner5@example.test", name: "Ex Owner", role: "OWNER", emailVerified: true },
+          { id: userId, email: tag + "-customer5@example.test", name: "Refunded Customer", role: "CUSTOMER", emailVerified: true },
+        ],
+      });
+      await prisma.customer.create({
+        data: { id: customerId, userId, referralCode: "R" + tag },
+      });
+      await prisma.taxJurisdiction.create({
+        data: {
+          id: jurisdictionId, code: "E5-" + tag, name: "Test state",
+          level: "STATE", administration: "STATE_COLLECTED", reviewStatus: "REVIEWED",
+        },
+      });
+      const rate = await prisma.taxRateVersion.create({
+        data: { jurisdictionId, rateMilliPercent: 5000, effectiveFrom: day("2025-01-01"), source: "MANUAL" },
+      });
+      async function taxedInvoice(taxCents: number, refundCents: number) {
+        const invoice = await prisma.invoice.create({
+          data: { customerId, status: "PAID", issuedAt: daysAgo(20), amountDueCents: 10000 + taxCents },
+        });
+        await prisma.invoiceTaxLine.create({
+          data: {
+            invoiceId: invoice.id, jurisdictionId, rateVersionId: rate.id,
+            category: "RENTAL", taxableCents: 10000, taxCents, source: "ENGINE",
+          },
+        });
+        if (refundCents > 0) {
+          await prisma.refund.create({
+            data: { invoiceId: invoice.id, amountCents: refundCents, reason: "OVERPAYMENT" },
+          });
+        }
+      }
+      // Fully refunded: its $5 tax already went back; nothing left to credit.
+      await taxedInvoice(500, 10500);
+      // Half refunded: half the tax (250) already went back; credit the rest.
+      await taxedInvoice(500, 5250);
+
+      await createCustomerTaxExemption(ownerId, customerId, {
+        reason: "CHARITABLE", certificatePhotoId: "photo-" + tag,
+        jurisdictionIds: [jurisdictionId], validFrom: daysAgo(30),
+      });
+      const credits = await prisma.customerCredit.findMany({ where: { customerId } });
+      expect(credits).toHaveLength(1);
+      expect(credits[0]!.amountCents).toBe(250);
+    } finally {
+      await prisma.customerCredit.deleteMany({ where: { customerId } });
+      await prisma.refund.deleteMany({ where: { invoice: { customerId } } });
+      await prisma.invoiceTaxLine.deleteMany({ where: { jurisdictionId } });
+      await prisma.invoice.deleteMany({ where: { customerId } });
+      await prisma.customerTaxExemption.deleteMany({ where: { customerId } });
+      await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId } });
+      await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+      await prisma.customer.deleteMany({ where: { id: customerId } });
+      await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
+      await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
+    }
+  });
 });

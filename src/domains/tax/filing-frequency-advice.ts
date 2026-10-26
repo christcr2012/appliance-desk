@@ -2,7 +2,7 @@ import type { TaxFilingFrequency } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { businessDateFromKey, businessDateKey, businessDayBounds } from "@/lib/business-date";
+import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
 import {
@@ -81,15 +81,26 @@ export async function computeFilingFrequencyAdvice(now: Date): Promise<number> {
   const windowStart = businessDateFromKey(
     `${year! - 1}-${String(month).padStart(2, "0")}-01`,
   )!;
-  const closedBefore = businessDayBounds(now).start;
+  // The evidence window is the twelve calendar months ending with last
+  // month. Periods are taken by overlap, not by containment: a yearly
+  // period always straddles the window edges, so requiring whole closed
+  // periods inside it would leave a yearly account with no evidence at
+  // all (the December case the review found). Each overlapping period
+  // contributes its packet tax prorated by the months it covers inside
+  // the window; periods tiling the window (monthly, quarterly) are
+  // unaffected, since their overlap is the whole period.
+  const windowEnd = businessDateFromKey(
+    `${year}-${String(month).padStart(2, "0")}-01`,
+  )!;
+  const windowLastDay = new Date(windowEnd.getTime() - 24 * 3600 * 1000);
   const yearStart = businessDateFromKey(`${year}-01-01`)!;
   let created = 0;
   for (const account of accounts) {
     const periods = await prisma.taxFilingPeriod.findMany({
       where: {
         filingAccountId: account.id,
-        periodStart: { gte: windowStart },
-        periodEnd: { lt: closedBefore },
+        periodStart: { lt: windowEnd },
+        periodEnd: { gte: windowStart },
       },
       select: { id: true, periodStart: true, periodEnd: true },
       orderBy: [{ periodStart: "asc" }, { id: "asc" }],
@@ -104,10 +115,17 @@ export async function computeFilingFrequencyAdvice(now: Date): Promise<number> {
         loadFilingPacketInTx(tx, period.id, now, { allowFiled: true }),
       ).catch(() => null);
       if (!loaded || loaded.status !== "READY") continue;
-      taxCents += loaded.packet.rows
+      const overlapStart = period.periodStart < windowStart ? windowStart : period.periodStart;
+      const overlapEnd = period.periodEnd > windowLastDay ? windowLastDay : period.periodEnd;
+      const overlapMonths = monthsSpanned(overlapStart, overlapEnd);
+      if (overlapMonths <= 0) continue;
+      const periodTax = loaded.packet.rows
         .filter((row) => row.administration === "STATE_COLLECTED")
         .reduce((sum, row) => sum + row.taxCents, 0);
-      months += monthsSpanned(period.periodStart, period.periodEnd);
+      taxCents += Math.round(
+        (periodTax * overlapMonths) / monthsSpanned(period.periodStart, period.periodEnd),
+      );
+      months += overlapMonths;
     }
     if (months === 0) continue;
     const averageMonthlyCents = Math.floor(taxCents / months);
