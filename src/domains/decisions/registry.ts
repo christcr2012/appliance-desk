@@ -99,7 +99,7 @@ export type DecisionSubject = {
   reviewGate?: string;
 };
 
-const BUSINESS_FACTS =
+export const BUSINESS_FACTS =
   "Robinson Appliance Rentals is a new, one-owner business in Greeley (Weld County), Colorado. It rents household " +
   "appliances (washers, dryers, refrigerators, ranges) to homes and property managers, usually month to month or " +
   "for 6 or 12 months, delivers and installs them with its own truck, and sometimes sells used appliances and parts.";

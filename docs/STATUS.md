@@ -1,3 +1,13 @@
+## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review, merged with latest main)
+
+Branch `ai/claude/dec-1b-decisions-screens`. Coded: Settings › Decisions & reviews (`/desk/settings/decisions`: tabs,
+filters, cards with Keep / Change / Ask / Enter their answer / Reopen — owner acts, admins read only, staff sent away),
+Word and PDF questionnaires, "Import a completed form" (Word file or pasted answers → preview → apply with the signed
+token), private storage of completed forms (type checked by content, 4 MB) and a weekly "Decisions waiting" Today
+card. The kit `<Toaster />` is mounted on these two screens only (in the layout it broke older tests that look for
+one status message; moving it there stays with AR-0b). Proof: unit tests here; browser spec `e2e/decisions.spec.ts` runs in CI only.
+Not observed: a form kept in real private storage (CI has none). Next: DEC-2 researched values; MCP decision tools.
+
 ## October 26 — CI maintenance: scoped secret history and rebalanced browser groups (PR #632)
 
 PR #632 changes Gitleaks from all-branch history scanning to new PR/push commits plus the complete main-only nightly history; the full checked-out-file scan remains. Three complete browser specs moved into the previously lightest group, preserving all 85 specs and four runners. The first full CI run (40416591581, head f591596f) passed all 11 jobs: browser a 164.74s, b 142.41s, c 108.31s, d 164.08s against 180s. No automated review appeared and the diff was self-reviewed. The final evidence documentation revision must pass its own exact-head CI before merge; the PR records the current merge state. No security allowlist, test coverage, provider settings or production data changed.

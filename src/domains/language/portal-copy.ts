@@ -24,6 +24,8 @@ export const PORTAL_TRANSLATIONS = {
   "An invoice is created automatically each time you're billed.": "Se crea automáticamente una factura cada vez que se le cobra.",
   "Invoices": "Facturas",
   "My rentals": "Mis alquileres",
+  "Rentals": "Alquileres",
+  "Settings": "Configuración",
   "Maintenance": "Mantenimiento",
   "Account": "Cuenta",
   "Manage communication preferences and privacy requests.": "Administre sus preferencias de comunicación y solicitudes de privacidad.",

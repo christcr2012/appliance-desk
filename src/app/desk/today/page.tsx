@@ -27,6 +27,7 @@ import { jobTypeLabel } from "@/lib/status-labels";
 import { visibleOwnerActions } from "@/lib/owner-actions";
 import { ActionButton, EmptyState, Icon, InboxCard, InfoTip, StatusTabs, TONE_DOT, Toaster, mapHref, type ActionSpec, type Tone } from "@/components/kit";
 import { SetupCard } from "./setup-card";
+import { decisionsTodayCount } from "@/domains/decisions/today";
 import { recordBankPaymentAction } from "../billing/reconciliation/actions";
 import { TodayInbox, type InboxEntry } from "./today-inbox";
 
@@ -195,6 +196,8 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   // O-7: a private workspace for the owner and admins. A problem reading it only hides the shortcuts; it never hides work.
   // Only the optional notes (goal, idle appliances, low use) can be hidden; every other item always shows.
   const workspace = canManage ? await getWorkspace(session.user.id).catch(() => null) : null;
+  // DEC-1b: "Decisions waiting" — owner only, low priority, at most one day a week.
+  const decisionsWaiting = await decisionsTodayCount({ id: session.user.id, role }, now);
   const hiddenOptional = new Set(workspace?.prefs.hiddenOptionalCardIds ?? []);
   const exceptions = sortInbox(allExceptions.filter((item) => !hiddenOptional.has(item.category)));
   const truncated = allTruncated.filter((item) => !hiddenOptional.has(item.category));
@@ -436,6 +439,17 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
           </div>
         ) : null}
         {setupChecklist ? <SetupCard checklist={setupChecklist} /> : null}
+        {decisionsWaiting ? (
+          <section aria-label="System">
+            <InboxCard
+              eyebrow="System"
+              eyebrowTone="neutral"
+              title={`Decisions waiting: ${decisionsWaiting}`}
+              detail="The app is running on starting values. Confirm or change them when you have time."
+              actions={[{ kind: "link", label: "Open", href: "/desk/settings/decisions", primary: true }]}
+            />
+          </section>
+        ) : null}
         {group !== "snoozed" ? <StatusTabs label="Inbox groups" param="group" current={group} items={tabs} /> : null}
         {group === "snoozed" ? (
           <div className="flex items-center gap-3">
