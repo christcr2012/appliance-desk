@@ -2362,6 +2362,15 @@ enum TaxAmendmentStatus {
   HANDLED_OUTSIDE
 }
 
+// TFA-1: where a dated legal-rule version came from. Priority when two versions
+// share a start date: PROFESSIONAL > OWNER > OFFICIAL_WATCH > RESEARCHED.
+enum LegalRuleOrigin {
+  RESEARCHED
+  OFFICIAL_WATCH
+  OWNER
+  PROFESSIONAL
+}
+
 enum TaxExemptionReason {
   RESALE
   GOVERNMENT
@@ -2920,6 +2929,38 @@ model TaxabilityRuleVersion {
   @@index([jurisdictionId, category, effectiveFrom])
 }
 
+// TFA-1: every legal number the desk relies on (tax and fee rates, thresholds,
+// deadlines) as a dated version with its source. Reads use the version in force
+// on the date that matters; nothing is overwritten, so a late change can be
+// true-up'd against the version that should have applied. `provisional` is true
+// until the value is confirmed (official-watch values from strict parsers are
+// false); `autoApplied` records whether an official-watch value went in on its
+// own. Owner overrides are versions with origin OWNER and a reason in the audit
+// row. `undoneAt` marks a version the owner undid before its start date.
+model LegalRuleVersion {
+  id            String          @id @default(cuid())
+  ruleKey       String          @db.VarChar(80)
+  value         Json
+  effectiveFrom DateTime
+  origin        LegalRuleOrigin
+  sourceUrl     String?         @db.VarChar(500)
+  sourceQuote   String?         @db.VarChar(1000)
+  checkedOn     DateTime?
+  provisional   Boolean         @default(true)
+  autoApplied   Boolean         @default(false)
+  undoneAt      DateTime?
+  createdByUserId String?
+  createdAt     DateTime        @default(now())
+
+  rdfRecords    RetailDeliveryFeeRecord[] @relation("RdfRuleVersion")
+
+  // No @@unique here: uniqueness is one ACTIVE version per
+  // (ruleKey, effectiveFrom, origin), enforced by the SQL-only partial unique
+  // index in migration 20261101000000_legal_rules (an undone version stays
+  // as history and must not block its replacement). See DATABASE.md.
+  @@index([ruleKey, effectiveFrom])
+}
+
 // DEC-1a: Decisions & reviews. One append-only row per answer, confirmation, question sent or reopening. The setting
 // itself stays where it lives; this is the evidence trail (docs/build-specs/engines/DECISIONS-CENTER.md section 1).
 model DecisionRecord {
@@ -3089,6 +3130,10 @@ model RetailDeliveryFeeRecord {
   status                   RdfRecordStatus
   rateId                   String?
   rate                     RetailDeliveryFeeRate? @relation(fields: [rateId], references: [id], onDelete: Restrict)
+  // TFA-1: the dated rule version that set the amount (co.rdf.amount). New
+  // records use this; rateId stays for rows recorded before TFA-1.
+  ruleVersionId            String?
+  ruleVersion              LegalRuleVersion? @relation("RdfRuleVersion", fields: [ruleVersionId], references: [id], onDelete: Restrict)
   amountCents              Int?
   collectedFromCustomer    Boolean?
   invoiceLineId            String? @unique
@@ -3337,6 +3382,13 @@ model BusinessSettings {
   businessTaxAddress              Json                   @default("{}")
   autoApplyOfficialRateChanges    Boolean                @default(true)
   autoRateChangeMaxMilliPercent   Int                    @default(1000)
+  // TFA-1: timing for changes that cost the business or do not help to do
+  // early (paying a return, filing 1099s, renewing a license). The desk
+  // suggests acting this far through the time allowed, and always at least
+  // this many business days before the deadline. Starting values 90% and 3
+  // days (owner choice, Oct 25, 2026) — owner-editable on Taxes > Rules.
+  costlyChangeTimingPercent       Int                    @default(90)
+  timingSafetyMarginBusinessDays  Int                    @default(3)
 
   announcementBannerText String?
   announcementBannerOn   Boolean @default(false)
