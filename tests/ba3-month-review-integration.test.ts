@@ -98,6 +98,51 @@ describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated P
    await prisma.invoice.deleteMany({where:{id}});
   }
  });
+ it("does not falsely require a second acquisition entry for capitalized paid expenses",async()=>{
+  const typeId="ba3-cap-type-"+tag,applianceId="ba3-cap-device-"+tag,expenseId="ba3-cap-expense-"+tag;
+  await prisma.applianceType.create({data:{
+   id:typeId,slug:"ba3-cap-"+tag,name:"BA3 capitalized "+tag,
+  }});
+  try{
+   await prisma.appliance.create({data:{
+    id:applianceId,applianceTypeId:typeId,assetNumber:"BA3-CAP-"+tag,
+    acquisitionCostCents:22000,purchaseDate:dates("2020-01-13"),
+   }});
+   const category=await prisma.expenseCategory.findFirstOrThrow({
+    where:{ledgerAccountId:{not:null}},select:{id:true},
+   });
+   const ownerContributions=await prisma.ledgerAccount.findFirstOrThrow({
+    where:{systemRole:"OWNER_CONTRIBUTIONS"},select:{id:true},
+   });
+   await prisma.expense.create({data:{
+    id:expenseId,status:"POSTED",spentOn:dates("2020-01-13"),amountCents:22000,
+    vendorTaxCents:0,vendorName:"Synthetic capitalization evidence",
+    categoryId:category.id,paidFromAccountId:ownerContributions.id,
+    submittedByUserId:owner.id,postedByUserId:owner.id,
+    postedAt:dates("2020-01-13"),capitalizeToAppliance:true,applianceId,
+   }});
+   await prisma.$transaction(tx=>postForSource(tx,"EXPENSE",expenseId));
+   expect(await prisma.journalEntry.count({where:{
+    sourceType:"EXPENSE",sourceId:expenseId,eventKind:"EXPENSE_POSTED",
+   }})).toBe(1);
+   const inspection=await postPending({inspectMonth:key});
+   expect(inspection.problems.filter(p=>p.sourceType==="APPLIANCE"&&p.sourceId===applianceId)).toEqual([]);
+   expect(inspection.posted).toBe(0);
+   expect((await prisma.$transaction(tx=>postForSource(tx,"APPLIANCE",applianceId)))).toBeUndefined();
+   expect(await prisma.journalEntry.count({where:{sourceType:"APPLIANCE",sourceId:applianceId,
+    eventKind:"APPLIANCE_CONTRIBUTED"}})).toBe(0);
+  }finally{
+   await prisma.journalLine.deleteMany({where:{entry:{OR:[
+    {sourceType:"EXPENSE",sourceId:expenseId},{sourceType:"APPLIANCE",sourceId:applianceId},
+   ]}}});
+   await prisma.journalEntry.deleteMany({where:{OR:[
+    {sourceType:"EXPENSE",sourceId:expenseId},{sourceType:"APPLIANCE",sourceId:applianceId},
+   ]}});
+   await prisma.expense.deleteMany({where:{id:expenseId}});
+   await prisma.appliance.deleteMany({where:{id:applianceId}});
+   await prisma.applianceType.deleteMany({where:{id:typeId}});
+  }
+ });
  it("reviews and exports an opening month even when Books began mid-month",async()=>{
   await prisma.businessSettings.update({where:{id:"singleton"},data:{
    booksStartDate:dates("2020-01-15"),

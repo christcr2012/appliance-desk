@@ -1,3 +1,7 @@
+## October 26 — BA-3 last review findings and exact-head CI
+
+PR #624: capitalized appliance purchases are no longer falsely marked unposted when their posted expense already supplies acquisition evidence. The original receipt date now determines a deposit funding journal's accounting month, including deposits recorded later. Added real-Postgres acquisition and focused date tests. The previous CI passed all assertions but browser-c exceeded its 180-second budget by 1.92 seconds; measured intact test files moved to less-loaded shards without skipping coverage. The next step is exact-head CI and reviewer disposition; not merged or released.
+
 ## October 26 — BA-3 second Codex review: date-sensitive events and read-only previews
 
 The new Codex pass surfaced three more material review issues. Source records now track missing refund, invoice void/write-off, expense void and scrap void entries by their actual event month, with pure regression tests plus a disposable-Postgres January-invoice/February-void scenario. Stripe clearing evaluation from the review page does not update health issues; nightly reconciliation retains issue persistence. Previous-month comparison uses true calendar bounds, including mid-month Books opening. All changes are on PR #624; exact-head CI and review disposition required before merge. No provider settings or customer data touched.

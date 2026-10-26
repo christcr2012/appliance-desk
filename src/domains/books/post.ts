@@ -397,6 +397,13 @@ export function selectFairBooksCandidates<T extends {type:string;id:string;at:Da
 }
 
 /** A later void/refund/write-off is due in its own month, not in the source's first month. */
+/** Align the funding liability with the original receipt, not deposit creation. */
+export function depositBookEventDates(source:{
+ createdAt:Date; sourceReceipt: {receivedOn:Date}|null; refundedAt:Date|null;
+}):Record<string,Date|null>{
+ return {DEPOSIT_FUNDED:source.sourceReceipt?.receivedOn??source.createdAt,
+  DEPOSIT_REFUNDED:source.refundedAt,DEPOSIT_RETAINED:source.refundedAt};
+}
 export function missingBookEventsInMonth(row:{
  at:Date;required:string[];eventDates?:Record<string,Date|null|undefined>;
 },already:ReadonlySet<string>,month:string):string[]{
@@ -465,9 +472,11 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:
       select:{id:true,createdAt:true},orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take}))
       .map(x=>({type:"PAYMENT",id:x.id,at:x.createdAt,required:["PAYMENT_APPLIED"]}))},
     {type:"DEPOSIT",load:async(skip,take)=>(await db.deposit.findMany({
-      where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceReceiptId:true,amountCents:true,refundedAt:true,refundedAmountCents:true},
+      where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceReceiptId:true,
+        sourceReceipt:{select:{receivedOn:true}},
+        amountCents:true,refundedAt:true,refundedAmountCents:true},
       orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"DEPOSIT",id:x.id,at:x.createdAt,
-      eventDates:{"DEPOSIT_REFUNDED":x.refundedAt,"DEPOSIT_RETAINED":x.refundedAt},
+      eventDates:depositBookEventDates(x),
       required:[...(x.sourceReceiptId?["DEPOSIT_FUNDED"]:["DEPOSIT_FUNDED"]),
         ...(x.refundedAt&&((x.refundedAmountCents??0)>0)?["DEPOSIT_REFUNDED"]:[]),
         ...(x.refundedAt&&(x.amountCents-(x.refundedAmountCents??0))>0?["DEPOSIT_RETAINED"]:[])]}))},
@@ -506,10 +515,24 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:
     {type:"USE_TAX",load:async(skip,take)=>(await db.purchaseUseTax.findMany({
       where:{purchasedOn:{gte:since},useTaxDueCents:{gt:0}},select:{id:true,purchasedOn:true},
       orderBy:[{purchasedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"USE_TAX",id:x.id,at:x.purchasedOn,required:["USE_TAX_ACCRUED"]}))},
-    {type:"APPLIANCE",load:async(skip,take)=>(await db.appliance.findMany({
-      where:{acquisitionCostCents:{gt:0}},select:{id:true,createdAt:true,purchaseDate:true},
-      orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"APPLIANCE",id:x.id,
-      at:x.purchaseDate??x.createdAt,required:["APPLIANCE_CONTRIBUTED"]}))},
+    {type:"APPLIANCE",load:async(skip,take)=>{
+      const appliances=await db.appliance.findMany({
+        where:{acquisitionCostCents:{gt:0}},
+        select:{id:true,createdAt:true,purchaseDate:true},
+        orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take,
+      });
+      if(!appliances.length)return [];
+      // sourceEvents deliberately avoids a second acquisition when the purchase
+      // was already posted as a capitalized expense. Match that same rule here,
+      // otherwise a perfectly booked machine blocks monthly closing forever.
+      const capitalized=await db.expense.findMany({where:{
+        applianceId:{in:appliances.map(a=>a.id)},capitalizeToAppliance:true,status:"POSTED",
+      },select:{applianceId:true}});
+      const capitalizedIds=new Set(capitalized.map(e=>e.applianceId));
+      return appliances.map(x=>({type:"APPLIANCE" as const,id:x.id,
+        at:x.purchaseDate??x.createdAt,
+        required:capitalizedIds.has(x.id)?[]:["APPLIANCE_CONTRIBUTED"]}));
+    }},
     {type:"TAX_FILING",load:async(skip,take)=>(await db.taxFilingPeriod.findMany({
       where:{status:"FILED",filedOn:{gte:since}},select:{id:true,filedOn:true},
       orderBy:[{filedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"TAX_FILING",id:x.id,

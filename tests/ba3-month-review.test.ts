@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { businessDateFromKey } from "@/lib/business-date";
 import { assetDueForMonth, previousBookMonthBounds } from "@/domains/books/month-review";
 import { checkExpenseFields } from "@/domains/books/expenses";
-import { missingBookEventsInMonth } from "@/domains/books/post";
+import { depositBookEventDates, missingBookEventsInMonth } from "@/domains/books/post";
 
 const d=(key:string)=>businessDateFromKey(key)!;
 const asset=(overrides:Partial<{
@@ -53,6 +53,15 @@ describe("BA-3 month reviews and source-backed receipt evidence",()=>{
    eventDates:{"INVOICE_VOIDED":february}};
   expect(missingBookEventsInMonth(invoice,new Set(["INVOICE_RECOGNIZED"]),"2026-02"))
    .toEqual(["INVOICE_VOIDED"]);
+ });
+ it("places a late-created deposit funding journal in the original receipt month",()=>{
+  const received=d("2026-01-29"),created=d("2026-02-02");
+  const eventDates=depositBookEventDates({
+   createdAt:created,sourceReceipt:{receivedOn:received},refundedAt:null,
+  });
+  const pending={at:created,required:["DEPOSIT_FUNDED"],eventDates};
+  expect(missingBookEventsInMonth(pending,new Set(),"2026-01")).toEqual(["DEPOSIT_FUNDED"]);
+  expect(missingBookEventsInMonth(pending,new Set(),"2026-02")).toEqual([]);
  });
  it("requires a concrete reason whenever someone attests that no receipt exists",()=>{
   expect(()=>checkExpenseFields({...expense,noReceipt:true,noReceiptReason:" "})).toThrow(/Explain/);
