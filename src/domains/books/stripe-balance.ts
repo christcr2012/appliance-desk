@@ -154,7 +154,7 @@ export type ClearingResult =
  * Never compare yesterday's journal to Stripe's live balance today.
  * Require a successful full import today and owner-attested opening evidence.
  */
-export async function checkStripeClearing(now = new Date(), tx?:Prisma.TransactionClient): Promise<ClearingResult> {
+export async function checkStripeClearing(now = new Date(), tx?:Prisma.TransactionClient, persistIssues=true): Promise<ClearingResult> {
   const db=tx??prisma;
   const todayStart = businessDayBounds(now).start;
   const cutoff = new Date(todayStart.getTime() - 1);
@@ -246,10 +246,10 @@ export async function checkStripeClearing(now = new Date(), tx?:Prisma.Transacti
   const differenceCents = actual - expected;
   const period = businessDateKey(cutoff);
   if (differenceCents !== 0) {
-    if(!tx)await recordSystemIssue({ kind: "BOOKS_STRIPE_CLEARING_DIFFERENCE", period, differenceCents });
+    if(!tx&&persistIssues)await recordSystemIssue({ kind: "BOOKS_STRIPE_CLEARING_DIFFERENCE", period, differenceCents });
     return { state: "DIFFERENCE", cutoff, differenceCents };
   }
-  if(!tx)await resolveSystemIssue("books-stripe-clearing:" + period, "SOURCE_SUCCEEDED");
+  if(!tx&&persistIssues)await resolveSystemIssue("books-stripe-clearing:" + period, "SOURCE_SUCCEEDED");
   return { state: "MATCH", cutoff, differenceCents: 0 };
 }
 

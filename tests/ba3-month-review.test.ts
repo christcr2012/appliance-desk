@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { businessDateFromKey } from "@/lib/business-date";
-import { assetDueForMonth } from "@/domains/books/month-review";
+import { assetDueForMonth, previousBookMonthBounds } from "@/domains/books/month-review";
 import { checkExpenseFields } from "@/domains/books/expenses";
 
 const d=(key:string)=>businessDateFromKey(key)!;
@@ -31,6 +31,15 @@ describe("BA-3 month reviews and source-backed receipt evidence",()=>{
   expect(assetDueForMonth(asset({retiredOn:d("2026-02-16")}),"2026-03")).toBe(false);
   expect(assetDueForMonth(asset({retiredOn:d("2026-04-01")}),"2026-03")).toBe(true);
   expect(assetDueForMonth(asset({fullyDepreciatedOn:d("2026-02-28")}),"2026-03")).toBe(false);
+ });
+ it("compares March against exactly February, not a rolling 31-day window",()=>{
+  expect(previousBookMonthBounds("2026-03",d("2026-01-01"))).toEqual({
+   from:"2026-02-01",to:"2026-02-28",
+  });
+  expect(previousBookMonthBounds("2026-03",d("2026-02-15"))).toEqual({
+   from:"2026-02-15",to:"2026-02-28",
+  });
+  expect(previousBookMonthBounds("2026-03",d("2026-03-05"))).toBeNull();
  });
  it("requires a concrete reason whenever someone attests that no receipt exists",()=>{
   expect(()=>checkExpenseFields({...expense,noReceipt:true,noReceiptReason:" "})).toThrow(/Explain/);

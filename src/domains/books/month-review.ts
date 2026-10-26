@@ -24,6 +24,16 @@ export function assetDueForMonth(asset:{
  return key<=due;
 }
 
+/** Compare the exact previous calendar month, clamped to the owner-attested Books start. */
+export function previousBookMonthBounds(key:string,booksStart:Date){
+ monthKey(key);
+ const [year,number]=key.split("-").map(Number);
+ const month=new Date(Date.UTC(year,number-2,1)).toISOString().slice(0,7);
+ const opening=businessDateKey(booksStart);
+ if(month<opening.slice(0,7))return null;
+ return {from:opening>month+"-01"?opening:month+"-01",
+  to:businessDateKey(lastBusinessDay(month))};
+}
 export async function monthReview(actor:BooksActor,key:string,now=new Date(),tx?:Prisma.TransactionClient){
  const db=tx??prisma;
  monthKey(key);
@@ -77,7 +87,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date(),tx?
  }
  const stripeCheck=process.env.BOOKS_STRIPE_SYNC_ENABLED==="true"
   // Stripe compares through the day *before* this argument, so pass next-month start.
-  ?await checkStripeClearing(next,tx):null;
+  ?await checkStripeClearing(next,tx,false):null;
  const stripe:PaymentPart=!stripeCheck
   ?{state:"NOT_SET_UP",detail:"Stripe sync has not been switched on.",unmatchedCents:0}
   :stripeCheck.state==="MATCH"
@@ -100,8 +110,10 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date(),tx?
  const profitStart=key===businessDateKey(settings.booksStartDate).slice(0,7)
   ?businessDateKey(settings.booksStartDate):key+"-01";
  const profit=await profitAndLoss(actor.id,{from:profitStart,
-  to:businessDateKey(last),basis:"ACCRUAL",
-  compare:key>businessDateKey(settings.booksStartDate).slice(0,7)?"PREVIOUS_PERIOD":null},tx);
+  to:businessDateKey(last),basis:"ACCRUAL"},tx);
+ const priorBounds=previousBookMonthBounds(key,settings.booksStartDate);
+ const priorProfit=priorBounds
+  ?(await profitAndLoss(actor.id,{...priorBounds,basis:"ACCRUAL"},tx)).summary:null;
  const categories=new Map<string,number>();
  for(const expense of expenses.filter(x=>x.status==="POSTED")){
   const name=expense.category.name;
@@ -118,7 +130,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date(),tx?
   reviewNotes:status?.reviewNotes??null,
   checks:{sources,costs,payments,equipment},
   bankStates,stripe,profit:profit.summary,
-  priorProfit:profit.previous?.summary??null,
+  priorProfit,
   collectedCents:received._sum.amountCents??0,
   topCategories,missingDepreciationIds:missing.slice(0,20).map(x=>x.applianceId),
   pendingSourceCount:sourceCount};
