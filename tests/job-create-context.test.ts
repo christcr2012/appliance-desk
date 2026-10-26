@@ -83,6 +83,14 @@ it("requires agreement and request context to match the customer and selected pr
   ).rejects.toThrow("request");
   expect(m.create).not.toHaveBeenCalled();
 });
+it("ZONE-1: never creates a delivery visit for a rental the customer picks up (installation is still allowed)", async () => {
+  m.agreement.mockResolvedValue({ customerId: "c1", serviceAddressId: "a1", deliveryZoneSnapshot: { choice: "CUSTOMER_PICKUP" } });
+  await expect(createJob("owner", { type: "DELIVERY", customerId: "c1", serviceAddressId: "a1", agreementId: "g1" }))
+    .rejects.toThrow(/customer pickup/);
+  expect(m.create).not.toHaveBeenCalled();
+  await createJob("owner", { type: "INSTALLATION", customerId: "c1", serviceAddressId: "a1", agreementId: "g1" });
+  expect(m.create).toHaveBeenCalledTimes(1);
+});
 it("preserves a valid property visit and generic jobs with no customer links", async () => {
   await createJob("owner", {
     type: "DELIVERY",

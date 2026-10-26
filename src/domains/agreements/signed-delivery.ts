@@ -6,6 +6,10 @@ export async function ensureSignedDeliveryDraftInTx(
  agreement: {id:string;customerId:string;serviceAddressId:string|null;renewedFromAgreementId:string|null},
 ) {
  if (agreement.renewedFromAgreementId) return null;
+ // ZONE-1: a pickup address gets no delivery visit (and so no "Schedule delivery" To do); its own
+ // "Arrange pickup" To do covers it.
+ const { isAgreementPickupInTx } = await import("@/domains/delivery/pickup-guard");
+ if (await isAgreementPickupInTx(tx, agreement.id)) return null;
  const existing = await tx.job.findFirst({
   where:{agreementId:agreement.id,type:"DELIVERY",status:{not:"CANCELLED"}},
   orderBy:[{createdAt:"asc"},{id:"asc"}],select:{id:true},

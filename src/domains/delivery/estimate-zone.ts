@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isEstimatePastValidity } from "@/domains/estimates/validity";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { locateServiceAddresses, type AddressPosition } from "./address-zone";
+import { locateServiceAddresses, saveLookedUpPositionsInTx, type AddressPosition } from "./address-zone";
 import type { GeocodeResult } from "./geocode";
 import { getZoneSettingsInTx } from "./settings";
 import {
@@ -62,11 +62,15 @@ export async function checkEstimateDeliveryZones(actorId: string, estimateId: st
   if (!first) throw new Error("Couldn't find that estimate.");
   if (!(CHECKABLE as readonly string[]).includes(first.status))
     throw new Error("This estimate has been sent, so its delivery zone is frozen.");
-  const positions = await locateServiceAddresses(addressIdsOf(first.lineItems), { geocode: options.geocode, actorId });
+  // The outside lookup runs before (never inside) the transaction and writes nothing.
+  const { positions, toSave } = await locateServiceAddresses(addressIdsOf(first.lineItems), { geocode: options.geocode });
   const now = options.now ?? new Date();
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
     const estimate = await lockEstimate(tx, estimateId);
+    // Positions are saved only now, by a re-checked actor, for addresses whose street didn't change meanwhile.
+    const saved = await saveLookedUpPositionsInTx(tx, actorId, toSave);
+    for (const row of toSave) if (!saved.has(row.serviceAddressId)) positions.set(row.serviceAddressId, { status: "UNAVAILABLE" });
     if (!(CHECKABLE as readonly string[]).includes(estimate.status))
       throw new Error("This estimate has been sent, so its delivery zone is frozen.");
     const settings = await getZoneSettingsInTx(tx);
@@ -224,6 +228,9 @@ export async function becomePickupInTx(tx: Prisma.TransactionClient,
   if (!anyDelivered) Object.assign(data, { deliveryRequested: Prisma.DbNull, deliveryRequestedAt: null });
   await tx.estimate.update({ where: { id: estimate.id }, data: {
     ...data, deliveryZoneSnapshot: snapshot as unknown as Prisma.InputJsonObject } });
+  // Lock this address's agreements before clearing their retained delivery request.
+  await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "sourceEstimateId" = ${estimate.id}
+    AND "serviceAddressId" = ${serviceAddressId} ORDER BY "id" FOR UPDATE`;
   await tx.rentalAgreement.updateMany({ where: { sourceEstimateId: estimate.id, serviceAddressId },
     data: { deliveryRequested: Prisma.DbNull, deliveryRequestedAt: null } });
   return after;
@@ -289,12 +296,15 @@ export async function recordPickupArranged(actorId: string, estimateId: string, 
  * After conversion: copy each address's frozen zone onto its agreement (only when the agreement has none yet, so a
  * retry changes nothing).
  */
-export async function copyEstimateZoneToAgreements(estimateId: string, agreementIds: readonly string[]) {
+export async function copyEstimateZoneToAgreements(actorId: string, estimateId: string, agreementIds: readonly string[]) {
   if (!agreementIds.length) return 0;
   return prisma.$transaction(async (tx) => {
+    // The estimate row is locked (shared) so its zones can't change meanwhile; the same actor rule as conversion.
+    await tx.$queryRaw`SELECT "id" FROM "Estimate" WHERE "id" = ${estimateId} FOR SHARE`;
     const estimate = await tx.estimate.findUnique({ where: { id: estimateId }, select: { deliveryZoneSnapshot: true } });
     const snapshot = readZoneSnapshot(estimate?.deliveryZoneSnapshot);
     if (!snapshot) return 0;
+    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
     const ids = [...agreementIds].sort();
     await tx.$queryRaw`SELECT "id" FROM "RentalAgreement" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
     const agreements = await tx.rentalAgreement.findMany({

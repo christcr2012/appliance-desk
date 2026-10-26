@@ -1,13 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { readOfferedSlots, slotSchema } from "./delivery";
-import { snapshotLocation } from "@/domains/delivery/snapshot";
-
-/** The agreement's frozen zone, or else the estimate's entry for that address, says "I'll pick it up". */
-export function isPickupAddress(agreementZone: unknown, estimateZone: unknown, serviceAddressId: string): boolean {
-  const own = agreementZone as { choice?: unknown } | null | undefined;
-  if (own && typeof own === "object" && own.choice === "CUSTOMER_PICKUP") return true;
-  return snapshotLocation(estimateZone, serviceAddressId)?.choice === "CUSTOMER_PICKUP";
-}
+import { isPickupAddress } from "@/domains/delivery/pickup-guard";
 
 /**
  * Only verified receipt-backed settlement calls this, in the same transaction

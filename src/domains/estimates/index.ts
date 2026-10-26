@@ -51,6 +51,6 @@ export async function convertEstimateToAgreements(
   await attachEstimateDepositSourceAfterConversion(estimateId, agreementIds);
   // ZONE-1: each agreement keeps its address's frozen delivery zone and delivery/pickup choice.
   const { copyEstimateZoneToAgreements } = await import("@/domains/delivery/estimate-zone");
-  await copyEstimateZoneToAgreements(estimateId, agreementIds);
+  await copyEstimateZoneToAgreements(userId, estimateId, agreementIds);
   return agreementIds;
 }

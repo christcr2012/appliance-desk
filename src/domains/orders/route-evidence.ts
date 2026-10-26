@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { reviewedDrivingFee,drivingEvidenceSchema,frozenRouteZones } from "./delivery";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
 import { readZoneSettings } from "@/domains/delivery/zone";
@@ -10,8 +11,9 @@ import { expectedZoneDeliveryCents, UNRESOLVED_ZONE_MESSAGE, type ZoneSnapshotLo
 const ZONE_FIELDS={deliveryZones:true,deliveryMaxMiles:true} as const;
 
 async function ensureOwner(tx: Prisma.TransactionClient,userId:string) {
-  const actor=await tx.user.findUnique({where:{id:userId},select:{role:true}});
-  if(!actor||actor.role!=="OWNER")throw new Error("Owner approval required.");
+  // ZONE-1 audit: the standard row-locked re-check of an active owner (was a plain role read).
+  try { await assertActiveTeamActor(tx,userId,["OWNER"]); }
+  catch { throw new Error("Owner approval required."); }
 }
 export async function setVerifiedDrivingOrigin(userId:string,address:string,source:string) {
   const street=z.string().trim().min(15).max(300).parse(address);

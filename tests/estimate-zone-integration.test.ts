@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { requestPaidDeliveryInTx } from "@/domains/orders/settled-delivery";
+import { ensureSignedDeliveryDraftInTx } from "@/domains/agreements/signed-delivery";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -230,6 +231,34 @@ describe("ZONE-1 every path to pickup (real database)", () => {
     expect(await prisma.staffTask.count({ where: { sourceKey: "w24-confirm-delivery:" + pickup.job.id } })).toBe(0);
     const delivered = await paidOrder("DELIVER");
     expect(await prisma.$transaction((tx) => requestPaidDeliveryInTx(tx, delivered.agreement.id))).toBe(delivered.job.id);
+  });
+
+  it("signing creates no delivery visit (or 'Schedule delivery' To do) for a pickup address, and still does for delivery", async () => {
+    const make = async (choice: "DELIVER" | "CUSTOMER_PICKUP") => prisma.rentalAgreement.create({ data: {
+      customerId, serviceAddressId: lovelandId, status: "ACTIVE",
+      deliveryZoneSnapshot: { serviceAddressId: lovelandId, zone: 2, name: "Nearby", miles: 19.3, method: "STRAIGHT_LINE",
+        center: { lat: 40.4233, lon: -104.7091 }, priceCents: 7500, pickupPriceCents: 7500, choice, checkedAt: new Date().toISOString() } } });
+    const pickup = await make("CUSTOMER_PICKUP");
+    expect(await prisma.$transaction((tx) => ensureSignedDeliveryDraftInTx(tx, { ...pickup, renewedFromAgreementId: null }))).toBeNull();
+    expect(await prisma.job.count({ where: { agreementId: pickup.id, type: "DELIVERY" } })).toBe(0);
+    const delivered = await make("DELIVER");
+    expect(await prisma.$transaction((tx) => ensureSignedDeliveryDraftInTx(tx, { ...delivered, renewedFromAgreementId: null }))).toEqual(expect.any(String));
+    expect(await prisma.job.count({ where: { agreementId: delivered.id, type: "DELIVERY" } })).toBe(1);
+  });
+
+  it("a looked-up position is saved only by a re-checked active owner/admin, inside the transaction", async () => {
+    const fresh = await prisma.serviceAddress.create({ data: { customerId, line1: "100 Loveland Ave", city: "Loveland", zip: "80537" } });
+    const id = await estimateWith([fresh.id], "Geocode save actor check");
+    await prisma.user.update({ where: { id: ownerId }, data: { archivedAt: new Date() } });
+    try {
+      await expect(checkEstimateDeliveryZones(ownerId, id, { geocode })).rejects.toThrow(/no longer has access/);
+      expect(await prisma.serviceAddressGeocode.count({ where: { serviceAddressId: fresh.id } })).toBe(0);
+    } finally {
+      await prisma.user.update({ where: { id: ownerId }, data: { archivedAt: null } });
+    }
+    await checkEstimateDeliveryZones(ownerId, id, { geocode });
+    expect(await prisma.serviceAddressGeocode.findUniqueOrThrow({ where: { serviceAddressId: fresh.id } }))
+      .toMatchObject({ geocodedByUserId: ownerId, source: "CENSUS" });
   });
 
   it("an unknown zone blocks approval and conversion with a clear message (the To do can't be dropped)", async () => {

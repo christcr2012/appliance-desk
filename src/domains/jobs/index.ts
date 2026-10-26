@@ -182,6 +182,11 @@ export async function createJob(userId: string, input: NewJobInput) {
 /** Everything after the actor check, for callers that already hold the user locks in a transaction. */
 export async function createJobInTx(tx: Prisma.TransactionClient, userId: string, input: NewJobInput) {
     const durationMinutes = validateDurationMinutes(input.durationMinutes);
+    // ZONE-1: never a delivery visit for a rental the customer picks up (same check as signing and settlement).
+    if (input.type === "DELIVERY" && input.agreementId) {
+      const { isAgreementPickupInTx, PICKUP_NO_DELIVERY_MESSAGE } = await import("@/domains/delivery/pickup-guard");
+      if (await isAgreementPickupInTx(tx, input.agreementId)) throw new Error(PICKUP_NO_DELIVERY_MESSAGE);
+    }
     if (input.assignedToUserId) {
       const assignee = await tx.user.findUnique({
         where: { id: input.assignedToUserId },
