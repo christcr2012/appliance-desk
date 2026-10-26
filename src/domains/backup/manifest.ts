@@ -216,6 +216,10 @@ export const BACKUP_MODEL_POLICY = {
   // OPS-5: payment disputes (Stripe's record, Chris's answer and the bank-dispute follow-up) are business records.
   PaymentDispute: "paymentDispute",
 
+  // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
+  RecallMatch: "recallMatch",
+  RecallWatchState: "recallWatchState",
+  SafetyIncident: "safetyIncident",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

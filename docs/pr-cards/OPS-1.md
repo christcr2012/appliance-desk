@@ -11,4 +11,10 @@ TFA-1 (dated rules) and VAULT-1 where the spec says. Risk: see the spec section.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Built on branch `ai/claude/ops-1` (PR open; see STATUS). Evidence so far, all on a throwaway Postgres or pure tests:
+- Matcher and reader of the government list: `tests/ops1-recall-matcher.test.ts` (14), fixture is synthetic (the build machine could not reach saferproducts.gov).
+- Nightly check possible-only and repeat-safe, hold enforced on rent/reserve/swap/status/cleaning/sale/parts, renter To do (one per renter, nothing sent), safety-incident flow, owner/admin only: `tests/ops1-recalls-integration.test.ts` (11).
+- Safe JSON fetch and cron route: `tests/ops1-safe-json-fetch.test.ts`, `tests/ops1-recall-cron-route.test.ts`.
+- Browser/accessibility page check: `e2e/recalls.spec.ts` (runs in CI only).
+Decision filed: DQ-OPS1-1 (does renting count as distribution). Owner row filed: confirm the live government answer matches the parsed shape.
+Added beyond spec: REMEDIED state. Tick the acceptance boxes only after CI at the exact head.

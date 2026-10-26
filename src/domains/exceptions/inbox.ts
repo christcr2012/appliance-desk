@@ -53,6 +53,8 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   IDLE_APPLIANCES: "equipment",
   LOW_UTILIZATION: "equipment",
   RETIRED_APPLIANCE_PLAN: "equipment",
+  RECALL_POSSIBLE: "equipment",
+  SAFETY_INCIDENT: "equipment",
   RETIRED_SALE_TAX_REVIEW: "equipment",
   SALES_TAX: "taxes",
   TAX_RETURN_DUE: "taxes",

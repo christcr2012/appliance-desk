@@ -77,7 +77,7 @@ describe.skipIf(!enabled)("W-22 approved before-delivery cancellations (disposab
   const [agreement,record,refunds]=await Promise.all([
     prisma.rentalAgreement.findUniqueOrThrow({where:{id}}),
     prisma.preDeliveryCancellation.findUniqueOrThrow({where:{agreementId:id}}),
-    prisma.refund.count(),
+    prisma.refund.count({where:{invoice:{customerId:customer}}}),
   ]);
   expect(agreement.status).toBe("CANCELLED");
   expect(record).toMatchObject({receiptId:before.receiptId,refundDueCents:10500,retainedCents:0,

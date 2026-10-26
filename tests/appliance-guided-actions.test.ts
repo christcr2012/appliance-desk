@@ -218,7 +218,7 @@ describe("getSwapCandidates", () => {
 
     expect(applianceFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { applianceTypeId: "type-1", status: "AVAILABLE", id: { not: "app-1" } },
+        where: { applianceTypeId: "type-1", status: "AVAILABLE", recallHold: false, id: { not: "app-1" } },
       }),
     );
   });

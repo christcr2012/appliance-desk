@@ -43,7 +43,7 @@ export default async function NewAgreementPage({
   const serviceAddressId = draft?.serviceAddressId ?? query.serviceAddressId;
   const [customers, availableAppliances, packages, businessSettings] = await Promise.all([
     getCustomers(),
-    getAppliances({ status: "AVAILABLE" }),
+    getAppliances({ status: "AVAILABLE", rentableOnly: true }),
     listPackagesForLines(),
     getBusinessSettings(),
   ]);

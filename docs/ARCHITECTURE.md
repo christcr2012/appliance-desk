@@ -531,7 +531,7 @@ fails when a new one is not listed.
 | Job | What it does | Expected |
 |---|---|---|
 | classify | decides docs-only vs code (checkout only, no install) | ~6s |
-| secret scan | `scripts/check-secrets.mjs` + gitleaks (pinned, checksum-verified) over the full git history; always runs | ~10s |
+| secret scan | `scripts/check-secrets.mjs` on current files + gitleaks (pinned, checksum-verified) on new PR/push commits; nightly covers complete main history; always runs | ~10s |
 | type-check, lint and repo checks | dependencies (cached), then typecheck and lint at the same time, browser-group check, migration check | ~1–1.3 min |
 | unit tests ×3 | each shard: own Postgres, migrate, seed, `vitest --shard=N/3`; shard 1 also runs schema-health and migration-upgrade drills | ~1.3–1.8 min |
 | browser tests ×4 | each shard: own Postgres, migrate, seed, production build (cached), its spec group from `e2e/shards.json` | ~2–2.5 min |
@@ -581,7 +581,7 @@ browser) plus 1–1.5 minutes of tests. Measured 2026-10-06 on PR #266: **2 min 
 
 - `scripts/check-secrets.mjs` (tests: `tests/check-secrets.test.ts`) flags live/real-length Stripe keys, webhook secrets, GitHub/AWS/Google/Slack/Resend/Twilio/Anthropic/OpenAI/Vercel tokens, private keys, database URLs with embedded passwords to non-local hosts, Neon/Vercel production identifiers, and committed `.env` files. It prints only a label, file, line, and the first 6 characters.
 - Intentional exceptions (the verified preview endpoint in `src/lib/preview-database-safety.ts`, obviously fake test values) are listed inside the script; fake-looking test strings reviewed once are in `.gitleaksignore`. Adding to either needs a stated reason in the PR.
-- gitleaks (`.gitleaks.toml`, default rules) scans every commit, because a secret removed in a later commit is still public.
+- gitleaks (`.gitleaks.toml`, default rules) scans commits introduced by a PR or push, plus full main history nightly; it never sweeps unrelated branch histories for every PR. A removed secret is still public, so newly introduced secrets block CI even if deleted in a later commit; the current tree is independently scanned by `scripts/check-secrets.mjs`.
 - **Owner-only settings GitHub requires a person to set** (agents cannot): Settings → Code security → enable *Secret scanning* and *Push protection* (free for public repos); Settings → Actions → General → *Fork pull request workflows* → require approval for all outside contributors.
 
 ### Keeping CI fast — checklist (target: a full run in about 3 minutes; investigate at 5)
