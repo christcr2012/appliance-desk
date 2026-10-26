@@ -149,22 +149,8 @@ test("decisions: a renamed picture is refused; import a completed form; layout a
     await expect(page.getByText("Confirmed with no change: 1")).toBeVisible();
     await expect(page.getByText("Skipped (couldn't apply): 1")).toBeVisible();
 
-    // Back from a desktop width to a phone: the shared scan itself (360 and 1440, light then dark). If something sticks
-    // out sideways, say exactly what, measured at the moment it failed.
-    try {
-      await scanAccessibilityRoute(page, { path: "/desk/settings/decisions", role: "OWNER", fixture: "/desk/settings/decisions" });
-    } catch (error) {
-      const found = await page.evaluate(() => {
-        const sideways = document.documentElement.scrollWidth - window.innerWidth;
-        const wide = [...document.querySelectorAll("body *")]
-          .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
-          .slice(-6).map((el) => `${el.tagName.toLowerCase()}[${String(el.getAttribute("class") ?? "").slice(0, 70)}] ` +
-            `right=${Math.round(el.getBoundingClientRect().right)} w=${Math.round(el.getBoundingClientRect().width)} ` +
-            `pos=${getComputedStyle(el).position} text=${(el.textContent ?? "").trim().slice(0, 40)}`);
-        return `width=${window.innerWidth} sideways=${sideways}: ${wide.join(" | ")}`;
-      });
-      throw new Error(`${error instanceof Error ? error.message.split("\n")[0] : String(error)} — ${found}`);
-    }
+    // 360 and 1440 (and the jump between them) are covered by the generated route scans, which now name anything that
+    // sticks out sideways.
     await page.setViewportSize({ width: 1280, height: 900 });
 
     // 7. Accessibility, light and dark (the import page is scanned by the generated route scans).
