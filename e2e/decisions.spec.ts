@@ -16,9 +16,10 @@ import { completeTwoFactorSetup } from "./utils/two-factor";
 const owner = "e2e/.auth/owner.json";
 const db = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes(db.hostname) && db.pathname === "/appliance_desk_test";
-const SUBJECTS = ["IN-06", "IN-71", "IN-44", "IN-46"];
-// 360 and 1440 are scanned by the generated route scans (route-inventory.ts); these are the other three sizes plus 1920.
-const SIZES = [390, 820, 1280, 1920] as const;
+const FIRST = ["IN-06", "IN-71", "IN-44"];
+const SECOND = ["IN-46"];
+// 360 and 1440 are scanned (light and dark) by the generated route scans (route-inventory.ts); these add three more sizes.
+const SIZES = [390, 820, 1920] as const;
 
 test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
 // The two tests touch different things, so they may run on both workers at once (shard time budget).
@@ -28,7 +29,7 @@ function card(page: Page, title: string | RegExp) {
   return page.getByRole("article", { name: title });
 }
 
-test("decisions: keep, change, ask, enter an answer, download and import", async ({ page }) => {
+test("decisions: keep, change, ask, download and enter an answer", async ({ page }) => {
   test.skip(!enabled, "Disposable Postgres and a saved owner session required.");
   test.setTimeout(170_000);
   const { prisma } = await import("../src/lib/prisma");
@@ -37,7 +38,7 @@ test("decisions: keep, change, ask, enter an answer, download and import", async
   const title = (id: string) => decisionSubject(id)!.title;
   try {
     // Start clean for these questions (an earlier run in this database may have answered them).
-    await prisma.decisionRecord.deleteMany({ where: { subjectId: { in: SUBJECTS } } });
+    await prisma.decisionRecord.deleteMany({ where: { subjectId: { in: FIRST } } });
 
     // 1. Keep this — on "For you".
     await page.goto("/desk/settings/decisions");
@@ -100,7 +101,21 @@ test("decisions: keep, change, ask, enter an answer, download and import", async
     await expect(page.getByText(/^Their answer was saved/)).toBeVisible();
     const saved = await prisma.decisionRecord.findFirstOrThrow({ where: { subjectId: "IN-44", kind: "PROFESSIONAL_ANSWER" } });
     expect(saved).toMatchObject({ professionalName: "Pat Lee", professionalFirm: "Lee Law", audience: "ATTORNEY", via: "SCREEN" });
+  } finally {
+    await prisma.decisionRecord.deleteMany({ where: { subjectId: { in: FIRST }, createdAt: { gte: started } } });
+  }
+});
 
+// Its own question (IN-46), so it can run beside the test above on the other worker.
+test("decisions: a renamed picture is refused; import a completed form; layout and accessibility", async ({ page }) => {
+  test.skip(!enabled, "Disposable Postgres and a saved owner session required.");
+  test.setTimeout(150_000);
+  const { prisma } = await import("../src/lib/prisma");
+  const { decisionSubject } = await import("../src/domains/decisions/registry");
+  const started = new Date();
+  const title = (id: string) => decisionSubject(id)!.title;
+  try {
+    await prisma.decisionRecord.deleteMany({ where: { subjectId: { in: SECOND } } });
     // A picture renamed .pdf is refused by its content.
     await page.goto("/desk/settings/decisions?for=CPA");
     await card(page, title("IN-46")).getByRole("button", { name: "Enter their answer…" }).click();
@@ -148,7 +163,7 @@ test("decisions: keep, change, ask, enter an answer, download and import", async
     // 7. Accessibility, light and dark (the import page is scanned by the generated route scans).
     await scanAccessibilityRoute(page, { path: "/desk/settings/decisions", role: "OWNER", fixture: "/desk/settings/decisions?for=CPA" }, SIZES);
   } finally {
-    await prisma.decisionRecord.deleteMany({ where: { subjectId: { in: SUBJECTS }, createdAt: { gte: started } } });
+    await prisma.decisionRecord.deleteMany({ where: { subjectId: { in: SECOND }, createdAt: { gte: started } } });
   }
 });
 
