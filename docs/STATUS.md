@@ -53,6 +53,55 @@ PR #610 passed full CI at `0d17ac10`, then automated review found three material
 
 PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
 
+## October 26 — ACC-6: remember this device (built; PR #616 open, CI red — fixed, re-running)
+
+Owner setting "Remember devices for {n} days" (starting 30, 0 = off) on Settings › Security, a "Remember this device"
+box on the two-step login, remembered devices with "Forget remembered devices" on My account, a device cookie behind
+the new-device notice (a second phone of the same kind is new), customers noticed only through the customer-email
+switch, and every security change (password, reset, email, second step, removal, role change, sign-out-everywhere,
+lowering the setting) asking for a code again. Built with unit tests (fakes), a throwaway-Postgres integration test
+and two browser tests; database and browser proof runs in CI only. PR #616 opened (head 8b0199f9); CI came back red:
+two My account browser tests (a locator matching two elements, and a settings save cancelled by an immediate reload),
+the customer session-deactivation test (ACC-6 records customer sign-ins in the audit log, so the fixture now deletes
+its audit rows before deleting the user), the Bills sideways-scroll check at 360px in dark mode (a resize reporting
+the phone width before the desktop sidebar padding was recalculated — BA-1 fixed the same thing in the shared scan
+helper; this branch now uses that fix), and one unit test that timed out importing the customers domain inside the
+test (import hoisted to the top of the file). Fixes in commit 6405616f; main (BA-1 #610) merged in. Pushed as head
+7df70d47 — but no check run has started on it in 45 minutes (snapshot pushes do not reliably start CI; the leads and
+tax lanes are hitting the same thing). While waiting, the lane's own test database (port 5435) was used to run the
+device integration test for the first time: it failed 8 of 10, a fifth failure the unit shard's bare "exit code 1"
+had hidden. Causes, all in the test (the feature works): the test used mixed-case email addresses but the app stores
+emails lowercased, so the code email was never found; it replayed a stale trust cookie after the sign-in rotated it,
+and it did not present the device cookie the gate needs; and it read the session token from the (signed) session
+cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. Next: push the fix, then the
+checks need a manual start (Actions → CI → Run workflow) if they do not start on their own. Update, same day: the
+run was started by hand (browser, signed in as Chris) and came back red in 2 minutes — no test ran. Causes, all
+found by reading the job logs: (1) the seed and schema-health steps fail because the BusinessSettings column
+`booksLastBroughtUpToDateAt` does not exist — the snapshot push had been diffed against current main, so it omitted
+the BA-1 migration and 38 other main files the remote branch (created from 0516a31) did not have; the remote tree
+was a mix of new and old files. Fixed by pushing with the manifest diffed against the branch-creation commit
+0516a31 (76 files), per the snapshot-push rule. (2) Three type errors in the device test from the fix round
+(`string | null` passed where `string | undefined` was wanted) — the typecheck had not been re-run after that
+edit; fixed and typecheck is clean. (3) The secret scan found 5 leaks: four are the BA-1 historical false
+positives, missing from the remote tree's stale allowlist (restored by the corrected push), and the fifth is the
+allowlist entry itself being flagged for its own commit SHA — allowlisted with a fingerprint entry, verified clean
+by scanning the entry text. Next: push the corrected tree, then the checks need starting again (the GitHub MCP's
+`github_actions_dispatch` now starts them — no browser sign-in needed). Update, same day: the corrected run
+(head 1005486e, started with the MCP) is green everywhere except browser-a and browser-d. Unit shards, typecheck,
+secret scan, browser-b and browser-c all pass. The two browser-a failures are both the ACC-6 my-account tests: the
+forget-confirm text uses a curly apostrophe the test didn't match, and — a real bug — the two-factor login page
+was prerendered at build time, so it kept offering "Remember this device" after the owner turned remembering off.
+Fixed (page is now force-dynamic; test matches without the apostrophe) and pushed; the remaining browser-d failure
+is the offline-fallback test, which also failed on the FEE-1 branch and passed on this branch before — it looks
+like a timing flake, not an ACC-6 regression, so it is being watched on the re-run rather than "fixed". Update,
+same day: the re-run (head 2aaea9e7, MCP dispatch) passed browser-a and browser-d — both my-account fixes work and
+the offline test passed — but browser-c failed with no test failing: all 106 tests passed and the shard ran 3.1m
+against the 180s phase budget. That is a shard-balance problem, not a code problem, so the fix is the repo's
+established rebalance: staff-security (~18 test-seconds) and fleet-report (~14) moved from browser-c to browser-b,
+the lightest group (1.9m), with no test omitted and the budget unchanged. Pushed through the custom GitHub MCP
+(the original connector is disconnected; the MCP's API push starts the checks on its own). Next: read the checks,
+then reviews, then merge. Next card: VAULT-1, once CMP-1 (lane 5) is merged.
+
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 
 Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
