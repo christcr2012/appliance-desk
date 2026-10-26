@@ -1,3 +1,13 @@
+## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review, merged with latest main)
+
+Branch `ai/claude/dec-1b-decisions-screens`. Coded: Settings › Decisions & reviews (`/desk/settings/decisions`: tabs,
+filters, cards with Keep / Change / Ask / Enter their answer / Reopen — owner acts, admins read only, staff sent away),
+Word and PDF questionnaires, "Import a completed form" (Word file or pasted answers → preview → apply with the signed
+token), private storage of completed forms (type checked by content, 4 MB) and a weekly "Decisions waiting" Today
+card. The kit `<Toaster />` is mounted on these two screens only (in the layout it broke older tests that look for
+one status message; moving it there stays with AR-0b). Proof: unit tests here; browser spec `e2e/decisions.spec.ts` runs in CI only.
+Not observed: a form kept in real private storage (CI has none). Next: DEC-2 researched values; MCP decision tools.
+
 ## October 26 — OPS-5: card disputes and bank returns (built, PR pending)
 
 Branch `ai/claude/ops-5`. When Stripe tells us a customer disputed a payment, the app now records it, puts it on your To do list with the deadline, and builds one evidence packet (PDF) from your own records: signed agreement, delivery record and photos, the bill and payments, messages sent, refund terms. You read it and press **Approve and send to Stripe**; it can be sent only once. A bank (ACH) dispute can't be contested, so it says "collect directly", switches that customer's bank autopay off, and stays off until you allow it. A refund on a bill with an open dispute is stopped with a plain warning, and a deposit paid by bank debit waits (starting value 60 days, your setting) before it can be refunded. Nothing moves money by itself. Proved so far: 15 new tests on a throwaway database and typecheck; browser checks and CI still to run. Not built: the 7-day notice before a debit date changes, because nothing in the app lets anyone change a debit date today (noted on the card).

@@ -556,6 +556,7 @@ export default async function DeskSettingsPage({
       />
       <div className="mb-3 flex flex-wrap gap-3">
         <ButtonLink href="/desk/control-center" variant="secondary">Manage my business</ButtonLink>
+        <ButtonLink href="/desk/settings/decisions" variant="secondary">Decisions &amp; reviews</ButtonLink>
         <ButtonLink href="/desk/settings/history" variant="secondary">Settings history and undo</ButtonLink>
         <ButtonLink href="/desk/settings/switches" variant="secondary">All switches in one place</ButtonLink>
         <ButtonLink href="/desk/settings/price-changes" variant="secondary">Price changes with a start date</ButtonLink>

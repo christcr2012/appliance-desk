@@ -214,6 +214,12 @@ phone (< 1024 px, `useMediaQuery("(min-width: 1024px)")` false) = `vaul` bottom 
 backdrop close it; focus returns to the opener. Used for: Snooze (TODAY 5), Add a note (CUSTOMER-RECORD 4.6), the
 Filter sheet (4.4 uses the same component), later the inline payment sheets (AR-3).
 
+### 4.22 `DecisionCard` (DEC-1b)
+`{ title: string; question: string; doingNow: string; pills: { label: string; tone: Tone }[]; why?: { text: string; sources: { title: string; url: string; checkedOn: string }[] } | null; affects: { label: string; href: string }[]; notes?: string[]; actions?: ReactNode }`
+— `<article aria-label={title}>` card: title (`text-base font-bold`), question, "Doing now: …" + pills, a folded
+"Why this starting value" (`<details>`, sources open in a new tab), "Affects:" links, notes, then the actions row.
+No actions → read-only (admins). `OverflowMenu` also takes `triggerText` for a worded menu button ("Ask my…").
+
 ### 4.20 Logo
 Use only the brand-kit files ([DESIGN-SYSTEM.md "Logo rule"](../DESIGN-SYSTEM.md)): `/brand/badge.svg` (round
 evergreen badge, ivory R, lime leg) for every small logo in the app (sidebar, phone top bar, sign-in, account);

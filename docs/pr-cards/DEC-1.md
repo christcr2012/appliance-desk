@@ -42,8 +42,12 @@ kit.
     not confirmed by your CPA".
   - Acceptance status: lines 1–3 and 5 covered by unit tests (fakes) and `tests/decisions-integration.test.ts`
     (throwaway Postgres, CI); line 4 (forms/import) is DEC-1b.
-- **DEC-1b (spec 6–7)** — not started: screens, .docx/PDF forms, import screen, attachment upload namespace
-  `decisions/`, Today card, browser spec.
+- **DEC-1b (spec 6–7) — built, PR open (branch `ai/claude/dec-1b-decisions-screens`).** Screens
+  `/desk/settings/decisions` and `/desk/settings/decisions/import`, kit `DecisionCard` (KIT 4.22), downloads
+  `/desk/settings/decisions/form?for=…&format=docx|pdf`, parser `src/domains/decisions/parse.ts`, file routes under
+  `/api/desk/decisions/`, Today card, `e2e/decisions.spec.ts`. Differences from the spec (reasons in the PR): uploads go
+  through the server (not `PhotoUploadField`) so the type is checked by the file's content; the PDF uses "[ ]" boxes
+  (Helvetica has no ☐); "Other" is printed only for questions that accept it; download is two buttons, not a menu.
 - Differences from the spec (reasons in the PR): reads take the signed-in person's id (role checked in the query);
   scheduled changes run in the always-on `scheduled-prices` nightly job, not `books-nightly` (off until Stripe books
   sync is switched on); IN-79 runs on the setup fee's planning value — the CPA-confirmed setup-fee approval stays on
