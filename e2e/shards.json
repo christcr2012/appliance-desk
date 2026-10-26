@@ -63,7 +63,8 @@
       "two-factor.spec.ts",
       "today.spec.ts",
       "lead-staff-detail.spec.ts",
-      "website-editor.spec.ts"
+      "website-editor.spec.ts",
+      "compliance.spec.ts"
     ],
     "browser-d": [
       "accessibility.spec.ts",
