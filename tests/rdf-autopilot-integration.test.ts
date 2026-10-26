@@ -5,7 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { findRdfThresholdCrossing, recordedRetailSales } from "@/domains/tax/rdf-sales-evidence";
 import { recordCrossingIfCrossed } from "@/domains/tax/rdf-threshold-evidence";
-import { prepareRdfSwitches } from "@/domains/tax/rdf-switches";
+import {
+  approveRdfSwitch,
+  prepareRdfSwitches,
+  rdfFeeAbsorbedByLateApproval,
+} from "@/domains/tax/rdf-switches";
+import { prepareRdfChargeInTx } from "@/domains/tax/rdf-charges";
 
 const uri = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" &&
@@ -285,6 +290,8 @@ describe.skipIf(!enabled)("TFA-2 RDF autopilot: prepared switches (real Postgres
       expect(rows[0]).toMatchObject({ kind: "STOP", basisRetailCents: 10000, approvedAt: null });
     } finally {
       await prisma.retailDeliveryFeeSwitch.deleteMany({ where: { startsOn: day("2031-01-01") } });
+      // The same nightly pass also dated the START from the 2029 crossing.
+      await prisma.retailDeliveryFeeSwitch.deleteMany({ where: { startsOn: day("2029-10-01") } });
       await cleanup(ids);
     }
   });
@@ -305,7 +312,130 @@ describe.skipIf(!enabled)("TFA-2 RDF autopilot: prepared switches (real Postgres
       expect(await switchesAt(day("2031-01-01"))).toHaveLength(0);
     } finally {
       await prisma.retailDeliveryFeeSwitch.deleteMany({ where: { startsOn: day("2031-01-01") } });
+      // The same pass can date a START from the June 2030 crossing.
+      await prisma.retailDeliveryFeeSwitch.deleteMany({ where: { startsOn: day("2030-10-01") } });
       await cleanup(ids);
+    }
+  });
+});
+
+describe.skipIf(!enabled)("TFA-2 §6.3/§4a: deliveries before approval are absorbed, never charged later (real Postgres)", () => {
+  it("absorbs a held rental record at charge time and keeps it absorbed after approval", async () => {
+    const token = randomUUID().replaceAll("-", "");
+    const ownerId = "tfa2a-owner-" + token;
+    const customerId = "tfa2a-customer-" + token;
+    const addressId = "tfa2a-address-" + token;
+    const agreementId = "tfa2a-agreement-" + token;
+    const jobId = "tfa2a-job-" + token;
+    const savedFlag = process.env.RDF_CUSTOMER_CHARGING_ENABLED;
+    process.env.RDF_CUSTOMER_CHARGING_ENABLED = "true";
+    let switchId = "";
+    let recordId = "";
+    let ruleId = "";
+    try {
+      await prisma.user.create({ data: {
+        id: ownerId, email: token + "@tfa2a.example.test", role: "OWNER",
+        name: "TFA-2 absorption fixture", passwordHash: "test-only", emailVerified: true,
+      } });
+      await prisma.customer.create({ data: {
+        id: customerId, userId: ownerId, referralCode: "TFA2" + token.slice(0, 13),
+      } });
+      await prisma.serviceAddress.create({ data: {
+        id: addressId, customerId, line1: "1 Fixture Ln", city: "Greeley",
+        state: "CO", zip: "80631",
+      } });
+      await prisma.rentalAgreement.create({ data: {
+        id: agreementId, customerId, serviceAddressId: addressId, status: "ACTIVE",
+      } });
+      await prisma.job.create({ data: {
+        id: jobId, type: "DELIVERY", status: "COMPLETED",
+        agreementId, customerId, serviceAddressId: addressId,
+        completedAt: day("2033-03-10"),
+      } });
+      const rule = await prisma.legalRuleVersion.create({ data: {
+        ruleKey: "co.rdf.amount", value: 29, effectiveFrom: day("2033-01-01"),
+        origin: "OWNER", provisional: false, createdByUserId: ownerId,
+      } });
+      ruleId = rule.id;
+      const sw = await prisma.retailDeliveryFeeSwitch.create({
+        data: { kind: "START", startsOn: day("2033-03-01"), basisRetailCents: null },
+      });
+      switchId = sw.id;
+      // A delivery made while the switch awaited approval, recorded as
+      // collectible (as records created before the switch existed are).
+      const record = await prisma.retailDeliveryFeeRecord.create({
+        data: {
+          saleKey: "agreement:" + agreementId, agreementId, firstJobId: jobId,
+          deliveredOn: day("2033-03-10"), saleOn: day("2033-03-10"), status: "READY",
+          amountCents: 29, collectedFromCustomer: true, ruleVersionId: rule.id,
+        },
+      });
+      recordId = record.id;
+
+      // Before approval: the charge pass absorbs the record instead of
+      // billing it, and writes the disposition down.
+      const first = await prisma.$transaction((tx) => prepareRdfChargeInTx(tx, recordId));
+      expect(first.kind).toBe("NONE");
+      const absorbed = await prisma.retailDeliveryFeeRecord.findUniqueOrThrow({ where: { id: recordId } });
+      expect(absorbed.collectedFromCustomer).toBe(false);
+      expect(absorbed.invoiceLineId).toBeNull();
+      expect(await prisma.auditLog.count({
+        where: { action: "tax.rdf.charge_absorbed", entityId: recordId },
+      })).toBe(1);
+
+      // Approval does not revive it: no later pass can charge that delivery.
+      await approveRdfSwitch(ownerId, switchId);
+      const second = await prisma.$transaction((tx) => prepareRdfChargeInTx(tx, recordId));
+      expect(second.kind).toBe("NONE");
+      const after = await prisma.retailDeliveryFeeRecord.findUniqueOrThrow({ where: { id: recordId } });
+      expect(after.collectedFromCustomer).toBe(false);
+      expect(after.invoiceLineId).toBeNull();
+    } finally {
+      if (savedFlag === undefined) delete process.env.RDF_CUSTOMER_CHARGING_ENABLED;
+      else process.env.RDF_CUSTOMER_CHARGING_ENABLED = savedFlag;
+      await prisma.auditLog.deleteMany({ where: { entityId: recordId } });
+      await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
+      await prisma.retailDeliveryFeeRecord.deleteMany({ where: { agreementId } });
+      if (switchId) await prisma.retailDeliveryFeeSwitch.deleteMany({ where: { id: switchId } });
+      if (ruleId) await prisma.legalRuleVersion.deleteMany({ where: { id: ruleId } });
+      await prisma.job.deleteMany({ where: { id: jobId } });
+      await prisma.rentalAgreement.deleteMany({ where: { id: agreementId } });
+      await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
+      await prisma.customer.deleteMany({ where: { id: customerId } });
+      await prisma.user.deleteMany({ where: { id: ownerId } });
+    }
+  });
+
+  it("the absorption test itself: approval timing decides", async () => {
+    const startsOn = day("2033-03-01");
+    await prisma.retailDeliveryFeeSwitch.deleteMany({ where: { startsOn } });
+    try {
+      // No governing switch for a date before every fixture switch:
+      // nothing is absorbed. (Other tests in this file prepare switches
+      // from 2029 on; this predicate reads the whole table by design.)
+      await prisma.$transaction(async (tx) => {
+        expect(await rdfFeeAbsorbedByLateApproval(tx, day("2020-01-10"))).toBe(false);
+      });
+      // Approved before the delivery day: the fee is charged normally.
+      const early = await prisma.retailDeliveryFeeSwitch.create({
+        data: { kind: "START", startsOn, approvedAt: day("2033-02-15"), approvedByUserId: null },
+      });
+      await prisma.$transaction(async (tx) => {
+        expect(await rdfFeeAbsorbedByLateApproval(tx, day("2033-03-10"))).toBe(false);
+      });
+      await prisma.retailDeliveryFeeSwitch.delete({ where: { id: early.id } });
+      // Approved after the delivery day: the business carries that fee.
+      const late = await prisma.retailDeliveryFeeSwitch.create({
+        data: { kind: "START", startsOn, approvedAt: day("2033-03-20"), approvedByUserId: null },
+      });
+      await prisma.$transaction(async (tx) => {
+        expect(await rdfFeeAbsorbedByLateApproval(tx, day("2033-03-10"))).toBe(true);
+        // A delivery after the approval day is not absorbed.
+        expect(await rdfFeeAbsorbedByLateApproval(tx, day("2033-03-25"))).toBe(false);
+      });
+      await prisma.retailDeliveryFeeSwitch.delete({ where: { id: late.id } });
+    } finally {
+      await prisma.retailDeliveryFeeSwitch.deleteMany({ where: { startsOn } });
     }
   });
 });

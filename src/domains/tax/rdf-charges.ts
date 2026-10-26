@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { claimProviderOperation, completeProviderOperation, runProviderCall } from "@/domains/billing/provider-ops";
 import { applyLocalInvoiceTaxInTx } from "./local-invoice";
-import { rdfBillingHeldBySwitch } from "./rdf-switches";
+import { rdfFeeAbsorbedByLateApproval } from "./rdf-switches";
+import { businessDateKey } from "@/lib/business-date";
 
 type Tx = Prisma.TransactionClient;
 // TFA-2 §6.6: the customer line reads with the statute's own words.
@@ -77,9 +78,28 @@ export async function prepareRdfChargeInTx(
   });
   if (record.status !== "READY" || record.collectedFromCustomer !== true) return { kind: "NONE" };
   if (record.invoiceLineId) return { kind: "NONE" };
-  // TFA-2 §6.3: an unapproved START switch holds customer billing (the fee is
-  // owed and reported, just not billed) until the owner approves it on Today.
-  if (await rdfBillingHeldBySwitch(tx, record.deliveredOn)) return { kind: "NONE" };
+  // TFA-2 §6.3/§4a: a delivery made while its START switch awaited approval
+  // is never charged retroactively. Persist the absorbed disposition (the
+  // business carries this fee; it is still reported) so no later pass can
+  // pick the record up again.
+  if (await rdfFeeAbsorbedByLateApproval(tx, record.deliveredOn)) {
+    await tx.retailDeliveryFeeRecord.update({
+      where: { id: record.id },
+      data: { collectedFromCustomer: false },
+    });
+    await tx.auditLog.create({
+      data: {
+        action: "tax.rdf.charge_absorbed",
+        entityType: "RetailDeliveryFeeRecord",
+        entityId: record.id,
+        newValue: {
+          reason: "The delivery happened before the delivery-fee switch was approved; the business carries this fee.",
+          deliveredOn: businessDateKey(record.deliveredOn),
+        },
+      },
+    });
+    return { kind: "NONE" };
+  }
   const cents = record.amountCents;
   if (!Number.isSafeInteger(cents) || cents === null || cents <= 0) {
     throw new Error("A READY collected delivery fee must have a positive integer-cent rate.");

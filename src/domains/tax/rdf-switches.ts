@@ -29,6 +29,20 @@ export async function rdfBillingHeldBySwitch(tx: Tx, on: Date): Promise<boolean>
   return !!governing && governing.kind === "START" && !governing.approvedAt;
 }
 
+/**
+ * True when the fee for a delivery on this date belongs to the business,
+ * for good: the governing START switch was approved only after that
+ * delivery day (or is still unapproved). Spec section 4a: a late approval
+ * never turns into a retroactive customer charge; the business absorbs
+ * the fees for deliveries made before approval.
+ */
+export async function rdfFeeAbsorbedByLateApproval(tx: Tx, on: Date): Promise<boolean> {
+  const governing = await rdfSwitchForDate(tx, on);
+  if (!governing || governing.kind !== "START") return false;
+  if (!governing.approvedAt) return true;
+  return governing.approvedAt >= day(businessDateKey(on));
+}
+
 async function prepareSwitch(
   tx: Tx, kind: "START" | "STOP", startsOn: Date, basisRetailCents: number | null,
 ): Promise<void> {

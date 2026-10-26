@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { businessDateFromKey } from "@/lib/business-date";
+import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import {
   computeFilingFrequencyAdvice,
   confirmFilingFrequencyAdvice,
   frequencyAllowedByAverage,
 } from "@/domains/tax/filing-frequency-advice";
+import { runTaxFilingCalendar } from "@/domains/tax/filing-reminders";
 import { listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 
 function databaseUri(): URL | null {
@@ -201,6 +202,53 @@ describe.skipIf(!enabled)("TFA-2 §8 filing-frequency advice on real Postgres", 
       expect(await prisma.filingFrequencyAdvice.count({
         where: { filingAccountId: f.account.id },
       })).toBe(0);
+    } finally {
+      await f.cleanup();
+    }
+  });
+
+  it("confirming yearly filing mid-year keeps every month covered (no gap)", async () => {
+    const f = await fixture("MONTHLY");
+    try {
+      // Monthly periods through May 2031; the owner confirms yearly filing.
+      const months: Array<[string, string]> = [
+        ["2031-01-01", "2031-01-31"], ["2031-02-01", "2031-02-28"],
+        ["2031-03-01", "2031-03-31"], ["2031-04-01", "2031-04-30"],
+        ["2031-05-01", "2031-05-31"],
+      ];
+      for (const [start, end] of months) await f.addPeriod(start, end, 4000);
+      const advice = await prisma.filingFrequencyAdvice.create({
+        data: {
+          filingAccountId: f.account.id, currentFrequency: "MONTHLY",
+          advisedFrequency: "ANNUAL", averageMonthlyCents: 4000,
+          computedOn: day("2031-06-01"),
+        },
+      });
+      await confirmFilingFrequencyAdvice(f.ownerId, advice.id);
+      // The rest of 2031 becomes one transition period, not a hole: period
+      // generation skips ranges that overlap an existing period, so without
+      // it June to December 2031 would have had no return at all.
+      const after = await prisma.taxFilingPeriod.findMany({
+        where: { filingAccountId: f.account.id },
+        orderBy: [{ periodStart: "asc" }],
+        select: { periodStart: true, periodEnd: true },
+      });
+      expect(after.map((p) => [businessDateKey(p.periodStart), businessDateKey(p.periodEnd)]))
+        .toContainEqual(["2031-06-01", "2031-12-31"]);
+      // The calendar then generates the first yearly period cleanly and
+      // coverage stays continuous, with no gaps and no overlaps.
+      await runTaxFilingCalendar(new Date("2032-01-05T12:00:00Z"));
+      const all = await prisma.taxFilingPeriod.findMany({
+        where: { filingAccountId: f.account.id },
+        orderBy: [{ periodStart: "asc" }],
+        select: { periodStart: true, periodEnd: true },
+      });
+      expect(all.map((p) => [businessDateKey(p.periodStart), businessDateKey(p.periodEnd)]))
+        .toContainEqual(["2032-01-01", "2032-12-31"]);
+      for (let i = 1; i < all.length; i++) {
+        expect(all[i]!.periodStart.getTime())
+          .toBe(all[i - 1]!.periodEnd.getTime() + 24 * 3600 * 1000);
+      }
     } finally {
       await f.cleanup();
     }

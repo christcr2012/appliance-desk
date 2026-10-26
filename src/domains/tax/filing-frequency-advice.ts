@@ -5,6 +5,13 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
 import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
+import {
+  addCalendarDays,
+  dueOnFor,
+  endOfPeriod,
+  legalDueOn,
+  startOfContainingPeriod,
+} from "@/domains/tax/filing-calendar";
 
 /**
  * TFA-2 §8: filing-frequency advice.
@@ -150,12 +157,42 @@ export async function confirmFilingFrequencyAdvice(
     await tx.$queryRaw`SELECT "id" FROM "TaxFilingAccount" WHERE "id" = ${advice.filingAccountId} FOR UPDATE`;
     const account = await tx.taxFilingAccount.findUniqueOrThrow({
       where: { id: advice.filingAccountId },
-      select: { frequency: true },
+      select: { frequency: true, dueDayOfFollowingMonth: true },
     });
     await tx.taxFilingAccount.update({
       where: { id: advice.filingAccountId },
       data: { frequency: advice.advisedFrequency },
     });
+    // Preserve filing coverage across the switch: period generation walks
+    // the new frequency and skips any range that overlaps an existing
+    // period, so if the last existing period ends in the middle of a
+    // new-frequency period, the rest of that range would get no return at
+    // all. Fill exactly that span with one transition period. When the
+    // last period ends on a new-frequency boundary, generation proceeds
+    // cleanly and no transition period is needed.
+    const last = await tx.taxFilingPeriod.findFirst({
+      where: { filingAccountId: advice.filingAccountId },
+      orderBy: [{ periodEnd: "desc" }, { id: "desc" }],
+      select: { periodEnd: true },
+    });
+    if (last) {
+      const spanStartKey = addCalendarDays(businessDateKey(last.periodEnd), 1);
+      const containingStart = startOfContainingPeriod(spanStartKey, advice.advisedFrequency);
+      if (containingStart < spanStartKey) {
+        const spanEndKey = endOfPeriod(containingStart, advice.advisedFrequency);
+        const spanEnd = businessDateFromKey(spanEndKey)!;
+        const dueOn = dueOnFor(spanEnd, account.dueDayOfFollowingMonth);
+        await tx.taxFilingPeriod.create({
+          data: {
+            filingAccountId: advice.filingAccountId,
+            periodStart: businessDateFromKey(spanStartKey)!,
+            periodEnd: spanEnd,
+            dueOn,
+            legalDueOn: legalDueOn(dueOn),
+          },
+        });
+      }
+    }
     await tx.filingFrequencyAdvice.update({
       where: { id: adviceId },
       data: { confirmedAt: new Date(), confirmedByUserId: actorUserId },

@@ -1078,6 +1078,12 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const useTaxResetAttention = canViewFinance ? await listUseTaxResetAttention(now) : [];
   const expiredExemptionAttention = canViewFinance ? await listExpiredExemptionAttention(now) : [];
   const filingFrequencyAdviceAttention = canViewFinance ? await listFilingFrequencyAdviceAttention(now) : [];
+  // TFA-2 §6.3: prepared delivery-fee switches waiting for the owner's
+  // approval, rendered as To do items with the approve action.
+  const rdfSwitchAttention = rdfSwitchesPending.map((row) => rdfSwitchException({
+    switchId: row.id, kind: row.kind, startsOn: row.startsOn,
+    basisRetailCents: row.basisRetailCents, since: row.createdAt, now,
+  }));
 
   const amendmentAttention = canViewFinance
     ? await listTaxAmendmentAttention(now)
@@ -1152,6 +1158,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...filingAttention.setupChecks.rows,
     ...paperworkAttention.rows,
     ...rdfRefundAttention,
+    ...rdfSwitchAttention,
     ...useTaxResetAttention,
     ...expiredExemptionAttention,
     ...filingFrequencyAdviceAttention,

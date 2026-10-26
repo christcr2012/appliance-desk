@@ -232,6 +232,27 @@ describe("Today server-side visibility", () => {
     },
   );
 
+  it("TFA-2 §6.3: a pending delivery-fee switch appears on Today with its approve action", async () => {
+    mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
+    mocks.rdfSwitches.mockResolvedValue([
+      {
+        id: "switch-1",
+        kind: "START",
+        startsOn: new Date(),
+        basisRetailCents: 5_100_000_00,
+        createdAt: new Date(),
+      },
+    ]);
+    const result = await getExceptions();
+    const item = result.find(
+      (x) => x.category === "SALES_TAX" && x.title.startsWith("Delivery fee turns on"),
+    );
+    expect(item).toBeTruthy();
+    expect(item?.action).toEqual(
+      expect.objectContaining({ type: "APPROVE_RDF_SWITCH" }),
+    );
+  });
+
   it.each([getExceptions, getTodaysJobs])(
     "rejects an unauthorized caller before any query",
     async (query) => {

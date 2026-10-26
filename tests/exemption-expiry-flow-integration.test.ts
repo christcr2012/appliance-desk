@@ -203,4 +203,124 @@ describe.skipIf(!enabled)("TFA-2 §9 exemption expiry flow on real Postgres", ()
       await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
     }
   });
+
+  it("bounds the back-dated credit at the certificate's expiration day", async () => {
+    const tag = randomUUID().slice(0, 8);
+    const ownerId = "tfa2-ex3-owner-" + tag;
+    const userId = "tfa2-ex3-user-" + tag;
+    const customerId = "tfa2-ex3-customer-" + tag;
+    const jurisdictionId = "tfa2-ex3-jur-" + tag;
+    try {
+      await prisma.user.createMany({
+        data: [
+          { id: ownerId, email: tag + "-owner3@example.test", name: "Ex Owner", role: "OWNER", emailVerified: true },
+          { id: userId, email: tag + "-customer3@example.test", name: "Bounded Customer", role: "CUSTOMER", emailVerified: true },
+        ],
+      });
+      await prisma.customer.create({
+        data: { id: customerId, userId, referralCode: "X" + tag },
+      });
+      await prisma.taxJurisdiction.create({
+        data: {
+          id: jurisdictionId, code: "E3-" + tag, name: "Test state",
+          level: "STATE", administration: "STATE_COLLECTED", reviewStatus: "REVIEWED",
+        },
+      });
+      const rate = await prisma.taxRateVersion.create({
+        data: { jurisdictionId, rateMilliPercent: 5000, effectiveFrom: day("2025-01-01"), source: "MANUAL" },
+      });
+      async function taxedInvoice(issuedAt: Date, taxCents: number) {
+        const invoice = await prisma.invoice.create({
+          data: { customerId, status: "PAID", issuedAt, amountDueCents: 10000 + taxCents },
+        });
+        await prisma.invoiceTaxLine.create({
+          data: {
+            invoiceId: invoice.id, jurisdictionId, rateVersionId: rate.id,
+            category: "RENTAL", taxableCents: 10000, taxCents, source: "ENGINE",
+          },
+        });
+      }
+      await taxedInvoice(daysAgo(50), 500); // inside the certificate's days: credited
+      await taxedInvoice(daysAgo(10), 400); // after it expired: not credited
+
+      await createCustomerTaxExemption(ownerId, customerId, {
+        reason: "CHARITABLE", certificatePhotoId: "photo-" + tag,
+        jurisdictionIds: [jurisdictionId], validFrom: daysAgo(60), expiresOn: daysAgo(40),
+      });
+      const credits = await prisma.customerCredit.findMany({ where: { customerId } });
+      expect(credits).toHaveLength(1);
+      expect(credits[0]!.amountCents).toBe(500);
+    } finally {
+      await prisma.customerCredit.deleteMany({ where: { customerId } });
+      await prisma.invoiceTaxLine.deleteMany({ where: { jurisdictionId } });
+      await prisma.invoice.deleteMany({ where: { customerId } });
+      await prisma.customerTaxExemption.deleteMany({ where: { customerId } });
+      await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId } });
+      await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+      await prisma.customer.deleteMany({ where: { id: customerId } });
+      await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
+      await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
+    }
+  });
+
+  it("never credits the same tax twice for overlapping certificates", async () => {
+    const tag = randomUUID().slice(0, 8);
+    const ownerId = "tfa2-ex4-owner-" + tag;
+    const userId = "tfa2-ex4-user-" + tag;
+    const customerId = "tfa2-ex4-customer-" + tag;
+    const jurisdictionId = "tfa2-ex4-jur-" + tag;
+    try {
+      await prisma.user.createMany({
+        data: [
+          { id: ownerId, email: tag + "-owner4@example.test", name: "Ex Owner", role: "OWNER", emailVerified: true },
+          { id: userId, email: tag + "-customer4@example.test", name: "Overlap Customer", role: "CUSTOMER", emailVerified: true },
+        ],
+      });
+      await prisma.customer.create({
+        data: { id: customerId, userId, referralCode: "O" + tag },
+      });
+      await prisma.taxJurisdiction.create({
+        data: {
+          id: jurisdictionId, code: "E4-" + tag, name: "Test state",
+          level: "STATE", administration: "STATE_COLLECTED", reviewStatus: "REVIEWED",
+        },
+      });
+      const rate = await prisma.taxRateVersion.create({
+        data: { jurisdictionId, rateMilliPercent: 5000, effectiveFrom: day("2025-01-01"), source: "MANUAL" },
+      });
+      const invoice = await prisma.invoice.create({
+        data: { customerId, status: "PAID", issuedAt: daysAgo(20), amountDueCents: 10700 },
+      });
+      await prisma.invoiceTaxLine.create({
+        data: {
+          invoiceId: invoice.id, jurisdictionId, rateVersionId: rate.id,
+          category: "RENTAL", taxableCents: 10000, taxCents: 700, source: "ENGINE",
+        },
+      });
+
+      await createCustomerTaxExemption(ownerId, customerId, {
+        reason: "CHARITABLE", certificatePhotoId: "photo-a-" + tag,
+        jurisdictionIds: [jurisdictionId], validFrom: daysAgo(30),
+      });
+      // A second certificate covering the same days and area finds the tax
+      // already credited and adds nothing.
+      await createCustomerTaxExemption(ownerId, customerId, {
+        reason: "CHARITABLE", certificatePhotoId: "photo-b-" + tag,
+        jurisdictionIds: [jurisdictionId], validFrom: daysAgo(25),
+      });
+      const credits = await prisma.customerCredit.findMany({ where: { customerId } });
+      expect(credits).toHaveLength(1);
+      expect(credits[0]!.amountCents).toBe(700);
+    } finally {
+      await prisma.customerCredit.deleteMany({ where: { customerId } });
+      await prisma.invoiceTaxLine.deleteMany({ where: { jurisdictionId } });
+      await prisma.invoice.deleteMany({ where: { customerId } });
+      await prisma.customerTaxExemption.deleteMany({ where: { customerId } });
+      await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId } });
+      await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+      await prisma.customer.deleteMany({ where: { id: customerId } });
+      await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
+      await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
+    }
+  });
 });
