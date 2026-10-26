@@ -56,6 +56,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Money (billing) | `/desk/billing` | Invoices, deposits, held payments, statements |
 | Retired appliances | `/desk/inventory/retired` | What happens to appliances you retired; scrap money |
 | Shop sales | `/desk/sales` | Parts and used appliances sold over the counter or delivered |
+| Disputes | `/desk/disputes`, `/desk/disputes/[id]` | Card and bank payment disputes: deadline, the evidence packet to read, **Approve and send to Stripe** (once only), bank disputes to collect directly, allowing bank autopay again, and how long a bank deposit refund waits (Money tab) |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Your entries record themselves; review source issues, months and corrected starting balances |
 | Start your books | `/desk/books/setup` | Owner's four-step guide to the date, opening cash/card balances and expenses paid personally |

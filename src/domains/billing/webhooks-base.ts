@@ -1,3 +1,4 @@
+import { handleDisputeEvent } from "@/domains/disputes/webhook";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { postPaidInvoiceAfterWebhook, postCheckoutPaymentAfterWebhook,
  postRefundsAfterWebhook } from "@/domains/books/immediate";
@@ -506,6 +507,9 @@ async function recordSigningPaymentMethod(
   paymentMethodId: string | null,
 ): Promise<void> {
   if (!paymentMethodId) return;
+  // OPS-5: after a disputed bank payment, autopay stays off until the owner clears the block.
+  const blocked = await db.customer.findUnique({ where: { id: customerId }, select: { bankDebitBlockedAt: true } });
+  if (blocked?.bankDebitBlockedAt) return;
   await db.customer.update({
     where: { id: customerId },
     data: { stripeDefaultPaymentMethodId: paymentMethodId },
@@ -1232,6 +1236,12 @@ async function processLockedEvent(
       break;
     case "charge.refunded":
       await handleChargeRefunded(db, event.data.object as Stripe.Charge);
+      break;
+    // OPS-5: a card or bank dispute. Recorded and flagged for the owner; it never moves money.
+    case "charge.dispute.created":
+    case "charge.dispute.updated":
+    case "charge.dispute.closed":
+      await handleDisputeEvent(db, event);
       break;
     case "customer.subscription.deleted":
       await handleSubscriptionDeleted(db, event.data.object as Stripe.Subscription);

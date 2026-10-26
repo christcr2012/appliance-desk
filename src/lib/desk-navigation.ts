@@ -56,7 +56,7 @@ const groups = [
 export const DESK_NAV_ALIASES: Record<string, string[]> = {
   "/desk/dispatch": ["/desk/jobs", "/desk/driver"],
   "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders"],
-  "/desk/billing": ["/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
+  "/desk/billing": ["/desk/disputes", "/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
   "/desk/more": [
     "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/activity", "/desk/paperwork", "/desk/account", "/desk/feedback",
   ],
