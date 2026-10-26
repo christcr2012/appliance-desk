@@ -98,7 +98,8 @@
       "feedback.spec.ts",
       "fleet-report.spec.ts",
       "disputes.spec.ts",
-      "decisions.spec.ts"
+      "decisions.spec.ts",
+      "collections.spec.ts"
     ]
   }
 }

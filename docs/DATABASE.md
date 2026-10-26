@@ -1413,3 +1413,18 @@ Existing financial entries remain append-only and closed months stay immutable.
 - `SafetyIncident` — a marked injury or safety event (appliance, repair request or job), decision PENDING / REPORTED /
   NOT_REPORTED with the owner's note.
 All three tables are in the backup manifest.
+
+### OPS-6: collections (additive migration `20261104000000_collections`)
+
+- `CollectionStep` — one row per bill per step (`SECOND_NOTICE`, `FINAL_NOTICE`, `DECISION`, `SMALL_CLAIMS`), unique on
+  (bill, step), with state WAITING / SENT / SKIPPED / DONE, the drafted subject and text, who decided and when, the message
+  delivery it produced, and the note. The nightly pass only writes WAITING rows.
+- `CollectionCase` — one per rental that reached the decision step: the customer's recorded pickup agreement (when, how, who
+  recorded it), the court order (date, court and case number), the pickup visit, the objection, and when it was resolved.
+- `SmallClaimsFiling` — a filing Chris says he made (county, date, amount, fee); used only to count the court's limits.
+- `BusinessSettings.collectionSecondNoticeDay` / `collectionFinalNoticeDay` / `collectionDecisionDay` (10 / 20 / 30).
+- Three seeded rule-book rows: `co.small_claims_limit` ($7,500), `co.small_claims_filing_limits` (2 a month, 18 a year per
+  county) and `co.small_claims_fees` ($31 up to $500, otherwise $55), from the Colorado Judicial Branch pages, accessed 2026-10-26.
+- The "on active military duty" flag already existed (`Customer.activeMilitary`); collections reads it.
+All three tables are in the backup manifest.
+

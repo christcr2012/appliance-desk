@@ -58,6 +58,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Recalls | `/desk/recalls`, `/desk/recalls/[recallId]`, `/desk/recalls/incidents/[id]` | Possible product recalls found by the nightly check, "It's ours" / "Not ours" / "Fixed", the search words per appliance type, and safety incidents (the **Safety incident** button on a repair or visit starts a 24-hour decision on whether to report) |
 | Shop sales | `/desk/sales` | Parts and used appliances sold over the counter or delivered |
 | Disputes | `/desk/disputes`, `/desk/disputes/[id]` | Card and bank payment disputes: deadline, the evidence packet to read, **Approve and send to Stripe** (once only), bank disputes to collect directly, allowing bank autopay again, and how long a bank deposit refund waits (Money tab) |
+| Past due | `/desk/collections`, `/desk/collections/[agreementId]` | Second and final past-due notices waiting for your approval (nothing is sent until you press Send), the day-30 decision, recording that a customer agreed to a pickup or a court order, the pickup visit and "Customer objected", the small-claims packet and recording a filing, and the three day settings (Money tab) |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Your entries record themselves; review source issues, months and corrected starting balances |
 | Start your books | `/desk/books/setup` | Owner's four-step guide to the date, opening cash/card balances and expenses paid personally |

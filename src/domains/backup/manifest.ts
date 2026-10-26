@@ -215,6 +215,10 @@ export const BACKUP_MODEL_POLICY = {
   PendingCharge: "pendingCharge",
   // OPS-5: payment disputes (Stripe's record, Chris's answer and the bank-dispute follow-up) are business records.
   PaymentDispute: "paymentDispute",
+  // OPS-6: the past-due ladder steps, the per-rental collection record (pickup agreement, court order, objection) and the small-claims filings Chris recorded are business records.
+  CollectionStep: "collectionStep",
+  CollectionCase: "collectionCase",
+  SmallClaimsFiling: "smallClaimsFiling",
 
   // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
   RecallMatch: "recallMatch",
