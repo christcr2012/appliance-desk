@@ -14,3 +14,24 @@ export async function postBookSourceAfterCommit(sourceType:JournalSourceType,sou
   catch{console.error("[books] Could not record a background books issue.");}
  }
 }
+
+/**
+ * A Stripe paid-invoice webhook has already committed its local invoice, receipt
+ * and allocation records when this runs. We look up those durable local IDs,
+ * never trust caller-provided cents or an unverified provider object for a journal.
+ */
+export async function postPaidInvoiceAfterWebhook(stripeInvoiceId:string):Promise<void>{
+ try{
+  const invoice=await prisma.invoice.findUnique({where:{stripeInvoiceId},select:{id:true}});
+  if(!invoice)return;
+  const receipts=await prisma.receipt.findMany({
+   where:{payments:{some:{invoiceId:invoice.id}}},
+   orderBy:[{createdAt:"desc"},{id:"desc"}],select:{id:true},take:20,
+  });
+  for(const receipt of receipts)await postBookSourceAfterCommit("RECEIPT",receipt.id);
+  await postBookSourceAfterCommit("INVOICE",invoice.id);
+ }catch{
+  try{await recordSystemIssue({kind:"BOOKS_POSTING_FAILURE",sourceType:"INVOICE",sourceId:stripeInvoiceId});}
+  catch{console.error("[books] Could not record a webhook Books issue.");}
+ }
+}

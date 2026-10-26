@@ -1,3 +1,4 @@
+import { postPaidInvoiceAfterWebhook } from "@/domains/books/immediate";
 import type Stripe from "stripe";
 import { processSigningCheckoutEvent } from "./signing-payment-settlement";
 import { isLocalInvoiceSession, recordLocalInvoiceCheckoutFailure, recordLocalInvoiceCheckoutPayment } from "./local-invoice-checkout";
@@ -1220,6 +1221,9 @@ export async function processStripeWebhookEvent(
         },
         { maxWait: 10_000, timeout: 30_000 },
       );
+      // This follows the committed webhook transaction and never changes its result.
+      if(event.type==="invoice.paid")await postPaidInvoiceAfterWebhook(
+       (event.data.object as Stripe.Invoice).id as string);
       return { referralIdsToSettle };
     } catch (error) {
       if (!(error instanceof MissingWebhookEvidenceError) || refill >= MAX_EVIDENCE_REFILLS) {
