@@ -84,6 +84,7 @@ vi.mock("@/domains/exceptions/turning-points-attention", () => ({
 vi.mock("@/domains/exceptions/feedback-attention", () => ({
   listFeedbackWaiting: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/recall-attention", () => ({ listRecallAttention: vi.fn(async () => []) }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
