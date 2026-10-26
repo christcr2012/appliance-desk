@@ -104,7 +104,17 @@ export async function checkBankPaymentsInFlight(now = new Date(), stripe: Stripe
           else counts.changedDuringCheck += 1;
           continue;
         }
-        const outcome = await recoverBankSettlement(row.id, null, stripe);
+        let outcome: RecoverResult;
+        try {
+          outcome = await recoverBankSettlement(row.id, null, stripe);
+        } catch (error) {
+          // Stripe says the money arrived but recording it failed: remember that, so To do and Reconciliation show it.
+          counts.errors += 1;
+          counts.needsCheck += 1;
+          console.error("[billing] Could not record a cleared bank payment", row.id, error instanceof Error ? error.message : error);
+          await prisma.bankPaymentInFlight.updateMany({ where: { id: row.id, clearedAt: null, settledInStripeAt: null }, data: { settledInStripeAt: seenAt } });
+          continue;
+        }
         if (outcome === "recorded") {
           counts.recovered += 1;
           continue;
@@ -127,6 +137,8 @@ export async function checkBankPaymentsInFlight(now = new Date(), stripe: Stripe
     } catch (error) {
       counts.errors += 1;
       console.error("[billing] Bank payment check failed for one payment", row.id, error instanceof Error ? error.message : error);
+      // Count a failed look as a look, so payments Stripe cannot answer about never crowd out the rest of the nightly batch.
+      await prisma.bankPaymentInFlight.updateMany({ where: { id: row.id, clearedAt: null }, data: { lastCheckedAt: now } }).catch(() => undefined);
     }
   }
   return counts;

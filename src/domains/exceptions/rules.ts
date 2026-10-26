@@ -705,7 +705,8 @@ export function bankPaymentSlowException(row: {
     detail: settled
       ? "Stripe says this payment arrived, but it isn't on the bill yet. Use “Record it now”."
       : `The bank has been confirming this payment for ${row.bankingDaysOld} banking days. Nothing is lost; banks usually take up to 4. Check Stripe if it keeps waiting.`,
-    href: "/desk/billing/reconciliation",
+    // The row id in the link gives each payment its own To do identity (snoozing one never hides another).
+    href: `/desk/billing/reconciliation?payment=${encodeURIComponent(row.id)}`,
     amountCents: row.amountCents,
     since: row.startedAt,
     ...(settled ? { action: { type: "RECORD_BANK_PAYMENT" as const, id: row.id, label: "Record it now" } } : {}),

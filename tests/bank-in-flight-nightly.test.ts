@@ -42,9 +42,16 @@ describe("bankPaymentSlowException (pure)", () => {
   const base = { id: "r1", customerId: "c", invoiceId: "i", customerName: "Pat", amountCents: 4000, startedAt: new Date("2026-10-01T12:00:00Z"), bankingDaysOld: 7, settledInStripeAt: null };
   it("is a calm medium item that never calls the customer late", () => {
     const item = bankPaymentSlowException(base);
-    expect(item).toMatchObject({ category: "BANK_PAYMENT_SLOW", severity: "medium", amountCents: 4000, href: "/desk/billing/reconciliation" });
+    expect(item).toMatchObject({ category: "BANK_PAYMENT_SLOW", severity: "medium", amountCents: 4000, href: "/desk/billing/reconciliation?payment=r1" });
     expect(item.action).toBeUndefined();
     expect(item.detail).not.toMatch(/late|past due/i);
+  });
+  it("gives two payments with the same name and amount different identities", async () => {
+    const { todoKey } = await import("@/domains/exceptions/todo");
+    const a = bankPaymentSlowException(base);
+    const b = bankPaymentSlowException({ ...base, id: "r2" });
+    expect(a.title).toBe(b.title);
+    expect(todoKey(a)).not.toBe(todoKey(b));
   });
   it("is high with a Record it now button once Stripe says it cleared", () => {
     const item = bankPaymentSlowException({ ...base, settledInStripeAt: new Date() });
@@ -189,7 +196,25 @@ describe.skipIf(!enabled)("bank payments being confirmed — nightly check, reco
     const counts = await checkBankPaymentsInFlight(NOW);
     expect(counts).toMatchObject({ checked: 1, errors: 1, cleared: 1 });
     expect((await row(a.id)).clearedAt).toBeNull();
+    expect((await row(a.id)).lastCheckedAt).not.toBeNull(); // a failed look still counts as a look
     expect((await row(b.id)).clearedReason).toBe("CANCELED");
+  });
+
+  it("when Stripe says paid but recording throws, the row is still marked cleared-in-Stripe for To do", async () => {
+    await closeAllOpenRows();
+    const agreement = await makeAgreement();
+    const bill = stripeBill(agreement, true);
+    const billId = await localBill(agreement, bill.id);
+    const pi = next("pi");
+    m.intents.set(pi, { status: "succeeded" });
+    m.invoices.delete(bill.id); // the invoice lookup now fails inside recovery
+    const r = await openRow({ invoiceId: billId, stripeInvoiceId: bill.id, pi });
+    const counts = await checkBankPaymentsInFlight(NOW);
+    expect(counts).toMatchObject({ errors: 1, needsCheck: 1 });
+    const after = await row(r.id);
+    expect(after.clearedAt).toBeNull();
+    expect(after.settledInStripeAt).not.toBeNull();
+    expect((await listBankPaymentSlow(10, new Date())).rows[0]).toMatchObject({ severity: "high" });
   });
 
   it("looks at 50 a night, never-checked first, and reaches all 120 in three nights", async () => {
