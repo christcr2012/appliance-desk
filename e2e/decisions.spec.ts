@@ -132,6 +132,19 @@ test("decisions: keep, change, ask, enter an answer, download and import", async
     await expect(page.getByText("Confirmed with no change: 1")).toBeVisible();
     await expect(page.getByText("Skipped (couldn't apply): 1")).toBeVisible();
 
+    // Back from a desktop width to a phone: nothing may stick out sideways (names what does, if anything).
+    await page.goto("/desk/settings/decisions");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(300);
+    await page.setViewportSize({ width: 360, height: 900 });
+    await page.waitForTimeout(300);
+    const wide = await page.evaluate(() => [...document.querySelectorAll("body *")]
+      .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
+      .slice(0, 5).map((el) => `${el.tagName.toLowerCase()}.${String(el.className).slice(0, 80)} right=${Math.round(el.getBoundingClientRect().right)}`));
+    const sideways = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect({ sideways, wide: sideways > 0 ? wide : [] }).toEqual({ sideways: 0, wide: [] });
+    await page.setViewportSize({ width: 1280, height: 900 });
+
     // 7. Accessibility, light and dark (the import page is scanned by the generated route scans).
     await scanAccessibilityRoute(page, { path: "/desk/settings/decisions", role: "OWNER", fixture: "/desk/settings/decisions?for=CPA" }, SIZES);
   } finally {

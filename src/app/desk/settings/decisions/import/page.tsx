@@ -8,7 +8,7 @@ export const metadata = { title: "Import a completed form", robots: { index: fal
 export default async function ImportDecisionsPage() {
   await requireRole("OWNER");
   return (
-    <div className="mx-auto max-w-3xl px-1 lg:px-0">
+    <div className="mx-auto max-w-3xl overflow-x-clip px-1 lg:px-0">
       <Toaster />
       <ScreenHeader title="Import a completed form" back={{ href: "/desk/settings/decisions", label: "Back to Decisions & reviews" }} />
       <ImportForm />

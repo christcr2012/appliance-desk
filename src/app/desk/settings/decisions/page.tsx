@@ -93,7 +93,7 @@ export default async function DecisionsPage({ searchParams }: { searchParams: Pr
 
   return (
     // px-1: the shell's phone gutter is 16 px; the kit's tabs bleed 20 px (KIT spacing), so this keeps them on screen.
-    <div className="mx-auto max-w-3xl px-1 lg:px-0">
+    <div className="mx-auto max-w-3xl overflow-x-clip px-1 lg:px-0">
       {/* KIT 4.15 toasts for this screen. AR-0b moves the one Toaster into the desk layout. */}
       <Toaster />
       <ScreenHeader
