@@ -1,12 +1,23 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeAccountEmail } from "@/lib/account-provisioning";
-import { sendAccountNotice } from "@/domains/account";
+import { sendAccountNotice, sendCustomerAccountNotice } from "@/domains/account";
 import { nextFailureState, pauseMessage, PAUSE_ATTEMPTS_DEFAULT, PAUSE_MINUTES_DEFAULT, validatePauseSettings } from "./sign-in-guard-rules";
 import { sessionDeviceLabel } from "./sessions";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import {
+  clampNewestTrustRow,
+  forgetTrustedDevices,
+  getTrustedDeviceSettings,
+  hashDeviceCookie,
+  markDeviceTrusted,
+  newDeviceCookieValue,
+  trustedUntilFor,
+} from "./trusted-devices";
 
 // ACC-4: wrong-password pause per account, and "new device" notices. The existing per-address rate limit stays as is.
-// Nothing here may ever block a correct sign-in by throwing, so callers wrap these in try/catch.
+// ACC-6: devices are keyed by the device cookie now (a second phone of the same kind is new), and the follow-up
+// below also records a ticked "Remember this device". Nothing here may ever block a correct sign-in by throwing,
+// so callers wrap these in try/catch.
 
 async function pauseSettings() {
   const row = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { signInPauseAttempts: true, signInPauseMinutes: true } });
@@ -74,18 +85,84 @@ export async function recordPasswordAccepted(userId: string) {
 }
 
 /**
- * Finished sign-in. For the team only: a device (kind of device and browser) not seen before gets a notice. The first
- * ever sign-in just records the device. Only new devices are written down, so the activity record stays quiet.
+ * Finished sign-in. A device the person has not signed in from before gets a notice; the first ever sign-in just
+ * records the device. Only new devices are written down, so the activity record stays quiet. Devices are keyed
+ * by the device cookie, so a second phone of the same kind is new (the old check compared only the kind of
+ * device and browser, and never noticed a second phone). Team members get the notice by email; customers get it
+ * through the customer-email switch, and when that switch is off it is recorded as not sent.
  */
-export async function noteCompletedSignIn(userId: string, userAgent: string | null): Promise<"first" | "known" | "new" | "skipped"> {
+export async function noteCompletedSignIn(
+  userId: string,
+  userAgent: string | null,
+  deviceCookie: string | null,
+): Promise<"first" | "known" | "new" | "skipped"> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-  if (!user || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF")) return "skipped";
+  if (!user || (user.role !== "OWNER" && user.role !== "ADMIN" && user.role !== "STAFF" && user.role !== "CUSTOMER")) return "skipped";
   const device = sessionDeviceLabel(userAgent);
-  const seen = await prisma.auditLog.findMany({ where: { userId, action: "account.sign_in_device" }, select: { newValue: true }, take: 200 });
-  const known = seen.some((row) => (row.newValue as { device?: string } | null)?.device === device);
-  if (known) return "known";
+  // Without a cookie there is nothing to key the device on; fall back to the device kind so the sign-in is
+  // still recorded (the sign-in follow-up always passes a cookie, so this is only for direct callers).
+  const deviceHash = deviceCookie ? hashDeviceCookie(deviceCookie) : hashDeviceCookie(`label:${device}`);
+  const existing = await prisma.knownDevice.findUnique({ where: { userId_deviceHash: { userId, deviceHash } }, select: { id: true } });
+  const hadAny = await prisma.knownDevice.count({ where: { userId } });
+  await prisma.knownDevice.upsert({
+    where: { userId_deviceHash: { userId, deviceHash } },
+    create: { userId, deviceHash, label: device },
+    update: { lastSeenAt: new Date(), label: device, forgottenAt: null },
+  });
+  if (existing) return "known";
   await prisma.auditLog.create({ data: { userId, action: "account.sign_in_device", entityType: "User", entityId: userId, newValue: { device } } });
-  if (seen.length === 0) return "first";
-  await sendAccountNotice(userId, "new_device", { extra: device });
+  if (hadAny === 0) return "first";
+  if (user.role === "CUSTOMER") await sendCustomerAccountNotice(userId, "new_device", { extra: device });
+  else await sendAccountNotice(userId, "new_device", { extra: device });
   return "new";
+}
+
+/**
+ * The sign-in follow-up, run after the two-step plugin has decided the sign-in (so a sign-in that is still
+ * waiting for a code is never noted here). It makes sure the browser has a device cookie, records the device,
+ * and — when the person ticked "Remember this device", or when a trusted sign-in rotated the library's trust
+ * row — keeps the remembered-until date to the owner's number of days, never longer. Never throws: a failure
+ * here must not stop or change a sign-in (the sign-in gate is the backstop for trust).
+ */
+export async function completeSignInFollowUp(input: {
+  userId: string;
+  userAgent: string | null;
+  /** The two-step verify asked to remember this device. */
+  trustDeviceRequested: boolean;
+  /** A password sign-in arrived with a trust cookie (the plugin rotated its trust row). */
+  trustCookiePresented: boolean;
+  deviceCookie: string | null;
+  setDeviceCookie: (value: string) => void;
+  now?: Date;
+}): Promise<void> {
+  try {
+    const now = input.now ?? new Date();
+    let deviceCookie = input.deviceCookie;
+    if (!deviceCookie) {
+      deviceCookie = newDeviceCookieValue();
+      input.setDeviceCookie(deviceCookie);
+    }
+    await noteCompletedSignIn(input.userId, input.userAgent, deviceCookie);
+    const deviceHash = hashDeviceCookie(deviceCookie);
+    if (input.trustDeviceRequested) {
+      const { days } = await getTrustedDeviceSettings();
+      if (days <= 0) {
+        // Remembering is off: a trust row created anyway (for example if the strip was bypassed) must not survive.
+        await forgetTrustedDevices(input.userId);
+        return;
+      }
+      const until = trustedUntilFor(days, now)!;
+      await markDeviceTrusted(input.userId, deviceHash, until);
+      await clampNewestTrustRow(input.userId, until, now);
+    } else if (input.trustCookiePresented) {
+      // Rotation made a fresh trust row: keep it to the date this device is remembered until, never longer.
+      const device = await prisma.knownDevice.findUnique({
+        where: { userId_deviceHash: { userId: input.userId, deviceHash } },
+        select: { trustedUntil: true },
+      });
+      if (device?.trustedUntil) await clampNewestTrustRow(input.userId, device.trustedUntil, now);
+    }
+  } catch (error) {
+    console.error("[auth] sign-in follow-up failed", error instanceof Error ? error.name : "unknown");
+  }
 }

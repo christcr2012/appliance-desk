@@ -564,6 +564,14 @@ export async function updateSignInPauseAction(formData: FormData): Promise<void>
   revalidatePath("/desk/settings");
 }
 
+export async function updateTrustedDeviceSettingsAction(formData: FormData): Promise<void> {
+  const session = await requireRole("OWNER");
+  const { updateTrustedDeviceSettings } = await import("@/domains/security/trusted-devices");
+  const restore = formData.get("restoreRecommended") === "1";
+  await updateTrustedDeviceSettings(session.user.id, restore ? { days: 30 } : { days: formData.get("days") });
+  revalidatePath("/desk/settings");
+}
+
 /** Keeps the caller's current session and revokes every other active/stale session row. */
 export async function signOutOtherSessionsAction(): Promise<
   | { status: "success"; revokedCount: number }

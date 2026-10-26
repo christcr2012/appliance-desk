@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { expect, test } from "@playwright/test";
-import { scanAccessibilityRoute } from "./accessibility-route-helpers";
+import { scanAccessibilityRoute, waitForBreakpointLayout } from "./accessibility-route-helpers";
 import { enabled, overdueCustomer, scanWithReport, SIZES } from "./support/ar0b-fixtures";
 
 // AR-0b (docs/build-specs/screens/MONEY-BILLS.md section 8): Money › Bills in a real browser.
@@ -54,7 +54,7 @@ test.describe("Money › Bills", () => {
     await page.goto("/desk/billing?status=past-due", { waitUntil: "load" });
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await page.setViewportSize({ width: 360, height: 900 });
-    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await waitForBreakpointLayout(page);
     const layout = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       overflowing: [...document.querySelectorAll("body *")]
