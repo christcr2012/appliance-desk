@@ -132,12 +132,12 @@ async function cashJournalLines(tx:Tx,rows:JournalRows):Promise<{
 }
 export async function profitAndLoss(userId:string,options:{
  from:string;to:string;basis:ProfitBasis;compare?:ProfitCompare;
-}) {
+}, txOverride?:Tx) {
  const b=bounds(options.from,options.to);
  if(!["ACCRUAL","CASH"].includes(options.basis))
   throw new ReportIntegrityError("Choose cash or accrual report basis.");
  const compare=compareDates(options.from,options.to,options.compare??null);
- return prisma.$transaction(async tx=>{
+ const evaluate=async(tx:Tx)=>{
   const settings=await authorized(tx,userId);
   if(b.start<settings.booksStartDate!)throw new ReportIntegrityError("Report begins before the owner-attested Books opening date.");
   const load=async(from:string,to:string)=>{
@@ -150,7 +150,9 @@ export async function profitAndLoss(userId:string,options:{
   const previous=compare&&date(compare.from)>=settings.booksStartDate!
    ?await load(compare.from,compare.to):null;
   return {from:options.from,to:options.to,basis:options.basis,compare, ...current, previous};
- },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
+ };
+ return txOverride?evaluate(txOverride):prisma.$transaction(evaluate,
+  {isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
 }
 export async function balanceSnapshot(userId:string,asOf:string){
  const limit=exclusive(asOf);

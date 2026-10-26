@@ -264,22 +264,14 @@ export async function exportMonthReview(actor:BooksActor,key:string){
 export async function closeAccountingMonthWithReview(actor:BooksActor,key:string,
  notes:{expenses?:string;payments?:string}={}){
  allow(actor,"OWNER");periodKey(key);
- const {monthReview}=await import("./month-review");
- const review=await monthReview(actor,key);
- if(review.status==="CLOSED")return {alreadyClosed:true,exported:false};
- if(!review.checks.sources.ok||!review.checks.equipment.ok)
-  throw new BooksInputError("First finish the missing source journals and equipment depreciation.");
  const clean=(value:string|undefined)=>{
   const text=(value??"").trim();
   if(text.length>300)throw new BooksInputError("Review explanation must be 300 characters or fewer.");
   return text;
  };
  const expenses=clean(notes.expenses),payments=clean(notes.payments);
- if(!review.checks.costs.ok&&!expenses)
-  throw new BooksInputError("Explain why the unverified expenses are being locked.");
- if(!review.checks.payments.ok&&!payments)
-  throw new BooksInputError("Explain why unresolved payment evidence is being locked.");
  return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,actor.id,["OWNER"]);
   await tx.$queryRaw`SELECT "revision" FROM "BooksPostingRevision"
    WHERE "id"=${"singleton"} FOR UPDATE`;
   await tx.$queryRaw`SELECT 1 AS locked FROM
@@ -289,6 +281,16 @@ export async function closeAccountingMonthWithReview(actor:BooksActor,key:string
   if(!settings?.booksStartDate)throw new BooksInputError("Start your books before locking.");
   const was=await tx.accountingPeriod.findUnique({where:{periodKey:key}});
   if(was?.status==="CLOSED")return {alreadyClosed:true,exported:false};
+  // Every Books evidence read that authorizes this close belongs to this
+  // Serializable snapshot, after the ledger and month locks are acquired.
+  const {monthReview}=await import("./month-review");
+  const review=await monthReview(actor,key,new Date(),tx);
+  if(!review.checks.sources.ok||!review.checks.equipment.ok)
+   throw new BooksInputError("First finish the missing source journals and equipment depreciation.");
+  if(!review.checks.costs.ok&&!expenses)
+   throw new BooksInputError("Explain why the unverified expenses are being locked.");
+  if(!review.checks.payments.ok&&!payments)
+   throw new BooksInputError("Explain why unresolved payment evidence is being locked.");
   const entries=await tx.journalEntry.findMany({where:{periodKey:key},select:{id:true}});
   const existing=entries.length?await tx.exportBatchEntry.findMany({
    where:{journalEntryId:{in:entries.map(x=>x.id)}},select:{journalEntryId:true},

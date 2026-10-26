@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { lastBusinessDay, lastCompletedMonth, monthKey, nextMonth } from "./depreciation";
@@ -23,34 +24,36 @@ export function assetDueForMonth(asset:{
  return key<=due;
 }
 
-export async function monthReview(actor:BooksActor,key:string,now=new Date()){
+export async function monthReview(actor:BooksActor,key:string,now=new Date(),tx?:Prisma.TransactionClient){
+ const db=tx??prisma;
  monthKey(key);
  if(key>lastCompletedMonth(now))throw new Error("Review a month that has ended.");
- await prisma.$transaction(tx=>assertActiveTeamActor(tx,actor.id,["OWNER","ADMIN"]));
+ if(tx)await assertActiveTeamActor(tx,actor.id,["OWNER","ADMIN"]);
+ else await prisma.$transaction(current=>assertActiveTeamActor(current,actor.id,["OWNER","ADMIN"]));
  const first=businessDateFromKey(key+"-01")!,last=lastBusinessDay(key);
  const next=businessDateFromKey(nextMonth(key)+"-01")!;
- const settings=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},
+ const settings=await db.businessSettings.findUniqueOrThrow({where:{id:"singleton"},
   select:{booksStartDate:true,accountantEmail:true,booksReviewReminderDay:true}});
  if(!settings.booksStartDate)throw new Error("Start your books before reviewing a month.");
  if(key<businessDateKey(settings.booksStartDate).slice(0,7))
   throw new Error("This month is before your Books start.");
  const [status,expenses,assets,accounts,postedDepreciations]=await Promise.all([
-  prisma.accountingPeriod.findUnique({where:{periodKey:key}}),
-  prisma.expense.findMany({where:{spentOn:{gte:first,lt:next}},
+  db.accountingPeriod.findUnique({where:{periodKey:key}}),
+  db.expense.findMany({where:{spentOn:{gte:first,lt:next}},
    select:{id:true,status:true,receiptPhotoId:true,noReceiptReason:true,amountCents:true,
     category:{select:{name:true}}},take:10001}),
-  prisma.bookAsset.findMany({where:{placedInServiceOn:{lt:next}},
+  db.bookAsset.findMany({where:{placedInServiceOn:{lt:next}},
    select:{applianceId:true,placedInServiceOn:true,retiredOn:true,fullyDepreciatedOn:true,lifeMonths:true},take:10001}),
-  prisma.cashAccount.findMany({select:{id:true,name:true,
+  db.cashAccount.findMany({select:{id:true,name:true,
    imports:{select:{id:true},take:1},
    reconciliations:{where:{isCurrent:true,status:"COMPLETED",
     fromOn:{lte:first},toOn:{gte:last}},select:{id:true},take:1}},take:501}),
-  prisma.journalEntry.findMany({where:{sourceType:"APPLIANCE",
+  db.journalEntry.findMany({where:{sourceType:"APPLIANCE",
    eventKind:"DEPRECIATION:"+key},select:{sourceId:true},take:10001}),
  ]);
  const limitsExceeded=expenses.length>10000||assets.length>10000||accounts.length>500||
   postedDepreciations.length>10000;
- const pending=await postPending({limit:500,inspectMonth:key});
+ const pending=await postPending({limit:500,inspectMonth:key,tx});
  const sourceCount=pending.problems.length;
  const sources:ReviewCheck={label:"Everything was recorded",ok:!limitsExceeded&&!sourceCount,
   count:safeCount(sourceCount),detail:limitsExceeded?"The record count needs a smaller accountant review.":sourceCount
@@ -66,7 +69,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
  for(const account of accounts){
   if(!account.imports.length){bankStates.push({state:"NOT_SET_UP",detail:account.name+": no bank statements connected",unmatchedCents:0});continue;}
   if(account.reconciliations.length){bankStates.push({state:"MATCHED",detail:account.name+": reconciled through month end",unmatchedCents:0});continue;}
-  const unmatched=await prisma.bankObservation.aggregate({where:{
+  const unmatched=await db.bankObservation.aggregate({where:{
    cashAccountId:account.id,isActive:true,status:"UNMATCHED",
    postedOn:{gte:first,lt:next}},_sum:{signedCents:true},_count:{_all:true}});
   bankStates.push({state:"NEEDS_REVIEW",detail:account.name+": "+unmatched._count._all+" bank lines not matched yet",
@@ -98,7 +101,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
   ?businessDateKey(settings.booksStartDate):key+"-01";
  const profit=await profitAndLoss(actor.id,{from:profitStart,
   to:businessDateKey(last),basis:"ACCRUAL",
-  compare:key>businessDateKey(settings.booksStartDate).slice(0,7)?"PREVIOUS_PERIOD":null});
+  compare:key>businessDateKey(settings.booksStartDate).slice(0,7)?"PREVIOUS_PERIOD":null},tx);
  const categories=new Map<string,number>();
  for(const expense of expenses.filter(x=>x.status==="POSTED")){
   const name=expense.category.name;
@@ -106,7 +109,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
  }
  const topCategories=[...categories].sort((a,b)=>b[1]-a[1]).slice(0,3)
   .map(([name,amountCents])=>({name,amountCents}));
- const received=await prisma.receipt.aggregate({where:{receivedOn:{gte:first,lt:next}},
+ const received=await db.receipt.aggregate({where:{receivedOn:{gte:first,lt:next}},
   _sum:{amountCents:true}});
  return {key,status:status?.status??"OPEN",lockedAt:status?.closedAt??null,
   accountantSentAt:status?.accountantSentAt??null,
