@@ -178,7 +178,7 @@ Chris has been burned by overclaiming. Say exactly what is coded, what CI proved
 ## 8. CI facts
 
 The repository is **public**: Actions minutes are free and anything committed is public forever. CI runs secret scan,
-typecheck + lint, 3 unit shards on throwaway Postgres, production build + 4 browser shards (docs-only changes skip
+typecheck + lint, 3 unit shards on throwaway Postgres, production build + 5 browser shards (docs-only changes skip
 the heavy jobs but never the secret scan). `.github/workflows/ci.yml` keeps `permissions: contents: read`, uses no
 repository secrets, never `pull_request_target`, never echoes environment values. Only `sandbox-publish.yml`,
 `daily-live.yml` and the checked `testing-deploy.yml` promoter have write access; keep them that narrow. Prefer unit tests (`tests/`) over browser tests (`e2e/`);
