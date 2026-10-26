@@ -5,6 +5,7 @@ import { getStripeClient } from "@/lib/stripe";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
 import { lockCustomerLedger } from "./ledger";
+import { exemptionBackdateCreditCentsForInvoiceInTx } from "@/domains/tax/exemptions";
 import {
   HELD_PAYMENT_STATUS,
   HELD_REFUNDED_STATUS,
@@ -315,7 +316,13 @@ export async function prepareInvoiceRefundInTx(
     (sum, refund) => sum + refund.amountCents,
     0,
   );
-  const refundableCents = invoice.amountPaidCents - alreadyRefundedCents;
+  // Tax this invoice already handed back as a back-dated exemption
+  // credit is no longer refundable: a refund on top of the credit would
+  // return the same tax twice (TFA-2 §9 review fix).
+  const exemptionCreditCents = await exemptionBackdateCreditCentsForInvoiceInTx(
+    tx, invoice.customerId, invoice.id,
+  );
+  const refundableCents = invoice.amountPaidCents - alreadyRefundedCents - exemptionCreditCents;
   if (input.amountCents > refundableCents) {
     throw new Error("Refund amount exceeds the invoice amount still eligible for refund.");
   }

@@ -1,4 +1,5 @@
 import { recordShopSaleDeliveryFeeInTx, shopSaleFeeKeptOnReturnInTx, voidShopSaleDeliveryFeeInTx } from "@/domains/tax/rdf-shop-sale";
+import { exemptionBackdateCreditCentsForInvoiceInTx } from "@/domains/tax/exemptions";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -436,7 +437,10 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
     }
     // TFA-2 §6.5: the delivery fee is still owed after a return, so it is kept out of the refund.
     const feeKeptCents = await shopSaleFeeKeptOnReturnInTx(tx, sale.id);
-    return { refundable: Math.max(0, sale.amountPaidCents - (refunds._sum.amountCents ?? 0) - feeKeptCents), invoiceNumber: sale.invoiceNumber, saleId: sale.id };
+    // Tax already handed back as a back-dated exemption credit is also
+    // out of the refund — the customer never receives the same tax twice.
+    const creditCents = await exemptionBackdateCreditCentsForInvoiceInTx(tx, found.customerId, sale.id);
+    return { refundable: Math.max(0, sale.amountPaidCents - (refunds._sum.amountCents ?? 0) - feeKeptCents - creditCents), invoiceNumber: sale.invoiceNumber, saleId: sale.id };
   });
   if ("finished" in plan && plan.finished) return plan.finished;
   const { refundable, invoiceNumber, saleId } = plan as { refundable: number; invoiceNumber: number; saleId: string };
@@ -459,7 +463,8 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
     const refundedCents = refunds.reduce((n, r) => n + r.amountCents, 0);
     // TFA-2 §6.5: the delivery fee is kept, so a complete refund is the amount paid minus that fee.
     const feeKeptCents = await shopSaleFeeKeptOnReturnInTx(tx, saleId);
-    if (refundedCents < sale.amountPaidCents - feeKeptCents) throw new Error("The refund was not fully recorded, so the items were not put back. Please try again.");
+    const creditCents = await exemptionBackdateCreditCentsForInvoiceInTx(tx, found.customerId, saleId);
+    if (refundedCents < sale.amountPaidCents - feeKeptCents - creditCents) throw new Error("The refund was not fully recorded, so the items were not put back. Please try again.");
     const unfinished = refunds.length
       ? await tx.providerOperation.count({ where: { kind: "REFUND_CREATE", subjectType: "Refund", subjectId: { in: refunds.map((r) => r.id) }, status: { not: "SUCCEEDED" } } })
       : 0;

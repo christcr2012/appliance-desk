@@ -68,6 +68,22 @@ describe.skipIf(!enabled)("TFA-2 §8 filing-frequency advice on real Postgres", 
     const rate = await prisma.taxRateVersion.create({
       data: { jurisdictionId, rateMilliPercent: 5000, effectiveFrom: day("2025-01-01"), source: "MANUAL" },
     });
+    async function addInvoice(issuedKey: string, taxCents: number) {
+      const at = day(issuedKey);
+      const invoice = await prisma.invoice.create({
+        data: {
+          customerId, status: "PAID", issuedAt: at, createdAt: at,
+          amountDueCents: 80000 + taxCents,
+        },
+      });
+      await prisma.invoiceTaxLine.create({
+        data: {
+          invoiceId: invoice.id, jurisdictionId, rateVersionId: rate.id,
+          category: "RENTAL", taxableCents: 80000, taxCents, source: "ENGINE",
+        },
+      });
+      return invoice;
+    }
     async function addPeriod(startKey: string, endKey: string, taxCents: number) {
       const period = await prisma.taxFilingPeriod.create({
         data: {
@@ -102,7 +118,7 @@ describe.skipIf(!enabled)("TFA-2 §8 filing-frequency advice on real Postgres", 
       await prisma.auditLog.deleteMany({ where: { userId: { in: [ownerId, staffId] } } });
       await prisma.user.deleteMany({ where: { id: { in: [ownerId, staffId, userId] } } });
     }
-    return { tag, ownerId, staffId, account, addPeriod, cleanup };
+    return { tag, ownerId, staffId, account, addPeriod, addInvoice, cleanup };
   }
 
   it("advises yearly filing from a low average, once, and the owner confirm applies it to future periods", async () => {
@@ -168,7 +184,7 @@ describe.skipIf(!enabled)("TFA-2 §8 filing-frequency advice on real Postgres", 
     try {
       const quarters: Array<[string, string]> = [
         ["2031-01-01", "2031-03-31"], ["2031-04-01", "2031-06-30"],
-        ["2031-07-01", "2031-09-30"],
+        ["2031-07-01", "2031-09-30"], ["2031-10-01", "2031-12-31"],
       ];
       for (const [start, end] of quarters) await g.addPeriod(start, end, 400000);
       // October 1: the average says monthly, but that advice waits for December.
@@ -257,19 +273,22 @@ describe.skipIf(!enabled)("TFA-2 §8 filing-frequency advice on real Postgres", 
   it("a yearly account still gets December advice to file more often", async () => {
     const f = await fixture("ANNUAL");
     try {
-      // A quiet year, then a big one. The yearly periods straddle the
-      // trailing-twelve-months window edges, so whole-period selection
-      // would see no evidence at all; overlap selection prorates them.
-      await f.addPeriod("2030-01-01", "2030-12-31", 12000);
-      await f.addPeriod("2031-01-01", "2031-12-31", 1600000);
+      // A quiet year, then a big one, sold month by month. The advice
+      // reads the dated invoices inside the window, not the yearly
+      // periods: December 2030 (1,000) plus January to November 2031
+      // (11 × 133,333) over 12 months averages 122,305 — over the
+      // quarterly limit, so Colorado may move this account to monthly.
+      // The big December 2031 invoice is outside the window and must
+      // not move the average.
+      for (let m = 1; m <= 12; m++) {
+        await f.addInvoice(`2030-${String(m).padStart(2, "0")}-11`, 1000);
+        await f.addInvoice(`2031-${String(m).padStart(2, "0")}-11`, 133333);
+      }
       // Mid-year: more-often advice is December-only, nothing appears.
       await computeFilingFrequencyAdvice(day("2031-10-15"));
       expect(await prisma.filingFrequencyAdvice.count({
         where: { filingAccountId: f.account.id },
       })).toBe(0);
-      // December: 1 month of the quiet year (1,000) plus 11 months of the
-      // big year (1,466,667) over 12 months averages 122,305 — over the
-      // quarterly limit, so Colorado may move this account to monthly.
       await computeFilingFrequencyAdvice(day("2031-12-15"));
       const advice = await prisma.filingFrequencyAdvice.findFirst({
         where: { filingAccountId: f.account.id },
@@ -277,6 +296,32 @@ describe.skipIf(!enabled)("TFA-2 §8 filing-frequency advice on real Postgres", 
       expect(advice).toMatchObject({
         currentFrequency: "ANNUAL", advisedFrequency: "MONTHLY",
         averageMonthlyCents: 122305,
+      });
+    } finally {
+      await f.cleanup();
+    }
+  });
+
+  it("December advice is not suppressed by year-to-date proration (review case)", async () => {
+    const f = await fixture("ANNUAL");
+    try {
+      // The review's example, in cents: $650 of tax across January to
+      // November and none the preceding December is a true monthly
+      // average of about $54 — over the $50 yearly limit, so quarterly
+      // advice must appear. Prorating the open yearly packet by 11/12
+      // reported about $49.65 and suppressed it. A large invoice in the
+      // current December is outside the window and changes nothing.
+      for (let m = 1; m <= 11; m++) {
+        await f.addInvoice(`2031-${String(m).padStart(2, "0")}-11`, 5909);
+      }
+      await f.addInvoice("2031-12-11", 900000);
+      await computeFilingFrequencyAdvice(day("2031-12-15"));
+      const advice = await prisma.filingFrequencyAdvice.findFirst({
+        where: { filingAccountId: f.account.id },
+      });
+      expect(advice).toMatchObject({
+        currentFrequency: "ANNUAL", advisedFrequency: "QUARTERLY",
+        averageMonthlyCents: 5416,
       });
     } finally {
       await f.cleanup();

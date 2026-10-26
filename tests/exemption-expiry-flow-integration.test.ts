@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { createCustomerTaxExemption } from "@/domains/tax/exemptions";
+import { issueInvoiceRefund } from "@/domains/billing/refunds";
 import { listExpiredExemptionAttention } from "@/domains/tax/filing-attention";
 
 function databaseUri(): URL | null {
@@ -377,6 +378,85 @@ describe.skipIf(!enabled)("TFA-2 §9 exemption expiry flow on real Postgres", ()
       const credits = await prisma.customerCredit.findMany({ where: { customerId } });
       expect(credits).toHaveLength(1);
       expect(credits[0]!.amountCents).toBe(250);
+    } finally {
+      await prisma.customerCredit.deleteMany({ where: { customerId } });
+      await prisma.refund.deleteMany({ where: { invoice: { customerId } } });
+      await prisma.invoiceTaxLine.deleteMany({ where: { jurisdictionId } });
+      await prisma.invoice.deleteMany({ where: { customerId } });
+      await prisma.customerTaxExemption.deleteMany({ where: { customerId } });
+      await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId } });
+      await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+      await prisma.customer.deleteMany({ where: { id: customerId } });
+      await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
+      await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
+    }
+  });
+
+  it("a later refund cannot hand back tax already returned as a credit (review case)", async () => {
+    const tag = randomUUID().slice(0, 8);
+    const ownerId = "tfa2-ex6-owner-" + tag;
+    const userId = "tfa2-ex6-user-" + tag;
+    const customerId = "tfa2-ex6-customer-" + tag;
+    const jurisdictionId = "tfa2-ex6-jur-" + tag;
+    try {
+      await prisma.user.createMany({
+        data: [
+          { id: ownerId, email: tag + "-owner6@example.test", name: "Ex Owner", role: "OWNER", emailVerified: true },
+          { id: userId, email: tag + "-customer6@example.test", name: "Credited Customer", role: "CUSTOMER", emailVerified: true },
+        ],
+      });
+      await prisma.customer.create({
+        data: { id: customerId, userId, referralCode: "R" + tag },
+      });
+      await prisma.taxJurisdiction.create({
+        data: {
+          id: jurisdictionId, code: "E6-" + tag, name: "Test state",
+          level: "STATE", administration: "STATE_COLLECTED", reviewStatus: "REVIEWED",
+        },
+      });
+      const rate = await prisma.taxRateVersion.create({
+        data: { jurisdictionId, rateMilliPercent: 5000, effectiveFrom: day("2025-01-01"), source: "MANUAL" },
+      });
+      // A $108 paid bill whose $8 of tax a late certificate covers.
+      const invoice = await prisma.invoice.create({
+        data: {
+          customerId, status: "PAID", issuedAt: daysAgo(20),
+          amountDueCents: 10800, amountPaidCents: 10800,
+        },
+      });
+      await prisma.invoiceTaxLine.create({
+        data: {
+          invoiceId: invoice.id, jurisdictionId, rateVersionId: rate.id,
+          category: "RENTAL", taxableCents: 10000, taxCents: 800, source: "ENGINE",
+        },
+      });
+      await createCustomerTaxExemption(ownerId, customerId, {
+        reason: "CHARITABLE", certificatePhotoId: "photo-" + tag,
+        jurisdictionIds: [jurisdictionId], validFrom: daysAgo(30),
+      });
+      const credits = await prisma.customerCredit.findMany({ where: { customerId } });
+      expect(credits).toHaveLength(1);
+      expect(credits[0]!.amountCents).toBe(800);
+      // The grant records which invoice's tax it returned.
+      const grant = await prisma.auditLog.findFirstOrThrow({
+        where: { action: "tax.exemption.backdate_credit", entityType: "CustomerCredit", entityId: credits[0]!.id },
+      });
+      expect((grant.newValue as { perInvoice?: unknown }).perInvoice)
+        .toEqual([{ invoiceId: invoice.id, cents: 800 }]);
+
+      // A full $108 refund on top of the $8 credit would pay $116 out.
+      await expect(issueInvoiceRefund(ownerId, {
+        invoiceId: invoice.id, amountCents: 10800, reason: "OTHER",
+      })).rejects.toThrow(/exceeds the invoice amount still eligible/);
+      // The bill minus the credited tax refunds fine, and then nothing
+      // is left to refund.
+      const ok = await issueInvoiceRefund(ownerId, {
+        invoiceId: invoice.id, amountCents: 10000, reason: "OTHER",
+      });
+      expect(ok.refundId).toBeTruthy();
+      await expect(issueInvoiceRefund(ownerId, {
+        invoiceId: invoice.id, amountCents: 1, reason: "OTHER",
+      })).rejects.toThrow(/exceeds the invoice amount still eligible/);
     } finally {
       await prisma.customerCredit.deleteMany({ where: { customerId } });
       await prisma.refund.deleteMany({ where: { invoice: { customerId } } });

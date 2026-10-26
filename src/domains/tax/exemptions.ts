@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey, businessDayBounds } from "@/lib/business-date";
 import { allocateAcrossLines } from "@/domains/tax/allocate";
+import { shopSaleFeeKeptOnReturnInTx } from "@/domains/tax/rdf-shop-sale";
 
 export type TaxExemptionInput = {
   reason: TaxExemptionReason;
@@ -247,8 +248,14 @@ export async function createCustomerTaxExemption(
           taxLines: { select: { jurisdictionId: true, taxCents: true } },
           refunds: { select: { amountCents: true } },
         },
+        orderBy: [{ issuedAt: "asc" }, { id: "asc" }],
       });
-      let creditCents = 0;
+      // The credit is tracked per invoice from the start: a later refund
+      // on one of these invoices must not hand the same tax back a second
+      // time, and the refund path can only enforce that if it knows how
+      // much of THIS invoice's tax was already credited (see
+      // exemptionBackdateCreditCentsForInvoiceInTx below).
+      const perInvoice: Array<{ invoiceId: string; cents: number }> = [];
       for (const invoice of taxedInvoices) {
         const lines = invoice.taxLines;
         const totalTax = lines.reduce((sum, line) => sum + line.taxCents, 0);
@@ -256,22 +263,30 @@ export async function createCustomerTaxExemption(
         // Mirror the filing packet's refund allocation: a refund returns
         // tax and principal in proportion, so only the unrefunded share
         // of each tax line can still be credited here — the customer must
-        // never receive the same tax back twice. An invoice whose numbers
-        // do not reconcile earns no credit (the packet blocks filing on
-        // it for the same reason; the owner can credit by hand).
-        if (invoice.amountDueCents <= 0 || totalTax < 0 || totalTax > invoice.amountDueCents
-          || totalRefunds < 0 || totalRefunds > invoice.amountDueCents
+        // never receive the same tax back twice. The allocation base
+        // excludes a delivery fee the customer never gets back on a
+        // return (it is not part of any refund, so no refund share may
+        // be attributed to it). An invoice whose numbers do not
+        // reconcile earns no credit (the packet blocks filing on it for
+        // the same reason; the owner can credit by hand).
+        const keptFeeCents = await shopSaleFeeKeptOnReturnInTx(tx, invoice.id);
+        const basisCents = invoice.amountDueCents - keptFeeCents;
+        if (basisCents <= 0 || totalTax < 0 || totalTax > basisCents
+          || totalRefunds < 0 || totalRefunds > basisCents
           || lines.some((line) => line.taxCents < 0)) continue;
         const taxRefunded = totalRefunds === 0 ? 0
-          : allocateAcrossLines(totalRefunds, [totalTax, invoice.amountDueCents - totalTax])[0]!;
+          : allocateAcrossLines(totalRefunds, [totalTax, basisCents - totalTax])[0]!;
         const perLineRefunded = taxRefunded === 0 ? lines.map(() => 0)
           : allocateAcrossLines(taxRefunded, lines.map((line) => line.taxCents));
+        let invoiceCents = 0;
         lines.forEach((line, index) => {
           if (line.taxCents <= 0) return;
           if (data.jurisdictionIds.length && !data.jurisdictionIds.includes(line.jurisdictionId)) return;
-          creditCents += line.taxCents - perLineRefunded[index]!;
+          invoiceCents += line.taxCents - perLineRefunded[index]!;
         });
+        if (invoiceCents > 0) perInvoice.push({ invoiceId: invoice.id, cents: invoiceCents });
       }
+      let creditCents = perInvoice.reduce((sum, entry) => sum + entry.cents, 0);
       if (creditCents > 0) {
         // Never credit the same tax twice: subtract back-dated credits
         // already granted for certificates whose covered days and areas
@@ -305,6 +320,17 @@ export async function createCustomerTaxExemption(
             creditCents -= credit.amountCents;
           }
         }
+        // Attribute what the earlier credits already covered to the
+        // earliest invoices first, so the per-invoice record below sums
+        // to the credit actually granted and each invoice's share is the
+        // part of its tax no earlier certificate already returned.
+        let unsubtracted = perInvoice.reduce((sum, entry) => sum + entry.cents, 0) - creditCents;
+        for (const entry of perInvoice) {
+          if (unsubtracted <= 0) break;
+          const cut = Math.min(entry.cents, unsubtracted);
+          entry.cents -= cut;
+          unsubtracted -= cut;
+        }
       }
       if (creditCents > 0) {
         const credit = await tx.customerCredit.create({
@@ -328,6 +354,7 @@ export async function createCustomerTaxExemption(
             newValue: {
               customerId, exemptionId: row.id, creditCents,
               validFrom: row.validFrom.toISOString(),
+              perInvoice: perInvoice.filter((entry) => entry.cents > 0),
             },
           },
         });
@@ -335,6 +362,41 @@ export async function createCustomerTaxExemption(
     }
     return row;
   });
+}
+
+/**
+ * How much of one invoice's tax has already been handed back as a
+ * back-dated exemption credit. The refund path subtracts this from what
+ * the invoice can still refund: the credit and a later refund must never
+ * return the same tax twice. The per-invoice split is recorded on the
+ * grant's audit row (back-dated credits are rare — one per late
+ * certificate — so reading this customer's grant rows is cheap). Credits
+ * granted before per-invoice tracking existed have no split and count 0;
+ * none exist outside tests, because the credit itself ships with TFA-2.
+ */
+export async function exemptionBackdateCreditCentsForInvoiceInTx(
+  tx: Pick<Prisma.TransactionClient, "auditLog">,
+  customerId: string,
+  invoiceId: string,
+): Promise<number> {
+  const grants = await tx.auditLog.findMany({
+    where: { action: "tax.exemption.backdate_credit", entityType: "CustomerCredit" },
+    select: { newValue: true },
+  });
+  let total = 0;
+  for (const grant of grants) {
+    const value = (grant.newValue ?? {}) as {
+      customerId?: string;
+      perInvoice?: Array<{ invoiceId?: string; cents?: number }>;
+    };
+    if (value.customerId !== customerId || !Array.isArray(value.perInvoice)) continue;
+    for (const entry of value.perInvoice) {
+      if (entry.invoiceId === invoiceId && typeof entry.cents === "number") {
+        total += entry.cents;
+      }
+    }
+  }
+  return total;
 }
 
 export async function updateCustomerTaxExemption(

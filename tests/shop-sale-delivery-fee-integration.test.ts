@@ -7,6 +7,7 @@ import { resolvePendingRdfRecords } from "@/domains/tax/rdf-records";
 import { processReadyRdfCharges } from "@/domains/tax/rdf-charges";
 import { recordedRetailSales } from "@/domains/tax/rdf-sales-evidence";
 import { approveRdfSwitch } from "@/domains/tax/rdf-switches";
+import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
 import { rdfHandlingLockedSince } from "@/domains/tax/rdf-handling-lock";
 import { saveTaxPolicyChoiceInTx } from "@/domains/tax/policy-choices";
 import { saveTaxSettings } from "@/domains/tax/setup";
@@ -162,6 +163,37 @@ describe.skipIf(!enabled)("delivery fee on delivered shop sales (real Postgres)"
     const unpaid = await sell(await part(), coAddress);
     await cancelShopSale(ownerId, unpaid.invoiceId, "Customer cancelled");
     expect((await records(unpaid.invoiceId))[0]).toMatchObject({ status: "NOT_DUE", collectedFromCustomer: false, customerRefundRef: null });
+  });
+
+  it("the filing packet credits the whole tax on a fee-kept return, not a proportional share (review case)", async () => {
+    // The $54 refund of a $54.37 sale ($50 goods, $4 tax, $0.37 fee kept)
+    // must remove the full $4 of tax from the return. Allocating the
+    // refund across the whole $54.37 (fee included) removed only $3.97
+    // and left three cents of tax payable on a fully returned sale.
+    await prisma.taxFilingAccount.update({ where: { id: accountId }, data: { basis: "CASH" } });
+    const monthKey = businessDateKey(new Date()).slice(0, 7);
+    const periodStart = businessDateFromKey(`${monthKey}-01`)!;
+    const periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 0, 12);
+    const period = await prisma.taxFilingPeriod.create({
+      data: { filingAccountId: accountId, periodStart, periodEnd, dueOn: periodEnd },
+    });
+    try {
+      const load = () => prisma.$transaction((tx) =>
+        loadFilingPacketInTx(tx, period.id, new Date(), { allowFiled: true }));
+      const before = await load();
+      expect(before.status).toBe("READY");
+      const sale = await sell(await part(), coAddress);
+      await recordManualPayment(customerId, ownerId, { amountCents: sale.amountDueCents, method: "cash", invoiceId: sale.invoiceId, refuseOverpayment: true });
+      const back = await returnShopSale(ownerId, sale.invoiceId, "Changed mind");
+      expect(back.refundedCents).toBe(5400);
+      const after = await load();
+      expect(after.status).toBe("READY");
+      if (before.status === "READY" && after.status === "READY") {
+        expect(after.packet.totals.taxCents).toBe(before.packet.totals.taxCents);
+      }
+    } finally {
+      await prisma.taxFilingPeriod.delete({ where: { id: period.id } });
+    }
   });
 
   it("a replacement sale (an exchange) gets no second delivery fee", async () => {

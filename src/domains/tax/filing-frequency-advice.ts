@@ -1,10 +1,12 @@
-import type { TaxFilingFrequency } from "@prisma/client";
+import type { Prisma, TaxFilingFrequency } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
-import { loadFilingPacketInTx } from "@/domains/tax/filing-packet";
+import { allocateAcrossLines } from "@/domains/tax/allocate";
+import { shopSaleFeeKeptOnReturnInTx } from "@/domains/tax/rdf-shop-sale";
+import { isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import {
   addCalendarDays,
   dueOnFor,
@@ -47,10 +49,144 @@ export function frequencyAllowedByAverage(
   return "MONTHLY";
 }
 
+const sumCents = (values: number[]): number => values.reduce((a, b) => a + b, 0);
+
 function monthsSpanned(periodStart: Date, periodEnd: Date): number {
   const [startYear, startMonth] = businessDateKey(periodStart).split("-").map(Number);
   const [endYear, endMonth] = businessDateKey(periodEnd).split("-").map(Number);
   return (endYear! - startYear!) * 12 + (endMonth! - startMonth!) + 1;
+}
+
+/**
+ * State-collected tax evidence dated inside [windowStart, windowEnd),
+ * following the filing packet's own dating and allocation rules: on the
+ * accrual basis an invoice's tax is dated by the invoice (provider
+ * invoices by their issue date, local ones by creation); on the cash
+ * basis it is spread across the actual receipts by the packet's
+ * proportional allocation and dated by each receipt; refunds are dated
+ * by their creation and allocated the same way, over a base that
+ * excludes a delivery fee kept on a return. Returns the total and
+ * whether any evidence was seen at all, or null when the evidence does
+ * not reconcile (the packet would block on it too) — bad evidence means
+ * no advice, never a guessed average.
+ */
+async function sumWindowStateTaxInTx(
+  tx: Prisma.TransactionClient,
+  account: { id: string; basis: string },
+  windowStart: Date,
+  windowEnd: Date,
+): Promise<{ taxCents: number; sawEvidence: boolean } | null> {
+  if (account.basis !== "CASH" && account.basis !== "ACCRUAL") return null;
+  const inWindow = (d: Date) => d >= windowStart && d < windowEnd;
+  let taxCents = 0;
+  let sawEvidence = false;
+
+  const lines = await tx.invoiceTaxLine.findMany({
+    where: { jurisdiction: { filingAccountId: account.id } },
+    include: {
+      jurisdiction: true,
+      invoice: {
+        include: {
+          payments: { include: { receipt: true } },
+          refunds: true,
+          taxLines: { select: { id: true, taxCents: true } },
+        },
+      },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  const seenInvoices = new Set<string>();
+  for (const line of lines) {
+    if (seenInvoices.has(line.invoiceId)) continue;
+    seenInvoices.add(line.invoiceId);
+    const invoice = line.invoice;
+    if (invoice.status === "DRAFT" || invoice.status === "VOID") continue;
+    const invoiceLines = lines.filter((l) => l.invoiceId === invoice.id);
+    const counted = invoiceLines.filter(
+      (l) => l.jurisdiction.administration === "STATE_COLLECTED",
+    );
+    if (!counted.length) continue;
+    const allTaxLines = invoice.taxLines;
+    const allTax = sumCents(allTaxLines.map((t) => t.taxCents));
+    if (account.basis === "ACCRUAL") {
+      const dated = invoice.stripeInvoiceId ? invoice.issuedAt : invoice.createdAt;
+      if (invoice.stripeInvoiceId && !invoice.issuedAt) return null;
+      if (!dated || !inWindow(dated)) continue;
+      sawEvidence = true;
+      for (const l of counted) taxCents += l.taxCents;
+      continue;
+    }
+    // Cash basis: the packet's allocation, receipt by receipt.
+    const amount = invoice.amountDueCents;
+    if (amount <= 0) return null;
+    const payments = invoice.payments
+      .filter((p) => isSuccessfulPaymentStatus(p.status))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    if (payments.some((p) => !p.receipt || p.amountCents <= 0)) return null;
+    const totalPaid = sumCents(payments.map((p) => p.amountCents));
+    if (totalPaid > amount || allTax < 0 || allTax > amount
+      || allTaxLines.some((t) => t.taxCents < 0)) return null;
+    const paidTax = allocateAcrossLines(totalPaid, [allTax, amount - allTax])[0]!;
+    const weights = payments.map((p) => p.amountCents);
+    for (const l of counted) {
+      const taxIndex = allTaxLines.findIndex((t) => t.id === l.id);
+      if (taxIndex < 0) return null;
+      const linePaidTax = allocateAcrossLines(
+        paidTax, allTaxLines.map((t) => t.taxCents),
+      )[taxIndex]!;
+      const shares = allocateAcrossLines(linePaidTax, weights);
+      payments.forEach((payment, i) => {
+        const receivedOn = payment.receipt!.receivedOn;
+        if (!inWindow(receivedOn)) return;
+        sawEvidence = true;
+        taxCents += shares[i]!;
+      });
+    }
+  }
+
+  const refunds = await tx.refund.findMany({
+    where: {
+      createdAt: { gte: windowStart, lt: windowEnd },
+      invoice: {
+        taxLines: { some: { jurisdiction: { filingAccountId: account.id } } },
+      },
+    },
+    include: {
+      invoice: {
+        include: {
+          refunds: true,
+          taxLines: { include: { jurisdiction: true } },
+        },
+      },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  for (const refund of refunds) {
+    const invoice = refund.invoice;
+    const invoiceLines = invoice.taxLines;
+    const totalTax = sumCents(invoiceLines.map((t) => t.taxCents));
+    const keptFeeCents = await shopSaleFeeKeptOnReturnInTx(tx, invoice.id);
+    const basisCents = invoice.amountDueCents - keptFeeCents;
+    const allRefunds = [...invoice.refunds].sort((a, b) => a.id.localeCompare(b.id));
+    const totalRefunds = sumCents(allRefunds.map((r) => r.amountCents));
+    if (basisCents <= 0 || totalTax < 0 || totalTax > basisCents
+      || totalRefunds <= 0 || totalRefunds > basisCents
+      || invoiceLines.some((t) => t.taxCents < 0)) return null;
+    const refundIndex = allRefunds.findIndex((r) => r.id === refund.id);
+    if (refundIndex < 0) return null;
+    sawEvidence = true;
+    const weights = allRefunds.map((r) => r.amountCents);
+    const totalTaxRefund = allocateAcrossLines(totalRefunds,
+      [totalTax, basisCents - totalTax])[0]!;
+    const perLineTax = allocateAcrossLines(totalTaxRefund, invoiceLines.map((t) => t.taxCents));
+    invoiceLines.forEach((line, index) => {
+      if (line.jurisdiction.filingAccountId !== account.id) return;
+      if (line.jurisdiction.administration !== "STATE_COLLECTED") return;
+      const tax = allocateAcrossLines(perLineTax[index]!, weights)[refundIndex]!;
+      taxCents -= tax;
+    });
+  }
+  return { taxCents, sawEvidence };
 }
 
 /**
@@ -74,7 +210,7 @@ export async function computeFilingFrequencyAdvice(now: Date): Promise<number> {
   }
   const accounts = await prisma.taxFilingAccount.findMany({
     where: { active: true, kind: "SALES_RETURN", firstPeriodStart: { not: null } },
-    select: { id: true, frequency: true },
+    select: { id: true, frequency: true, basis: true, firstPeriodStart: true },
     orderBy: [{ id: "asc" }],
   });
   if (!accounts.length) return 0;
@@ -82,53 +218,32 @@ export async function computeFilingFrequencyAdvice(now: Date): Promise<number> {
     `${year! - 1}-${String(month).padStart(2, "0")}-01`,
   )!;
   // The evidence window is the twelve calendar months ending with last
-  // month. Periods are taken by overlap, not by containment: a yearly
-  // period always straddles the window edges, so requiring whole closed
-  // periods inside it would leave a yearly account with no evidence at
-  // all (the December case the review found). Each overlapping period
-  // contributes its packet tax prorated by the months it covers inside
-  // the window; periods tiling the window (monthly, quarterly) are
-  // unaffected, since their overlap is the whole period.
+  // month. The average is computed from the dated evidence inside the
+  // window itself — invoices, receipts and refunds carry their own
+  // dates — never from whole filing periods prorated across the window
+  // edges: proration assumes tax was earned evenly across a year, so a
+  // yearly account's year-to-date total was shrunk a second time and
+  // December advice came out low, and tax recorded in the current
+  // December leaked into the next December's run (the review's case).
   const windowEnd = businessDateFromKey(
     `${year}-${String(month).padStart(2, "0")}-01`,
   )!;
-  const windowLastDay = new Date(windowEnd.getTime() - 24 * 3600 * 1000);
   const yearStart = businessDateFromKey(`${year}-01-01`)!;
   let created = 0;
   for (const account of accounts) {
-    const periods = await prisma.taxFilingPeriod.findMany({
-      where: {
-        filingAccountId: account.id,
-        periodStart: { lt: windowEnd },
-        periodEnd: { gte: windowStart },
-      },
-      select: { id: true, periodStart: true, periodEnd: true },
-      orderBy: [{ periodStart: "asc" }, { id: "asc" }],
-    });
-    let taxCents = 0;
-    let months = 0;
-    for (const period of periods) {
-      // The internal loader (no session in a cron): filed periods rebuild
-      // from current evidence, which is close enough for an average that
-      // only ever produces advice.
-      const loaded = await prisma.$transaction((tx) =>
-        loadFilingPacketInTx(tx, period.id, now, { allowFiled: true }),
-      ).catch(() => null);
-      if (!loaded || loaded.status !== "READY") continue;
-      const overlapStart = period.periodStart < windowStart ? windowStart : period.periodStart;
-      const overlapEnd = period.periodEnd > windowLastDay ? windowLastDay : period.periodEnd;
-      const overlapMonths = monthsSpanned(overlapStart, overlapEnd);
-      if (overlapMonths <= 0) continue;
-      const periodTax = loaded.packet.rows
-        .filter((row) => row.administration === "STATE_COLLECTED")
-        .reduce((sum, row) => sum + row.taxCents, 0);
-      taxCents += Math.round(
-        (periodTax * overlapMonths) / monthsSpanned(period.periodStart, period.periodEnd),
-      );
-      months += overlapMonths;
-    }
-    if (months === 0) continue;
-    const averageMonthlyCents = Math.floor(taxCents / months);
+    const evidence = await prisma.$transaction((tx) =>
+      sumWindowStateTaxInTx(tx, account, windowStart, windowEnd),
+    ).catch(() => null);
+    if (!evidence || !evidence.sawEvidence) continue;
+    // The average is monthly over the window, counting only the months
+    // since this account's first period when it is younger than the
+    // window (a brand-new account is not diluted by months before it
+    // existed, and a mature one is not flattered by quiet months).
+    const windowLastDay = new Date(windowEnd.getTime() - 24 * 3600 * 1000);
+    const firstStart = account.firstPeriodStart!;
+    const divisorStart = firstStart > windowStart ? firstStart : windowStart;
+    const months = Math.min(12, Math.max(1, monthsSpanned(divisorStart, windowLastDay)));
+    const averageMonthlyCents = Math.floor(evidence.taxCents / months);
     const advised = frequencyAllowedByAverage(averageMonthlyCents, thresholds);
     if (advised === account.frequency) continue;
     // Filing more often is Colorado's January 1 move; only raise it in December.
