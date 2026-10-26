@@ -40,7 +40,7 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ commsCursor?: string }>;
 }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const { id } = await params;
   const query = await searchParams;
   const [lead, tasks, estimates, messages] = await Promise.all([

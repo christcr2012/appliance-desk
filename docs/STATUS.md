@@ -26,6 +26,10 @@ learn about a payment from events already sent; the nightly check can only follo
 
 Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
 
+## October 26 — LD-1 leads pipeline (built, staff access added, ready to push)
+
+Branch `ai/marley/ld-1` (merged up to `origin/main` 0516a31). Everything in the card is built and verified here: 78 tests pass on throwaway Postgres (41 unit, 37 database), capacity list 123 ms / counts 73 ms / search 22 ms on 50,000 leads, typecheck clean, lint clean (0 errors, 15 pre-existing warnings), `check:quick` green, migration check clean. Chris answered DQ-LD1-1 yes on 2026-10-26, so staff whose job role includes the Leads screen can now see and work leads and be given them; merging, reassigning and Today lead follow-ups stay owner/admin. Chris also approved branch creation, so the branch is pushed next, the PR opened, CI watched, and it merges with the expected head SHA. Next: AR-4b (Leads screens), then CMP-1 — blocked until lane 4's TFA-1 merges.
+
 ## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
 
 Branch `ai/chatgpt/ar-11-pwa-shell`: separate desk install manifest; private-data-safe offline worker,

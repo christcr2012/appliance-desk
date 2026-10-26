@@ -75,6 +75,7 @@ model User {
   auditLogEntries AuditLog[]
   customerNotes   CustomerNote[]
   leadNotes       LeadNote[]
+  assignedLeads   Lead[] @relation("LeadAssignee")
   createdTasks    StaffTask[] @relation("StaffTaskCreatedBy")
   assignedTasks   StaffTask[] @relation("StaffTaskAssignedTo")
   createdPurchaseOrders PurchaseOrder[] @relation("PurchaseOrderCreatedBy")
@@ -403,6 +404,22 @@ model Lead {
   scoringPolicyVersion Int @default(1)
   lastRealContactAt DateTime?
 
+  // LD-1: who owns this lead, and whether a real person has contacted them yet.
+  // firstContactedAt is set only by a real outbound contact (never at creation);
+  // firstContactEstimated is true only for rows backfilled from lastRealContactAt.
+  assignedToUserId   String?
+  assignedTo         User?     @relation("LeadAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  firstContactedAt   DateTime?
+  firstContactEstimated Boolean @default(false)
+  // LD-1: normalized contact keys, maintained on every write of phone/email
+  // (src/domains/leads/keys.ts) so duplicate checks and phone search stay exact.
+  phoneDigits        String?
+  emailLower         String?
+  // LD-1: the oldest lead this one may duplicate (set at create), and merge state.
+  possibleDuplicateOfLeadId String?
+  mergedIntoLeadId   String?
+  mergedAt           DateTime?
+
   applianceRequests LeadApplianceRequest[]
   estimates         Estimate[]
 
@@ -428,6 +445,10 @@ model Lead {
   // W-6: the date the owner chose for the next follow-up (Colorado midnight). Null = none chosen.
   nextFollowUpOn DateTime?
 
+  // LD-1: compare-and-set token for the follow-up date, bumped only by
+  // setLeadFollowUp (src/domains/leads/follow-up.ts).
+  version Int @default(1)
+
   notesLog LeadNote[]
   tasks    StaffTask[]
 
@@ -436,6 +457,19 @@ model Lead {
 
   @@index([status])
   @@index([score])
+  // LD-1: pipeline lists, assignment and duplicate lookups; trigram indexes
+  // make the leads search (name/company/city/email/phone) fast.
+  @@index([assignedToUserId, status, nextFollowUpOn])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([phoneDigits])
+  @@index([emailLower])
+  @@index([mergedIntoLeadId])
+  @@index([contactName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_contactName_trgm")
+  @@index([companyName(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_companyName_trgm")
+  @@index([city(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_city_trgm")
+  @@index([emailLower(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_emailLower_trgm")
+  @@index([phoneDigits(ops: raw("gin_trgm_ops"))], type: Gin, map: "Lead_phoneDigits_trgm")
 
   // COM-L2 additive communication lineage.
   contactBindings ContactBinding[]
@@ -458,6 +492,10 @@ model LeadNote {
   authorId String?
   author   User?  @relation(fields: [authorId], references: [id])
   body     String
+  // LD-1: what kind of note this is. "NOTE" = a plain note (never counts as
+  // contact); "CONTACTED" = a real outbound contact (sets firstContactedAt);
+  // "ATTEMPT" = tried to reach them, no contact made.
+  kind     String  @default("NOTE")
 
   createdAt DateTime @default(now())
 
@@ -3210,6 +3248,12 @@ model BusinessSettings {
 
   // W-6: days after a new lead arrives that its "Contact <name>" To do is due (0 = the same day).
   leadResponseDays Int @default(0)
+  // LD-1: who new leads go to. "OWNER" = the owner gets every new lead;
+  // "PERSON" = the person in leadAssignmentUserId; "ROTATE" = take turns in
+  // created order, remembering the last person in leadRotationCursor.
+  leadAssignmentMode   String  @default("OWNER")
+  leadAssignmentUserId String?
+  leadRotationCursor   String?
   // W-19: days an agreement may wait for a signature before "Follow up: <name> hasn't signed" appears on To do.
   unsignedFollowUpDays Int @default(3)
 

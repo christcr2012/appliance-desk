@@ -4159,7 +4159,7 @@
       "title": "Lead stages, ownership, speed to lead, duplicates and scale (indexes, search, cursor paging)",
       "batch": "LD",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — built and verified on branch ai/marley/ld-1; PR to open (2026-10-26)",
       "migration": "lead_pipeline",
       "budget": 480,
       "units": [
@@ -4172,7 +4172,12 @@
       ],
       "tests": [
         "tests/lead-stage.test.ts",
+        "tests/lead-stage-integration.test.ts",
+        "tests/lead-assignment-integration.test.ts",
         "tests/lead-merge-integration.test.ts",
+        "tests/lead-status-tx.test.ts",
+        "tests/lead-keys.test.ts",
+        "tests/leads-queue-integration.test.ts",
         "tests/perf/leads-queue.perf.test.ts"
       ],
       "readiness": "CARD_READY",
