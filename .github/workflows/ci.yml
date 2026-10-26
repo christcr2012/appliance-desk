@@ -101,7 +101,8 @@ jobs:
     #   1. scripts/check-secrets.mjs - this project's own rules (live Stripe
     #      keys, real database URLs, Neon/Vercel production identifiers,
     #      committed .env files, ...). Reviewed allowlist lives in the script.
-    #   2. gitleaks - the widely used scanner, over the WHOLE git history.
+    #   2. gitleaks - the widely used scanner, limited to new PR/push commits;
+    #      the nightly run scans main's reachable history, not other branches.
     # Neither prints the secret itself, only the file, line and a short label.
     name: secret scan
     runs-on: ubuntu-24.04
@@ -149,13 +150,29 @@ jobs:
           tar -xzf gitleaks.tar.gz gitleaks
           rm gitleaks.tar.gz
 
-      - name: gitleaks scan of the full git history
+      - name: Gitleaks range selector regressions
+        run: node --test scripts/gitleaks-range.test.mjs
+
+      - name: Choose the Git commit scope for Gitleaks
+        id: scan-scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_AFTER_SHA: ${{ github.event.after }}
+          DISPATCH_BASE: ${{ inputs.base }}
+        run: node scripts/gitleaks-range.mjs >> "$GITHUB_OUTPUT"
+
+      - name: Gitleaks (new commits for PR/push; main history nightly)
+        env:
+          LOG_OPTS: ${{ steps.scan-scope.outputs.log_opts }}
         run: |
-          # Preserve the scanner's exact exit status and full-history scope.
+          # Preserve the scanner's exact exit status; never print matches.
           # Print only detection locations (never secrets or matched lines).
           report="${RUNNER_TEMP}/gitleaks-report.json"
           set +e
-          ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner \
+          ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --log-opts "$LOG_OPTS" \
             --report-format json --report-path "$report" --exit-code 1
           status=$?
           if [ "$status" -ne 0 ] && [ -f "$report" ]; then
