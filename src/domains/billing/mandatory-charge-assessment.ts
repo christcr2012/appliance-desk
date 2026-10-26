@@ -2,8 +2,9 @@ import type { Prisma } from "@prisma/client";
 import { businessDateKey } from "@/lib/business-date";
 import { getAgreementTaxContext } from "@/domains/tax/locations";
 import { computeTax } from "@/domains/tax/engine";
-import { rdfRateForSale,retailDeliveryFeeStatus } from "@/domains/tax/retail-delivery-fee";
+import { retailDeliveryFeeStatus } from "@/domains/tax/retail-delivery-fee";
 import { recordedRetailSales } from "@/domains/tax/rdf-sales-evidence";
+import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
 import type {
   MandatoryTaxEvidence,ReviewedMandatoryChargeRevision,
   VerifiedOneTimeCharge,
@@ -68,6 +69,8 @@ export type ProvisionalRdfOrderDecision={
   status:"APPLIES"|"EXEMPT"|"UNDECIDED";
   amountCents:number|null;
   rateId:string|null;
+  /** TFA-1: the dated rule version that set the amount. rateId stays null for rule-based decisions. */
+  ruleVersionId:string|null;
   handling:"COLLECT_FROM_CUSTOMER"|"PAY_MYSELF"|"UNDECIDED";
   reason:string;
 };
@@ -82,40 +85,44 @@ export async function provisionalRdfOrderDecisionInTx(
   const settings=await tx.businessSettings.findUniqueOrThrow({
     where:{id:"singleton"},select:{
       shortTermLeaseElection:true,
-      rdfThresholdCents:true,rdfThresholdCrossedOn:true,
+      rdfThresholdCrossedOn:true,
       rdfHandling:true,rdfCpaConfirmedOn:true,
     },
   });
   const year=Number(businessDateKey(at).slice(0,4));
-  const [previous,current,filing,rates]=await Promise.all([
+  // TFA-1: the small-seller limit and the fee amount are dated rules, not settings or a rate table.
+  const thresholdCents=(await ruleAsOf<number>("co.rdf.qualified_threshold",at,tx)).value;
+  const [previous,current,filing]=await Promise.all([
     recordedRetailSales(tx,year-1),recordedRetailSales(tx,year),
     tx.taxFilingAccount.findFirst({
       where:{kind:"SALES_RETURN",jurisdictions:{some:{level:"STATE"}}},
       select:{frequency:true},
     }),
-    tx.retailDeliveryFeeRate.findMany({where:{effectiveOn:{lte:at}},
-      select:{effectiveOn:true,amountCents:true,id:true},
-      orderBy:{effectiveOn:"desc"},take:15}),
   ]);
   const decision=retailDeliveryFeeStatus({
     today:at,saleType:"RENTAL",
     election:settings.shortTermLeaseElection,
     previousYearRetailCents:previous,currentYearRetailCents:current,
-    thresholdCents:settings.rdfThresholdCents,
+    thresholdCents,
     thresholdCrossedOn:settings.rdfThresholdCrossedOn,
     handling:settings.rdfHandling,cpaConfirmedOn:settings.rdfCpaConfirmedOn,
     frequency:filing?.frequency??"MONTHLY",
   });
   if(decision.status==="UNDECIDED")return {status:"UNDECIDED",amountCents:null,
-    rateId:null,handling:settings.rdfHandling,reason:decision.reason};
+    rateId:null,ruleVersionId:null,handling:settings.rdfHandling,reason:decision.reason};
   if(decision.status!=="APPLIES")
-    return {status:"EXEMPT",amountCents:0,rateId:null,
+    return {status:"EXEMPT",amountCents:0,rateId:null,ruleVersionId:null,
       handling:settings.rdfHandling,reason:decision.reason};
-  const rate=rdfRateForSale(at,rates);
-  if(!rate)return {status:"UNDECIDED",amountCents:null,rateId:null,
+  let rate:{value:number;version:{id:string}}|null=null;
+  try {
+    rate=await ruleAsOf<number>("co.rdf.amount",at,tx);
+  } catch(error) {
+    if(!(error instanceof RuleMissingError)) throw error;
+  }
+  if(!rate)return {status:"UNDECIDED",amountCents:null,rateId:null,ruleVersionId:null,
     handling:settings.rdfHandling,
     reason:"Enter and independently verify the Colorado retail delivery fee rate effective for this date."};
-  return {status:"APPLIES",amountCents:rate.amountCents,rateId:rate.id,
+  return {status:"APPLIES",amountCents:rate.value,rateId:null,ruleVersionId:rate.version.id,
     handling:settings.rdfHandling,reason:decision.reason};
 }
 export function allocateReviewedRdfForLocation(
@@ -123,23 +130,23 @@ export function allocateReviewedRdfForLocation(
   selected:boolean,
 ):ReviewedMandatoryChargeRevision["retailDelivery"]{
   if(policy==="UNDECIDED")return {event:selected,status:"UNDECIDED",
-    amountCents:null,rateId:null,handling:rdf.handling,
+    amountCents:null,rateId:null,ruleVersionId:null,handling:rdf.handling,
     reason:"Owner effective-date RDF policy must be reviewed."};
   if(policy==="EXEMPT"){
     if(rdf.status==="APPLIES")return {
-      event:selected,status:"UNDECIDED",amountCents:null,rateId:rdf.rateId,
+      event:selected,status:"UNDECIDED",amountCents:null,rateId:rdf.rateId,ruleVersionId:rdf.ruleVersionId,
       handling:rdf.handling,
       reason:"Global RDF exemption contradicts the recorded state fee evidence.",
     };
     return {event:false,status:rdf.status==="EXEMPT"?"EXEMPT":"UNDECIDED",
       amountCents:rdf.status==="EXEMPT"?0:null,
-      rateId:null,handling:rdf.handling,reason:rdf.reason};
+      rateId:null,ruleVersionId:null,handling:rdf.handling,reason:rdf.reason};
   }
   if(rdf.status!=="APPLIES"||rdf.amountCents===null)
-    return {event:selected,status:"UNDECIDED",amountCents:null,rateId:rdf.rateId,
+    return {event:selected,status:"UNDECIDED",amountCents:null,rateId:rdf.rateId,ruleVersionId:rdf.ruleVersionId,
       handling:rdf.handling,reason:"RDF required but state/election/rate evidence is incomplete: "+rdf.reason};
   return {event:selected,status:"APPLIES",
     // PAY_MYSELF is still an RDF liability; NOT an extra customer due.
-    amountCents:selected?rdf.amountCents:0,rateId:rdf.rateId,
+    amountCents:selected?rdf.amountCents:0,rateId:rdf.rateId,ruleVersionId:rdf.ruleVersionId,
     handling:rdf.handling,reason:selected?rdf.reason:"Assigned once to another delivery address."};
 }

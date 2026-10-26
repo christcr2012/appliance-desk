@@ -394,7 +394,7 @@ const RETENTION_SUBJECT: DecisionSubject = {
   facts: BUSINESS_FACTS,
   options: RETENTION_OPTIONS,
   allowOther: true,
-  covers: ["BusinessSettings.recordRetentionYears"],
+  covers: ["LegalRuleVersion:records.keep_years"],
   read: async (ctx) => ctx.settings.recordRetentionYears,
   write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveRecordRetentionYearsInTx } = await import("@/domains/tax/retention");

@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { Prisma, type ExportTarget, type LedgerAccountType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
-import { openingBalance } from "./posting-rules";
+import { openingBalance, balancedPlan, type PostingLine } from "./posting-rules";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { writeJournal } from "./post";
 
 export type BooksActor = { id: string; role: "OWNER" | "ADMIN" | "STAFF" | "CUSTOMER" };
@@ -52,6 +53,81 @@ export async function initializeBooks(actor: BooksActor, input: {
     }});
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
+export type OpeningBalanceValues={bankCents:number;stripeCents:number;cardCents:number};
+const OPENING_ROLES=["BANK","STRIPE_CLEARING","CARD"] as const;
+async function openingTotals(tx:Prisma.TransactionClient,startDate:Date){
+  const key=businessDateKey(startDate);
+  const rows=await tx.journalEntry.findMany({where:{
+   sourceType:"OPENING",sourceId:key,OR:[
+    {eventKind:"OPENING_BALANCE"},{eventKind:{startsWith:"OPENING_CORRECTED_"}},
+   ],
+  },select:{eventKind:true,lines:{select:{
+   debitCents:true,creditCents:true,ledgerAccount:{select:{systemRole:true}},
+  }}}});
+  const net=new Map<string,number>();
+  for(const row of rows)for(const line of row.lines){
+   const role=line.ledgerAccount.systemRole;
+   if(role&&OPENING_ROLES.some(x=>x===role))
+    net.set(role,(net.get(role)??0)+line.debitCents-line.creditCents);
+  }
+  return {bankCents:net.get("BANK")??0,stripeCents:net.get("STRIPE_CLEARING")??0,
+   cardCents:-(net.get("CARD")??0),
+   corrections:rows.filter(row=>row.eventKind.startsWith("OPENING_CORRECTED_")).length};
+}
+export async function currentOpeningBalances(actor:BooksActor){
+ allow(actor,"OWNER","ADMIN");
+ const settings=await prisma.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}});
+ if(!settings?.booksStartDate)throw new BooksInputError("Start your books before correcting starting balances.");
+ const totals=await prisma.$transaction(tx=>openingTotals(tx,settings.booksStartDate!));
+ return {startDate:settings.booksStartDate,...totals};
+}
+/** The real owner's corrected numbers are a new, balanced journal; original entries never change. */
+export async function correctOpeningBalances(actor:BooksActor,input:OpeningBalanceValues & {reason:string}){
+ allow(actor,"OWNER");
+ const bank=safeCents(input.bankCents),stripe=safeCents(input.stripeCents),card=safeCents(input.cardCents);
+ const reason=safeText(input.reason,300);
+ return prisma.$transaction(async tx=>{
+  await assertActiveTeamActor(tx,actor.id,["OWNER"]);
+  await tx.$queryRaw`SELECT "id" FROM "BooksPostingRevision" WHERE "id" = ${"singleton"} FOR UPDATE`;
+  const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true}});
+  if(!settings?.booksStartDate)throw new BooksInputError("Start your books before correcting balances.");
+  const current=await openingTotals(tx,settings.booksStartDate);
+  const ds=stripe-current.stripeCents,db=bank-current.bankCents,dc=card-current.cardCents;
+  if(!ds&&!db&&!dc)throw new BooksInputError("These balances already match. Nothing was changed.");
+  const lines:PostingLine[]=[];
+  const signed=(role:string,diff:number)=>{
+   if(diff>0)lines.push({role,debitCents:diff,creditCents:0});
+   else if(diff<0)lines.push({role,debitCents:0,creditCents:-diff});
+  };
+  signed("STRIPE_CLEARING",ds);
+  signed("BANK",db);
+  signed("CARD",-dc);
+  signed("OWNER_CONTRIBUTIONS",-(ds+db-dc));
+  const plan=balancedPlan(settings.booksStartDate,"Starting balances corrected: "+reason,lines);
+  if(!plan)throw new BooksInputError("No change to record.");
+  const n=current.corrections+1;
+  const eventKind="OPENING_CORRECTED_"+n;
+  if(!await writeJournal(tx,"OPENING",businessDateKey(settings.booksStartDate),eventKind,plan))
+   throw new BooksInputError("Starting balances were changed in another request; refresh and try again.");
+  await tx.auditLog.create({data:{userId:actor.id,action:"books.opening.correct",
+   entityType:"BusinessSettings",entityId:"singleton",
+   oldValue:{bankCents:current.bankCents,stripeCents:current.stripeCents,cardCents:current.cardCents},
+   newValue:{bankCents:bank,stripeCents:stripe,cardCents:card,reason,eventKind}}});
+  return {eventKind};
+ },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:30000});
+}
+/** A recommendation, never an owner decision; the owner can change the date. */
+export async function suggestedBooksStartDate(now=new Date()){
+ const [appliance,invoice,expense]=await Promise.all([
+  prisma.appliance.findFirst({where:{purchaseDate:{not:null}},orderBy:{purchaseDate:"asc"},select:{purchaseDate:true}}),
+  prisma.invoice.findFirst({orderBy:{createdAt:"asc"},select:{createdAt:true}}),
+  prisma.expense.findFirst({orderBy:{spentOn:"asc"},select:{spentOn:true}}),
+ ]);
+ return businessDateKey(new Date(Math.min(now.getTime(),
+  ...[appliance?.purchaseDate,invoice?.createdAt,expense?.spentOn].filter((d):d is Date=>d instanceof Date)
+   .map(d=>d.getTime()))));
+}
+
 export async function renameAccount(actor:BooksActor, accountId:string, name:string) {
   allow(actor,"OWNER");
   const label=safeText(name);

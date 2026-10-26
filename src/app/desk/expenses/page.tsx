@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/session";
 import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { getExpenses } from "@/domains/books/expenses";
+import { prisma } from "@/lib/prisma";
 import { createExpenseAction, postExpenseAction, voidExpenseAction, saveRecurringAction } from "./actions";
 import { ExpenseReceiptUpload } from "./receipt-upload";
 import { getBudgetContext } from "@/domains/budget/context";
@@ -12,12 +13,16 @@ import { BudgetContextCard } from "@/domains/budget/context";
 export const metadata = { title: "Expenses — Books" };
 const field = "min-w-0 w-full rounded border border-border bg-background px-3 py-2 text-foreground";
 const button = "rounded border border-border bg-card px-3 py-2 font-semibold text-foreground hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2";
-export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ status?: string; notice?: string }> }) {
+export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ status?: string; notice?: string; paidFrom?: string }> }) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const params = await searchParams;
   const data = await getExpenses(session.user.id, params.status);
   const budget = await getBudgetContext(session.user.id).catch(()=>null);
   const notice = params.notice?.slice(0, 250);
+  const ownerContribution=params.paidFrom==="owner"&&data.manager?
+    await prisma.ledgerAccount.findFirst({where:{systemRole:"OWNER_CONTRIBUTIONS",active:true},select:{id:true}}):null;
+  const paidFromAccountId=ownerContribution&&data.payments.some(x=>x.id===ownerContribution.id)?
+    ownerContribution.id:undefined;
   return <div className="space-y-6">
     <header className="space-y-2">
       <h1 className="text-2xl font-bold">Expenses</h1>
@@ -40,7 +45,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         <label>Category<select className={field} name="categoryId" required>
           <option value="">Select a category</option>{data.categories.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select></label>
-        <label>Paid from<select className={field} name="paidFromAccountId" required>
+        <label>Paid from<select className={field} name="paidFromAccountId" defaultValue={paidFromAccountId} required>
           <option value="">Select an account</option>{data.payments.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
         </select></label>
         <label className="sm:col-span-2">Description (optional)<textarea name="memo" maxLength={500} className={field} rows={2}/></label>
