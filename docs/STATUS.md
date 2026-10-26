@@ -12,8 +12,8 @@ installation (link in the chat) — then the branch goes up and the PR opens. Up
 #612 and preview-storage #609 merged), so main was merged into this branch (commit 164c968) and re-checked locally —
 typecheck clean, lint 0 errors, 41 unit tests pass. The branch-creation approval was requested and timed out
 unanswered (01:39 MDT), so the branch still isn't on GitHub. Update, morning: main moved again (FEE-1 #614 merged),
-merged in, and Chris has now added the repo to the app's installation — pushing again. Next: VAULT-1, once CMP-1
-(lane 5) is merged.
+merged in, and Chris has now added the repo to the app's installation — branch pushed and PR #616 opened
+(head 8f703069); CI pending. Next: VAULT-1, once CMP-1 (lane 5) is merged.
 
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 

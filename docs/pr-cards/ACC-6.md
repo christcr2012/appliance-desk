@@ -43,6 +43,9 @@ run in CI only (no local Postgres here). `ci` green at the exact head and every 
 Update 2026-10-26 (night): `main` moved (BILL-1 #612, preview-storage #609), merged into this branch as 164c968
 (conflicts only in STATUS.md and DATABASE.md, both kept both entries); re-checked locally — typecheck clean, lint
 0 errors, 41 unit tests pass. Push still blocked: the branch-creation approval timed out unanswered (01:39 MDT).
+Update 2026-10-26 (morning): `main` moved again (FEE-1 #614), merged as 4636808, re-checked (typecheck clean,
+lint 0 errors, 41 unit tests pass). Chris added the repo to the GitHub app installation; branch pushed and
+PR #616 opened (head 8f703069); CI pending.
 
 Two deviations from `docs/build-specs/engines/TRUSTED-DEVICES.md`, both from what the library actually does:
 - The spec's rotation clamp in the app's global `after` hook cannot work: the app's hook runs BEFORE the two-factor
