@@ -420,6 +420,7 @@ export async function disposeRetiredBookAssetInTx(tx:Tx,applianceId:string,soldO
   if(!staged)throw new BookAssetInputError("This equipment's books need review before selling it.");
   asset=await tx.bookAsset.findUniqueOrThrow({where:{applianceId}});
  }
+ if(!asset.retiredOn)throw new BookAssetInputError("Book retirement is still missing; correct the source evidence before sale.");
  if(asset.disposedOn)throw new BookAssetInputError("This appliance's book value was already removed by an earlier sale.");
  if(soldOn<asset.retiredOn)throw new BookAssetInputError("The sale cannot be dated before the appliance was retired.");
  const carried=asset.retiredValueCents??0;

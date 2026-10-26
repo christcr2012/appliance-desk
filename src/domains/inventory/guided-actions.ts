@@ -98,9 +98,6 @@ export async function startRepairForAppliance(
       throw new Error("This appliance was just changed by someone else — refresh and try again.");
     }
 
-    // Equipment retirement must survive missing accounting evidence.
-    await stageEquipmentBookRetirementInTx(tx,userId,applianceId,new Date());
-
     await tx.auditLog.create({
       data: {
         userId,
@@ -160,6 +157,9 @@ export async function retireAppliance(
     if (moved.count !== 1) {
       throw new Error("This appliance was just changed by someone else — refresh and try again.");
     }
+
+    // Financial book evidence cannot block an operational retirement.
+    await stageEquipmentBookRetirementInTx(tx,userId,applianceId,new Date());
 
     await tx.auditLog.create({
       data: {

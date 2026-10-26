@@ -165,7 +165,7 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     const unstaged = await retired();
     await prisma.bookAsset.create({ data: { applianceId: unstaged, costCents: 9000, placedInServiceOn: new Date("2026-01-15T12:00:00Z"), lifeMonths: 60, salvagePercent: 0, createdByUserId: ownerId } });
     const before = await prisma.invoice.count({ where: { saleKind: "SHOP_SALE" } });
-    await expect(createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: unstaged, unitPriceCents: 4000 }] })).rejects.toThrow(/Stage this appliance's book retirement/);
+    await expect(createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: unstaged, unitPriceCents: 4000 }] })).rejects.toThrow(/books need review|book retirement needs review|source evidence/i);
     expect(await prisma.invoice.count({ where: { saleKind: "SHOP_SALE" } })).toBe(before);
     expect((await prisma.retiredAppliancePlan.findUniqueOrThrow({ where: { applianceId: unstaged } })).doneOn).toBeNull();
 
