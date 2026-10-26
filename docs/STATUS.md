@@ -1,3 +1,15 @@
+## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
+
+CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
+
+## October 26 — BA-1 Codex findings addressed, exact-head rerun pending
+
+PR #610 passed full CI at `0d17ac10`, then automated review found three material gaps. The new patch retains the existing books-nightly Stripe pause/health key, reports unenrolled recorded-cost retirements, and refuses disposal before retirement; route and real-Postgres regressions added. Next: exact-head CI, disposition each review thread and merge only when green. BA-2 PR #613 and BA-3 stacked branch still depend on this. No live provider or production settings changed.
+
+## October 26 — BA-1 source posting verified, merge reconciliation in progress
+
+PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
+
 ## October 27 — FEE-1: fair late fees (merged PR #614)
 
 Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
@@ -26,9 +38,18 @@ learn about a payment from events already sent; the nightly check can only follo
 
 Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
 
-## October 26 — LD-1 leads pipeline (built, staff access added, ready to push)
+## October 26 — LD-1 leads pipeline (PR #618 open, CI fixes in progress)
 
-Branch `ai/marley/ld-1` (merged up to `origin/main` 0516a31). Everything in the card is built and verified here: 78 tests pass on throwaway Postgres (41 unit, 37 database), capacity list 123 ms / counts 73 ms / search 22 ms on 50,000 leads, typecheck clean, lint clean (0 errors, 15 pre-existing warnings), `check:quick` green, migration check clean. Chris answered DQ-LD1-1 yes on 2026-10-26, so staff whose job role includes the Leads screen can now see and work leads and be given them; merging, reassigning and Today lead follow-ups stay owner/admin. Chris also approved branch creation, so the branch is pushed next, the PR opened, CI watched, and it merges with the expected head SHA. Next: AR-4b (Leads screens), then CMP-1 — blocked until lane 4's TFA-1 merges.
+Branch `ai/marley/ld-1` (merged up to `origin/main` 0e66c2e8). Everything in the card is built and verified here: 78 tests pass on throwaway Postgres (41 unit, 37 database), capacity list 123 ms / counts 73 ms / search 22 ms on 50,000 leads, typecheck and lint clean, `check:quick` green. Chris answered DQ-LD1-1 yes on 2026-10-26, so staff whose job role includes the Leads screen can see and work leads and be given them; merging, reassigning and Today lead follow-ups stay owner/admin. PR #618 opened; its first CI run was red in 4 jobs — the unit shards (fixed on this branch: a test fake missing the new lead-lock query, a stale add-email expectation, the lead-assignment test not listed in the serial project), the secret scan and browser-d (both already fixed on main by BA-1's merge: a migration-comment false match and a phone-width resize race). Fixes pushed for a fresh CI run. Next: AR-4b (Leads screens), then CMP-1 — blocked until lane 4's TFA-1 merges.
+
+## October 25 — BA-1 books autopilot (merged #610)
+
+Branch `ai/chatgpt/ba-1` (PR #610, merged): nightly recording, automatic appliance enrollment/depreciation,
+books To do issues, Equipment retirement/disposal reversals and post-commit source recording coded.
+Run 40269991085 passed all CI shards at earlier head `6be9cfac`, **not** the current head;
+later changes and their new concurrency/long-life tests are awaiting exact-head CI and review.
+Remaining BA-1 hook/edge proof is on its card; BA-2 and BA-3 await BA-1 merge.
+No production settings, real accounts or customer data touched.
 
 ## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
 
