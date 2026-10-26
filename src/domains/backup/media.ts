@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { AutomationFailure } from "@/domains/automation/failures";
 import { backupDigest, verifyBackupReadback } from "./artifacts";
 import { copy, get, list, put } from "@vercel/blob";
@@ -347,7 +347,9 @@ export async function runMediaInventoryAndCopy(input: {
     entries,
     unreferenced,
   };
-  const manifestPath = `${backupPath}${MEDIA_MANIFEST_SUFFIX}`;
+  // Every attempt gets its own durable pathname, so a failed readback or missing
+  // photo cannot block later retries of the same verified database snapshot.
+  const manifestPath = `${backupPath}.${randomUUID()}${MEDIA_MANIFEST_SUFFIX}`;
   const manifestBytes = Buffer.from(JSON.stringify(manifest), "utf8");
   const written = await put(manifestPath, manifestBytes, {
     access: "private",

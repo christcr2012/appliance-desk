@@ -1,3 +1,13 @@
+## October 25 (late) — MCP-2 PR #611 first CI and review fixes
+
+Branch ai/chatgpt/mcp-2-backup-reliability; PR #611 (NOT merged). Initial exact-head CI
+caught the self-linked backup restore ordering, PostgreSQL lock-result type,
+preview refusal wording, scenario media pairing fixture, and two browser assertions;
+all have focused code/test fixes. Codex reported stale-RUNNING manual retry and
+repeated manifest-path collisions; both are addressed with guards and regression tests.
+Next: quick check, one patch push, await exact-head full database/browser CI and
+read new review findings before merge. No hosted store or production data changed.
+
 ## October 25 — MCP-2 backup reliability implementation in progress
 
 Separate sandbox worktree `ai/chatgpt/mcp-2-backup-reliability` from main after merged security PR #609.

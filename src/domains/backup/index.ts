@@ -114,7 +114,10 @@ export async function buildDatabaseBackupSnapshot(): Promise<{
  * Never treat successful upload as successful readback, or prune failure as capture failure.
  */
 export async function exportDatabaseBackup(input: { runId?: string } = {}): Promise<BackupResult> {
-  if (isNonProductionDeployment()) return stageFailure("CONFIG_MISSING", "config");
+  if (isNonProductionDeployment()) return {
+    ...stageFailure("CONFIG_MISSING", "config"),
+    error: "Backups are disabled outside production deployments.",
+  };
   const store = getBackupStore();
   if (!store) return stageFailure("CONFIG_MISSING", "config");
 

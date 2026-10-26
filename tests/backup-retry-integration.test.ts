@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { runAutomation } from "@/domains/automation/runs";
+import { getBackupDashboard } from "@/domains/backup/dashboard";
 
 const url = new URL(process.env.DATABASE_URL ?? "postgresql://localhost/unset");
 const enabled = process.env.CI === "true" &&
@@ -68,6 +69,20 @@ describe.skipIf(!enabled)("MCP-2 backup claims (throwaway PostgreSQL)", () => {
     expect(success.outcome).toBe("RAN");
     expect(blocked.outcome).toBe("ALREADY_RAN");
     expect(blocked.runId).toBeNull();
+  });
+
+  it("allows owner retry after a nightly backup's RUNNING budget expires", async () => {
+    const at = new Date("2040-05-19T12:00:00.000Z");
+    const expired = await prisma.automationRun.create({ data: {
+      ruleKey: "backup", runKey: "backup:2040-05-19",
+      environment: "ci", state: "RUNNING", budgetSeconds: 30,
+      startedAt: new Date(at.getTime() - 120_000),
+    } });
+    ids.push(expired.id);
+    expect((await getBackupDashboard(at)).allowManualRetry).toBe(true);
+    await prisma.automationRun.update({ where: { id: expired.id },
+      data: { startedAt: at } });
+    expect((await getBackupDashboard(at)).allowManualRetry).toBe(false);
   });
 
   it("staff cannot initiate a manual backup or write an audit row", async () => {

@@ -109,7 +109,8 @@ test.describe("owner system health", () => {
     await box.fill("45");
     await page.getByRole("region", { name: "When a job counts as late" }).getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Now 45 minutes after a job's usual time.", { exact: false })).toBeVisible();
-    await page.getByRole("button", { name: "Restore recommended" }).click();
+    await page.getByRole("region", { name: "When a job counts as late" })
+      .getByRole("button", { name: "Restore recommended" }).click();
     await expect(page.getByText("Now 2 hours after a job's usual time.", { exact: false })).toBeVisible();
   });
 

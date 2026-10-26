@@ -82,7 +82,7 @@ async function createRun(ruleKey: string, runKey: string, budgetSeconds: number,
       // The advisory lock covers the concurrent RUNNING check AND the insert.
       // A second request cannot slip through while another caller is claiming.
       return await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('backup-run'))`;
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('backup-run')) IS NULL AS locked`;
         if (ruleKey === "backup-manual") {
           if (!actorUserId) throw new Error("Owner sign-in required.");
           await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);

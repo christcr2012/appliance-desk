@@ -1,3 +1,4 @@
+import { businessDateKey } from "@/lib/business-date";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { runAutomation } from "@/domains/automation/runs";
@@ -12,18 +13,15 @@ export async function retryBackupNow(actorUserId: string): Promise<{
   outcome: "RAN" | "ALREADY_RAN" | "FAILED" | "PAUSED";
   runId: string | null;
 }> {
-  const latest = await prisma.automationRun.findFirst({
-    where: { ruleKey: "backup", state: { in: ["FAILED", "UNKNOWN"] } },
-    orderBy: [{ startedAt: "desc" }, { id: "desc" }],
-  });
+  const now = new Date();
   const today = await prisma.automationRun.findFirst({
-    where: { ruleKey: "backup", runKey: { startsWith: `backup:${new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Denver", year: "numeric", month: "2-digit", day: "2-digit",
-    }).format(new Date())}` } },
+    where: { ruleKey: "backup", runKey: { startsWith: "backup:" + businessDateKey(now) } },
     orderBy: [{ startedAt: "desc" }, { id: "desc" }],
   });
-  if (!today || !["FAILED", "UNKNOWN"].includes(today.state) || latest?.id !== today.id) {
-    throw new Error("Manual retry is available after today's failed or uncertain backup.");
+  const retryable = today?.state === "FAILED" || today?.state === "UNKNOWN" ||
+    (today?.state === "RUNNING" && now.getTime() - today.startedAt.getTime() >= today.budgetSeconds * 1000);
+  if (!today || !retryable) {
+    throw new Error("Manual retry is available after today's failed, expired or uncertain backup.");
   }
   return runAutomation({
     ruleKey: "backup-manual",

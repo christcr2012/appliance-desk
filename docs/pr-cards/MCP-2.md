@@ -30,5 +30,10 @@ One row: confirm which private storage the live app's backups use (System health
 - Security prerequisite merged as PR #609. Recovery implementation on branch ai/chatgpt/mcp-2-backup-reliability.
 - Verified locally: isolated npm install with synthetic Prisma settings; schema validation; all 26 focused backup/media unit tests; npm run check:quick (secret scan, migration/route consistency, typecheck, lint and words).
 - Code covers staged SHA-256 readback and private credentials, a ledger-linked full media pair, privacy-deletion checks, safe pruning and old-object pagination, owner-only serialized retry and retention settings, a plain-language System health screen and a user guide.
+- The first PR CI failure analysis found restore self-ordering, advisory-lock void decoding,
+  media scenario setup, preview refusal wording, and browser navigation/test selector issues.
+  Codex review flagged expired RUNNING retries and manifest retry collisions. All were fixed;
+  new synthetic tests verify distinct retry manifests, and a real-database test proves
+  expired RUNNING eligibility. These require a new exact-head CI to confirm.
 - Real-database tests for competing owner/nightly retries and retention, and the existing full restored-database drill extended with linked backup artifacts and customer/agreement/invoice relationships, are included. Browser tests cover owner settings/retry visibility and accessibility. They are not yet proven until exact-head CI finishes.
 - No hosted storage/provider/production data changed. Owner's live private-store confirmation is on the single owner checklist. Do not claim the merge until CI, review and exact-head receipt are observed.

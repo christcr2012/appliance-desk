@@ -29,7 +29,7 @@ export async function getBackupDashboard(now = new Date()) {
     prisma.automationRun.findFirst({
       where: { ruleKey: "backup", runKey: { startsWith: `backup:${businessDateKey(now)}` } },
       orderBy: [{ startedAt: "desc" }, { id: "desc" }],
-      select: { state: true },
+      select: { state: true, startedAt: true, budgetSeconds: true },
     }),
     prisma.automationRun.findFirst({
       where: { ruleKey: "backup-manual" },
@@ -47,7 +47,8 @@ export async function getBackupDashboard(now = new Date()) {
     latestBytes: latestVerified?.sizeBytes ?? null,
     lastCompleteAt: completePair?.verifiedAt ?? null,
     allowManualRetry: (!lastManual || businessDateKey(lastManual.startedAt) !== businessDateKey(now)) &&
-      (today?.state === "FAILED" || today?.state === "UNKNOWN"),
+      (today?.state === "FAILED" || today?.state === "UNKNOWN" ||
+        (today?.state === "RUNNING" && now.getTime() - today.startedAt.getTime() >= today.budgetSeconds * 1000)),
   };
 }
 

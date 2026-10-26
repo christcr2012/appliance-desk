@@ -280,14 +280,42 @@ describe("Batch F private-media recovery", () => {
     ]);
     expect(storeFor(PRIVATE_TOKEN).has(orphanPath)).toBe(true);
     expect(state.delOrder).toEqual([]);
-    expect(pathnameOf(result.manifestUrl)).toBe(
-      "backups/2026-10-06-1.json.media.json",
+    expect(pathnameOf(result.manifestUrl)).toMatch(
+      /^backups\/2026-10-06-1\.json\.[0-9a-f-]{36}\.media\.json$/,
     );
 
     await expect(verifyMediaRecoverySample(result.manifestUrl, 2)).resolves.toEqual({
       checked: 2,
       skippedTombstoned: 0,
     });
+  });
+
+  it("retries a media manifest after its first readback fails without overwriting the failed artifact", async () => {
+    const originalGet = blob.get.getMockImplementation()!;
+    const photoPath = "jobs/synthetic-retry/photo.jpg";
+    const sourceUrl = seed(PRIVATE_TOKEN, photoPath, "untouched-photo");
+    state.photos.push({ id: "photo-synthetic-retry", url: sourceUrl });
+    let failManifestOnce = true;
+    blob.get.mockImplementation(async (...args: unknown[]) => {
+      if (failManifestOnce && typeof args[0] === "string" &&
+          pathnameOf(args[0]).endsWith(".media.json")) {
+        failManifestOnce = false;
+        return null;
+      }
+      return originalGet(...args);
+    });
+    const input = {
+      databaseArtifactId: "backups/2026-10-06-retry.json",
+      databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-retry.json`,
+      now: new Date("2026-10-06T09:00:00.000Z"),
+    };
+    await expect(runMediaInventoryAndCopy(input)).rejects.toThrow("MEDIA_COPY");
+    const succeeded = await runMediaInventoryAndCopy(input);
+    expect(succeeded.counts.missing).toBe(0);
+    const paths = state.putOrder.filter((value) => value.endsWith(".media.json"));
+    expect(paths).toHaveLength(2);
+    expect(new Set(paths).size).toBe(2);
+    expect(succeeded.manifestUrl).toContain(paths[1]!);
   });
 
   it("MCP-10a: copies live app-feedback screenshots too (they are not Photo rows)", async () => {

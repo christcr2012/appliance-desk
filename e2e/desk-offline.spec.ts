@@ -27,5 +27,9 @@ test("offline desk uses only the public fallback and restores online page", asyn
   await context.setOffline(false);
   await expect(page.getByRole("link", { name: "Try again" })).toHaveAttribute("href", "/desk/today");
   await page.getByRole("link", { name: "Try again" }).click();
-  await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/desk\/today/);
+  // After a worker-served fallback, require a fresh authenticated network read,
+  // rather than relying on a stale cached client navigation.
+  await page.reload({ waitUntil: "load" });
+  await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible({ timeout: 15_000 });
 });
