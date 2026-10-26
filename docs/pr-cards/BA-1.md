@@ -37,3 +37,5 @@ covered by a focused unit test.
 **Still to verify before BA-1 merge:** Resolve the concurrent billing branch changes without losing either feature, run exact-head CI again, and read every fresh review comment.
 Expense approvals now commit before best-effort posting; pending journal errors remain visible and retry nightly.
 No real business or production data touched.
+
+**2026-10-26 security scan:** A full-history scan found four false-positive `generic-api-key` matches in prior legal-rule identifiers/test data and a migration comment; original text inspected, no credential value. Exact fingerprints documented in `.gitleaksignore`. Scanner remains full-history, pinned, and blocking; only file/rule metadata is printed when it fails. All other checks on `e1642358` passed; fresh exact-head scan still required.

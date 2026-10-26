@@ -1,3 +1,7 @@
+## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
+
+CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
+
 ## October 26 — BA-1 Codex findings addressed, exact-head rerun pending
 
 PR #610 passed full CI at `0d17ac10`, then automated review found three material gaps. The new patch retains the existing books-nightly Stripe pause/health key, reports unenrolled recorded-cost retirements, and refuses disposal before retirement; route and real-Postgres regressions added. Next: exact-head CI, disposition each review thread and merge only when green. BA-2 PR #613 and BA-3 stacked branch still depend on this. No live provider or production settings changed.
