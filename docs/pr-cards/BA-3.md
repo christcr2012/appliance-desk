@@ -6,7 +6,7 @@ entries (money records)** — never edit or delete entries; corrections are new 
 Depends on BA-1 (actor refactor and autopilot).
 
 ## Acceptance
-- [ ] Every test listed in spec section 3 passes on throwaway Postgres.
+- [ ] All required unit/throwaway Postgres and browser tests pass at the latest head (new regression tests added; CI pending).
 - [ ] People-facing behavior of existing Books actions unchanged except where the spec says.
 - [ ] `ci` green at the exact head; every review comment read.
 
@@ -22,4 +22,6 @@ Depends on BA-1 (actor refactor and autopilot).
 - [ ] Review every comment before merge; BA-2 must merge first and BA-1 must merge before BA-2.
 
 ## Progress
+2026-10-26: PR #624 green at `6ce9232`, then Codex reported five blocking findings. Patches and targeted regressions committed afterward; that earlier run does not verify the new head. Exact-head CI, reviewer disposition and merge pending. Additive schema, review UI, owner-only actions, accountant packet and To do reminders implemented. No production/provider actions taken.
+
 BA-3 implementation is in draft PR #624 stacked after BA-2 PR #613. The four-check review, owner lock and overrides, accountant CSV, explicit provider-outcome email, missing-receipt reasons, and reminder items are implemented. CI on reconciled head `ad2ba219` passed source checks, three unit/database shards and three browser shards, with one pre-existing offline reconnect test failing on browser-d. This patch keeps the offline recovery-link assertion while accepting a page already restored online, and adds real-database coverage for previously posted sources with unresolved warnings. New exact-head CI and review remain required.

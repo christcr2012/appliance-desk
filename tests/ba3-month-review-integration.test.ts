@@ -5,6 +5,7 @@ import { businessDateFromKey } from "@/lib/business-date";
 import { openingBalance } from "@/domains/books/posting-rules";
 import { writeJournal, postForSource } from "@/domains/books/post";
 import { monthReview } from "@/domains/books/month-review";
+import { buildMonthPacket } from "@/domains/books/accountant-packet";
 import { closeAccountingMonthWithReview, type BooksActor } from "@/domains/books/management";
 import { listBooksMonthReviewAttention } from "@/domains/exceptions/books-attention";
 
@@ -95,6 +96,36 @@ describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated P
    await prisma.journalEntry.deleteMany({where:{sourceType:"INVOICE",sourceId:id}});
    await prisma.invoiceLineItem.deleteMany({where:{invoiceId:id}});
    await prisma.invoice.deleteMany({where:{id}});
+  }
+ });
+ it("reviews and exports an opening month even when Books began mid-month",async()=>{
+  await prisma.businessSettings.update({where:{id:"singleton"},data:{
+   booksStartDate:dates("2020-01-15"),
+  }});
+  try{
+   const review=await monthReview(owner,key);
+   expect(review.checks.sources.ok).toBe(true);
+   expect(review.profit.netProfitCents).toBe(0);
+   const packet=await buildMonthPacket(owner,key);
+   expect(packet.month).toBe(key);
+   expect(packet.profitCsv).toContain("Net profit");
+  }finally{
+   await prisma.businessSettings.update({where:{id:"singleton"},data:{
+    booksStartDate:dates("2020-01-01"),
+   }});
+  }
+ });
+ it("rechecks owner authorization inside the closing transaction after a preview",async()=>{
+  await monthReview(owner,key);
+  await prisma.user.update({where:{id:owner.id},data:{role:"ADMIN"}});
+  try{
+   await expect(closeAccountingMonthWithReview(owner,key,{
+    expenses:"Already reviewed",payments:"Already reconciled",
+   })).rejects.toThrow();
+   expect(await prisma.accountingPeriod.findUnique({where:{periodKey:key}}))
+    .not.toMatchObject({status:"CLOSED"});
+  }finally{
+   await prisma.user.update({where:{id:owner.id},data:{role:"OWNER"}});
   }
  });
  it("rejects admin locking and an expense override without a stated reason",async()=>{

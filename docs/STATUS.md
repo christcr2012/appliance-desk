@@ -1,3 +1,7 @@
+## October 26 — BA-3 monthly review Codex feedback patched (CI not yet verified)
+
+PR #624 is open. Five exact-head Codex findings were addressed: real month form validation; reports starting on the actual Books opening date; no impossible depreciation requirement in the retirement month; live OWNER authorization and four-check revalidation in the same Serializable month-close transaction. Added owner action, opening-month, role change and depreciation regression tests. CI also reported six historical generic-key false positives on previously reviewed rule/test wording from two merged branches; their exact fingerprints were added with evidence notes. Current head must pass CI and review before merge. No provider switches, customer mail, or production data changed.
+
 ## October 26 — BA-3 draft PR #624 now follows merged BA-2
 
 BA-1 PR #610 and BA-2 PR #613 are merged into main. BA-3 PR #624 is the remaining Books month-review work. Its code covers four checks, owner locking, accountant CSV and explicit send, no-receipt explanations and reminders. The recent browser run exposed an offline recovery-transition assertion, fixed without dropping offline link coverage. Month reviews now include unresolved warnings for sources dated in that month. This reconciled branch needs fresh exact-head CI and review before merge. No live customer emails or production provider changes were made.
