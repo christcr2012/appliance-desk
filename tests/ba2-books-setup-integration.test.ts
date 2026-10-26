@@ -61,12 +61,15 @@ describe.skipIf(!enabled)("BA-2 owner books setup and corrections on disposable 
  it("writes differences only, preserves the opening, and numbers corrections in order",async()=>{
   const first={bankCents:21000,stripeCents:5000,cardCents:5500,reason:"Bank statement received"};
   expect(await correctOpeningBalances(owner,first)).toEqual({eventKind:"OPENING_CORRECTED_1"});
-  expect(await currentOpeningBalances(owner)).toMatchObject({...first,corrections:1});
+  expect(await currentOpeningBalances(owner)).toMatchObject({bankCents:first.bankCents,stripeCents:first.stripeCents,cardCents:first.cardCents,corrections:1});
   const entries=await prisma.journalEntry.findMany({where:entryWhere,include:{lines:true}});
   expect(entries.map(x=>x.eventKind).sort()).toEqual(["OPENING_BALANCE","OPENING_CORRECTED_1"]);
   for(const entry of entries)
    expect(entry.lines.reduce((sum,line)=>sum+line.debitCents-line.creditCents,0)).toBe(0);
   expect(entries.find(x=>x.eventKind==="OPENING_BALANCE")?.lines).toHaveLength(4);
+  const audit=await prisma.auditLog.findFirstOrThrow({where:{userId:ownerId,
+   action:"books.opening.correct"},orderBy:{createdAt:"desc"}});
+  expect(audit.newValue).toMatchObject({reason:first.reason,eventKind:"OPENING_CORRECTED_1"});
   await expect(correctOpeningBalances(owner,first)).rejects.toThrow(/already match/);
   expect(await prisma.journalEntry.count({where:entryWhere})).toBe(2);
  });
@@ -82,7 +85,7 @@ describe.skipIf(!enabled)("BA-2 owner books setup and corrections on disposable 
   }}});
   expect(row.periodKey).not.toBe(month);
   expect(row.lateForDate).not.toBeNull();
-  expect(await currentOpeningBalances(owner)).toMatchObject({...updated,corrections:2});
+  expect(await currentOpeningBalances(owner)).toMatchObject({bankCents:updated.bankCents,stripeCents:updated.stripeCents,cardCents:updated.cardCents,corrections:2});
   const events=await prisma.journalEntry.findMany({where:entryWhere});
   expect(events).toHaveLength(3);
  });
@@ -93,7 +96,7 @@ describe.skipIf(!enabled)("BA-2 owner books setup and corrections on disposable 
   ]);
   expect(attempts.filter(x=>x.status==="fulfilled")).toHaveLength(1);
   expect(await prisma.journalEntry.count({where:{...entryWhere,eventKind:"OPENING_CORRECTED_3"}})).toBe(1);
-  expect(await currentOpeningBalances(owner)).toMatchObject({...values,corrections:3});
+  expect(await currentOpeningBalances(owner)).toMatchObject({bankCents:values.bankCents,stripeCents:values.stripeCents,cardCents:values.cardCents,corrections:3});
  });
  it("shows setup only before initialization and clears it after",async()=>{
   expect(await listBooksSetupAttention()).toHaveLength(0);
