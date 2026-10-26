@@ -1,3 +1,10 @@
+## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
+
+Branch `ai/chatgpt/ar-11-pwa-shell`: separate desk install manifest; private-data-safe offline worker,
+fallback page and warning; kit actions disabled offline. Added unit and browser tests; CI/review not yet proven.
+AR-11 is not complete: remaining app interactions and performance checks follow. AR-0b is merged (#606)
+and its reference screens were preserved while updating this branch.
+
 ## October 25 (night) — AR-0b: Today, Money › Bills and Customer record rebuilt with the kit (merged PR #606)
 
 Branch `ai/claude/ar-0b-screens`. Coded: the shared bill rules (`bill-status.ts`, one past-due rule now used by Today,

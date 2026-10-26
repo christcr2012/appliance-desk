@@ -38,3 +38,5 @@ export { Fab } from "./fab";
 export { OverflowMenu } from "./overflow-menu";
 export { InfoTip } from "./info-tip";
 export { useMediaQuery, DESKTOP_QUERY } from "./use-media-query";
+export { OfflineBar, useDeskOffline } from "./offline-bar";
+export { RegisterDeskServiceWorker } from "./register-sw";

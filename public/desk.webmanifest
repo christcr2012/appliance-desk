@@ -1,0 +1,52 @@
+{
+  "id": "/desk/today",
+  "name": "Appliance Desk",
+  "short_name": "Desk",
+  "start_url": "/desk/today",
+  "scope": "/desk/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "background_color": "#F7F5EC",
+  "theme_color": "#123C2D",
+  "icons": [
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New quote",
+      "url": "/desk/estimates/new"
+    },
+    {
+      "name": "Take a payment",
+      "url": "/desk/billing?status=open"
+    },
+    {
+      "name": "Today's route",
+      "url": "/desk/driver"
+    },
+    {
+      "name": "Add an expense",
+      "url": "/desk/expenses#add-expense"
+    }
+  ]
+}

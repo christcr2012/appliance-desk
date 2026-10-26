@@ -26,7 +26,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       {notice && <p role="status" className="rounded border border-border p-3">{notice}</p>}
     </header>
     <BudgetContextCard userId={session.user.id} heading="Expense and budget context"/>
-    <section className="rounded-lg border border-border p-4 space-y-3">
+    <section id="add-expense" className="rounded-lg border border-border p-4 space-y-3">
       <h2 className="text-lg font-semibold">Record an expense</h2>
       <p>First save the expense, then upload its private receipt below. Seller tax is included in the amount paid.</p>
       <form action={createExpenseAction} className="grid gap-3 sm:grid-cols-2">

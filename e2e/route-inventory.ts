@@ -18,6 +18,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/contact", role: "PUBLIC", fixture: "/contact" },
   { path: "/how-it-works", role: "PUBLIC", fixture: "/how-it-works" },
   { path: "/launch", role: "PUBLIC", fixture: "/launch" },
+  { path: "/offline", role: "PUBLIC", fixture: "/offline" },
   { path: "/pricing", role: "PUBLIC", fixture: "/pricing" },
   { path: "/privacy", role: "PUBLIC", fixture: "/privacy" },
   { path: "/rent/[city]", role: "PUBLIC", fixture: "/rent/denver" },

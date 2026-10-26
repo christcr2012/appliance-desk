@@ -68,6 +68,8 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   Greeley.SalesTax@greeleygov.com (or call 970-350-9733). Ready: you have their written reply. Worked: you record the
   answer on Taxes › Rules and the questions FEETAX-GREELEY-* show "Confirmed". Until then the app taxes them (safe side).
 
+- [ ] **Install the desk app on your phone (AR-11).** Steps: after the full AR-11 card is merged and the nightly testing release runs, open the testing app's `/desk/today` in Chrome (Android: Install app) or Safari (iPhone: Share → Add to Home Screen). Worked when the round green R opens Today without browser bars, navigation never flashes blank, and Android icon long-press shows New quote, Take a payment, Today's route and Add an expense. Not ready until all AR-11 work is merged.
+
 ## B. Before real customers (money, email, texts, legal, accounts)
 
 Order matters: tax answers → money → email/text → the rest. "Live" switches never happen unless you say so in writing.
