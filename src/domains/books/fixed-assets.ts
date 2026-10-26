@@ -403,9 +403,9 @@ export async function reverseBookAssetNonSaleDisposalInTx(
  * and the original cost is never expensed again. Runs inside the sale's own transaction. An appliance with no book
  * asset (nothing was ever capitalised) needs no entry.
  */
-export async function disposeRetiredBookAssetInTx(tx:Tx,applianceId:string,soldOn:Date,invoiceId:string):Promise<{carriedCents:number}>{
+export async function disposeRetiredBookAssetInTx(tx:Tx,applianceId:string,soldOn:Date,invoiceId:string,actorUserId?:string):Promise<{carriedCents:number}>{
  await tx.$queryRaw`SELECT "applianceId" FROM "BookAsset" WHERE "applianceId" = ${applianceId} FOR UPDATE`;
- const asset=await tx.bookAsset.findUnique({where:{applianceId}});
+ let asset=await tx.bookAsset.findUnique({where:{applianceId}});
  if(!asset){
   // No book asset is only "nothing capitalised" when there is also no acquisition cost or posted capitalised expense.
   const app=await tx.appliance.findUnique({where:{id:applianceId},select:{acquisitionCostCents:true}});
@@ -414,7 +414,12 @@ export async function disposeRetiredBookAssetInTx(tx:Tx,applianceId:string,soldO
    throw new BookAssetInputError("This appliance has a recorded cost that is not on the book assets list yet. Add it under Books, then Assets, and stage its retirement; then ring up the sale so its book value can be removed.");
   return {carriedCents:0};
  }
- if(!asset.retiredOn)throw new BookAssetInputError("Stage this appliance's book retirement first (Books, then Assets), then ring up the sale so its book value can be removed.");
+ if(!asset.retiredOn){
+  if(!actorUserId)throw new BookAssetInputError("Book retirement needs an authorized employee.");
+  const staged=await stageEquipmentBookRetirementInTx(tx,actorUserId,applianceId,soldOn,"SELL");
+  if(!staged)throw new BookAssetInputError("This equipment's books need review before selling it.");
+  asset=await tx.bookAsset.findUniqueOrThrow({where:{applianceId}});
+ }
  if(asset.disposedOn)throw new BookAssetInputError("This appliance's book value was already removed by an earlier sale.");
  if(soldOn<asset.retiredOn)throw new BookAssetInputError("The sale cannot be dated before the appliance was retired.");
  const carried=asset.retiredValueCents??0;
@@ -455,11 +460,12 @@ export async function reverseBookAssetDisposalInTx(tx:Tx,applianceId:string,invo
  */
 export async function disposedValueBefore(tx:Tx,before:Date):Promise<Map<string,number>>{
  const entries=await tx.journalEntry.findMany({where:{sourceType:"APPLIANCE",entryDate:{lt:before},
-  OR:[{eventKind:{startsWith:"SOLD:"}},{eventKind:{startsWith:"SOLD_VOIDED:"}}]},
+  OR:[{eventKind:{startsWith:"SOLD:"}},{eventKind:{startsWith:"SOLD_VOIDED:"}},
+    {eventKind:{startsWith:"DISPOSED:"}},{eventKind:{startsWith:"DISPOSAL_REVERSED:"}}]},
   select:{sourceId:true,lines:{select:{debitCents:true,creditCents:true,ledgerAccount:{select:{systemRole:true}}}}},take:5001});
  if(entries.length>5000)throw new BookAssetInputError("Too many appliance sale entries to total safely; narrow the dates.");
  const out=new Map<string,number>();
- for(const e of entries)for(const l of e.lines)if(l.ledgerAccount.systemRole==="BOOK_VALUE_OF_APPLIANCES_SOLD")
+ for(const e of entries)for(const l of e.lines)if(["BOOK_VALUE_OF_APPLIANCES_SOLD","DISPOSAL_LOSS"].includes(l.ledgerAccount.systemRole??""))
   out.set(e.sourceId,(out.get(e.sourceId)??0)+l.debitCents-l.creditCents);
  return out;
 }
