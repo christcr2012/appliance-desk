@@ -1,3 +1,7 @@
+## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
+
+Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
+
 ## October 25 — BA-1 books autopilot in progress (REST branch, not merged)
 
 Branch `ai/chatgpt/ba-1`: schema, automatic nightly posting and appliance depreciation, books To do issues,

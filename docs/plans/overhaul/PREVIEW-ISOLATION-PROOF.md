@@ -86,7 +86,7 @@ Owner authorized dashboard fallback, then explicitly authorized creating the
 preview read/write credential at the final connection step.
 
 - New store: `appliance-desk-preview-private`,
-  `store_6Sttks2ULJ8wG5hl`, private, IAD1.
+  private preview store (identifier withheld from this public repository), IAD1.
 - Connected only to `appliance-desk` / Preview, sensitive credential enabled.
 - Prefix: `PREVIEW_PRIVATE_BLOB`; variables are
   `PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN`, `PREVIEW_PRIVATE_BLOB_STORE_ID`,

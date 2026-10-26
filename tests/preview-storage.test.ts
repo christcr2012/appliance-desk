@@ -3,9 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ session: vi.fn(), put: vi.fn(), get: vi.fn(), del: vi.fn() }));
 vi.mock("@/lib/session", () => ({ getServerSession: mocks.session }));
 vi.mock("@vercel/blob", () => ({ put: mocks.put, get: mocks.get, del: mocks.del }));
-import { PREVIEW_PRIVATE_STORE_ID, previewStorageConfigured, verifyPreviewPrivateStorage } from "@/domains/preview-storage";
+import { previewStorageConfigured, verifyPreviewPrivateStorage } from "@/domains/preview-storage";
 
-const token = "vercel_blob_rw_6Sttks2ULJ8wG5hl_synthetic";
+const storeSuffix = "SyntheticFixture123";
+const storeId = `store_${storeSuffix}`;
+const privateHost = `${storeSuffix.toLowerCase()}.private.blob.vercel-storage.com`;
+const token = ["vercel", "blob", "rw", storeSuffix, "synthetic"].join("_");
 const anonymous = vi.fn();
 let ownedPath: string;
 let ownedContent: string;
@@ -14,7 +17,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.stubEnv("VERCEL", "1");
   vi.stubEnv("VERCEL_ENV", "preview");
-  vi.stubEnv("PREVIEW_PRIVATE_BLOB_STORE_ID", PREVIEW_PRIVATE_STORE_ID);
+  vi.stubEnv("PREVIEW_PRIVATE_BLOB_STORE_ID", storeId);
   vi.stubEnv("PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN", token);
   vi.stubEnv("BLOB_READ_WRITE_TOKEN", "production-must-never-be-used");
   vi.stubGlobal("fetch", anonymous);
@@ -22,7 +25,7 @@ beforeEach(() => {
   mocks.put.mockImplementation(async (path: string, content: string) => {
     ownedPath = path;
     ownedContent = content;
-    return { pathname: path, url: `https://6sttks2ulj8wg5hl.private.blob.vercel-storage.com/${path}` };
+    return { pathname: path, url: `https://${privateHost}/${path}` };
   });
   mocks.get.mockImplementationOnce(async () => ({
     statusCode: 200, blob: { pathname: ownedPath }, stream: new Response(ownedContent).body,
@@ -47,7 +50,7 @@ describe("private preview runtime check", () => {
     expect(mocks.put).not.toHaveBeenCalled();
   });
 
-  it.each(["", "vercel_blob_rw_KPHIdNdaYTgGP2v5_production", "invalid-secret"])("never falls back from wrong/missing preview credential", async (credential) => {
+  it.each(["", ["vercel", "blob", "rw", "WrongFixtureOnly", "synthetic"].join("_"), "invalid-secret"])("never falls back from wrong/missing preview credential", async (credential) => {
     vi.stubEnv("PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN", credential);
     const result = await verifyPreviewPrivateStorage();
     expect(result.status).toBe("error");
@@ -55,11 +58,20 @@ describe("private preview runtime check", () => {
     expect(mocks.put).not.toHaveBeenCalled();
   });
 
-  it("refuses an unverified store even with the correct token", async () => {
-    vi.stubEnv("PREVIEW_PRIVATE_BLOB_STORE_ID", "store_KPHIdNdaYTgGP2v5");
+  it("refuses a store ID that does not match the preview token", async () => {
+    vi.stubEnv("PREVIEW_PRIVATE_BLOB_STORE_ID", "store_OtherSyntheticFixture");
     expect((await verifyPreviewPrivateStorage()).status).toBe("error");
     expect(mocks.put).not.toHaveBeenCalled();
   });
+
+  it.each(["PREVIEW_PRIVATE_BLOB_STORE_ID", "PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN"])(
+    "refuses missing %s without a storage operation", async (name) => {
+      vi.stubEnv(name, "");
+      expect(previewStorageConfigured()).toBe(false);
+      expect((await verifyPreviewPrivateStorage()).status).toBe("error");
+      expect(mocks.put).not.toHaveBeenCalled();
+    },
+  );
 
   it("writes/reads only its generated path, denies anonymous access, then verifies cleanup", async () => {
     const result = await verifyPreviewPrivateStorage();
@@ -70,7 +82,7 @@ describe("private preview runtime check", () => {
     }));
     expect(mocks.get).toHaveBeenCalledTimes(2);
     expect(mocks.get).toHaveBeenCalledWith(ownedPath, expect.objectContaining({ token, access: "private", useCache: false }));
-    expect(anonymous).toHaveBeenCalledWith(`https://6sttks2ulj8wg5hl.private.blob.vercel-storage.com/${ownedPath}`,
+    expect(anonymous).toHaveBeenCalledWith(`https://${privateHost}/${ownedPath}`,
       expect.objectContaining({ credentials: "omit", redirect: "error", cache: "no-store" }));
     expect(mocks.del).toHaveBeenCalledWith(ownedPath, expect.objectContaining({ token }));
     expect(JSON.stringify(result)).not.toContain(token);

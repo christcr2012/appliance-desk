@@ -1,7 +1,5 @@
 import { isTestingEnvironment } from "./testing-environment";
 
-const VERIFIED_PREVIEW_PRIVATE_STORE_ID = "store_6Sttks2ULJ8wG5hl";
-
 function tokenStoreId(token: string | undefined): string | null {
   if (!token) return null;
   const parts = token.split("_");
@@ -73,7 +71,7 @@ export function getPrivatePhotoStore():
     const token = process.env.PREVIEW_PRIVATE_BLOB_READ_WRITE_TOKEN;
     const storeId = process.env.PREVIEW_PRIVATE_BLOB_STORE_ID;
     if (
-      storeId === VERIFIED_PREVIEW_PRIVATE_STORE_ID &&
+      token && storeId && /^store_[A-Za-z0-9]+$/.test(storeId) &&
       tokenStoreId(token)?.toLowerCase() === storeId.toLowerCase()
     ) {
       return { token: token!, storeId };
