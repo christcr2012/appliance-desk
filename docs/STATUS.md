@@ -2,13 +2,14 @@
 
 Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
 
-## October 25 — BA-1 books autopilot in progress (REST branch, not merged)
+## October 25 — BA-1 books autopilot in draft PR #610 (not merged)
 
-Branch `ai/chatgpt/ba-1`: schema, automatic nightly posting and appliance depreciation, books To do issues,
-Equipment retirement/disposal reconciliation and post-commit manual payment/write-off posting are coded with
-initial tests. These changes have **not** passed CI or been merged. Pending: confirm compile and disposable-DB
-tests in Actions, finish immediate hooks and remaining acceptance cases, review all findings; then PR/merge
-only when exact-head `ci` is green. No production settings, customer data or external providers touched.
+Branch `ai/chatgpt/ba-1` (PR #610): nightly recording, automatic appliance enrollment/depreciation,
+books To do issues, Equipment retirement/disposal reversals and post-commit source recording coded.
+Run 40269991085 passed all CI shards at earlier head `6be9cfac`, **not** the current head;
+later changes and their new concurrency/long-life tests are awaiting exact-head CI and review.
+Remaining BA-1 hook/edge proof is on its card; BA-2 and BA-3 await BA-1 merge.
+No production settings, real accounts or customer data touched.
 
 ## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
 
