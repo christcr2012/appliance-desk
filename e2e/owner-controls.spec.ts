@@ -21,6 +21,9 @@ test.beforeEach(() => {
 });
 
 async function phoneKeyboardAndAxe(page: Page) {
+  // A server-action RSC refresh may show the saved row before Next has finished setting its streamed title.
+  // Require a real document title before scanning; a permanently missing title still fails the test.
+  await expect(page).toHaveTitle(/\S/, { timeout: 15000 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.keyboard.press("Tab");
   expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
