@@ -108,9 +108,7 @@ describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated P
     id:applianceId,applianceTypeId:typeId,assetNumber:"BA3-CAP-"+tag,
     acquisitionCostCents:22000,purchaseDate:dates("2020-01-13"),
    }});
-   const category=await prisma.expenseCategory.findFirstOrThrow({
-    where:{ledgerAccountId:{not:null}},select:{id:true},
-   });
+   const category=await prisma.expenseCategory.findFirstOrThrow({select:{id:true}});
    const ownerContributions=await prisma.ledgerAccount.findFirstOrThrow({
     where:{systemRole:"OWNER_CONTRIBUTIONS"},select:{id:true},
    });

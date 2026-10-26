@@ -30,13 +30,31 @@ d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-a
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:tests/books-closing-integration.test.ts:generic-api-key:28
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:162
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:189
-
-# Reviewed 2026-10-26: scanner attributes the same previously reviewed
-# non-secret legal-rule identifiers and synthetic month-closing test wording
-# to commits merged from the other agents' branches. These are not credentials.
-fc4ad1efe73a9b499610c531ca28c7501fab248f:tests/books-closing-integration.test.ts:generic-api-key:28
-89630f49bd63734294fc11926f9dc93c5fdb15fa:tests/books-closing-integration.test.ts:generic-api-key:28
+# Same three lines again: merging main into LD-1 re-committed main's versions
+# of these files in new commits (d29df93, fc4ad1e), so the scanner attributes
+# the lines to those commits too.
 d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:162
 d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:189
+fc4ad1efe73a9b499610c531ca28c7501fab248f:tests/books-closing-integration.test.ts:generic-api-key:28
+# Same three lines again: the full-history scan reads every branch, and the
+# ACC-6 lane's merge of main (e993e88, 89630f4, 2026-10-26) re-committed the
+# same files, so the lines are attributed to those commits too.
 e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:162
 e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:189
+89630f49bd63734294fc11926f9dc93c5fdb15fa:tests/books-closing-integration.test.ts:generic-api-key:28
+# The LD-1 migration header comment (the leads_pipeline migration names its
+# card in a comment; the words match the generic API-key pattern). It was
+# allowlisted under the original branch's commit by BA-1; the rebuilt
+# ai/vivienne/ld-1 branch re-committed the migration in 3d86add, so the same
+# line needs a fingerprint under that commit too.
+3d86adda6fe28e5128160187509bac6b54d9c43f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# Reviewed 2026-10-26: prior commit migration header and statutory filing rule identifiers,
+# examined in their original source; not credentials. Exact file/commit fingerprints only.
+50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+34cd2521ff5214ce0dde5e2322df47fc2eb2cd5f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:163
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:177
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:205
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:221
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:234
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:270

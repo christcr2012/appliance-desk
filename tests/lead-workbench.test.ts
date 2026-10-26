@@ -35,11 +35,13 @@ it("normalizes input and bounds the search", () => {
 });
 it("derives awaiting reply from real estimate states", () => {
   expect(leadWorkspaceWhere(leadFilters({ view: "awaiting-reply" }))).toEqual({
+    mergedIntoLeadId: null,
     estimates: { some: { status: { in: ["SENT", "VIEWED"] } } },
   });
 });
 it("no-next-task means no open linked task on an active lead", () => {
   expect(leadWorkspaceWhere(leadFilters({ view: "no-next-task" }))).toEqual({
+    mergedIntoLeadId: null,
     tasks: { none: { completedAt: null } },
     status: { in: ["NEW", "CONTACTED"] },
   });
@@ -69,7 +71,7 @@ it("count and page share filters; rows and related previews are bounded", async 
   expect(query.select.estimates.take).toBe(1);
   expect(data.filter.q).toBe("Jane");
 });
-it("requires owner/admin before querying", async () => {
+it("requires a team role before querying", async () => {
   guard.mockRejectedValue(new Error("denied"));
   await expect(getLeadWorkspace({})).rejects.toThrow("denied");
   await expect(getLeadEstimates("l1")).rejects.toThrow("denied");
