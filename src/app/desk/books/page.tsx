@@ -46,7 +46,7 @@ export default async function BooksPage({searchParams}:{searchParams:Promise<{mo
     </header>
     {!model.settings?.booksStartDate ? <section className="rounded-lg border border-border p-4 space-y-3">
       <h2 className="text-lg font-semibold">Start your books</h2>
-      <p>Get the business's starting date and balances in order using four simple steps. You can correct an opening balance later without changing the original record.</p>
+      <p>Get the business&apos;s starting date and balances in order using four simple steps. You can correct an opening balance later without changing the original record.</p>
       {owner?<Link href="/desk/books/setup" className={button}>Set up my books</Link>:
        <p>Ask the owner to set up the books. Your existing access stays unchanged.</p>}
     </section>:<section className="rounded-lg border border-border p-4 space-y-3">
