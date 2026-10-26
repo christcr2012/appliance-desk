@@ -4,6 +4,7 @@ import {
   getTaxWorkspaceOverview, includeTodayTaxAttention, type TaxAttentionKind,
 } from "@/domains/tax/workspace-overview";
 import { getExceptionOverview } from "@/domains/exceptions";
+import { syncComplianceFilings } from "@/domains/compliance/filings";
 import { BudgetContextCard } from "@/domains/budget/context";
 
 const label: Record<TaxAttentionKind, string> = {
@@ -12,6 +13,8 @@ const label: Record<TaxAttentionKind, string> = {
 };
 export default async function SalesTaxRootPage() {
   const actor = await requireRole("OWNER", "ADMIN");
+  // CMP-1: this page shows Today attention too — keep the filing rows fresh.
+  await syncComplianceFilings();
   const [projection, inbox] = await Promise.all([
     getTaxWorkspaceOverview(actor.user.id), getExceptionOverview(),
   ]);

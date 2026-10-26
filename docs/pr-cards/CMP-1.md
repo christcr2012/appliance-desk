@@ -26,3 +26,9 @@ serialized on the settings row, and rejected guided filings can be prepared
 again. One file is outstanding: the vendored 1040-ES PDF is a binary and
 cannot travel through the text-only GitHub tools here — the PR body carries
 the download link and fingerprint for whoever adds it with git access.
+Second fix round: the scanner had three more obligation keys of the same
+class (fingerprints completed from a full local scan), the owner guide's
+Taxes section now names the Compliance screen, and the filing sync runs on
+the attention surfaces (Today, Taxes home, Compliance) and on facts save
+rather than inside the read-only To do provider, whose contract the
+role-access tests guard.

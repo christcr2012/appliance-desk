@@ -3,7 +3,6 @@ import { requireRole } from "@/lib/session";
 import { businessDaysBetween } from "@/lib/business-date";
 import { getRuleTimingSettings } from "@/domains/rules/reads";
 import { obligationByKey } from "@/domains/compliance/registry";
-import { syncComplianceFilings } from "@/domains/compliance/filings";
 import type { ExceptionItem } from "./rules";
 
 type Rows = { rows: ExceptionItem[]; total: number };
@@ -15,17 +14,15 @@ function bounded(limit: number) {
 /**
  * CMP-1: one To do item per compliance filing whose act-on date has come
  * (the timing rule already decided when to act). It turns high priority
- * when the due date is inside the owner's safety margin. The provider
- * synchronizes the filing rows itself first, so reminders never depend on
- * the owner opening the Compliance screen.
+ * when the due date is inside the owner's safety margin. Providers stay
+ * read-only; the filing rows are synchronized on the attention surfaces
+ * themselves (the Today page, the Taxes home page and the Compliance
+ * screen) and whenever business facts are saved, so reminders never
+ * depend on opening the Compliance screen first.
  */
 export async function listComplianceDue(limit: number, now: Date): Promise<Rows> {
   await requireRole("OWNER", "ADMIN");
   bounded(limit);
-  // Keep the rows fresh from here, not only when the Compliance screen is
-  // opened — a reminder must not depend on visiting the page it points to.
-  // Synchronization is serialized in the domain, so concurrent loads are safe.
-  await syncComplianceFilings(now);
   const { marginBusinessDays: margin } = await getRuleTimingSettings();
   const where = {
     state: { in: ["UPCOMING", "READY_FOR_REVIEW", "APPROVED", "REJECTED"] },

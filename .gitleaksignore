@@ -30,12 +30,29 @@ d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-a
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:tests/books-closing-integration.test.ts:generic-api-key:28
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:162
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:189
-# Reviewed 2026-10-26 (CMP-1): compliance obligation keys in the registry —
-# public form identifiers assigned to a field named key, not credentials
-# (same false positive class as the rules registry above).
+# Reviewed 2026-10-26 (ACC-6): more of the same verified false positives, kept
+# in this mid-file block so this file merges cleanly with main. The leads
+# migration header comment (a comment naming its card, not a credential) under
+# the leads engine commit (464157c3), the LD-1 merge commit (50e265ec) and this
+# branch's merge push (34cd2521); and the compliance registry's form keys
+# ("fed.1099_misc", "fed.payroll.941" and similar — tax form names, not
+# credentials) on the CMP-1 lane's branch commits (8bd59feb, ebc6cfc3). Every
+# flagged line was read and verified.
+464157c3af1d1bca5b89a929b0bdb79189e1ae84:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+34cd2521ff5214ce0dde5e2322df47fc2eb2cd5f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:163
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:177
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:205
 8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:221
 8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:234
 8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:270
+ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:163
+ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:177
+ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:205
+ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:221
+ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:234
+ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:270
 # Same three lines again: merging main into LD-1 re-committed main's versions
 # of these files in new commits (d29df93, fc4ad1e), so the scanner attributes
 # the lines to those commits too.

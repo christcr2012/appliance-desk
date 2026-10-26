@@ -8,13 +8,14 @@ import {
 } from "@/lib/auth-client";
 import { getPostLoginDestination } from "../actions";
 
-export function TwoFactorLoginForm() {
+export function TwoFactorLoginForm({ rememberDays }: { rememberDays: number }) {
   const router = useRouter();
   const [mode, setMode] = useState<"totp" | "otp" | "backup">("totp");
   const [sentNote, setSentNote] = useState<string | null>(null);
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [remember, setRemember] = useState(false);
 
   async function finishLogin() {
     const next =
@@ -35,13 +36,13 @@ export function TwoFactorLoginForm() {
       mode === "totp"
         ? await authClient.twoFactor.verifyTotp({
             code: value.trim(),
-            trustDevice: false,
+            trustDevice: remember,
           })
         : mode === "otp"
-          ? await authClient.twoFactor.verifyOtp({ code: value.trim(), trustDevice: false })
+          ? await authClient.twoFactor.verifyOtp({ code: value.trim(), trustDevice: remember })
           : await authClient.twoFactor.verifyBackupCode({
               code: value.trim(),
-              trustDevice: false,
+              trustDevice: remember,
             });
     setBusy(false);
     if (result.error) {
@@ -120,6 +121,22 @@ export function TwoFactorLoginForm() {
         className="w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-ink"
       />
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+      {rememberDays > 0 && (
+        <label className="flex items-start gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(event) => setRemember(event.target.checked)}
+            className="mt-1 h-4 w-4"
+          />
+          <span>
+            Remember this device for {rememberDays} days
+            <span className="block text-xs text-ink-soft">
+              The code will be skipped on this device until then. Only tick this on a device you trust.
+            </span>
+          </span>
+        </label>
+      )}
       <details className="text-sm text-ink-soft">
         <summary className="cursor-pointer text-ink">I can&rsquo;t get into my account</summary>
         <p className="mt-2">
