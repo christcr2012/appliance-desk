@@ -57,7 +57,8 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Retired appliances | `/desk/inventory/retired` | What happens to appliances you retired; scrap money |
 | Shop sales | `/desk/sales` | Parts and used appliances sold over the counter or delivered |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
-| Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
+| Books | `/desk/books` | Your entries record themselves; review source issues, months and corrected starting balances |
+| Start your books | `/desk/books/setup` | Owner's four-step guide to the date, opening cash/card balances and expenses paid personally |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
 | Bank statements and cash records | `/desk/books/cash` | Import settled CSV observations and enter source-backed owner cash events; importing does not prove cleared money |
 | Bank checks (K-CASH-3 engineering candidate) | `/desk/books/cash/checks` | Compare bank rows to books, retain statement evidence and view provisional, non-spendable cash calculations (not yet released) |
@@ -375,6 +376,11 @@ To clear practice leads, customers, agreements, visits, invoices and payments fr
 ## What is still not live
 
 Real card payments (Stripe is in test mode), customer email, texting (waiting on the carrier registration), automatic renewals, calling and voicemail, and combining a property manager's properties into one charge. The full list of what needs your decision, with the exact steps, is `docs/LAUNCH-LEDGER.md`.
+
+## Starting your books and correcting the first balances (BA-2)
+Only the OWNER can open `/desk/books/setup` and finish four steps. Choose when the business started; the screen suggests the earliest recorded purchase, bill, expense or today, but you choose the final day. If it is a brand-new business without balances yet, select **Yes** for three zero balances. Otherwise copy the actual balances from bank, Stripe and credit card statements. The personal-money step links to **Expenses** with Owner contributions already selected. Review, then press **Start my books** once. It creates accounting records, never moves money. The nightly automation continues catching up without changing the saved start.
+
+If a starting value was wrong, OWNER opens **Your books → Correct my starting balances**, enters the corrected checking/Stripe/card balances and a short reason. The app adds a separate, numbered difference entry, never edits or deletes the first. For an already locked month, the correction is visibly dated late in the next open month. An ADMIN may read the Books page but must ask OWNER for setup or corrections. A setup reminder on the owner's To do list disappears once Books has been started.
 
 ## Books — journal and accounting months
 

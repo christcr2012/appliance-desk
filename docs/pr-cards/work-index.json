@@ -4020,7 +4020,7 @@
       "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
       "batch": "BA",
       "dependencies": [],
-      "status": "IN REVIEW — PR #610; exact-head CI green before main reconciliation",
+      "status": "MERGED — PR #610, CI green 40317413250",
       "migration": "book_autopilot",
       "budget": 480,
       "units": [
@@ -4042,7 +4042,7 @@
         "tests/ba1-books-paging.test.ts",
         "tests/ba1-immediate-webhook.test.ts"
       ],
-      "readiness": "IN_REVIEW",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-1.md"
     },
     {
@@ -4052,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN REVIEW — PR #613; full CI green at implementation head 72ac47ff; final docs-only CI pending",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4065,7 +4065,7 @@
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "IN_REVIEW",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {
