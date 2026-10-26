@@ -6,8 +6,8 @@ entries (money records)** — never edit or delete entries; corrections are new 
 
 
 ## Acceptance
-- [ ] Every test listed in spec section 1 passes on throwaway Postgres.
-- [ ] People-facing behavior of existing Books actions unchanged except where the spec says.
+- [x] Focused unit/real-Postgres and browser acceptance suites ran green at `e033e291` (CI run 40310404105); merged-main head requires revalidation.
+- [x] Existing person-facing Books flows retained; source posting, retirement and automatic record paths covered in regression/browser suites.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Implementation plan and evidence checklist
@@ -18,7 +18,7 @@ entries (money records)** — never edit or delete entries; corrections are new 
 - [x] Surface missing acquisition evidence, unposted sources and nightly failures as actionable To do items (durable problem model and Today integration).
 - [x] Connect equipment retirement, scrap/disposal, reopening and retired-appliance sales to balanced, reversible book entries without blocking equipment removal on a books error (disposal integration test).
 - [x] Record qualifying money events promptly, best-effort after the business transaction commits (purchases, receipts, direct and approved write-offs/expenses, refunds, and paid-invoice/Checkout/refund webhooks; hooks are independent of live payment switches).
-- [ ] Cover concurrency, 360-month catch-up, batch rotation, locked months, permissions and disposal cycles in focused throwaway-Postgres tests (tests added; current-head CI proof pending).
+- [x] Cover concurrency, 360-month catch-up, batch rotation, locked months, permissions and disposal cycles in focused throwaway-Postgres tests (green at `e033e291`).
 - [ ] Run exact-head CI and review every comment before an authorized merge.
 
 **Execution checkpoint (2026-10-25):** Before creating PR #610, confirmed no BA-1 implementation PR was open; based this branch on main `af5acc647cd35a9d3c93211e135c7c2f743b02b6`. This plan is not implementation evidence. Local checkout has no GitHub network access; use the repository's documented GitHub REST publishing fallback and free GitHub Actions checks.
@@ -32,13 +32,8 @@ Unit and disposable Postgres tests cover guard boundaries, retirement/disposal c
 basic nightly catch-up and missing-cost exceptions. The cron's Stripe switch is
 covered by a focused unit test.
 
-**Proof:** GitHub Actions run 40269991085 completed with all CI jobs green
-at head `6be9cfac`. Later additions for purchase/refund immediate hooks, batch
-selection, integration test improvements, and merging main are **not verified at
-their latest head**. Exact-head PR CI/review required before any merge.
+**Proof:** Full GitHub Actions run 40310404105 passed secret scan, type-check/lint, all three unit/real-Postgres shards and all four browser shards at `e033e291`. A merge reconciliation with newer main commits is in preparation; this past run is not evidence for the later merge commit.
 
-**Still to verify before BA-1 acceptance:** The paid-invoice webhook, 360-month
-catch-up, batch rotation, locked-month and auto/manual concurrency tests are now
-in the PR, but the latest head has not completed all CI and review.
+**Still to verify before BA-1 merge:** Resolve the concurrent billing branch changes without losing either feature, run exact-head CI again, and read every fresh review comment.
 Expense approvals now commit before best-effort posting; pending journal errors remain visible and retry nightly.
 No real business or production data touched.

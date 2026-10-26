@@ -7,6 +7,7 @@ import { getAgreementById } from "@/domains/agreements";
 import { draftRequestId } from "@/domains/agreements/draft-request";
 import { notFound, redirect } from "next/navigation";
 import { listPackagesForLines } from "@/domains/packages";
+import { getBusinessSettings } from "@/domains/settings";
 
 export const metadata = { title: "New agreement" };
 
@@ -40,10 +41,11 @@ export default async function NewAgreementPage({
     redirect(`/desk/agreements/${draft.id}`);
   const customerId = draft?.customerId ?? query.customerId;
   const serviceAddressId = draft?.serviceAddressId ?? query.serviceAddressId;
-  const [customers, availableAppliances, packages] = await Promise.all([
+  const [customers, availableAppliances, packages, businessSettings] = await Promise.all([
     getCustomers(),
     getAppliances({ status: "AVAILABLE" }),
     listPackagesForLines(),
+    getBusinessSettings(),
   ]);
 
   return (
@@ -63,6 +65,7 @@ export default async function NewAgreementPage({
 
       <div className="mt-6">
         <RentalWizard
+          ucccFilingNeeded={!businessSettings.ucccNotificationFiledOn}
           initialRequestKey={requestKey}
           initialDraft={
             draft

@@ -32,4 +32,9 @@ a payment" and uses it everywhere, without ever counting it as money received.
 Spec section 7 ("Add three payment events to your Stripe webhook").
 
 ## Progress
-Not started.
+Built on branch `ai/claude/bill-1-bank-in-flight` (PR pending, CI pending). Done: migration, row writers and clears with
+duplicate/out-of-order/retry handling, nightly check (50 a night) and "Record it now", Bills tab + pill, bill record and
+customer record lines, To do `BANK_PAYMENT_SLOW` + past-due exclusion, late-fee pause under the bill lock, Settings › Bank
+payments, Reconciliation section, checklist row, docs. Tests: `tests/bank-in-flight-webhook-integration.test.ts` (20),
+`tests/bank-in-flight-nightly.test.ts` (21), `tests/banking-days.test.ts`, updated bill-status test. Not done: Payments tab
+(AR-3 adds it from this table). Not observed: any real Stripe test-mode bank payment (checklist row).
