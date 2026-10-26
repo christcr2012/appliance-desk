@@ -48,3 +48,19 @@ e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-a
 # ai/vivienne/ld-1 branch re-committed the migration in 3d86add, so the same
 # line needs a fingerprint under that commit too.
 3d86adda6fe28e5128160187509bac6b54d9c43f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# Reviewed 2026-10-26 (TFA-2): compliance rule keys, not credentials. Lane
+# 5's CMP-1 branch commit 8bd59feb added src/domains/compliance/registry.ts;
+# every flagged line is a rule key name (fed.1099_misc, fed.payroll.941 and
+# similar) that matches the generic API-key pattern. The full-history scan
+# reads every branch, so they surface in this PR's scan too.
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:163
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:177
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:205
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:221
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:234
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:270
+# Reviewed 2026-10-26 (TFA-2): the LD-1 leads migration header comment once
+# more (the same line is allowlisted under its earlier commits above). LD-1
+# landed as squash commit 50e265e (PR #625), which re-committed the file, so
+# the same comment needs a fingerprint under that commit too.
+50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
