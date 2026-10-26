@@ -79,21 +79,24 @@ describe("ZONE-1 approval/signing delivery fee comes from the frozen zone (strai
     const local = { ...buildZoneLocation({ serviceAddressId: "a1", settings, now, position: { status: "FOUND",
       point: { lat: STARTING_CENTER.lat + 12 / 69, lon: STARTING_CENTER.lon } } }) };
     expect(local).toMatchObject({ zone: 1, priceCents: 0, choice: "DELIVER" });
-    expect(expectedDeliveryFeeCents({ zone: local, routeProof: null, origin: null })).toBe(0);
+    expect(expectedDeliveryFeeCents({ zone: local, routeProof: null })).toBe(0);
     // The guard reads only the frozen snapshot, never today's zone settings.
     const pricierToday = startingZoneSettings();
     pricierToday.zones[0]!.deliveryCents = 5000;
-    expect(expectedDeliveryFeeCents({ zone: local, routeProof: null, origin: null })).toBe(0);
-    // Only an explicitly recorded driving-route exception uses road miles (with its own frozen bands).
+    expect(expectedDeliveryFeeCents({ zone: local, routeProof: null })).toBe(0);
+    // Only an explicitly recorded driving-route exception uses road miles (with its own frozen bands), and its frozen
+    // price stays the same after the proof's freshness window or a later zone change.
     const proof = { miles: 20, source: "OWNER_MANUAL_DRIVING_ROUTE", sourceReference: "Owner-recorded road route",
-      measuredAt: new Date(at.getTime() - 60_000).toISOString(), origin };
-    expect(expectedDeliveryFeeCents({ zone: local, routeProof: proof, origin })).toBe(7500);
+      measuredAt: new Date(at.getTime() - 30 * 24 * 60 * 60_000).toISOString(), origin, zones: frozenRouteZones(settings) };
+    expect(expectedDeliveryFeeCents({ zone: local, routeProof: proof })).toBe(settings.zones[1]!.deliveryCents);
+    // Picking it up is always $0, even with a recorded exception.
+    expect(expectedDeliveryFeeCents({ zone: { ...local, choice: "CUSTOMER_PICKUP" }, routeProof: proof })).toBe(0);
   });
-  it("pickup is $0; an unknown or outside zone can't be priced (refused)", () => {
+  it("pickup is $0; an unknown or outside zone can't be priced (refused); no zone and no exception is not zone-priced", () => {
     const unknown = buildZoneLocation({ serviceAddressId: "a1", settings, now, position: { status: "UNAVAILABLE" } });
-    expect(() => expectedDeliveryFeeCents({ zone: unknown, routeProof: null, origin: null })).toThrow(/Confirm the delivery zone/);
-    expect(expectedDeliveryFeeCents({ zone: { ...unknown, choice: "CUSTOMER_PICKUP" }, routeProof: null, origin: null })).toBe(0);
-    expect(() => expectedDeliveryFeeCents({ zone: null, routeProof: null, origin: null })).toThrow();
+    expect(() => expectedDeliveryFeeCents({ zone: unknown, routeProof: null })).toThrow(/Confirm the delivery zone/);
+    expect(expectedDeliveryFeeCents({ zone: { ...unknown, choice: "CUSTOMER_PICKUP" }, routeProof: null })).toBe(0);
+    expect(expectedDeliveryFeeCents({ zone: null, routeProof: null })).toBeNull();
   });
   it("lists addresses that would be delivered without a known zone", () => {
     const unknown = buildZoneLocation({ serviceAddressId: "a1", settings, now, position: { status: "UNAVAILABLE" } });

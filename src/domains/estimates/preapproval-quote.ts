@@ -252,26 +252,36 @@ export async function getPreparedEstimateQuoteInTx(
       return rejected(["Calculated and frozen order amounts do not reconcile."]);
     // ZONE-1: each address's zone, delivery/pickup choice and zone prices are part of the reviewed quote, so any
     // change in either direction makes it stale (approval then refuses until a replacement is reviewed and sent).
-    const { zoneQuoteIdentity, currentLocations, expectedZoneDeliveryCents, unresolvedDeliveryAddresses,
+    const { zoneQuoteIdentity, snapshotLocation, unresolvedDeliveryAddresses,
       UNRESOLVED_ZONE_MESSAGE } = await import("@/domains/delivery/snapshot");
     const lineAddresses = estimate.lineItems.map(line => line.serviceAddressId);
     const deliveryZones = zoneQuoteIdentity(estimate.deliveryZoneSnapshot, lineAddresses);
-    if (deliveryZones) {
-      // The priced order's delivery charge must be exactly the zone price for each address ($0 for pickup).
-      if (unresolvedDeliveryAddresses(estimate.deliveryZoneSnapshot, lineAddresses).length)
-        return rejected([UNRESOLVED_ZONE_MESSAGE]);
-      const { agreementFrozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
-      for (const location of currentLocations(estimate.deliveryZoneSnapshot, lineAddresses)) {
-        const expected = expectedZoneDeliveryCents(location);
-        let actual = 0;
-        for (const agreement of agreements.filter(row => row.serviceAddressId === location.serviceAddressId)) {
-          const one = await agreementFrozenDeliveryCentsInTx(tx, agreement);
-          if (one === null) return rejected(["The delivery charge in the service-fee review can't be read."]);
-          actual += one;
-        }
-        if (expected === null || actual !== expected)
-          return rejected(["The delivery charge in the service-fee review doesn't match this address's delivery zone or pickup choice. Review the service fees again."]);
+    if (deliveryZones && unresolvedDeliveryAddresses(estimate.deliveryZoneSnapshot, lineAddresses).length)
+      return rejected([UNRESOLVED_ZONE_MESSAGE]);
+    // The priced order's delivery charge for each address must be exactly what the one helper says: $0 for pickup,
+    // an owner-recorded driving-route exception's frozen price, else the frozen zone price. Those amounts are part of
+    // the reviewed quote, so recording or removing an exception also makes it stale.
+    const { agreementFrozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
+    const { expectedDeliveryChargeForAddressInTx } = await import("@/domains/orders/route-evidence");
+    const deliveryCharges: Array<{ serviceAddressId: string; cents: number }> = [];
+    for (const serviceAddressId of [...new Set(lineAddresses.filter((id): id is string => !!id))].sort()) {
+      let expected: number | null;
+      try {
+        expected = await expectedDeliveryChargeForAddressInTx(tx, { estimateId: estimate.id, serviceAddressId,
+          zone: snapshotLocation(estimate.deliveryZoneSnapshot, serviceAddressId) });
+      } catch (error) {
+        return rejected([error instanceof Error ? error.message : "The delivery charge can't be worked out."]);
       }
+      if (expected === null) continue;
+      let actual = 0;
+      for (const agreement of agreements.filter(row => row.serviceAddressId === serviceAddressId)) {
+        const one = await agreementFrozenDeliveryCentsInTx(tx, agreement);
+        if (one === null) return rejected(["The delivery charge in the service-fee review can't be read."]);
+        actual += one;
+      }
+      if (actual !== expected)
+        return rejected(["The delivery charge in the service-fee review doesn't match this address's delivery zone, pickup choice or recorded driving-route exception. Review the service fees again."]);
+      deliveryCharges.push({ serviceAddressId, cents: expected });
     }
     const quoteFingerprint = createHash("sha256").update(JSON.stringify({
       estimateId: estimate.id, customerId: estimate.customerId,
@@ -279,6 +289,7 @@ export async function getPreparedEstimateQuoteInTx(
       originalEstimateLines: [...estimate.lineItems].sort((a, b) => a.id.localeCompare(b.id)),
       depositCents: estimate.depositCents, rows, totals,
       ...(deliveryZones ? { deliveryZones } : {}),
+      ...(deliveryCharges.length ? { deliveryCharges } : {}),
     })).digest("hex");
     return {
       status: "READY", reasons: [], quoteFingerprint,

@@ -2,13 +2,16 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { reviewedDrivingFee,drivingEvidenceSchema,frozenRouteZones } from "./delivery";
+import { reviewedDrivingFee,drivingEvidenceSchema,frozenRouteZones,frozenRouteExceptionCents } from "./delivery";
 import { getFrozenSigningOrderInTx } from "@/domains/billing/signing-frozen-verify";
 import { readZoneSettings } from "@/domains/delivery/zone";
 import { expectedZoneDeliveryCents, UNRESOLVED_ZONE_MESSAGE, type ZoneSnapshotLocation } from "@/domains/delivery/snapshot";
 
 // ZONE-1: the road-mile bands come from the owner's delivery zones (same starting numbers as before).
 const ZONE_FIELDS={deliveryZones:true,deliveryMaxMiles:true} as const;
+
+export const MULTI_ADDRESS_ROUTE_MESSAGE=
+  "This estimate has more than one address, so a driving-route exception must be recorded on that address's agreement.";
 
 async function ensureOwner(tx: Prisma.TransactionClient,userId:string) {
   // ZONE-1 audit: the standard row-locked re-check of an active owner (was a plain role read).
@@ -50,6 +53,10 @@ export async function recordDeliveryRouteEvidence(userId:string,
       const e=await tx.estimate.findUnique({where:{id:target.estimateId},select:{status:true}});
       if(!e||!["DRAFT","CHANGES_REQUESTED","SENT","VIEWED"].includes(e.status))
         throw new Error("An accepted estimate cannot change road fees.");
+      // ZONE-1: an estimate-level exception must belong to exactly one address.
+      const lines=await tx.estimateLineItem.findMany({where:{estimateId:target.estimateId},select:{serviceAddressId:true}});
+      if(new Set(lines.map(line=>line.serviceAddressId).filter(Boolean)).size!==1)
+        throw new Error(MULTI_ADDRESS_ROUTE_MESSAGE);
       await tx.estimate.update({where:{id:target.estimateId},
         data:{deliveryRouteProof:evidence}});
     }else{
@@ -68,56 +75,62 @@ export async function recordDeliveryRouteEvidence(userId:string,
     return fee;
   },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
 }
-export async function assertRouteMatchesFrozenFeeInTx(
-  tx:Prisma.TransactionClient,agreementId:string,raw:unknown) {
-  const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},
-    select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true}});
-  if(!settings?.drivingOriginVerifiedAt)
-    throw new Error("Verified driving origin is required for offered delivery.");
-  // Uses the bands frozen with the proof, so a later zone change never blocks an offer already made.
-  const band=reviewedDrivingFee(raw,settings.drivingOriginAddress);
-  if(await frozenDeliveryShownInTx(tx,agreementId)!==band.amountCents)
-    throw new Error("Frozen signed delivery fee disagrees with verified driving band. Owner must review all-in price.");
-  return band;
-}
-
-/** The DELIVERY fee due now in the agreement's frozen V2 order. */
-async function frozenDeliveryShownInTx(tx:Prisma.TransactionClient,agreementId:string):Promise<number>{
-  const frozen=await getFrozenSigningOrderInTx(tx,agreementId);
-  const target=frozen.find(x=>x.agreementId===agreementId);
-  if(!target||target.schemaVersion!==2)
-    throw new Error("A reviewed V2 all-in order is required before booking delivery.");
-  const lines=target.v2Extension.components.filter(x=>x.category==="DELIVERY");
-  if(lines.length!==1)throw new Error("Frozen delivery fee component is missing.");
-  return lines[0].disposition==="DUE_NOW"?lines[0].amountCents:0;
-}
 
 /**
- * ZONE-1: the approval/signing guard for an offered delivery. Normal delivery is priced by the address's frozen zone
- * (straight line, Chris 2026-10-25): the frozen order's delivery fee must equal that zone price (0 for pickup). Only
- * when the owner recorded a driving-route exception is the fee checked against that proof's own frozen bands.
- * Zone settings changed later never change either answer.
+ * ZONE-1 (Chris 2026-10-25): normal delivery is priced by straight line from the address's frozen zone; route evidence
+ * is only for an owner-recorded exception. What one address's delivery charge must be:
+ *  - "I'll pick it up" -> $0;
+ *  - an owner-recorded driving-route exception for that address -> the price frozen with that proof;
+ *  - otherwise the frozen zone price (refused while the zone is unknown or outside the area).
+ * null: not zone-priced and no exception (older orders keep their configured fee).
  */
-export function expectedDeliveryFeeCents(input:{zone:ZoneSnapshotLocation|null|undefined;
-  routeProof:unknown;origin:string|null}):number{
-  if(input.routeProof){
-    if(!input.origin) throw new Error("Verified driving origin is required for offered delivery.");
-    return reviewedDrivingFee(input.routeProof,input.origin).amountCents ?? 0;
-  }
+export function expectedDeliveryFeeCents(input:{zone:ZoneSnapshotLocation|null|undefined;routeProof:unknown}):number|null{
+  if(input.zone?.choice==="CUSTOMER_PICKUP") return 0;
+  if(input.routeProof) return frozenRouteExceptionCents(input.routeProof);
+  if(!input.zone) return null;
   const cents=expectedZoneDeliveryCents(input.zone);
   if(cents===null) throw new Error(UNRESOLVED_ZONE_MESSAGE);
   return cents;
 }
-export async function assertDeliveryFeeMatchesFrozenOrderInTx(tx:Prisma.TransactionClient,
-  agreementId:string,input:{zone:ZoneSnapshotLocation|null|undefined;routeProof:unknown}){
-  let origin:string|null=null;
-  if(input.routeProof){
-    const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},
-      select:{drivingOriginAddress:true,drivingOriginVerifiedAt:true}});
-    origin=settings?.drivingOriginVerifiedAt?settings.drivingOriginAddress:null;
-  }
-  const expected=expectedDeliveryFeeCents({zone:input.zone,routeProof:input.routeProof,origin});
-  if(await frozenDeliveryShownInTx(tx,agreementId)!==expected)
-    throw new Error("The frozen delivery fee doesn't match this address's delivery zone. Owner must review the all-in price.");
-  return expected;
+
+/** The owner-recorded driving-route exception for one address, if any: on its agreement(s), else on a one-address estimate. */
+export async function routeExceptionForAddressInTx(tx:Prisma.TransactionClient,
+  input:{estimateId:string|null;agreementId?:string|null;serviceAddressId:string}):Promise<unknown>{
+  const owners=[...(input.agreementId?[{id:input.agreementId}]:[]),...(input.estimateId?[{sourceEstimateId:input.estimateId}]:[])];
+  if(!owners.length) return null;
+  const rows=await tx.rentalAgreement.findMany({where:{serviceAddressId:input.serviceAddressId,OR:owners},
+    select:{deliveryRouteProof:true}});
+  const proofs=[...new Set(rows.map(row=>row.deliveryRouteProof).filter(proof=>proof!==null&&proof!==undefined)
+    .map(proof=>JSON.stringify(proof)))];
+  if(proofs.length>1)
+    throw new Error("This address has two different driving-route exceptions. The owner must review the delivery fee.");
+  if(proofs.length) return JSON.parse(proofs[0]!) as unknown;
+  if(!input.estimateId) return null;
+  const estimate=await tx.estimate.findUnique({where:{id:input.estimateId},
+    select:{deliveryRouteProof:true,lineItems:{select:{serviceAddressId:true}}}});
+  if(!estimate?.deliveryRouteProof) return null;
+  const addresses=[...new Set(estimate.lineItems.map(line=>line.serviceAddressId).filter(Boolean))];
+  if(addresses.length!==1) throw new Error(MULTI_ADDRESS_ROUTE_MESSAGE);
+  return addresses[0]===input.serviceAddressId?estimate.deliveryRouteProof:null;
+}
+
+/**
+ * The one helper every delivery-amount check uses (quote preparation, the service-fee review, approval, signing):
+ * the delivery charge this address must carry, in cents. See expectedDeliveryFeeCents for the order of precedence.
+ */
+export async function expectedDeliveryChargeForAddressInTx(tx:Prisma.TransactionClient,
+  input:{estimateId:string|null;agreementId?:string|null;serviceAddressId:string;zone:ZoneSnapshotLocation|null|undefined}):Promise<number|null>{
+  if(input.zone?.choice==="CUSTOMER_PICKUP") return 0;
+  const routeProof=await routeExceptionForAddressInTx(tx,input);
+  return expectedDeliveryFeeCents({zone:input.zone,routeProof});
+}
+
+/** Offered delivery windows need the exact reviewed V2 all-in order (its amount is checked with the helper above). */
+export async function assertFrozenV2DeliveryOrderInTx(tx:Prisma.TransactionClient,agreementId:string):Promise<void>{
+  const frozen=await getFrozenSigningOrderInTx(tx,agreementId);
+  const target=frozen.find(x=>x.agreementId===agreementId);
+  if(!target||target.schemaVersion!==2)
+    throw new Error("A reviewed V2 all-in order is required before booking delivery.");
+  if(target.v2Extension.components.filter(x=>x.category==="DELIVERY").length!==1)
+    throw new Error("Frozen delivery fee component is missing.");
 }

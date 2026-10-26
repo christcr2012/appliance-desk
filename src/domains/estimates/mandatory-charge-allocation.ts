@@ -17,7 +17,8 @@ import {
 } from "@/domains/billing/mandatory-charge-assessment";
 import { readCommercialReserveHistory } from "./commercial-reserve-policy";
 import { lockPreparedEstimatePolicyScopeInTx } from "./prepared-policy-scope";
-import { expectedZoneDeliveryCents, snapshotLocation, UNRESOLVED_ZONE_MESSAGE } from "@/domains/delivery/snapshot";
+import { snapshotLocation } from "@/domains/delivery/snapshot";
+import { expectedDeliveryChargeForAddressInTx } from "@/domains/orders/route-evidence";
 
 export type PreparedMandatoryChargeLocation={
   agreementId:string;
@@ -215,11 +216,10 @@ export async function savePreparedMandatoryChargeReview(input:{
       const prior=history.at(-1);
       if((prior?.revision??null)!==versions.get(agreement.id))
         throw new Error("An owner changed reviewed service fees. Refresh the full order.");
-      // ZONE-1: the delivery price is this address's frozen zone price ($0 for pickup) when the estimate has
-      // zones; older estimates keep the single configured delivery fee.
-      const zoneLocation=snapshotLocation(zoneSource?.deliveryZoneSnapshot,agreement.serviceAddressId);
-      const zoneDelivery=zoneLocation?expectedZoneDeliveryCents(zoneLocation):undefined;
-      if(zoneDelivery===null)throw new Error(UNRESOLVED_ZONE_MESSAGE);
+      // ZONE-1: the delivery price is the one helper's answer for this address (pickup $0, an owner-recorded
+      // driving-route exception's frozen price, else the frozen zone price); older estimates keep the configured fee.
+      const zoneDelivery=await expectedDeliveryChargeForAddressInTx(tx,{estimateId:estimate.id,agreementId:agreement.id,
+        serviceAddressId:agreement.serviceAddressId,zone:snapshotLocation(zoneSource?.deliveryZoneSnapshot,agreement.serviceAddressId)});
       const charges=mandatoryChargeAmounts({
         global:global.decision,choice,
         settings:{

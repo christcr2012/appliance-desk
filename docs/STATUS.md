@@ -4,7 +4,8 @@ Zones are owner settings (Settings › Delivery zones; starting values IN-06, st
 with the U.S. Census Bureau (server only, 5 s, saved per address in its own table) → zone and price on the estimate;
 lookup trouble → "We'll confirm" + a To do. Delivery or "I'll pick it up" ($0) on desk and customer estimate pages;
 frozen once sent, copied to the agreement. `/service-area` is our own SVG map + town list + checker; `/rent/{town}`
-from the town list. Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
+from the town list. One rule sets each address's delivery charge for the fee review, quote, approval and signing:
+pickup $0, else an owner-recorded driving-route exception's frozen price, else the zone price. Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
 Proof: unit tests and the zone DB tests run here on a throwaway Postgres; browser tests in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
 
 ## October 25 (night) — AR-0b: Today, Money › Bills and Customer record rebuilt with the kit (merged PR #606)

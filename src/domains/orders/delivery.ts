@@ -100,6 +100,17 @@ export function reviewedDrivingFee(raw: unknown, expectedOrigin: string,
   if (!band.allowed) throw new Error("Outside automatic delivery bands. Require separate manual review.");
   return { ...band, evidence };
 }
+/**
+ * ZONE-1: the price an owner-recorded driving-route exception froze, worked out only from the proof itself (its road
+ * miles and the zone bands frozen with it). The origin and freshness were checked when the owner recorded it, so a
+ * later origin, zone or calendar change never changes an order already priced from it.
+ */
+export function frozenRouteExceptionCents(raw: unknown): number {
+  const evidence = drivingEvidenceSchema.parse(raw);
+  const band = mileageBand(evidence.miles, bandsOf(evidence));
+  if (!band.allowed || band.amountCents === null) throw new Error("Outside automatic delivery bands. Require separate manual review.");
+  return band.amountCents;
+}
 export async function saveDeliveryOffers(userId: string, estimateId: string,
   input: { date: string; window: "AM" | "PM" }[], autoFinish=false) {
   if (!Array.isArray(input) || input.length < 1 || input.length > 4)

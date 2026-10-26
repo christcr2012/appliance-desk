@@ -652,23 +652,27 @@ export async function approveEstimate(
     const { readOfferedSlots, recordEstimateDeliverySelectionInTx } =
       await import("@/domains/orders/delivery");
     // ZONE-1: when every address on the estimate is "I'll pick it up", no delivery window is needed or accepted.
-    const { isPickupOnly, currentLocations } = await import("@/domains/delivery/snapshot");
+    const { isPickupOnly } = await import("@/domains/delivery/snapshot");
     const hasZones = estimate.deliveryZoneSnapshot !== null && estimate.deliveryZoneSnapshot !== undefined;
     const lineAddresses = hasZones ? (await tx.estimateLineItem.findMany({
       where: { estimateId: id }, select: { serviceAddressId: true },
     })).map((line) => line.serviceAddressId) : [];
     const pickupOnly = hasZones && isPickupOnly(estimate.deliveryZoneSnapshot, lineAddresses);
-    // A customer who picks it up ($0) can never owe a delivery charge frozen into the quote they approve.
-    if (hasZones) {
+    // Always (delivery windows offered or not): each address's priced delivery charge must be exactly the one
+    // helper's answer — $0 for pickup, an owner-recorded driving-route exception's frozen price, else the frozen
+    // zone price. A customer who picks it up can never owe a delivery charge frozen into the quote they approve.
+    {
       const { frozenDeliveryCentsInTx } = await import("@/domains/delivery/estimate-zone");
-      // Always (delivery windows offered or not): the priced order's delivery charge must be exactly this
-      // address's frozen zone price, $0 for pickup — in either direction.
-      const { expectedZoneDeliveryCents } = await import("@/domains/delivery/snapshot");
-      for (const location of currentLocations(estimate.deliveryZoneSnapshot, lineAddresses)) {
-        const expected = expectedZoneDeliveryCents(location);
-        const actual = await frozenDeliveryCentsInTx(tx, estimate, location.serviceAddressId);
-        if (expected === null || actual !== expected)
-          throw new Error(location.choice === "CUSTOMER_PICKUP"
+      const { expectedDeliveryChargeForAddressInTx } = await import("@/domains/orders/route-evidence");
+      const { snapshotLocation } = await import("@/domains/delivery/snapshot");
+      const addresses = [...new Set((await tx.estimateLineItem.findMany({ where: { estimateId: id },
+        select: { serviceAddressId: true } })).map((line) => line.serviceAddressId).filter((x): x is string => !!x))];
+      for (const serviceAddressId of addresses) {
+        const zone = snapshotLocation(estimate.deliveryZoneSnapshot, serviceAddressId);
+        const expected = await expectedDeliveryChargeForAddressInTx(tx, { estimateId: id, serviceAddressId, zone });
+        if (expected === null) continue;
+        if (await frozenDeliveryCentsInTx(tx, estimate, serviceAddressId) !== expected)
+          throw new Error(zone?.choice === "CUSTOMER_PICKUP"
             ? "This quote still includes delivery for an address you'll pick up. We'll send you an updated quote."
             : "This quote's delivery charge doesn't match your delivery zone. We'll send you an updated quote.");
       }
@@ -686,16 +690,17 @@ export async function approveEstimate(
       });
       if(preparedAgreements.length!==1)
         throw new Error("Owner route/fee review required for this delivery order.");
-      // ZONE-1: the delivery fee comes from this address's frozen zone; a recorded driving-route exception (if any)
-      // is checked with its own bands. Older estimates with neither still need the owner's route review.
+      // ZONE-1: the amount was checked above with the one helper. Here: the address must be priced (a zone or an
+      // owner-recorded route exception — older estimates with neither still need the owner's route review) and the
+      // exact reviewed V2 order must exist.
       const { snapshotLocation } = await import("@/domains/delivery/snapshot");
-      const zone = snapshotLocation(estimate.deliveryZoneSnapshot, preparedAgreements[0].serviceAddressId);
-      if(!zone&&!estimate.deliveryRouteProof)
-        throw new Error("Owner route/fee review required for this delivery order.");
-      const { assertDeliveryFeeMatchesFrozenOrderInTx } =
+      const { expectedDeliveryChargeForAddressInTx, assertFrozenV2DeliveryOrderInTx } =
         await import("@/domains/orders/route-evidence");
-      await assertDeliveryFeeMatchesFrozenOrderInTx(tx,preparedAgreements[0].id,
-        {zone,routeProof:estimate.deliveryRouteProof});
+      if(await expectedDeliveryChargeForAddressInTx(tx,{estimateId:id,agreementId:preparedAgreements[0].id,
+        serviceAddressId:preparedAgreements[0].serviceAddressId,
+        zone:snapshotLocation(estimate.deliveryZoneSnapshot, preparedAgreements[0].serviceAddressId)})===null)
+        throw new Error("Owner route/fee review required for this delivery order.");
+      await assertFrozenV2DeliveryOrderInTx(tx,preparedAgreements[0].id);
       await recordEstimateDeliverySelectionInTx(tx, estimate, input.deliverySelection);
     } else if (input.deliverySelection) {
       throw new Error("No current owner-offered delivery choice is available.");
