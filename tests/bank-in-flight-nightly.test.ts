@@ -30,7 +30,7 @@ vi.mock("@/domains/settings", () => ({ getBusinessSettings: async () => ({ bankP
 
 import { prisma } from "@/lib/prisma";
 import { checkBankPaymentsInFlight, recoverBankSettlement } from "@/domains/billing/in-flight-check";
-import { applyLateFees } from "@/domains/billing/late-fees";
+import { runLateFees as runLateFeesAll } from "@/domains/billing/late-fee-engine";
 import { pastDueTodoWhere } from "@/domains/exceptions";
 import { listBankPaymentSlow } from "@/domains/exceptions/bank-payment-attention";
 import { bankPaymentSlowException } from "@/domains/exceptions/rules";
@@ -65,6 +65,8 @@ describe.skipIf(!enabled)("bank payments being confirmed — nightly check, reco
   const adminId = `bn-admin-${tag}`;
   const demotedId = `bn-demoted-${tag}`;
   const customerId = `bn-customer-${tag}`;
+  // Limited to this file's own customer: other test files share the database and run at the same time.
+  const runLateFees = (at?: Date) => runLateFeesAll(at, { customerIds: [customerId] });
   const addressId = `bn-address-${tag}`;
   const agreements: string[] = [];
   const invoices: string[] = [];
@@ -132,6 +134,7 @@ describe.skipIf(!enabled)("bank payments being confirmed — nightly check, reco
     await prisma.refund.deleteMany({ where: { invoiceId: { in: ids } } });
     await prisma.payment.deleteMany({ where: { invoiceId: { in: ids } } });
     await prisma.invoiceLineItem.deleteMany({ where: { invoiceId: { in: ids } } });
+    await prisma.pendingCharge.deleteMany({ where: { customerId } });
     await prisma.invoice.deleteMany({ where: { customerId } });
     await prisma.receipt.deleteMany({ where: { customerId } });
     await prisma.customerCredit.deleteMany({ where: { customerId } });
@@ -359,23 +362,29 @@ describe.skipIf(!enabled)("bank payments being confirmed — nightly check, reco
   });
 
   describe("late fees wait for the bank", () => {
-    async function lateBill() {
-      const agreement = await makeAgreement({ lateFeeGraceDays: 5, lateFeeCents: 500, lateFeePercent: 0 });
-      const billId = await localBill(agreement, null, new Date(Date.now() - 30 * 86_400_000));
+    // A bill 15 days overdue whose customer was told 5 days ago: a fee would be due today, unless the bank is confirming.
+    async function warnedLateBill() {
+      const agreement = await makeAgreement({ lateFeeGraceDays: 10, lateFeeCents: 500, lateFeePercent: 0 });
+      const billId = await localBill(agreement, null, new Date(Date.now() - 15 * 86_400_000));
+      await prisma.invoice.update({ where: { id: billId }, data: { lateFeeToldOn: new Date(Date.now() - 5 * 86_400_000) } });
       return { agreement, billId };
     }
-    it("no fee while a bank payment is open; the fee lands once it is cleared", async () => {
-      const { agreement, billId } = await lateBill();
+    const fees = (billId: string) => prisma.pendingCharge.count({ where: { forInvoiceId: billId } });
+
+    it("no fee while a bank payment is open; the fee is recorded once it is cleared", async () => {
+      const { agreement, billId } = await warnedLateBill();
       const r = await openRow({ invoiceId: billId, agreementId: agreement.id });
-      await applyLateFees();
-      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: billId } })).lateFeeCents).toBe(0);
-      await prisma.bankPaymentInFlight.update({ where: { id: r.id }, data: { clearedAt: new Date(), clearedReason: "FAILED" } });
-      await applyLateFees();
-      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: billId } })).lateFeeCents).toBe(500);
+      await runLateFees();
+      expect(await fees(billId)).toBe(0);
+      await prisma.bankPaymentInFlight.update({ where: { id: r.id }, data: { clearedAt: new Date(), clearedReason: "SUCCEEDED" } });
+      await runLateFees();
+      expect(await fees(billId)).toBe(1);
+      // and the overdue bill itself never changed
+      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: billId } })).amountDueCents).toBe(4000);
     });
 
     it("a fee run and a bank payment opening at the same moment can never both win", async () => {
-      const { agreement, billId } = await lateBill();
+      const { agreement, billId } = await warnedLateBill();
       const opener = prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT "id" FROM "Invoice" WHERE "id" = ${billId} FOR UPDATE`; // the lock the webhook takes first
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -384,9 +393,9 @@ describe.skipIf(!enabled)("bank payments being confirmed — nightly check, reco
         });
       });
       await new Promise((resolve) => setTimeout(resolve, 50));
-      await Promise.all([opener, applyLateFees()]);
+      await Promise.all([opener, runLateFees()]);
       // The fee run had to wait for the bill lock, then saw the open row.
-      expect((await prisma.invoice.findUniqueOrThrow({ where: { id: billId } })).lateFeeCents).toBe(0);
+      expect(await fees(billId)).toBe(0);
     });
   });
 

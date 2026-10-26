@@ -41,7 +41,9 @@ const DEFAULT_SETTINGS = {
   signingMandatoryPolicyVersions: [] as unknown,
   damageWaiverEnabled: false,
   depositEnabled: false,
-  lateFeeGraceDays: 5,
+  lateFeeGraceDays: 10,
+  lateFeeNoticeDaysBefore: 2,
+  ucccNotificationFiledOn: null as Date | null,
   bankPaymentSlowBusinessDays: 6,
   lateFeeFlatCents: 0,
   lateFeePercent: 0,
@@ -144,6 +146,8 @@ export type BusinessSettingsUpdate = Partial<{
   damageWaiverEnabled: boolean;
   depositEnabled: boolean;
   lateFeeGraceDays: number;
+  lateFeeNoticeDaysBefore: number;
+  ucccNotificationFiledOn: Date | null;
   lateFeeFlatCents: number;
   lateFeePercent: number;
   announcementBannerText: string | null;
@@ -229,6 +233,11 @@ export async function updateBusinessSettingsInTx(
       sectionRevision(before, opts.expectedRevision.section) !== opts.expectedRevision.value
     )
       throw new SettingsConflictError();
+    // FEE-1: one rule for every rental. A late fee needs the bill to be more than 10 days late and is never over $15.
+    if (update.lateFeeGraceDays !== undefined && update.lateFeeGraceDays < 10)
+      throw new Error("Colorado's rule: a bill must be at least 10 days late before a late fee. Choose 10 or more days.");
+    if (update.lateFeeFlatCents !== undefined && update.lateFeeFlatCents > 1500)
+      throw new Error("A late fee can be at most $15. Choose $15 or less.");
     const after = await tx.businessSettings.upsert({
       where: { id: "singleton" },
       create: { id: "singleton", ...update },

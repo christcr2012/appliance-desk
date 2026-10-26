@@ -112,10 +112,11 @@ export default async function SignPage({
         )}
         {(agreement.lateFeeCents > 0 || agreement.lateFeePercent > 0) && (
           <p>
-            {portalStatement(language,"lateFee",{days:agreement.lateFeeGraceDays})}{" "}
+            {portalStatement(language,"lateFee",{days:Math.max(10,agreement.lateFeeGraceDays)})}{" "}
             {agreement.lateFeeCents > 0 && formatCents(agreement.lateFeeCents)}
             {agreement.lateFeeCents > 0 && agreement.lateFeePercent > 0 && (portalLabel(language," or "))}
             {agreement.lateFeePercent > 0 && `${agreement.lateFeePercent}%`}
+            {". "}{portalStatement(language,"lateFeeRest")}
           </p>
         )}
       </div>

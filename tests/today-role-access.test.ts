@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// FEE-1: the late-fee review list has its own database tests; here it must not add reads to the capped Today queries.
+vi.mock("@/domains/exceptions/late-fee-attention", () => ({ listLateFeeReview: async () => ({ rows: [], total: 0 }) }));
+
 const mocks = vi.hoisted(() => ({
   settings: vi.fn(),
   requireRole: vi.fn(),

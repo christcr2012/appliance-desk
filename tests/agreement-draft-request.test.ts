@@ -26,7 +26,7 @@ const saved = {
   termMonths: null,
   depositCents: 0,
   damageWaiverCents: 0,
-  lateFeeGraceDays: 5,
+  lateFeeGraceDays: 10,
   lateFeeCents: 0,
   lateFeePercent: 0,
   paidInFullInAdvance: false,

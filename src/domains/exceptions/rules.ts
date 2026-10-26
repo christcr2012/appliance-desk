@@ -40,6 +40,7 @@ export type ExceptionCategory =
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
   | "BANK_PAYMENT_SLOW"
+  | "LATE_FEE_REVIEW"
   | "HELD_PAYMENT_DECISION"
   | "DEPOSIT_DECISION"
   | "NEW_LEAD_CONTACT"
@@ -710,6 +711,35 @@ export function bankPaymentSlowException(row: {
     amountCents: row.amountCents,
     since: row.startedAt,
     ...(settled ? { action: { type: "RECORD_BANK_PAYMENT" as const, id: row.id, label: "Record it now" } } : {}),
+  };
+}
+
+/**
+ * FEE-1: an overdue bill that has no late fee because the customer was never warned (or is active military).
+ * A fee needs a warning first; Chris chooses what happens next on the bill page.
+ */
+export function lateFeeReviewException(row: {
+  invoiceId: string;
+  customerId: string;
+  customerName: string;
+  invoiceNumber: number;
+  reason: "NOT_WARNED" | "MILITARY";
+  dueOn: Date | null;
+  amountCents: number;
+}): ExceptionItem {
+  return {
+    category: "LATE_FEE_REVIEW",
+    severity: "medium",
+    title: row.reason === "MILITARY"
+      ? `No automatic late fee for ${row.customerName} — active military`
+      : `No late fee for ${row.customerName} — they weren't warned yet`,
+    detail: row.reason === "MILITARY"
+      ? `Bill #${row.invoiceNumber} is past the day a fee could be added. You decide whether to skip it.`
+      : `Bill #${row.invoiceNumber} is past the day a fee could be added, but the warning was never delivered. Send the warning, record a phone call, or skip the fee.`,
+    href: `/desk/billing/customer/${encodeURIComponent(row.customerId)}/invoice/${encodeURIComponent(row.invoiceId)}`,
+    amountCents: row.amountCents,
+    since: row.dueOn ?? new Date(0),
+    ...(row.dueOn ? { dueOn: row.dueOn, dueDateOnly: true } : {}),
   };
 }
 

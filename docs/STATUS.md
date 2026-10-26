@@ -1,4 +1,16 @@
-## October 26 — BILL-1: bank payments being confirmed (PR pending)
+## October 27 — FEE-1: fair late fees (PR pending)
+
+Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
+at most $15, once per bill, only after the customer was warned (2 days' notice, Settings), never while a payment is in progress
+or a bank payment is being confirmed, and autopay customers get 10 days' notice. The fee is its own charge on the next bill
+(its own one-line bill if the rental ended); the overdue bill never changes. Owner screens: warn / "told by phone" / skip /
+waive on the bill, servicemember checkbox, a Settings card for the warning days and for the Colorado lease filing, To do items.
+Migration `20261027040000_fair_late_fees` (additive; lifts old settings below 10 days / over $15). Proof: unit tests plus about
+30 database tests with a pretend Stripe on a throwaway Postgres; CI pending.
+Not done: no browser test; no real Stripe test-mode fee observed; fees do not attach to an arbitrary next local bill; "payment
+in progress" is approximated (open bank flag or phone payment in the last 24 h). Next: DEC-2 (waits for DEC-1b, PR #603).
+
+## October 26 — BILL-1: bank payments being confirmed (merged PR #612)
 
 Branch `ai/claude/bill-1-bank-in-flight`. A bank transfer now shows **Being confirmed** instead of late: Stripe's "processing"
 event is recorded as a flag (never as money), the Bills list has a new **Being confirmed** tab and pill, the bill and customer

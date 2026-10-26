@@ -1,3 +1,4 @@
+import { LATE_FEE_CAP_CENTS, LATE_FEE_MIN_GRACE_DAYS, classifyLateFeeAgreement } from "@/domains/billing/late-fee-rules";
 import { draftRequestId } from "./draft-request";
 import { ensurePickupDraftInTx } from "./pickup-draft";
 import { buildTermsSnapshot } from "./terms-snapshot";
@@ -176,6 +177,13 @@ function validateDraftTerms(input: NewAgreementInput) {
       "Paying in advance for the free-month bonus only applies to a 12-month term.",
     );
   }
+  // FEE-1: one late fee rule for every rental (Colorado's 10 days; never more than $15).
+  if (input.lateFeeGraceDays !== undefined && input.lateFeeGraceDays < LATE_FEE_MIN_GRACE_DAYS) {
+    throw new Error("Colorado's rule: a bill must be at least 10 days late before a late fee. Use 10 or more days.");
+  }
+  if (input.lateFeeCents !== undefined && input.lateFeeCents > LATE_FEE_CAP_CENTS) {
+    throw new Error("A late fee can be at most $15.");
+  }
   return { termMonths, paidInFullInAdvance };
 }
 
@@ -225,7 +233,7 @@ export async function createDraftAgreementInTx(
       termMonths,
       depositCents: input.depositCents ?? 0,
       damageWaiverCents: input.damageWaiverCents ?? 0,
-      lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
+      lateFeeGraceDays: input.lateFeeGraceDays ?? LATE_FEE_MIN_GRACE_DAYS,
       lateFeeCents: input.lateFeeCents ?? 0,
       lateFeePercent: input.lateFeePercent ?? 0,
       paidInFullInAdvance,
@@ -270,7 +278,7 @@ export async function createDraftAgreement(
     termMonths,
     depositCents: input.depositCents ?? 0,
     damageWaiverCents: input.damageWaiverCents ?? 0,
-    lateFeeGraceDays: input.lateFeeGraceDays ?? 5,
+    lateFeeGraceDays: input.lateFeeGraceDays ?? LATE_FEE_MIN_GRACE_DAYS,
     lateFeeCents: input.lateFeeCents ?? 0,
     lateFeePercent: input.lateFeePercent ?? 0,
     paidInFullInAdvance,
@@ -514,11 +522,23 @@ export async function sendForSignature(userId: string, agreementId: string) {
         JSON.stringify(buildTermsSnapshot(settings ?? {}, agreement.termsOverride, new Date())),
       );
     }
+    // FEE-1: the late fee terms the customer signs are classified and frozen now. A draft made before the one-rule policy
+    // (10 days, at most $15) is brought up to it here, so the signing page never shows older terms.
+    const feeCustomer = await tx.customer.findUniqueOrThrow({
+      where: { id: agreement.customerId },
+      select: { isBusiness: true, isPropertyManager: true, companyName: true },
+    });
+    const lateFeeClass = classifyLateFeeAgreement({ ...feeCustomer, termMonths: agreement.termMonths });
+    const lateFeeGraceDays = Math.max(agreement.lateFeeGraceDays, LATE_FEE_MIN_GRACE_DAYS);
+    const lateFeeCents = Math.min(agreement.lateFeeCents, LATE_FEE_CAP_CENTS);
     await tx.rentalAgreement.update({
       where: { id: agreementId },
       data: {
         status: "AWAITING_SIGNATURE",
         taxRateMilliPercent,
+        lateFeeClass,
+        lateFeeGraceDays,
+        lateFeeCents,
         ...(termsSnapshot ? { termsSnapshot } : {}),
       },
     });
