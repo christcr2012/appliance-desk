@@ -66,15 +66,12 @@ async function createFixture(options: {
       agreementId, customerId, serviceAddressId: addressId,
     },
   });
-  const rate = await prisma.retailDeliveryFeeRate.create({
-    data: {
-      effectiveOn: new Date(Date.UTC(2026, 6, 1) + (parseInt(token.slice(0, 7), 16) % 86_400_000)),
-      amountCents: 31, enteredByUserId: userId,
-    },
-  });
+  // TFA-1: the fee amount is the seeded co.rdf.amount rule version
+  // (31 cents from 2026-07-01); the record points at it, not a rate row.
+  const ruleVersionId = "rule-co-rdf-amount-20260701";
   await prisma.retailDeliveryFeeRecord.create({
     data: {
-      rateId: rate.id,
+      ruleVersionId,
       id: recordId, saleKey: "agreement:" + agreementId,
       firstJobId: jobId, agreementId, status: "READY",
       deliveredOn: new Date("2026-08-03T12:00:00.000Z"),
@@ -85,7 +82,7 @@ async function createFixture(options: {
   });
   return {
     token, userId, customerId, addressId, agreementId,
-    jobId, recordId, subscriptionId, rateId: rate.id,
+    jobId, recordId, subscriptionId, ruleVersionId,
   };
 }
 
@@ -105,7 +102,6 @@ async function cleanup(fixture: Fixture) {
     ] },
   });
   await prisma.invoice.deleteMany({ where: { agreementId: fixture.agreementId } });
-  await prisma.retailDeliveryFeeRate.delete({ where: { id: fixture.rateId } });
   await prisma.job.deleteMany({ where: { id: fixture.jobId } });
   await prisma.rentalAgreement.delete({ where: { id: fixture.agreementId } });
   await prisma.serviceAddress.delete({ where: { id: fixture.addressId } });
@@ -330,7 +326,7 @@ describe.skipIf(!enabled)("T-6C3 delivery fee customer charge, real PostgreSQL",
         data: {
           id: secondId, saleKey: secondKey, agreementId: f.agreementId,
           firstJobId: f.jobId, status: "READY", amountCents: 31,
-          rateId: f.rateId, collectedFromCustomer: true,
+          ruleVersionId: f.ruleVersionId, collectedFromCustomer: true,
           invoiceLineId: secondLine.id, deliveredOn: new Date("2026-08-03"),
           saleOn: new Date("2026-08-01"),
         },

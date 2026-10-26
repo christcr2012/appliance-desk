@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { saveTaxAccountAction } from "../../actions";
 import { TaxActionForm } from "../../forms";
+import { ruleAsOf } from "@/domains/rules/reads";
 const css="w-full rounded border border-input bg-background p-2 text-sm";
 const label="grid gap-1 text-sm font-medium";
 export default async function FilingAccountEditor({params}:{params:Promise<{id:string}>}) {
@@ -14,10 +15,15 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
   const allAreas = await prisma.taxJurisdiction.findMany({
     orderBy: [{ name: "asc" }, { id: "asc" }], take: 100,
     select: {
-      id: true, name: true, filingAccountId: true, useTaxFilingAccountId: true,
+      id: true, name: true, level: true, filingAccountId: true, useTaxFilingAccountId: true,
       filingCode: true, filingOrder: true, serviceFeeMilliPercent: true,
     },
   });
+  // TFA-1: Colorado allows no service fee on state sales tax from Jan 1, 2026.
+  // The state line shows the dated rule value, not the stored fee.
+  const stateServiceFee = account.kind === "SALES_RETURN"
+    ? await ruleAsOf<number>("co.sales.state_service_fee", new Date()).then(r => r.value).catch(() => null)
+    : null;
   const areas = allAreas.filter(row => account.kind === "SALES_RETURN"
     ? !row.filingAccountId || row.filingAccountId === account.id
     : account.kind === "USE_TAX_RETURN"
@@ -96,7 +102,14 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
               </label>
               <label className={label}>SUTS area code<input className={css} name={`code:${row.id}`} maxLength={40} defaultValue={row.filingCode ?? ""} /></label>
               <label className={label}>Screen order<input className={css} type="number" min={0} max={10000} name={`order:${row.id}`} defaultValue={row.filingOrder} /></label>
-              <label className={label}>Service fee (milli-percent)<input className={css} type="number" min={0} max={100000} name={`fee:${row.id}`} defaultValue={row.serviceFeeMilliPercent} /></label>
+              <label className={label}>Service fee (milli-percent)
+                {row.level === "STATE" && stateServiceFee !== null
+                  ? <>
+                      <input className={css} type="number" name={`fee:${row.id}`} defaultValue={stateServiceFee} readOnly />
+                      <span className="text-xs font-normal text-muted-foreground">Colorado allows no service fee on state sales tax from Jan 1, 2026. Local lines keep their own fee.</span>
+                    </>
+                  : <input className={css} type="number" min={0} max={100000} name={`fee:${row.id}`} defaultValue={row.serviceFeeMilliPercent} />}
+              </label>
             </div>
           </fieldset>;
         })}</div>

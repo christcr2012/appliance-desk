@@ -6,7 +6,8 @@ export type RdfPacket = {
   version: 1;
   periodId: string;
   deliveries: number;
-  rows: Array<{ rateId: string; amountCents: number; count: number; totalCents: number }>;
+  /** rateKey is the rule version (TFA-1) or legacy rate-table row that set the amount. */
+  rows: Array<{ rateKey: string; amountCents: number; count: number; totalCents: number }>;
   priorPeriodCreditCents: number;
   taxDueCents: number;
   sourceRecordIds: string[];
@@ -51,6 +52,7 @@ function originalRdfEvidence(value: unknown): Array<{
 
 type RdfSource = {
   id: string; status: string; amountCents: number | null; rateId: string | null;
+  ruleVersionId: string | null;
   filingPeriodId: string | null;
   creditAppliedPeriodId: string | null;
   customerRefundedAt: Date | null; customerRefundRef: string | null;
@@ -95,19 +97,23 @@ export async function buildRdfPacketInTx(tx: Tx, periodId: string): Promise<RdfP
       deliveredOn: { gte: period.periodStart, lt: endExclusive },
     },
     select: {
-      id: true, status: true, amountCents: true, rateId: true, filingPeriodId: true,
+      id: true, status: true, amountCents: true, rateId: true, ruleVersionId: true,
+      filingPeriodId: true,
       collectedFromCustomer: true, invoiceLineId: true,
     },
     orderBy: [{ deliveredOn: "asc" }, { id: "asc" }],
   });
   const blockers: string[] = [];
-  const rows = new Map<string, { rateId: string; amountCents: number; count: number; totalCents: number }>();
+  const rows = new Map<string, { rateKey: string; amountCents: number; count: number; totalCents: number }>();
   const sourceRecordIds: string[] = [];
   const sourceAmountCents: Record<string, number> = {};
   const sourceCollectedFromCustomer: Record<string, boolean> = {};
   for (const record of sources) {
     if (record.status === "NOT_DUE") continue;
-    if (record.status !== "READY" || !record.rateId ||
+    // TFA-1: a READY record carries the rule version that set its amount;
+    // rows recorded before TFA-1 carry the legacy rate-table id.
+    const rateKey = record.ruleVersionId ?? record.rateId;
+    if (record.status !== "READY" || !rateKey ||
       record.amountCents === null || record.amountCents < 0) {
       blockers.push("Delivery fee " + record.id + " is awaiting a confirmed decision, date or rate.");
       continue;
@@ -119,9 +125,9 @@ export async function buildRdfPacketInTx(tx: Tx, periodId: string): Promise<RdfP
     sourceRecordIds.push(record.id);
     sourceAmountCents[record.id] = record.amountCents;
     sourceCollectedFromCustomer[record.id] = record.collectedFromCustomer === true;
-    const key = record.rateId + ":" + record.amountCents;
+    const key = rateKey + ":" + record.amountCents;
     const current = rows.get(key) ?? {
-      rateId: record.rateId, amountCents: record.amountCents, count: 0, totalCents: 0,
+      rateKey, amountCents: record.amountCents, count: 0, totalCents: 0,
     };
     current.count++;
     current.totalCents += record.amountCents;
@@ -158,7 +164,7 @@ export async function buildRdfPacketInTx(tx: Tx, periodId: string): Promise<RdfP
       OR: [{ creditAppliedPeriodId: null }, { creditAppliedPeriodId: periodId }],
     },
     select: {
-      id: true, status: true, amountCents: true, rateId: true,
+      id: true, status: true, amountCents: true, rateId: true, ruleVersionId: true,
       filingPeriodId: true, creditAppliedPeriodId: true,
       customerRefundedAt: true, customerRefundRef: true, collectedFromCustomer: true,
       invoiceLineId: true, deliveredOn: true,
@@ -212,7 +218,7 @@ export async function buildRdfPacketInTx(tx: Tx, periodId: string): Promise<RdfP
   }
   return {
     version: 1, periodId, deliveries: sourceRecordIds.length,
-    rows: [...rows.values()].sort((a, b) => a.amountCents - b.amountCents || a.rateId.localeCompare(b.rateId)),
+    rows: [...rows.values()].sort((a, b) => a.amountCents - b.amountCents || a.rateKey.localeCompare(b.rateKey)),
     priorPeriodCreditCents,
     taxDueCents: Math.max(0, charged - priorPeriodCreditCents),
     sourceRecordIds, sourceAmountCents, sourceCollectedFromCustomer,
