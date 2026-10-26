@@ -31,8 +31,6 @@ describe.skipIf(!enabled)("BA-1 nightly recording on disposable PostgreSQL",()=>
    {id:eligible,assetNumber:"BA1-AUTO-"+tag,applianceTypeId:typeId,
     acquisitionCostCents:12000,purchaseDate:new Date("2025-12-15T07:00:00.000Z"),status:"AVAILABLE"},
    {id:noCost,assetNumber:"BA1-MISSING-"+tag,applianceTypeId:typeId,status:"AVAILABLE"},
-   {id:longAsset,assetNumber:"BA1-LONG-"+tag,applianceTypeId:longType,
-    purchaseDate:new Date("1990-01-15T07:00:00Z"),acquisitionCostCents:36,status:"AVAILABLE"},
   ]});
  });
  afterAll(async()=>{
@@ -67,6 +65,12 @@ describe.skipIf(!enabled)("BA-1 nightly recording on disposable PostgreSQL",()=>
   const start=new Date("1990-01-01T07:00:00Z");
   await prisma.businessSettings.update({where:{id:"singleton"},data:{booksStartDate:start}});
   try{
+   // Create only in this test; an earlier nightly run must not auto-enroll it
+   // with the later 2026 start date.
+   await prisma.appliance.create({data:{
+    id:longAsset,assetNumber:"BA1-LONG-"+tag,applianceTypeId:longType,
+    purchaseDate:new Date("1990-01-15T07:00:00Z"),acquisitionCostCents:36,status:"AVAILABLE",
+   }});
    const owner=await prisma.user.findFirstOrThrow({where:{role:"OWNER"},select:{id:true}});
    await enrollBookAsset(owner.id,longAsset,"1990-01-15");
    const result=await prisma.$transaction(
