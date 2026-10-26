@@ -1335,3 +1335,13 @@ Settings: `BusinessSettings.feedbackMaxAttachments` (0–3, starting 3) and `fee
 The starting Manager job role gains the new owner/admin `feedback` screen. All four tables are in the backup manifest;
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
+
+## MCP-2 backup-artifact ledger (additive, 2026-10-25)
+
+`BackupArtifact` tracks the protected storage **pathname only**, file hash and size, database migration/revision,
+the source automation run, verification stage, and an optional media-manifest parent link. The database artifact and
+its latest complete media pair must be retained even when past the configured 30-day default. Never store Blob tokens,
+signed URLs or private image payloads in this table. It participates in the backup manifest and disaster restore;
+restored ledger rows are historical facts, not permission to use the restored store or automatically restart a job.
+`BusinessSettings.backupRetentionDays` defaults to 30 (owner range 7–365).
+Migration: `20261026010000_mcp2_backup_artifacts`; additive with no data rewrite.

@@ -86,6 +86,12 @@ vi.mock("../src/lib/prisma", () => ({
     },
     // MCP-10a: no app-feedback screenshots in these cases.
     feedbackAttachment: { findMany: vi.fn(async () => [...state.feedback]) },
+    backupArtifact: {
+      findUnique: vi.fn(async ({ where }: { where: { id: string } }) => ({
+        id: where.id, kind: "DATABASE", state: "VERIFIED", pathname: where.id,
+      })),
+      create: vi.fn(async ({ data }: { data: unknown }) => ({ id: "synthetic-media-ledger", ...data as object })),
+    },
   },
 }));
 
@@ -224,6 +230,8 @@ beforeEach(() => {
   process.env.PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN = PRIVATE_TOKEN;
   process.env.PRIVATE_PHOTO_BLOB_STORE_ID = "store_test";
   process.env.BLOB_READ_WRITE_TOKEN = BACKUP_TOKEN;
+  process.env.BACKUP_BLOB_STORE_ID = "store_backup";
+  process.env.BACKUP_BLOB_READ_WRITE_TOKEN = BACKUP_TOKEN;
   delete process.env.VERCEL;
   delete process.env.VERCEL_ENV;
   installBlobFake();
@@ -243,6 +251,7 @@ describe("Batch F private-media recovery", () => {
     );
 
     const result = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-1.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-1.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });
@@ -286,6 +295,7 @@ describe("Batch F private-media recovery", () => {
     seed(PRIVATE_TOKEN, shot, "screenshot", "image/webp");
     state.feedback.push({ id: "fa01", pathname: shot });
     const result = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-2.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-2.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });
@@ -301,6 +311,7 @@ describe("Batch F private-media recovery", () => {
     state.photos.push({ id: "photo-versioned", url: sourceUrl });
 
     const first = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-2.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-2.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });
@@ -308,6 +319,7 @@ describe("Batch F private-media recovery", () => {
 
     seed(PRIVATE_TOKEN, sourcePath, "version-two");
     const second = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-07-1.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-07-1.json`,
       now: new Date("2026-10-07T09:00:00.000Z"),
     });
@@ -353,6 +365,7 @@ describe("Batch F private-media recovery", () => {
     const sourceUrl = seed(PRIVATE_TOKEN, sourcePath, "customer-private");
     state.photos.push({ id: "photo-private", url: sourceUrl });
     const backup = await runMediaInventoryAndCopy({
+      databaseArtifactId: "backups/2026-10-06-private.json",
       databaseBackupUrl: `https://${BACKUP_HOST}/backups/2026-10-06-private.json`,
       now: new Date("2026-10-06T09:00:00.000Z"),
     });

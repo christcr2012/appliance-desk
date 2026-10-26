@@ -1,3 +1,11 @@
+## October 25 — MCP-2 backup reliability implementation in progress
+
+Separate sandbox worktree `ai/chatgpt/mcp-2-backup-reliability` from main after merged security PR #609.
+The environment workaround is verified: `npm ci`, schema validation, typecheck and 20 focused synthetic tests passed.
+Backup ledger, private destination and media pairing are **partially implemented locally, not published**.
+Full MCP-2 acceptance still needs owner-only retry and UI, disposable Postgres/restore tests, exhaustive failures, CI and review.
+Next: resume the named sandbox worktree without overwriting other work; finish the entire card before publishing.
+
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 
 Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.

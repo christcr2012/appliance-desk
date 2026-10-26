@@ -11,7 +11,7 @@ export type RunAutomationInput = {
   ruleKey: string;
   now?: Date;
   budgetSeconds?: number;
-  work: () => Promise<{ counts: Record<string, number> }>;
+  work: (context: { runId: string }) => Promise<{ counts: Record<string, number> }>;
 };
 
 export type RunAutomationResult = {
@@ -174,7 +174,7 @@ export async function runAutomation(input: RunAutomationInput): Promise<RunAutom
   }
 
   try {
-    const result = await input.work();
+    const result = await input.work({ runId: run.id });
     const counts = validateCounts(result.counts);
     await prisma.automationRun.update({
       where: { id: run.id },

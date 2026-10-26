@@ -1,5 +1,8 @@
 import { BACKUP_TABLES } from "./manifest";
-import { put, list, del } from "@vercel/blob";
+import { put } from "@vercel/blob";
+import { getBackupStore } from "@/lib/photo-storage";
+import { backupDigest, verifyBackupReadback, pruneBackups, backupPruneAttention, backupPruneRecovered } from "./artifacts";
+import { failureExplanation, type FailureCode } from "@/domains/automation/failures";
 import { prisma } from "@/lib/prisma";
 import { deliverMessage } from "@/domains/messaging/deliver";
 import { getBusinessSettings } from "@/domains/settings";
@@ -7,7 +10,7 @@ import { isNonProductionDeployment } from "@/lib/deployment-safety";
 import { businessDateKey } from "@/lib/business-date";
 
 const BACKUP_PREFIX = "backups/";
-const RETENTION_DAYS = 30;
+
 
 export type DatabaseBackupPayload = {
   formatVersion: 2;
@@ -19,11 +22,22 @@ export type DatabaseBackupPayload = {
 
 export type BackupResult = {
   ok: boolean;
+  artifactId?: string;
   url?: string;
   tableCounts?: Record<string, number>;
   prunedCount?: number;
-  error?: string;
+  pruneFailed?: number;
+  captureMs?: number;
+  bytes?: number;
+  failureCode?: FailureCode;
+  failureStage?: "config" | "capture" | "upload" | "readback";
+  error?: string; // fixed allowlisted explanation, never raw provider or database text
 };
+
+function stageFailure(code: FailureCode, stage: NonNullable<BackupResult["failureStage"]>): BackupResult {
+  return { ok: false, failureCode: code, failureStage: stage,
+    error: failureExplanation(code).explain };
+}
 
 type BackupReadHook = (input: { table: string; index: number }) => void | Promise<void>;
 let backupReadHookForTests: BackupReadHook | null = null;
@@ -96,42 +110,85 @@ export async function buildDatabaseBackupSnapshot(): Promise<{
   );
 }
 
-/** Exports every business-critical table to one private, restorable JSON file. */
-export async function exportDatabaseBackup(): Promise<BackupResult> {
-  if (isNonProductionDeployment()) {
-    return { ok: false, error: "Backups are disabled outside production deployments." };
-  }
+/** Exports one consistent business snapshot to a verified, private and paired recovery artifact.
+ * Never treat successful upload as successful readback, or prune failure as capture failure.
+ */
+export async function exportDatabaseBackup(input: { runId?: string } = {}): Promise<BackupResult> {
+  if (isNonProductionDeployment()) return stageFailure("CONFIG_MISSING", "config");
+  const store = getBackupStore();
+  if (!store) return stageFailure("CONFIG_MISSING", "config");
+
+  const captureStartedAt = Date.now();
+  let snapshot: Awaited<ReturnType<typeof buildDatabaseBackupSnapshot>>;
   try {
-    const snapshot = await buildDatabaseBackupSnapshot();
-    const filename = `${BACKUP_PREFIX}${snapshot.payload.exportedAt.slice(0, 10)}-${Date.now()}.json`;
-    const blob = await put(filename, JSON.stringify(snapshot.payload), {
+    snapshot = await buildDatabaseBackupSnapshot();
+  } catch {
+    return stageFailure("BACKUP_CAPTURE", "capture");
+  }
+  const captureMs = Date.now() - captureStartedAt;
+  const bytes = Buffer.from(JSON.stringify(snapshot.payload), "utf8");
+  const digest = backupDigest(bytes);
+  const filename = `${BACKUP_PREFIX}${snapshot.payload.exportedAt.slice(0, 10)}-${Date.now()}.json`;
+  let url: string;
+  try {
+    const blob = await put(filename, bytes, {
       access: "private",
+      token: store.token,
       contentType: "application/json",
       addRandomSuffix: false,
     });
-
-    const prunedCount = await pruneOldBackups();
-    return { ok: true, url: blob.url, tableCounts: snapshot.tableCounts, prunedCount };
-  } catch (error) {
-    console.error("[backup] Export failed", error);
-    return { ok: false, error: error instanceof Error ? error.message : "Unknown error" };
+    const parsed = new URL(blob.url);
+    if (blob.pathname !== filename || parsed.protocol !== "https:" ||
+        parsed.hostname !== `${store.storeId.slice(6).toLowerCase()}.private.blob.vercel-storage.com` ||
+        decodeURIComponent(parsed.pathname) !== `/${filename}` ||
+        parsed.search || parsed.hash || parsed.username || parsed.password || parsed.port) {
+      return stageFailure("BACKUP_UPLOAD", "upload");
+    }
+    url = blob.url;
+  } catch {
+    return stageFailure("BACKUP_UPLOAD", "upload");
   }
-}
-
-async function pruneOldBackups(): Promise<number> {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - RETENTION_DAYS);
-  const cutoffPrefix = cutoff.toISOString().slice(0, 10);
-
-  const { blobs } = await list({ prefix: BACKUP_PREFIX });
-  const stale = blobs.filter((blob) => {
-    const name = blob.pathname.slice(BACKUP_PREFIX.length);
-    return name.slice(0, 10) < cutoffPrefix;
+  const artifact = await prisma.backupArtifact.create({
+    data: {
+      kind: "DATABASE", state: "UPLOADED_UNVERIFIED", pathname: filename,
+      formatVersion: snapshot.payload.formatVersion,
+      runId: input.runId, migrationId: snapshot.payload.migrationId,
+      appRevision: snapshot.payload.appVersion, sizeBytes: bytes.length,
+      sha256: digest, tableCounts: snapshot.tableCounts,
+    },
   });
 
-  if (stale.length === 0) return 0;
-  await del(stale.map((blob) => blob.url));
-  return stale.length;
+  let verified = false;
+  try {
+    verified = await verifyBackupReadback(filename, store.token, digest);
+  } catch {
+    verified = false;
+  }
+  if (!verified) {
+    await prisma.backupArtifact.update({
+      where: { id: artifact.id },
+      data: { state: "FAILED", failureStage: "READBACK" },
+    });
+    return { ...stageFailure("BACKUP_READBACK", "readback"), artifactId: artifact.id, bytes: bytes.length, captureMs };
+  }
+  await prisma.backupArtifact.update({
+    where: { id: artifact.id },
+    data: { state: "VERIFIED", verifiedAt: new Date() },
+  });
+
+  let prunedCount = 0, pruneFailed = 0;
+  try {
+    const settings = await prisma.businessSettings.findUniqueOrThrow({
+      where: { id: "singleton" }, select: { backupRetentionDays: true },
+    });
+    prunedCount = await pruneBackups(new Date(), settings.backupRetentionDays, store.token);
+    await backupPruneRecovered();
+  } catch {
+    pruneFailed = 1;
+    await backupPruneAttention();
+  }
+  return { ok: true, artifactId: artifact.id, url, tableCounts: snapshot.tableCounts,
+    captureMs, bytes: bytes.length, prunedCount, pruneFailed };
 }
 
 export async function sendBackupFailureAlertToChris(result: BackupResult): Promise<void> {
@@ -152,7 +209,7 @@ export async function sendBackupFailureAlertToChris(result: BackupResult): Promi
       subject: "Appliance Desk: today's automatic backup failed",
       // MCP-1: never the raw error text (it can carry provider replies or private details). The reason and a
       // reference number are on the System health page.
-      text: `The daily backup of your business data didn't complete today.\n\nThe reason and a reference number are on the System health page (Desk → System health → Daily backup).\n\nYour data itself is safe and untouched — this only means today's extra safety copy wasn't made. Neon (your database host) still keeps its own automatic recovery point, so nothing is at risk yet, but if this keeps happening it's worth having someone look into it.`,
+      text: `The daily backup of your business data didn't complete today.\n\nThe reason and a reference number are on the System health page (Desk → System health → Daily backup).\n\nA verified extra safety copy was not made today. Existing recovery copies have not been changed by this report. Check the reason in System health and try again when private storage is ready.`,
     }),
   });
   if (!["ACCEPTED", "DELIVERED", "NOT_SENT"].includes(delivery.state)) {

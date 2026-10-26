@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Independent daily backup (Task flagged by the 2026-09-29 audit,
 // docs/ROADMAP.md) — see src/domains/backup/index.ts.
@@ -7,11 +7,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const putMock = vi.fn();
 const listMock = vi.fn();
 const delMock = vi.fn();
+const getMock = vi.fn();
 
 vi.mock("@vercel/blob", () => ({
   put: (...args: unknown[]) => putMock(...args),
   list: (...args: unknown[]) => listMock(...args),
   del: (...args: unknown[]) => delMock(...args),
+  get: (...args: unknown[]) => getMock(...args),
 }));
 
 // Derive fixtures independently from the schema, not the export's table list.
@@ -63,11 +65,34 @@ beforeEach(() => {
       .fn()
       .mockResolvedValue([{ id: table === "customer" ? "cust-1" : `${table}-1` }]);
   }
+  vi.stubEnv("APP_ENV", "");
+  vi.stubEnv("VERCEL", "");
+  vi.stubEnv("BACKUP_BLOB_STORE_ID", "store_SyntheticBackup");
+  vi.stubEnv("BACKUP_BLOB_READ_WRITE_TOKEN", ["vercel","blob","rw","SyntheticBackup","fake"].join("_"));
+  vi.stubEnv("BLOB_READ_WRITE_TOKEN", ["vercel","blob","rw","SyntheticPublic","fake"].join("_"));
+  const ledger = prismaMock.backupArtifact! as unknown as Record<string, ReturnType<typeof vi.fn>>;
+  ledger.create = vi.fn(async ({data}: {data: unknown}) => ({ id:"artifact-fixture", ...data as object }));
+  ledger.update = vi.fn(async ({data}: {data: unknown}) => ({ id:"artifact-fixture", ...data as object }));
+  ledger.findFirst = vi.fn(async () => null);
+  ledger.findUnique = vi.fn(async () => null);
+  ledger.count = vi.fn(async () => 0);
+  ledger.findMany = vi.fn(async (query?: unknown) => query
+    ? [] : [{ id:"backupArtifact-1" }]);
+  (prismaMock.businessSettings! as unknown as Record<string, ReturnType<typeof vi.fn>>).findUniqueOrThrow =
+    vi.fn(async () => ({ backupRetentionDays: 30 }));
   getBusinessSettingsMock.mockResolvedValue({ publicEmail: "chris@example.com" });
   deliverMessageMock.mockResolvedValue({ state: "ACCEPTED", deliveryId: "backup-alert", providerMessageId: "msg-1" });
-  listMock.mockResolvedValue({ blobs: [] });
-  putMock.mockResolvedValue({ url: "https://blob.example.com/backups/2026-09-29-123.json" });
+  listMock.mockResolvedValue({ blobs: [], hasMore: false });
+  putMock.mockImplementation(async (pathname: string) => ({
+    pathname, url: `https://syntheticbackup.private.blob.vercel-storage.com/${pathname}`,
+  }));
+  getMock.mockImplementation(async (pathname: string) => ({
+    statusCode: 200, blob: { pathname },
+    stream: new Blob([putMock.mock.calls.at(-1)?.[1] as Uint8Array]).stream(),
+  }));
 });
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("backup schema policy", () => {
   it("requires an explicit export or exclusion decision for every schema model", async () => {
@@ -86,18 +111,19 @@ describe("exportDatabaseBackup", () => {
     const result = await exportDatabaseBackup();
 
     expect(result.ok).toBe(true);
-    expect(result.url).toBe("https://blob.example.com/backups/2026-09-29-123.json");
+    expect(result.url).toMatch(/^https:\/\/syntheticbackup\.private\.blob\.vercel-storage\.com\/backups\//);
     expect(result.tableCounts?.customer).toBe(1);
 
     for (const table of BACKUP_TABLES) {
-      expect(prismaMock[table]!.findMany).toHaveBeenCalledTimes(1);
+      expect(prismaMock[table]!.findMany).toHaveBeenCalled();
     }
 
     expect(putMock).toHaveBeenCalledTimes(1);
-    const [filename, payload, options] = putMock.mock.calls[0] as [string, string, Record<string, unknown>];
+    const [filename, payload, options] = putMock.mock.calls[0] as [string, Uint8Array, Record<string, unknown>];
     expect(filename).toMatch(/^backups\/\d{4}-\d{2}-\d{2}-\d+\.json$/);
     expect(options.access).toBe("private");
-    const parsed = JSON.parse(payload);
+    expect(options.token).toBe(["vercel","blob","rw","SyntheticBackup","fake"].join("_"));
+    const parsed = JSON.parse(Buffer.from(payload).toString("utf8"));
     expect(parsed.formatVersion).toBe(2);
     expect(parsed.migrationId).toBe("20261008010000_batch_e_messaging");
     expect(typeof parsed.appVersion).toBe("string");
@@ -119,19 +145,13 @@ describe("exportDatabaseBackup", () => {
     }
   });
 
-  it("deletes backups older than the retention window and reports how many", async () => {
-    listMock.mockResolvedValue({
-      blobs: [
-        { pathname: "backups/2020-01-01-1.json", url: "https://blob.example.com/backups/2020-01-01-1.json" },
-        { pathname: "backups/2099-01-01-2.json", url: "https://blob.example.com/backups/2099-01-01-2.json" },
-      ],
-    });
-
+  it("keeps a verified private copy when pruning legacy paths is not justified", async () => {
+    listMock.mockResolvedValue({ blobs: [{ pathname: "backups/2020-01-01-old.json" }], hasMore: false });
     const { exportDatabaseBackup } = await import("@/domains/backup");
     const result = await exportDatabaseBackup();
-
-    expect(result.prunedCount).toBe(1);
-    expect(delMock).toHaveBeenCalledWith(["https://blob.example.com/backups/2020-01-01-1.json"]);
+    expect(result.ok).toBe(true);
+    expect(result.prunedCount).toBe(0);
+    expect(delMock).not.toHaveBeenCalled();
   });
 
   it("returns ok: false with the error message when a table read fails, without throwing", async () => {
@@ -141,13 +161,17 @@ describe("exportDatabaseBackup", () => {
     const result = await exportDatabaseBackup();
 
     expect(result.ok).toBe(false);
-    expect(result.error).toBe("connection reset");
+    expect(result.failureCode).toBe("BACKUP_CAPTURE");
+    expect(result.failureStage).toBe("capture");
+    expect(JSON.stringify(result)).not.toContain("connection reset");
     expect(putMock).not.toHaveBeenCalled();
   });
   it("does not upload or prune when a newly covered table cannot be read", async () => {
     prismaMock.purchaseOrderLineItem!.findMany = vi.fn().mockRejectedValue(new Error("purchase order read failed"));
     const { exportDatabaseBackup } = await import("@/domains/backup");
-    expect(await exportDatabaseBackup()).toEqual({ ok: false, error: "purchase order read failed" });
+    const failure = await exportDatabaseBackup();
+    expect(failure).toMatchObject({ ok: false, failureCode: "BACKUP_CAPTURE", failureStage: "capture" });
+    expect(JSON.stringify(failure)).not.toContain("purchase order read failed");
     expect(putMock).not.toHaveBeenCalled();
     expect(listMock).not.toHaveBeenCalled();
     expect(delMock).not.toHaveBeenCalled();

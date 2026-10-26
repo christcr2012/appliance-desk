@@ -49,6 +49,12 @@ export function renderSystemIssue(input: SystemIssueInput): RenderedIssue {
       detail = `Rule ${input.ruleKey}; run ${input.runId}; started ${date(input.startedAt)}; class ${input.errorName}; code ${input.failure?.code ?? input.errorCode ?? "UNCLASSIFIED"}.` +
         (input.failure ? " " + failureExplanation(input.failure.code).explain : "");
       break;
+    case "BACKUP_RETENTION_ATTENTION":
+      fingerprint = "backup-prune";
+      severity = "MEDIUM";
+      summary = "Old backup copies need tidying up.";
+      detail = "Today's verified database backup is safe. Removing old copies didn't finish; storage may grow until this is fixed.";
+      break;
     case "AUTOMATION_STALE":
       id(input.ruleKey); date(input.dueAt);
       if (!AUTOMATION_RULES.some((rule) => rule.ruleKey === input.ruleKey)) throw new Error("Unrecognized automation rule");
