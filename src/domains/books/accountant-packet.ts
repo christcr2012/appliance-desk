@@ -17,7 +17,11 @@ export async function buildMonthPacket(actor:BooksActor,key:string):Promise<Mont
  monthKey(key);
  if(key>lastCompletedMonth())throw new Error("Choose a completed month.");
  await prisma.$transaction(tx=>assertActiveTeamActor(tx,actor.id,["OWNER","ADMIN"]));
- const start=businessDateFromKey(key+"-01")!,end=businessDateFromKey(nextMonth(key)+"-01")!;
+ const first=businessDateFromKey(key+"-01")!,end=businessDateFromKey(nextMonth(key)+"-01")!;
+ const settings=await prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{booksStartDate:true}});
+ if(!settings.booksStartDate)throw new Error("Start your books before exporting a report.");
+ if(key<businessDateKey(settings.booksStartDate).slice(0,7))throw new Error("This month predates your Books start date.");
+ const start=settings.booksStartDate>first?settings.booksStartDate:first;
  const last=lastBusinessDay(key);
  const entries=await prisma.journalEntry.findMany({where:{entryDate:{gte:start,lt:end}},
   orderBy:[{entryDate:"asc"},{entryNumber:"asc"}],
@@ -29,7 +33,7 @@ export async function buildMonthPacket(actor:BooksActor,key:string):Promise<Mont
    [businessDateKey(e.entryDate),e.entryNumber,e.sourceType,
     line.ledgerAccount.name,line.debitCents,line.creditCents,e.memo].map(csv).join(","))),
  ].join("\n")+"\n";
- const report=await profitAndLoss(actor.id,{from:key+"-01",to:businessDateKey(last),basis:"ACCRUAL"});
+ const report=await profitAndLoss(actor.id,{from:businessDateKey(start),to:businessDateKey(last),basis:"ACCRUAL"});
  const profitCsv=[
   ["Month","Account","Kind","Amount cents"].map(csv).join(","),
   ...report.summary.rows.map(row=>[key,row.name,row.type,row.amountCents].map(csv).join(",")),

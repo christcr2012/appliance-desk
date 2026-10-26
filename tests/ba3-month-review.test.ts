@@ -27,8 +27,9 @@ describe("BA-3 month reviews and source-backed receipt evidence",()=>{
   expect(assetDueForMonth(asset({placedInServiceOn:d("2026-03-17")}),"2026-02")).toBe(false);
  });
  it("does not demand depreciation after retirement or full depreciation",()=>{
-  expect(assetDueForMonth(asset({retiredOn:d("2026-02-16")}),"2026-02")).toBe(true);
+  expect(assetDueForMonth(asset({retiredOn:d("2026-02-16")}),"2026-02")).toBe(false);
   expect(assetDueForMonth(asset({retiredOn:d("2026-02-16")}),"2026-03")).toBe(false);
+  expect(assetDueForMonth(asset({retiredOn:d("2026-04-01")}),"2026-03")).toBe(true);
   expect(assetDueForMonth(asset({fullyDepreciatedOn:d("2026-02-28")}),"2026-03")).toBe(false);
  });
  it("requires a concrete reason whenever someone attests that no receipt exists",()=>{

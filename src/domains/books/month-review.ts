@@ -16,7 +16,7 @@ export function assetDueForMonth(asset:{
 },key:string):boolean{
  monthKey(key);
  const first=nextMonth(businessDateKey(asset.placedInServiceOn).slice(0,7));
- if(key<first || asset.retiredOn && key>businessDateKey(asset.retiredOn).slice(0,7) ||
+ if(key<first || asset.retiredOn && key>=businessDateKey(asset.retiredOn).slice(0,7) ||
   asset.fullyDepreciatedOn&&key>businessDateKey(asset.fullyDepreciatedOn).slice(0,7))return false;
  let due=first;
  for(let i=1;i<asset.lifeMonths;i++)due=nextMonth(due);
@@ -94,7 +94,9 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
   count:missing.length,detail:missing.length
    ?missing.length+" appliances are missing this month's depreciation entry."
    :"Every appliance due for depreciation has its journal."};
- const profit=await profitAndLoss(actor.id,{from:key+"-01",
+ const profitStart=key===businessDateKey(settings.booksStartDate).slice(0,7)
+  ?businessDateKey(settings.booksStartDate):key+"-01";
+ const profit=await profitAndLoss(actor.id,{from:profitStart,
   to:businessDateKey(last),basis:"ACCRUAL",
   compare:key>businessDateKey(settings.booksStartDate).slice(0,7)?"PREVIOUS_PERIOD":null});
  const categories=new Map<string,number>();

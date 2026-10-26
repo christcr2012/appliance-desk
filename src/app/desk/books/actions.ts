@@ -8,6 +8,7 @@ import {
 } from "@/domains/books/management";
 import { postPending } from "@/domains/books/post";
 import { runBooksAutopilot } from "@/domains/books/autopilot";
+import { monthKey } from "@/domains/books/depreciation";
 import { sendMonthToAccountant, saveAccountantReviewSettings } from "@/domains/books/accountant-packet";
 import type { LedgerAccountType, ExportTarget } from "@prisma/client";
 
@@ -123,7 +124,7 @@ function redirectToReviewedMonth(key:string,message:string):never{
 }
 function monthFromForm(form:FormData):string{
  const month=str(form,"month");
- if(!/^\\d{4}-(0[1-9]|1[0-2])$/.test(month))throw new Error("Choose a valid accounting month.");
+ monthKey(month);
  return month;
 }
 export async function lockReviewedMonthAction(form:FormData){
