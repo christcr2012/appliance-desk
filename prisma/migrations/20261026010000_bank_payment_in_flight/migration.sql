@@ -48,8 +48,6 @@ ALTER TABLE "BankPaymentInFlight" ADD CONSTRAINT "BankPaymentInFlight_invoiceId_
 -- AddForeignKey
 ALTER TABLE "BankPaymentInFlight" ADD CONSTRAINT "BankPaymentInFlight_agreementId_fkey" FOREIGN KEY ("agreementId") REFERENCES "RentalAgreement"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- A row always names a bill or a rental agreement, and the slow-payment setting keeps the owner range the save function enforces.
-ALTER TABLE "BankPaymentInFlight" ADD CONSTRAINT "BankPaymentInFlight_has_target"
-  CHECK ("invoiceId" IS NOT NULL OR "agreementId" IS NOT NULL);
+-- The slow-payment setting keeps the owner range the save function enforces.
 ALTER TABLE "BusinessSettings" ADD CONSTRAINT "BusinessSettings_bankPaymentSlowBusinessDays_range"
   CHECK ("bankPaymentSlowBusinessDays" >= 2 AND "bankPaymentSlowBusinessDays" <= 20);

@@ -94,6 +94,7 @@ describe("applyLateFees", () => {
             create: (...args: unknown[]) => invoiceLineItemCreate(...args),
           },
           auditLog: { create: (...args: unknown[]) => auditLogCreate(...args) },
+          bankPaymentInFlight: { count: async () => 0 },
         }),
     );
     queryRaw.mockReset().mockImplementation(async (strings: TemplateStringsArray) => {
