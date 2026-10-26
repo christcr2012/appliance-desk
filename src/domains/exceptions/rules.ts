@@ -39,6 +39,7 @@ export type ExceptionCategory =
   | "RETAIL_DELIVERY_FEE"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
+  | "BANK_PAYMENT_SLOW"
   | "HELD_PAYMENT_DECISION"
   | "DEPOSIT_DECISION"
   | "NEW_LEAD_CONTACT"
@@ -104,6 +105,12 @@ export type ExceptionItem = {
       }
     | {
         type: "APPLY_OFFICIAL_RATE";
+        id: string;
+        label: string;
+      }
+    | {
+        /** BILL-1: record a bank payment Stripe says cleared (id = the in-flight row). */
+        type: "RECORD_BANK_PAYMENT";
         id: string;
         label: string;
       };
@@ -670,6 +677,39 @@ export function pastDueInvoiceException(invoice: {
     dueDateOnly: true,
     amountCents: owedCents,
     since: invoice.dueDate ?? invoice.attentionAt ?? new Date(),
+  };
+}
+
+/**
+ * BILL-1: a bank payment that is taking longer than the owner's number of banking days, or that Stripe says cleared
+ * while our books do not show it. Never says the customer is late: the customer paid.
+ */
+export function bankPaymentSlowException(row: {
+  id: string;
+  customerId: string | null;
+  invoiceId: string | null;
+  customerName: string;
+  amountCents: number;
+  startedAt: Date;
+  bankingDaysOld: number;
+  settledInStripeAt: Date | null;
+}): ExceptionItem {
+  const amount = `$${(row.amountCents / 100).toFixed(2)}`;
+  const settled = row.settledInStripeAt !== null;
+  return {
+    category: "BANK_PAYMENT_SLOW",
+    severity: settled ? "high" : "medium",
+    title: settled
+      ? `${row.customerName}'s bank payment cleared but isn't recorded — ${amount}`
+      : `${row.customerName}'s bank payment is taking a while — ${amount}`,
+    detail: settled
+      ? "Stripe says this payment arrived, but it isn't on the bill yet. Use “Record it now”."
+      : `The bank has been confirming this payment for ${row.bankingDaysOld} banking days. Nothing is lost; banks usually take up to 4. Check Stripe if it keeps waiting.`,
+    // The row id in the link gives each payment its own To do identity (snoozing one never hides another).
+    href: `/desk/billing/reconciliation?payment=${encodeURIComponent(row.id)}`,
+    amountCents: row.amountCents,
+    since: row.startedAt,
+    ...(settled ? { action: { type: "RECORD_BANK_PAYMENT" as const, id: row.id, label: "Record it now" } } : {}),
   };
 }
 

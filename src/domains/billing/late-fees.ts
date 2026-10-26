@@ -67,6 +67,11 @@ async function applyLateFeeBatch(
     const locked = rows[0];
     if (!locked || !OPEN_STATUSES.has(locked.status) || !locked.dueDate || !locked.agreementId || locked.lateFeeCents !== 0) continue;
 
+    // BILL-1: never add a fee while the bank is confirming a payment the customer already started. This is a rule, not a
+    // setting, and it is checked here under the bill's row lock: the webhook that opens or reopens such a flag takes the same
+    // lock, so a fee run and a bank payment can never both win (either the fee lands first, or this run sees the open flag).
+    if ((await tx.bankPaymentInFlight.count({ where: { invoiceId: locked.id, clearedAt: null } })) > 0) continue;
+
     const invoice = await tx.invoice.findUniqueOrThrow({
       where: { id: locked.id },
       include: {

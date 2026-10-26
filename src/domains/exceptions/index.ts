@@ -21,6 +21,8 @@ import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-
 import { listUnsignedAgreements } from "./unsigned-agreements";
 import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment, listCleaningNeeded } from "./turning-points-attention";
 import { requireRole } from "@/lib/session";
+import { listBankPaymentSlow } from "./bank-payment-attention";
+import { notInFlightWhere } from "@/domains/billing/in-flight";
 import type { Prisma } from "@prisma/client";
 import {
   APPLIANCE_MAINTENANCE_DUE_DAYS,
@@ -153,6 +155,8 @@ const empty = <T,>(): Promise<Capped<T>> => Promise.resolve({ rows: [], total: 0
 // the customer record's customer-scoped next steps (src/domains/customers/record.ts), so both build the same items.
 export function pastDueTodoWhere(now: Date) {
   return {
+    // BILL-1: no chasing while a bank payment is being confirmed (the customer already paid).
+    ...notInFlightWhere,
     OR: [
       { status: { in: ["DELINQUENT", "PARTIALLY_PAID"] } },
       { status: "OPEN", dueDate: { lt: now } },
@@ -1082,6 +1086,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const cancellationRefundAttention = canViewFinance ? await listCancellationRefundAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const signedDeliveryAttention = canViewFinance ? await listSignedDeliveryAttention(EXCEPTION_CATEGORY_CAP) : { rows: [], total: 0 };
   const noTurningPoints = { rows: [] as ExceptionItem[], total: 0 };
+  const bankPaymentsSlow = canViewFinance ? await listBankPaymentSlow(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const heldPayments = canViewFinance ? await listHeldPaymentAttention(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const depositDecisions = canViewFinance ? await listDepositDecisionAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const newLeadContact = canViewFinance ? await listNewLeadContact(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
@@ -1118,6 +1123,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...cancellationRefundAttention.rows,
     ...signedDeliveryAttention.rows,
     ...heldPayments.rows,
+    ...bankPaymentsSlow.rows,
     ...newLeadContact.rows,
     ...leadFollowUps.rows,
     ...approvedQuotes.rows,
@@ -1174,6 +1180,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["SIGNING_PAYMENT_DUE", signingPaymentAttention],
       ["CANCELLATION_REFUND_DUE", cancellationRefundAttention],
       ["SIGNED_DELIVERY_UNSCHEDULED", signedDeliveryAttention],
+      ["BANK_PAYMENT_SLOW", bankPaymentsSlow],
       ["HELD_PAYMENT_DECISION", heldPayments],
       ["DEPOSIT_DECISION", depositDecisions],
       ["NEW_LEAD_CONTACT", newLeadContact],

@@ -40,6 +40,10 @@ export type BillRow = {
   createdAt: Date;
   /** null = nothing to collect (paid, closed, draft, or an old FAILED status). */
   payPath: PayPath | null;
+  /** BILL-1: the bank is confirming a payment for this bill. Still owed; not money received. */
+  beingConfirmed: boolean;
+  /** BILL-1: the bank payment being confirmed (the earliest open one), for "$X by bank · started Oct 22". */
+  confirming: { amountCents: number; startedAt: Date } | null;
 };
 
 export const BILL_PAGE_SIZE = 50;
@@ -67,6 +71,11 @@ const ROW_SELECT = {
   saleKind: true,
   stripeInvoiceId: true,
   lineItems: { select: { description: true }, orderBy: [{ createdAt: "asc" as const }, { id: "asc" as const }], take: 1 },
+  bankPaymentsInFlight: {
+    where: { clearedAt: null },
+    select: { amountCents: true, startedAt: true },
+    orderBy: [{ startedAt: "asc" as const }, { id: "asc" as const }],
+  },
   customer: {
     select: {
       companyName: true,
@@ -107,6 +116,10 @@ function toRow(b: Selected): BillRow {
     autopay: b.customer.stripeDefaultPaymentMethodId != null,
     createdAt: b.createdAt,
     payPath: payPathFor({ status: b.status, owedCents, stripeInvoiceId: b.stripeInvoiceId, saleKind: b.saleKind }),
+    beingConfirmed: b.bankPaymentsInFlight.length > 0 && owedCents > 0,
+    confirming: b.bankPaymentsInFlight.length > 0 && owedCents > 0
+      ? { amountCents: b.bankPaymentsInFlight.reduce((sum, row) => sum + row.amountCents, 0), startedAt: b.bankPaymentsInFlight[0]!.startedAt }
+      : null,
   };
 }
 
@@ -304,6 +317,6 @@ export async function getBillTotals(params: BillsParams, now = new Date()): Prom
     _sum: { amountDueCents: true, amountPaidCents: true },
   });
   const owed = (result._sum.amountDueCents ?? 0) - (result._sum.amountPaidCents ?? 0);
-  const owing = params.status === "open" || params.status === "past-due";
+  const owing = params.status === "open" || params.status === "past-due" || params.status === "being-confirmed";
   return { count: result._count._all, owedCents: owing ? Math.max(0, owed) : 0 };
 }

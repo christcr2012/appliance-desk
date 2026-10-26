@@ -1,3 +1,4 @@
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import type Stripe from "stripe";
 import { processSigningCheckoutEvent } from "./signing-payment-settlement";
 import { isLocalInvoiceSession, recordLocalInvoiceCheckoutFailure, recordLocalInvoiceCheckoutPayment } from "./local-invoice-checkout";
@@ -21,6 +22,15 @@ import {
   MissingWebhookEvidenceError,
   type WebhookEvidence,
 } from "./webhook-evidence";
+import {
+  attachInFlightRowsToBill,
+  clearRowForFailedInvoice,
+  clearRowsForPaidInvoice,
+  handlePaymentIntentEnded,
+  handlePaymentIntentProcessing,
+  onLocalCheckoutAsyncResult,
+  onLocalCheckoutUnpaid,
+} from "./in-flight-writers";
 import { appliedBalanceCreditCents, creditLinesForAppliedBalance } from "./applied-credit-lines";
 import { LATE_DELIVERY_CREDIT_SOURCE } from "./pickup-billing";
 import {
@@ -342,6 +352,7 @@ async function recordPaidInvoice(
   if (recorded && (recorded.agreementId !== agreementId || recorded.customerId !== customerId)) {
     throw new Error("Stripe invoice is already recorded for another agreement/customer");
   }
+  if (recorded) await attachInFlightRowsToBill(db, stripeInvoice.id, recorded.id);
   if (recorded?.status === "PAID") return;
   const targetInvoiceId = existingInvoiceId ?? recorded?.id;
 
@@ -414,6 +425,9 @@ async function recordPaidInvoice(
           stripeInvoiceId: stripeInvoice.id,
         },
       });
+
+  // BILL-1: a bank payment that was being confirmed before this bill existed now belongs to it.
+  await attachInFlightRowsToBill(db, stripeInvoice.id, invoice.id);
 
   const mirrored = await mirrorStripeInvoiceLines(
     db,
@@ -682,10 +696,13 @@ async function handleCheckoutSessionCompleted(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
+  event: Stripe.Event,
 ): Promise<void> {
   assertNoUnsettledW22Checkout(session);
   if (isLocalInvoiceSession(session)) {
     await recordLocalInvoiceCheckoutPayment(db, evidence, session);
+    // BILL-1: a bank payment the customer started but the bank has not confirmed yet is flagged "being confirmed".
+    await onLocalCheckoutUnpaid(db, evidence, session, event);
     return;
   }
   const estimateId = session.metadata?.estimateId;
@@ -707,6 +724,9 @@ async function handleCheckoutSessionCompleted(
       select: { customerId: true },
     });
     await recordPaidInvoice(db, evidence, stripeInvoice, agreementId, agreement.customerId);
+    // BILL-1: Stripe says this invoice is paid and it is now recorded, so any bank payment being confirmed for it is done.
+    const recordedBill = await db.invoice.findUnique({ where: { stripeInvoiceId: invoiceId }, select: { id: true } });
+    await clearRowsForPaidInvoice(db, invoiceId, recordedBill?.id ?? null, event);
     return;
   }
 
@@ -749,6 +769,7 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   session: Stripe.Checkout.Session,
+  event: Stripe.Event,
 ): Promise<void> {
   const paymentIntentId =
     typeof session.payment_intent === "string"
@@ -759,6 +780,7 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
   assertNoUnsettledW22Checkout(session);
   if (isLocalInvoiceSession(session)) {
     await recordLocalInvoiceCheckoutPayment(db, evidence, session);
+    await onLocalCheckoutAsyncResult(db, session, event, "SUCCEEDED");
     return;
   }
   const estimateId = session.metadata?.estimateId;
@@ -796,10 +818,12 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
 async function handleCheckoutSessionAsyncPaymentFailed(
   db: Prisma.TransactionClient,
   session: Stripe.Checkout.Session,
+  event: Stripe.Event,
 ): Promise<void> {
   assertNoUnsettledW22Checkout(session);
   if (isLocalInvoiceSession(session)) {
     await recordLocalInvoiceCheckoutFailure(db, session);
+    await onLocalCheckoutAsyncResult(db, session, event, "FAILED");
     return;
   }
   const estimateId = session.metadata?.estimateId;
@@ -848,6 +872,7 @@ async function handleInvoicePaid(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   webhookInvoice: Stripe.Invoice,
+  event: Stripe.Event,
 ): Promise<string | null> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
   if (!subscriptionId) return null;
@@ -877,8 +902,11 @@ async function handleInvoicePaid(
 
   const paidInvoice = await db.invoice.findUnique({
     where: { stripeInvoiceId: webhookInvoice.id },
-    select: { status: true, amountPaidCents: true },
+    select: { id: true, status: true, amountPaidCents: true },
   });
+  // BILL-1: Stripe says paid and the money is now recorded (applied, or held for the owner when the bill was closed):
+  // every bank payment that was being confirmed for this bill is done.
+  await clearRowsForPaidInvoice(db, webhookInvoice.id as string, paidInvoice?.id ?? null, event);
   if (paidInvoice?.status !== "PAID" || paidInvoice.amountPaidCents <= 0) {
     return rewardingReferralForCustomer(db, agreement.customerId);
   }
@@ -897,6 +925,7 @@ async function handleInvoicePaymentFailed(
   db: Prisma.TransactionClient,
   evidence: WebhookEvidence,
   webhookInvoice: Stripe.Invoice,
+  event: Stripe.Event,
 ): Promise<void> {
   const subscriptionId = extractSubscriptionId(webhookInvoice);
   if (!subscriptionId) return;
@@ -926,6 +955,8 @@ async function handleInvoicePaymentFailed(
       stripePaymentIntentId: extractPaymentIntentId(webhookInvoice),
       failureReason: "Stripe reported this invoice's payment failed.",
     });
+    await attachInFlightRowsToBill(db, webhookInvoice.id, existing.id);
+    await clearRowForFailedInvoice(db, extractPaymentIntentId(webhookInvoice), event);
     return;
   }
 
@@ -970,6 +1001,9 @@ async function handleInvoicePaymentFailed(
     stripePaymentIntentId: extractPaymentIntentId(stripeInvoice),
     failureReason: "Stripe reported this invoice's payment failed.",
   });
+  // BILL-1: a bank payment that was being confirmed before this bill existed now belongs to it; a failure clears it.
+  await attachInFlightRowsToBill(db, stripeInvoice.id, invoice.id);
+  await clearRowForFailedInvoice(db, extractPaymentIntentId(stripeInvoice) ?? extractPaymentIntentId(webhookInvoice), event);
 }
 
 async function handleChargeRefunded(
@@ -1137,6 +1171,7 @@ async function processLockedEvent(
         db,
         evidence,
         event.data.object as Stripe.Checkout.Session,
+        event,
       );
       break;
     case "checkout.session.async_payment_succeeded":
@@ -1147,6 +1182,7 @@ async function processLockedEvent(
         db,
         evidence,
         event.data.object as Stripe.Checkout.Session,
+        event,
       );
       break;
     case "checkout.session.async_payment_failed":
@@ -1156,6 +1192,7 @@ async function processLockedEvent(
       await handleCheckoutSessionAsyncPaymentFailed(
         db,
         event.data.object as Stripe.Checkout.Session,
+        event,
       );
       break;
     case "invoice.paid": {
@@ -1163,12 +1200,23 @@ async function processLockedEvent(
         db,
         evidence,
         event.data.object as Stripe.Invoice,
+        event,
       );
       if (referralId) referralIdsToSettle.push(referralId);
       break;
     }
     case "invoice.payment_failed":
-      await handleInvoicePaymentFailed(db, evidence, event.data.object as Stripe.Invoice);
+      await handleInvoicePaymentFailed(db, evidence, event.data.object as Stripe.Invoice, event);
+      break;
+    // BILL-1: a bank payment the bank is confirming ("Being confirmed"), or that did not go through.
+    case "payment_intent.processing":
+      await handlePaymentIntentProcessing(db, evidence, event);
+      break;
+    case "payment_intent.payment_failed":
+      await handlePaymentIntentEnded(db, evidence, event, "FAILED");
+      break;
+    case "payment_intent.canceled":
+      await handlePaymentIntentEnded(db, evidence, event, "CANCELED");
       break;
     case "charge.refunded":
       await handleChargeRefunded(db, event.data.object as Stripe.Charge);
@@ -1207,8 +1255,16 @@ const MAX_EVIDENCE_REFILLS = 5;
  *    so route.ts can return 500 and Stripe can safely retry. Referral provider
  *    writes are returned to the route and happen only after the commit.
  */
+export type WebhookReplayOptions = {
+  /** An owner or admin acting from the desk (BILL-1 "Record it now"): checked again inside the locked transaction. */
+  actorUserId?: string | null;
+  /** Written in the same transaction, only when the event is applied now (not when it was already applied). */
+  audit?: { action: string; entityType: string; entityId: string; newValue?: Prisma.InputJsonValue };
+};
+
 export async function processStripeWebhookEvent(
   event: Stripe.Event,
+  options: WebhookReplayOptions = {},
 ): Promise<StripeWebhookProcessingResult> {
   const evidence = await gatherWebhookEvidence(event);
   for (let refill = 0; ; refill += 1) {
@@ -1216,7 +1272,21 @@ export async function processStripeWebhookEvent(
       const referralIdsToSettle = await prisma.$transaction(
         async (db) => {
           await db.$queryRaw`SELECT pg_advisory_xact_lock(174831, 1)::text`;
-          return processLockedEvent(db, evidence, event);
+          if (options.actorUserId) await assertActiveTeamActor(db, options.actorUserId, ["OWNER", "ADMIN"]);
+          const wasProcessed = options.audit ? await alreadyProcessed(db, event.id) : true;
+          const ids = await processLockedEvent(db, evidence, event);
+          if (options.audit && !wasProcessed) {
+            await db.auditLog.create({
+              data: {
+                action: options.audit.action,
+                entityType: options.audit.entityType,
+                entityId: options.audit.entityId,
+                userId: options.actorUserId ?? null,
+                newValue: options.audit.newValue,
+              },
+            });
+          }
+          return ids;
         },
         { maxWait: 10_000, timeout: 30_000 },
       );

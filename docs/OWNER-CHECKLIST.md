@@ -189,6 +189,12 @@ Agents will do the parts they safely can and record what they saw; the rest need
   clean-up" and confirm its last run shows one file deleted. Agents tested the waiting list and the rules against a stand-in
   for the storage company; the real private store was not touched. Worked: the run shows "deleted" and nothing else is missing.
 
+- [ ] **Add three payment events to your Stripe webhook** (test mode now, live later). Steps: Stripe dashboard → Developers →
+  Webhooks → your appliance-desk endpoint → Update details → Select events → add `payment_intent.processing`,
+  `payment_intent.payment_failed`, `payment_intent.canceled` → Update endpoint. Ready when: BILL-1 is merged. Worked if: a
+  test bank payment (Stripe's test bank account) shows **Being confirmed** on the bill within a minute, and **Paid** after
+  Stripe settles it. Until you do this, bank payments are only noticed from events already sent.
+
 ## D. Other people's systems (trial companies, provider reviews)
 
 - [ ] **QuickBooks trial company import** of a month of DETAIL CSV journals: counts and debits/credits balance, bank
@@ -256,4 +262,5 @@ on readiness).
 | 2026-10-25 | IRS IRIS TCC, compliance encryption key | Chris asked the app to file and fill federal and state forms (CMP-1, CMP-3). |
 | 2026-10-25 | Vault encryption key, workers' comp rejection form | Records vault (VAULT-2) and insurance (OPS-4). |
 | 2026-10-25 | UCCC consumer-lease notification | Late-fee law research: Colorado's UCCC covers household rentals over 4 months. |
+| 2026-10-26 | Add three payment events to your Stripe webhook | BILL-1: the app can only show "Being confirmed" for bank payments if Stripe sends those events. |
 | 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |

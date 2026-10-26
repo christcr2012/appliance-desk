@@ -42,6 +42,7 @@ const DEFAULT_SETTINGS = {
   damageWaiverEnabled: false,
   depositEnabled: false,
   lateFeeGraceDays: 5,
+  bankPaymentSlowBusinessDays: 6,
   lateFeeFlatCents: 0,
   lateFeePercent: 0,
   announcementBannerText: null as string | null,

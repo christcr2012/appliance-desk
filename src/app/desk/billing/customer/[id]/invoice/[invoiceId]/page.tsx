@@ -45,7 +45,9 @@ export default async function DeskInvoicePage({
   const refundable = money ? money.amountPaidCents - money.refunds.reduce((sum, r) => sum + r.amountCents, 0) : 0;
   const outstanding = money ? Math.max(0, money.amountDueCents - money.amountPaidCents) : 0;
   const isOpen = money ? ["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(money.status) : false;
-  const canAskForPayment = isOpen && outstanding > 0 && Boolean(money?.stripeInvoiceId);
+  // BILL-1: the bank is confirming a payment the customer already started, so asking for payment again could charge twice.
+  const confirmingCents = invoice.beingConfirmedCents;
+  const canAskForPayment = isOpen && outstanding > 0 && Boolean(money?.stripeInvoiceId) && confirmingCents === 0;
   const phoneHistory = await prisma.auditLog.findMany({
     where: { entityType: "Invoice", entityId: invoiceId, action: "billing.phone_payment_started" },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 5,
@@ -91,6 +93,18 @@ export default async function DeskInvoicePage({
           families={["invoice_ready", "invoice_reminder", "payment_received", "refund_issued"]}
           principal={{ customerId: id }} />
       </div>
+
+      {confirmingCents > 0 && (
+        <section aria-labelledby="being-confirmed-heading" className="mt-4 rounded-xl border border-info-soft bg-info-soft p-4 print:hidden">
+          <h2 id="being-confirmed-heading" className="font-semibold text-ink">
+            Being confirmed · {formatCents(confirmingCents)}
+          </h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            The customer paid by bank transfer. Banks take up to 4 business days to confirm. Nothing for you to do. The bill
+            is not marked paid until the bank says the money arrived, and no late fee is added while it is confirming.
+          </p>
+        </section>
+      )}
 
       {canAskForPayment && money && (
         <div className="mt-4 scroll-mt-20 print:hidden" id="take-payment">

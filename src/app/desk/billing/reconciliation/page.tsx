@@ -10,7 +10,9 @@ import {
   PageHeader,
   type DataListColumn,
 } from "@/components/ui";
+import { formatMoney } from "@/lib/money-ui";
 import { loadBillingReconciliationPageData } from "./data";
+import { recordBankPaymentAction } from "./actions";
 
 export const metadata = { title: "Billing reconciliation" };
 
@@ -19,7 +21,7 @@ type ReconciliationRow = Awaited<
 >["rows"][number];
 
 export default async function BillingReconciliationPage() {
-  const { checkedAt, rows } =
+  const { checkedAt, rows, bankPayments } =
     await loadBillingReconciliationPageData();
 
   const columns: DataListColumn<ReconciliationRow>[] = [
@@ -99,6 +101,28 @@ export default async function BillingReconciliationPage() {
           />
         }
       />
+
+      {bankPayments.length > 0 && (
+        <section aria-labelledby="bank-cleared-heading" className="mt-8 space-y-3">
+          <h2 id="bank-cleared-heading" className="text-lg font-semibold text-ink">Bank payments Stripe says cleared</h2>
+          <p className="text-sm text-ink-soft">Not on the bill yet. Pressing twice records it once.</p>
+          <ul className="divide-y divide-line rounded-control border border-line">
+            {bankPayments.map((payment) => (
+              <li key={payment.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <span className="text-sm">
+                  {payment.customerName}
+                  {payment.invoiceNumber ? ` · bill #${payment.invoiceNumber}` : ""} · {formatMoney(payment.amountCents)} · cleared{" "}
+                  {formatBusinessDate(payment.since)}
+                </span>
+                <form action={recordBankPaymentAction}>
+                  <input type="hidden" name="rowId" value={payment.id} />
+                  <button type="submit" className="min-h-11 rounded-control border border-line px-4 font-medium">Record it now</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

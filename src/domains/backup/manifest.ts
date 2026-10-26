@@ -204,6 +204,8 @@ export const BACKUP_MODEL_POLICY = {
   FeedbackEntry: "feedbackEntry",
   FeedbackAttachment: "feedbackAttachment",
   FeedbackEvent: "feedbackEvent",
+  // BILL-1: "the bank is confirming a payment" flags. Business state (a bill shows "Being confirmed" and gets no late fee while one is open), restored after bills and agreements.
+  BankPaymentInFlight: "bankPaymentInFlight",
 
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 

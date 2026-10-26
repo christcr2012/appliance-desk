@@ -1,3 +1,12 @@
+## October 26 — Bank payments being confirmed (BILL-1, additive)
+
+Migration `20261026010000_bank_payment_in_flight`. New table `BankPaymentInFlight`: one row per Stripe PaymentIntent for a
+bill (`paymentIntentId` unique), `invoiceId`, `stripeInvoiceId` and `agreementId` (all optional; the payment id is what identifies the row, so deleting a bill never fails), `source`,
+`amountCents`, `method`, `startedAt`, `clearedAt` / `clearedReason` / `clearedByEventAt` (a cleared row stays as a marker so a
+late older event cannot reopen it), `attempt`, `lastCheckedAt`, `settledInStripeAt` ("Stripe says paid but we have not
+recorded it"). It is a flag only: nothing reads it as money. `BusinessSettings.bankPaymentSlowBusinessDays` (6, CHECK 2–20).
+Covered by backups (`BankPaymentInFlight` in the backup manifest).
+
 ## October 27 — System health that tells the truth (MCP-1, additive)
 
 Migration `20261027031500_mcp1_automation_health`. `AutomationRun.failureCode` (≤60, a key of `FAILURE_CODES` in

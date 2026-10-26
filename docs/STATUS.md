@@ -1,3 +1,15 @@
+## October 26 — BILL-1: bank payments being confirmed (PR pending)
+
+Branch `ai/claude/bill-1-bank-in-flight`. A bank transfer now shows **Being confirmed** instead of late: Stripe's "processing"
+event is recorded as a flag (never as money), the Bills list has a new **Being confirmed** tab and pill, the bill and customer
+record say so, no late fee is added and no past-due To do appears while it waits, and a calm **bank payment is taking a while**
+To do appears after the owner's number of banking days (starting value 6, Settings › Bank payments). A nightly check asks Stripe
+about up to 50 waiting payments; one Stripe says cleared but we missed is recorded through the normal payment handlers, or shows
+a **Record it now** button (Today and Billing › Reconciliation). Migration `20261026010000_bank_payment_in_flight` (additive).
+Proof: unit tests plus 41 database tests with a pretend Stripe, run on a throwaway Postgres here; CI results pending.
+Not done: the **Payments** tab — AR-3 adds it. Until the three Stripe events are added (checklist row), the screens only
+learn about a payment from events already sent; the nightly check can only follow payments that already have a flag. Next: FEE-1.
+
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 
 Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
