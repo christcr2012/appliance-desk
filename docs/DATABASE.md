@@ -31,6 +31,20 @@ recorded"). `AutomationRun.error` stays only as scrubbed legacy text: nothing sh
 rule). `BusinessSettings.automationLateGraceMinutes` (120, CHECK 15–1440): minutes after a job's usual UTC cron time
 before it shows Late. All covered by the existing backups of these three tables.
 
+## October 25 — Leads pipeline (LD-1, additive)
+
+Migration `20261026020000_leads_pipeline`. `Lead` gains `assignedToUserId` (who owns this lead; the owner's oldest
+active OWNER by default), `firstContactedAt` + `firstContactEstimated` (a real outbound contact only; older leads
+were backfilled from `lastRealContactAt` with the estimate flag), `phoneDigits` + `emailLower` (normalized contact
+keys, kept on every write of phone/email), `possibleDuplicateOfLeadId` (oldest live lead with the same phone or email,
+set at creation), `mergedIntoLeadId` + `mergedAt` (a merged lead is hidden from lists, counts, search and To do).
+`LeadNote.kind` (`NOTE` | `CONTACTED` | `ATTEMPT`). `BusinessSettings` gains `leadAssignmentMode` (`OWNER` |
+`PERSON` | `ROTATE`, default `OWNER`), `leadAssignmentUserId`, `leadRotationCursor`. Trigram indexes on
+`contactName`, `companyName`, `city`, `emailLower`, `phoneDigits` make the queue search fast; compound indexes on
+`(assignedToUserId, status, nextFollowUpOn)` and `(status, createdAt)` serve the queue. Migration
+`20261027040000_lead_followup_version` adds `Lead.version` (default 1, bumped only by `setLeadFollowUp`, the
+compare-and-set token for the follow-up date). All covered by the existing Lead and BusinessSettings backups.
+
 ## October 26 — Decisions & reviews data (DEC-1a, additive)
 
 Migration `20261026030000_decision_record`. Nothing existing is changed or removed.

@@ -50,3 +50,10 @@ fc4ad1efe73a9b499610c531ca28c7501fab248f:tests/books-closing-integration.test.ts
 e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:162
 e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:189
 89630f49bd63734294fc11926f9dc93c5fdb15fa:tests/books-closing-integration.test.ts:generic-api-key:28
+# Same migration comment under LD-1's rebuilt branch commit (3d86add, from
+# main via LD-1 #625) and under the LD-1 merge commit itself (50e265ec): the
+# full-history scan attributes the line to the merge commit that brought the
+# file to main. Same line, same verdict — a comment, not a credential.
+3d86adda6fe28e5128160187509bac6b54d9c43f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+

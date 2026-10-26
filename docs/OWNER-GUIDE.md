@@ -86,7 +86,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Customer portal | `/account` | What your customers see after signing in |
 | Sign in | `/login` | Everyone's sign-in page |
 
-The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Books (including Accounting exports), Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Expenses, Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them; they never see prices, billing, reports or Settings.
+The menu has 14 entries: Today, Tasks, Leads, Customers, Quotes, Communications, Rentals, Schedule, Repairs, Equipment, Money, Taxes, Settings and More. Dispatch, Visits and the Driver view are tabs inside **Schedule**; Inventory, Parts, Purchases and Purchase orders are tabs inside **Equipment**; Billing, Revenue, Books (including Accounting exports), Reports, Fleet and the dashboard are tabs inside **Money**; and **More** holds Expenses, Suppliers, Growth signals, Launch list, System health, Website, Privacy requests and Activity. On a computer the desk has a dark side menu; on a phone the main areas are in the bottom bar and **More** opens the rest. Press **Ctrl K** (Windows) or **Cmd K** (Mac) to jump to search. Staff accounts only see the Driver view and the work assigned to them, plus any screens their job role includes (for example Leads); they never see prices, billing, reports or Settings.
 
 ## Bank checks and statement proof — K-CASH-3 implementation candidate, not yet released
 
@@ -126,9 +126,9 @@ Examples of what appears: a new lead ("Contact <name>"), a signed rental ("Sched
 
 ![Leads](owner-guide/screenshots/leads.png)
 
-**What it's for.** A website inquiry appears under Leads and you are emailed (high-value leads are flagged). Open it to see what they need, where, and why it scored the way it did. Mark it **Contacted** (you choose the next follow-up date, and that day it returns to Today) or **Lost**. **Convert to customer** creates the account and first service address without retyping; the customer gets an email to set their own password, and you never see a password. After converting, **Create quote** and **Start agreement** are on the lead page. You can also add a lead yourself (owner and admin only).
+**What it's for.** A website inquiry appears under Leads and you are emailed (high-value leads are flagged). Open it to see what they need, where, and why it scored the way it did. Mark it **Contacted** (you choose the next follow-up date, and that day it returns to Today) or **Lost**. **Convert to customer** creates the account and first service address without retyping; the customer gets an email to set their own password, and you never see a password. After converting, **Create quote** and **Start agreement** are on the lead page. You can also add a lead yourself (owner, admin, and staff whose job role includes Leads).
 
-**Change without code.** Settings → Lead response time, and the lead-scoring rules.
+**Change without code.** Settings → Lead response time, and the lead-scoring rules. Settings → Lead response time also has **New leads go to**: you (starting value), one person, or take turns — one person and take turns can include staff whose job role includes Leads (you choose which screens each job role has in Settings → Job roles) — and a follow-up date can be set or cleared on a contacted lead from the lead page.
 
 **If it fails.** If the activation email did not arrive, open the customer and press **Resend activation email**; converting twice is refused, so a retry never makes a second account. If an email could not be sent, the conversion still stands and the customer page says the message is still to do.
 
@@ -304,7 +304,7 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 ![Settings](owner-guide/screenshots/settings.png)
 
-**What it's for.** Settings is divided into sections, each explained on the screen: Business profile (name, address, opening hours, holiday closures, social links, logo), Rental policies (including how long a removed receipt file or an unsent photo waits before it is deleted), Products and pricing (types, sets and packages, prepaid discounts), Ending and renewing rentals, Pickups and deliveries, Visits and scheduling, Notifications, Languages, Lead response time, Payment link wording, team accounts (staff and admin) and the prelaunch setting.
+**What it's for.** Settings is divided into sections, each explained on the screen: Business profile (name, address, opening hours, holiday closures, social links, logo), Rental policies (including how long a removed receipt file or an unsent photo waits before it is deleted), Products and pricing (types, sets and packages, prepaid discounts), Ending and renewing rentals, Pickups and deliveries, Visits and scheduling, Notifications, Languages, Lead response time (how fast new leads are answered, and who new leads go to), Payment link wording, team accounts (staff and admin) and the prelaunch setting.
 
 **Change without code.** Everything above. Each setting explains what it does, its starting value and why, who can change it, and offers **restore recommended**. Money is typed in dollars. Changes affect only future agreements and events; signed terms never change.
 

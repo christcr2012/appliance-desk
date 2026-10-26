@@ -1,9 +1,10 @@
 # Engine spec — Leads pipeline: stages, who owns a lead, first contact, duplicates, scale (LD-1)
 
 Built in **LD-1**. Design: `docs/designs/LEADS-WORKSPACE.md` sections 4 and 8 — **this spec corrects that design where
-the code disagrees** (section 0). Screens are `screens/LEADS.md` (AR-4b). Roles: leads are OWNER/ADMIN only today
-(`getLeadWorkspace` calls `requireRole("OWNER", "ADMIN")`); this card keeps that. Giving staff lead access would widen
-access and needs Chris (owner checklist question below), so it is not built here.
+the code disagrees** (section 0). Screens are `screens/LEADS.md` (AR-4b). Roles: staff whose job role includes the
+`leads` screen can see and work leads (answered by Chris 2026-10-26, DQ-LD1-1). The desk pages, actions and
+lead-working functions take OWNER, ADMIN or STAFF; the job-role guard narrows staff to the Leads screen. Merging
+leads and reassigning them stay OWNER/ADMIN, and Today lead follow-ups stay OWNER/ADMIN.
 
 ## 0. Corrections to the design (checked against `main`, 2026-10-25)
 
@@ -16,8 +17,8 @@ access and needs Chris (owner checklist question below), so it is not built here
    (`getLeadResponseDays`, recommended 0 = same day), which drives the `NEW_LEAD_CONTACT` due date. The design's new
    "15 minutes" setting would compete with it. Decision: keep the existing setting as the only target. Speed to lead is
    *measured* (LD-4 insights) in minutes, not configured twice.
-3. **Assignable people** are active OWNER and ADMIN users whose job role allows the `leads` screen
-   (`jobRoleAllowsScreen`). Staff cannot open leads today, so they are never assignable.
+3. **Assignable people** are active OWNER, ADMIN and STAFF users whose job role allows the `leads` screen
+   (`jobRoleAllowsScreen`). Staff with the Leads screen can be given leads (answered by Chris 2026-10-26, DQ-LD1-1).
 4. **`updateLeadStatus` writes without a row lock or actor check, and the follow-up date is saved in a second,
    separate write** (`updateLeadStatusAction`). AGENTS section 4 requires `SELECT … FOR UPDATE` and
    `assertActiveTeamActor`. This card makes status + lost reason + follow-up one transaction (section 5).
@@ -220,10 +221,11 @@ export async function getLeadStageCounts(p: Omit<LeadQueueParams, "stage" | "sor
   leads in throwaway Postgres; list, counts and search each under 150 ms on the CI database (record the measured
   times in the test output; the 0.25 CU production figure is checked on the owner row only if Chris wants it).
 
-## 7. Owner checklist question (once)
-"**Should staff be able to see and work leads?** Today only you and admins can. If yes, the agent adds a 'Leads'
-screen to staff job roles (you choose per role) and staff can be given leads. Recommendation: no for now — answer
-when you hire someone who sells." This blocks nothing.
+## 7. Owner checklist question (answered 2026-10-26)
+"**Should staff be able to see and work leads?**" Answered by Chris 2026-10-26: **yes** — staff whose job role
+includes the Leads screen can see and work leads and can be given leads. The 'Leads' screen was already a switch on
+staff job roles (the Office starter role has it); the owner chooses per role in Settings → Job roles. Merging leads,
+reassigning them, and the lead assignment setting stay OWNER/ADMIN, and Today lead follow-ups stay OWNER/ADMIN.
 
 ## 8. Tests summary
 `tests/lead-stage.test.ts`, `tests/lead-stage-integration.test.ts`, `tests/lead-assignment-integration.test.ts`,
