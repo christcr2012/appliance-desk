@@ -5,6 +5,7 @@ import type {
 
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { businessDateFromKey, businessDateKey, businessDayBounds } from "@/lib/business-date";
 
 export type TaxExemptionInput = {
   reason: TaxExemptionReason;
@@ -196,6 +197,9 @@ export async function createCustomerTaxExemption(
 ) {
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+    // Serialize certificate creation per customer so two back-dated
+    // certificates cannot both credit the same historical tax.
+    await tx.$queryRaw`SELECT "id" FROM "Customer" WHERE "id" = ${customerId} FOR UPDATE`;
     await tx.customer.findUniqueOrThrow({
       where: { id: customerId },
       select: { id: true },
@@ -220,6 +224,92 @@ export async function createCustomerTaxExemption(
         },
       },
     });
+    // TFA-2 §9: a certificate that was already in force while earlier
+    // bills were taxed earns the customer a credit for the tax charged
+    // since it took effect. Issued bills stay exactly as they are; the
+    // credit lands on a future bill (the section 4a pattern).
+    const validKey = businessDateKey(row.validFrom);
+    if (validKey < businessDateKey(new Date())) {
+      const since = businessDateFromKey(validKey);
+      // Only tax the certificate actually covered counts: nothing charged
+      // after its expiration day.
+      const until = row.expiresOn ? businessDayBounds(row.expiresOn).end : null;
+      const taxed = await tx.invoiceTaxLine.aggregate({
+        where: {
+          taxCents: { gt: 0 },
+          ...(data.jurisdictionIds.length
+            ? { jurisdictionId: { in: data.jurisdictionIds } }
+            : {}),
+          invoice: {
+            customerId,
+            status: { notIn: ["DRAFT", "VOID", "WRITTEN_OFF"] },
+            issuedAt: { gte: since!, ...(until ? { lt: until } : {}) },
+          },
+        },
+        _sum: { taxCents: true },
+      });
+      let creditCents = taxed._sum.taxCents ?? 0;
+      if (creditCents > 0) {
+        // Never credit the same tax twice: subtract back-dated credits
+        // already granted for certificates whose covered days and areas
+        // overlap this one. Partial day/area overlap subtracts the whole
+        // earlier credit, so any error credits too little (the owner can
+        // add a manual credit) rather than paying the same tax twice.
+        const priorCredits = await tx.customerCredit.findMany({
+          where: { customerId, sourceType: "EXEMPTION_BACKDATE" },
+          select: { amountCents: true, sourceId: true },
+        });
+        const priorIds = [...new Set(priorCredits.map((credit) => credit.sourceId).filter((id): id is string => !!id))];
+        if (priorIds.length) {
+          const priorRows = await tx.customerTaxExemption.findMany({
+            where: { id: { in: priorIds }, customerId },
+            select: { id: true, validFrom: true, expiresOn: true, jurisdictionIds: true },
+          });
+          const priorById = new Map(priorRows.map((prior) => [prior.id, prior]));
+          for (const credit of priorCredits) {
+            const prior = credit.sourceId ? priorById.get(credit.sourceId) : undefined;
+            if (!prior) continue;
+            const priorFrom = businessDateFromKey(businessDateKey(prior.validFrom))!;
+            const priorUntil = prior.expiresOn ? businessDayBounds(prior.expiresOn).end : null;
+            const daysOverlap = priorFrom < (until ?? new Date(8_640_000_000_000_000)) && (!priorUntil || priorUntil > since!);
+            if (!daysOverlap) continue;
+            const priorAreas = Array.isArray(prior.jurisdictionIds)
+              ? prior.jurisdictionIds.filter((value): value is string => typeof value === "string")
+              : [];
+            const areasOverlap = !data.jurisdictionIds.length || !priorAreas.length
+              || data.jurisdictionIds.some((id) => priorAreas.includes(id));
+            if (!areasOverlap) continue;
+            creditCents -= credit.amountCents;
+          }
+        }
+      }
+      if (creditCents > 0) {
+        const credit = await tx.customerCredit.create({
+          data: {
+            customerId,
+            amountCents: creditCents,
+            remainingCents: creditCents,
+            reason: "Exemption certificate covered this tax",
+            authorizedByUserId: actorUserId,
+            sourceType: "EXEMPTION_BACKDATE",
+            sourceId: row.id,
+            side: "CUSTOMER",
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            userId: actorUserId,
+            action: "tax.exemption.backdate_credit",
+            entityType: "CustomerCredit",
+            entityId: credit.id,
+            newValue: {
+              customerId, exemptionId: row.id, creditCents,
+              validFrom: row.validFrom.toISOString(),
+            },
+          },
+        });
+      }
+    }
     return row;
   });
 }

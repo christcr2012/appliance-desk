@@ -6,13 +6,14 @@ import { requireRole } from "@/lib/session";
 import { TaxActionForm } from "./forms";
 import { TAXES_SETUP_LINKS } from "@/lib/taxes-tabs";
 import { ruleAsOf } from "@/domains/rules/reads";
+import { businessDateKey } from "@/lib/business-date";
 import { addRdfRateAction, saveTaxAccountAction, saveTaxSettingsAction, lookUpBusinessTaxAreasAction, confirmBusinessTaxAreasAction } from "./actions";
 const css = "w-full rounded border border-input bg-background p-2 text-sm";
 const field = "grid gap-1 text-sm font-medium";
 export default async function TaxSetupPage() {
   const session = await requireRole("OWNER", "ADMIN");
   const owner = session.user.role === "OWNER";
-  const [settings, accounts, rates, rdfThresholdCents, sources, businessLocation, knownAreas] = await Promise.all([
+  const [settings, accounts, rates, rdfThresholdCents, sources, businessLocation, knownAreas, rdfLock] = await Promise.all([
     prisma.businessSettings.findUniqueOrThrow({where:{id:"singleton"},select:{
       updatedAt:true,shortTermLeaseElection:true,shortTermLeaseElectionNote:true,
       rdfHandling:true,rdfCpaConfirmedOn:true,
@@ -33,6 +34,12 @@ export default async function TaxSetupPage() {
     prisma.taxJurisdiction.findMany({
       select: { id: true, name: true, level: true, reviewStatus: true },
       orderBy: [{ level: "asc" }, { name: "asc" }], take: 200,
+    }),
+    // TFA-2 §6.7: who pays locked from the first sale the fee applied to.
+    prisma.retailDeliveryFeeRecord.findFirst({
+      where: { status: { in: ["READY", "PENDING_RATE"] } },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { createdAt: true },
     }),
   ]);
   const address = settings.businessTaxAddress && typeof settings.businessTaxAddress==="object" &&
@@ -70,12 +77,13 @@ export default async function TaxSetupPage() {
         <legend className="font-semibold">Colorado retail delivery fee</legend>
         <p className="text-sm text-muted-foreground">These decisions do not enable live charges. Confirm with your CPA before saving.</p>
         <div className="grid gap-3 md:grid-cols-3">
-          <label className={field}>Who pays<select name="rdfHandling" className={css} defaultValue={settings.rdfHandling}>
+          <label className={field}>Who pays<select name="rdfHandling" className={css} defaultValue={settings.rdfHandling} disabled={!!rdfLock}>
             <option value="UNDECIDED">Undecided</option><option value="COLLECT_FROM_CUSTOMER">Customer</option><option value="PAY_MYSELF">Business</option>
           </select></label>
           <label className={field}>Delivery fee threshold ($) <InfoTip term="rdf-threshold" /><MoneyInput name="rdfThresholdDollars" cents={rdfThresholdCents} className={css} /></label>
           <label className={field}>CPA confirmed on<input name="rdfCpaConfirmedOn" type="date" className={css} defaultValue={settings.rdfCpaConfirmedOn?.toISOString().slice(0,10)} /></label>
         </div>
+        {rdfLock && <p role="status" className="text-sm">Locked since {businessDateKey(rdfLock.createdAt)}: the fee already applies to a sale, so who pays can&rsquo;t change. Your CPA reviews it before January 1.</p>}
       </fieldset>
       <fieldset className="space-y-2 rounded border border-border p-3">
         <legend className="font-semibold">Official rate updates</legend>
