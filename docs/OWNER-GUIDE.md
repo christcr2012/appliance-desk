@@ -59,6 +59,8 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Shop sales | `/desk/sales` | Parts and used appliances sold over the counter or delivered |
 | Disputes | `/desk/disputes`, `/desk/disputes/[id]` | Card and bank payment disputes: deadline, the evidence packet to read, **Approve and send to Stripe** (once only), bank disputes to collect directly, allowing bank autopay again, and how long a bank deposit refund waits (Money tab) |
 | Past due | `/desk/collections`, `/desk/collections/[agreementId]` | Second and final past-due notices waiting for your approval (nothing is sent until you press Send), the day-30 decision, recording that a customer agreed to a pickup or a court order, the pickup visit and "Customer objected", the small-claims packet and recording a filing, the three day settings and the two lines of notice wording you can change (Money tab). A waiting notice is rewritten with the new balance if the customer pays part of the bill before you send it, and a notice counts as sent only once the email service confirms it. "Customer objected" is also on the job page and the Driver view for the pickup visit |
+| Privacy and security | `/desk/privacy-security`, `/desk/privacy-security/incident/[id]/letter`, public `/privacy/how-we-handle-your-information` | Record a possible data leak and work its fixed deadlines, the notice letter, the yearly service-provider security check, legal holds on a customer, the "keep for" years and the OFF-by-default nightly clean-up of old enquiries, face-match ID (off), marketing-text hours, and accessibility complaints with their 30-day fix date (More menu) |
+| Past due | `/desk/collections`, `/desk/collections/[agreementId]` | Second and final past-due notices waiting for your approval (nothing is sent until you press Send), the day-30 decision, recording that a customer agreed to a pickup or a court order, the pickup visit and "Customer objected", the small-claims packet and recording a filing, and the three day settings (Money tab) |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Your entries record themselves; review source issues, months and corrected starting balances |
 | Start your books | `/desk/books/setup` | Owner's four-step guide to the date, opening cash/card balances and expenses paid personally |
@@ -77,7 +79,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | System health (automations) | `/desk/automations` | Health of every scheduled job |
 | Launch list | `/desk/launch` | People waiting for you to open |
 | More → Privacy requests | `/desk/privacy` | Customers asking to see or delete data |
-| Security | `/desk/security` (the page itself is `/desk/security/setup`) | Two-step sign-in and account safety |
+| Security | `/desk/privacy-security` (the page itself is `/desk/privacy-security/setup`) | Two-step sign-in and account safety |
 | Missed calls and voicemail | `/desk/communications/calls` | Missed calls and voicemail |
 | Phone, texts and provider costs | `/desk/settings/telecom` | Phone and text setup and what the provider charges |
 | Preview storage check | `/desk/settings/preview-storage` | A check that the practice copy's photo storage works (practice copy only) |

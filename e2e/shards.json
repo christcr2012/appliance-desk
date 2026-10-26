@@ -101,7 +101,8 @@
       "collections.spec.ts",
       "late-fee-waiver.spec.ts",
       "books-closing.spec.ts",
-      "compliance.spec.ts"
+      "compliance.spec.ts",
+      "privacy-security.spec.ts"
     ]
   }
 }

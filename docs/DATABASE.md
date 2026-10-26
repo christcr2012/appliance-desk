@@ -1454,3 +1454,12 @@ All three tables are in the backup manifest.
 - `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed.
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
+
+### OPS-7: privacy and security (additive migration `20261105000000_privacy_security`)
+- `SecurityIncident` — one row per possible leak: what happened, when found, when decided, how many Colorado residents, and the date Chris did each step (people, Attorney General, credit bureaus, service providers). Deadlines are never stored; they are computed from the dated rule book.
+- `ServiceVendor` — the providers that hold customer information (seeded: Vercel, Neon, Stripe, Google Workspace, Twilio, Resend) and the date their security terms were last reviewed.
+- `AccessibilityComplaint` — a reported problem using the site or app, with the fix-by date computed from the rule book.
+- `Customer.legalHoldAt` / `legalHoldReason` — a legal hold; blocks the nightly clean-up and privacy deletion.
+- `BusinessSettings`: `retentionAgreementYears` (7), `retentionTaxYears` (7), `retentionRefrigerantYears` (6), `retentionLeadYears` (2), `retentionMessageYears` (3), `retentionPurgeEnabled` (false), `faceMatchIdEnabled` (false), `marketingTextStartHour` (8), `marketingTextEndHour` (21), `vendorReviewMonths` (12).
+- Four seeded rule-book rows: `co.breach_notice_days` (30), `co.breach_ag_threshold` (500), `co.breach_bureau_threshold` (1000), `co.accessibility_fix_days` (30), checked 2026-10-26 (summaries of C.R.S. 6-1-716 and 24-34-802).
+The three new tables are in the backup manifest.

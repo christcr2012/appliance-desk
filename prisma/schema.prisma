@@ -196,6 +196,9 @@ model Customer {
   paymentDisputes PaymentDispute[]
   collectionSteps CollectionStep[]
   collectionCases CollectionCase[]
+  // OPS-7: a legal hold stops every automatic purge and privacy deletion for this customer.
+  legalHoldAt DateTime?
+  legalHoldReason String?
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
@@ -3624,6 +3627,21 @@ model BusinessSettings {
   collectionPayHowText String?
   collectionHelpText String?
   collectionDecisionDay Int @default(30)
+
+  // OPS-7: how long to keep things, in years (starting values from the research; the purge below is OFF until the owner turns it on).
+  retentionAgreementYears Int @default(7)
+  retentionTaxYears Int @default(7)
+  retentionRefrigerantYears Int @default(6)
+  retentionLeadYears Int @default(2)
+  retentionMessageYears Int @default(3)
+  retentionPurgeEnabled Boolean @default(false)
+  // OPS-7: face-match ID checks stay off unless the owner turns them on.
+  faceMatchIdEnabled Boolean @default(false)
+  // OPS-7: marketing texts only between these hours, Denver time.
+  marketingTextStartHour Int @default(8)
+  marketingTextEndHour Int @default(21)
+  // OPS-7: how many months before a service provider's security terms are due for a re-read.
+  vendorReviewMonths Int @default(12)
 }
 
 model ComplianceProfile {
@@ -6061,4 +6079,58 @@ model RefrigerantRecord {
   updatedAt        DateTime @updatedAt
 
   @@index([recoveredOn])
+}
+
+enum SecurityIncidentState {
+  OPEN
+  CLOSED
+}
+
+// OPS-7: "something may have leaked". The deadlines come from the dated rule book, never from this row.
+model SecurityIncident {
+  id               String @id @default(cuid())
+  state            SecurityIncidentState @default(OPEN)
+  summary          String
+  discoveredAt     DateTime
+  determinedAt     DateTime?
+  residentsAffected Int?
+  openedByUserId   String
+  residentsNotifiedAt DateTime?
+  attorneyGeneralNotifiedAt DateTime?
+  bureausNotifiedAt DateTime?
+  vendorsNotifiedAt DateTime?
+  closedAt         DateTime?
+  closedNote       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([state, discoveredAt])
+}
+
+// OPS-7: a service provider that holds our data, with the date its security terms were last read.
+model ServiceVendor {
+  id             String @id @default(cuid())
+  name           String @unique
+  whatTheyDo     String
+  dataTheyHold   String
+  termsReviewedOn DateTime?
+  termsReviewedByUserId String?
+  notes          String?
+  active         Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// OPS-7: someone told us the website or app is hard to use. Colorado gives a short window to fix it.
+model AccessibilityComplaint {
+  id          String @id @default(cuid())
+  receivedAt  DateTime
+  fromWho     String?
+  description String
+  recordedByUserId String
+  resolvedAt  DateTime?
+  resolvedNote String?
+  createdAt   DateTime @default(now())
+
+  @@index([resolvedAt, receivedAt])
 }
