@@ -4052,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "IN REVIEW — PR #613, BA-1 merged",
+      "status": "IN REVIEW — PR #613; full CI green at implementation head 72ac47ff; final docs-only CI pending",
       "migration": "opening_correction",
       "budget": 380,
       "units": [

@@ -1,3 +1,7 @@
+## October 26 — BA-2 implementation accepted in CI; documentation revalidation next
+
+BA-2 PR #613 has all functional and full-suite checks green on implementation commit `72ac47ff` (run 40355797414). The single Codex issue about corrected Stripe openings was fixed with a real-database regression. This documentation update is the last branch change; exact-head CI and review disposition precede any merge. BA-1 PR #610 is already merged. BA-3 remains a separate branch and is being checked. No live money or provider settings changed.
+
 ## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
 
 PR #613 is ready for review. Codex found that a corrected opening Stripe amount was missing from the clearing comparison baseline. The fix includes corrected OPENING journals dated by the reconciliation cutoff, with an actual disposable-Postgres scenario. Prior CI passed, but that was before this fix; the new head still requires CI and review disposition. BA-1 is merged. BA-3 is in a dependent branch. No live Stripe setting or business data changed.

@@ -6,22 +6,22 @@ entries (money records)** — never edit or delete entries; corrections are new 
 Depends on BA-1 (actor refactor and autopilot).
 
 ## Acceptance
-- [ ] Every test listed in spec section 2 passes on throwaway Postgres.
-- [ ] People-facing behavior of existing Books actions unchanged except where the spec says.
-- [ ] `ci` green at the exact head; every review comment read. Codex finding on opening Stripe corrections has a concrete fix and real-Postgres regression; verify at the new exact head.
+- [x] All BA-2 acceptance tests, including disposable PostgreSQL corrections and replay cases, passed at implementation head `72ac47ff` in CI run 40355797414.
+- [x] Existing non-setup Books actions retained; new setup and correction screens covered by repo CI and role tests.
+- [ ] Final docs-only commit requires exact-head CI; previous complete CI run 40355797414 passed at `72ac47ff`, and Codex opening-Stripe finding has been fixed with an integration test. Review thread disposition recorded.
 
 ## BA-2 implementation and evidence plan
-- [ ] Provide the owner-only four-step setup wizard; an admin sees an owner-help message.
-- [ ] Derive the recommended start date from the first purchase, invoice, expense or today; default zero opening balances for a new business and accept verified nonzero balances for an existing one.
-- [ ] Show the owner-contribution path and preselect the matching expense account without taking or sending money.
-- [ ] Initialize exactly once using the existing authenticated Books command; kick off bounded, best-effort catch-up without blocking the successful setup.
-- [ ] Add a Books setup To do item for the owner only, with urgency rising after the first invoice, and clear it on successful setup.
-- [ ] Support owner-only, locked, append-only corrections to opening balances, numbered by correction cycle, safe across retries and across closed periods.
-- [ ] Replace old irreversible-opening wording on Books home and add a correction form with a reason.
-- [ ] Cover authorization, defaults, zero and nonzero opening, corrections, double-submit, closed periods and Today with throwaway PostgreSQL tests.
-- [ ] Pass exact-head CI and read every review comment before merge, keeping BA-1 ahead of BA-2.
+- [x] Provide the owner-only four-step setup wizard; an admin sees an owner-help message.
+- [x] Derive the recommended start date from the first purchase, invoice, expense or today; default zero opening balances for a new business and accept verified nonzero balances for an existing one.
+- [x] Show the owner-contribution path and preselect the matching expense account without taking or sending money.
+- [x] Initialize exactly once using the existing authenticated Books command; kick off bounded, best-effort catch-up without blocking the successful setup.
+- [x] Add a Books setup To do item for the owner only, with urgency rising after the first invoice, and clear it on successful setup.
+- [x] Support owner-only, locked, append-only corrections to opening balances, numbered by correction cycle, safe across retries and across closed periods.
+- [x] Replace old irreversible-opening wording on Books home and add a correction form with a reason.
+- [x] Cover authorization, defaults, zero and nonzero opening, corrections, double-submit, closed periods and Today with throwaway PostgreSQL tests.
+- [ ] Final exact-head CI and review-thread resolution; BA-1 already merged.
 
-**Stack dependency:** this BA-2 branch starts from unmerged BA-1 head `22b255df362b`. PR must target the BA-1 branch until BA-1 is merged, then retarget to main.
+**Dependency:** BA-1 merged as PR #610. BA-2 PR #613 now targets `main`; the current branch contains a merge of the latest main.
 
 ## Progress
-The setup wizard, owner-only To do, preselected Owner contributions shortcut, and versioned opening-balance correction with reasons are coded on `ai/chatgpt/ba-2`. Disposable PostgreSQL test source is added but not yet proven by CI. No BA-2 PR/merge or owner acceptance claimed. Tests and the dependency update are the next verification steps.
+All BA-2 feature screens, finance rules, real-Postgres tests, owner guidance and latest main reconciliation are implemented. Full CI passed at `72ac47ff` (run 40355797414, typecheck/lint, all unit/database shards and browser shards). Codex found a missing corrected-opening Stripe reconciliation baseline; fixed and tested at that passing head. This documentation update awaits its own exact-head CI before merge. No production finance data or provider settings touched.
