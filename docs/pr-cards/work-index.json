@@ -4020,7 +4020,7 @@
       "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
       "batch": "BA",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #610, CI green 40317413250",
       "migration": "book_autopilot",
       "budget": 480,
       "units": [
@@ -4028,12 +4028,21 @@
       ],
       "evidence": [
         "docs/build-specs/engines/BOOKS-AUTOPILOT.md",
-        "docs/designs/BOOKS-AUTOPILOT.md"
+        "docs/designs/BOOKS-AUTOPILOT.md",
+        "src/domains/books/autopilot.ts",
+        "src/domains/books/fixed-assets.ts",
+        "src/domains/exceptions/books-attention.ts",
+        "src/app/api/cron/books-nightly/route.ts"
       ],
       "tests": [
-        "tests/ba1-books-autopilot-integration.test.ts"
+        "tests/ba1-books-autopilot-integration.test.ts",
+        "tests/ba1-books-autopilot-guard.test.ts",
+        "tests/ba1-nightly-autopilot-integration.test.ts",
+        "tests/ba1-books-nightly-route.test.ts",
+        "tests/ba1-books-paging.test.ts",
+        "tests/ba1-immediate-webhook.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-1.md"
     },
     {
@@ -4043,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN REVIEW — PR #613; full CI green at implementation head 72ac47ff; final docs-only CI pending",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4056,7 +4065,7 @@
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "IN_REVIEW",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {
@@ -4159,7 +4168,7 @@
       "title": "Lead stages, ownership, speed to lead, duplicates and scale (indexes, search, cursor paging)",
       "batch": "LD",
       "dependencies": [],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR #618 open at ac70fedc; first CI red in 4 jobs, fixes pushed; manual dispatch run 40328842401 failed in all 11 jobs because the remote tree was missing BA-1 files the branch never touched (snapshot manifests were diffed against current main, not the branch base 0516a31); tree repaired by uploading all 86 files changed since 0516a31, verified file-for-file; fresh manual workflow run needed (2026-10-26)",
       "migration": "lead_pipeline",
       "budget": 480,
       "units": [
@@ -4172,7 +4181,12 @@
       ],
       "tests": [
         "tests/lead-stage.test.ts",
+        "tests/lead-stage-integration.test.ts",
+        "tests/lead-assignment-integration.test.ts",
         "tests/lead-merge-integration.test.ts",
+        "tests/lead-status-tx.test.ts",
+        "tests/lead-keys.test.ts",
+        "tests/leads-queue-integration.test.ts",
         "tests/perf/leads-queue.perf.test.ts"
       ],
       "readiness": "CARD_READY",
@@ -4448,7 +4462,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "DONE — merged PR #612 (2026-10-26)",
       "migration": "20261026010000_bank_payment_in_flight",
       "budget": 420,
       "units": [
@@ -5155,7 +5169,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR #616 open. CI all green at head beb787c4; Codex review dispositions: P2 (two-step page prerender) already fixed via force-dynamic, P1 (forget action actor recheck) fixed with an in-transaction assertActiveTeamActor + 3 unit tests, typecheck clean. Awaiting ci at the new exact head, then reply/resolve threads and merge.",
       "units": [
         "ACC-6"
       ]
@@ -5167,7 +5181,7 @@
       "dependencies": [
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #617, squash merge cb1c3618 (2026-10-26); fingerprint refresh PR pending (3 rule-key lines need cb1c3618 fingerprints)",
       "migration": "20261101000000_legal_rules (LegalRuleVersion, timing settings)",
       "budget": 500,
       "units": [
@@ -5728,8 +5742,8 @@
       "dependencies": [
         "BILL-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
+      "status": "DONE — merged PR #614 (2026-10-26)",
+      "migration": "20261027040000_fair_late_fees (additive: PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
       "budget": 450,
       "units": [
         "FEE-1"
@@ -5740,7 +5754,9 @@
         "src/domains/billing/reminders.ts"
       ],
       "tests": [
-        "tests/late-fees-fair-integration.test.ts"
+        "tests/late-fee-rules.test.ts",
+        "tests/late-fee-engine-integration.test.ts",
+        "tests/late-fee-digest.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/FEE-1.md"

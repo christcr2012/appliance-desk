@@ -1,4 +1,4 @@
-## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review)
+## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review, merged with latest main)
 
 Branch `ai/claude/dec-1b-decisions-screens`. Coded: Settings › Decisions & reviews (`/desk/settings/decisions`: tabs,
 filters, cards with Keep / Change / Ask / Enter their answer / Reopen — owner acts, admins read only, staff sent away),
@@ -8,7 +8,170 @@ card. The kit `<Toaster />` is mounted on these two screens only (in the layout 
 one status message; moving it there stays with AR-0b). Proof: unit tests here; browser spec `e2e/decisions.spec.ts` runs in CI only.
 Not observed: a form kept in real private storage (CI has none). Next: DEC-2 researched values; MCP decision tools.
 
-## October 25 (night) — MCP-1: System health that tells the truth (in review)
+
+## October 26 — ACC-6: CI green; Codex findings fixed, exact-head rerun
+
+PR #616's checks came back all green at head beb787c4. Codex's review left two findings: a P2 — the two-step login page could be prerendered, so it kept offering "Remember this device" after the owner turned remembering off (already fixed in an earlier round by making the page request-rendered) — and a P1 — the My account "Forget remembered devices" action did not re-check the person inside its transaction, so someone deactivated between the page check and the write could still have their trust rows deleted. The forget now re-checks the actor inside the transaction (row lock + active-team check, the repo's rule), with unit tests for the active, deactivated, and internal-cleanup paths; internal cleanup (password, reset, email, owner actions) is unchanged. Typecheck clean, 27 focused unit tests pass. The rerun on the fix head then failed only the secret scan: the full-history scan reads every branch, and it flagged the same legal rule-name lines under main's TFA-1 merge commit (already allowlisted on main — this branch's copy was older) and under the leads lane's merge commits (not allowlisted anywhere). Main has been merged in, bringing the refreshed allowlist, and the four leads-branch fingerprints were added with the reason recorded in `.gitleaksignore` and the PR; every flagged line was read — they are tax rule names and a migration comment, not credentials. Next: exact-head CI, then reply to and resolve both review threads and merge.
+
+Update 2026-10-26 ~13:45 MDT: three more runs, each red on exactly one thing, all diagnosed and fixed in turn. Run 40370951794 (head 0627b5c2): everything green except browser-b — 164 passed but 3.0m against the 180s phase budget; feedback and staff-security moved b to c. Run 40386761485 (head 52207003): the scanner flagged the leads migration comment under LD-1's merge commit (50e265ec — one fingerprint added, reason recorded) and browser-c ran 3.1m with 109 passing (the desk-a route scan varies 120–183 test-seconds between runs). LD-1 then merged to main (#625), so main was merged in again here: conflicts in `.gitleaksignore` (union of both lanes' fingerprints), this file (both top entries kept) and the shard file resolved; LD-1's new lead-staff-detail spec assigned to browser-b, revenue-records moved c to a and my-account d to c from run 40386761485's measured times (a 2.3m, b 2.6m, d 2.9m). Next: exact-head CI on the merged tree, then reply to and resolve both review threads and merge.
+## October 26 — LD-1: fix pushed, checks never started — needs one manual start
+
+PR #618 (leads pipeline engine) at `ac70fedc`. The first check run was red in 4 jobs; all four causes are fixed and pushed, and the branch is verified green locally on a private database (18 files, 95 tests). But GitHub never started a new check run on the fix — the upload method doesn't fire the event, and closing/reopening the PR didn't start one either. Needs Chris: one manual start (Actions → CI → Run workflow on `ai/marley/ld-1`; row on the checklist). Once the run is green, review threads get answered and it merges. No production data or settings changed.
+
+Update 2026-10-26 ~07:20 MDT: Chris started the run by hand (40328842401) and it failed in all 11 jobs — but that run's tree was missing the books work's files the leads branch never touched (the upload only sent files differing from current main, while the branch was built on older main). That explains every failure: typecheck, the seed, the schema check and the secret scan. The remote tree is repaired (all 86 files changed since the branch base, verified file-for-file) at head `ac70fedc`; it needs one more manual start on the new head.
+
+Update 2026-10-26 ~07:45 MDT: trigger hunt — the connector has no start-checks action, the CLI has no raw-API command, and there is no git login in this shell. Tested: snapshot push, close/reopen, draft PR #619 and non-draft PR #620 on the same head — none started a run (the very first run appeared 2s after PR #618 was created and can't be reproduced). Only a manual start works. Both throwaway PRs closed again. Still needs one manual start on `ac7e23eb`.
+
+Update 2026-10-26 ~08:35 MDT: the checks now start from here — Chris's custom GitHub MCP has a dispatch action, and it started run 40340617271 on `a02e4040`. The run finished red in 2 jobs: the secret scan flags the tax lane's own allowlist entry (a false positive that also fails their run), and 3 tests were skipped — the leads capacity test only runs in the performance job but was never added to the skip list. The automated review also left 2 real findings: staff cannot open a lead record, and converting a lead with an approver email erases its phone search key. All four are fixed locally and verified (the secret-scan finding is gone from a full-history scan, the skip check passes on 1,616 tests, the phone-key test fails without the fix and passes with it); the staff page has a new browser test. Pushing the fix next, then starting the checks again.
+
+Update 2026-10-26 ~09:25 MDT: the staff browser test found a second bug the review fix did not cover — the lead page also renders the text-message panel, whose preview and history both refuse staff on a lead, so the page crashed for every staff member and bounced them to the home page. Staff cannot send lead texts anyway, so the panel is now owner/admin only on the lead page (same pattern as the tasks section); staff still see the message history in the separate history panel. Rebuilding to re-verify the test, then pushing (the custom MCP push starts the checks on its own — proven on a throwaway branch) and merging once green. Note: the customer page has the same text panel, so staff opening a customer record likely hit the same crash — a follow-up, not part of LD-1.
+
+Update 2026-10-26 ~09:40 MDT: a third staff bug turned up while verifying — the linked-communication timeline requires OWNER/ADMIN and redirects staff to the home page mid-render, so the page bounced staff home the moment it loaded, with no error logged anywhere. It took a debug run tracing the session (staff, valid) and the navigation (a full document load of the home page right after the lead page loaded) to find it. The timeline is now owner/admin only on the lead page too; staff still see the message history and can log notes. Rebuilding again to re-verify the browser test, then pushing and merging once green.
+
+Update 2026-10-26 ~11:40 MDT: the fix is pushed (head 6fc2dc5e) with main merged in. Run 40367161675 passed everything except the secret scan: the browser-c rebalance worked, and the offline test passed (it was timing, not code). The secret scan needed allowlist fingerprints for the merge's own commits (the same refresh TFA-1 needed after its merge) — added. Run 40369165252 then passed the secret scan and everything else except browser-b, which ran 3.2m against the 180s budget with all 165 tests passing (345 test-seconds after the earlier rebalance landed two specs there). Measured a 293/2.6m, c 211/2.1m, d 311/2.8m, so website-editor (~35 test-seconds) moved from b to c, the lightest group. Re-running; on green, the two review comments get answered and the PR merges.
+
+Update 2026-10-26 ~12:40 MDT: run 40370502019 passed every test group; the secret scan then needed the same fingerprints under the ACC-6 lane's merge commits, because the scan reads every branch's history (added). Run 40371581549 passed the secret scan and everything except the offline test, which failed the same way as once before (the 'Try again' link missing after the connection returns; it has passed in three of the last five runs, the same failure has appeared on other lanes' branches, and nothing in this lane touches the offline path). Main moved again (BA-2, PR #613), so main is merged in once more — the only conflict was this file. Final checks running on the merged head; on green, the two review comments get answered and the PR merges.
+
+Update 2026-10-26 ~13:05 MDT: the checks went fully green at 41cc8e49 (run 40379427517, all 11 jobs) and both review comments were answered and resolved, but GitHub would not merge PR #618: the branch's upload-based history never recorded the two merges of main, so GitHub still computed a conflict in this file even though the tree itself was fully merged, and its merge endpoint refused with the same conflict. The lane has been rebuilt on current main as branch ai/vivienne/ld-1 with the identical tree and a new PR, and PR #618 is closed in its favor. Nothing about the work itself changed.
+
+Update 2026-10-26 ~13:15 MDT: the rebuilt PR is #625. Its first run needed one more secret-scan fingerprint (the migration comment under the rebuild's commit), then went fully green — but the fresh review found three real issues, all now fixed in one patch: the lead actions check the actor's Leads screen directly instead of trusting the page address the request was posted from (a job role without Leads could otherwise run them from an allowed page); changing a lead's follow-up date through a status change or a merge now advances the follow-up version, so a stale save can't overwrite it; and lead creation takes its serialization lock before the duplicate check, so two leads created at the same moment with the same phone or email can't both slip through unflagged. New tests cover all three (an actions test, status-transaction cases, and real-database race/version cases). Final checks running on the patched head.
+
+## October 26 — BA-2 implementation accepted in CI; documentation revalidation next
+
+BA-2 PR #613 has all functional and full-suite checks green on implementation commit `72ac47ff` (run 40355797414). The single Codex issue about corrected Stripe openings was fixed with a real-database regression. This documentation update is the last branch change; exact-head CI and review disposition precede any merge. BA-1 PR #610 is already merged. BA-3 remains a separate branch and is being checked. No live money or provider settings changed.
+
+## October 26 — BA-2 Codex Stripe correction finding fixed; exact-head verification pending
+
+PR #613 is ready for review. Codex found that a corrected opening Stripe amount was missing from the clearing comparison baseline. The fix includes corrected OPENING journals dated by the reconciliation cutoff, with an actual disposable-Postgres scenario. Prior CI passed, but that was before this fix; the new head still requires CI and review disposition. BA-1 is merged. BA-3 is in a dependent branch. No live Stripe setting or business data changed.
+
+## October 26 — Books Lane 3: BA-1 merged, BA-2 and BA-3 in progress
+
+BA-1 books autopilot merged as PR #610 after full exact-head CI and three Codex findings fixed. BA-2 owner setup is in PR #613, reconciling its branch with main before fresh CI. BA-3 monthly review is a separate dependent branch. No production data, provider settings, or live messages changed.
+
+## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
+
+CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
+
+## October 26 — BA-1 Codex findings addressed, exact-head rerun pending
+
+PR #610 passed full CI at `0d17ac10`, then automated review found three material gaps. The new patch retains the existing books-nightly Stripe pause/health key, reports unenrolled recorded-cost retirements, and refuses disposal before retirement; route and real-Postgres regressions added. Next: exact-head CI, disposition each review thread and merge only when green. BA-2 PR #613 and BA-3 stacked branch still depend on this. No live provider or production settings changed.
+
+## October 26 — BA-1 source posting verified, merge reconciliation in progress
+
+PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
+
+## October 26 — ACC-6: remember this device (built; PR #616 open, CI red — fixed, re-running)
+
+Owner setting "Remember devices for {n} days" (starting 30, 0 = off) on Settings › Security, a "Remember this device"
+box on the two-step login, remembered devices with "Forget remembered devices" on My account, a device cookie behind
+the new-device notice (a second phone of the same kind is new), customers noticed only through the customer-email
+switch, and every security change (password, reset, email, second step, removal, role change, sign-out-everywhere,
+lowering the setting) asking for a code again. Built with unit tests (fakes), a throwaway-Postgres integration test
+and two browser tests; database and browser proof runs in CI only. PR #616 opened (head 8b0199f9); CI came back red:
+two My account browser tests (a locator matching two elements, and a settings save cancelled by an immediate reload),
+the customer session-deactivation test (ACC-6 records customer sign-ins in the audit log, so the fixture now deletes
+its audit rows before deleting the user), the Bills sideways-scroll check at 360px in dark mode (a resize reporting
+the phone width before the desktop sidebar padding was recalculated — BA-1 fixed the same thing in the shared scan
+helper; this branch now uses that fix), and one unit test that timed out importing the customers domain inside the
+test (import hoisted to the top of the file). Fixes in commit 6405616f; main (BA-1 #610) merged in. Pushed as head
+7df70d47 — but no check run has started on it in 45 minutes (snapshot pushes do not reliably start CI; the leads and
+tax lanes are hitting the same thing). While waiting, the lane's own test database (port 5435) was used to run the
+device integration test for the first time: it failed 8 of 10, a fifth failure the unit shard's bare "exit code 1"
+had hidden. Causes, all in the test (the feature works): the test used mixed-case email addresses but the app stores
+emails lowercased, so the code email was never found; it replayed a stale trust cookie after the sign-in rotated it,
+and it did not present the device cookie the gate needs; and it read the session token from the (signed) session
+cookie instead of the session row. Fixed (test only); all 10 pass locally on port 5435. Next: push the fix, then the
+checks need a manual start (Actions → CI → Run workflow) if they do not start on their own. Update, same day: the
+run was started by hand (browser, signed in as Chris) and came back red in 2 minutes — no test ran. Causes, all
+found by reading the job logs: (1) the seed and schema-health steps fail because the BusinessSettings column
+`booksLastBroughtUpToDateAt` does not exist — the snapshot push had been diffed against current main, so it omitted
+the BA-1 migration and 38 other main files the remote branch (created from 0516a31) did not have; the remote tree
+was a mix of new and old files. Fixed by pushing with the manifest diffed against the branch-creation commit
+0516a31 (76 files), per the snapshot-push rule. (2) Three type errors in the device test from the fix round
+(`string | null` passed where `string | undefined` was wanted) — the typecheck had not been re-run after that
+edit; fixed and typecheck is clean. (3) The secret scan found 5 leaks: four are the BA-1 historical false
+positives, missing from the remote tree's stale allowlist (restored by the corrected push), and the fifth is the
+allowlist entry itself being flagged for its own commit SHA — allowlisted with a fingerprint entry, verified clean
+by scanning the entry text. Next: push the corrected tree, then the checks need starting again (the GitHub MCP's
+`github_actions_dispatch` now starts them — no browser sign-in needed). Update, same day: the corrected run
+(head 1005486e, started with the MCP) is green everywhere except browser-a and browser-d. Unit shards, typecheck,
+secret scan, browser-b and browser-c all pass. The two browser-a failures are both the ACC-6 my-account tests: the
+forget-confirm text uses a curly apostrophe the test didn't match, and — a real bug — the two-factor login page
+was prerendered at build time, so it kept offering "Remember this device" after the owner turned remembering off.
+Fixed (page is now force-dynamic; test matches without the apostrophe) and pushed; the remaining browser-d failure
+is the offline-fallback test, which also failed on the FEE-1 branch and passed on this branch before — it looks
+like a timing flake, not an ACC-6 regression, so it is being watched on the re-run rather than "fixed". Update,
+same day: the re-run (head 2aaea9e7, MCP dispatch) passed browser-a and browser-d — both my-account fixes work and
+the offline test passed — but browser-c failed with no test failing: all 106 tests passed and the shard ran 3.1m
+against the 180s phase budget. That is a shard-balance problem, not a code problem, so the fix is the repo's
+established rebalance: staff-security (~18 test-seconds) and fleet-report (~14) moved from browser-c to browser-b,
+the lightest group (1.9m), with no test omitted and the budget unchanged. Pushed through the custom GitHub MCP
+(the original connector is disconnected; the MCP's API push starts the checks on its own). Next: read the checks,
+then reviews, then merge. Next card: VAULT-1, once CMP-1 (lane 5) is merged.
+
+## October 27 — FEE-1: fair late fees (merged PR #614)
+
+Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
+at most $15, once per bill, only after the customer was warned (2 days' notice, Settings), never while a payment is in progress
+or a bank payment is being confirmed, and autopay customers get 10 days' notice. The fee is its own charge on the next bill
+(its own one-line bill if the rental ended); the overdue bill never changes. Owner screens: warn / "told by phone" / skip /
+waive on the bill, servicemember checkbox, a Settings card for the warning days and for the Colorado lease filing, To do items.
+Migration `20261027040000_fair_late_fees` (additive; lifts old settings below 10 days / over $15). Proof: unit tests plus about
+45 database tests with a pretend Stripe on a throwaway Postgres; CI green at the merged head; twelve automatic-review findings fixed (waiving removes the Stripe item or credits Stripe, autopay notice first, no fee on a fee bill, promised date never earlier, failed bank payment re-warns, reconciler for unknown Stripe requests).
+Not done: no browser test; no real Stripe test-mode fee observed; fees do not attach to an arbitrary next local bill; "payment
+in progress" is approximated (open bank flag or phone payment in the last 24 h). Next: DEC-2 — waiting: it needs DEC-1 fully merged and DEC-1b (PR #603) is still open with merge conflicts.
+
+## October 26 — BILL-1: bank payments being confirmed (merged PR #612)
+
+Branch `ai/claude/bill-1-bank-in-flight`. A bank transfer now shows **Being confirmed** instead of late: Stripe's "processing"
+event is recorded as a flag (never as money), the Bills list has a new **Being confirmed** tab and pill, the bill and customer
+record say so, no late fee is added and no past-due To do appears while it waits, and a calm **bank payment is taking a while**
+To do appears after the owner's number of banking days (starting value 6, Settings › Bank payments). A nightly check asks Stripe
+about up to 50 waiting payments; one Stripe says cleared but we missed is recorded through the normal payment handlers, or shows
+a **Record it now** button (Today and Billing › Reconciliation). Migration `20261026010000_bank_payment_in_flight` (additive).
+Proof: unit tests plus 41 database tests with a pretend Stripe, run on a throwaway Postgres here; CI results pending.
+Not done: the **Payments** tab — AR-3 adds it. Until the three Stripe events are added (checklist row), the screens only
+learn about a payment from events already sent; the nightly check can only follow payments that already have a flag. Next: FEE-1.
+
+## October 26 — Tax and fee rule book (TFA-1, merged PR #617)
+
+Branch `ai/marley/tfa-1`: every tax and fee number is now a dated rule version with its source (migration `20261101000000_legal_rules`), read by date — RDF amount, thresholds, 1099 limit, record-keeping years — plus the timing rule (file and pay on 90% through the window, 3 business days before the deadline), the late-change true-up (issued bills never change; the business absorbs extra cost, customers get a credit kept for their next bill), and Taxes › Rules with now/next/source/state, history, owner change with reason and undo. Proof: 20 unit tests pass here; 53 database tests pass on a fresh database migrated from scratch. First CI run came back red (secret scan, two unit shards, two browser shards, 4 review comments); one fix patch follows: the owner's existing settings are carried into the rule book, a second value for the same start date supersedes the first, late changes adjust incrementally, the credit is kept for the next bill instead of an old open one, the database check that blocked rule-versioned delivery-fee records is relaxed, and the Rules browser tests use the right labels. Two more fixes after that: the carry-over only carries a setting the owner actually changed (an unguarded carry created default OWNER rows on every fresh database and blocked other versions for the same date), and the branch merged main (BA-1 #610) to clear a merge conflict. The checks never started on the fix commit — snapshot pushes don't reliably start them — so the run was started by hand (run #2618) and came back red with 2 failures: the secret scan flagged the `.gitleaksignore` comment itself (it spelled out the flagged pattern), and the Rules browser tests failed on an accessibility duplicate-`<main>` and on the Change sheet never opening. Second fix patch: the comment is rewritten so it no longer spells out the pattern, with a fingerprint entry covering the historical occurrence; the page no longer renders its own `<main>` (the desk shell already provides one); and the Change sheet now receives only plain data — the full rule definition carries a zod schema and a `describe` function, which React refuses to pass from a Server Component, so the sheet never opened at all. Proof: all 3 Rules browser tests pass locally against a production build on the lane's own database (port 5434). That patch was pushed through the custom GitHub MCP, which started CI on its own; run 40346700557 came back all green at head `98da4545`. All 4 Codex review threads were answered and resolved. The PR would not merge at first — GitHub's test merge conflicted on `.gitleaksignore` alone (the branch and main had both appended allowlist blocks after the same base line). Fixed by taking main's block verbatim on the branch and moving the 463b1043 entry to the middle of the file, where it merges cleanly (verified with a local test merge); that push also started CI on its own and went green at head `af3fda28`. **Merged 2026-10-26 as `cb1c3618` (squash, PR #617).** The merge commit's secret scan flagged the three rule-key lines under the merge commit, so a small follow-up PR refreshes those three fingerprints to `cb1c3618`. Next: TFA-2.
+
+## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
+
+Branch `ai/chatgpt/mcp-2-preview-storage-safety`. Removes hard-coded private store identifiers from active source, examples and tests, while preserving preview-only token/store matching and wrong-target rejection. Full MCP-2 backup recovery remains unbuilt. CI and review evidence pending; no hosting settings changed. Next: finish MCP-2 backup artifacts and private destination.
+
+## October 26 — LD-1 leads pipeline (PR #618 open, CI fixes in progress)
+
+Branch `ai/marley/ld-1` (merged up to `origin/main` 0e66c2e8). Everything in the card is built and verified here: 78 tests pass on throwaway Postgres (41 unit, 37 database), capacity list 123 ms / counts 73 ms / search 22 ms on 50,000 leads, typecheck and lint clean, `check:quick` green. Chris answered DQ-LD1-1 yes on 2026-10-26, so staff whose job role includes the Leads screen can see and work leads and be given them; merging, reassigning and Today lead follow-ups stay owner/admin. PR #618 opened; its first CI run was red in 4 jobs — the unit shards (fixed on this branch: a test fake missing the new lead-lock query, a stale add-email expectation, the lead-assignment test not listed in the serial project), the secret scan and browser-d (both already fixed on main by BA-1's merge: a migration-comment false match and a phone-width resize race). Fixes pushed for a fresh CI run. Next: AR-4b (Leads screens), then CMP-1 — blocked until lane 4's TFA-1 merges.
+
+## October 25 — BA-1 books autopilot (merged #610)
+
+Branch `ai/chatgpt/ba-1` (PR #610, merged): nightly recording, automatic appliance enrollment/depreciation,
+books To do issues, Equipment retirement/disposal reversals and post-commit source recording coded.
+Run 40269991085 passed all CI shards at earlier head `6be9cfac`, **not** the current head;
+later changes and their new concurrency/long-life tests are awaiting exact-head CI and review.
+Remaining BA-1 hook/edge proof is on its card; BA-2 and BA-3 await BA-1 merge.
+No production settings, real accounts or customer data touched.
+
+## October 25 — AR-11 installation and public-only offline shell (part 1, PR #608, in review)
+
+Branch `ai/chatgpt/ar-11-pwa-shell`: separate desk install manifest; private-data-safe offline worker,
+fallback page and warning; kit actions disabled offline. Added unit and browser tests; CI/review not yet proven.
+AR-11 is not complete: remaining app interactions and performance checks follow. AR-0b is merged (#606)
+and its reference screens were preserved while updating this branch.
+
+## October 25 (night) — AR-0b: Today, Money › Bills and Customer record rebuilt with the kit (merged PR #606)
+
+Branch `ai/claude/ar-0b-screens`. Coded: the shared bill rules (`bill-status.ts`, one past-due rule now used by Today,
+Bills and the revenue dashboard), the Bills list reads, Today's weekly health, Call/Email on To do items, the inbox
+grouping, the customer-scoped next steps and summary, and the three screens with loading/error screens. Same server
+actions and role checks as before (staff: no money on Today, refused on Bills, operational customer view). Proof: unit
+tests here; database and browser tests run in CI only. Your look-over row is on the checklist. Next: AR-1.
+**Open (unexplained):** one CI run (a3ba20f2) found Bills scrolling sideways at 360 px; the next run passed. The
+phone-width scan now names the element that overflows, so the next occurrence identifies the cause — fix it then.
+
+## October 25 (night) — MCP-1: System health that tells the truth (merged PR #602)
 
 Branch `ai/claude/mcp-1-system-health`. One state list (8 states, each with a label, colour and meaning on the page);
 Late comes from each job's real `vercel.json` time (UTC, shown in Colorado time) plus the owner's grace setting (2 hours);
@@ -16,7 +179,7 @@ the issue sweep uses the same rule; health reads three rows per job; failures st
 screens, issues, the backup email and the check-up key show only the code's plain wording. DB and browser tests run in
 CI only (no local Postgres here). Next: MCP-2 (backups).
 
-## October 25 (night) — AR-0a: application kit + guards (in review)
+## October 25 (night) — AR-0a: application kit + guards (merged)
 
 Built the shared kit in `src/components/kit/` (20 components + Icon, unit-tested in `tests/kit/`), the new color
 tokens (light + dark, contrast-tested), the five pinned UI libraries, the kit date words in `src/lib/business-date.ts`

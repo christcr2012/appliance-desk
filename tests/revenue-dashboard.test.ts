@@ -11,7 +11,7 @@ vi.mock("@/lib/prisma", () => ({
     rentalAgreement: { findMany: m.agreements, count: m.rentals },
     receipt: { aggregate: m.receipts },
     payment: { count: m.failures },
-    invoice: { findMany: m.invoices },
+    invoice: { findMany: m.invoices, fields: { amountPaidCents: "amountPaidCents-field" } },
   },
 }));
 vi.mock("@/lib/stripe", () => ({ getStripeClient: vi.fn() }));
@@ -72,4 +72,20 @@ it("reconciles rates, receipt cash totals and partially paid balances with Color
   expect(m.invoices.mock.calls[0][0].where.status.in).toContain(
     "PARTIALLY_PAID",
   );
+});
+
+it("uses the shared past-due rule: open, money owed, due before the start of today in Colorado (AR-0b)", async () => {
+  const now = new Date("2026-10-25T18:00:00Z");
+  m.agreements.mockResolvedValue([]);
+  m.rentals.mockResolvedValue(0);
+  m.receipts.mockResolvedValue({ _sum: { amountCents: 0 } });
+  m.failures.mockResolvedValue(0);
+  m.invoices.mockReset().mockResolvedValue([]);
+  await getRevenueDashboard(now);
+  expect(m.invoices.mock.calls[0][0].where).toEqual({
+    status: { in: ["OPEN", "PARTIALLY_PAID", "DELINQUENT", "FAILED"] },
+    amountDueCents: { gt: "amountPaidCents-field" },
+    bankPaymentsInFlight: { none: { clearedAt: null } },
+    dueDate: { lt: new Date("2026-10-25T06:00:00Z") },
+  });
 });

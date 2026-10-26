@@ -6,6 +6,27 @@ const DEFAULT_VIEWPORTS = [360, 1440] as const;
 const THEMES = ["light", "dark"] as const;
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] as const;
 
+/**
+ * Wait for the *actual* breakpoint layout after a resize, before measuring anything. A 1440 → 360
+ * resize can report innerWidth=360 before Chromium has recalculated Tailwind's desktop sidebar
+ * padding (256px), especially during the second/dark pass under parallel CI load — the mobile
+ * header's Search link was once measured 49px past a 360px viewport for exactly this. Waiting on
+ * the shell's computed padding (256 on desktop, 0 on phone) catches the stale layout; the two
+ * frames after it let the browser finish laying out at the new width. A genuinely overflowing
+ * phone page still fails the overflow check below.
+ */
+export async function waitForBreakpointLayout(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const shell = document.querySelector(".desk-app");
+    if (!shell) return true;
+    const padding = Number.parseFloat(getComputedStyle(shell).paddingLeft);
+    const desktop = window.innerWidth >= 1024;
+    return Number.isFinite(padding) && Math.abs(padding - (desktop ? 256 : 0)) < 1;
+  }, undefined, { timeout: 5000 });
+  await page.evaluate(() => new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+}
+
 export async function scanAccessibilityRoute(
   page: Page,
   route: AccessibilityRoute,
@@ -51,17 +72,48 @@ export async function scanAccessibilityRoute(
     for (const width of viewports) {
       await page.setViewportSize({ width, height: 900 });
       // Let the browser finish laying the page out at the new width before measuring.
-      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      await waitForBreakpointLayout(page);
       if (width <= 400) {
         // Older review finding (pr39): wide content must never push the page sideways on a phone. A table or form that
         // is wider than the screen has to scroll inside its own box, not drag the whole page.
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-        // When it fails, name the innermost elements that stick out, so the cause is visible in the CI annotation.
-        const culprits = overflow > 0 ? await page.evaluate(() => [...document.querySelectorAll("body *")]
-          .filter((el) => el.getBoundingClientRect().right > window.innerWidth + 1)
-          .slice(-5).map((el) => `${el.tagName.toLowerCase()}[${String(el.getAttribute("class") ?? "").slice(0, 60)}] ` +
-            `right=${Math.round(el.getBoundingClientRect().right)} "${(el.textContent ?? "").trim().slice(0, 30)}"`)
-          .join(" | ")) : "";
+        // When it fails, name the innermost elements that stick out (and the URL) so CI shows the cause.
+        const culprits =
+          overflow > 0
+            ? await page.evaluate(() => {
+                const past = (el: Element) => el.getBoundingClientRect().right > window.innerWidth + 0.5;
+                return JSON.stringify({
+                  url: location.href,
+                  chain: (() => {
+                    const oversized=[...document.querySelectorAll("body *")].filter(el=>
+                      el.getBoundingClientRect().right > window.innerWidth+1 &&
+                      getComputedStyle(el).position!=="fixed");
+                    const leaf=oversized.find(el=>![...el.children].some(child=>
+                      child.getBoundingClientRect().right>window.innerWidth+1))??oversized[0];
+                    const chain=[];
+                    for(let el:Element|null=leaf;el&&chain.length<12;el=el.parentElement){
+                      const rect=el.getBoundingClientRect(),css=getComputedStyle(el);
+                      chain.push({
+                        tag:el.tagName,cls:String(el.className).slice(0,65),
+                        x:Math.round(rect.x),width:Math.round(rect.width),right:Math.round(rect.right),
+                        display:css.display,minWidth:css.minWidth,maxWidth:css.maxWidth,
+                        overflowX:css.overflowX,flex:css.flex,
+                      });
+                    }
+                    return chain;
+                  })(),
+                  body:{width:document.body.clientWidth,scroll:document.body.scrollWidth},
+                  main:[...document.querySelectorAll("main")].slice(0,2).map(el=>({
+                    width:el.clientWidth,scroll:el.scrollWidth,
+                    rect:Math.round(el.getBoundingClientRect().right),
+                  })),
+                  leaves: [...document.querySelectorAll("body *")]
+                    .filter((el) => past(el) && ![...el.children].some(past))
+                    .slice(0, 8)
+                    .map((el) => `${el.tagName}.${String(el.className).slice(0, 70)} right=${Math.round(el.getBoundingClientRect().right)} parent=${String(el.parentElement?.className ?? "").slice(0, 70)} text=${(el.textContent ?? "").slice(0, 50)}`),
+                });
+              })
+            : "";
         expect(overflow, `${route.path} should not scroll sideways at ${width}px in ${theme} mode ${culprits}`).toBeLessThanOrEqual(0);
       }
       const results = await new AxeBuilder({ page })

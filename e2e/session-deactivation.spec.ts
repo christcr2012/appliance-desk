@@ -50,6 +50,9 @@ test("real customer session denies direct API and protected pages after deactiva
     await expect(page).toHaveURL(/\/account$/);
   } finally {
     await prisma.customer.deleteMany({ where: { id: customerId } });
+    // ACC-6 records every sign-in (team and customer) in the audit log, and audit rows keep the user
+    // from being deleted, so the fixture's audit rows go before the user does.
+    if (userId) await prisma.auditLog.deleteMany({ where: { userId } });
     // The UUID email is owned even if setup fails before the id is read.
     await prisma.user.deleteMany({ where: { email, ...(userId ? { id: userId } : {}) } });
   }

@@ -14,6 +14,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/acc3-second-step-integration.test.ts", // ACC-3 changes and restores the shared sign-in method rules and text-code switch.
   "tests/acc4-recovery-integration.test.ts", // ACC-4 changes and restores the shared wrong-password pause numbers and invitation link days.
   "tests/acc5-job-roles-integration.test.ts", // ACC-5 edits the shared starting job roles and the invitation settings.
+  "tests/trusted-devices-integration.test.ts", // ACC-6 changes and restores the remember-days setting, the customer-email switch and the text-code switch.
   "tests/goals-integration.test.ts", // O-5 changes and restores the shared alert settings.
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
   "tests/approval-money-integration.test.ts", // O-3B changes and restores the shared approval limits.
@@ -34,6 +35,9 @@ const SHARED_SETTINGS_TESTS = [
   "tests/books-closing-integration.test.ts", // K-8 toggles Books start during isolated real-database source tests.
   "tests/books-reports-integration.test.ts", // K-7 read-only reports fixture temporarily seeds an isolated Books opening date.
   "tests/books-depreciation-integration.test.ts", // K-6 adjusts verified opening date and book life defaults in a serial database fixture.
+  "tests/ba1-books-autopilot-integration.test.ts", // BA-1 modifies singleton Books dates and depreciation.
+  "tests/ba1-nightly-autopilot-integration.test.ts", // BA-1 changes the singleton Books start and health settings.
+  "tests/ba2-books-setup-integration.test.ts", // BA-2 owns the Books singleton and closes/reopens historical periods.
   "tests/books-export-delivery-integration.test.ts", // K-CASH-6 also updates/restores singleton Books opening.
   "tests/books-exports-integration.test.ts", // K-5 temporarily sets shared Books opening date and verifies export provenance.
   "tests/telecom-statement-books-integration.test.ts", // COM-N3 changes booksStartDate and posts expenses.
@@ -48,10 +52,13 @@ const SHARED_SETTINGS_TESTS = [
   "tests/purchases-w14-w2-w15-integration.test.ts", // Purchase tax answers use the shared tax settings and filing calendar.
   "tests/rental-turning-points-w4-integration.test.ts", // Changes and restores the shared rental-ending reminder setting.
   "tests/w5-w6-integration.test.ts", // Changes and restores the shared lead response time and payment-link wording settings.
+  "tests/lead-assignment-integration.test.ts", // LD-1 changes and restores the shared lead-assignment settings (mode, person, rotation cursor).
   "tests/setup-checklist-integration.test.ts", // W-7 blanks and restores shared settings, prices, filing accounts and the business address.
   "tests/w9-filing-autopilot-integration.test.ts", // W-9 creates Colorado filing accounts and periods that the whole-database filing list and health check read.
   "tests/w19-flow-gaps-integration.test.ts", // W-19 changes and restores the shared unsigned-agreement reminder setting.
   // Tax-ready fixtures also write/restore BusinessSettings.singleton through their helper.
+  "tests/bank-in-flight-nightly.test.ts", // BILL-1: the nightly check looks at every open bank-payment flag in the database, so it must not overlap the webhook suite that creates them.
+  "tests/bank-in-flight-webhook-integration.test.ts", // BILL-1: same shared flag rows as the nightly suite above.
   "tests/billing-webhooks.test.ts",
   "tests/pickup-billing-end-integration.test.ts",
   "tests/signing-manual-payment-w22-integration.test.ts",
@@ -61,6 +68,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-exemptions-integration.test.ts",
   "tests/tax-prepaid-invoice-integration.test.ts",
   "tests/tax-rate-change-integration.test.ts",
+  "tests/rules-as-of-integration.test.ts", // TFA-1 changes and restores the shared timing settings; its rule versions are test-scoped.
   "tests/tax-refund-evidence-integration.test.ts",
   "tests/tax-stripe-invoice-mirror-integration.test.ts",
   "tests/agreements-term-integration.test.ts",

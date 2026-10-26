@@ -407,10 +407,12 @@ export async function sendEstimate(userId: string, estimateId: string,
     purpose: "TRANSACTIONAL",
     templateKey: "estimate-send",
     customerFacing: true,
-    recipient: {
-      type: estimate.customer ? "Customer" : "Lead",
-      address: recipientEmail,
-    },
+    // LD-1: the lead id lets the delivery hook tell which lead was contacted,
+    // so an accepted quote moves the lead out of "New" (a failed or unsent
+    // delivery is not contact and leaves the lead where it was).
+    recipient: estimate.customer
+      ? { type: "Customer", address: recipientEmail }
+      : { type: "Lead", id: estimate.leadId ?? undefined, address: recipientEmail },
     subject: { type: "Estimate", id: estimate.id },
     render: () => ({
       subject: localizedEmail.subject,

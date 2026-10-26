@@ -23,10 +23,11 @@ test.describe("owner Today", () => {
     test.skip(!fs.existsSync(owner), "Requires isolated CI role fixture");
   });
 
-  test("has no sideways scrolling and the headline card is cut", async ({ page }) => {
+  // AR-0b: Today is now the kit inbox (no cut headline card); its "this week" strip replaced the headline numbers.
+  test("has no sideways scrolling and shows the week strip", async ({ page }) => {
     await page.goto("/desk/today", { waitUntil: "load" });
     await noSideways(page, "/desk/today");
-    await expect(page.locator(".cut-corner-md.bg-nav-bg").first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Your business this week" }).first()).toBeVisible();
   });
 
   test("the day timeline shows on a wide screen and the visit list on a phone", async ({ page }) => {
@@ -55,10 +56,10 @@ test.describe("owner Today", () => {
     await expect(page).toHaveURL(/\/desk\/search\?q=zzz-no-such-customer/);
   });
 
-  test("keyboard focus is visible on the search box and the headline card", async ({ page }) => {
+  test("keyboard focus is visible on the search box and Today's search button", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/desk/today", { waitUntil: "load" });
-    const card = page.locator("a.cut-corner-md.bg-nav-bg").first();
+    const card = page.getByRole("main").getByRole("link", { name: "Search", exact: true });
     // Focus is retried: a re-render while the page finishes loading can drop focus set a moment too early.
     await expect(async () => {
       await card.focus();

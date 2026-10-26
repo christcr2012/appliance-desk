@@ -18,9 +18,10 @@ export const TAXES_SETUP_LINKS = [
   { href: `${TAXES_BASE}/use-tax/settings`, label: "Use-tax threshold", detail: "The amount that decides how often you report use tax." },
   { href: `${TAXES_BASE}/audit-pack`, label: "Audit pack", detail: "Every appliance and part bought, with receipts and tax, for any date range." },
   { href: `${TAXES_BASE}/record-retention`, label: "How long to keep records", detail: "Starts at 7 years; owner-editable." },
+  { href: `${TAXES_BASE}/rules`, label: "Tax and fee rules", detail: "Every tax and fee number, when it starts, where it came from, and its history." },
 ] as const;
 
-const SETUP_PREFIXES = ["setup", "exemptions", "taxability", "audit-pack", "record-retention"];
+const SETUP_PREFIXES = ["setup", "exemptions", "taxability", "audit-pack", "record-retention", "rules"];
 const RATES_PREFIXES = ["areas", "delivery-fees"];
 
 /** Which tab a Taxes address belongs to; null when the address is outside Taxes. */

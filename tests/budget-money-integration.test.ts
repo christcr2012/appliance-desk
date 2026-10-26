@@ -127,7 +127,12 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   const enabledBudget=await getBudgetSnapshot(owner,date);
   expect(enabledBudget.enabled).toBe(true);
   expect(enabledBudget.mayAssign).toBe(true);
-  expect(enabledBudget.readyCents).toBe(20000);
+  // Other serial integration suites may have protected liabilities in the shared throwaway database.
+  // Our bank contributes exactly 20,000 cents, but only cash above existing reserves is assignable.
+  expect(enabledBudget.eligibleBankCents).toBe(20000);
+  expect(enabledBudget.discretionaryBackedCents).toBe(0);
+  expect(enabledBudget.readyCents).toBe(20000-enabledBudget.protectedTotalCents);
+  expect(enabledBudget.readyCents).toBeGreaterThanOrEqual(15000);
  });
  it("prevents concurrent overfunding and idempotently returns original revision",async()=>{
   const snap=await getBudgetSnapshot(owner,date);
@@ -146,7 +151,10 @@ describe.skipIf(!enabled)("K-CASH-4B serial disposable Postgres cash authority a
   expect(retry).toBe(outcome.value);
   const after=await getBudgetSnapshot(owner,date);
   expect(after.envelopes.find(x=>x.id===account)?.balanceCents).toBe(15000);
-  expect(after.readyCents).toBe(5000);
+  // Funding exactly 15,000 cannot consume or erase independently protected liabilities.
+  expect(after.protectedTotalCents).toBe(snap.protectedTotalCents);
+  expect(after.readyCents).toBe(snap.readyCents!-15000);
+  expect(after.readyCents).toBeGreaterThanOrEqual(0);
   await expect(applyBudgetMoves(owner,{...original,expectedRevision:after.stateRevision,
    sourceHash:after.sourceHash,commandKey:ownerId("overdraw")}))
    .rejects.toThrow(/borrow protected|exceeds/);

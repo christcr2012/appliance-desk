@@ -4,6 +4,8 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { postForSource } from "@/domains/books/post";
+import { stageEquipmentBookRetirementInTx, writeOffRetiredBookAssetInTx,
+  reverseBookAssetNonSaleDisposalInTx } from "@/domains/books/fixed-assets";
 import { applyPartMovementsInTx, lockPartRecords, OPERATION_KEY_PATTERN } from "@/domains/purchasing/ledger";
 
 // ---------------------------------------------------------------------------
@@ -22,6 +24,30 @@ export const PLAN_CHOICES: Array<{ value: RetiredPlanChoice; label: string; help
   { value: "DISPOSE", label: "Throw it away", help: "It goes to the dump." },
   { value: "OTHER", label: "Donate or something else", help: "Anything else; add a short note." },
 ];
+
+/** Every enum value must name its frozen book retirement purpose. */
+export const BOOK_RETIREMENT_INTENT:Record<RetiredPlanChoice,string> = {
+  SELL:"SELL", STRIP:"STRIP", SCRAP:"SCRAP", DISPOSE:"DISPOSE", OTHER:"DONATE_OTHER",
+};
+
+/** A plan remains operational even if the accountant must fix its journal later. */
+async function bestEffortBookStep(tx:Tx,applianceId:string,work:()=>Promise<void>):Promise<void>{
+ await tx.$executeRaw`SAVEPOINT book_plan`;
+ try{
+  await work();
+  await tx.booksProblem.updateMany({where:{kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",
+    subjectType:"APPLIANCE",subjectId:applianceId,resolvedAt:null},data:{resolvedAt:new Date()}});
+  await tx.$executeRaw`RELEASE SAVEPOINT book_plan`;
+ }catch{
+  await tx.$executeRaw`ROLLBACK TO SAVEPOINT book_plan`;
+  await tx.$executeRaw`RELEASE SAVEPOINT book_plan`;
+  await tx.booksProblem.upsert({where:{kind_subjectType_subjectId:{
+   kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:applianceId,
+  }},create:{kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:applianceId,
+   message:"This retired appliance's book value needs review."},
+   update:{message:"This retired appliance's book value needs review.",lastSeenAt:new Date(),resolvedAt:null}});
+ }
+}
 
 export function planChoiceLabel(choice: RetiredPlanChoice): string {
   return PLAN_CHOICES.find((c) => c.value === choice)?.label ?? choice;
@@ -91,6 +117,10 @@ export async function setRetiredPlan(
         data: { applianceId, choice: input.choice, note, decidedAt: now, decidedByUserId: actorUserId },
       });
     }
+    await tx.bookAsset.updateMany({
+      where:{applianceId,retiredOn:{not:null},disposedOn:null},
+      data:{retirementIntent:input.choice?BOOK_RETIREMENT_INTENT[input.choice]:"DECIDE_LATER"},
+    });
     await tx.auditLog.create({
       data: {
         userId: actorUserId, action: "appliance.retired_plan.set", entityType: "Appliance", entityId: applianceId,
@@ -126,6 +156,13 @@ async function completeInTx(tx: Tx, actorUserId: string, applianceId: string, in
   await tx.retiredAppliancePlan.update({
     where: { applianceId },
     data: { doneOn, doneNote: note, doneByUserId: actorUserId, remainder: remainder ?? plan.remainder, reopenedAt: null, reopenReason: null },
+  });
+  await bestEffortBookStep(tx,applianceId,async()=>{
+    const staged=await stageEquipmentBookRetirementInTx(
+      tx,actorUserId,applianceId,doneOn,BOOK_RETIREMENT_INTENT[plan.choice]);
+    if(!staged)throw new Error("Book retirement needs review.");
+    await writeOffRetiredBookAssetInTx(
+      tx,{kind:"equipment",userId:actorUserId},applianceId,doneOn,plan.choice.toLowerCase());
   });
   await tx.auditLog.create({
     data: {
@@ -170,6 +207,10 @@ export async function reopenRetiredPlan(actorUserId: string, applianceId: string
     await tx.retiredAppliancePlan.update({
       where: { applianceId },
       data: { doneOn: null, doneNote: null, doneByUserId: null, reopenedAt: now, reopenReason: why },
+    });
+    await bestEffortBookStep(tx,applianceId,async()=>{
+      await reverseBookAssetNonSaleDisposalInTx(
+        tx,{kind:"equipment",userId:actorUserId},applianceId,now);
     });
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "appliance.retired_plan.reopened", entityType: "Appliance", entityId: applianceId, newValue: { reason: why } },

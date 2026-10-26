@@ -20,7 +20,7 @@ export default async function DeskFeedbackNewPage({
   const from = firstParam(params.from) ?? "/desk/today";
   const [settings, requestHeaders] = await Promise.all([getFeedbackSettings(), headers()]);
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="min-w-0 max-w-2xl space-y-5 [overflow-wrap:anywhere]">
       <Link href="/desk/feedback/mine" className="inline-flex min-h-11 items-center text-sm font-semibold underline">
         My app feedback
       </Link>

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DECISION_SUBJECTS, decisionSubject } from "@/domains/decisions/registry";
+import { isRuleKey } from "@/domains/rules/registry";
 import { allTaxCellSubjectIds, taxCellForSubject, taxCellSubjectId } from "@/domains/decisions/tax-cells";
 import { BANNED } from "../scripts/check-owner-wording.mjs";
 
@@ -97,6 +98,14 @@ describe("Decisions & reviews registry", () => {
     const covered = new Set(DECISION_SUBJECTS.flatMap((subject) => subject.covers));
     for (const field of required) expect(covered.has(field), field).toBe(true);
     for (const field of covered) {
+      if (field.includes(":")) {
+        // A dated rule, not a stored field: the model must exist and the
+        // rule key must be registered (TFA-1).
+        const [model, ruleKey] = field.split(":");
+        expect(models.has(model!), `${field} model exists in the schema`).toBe(true);
+        expect(isRuleKey(ruleKey!), `${field} rule is registered`).toBe(true);
+        continue;
+      }
       const [model, name] = field.split(".");
       expect(models.get(model!)?.has(name!), `${field} exists in the schema`).toBe(true);
     }
@@ -123,7 +132,7 @@ describe("Decisions & reviews registry", () => {
     const ctx = {
       settings: { shortTermLeaseElection: "PAY_ON_ACQUISITION", rdfHandling: "UNDECIDED",
         retailDeliveryFeeDecision: "NOT_LIABLE", badDebtTaxRecovery: "NO", setupFeeTaxPlanningTreatment: "TAXABLE",
-        setupFeeTaxTreatment: "UNDECIDED", recordRetentionYears: 7 },
+        setupFeeTaxTreatment: "UNDECIDED", recordRetentionYears: 7, trustedDeviceDays: 30 },
       taxCells: [
         { jurisdictionId: null, category: "DELIVERY" as const, taxability: "TAXABLE", provisional: true },
         { jurisdictionId: "greeley", category: "RENTAL" as const, taxability: "EXEMPT", provisional: false },
@@ -140,6 +149,7 @@ describe("Decisions & reviews registry", () => {
     expect(await decisionSubject("IN-35-BASIS")!.read({ ...ctx, filingBases: [] })).toBe("UNDECIDED");
     expect(await decisionSubject("IN-33-GREELEY")!.read({ ...ctx, greeleyJurisdictionId: null })).toBe("UNDECIDED");
     expect(await decisionSubject("IN-71")!.read(ctx)).toBe(7);
+    expect(await decisionSubject("TRUSTED-DEVICE-DAYS")!.read(ctx)).toBe(30);
     expect(await decisionSubject("IN-84")!.read(ctx)).toBe("AS_BUILT");
   });
 });

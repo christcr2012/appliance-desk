@@ -1,7 +1,47 @@
 import type { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { addBusinessDays, businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { taxCentsForLine } from "@/domains/billing/tax";
 import { allocateAcrossLines } from "./allocate";
+import { ruleAsOf } from "@/domains/rules/reads";
+import { saveRuleVersionInTx } from "@/domains/rules/changes";
+
+/** Owner-only, audited, compare-and-set so two sessions cannot overwrite each other silently. */
+export async function saveUseTaxThreshold(actorId: string, cents: number, expectedCents: number): Promise<void> {
+  if (!Number.isSafeInteger(cents) || cents < 0 || cents > 100000000) {
+    throw new Error("Enter a valid threshold in dollars.");
+  }
+  if (!Number.isSafeInteger(expectedCents) || expectedCents < 0) {
+    throw new Error("Reload the page and try again.");
+  }
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+    // TFA-1: the threshold is a dated rule version, not a setting. The
+    // compare-and-set still guards against two sessions overwriting each other.
+    const current = (await ruleAsOf<number>("co.use.monthly_threshold", new Date(), tx)).value;
+    if (current !== expectedCents) {
+      throw new Error("The threshold was updated in another session. Refresh before saving.");
+    }
+    if (cents !== expectedCents) {
+      const today = businessDateFromKey(businessDateKey(new Date()))!;
+      await saveRuleVersionInTx(tx, actorId, {
+        key: "co.use.monthly_threshold",
+        value: cents,
+        effectiveFrom: today,
+        reason: "Changed on the use-tax settings screen.",
+      });
+      await tx.auditLog.create({
+        data: { userId: actorId, action: "tax.use_tax_threshold.update", entityType: "BusinessSettings", entityId: "singleton",
+          oldValue: { useTaxMonthlyThresholdCents: expectedCents }, newValue: { useTaxMonthlyThresholdCents: cents } },
+      });
+    }
+  });
+}
+
+export async function getUseTaxThreshold(): Promise<number> {
+  return (await ruleAsOf<number>("co.use.monthly_threshold", new Date())).value;
+}
 
 /** Configuration missing before any purchase-tax write; unlike a database failure,
  * this may be recorded as an explicit acquisition-review requirement. */

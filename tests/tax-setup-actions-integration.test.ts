@@ -21,7 +21,8 @@ async function isolated(fn: (owner: string, admin: string, before: Awaited<Retur
   try { await fn(owner.id, admin.id, before); }
   finally {
     await prisma.auditLog.deleteMany({ where: { userId: { in: [owner.id, admin.id] } } });
-    await prisma.retailDeliveryFeeRate.deleteMany({ where: { enteredByUserId: owner.id } });
+    // TFA-1: addRdfRate writes an OWNER rule version, not a rate-table row.
+    await prisma.legalRuleVersion.deleteMany({ where: { createdByUserId: owner.id } });
     await prisma.taxFilingAccount.deleteMany({ where: { name: { startsWith: "T7A fixture " } } });
     await prisma.businessSettings.update({ where: { id: "singleton" }, data: {
       shortTermLeaseElection: before.shortTermLeaseElection,
@@ -77,14 +78,31 @@ describe.skipIf(!enabled)("T-7A tax settings (isolated PostgreSQL)", () => {
   }));
 
   it("new July amount appends without rewriting a previously entered rate", async () => isolated(async (owner) => {
-    const first = await prisma.retailDeliveryFeeRate.findFirst({ orderBy: { effectiveOn: "asc" } });
+    // TFA-1: a July rate is an OWNER rule version for co.rdf.amount, not a
+    // rate-table row. The earliest researched version must stay untouched.
+    const first = await prisma.legalRuleVersion.findFirst({
+      where: { ruleKey: "co.rdf.amount", origin: "RESEARCHED" },
+      orderBy: { effectiveFrom: "asc" },
+    });
     const when = new Date("2035-07-01T06:00:00.000Z");
     const id = await addRdfRate(owner, { effectiveOn: when, amountCents: 42 });
-    expect((await prisma.retailDeliveryFeeRate.findUniqueOrThrow({ where: { id } })).amountCents).toBe(42);
-    if (first) expect((await prisma.retailDeliveryFeeRate.findUniqueOrThrow({
+    const added = await prisma.legalRuleVersion.findUniqueOrThrow({ where: { id } });
+    expect(added).toMatchObject({ ruleKey: "co.rdf.amount", origin: "OWNER", provisional: false });
+    expect(added.value).toBe(42);
+    expect(added.effectiveFrom).toEqual(when);
+    if (first) expect((await prisma.legalRuleVersion.findUniqueOrThrow({
       where: { id: first.id },
-    })).amountCents).toBe(first.amountCents);
-    await expect(addRdfRate(owner, { effectiveOn: when, amountCents: 43 })).rejects.toThrow();
+    })).value).toBe(first.value);
+    // A second value for the same July 1 supersedes the first (Codex review
+    // on PR #617): the 42 version stays as history, struck through, and 43
+    // becomes the value in force — the earliest researched version is still
+    // untouched.
+    const secondId = await addRdfRate(owner, { effectiveOn: when, amountCents: 43 });
+    const second = await prisma.legalRuleVersion.findUniqueOrThrow({ where: { id: secondId } });
+    expect(second).toMatchObject({ ruleKey: "co.rdf.amount", origin: "OWNER", provisional: false });
+    expect(second.value).toBe(43);
+    expect(second.effectiveFrom).toEqual(when);
+    expect((await prisma.legalRuleVersion.findUniqueOrThrow({ where: { id } })).undoneAt).not.toBeNull();
   }));
   it("manual jurisdiction rates append a version without replacing history", async () => isolated(async (owner) => {
     const code = "T7A-" + randomUUID().replaceAll("-", "");

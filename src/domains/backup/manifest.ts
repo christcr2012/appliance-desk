@@ -17,6 +17,9 @@ export const BACKUP_MODEL_POLICY = {
   Verification: null,
   RateLimit: null,
   TwoFactor: null,
+  // ACC-6: device rows are only identifiers for the sign-in notice and "remember this device"; a restore
+  // re-records devices as people sign in, so they are never restored.
+  KnownDevice: null,
   Customer: "customer",
   Referral: "referral",
   ServiceAddress: "serviceAddress",
@@ -96,6 +99,8 @@ export const BACKUP_MODEL_POLICY = {
   TaxJurisdiction: "taxJurisdiction",
   TaxRateVersion: "taxRateVersion",
   TaxRateObservation: "taxRateObservation",
+  // TFA-1: the dated rule book is business tax evidence; it is restored.
+  LegalRuleVersion: "legalRuleVersion",
   OfficialSourceWatch: "officialSourceWatch",
   TaxabilityRule: "taxabilityRule",
   // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
@@ -192,6 +197,7 @@ export const BACKUP_MODEL_POLICY = {
   BudgetPlanVersion: "budgetPlanVersion",
   BudgetReviewSnapshot: "budgetReviewSnapshot",
   AccountingPeriod: "accountingPeriod",
+  BooksProblem: "booksProblem",
   StripeBalanceTransaction: "stripeBalanceTransaction",
   IntegrationCursor: "integrationCursor",
   ExpenseCategory: "expenseCategory",
@@ -204,6 +210,9 @@ export const BACKUP_MODEL_POLICY = {
   FeedbackEntry: "feedbackEntry",
   FeedbackAttachment: "feedbackAttachment",
   FeedbackEvent: "feedbackEvent",
+  // BILL-1: "the bank is confirming a payment" flags. Business state (a bill shows "Being confirmed" and gets no late fee while one is open), restored after bills and agreements.
+  BankPaymentInFlight: "bankPaymentInFlight",
+  PendingCharge: "pendingCharge",
 
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 

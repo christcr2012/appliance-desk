@@ -43,7 +43,7 @@ const EMPTY_TERM_FIELDS = {
   termMonths: "",
   depositDollars: "",
   damageWaiverDollars: "",
-  lateFeeGraceDays: "5",
+  lateFeeGraceDays: "10",
   lateFeeDollars: "",
   lateFeePercent: "",
   paidInFullInAdvance: false,
@@ -92,8 +92,11 @@ export function RentalWizard({
   initialServiceAddressId,
   initialDraft,
   initialRequestKey,
+  ucccFilingNeeded = false,
 }: {
   customers: CustomerOption[];
+  /** FEE-1: Colorado consumer-lease filing not marked done yet. */
+  ucccFilingNeeded?: boolean;
   availableAppliances: ApplianceOption[];
   packages?: PackageLineOption[];
   initialCustomerId?: string;
@@ -747,6 +750,11 @@ export function RentalWizard({
                 }}
                 className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
               />
+              {ucccFilingNeeded && Number(termFields.termMonths) > 4 && (
+                <p role="note" className="mt-1 text-xs text-warning-ink">
+                  For a household rental over 4 months, Colorado needs a short filing first. It is not marked as done in Settings yet.
+                </p>
+              )}
               {(termFields.termMonths === "6" ||
                 termFields.termMonths === "12") && (
                 <p className="mt-1 text-xs text-ink-faint">
@@ -821,13 +829,13 @@ export function RentalWizard({
                 htmlFor="lateFeeGraceDays"
                 className="block text-sm font-medium text-ink-soft"
               >
-                Late fee grace (days)
+                Days to pay before a late fee (10 or more)
               </label>
               <input
                 disabled={isPending}
                 id="lateFeeGraceDays"
                 type="number"
-                min={0}
+                min={10}
                 value={termFields.lateFeeGraceDays}
                 onChange={(e) => updateTerm("lateFeeGraceDays", e.target.value)}
                 className="mt-1 w-full rounded-md border border-line-strong px-3 py-2 text-sm"
@@ -838,13 +846,14 @@ export function RentalWizard({
                 htmlFor="lateFeeDollars"
                 className="block text-sm font-medium text-ink-soft"
               >
-                Late fee flat ($)
+                Late fee flat ($, at most $15)
               </label>
               <input
                 disabled={isPending}
                 id="lateFeeDollars"
                 type="number"
                 min={0}
+                max={15}
                 step="0.01"
                 value={termFields.lateFeeDollars}
                 onChange={(e) => updateTerm("lateFeeDollars", e.target.value)}

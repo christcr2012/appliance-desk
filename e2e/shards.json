@@ -1,5 +1,5 @@
 {
-  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 generated route coverage replaces the old duplicate axe route loops; focused legacy keyboard/menu/theme regressions remain. Generated scans are split across browser-b/c/d from measured runtimes; no fifth runner. 2026-10-06 (PR #266): the generated route scans and the read-only owner/portal section scans run in Playwright parallel mode (both workers), and groups were rebalanced from measured test-seconds after that change (a 158, b 94, c 105, d 133) to roughly 111-126 each. 2026-10-24 (ACC-3): moved revenue-records and website-editor from browser-b to browser-a because browser-b ran 186s against the 180s budget (a 159, b 341, c 299, d 198 test-seconds). 2026-10-25 (MCP-10a): browser-a ran 179s and browser-d 181s against the 180s budget, so feedback.spec.ts (new, ~18 test-seconds) and crm-workspace.spec.ts (~40-55 test-seconds) moved to browser-c, the lightest group (118s). 2026-10-25 (AR-0a): browser-c ran 3.1m against the 180s budget (a 2.7m, b 1.8m, d 2.6m), so crm-workspace.spec.ts (~45-55 test-seconds) moved to browser-b, the lightest group. 2026-10-25 (MCP-1): measured a 2.7m, b 3.1m (over budget once crm-workspace landed), c 2.5m, d 2.4m; system-health.spec.ts (now ~14 test-seconds) moved to browser-d and fleet-report.spec.ts (~16 test-seconds) from browser-b to browser-c. 2026-10-26 (DEC-1b): decisions.spec.ts (new, ~40 test-seconds, its two tests run in parallel) went to browser-a, the lightest group after the MCP-1 move (a ~2.5m, b ~2.8m, c ~2.8m, d ~2.6m). Also 2026-10-26 (DEC-1b): main's browser-b ran 169s and failed the 180s budget once (22344cda), so w22-v2-complete-signing.spec.ts (~13 test-seconds) moved to browser-c (158s on main 74a0866f). And browser-a ran 3.1m with decisions.spec.ts (~40 test-seconds), so owner-settings-history.spec.ts (~12 test-seconds) moved to browser-b and the decisions flow was split into two tests that run side by side. Then browser-c ran 181s (a 176, b 171, d 123), so w22-v2-complete-signing.spec.ts moved on to browser-d.",
+  "_comment": "Explicit CI shard assignment for the browser suite (4 parallel runners). Every e2e/*.spec.ts must appear in exactly one group (scripts/e2e-shard.mjs enforces this in CI). E10 generated route coverage replaces the old duplicate axe route loops; focused legacy keyboard/menu/theme regressions remain. Generated scans are split across browser-b/c/d from measured runtimes; no fifth runner. 2026-10-06 (PR #266): the generated route scans and the read-only owner/portal section scans run in Playwright parallel mode (both workers), and groups were rebalanced from measured test-seconds after that change (a 158, b 94, c 105, d 133) to roughly 111-126 each. 2026-10-24 (ACC-3): moved revenue-records and website-editor from browser-b to browser-a because browser-b ran 186s against the 180s budget (a 159, b 341, c 299, d 198 test-seconds). 2026-10-25 (MCP-10a): browser-a ran 179s and browser-d 181s against the 180s budget, so feedback.spec.ts (new, ~18 test-seconds) and crm-workspace.spec.ts (~40-55 test-seconds) moved to browser-c, the lightest group (118s). 2026-10-25 (AR-0a): browser-c ran 3.1m against the 180s budget (a 2.7m, b 1.8m, d 2.6m), so crm-workspace.spec.ts (~45-55 test-seconds) moved to browser-b, the lightest group. 2026-10-25 (MCP-1): measured a 2.7m, b 3.1m (over budget once crm-workspace landed), c 2.5m, d 2.4m; system-health.spec.ts (now ~14 test-seconds) moved to browser-d and fleet-report.spec.ts (~16 test-seconds) from browser-b to browser-c. 2026-10-25 (AR-0b): measured a 128s, b 215s, c 183s, d 128s (budget 180s), so crm-workspace.spec.ts (~50 test-seconds) moved from browser-b to browser-a and the three new AR-0b specs (today, customer-record, money-bills; ~30 test-seconds together) went to browser-d. 2026-10-25 (AR-11): measured a 194s (over 180), c 111s; revenue-records (~62 test-seconds) moved a to c without removing tests. 2026-10-25 (AR-11): measured a 188s, b 159s, c 174s, d 173s; moved feedback (~18 test-seconds) from a to b with every test retained. 2026-10-25 (MCP-2 preview-security PR #609 CI): browser-a finished 81 tests but crossed the 180s phase budget; website-editor.spec.ts measured 37 test-seconds and moved from a to d, which completed in 132s, preserving every test and the same phase budget. 2026-10-25 (PR #609 follow-up): the next exact-head run showed browser-d 3.1m (its generated route scan took 201 test-seconds), browser-b 2.0m; move the full website-editor spec from d to b, where measured spare capacity is larger, with no test omitted or budget increased. 2026-10-26 (BILL-1 PR #612): measured a 166s, b 180s (at the budget), c 171s, d 168s; the two smallest specs moved (my-account b to a, two-factor b to c), no test omitted or budget raised. 2026-10-25 (BA-1 PR #610): browser-b passed all 140 checks in 183.48 seconds but crossed 180-second CI budget; browser-d finished in 122.33 seconds. Move complete feedback.spec.ts (~17 measured test-seconds) from b to d, preserving all tests and budget. 2026-10-25 (BA-1 second measured CI): all four browser groups passed tests, but d finished at 180.56s against 180s; b finished at 125.85s. Move intact feedback (~16.2 test-seconds) and today (~11.1 test-seconds) d→b: expected b ~153s, d ~153s. Complete test coverage is preserved without increasing the budget. 2026-10-25 (BA-1 PR #610 current head): browser-b had a real mobile Today overflow and finished 191.87s. Rebalanced intact today (~8s) b→c, books-closing (~10s) b→d, books-reports (~10s) b→a from measured b=191.87/a=136.27/c=145.78/d=145.2. No tests or budget removed. 2026-10-26 (ACC-6 PR #616): browser-c finished 106 tests but crossed the 180s phase budget at 3.1m (a 2.0m, b 1.9m, d 2.1m); moved intact staff-security.spec.ts (~18 test-seconds) and fleet-report.spec.ts (~14 test-seconds) from c to b, the lightest group. No tests omitted or budget raised. 2026-10-26 (ACC-6 PR #616, run 40366925101 on the Codex-fix head): every test passed in browser-a (83) and browser-b (162) but both phases crossed the 180s budget (a 3.1m, b 3.0m; c 2.8m, d 2.7m — an across-the-board slower run, but the budget is the budget). Moved intact my-account.spec.ts (~20 test-seconds) from a to d and fleet-report.spec.ts (~15 test-seconds) from b to c, the groups with the most headroom in that run. No tests omitted or budget raised. 2026-10-26 (ACC-6, run 40370951794): browser-b ran 3.0m against the 180s budget again with all 164 tests passing (a 2.8m, c 2.2m, d 2.4m in the same run), so feedback.spec.ts (~18 test-seconds) and staff-security.spec.ts (~20 test-seconds) moved from browser-b to browser-c, the lightest group. No tests omitted or budget raised. 2026-10-26 (LD-1 PR #618): browser-c ran 3.0m against the 180s budget with all 107 tests passing (accessibility-routes-desk-a 183.7 test-seconds, revenue-records 60.8); moved staff-security (~18 test-seconds) and fleet-report (~15) from c to b, the lightest group, with no test omitted and the budget unchanged — same move that turned ACC-6's browser-c green. 2026-10-26 (LD-1 PR #618, second rebalance): browser-b ran 3.2m against the 180s budget with all 165 tests passing (345 test-seconds after staff-security and fleet-report landed there); measured a 293 test-seconds/2.6m, c 211/2.1m, d 311/2.8m, so website-editor (~35 test-seconds) moved from b to c, the lightest group, with no test omitted and the budget unchanged. 2026-10-26 (ACC-6 merge of LD-1 #625): kept website-editor in browser-b (this branch's measured runs) and assigned LD-1's new lead-staff-detail.spec.ts to browser-b; revenue-records.spec.ts (~59 test-seconds) moved from browser-c to browser-a and my-account.spec.ts (~20) from browser-d to browser-c after run 40386761485 (a 2.3m, b 2.6m, c 3.1m over budget with 109 passed, d 2.9m). No tests omitted or budget raised.",
   "groups": {
     "browser-a": [
       "sales-tax-setup.spec.ts",
@@ -16,10 +16,13 @@
       "commercial-reserve-preapproval.spec.ts",
       "scenario-10-owner-workflow.spec.ts",
       "business-paperwork.spec.ts",
-      "revenue-records.spec.ts",
-      "website-editor.spec.ts",
       "job-roles.spec.ts",
+      "owner-settings-history.spec.ts",
       "shop-sales.spec.ts",
+      "crm-workspace.spec.ts",
+      "desk-workspace.spec.ts",
+      "books-reports.spec.ts",
+      "revenue-records.spec.ts",
       "decisions.spec.ts"
     ],
     "browser-b": [
@@ -29,9 +32,8 @@
       "accessibility-dark-mode.spec.ts",
       "accessibility-routes-public.spec.ts",
       "rental-builder-recovery.spec.ts",
-      "two-factor.spec.ts",
-      "my-account.spec.ts",
       "team-invitations.spec.ts",
+      "w22-v2-complete-signing.spec.ts",
       "location-contacts.spec.ts",
       "phone-order-one-link.spec.ts",
       "signature-home.spec.ts",
@@ -39,31 +41,32 @@
       "books-expenses.spec.ts",
       "books-export.spec.ts",
       "books-fixed-assets.spec.ts",
-      "books-reports.spec.ts",
-      "books-closing.spec.ts",
       "books-cash.spec.ts",
       "bank-checks.spec.ts",
       "budget-money.spec.ts",
       "budget.spec.ts",
       "money-reports.spec.ts",
-      "crm-workspace.spec.ts",
-      "owner-settings-history.spec.ts"
+      "system-health.spec.ts",
+      "tax-rules.spec.ts",
+      "website-editor.spec.ts",
+      "lead-staff-detail.spec.ts"
     ],
     "browser-c": [
       "sales-tax.spec.ts",
       "appliance-price-save-feedback.spec.ts",
       "purchasing-review.spec.ts",
       "accessibility-routes-desk-a.spec.ts",
-      "desk-workspace.spec.ts",
-      "staff-security.spec.ts",
       "system-health-keys.spec.ts",
       "customer-language-w26.spec.ts",
       "owner-guide-screenshots.spec.ts",
+      "two-factor.spec.ts",
+      "today.spec.ts",
+      "fleet-report.spec.ts",
       "feedback.spec.ts",
-      "fleet-report.spec.ts"
+      "staff-security.spec.ts",
+      "my-account.spec.ts"
     ],
     "browser-d": [
-      "system-health.spec.ts",
       "accessibility.spec.ts",
       "task-assignment.spec.ts",
       "inventory-bulk-feedback.spec.ts",
@@ -87,7 +90,10 @@
       "preapproval-estimate-prepare.spec.ts",
       "signature-public.spec.ts",
       "signature-focus.spec.ts",
-      "w22-v2-complete-signing.spec.ts"
+      "customer-record.spec.ts",
+      "money-bills.spec.ts",
+      "desk-offline.spec.ts",
+      "books-closing.spec.ts"
     ]
   }
 }

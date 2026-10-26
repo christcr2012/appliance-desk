@@ -8,6 +8,9 @@ import { buildUseTaxFileNow } from "@/domains/tax/use-tax-file-now";
 import { FileAndPayHeadline } from "../../file-and-pay-headline";
 import { FileNowPanel } from "./file-now-panel";
 import { availableDr0252Years, dr0252YearFor } from "@/domains/tax/dr0252-form";
+import { getRuleTimingSettings } from "@/domains/rules/reads";
+import { fileAndPayOnDate } from "@/domains/rules/timing";
+import { legalDueOn } from "@/domains/tax/filing-calendar";
 
 export const metadata = { title: "Consumer use-tax worksheet", robots: { index: false, follow: false } };
 
@@ -21,13 +24,23 @@ export default async function UseTaxWorksheetPage({
   // Check account ownership/type before asking the packet loader to read or change data.
   const period = await prisma.taxFilingPeriod.findUnique({
     where: { id: periodId },
-    select: { status: true, filingAccount: { select: { kind: true } } },
+    select: { status: true, periodEnd: true, dueOn: true, legalDueOn: true,
+      filingAccount: { select: { kind: true } } },
   });
   if (!period || period.filingAccount.kind !== "USE_TAX_RETURN") {
     return <main><h2 className="text-xl font-semibold">Use-tax worksheet unavailable</h2><p>No consumer use-tax period was found.</p></main>;
   }
   const result = await loadFilingPacket(periodId);
   const worksheet = result.status === "READY" ? buildUseTaxWorksheet(result.packet) : null;
+  // TFA-1: the day the timing rule says to act, shown next to the legal due date.
+  const timing = await getRuleTimingSettings();
+  const actOnKey = result.status === "READY"
+    ? businessDateKey(fileAndPayOnDate({
+        periodEnd: period.periodEnd,
+        legalDueOn: period.legalDueOn ?? legalDueOn(period.dueOn),
+        now: new Date(), percent: timing.percent, marginBusinessDays: timing.marginBusinessDays,
+      }))
+    : undefined;
   return (
     <main className="mx-auto max-w-3xl space-y-5 print:max-w-none">
       <nav className="print:hidden">
@@ -50,6 +63,7 @@ export default async function UseTaxWorksheetPage({
               filed={period.status === "FILED"}
               portalUrl={result.packet.account.portalUrl}
               useTax={result.packet.useTax.map((row) => ({ name: row.name, useTaxCents: row.useTaxCents }))}
+              actOnKey={actOnKey}
             />
             <Link href={`/desk/sales-tax/returns/${periodId}`} className="text-sm underline">Open the guided return to copy each value and record that you filed and paid</Link>
           </div>

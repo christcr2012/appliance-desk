@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { ruleAsOf } from "@/domains/rules/reads";
 import { confirmBusinessTaxAddress } from "@/domains/tax/locations";
 import { saveTaxSettings } from "@/domains/tax/setup";
 
@@ -62,11 +63,15 @@ describe.skipIf(!enabled)("W-0A business tax-area confirmation (Postgres)", () =
   });
   it("changing the saved address returns it to needs review", async () => {
     const settings = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    // TFA-1: the delivery-fee threshold is a dated rule now, not a setting.
+    // Passing the current rule value keeps the threshold unchanged while the
+    // address changes; the stale settings field is no longer the source of truth.
+    const rdfThresholdCents = (await ruleAsOf<number>("co.rdf.qualified_threshold", new Date())).value;
     await saveTaxSettings(owner, {
       shortTermLeaseElection: settings.shortTermLeaseElection,
       shortTermLeaseElectionNote: settings.shortTermLeaseElectionNote,
       rdfHandling: settings.rdfHandling,
-      rdfThresholdCents: settings.rdfThresholdCents,
+      rdfThresholdCents,
       rdfCpaConfirmedOn: settings.rdfCpaConfirmedOn,
       autoApplyOfficialRateChanges: settings.autoApplyOfficialRateChanges,
       autoRateChangeMaxMilliPercent: settings.autoRateChangeMaxMilliPercent,

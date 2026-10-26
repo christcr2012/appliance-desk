@@ -35,22 +35,16 @@ for (const width of [360, 768, 1440])
         theme,
       );
       const url = await customerUrl(page);
-      for (const tab of [
-        "overview",
-        "properties",
-        "rentals",
-        "service",
-        "billing",
-        "activity",
-      ]) {
+      // AR-0b: the record's sections. Phones (below 1024 px) show Activity; desktop shows Messages instead.
+      const tabs = width >= 1024
+        ? ["rentals", "bills", "visits", "messages", "details"]
+        : ["activity", "rentals", "bills", "visits", "details"];
+      for (const tab of tabs) {
         await page.goto(`${url}?tab=${tab}`);
         await expect(
           page
-            .getByRole("navigation", { name: "Customer record sections" })
-            .getByRole("link", {
-              name: tab[0].toUpperCase() + tab.slice(1),
-              exact: true,
-            }),
+            .getByRole("navigation", { name: "Customer sections" })
+            .getByRole("link", { name: new RegExp(`^${tab[0].toUpperCase() + tab.slice(1)}( \\d+)?$`) }),
         ).toHaveAttribute("aria-current", "page");
         await expect(page.locator("main h1")).toBeVisible();
         expect(
@@ -65,7 +59,7 @@ for (const width of [360, 768, 1440])
               .analyze()
           ).violations,
         ).toEqual([]);
-        if (tab === "overview" || tab === "properties") {
+        if (tab === tabs[0] || tab === "details") {
           const image = info.outputPath(`${tab}-${width}-${theme}.png`);
           await page.screenshot({ path: image, fullPage: true });
           await info.attach(`${tab}-${width}-${theme}`, {
@@ -113,20 +107,24 @@ test("property action preselects its own address and history note survives navig
   await expect(page.getByLabel("Service address")).toHaveValue(
     rentalTarget.searchParams.get("serviceAddressId")!,
   );
-  await page.goto(`${url}?tab=activity&filter=activity`);
+  // AR-0b: "Add a note" opens a sheet holding the same note form.
+  await page.goto(`${url}?tab=activity&full=1&filter=activity`);
   const note = `CI customer history ${Date.now()}`;
-  await page.getByLabel("Add a note").fill(note);
-  await page.getByRole("button", { name: "Add note" }).click();
+  await page.getByRole("link", { name: "Add a note" }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Add a note" });
+  await sheet.getByRole("textbox", { name: "Add a note" }).fill(note);
+  await sheet.getByRole("button", { name: "Add note" }).click();
   await expect(page).toHaveURL(/\?tab=activity$/);
-  await expect(page.getByText(note, { exact: true })).toBeVisible();
+  // The note shows in the phone Activity section or the desktop activity column, whichever this width shows.
+  await expect(page.getByText(note, { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await page
-    .getByRole("navigation", { name: "Customer record sections" })
-    .getByRole("link", { name: "Overview", exact: true })
+    .getByRole("navigation", { name: "Customer sections" })
+    .getByRole("link", { name: "Details", exact: true })
     .click();
-  await expect(page).toHaveURL(/\?tab=overview$/);
+  await expect(page).toHaveURL(/\?tab=details$/);
   await page.goBack();
   await expect(page).toHaveURL(/\?tab=activity$/);
-  await expect(page.getByText(note, { exact: true })).toBeVisible();
+  await expect(page.getByText(note, { exact: true }).filter({ visible: true }).first()).toBeVisible();
 });
 test("lead search/filter URL survives browser back and links its follow-up", async ({
   page,

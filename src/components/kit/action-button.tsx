@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState, type ReactNode, type RefObject } from "react";
 import { useFormStatus } from "react-dom";
 import { ConfirmDialog } from "./confirm-dialog";
+import { useDeskOffline } from "./offline-bar";
 import { Icon, type IconName } from "./icons";
 import { fieldsToFormData, runFormAction } from "./run-action";
 import { assertActionSpec, type ActionSpec } from "./types";
@@ -65,13 +66,15 @@ function SubmitButton({
   buttonRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const { pending } = useFormStatus();
+  const offline = useDeskOffline();
   const label = pending ? (spec.pendingLabel ?? "Saving…") : spec.label;
   return (
     <button
       ref={buttonRef}
       type="submit"
-      disabled={pending}
-      aria-disabled={pending || undefined}
+      disabled={pending || offline}
+      aria-disabled={pending || offline || undefined}
+      title={offline ? "You're offline" : undefined}
       aria-label={iconOnly ? label : undefined}
       className={className}
       onClick={
@@ -98,6 +101,8 @@ function FormActionButton(props: ActionButtonProps & { spec: Extract<ActionSpec,
       ref={formRef}
       className="contents"
       action={async (data: FormData) => {
+        // Never send a write while offline, even if a caller submits the form programmatically.
+        if (typeof navigator !== "undefined" && !navigator.onLine) return;
         await runFormAction(spec, fieldsToFormData(spec.fields, data));
       }}
     >

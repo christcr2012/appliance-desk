@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// FEE-1: the late-fee review list has its own database tests; here it must not add reads to the capped Today queries.
+vi.mock("@/domains/exceptions/late-fee-attention", () => ({ listLateFeeReview: async () => ({ rows: [], total: 0 }) }));
+
 const mocks = vi.hoisted(() => ({
   settings: vi.fn(),
   requireRole: vi.fn(),
@@ -45,6 +48,9 @@ vi.mock("@/domains/tax/filing-attention", () => ({
 vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
   listOfficialRateAttention: mocks.officialRateAttention,
 }));
+vi.mock("@/domains/exceptions/bank-payment-attention", () => ({
+  listBankPaymentSlow: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
@@ -82,7 +88,7 @@ vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     rentalAgreement: { findMany: mocks.agreement },
-    invoice: { findMany: mocks.invoice },
+    invoice: { findMany: mocks.invoice, count: vi.fn().mockResolvedValue(0) },
     job: { findMany: mocks.job },
     businessSettings: { findUnique: mocks.settings },
     maintenanceRequest: { findMany: mocks.request },

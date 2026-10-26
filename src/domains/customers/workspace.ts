@@ -22,6 +22,7 @@ export async function getCustomerIdentity(id: string) {
       phone: true,
       companyName: true,
       archivedAt: true,
+      activeMilitary: true,
       user: { select: { name: true, email: true } },
     },
   });
@@ -152,7 +153,24 @@ export async function getCustomerRentals(
       id: true,
       status: true,
       serviceAddress: { select: { line1: true, city: true } },
-      lines: { select: { monthlyPriceCents: true } },
+      // AR-0b: the customer record's rental cards (title, dates, appliance chips and the billing line).
+      startDate: true,
+      endDate: true,
+      termMonths: true,
+      nextBillingDate: true,
+      stripeSubscriptionId: true,
+      billingBlockedReason: true,
+      lines: {
+        select: {
+          label: true,
+          monthlyPriceCents: true,
+          packageId: true,
+          assignments: {
+            where: { unassignedAt: null },
+            select: { appliance: { select: { id: true, assetNumber: true, applianceType: { select: { name: true } } } } },
+          },
+        },
+      },
     },
   });
   return { records, ...meta };

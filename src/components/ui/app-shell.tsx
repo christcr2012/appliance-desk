@@ -25,6 +25,7 @@ import {
   type BottomTab,
 } from "@/components/ui/bottom-tab-bar";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { OfflineBar } from "@/components/kit/offline-bar";
 
 const TAB_ICONS: Record<string, BottomTab["icon"]> = {
   "/desk/today": CalendarServiceIcon,
@@ -143,6 +144,8 @@ export function AppShell({
     try {
       const result = await signOut();
       if (result.error) throw new Error("Sign out failed");
+      // Route offline data, if AR-5 creates it, belongs to the person. The shared static shell does not.
+      try { if ("indexedDB" in window) indexedDB.deleteDatabase("desk-route"); } catch { /* storage may be disabled */ }
       router.push("/login");
       router.refresh();
     } catch {
@@ -177,7 +180,7 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen bg-canvas lg:pl-64 print:block print:bg-white print:pl-0">
+    <div className="desk-app min-h-screen w-full min-w-0 max-w-full bg-canvas lg:pl-64 print:block print:bg-white print:pl-0">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-nav-bg text-nav-ink lg:flex print:hidden">
         <Link
           href="/desk/today"
@@ -211,14 +214,15 @@ export function AppShell({
         </div>
       </aside>
 
-      <div className="min-w-0">
-        <header className="flex min-h-16 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden print:hidden">
+      <div className="min-w-0 w-full max-w-full">
+        <OfflineBar />
+        <header className="flex w-full min-w-0 max-w-full min-h-16 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden print:hidden">
           <Image
             src="/brand/badge.svg"
             alt=""
             width={32}
             height={32}
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
           />
           <span className="min-w-0 flex-1 truncate font-semibold text-ink">
             {current}
@@ -226,6 +230,7 @@ export function AppShell({
           <ButtonLink
             href="/desk/search"
             variant="quiet"
+            className="shrink-0"
             aria-label="Search"
           >
             Search

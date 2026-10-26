@@ -2,25 +2,26 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { getRentalEndingNoticeDays } from "@/domains/agreements/ending-notice";
 import { agreementIdsNeedingPickup } from "@/domains/agreements/pickup-needed";
-import type { ExceptionItem } from "./rules";
+import { customerContact, type ExceptionItem } from "./rules";
 
 type Rows = { rows: ExceptionItem[]; total: number };
 const DAY = 86_400_000;
 const nameOf = (c: { user: { name: string | null; email: string } } | null) => (c ? c.user.name ?? c.user.email : "customer");
-const customerSelect = { customer: { select: { user: { select: { name: true, email: true } } } } } as const;
+const customerSelect = { customer: { select: { phone: true, user: { select: { name: true, email: true } } } } } as const;
 
 function bounded(limit: number) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error("A bounded task limit is required.");
 }
 
 /** A fixed-term rental ends within the owner's notice window and nobody has decided what happens next. One row per rental. */
-export async function listRentalEndingSoon(limit: number, now: Date): Promise<Rows> {
+export async function listRentalEndingSoon(limit: number, now: Date, scope?: { customerId?: string }): Promise<Rows> {
   await requireRole("OWNER", "ADMIN");
   bounded(limit);
   const days = await getRentalEndingNoticeDays();
   const candidates = await prisma.rentalAgreement.findMany({
     where: { status: "ACTIVE", termMonths: { not: null }, terminationRequestedAt: null,
-      endDate: { gte: now, lte: new Date(now.getTime() + days * DAY) } },
+      endDate: { gte: now, lte: new Date(now.getTime() + days * DAY) },
+      ...(scope?.customerId ? { customerId: scope.customerId } : {}) },
     select: { id: true, endDate: true, ...customerSelect }, orderBy: [{ endDate: "asc" }, { id: "asc" }], take: 200,
   });
   const renewed = new Set((await prisma.rentalAgreement.findMany({
@@ -35,27 +36,32 @@ export async function listRentalEndingSoon(limit: number, now: Date): Promise<Ro
       detail: "Choose Renew, Month-to-month or Pickup. Renewing only starts a draft; nothing is sent or charged until you send it.",
       href: "/desk/agreements/" + encodeURIComponent(a.id) + "/ending-decision",
       since: new Date((a.endDate as Date).getTime() - days * DAY), dueOn: a.endDate as Date,
+      contact: customerContact(a.customer),
     })),
     total: open.length,
   };
 }
 
 /** A draft pickup visit exists but has no date yet. */
-export async function listPickupUnscheduled(limit: number): Promise<Rows> {
+export async function listPickupUnscheduled(limit: number, scope?: { customerId?: string }): Promise<Rows> {
   await requireRole("OWNER", "ADMIN");
   bounded(limit);
-  const where = { type: "REMOVAL" as const, status: "SCHEDULED" as const, scheduledAt: null, agreementId: { not: null } };
+  const where = {
+    type: "REMOVAL" as const, status: "SCHEDULED" as const, scheduledAt: null, agreementId: { not: null },
+    ...(scope?.customerId ? { customerId: scope.customerId } : {}),
+  };
   const jobs = await prisma.job.findMany({
-    where, select: { id: true, createdAt: true, customer: { select: { user: { select: { name: true, email: true } } } },
+    where, select: { id: true, createdAt: true, customer: { select: { phone: true, user: { select: { name: true, email: true } } } },
       agreement: { select: { terminationEffectiveOn: true, endDate: true } } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: limit,
   });
   // E1 safety net: a rental that is over or ending with appliances still out but no pickup visit at all.
-  const missingVisit = await agreementIdsNeedingPickup(new Date(), limit);
+  const missingVisit = await agreementIdsNeedingPickup(new Date(), limit, scope?.customerId);
   const missingRows = missingVisit.map((a): ExceptionItem => ({
     category: "PICKUP_UNSCHEDULED", severity: "medium", title: "Schedule " + a.name + "'s pickup",
     detail: "This rental is over or ending and appliances are still at the customer's. Open it and press Schedule the pickup.",
     href: "/desk/agreements/" + encodeURIComponent(a.id), since: a.since, ...(a.dueOn ? { dueOn: a.dueOn } : {}),
+    contact: customerContact(a.customer),
   }));
   return {
     rows: [...missingRows, ...jobs.map((j): ExceptionItem => {
@@ -64,6 +70,7 @@ export async function listPickupUnscheduled(limit: number): Promise<Rows> {
         category: "PICKUP_UNSCHEDULED", severity: "medium", title: "Schedule " + nameOf(j.customer) + "'s pickup",
         detail: "This rental is ending. A draft pickup visit exists with no date. Nothing is sent to the customer until you schedule it.",
         href: "/desk/jobs/" + encodeURIComponent(j.id), since: j.createdAt, ...(needed ? { dueOn: needed } : {}),
+        contact: customerContact(j.customer),
       };
     })].slice(0, limit),
     total: (jobs.length < limit ? jobs.length : await prisma.job.count({ where })) + missingVisit.length,

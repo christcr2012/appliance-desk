@@ -12,6 +12,12 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 
 ## A. Quick things only you can do (minutes each)
 
+- [ ] **Start the automatic checks on the leads change (PR #618).** Steps: open
+  github.com/christcr2012/appliance-desk/actions/workflows/ci.yml → "Run workflow" → branch
+  `ai/marley/ld-1` → Run workflow. Ready when: now (the fix is already uploaded). You'll know it worked: a new
+  run appears on that page and turns green in about 10 minutes; tell the agent and it will finish the review
+  and merge. Why this is needed: the checks never started on the fixed code by themselves — the way the fix was
+  uploaded doesn't start them — so they need this one manual start.
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
   Environments → Production → Branch Tracking → choose `live` → Save; also turn automatic Preview deployments off.
   Ready when: now (`live` exists). You'll know it worked: Branch Tracking shows `live`.
@@ -61,12 +67,14 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 - [ ] **Before your first 6- or 12-month household rental: Colorado consumer-lease notification (UCCC).** Colorado
   asks businesses that make consumer leases (household rentals over 4 months) to file a notification with the UCCC
   administrator (Attorney General) within 30 days and every July 1 (C.R.S. 5-6-202; fee set by the state). Ask your
-  attorney first (Decisions question FEE-UCCC-FILING). The rental wizard warns until this is marked done.
+  attorney first (Decisions question FEE-UCCC-FILING). Then enter the day it was filed in Settings › Colorado consumer lease filing; the rental wizard warns until you do.
 - [ ] **Ask Greeley Sales Tax in writing how it taxes rentals and fees.** The app drafts the email (Settings › Taxes →
   "Email Greeley"): does Greeley tax rentals of 36 months or less when you paid tax buying the appliance, and are
   optional, separately listed delivery, installation, pickup and haul-away charges taxed? Send it from your own email to
   Greeley.SalesTax@greeleygov.com (or call 970-350-9733). Ready: you have their written reply. Worked: you record the
   answer on Taxes › Rules and the questions FEETAX-GREELEY-* show "Confirmed". Until then the app taxes them (safe side).
+
+- [ ] **Install the desk app on your phone (AR-11).** Steps: after the full AR-11 card is merged and the nightly testing release runs, open the testing app's `/desk/today` in Chrome (Android: Install app) or Safari (iPhone: Share → Add to Home Screen). Worked when the round green R opens Today without browser bars, navigation never flashes blank, and Android icon long-press shows New quote, Take a payment, Today's route and Add an expense. Not ready until all AR-11 work is merged.
 
 ## B. Before real customers (money, email, texts, legal, accounts)
 
@@ -187,6 +195,19 @@ Agents will do the parts they safely can and record what they saw; the rest need
   clean-up" and confirm its last run shows one file deleted. Agents tested the waiting list and the rules against a stand-in
   for the storage company; the real private store was not touched. Worked: the run shows "deleted" and nothing else is missing.
 
+- [ ] **Add three payment events to your Stripe webhook** (test mode now, live later). Steps: Stripe dashboard → Developers →
+  Webhooks → your appliance-desk endpoint → Update details → Select events → add `payment_intent.processing`,
+  `payment_intent.payment_failed`, `payment_intent.canceled` → Update endpoint. Ready when: BILL-1 is merged. Worked if: a
+  test bank payment (Stripe's test bank account) shows **Being confirmed** on the bill within a minute, and **Paid** after
+  Stripe settles it. Until you do this, bank payments are only noticed from events already sent.
+
+- [ ] **Turn on late fees for real card customers (only when you are ready).** Late fees are recorded and shown, and customers are
+  warned first, but a fee only goes onto a customer's real automatic charge when you switch it on. In Stripe test mode it
+  already works. Steps: ask your agent to set `LATE_FEE_CUSTOMER_CHARGING_ENABLED` to `true` for the live site, after you have
+  read the late-fee wording on a signed agreement and confirmed the Decisions questions (warning days, fee tax). Ready when:
+  FEE-1 is merged and live customer email is on (a fee needs a delivered warning). Worked if: a test customer who ignores a
+  warning gets a "Late fee" line on the next bill and nothing on the overdue bill.
+
 ## D. Other people's systems (trial companies, provider reviews)
 
 - [ ] **QuickBooks trial company import** of a month of DETAIL CSV journals: counts and debits/credits balance, bank
@@ -206,9 +227,10 @@ Agents will do the parts they safely can and record what they saw; the rest need
 - [x] **Answered by Chris 2026-10-25 (in conversation): yes — rebuild the desk as an application (AR-0…AR-10).** Building may start as soon as each
   build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
-- [ ] **Look at the three reference screens on the testing site (after AR-0 is built, 10 minutes).** Steps: open
-  appliance-desk-testing.vercel.app, sign in as the test owner, look at Today, Money → Invoices and one customer; tell
-  the agent what you like and don't. Ready when: AR-0 is merged and the 10 pm testing update has run. Nothing waits on this.
+- [ ] **Look at the new Today, Bills and Customer screens on the testing app (10 minutes).** Steps: sign in to the
+  testing app on your phone (owner@example.test), open Today, then Money › Bills, then any customer. Ready when: AR-0b
+  is merged and the 10 pm testing release has run. Worked if: the screens look like the samples you approved; tell the
+  agent anything you want changed. This never blocks building.
 - [x] **Answered by Chris 2026-10-25 (in conversation): yes — build "Books on autopilot" (BA-1…BA-6).** Building may start as soon as each
   build plan is merged (docs/DECISIONS.md, 2026-10-25).
 
@@ -253,4 +275,6 @@ on readiness).
 | 2026-10-25 | IRS IRIS TCC, compliance encryption key | Chris asked the app to file and fill federal and state forms (CMP-1, CMP-3). |
 | 2026-10-25 | Vault encryption key, workers' comp rejection form | Records vault (VAULT-2) and insurance (OPS-4). |
 | 2026-10-25 | UCCC consumer-lease notification | Late-fee law research: Colorado's UCCC covers household rentals over 4 months. |
+| 2026-10-26 | Turn on late fees for real card customers | FEE-1: fees only reach a customer's real automatic charge when you switch it on. |
+| 2026-10-26 | Add three payment events to your Stripe webhook | BILL-1: the app can only show "Being confirmed" for bank payments if Stripe sends those events. |
 | 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |

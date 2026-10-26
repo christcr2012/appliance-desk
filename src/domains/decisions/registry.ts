@@ -19,6 +19,7 @@ import {
 import { badDebtTaxRecoveryProblem } from "@/domains/books/bad-debt-policy";
 import { setupTaxPlanningProblem } from "@/domains/billing/setup-tax-planning";
 import { retentionYearsProblem } from "@/domains/tax/retention-rules";
+import { validateTrustedDeviceDays } from "@/domains/security/trusted-devices";
 
 /**
  * Decisions & reviews registry (DEC-1a, docs/build-specs/engines/DECISIONS-CENTER.md section 2). One entry per open
@@ -46,6 +47,7 @@ export type DecisionContext = {
     setupFeeTaxPlanningTreatment: string;
     setupFeeTaxTreatment: string;
     recordRetentionYears: number;
+    trustedDeviceDays: number;
   };
   taxCells: { jurisdictionId: string | null; category: TaxChargeCategory; taxability: string; provisional: boolean }[];
   greeleyJurisdictionId: string | null;
@@ -392,7 +394,7 @@ const RETENTION_SUBJECT: DecisionSubject = {
   facts: BUSINESS_FACTS,
   options: RETENTION_OPTIONS,
   allowOther: true,
-  covers: ["BusinessSettings.recordRetentionYears"],
+  covers: ["LegalRuleVersion:records.keep_years"],
   read: async (ctx) => ctx.settings.recordRetentionYears,
   write: async (tx, actorId, value, _effectiveFrom, meta) => {
     const { saveRecordRetentionYearsInTx } = await import("@/domains/tax/retention");
@@ -402,6 +404,44 @@ const RETENTION_SUBJECT: DecisionSubject = {
   describe: (value) => typeof value === "number" ? `${value} years after the appliance leaves the fleet` : "Unknown",
   recommended: null,
   affects: [{ label: "How long tax records are kept", href: "/desk/sales-tax/record-retention" }],
+};
+
+const TRUSTED_DEVICE_DAYS_OPTIONS: DecisionOption[] = [0, 7, 14, 30, 60, 90].map((days) => ({
+  value: days,
+  label: days === 0 ? "Always ask for the code" : `Remember for ${days} days`,
+}));
+
+const TRUSTED_DEVICE_DAYS_SUBJECT: DecisionSubject = {
+  id: "TRUSTED-DEVICE-DAYS",
+  legacyIds: ["TRUSTED-DEVICE-DAYS"],
+  area: "BUSINESS",
+  audience: "OWNER",
+  title: "How long a remembered device skips the code",
+  question: "When someone ticks \"Remember this device\" at sign-in, for how many days should the app skip the code on that device?",
+  facts: BUSINESS_FACTS,
+  options: TRUSTED_DEVICE_DAYS_OPTIONS,
+  allowOther: true,
+  covers: ["BusinessSettings.trustedDeviceDays"],
+  read: async (ctx) => ctx.settings.trustedDeviceDays,
+  write: async (tx, actorId, value) => {
+    const { updateTrustedDeviceSettingsInTx } = await import("@/domains/security/trusted-devices");
+    await updateTrustedDeviceSettingsInTx(tx, actorId, Number(value));
+  },
+  validate: (value) => {
+    try {
+      validateTrustedDeviceDays(value);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "That number of days is not allowed.";
+    }
+  },
+  describe: (value) => typeof value === "number"
+    ? (value === 0 ? "Always ask for the code" : `Remember for ${value} days`)
+    : "Unknown",
+  // ACC-6: the 30-day starting value lives in the setting itself and on the Settings screen, and Chris approved
+  // 30 days on 2026-10-25. `recommended` stays null until DEC-2 adds researched values with sources.
+  recommended: null,
+  affects: [{ label: "Settings", href: "/desk/settings" }, { label: "My account", href: "/desk/account" }],
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -548,6 +588,7 @@ export const DECISION_SUBJECTS: DecisionSubject[] = [
   BAD_DEBT_SUBJECT,
   SETUP_FEE_SUBJECT,
   RETENTION_SUBJECT,
+  TRUSTED_DEVICE_DAYS_SUBJECT,
   ...AS_BUILT_SUBJECTS,
 ];
 

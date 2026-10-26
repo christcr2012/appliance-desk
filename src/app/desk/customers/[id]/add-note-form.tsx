@@ -9,7 +9,7 @@ import { addCustomerNoteAction } from "../actions";
  * src/app/desk/customers/actions.ts's addCustomerNoteAction and the
  * CustomerNote model's own comment for why notes exist separately from
  * the system-generated activity feed. */
-export function AddNoteForm({ customerId }: { customerId: string }) {
+export function AddNoteForm({ customerId, onSaved }: { customerId: string; onSaved?: () => void }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +32,8 @@ export function AddNoteForm({ customerId }: { customerId: string }) {
           }
           setError(null);
           formRef.current?.reset();
+          // AR-0b: the record's note sheet closes and says "Note added".
+          onSaved?.();
           router.replace(`/desk/customers/${customerId}?tab=activity`);
           router.refresh();
         });

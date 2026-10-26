@@ -12,7 +12,7 @@ full-CI rerun, production activation or enabling of preview photo/backup APIs.
 ## Hosted evidence update — 2026-10-01
 
 Owner approved dashboard fallback and preview-only credential creation.
-Private store store_6Sttks2ULJ8wG5hl connected to Preview only; hosted runtime
+Private store private preview store (identifier withheld) connected to Preview only; hosted runtime
 DB fixture and provider private-file isolation checks passed. See
 [PREVIEW-ISOLATION-PROOF.md](PREVIEW-ISOLATION-PROOF.md) for exact identities,
 outcomes, limitations and remaining steps. O02 remains incomplete pending

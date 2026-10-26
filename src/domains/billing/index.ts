@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { businessMonthBounds } from "@/lib/business-date";
 import { computeMrrTrend, revenuePeriod } from "./revenue";
+import { pastDueInvoiceWhere } from "./bill-status";
+
+export { pastDueInvoiceWhere } from "./bill-status";
 
 export { createCheckoutSessionForAgreement, buildCheckoutLinePlan } from "./checkout";
 export { processStripeWebhookEvent } from "./webhooks";
@@ -22,8 +25,9 @@ export type {
   ManualPaymentMethod,
   ManualPaymentResult,
 } from "./manual-payments";
-export { applyLateFees, sendLateFeeDigestToChris } from "./late-fees";
+export { sendLateFeeDigestToChris } from "./late-fees";
 export type { LateFeeApplication } from "./late-fees";
+export { runLateFees, billPendingLateFees, waiveLateFee, skipLateFee, recordToldByPhone, sendLateNotice, lateFeeBillingEnabled } from "./late-fee-engine";
 
 export async function getInvoicesCount(filter?: {
   delinquentOnly?: boolean;
@@ -139,11 +143,9 @@ export async function getRevenueDashboard(now = new Date()) {
       where: { receivedOn: revenuePeriod(now, false) },
       _sum: { amountCents: true },
     }),
+    // AR-0b: the one shared past-due rule (open, money owed, due before the start of today in Colorado).
     prisma.invoice.findMany({
-      where: {
-        status: { in: ["DELINQUENT", "OPEN", "PARTIALLY_PAID"] },
-        dueDate: { lt: now },
-      },
+      where: pastDueInvoiceWhere(now),
       select: { amountDueCents: true, amountPaidCents: true },
     }),
     prisma.payment.count({

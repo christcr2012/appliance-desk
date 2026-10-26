@@ -50,6 +50,7 @@ type RecoverableOperation = {
     | "SUBSCRIPTION_UPDATE"
     | "SUBSCRIPTION_TAX_UPDATE"
     | "BALANCE_CREDIT"
+    | "LATE_FEE_INVOICE_ITEM"
     | "REFUND_CREATE";
   subjectType: string;
   subjectId: string;
@@ -70,6 +71,7 @@ function isRecoverableOperationKind(
     kind === "SUBSCRIPTION_UPDATE" ||
     kind === "SUBSCRIPTION_TAX_UPDATE" ||
     kind === "BALANCE_CREDIT" ||
+    kind === "LATE_FEE_INVOICE_ITEM" ||
     kind === "REFUND_CREATE"
   );
 }
@@ -591,6 +593,41 @@ async function reconcileRdfInvoiceItem(
   return false;
 }
 
+/**
+ * FEE-1: a late-fee invoice item whose Stripe call timed out. Looks for the item by its charge id (metadata). Found → the
+ * operation succeeded. Not found after looking at everything created since the request → it never reached Stripe, so the
+ * operation is released (FAILED) and the next nightly billing pass sends it again. A different amount is reported as drift.
+ */
+export async function reconcileLateFeeInvoiceItem(operation: Pick<RecoverableOperation, "id" | "subjectId" | "status" | "requestedAt">): Promise<boolean> {
+  const charge = await prisma.pendingCharge.findUnique({
+    where: { id: operation.subjectId },
+    select: { amountCents: true, customer: { select: { stripeCustomerId: true } } },
+  });
+  if (!charge?.customer.stripeCustomerId) return false;
+  const createdGte = Math.floor(operation.requestedAt.getTime() / 1000) - PROVIDER_LOOKBACK_SECONDS;
+  let examined = 0;
+  for await (const item of getStripeClient().invoiceItems.list({
+    customer: charge.customer.stripeCustomerId, created: { gte: createdGte }, limit: 100,
+  })) {
+    if (++examined > 300) return false; // too many to be sure; absence cannot justify a resend
+    if (item.metadata?.late_fee_pending_charge_id !== operation.subjectId) continue;
+    if (item.amount !== charge.amountCents) {
+      await prisma.$transaction((tx) => completeProviderOperation(tx, operation.id, {
+        status: "DRIFT", providerObjectId: item.id,
+        note: "The late fee at Stripe has a different amount than the one recorded here.",
+      }));
+      return true;
+    }
+    await prisma.$transaction((tx) => completeProviderOperation(tx, operation.id, { status: "SUCCEEDED", providerObjectId: item.id }));
+    return true;
+  }
+  if (operation.status !== "UNKNOWN") return false;
+  await prisma.$transaction((tx) => completeProviderOperation(tx, operation.id, {
+    status: "FAILED", error: "Stripe has no record of this late fee, so it will be sent again.",
+  }));
+  return true;
+}
+
 async function reconcileOne(operation: RecoverableOperation): Promise<boolean> {
   switch (operation.kind) {
     case "RDF_INVOICE_ITEM":
@@ -607,6 +644,8 @@ async function reconcileOne(operation: RecoverableOperation): Promise<boolean> {
       return retrySubscriptionTaxUpdate(operation);
     case "BALANCE_CREDIT":
       return reconcileBalanceCredit(operation);
+    case "LATE_FEE_INVOICE_ITEM":
+      return reconcileLateFeeInvoiceItem(operation);
     case "REFUND_CREATE":
       return reconcileRefund(operation);
   }

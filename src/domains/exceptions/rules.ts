@@ -25,6 +25,9 @@ import { shortDateLabel } from "@/domains/tax/file-and-pay";
 // ---------------------------------------------------------------------------
 
 export type ExceptionCategory =
+  | "BOOKS_NOT_UP_TO_DATE"
+  | "BOOKS_NEEDS_FIX"
+  | "BOOKS_SETUP"
   | "SYSTEM_ISSUE"
   | "BILLING_BLOCKED"
   | "SALES_TAX"
@@ -39,6 +42,8 @@ export type ExceptionCategory =
   | "RETAIL_DELIVERY_FEE"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
+  | "BANK_PAYMENT_SLOW"
+  | "LATE_FEE_REVIEW"
   | "HELD_PAYMENT_DECISION"
   | "DEPOSIT_DECISION"
   | "NEW_LEAD_CONTACT"
@@ -78,7 +83,7 @@ export type ExceptionCategory =
   | "OUT_OF_SERVICE"
   | "FEEDBACK_WAITING";
 
-export type ExceptionSeverity = "high" | "medium";
+export type ExceptionSeverity = "high" | "medium" | "low";
 
 export type ExceptionItem = {
   category: ExceptionCategory;
@@ -106,6 +111,12 @@ export type ExceptionItem = {
         type: "APPLY_OFFICIAL_RATE";
         id: string;
         label: string;
+      }
+    | {
+        /** BILL-1: record a bank payment Stripe says cleared (id = the in-flight row). */
+        type: "RECORD_BANK_PAYMENT";
+        id: string;
+        label: string;
       };
   /** Real due date only; an issue's creation time is not a deadline. */
   dueOn?: Date;
@@ -119,7 +130,25 @@ export type ExceptionItem = {
   snoozeHistory?: { at: Date; reason: string; until: Date; actorName: string }[];
   /** For sorting oldest-first within a category. */
   since: Date;
+  /** AR-0b: how to reach the related customer or lead (Today's Call / Email buttons). */
+  contact?: { phone?: string; email?: string };
 };
+
+/** AR-0b: a customer's phone and login email as an ExceptionItem contact (blank values left out). */
+export function customerContact(customer: { phone?: string | null; user: { email: string } } | null | undefined): ExceptionItem["contact"] {
+  if (!customer) return undefined;
+  const phone = customer.phone?.trim() || undefined;
+  const email = customer.user.email?.trim() || undefined;
+  return phone || email ? { ...(phone ? { phone } : {}), ...(email ? { email } : {}) } : undefined;
+}
+
+/** AR-0b: a lead's phone and email as an ExceptionItem contact. */
+export function leadContact(lead: { phone?: string | null; email?: string | null } | null | undefined): ExceptionItem["contact"] {
+  if (!lead) return undefined;
+  const phone = lead.phone?.trim() || undefined;
+  const email = lead.email?.trim() || undefined;
+  return phone || email ? { ...(phone ? { phone } : {}), ...(email ? { email } : {}) } : undefined;
+}
 
 // Thresholds — deliberately simple, explainable numbers (docs/BUSINESS-
 // RULES.md's lead-scoring section sets the same expectation for any rule
@@ -655,6 +684,68 @@ export function pastDueInvoiceException(invoice: {
   };
 }
 
+/**
+ * BILL-1: a bank payment that is taking longer than the owner's number of banking days, or that Stripe says cleared
+ * while our books do not show it. Never says the customer is late: the customer paid.
+ */
+export function bankPaymentSlowException(row: {
+  id: string;
+  customerId: string | null;
+  invoiceId: string | null;
+  customerName: string;
+  amountCents: number;
+  startedAt: Date;
+  bankingDaysOld: number;
+  settledInStripeAt: Date | null;
+}): ExceptionItem {
+  const amount = `$${(row.amountCents / 100).toFixed(2)}`;
+  const settled = row.settledInStripeAt !== null;
+  return {
+    category: "BANK_PAYMENT_SLOW",
+    severity: settled ? "high" : "medium",
+    title: settled
+      ? `${row.customerName}'s bank payment cleared but isn't recorded — ${amount}`
+      : `${row.customerName}'s bank payment is taking a while — ${amount}`,
+    detail: settled
+      ? "Stripe says this payment arrived, but it isn't on the bill yet. Use “Record it now”."
+      : `The bank has been confirming this payment for ${row.bankingDaysOld} banking days. Nothing is lost; banks usually take up to 4. Check Stripe if it keeps waiting.`,
+    // The row id in the link gives each payment its own To do identity (snoozing one never hides another).
+    href: `/desk/billing/reconciliation?payment=${encodeURIComponent(row.id)}`,
+    amountCents: row.amountCents,
+    since: row.startedAt,
+    ...(settled ? { action: { type: "RECORD_BANK_PAYMENT" as const, id: row.id, label: "Record it now" } } : {}),
+  };
+}
+
+/**
+ * FEE-1: an overdue bill that has no late fee because the customer was never warned (or is active military).
+ * A fee needs a warning first; Chris chooses what happens next on the bill page.
+ */
+export function lateFeeReviewException(row: {
+  invoiceId: string;
+  customerId: string;
+  customerName: string;
+  invoiceNumber: number;
+  reason: "NOT_WARNED" | "MILITARY";
+  dueOn: Date | null;
+  amountCents: number;
+}): ExceptionItem {
+  return {
+    category: "LATE_FEE_REVIEW",
+    severity: "medium",
+    title: row.reason === "MILITARY"
+      ? `No automatic late fee for ${row.customerName} — active military`
+      : `No late fee for ${row.customerName} — they weren't warned yet`,
+    detail: row.reason === "MILITARY"
+      ? `Bill #${row.invoiceNumber} is past the day a fee could be added. You decide whether to skip it.`
+      : `Bill #${row.invoiceNumber} is past the day a fee could be added, but the warning was never delivered. Send the warning, record a phone call, or skip the fee.`,
+    href: `/desk/billing/customer/${encodeURIComponent(row.customerId)}/invoice/${encodeURIComponent(row.invoiceId)}`,
+    amountCents: row.amountCents,
+    since: row.dueOn ?? new Date(0),
+    ...(row.dueOn ? { dueOn: row.dueOn, dueDateOnly: true } : {}),
+  };
+}
+
 export function overdueJobException(job: {
   id: string;
   type: string;
@@ -791,6 +882,8 @@ export function taxReturnDueException(input: {
   /** W-9: when the period's total is known the To do says exactly what to file and pay. */
   amountCents?: number | null;
   kind?: "SALES_RETURN" | "USE_TAX_RETURN" | "RETAIL_DELIVERY_FEE_RETURN";
+  /** TFA-1: the day the timing rule says to act, shown next to the due date. */
+  actOnKey?: string;
 }): ExceptionItem {
   const daysUntilLegalDue = businessDaysBetween(input.now, input.legalDueOn);
   const daysUntilBaseDue = businessDaysBetween(input.now, input.dueOn);
@@ -807,7 +900,9 @@ export function taxReturnDueException(input: {
     severity: urgent ? "high" : "medium",
     title: taxReturnTitle(input, daysUntilLegalDue < 0),
     detail: `${input.zeroReturn ? "A zero return may still be required. " : ""}` +
-      `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
+      `Filing period ended ${businessDateKey(input.periodEnd)}. ` +
+      (input.actOnKey ? `File and pay on ${shortDateLabel(input.actOnKey)}. ` : "") +
+      `Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
       (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),
     href: input.periodId ? `/desk/sales-tax/returns/${input.periodId}` : "/desk/sales-tax/returns",
     dueOn: input.dueOn,
@@ -902,7 +997,7 @@ export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {
     if (a.dueOn && b.dueOn && a.dueOn.getTime() !== b.dueOn.getTime())
       return a.dueOn.getTime() - b.dueOn.getTime();
     if (!!a.dueOn !== !!b.dueOn) return a.dueOn ? -1 : 1;
-    if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;
+    if (a.severity !== b.severity) return ({high:0,medium:1,low:2}[a.severity])-({high:0,medium:1,low:2}[b.severity]);
     return a.since.getTime() - b.since.getTime();
   });
 }
