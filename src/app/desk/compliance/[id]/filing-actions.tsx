@@ -51,10 +51,12 @@ export function FilingActions({ filingId, state, preparedHash, channel, canPrepa
         <p className="rounded-card bg-tint px-4 py-3 text-sm font-medium text-ink">Saved.</p>
       ) : null}
 
-      {state === "UPCOMING" && canPrepareGuided ? (
-        <button type="button" className={primaryBtn} disabled={pending} onClick={() => run(() => prepareGuidedAction(filingId))}>
-          Prepare the values to file
-        </button>
+      {state === "UPCOMING" || state === "REJECTED" ? (
+        canPrepareGuided ? (
+          <button type="button" className={primaryBtn} disabled={pending} onClick={() => run(() => prepareGuidedAction(filingId))}>
+            {state === "REJECTED" ? "Prepare again with corrected values" : "Prepare the values to file"}
+          </button>
+        ) : null
       ) : null}
 
       {state === "READY_FOR_REVIEW" && preparedHash ? (
@@ -118,7 +120,7 @@ export function FilingActions({ filingId, state, preparedHash, channel, canPrepa
         </div>
       ) : null}
 
-      {["UPCOMING", "READY_FOR_REVIEW", "APPROVED"].includes(state) ? (
+      {["UPCOMING", "READY_FOR_REVIEW", "APPROVED", "REJECTED"].includes(state) ? (
         <div className="flex flex-wrap gap-2">
           {isOwner ? (
             <button type="button" className={btn} disabled={pending} onClick={() => run(() => doneElsewhereAction(filingId))}>

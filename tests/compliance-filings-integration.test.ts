@@ -143,4 +143,15 @@ describe.skipIf(!enabled)("compliance filings", () => {
     expect(after.preparedHash).toBe(before.preparedHash);
     expect(tag).toBeTruthy();
   });
+
+  it("two syncs at the same moment both succeed and create one set of rows", async () => {
+    await prisma.complianceFiling.deleteMany({});
+    const now = new Date("2026-10-26T12:00:00Z");
+    const [a, b] = await Promise.all([syncComplianceFilings(now), syncComplianceFilings(now)]);
+    // The settings-row lock serializes them: whichever runs second creates nothing.
+    expect(Math.min(a.created, b.created)).toBe(0);
+    const count = await prisma.complianceFiling.count();
+    expect(count).toBe(a.created + b.created);
+    expect(count).toBeGreaterThan(10);
+  });
 });

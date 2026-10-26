@@ -6,9 +6,6 @@ export const TAXES_TABS = [
   { key: "use-tax", label: "Use tax", href: `${TAXES_BASE}/use-tax` },
   { key: "rates", label: "Rates & areas", href: `${TAXES_BASE}/areas` },
   { key: "setup", label: "Setup", href: `${TAXES_BASE}/setup` },
-  // CMP-1: the Compliance center (everything that is not sales tax) lives at
-  // its own address but belongs to this area, next to sales tax.
-  { key: "compliance", label: "Compliance", href: "/desk/compliance" },
 ] as const;
 
 export type TaxesTabKey = (typeof TAXES_TABS)[number]["key"];
@@ -29,7 +26,6 @@ const RATES_PREFIXES = ["areas", "delivery-fees"];
 
 /** Which tab a Taxes address belongs to; null when the address is outside Taxes. */
 export function activeTaxesTab(pathname: string): TaxesTabKey | null {
-  if (pathname === "/desk/compliance" || pathname.startsWith("/desk/compliance/")) return "compliance";
   if (pathname !== TAXES_BASE && !pathname.startsWith(`${TAXES_BASE}/`)) return null;
   const rest = pathname.slice(TAXES_BASE.length).split("/").filter(Boolean);
   const first = rest[0];

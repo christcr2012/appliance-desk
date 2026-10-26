@@ -30,6 +30,24 @@ export const FILING_STATES = [
 ] as const;
 export type FilingState = (typeof FILING_STATES)[number];
 
+/** The state groups the Compliance screen's tabs show (kept here so owner screens never spell the codes). */
+export const COMING_UP_STATES: FilingState[] = ["UPCOMING", "READY_FOR_REVIEW", "APPROVED"];
+export const NEEDS_YOU_STATES: FilingState[] = ["READY_FOR_REVIEW", "REJECTED"];
+export const DONE_STATES: FilingState[] = ["SUBMITTED", "ACCEPTED", "DONE_ELSEWHERE"];
+
+/** Split filing rows into the Compliance screen's four sections. */
+export function groupFilingsForScreen<T extends { state: string; actOn: Date }>(
+  filings: T[],
+  horizon: Date,
+): { coming: T[]; needs: T[]; done: T[]; notApplicable: T[] } {
+  return {
+    coming: filings.filter((f) => COMING_UP_STATES.includes(f.state as FilingState) && f.actOn <= horizon),
+    needs: filings.filter((f) => NEEDS_YOU_STATES.includes(f.state as FilingState)),
+    done: filings.filter((f) => DONE_STATES.includes(f.state as FilingState)),
+    notApplicable: filings.filter((f) => f.state === "NOT_APPLICABLE"),
+  };
+}
+
 /** Canonical JSON (sorted keys) so the same numbers always hash the same. */
 function canonical(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
@@ -87,7 +105,12 @@ export async function syncComplianceFilings(now = new Date()): Promise<{ created
   let refreshed = 0;
 
   await prisma.$transaction(async (tx) => {
-    const profile = await getComplianceProfile();
+    // Serialize synchronization: the business settings row is locked for the
+    // whole run, so two page loads or To do loads at the same moment can't
+    // both see "no row yet" and collide on the unique obligation/period key.
+    await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
+    const profileRow = await tx.complianceProfile.findUnique({ where: { id: "singleton" } });
+    const profile = profileRow ?? (await getComplianceProfile());
     for (const year of [thisYear - 1, thisYear, thisYear + 1]) {
       const ctx: ComplianceContext = profileContext(profile, await booksFactsForYear(tx, year));
       for (const obligation of OBLIGATIONS) {
@@ -297,7 +320,7 @@ export async function markFilingDoneElsewhere(
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorId, ["OWNER"]);
     const filing = await lockFilingInTx(tx, filingId);
-    if (!["UPCOMING", "READY_FOR_REVIEW", "APPROVED"].includes(filing.state)) {
+    if (!["UPCOMING", "READY_FOR_REVIEW", "APPROVED", "REJECTED"].includes(filing.state)) {
       throw new Error("This filing is already finished.");
     }
     await tx.complianceFiling.update({

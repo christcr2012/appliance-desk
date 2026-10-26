@@ -60,6 +60,10 @@ export async function saveFactsAction(
       employees: Number(String(formData.get("employees") ?? "0")) || 0,
       hasHomeOffice: formData.get("hasHomeOffice") === "on",
     });
+    // New facts can make new obligations apply (or schedule ones that were
+    // waiting on a fact) — refresh the filing rows right away.
+    const { syncComplianceFilings } = await import("@/domains/compliance/filings");
+    await syncComplianceFilings();
     revalidatePath("/desk/compliance");
     revalidatePath("/desk/compliance/facts");
     return { ok: true };

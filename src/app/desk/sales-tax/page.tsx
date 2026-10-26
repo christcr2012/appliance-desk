@@ -82,5 +82,16 @@ export default async function SalesTaxRootPage() {
         {!overview.nextDue.length && <li className="p-3 text-sm text-muted-foreground">No active open periods with a configured return.</li>}
       </ul>
     </section>
+    <section className="space-y-3">
+      <h3 className="text-lg font-semibold">Beyond sales tax</h3>
+      <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        <p className="font-semibold">Compliance — income tax, 1099s, licenses and the rest</p>
+        <p className="text-sm text-muted-foreground">
+          Every federal, Colorado and city obligation that is not sales tax, with its dates and sources.
+          Nothing is filed without your approval.
+        </p>
+        <Link href="/desk/compliance" className="text-sm font-medium underline">Open Compliance</Link>
+      </div>
+    </section>
   </main>;
 }

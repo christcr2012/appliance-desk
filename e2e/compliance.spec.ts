@@ -13,8 +13,9 @@ test.describe("Compliance center (CMP-1)", () => {
     test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
     await page.goto("/desk/compliance");
     await expect(page.getByRole("heading", { name: "Compliance" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Coming up" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Needs you/ })).toBeVisible();
+    const sections = page.getByRole("navigation", { name: "Compliance sections" });
+    await expect(sections.getByRole("link", { name: "Coming up", exact: true })).toBeVisible();
+    await expect(sections.getByRole("link", { name: /Needs you/ })).toBeVisible();
     // The seeded registry covers three years of periods; an estimated-tax
     // filing is always within the 120-day window from any date.
     await expect(page.getByText("Federal estimated tax (Form 1040-ES)").first()).toBeVisible();

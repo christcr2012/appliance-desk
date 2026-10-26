@@ -6,6 +6,7 @@ import { OBLIGATIONS, notNeededObligations, obligationByKey } from "@/domains/co
 import { getComplianceProfile, missingFacts } from "@/domains/compliance/profile";
 import {
   complianceContextForYear,
+  groupFilingsForScreen,
   listComplianceFilings,
   syncComplianceFilings,
 } from "@/domains/compliance/filings";
@@ -90,12 +91,11 @@ export default async function CompliancePage({
   const ctx = await complianceContextForYear(thisYear);
   const gaps = missingFacts(profile);
 
-  const coming = filings.filter(
-    (f) => ["UPCOMING", "READY_FOR_REVIEW", "APPROVED"].includes(f.state) && f.actOn <= horizon,
-  );
-  const needsFilings = filings.filter((f) => ["READY_FOR_REVIEW", "REJECTED"].includes(f.state));
-  const done = filings.filter((f) => ["SUBMITTED", "ACCEPTED", "DONE_ELSEWHERE"].includes(f.state));
-  const notApplicable = filings.filter((f) => f.state === "NOT_APPLICABLE");
+  const grouped = groupFilingsForScreen(filings, horizon);
+  const coming = grouped.coming;
+  const needsFilings = grouped.needs;
+  const done = grouped.done;
+  const notApplicable = grouped.notApplicable;
   const dormant = OBLIGATIONS.filter((o) => !o.applies(ctx).applies);
   const notNeeded = notNeededObligations(ctx);
 

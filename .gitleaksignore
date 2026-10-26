@@ -30,6 +30,12 @@ d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-a
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:tests/books-closing-integration.test.ts:generic-api-key:28
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:162
 cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:189
+# Reviewed 2026-10-26 (CMP-1): compliance obligation keys in the registry —
+# public form identifiers assigned to a field named key, not credentials
+# (same false positive class as the rules registry above).
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:221
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:234
+8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:270
 # Same three lines again: merging main into LD-1 re-committed main's versions
 # of these files in new commits (d29df93, fc4ad1e), so the scanner attributes
 # the lines to those commits too.

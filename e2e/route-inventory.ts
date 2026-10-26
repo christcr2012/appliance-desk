@@ -144,6 +144,15 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/billing/held-payments", role: "OWNER", fixture: "/desk/billing/held-payments" },
   { path: "/desk/billing", role: "OWNER", fixture: "/desk/billing" },
   { path: "/desk/billing/reconciliation", role: "OWNER", fixture: "/desk/billing/reconciliation" },
+  { path: "/desk/compliance", role: "OWNER", fixture: "/desk/compliance" },
+  { path: "/desk/compliance/facts", role: "OWNER", fixture: "/desk/compliance/facts" },
+  {
+    path: "/desk/compliance/[id]",
+    role: "OWNER",
+    fixture: "A generated compliance filing id",
+    manualOnlyReason:
+      "The CI seed does not create a deterministic filing id; filing behavior is covered by the compliance workflow tests.",
+  },
   {
     path: "/desk/customers/[id]",
     role: "OWNER",
