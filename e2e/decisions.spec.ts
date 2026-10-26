@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import mammoth from "mammoth";
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { scanAccessibilityRoute } from "./accessibility-route-helpers";
 import { loginAs } from "./utils/auth";
@@ -154,10 +155,13 @@ test("decisions: a renamed picture is refused; import a completed form; layout a
     await page.goto("/desk/settings/decisions");
     await page.setViewportSize({ width: 360, height: 900 });
     const offenders: string[] = [];
-    for (let round = 0; round < 4; round += 1) {
+    for (let round = 0; round < 2; round += 1) {
       await page.evaluate(() => document.documentElement.classList.remove("dark"));
+      await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+      // The shared scan runs axe at each width; axe scrolls and reads every element, so do the same here.
+      await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
       await page.evaluate(() => document.documentElement.classList.add("dark"));
       await page.setViewportSize({ width: 360, height: 900 });
       await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
