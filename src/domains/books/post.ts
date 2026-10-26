@@ -396,6 +396,13 @@ export function selectFairBooksCandidates<T extends {type:string;id:string;at:Da
   return picked.sort((a,b)=>a.at.getTime()-b.at.getTime()||a.id.localeCompare(b.id));
 }
 
+/** A later void/refund/write-off is due in its own month, not in the source's first month. */
+export function missingBookEventsInMonth(row:{
+ at:Date;required:string[];eventDates?:Record<string,Date|null|undefined>;
+},already:ReadonlySet<string>,month:string):string[]{
+ return row.required.filter(kind=>!already.has(kind)&&
+  businessDateKey(row.eventDates?.[kind]??row.at).slice(0,7)===month);
+}
 /** `inspectMonth` is a strictly read-only snapshot for the owner's review page. */
 export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:Tx}):Promise<BooksResult> {
   const db=opts?.tx??prisma;
@@ -405,7 +412,8 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:
   if(!settings?.booksStartDate)return {posted:0,problems:[]};
   const limit=Math.max(1,Math.min(500,opts?.limit??500));
   const since=settings.booksStartDate;
-  type Candidate = {type: JournalSourceType; id: string; at: Date; required: string[]};
+  type Candidate = {type: JournalSourceType; id: string; at: Date; required: string[];
+    eventDates?:Record<string,Date|null|undefined>};
   const querySources: { type: JournalSourceType; load: (skip:number,take:number)=>Promise<Candidate[]> }[] = [
     {type:"CASH_EVENT",load:async(skip,take)=>(await db.bookCashEvent.findMany({
       where:{occurredOn:{gte:since}},orderBy:[{occurredOn:"asc"},{id:"asc"}],skip,take,
@@ -419,7 +427,7 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:
         {createdAt:{gte:since}},{issuedAt:{gte:since}},
         {billingPeriodStart:{gte:since}},{cancelledAt:{gte:since}},
         {writtenOffAt:{gte:since}},
-      ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true,amountDueCents:true},
+      ]},select:{id:true,createdAt:true,issuedAt:true,billingPeriodStart:true,cancelledAt:true,status:true,writtenOffAt:true,updatedAt:true,amountDueCents:true},
       orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take});
       // Invoices whose amount due no longer matches what the books recorded (a late fee, waiver or new tax added after
       // posting) need a difference entry. The next entry's name is used as the "still to do" marker.
@@ -441,6 +449,10 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:
         select:{sourceId:true}})).map(e=>e.sourceId));
       return invoices.map(x=>({type:"INVOICE" as const,id:x.id,
       at:x.billingPeriodStart??x.issuedAt??x.createdAt,
+      eventDates:{"INVOICE_VOIDED":x.cancelledAt??x.updatedAt,
+       "INVOICE_WRITTEN_OFF":x.writtenOffAt??x.updatedAt,
+       "INVOICE_WRITE_OFF_REVERSED":x.updatedAt,
+       ["INVOICE_ADJUSTED_"+((adjustments.get(x.id)??0)+1)]:x.updatedAt},
       required:["INVOICE_RECOGNIZED",...(x.status==="VOID"?["INVOICE_VOIDED"]:[]),
         ...(x.writtenOffAt?["INVOICE_WRITTEN_OFF"]:[]),
         ...(!x.writtenOffAt&&writtenOffBooks.has(x.id)?["INVOICE_WRITE_OFF_REVERSED"]:[]),
@@ -455,6 +467,7 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:
     {type:"DEPOSIT",load:async(skip,take)=>(await db.deposit.findMany({
       where:{createdAt:{gte:since}},select:{id:true,createdAt:true,sourceReceiptId:true,amountCents:true,refundedAt:true,refundedAmountCents:true},
       orderBy:[{createdAt:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"DEPOSIT",id:x.id,at:x.createdAt,
+      eventDates:{"DEPOSIT_REFUNDED":x.refundedAt,"DEPOSIT_RETAINED":x.refundedAt},
       required:[...(x.sourceReceiptId?["DEPOSIT_FUNDED"]:["DEPOSIT_FUNDED"]),
         ...(x.refundedAt&&((x.refundedAmountCents??0)>0)?["DEPOSIT_REFUNDED"]:[]),
         ...(x.refundedAt&&(x.amountCents-(x.refundedAmountCents??0))>0?["DEPOSIT_RETAINED"]:[])]}))},
@@ -481,12 +494,14 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:
         where:{sourceType:"REFUND_TO_CREDIT",sourceId:{in:rows.map(r=>r.id)}},select:{sourceId:true}})).map(c=>c.sourceId));
       return rows.map(x=>({type:"REFUND",id:x.id,at:x.createdAt,required:creditBackedRefunds.has(x.id)||awaitingStripe.has(x.id)?[]:["REFUND_ISSUED"]}));}},
     {type:"EXPENSE",load:async(skip,take)=>(await db.expense.findMany({
-      where:{spentOn:{gte:since},status:{in:["POSTED","VOID"]}},select:{id:true,spentOn:true,status:true},
+      where:{spentOn:{gte:since},status:{in:["POSTED","VOID"]}},select:{id:true,spentOn:true,status:true,voidedAt:true},
       orderBy:[{spentOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"EXPENSE",id:x.id,at:x.spentOn,
+      eventDates:{"EXPENSE_VOIDED":x.voidedAt},
       required:x.status==="VOID"?["EXPENSE_POSTED","EXPENSE_VOIDED"]:["EXPENSE_POSTED"]}))},
     {type:"SCRAP_PAYMENT",load:async(skip,take)=>(await db.scrapPayment.findMany({
       where:{receivedOn:{gte:since}},select:{id:true,receivedOn:true,voidedAt:true},
       orderBy:[{receivedOn:"asc"},{id:"asc"}],skip,take})).map(x=>({type:"SCRAP_PAYMENT",id:x.id,at:x.receivedOn,
+      eventDates:{"SCRAP_VOIDED":x.voidedAt},
       required:x.voidedAt?["SCRAP_RECEIVED","SCRAP_VOIDED"]:["SCRAP_RECEIVED"]}))},
     {type:"USE_TAX",load:async(skip,take)=>(await db.purchaseUseTax.findMany({
       where:{purchasedOn:{gte:since},useTaxDueCents:{gt:0}},select:{id:true,purchasedOn:true},
@@ -545,14 +560,18 @@ export async function postPending(opts?:{limit?:number;inspectMonth?:string;tx?:
             message:"A previous accounting source problem still needs review."});
           unresolvedKeys.delete(key);
         }
-        const complete=candidate.required.length>0 &&
-          candidate.required.every(kind=>byId.get(candidate.id)?.has(kind));
+        const prior=byId.get(candidate.id)??new Set<string>();
+        const missing=candidate.required.filter(kind=>!prior.has(kind));
+        const complete=candidate.required.length>0&&!missing.length;
         if(!opts?.inspectMonth&&complete&&unresolvedStripe.has("books-post:STRIPE_BALANCE_TXN:"+candidate.id))
           await resolveSystemIssue("books-post:STRIPE_BALANCE_TXN:"+candidate.id,"SOURCE_SUCCEEDED");
-        if(candidate.required.length&&!complete&&!queuedIds.has(key)){
+        if(candidate.required.length&&missing.length&&!queuedIds.has(key)){
           queuedIds.add(key);
-          if(!opts?.inspectMonth||businessDateKey(candidate.at).slice(0,7)===opts.inspectMonth){
-            sources.push(candidate);
+          const relevant=opts?.inspectMonth
+           ?missingBookEventsInMonth(candidate,prior,opts.inspectMonth):missing;
+          if(relevant.length){
+            sources.push(opts?.inspectMonth?{...candidate,required:relevant,
+              at:candidate.eventDates?.[relevant[0]!]??candidate.at}:candidate);
             queuedForSource++;
           }
         }
