@@ -8,6 +8,8 @@ export function todoKey(item: Pick<ExceptionItem, "category" | "href" | "title">
   return createHash("sha256").update(identity).digest("hex");
 }
 const ACTION_LABEL: Record<string, string> = {
+  BOOKS_NOT_UP_TO_DATE: "Open books",
+  BOOKS_NEEDS_FIX: "Fix books",
   RENTAL_ENDING_SOON: "Decide",
   PICKUP_UNSCHEDULED: "Schedule pickup",
   RETIRED_APPLIANCE_PLAN: "Decide",

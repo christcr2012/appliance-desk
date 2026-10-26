@@ -8,6 +8,7 @@ import { listTaxFilingAttention, listRdfRefundAttention } from "@/domains/tax/fi
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { listRetiredPlanAttention } from "./retired-attention";
+import { listBooksAttention } from "./books-attention";
 import { listResaleTaxAttention } from "./resale-tax-attention";
 import { listApprovalAttention } from "./approval-attention";
 import { listGoalAttention } from "./goal-attention";
@@ -1072,6 +1073,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
 
   const acquisitionAttention = canViewFinance ? await listAcquisitionTaxAttention(now) : [];
   const retiredAttention = canViewFinance ? await listRetiredPlanAttention(now) : [];
+  const booksAttention = canViewFinance ? await listBooksAttention(now) : [];
   const resaleTaxAttention = (session.user as { role?: string }).role === "OWNER" ? await listResaleTaxAttention(now) : [];
   const approvalAttention = (session.user as { role?: string }).role === "OWNER" ? await listApprovalAttention(now) : [];
   const goalAttention = canViewFinance ? await listGoalAttention(now) : [];
@@ -1138,6 +1140,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...amendmentAttention.readiness.rows,
     ...acquisitionAttention,
     ...retiredAttention,
+    ...booksAttention,
     ...resaleTaxAttention,
     ...approvalAttention,
     ...goalAttention,
