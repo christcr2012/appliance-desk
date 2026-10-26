@@ -44,7 +44,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
   prisma.cashAccount.findMany({select:{id:true,name:true,
    imports:{select:{id:true},take:1},
    reconciliations:{where:{isCurrent:true,status:"COMPLETED",
-    fromOn:{lte:first},toOn:{gte:last}},select:{id:true},take:1}}},take:501}),
+    fromOn:{lte:first},toOn:{gte:last}},select:{id:true},take:1}},take:501}),
   prisma.booksProblem.findMany({where:{kind:"SOURCE_NOT_RECORDED",resolvedAt:null},
    select:{subjectId:true,subjectType:true},take:501}),
   prisma.journalEntry.findMany({where:{sourceType:"APPLIANCE",
