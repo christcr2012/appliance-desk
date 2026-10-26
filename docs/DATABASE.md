@@ -2,6 +2,13 @@
 
 `KnownDevice` — one row per person per device cookie: `deviceHash` (SHA-256 of the device cookie value; the value itself is never stored), `label` (kind of device and browser, for the list only), first/last seen, `trustedUntil` (set when the person ticks "Remember this device", never extended by later sign-ins) and `forgottenAt`. Unique on (`userId`, `deviceHash`); rows are removed with the user and left out of backups (a restore re-records devices as people sign in). `BusinessSettings.trustedDeviceDays` (30, CHECK 0–90; 0 = always ask for the code). The library's own trust rows live in the existing `Verification` table (`trust-device-…` identifiers, user id as the value) and are clamped to the device's remembered-until date. Migration `20261030010000_known_devices`.
 
+## November 1 — Tax and fee rule book (TFA-1, additive)
+
+Migration `20261101000000_legal_rules`.
+- `LegalRuleVersion` — one dated value per tax/fee rule: `ruleKey` (e.g. `co.rdf.amount`), `value` (JSON: cents, or an object for grouped numbers), `effectiveFrom` (that Colorado day's midnight), `origin` (RESEARCHED, OFFICIAL_WATCH, OWNER, PROFESSIONAL), `sourceUrl`, `sourceQuote`, `checkedOn`, `provisional` (true until confirmed), `autoApplied`, `undoneAt`, `createdByUserId`. **SQL-only index — do not drop:** `LegalRuleVersion_one_active_per_key_date_origin` (unique (`ruleKey`, `effectiveFrom`, `origin`) where `undoneAt` IS NULL — an undone version stays as history and must not block its replacement for the same start date); index on (`ruleKey`, `effectiveFrom`). Seeded with 18 researched versions from `docs/research/2026-10-25-tax-fee-rules.md` (RDF 28/29/28/31 cents by July 1, $500,000 small-seller limit, filing-frequency limits, 0 state service fee from 2026-01-01, $300 use-tax limit, penalties, 2026 interest, 36-month leases, odd-year licence expiry, $2,000 1099 limit, 1099 dates, Section 179, bonus depreciation, 7 record years, Greeley 4.11%), each with its source and checked date 2026-10-25. Existing `RetailDeliveryFeeRate` rows are copied in as OWNER versions so old rates keep their history. The owner's existing `BusinessSettings` values for the four switched fields (`recordRetentionYears`, `useTaxMonthlyThresholdCents`, `rdfThresholdCents`, `vendor1099ThresholdCents`) are carried over as OWNER versions from 2026-01-01 — but only when the owner actually changed them: the carry-over is guarded with `<> default` (7 / 30000 / 50000000 / 200000), because the first migration seeds `BusinessSettings` with the defaults, so an unguarded carry would create default-valued OWNER rows on every fresh database and block any later version for the same date. `RetailDeliveryFeeRecord_ready_requires_evidence` now accepts a rule version as evidence (`rateId` OR `ruleVersionId`), since new records cite a rule version with `rateId` null.
+- `RetailDeliveryFeeRecord.ruleVersionId` — the rule version that set the amount on new records (old rows keep `rateId`). `BusinessSettings.costlyChangeTimingPercent` (90, CHECK 85–95) and `timingSafetyMarginBusinessDays` (3, CHECK 1–10): when the app suggests acting on a change that costs the business.
+- `LedgerAccount` `TAX_ABSORBED` (expense, "Tax/fee the business paid for a late change", seed id `k_seed_tax_absorbed`; same entry in `src/domains/books/system-chart.json`). Backups include `LegalRuleVersion` (`BACKUP_MODEL_POLICY`).
+
 ## October 27 — Fair late fees (FEE-1, additive)
 
 Migration `20261027040000_fair_late_fees`. New table `PendingCharge`: a late fee recorded as its own charge (`kind` LATE_FEE,
@@ -13,15 +20,6 @@ operation kind `LATE_FEE_INVOICE_ITEM`. `Invoice.lateNoticeDeliveryId`, `lateNot
 `BusinessSettings.lateFeeNoticeDaysBefore` (default 2, CHECK 1–5), `ucccNotificationFiledOn`; the late-fee grace days now default to 10
 (CHECK at least 10 on the settings row) and the flat fee is at most 1500 cents (CHECK). The migration moves an older settings row
 below those limits up to them; signed agreements and billed history are not rewritten. Covered by backups (`PendingCharge`). `PendingCharge` also keeps the autopay notice (`autopayNoticeDeliveryId`, `autopayNoticedAt`, `autopayChargeOn`): a fee only joins an automatic charge after a delivered notice naming that charge date.
-
-## October 26 — Bank payments being confirmed (BILL-1, additive)
-
-Migration `20261026010000_bank_payment_in_flight`. New table `BankPaymentInFlight`: one row per Stripe PaymentIntent for a
-bill (`paymentIntentId` unique), `invoiceId`, `stripeInvoiceId` and `agreementId` (all optional; the payment id is what identifies the row, so deleting a bill never fails), `source`,
-`amountCents`, `method`, `startedAt`, `clearedAt` / `clearedReason` / `clearedByEventAt` (a cleared row stays as a marker so a
-late older event cannot reopen it), `attempt`, `lastCheckedAt`, `settledInStripeAt` ("Stripe says paid but we have not
-recorded it"). It is a flag only: nothing reads it as money. `BusinessSettings.bankPaymentSlowBusinessDays` (6, CHECK 2–20).
-Covered by backups (`BankPaymentInFlight` in the backup manifest).
 
 ## October 27 — System health that tells the truth (MCP-1, additive)
 
@@ -58,6 +56,15 @@ Migration `20261026030000_decision_record`. Nothing existing is changed or remov
   reads use the rule of the charge's own date (`getTaxabilityRulesAsOf` in `src/domains/tax/locations.ts`).
 - `TaxabilityRule.provisional` (false), `provisionalReason`, `provisionalSources` — a researched starting value that runs
   before the CPA confirms it; the tax engine calculates with it and labels the result "not confirmed".
+
+## October 26 — Bank payments being confirmed (BILL-1, additive)
+
+Migration `20261026010000_bank_payment_in_flight`. New table `BankPaymentInFlight`: one row per Stripe PaymentIntent for a
+bill (`paymentIntentId` unique), `invoiceId`, `stripeInvoiceId` and `agreementId` (all optional; the payment id is what identifies the row, so deleting a bill never fails), `source`,
+`amountCents`, `method`, `startedAt`, `clearedAt` / `clearedReason` / `clearedByEventAt` (a cleared row stays as a marker so a
+late older event cannot reopen it), `attempt`, `lastCheckedAt`, `settledInStripeAt` ("Stripe says paid but we have not
+recorded it"). It is a flag only: nothing reads it as money. `BusinessSettings.bankPaymentSlowBusinessDays` (6, CHECK 2–20).
+Covered by backups (`BankPaymentInFlight` in the backup manifest).
 
 ## October 24 — Job roles (ACC-5, additive)
 

@@ -57,7 +57,8 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Retired appliances | `/desk/inventory/retired` | What happens to appliances you retired; scrap money |
 | Shop sales | `/desk/sales` | Parts and used appliances sold over the counter or delivered |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
-| Books | `/desk/books` | Double-entry journal, opening balances, month control and account mapping |
+| Books | `/desk/books` | Your entries record themselves; review source issues, months and corrected starting balances |
+| Start your books | `/desk/books/setup` | Owner's four-step guide to the date, opening cash/card balances and expenses paid personally |
 | Accounting exports | `/desk/books/exports` | Immutable mapped QuickBooks/Xero/generic/cash CSV batches and private downloads |
 | Bank statements and cash records | `/desk/books/cash` | Import settled CSV observations and enter source-backed owner cash events; importing does not prove cleared money |
 | Bank checks (K-CASH-3 engineering candidate) | `/desk/books/cash/checks` | Compare bank rows to books, retain statement evidence and view provisional, non-spendable cash calculations (not yet released) |
@@ -277,9 +278,9 @@ OWNER can journal six typed sources: owner contribution (To bank), owner draw (F
 
 ## Taxes
 
-**What it's for.** Money → Taxes has four tabs: **To file**, **Use tax**, **Rates & areas** and **Setup** (including customers who do not pay tax, what gets taxed, the audit pack and record keeping). Each return starts with one line, "File and pay $X on Colorado's sales tax website (SUTS) by <date>" with an Open SUTS button, then the numbers to copy in order (use tax follows the DR 0252 form). Press **I filed and paid it** with the date and confirmation number once you have. Appliance Desk never files or pays for you. Purchase tax on appliances needs your business address confirmed under Setup and your tax-election answers first.
+**What it's for.** Money → Taxes has four tabs: **To file**, **Use tax**, **Rates & areas** and **Setup** (including customers who do not pay tax, what gets taxed, the audit pack and record keeping). Each return starts with one line, "File and pay $X on Colorado's sales tax website (SUTS) by <date>" with an Open SUTS button, then the numbers to copy in order (use tax follows the DR 0252 form). Press **I filed and paid it** with the date and confirmation number once you have. Appliance Desk never files or pays for you. Purchase tax on appliances needs your business address confirmed under Setup and your tax-election answers first. Every return also shows "File and pay on <date>", the day the timing rule suggests acting (90% through the time allowed, at least 3 business days before the deadline; you can change both under Taxes › Rules). **Tax and fee rules** (`/desk/sales-tax/rules`) lists every tax and fee number with what it is now, what it changes to next, where it came from and when it was checked, and its history. Researched numbers are marked "not confirmed" until you or your CPA confirms them.
 
-**Change without code.** Filing accounts, rates and areas, tax policy (owner only); administrators can review only.
+**Change without code.** Filing accounts, rates and areas, tax policy (owner only); administrators can review only. On **Tax and fee rules** the owner can change a number with a reason and a start date, and undo a change that has not started yet. Saving a second value for the same start date replaces the first one (the earlier value stays in history). A change whose start date has already passed never rewrites a bill already sent: if it costs customers more, the business pays the difference (shown on the return and in the books); if it saves them money, a credit is kept for their next bill that says why. The timing setting (how far through the window to act, and the safety margin) is on the same screen with a restore-recommended button.
 
 **If it fails.** An address lookup that is unknown or failed is shown, never guessed. Use tax owed with no filing account raises **Use tax owed with nowhere to file it** on Today. Anything the CPA must decide stays marked as needing review; passing tests never counts as professional sign-off.
 
@@ -375,6 +376,11 @@ To clear practice leads, customers, agreements, visits, invoices and payments fr
 ## What is still not live
 
 Real card payments (Stripe is in test mode), customer email, texting (waiting on the carrier registration), automatic renewals, calling and voicemail, and combining a property manager's properties into one charge. The full list of what needs your decision, with the exact steps, is `docs/LAUNCH-LEDGER.md`.
+
+## Starting your books and correcting the first balances (BA-2)
+Only the OWNER can open `/desk/books/setup` and finish four steps. Choose when the business started; the screen suggests the earliest recorded purchase, bill, expense or today, but you choose the final day. If it is a brand-new business without balances yet, select **Yes** for three zero balances. Otherwise copy the actual balances from bank, Stripe and credit card statements. The personal-money step links to **Expenses** with Owner contributions already selected. Review, then press **Start my books** once. It creates accounting records, never moves money. The nightly automation continues catching up without changing the saved start.
+
+If a starting value was wrong, OWNER opens **Your books → Correct my starting balances**, enters the corrected checking/Stripe/card balances and a short reason. The app adds a separate, numbered difference entry, never edits or deletes the first. For an already locked month, the correction is visibly dated late in the next open month. An ADMIN may read the Books page but must ask OWNER for setup or corrections. A setup reminder on the owner's To do list disappears once Books has been started.
 
 ## Books — journal and accounting months
 

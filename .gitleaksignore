@@ -7,6 +7,11 @@
 681b062a713c8d7cbc770434f463b84c5b480eca:tests/deployment-safety.test.ts:stripe-access-token:38
 ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:193
 ab6e003400ca58e422b182ad4bc05055122bc46a:tests/billing-provider-ops.test.ts:stripe-access-token:195
+# Reviewed 2026-10-26 (TFA-1): an earlier allowlist comment on this branch
+# spelled out the flagged pattern itself, so the scanner flagged this file
+# at line 16 in the 463b1043 fix push. That comment was rewritten; this
+# entry covers the historical occurrence on that branch commit.
+463b1043edefe4fdd233f001a7cf01963e8fddc2:.gitleaksignore:generic-api-key:16
 # Reviewed 2026-10-03: made-up string in a test about hiding keys in error text (older branch commit, PR #139); not a real key.
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:195
 f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stripe-access-token:197
@@ -19,7 +24,21 @@ f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stri
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:tests/books-closing-integration.test.ts:generic-api-key:28
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:162
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:189
-# Reviewed 2026-10-26 (ACC-6): the allowlist entry above for the leads migration is itself flagged — the
-# "secret" it matches is the entry's own commit SHA, not a credential. Verified by reading the finding
-# (generic-api-key, .gitleaksignore:16, commit 463b1043) and by scanning the entry text with gitleaks: clean.
-463b1043edefe4fdd233f001a7cf01963e8fddc2:.gitleaksignore:generic-api-key:16
+# Same three lines as merged (squash merge cb1c3618): the scanner attributes
+# them to the merge commit now, so they need fingerprints under that commit
+# too. The d34a2efc entries above still cover the branch history.
+cb1c36184ec8ac534647ed41fb6ea68e8819f863:tests/books-closing-integration.test.ts:generic-api-key:28
+cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:162
+cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:189
+# Reviewed 2026-10-26 (ACC-6): the same false-positive rule-key lines plus the
+# leads migration comment, as committed on the LD-1 branch — 464157c3 (the
+# leads engine commit) and its merge commits d29df939 / fc4ad1ef, which merged
+# main's TFA-1 content into that branch. The secret scan reads every ref in
+# the checkout, so these block this PR until the leads work merges and main
+# picks the lines up under its own commits. They are legal rule names
+# ("us.1099.threshold", "us.section179") and a migration comment, not
+# credentials; each flagged line was read and verified.
+464157c3af1d1bca5b89a929b0bdb79189e1ae84:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:162
+d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:189
+fc4ad1efe73a9b499610c531ca28c7501fab248f:tests/books-closing-integration.test.ts:generic-api-key:28

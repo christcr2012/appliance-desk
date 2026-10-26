@@ -281,6 +281,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/books/closing", role: "OWNER", fixture: "/desk/books/closing" },
   { path: "/desk/books/assets", role: "OWNER", fixture: "/desk/books/assets" },
   { path: "/desk/books/reports", role: "OWNER", fixture: "/desk/books/reports" },
+  { path: "/desk/books/setup", role: "OWNER", fixture: "/desk/books/setup" },
   { path: "/desk/books/exports", role: "OWNER", fixture: "/desk/books/exports" },
   { path: "/desk/expenses", role: "STAFF", fixture: "/desk/expenses" },
   { path: "/desk/search", role: "OWNER", fixture: "/desk/search?q=washer" },
@@ -357,6 +358,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/sales-tax/audit-pack", role: "OWNER", fixture: "/desk/sales-tax/audit-pack" },
   { path: "/desk/sales-tax/record-retention", role: "OWNER", fixture: "/desk/sales-tax/record-retention" },
+  { path: "/desk/sales-tax/rules", role: "OWNER", fixture: "/desk/sales-tax/rules" },
   { path: "/desk/sales-tax/use-tax/settings", role: "OWNER", fixture: "/desk/sales-tax/use-tax/settings" },
   { path: "/desk/sales-tax/use-tax", role: "OWNER", fixture: "/desk/sales-tax/use-tax" },
   {
