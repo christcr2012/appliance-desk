@@ -4038,7 +4038,9 @@
         "tests/ba1-books-autopilot-integration.test.ts",
         "tests/ba1-books-autopilot-guard.test.ts",
         "tests/ba1-nightly-autopilot-integration.test.ts",
-        "tests/ba1-books-nightly-route.test.ts"
+        "tests/ba1-books-nightly-route.test.ts",
+        "tests/ba1-books-paging.test.ts",
+        "tests/ba1-immediate-webhook.test.ts"
       ],
       "readiness": "IN_REVIEW",
       "plannedCard": "docs/pr-cards/BA-1.md"
