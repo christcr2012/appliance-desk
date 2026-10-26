@@ -7,7 +7,7 @@ import { isLocalInvoiceSession, recordLocalInvoiceCheckoutFailure, recordLocalIn
 import { signingInvoiceMirrorProof } from "./signing-invoice-mirror";
 import type { InvoiceLineItemKind, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { RDF_LINE_DESCRIPTION } from "@/domains/tax/rdf-charges";
+import { RDF_LINE_DESCRIPTION, RDF_LINE_DESCRIPTION_LEGACY } from "@/domains/tax/rdf-charges";
 import { completeProviderOperation } from "./provider-ops";
 import { rewardReferralOnFirstPaidInvoice } from "@/domains/referrals";
 import {
@@ -80,7 +80,8 @@ export async function attachRdfInvoiceLineInTx(
 ): Promise<void> {
   const recordId = stripeLine.metadata?.rdf_record_id;
   if (!recordId) return;
-  if (stripeLine.description !== RDF_LINE_DESCRIPTION)
+  // Lines sent before the TFA-2 wording change carry the legacy text.
+  if (stripeLine.description !== RDF_LINE_DESCRIPTION && stripeLine.description !== RDF_LINE_DESCRIPTION_LEGACY)
     throw new Error("Stripe RDF line description does not match its provider intent.");
   const op = await db.providerOperation.findUnique({
     where: { idempotencyKey: `rdf-${recordId}` },
