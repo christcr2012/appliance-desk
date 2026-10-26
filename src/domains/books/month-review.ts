@@ -110,6 +110,7 @@ export async function monthReview(actor:BooksActor,key:string,now=new Date()){
  return {key,status:status?.status??"OPEN",lockedAt:status?.closedAt??null,
   accountantSentAt:status?.accountantSentAt??null,
   accountantEmail:settings.accountantEmail,
+  reviewReminderDay:settings.booksReviewReminderDay,
   reviewNotes:status?.reviewNotes??null,
   checks:{sources,costs,payments,equipment},
   bankStates,stripe,profit:profit.summary,
