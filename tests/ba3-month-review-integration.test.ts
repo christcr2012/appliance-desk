@@ -71,6 +71,17 @@ describe.skipIf(!enabled)("BA-3 month review and immutable locking on isolated P
   expect((await monthReview(admin,key)).checks.sources.ok).toBe(true);
   expect((await listBooksMonthReviewAttention()).some(x=>x.href==="/desk/books/months/"+key)).toBe(true);
  });
+ it("raises the monthly To do urgency only after day 15 in Colorado during daylight time",async()=>{
+  const row=await prisma.businessSettings.findUniqueOrThrow({
+   where:{id:"singleton"},select:{booksReviewReminderDay:true},
+  });
+  expect(row.booksReviewReminderDay).toBe(15);
+  const before=await listBooksMonthReviewAttention(new Date("2020-03-16T05:59:00Z"));
+  const after=await listBooksMonthReviewAttention(new Date("2020-03-16T06:01:00Z"));
+  const feb="/desk/books/months/2020-02";
+  expect(before.find(x=>x.href===feb)?.severity).toBe("medium");
+  expect(after.find(x=>x.href===feb)?.severity).toBe("high");
+ });
  it("flags an unresolved source issue dated in this month even when its journal was posted",async()=>{
   const id="ba3-reviewed-invoice-"+tag;
   const customer=await prisma.customer.findFirstOrThrow({select:{id:true}});
