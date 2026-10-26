@@ -18,7 +18,8 @@ type IntentTarget = {
 };
 
 function eventTime(event: Stripe.Event): Date {
-  return new Date(event.created * 1000);
+  // Stripe always sends `created`; fall back to now so a hand-built event can never write an invalid date.
+  return typeof event.created === "number" && Number.isFinite(event.created) ? new Date(event.created * 1000) : new Date();
 }
 
 function methodOf(intent: Pick<Stripe.PaymentIntent, "payment_method_types">): string {
