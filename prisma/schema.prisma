@@ -3369,7 +3369,6 @@ model BusinessSettings {
   costlyChangeTimingPercent       Int                    @default(90)
   timingSafetyMarginBusinessDays  Int                    @default(3)
 
-
   announcementBannerText String?
   announcementBannerOn   Boolean @default(false)
 
