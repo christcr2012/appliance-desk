@@ -24,4 +24,9 @@ entries (money records)** — never edit or delete entries; corrections are new 
 **Execution checkpoint (2026-10-25):** Confirmed no BA-1 implementation PR is open; based this branch on main `af5acc647cd35a9d3c93211e135c7c2f743b02b6`. This plan is not implementation evidence. Local checkout has no GitHub network access; use the repository's documented GitHub REST publishing fallback and free GitHub Actions checks.
 
 ## Progress
-Planning checkpoint committed first. Implementation not yet verified.
+2026-10-25, branch `ai/chatgpt/ba-1`: additive schema/migration, checked book writers,
+nightly recording plus enrollment/depreciation, durable books To do items, equipment retirement/disposal
+connections and post-commit manual receipt/write-off posting are coded. Guard and disposable PostgreSQL
+tests have been added. **Not verified yet:** exact-head CI, test coverage of every acceptance example,
+webhook/refund/purchase post-commit hooks and any reviewer findings. No PR opened or merge claimed.
+
