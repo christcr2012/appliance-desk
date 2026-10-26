@@ -19,3 +19,8 @@ f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stri
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:tests/books-closing-integration.test.ts:generic-api-key:28
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:162
 d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:189
+# Reviewed 2026-10-26: the allowlist entry below names its own commit SHA, so
+# the full-history scan flags the entry itself. It is not a credential — it is
+# the fingerprint of the TFA-1 branch commit whose allowlist entries the scan
+# reads. Same self-reference the ACC-6 lane allowlisted on its branch.
+463b1043edefe4fdd233f001a7cf01963e8fddc2:.gitleaksignore:generic-api-key:16

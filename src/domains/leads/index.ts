@@ -506,7 +506,7 @@ export async function convertLeadToCustomerInTx(
     data: {
       status: "CONVERTED",
       ...(options.emailOverride
-        ? { email: email, ...leadContactKeys({ email: email }) }
+        ? { email: email, ...leadContactKeys({ email, phone: lead.phone }) }
         : {}),
     },
   });
@@ -579,7 +579,7 @@ export async function convertLeadToCustomerInTx(
       status: "CONVERTED",
       convertedCustomerId: customerRow.id,
       ...(options.emailOverride
-        ? { email: email, ...leadContactKeys({ email: email }) }
+        ? { email: email, ...leadContactKeys({ email, phone: lead.phone }) }
         : {}),
     },
   });
