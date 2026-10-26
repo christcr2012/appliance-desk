@@ -1,9 +1,9 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type JournalSourceType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { lastCompletedMonth } from "./depreciation";
 import { enrollBookAssetInTx, postBookDepreciationInTx } from "./fixed-assets";
-import { postPending } from "./post";
+import { postPending, postForSource } from "./post";
 
 type ProblemKind = "APPLIANCE_NOT_ENROLLED" | "SOURCE_NOT_RECORDED";
 type Problem = { kind: ProblemKind; subjectType: string; subjectId: string; message: string };
@@ -102,6 +102,23 @@ export async function runBooksAutopilot(now = new Date()):Promise<Counts> {
    subjectId:{in:[...processedIds]}},select:{id:true,subjectId:true,kind:true,subjectType:true}});
   for(const p of old)if(!seen.has(problemKey(p))){
    await prisma.booksProblem.update({where:{id:p.id},data:{resolvedAt:now}});
+  }
+  // Retry a bounded rotating page of earlier source failures. A missing item
+  // from this night's candidate page is not proof that it was fixed.
+  const unresolved=await prisma.booksProblem.findMany({where:{
+   kind:"SOURCE_NOT_RECORDED",resolvedAt:null,
+  },orderBy:[{lastSeenAt:"asc"},{id:"asc"}],
+   select:{id:true,kind:true,subjectType:true,subjectId:true},take:50});
+  for(const stale of unresolved){
+   if(seen.has(problemKey(stale)))continue;
+   try{
+    await prisma.$transaction(tx=>postForSource(tx,stale.subjectType as JournalSourceType,stale.subjectId),
+     {isolationLevel:Prisma.TransactionIsolationLevel.Serializable,timeout:15000});
+    await prisma.booksProblem.update({where:{id:stale.id},data:{resolvedAt:now}});
+   }catch{
+    // Keep the problem visible; rotate it behind another unfinished source.
+    await prisma.booksProblem.update({where:{id:stale.id},data:{lastSeenAt:now}});
+   }
   }
   counts.problems=seen.size;
  }catch(error){

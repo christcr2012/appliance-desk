@@ -125,6 +125,14 @@ describe.skipIf(!enabled)("BA-1 nightly recording on disposable PostgreSQL",()=>
    else await prisma.accountingPeriod.delete({where:{periodKey:"2026-05"}});
   }
  });
+ it("resolves an old failed source only after its journal can be safely retried",async()=>{
+  const key={kind:"SOURCE_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:eligible};
+  await prisma.booksProblem.upsert({where:{kind_subjectType_subjectId:key},
+   create:{...key,message:"Earlier source issue"},
+   update:{message:"Earlier source issue",resolvedAt:null}});
+  await runBooksAutopilot(new Date("2026-05-06T15:00:00Z"));
+  expect((await prisma.booksProblem.findUniqueOrThrow({where:{kind_subjectType_subjectId:key}})).resolvedAt).not.toBeNull();
+ });
  it("does not enroll a missing-price appliance, leaving a single visible To do issue",async()=>{
   expect(await prisma.bookAsset.findUnique({where:{applianceId:noCost}})).toBeNull();
   expect(await prisma.booksProblem.count({where:{kind:"APPLIANCE_NOT_ENROLLED",subjectId:noCost,
