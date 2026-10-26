@@ -1,3 +1,4 @@
+import { assertNotRecalledForSale } from "@/domains/recalls/guard";
 import type { Prisma, RetiredPlanChoice } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -250,6 +251,8 @@ export async function addSalvagedParts(
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
     const appliance = await lockRetired(tx, applianceId);
+    // OPS-1: parts from a recalled machine are not listed for sale.
+    await assertNotRecalledForSale(tx, applianceId, "listed for parts");
     const plan = appliance.retiredPlan;
     if (!plan || plan.choice !== "STRIP") throw new RetiredPlanError("Choose “Strip it for parts” for this appliance first.");
 

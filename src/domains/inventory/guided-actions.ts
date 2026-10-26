@@ -1,3 +1,4 @@
+import { assertNotRecallHeld } from "@/domains/recalls/guard";
 import { stageEquipmentBookRetirementInTx } from "@/domains/books/fixed-assets";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/business-date";
@@ -180,7 +181,7 @@ export async function retireAppliance(
 export async function getSwapCandidates(applianceId: string) {
   const appliance = await prisma.appliance.findUniqueOrThrow({ where: { id: applianceId } });
   return prisma.appliance.findMany({
-    where: { applianceTypeId: appliance.applianceTypeId, status: "AVAILABLE", id: { not: applianceId } },
+    where: { applianceTypeId: appliance.applianceTypeId, status: "AVAILABLE", recallHold: false, id: { not: applianceId } },
     include: { applianceType: true },
     orderBy: [{ assetNumber: "asc" }],
   });
@@ -257,7 +258,8 @@ export async function stageSwap(
     const newCheck = canTransitionApplianceStatus(replacement.status, "RESERVED");
     if (!newCheck.ok) throw new Error(newCheck.reason);
 
-    const reserved = await tx.appliance.updateMany({ where: { id: replacementApplianceId, status: "AVAILABLE" }, data: { status: "RESERVED" } });
+    await assertNotRecallHeld(tx, replacementApplianceId, "swapped in");
+    const reserved = await tx.appliance.updateMany({ where: { id: replacementApplianceId, status: "AVAILABLE", recallHold: false }, data: { status: "RESERVED" } });
     if (reserved.count !== 1) throw new Error("The replacement unit was just changed by someone else — refresh and try again.");
 
     const agreement = assignment.rentalLine.agreement;

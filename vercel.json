@@ -68,6 +68,10 @@
     {
       "path": "/api/cron/scheduled-prices",
       "schedule": "10 10 * * *"
+    },
+    {
+      "path": "/api/cron/recall-watch",
+      "schedule": "30 11 * * *"
     }
   ]
 }

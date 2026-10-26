@@ -55,6 +55,7 @@ This is how to run Robinson Appliance Rentals day to day with Appliance Desk, **
 | Purchases | `/desk/purchases` | Recording appliances you bought |
 | Money (billing) | `/desk/billing` | Invoices, deposits, held payments, statements |
 | Retired appliances | `/desk/inventory/retired` | What happens to appliances you retired; scrap money |
+| Recalls | `/desk/recalls`, `/desk/recalls/[recallId]`, `/desk/recalls/incidents/[id]` | Possible product recalls found by the nightly check, "It's ours" / "Not ours" / "Fixed", the search words per appliance type, and safety incidents (the **Safety incident** button on a repair or visit starts a 24-hour decision on whether to report) |
 | Shop sales | `/desk/sales` | Parts and used appliances sold over the counter or delivered |
 | Revenue | `/desk/revenue` | Money received, refunded, estimated rates |
 | Books | `/desk/books` | Your entries record themselves; review source issues, months and corrected starting balances |

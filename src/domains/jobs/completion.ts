@@ -311,7 +311,9 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
             const assigned = await tx.applianceAssignment.findFirst({ where: { applianceId, unassignedAt: null, rentalLine: { agreementId: before.agreementId } }, select: { id: true } });
             if (!assigned) throw new JobCompletionConflictError(`${appliance.assetNumber} is not set aside for this customer's agreement, so it can't be marked delivered on this visit.`);
           }
-          const moved = await tx.appliance.updateMany({ where: { id: applianceId, status: "RESERVED" }, data: { status: "RENTED" } });
+          const held = await tx.appliance.findUnique({ where: { id: applianceId }, select: { recallHold: true } });
+          if (held?.recallHold) throw new JobCompletionConflictError(`${appliance.assetNumber} is on a recall hold, so it can't be delivered. Finish the recall fix first, or swap in a different machine.`);
+          const moved = await tx.appliance.updateMany({ where: { id: applianceId, status: "RESERVED", recallHold: false }, data: { status: "RENTED" } });
           if (moved.count !== 1) throw new JobCompletionConflictError(`${appliance.assetNumber} is no longer waiting for delivery, so it can't be marked delivered.`);
           await tx.auditLog.create({
             data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: applianceId, oldValue: { status: "RESERVED" }, newValue: { status: "RENTED", reason: `Job ${before.type.toLowerCase()} completed`, jobId: before.id } },
@@ -417,7 +419,9 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
         if (replacementAssignment && replacementAssignment.rentalLineId !== originalAssignment.rentalLineId) {
           throw new JobCompletionConflictError(`${replacement.assetNumber} is already assigned to a different rental line, so the swap can't be completed.`);
         }
-        const moved = await tx.appliance.updateMany({ where: { id: replacementId, status: "RESERVED" }, data: { status: "RENTED" } });
+        const heldReplacement = await tx.appliance.findUnique({ where: { id: replacementId }, select: { recallHold: true } });
+        if (heldReplacement?.recallHold) throw new JobCompletionConflictError(`${replacement.assetNumber} is on a recall hold, so the swap can't be completed with it. Pick a different replacement.`);
+        const moved = await tx.appliance.updateMany({ where: { id: replacementId, status: "RESERVED", recallHold: false }, data: { status: "RENTED" } });
         if (moved.count !== 1) throw new JobCompletionConflictError(`${replacement.assetNumber} is no longer waiting for delivery, so the swap can't be completed.`);
         await tx.auditLog.create({
           data: { userId, action: "appliance.unit.status", entityType: "Appliance", entityId: replacementId, oldValue: { status: "RESERVED" }, newValue: { status: "RENTED", reason: "Swap completed", jobId: before.id } },
