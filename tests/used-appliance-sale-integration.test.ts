@@ -7,7 +7,7 @@ import { setRetiredPlan, reopenRetiredPlan } from "@/domains/inventory/retired-p
 import { addBookTaxEvidence, disposedValueBefore } from "@/domains/books/fixed-assets";
 import { listOpenResaleTaxFollowUps, markResaleTaxFollowUpDone, listShopSales } from "@/domains/sales";
 import { listResaleTaxAttention } from "@/domains/exceptions/resale-tax-attention";
-import { writeJournal } from "@/domains/books/post";
+import { writeJournal, postForSource } from "@/domains/books/post";
 import { balancedPlan } from "@/domains/books/posting-rules";
 import { seedTaxReadyContext } from "./helpers/tax-ready";
 
@@ -173,6 +173,36 @@ describe.skipIf(!enabled)("selling a retired appliance on real Postgres", () => 
     const costed = await retired();
     await prisma.appliance.update({ where: { id: costed }, data: { acquisitionCostCents: 25000 } });
     await expect(createShopSale(ownerId, { operationKey: key(), customerId: null, location: "PICKUP", items: [], usedAppliances: [{ applianceId: costed, unitPriceCents: 4000 }] })).rejects.toThrow(/not on the book assets list/);
+  });
+
+  it("automatically stages an evidenced unretired book asset during a real used-appliance sale", async()=>{
+    const id=await retired();
+    await prisma.appliance.update({where:{id},data:{acquisitionCostCents:12000}});
+    await prisma.bookAsset.create({data:{
+     applianceId:id,costCents:12000,placedInServiceOn:new Date("2026-01-15T12:00:00Z"),
+     lifeMonths:60,salvagePercent:0,createdByUserId:ownerId,
+    }});
+    await prisma.$transaction(tx=>postForSource(tx,"APPLIANCE",id));
+    const sale=await createShopSale(ownerId,{
+     operationKey:key(),customerId:null,location:"PICKUP",items:[],
+     usedAppliances:[{applianceId:id,unitPriceCents:6500}],
+    });
+    expect(sale.subtotalCents).toBe(6500);
+    const asset=await prisma.bookAsset.findUniqueOrThrow({where:{applianceId:id}});
+    expect(asset.retiredOn).not.toBeNull();
+    expect(asset.disposedOn).not.toBeNull();
+    expect(asset.retiredValueCents).toBeGreaterThan(0);
+    const books=await prisma.journalEntry.findMany({where:{
+     sourceType:"APPLIANCE",sourceId:id,
+    },include:{lines:true}});
+    expect(books.filter(j=>j.eventKind==="RETIRED_HELD")).toHaveLength(1);
+    expect(books.filter(j=>j.eventKind.startsWith("SOLD:"))).toHaveLength(1);
+    expect(books.some(j=>j.eventKind.startsWith("DEPRECIATION:"))).toBe(true);
+    for(const journal of books){
+     const debit=journal.lines.reduce((n,line)=>n+line.debitCents,0);
+     const credit=journal.lines.reduce((n,line)=>n+line.creditCents,0);
+     expect(debit).toBe(credit);
+    }
   });
 
   it("books the sale income together with the book-value entry, and the sold appliance carries no value afterwards", async () => {

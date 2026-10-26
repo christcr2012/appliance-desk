@@ -1,7 +1,7 @@
 import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
-import { applyLateFees, sendLateFeeDigestToChris } from "@/domains/billing";
+import { runLateFees, billPendingLateFees, sendLateFeeDigestToChris } from "@/domains/billing";
 
 export const maxDuration = 60;
 
@@ -17,9 +17,11 @@ export async function GET(request: Request): Promise<NextResponse> {
   return NextResponse.json(await runAutomation({
     ruleKey: "late-fees",
     work: async () => {
-      const applied = await applyLateFees();
-      await sendLateFeeDigestToChris(applied);
-      return { counts: { applied: applied.length } };
+      // FEE-1: warn first, record fees only for warned customers, then put recorded fees on the next bill.
+      const { counts, recorded } = await runLateFees();
+      const billed = await billPendingLateFees();
+      await sendLateFeeDigestToChris(recorded);
+      return { counts: { ...counts, ...billed } };
     },
   }));
 }

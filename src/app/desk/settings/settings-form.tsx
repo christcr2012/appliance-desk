@@ -256,13 +256,13 @@ export function SettingsForm({
             {...register("damageWaiverEnabled")}
           />
           <LabeledInput
-            label="Late fee grace period (days)"
+            label="Days to pay before a late fee (at least 10)"
             type="number"
-            min={0}
+            min={10}
             {...register("lateFeeGraceDays")}
           />
           <DollarInput
-            label="Late fee — flat amount"
+            label="Late fee — flat amount (at most $15)"
             {...register("lateFeeFlatDollars", { valueAsNumber: true })}
           />
           <LabeledInput

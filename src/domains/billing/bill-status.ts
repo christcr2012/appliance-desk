@@ -4,9 +4,12 @@ import type { InvoiceStatus, Prisma } from "@prisma/client";
 import type { Tone } from "@/components/kit/types";
 import { prisma } from "@/lib/prisma";
 import { businessDayBounds, businessDaysBetween, formatShortDate } from "@/lib/business-date";
+import { inFlightWhere, notInFlightWhere } from "./in-flight";
 
-export type BillTab = "open" | "past-due" | "paid" | "closed" | "drafts";
-export const BILL_TABS: readonly BillTab[] = ["open", "past-due", "paid", "closed", "drafts"];
+// BILL-1: "being-confirmed" = open bills whose bank payment the bank is still confirming. Not money received, and the
+// customer still owes it (it stays in billOwedWhere); it only leaves the Open / Past due tabs and all chasing work.
+export type BillTab = "open" | "past-due" | "being-confirmed" | "paid" | "closed" | "drafts";
+export const BILL_TABS: readonly BillTab[] = ["open", "past-due", "being-confirmed", "paid", "closed", "drafts"];
 
 /** Bills that still ask the customer for money (a FAILED row is kept visible so it is never lost). */
 export const OPEN_BILL_STATUSES = ["OPEN", "PARTIALLY_PAID", "DELINQUENT", "FAILED"] as const satisfies readonly InvoiceStatus[];
@@ -21,25 +24,31 @@ function openRule(): Prisma.InvoiceWhereInput {
 }
 
 /**
- * Past due: open, and the due date is before the start of today in Colorado — a bill due today is not late yet.
+ * Past due: open, the due date is before the start of today in Colorado — a bill due today is not late yet — and no bank
+ * payment is being confirmed (BILL-1: such a bill shows "Being confirmed" instead of late).
  * Today's health strip, the Bills "Past due" tab, the revenue dashboard and the customer's on-time record all use this.
  */
 export function pastDueInvoiceWhere(now: Date): Prisma.InvoiceWhereInput {
-  return { ...openRule(), dueDate: { lt: businessDayBounds(now).start } };
+  return { ...openRule(), ...notInFlightWhere, dueDate: { lt: businessDayBounds(now).start } };
 }
 
-/** Every bill still owed. Money totals ("Owes now", Money overview) use this, never the Open tab's filter. */
+/**
+ * Every bill still owed, INCLUDING bills whose bank payment is being confirmed (the customer owes it until the bank
+ * says it arrived). Money totals ("Owes now", Money overview, statements, "Take payment") use this, never a tab filter.
+ */
 export function billOwedWhere(_now: Date): Prisma.InvoiceWhereInput {
-  void _now; // BILL-1 adds bills being confirmed here; the signature already takes `now`.
+  void _now; // the signature already takes `now` so a later rule can use it
   return openRule();
 }
 
 export function billTabWhere(tab: BillTab, now: Date): Prisma.InvoiceWhereInput {
   switch (tab) {
     case "open":
-      return openRule();
+      return { ...openRule(), ...notInFlightWhere };
     case "past-due":
       return pastDueInvoiceWhere(now);
+    case "being-confirmed":
+      return { ...openRule(), ...inFlightWhere };
     case "paid":
       return { status: "PAID" };
     case "closed":
@@ -49,7 +58,14 @@ export function billTabWhere(tab: BillTab, now: Date): Prisma.InvoiceWhereInput 
   }
 }
 
-type PillInput = { status: InvoiceStatus; dueDate: Date | null; amountDueCents: number; amountPaidCents: number };
+type PillInput = {
+  status: InvoiceStatus;
+  dueDate: Date | null;
+  amountDueCents: number;
+  amountPaidCents: number;
+  /** BILL-1: the bank is confirming a payment for this bill. */
+  beingConfirmed?: boolean;
+};
 
 function isOpen(bill: PillInput): boolean {
   return (OPEN_BILL_STATUSES as readonly string[]).includes(bill.status) && bill.amountDueCents > bill.amountPaidCents;
@@ -70,6 +86,7 @@ export function billPill(bill: PillInput, now: Date): { label: string; tone: Ton
       return { label: "Draft", tone: "neutral" };
   }
   if (!isOpen(bill)) return { label: "Paid", tone: "good" };
+  if (bill.beingConfirmed) return { label: "Being confirmed", tone: "info" };
   if (bill.status === "FAILED") return { label: "Check this bill", tone: "attention" };
   if (!bill.dueDate) return { label: "Open", tone: "neutral" };
   const late = businessDaysBetween(bill.dueDate, now);
@@ -79,7 +96,8 @@ export function billPill(bill: PillInput, now: Date): { label: string; tone: Ton
 }
 
 /** Which glossary entry explains a pill, when one does. */
-export function billPillInfo(status: InvoiceStatus): "bill-failed" | "bill-given-up" | undefined {
+export function billPillInfo(status: InvoiceStatus, beingConfirmed = false): "bill-failed" | "bill-given-up" | "bill-processing" | undefined {
+  if (beingConfirmed && (OPEN_BILL_STATUSES as readonly string[]).includes(status)) return "bill-processing";
   return status === "FAILED" ? "bill-failed" : status === "WRITTEN_OFF" ? "bill-given-up" : undefined;
 }
 

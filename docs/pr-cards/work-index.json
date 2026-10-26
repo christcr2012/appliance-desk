@@ -4020,7 +4020,7 @@
       "title": "Books record themselves: nightly posting, auto-enroll appliances, automatic monthly depreciation, retirement link",
       "batch": "BA",
       "dependencies": [],
-      "status": "IN PROGRESS — ai/chatgpt/ba-1",
+      "status": "MERGED — PR #610, CI green 40317413250",
       "migration": "book_autopilot",
       "budget": 480,
       "units": [
@@ -4042,7 +4042,7 @@
         "tests/ba1-books-paging.test.ts",
         "tests/ba1-immediate-webhook.test.ts"
       ],
-      "readiness": "IN_REVIEW",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-1.md"
     },
     {
@@ -4052,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "IN PROGRESS — ai/chatgpt/ba-2, depends on BA-1 PR #610",
+      "status": "IN REVIEW — PR #613, BA-1 merged",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4457,7 +4457,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "DONE — merged PR #612 (2026-10-26)",
       "migration": "20261026010000_bank_payment_in_flight",
       "budget": 420,
       "units": [
@@ -5737,8 +5737,8 @@
       "dependencies": [
         "BILL-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
+      "status": "DONE — merged PR #614 (2026-10-26)",
+      "migration": "20261027040000_fair_late_fees (additive: PendingCharge, lateFeeNoticeDaysBefore, Invoice late-notice fields)",
       "budget": 450,
       "units": [
         "FEE-1"
@@ -5749,7 +5749,9 @@
         "src/domains/billing/reminders.ts"
       ],
       "tests": [
-        "tests/late-fees-fair-integration.test.ts"
+        "tests/late-fee-rules.test.ts",
+        "tests/late-fee-engine-integration.test.ts",
+        "tests/late-fee-digest.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/FEE-1.md"

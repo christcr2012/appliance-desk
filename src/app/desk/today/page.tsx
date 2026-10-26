@@ -27,6 +27,7 @@ import { jobTypeLabel } from "@/lib/status-labels";
 import { visibleOwnerActions } from "@/lib/owner-actions";
 import { ActionButton, EmptyState, Icon, InboxCard, InfoTip, StatusTabs, TONE_DOT, Toaster, mapHref, type ActionSpec, type Tone } from "@/components/kit";
 import { SetupCard } from "./setup-card";
+import { recordBankPaymentAction } from "../billing/reconciliation/actions";
 import { TodayInbox, type InboxEntry } from "./today-inbox";
 
 export const metadata = { title: "Today" };
@@ -203,8 +204,10 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
 
   const handlers =
     role === "OWNER"
-      ? { acknowledgeTaxSource: acknowledgeTaxSourceAction, applyOfficialRate: applyOfficialRateAction, undoOfficialRate: undoOfficialRateAction }
-      : undefined;
+      ? { acknowledgeTaxSource: acknowledgeTaxSourceAction, applyOfficialRate: applyOfficialRateAction, undoOfficialRate: undoOfficialRateAction, recordBankPayment: recordBankPaymentAction }
+      : role === "ADMIN"
+        ? { recordBankPayment: recordBankPaymentAction }
+        : undefined;
   const groupParam = group === "all" || group === "snoozed" ? null : group;
   const snoozeHref = canManage
     ? (key: string) => `/desk/today?${new URLSearchParams({ ...(groupParam ? { group: groupParam } : {}), snooze: key }).toString()}`

@@ -25,8 +25,9 @@ export type {
   ManualPaymentMethod,
   ManualPaymentResult,
 } from "./manual-payments";
-export { applyLateFees, sendLateFeeDigestToChris } from "./late-fees";
+export { sendLateFeeDigestToChris } from "./late-fees";
 export type { LateFeeApplication } from "./late-fees";
+export { runLateFees, billPendingLateFees, waiveLateFee, skipLateFee, recordToldByPhone, sendLateNotice, lateFeeBillingEnabled } from "./late-fee-engine";
 
 export async function getInvoicesCount(filter?: {
   delinquentOnly?: boolean;

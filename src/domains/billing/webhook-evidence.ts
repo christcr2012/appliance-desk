@@ -96,6 +96,8 @@ export class WebhookEvidence {
   private readonly invoices = new Map<string, Stripe.Invoice>();
   private readonly setupIntents = new Map<string, Stripe.SetupIntent>();
   private readonly cash = new Map<string, StripeInvoiceCashEvent[]>();
+  // BILL-1: which Stripe invoice a PaymentIntent pays (null = none: a shop sale or another kind of payment).
+  private readonly intentInvoices = new Map<string, string | null>();
 
   // ---- reads used inside the local transaction (never touch the network) ----
 
@@ -117,6 +119,21 @@ export class WebhookEvidence {
 
   cashEvents(stripeInvoiceId: string): StripeInvoiceCashEvent[] {
     return this.need(this.cash, stripeInvoiceId, "cash");
+  }
+
+  /** BILL-1: the Stripe invoice a PaymentIntent pays, or null when it pays none. */
+  invoiceForIntent(paymentIntentId: string): string | null {
+    return this.need(this.intentInvoices, paymentIntentId, "intentinvoice");
+  }
+
+  /** BILL-1: a Stripe invoice only when it was already fetched (never throws). */
+  invoiceIfKnown(id: string): Stripe.Invoice | null {
+    return this.invoices.get(id) ?? null;
+  }
+
+  /** BILL-1: a PaymentIntent only when it was already retrieved (never throws). */
+  intentIfKnown(id: string): Stripe.PaymentIntent | null {
+    return this.intentsWithMethod.get(id) ?? null;
   }
 
   private need<T>(map: Map<string, T>, id: string, kind: string): T {
@@ -150,6 +167,19 @@ export class WebhookEvidence {
     return invoice;
   }
 
+  /** BILL-1: ask Stripe which invoice (if any) this PaymentIntent pays. */
+  async fetchInvoiceForIntent(paymentIntentId: string): Promise<string | null> {
+    if (this.intentInvoices.has(paymentIntentId)) return this.intentInvoices.get(paymentIntentId) ?? null;
+    const stripe = getStripeClient();
+    const found = await stripe.invoicePayments.list({
+      payment: { type: "payment_intent", payment_intent: paymentIntentId },
+      limit: 1,
+    });
+    const id = idOf(found.data[0]?.invoice as string | { id: string } | null | undefined);
+    this.intentInvoices.set(paymentIntentId, id);
+    return id;
+  }
+
   async fetchSetupIntent(id: string): Promise<void> {
     if (this.setupIntents.has(id)) return;
     const stripe = getStripeClient();
@@ -178,6 +208,9 @@ export class WebhookEvidence {
         return this.fetchSetupIntent(id);
       case "cash":
         return this.fetchCashEvents(await this.fetchInvoice(id));
+      case "intentinvoice":
+        await this.fetchInvoiceForIntent(id);
+        return;
       default:
         throw new Error(`Unknown webhook evidence key "${key}".`);
     }
@@ -223,7 +256,14 @@ async function gatherPaidInvoiceEvidence(
 /** A shop-sale card payment: only a PAID session needs the payment's charge facts, and only if not already recorded. */
 async function gatherLocalInvoicePayment(evidence: WebhookEvidence, session: Stripe.Checkout.Session): Promise<void> {
   const paymentIntentId = idOf(session.payment_intent);
-  if (!paymentIntentId || session.payment_status !== "paid") return;
+  if (!paymentIntentId) return;
+  // BILL-1: a bank payment the customer started but the bank has not confirmed yet. Its current state decides whether it
+  // is recorded as "being confirmed" (the locked transaction never calls Stripe).
+  if (session.payment_status === "unpaid") {
+    await evidence.fetchPaymentIntentWithMethod(paymentIntentId);
+    return;
+  }
+  if (session.payment_status !== "paid") return;
   const recorded = await prisma.payment.findFirst({ where: { stripePaymentIntentId: paymentIntentId }, select: { id: true } });
   if (!recorded) await evidence.fetchPaymentDetails(paymentIntentId);
 }
@@ -342,6 +382,35 @@ async function gatherInvoicePaymentFailed(
 }
 
 /**
+ * BILL-1: which invoice a PaymentIntent pays, so a "processing / failed / canceled" event can find its bill. A shop-sale
+ * intent names its sale in its own metadata and pays no Stripe invoice, so no lookup is needed. When the Stripe invoice
+ * has no local bill yet, the invoice itself is fetched too (the handler checks whether it is a rental subscription).
+ */
+async function gatherIntentTarget(evidence: WebhookEvidence, intent: Stripe.PaymentIntent): Promise<void> {
+  if (intent.metadata?.localInvoiceId) return;
+  const stripeInvoiceId = await evidence.fetchInvoiceForIntent(intent.id);
+  if (!stripeInvoiceId) return;
+  const local = await prisma.invoice.findUnique({ where: { stripeInvoiceId }, select: { id: true } });
+  if (!local) await evidence.fetchInvoice(stripeInvoiceId);
+}
+
+async function gatherPaymentIntentProcessing(evidence: WebhookEvidence, intent: Stripe.PaymentIntent): Promise<void> {
+  // The row is opened only while Stripe still says "processing" now, so retrieve the intent as it is at this moment.
+  await evidence.fetchPaymentIntentWithMethod(intent.id);
+  if (await prisma.payment.findFirst({
+    where: { stripePaymentIntentId: intent.id, status: { not: "failed" } },
+    select: { id: true },
+  })) return;
+  await gatherIntentTarget(evidence, intent);
+}
+
+async function gatherPaymentIntentEnded(evidence: WebhookEvidence, intent: Stripe.PaymentIntent): Promise<void> {
+  // A row already exists for this intent: nothing to look up. Otherwise a cleared marker may be written, which needs the bill.
+  const row = await prisma.bankPaymentInFlight.findUnique({ where: { paymentIntentId: intent.id }, select: { id: true } });
+  if (!row) await gatherIntentTarget(evidence, intent);
+}
+
+/**
  * Gather, outside any transaction, the Stripe facts the event's handler will
  * need. The early local reads below only avoid pointless provider calls (for
  * example a replayed, already-recorded event); they decide nothing. The locked
@@ -370,6 +439,13 @@ export async function gatherWebhookEvidence(event: Stripe.Event): Promise<Webhoo
       break;
     case "invoice.payment_failed":
       await gatherInvoicePaymentFailed(evidence, event.data.object as Stripe.Invoice);
+      break;
+    case "payment_intent.processing":
+      await gatherPaymentIntentProcessing(evidence, event.data.object as Stripe.PaymentIntent);
+      break;
+    case "payment_intent.payment_failed":
+    case "payment_intent.canceled":
+      await gatherPaymentIntentEnded(evidence, event.data.object as Stripe.PaymentIntent);
       break;
     default:
       break;

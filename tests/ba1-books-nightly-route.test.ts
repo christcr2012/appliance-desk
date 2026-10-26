@@ -15,6 +15,7 @@ vi.mock("@/domains/books/stripe-balance", () => ({ runStripeBooksNightly: stub.r
 vi.mock("@/lib/prisma", () => ({ prisma: { businessSettings: { findUnique: stub.settingsFind } } }));
 
 import { GET } from "@/app/api/cron/books-nightly/route";
+import { AUTOMATION_RULES } from "@/domains/automation/health";
 
 const beforeSecret=process.env.CRON_SECRET;
 const beforeStripe=process.env.BOOKS_STRIPE_SYNC_ENABLED;
@@ -65,16 +66,23 @@ describe("BA-1 nightly jobs",()=>{
   expect((await response.json()).outcome).toBe("PAUSED");
   expect(stub.runAutomation).not.toHaveBeenCalled();
  });
+ it("keeps the original owner-paused Stripe rule and registers recording in health",()=>{
+  const named=AUTOMATION_RULES.filter(rule=>
+    rule.cronPath==="/api/cron/books-nightly").map(rule=>rule.ruleKey);
+  expect(named).toContain("books-nightly");
+  expect(named).toContain("books-nightly:record");
+  expect(named).toHaveLength(2);
+ });
  it("runs Stripe reconciliation separately only after explicit switch",async()=>{
   process.env.BOOKS_STRIPE_SYNC_ENABLED="true";
   const response=await GET(request());
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({
    recording:{ruleKey:"books-nightly:record"},
-   stripe:{ruleKey:"books-nightly:stripe"},
+   stripe:{ruleKey:"books-nightly"},
   });
   expect(stub.runAutomation.mock.calls.map(c=>c[0].ruleKey)).toEqual([
-   "books-nightly:record","books-nightly:stripe",
+   "books-nightly:record","books-nightly",
   ]);
   expect(stub.runStripeBooksNightly).toHaveBeenCalledOnce();
  });

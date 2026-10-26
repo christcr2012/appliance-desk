@@ -1,6 +1,42 @@
-## October 25 — BA-2 owner Books setup built on stacked branch (not merged)
+## October 26 — Books Lane 3: BA-1 merged, BA-2 and BA-3 in progress
 
-`ai/chatgpt/ba-2` depends on BA-1 PR #610. Owner-only four-step setup, personal-expense contribution shortcut, initial catch-up, owner-only To do reminder, and append-only numbered opening-balance corrections are coded with real-database tests. BA-2 has not passed its own exact-head CI or review and has no merge. Next: verify the tests and PR, then complete BA-3 after BA-2 is safe.
+BA-1 books autopilot merged as PR #610 after full exact-head CI and three Codex findings fixed. BA-2 owner setup is in PR #613, reconciling its branch with main before fresh CI. BA-3 monthly review is a separate dependent branch. No production data, provider settings, or live messages changed.
+
+## October 26 — BA-1 secret-scan diagnostics: four historical false positives identified
+
+CI on `e1642358` passed type-check, all three test groups, and four browser groups; gitleaks blocked because old revision lines containing legal rule names and one migration comment matched the generic API-key detector. The diagnostic step emits only location/rule, never potential secrets; inspected all four historical matches and recorded their exact fingerprints in `.gitleaksignore` with an explanation. Next: fresh exact-head CI and disposition three Codex threads, then merge. No credentials were exposed in this patch.
+
+## October 26 — BA-1 Codex findings addressed, exact-head rerun pending
+
+PR #610 passed full CI at `0d17ac10`, then automated review found three material gaps. The new patch retains the existing books-nightly Stripe pause/health key, reports unenrolled recorded-cost retirements, and refuses disposal before retirement; route and real-Postgres regressions added. Next: exact-head CI, disposition each review thread and merge only when green. BA-2 PR #613 and BA-3 stacked branch still depend on this. No live provider or production settings changed.
+
+## October 26 — BA-1 source posting verified, merge reconciliation in progress
+
+PR #610 (`ai/chatgpt/ba-1`) passed all exact-head CI jobs on `e033e291` (run 40310404105); newer main billing and notices commits require a conflict-resolved merge and fresh exact-head checks. No production data or provider settings changed. BA-2 PR #613 is stacked next, then BA-3 monthly review.
+
+## October 27 — FEE-1: fair late fees (merged PR #614)
+
+Branch `ai/claude/fee-1-fair-late-fees`. One rule for every rental: a fee only when a bill is more than 10 days late (day 11),
+at most $15, once per bill, only after the customer was warned (2 days' notice, Settings), never while a payment is in progress
+or a bank payment is being confirmed, and autopay customers get 10 days' notice. The fee is its own charge on the next bill
+(its own one-line bill if the rental ended); the overdue bill never changes. Owner screens: warn / "told by phone" / skip /
+waive on the bill, servicemember checkbox, a Settings card for the warning days and for the Colorado lease filing, To do items.
+Migration `20261027040000_fair_late_fees` (additive; lifts old settings below 10 days / over $15). Proof: unit tests plus about
+45 database tests with a pretend Stripe on a throwaway Postgres; CI green at the merged head; twelve automatic-review findings fixed (waiving removes the Stripe item or credits Stripe, autopay notice first, no fee on a fee bill, promised date never earlier, failed bank payment re-warns, reconciler for unknown Stripe requests).
+Not done: no browser test; no real Stripe test-mode fee observed; fees do not attach to an arbitrary next local bill; "payment
+in progress" is approximated (open bank flag or phone payment in the last 24 h). Next: DEC-2 — waiting: it needs DEC-1 fully merged and DEC-1b (PR #603) is still open with merge conflicts.
+
+## October 26 — BILL-1: bank payments being confirmed (merged PR #612)
+
+Branch `ai/claude/bill-1-bank-in-flight`. A bank transfer now shows **Being confirmed** instead of late: Stripe's "processing"
+event is recorded as a flag (never as money), the Bills list has a new **Being confirmed** tab and pill, the bill and customer
+record say so, no late fee is added and no past-due To do appears while it waits, and a calm **bank payment is taking a while**
+To do appears after the owner's number of banking days (starting value 6, Settings › Bank payments). A nightly check asks Stripe
+about up to 50 waiting payments; one Stripe says cleared but we missed is recorded through the normal payment handlers, or shows
+a **Record it now** button (Today and Billing › Reconciliation). Migration `20261026010000_bank_payment_in_flight` (additive).
+Proof: unit tests plus 41 database tests with a pretend Stripe, run on a throwaway Postgres here; CI results pending.
+Not done: the **Payments** tab — AR-3 adds it. Until the three Stripe events are added (checklist row), the screens only
+learn about a payment from events already sent; the nightly check can only follow payments that already have a flag. Next: FEE-1.
 
 ## October 25 (night) — MCP-2 prerequisite: private preview store identifier out of public source (security PR pending)
 
