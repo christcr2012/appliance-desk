@@ -2587,6 +2587,9 @@ model Invoice {
   saleServiceAddressId String?
   walkInName           String?
   saleOperationKey     String? @unique
+  // TFA-2: a replacement sale (an exchange) points at the sale it replaces, so
+  // the delivery fee is never charged twice for one purchase.
+  replacementOfInvoiceId String?
   // Stripe: finalized_at from the signed provider invoice, never webhook-receipt time.
   // Local: issue time is its original creation time. Null means evidence is incomplete.
   issuedAt           DateTime?
@@ -2834,6 +2837,7 @@ model TaxFilingAccount {
   jurisdictions            TaxJurisdiction[]     @relation("SalesTaxFilingAccount")
   useTaxJurisdictions      TaxJurisdiction[]     @relation("UseTaxFilingAccount")
   periods                  TaxFilingPeriod[]
+  filingFrequencyAdvices   FilingFrequencyAdvice[]
   createdAt                DateTime              @default(now())
   updatedAt                DateTime              @updatedAt
 }
@@ -3170,6 +3174,49 @@ model RetailDeliveryFeeRecord {
   @@index([invoiceId])
   @@index([status, deliveredOn])
   @@index([filingPeriodId])
+}
+
+enum RdfSwitchKind {
+  START
+  STOP
+}
+
+// TFA-2: one prepared delivery-fee switch. The app prepares and dates it; it
+// changes a customer bill only after the owner approves it on Today. A START
+// with no approval yet means the fee is owed but not billed to customers.
+model RetailDeliveryFeeSwitch {
+  id               String        @id @default(cuid())
+  kind             RdfSwitchKind
+  startsOn         DateTime
+  // The prior-year Colorado retail total the Jan 1 test used (null for the
+  // new-business start, which is dated from the crossing instead).
+  basisRetailCents Int?
+  approvedAt       DateTime?
+  approvedByUserId String?
+  createdAt        DateTime      @default(now())
+
+  @@unique([kind, startsOn])
+  @@index([startsOn])
+}
+
+// TFA-2 §8: one filing-frequency advice. The monthly job computes the
+// trailing-12-month average of state and state-collected tax and compares it
+// with the rule-book limits; the app never changes the frequency itself. The
+// To do offers a one-tap confirm once Colorado has agreed (Revenue Online),
+// and the confirm marks this row and sets the account frequency, which only
+// future periods pick up.
+model FilingFrequencyAdvice {
+  id                  String             @id @default(cuid())
+  filingAccountId     String
+  filingAccount       TaxFilingAccount   @relation(fields: [filingAccountId], references: [id])
+  currentFrequency    TaxFilingFrequency
+  advisedFrequency    TaxFilingFrequency
+  averageMonthlyCents Int
+  computedOn          DateTime           @default(now())
+  confirmedAt         DateTime?
+  confirmedByUserId   String?
+
+  @@index([filingAccountId, computedOn])
 }
 
 model TaxFilingAmendment {
