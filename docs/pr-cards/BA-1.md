@@ -19,7 +19,7 @@ entries (money records)** — never edit or delete entries; corrections are new 
 - [x] Connect equipment retirement, scrap/disposal, reopening and retired-appliance sales to balanced, reversible book entries without blocking equipment removal on a books error (disposal integration test).
 - [x] Record qualifying money events promptly, best-effort after the business transaction commits (purchases, receipts, direct and approved write-offs/expenses, refunds, and paid-invoice/Checkout/refund webhooks; hooks are independent of live payment switches).
 - [x] Cover concurrency, 360-month catch-up, batch rotation, locked months, permissions and disposal cycles in focused throwaway-Postgres tests (green at `e033e291`).
-- [ ] Run exact-head CI and review every comment before an authorized merge.
+- [ ] Run exact-head CI and review every comment before an authorized merge. Codex review on `0d17ac10` found pause-key compatibility, unenrolled retirement, and pre-retirement disposal-date problems; all three addressed with regression tests in this patch and require fresh exact-head proof.
 
 **Execution checkpoint (2026-10-25):** Before creating PR #610, confirmed no BA-1 implementation PR was open; based this branch on main `af5acc647cd35a9d3c93211e135c7c2f743b02b6`. This plan is not implementation evidence. Local checkout has no GitHub network access; use the repository's documented GitHub REST publishing fallback and free GitHub Actions checks.
 

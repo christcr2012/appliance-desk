@@ -29,7 +29,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   return NextResponse.json({recording,stripe:{outcome:"PAUSED"}});
 
  const stripe=await runAutomation({
-  ruleKey:"books-nightly:stripe",budgetSeconds:10,
+  // Keep the historic key: existing owner pauses and health history target this rule.
+  ruleKey:"books-nightly",budgetSeconds:10,
   work:async()=>{
    const answer=await runStripeBooksNightly();
    if(answer.sync.state==="NOT_INITIALIZED")throw new Error("Owner must initialize books.");
