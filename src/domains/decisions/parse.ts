@@ -77,7 +77,13 @@ type Section = {
   headings: number;
 };
 
-type SheetEntry = { answer: string | null; effective: string | null; explanation: string | null; lines: number };
+type SheetEntry = {
+  answer: string | null; effective: string | null; explanation: string | null; lines: number;
+  /** A date line the reader could not tie safely to this answer. */
+  problem: string | null;
+};
+
+const LOOSE_DATE = "An \"Effective from\" date isn't next to its answer. Put it on the answer's line and import again.";
 
 const LABEL = {
   effective: /^\s*effective\s+from\s*:?\s*(.*)$/i,
@@ -103,13 +109,18 @@ export function parseQuestionnaire(text: string): ParsedQuestionnaire {
   let current: Section | null = null;
   let mode: "none" | "explanation" = "none";
   let lastSheet: SheetEntry | null = null;
+  /** The newest answer-sheet entry, kept after its explanation so a stray date line still lands on an answer. */
+  let lastEntry: SheetEntry | null = null;
+  /** "Effective from:" with nothing after it: the date may be on the next line (PDF and pasted line breaks). */
+  let awaitingDate: { sheet: SheetEntry } | { section: Section } | null = null;
+  let looseDate = false;
   const remember = (code: string) => { if (!order.includes(code)) order.push(code); };
 
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
     if (clean(line).toLowerCase() === ANSWER_SHEET_HEADING.toLowerCase()) {
-      inSheet = true; current = null; mode = "none"; lastSheet = null;
+      inSheet = true; current = null; mode = "none"; lastSheet = null; awaitingDate = null;
       continue;
     }
     const code = CODE.exec(line);
@@ -124,20 +135,47 @@ export function parseQuestionnaire(text: string): ParsedQuestionnaire {
         const split = /\s+effective\s+from\s*:?\s*/i.exec(body);
         const answer = clean(split ? body.slice(0, split.index) : body) || null;
         const effective = split ? clean(body.slice(split.index + split[0].length)) || null : null;
-        const entry = sheet.get(id) ?? { answer: null, effective: null, explanation: null, lines: 0 };
+        const entry = sheet.get(id) ?? { answer: null, effective: null, explanation: null, lines: 0, problem: null };
         entry.lines += 1;
+        // "Effective from:" at the end of the line with the date on the next one.
+        awaitingDate = split && !effective ? { sheet: entry } : null;
         entry.answer = entry.answer ?? answer;
         entry.effective = entry.effective ?? effective;
         sheet.set(id, entry);
-        lastSheet = entry; current = null; mode = "none";
+        lastSheet = entry; lastEntry = entry; current = null; mode = "none";
         continue;
       }
-      if (inSheet) { lastSheet = null; continue; }
+      if (inSheet) { lastSheet = null; awaitingDate = null; continue; }
       const section = sections.get(id) ?? { ticks: [], other: null, effective: null, explanation: [], answeredBy: null, headings: 0 };
       section.headings += 1;
       sections.set(id, section);
-      current = section; mode = "none"; lastSheet = null;
+      current = section; mode = "none"; lastSheet = null; awaitingDate = null;
       continue;
+    }
+    if (awaitingDate) {
+      const target = awaitingDate;
+      awaitingDate = null;
+      const words = clean(line);
+      if (words && !LABEL.answeredBy.test(line) && !/^\s*explanation\b/i.test(line) && !readBoxLine(line) &&
+          (readFormDate(words) || /^\d|^[A-Za-z]{3,9}\.?\s+\d/.test(words))) {
+        if ("sheet" in target) target.sheet.effective = words;
+        else target.section.effective = words;
+        continue;
+      }
+    }
+    // "Effective from: …" on its own line in the answer sheet belongs to the answer above it (PDF line breaks).
+    if (!current) {
+      const dated = LABEL.effective.exec(line);
+      if (dated) {
+        const value = clean(dated[1] ?? "") || null;
+        const entry = lastSheet ?? lastEntry;
+        if (!entry) { if (value) looseDate = true; continue; }
+        if (!value) { if (lastSheet) awaitingDate = { sheet: entry }; else entry.problem = LOOSE_DATE; continue; }
+        if (!lastSheet) entry.problem = LOOSE_DATE; // after its explanation: too far from the answer to be sure
+        else if (entry.effective && entry.effective !== value) entry.problem = "The answer sheet gives two dates for this answer.";
+        else entry.effective = value;
+        continue;
+      }
     }
     if (lastSheet) {
       const explained = /^\s*explanation\s*:?\s*(.*)$/i.exec(line);
@@ -162,7 +200,12 @@ export function parseQuestionnaire(text: string): ParsedQuestionnaire {
       continue;
     }
     const effective = LABEL.effective.exec(line);
-    if (effective) { current.effective = clean(effective[1] ?? "") || null; mode = "none"; continue; }
+    if (effective) {
+      current.effective = clean(effective[1] ?? "") || null;
+      awaitingDate = current.effective ? null : { section: current };
+      mode = "none";
+      continue;
+    }
     const explanation = LABEL.explanation.exec(line);
     if (explanation) {
       mode = "explanation";
@@ -184,6 +227,9 @@ export function parseQuestionnaire(text: string): ParsedQuestionnaire {
     const problems: string[] = [];
     // Two sections or two answer-sheet lines for one code: never pick one of them.
     if ((section && section.headings > 1) || (entry && entry.lines > 1)) problems.push("This question appears more than once in the form.");
+    if (entry?.problem) problems.push(entry.problem);
+    // A date before any answer can't be tied to one: refuse every answer-sheet answer rather than guess.
+    if (looseDate && entry) problems.push(LOOSE_DATE);
     const ticks = section ? [...section.ticks, ...(section.other !== null ? ["Other"] : [])] : [];
     if (ticks.length > 1) problems.push("Two answers were ticked.");
 

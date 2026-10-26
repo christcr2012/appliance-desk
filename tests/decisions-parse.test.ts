@@ -89,6 +89,39 @@ describe("parseQuestionnaireAnswers", () => {
     expect(answer!.problem).toBe("This question appears more than once in the form.");
   });
 
+  describe("effective dates split over lines (PDF text and pasted answers)", () => {
+    const head = ["Answer sheet", "Answered by: Pat Lee"];
+    const one = (lines: string[]) => parseQuestionnaireAnswers([...head, ...lines].join("\n"))[0]!;
+
+    it("an 'Effective from' line under the answer is kept, so the answer is scheduled, not applied today", () => {
+      expect(one(["[DQ-IN-35-BASIS] Answer: Report tax when it is paid (cash)", "Effective from: 2099-01-01"]))
+        .toMatchObject({ effectiveFrom: "2099-01-01", problem: null });
+      expect(one(["[DQ-IN-35-BASIS] Answer: Report tax when it is paid (cash)", "Effective from:", "January 1, 2099"]))
+        .toMatchObject({ effectiveFrom: "2099-01-01", problem: null });
+      expect(one(["[DQ-IN-35-BASIS] Answer: Report tax when it is paid (cash) Effective from:", "1/1/2099"]))
+        .toMatchObject({ effectiveFrom: "2099-01-01", problem: null });
+      expect(one(["[DQ-IN-35-BASIS] Answer: Report tax when it is paid (cash)", "Explanation: Simpler.", "Effective from:", "2099-01-01"]))
+        .toMatchObject({ problem: expect.stringMatching(/isn't next to its answer/) });
+    });
+
+    it("an unreadable, conflicting, far-away or orphan date makes the answer Can't apply instead of being ignored", () => {
+      expect(one(["[DQ-IN-35-BASIS] Answer: Report tax when it is paid (cash)", "Effective from: next spring"]).problem)
+        .toMatch(/couldn't be read/);
+      expect(one(["[DQ-IN-35-BASIS] Answer: Report tax when it is paid (cash)  Effective from: 2099-01-01", "Effective from: 2099-02-01"]).problem)
+        .toBe("The answer sheet gives two dates for this answer.");
+      expect(one(["[DQ-IN-35-BASIS] Answer: Report tax when it is paid (cash)", "Explanation: Simpler.", "Effective from: 2099-01-01"]).problem)
+        .toMatch(/isn't next to its answer/);
+      expect(one(["Effective from: 2099-01-01", "[DQ-IN-35-BASIS] Answer: Report tax when it is paid (cash)"]).problem)
+        .toMatch(/isn't next to its answer/);
+    });
+
+    it("a body section's date on the next line is kept too", () => {
+      const [answer] = parseQuestionnaireAnswers(["[DQ-IN-71] Retention", "☒ 7 years after the appliance leaves the fleet",
+        "Effective from:", "2099-03-01", "Answered by: A"].join("\n"));
+      expect(answer).toMatchObject({ effectiveFrom: "2099-03-01", problem: null });
+    });
+  });
+
   it("an unreadable effective date is a problem, not a guess", () => {
     const [answer] = parseQuestionnaireAnswers("[DQ-IN-71] x\n☒ 7 years after the appliance leaves the fleet\nEffective from: next spring\nAnswered by: A");
     expect(answer!.problem).toMatch(/couldn't be read/);
