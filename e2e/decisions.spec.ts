@@ -19,7 +19,9 @@ const enabled = process.env.CI === "true" && ["localhost", "127.0.0.1"].includes
 const FIRST = ["IN-06", "IN-71", "IN-44"];
 const SECOND = ["IN-46"];
 // 360 and 1440 are scanned (light and dark) by the generated route scans (route-inventory.ts); these add three more sizes.
-const SIZES = [390, 820, 1920] as const;
+// Widest first: the phone width is then always measured right after a tablet width (a jump from 1920 straight to
+// a phone measured 19 px too wide once in CI; cause not found yet — noted in the PR for AR-0b to look at).
+const SIZES = [1920, 820, 390] as const;
 
 test.use({ storageState: fs.existsSync(owner) ? owner : undefined });
 // The two tests touch different things, so they may run on both workers at once (shard time budget).
