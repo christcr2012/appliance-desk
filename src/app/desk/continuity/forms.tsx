@@ -20,9 +20,9 @@ export function ContinuityForm({ action, submit, children, danger = false }: { a
 
 export function Field({ label, name, defaultValue, hint, wide = false }: { label: string; name: string; defaultValue?: string | null; hint?: string; wide?: boolean }) {
   return (
-    <label className={`grid gap-1 text-sm font-medium${wide ? " md:col-span-2" : ""}`}>
+    <label className={`grid min-w-0 gap-1 text-sm font-medium${wide ? " md:col-span-2" : ""}`}>
       {label}
-      <input name={name} type="text" maxLength={300} defaultValue={defaultValue ?? ""} className="min-h-11 rounded-control border border-line p-2" />
+      <input name={name} type="text" maxLength={300} defaultValue={defaultValue ?? ""} className="min-h-11 w-full min-w-0 rounded-control border border-line p-2" />
       {hint ? <span className="text-xs font-normal text-ink-soft">{hint}</span> : null}
     </label>
   );
