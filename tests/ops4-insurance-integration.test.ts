@@ -91,6 +91,21 @@ describe.skipIf(!enabled)("insurance (real Postgres)", () => {
     expect((await loadInsuranceOverview(new Date())).workersCompRequired).toBe(false);
     await archivePolicy(ownerId, wc, true); // no live policy any more
     expect((await loadInsuranceOverview(new Date())).workersCompRequired).toBe(true);
+    // A policy that starts in the future does not cover today.
+    const future = await savePolicy(ownerId, null, { ...base, kind: "WORKERS_COMP", policyNumber: "WC-FUTURE-OPS4", effectiveOnKey: key(30), expiresOnKey: key(400) });
+    policies.push(future);
+    expect((await loadInsuranceOverview(new Date())).workersCompRequired).toBe(true);
+  });
+
+  it("gives each reminder a steady identity per policy and stage, so a snooze lasts", async () => {
+    await saveReminderDays(ownerId, 60, 30);
+    const id = await savePolicy(ownerId, null, { ...base, kind: "OTHER", policyNumber: "KEY-OPS4", expiresOnKey: key(50) });
+    policies.push(id);
+    const today = (await listInsuranceAttention(new Date())).find((r) => r.detail.includes("policy KEY-OPS4."));
+    const tomorrow = (await listInsuranceAttention(new Date(Date.now() + 86_400_000))).find((r) => r.detail.includes("policy KEY-OPS4."));
+    expect(today?.title).not.toBe(tomorrow?.title);
+    expect(today?.todoKey).toBe(`insurance-renewal:${id}:first`);
+    expect(tomorrow?.todoKey).toBe(today?.todoKey);
   });
 
   it("records a certificate request and returns an email draft without sending anything", async () => {

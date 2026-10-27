@@ -11,7 +11,8 @@ export async function loadInsuranceOverview(now: Date) {
     prisma.insuranceCertificateRequest.findMany({ orderBy: { requestedAt: "desc" }, take: 20, include: { policy: { select: { insurer: true, kind: true } } } }),
   ]);
   const withState = policies.map((p) => ({ ...p, state: renewalState(p.expiresOn, now, settings.insuranceRemindFirstDays, settings.insuranceRemindSecondDays) as RenewalState }));
-  const activeWorkersComp = withState.some((p) => !p.archivedAt && p.kind === "WORKERS_COMP" && p.state.kind !== "expired");
+  // A policy only counts once it has started: a renewal dated for the future does not cover today.
+  const activeWorkersComp = withState.some((p) => !p.archivedAt && p.kind === "WORKERS_COMP" && p.state.kind !== "expired" && (!p.effectiveOn || p.effectiveOn.getTime() <= now.getTime()));
   return {
     settings, policies: withState, requests,
     workersCompRequired: workersCompRequiredNow(settings.workersCompStatus, settings.workersCompEmployees, activeWorkersComp),

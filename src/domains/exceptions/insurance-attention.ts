@@ -16,13 +16,15 @@ export async function listInsuranceAttention(now: Date): Promise<ExceptionItem[]
       category: "INSURANCE_RENEWAL", severity: p.state.kind === "first" ? "medium" : "high", title,
       detail: `${p.insurer}, policy ${p.policyNumber}. Call your agent about renewing, then update the end date on the Insurance screen.`,
       href: "/desk/insurance", since: p.expiresOn,
+      // One steady identity per policy and stage, so "snooze for a week" lasts instead of reappearing when the countdown in the title changes.
+      todoKey: `insurance-renewal:${p.id}:${p.state.kind}`,
     });
   }
   if (overview.workersCompRequired) {
     rows.push({
       category: "INSURANCE_RENEWAL", severity: "high", title: "Workers' compensation insurance is required now",
       detail: "You have employees. Colorado requires workers' compensation coverage once you do. Talk to your insurance agent, then record the policy on the Insurance screen.",
-      href: "/desk/insurance#workers-comp", since: now,
+      href: "/desk/insurance#workers-comp", since: now, todoKey: "insurance-workers-comp-required",
     });
   }
   return rows;
