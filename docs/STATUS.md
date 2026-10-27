@@ -1,3 +1,14 @@
+## October 27 — Automatic merging and the review gate (branch `ai/claude/auto-merge-review-gate`)
+
+Chris asked for pull requests to merge themselves, because several agents work at once and main keeps moving. Two
+things were in the way: the main-branch rule required every PR to be re-synced after each other merge, and nothing
+handled Codex being slow or out of usage. Built: a `review-gate` check (`.github/workflows/review-gate.yml`,
+`scripts/review-gate.mjs`, 14 tests) that passes when Codex reviewed and every finding has a reply, or, when Codex
+is unavailable (usage limit, or no answer in 25 minutes), when the author left a "self-reviewed" comment after the last
+real push (a sync with main does not erase it). It only reads pull requests and writes one commit status; it never
+checks out a PR. After this merges the main-branch rule is changed to require `review-gate` and to stop requiring
+branches to be up to date, then auto-merge is turned on per PR. AGENTS.md section 6 and the quickstart say how.
+
 ## October 27 — CMP-5: Hiring readiness (merged)
 
 MERGED via PR #679, squash `d22a76e8` on main (chain #674 → #676 → #679; the first two were closed
