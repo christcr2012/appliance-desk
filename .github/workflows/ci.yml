@@ -7,7 +7,7 @@ name: CI
 #   static   - type-check + lint (side by side) + migration/browser-group checks
 #   unit     - the whole vitest suite split over 3 runners, each with its own
 #              throwaway Postgres
-#   e2e      - production build + browser/accessibility tests split over 4 runners
+#   e2e      - production build + browser/accessibility tests split over 5 runners
 #   ci       - the single gate that branch protection / merging looks at
 # Nothing was removed from the old pipeline: the same checks, same tests, same
 # build; they are only spread across more machines. Docs-only changes skip the
@@ -316,7 +316,7 @@ jobs:
         run: node scripts/check-no-skipped-tests.mjs vitest-results.json
 
   e2e:
-    # Production build + browser/accessibility/security tests, split over 4
+    # Production build + browser/accessibility/security tests, split over 5
     # runners balanced by measured spec duration (e2e/shards.json).
     # scripts/e2e-shard.mjs refuses to run if any spec file is unassigned, so
     # nothing can silently stop running.

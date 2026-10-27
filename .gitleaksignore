@@ -18,97 +18,35 @@ f34e5077b8648c5d8b494c3011757cc7b4c37bb7:tests/billing-provider-ops.test.ts:stri
 # Reviewed 2026-10-25: made-up request id in a feedback form test (MCP-10a branch commit); not a real key.
 5f62cc2c5ac2482cbf1444131f31acb97a7f4815:tests/feedback-context.test.ts:generic-api-key:125
 
-# Reviewed 2026-10-26: false generic-api-key matches in historical (now renamed/removed)
-# rule identifiers and an SQL migration comment. They are not credentials.
+# Reviewed 2026-10-26: a false generic-api-key match in an SQL migration
+# comment (the header names its card). It is not a credential.
 12dcced1286354a19575483096b8c419f9b11923:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
-d34a2efc1e6d7797451fc638cd6e0fc0120b7613:tests/books-closing-integration.test.ts:generic-api-key:28
-d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:162
-d34a2efc1e6d7797451fc638cd6e0fc0120b7613:src/domains/rules/registry.ts:generic-api-key:189
-# Same three lines as merged (squash merge cb1c3618): the scanner attributes
-# them to the merge commit now, so they need fingerprints under that commit
-# too. The d34a2efc entries above still cover the branch history.
-cb1c36184ec8ac534647ed41fb6ea68e8819f863:tests/books-closing-integration.test.ts:generic-api-key:28
-cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:162
-cb1c36184ec8ac534647ed41fb6ea68e8819f863:src/domains/rules/registry.ts:generic-api-key:189
-# Reviewed 2026-10-26 (ACC-6): more of the same verified false positives, kept
-# in this mid-file block so this file merges cleanly with main. The leads
-# migration header comment (a comment naming its card, not a credential) under
-# the leads engine commit (464157c3), the LD-1 merge commit (50e265ec) and this
-# branch's merge push (34cd2521); and the compliance registry's form keys
-# ("fed.1099_misc", "fed.payroll.941" and similar — tax form names, not
-# credentials) on the CMP-1 lane's branch commits (8bd59feb, ebc6cfc3). Every
-# flagged line was read and verified.
+# Reviewed 2026-10-26 (ACC-6): the leads migration header comment (a comment
+# naming its card, not a credential) under the leads engine commit (464157c3),
+# the LD-1 merge commit (50e265ec) and this branch's merge push (34cd2521).
+# Every flagged line was read and verified.
 464157c3af1d1bca5b89a929b0bdb79189e1ae84:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
 50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
 34cd2521ff5214ce0dde5e2322df47fc2eb2cd5f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:163
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:177
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:205
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:221
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:234
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:270
-ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:163
-ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:177
-ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:205
-ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:221
-ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:234
-ebc6cfc37812e6fdede24b5db63c8ef6f364c70d:src/domains/compliance/registry.ts:generic-api-key:270
-# Same six lines again: CMP-1's successor branch (PR #639) re-committed the
-# registry in a94257d2, so the scanner attributes the lines to that commit too.
-a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:163
-a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:177
-a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:205
-a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:221
-a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:234
-a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:270
-# Same class again on CMP-1's final rebuilt branch (PR successor to #639):
-# every obligation-key literal in the registry commit a5d3103b and the two
-# obligationKey lookups in the filings integration test — keys, not secrets.
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:170
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:184
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:198
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:228
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:244
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:257
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:296
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:tests/compliance-filings-integration.test.ts:generic-api-key:159
-a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:tests/compliance-filings-integration.test.ts:generic-api-key:180
-# Same class in CMP-1's round-4 test additions (commit dc8bf077): three more
-# obligationKey lookups in the reactivation regression test.
-dc8bf077ecf698b8993fd4cfbfefb9b6b4c024af:tests/compliance-filings-integration.test.ts:generic-api-key:202
-dc8bf077ecf698b8993fd4cfbfefb9b6b4c024af:tests/compliance-filings-integration.test.ts:generic-api-key:219
-dc8bf077ecf698b8993fd4cfbfefb9b6b4c024af:tests/compliance-filings-integration.test.ts:generic-api-key:233
-# Same three lines again: merging main into LD-1 re-committed main's versions
-# of these files in new commits (d29df93, fc4ad1e), so the scanner attributes
-# the lines to those commits too.
-d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:162
-d29df93967a040b839554d2808153ef4f1d610cd:src/domains/rules/registry.ts:generic-api-key:189
-fc4ad1efe73a9b499610c531ca28c7501fab248f:tests/books-closing-integration.test.ts:generic-api-key:28
-# Same three lines again: the full-history scan reads every branch, and the
-# ACC-6 lane's merge of main (e993e88, 89630f4, 2026-10-26) re-committed the
-# same files, so the lines are attributed to those commits too.
-e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:162
-e993e8828f459443b25a4101fd24cac4fba71200:src/domains/rules/registry.ts:generic-api-key:189
-89630f49bd63734294fc11926f9dc93c5fdb15fa:tests/books-closing-integration.test.ts:generic-api-key:28
-# The LD-1 migration header comment (the leads_pipeline migration names its
-# card in a comment; the words match the generic API-key pattern). It was
-# allowlisted under the original branch's commit by BA-1; the rebuilt
-# ai/vivienne/ld-1 branch re-committed the migration in 3d86add, so the same
-# line needs a fingerprint under that commit too.
+# The LD-1 migration header comment once more: the rebuilt ai/vivienne/ld-1
+# branch re-committed the migration in 3d86add, so the same line needs a
+# fingerprint under that commit too.
 3d86adda6fe28e5128160187509bac6b54d9c43f:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
-# Reviewed 2026-10-26 (TFA-2): compliance rule keys, not credentials. Lane
-# 5's CMP-1 branch commit 8bd59feb added src/domains/compliance/registry.ts;
-# every flagged line is a rule key name (fed.1099_misc, fed.payroll.941 and
-# similar) that matches the generic API-key pattern. The full-history scan
-# reads every branch, so they surface in this PR's scan too.
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:163
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:177
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:205
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:221
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:234
-8bd59febf553b16fbef1c357aef6428f48be4d60:src/domains/compliance/registry.ts:generic-api-key:270
+# Obligation and rule identifier keys (the rules and compliance registries
+# and their tests) are allowlisted durably by identifier shape in
+# .gitleaks.toml — see the [allowlist] section there. That family no longer
+# needs per-commit fingerprints in this file; the dozens of entries it used
+# to need (under every branch, rebuild and merge commit that touched those
+# lines) were removed by the allowlist PR.
 # Reviewed 2026-10-26 (TFA-2): the LD-1 leads migration header comment once
 # more (the same line is allowlisted under its earlier commits above). LD-1
 # landed as squash commit 50e265e (PR #625), which re-committed the file, so
 # the same comment needs a fingerprint under that commit too.
 50e265ec473bb3ac03763850339ad16512f295c9:prisma/migrations/20261026020000_leads_pipeline/migration.sql:generic-api-key:2
+# TFA-3 false positives: the generic-api-key heuristic reads a rule-book key
+# assignment for the 1099 threshold rule as a credential. It is a tax rule
+# identifier in the parser and its integration test, not a secret. The third
+# line fingerprints this file's own earlier comment, which quoted the key.
+585b1bb93a2067a2366ea60689a03a5915c4232b:src/domains/rules/parsers/irs-1099-threshold.ts:generic-api-key:52
+2af71a0ab9b7435edb2bfcce2a9ce2ba6f8360c9:tests/rules-observation-integration.test.ts:generic-api-key:170
+0903d119b6410dc5f275aaa19ac0181c9011edf4:.gitleaksignore:generic-api-key:116

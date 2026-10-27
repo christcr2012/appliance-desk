@@ -8,7 +8,7 @@ entries (money records)** — never edit or delete entries; corrections are new 
 ## Acceptance
 - [x] Focused unit/real-Postgres and browser acceptance suites ran green at `e033e291` (CI run 40310404105); merged-main head requires revalidation.
 - [x] Existing person-facing Books flows retained; source posting, retirement and automatic record paths covered in regression/browser suites.
-- [ ] `ci` green at the exact head; every review comment read.
+- [x] Exact-head CI green at `e85e4358` (run 40317413250); review findings addressed and PR #610 merged.
 
 ## Implementation plan and evidence checklist
 
@@ -19,7 +19,7 @@ entries (money records)** — never edit or delete entries; corrections are new 
 - [x] Connect equipment retirement, scrap/disposal, reopening and retired-appliance sales to balanced, reversible book entries without blocking equipment removal on a books error (disposal integration test).
 - [x] Record qualifying money events promptly, best-effort after the business transaction commits (purchases, receipts, direct and approved write-offs/expenses, refunds, and paid-invoice/Checkout/refund webhooks; hooks are independent of live payment switches).
 - [x] Cover concurrency, 360-month catch-up, batch rotation, locked months, permissions and disposal cycles in focused throwaway-Postgres tests (green at `e033e291`).
-- [ ] Run exact-head CI and review every comment before an authorized merge. Codex review on `0d17ac10` found pause-key compatibility, unenrolled retirement, and pre-retirement disposal-date problems; all three addressed with regression tests in this patch and require fresh exact-head proof.
+- [x] Exact-head CI run 40317413250 passed at `e85e4358` and the three Codex findings were resolved before PR #610 merged.
 
 **Execution checkpoint (2026-10-25):** Before creating PR #610, confirmed no BA-1 implementation PR was open; based this branch on main `af5acc647cd35a9d3c93211e135c7c2f743b02b6`. This plan is not implementation evidence. Local checkout has no GitHub network access; use the repository's documented GitHub REST publishing fallback and free GitHub Actions checks.
 
@@ -39,3 +39,5 @@ Expense approvals now commit before best-effort posting; pending journal errors 
 No real business or production data touched.
 
 **2026-10-26 security scan:** A full-history scan found four false-positive `generic-api-key` matches in prior legal-rule identifiers/test data and a migration comment; original text inspected, no credential value. Exact fingerprints documented in `.gitleaksignore`. Scanner remains full-history, pinned, and blocking; only file/rule metadata is printed when it fails. All other checks on `e1642358` passed; fresh exact-head scan still required.
+
+**Lane 3 closeout (2026-10-26):** PR #610 merged into `main` with final CI green at `e85e4358`. Older pending descriptions above are historic checkpoints.
