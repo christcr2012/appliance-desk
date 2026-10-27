@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { sendAccountNotice } from "@/domains/account";
 import { forgetTrustedDevicesInTx } from "./trusted-devices";
+import { clearVaultUnlocksInTx } from "@/domains/vault/unlock";
 import { sendEmail } from "@/lib/email";
 import { sendSms } from "@/lib/sms";
 import { AccountError, normalizePhone } from "@/domains/account/rules";
@@ -245,6 +246,8 @@ export async function confirmMethodSwitch(userId: string, method: string, code: 
     await tx.user.update({ where: { id: userId }, data: { secondStepMethod: method } });
     // ACC-6: switching the second step forgets remembered devices, so the next sign-in asks for a code again.
     await forgetTrustedDevicesInTx(tx, userId);
+    // VAULT-2: it also ends any logins-vault unlock.
+    await clearVaultUnlocksInTx(tx, userId);
   });
   await record(userId, "security.second_step_switch", { from: user.secondStepMethod, to: method });
   await sendAccountNotice(userId, "two_step_changed", { extra: METHOD_LABEL[method].toLowerCase() });
