@@ -3,7 +3,8 @@ import { detectTaxFilingAmendments } from "./filing";
 import { businessDateKey, businessDaysBetween } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { dueOnFor, legalDueOn, periodsFor, reminderStages } from "./filing-calendar";
-import { advanceColoradoUseTaxFrequency } from "./use-tax-frequency-transition";
+import { advanceColoradoUseTaxFrequency, resetColoradoUseTaxFrequencyForNewYear } from "./use-tax-frequency-transition";
+import { computeFilingFrequencyAdvice } from "./filing-frequency-advice";
 
 export type FilingReminderRun = {
   periodsCreated: number;
@@ -49,10 +50,14 @@ export async function runTaxFilingCalendar(now = new Date()): Promise<FilingRemi
   for (const account of accounts) {
     // Legacy accounts remain dormant until the Owner sets the first filing period.
     if (account.firstPeriodStart) {
+      // TFA-2 §7: a new year starts ANNUAL again, before any period of the
+      // new year is generated or any mid-year switch is considered.
+      const reset = await resetColoradoUseTaxFrequencyForNewYear(account.id, now);
+      const baseAccount = reset ? { ...account, frequency: "ANNUAL" as const } : account;
       const transitioned = await advanceColoradoUseTaxFrequency(account.id, now);
       const effectiveAccount = transitioned
-        ? { ...account, frequency: "MONTHLY" as const, dueDayOfFollowingMonth: 20 }
-        : account;
+        ? { ...baseAccount, frequency: "MONTHLY" as const, dueDayOfFollowingMonth: 20 }
+        : baseAccount;
       // An annual period shortened at the transition boundary remains
       // authoritative for its dates. Never create new monthly periods which
       // overlap that existing, possibly filed, history.
@@ -140,5 +145,9 @@ Base due date: ${businessDateKey(period.dueOn)}. Legal deadline: ${businessDateK
   }
 
   totals.amendmentsDetected = await amendmentDetector(now);
+  // TFA-2 §8: filing-frequency advice (the 1st of the month, and through
+  // December for the January 1 move). Advisory only; it never changes an
+  // account itself, and a failure here must not break the calendar.
+  await computeFilingFrequencyAdvice(now).catch(() => 0);
   return totals;
 }

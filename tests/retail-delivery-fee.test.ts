@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  rdfNewBusinessStartsOn,
+  rdfQualifiedEndsOn,
   rdfRateForSale,
   retailDeliveryFeeStatus,
 } from "@/domains/tax/retail-delivery-fee";
@@ -15,7 +15,6 @@ const input = {
   currentYearRetailCents: 0,
   thresholdCents: 50000000,
   thresholdCrossedOn: null,
-  frequency: "MONTHLY" as const,
   handling: "PAY_MYSELF" as const,
   cpaConfirmedOn: day("2026-01-01"),
 };
@@ -66,14 +65,15 @@ describe("T-6C1 Colorado retail-delivery-fee decision engine", () => {
     }).status).toBe("EXEMPT_SMALL_BUSINESS");
   });
 
-  it("starts a new business on the first filing period at least 90 days after crossing", () => {
-    const crossing = day("2026-01-15");
-    expect(businessDateKey(rdfNewBusinessStartsOn(crossing, "MONTHLY"))).toBe("2026-05-01");
-    expect(businessDateKey(rdfNewBusinessStartsOn(crossing, "QUARTERLY"))).toBe("2026-07-01");
-    expect(businessDateKey(rdfNewBusinessStartsOn(crossing, "ANNUAL"))).toBe("2027-01-01");
+  it("starts a new business on the first day of the month after the 90th day, whatever the filing frequency", () => {
+    // The statute date does not depend on how often the business files.
+    expect(businessDateKey(rdfQualifiedEndsOn(day("2026-01-15")))).toBe("2026-05-01");
+    expect(businessDateKey(rdfQualifiedEndsOn(day("2026-06-15")))).toBe("2026-10-01");
+    // When the 90th day itself is the 1st, the fee starts the next month.
+    expect(businessDateKey(rdfQualifiedEndsOn(day("2026-03-03")))).toBe("2026-07-01");
     const terms = {
       ...input, previousYearRetailCents: 0, currentYearRetailCents: 50000001,
-      thresholdCrossedOn: crossing,
+      thresholdCrossedOn: day("2026-01-15"),
     };
     expect(retailDeliveryFeeStatus({ ...terms, today: day("2026-04-30") }).status)
       .toBe("EXEMPT_SMALL_BUSINESS");

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { ruleAsOf } from "@/domains/rules/reads";
+import { findRdfThresholdCrossing, recordedRetailSales } from "./rdf-sales-evidence";
 
 function verifyCents(value: number, field: string) {
   if (!Number.isSafeInteger(value) || value < 0) {
@@ -54,4 +55,32 @@ export async function recordFirstRetailDeliveryFeeThresholdCrossing(input: {
     });
     return day;
   });
+}
+
+/**
+ * Nightly (TFA-2): if this year's Colorado retail sales passed the small-seller
+ * limit, record the crossing date from the crossing invoice itself. Only a
+ * first-year business records a crossing here — with any prior-year sales the
+ * January 1 test governs instead. Safe to run every night: once recorded, the
+ * date never moves.
+ */
+export async function recordCrossingIfCrossed(now: Date): Promise<Date | null> {
+  const settings = await prisma.businessSettings.findUnique({
+    where: { id: "singleton" },
+    select: { rdfThresholdCrossedOn: true },
+  });
+  if (!settings) throw new Error("BusinessSettings must be initialized.");
+  if (settings.rdfThresholdCrossedOn) return settings.rdfThresholdCrossedOn;
+  const year = Number(businessDateKey(now).slice(0, 4));
+  const snapshot = await prisma.$transaction(async (tx) => {
+    const previousYearRetailCents = await recordedRetailSales(tx, year - 1);
+    if (previousYearRetailCents !== 0) return null;
+    const thresholdCents = (await ruleAsOf<number>("co.rdf.qualified_threshold", now, tx)).value;
+    const crossing = await findRdfThresholdCrossing(tx, year, thresholdCents);
+    if (!crossing) return null;
+    const currentYearRetailCents = await recordedRetailSales(tx, year);
+    return { previousYearRetailCents, currentYearRetailCents, crossedOn: crossing.crossedOn };
+  });
+  if (!snapshot) return null;
+  return recordFirstRetailDeliveryFeeThresholdCrossing(snapshot);
 }
