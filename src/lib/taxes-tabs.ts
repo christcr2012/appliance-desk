@@ -19,10 +19,11 @@ export const TAXES_SETUP_LINKS = [
   { href: `${TAXES_BASE}/audit-pack`, label: "Audit pack", detail: "Every appliance and part bought, with receipts and tax, for any date range." },
   { href: `${TAXES_BASE}/record-retention`, label: "How long to keep records", detail: "Starts at 7 years; owner-editable." },
   { href: `${TAXES_BASE}/rules`, label: "Tax and fee rules", detail: "Every tax and fee number, when it starts, where it came from, and its history." },
+  { href: `${TAXES_BASE}/area`, label: "Delivery area", detail: "Every place you deliver to: whether its tax rules are decided and its city license is on file — an address cannot be quoted or scheduled until its places are ready." },
 ] as const;
 
 const SETUP_PREFIXES = ["setup", "exemptions", "taxability", "audit-pack", "record-retention", "rules"];
-const RATES_PREFIXES = ["areas", "delivery-fees"];
+const RATES_PREFIXES = ["areas", "area", "delivery-fees"];
 
 /** Which tab a Taxes address belongs to; null when the address is outside Taxes. */
 export function activeTaxesTab(pathname: string): TaxesTabKey | null {

@@ -23,6 +23,7 @@ import { createTaskInTx } from "@/domains/tasks";
 import { lockMaintenanceRequestInTx, requestAfterVisitEndedInTx } from "@/domains/maintenance/visit-sync";
 import { JobVersionError } from "./scheduling";
 import { recordRentalDeliveryFeeInTx } from "@/domains/tax/rdf-records";
+import { recordDeliveryCountInTx } from "@/domains/tax/delivery-readiness";
 import { closeOutOfServiceForSwapInTx, openOutOfServiceInTx } from "@/domains/billing/out-of-service";
 
 // ---------------------------------------------------------------------------
@@ -639,6 +640,16 @@ export async function completeJob(userId: string, input: CompleteJobInput): Prom
       await recordRentalDeliveryFeeInTx(tx, {
         jobId: before.id, agreementId: before.agreementId,
         saleKey: "agreement:" + before.agreementId, deliveredOn: serviceDate,
+      });
+    }
+    if (isDelivery && before.agreementId && deliveredIds.length > 0 && before.serviceAddressId) {
+      // FEETAX-2: count this delivery toward the place's license rule
+      // (some cities require a license after the first delivery, or
+      // after more than one delivery in 12 months). One row per order.
+      await recordDeliveryCountInTx(tx, {
+        orderId: before.agreementId,
+        serviceAddressId: before.serviceAddressId,
+        deliveredOn: serviceDate,
       });
     }
     if (before.maintenanceRequestId && before.type === "MAINTENANCE_VISIT") {
