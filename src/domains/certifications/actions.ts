@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey } from "@/lib/business-date";
+import { lockUsersForScheduling } from "@/domains/jobs/scheduling";
 
 export class CertificationError extends Error {}
 export const TYPE_I = "EPA_608_TYPE_I";
@@ -14,8 +15,9 @@ export async function saveTeamCertification(actorUserId: string, userId: string,
   const issuedOn = input.issuedOnKey ? businessDateFromKey(input.issuedOnKey) : null;
   if (input.issuedOnKey && !issuedOn) throw new CertificationError("Pick a real date.");
   await prisma.$transaction(async (tx) => {
+    // Same order scheduling uses (both people, sorted), taken before the actor check, so this can't deadlock with a visit being scheduled.
+    await lockUsersForScheduling(tx, [actorUserId, userId]);
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const person = await tx.user.findUnique({ where: { id: userId }, select: { role: true, archivedAt: true } });
     if (!person || person.archivedAt || !["OWNER", "ADMIN", "STAFF"].includes(person.role)) throw new CertificationError("Choose an active team member.");
     await tx.teamCertification.upsert({
@@ -29,8 +31,8 @@ export async function saveTeamCertification(actorUserId: string, userId: string,
 
 export async function removeTeamCertification(actorUserId: string, userId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    await lockUsersForScheduling(tx, [actorUserId, userId]);
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const removed = await tx.teamCertification.deleteMany({ where: { userId, kind: TYPE_I } });
     if (removed.count > 0) await tx.auditLog.create({ data: { userId: actorUserId, action: "team.certification_removed", entityType: "User", entityId: userId, newValue: { kind: TYPE_I } } });
   });
