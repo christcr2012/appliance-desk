@@ -62,7 +62,10 @@ describe("walkthrough data", () => {
           expect(TEMPLATE_KEYS.has(s.record.templateKey), `${w.key}/${s.key} → ${s.record.templateKey}`).toBe(true);
           for (const f of s.record.fields) expect(["number", "file"]).toContain(f);
         }
-        if (s.check && s.check.type !== "ENV_PRESENT" && s.check.type !== "FILING_ACCOUNT_SET") {
+        if (
+          s.check &&
+          (s.check.type === "RECORD_EXISTS" || s.check.type === "RECORD_HAS_NUMBER" || s.check.type === "RECORD_HAS_FILE")
+        ) {
           expect(TEMPLATE_KEYS.has(s.check.templateKey), `${w.key}/${s.key} check`).toBe(true);
         }
       }
@@ -76,6 +79,11 @@ describe("walkthrough data", () => {
         expect(IMPLEMENTED_CHECK_TYPES, `${w.key}/${s.key}`).toContain(s.check.type);
         if (s.check.type === "ENV_PRESENT") {
           expect(SETUP_ENV_ALLOWLIST as readonly string[]).toContain(s.check.env);
+        }
+        if (s.check.type === "ENV_ALL_PRESENT") {
+          for (const name of s.check.envs) {
+            expect(SETUP_ENV_ALLOWLIST as readonly string[]).toContain(name);
+          }
         }
         // describeCheck must cover it too (the screen prints this line).
         expect(describeCheck(s.check).length).toBeGreaterThan(10);

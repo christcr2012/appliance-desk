@@ -43,10 +43,10 @@ import {
   markStepDone,
   reopenStep,
   restoreWalkthrough,
-  saveStepFile,
-  saveStepNumber,
 } from "@/domains/setup/guide";
+import { saveStepFile, saveStepNumber } from "@/domains/setup/step-saves";
 import { listSetupGuideAttention } from "@/domains/exceptions/setup-attention";
+import { ensureStarterRecord, markPaperworkDone } from "@/domains/paperwork";
 import { getRecord } from "@/domains/paperwork/records";
 
 let enabled = false;
@@ -155,6 +155,16 @@ describe.skipIf(!enabled)("SETUP-1 setup guide (real Postgres)", () => {
     expect(step?.fileCount).toBe(1);
   });
 
+  it("does not check a record step for a record that merely exists", async () => {
+    // The starter checklist creates every record empty; existence is not
+    // evidence. The step checks only once the record itself is marked done.
+    await ensureStarterRecord(ownerId, "llc");
+    expect((await stepState("business-basics", "form-llc"))?.checked).toBe(false);
+    const row = await prisma.businessPaperwork.findUniqueOrThrow({ where: { templateKey: "llc" } });
+    await markPaperworkDone(ownerId, row.id, row.version, JUNE);
+    expect((await stepState("business-basics", "form-llc"))?.checked).toBe(true);
+  });
+
   it("sees the filing account once one is set up", async () => {
     expect((await stepState("colorado-sales-tax", "filing-account"))?.checked).toBe(false);
     const account = await prisma.taxFilingAccount.create({
@@ -181,6 +191,23 @@ describe.skipIf(!enabled)("SETUP-1 setup guide (real Postgres)", () => {
     expect(withKey?.checked).toBe(true);
     const vault = await stepState("encryption-keys", "vault-key", keyEnv);
     expect(vault?.checked).toBe(false);
+
+    // Private storage is the PRIVATE store's pair of settings — the public
+    // photo token must not satisfy it, and both settings are required.
+    const noPrivate: NodeJS.ProcessEnv = {
+      ...process.env,
+      BLOB_READ_WRITE_TOKEN: "public-token-does-not-count",
+      PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN: undefined,
+      PRIVATE_PHOTO_BLOB_STORE_ID: undefined,
+    };
+    expect((await stepState("backups", "private-storage", noPrivate))?.checked).toBe(false);
+    const tokenOnly: NodeJS.ProcessEnv = {
+      ...noPrivate,
+      PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN: "present-but-never-shown",
+    };
+    expect((await stepState("backups", "private-storage", tokenOnly))?.checked).toBe(false);
+    const bothPrivate: NodeJS.ProcessEnv = { ...tokenOnly, PRIVATE_PHOTO_BLOB_STORE_ID: "store_present" };
+    expect((await stepState("backups", "private-storage", bothPrivate))?.checked).toBe(true);
   });
 
   it("raises one To do naming the suggested walkthrough, and clears when all are done or dismissed", async () => {

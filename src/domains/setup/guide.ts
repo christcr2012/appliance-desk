@@ -1,10 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
-import { businessDateKey } from "@/lib/business-date";
-import { ensureStarterRecord, updatePaperwork } from "@/domains/paperwork";
-import { attachRecordFile } from "@/domains/paperwork/records";
-import { paperworkInputSchema } from "@/domains/paperwork/schema";
 import {
   WALKTHROUGHS,
   getStep,
@@ -64,7 +60,7 @@ export type SetupGuideState = {
 type SetupFacts = {
   markedDone: Set<string>; // `${walkthroughKey}/${stepKey}`
   dismissed: Set<string>; // walkthroughKey
-  records: Map<string, { id: string; hasNumber: boolean; fileCount: number }>;
+  records: Map<string, { id: string; hasNumber: boolean; fileCount: number; hasBeenDone: boolean }>;
   filingKinds: Set<string>;
 };
 
@@ -73,7 +69,10 @@ async function loadFacts(): Promise<SetupFacts> {
   for (const w of WALKTHROUGHS) {
     for (const s of w.steps) {
       if (s.record?.templateKey) templateKeys.add(s.record.templateKey);
-      if (s.check && s.check.type !== "ENV_PRESENT" && s.check.type !== "FILING_ACCOUNT_SET") {
+      if (
+        s.check &&
+        (s.check.type === "RECORD_EXISTS" || s.check.type === "RECORD_HAS_NUMBER" || s.check.type === "RECORD_HAS_FILE")
+      ) {
         templateKeys.add(s.check.templateKey);
       }
     }
@@ -91,6 +90,7 @@ async function loadFacts(): Promise<SetupFacts> {
         id: true,
         templateKey: true,
         numberEncrypted: true,
+        lastDoneOn: true,
         _count: { select: { recordFiles: { where: { deletedAt: null } } } },
       },
     }),
@@ -117,7 +117,12 @@ async function loadFacts(): Promise<SetupFacts> {
     records: new Map(
       records.map((r) => [
         r.templateKey as string,
-        { id: r.id, hasNumber: r.numberEncrypted != null, fileCount: r._count.recordFiles },
+        {
+          id: r.id,
+          hasNumber: r.numberEncrypted != null,
+          fileCount: r._count.recordFiles,
+          hasBeenDone: r.lastDoneOn != null,
+        },
       ]),
     ),
     filingKinds: new Set(filingAccounts.map((a) => a.kind)),
@@ -129,8 +134,14 @@ export function evaluateCheck(check: SetupCheck, facts: SetupFacts, env: NodeJS.
   switch (check.type) {
     case "ENV_PRESENT":
       return typeof env[check.env] === "string" && env[check.env]!.length > 0;
+    case "ENV_ALL_PRESENT":
+      return check.envs.every((name) => typeof env[name] === "string" && env[name]!.length > 0);
     case "RECORD_EXISTS":
-      return facts.records.has(check.templateKey);
+      // Existence is not evidence: the starter checklist creates every record
+      // empty. The step checks only once the record itself has been marked
+      // done at least once (lastDoneOn) — the owner's own completion mark on
+      // the record, not the row merely being there.
+      return facts.records.get(check.templateKey)?.hasBeenDone === true;
     case "RECORD_HAS_NUMBER":
       return facts.records.get(check.templateKey)?.hasNumber === true;
     case "RECORD_HAS_FILE":
@@ -227,72 +238,4 @@ export async function dismissWalkthrough(userId: string, walkthroughKey: string)
 
 export async function restoreWalkthrough(userId: string, walkthroughKey: string): Promise<void> {
   await writeProgress(userId, "setup.restored", walkthroughKey);
-}
-
-/**
- * Save the number a step produced onto its business record (created from the
- * starter template first if needed), through the paperwork domain so the
- * number is validated, encrypted and audited exactly like the Records
- * screen does it. Then mark the step done.
- */
-export async function saveStepNumber(
-  userId: string,
-  walkthroughKey: string,
-  stepKey: string,
-  numberValue: string,
-): Promise<void> {
-  const found = getStep(walkthroughKey, stepKey);
-  if (!found?.step.record?.fields.includes("number")) {
-    throw new Error("That step doesn't take a number.");
-  }
-  const templateKey = found.step.record.templateKey;
-  const recordId = await ensureStarterRecord(userId, templateKey);
-  const row = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: recordId } });
-  const input = paperworkInputSchema.parse({
-    title: row.title,
-    groupName: row.groupName,
-    whatItIs: row.whatItIs,
-    agency: row.agency ?? undefined,
-    officialUrl: row.officialUrl ?? undefined,
-    status: row.status,
-    startedOn: row.startedOn ? businessDateKey(row.startedOn) : undefined,
-    dueOn: row.dueOn ? businessDateKey(row.dueOn) : undefined,
-    referenceNumber: row.referenceNumber ?? undefined,
-    notes: row.notes ?? undefined,
-    remindDaysBefore: row.remindDaysBefore,
-    repeatEveryMonths: row.repeatEveryMonths ?? undefined,
-    kind: row.kind,
-    issuedOn: row.issuedOn ? businessDateKey(row.issuedOn) : undefined,
-    expiresOn: row.expiresOn ? businessDateKey(row.expiresOn) : undefined,
-    numberLabel: row.numberLabel ?? undefined,
-    numberValue,
-    portalUrl: row.portalUrl ?? undefined,
-    costDollars:
-      row.costCents != null
-        ? `${Math.floor(row.costCents / 100)}.${String(row.costCents % 100).padStart(2, "0")}`
-        : undefined,
-    linkedObligationKeys: row.linkedObligationKeys,
-  });
-  await updatePaperwork(userId, recordId, input, row.version);
-  await markStepDone(userId, walkthroughKey, stepKey);
-}
-
-/**
- * Attach the file a step produced to its business record (created first if
- * needed) through the records domain — magic bytes, private storage and
- * audit all come from there. Then mark the step done.
- */
-export async function saveStepFile(
-  userId: string,
-  walkthroughKey: string,
-  stepKey: string,
-  file: { fileName: string; bytes: Uint8Array; label?: string },
-): Promise<void> {
-  const found = getStep(walkthroughKey, stepKey);
-  if (!found?.step.record?.fields.includes("file")) {
-    throw new Error("That step doesn't take a file.");
-  }
-  const recordId = await ensureStarterRecord(userId, found.step.record.templateKey);
-  await attachRecordFile(userId, recordId, file);
-  await markStepDone(userId, walkthroughKey, stepKey);
 }

@@ -2,14 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
-import {
-  dismissWalkthrough,
-  markStepDone,
-  reopenStep,
-  restoreWalkthrough,
-  saveStepFile,
-  saveStepNumber,
-} from "@/domains/setup/guide";
+import { dismissWalkthrough, markStepDone, reopenStep, restoreWalkthrough } from "@/domains/setup/guide";
+import { saveStepFile, saveStepNumber } from "@/domains/setup/step-saves";
 
 export type StepSaveState = { status: "idle" } | { status: "error"; message: string } | { status: "saved" };
 

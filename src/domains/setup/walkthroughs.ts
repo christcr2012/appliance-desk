@@ -17,6 +17,8 @@ export const SETUP_ENV_ALLOWLIST = [
   "COMPLIANCE_ENCRYPTION_KEY",
   "VAULT_ENCRYPTION_KEY",
   "BLOB_READ_WRITE_TOKEN",
+  "PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN",
+  "PRIVATE_PHOTO_BLOB_STORE_ID",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
   "RESEND_API_KEY",
@@ -27,6 +29,7 @@ export type FilingAccountKind = "SALES_RETURN" | "USE_TAX_RETURN" | "RETAIL_DELI
 
 export type SetupCheck =
   | { type: "ENV_PRESENT"; env: SetupEnvName }
+  | { type: "ENV_ALL_PRESENT"; envs: readonly SetupEnvName[] }
   | { type: "RECORD_EXISTS"; templateKey: string }
   | { type: "RECORD_HAS_NUMBER"; templateKey: string }
   | { type: "RECORD_HAS_FILE"; templateKey: string }
@@ -36,6 +39,7 @@ export type SetupCheckType = SetupCheck["type"];
 
 export const IMPLEMENTED_CHECK_TYPES: readonly SetupCheckType[] = [
   "ENV_PRESENT",
+  "ENV_ALL_PRESENT",
   "RECORD_EXISTS",
   "RECORD_HAS_NUMBER",
   "RECORD_HAS_FILE",
@@ -463,9 +467,12 @@ export const WALKTHROUGHS: readonly Walkthrough[] = [
       {
         key: "private-storage",
         title: "Confirm private storage is connected",
-        body: "In Vercel choose your project → Storage and confirm the private blob store exists and its token (BLOB_READ_WRITE_TOKEN) is set for the project. The app only checks the token is there — it never shows it.",
+        body: "Record files and exports use the app's PRIVATE blob store — not the public photo store. In Vercel choose your project → Storage, confirm the private blob store exists, and confirm both of its settings are set for the project: PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN and PRIVATE_PHOTO_BLOB_STORE_ID (the token must belong to that store). The app only checks the settings are there — it never shows them.",
         link: { href: "https://vercel.com/dashboard", label: "Vercel dashboard" },
-        check: { type: "ENV_PRESENT", env: "BLOB_READ_WRITE_TOKEN" },
+        check: {
+          type: "ENV_ALL_PRESENT",
+          envs: ["PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN", "PRIVATE_PHOTO_BLOB_STORE_ID"],
+        },
       },
     ],
   },
@@ -476,8 +483,10 @@ export function describeCheck(check: SetupCheck): string {
   switch (check.type) {
     case "ENV_PRESENT":
       return `the app can see the ${check.env} key is set (the key itself is never shown)`;
+    case "ENV_ALL_PRESENT":
+      return `the app can see the ${check.envs.join(" and ")} settings are set (their values are never shown)`;
     case "RECORD_EXISTS":
-      return "the business record exists";
+      return "the business record is marked done";
     case "RECORD_HAS_NUMBER":
       return "a number is saved on the business record";
     case "RECORD_HAS_FILE":
