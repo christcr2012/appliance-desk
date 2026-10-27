@@ -1,3 +1,11 @@
+## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
+
+MERGED earlier: the review check (#685) and OPS-4 "Keep certificate on record" (#687, squash `ffac3c8`). #687 merged
+before its two Codex fixes landed because `review-gate` is not yet a required check (one row on OWNER-CHECKLIST
+section A needs Chris). This PR carries those fixes: policy saves keep the owner's reminder days on the record, and
+renewing a linked record moves the policy's end date in the same step. Tests on real Postgres pass.
+NEXT: OPS-3 vehicle-to-insurance link, then OPS-2 leftovers.
+
 ## October 27 — Lane 7 follow-ups: review gate merged, insurance certificate on a record
 
 MERGED: the automatic-merge safety check (`review-gate`, PR #685). Self-review notes now have to name the commit

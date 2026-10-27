@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { businessDateKey } from "@/lib/business-date";
 import { archivePolicy, keepCertificateOnRecord, requestCertificate, savePolicy, saveReminderDays, saveWorkersComp } from "@/domains/insurance/actions";
+import { renewRecord } from "@/domains/paperwork/records";
 import { loadInsuranceOverview } from "@/domains/insurance/reads";
 import { listInsuranceAttention } from "@/domains/exceptions/insurance-attention";
 
@@ -148,5 +149,14 @@ describe.skipIf(!enabled)("insurance (real Postgres)", () => {
     expect(renewed.costCents).toBe(260_000);
     expect(renewed.id).toBe(record.id);
     expect(renewed.expiresOn?.getTime()).not.toBe(record.expiresOn?.getTime());
+    // The owner's own reminder setting on the record survives a policy save...
+    await prisma.businessPaperwork.update({ where: { id: record.id }, data: { remindDaysBefore: 45 } });
+    await savePolicy(ownerId, id, { ...base, policyNumber: "CERT-OPS4", agentName: "New Agent", expiresOnKey: key(500), annualPremiumCents: 260_000 });
+    expect((await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: record.id } })).remindDaysBefore).toBe(45);
+    // ...and renewing through the record carries the new end date back onto the policy.
+    const current = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: record.id } });
+    await renewRecord(ownerId, record.id, { expiresOn: key(700), expectedVersion: current.version });
+    const policy = await prisma.ownerInsurancePolicy.findUniqueOrThrow({ where: { id } });
+    expect(businessDateKey(policy.expiresOn)).toBe(key(700));
   });
 });
