@@ -12,4 +12,23 @@ Requested by Chris 2026-10-25. Depends on TFA-1, DEC-1a. Risk: **stored tax ids 
 - [ ] Compliance screen tabs and filing page pass axe, phone/desktop; `ci` green; every review comment read.
 
 ## Progress
-Not started.
+Built and opened as PR #627 (branch `ai/vivienne/cmp-1`). Registry, encrypted
+business facts, the prepare/approve/submit flow, screens, To do category and
+the filled-form engine are all in, with local verification green (typecheck,
+lint, the registry/crypto/forms unit tests and the filings integration tests
+against the lane database). First CI run + Codex review produced one fix
+patch: secret-scan fingerprints for three obligation keys (the rules-registry
+false positive class), the filing state groups moved into the domain for the
+owner-wording check, the route inventory gained the three routes, Compliance
+links from the Taxes home page instead of a fifth tab (the W-3 four-tab rule
+stands), the To do provider synchronizes filings itself, synchronization is
+serialized on the settings row, and rejected guided filings can be prepared
+again. One file is outstanding: the vendored 1040-ES PDF is a binary and
+cannot travel through the text-only GitHub tools here — the PR body carries
+the download link and fingerprint for whoever adds it with git access.
+Second fix round: the scanner had three more obligation keys of the same
+class (fingerprints completed from a full local scan), the owner guide's
+Taxes section now names the Compliance screen, and the filing sync runs on
+the attention surfaces (Today, Taxes home, Compliance) and on facts save
+rather than inside the read-only To do provider, whose contract the
+role-access tests guard.
