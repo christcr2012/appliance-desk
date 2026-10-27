@@ -1,3 +1,6 @@
+## October 27 — Lane 1 AR-12: accessible selection controls and useful views (plan)
+Plan committed before implementation on `ai/chatgpt/ar12-controls-views-20261027`: five accessible kit selectors, starter list views, and supported saved Bills and Customers filters. Tests and exact-head CI will be required before merge; no owner confirmation is assumed.
+
 ## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
 React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 
