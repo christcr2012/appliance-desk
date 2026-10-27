@@ -51,7 +51,10 @@ async function licenseOnFile(
     where: { id: recordId },
     select: { status: true, expiresOn: true },
   });
-  if (!record || record.status === "NOT_NEEDED") return "missing";
+  // Only a record marked done / in place counts as a license actually
+  // held: a TO_DO or IN_PROGRESS record is a license not yet obtained,
+  // and a NOT_NEEDED record is archived. Neither makes a place ready.
+  if (!record || record.status !== "DONE") return "missing";
   if (record.expiresOn && businessDateKey(record.expiresOn) < businessDateKey(now)) {
     return "expired";
   }
@@ -98,6 +101,12 @@ export async function evaluatePlaceReadiness(
     },
   });
 
+  // A "rules not decided" problem is collected, not returned at once:
+  // the license check below runs independently, and a missing required
+  // license (never overrideable) takes precedence over it. Returning
+  // the undecided problem early would let an owner override past a
+  // license the city requires.
+  let rulesProblem: PlaceReadiness["problem"];
   if (jurisdiction.administration === "SELF_COLLECTED") {
     if (!readiness) {
       return {
@@ -116,21 +125,14 @@ export async function evaluatePlaceReadiness(
       jurisdiction.id,
     );
     if (rentalRule === null || rentalRule === "UNDECIDED") {
-      return {
-        ...base,
-        problem: {
-          code: "RULES_UNDECIDED",
-          message: `The rental tax rule for ${jurisdiction.name} isn't decided yet.`,
-        },
+      rulesProblem = {
+        code: "RULES_UNDECIDED",
+        message: `The rental tax rule for ${jurisdiction.name} isn't decided yet.`,
       };
-    }
-    if (readiness.licenseRequired === "UNKNOWN") {
-      return {
-        ...base,
-        problem: {
-          code: "RULES_UNDECIDED",
-          message: `Whether ${jurisdiction.name} requires a city license isn't checked yet.`,
-        },
+    } else if (readiness.licenseRequired === "UNKNOWN") {
+      rulesProblem = {
+        code: "RULES_UNDECIDED",
+        message: `Whether ${jurisdiction.name} requires a city license isn't checked yet.`,
       };
     }
   }
@@ -172,6 +174,7 @@ export async function evaluatePlaceReadiness(
     }
   }
 
+  if (rulesProblem) return { ...base, problem: rulesProblem };
   return base;
 }
 
@@ -525,7 +528,9 @@ export async function listDeliveryAreaPlaces(
 /** Business records the owner can link as a place's city license. */
 export async function listLicenseRecordOptions(db: Db = prisma) {
   return db.businessPaperwork.findMany({
-    where: { kind: "LICENSE", status: { not: "NOT_NEEDED" } },
+    // Only licenses actually in place can be linked — the check counts
+    // a linked record only when it is DONE (see licenseOnFile).
+    where: { kind: "LICENSE", status: "DONE" },
     select: { id: true, title: true, expiresOn: true },
     orderBy: [{ title: "asc" }, { id: "asc" }],
     take: 100,

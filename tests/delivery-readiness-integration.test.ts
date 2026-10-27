@@ -106,7 +106,10 @@ async function locate(addressId: string, jurisdictionIds: string[]) {
   });
 }
 
-async function makeLicenseRecord(expiresOn: Date | null) {
+async function makeLicenseRecord(
+  expiresOn: Date | null,
+  status: "DONE" | "TO_DO" | "IN_PROGRESS" | "NOT_NEEDED" = "DONE",
+) {
   const id = `dr-record-${tag}-${seq}-${randomUUID().slice(0, 6)}`;
   await prisma.businessPaperwork.create({
     data: {
@@ -114,7 +117,7 @@ async function makeLicenseRecord(expiresOn: Date | null) {
       title: `Test city license ${tag}`,
       groupName: "Licenses",
       kind: "LICENSE",
-      status: "DONE",
+      status,
       expiresOn,
     },
   });
@@ -402,6 +405,51 @@ maybeDescribe("FEETAX-2 delivery readiness (real Postgres)", () => {
     });
     expect(job.id).toBeTruthy();
     await prisma.job.delete({ where: { id: job.id } });
+  });
+
+  it("a missing license takes precedence over an undecided rent rule, so it can never be overridden", async () => {
+    const { customerId, addressId } = await makeAddress();
+    const city = await makeJurisdiction("bothproblems", {
+      readiness: { licenseRequired: "ALWAYS" },
+      // no rentalRule: the rent decision is undecided too
+    });
+    await locate(addressId, [city]);
+    const result = await deliveryTaxReadiness(addressId, NOW);
+    expect(result.ready).toBe(false);
+    expect(result.places[0]?.problem?.code).toBe("LICENSE_REQUIRED");
+    expect(result.overrideable).toBe(false);
+
+    const agreementId = await makeAgreement(customerId, addressId);
+    await expect(
+      prisma.$transaction((tx) =>
+        recordReadinessOverrideInTx(tx, {
+          agreementId,
+          actorUserId: ownerId,
+          reason: "Trying to skip the license via the rent rule",
+          serviceAddressId: addressId,
+        }, NOW),
+      ),
+    ).rejects.toThrow(/can't be overridden/);
+  });
+
+  it("a license record that is not marked done does not count as on file", async () => {
+    const { addressId } = await makeAddress();
+    const pendingId = await makeLicenseRecord(null, "TO_DO");
+    const city = await makeJurisdiction("pendinglicense", {
+      readiness: { licenseRequired: "ALWAYS", licenseRecordId: pendingId },
+      rentalRule: "TAXABLE",
+    });
+    await locate(addressId, [city]);
+    const before = await deliveryTaxReadiness(addressId, NOW);
+    expect(before.ready).toBe(false);
+    expect(before.places[0]?.problem?.code).toBe("LICENSE_REQUIRED");
+
+    await prisma.businessPaperwork.update({
+      where: { id: pendingId },
+      data: { status: "DONE" },
+    });
+    const after = await deliveryTaxReadiness(addressId, NOW);
+    expect(after.ready).toBe(true);
   });
 
   it("recording a delivery count is idempotent per order", async () => {
