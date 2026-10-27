@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   systemIssueCount: vi.fn(),
   officialRateAttention: vi.fn(async () => []),
   rdfRefundAttention: vi.fn(async () => []),
+  rdfSwitches: vi.fn(),
   filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 }, setupChecks: { rows: [], total: 0 } })),
   amendmentAttention: vi.fn(async () => ({ amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } })),
   acquisitionAttention: vi.fn(async () => []),
@@ -44,6 +45,12 @@ vi.mock("@/domains/tax/amendment-attention", () => ({
 vi.mock("@/domains/tax/filing-attention", () => ({
   listTaxFilingAttention: mocks.filingAttention,
   listRdfRefundAttention: mocks.rdfRefundAttention,
+  // TFA-2 §7: the use-tax year-reset notice.
+  listUseTaxResetAttention: vi.fn(async () => []),
+  // TFA-2 §9: expired exemption certificates.
+  listExpiredExemptionAttention: vi.fn(async () => []),
+  // TFA-2 §8: filing-frequency advice.
+  listFilingFrequencyAdviceAttention: vi.fn(async () => []),
 }));
 vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
   listOfficialRateAttention: mocks.officialRateAttention,
@@ -120,6 +127,8 @@ vi.mock("@/lib/prisma", () => ({
       findMany: mocks.officialSourceWatch,
       count: vi.fn().mockResolvedValue(0),
     },
+    // TFA-2: the RDF approval switches read on Today.
+    retailDeliveryFeeSwitch: { findMany: mocks.rdfSwitches },
     // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
     $queryRaw: mocks.raw,
   },
@@ -152,6 +161,7 @@ beforeEach(() => {
     mocks.systemIssues,
     mocks.officialRateAttention,
     mocks.rdfRefundAttention,
+    mocks.rdfSwitches,
     mocks.outOfService,
   ]) {
     fn.mockResolvedValue([]);
@@ -226,6 +236,27 @@ describe("Today server-side visibility", () => {
       expect(mocks.rdfRefundAttention).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("TFA-2 §6.3: a pending delivery-fee switch appears on Today with its approve action", async () => {
+    mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
+    mocks.rdfSwitches.mockResolvedValue([
+      {
+        id: "switch-1",
+        kind: "START",
+        startsOn: new Date(),
+        basisRetailCents: 5_100_000_00,
+        createdAt: new Date(),
+      },
+    ]);
+    const result = await getExceptions();
+    const item = result.find(
+      (x) => x.category === "SALES_TAX" && x.title.startsWith("Delivery fee turns on"),
+    );
+    expect(item).toBeTruthy();
+    expect(item?.action).toEqual(
+      expect.objectContaining({ type: "APPROVE_RDF_SWITCH" }),
+    );
+  });
 
   it.each([getExceptions, getTodaysJobs])(
     "rejects an unauthorized caller before any query",

@@ -1,3 +1,11 @@
+## November 2 — Tax and fee autopilot switches (TFA-2, additive)
+
+Migrations `20261102000000_tfa2_switches` and `20261103000000_tfa2_filing_advice`.
+- `RetailDeliveryFeeSwitch` — one prepared delivery-fee switch: `kind` (START/STOP, new enum `RdfSwitchKind`), `startsOn`, `basisRetailCents` (the prior-year Colorado retail total behind a Jan 1 switch; null for the new-business start), `approvedAt` / `approvedByUserId`, `createdAt`. Unique on (`kind`, `startsOn`); index on `startsOn`. The app prepares and dates each switch; it changes a customer bill only after the owner approves it on Today, and until then the fee is owed but not billed. In `BACKUP_MODEL_POLICY`.
+- `Invoice.replacementOfInvoiceId` — nullable, no foreign key: the original bill a replacement (exchange) sale replaces, so the exchange charges no second delivery fee.
+- `FilingFrequencyAdvice` — one filing-frequency advice: `filingAccountId` (FK to `TaxFilingAccount`, restrict on delete), `currentFrequency` / `advisedFrequency` (`TaxFilingFrequency`), `averageMonthlyCents` (trailing-12-month average of state and state-collected tax), `computedOn`, `confirmedAt` / `confirmedByUserId`. Index on (`filingAccountId`, `computedOn`). The app never changes frequency itself; the owner's confirm sets the account frequency for future periods and marks the advice. In `BACKUP_MODEL_POLICY`.
+
+
 ## October 26 — Remember this device (ACC-6, additive)
 
 `KnownDevice` — one row per person per device cookie: `deviceHash` (SHA-256 of the device cookie value; the value itself is never stored), `label` (kind of device and browser, for the list only), first/last seen, `trustedUntil` (set when the person ticks "Remember this device", never extended by later sign-ins) and `forgottenAt`. Unique on (`userId`, `deviceHash`); rows are removed with the user and left out of backups (a restore re-records devices as people sign in). `BusinessSettings.trustedDeviceDays` (30, CHECK 0–90; 0 = always ask for the code). The library's own trust rows live in the existing `Verification` table (`trust-device-…` identifiers, user id as the value) and are clamped to the device's remembered-until date. Migration `20261030010000_known_devices`.

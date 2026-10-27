@@ -1,5 +1,6 @@
 import { assertNotRecalledForSale } from "@/domains/recalls/guard";
-import { recordShopSaleDeliveryFeeInTx, voidShopSaleDeliveryFeeInTx } from "@/domains/tax/rdf-shop-sale";
+import { recordShopSaleDeliveryFeeInTx, shopSaleFeeKeptOnReturnInTx, voidShopSaleDeliveryFeeInTx } from "@/domains/tax/rdf-shop-sale";
+import { exemptionBackdateCreditCentsForInvoiceInTx } from "@/domains/tax/exemptions";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -54,6 +55,8 @@ export type ShopSaleInput = {
   items: ShopSaleItem[];
   /** Retired appliances being sold in this sale (at most one live sale per appliance). */
   usedAppliances?: ShopSaleAppliance[];
+  /** TFA-2: set when this sale replaces (exchanges) another shop sale, so the delivery fee is never charged twice. */
+  replacementOfInvoiceId?: string | null;
   deliveryChargeCents?: number;
   installationChargeCents?: number;
   note?: string;
@@ -117,7 +120,7 @@ function payloadHash(input: ShopSaleInput): string {
     .sort((a, b) => (a.partRecordId < b.partRecordId ? -1 : 1))
     .map((i) => [i.partRecordId, i.quantity, i.unitPriceCents, cleanText(i.priceReason, 200)]);
   return createHash("sha256")
-    .update(JSON.stringify([input.customerId, cleanText(input.walkInName, 80), input.location, input.serviceAddressId ?? null, items, [...(input.usedAppliances ?? [])].sort((a, b) => (a.applianceId < b.applianceId ? -1 : 1)).map((a) => [a.applianceId, a.unitPriceCents, a.sellerCostsCents ?? 0]), input.deliveryChargeCents ?? 0, input.installationChargeCents ?? 0, cleanText(input.note, 300)]))
+    .update(JSON.stringify([input.customerId, cleanText(input.walkInName, 80), input.location, input.serviceAddressId ?? null, items, [...(input.usedAppliances ?? [])].sort((a, b) => (a.applianceId < b.applianceId ? -1 : 1)).map((a) => [a.applianceId, a.unitPriceCents, a.sellerCostsCents ?? 0]), input.deliveryChargeCents ?? 0, input.installationChargeCents ?? 0, cleanText(input.note, 300), input.replacementOfInvoiceId ?? null]))
     .digest("hex");
 }
 
@@ -150,6 +153,14 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
       const address = await tx.serviceAddress.findFirst({ where: { id: input.serviceAddressId, customerId }, select: { id: true } });
       if (!address) throw new Error("That address doesn't belong to this customer.");
       serviceAddressId = address.id;
+    }
+
+    if (input.replacementOfInvoiceId) {
+      const replaced = await tx.invoice.findFirst({
+        where: { id: input.replacementOfInvoiceId, saleKind: "SHOP_SALE", customerId },
+        select: { id: true },
+      });
+      if (!replaced) throw new Error("Couldn't find the sale this one replaces.");
     }
 
     // Lock order: the customer's ledger, then the parts sorted by id (as everywhere else).
@@ -218,6 +229,7 @@ export async function createShopSale(actorUserId: string, input: ShopSaleInput, 
         saleKind: "SHOP_SALE",
         saleLocation: input.location,
         saleServiceAddressId: serviceAddressId,
+        replacementOfInvoiceId: input.replacementOfInvoiceId ?? null,
         walkInName: walkIn ? cleanText(input.walkInName, 80) : null,
         saleOperationKey: input.operationKey,
       },
@@ -386,8 +398,9 @@ export async function cancelShopSale(actorUserId: string, invoiceId: string, rea
 export type ReturnShopSaleResult = { invoiceId: string; invoiceNumber: number; refundedCents: number; restocked: number; alreadyReturned: boolean };
 
 /**
- * Takes back a PAID sale of parts and items: the whole amount paid (tax included) is refunded through the normal
- * refund path (so the tax return and the books follow it), and every item goes back on the shelf with a reversal entry.
+ * Takes back a PAID sale of parts and items: the amount paid (tax included) is refunded through the normal
+ * refund path (so the tax return and the books follow it), EXCEPT the delivery fee, which is still owed after
+ * a return (TFA-2 §6.5) and is kept so it can be remitted. Every item goes back on the shelf with a reversal entry.
  * Safe to run again after an interruption: money already refunded is never refunded twice, and the items are put back only
  * once the refund is confirmed (a card refund Stripe has not confirmed yet holds the restock back). A used appliance on
  * the sale is refused here. An admin at or over the owner's refund limit is told to ask the owner.
@@ -425,7 +438,12 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
         throw new Error("This sale was paid in more than one way (part card, part cash or check, or more than one card payment), so it can't be taken back in one step yet. Refund each payment from Billing, then ask for help putting the items back. Nothing was changed.");
       }
     }
-    return { refundable: sale.amountPaidCents - (refunds._sum.amountCents ?? 0), invoiceNumber: sale.invoiceNumber, saleId: sale.id };
+    // TFA-2 §6.5: the delivery fee is still owed after a return, so it is kept out of the refund.
+    const feeKeptCents = await shopSaleFeeKeptOnReturnInTx(tx, sale.id);
+    // Tax already handed back as a back-dated exemption credit is also
+    // out of the refund — the customer never receives the same tax twice.
+    const creditCents = await exemptionBackdateCreditCentsForInvoiceInTx(tx, found.customerId, sale.id);
+    return { refundable: Math.max(0, sale.amountPaidCents - (refunds._sum.amountCents ?? 0) - feeKeptCents - creditCents), invoiceNumber: sale.invoiceNumber, saleId: sale.id };
   });
   if ("finished" in plan && plan.finished) return plan.finished;
   const { refundable, invoiceNumber, saleId } = plan as { refundable: number; invoiceNumber: number; saleId: string };
@@ -446,7 +464,10 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
     const sale = await tx.invoice.findUniqueOrThrow({ where: { id: saleId }, select: { amountPaidCents: true, lineItems: { select: { id: true, applianceId: true } } } });
     const refunds = await tx.refund.findMany({ where: { invoiceId: saleId }, select: { id: true, amountCents: true } });
     const refundedCents = refunds.reduce((n, r) => n + r.amountCents, 0);
-    if (refundedCents < sale.amountPaidCents) throw new Error("The refund was not fully recorded, so the items were not put back. Please try again.");
+    // TFA-2 §6.5: the delivery fee is kept, so a complete refund is the amount paid minus that fee.
+    const feeKeptCents = await shopSaleFeeKeptOnReturnInTx(tx, saleId);
+    const creditCents = await exemptionBackdateCreditCentsForInvoiceInTx(tx, found.customerId, saleId);
+    if (refundedCents < sale.amountPaidCents - feeKeptCents - creditCents) throw new Error("The refund was not fully recorded, so the items were not put back. Please try again.");
     const unfinished = refunds.length
       ? await tx.providerOperation.count({ where: { kind: "REFUND_CREATE", subjectType: "Refund", subjectId: { in: refunds.map((r) => r.id) }, status: { not: "SUCCEEDED" } } })
       : 0;
@@ -480,11 +501,11 @@ export async function returnShopSale(actorUserId: string, invoiceId: string, rea
       // The line keeps its words and amount for the record, but the appliance is no longer "on a sale", so it can be sold again.
       await tx.invoiceLineItem.updateMany({ where: { invoiceId: saleId, applianceId: { in: takenBack } }, data: { applianceId: null } });
     }
-    // The delivery fee goes back with the sale: the customer was refunded everything, fee included.
-    const lastRefund = [...refunds].sort((a, b) => b.amountCents - a.amountCents)[0];
-    await voidShopSaleDeliveryFeeInTx(tx, { invoiceId: saleId, refundId: lastRefund?.id ?? null, at: new Date(), actorUserId });
+    // TFA-2 §6.5: the delivery fee does NOT go back with the sale. It is still
+    // owed (the record stays READY for the return) and the customer's refund
+    // above already left it out, so there is nothing to void here.
     await tx.auditLog.create({
-      data: { userId: actorUserId, action: "sale.return", entityType: "Invoice", entityId: saleId, newValue: { reason: why, refundedCents, restockedUnits: restocked, restockedLines: sold.length } },
+      data: { userId: actorUserId, action: "sale.return", entityType: "Invoice", entityId: saleId, newValue: { reason: why, refundedCents, deliveryFeeKeptCents: feeKeptCents, restockedUnits: restocked, restockedLines: sold.length } },
     });
     return { invoiceId: saleId, invoiceNumber, refundedCents, restocked, alreadyReturned: false };
   });

@@ -92,12 +92,8 @@ export async function provisionalRdfOrderDecisionInTx(
   const year=Number(businessDateKey(at).slice(0,4));
   // TFA-1: the small-seller limit and the fee amount are dated rules, not settings or a rate table.
   const thresholdCents=(await ruleAsOf<number>("co.rdf.qualified_threshold",at,tx)).value;
-  const [previous,current,filing]=await Promise.all([
+  const [previous,current]=await Promise.all([
     recordedRetailSales(tx,year-1),recordedRetailSales(tx,year),
-    tx.taxFilingAccount.findFirst({
-      where:{kind:"SALES_RETURN",jurisdictions:{some:{level:"STATE"}}},
-      select:{frequency:true},
-    }),
   ]);
   const decision=retailDeliveryFeeStatus({
     today:at,saleType:"RENTAL",
@@ -106,7 +102,6 @@ export async function provisionalRdfOrderDecisionInTx(
     thresholdCents,
     thresholdCrossedOn:settings.rdfThresholdCrossedOn,
     handling:settings.rdfHandling,cpaConfirmedOn:settings.rdfCpaConfirmedOn,
-    frequency:filing?.frequency??"MONTHLY",
   });
   if(decision.status==="UNDECIDED")return {status:"UNDECIDED",amountCents:null,
     rateId:null,ruleVersionId:null,handling:settings.rdfHandling,reason:decision.reason};

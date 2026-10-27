@@ -4,9 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { claimProviderOperation, completeProviderOperation, runProviderCall } from "@/domains/billing/provider-ops";
 import { applyLocalInvoiceTaxInTx } from "./local-invoice";
+import { rdfFeeAbsorbedByLateApproval } from "./rdf-switches";
+import { businessDateKey } from "@/lib/business-date";
 
 type Tx = Prisma.TransactionClient;
-export const RDF_LINE_DESCRIPTION = "Colorado retail delivery fee";
+// TFA-2 §6.6: the customer line reads with the statute's own words.
+export const RDF_LINE_DESCRIPTION = "Retail delivery fees";
+// Lines and provider intents created before the wording change carry this
+// text; they are still verified against it so nothing in flight breaks.
+export const RDF_LINE_DESCRIPTION_LEGACY = "Colorado retail delivery fee";
 const SEND_AUDIT = "tax.rdf.provider_send_started";
 const INTENT_AUDIT = "tax.rdf.provider_intent";
 
@@ -19,11 +25,21 @@ export function rdfChargingEnabled(): boolean {
   return process.env.RDF_CUSTOMER_CHARGING_ENABLED === "true";
 }
 
-function fingerprint(recordId: string, subscriptionId: string, customerId: string, cents: number) {
+function fingerprintWith(description: string, recordId: string, subscriptionId: string, customerId: string, cents: number) {
   return createHash("sha256").update(JSON.stringify({
     version: 1, recordId, subscriptionId, customerId, cents,
-    description: RDF_LINE_DESCRIPTION, currency: "usd", taxRates: [],
+    description, currency: "usd", taxRates: [],
   })).digest("hex");
+}
+
+function fingerprint(recordId: string, subscriptionId: string, customerId: string, cents: number) {
+  return fingerprintWith(RDF_LINE_DESCRIPTION, recordId, subscriptionId, customerId, cents);
+}
+
+/** An intent recorded before the wording change hashes with the legacy text. */
+function intentHashMatches(hash: unknown, recordId: string, subscriptionId: string, customerId: string, cents: number): boolean {
+  return hash === fingerprint(recordId, subscriptionId, customerId, cents) ||
+    hash === fingerprintWith(RDF_LINE_DESCRIPTION_LEGACY, recordId, subscriptionId, customerId, cents);
 }
 
 export type PreparedRdfCharge =
@@ -62,6 +78,28 @@ export async function prepareRdfChargeInTx(
   });
   if (record.status !== "READY" || record.collectedFromCustomer !== true) return { kind: "NONE" };
   if (record.invoiceLineId) return { kind: "NONE" };
+  // TFA-2 §6.3/§4a: a delivery made while its START switch awaited approval
+  // is never charged retroactively. Persist the absorbed disposition (the
+  // business carries this fee; it is still reported) so no later pass can
+  // pick the record up again.
+  if (await rdfFeeAbsorbedByLateApproval(tx, record.deliveredOn)) {
+    await tx.retailDeliveryFeeRecord.update({
+      where: { id: record.id },
+      data: { collectedFromCustomer: false },
+    });
+    await tx.auditLog.create({
+      data: {
+        action: "tax.rdf.charge_absorbed",
+        entityType: "RetailDeliveryFeeRecord",
+        entityId: record.id,
+        newValue: {
+          reason: "The delivery happened before the delivery-fee switch was approved; the business carries this fee.",
+          deliveredOn: businessDateKey(record.deliveredOn),
+        },
+      },
+    });
+    return { kind: "NONE" };
+  }
   const cents = record.amountCents;
   if (!Number.isSafeInteger(cents) || cents === null || cents <= 0) {
     throw new Error("A READY collected delivery fee must have a positive integer-cent rate.");
@@ -97,7 +135,7 @@ export async function prepareRdfChargeInTx(
         where: { entityType: "ProviderOperation", entityId: prior.id, action: INTENT_AUDIT },
         select: { newValue: true },
       });
-      if ((intent?.newValue as { hash?: unknown } | null)?.hash !== hash)
+      if (!intentHashMatches((intent?.newValue as { hash?: unknown } | null)?.hash, record.id, subscriptionId, customerId, cents))
         throw new Error("RDF provider payload changed after its immutable intent was recorded.");
       return { kind: "PROVIDER", operationId: prior.id };
     }
@@ -215,7 +253,7 @@ export async function dispatchRdfCharge(operationId: string): Promise<void> {
     const payload = evidence?.newValue as { hash?: string; recordId?: string; subscriptionId?: string; customerId?: string; cents?: number } | null;
     if (!payload?.recordId || !payload.subscriptionId || !payload.customerId ||
         !payload.cents || !payload.hash || payload.recordId !== op.subjectId ||
-        payload.hash !== fingerprint(payload.recordId, payload.subscriptionId, payload.customerId, payload.cents))
+        !intentHashMatches(payload.hash, payload.recordId, payload.subscriptionId, payload.customerId, payload.cents))
       throw new Error("RDF provider intent has invalid or missing immutable payload.");
     const record = await tx.retailDeliveryFeeRecord.findUniqueOrThrow({
       where: { id: payload.recordId },
