@@ -57,6 +57,20 @@ beforeAll(async () => {
   });
   serviceAddressId = serviceAddress.id;
 
+  // FEETAX-2: converting an estimate refuses an address whose tax places
+  // are not confirmed yet, so the address is confirmed into the
+  // state-collected state jurisdiction (ready: no city license rule).
+  await prisma.addressTaxLocation.create({
+    data: {
+      serviceAddressId: serviceAddress.id,
+      status: "VERIFIED",
+      source: "MANUAL",
+      lookedUpAt: new Date(),
+      isCurrent: true,
+      jurisdictions: { create: [{ jurisdictionId: "tax-jurisdiction-co" }] },
+    },
+  });
+
   const estimate = await prisma.estimate.create({
     data: {
       customerId: customer.id,
@@ -98,6 +112,7 @@ afterAll(async () => {
   });
   await prisma.rentalAgreement.deleteMany({ where: { customerId } });
   await prisma.estimate.deleteMany({ where: { customerId } });
+  await prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId } });
   await prisma.serviceAddress.delete({ where: { id: serviceAddressId } });
   await prisma.customer.delete({ where: { id: customerId } });
   await prisma.auditLog.deleteMany({

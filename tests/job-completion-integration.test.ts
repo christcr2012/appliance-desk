@@ -401,6 +401,45 @@ describe.skipIf(!enabled)("completeJob", () => {
     expect(await prisma.staffTask.count({ where: { id: task.id } })).toBe(1);
   });
 
+  it("FEETAX-2: a delivery job with no address of its own counts the delivery through the agreement's address", async () => {
+    const jurisdictionId = `jc-city-${tag}`;
+    await prisma.taxJurisdiction.create({
+      data: {
+        id: jurisdictionId,
+        code: `JC${tag.slice(0, 10)}`.toUpperCase(),
+        name: `JC City ${tag.slice(0, 8)}`,
+        level: "CITY",
+        administration: "SELF_COLLECTED",
+        reviewStatus: "REVIEWED",
+      },
+    });
+    await prisma.addressTaxLocation.create({
+      data: {
+        serviceAddressId: addressId,
+        status: "VERIFIED",
+        source: "MANUAL",
+        lookedUpAt: new Date(),
+        isCurrent: true,
+        jurisdictions: { create: [{ jurisdictionId }] },
+      },
+    });
+    try {
+      const u = await unit();
+      const j = await job("DELIVERY", [u], { serviceAddressId: null });
+      const result = await finish(j.id, [[u, "DELIVERED"]]);
+      expect(result.outcome).toBe("COMPLETE");
+      const rows = await prisma.jurisdictionDeliveryCount.findMany({
+        where: { jurisdictionId },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.orderId).toBe(agreementId);
+    } finally {
+      await prisma.jurisdictionDeliveryCount.deleteMany({ where: { jurisdictionId } });
+      await prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId: addressId } });
+      await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+    }
+  });
+
   it("rejects fabricated hookup claims on undelivered results without completing or moving custody", async () => {
     const u = await unit();
     const j = await job("DELIVERY", [u]);

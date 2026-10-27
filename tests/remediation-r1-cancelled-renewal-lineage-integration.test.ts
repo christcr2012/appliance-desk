@@ -93,6 +93,19 @@ describe.skipIf(!enabled)("Remediation R1 cancelled-renewal lineage guard (real 
     await prisma.serviceAddress.create({
       data: { id: addressId, customerId, line1: "3 Remediation Way", city: "Greeley", zip: "80631" },
     });
+    // FEETAX-2: creating a field-work job refuses an address whose tax
+    // places are not confirmed yet, so the address is confirmed into
+    // the state-collected state jurisdiction (ready: no license rule).
+    await prisma.addressTaxLocation.create({
+      data: {
+        serviceAddressId: addressId,
+        status: "VERIFIED",
+        source: "MANUAL",
+        lookedUpAt: new Date(),
+        isCurrent: true,
+        jurisdictions: { create: [{ jurisdictionId: "tax-jurisdiction-co" }] },
+      },
+    });
     await prisma.applianceType.create({
       data: {
         id: typeId,
@@ -119,6 +132,7 @@ describe.skipIf(!enabled)("Remediation R1 cancelled-renewal lineage guard (real 
     await prisma.rentalAgreement.deleteMany({ where: { id: { in: agreementIds } } });
     await prisma.appliance.deleteMany({ where: { id: { in: applianceIds } } });
     await prisma.applianceType.deleteMany({ where: { id: typeId } });
+    await prisma.addressTaxLocation.deleteMany({ where: { serviceAddressId: addressId } });
     await prisma.serviceAddress.deleteMany({ where: { id: addressId } });
     await prisma.customer.deleteMany({ where: { id: customerId } });
     await prisma.user.deleteMany({ where: { id: { in: [ownerId, customerUserId] } } });
