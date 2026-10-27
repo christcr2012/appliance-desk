@@ -8,8 +8,8 @@ on:
 permissions:
   contents: read
 jobs:
-  lockfile:
-    name: Generate npm lockfile without manual integrity edits
+  verify-next-docs:
+    name: Inspect installed Next.js transition docs
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
@@ -18,11 +18,17 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - name: Generate only lockfile from public npm registry (no lifecycle scripts)
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Return generated lockfile as text chunks for repository connector
+      - name: Verify exact npm lockfile works
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Print installed Next.js transition docs from node_modules
         shell: bash
         run: |
-          echo 'AR11_LOCK_BEGIN'
-          base64 -w 1600 package-lock.json | sed 's/^/AR11_LOCK_CHUNK: /'
-          echo 'AR11_LOCK_END'
+          set -euo pipefail
+          echo NEXT_DOCS_BEGIN
+          find node_modules/next/dist/docs -type f \( -iname '*view*transition*' -o -iname '*navigation*' -o -iname '*link*' \) | head -40
+          while IFS= read -r file; do
+            echo "NEXT_DOC_FILE: $file"
+            sed -n '1,180p' "$file"
+            echo NEXT_DOC_FILE_END
+          done < <(find node_modules/next/dist/docs -type f \( -iname '*view*transition*' -o -iname '*navigation*' \) | head -15)
+          echo NEXT_DOCS_END
