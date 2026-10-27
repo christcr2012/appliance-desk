@@ -1,3 +1,9 @@
+## October 27 — OPS-2: recycler receipt photo on a record (branch `ai/claude/ops2-receipt-photo`)
+
+After a refrigerant record is signed, the owner can keep the recycler's receipt photo or PDF with the business
+records (private files, same pattern as the insurance certificate). Tests on real Postgres pass. Still open on OPS-2:
+the sealed-system repair gate (needs a technician-certification record). Vehicle-insurance link is PR #689 (auto-merge on).
+
 ## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
 
 MERGED earlier: the review check (#685) and OPS-4 "Keep certificate on record" (#687, squash `ffac3c8`). #687 merged

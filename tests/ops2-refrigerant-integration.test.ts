@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { completeRetiredPlan, completeRetiredPlans, setRetiredPlan } from "@/domains/inventory/retired-plans";
-import { loadRefrigerantPanel, loadStatementFacts, saveRefrigerantRecord, saveRefrigerantTypes } from "@/domains/refrigerant/actions";
+import { keepReceiptOnRecord, loadRefrigerantPanel, loadStatementFacts, saveRefrigerantRecord, saveRefrigerantTypes } from "@/domains/refrigerant/actions";
 import type { RefrigerantInput } from "@/domains/refrigerant/rules";
 import { businessDateKey } from "@/lib/business-date";
 
@@ -41,7 +41,9 @@ describe.skipIf(!enabled)("refrigerant records (real Postgres)", () => {
   });
 
   afterAll(async () => {
+    const receipts = await prisma.refrigerantRecord.findMany({ where: { applianceId: { in: created }, receiptRecordId: { not: null } }, select: { receiptRecordId: true } });
     await prisma.refrigerantRecord.deleteMany({ where: { applianceId: { in: created } } });
+    await prisma.businessPaperwork.deleteMany({ where: { id: { in: receipts.map((r) => r.receiptRecordId!) } } });
     await prisma.retiredAppliancePlan.deleteMany({ where: { applianceId: { in: created } } });
     await prisma.auditLog.deleteMany({ where: { entityId: { in: [...created, fridgeType, washerType] } } });
     await prisma.appliance.deleteMany({ where: { id: { in: created } } });
@@ -123,5 +125,26 @@ describe.skipIf(!enabled)("refrigerant records (real Postgres)", () => {
     expect((await prisma.applianceType.findUniqueOrThrow({ where: { id: washerType } })).hasRefrigerant).toBe(true);
     await saveRefrigerantTypes(ownerId, before.map((t) => t.id));
     expect((await prisma.applianceType.findUniqueOrThrow({ where: { id: washerType } })).hasRefrigerant).toBe(false);
+  });
+  it("keeps the recycler's receipt on one business record: owner only, after signing, once", async () => {
+    const id = await retired(fridgeType, "SCRAP");
+    await expect(keepReceiptOnRecord(ownerId, id)).rejects.toThrow(/Sign the refrigerant record first/);
+    await saveRefrigerantRecord(adminId, id, { ...good, recyclerName: "Front Range Metals", receiptReference: "RC-77" });
+    await expect(keepReceiptOnRecord(adminId, id)).rejects.toThrow();
+    await expect(keepReceiptOnRecord(staffId, id)).rejects.toThrow();
+    const both = await Promise.all([keepReceiptOnRecord(ownerId, id), keepReceiptOnRecord(ownerId, id)]);
+    expect(both[0].recordId).toBe(both[1].recordId);
+    expect(both.filter((r) => r.created)).toHaveLength(1);
+    const record = await prisma.businessPaperwork.findUniqueOrThrow({ where: { id: both[0].recordId } });
+    expect(record.kind).toBe("DOCUMENT");
+    expect(record.agency).toBe("Front Range Metals");
+    expect(record.referenceNumber).toBe("RC-77");
+    expect(record.notes).toMatch(/Keep until \d{4}-\d{2}-\d{2}/);
+    expect(await prisma.auditLog.count({ where: { action: "appliance.refrigerant_receipt_record_created", entityId: id } })).toBe(1);
+    const panel = await loadRefrigerantPanel(id, new Date());
+    expect(panel?.receiptRecord).toEqual({ id: record.id, fileCount: 0 });
+    // Re-saving the signed record keeps the receipt link.
+    await saveRefrigerantRecord(adminId, id, { ...good, recyclerName: "Front Range Metals", receiptReference: "RC-78" });
+    expect((await prisma.refrigerantRecord.findUniqueOrThrow({ where: { applianceId: id } })).receiptRecordId).toBe(record.id);
   });
 });

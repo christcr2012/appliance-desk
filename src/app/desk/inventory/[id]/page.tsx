@@ -183,6 +183,8 @@ export default async function ApplianceDetailPage({
             locked={refrigerantPanel.locked}
             keepYears={refrigerantPanel.years}
             keepUntilText={refrigerantPanel.keepUntil ? businessDateKey(refrigerantPanel.keepUntil) : null}
+            isOwner={session.user.role === "OWNER"}
+            receiptRecord={refrigerantPanel.receiptRecord}
             record={refrigerantPanel.record ? {
               refrigerantType: refrigerantPanel.record.refrigerantType, outcome: refrigerantPanel.record.outcome,
               recoveredByName: refrigerantPanel.record.recoveredByName, recoveredByAddress: refrigerantPanel.record.recoveredByAddress,
