@@ -89,6 +89,8 @@ const DEFAULT_SETTINGS = {
   outOfServiceEscalationDays: 3,
   defaultJobDurationMinutes: 120,
   staffMayWorkUnassignedJobs: true,
+  // TFA-3: master switch for the official tax page watches (schema default true).
+  watchOfficialTaxPages: true,
   updatedAt: new Date(0),
 };
 

@@ -93,6 +93,15 @@ export async function listRuleCards(db: RuleDb = prisma, at: Date = new Date()):
 export const DEFAULT_TIMING_PERCENT = 90;
 export const DEFAULT_TIMING_MARGIN_DAYS = 3;
 
+/** The owner watch switch (TFA-3 section 12); starting value on. */
+export async function getWatchOfficialPages(db: RuleDb = prisma): Promise<boolean> {
+  const settings = await db.businessSettings.findUnique({
+    where: { id: "singleton" },
+    select: { watchOfficialTaxPages: true },
+  });
+  return settings?.watchOfficialTaxPages ?? true;
+}
+
 /** Owner timing settings for changes that cost the business (section 3). */
 export async function getRuleTimingSettings(db: RuleDb = prisma): Promise<{
   percent: number;
