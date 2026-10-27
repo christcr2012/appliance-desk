@@ -1,3 +1,12 @@
+## October 27 — Lane 7 follow-ups: review gate merged, insurance certificate on a record
+
+MERGED: the automatic-merge safety check (`review-gate`, PR #685). Self-review notes now have to name the commit
+reviewed and come from the author or a collaborator; Codex findings clear only with a written disposition. It is already
+posting on open PRs. NEEDS CHRIS: two GitHub rule settings (agents cannot edit them) — one row in OWNER-CHECKLIST
+section A; until done, PRs still need a re-sync when main moves. IN PROGRESS (branch `ai/claude/ops-vault-gaps`): OPS-4
+"Keep certificate on record" (links each policy to one Insurance record in the vault; tests on real Postgres pass).
+NEXT: OPS-3 vehicle-to-insurance link, then OPS-2 leftovers.
+
 ## October 27 — Automatic merging and the review gate (branch `ai/claude/auto-merge-review-gate`)
 
 Chris asked for pull requests to merge themselves, because several agents work at once and main keeps moving. Two

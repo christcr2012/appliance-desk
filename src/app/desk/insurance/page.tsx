@@ -5,7 +5,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { formatMoney, moneyInputValue } from "@/lib/money-ui";
 import { loadInsuranceOverview } from "@/domains/insurance/reads";
 import { INSURANCE_KINDS, KIND_HELP, KIND_LABELS, REMIND_FIRST_DEFAULT, REMIND_SECOND_DEFAULT, workersCompSummary, type RenewalState } from "@/domains/insurance/rules";
-import { archivePolicyAction, certificateAction, remindersAction, savePolicyAction, workersCompAction } from "./actions";
+import { archivePolicyAction, certificateAction, keepCertificateAction, remindersAction, savePolicyAction, workersCompAction } from "./actions";
 import { Field, InsuranceForm, Select } from "./forms";
 
 export const metadata = { title: "Insurance" };
@@ -62,6 +62,16 @@ export default async function InsurancePage() {
                 <p className="text-sm">Policy {p.policyNumber} · ends {dateText(p.expiresOn)} · <span className={p.state.kind === "ok" ? "" : "font-semibold"}>{stateText(p.state)}</span></p>
                 <p className="text-sm text-ink-soft">{p.limitsText ? `Limits: ${p.limitsText}. ` : "Limits not written down yet — ask your agent. "}{p.annualPremiumCents != null ? `About ${formatMoney(p.annualPremiumCents)} a year.` : ""}</p>
                 <p className="mt-1 text-xs text-ink-soft">{KIND_HELP[p.kind]}</p>
+                <div className="mt-2 text-sm">
+                  {p.record ? (
+                    <p>
+                      Certificate: {p.record.recordFiles.length > 0 ? `${p.record.recordFiles[0].fileName}${p.record.recordFiles.length > 1 ? ` and ${p.record.recordFiles.length - 1} older file${p.record.recordFiles.length === 2 ? "" : "s"}` : ""}, kept privately` : "no file uploaded yet"}.{" "}
+                      <Link className="underline" href={`/desk/paperwork/${p.record.id}`}>Open the certificate record</Link> to {p.record.recordFiles.length > 0 ? "add a newer file" : "upload the PDF"}. Its end date and yearly cost follow this policy.
+                    </p>
+                  ) : (
+                    <InsuranceForm action={keepCertificateAction.bind(null, p.id)} submit="Keep the certificate PDF with my business records" secondary />
+                  )}
+                </div>
                 <details className="mt-3">
                   <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Change this policy</summary>
                   <InsuranceForm action={savePolicyAction.bind(null, p.id)} submit="Save changes"><PolicyFields p={p} /></InsuranceForm>

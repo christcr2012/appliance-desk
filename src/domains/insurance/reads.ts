@@ -7,7 +7,10 @@ export async function loadInsuranceOverview(now: Date) {
       where: { id: "singleton" }, create: { id: "singleton" }, update: {},
       select: { insuranceRemindFirstDays: true, insuranceRemindSecondDays: true, workersCompStatus: true, workersCompEmployees: true, workersCompNote: true, workersCompFormSentOn: true, workersCompMailNumber: true },
     }),
-    prisma.ownerInsurancePolicy.findMany({ orderBy: [{ archivedAt: { sort: "asc", nulls: "first" } }, { expiresOn: "asc" }], take: 200 }),
+    prisma.ownerInsurancePolicy.findMany({
+      orderBy: [{ archivedAt: { sort: "asc", nulls: "first" } }, { expiresOn: "asc" }], take: 200,
+      include: { record: { select: { id: true, recordFiles: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, select: { fileName: true, createdAt: true } } } } },
+    }),
     prisma.insuranceCertificateRequest.findMany({ orderBy: { requestedAt: "desc" }, take: 20, include: { policy: { select: { insurer: true, kind: true } } } }),
   ]);
   const withState = policies.map((p) => ({ ...p, state: renewalState(p.expiresOn, now, settings.insuranceRemindFirstDays, settings.insuranceRemindSecondDays) as RenewalState }));
