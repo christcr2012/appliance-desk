@@ -142,7 +142,7 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
 
   return (
     <div ref={surface} data-pull-to-refresh onPointerDown={down} onPointerMove={move} onPointerUp={end} onPointerCancel={cancel}>
-      <div aria-live="polite" role="status" className="min-h-4 text-center text-xs text-ink-soft lg:hidden">
+      <div data-testid="pull-refresh-status" aria-live="polite" role="status" className="min-h-4 text-center text-xs text-ink-soft lg:hidden">
         {pending ? "Refreshing…" : distance >= PULL_REFRESH_THRESHOLD ? "Release to refresh" :
           distance > 0 ? "Pull down to refresh" : updated ? "Updated just now" : ""}
       </div>

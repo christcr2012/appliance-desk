@@ -25,9 +25,9 @@ test("mobile Today supports gesture refresh and keeps the bottom bar reachable",
   for (const offset of [30, 60, 95]) {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y + offset }] });
   }
-  await expect(pull.getByRole("status")).toHaveText("Release to refresh");
+  await expect(pull.getByTestId("pull-refresh-status")).toHaveText("Release to refresh");
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await expect(pull.getByRole("status")).toHaveText(/Updated just now|Refreshing…/);
+  await expect(pull.getByTestId("pull-refresh-status")).toHaveText(/Updated just now|Refreshing…/);
   await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
 });
 test("reduced motion exposes a manual refresh control without a pull gesture", async ({ page }) => {
@@ -38,8 +38,8 @@ test("reduced motion exposes a manual refresh control without a pull gesture", a
   await expect(pull.getByRole("button", { name: "Refresh" })).toBeVisible();
   await pull.dispatchEvent("pointerdown", { pointerType: "touch", pointerId: 1, clientX: 20, clientY: 10 });
   await pull.dispatchEvent("pointermove", { pointerType: "touch", pointerId: 1, clientX: 20, clientY: 100 });
-  await expect(pull.getByRole("status")).not.toHaveText("Release to refresh");
+  await expect(pull.getByTestId("pull-refresh-status")).not.toHaveText("Release to refresh");
   await pull.dispatchEvent("pointerup", { pointerType: "touch", pointerId: 1, clientX: 20, clientY: 100 });
   await pull.getByRole("button", { name: "Refresh" }).click();
-  await expect(pull.getByRole("status")).toHaveText(/Updated just now|Refreshing…/);
+  await expect(pull.getByTestId("pull-refresh-status")).toHaveText(/Updated just now|Refreshing…/);
 });
