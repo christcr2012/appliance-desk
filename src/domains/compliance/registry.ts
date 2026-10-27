@@ -1,4 +1,5 @@
 import { businessDateFromKey } from "@/lib/business-date";
+import { greeleyPeriods, usdotPeriods, vehiclePeriods } from "./local-schedules";
 
 /**
  * CMP-1: the compliance obligation registry — a pure module, seeded exactly
@@ -32,6 +33,11 @@ export interface ComplianceContext {
   /** Books facts for the period's year, computed by the caller. */
   hasDepreciableAssets: boolean;
   hasAssetSales: boolean;
+  /** CMP-4 facts: the local-filing schedules derive from these. */
+  tradeName: string | null;
+  usdotNumber: string | null;
+  truckRegistrationMonth: number | null; // 1-12
+  greeleyLicenseDate: Date | null;
 }
 
 export interface ObligationPeriod {
@@ -285,12 +291,11 @@ export const OBLIGATIONS: Obligation[] = [
                 ? "Enter the truck's weight rating in Business facts — a USDOT number is needed only at 16,001 lb or more."
                 : `Your truck is rated ${ctx.truckGvwrLbs.toLocaleString("en-US")} lb, under the 16,001 lb line.`,
           },
-    // The biennial schedule derives from the USDOT number's last two
-    // digits (FMCSA), which the app does not record yet — no honest date
-    // exists until it does (DQ-CMP-USDOT), so no period is invented.
-    periods: () => [],
+    // CMP-4: the biennial schedule derives from the USDOT number's last
+    // two digits (FMCSA) once the number is recorded in Business facts.
+    periods: (year, ctx) => usdotPeriods(year, ctx.usdotNumber),
     unscheduledReason:
-      "The update month and year come from the USDOT number itself. Until the number is recorded (see the USDOT question in Decisions & reviews), no date is shown rather than a guessed one.",
+      "The update month and year are read off the USDOT number itself (last digit = the month, next-to-last = odd or even years). Record the number in Business facts and the schedule appears — no date is guessed.",
   },
   {
     key: "co.income.dr0104ep",
@@ -350,41 +355,52 @@ export const OBLIGATIONS: Obligation[] = [
   },
   {
     key: "co.sos.trade_name",
-    title: "Trade name renewal",
+    title: "Trade name",
     agency: "Colorado Secretary of State",
     explain:
-      "If the business files under a trade name, the statement of trade name is renewed with the Secretary of State ($5). The exact renewal rule is being confirmed (see Decisions); the reminder dates are set once it is answered.",
+      "If the LLC does business under a name other than its legal name, that name is registered with the Secretary of State as a trade name. Colorado law (C.R.S. § 7-71-104) keeps a reporting entity's trade name effective for as long as the entity stays in good standing — an LLC never renews it. (The $5 yearly renewal in the SOS fee list applies only to individuals and other non-reporting filers.)",
     sourceUrl: "https://www.coloradosos.gov/biz/businessEntityCriteriaExt.do",
     channel: "GUIDED_WEB",
     unit: "CMP-4",
-    applies: always("Likely applies if you registered a trade name; the renewal rule is unconfirmed."),
-    // Renewal rule unverified (research U): no dates until the Decisions
-    // answer lands; CMP-4 wires the confirmed rule in.
+    applies: (ctx) =>
+      ctx.tradeName
+        ? {
+            applies: false,
+            why: `Your trade name "${ctx.tradeName}" stays effective while the LLC is in good standing — Colorado never asks an LLC to renew it (C.R.S. § 7-71-104). The periodic report is what keeps the standing.`,
+          }
+        : {
+            applies: true,
+            why: "If the business files under a name other than its legal name, record the trade name in Business facts.",
+          },
+    // Confirmed rule (CMP-4): no renewal exists for an LLC, so there are
+    // never dates — this entry keeps the name on record, nothing more.
     periods: () => [],
     unscheduledReason:
-      "The renewal rule is still being confirmed (see Decisions & reviews) — the dates are set as soon as it is answered.",
+      "If you registered a trade name, record it in Business facts. An LLC's trade name never needs renewal, so there will be no dates — this entry just keeps the name on record.",
   },
   {
     key: "greeley.business_license",
     title: "Greeley business license",
     agency: "City of Greeley",
     explain:
-      "Every business operating in Greeley needs a city business license, handled on the city's sales tax portal. The fee and renewal dates are being confirmed (see Decisions); the reminder is set once they are answered.",
+      "Every business operating in Greeley needs a city business license, handled on the city's sales tax portal. The license itself is free and renews every two years on the date it was issued (the city's business license page, checked October 2026). Record the license date in Business facts and the app schedules each renewal, opening the reminder 60 days ahead.",
     sourceUrl: "https://salestax.greeleygov.com",
     channel: "GUIDED_WEB",
     unit: "CMP-4",
     applies: always("The business operates in Greeley, so a city license is required."),
-    // Fee/renewal unverified (research U): CMP-4 wires the confirmed dates.
-    periods: () => [],
+    // CMP-4: biennial periods from the recorded license date (the spec's
+    // starting value, confirmed on the city's page); no date is guessed
+    // before the fact exists.
+    periods: (year, ctx) => greeleyPeriods(year, ctx.greeleyLicenseDate),
     unscheduledReason:
-      "The fee and renewal dates are still being confirmed (see Decisions & reviews) — the dates are set as soon as they are answered.",
+      "The renewal runs every two years from the license date. Add the date your Greeley license was issued (or last renewed) in Business facts and the renewals are scheduled from it — no date is guessed.",
   },
   {
     key: "co.vehicle_registration",
     title: "Truck registration renewal",
     agency: "Colorado DMV / Weld County",
     explain:
-      "The delivery truck's registration and specific ownership tax renew every year in its registration month, at the county motor vehicle office. The month comes from the truck's current registration (a Business fact CMP-4 collects).",
+      "The delivery truck's registration and specific ownership tax renew every year in its registration month, at the county motor vehicle office. The month comes from the truck's current registration, recorded in Business facts.",
     sourceUrl: "https://dmv.colorado.gov/vehicle-registration",
     channel: "GUIDED_WEB",
     unit: "CMP-4",
@@ -392,10 +408,10 @@ export const OBLIGATIONS: Obligation[] = [
       ctx.truckGvwrLbs !== null
         ? { applies: true, why: "You run a delivery truck, so its registration renews yearly." }
         : { applies: false, why: "No truck is recorded yet — enter its weight rating in Business facts." },
-    // The registration month is collected by CMP-4; no dates until then.
-    periods: () => [],
+    // CMP-4: yearly periods in the recorded registration month.
+    periods: (year, ctx) => vehiclePeriods(year, ctx.truckRegistrationMonth),
     unscheduledReason:
-      "The renewal month comes from the truck's current registration, which is not recorded yet — no date is shown rather than a guessed one.",
+      "The renewal month comes from the truck's current registration. Add it in Business facts and the yearly renewal is scheduled — no date is guessed.",
   },
   {
     key: "co.payroll.withholding",
