@@ -61,6 +61,7 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   RECALL_POSSIBLE: "equipment",
   SAFETY_INCIDENT: "equipment",
   RETIRED_SALE_TAX_REVIEW: "equipment",
+  INSURANCE_RENEWAL: "system",
   SALES_TAX: "taxes",
   TAX_RETURN_DUE: "taxes",
   TAX_LICENSE_RENEWAL: "taxes",

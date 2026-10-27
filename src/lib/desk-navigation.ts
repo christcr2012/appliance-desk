@@ -60,7 +60,7 @@ export const DESK_NAV_ALIASES: Record<string, string[]> = {
   // CMP-1: Compliance belongs to the Taxes area (next to sales tax).
   "/desk/sales-tax": ["/desk/compliance"],
   "/desk/more": [
-    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/privacy-security", "/desk/activity", "/desk/paperwork", "/desk/account", "/desk/feedback",
+    "/desk/control-center", "/desk/expenses", "/desk/suppliers", "/desk/growth", "/desk/launch", "/desk/automations", "/desk/privacy", "/desk/privacy-security", "/desk/activity", "/desk/paperwork", "/desk/insurance", "/desk/account", "/desk/feedback",
   ],
 };
 
@@ -74,6 +74,7 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["control-center", "Manage my business", "Everything you can do, grouped by what you want to get done, with a search box.", "finance"],
   ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
   ["paperwork", "Business paperwork", "Your LLC, EIN, licenses and insurance, with reminders before anything needs renewing.", "owner"],
+  ["insurance", "Insurance", "Your policies, when each one ends, workers' compensation and certificate requests.", "owner"],
   ["privacy", "Privacy requests", "Customers asking to see or delete their information.", "owner"],
   ["privacy-security", "Privacy and security", "A possible data leak, how long to keep things, service providers, legal holds and accessibility complaints.", "finance"],
   ["feedback", "App feedback", "Problems with the app and ideas sent by customers and your team.", "finance"],
