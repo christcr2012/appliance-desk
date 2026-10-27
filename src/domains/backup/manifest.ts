@@ -120,6 +120,10 @@ export const BACKUP_MODEL_POLICY = {
   TaxFilingPeriod: "taxFilingPeriod",
   TaxFilingAmendment: "taxFilingAmendment",
   BusinessPaperwork: "businessPaperwork",
+  // VAULT-1: record file index rows are backed up (the file bytes ride the
+  // nightly media copy of the private store). numberEncrypted on the parent
+  // record stays encrypted in backups too; a restore needs the same key.
+  BusinessRecordFile: "businessRecordFile",
   PurchaseUseTax: "purchaseUseTax",
   // W-14/W-2: purchase records, their receipt pages and the parts-receipt tax answer are tax evidence.
   Purchase: "purchase",

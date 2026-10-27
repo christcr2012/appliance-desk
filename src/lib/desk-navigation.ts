@@ -73,7 +73,7 @@ const MORE_LINKS: Array<[string, string, string, "finance" | "owner" | undefined
   ["automations", "System health", "Whether the background jobs and connections are running.", "finance"],
   ["control-center", "Manage my business", "Everything you can do, grouped by what you want to get done, with a search box.", "finance"],
   ["settings/website", "Website", "Change the words, pictures and promotions on your public website.", "finance"],
-  ["paperwork", "Business paperwork", "Your LLC, EIN, licenses and insurance, with reminders before anything needs renewing.", "owner"],
+  ["paperwork", "Business records", "Your LLC, EIN, licenses, insurance and accounts, with reminders before anything needs renewing.", "owner"],
   ["privacy", "Privacy requests", "Customers asking to see or delete their information.", "owner"],
   ["feedback", "App feedback", "Problems with the app and ideas sent by customers and your team.", "finance"],
   ["activity", "Activity", "Who changed what, and when.", undefined],

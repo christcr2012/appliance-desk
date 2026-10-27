@@ -70,3 +70,104 @@ export function maskReference(value: string | null | undefined): string {
   if (trimmed.length <= 4) return "••••";
   return `••••${trimmed.slice(-4)}`;
 }
+
+// ---------------------------------------------------------------------------
+// VAULT-1: business records. A paperwork item is a record; these are the kinds,
+// the admin-visibility rule and the stored-file checks. Pure, so they are easy
+// to test without a database.
+
+export const RECORD_KINDS = [
+  "TASK",
+  "LICENSE",
+  "PERMIT",
+  "REGISTRATION",
+  "TAX_ACCOUNT",
+  "INSURANCE",
+  "BANK",
+  "DOCUMENT",
+  "ACCOUNT",
+  "VEHICLE",
+  "CONTRACT",
+] as const;
+export type RecordKind = (typeof RECORD_KINDS)[number];
+
+export const RECORD_KIND_LABEL: Record<RecordKind, string> = {
+  TASK: "Task",
+  LICENSE: "License",
+  PERMIT: "Permit",
+  REGISTRATION: "Registration",
+  TAX_ACCOUNT: "Tax account",
+  INSURANCE: "Insurance",
+  BANK: "Bank",
+  DOCUMENT: "Document",
+  ACCOUNT: "Account",
+  VEHICLE: "Vehicle",
+  CONTRACT: "Contract",
+};
+
+/** The starting value for the "Kinds admins may see" owner setting. */
+export const RECOMMENDED_ADMIN_KINDS: RecordKind[] = [
+  "DOCUMENT",
+  "LICENSE",
+  "PERMIT",
+  "REGISTRATION",
+  "INSURANCE",
+  "VEHICLE",
+  "CONTRACT",
+];
+
+export function isRecordKind(value: string): value is RecordKind {
+  return (RECORD_KINDS as readonly string[]).includes(value);
+}
+
+/**
+ * May an ADMIN open this record (read-only)? Only when the owner setting lists
+ * its kind AND the record holds no encrypted number. A number-bearing record
+ * is owner-only whatever its kind — this is a domain rule, not just a default.
+ */
+export function adminCanSeeRecord(
+  record: { kind: string; hasNumber: boolean },
+  adminKinds: readonly string[],
+): boolean {
+  if (record.hasNumber) return false;
+  return adminKinds.includes(record.kind);
+}
+
+/** The date a renewal reminder keys off: the earlier of the expiry and the next action date. */
+export function effectiveRecordDate(record: { dueOn: Date | null; expiresOn: Date | null }): Date | null {
+  if (record.dueOn && record.expiresOn) return record.dueOn < record.expiresOn ? record.dueOn : record.expiresOn;
+  return record.dueOn ?? record.expiresOn;
+}
+
+export const RECORD_FILE_MAX_BYTES = 900 * 1024;
+export const RECORD_PDF_MAX_BYTES = 15 * 1024 * 1024;
+
+export type RecordFileKind = { contentType: string; extension: string };
+
+/** Sniff a stored record file's real type from its first bytes — the name a client gives it is never trusted. */
+export function sniffRecordFile(bytes: Uint8Array): RecordFileKind | null {
+  if (
+    bytes.length >= 5 &&
+    bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d
+  ) {
+    return { contentType: "application/pdf", extension: "pdf" };
+  }
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
+  ) {
+    return { contentType: "image/png", extension: "png" };
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return { contentType: "image/jpeg", extension: "jpg" };
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+  ) {
+    return { contentType: "image/webp", extension: "webp" };
+  }
+  return null;
+}
