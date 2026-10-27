@@ -351,6 +351,22 @@ export async function runOfficialSourceWatch(
 
       const recovered = watch.consecutiveFailures > 0;
       const isParserWatch = parserForKey(watch.parserKey) !== null;
+
+      // A parser watch only counts as read once its parser has read the
+      // page and stored the readings. Resetting the failure count on a
+      // successful fetch alone hid repeated "couldn't read" failures
+      // (the count never reached the unreachable-source warning) and
+      // marked pages as seen that were never actually read.
+      if (isParserWatch) {
+        try {
+          totals.observations += await recordParserReadings(watch, result.text, now);
+        } catch (cause) {
+          await recordFailure(watch.id, now, cause);
+          totals.failed += 1;
+          continue;
+        }
+      }
+
       if (watch.lastHash === null) {
         await prisma.officialSourceWatch.update({
           where: { id: watch.id },
@@ -363,17 +379,6 @@ export async function runOfficialSourceWatch(
           },
         });
         if (recovered) totals.recovered += 1;
-        // Parser watches read the baseline page too: a reading that
-        // already differs from the rule book should reach the owner
-        // without waiting for the page to change again.
-        if (isParserWatch) {
-          try {
-            totals.observations += await recordParserReadings(watch, result.text, now);
-          } catch (cause) {
-            await recordFailure(watch.id, now, cause);
-            totals.failed += 1;
-          }
-        }
         continue;
       }
 
@@ -387,17 +392,6 @@ export async function runOfficialSourceWatch(
           },
         });
         if (recovered) totals.recovered += 1;
-
-        // Re-reading the same page on a later day is what turns a
-        // one-day reading into "read the same way on 2 days".
-        if (isParserWatch) {
-          try {
-            totals.observations += await recordParserReadings(watch, result.text, now);
-          } catch (cause) {
-            await recordFailure(watch.id, now, cause);
-            totals.failed += 1;
-          }
-        }
 
         if (
           !isParserWatch &&
@@ -443,15 +437,7 @@ export async function runOfficialSourceWatch(
       totals.changed += 1;
       if (recovered) totals.recovered += 1;
 
-      if (isParserWatch) {
-        try {
-          totals.observations += await recordParserReadings(watch, result.text, now);
-        } catch (cause) {
-          await recordFailure(watch.id, now, cause);
-          totals.failed += 1;
-        }
-        continue;
-      }
+      if (isParserWatch) continue;
 
       try {
         await sendChangedSourceMessage({

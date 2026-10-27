@@ -267,11 +267,7 @@ export async function processOfficialRateCandidate(
   }
 
   const effectiveFrom = normalizedBusinessDate(candidate.effectiveFrom);
-  if (isPastBusinessDate(effectiveFrom, now)) {
-    return [
-      { status: "IGNORED", reason: OFFICIAL_RATE_REASON.EFFECTIVE_DATE_IN_PAST },
-    ];
-  }
+  const effectiveInPast = isPastBusinessDate(effectiveFrom, now);
 
   const decision = await prisma.$transaction(async (tx) => {
     await lockJurisdiction(tx, candidate.jurisdictionId);
@@ -315,6 +311,17 @@ export async function processOfficialRateCandidate(
         reason: OFFICIAL_RATE_REASON.JURISDICTION_IDENTITY_MISMATCH,
       };
     }
+    // A rate first published after its start date is still recorded:
+    // the reading is evidence the owner may act on by hand. Only the
+    // automatic path stops here — nothing is ever auto-applied into
+    // the past.
+    if (effectiveInPast) {
+      return {
+        kind: "IGNORED" as const,
+        reason: OFFICIAL_RATE_REASON.EFFECTIVE_DATE_IN_PAST,
+      };
+    }
+
     const confirmed = await hasTwoDayRateConfirmationInTx(tx, {
       jurisdictionId: jurisdiction.id,
       asOf: effectiveFrom,
@@ -583,7 +590,10 @@ export async function listOfficialRateAttention(
       take: 50,
     }),
     prisma.taxRateObservation.findMany({
-      where: { asOf: { gte: today }, observedAt: { lte: now } },
+      // Overdue readings (first published after their start date) are
+      // included: they surface until the owner applies or supersedes
+      // them, instead of vanishing once their date passes.
+      where: { observedAt: { lte: now } },
       include: {
         jurisdiction: {
           select: {
@@ -687,6 +697,15 @@ export async function listOfficialRateAttention(
         select: { rateMilliPercent: true },
       }),
     ]);
+
+    // An overdue reading that matches the rate already in force for
+    // that period needs no decision.
+    if (
+      latest.asOf.getTime() < today.getTime() &&
+      previous?.rateMilliPercent === latest.rateMilliPercent
+    ) {
+      continue;
+    }
 
     const reasons: string[] = [];
     if (latest.jurisdiction?.reviewStatus !== "REVIEWED") {
@@ -843,9 +862,10 @@ export async function manuallyApplyObservedRate(input: {
     });
 
     const effectiveFrom = normalizedBusinessDate(observation.asOf);
-    if (isPastBusinessDate(effectiveFrom, now)) {
-      throw new Error("An official rate cannot be applied in the past.");
-    }
+    // No past-date refusal here: this is the owner's own confirmed
+    // apply, and entering a rate from its real start date is exactly
+    // what a late-published rate needs (the Areas manual entry allows
+    // the same). The automatic candidate path keeps its own refusal.
     if (!validRate(observation.rateMilliPercent)) {
       throw new Error("The observed rate is invalid.");
     }

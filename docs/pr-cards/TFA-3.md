@@ -35,6 +35,14 @@ Built on `ai/vivienne/tfa-3-final` (Vivienne, 2026-10-26):
 - Rules screen gains the owner-only "Watch the official tax pages" switch; the setup screen explains that
   auto-apply off means every new rate waits on To do.
 - DQ-TFA3-1..4 filed in `docs/OWNER-INPUTS.md` for the CPA (section 17 questions, starting values in place).
+- Review round 1 (PR #646 CI + Codex): the CI unit shard caught two T-5b1 assertions pinning the pre-TFA-3
+  starting values (auto-apply on, watches seeded inactive) — updated to the TFA-3 values, and the metadata
+  suite joined SHARED_SETTINGS_TESTS because it asserts on the seeded watches the watch suite toggles.
+  Three Codex findings fixed with regression tests: parser failure counts reset only after a successful
+  reading (repeated couldn't-read failures reach the warning count; unread pages are not marked seen);
+  dated readings compare to the rule in force on their own date, so a past-period correction still asks;
+  a Greeley rate first read after its start date is recorded, surfaces in rate review, and can be applied
+  by the owner from its real start date (the automatic path still never applies into the past).
 - Local evidence: parsers 13/13; observation integration 9/9; watch integration 18/18; rate review 6/6;
   Today role access 11/11; registries 24/24; backup/automation/cron/exceptions suites 45/45 — all on
   throwaway Postgres via the repo launcher. Browser proof is CI's `e2e/tax-rules.spec.ts` (watch switch).

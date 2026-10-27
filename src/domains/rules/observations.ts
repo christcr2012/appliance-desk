@@ -189,22 +189,16 @@ export async function listRuleChangeAttention(
       if (sameDate.some((row) => canonicalRuleValue(row.value) === canonicalRuleValue(latest.value))) {
         continue;
       }
+      // Compare against the rule in force on the reading's own date,
+      // never today's rule: a correction to a past period must still
+      // ask, even when today's value already matches the corrected one.
       try {
         const asOf = await ruleAsOf(key, latest.effectiveFrom, db as typeof prisma);
         current = asOf.value;
+        differs = canonicalRuleValue(asOf.value) !== canonicalRuleValue(latest.value);
       } catch (error) {
         if (!(error instanceof RuleMissingError)) throw error;
-      }
-      differs = true;
-      if (latest.effectiveFrom.getTime() <= now.getTime()) {
-        try {
-          const nowAsOf = await ruleAsOf(key, now, db as typeof prisma);
-          current = nowAsOf.value;
-          differs = canonicalRuleValue(nowAsOf.value) !== canonicalRuleValue(latest.value);
-        } catch (error) {
-          if (!(error instanceof RuleMissingError)) throw error;
-          differs = true;
-        }
+        differs = true;
       }
     } else {
       try {

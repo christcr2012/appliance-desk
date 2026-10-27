@@ -129,6 +129,26 @@ describe.skipIf(!enabled)("TFA-3 rule observations (real Postgres)", () => {
       && entry.effectiveFrom?.getTime() === businessDateFromKey("2027-07-01")!.getTime())!.readOnTwoDays).toBe(true);
   });
 
+  it("review fix: a past-period correction is compared to that period's rule, not today's", async () => {
+    const watch = await createWatch("dated", "RDF_RATES");
+    // The seeded book says 28 cents for the period from 2025-07-01 and
+    // 31 cents today. A reading correcting the 2025 period to 31 must
+    // still ask (comparing it to today's 31 would silently drop it).
+    const correction = await record(watch.id, {
+      ruleKey: "co.rdf.amount", value: 31, effectiveFrom: businessDateFromKey("2025-07-01"),
+    }, NOW);
+    // A reading that matches what was already in force mid-period
+    // (28, from the 2025-07-01 version) asks nothing.
+    await record(watch.id, {
+      ruleKey: "co.rdf.amount", value: 28, effectiveFrom: businessDateFromKey("2025-08-01"),
+    }, NOW);
+
+    const items = await listRuleChangeAttention(NOW);
+    expect(items.some((item) => item.observationId === correction.id)).toBe(true);
+    expect(items.some((item) =>
+      item.effectiveFrom?.getTime() === businessDateFromKey("2025-08-01")!.getTime())).toBe(false);
+  });
+
   it("flags an unusually large jump as not plausible", async () => {
     const watch = await createWatch("plausibility", "RDF_RATES");
     const reading = await record(watch.id, {

@@ -129,6 +129,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-invoice-lines-integration.test.ts",
   "tests/tax-official-rate-auto-apply-integration.test.ts",
   "tests/tax-official-source-watch-integration.test.ts", // TFA-3 toggles the shared watch switch and the seeded watches' active flags while it runs.
+  "tests/tax-official-rate-metadata-integration.test.ts", // Asserts on the seeded watches' active flags and the settings singleton the watch suites toggle.
   "tests/tax-overview.test.ts",
   "tests/tax-return-actions-integration.test.ts",
   "tests/tax-setup-actions-integration.test.ts",

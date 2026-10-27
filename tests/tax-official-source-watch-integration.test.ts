@@ -44,7 +44,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { getExceptionOverview } from "@/domains/exceptions";
-import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
+import {
+  listOfficialRateAttention,
+  manuallyApplyObservedRate,
+} from "@/domains/tax/official-rate-auto-apply";
 import {
   acknowledgeOfficialSourceChange,
   buildOfficialSourceChangeExcerpt,
@@ -605,6 +608,94 @@ describe.skipIf(!enabled)("T-5b2 official source watch (real Postgres)", () => {
     expect(
       await prisma.legalRuleObservation.count({ where: { watchId: watch.id } }),
     ).toBe(0);
+  });
+
+  it("TFA-3 review fix: repeated couldn't-read failures accumulate to the warning count", async () => {
+    const watch = await createWatch("rdf-broken-thrice", { parserKey: "RDF_RATES" });
+    mocks.fetchPage.mockResolvedValue({
+      finalUrl: watch.url,
+      contentType: "text/html",
+      text: "<html><body><p>The page was redesigned.</p></body></html>",
+      hash: "broken-hash",
+    });
+
+    for (const monday of ["2026-10-05", "2026-10-12", "2026-10-19"]) {
+      const result = await runOfficialSourceWatch(new Date(`${monday}T18:00:00.000Z`));
+      expect(result.failed).toBe(1);
+    }
+    const stored = await prisma.officialSourceWatch.findUniqueOrThrow({
+      where: { id: watch.id },
+    });
+    // The failure count must reach 3 (the unreachable-source warning
+    // threshold); a fetch that "succeeds" must not reset it when the
+    // parser cannot read the page, and the unread page is not marked seen.
+    expect(stored.consecutiveFailures).toBe(3);
+    expect(stored.lastHash).toBeNull();
+    expect(stored.lastError).toContain("Couldn't read the page");
+  });
+
+  it("TFA-3 review fix: a Greeley rate first read after its start date is kept, surfaces, and can be applied", async () => {
+    const jurisdiction = await prisma.taxJurisdiction.create({
+      data: {
+        code: `GREELEY-LATE-${tag}`,
+        name: `City of Greeley late ${tag}`,
+        level: "CITY",
+        administration: "SELF_COLLECTED",
+        reviewStatus: "REVIEWED",
+      },
+    });
+    try {
+      const watch = await createWatch("greeley-late", { parserKey: "GREELEY_RATE" });
+      const fixture = readFileSync(
+        path.join(__dirname, "fixtures", "official-pages", "greeley-rate-dated.html"), "utf8",
+      );
+      mocks.fetchPage.mockResolvedValue({
+        finalUrl: watch.url,
+        contentType: "text/html",
+        text: fixture,
+        hash: "greeley-late-hash",
+      });
+
+      // The fixture's rate starts 2027-01-01; both readings happen after.
+      await runOfficialSourceWatch(new Date("2027-02-01T18:00:00.000Z"));
+      expect(
+        await prisma.taxRateObservation.count({
+          where: { jurisdictionId: jurisdiction.id, rateMilliPercent: 4710 },
+        }),
+      ).toBe(1);
+
+      await runOfficialSourceWatch(new Date("2027-02-08T18:00:00.000Z"));
+      const now2 = new Date("2027-02-08T18:00:00.000Z");
+      const attention = await listOfficialRateAttention(now2);
+      const item = attention.find(
+        (row) => row.kind === "REVIEW_REQUIRED" && row.jurisdictionName === jurisdiction.name,
+      );
+      expect(item).toBeTruthy();
+
+      const observation = await prisma.taxRateObservation.findFirstOrThrow({
+        where: { jurisdictionId: jurisdiction.id, rateMilliPercent: 4710 },
+        orderBy: { observedAt: "desc" },
+      });
+      const applied = await manuallyApplyObservedRate({
+        observationId: observation.id,
+        actorUserId: ownerId,
+        now: now2,
+      });
+      const version = await prisma.taxRateVersion.findUniqueOrThrow({
+        where: { id: applied.rateVersionId },
+      });
+      expect(version.rateMilliPercent).toBe(4710);
+      expect(version.effectiveFrom.toISOString()).toBe("2027-01-01T07:00:00.000Z");
+    } finally {
+      await prisma.legalRuleVersion.deleteMany({
+        where: { ruleKey: "greeley.sales_rate", createdByUserId: ownerId, effectiveFrom: new Date("2027-01-01T07:00:00.000Z") },
+      });
+      await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId: jurisdiction.id } });
+      await prisma.taxRateObservation.deleteMany({
+        where: { jurisdictionId: jurisdiction.id },
+      });
+      await prisma.taxJurisdiction.delete({ where: { id: jurisdiction.id } });
+    }
   });
 
   it("TFA-3: the owner watch switch off means no fetches at all", async () => {
