@@ -6,6 +6,7 @@ import { ActionButton, StatusPill, type ActionSpec, type Column, type MenuItem }
 import { billPill, billPillInfo } from "@/domains/billing/bill-status";
 import type { BillRow } from "@/domains/billing/bills-list";
 import { formatMoney } from "@/lib/money-ui";
+import { billNext } from "@/lib/status-next";
 import { formatShortDate } from "@/lib/business-date";
 
 const enc = encodeURIComponent;
@@ -75,7 +76,7 @@ export function billMobileCard(row: BillRow, now: Date, owing: boolean) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="text-base font-extrabold text-ink tabular-nums">{formatMoney(owing ? row.owedCents : row.amountCents)}</span>
-          <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(row.status, row.beingConfirmed)} />
+          <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(row.status, row.beingConfirmed)} next={billNext({ status: row.status, dueDate: row.dueDate, amountDueCents: row.amountCents, amountPaidCents: row.paidCents, beingConfirmed: row.beingConfirmed }, now)} />
         </div>
       </div>
       {detail ? <p className="text-sm text-ink-soft">{detail}</p> : null}
@@ -114,7 +115,7 @@ export function billColumns(now: Date): Column<BillRow>[] {
       sortValue: "due-asc",
       cell: (row) => {
         const pill = billPill({ status: row.status, dueDate: row.dueDate, amountDueCents: row.amountCents, amountPaidCents: row.paidCents, beingConfirmed: row.beingConfirmed }, now);
-        return <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(row.status, row.beingConfirmed)} />;
+        return <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(row.status, row.beingConfirmed)} next={billNext({ status: row.status, dueDate: row.dueDate, amountDueCents: row.amountCents, amountPaidCents: row.paidCents, beingConfirmed: row.beingConfirmed }, now)} />;
       },
     },
   ];

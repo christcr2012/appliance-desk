@@ -1,3 +1,6 @@
+## October 27 — Lane 1 AR-12 plain-language status guidance (build branch)
+Branch `ai/chatgpt/ar12-plain-status-20261027` now has exhaustive bill/rental/visit next steps in shared kit status popovers, a reusable “Automatic:” billing line on customer rentals, and an everyday-word checker restricted to migrated pages. Unit regressions cover the status map, component labels and words. CI/review still pending; AR-12 feature switches, help and practice remain separate. No payments, permissions or database changes.
+
 ## October 27 — OPS-3: vehicle-to-insurance link (branch `ai/claude/ops3-vehicle-insurance`)
 
 Each delivery vehicle can now be linked to the insurance policy that covers it. The vehicle page says "Insured by …,

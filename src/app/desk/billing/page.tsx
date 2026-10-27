@@ -8,6 +8,7 @@ import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { requireRole } from "@/lib/session";
 import { businessDayBounds, formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
+import { billNext } from "@/lib/status-next";
 import { formatCents } from "@/domains/pricing";
 import { DataList, EmptyState as LegacyEmptyState, StatusPill as LegacyStatusPill, type DataListColumn } from "@/components/ui";
 import {
@@ -146,7 +147,7 @@ function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row
           <p className="text-xs font-bold text-ink-soft">Bill #{detail.invoiceNumber}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-lg font-extrabold text-ink">{detail.customer.name}</p>
-            <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(detail.status as BillRow["status"], beingConfirmed)} />
+            <StatusPill label={pill.label} tone={pill.tone} info={billPillInfo(detail.status as BillRow["status"], beingConfirmed)} next={billNext({ status: detail.status as BillRow["status"], dueDate: detail.dueDate, amountDueCents: detail.amountDueCents, amountPaidCents: detail.amountPaidCents, beingConfirmed }, now)} />
           </div>
         </div>
         {/* The StatStrip's two-column look, kept at two columns inside the 420 px panel. */}
