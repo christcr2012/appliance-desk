@@ -1,4 +1,11 @@
 ## October 26 — OPS-7: privacy and security duties (built, PR pending)
+## October 26 — AR-11 remembers desk list filters and scroll (in progress)
+
+Branch ai/chatgpt/ar-11-remember-lists stores only a tab-scoped list query and scroll number
+for known list pages. Links in AreaTabs, sidebar and bottom bar restore the query for plain links;
+direct filtered links stay authoritative. Both manual and idle sign-out clear list memory.
+Unit and authenticated browser coverage added; exact-head CI and review pending.
+React transitions, swipe actions, optimistic helper and bundle budget remain in AR-11.
 ## October 26 — AR-11 mobile refresh and safe-area chrome (PR pending)
 
 Branch `ai/chatgpt/ar-11-mobile-pull-refresh`: touch-only 72px downward pull refresh on Today, Bills and Customers,

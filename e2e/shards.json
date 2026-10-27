@@ -106,7 +106,9 @@
       "books-closing.spec.ts",
       "compliance.spec.ts",
       "privacy-security.spec.ts",
-      "desk-shortcuts.spec.ts"
+      "desk-shortcuts.spec.ts",
+      "desk-shortcuts.spec.ts",
+      "remembered-lists.spec.ts"
     ]
   }
 }
