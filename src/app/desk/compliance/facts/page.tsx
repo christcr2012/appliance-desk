@@ -45,6 +45,7 @@ export default async function BusinessFactsPage({
         sosReportMonth={profile.sosReportMonth}
         truckGvwrLbs={profile.truckGvwrLbs}
         employees={profile.employees}
+        firstHireDate={profile.firstHireDate ? businessDateKey(profile.firstHireDate) : ""}
         hasHomeOffice={profile.hasHomeOffice}
         payer={{
           businessLegalName: profile.businessLegalName ?? "",
