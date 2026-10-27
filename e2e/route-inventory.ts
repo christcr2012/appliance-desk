@@ -21,6 +21,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/offline", role: "PUBLIC", fixture: "/offline" },
   { path: "/pricing", role: "PUBLIC", fixture: "/pricing" },
   { path: "/privacy", role: "PUBLIC", fixture: "/privacy" },
+  { path: "/privacy/how-we-handle-your-information", role: "PUBLIC", fixture: "/privacy/how-we-handle-your-information" },
   { path: "/rent/[city]", role: "PUBLIC", fixture: "/rent/denver" },
   { path: "/service-area", role: "PUBLIC", fixture: "/service-area" },
   { path: "/terms", role: "PUBLIC", fixture: "/terms" },
@@ -202,6 +203,15 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   },
   { path: "/desk/inventory", role: "OWNER", fixture: "/desk/inventory" },
   { path: "/desk/disputes", role: "OWNER", fixture: "/desk/disputes" },
+  { path: "/desk/collections", role: "OWNER", fixture: "/desk/collections" },
+  { path: "/desk/continuity", role: "OWNER", fixture: "/desk/continuity" },
+  { path: "/desk/continuity/checkup", role: "OWNER", fixture: "/desk/continuity/checkup" },
+  {
+    path: "/desk/collections/[agreementId]",
+    role: "OWNER",
+    fixture: "A rental that is far behind on a bill",
+    manualOnlyReason: "CI seeds no overdue rental past the day-30 decision; the flow is covered by tests/ops6-collections-integration.test.ts.",
+  },
   {
     path: "/desk/disputes/[id]",
     role: "OWNER",
@@ -260,6 +270,8 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
       "The CI seed does not create a deterministic part record; inventory-part behavior is covered by real-Postgres tests.",
   },
   { path: "/desk/paperwork", role: "OWNER", fixture: "/desk/paperwork" },
+  { path: "/desk/vehicle", role: "OWNER", fixture: "/desk/vehicle" },
+  { path: "/desk/insurance", role: "OWNER", fixture: "/desk/insurance" },
   {
     path: "/desk/paperwork/[id]",
     role: "OWNER",
@@ -270,6 +282,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/paperwork/new", role: "OWNER", fixture: "/desk/paperwork/new" },
   { path: "/desk/parts", role: "OWNER", fixture: "/desk/parts" },
   { path: "/desk/privacy", role: "OWNER", fixture: "/desk/privacy" },
+  { path: "/desk/privacy-security", role: "OWNER", fixture: "/desk/privacy-security" },
   { path: "/desk/sales", role: "OWNER", fixture: "/desk/sales" },
   { path: "/desk/sales/new", role: "OWNER", fixture: "/desk/sales/new" },
   {
@@ -311,6 +324,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/books/assets", role: "OWNER", fixture: "/desk/books/assets" },
   { path: "/desk/books/reports", role: "OWNER", fixture: "/desk/books/reports" },
   { path: "/desk/books/setup", role: "OWNER", fixture: "/desk/books/setup" },
+  { path: "/desk/books/months/[month]", role: "OWNER", fixture: "/desk/books/months/2026-09" },
   { path: "/desk/books/exports", role: "OWNER", fixture: "/desk/books/exports" },
   { path: "/desk/expenses", role: "STAFF", fixture: "/desk/expenses" },
   { path: "/desk/search", role: "OWNER", fixture: "/desk/search?q=washer" },
