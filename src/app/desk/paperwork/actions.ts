@@ -33,6 +33,14 @@ function formValues(formData: FormData) {
     remindDaysBefore: get("remindDaysBefore") || "30",
     repeatEveryMonths: get("repeatEveryMonths"),
     notes: get("notes"),
+    kind: get("kind") || "TASK",
+    issuedOn: get("issuedOn"),
+    expiresOn: get("expiresOn"),
+    numberLabel: get("numberLabel"),
+    numberValue: get("numberValue"),
+    portalUrl: get("portalUrl"),
+    costDollars: get("costDollars"),
+    linkedObligationKeys: formData.getAll("obligationKey").map((v) => String(v)),
   };
 }
 
