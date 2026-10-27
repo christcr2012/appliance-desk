@@ -4,6 +4,10 @@ import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
 import { OBLIGATIONS, notNeededObligations, obligationByKey, unscheduledObligations } from "@/domains/compliance/registry";
 import { getComplianceProfile, missingFacts } from "@/domains/compliance/profile";
+import { hiringChecklist, hiringSummary } from "@/domains/compliance/hiring";
+import { listPayrollImports } from "@/domains/compliance/payroll-import";
+import { formatMoney } from "@/lib/money-ui";
+import { PayrollImportForm } from "./payroll-import-form";
 import {
   complianceContextForYear,
   groupFilingsForScreen,
@@ -91,6 +95,17 @@ export default async function CompliancePage({
   const ctx = await complianceContextForYear(thisYear);
   const gaps = missingFacts(profile);
 
+  // CMP-5: the hiring checklist and payroll import appear once the
+  // business has employees; both stay hidden while payroll is dormant.
+  const hiringInput = {
+    employees: profile.employees,
+    hasEin: Boolean(profile.einEncrypted),
+    firstHireDate: profile.firstHireDate,
+    newHireFiling: filings.find((f) => f.obligationKey === "co.payroll.new_hire") ?? null,
+  };
+  const checklist = hiringChecklist(hiringInput);
+  const payrollImports = checklist ? await listPayrollImports() : [];
+
   const grouped = groupFilingsForScreen(filings, horizon);
   const coming = grouped.coming;
   const needsFilings = grouped.needs;
@@ -138,6 +153,70 @@ export default async function CompliancePage({
           Calendar download (.ics)
         </a>
       </div>
+
+      {tab === "coming" && checklist ? (
+        <section className="space-y-3" aria-label="Hiring checklist">
+          <div>
+            <h2 className="font-semibold text-ink">Hiring checklist</h2>
+            <p className="text-sm text-ink-soft">
+              {hiringSummary(hiringInput)}. Statuses come from your business facts and filings — nothing
+              here is an honor-system tick box.
+            </p>
+          </div>
+          <ul className="space-y-2">
+            {checklist.map((item) => (
+              <li key={item.key} className="rounded-card bg-surface px-4 py-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="min-w-0 flex-1 font-semibold text-ink">{item.title}</span>
+                  <StatusPill
+                    label={item.state === "done" ? "Done" : item.state === "todo" ? "To do" : "Good to know"}
+                    tone={item.state === "done" ? "good" : item.state === "todo" ? "attention" : "neutral"}
+                  />
+                </div>
+                <p className="text-sm text-ink-soft">{item.what}</p>
+                {item.dueText ? <p className="text-sm font-medium text-ink">{item.dueText}</p> : null}
+                {item.links.length ? (
+                  <p className="text-sm">
+                    {item.links.map((link, i) => (
+                      <span key={link.url}>
+                        {i > 0 ? " · " : null}
+                        {link.url.startsWith("/") ? (
+                          <Link className="underline" href={link.url}>
+                            {link.label}
+                          </Link>
+                        ) : (
+                          <a className="underline" href={link.url} target="_blank" rel="noreferrer">
+                            {link.label}
+                          </a>
+                        )}
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <div className="rounded-card bg-surface px-4 py-3">
+            <h3 className="font-semibold text-ink">Record payroll in the books</h3>
+            <p className="mb-3 text-sm text-ink-soft">
+              Payroll runs through your payroll service (see the open decision in Decisions &amp; reviews).
+              Import its summary here so the books carry the same totals the payroll filings show.
+            </p>
+            <PayrollImportForm />
+            {payrollImports.length ? (
+              <ul className="mt-3 space-y-1 text-sm text-ink-soft">
+                {payrollImports.map((row) => (
+                  <li key={row.id}>
+                    {businessDateKey(row.payDate)} · wages {formatMoney(row.grossWagesCents)} · employer taxes{" "}
+                    {formatMoney(row.employerTaxesCents)} · withdrawn {formatMoney(row.withdrawnCents)}
+                    {row.providerName ? ` · ${row.providerName}` : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       {tab === "coming" ? (
         coming.length ? (
