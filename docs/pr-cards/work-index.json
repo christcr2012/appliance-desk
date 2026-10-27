@@ -5429,7 +5429,7 @@
         "VAULT-1",
         "ACC-6"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/vault-2; packet and drift check written 2026-10-27 (docs/pr-cards/execution/VAULT-2.json). SETUP-1 close-out rides this branch.",
       "migration": "additive (VaultCredential, VaultUnlock)",
       "budget": 450,
       "units": [
@@ -5454,7 +5454,7 @@
       "dependencies": [
         "VAULT-1"
       ],
-      "status": "IN PROGRESS — branch ai/vivienne/setup-1; built and verified locally (130 tests across the affected suites, typecheck/lint clean, checks phase green in the repo launcher; browser spec gated on PR CI — the local launcher build exceeds its 600s cap in this VM). VAULT-1 close-out rides this branch.",
+      "status": "MERGED 2026-10-27 — PR #661, squash 39d4bf8e on main (final head 716515bb, CI fully green at the exact head; 2 Codex findings + 3 CI-caught registry/import misses fixed with regression tests in one round).",
       "migration": "none",
       "budget": 400,
       "units": [
@@ -6085,6 +6085,10 @@
     {
       "id": "SETUP-1",
       "path": "docs/pr-cards/execution/SETUP-1.json"
+    },
+    {
+      "id": "VAULT-2",
+      "path": "docs/pr-cards/execution/VAULT-2.json"
     }
   ]
 }

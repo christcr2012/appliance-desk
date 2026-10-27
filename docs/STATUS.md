@@ -1,3 +1,28 @@
+## October 27 — VAULT-2: Logins vault and emergency access (in build)
+
+Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
+encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
+beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,
+Copy and saving a secret all need an **unlock**: a fresh second-step code verified by Better Auth itself (the
+same methods as sign-in), good for 5 minutes on that session only; every reveal is audited with the field
+name, never the value; shown values hide after 30 seconds. Five wrong codes in 15 minutes lock the vault for
+30 minutes and email the owner (a new `vault_locked` account notice); sign-out-everywhere, password/email
+change and second-step change clear unlocks at the same points ACC-6 forgets devices. A grep test keeps the
+four encrypted-secret column names inside the vault and paperwork domains only (SETUP-1's guide now reads
+record facts through a paperwork helper). Logins link to VAULT-1 records both ways (the record page shows
+"Login: …"); rotation reminders land on To do as a `VAULT` item when a login carries a change-every setting.
+Backups keep credentials still encrypted; unlock rows and emergency requests are never backed up.
+**Emergency access ships switched off**: an owner setting (contact name/email/phone, wait 1–30 days, starting
+value 7) plus a one-time link whose token is stored only as a hash. The public `/emergency/[token]` page runs
+the flow — request (owner reminded by email and text at the start), a daily cron sweep reminding halfway and
+a day before the wait ends, deny at any time, then a code sent to the SAVED contact only, and one download
+(records pack + the vault decrypted into a PDF) that works once inside 24 hours. Filed DQ-VAULT-BANK (bank
+logins allowed, with the honest on-screen note) and DQ-CONT-SUCCESSOR. Proof: `tests/vault.test.ts` (masking,
+rotation, key separation), `tests/vault-secret-fields-grep.test.ts`, `tests/vault-integration.test.ts` (real
+Postgres, serial: owner boundary, unlock lifecycle, lockout, emergency end to end), `e2e/vault.spec.ts`
+(browser-e). Next for this lane: **ACCT-1** (accountant sign-in), which also unblocks Lane 4's TAXBEN-2.
+
 ## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
 GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
 selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings
@@ -26,6 +51,22 @@ download time with nothing stored, and the 1099-K tie-out. One PR, one review ro
 findings, all real, fixed with regression tests. CMP-2 merging unblocked Lane 4's TAXBEN-1. Two honest
 gaps recorded in the PR: no TXF export (no authoritative TXF 042 spec could be confirmed) and the
 Colorado 70%-of-actual-tax estimate prong is not computed (DQ-CMP-CO-EST).
+
+## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
+
+Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
+walkthroughs for the real-world accounts — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley
+license, Weld assessor, IRS accounts, the IRIS TCC, insurance, the vehicle, email domain, texting, the
+encryption keys, the CPA and backups. Each has plain steps with official links, what to have ready, and the
+VAULT-1 record it fills; where a step produces a number or a file, saving it lands on that record through
+the VAULT-1 rules (encrypted, masked, sniffed). Steps the app can verify check themselves — presence only
+for keys (`ENV_PRESENT` allowlist), a saved number or file on a record, a set-up filing account. Progress is
+the audit log folded on read (no new table); "Not for me" dismisses a walkthrough. The suggested next is the
+one whose needed-by date comes soonest (the IRIS TCC before January 31), and one To do names it until all
+are done or dismissed. The OWNER-CHECKLIST rows for the keys, the TCC and backups now link here. This branch
+also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthroughs.test.ts` (data + order),
+`tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
+saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
 
 ## October 27 — CMP-3 merged (PR #656)
 
