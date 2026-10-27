@@ -47,6 +47,12 @@ jobs:
           npm run db:migrate:deploy
           npm run db:seed
           npm run build
+      - name: Inspect actual Next 16 compiled client manifest locations
+        run: |
+          echo AR11_MANIFEST_DISCOVERY
+          find .next -maxdepth 5 -type f \( -name '*manifest*.json' -o -name '*reference-manifest*.js' \) | sort | head -95
+          echo AR11_ROOT_CONTENTS
+          ls -la .next | head -45
       - name: Measure every desk route, print encoded baseline
         run: |
           node --test scripts/check-desk-bundle.test.mjs
