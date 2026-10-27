@@ -50,6 +50,8 @@ export function relationDependencies(schema: string): RelationDependency[] {
         field.attributes.includes("@relation") &&
         /fields\s*:/.test(field.attributes)
         // Both edges are nullable and restored in a second pass after their targets exist.
+        // Same-table backup pairs are restored parent-first in restore-backup.ts.
+        && !(block.name === "BackupArtifact" && field.name === "databaseArtifact")
         && !field.attributes.includes('@relation("AcquisitionReceipt"')
         && !field.attributes.includes('@relation("CurrentMessageAttempt"')
         // COM-L10 nullable self-reference is restored in a second pass.
