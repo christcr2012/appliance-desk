@@ -16,6 +16,9 @@ export interface TaxYearFactsInput {
   federalAgiCents?: number | null;
   coloradoTaxCents?: number | null;
   form1099KGrossCents?: number | null;
+  /** TAXBEN-1: self-employed health insurance premiums and the months an employer plan (own or spouse's) was available. */
+  seHealthPremiumCents?: number | null;
+  seHealthEmployerPlanMonths?: number[] | null;
 }
 
 export async function getTaxYearFacts(year: number): Promise<TaxYearFacts | null> {
@@ -39,19 +42,32 @@ export async function saveTaxYearFacts(
   checkCents("Last year's federal income (AGI)", input.federalAgiCents);
   checkCents("Last year's Colorado tax", input.coloradoTaxCents);
   checkCents("The 1099-K amount", input.form1099KGrossCents);
+  checkCents("The health insurance premiums", input.seHealthPremiumCents);
+  if (input.seHealthEmployerPlanMonths !== undefined && input.seHealthEmployerPlanMonths !== null) {
+    const months = input.seHealthEmployerPlanMonths;
+    if (
+      !Array.isArray(months) ||
+      months.some((m) => !Number.isInteger(m) || m < 1 || m > 12) ||
+      new Set(months).size !== months.length
+    ) {
+      throw new Error("The employer-plan months look wrong — check them and try again.");
+    }
+  }
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorId, ["OWNER"]);
     const existing = await tx.taxYearFacts.findUnique({ where: { year } });
     if (existing) {
       await tx.$queryRaw`SELECT "id" FROM "TaxYearFacts" WHERE "id" = ${existing.id} FOR UPDATE`;
     }
-    const data: Record<string, number | null> = {};
+    const data: Record<string, number | number[] | null> = {};
     const changedFields: string[] = [];
     const fields: Array<[keyof TaxYearFactsInput, string]> = [
       ["federalTaxCents", "federalTaxCents"],
       ["federalAgiCents", "federalAgiCents"],
       ["coloradoTaxCents", "coloradoTaxCents"],
       ["form1099KGrossCents", "form1099KGrossCents"],
+      ["seHealthPremiumCents", "seHealthPremiumCents"],
+      ["seHealthEmployerPlanMonths", "seHealthEmployerPlanMonths"],
     ];
     for (const [key, column] of fields) {
       if (input[key] !== undefined) {

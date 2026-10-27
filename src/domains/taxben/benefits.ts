@@ -143,6 +143,7 @@ async function yearBooks(db: Db, year: number): Promise<YearBooks> {
       const signed =
         account.type === "INCOME" ? line.creditCents - line.debitCents : line.debitCents - line.creditCents;
       if (account.type === "EXPENSE") totalExpensesCents += signed;
+      else if (account.type === "CONTRA_INCOME") totalIncomeCents -= signed;
       else totalIncomeCents += signed;
       if (account.systemRole) {
         const existing = byRole.get(account.systemRole);
@@ -202,6 +203,7 @@ export async function computeTaxBenefits(year: number, db: Db = prisma): Promise
     select: {
       costCents: true,
       placedInServiceOn: true,
+      appliance: { select: { capDecision: true } },
       taxEvidence: {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 1,
@@ -218,13 +220,22 @@ export async function computeTaxBenefits(year: number, db: Db = prisma): Promise
       evidenceAllowed += evidence.allowedDepreciationCents;
       evidenceCount += 1;
     }
-    basisAssets.push({
-      placedMonth: Number(businessDateKey(asset.placedInServiceOn).slice(5, 7)),
-      basisCents: asset.costCents - (evidence?.section179Cents ?? 0),
-    });
+    // De minimis units are expensed, not depreciated: their cost stays out
+    // of the mid-quarter basis even when the books enrolled them.
+    if (asset.appliance.capDecision !== "EXPENSED_DE_MINIMIS") {
+      basisAssets.push({
+        placedMonth: Number(businessDateKey(asset.placedInServiceOn).slice(5, 7)),
+        basisCents: asset.costCents - (evidence?.section179Cents ?? 0),
+      });
+    }
   }
+  // The safe-harbor deduction belongs to the purchase's tax year, not the
+  // year the classification happened to run.
   const expensedUnits = await db.appliance.findMany({
-    where: { capDecision: "EXPENSED_DE_MINIMIS", capDecidedAt: { gte: jan1, lt: businessDateFromKey(`${year + 1}-01-01`)! } },
+    where: {
+      capDecision: "EXPENSED_DE_MINIMIS",
+      purchase: { purchasedOn: { gte: jan1, lt: businessDateFromKey(`${year + 1}-01-01`)! } },
+    },
     select: { capLineCents: true },
   });
   const deMinimisTotal = expensedUnits.reduce((n, u) => n + (u.capLineCents ?? 0), 0);
@@ -560,6 +571,7 @@ export async function listBenefitsAttention(now = new Date(), db: Db = prisma): 
       select: {
         costCents: true,
         placedInServiceOn: true,
+        appliance: { select: { capDecision: true } },
         taxEvidence: {
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 1,
@@ -568,10 +580,12 @@ export async function listBenefitsAttention(now = new Date(), db: Db = prisma): 
       },
     });
     const share = midQuarterShare(
-      assets.map((a) => ({
-        placedMonth: Number(businessDateKey(a.placedInServiceOn).slice(5, 7)),
-        basisCents: a.costCents - (a.taxEvidence[0]?.section179Cents ?? 0),
-      })),
+      assets
+        .filter((a) => a.appliance.capDecision !== "EXPENSED_DE_MINIMIS")
+        .map((a) => ({
+          placedMonth: Number(businessDateKey(a.placedInServiceOn).slice(5, 7)),
+          basisCents: a.costCents - (a.taxEvidence[0]?.section179Cents ?? 0),
+        })),
     );
     const rule = await ruleOrNull<{ percent: number }>(db, "us.mid_quarter", jan1);
     if (rule && share.totalBasisCents > 0 && share.sharePercent > rule.percent) {

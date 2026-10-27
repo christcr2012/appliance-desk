@@ -98,22 +98,16 @@ export async function resolveBusinessBeganOn(
     select: { businessBeganOn: true },
   });
   if (profile?.businessBeganOn) return { key: businessDateKey(profile.businessBeganOn), stored: true };
-  const [firstPlaced, firstBought, firstRecorded, firstLead] = await Promise.all([
+  // The starting value is the earlier of the first day a unit was AVAILABLE
+  // and the first public lead — buying or recording a unit earlier does not
+  // start the business (DQ-TAXBEN-BEGAN).
+  const [firstPlaced, firstLead] = await Promise.all([
     db.bookAsset.findFirst({ orderBy: { placedInServiceOn: "asc" }, select: { placedInServiceOn: true } }),
-    db.appliance.findFirst({
-      where: { purchaseDate: { not: null } },
-      orderBy: { purchaseDate: "asc" },
-      select: { purchaseDate: true },
-    }),
-    db.appliance.findFirst({ orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
     db.lead.findFirst({ orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
   ]);
-  const candidates = [
-    firstPlaced?.placedInServiceOn,
-    firstBought?.purchaseDate,
-    firstRecorded?.createdAt,
-    firstLead?.createdAt,
-  ].filter((date): date is Date => date instanceof Date);
+  const candidates = [firstPlaced?.placedInServiceOn, firstLead?.createdAt].filter(
+    (date): date is Date => date instanceof Date,
+  );
   if (candidates.length === 0) return null;
   const earliest = candidates.reduce((a, b) => (a.getTime() <= b.getTime() ? a : b));
   return { key: businessDateKey(earliest), stored: false };

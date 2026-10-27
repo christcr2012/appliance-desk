@@ -528,7 +528,7 @@ export function capitalizationPolicyException(input: {
     detail: input.renewal
       ? `The de minimis safe harbor needs a written capitalization policy in place from the start of ${input.year}. The ${input.year} policy is ready to read and sign on Taxes > Tax benefits — signing takes a moment and stores it in Business records.`
       : `The de minimis safe harbor needs a written capitalization policy in place for ${input.year}, and it is not signed yet. It is ready to read and sign on Taxes > Tax benefits — signing stores it in Business records.`,
-    href: "/desk/sales-tax/benefits",
+    href: `/desk/sales-tax/benefits?year=${input.year}`,
     todoKey: `taxben-policy:${input.year}`,
     since: input.since,
   };

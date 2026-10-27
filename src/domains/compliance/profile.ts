@@ -37,6 +37,16 @@ export interface BusinessFactsInput {
   hiring?: {
     firstHireDate: string | null;
   };
+  /** TAXBEN-1: the write-off facts; undefined = leave as-is. Money travels in cents; the began date as a YYYY-MM-DD key. */
+  taxben?: {
+    businessBeganOn: string | null;
+    homeOfficeSqFt: number | null;
+    homeSqFt: number | null;
+    homeHousingCostsCents: number | null;
+    homeUtilitiesCents: number | null;
+    homeInsuranceCents: number | null;
+    homeOfficeAttestedYear: number | null;
+  };
   /** CMP-4: the local-filing facts; undefined = leave as-is. The license date travels as a YYYY-MM-DD key. */
   local?: {
     tradeName: string | null;
@@ -241,6 +251,53 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
     };
   }
 
+  let taxbenPatch:
+    | {
+        businessBeganOn: Date | null;
+        homeOfficeSqFt: number | null;
+        homeSqFt: number | null;
+        homeHousingCostsCents: number | null;
+        homeUtilitiesCents: number | null;
+        homeInsuranceCents: number | null;
+        homeOfficeAttestedYear: number | null;
+      }
+    | undefined;
+  if (input.taxben !== undefined) {
+    const t = input.taxben;
+    const checkCount = (label: string, value: number | null, max: number) => {
+      if (value !== null && (!Number.isSafeInteger(value) || value < 0 || value > max)) {
+        throw new Error(`${label} looks wrong — check it and try again.`);
+      }
+    };
+    checkCount("The office size", t.homeOfficeSqFt, 100_000);
+    checkCount("The home size", t.homeSqFt, 1_000_000);
+    checkCount("The year's housing costs", t.homeHousingCostsCents, 100_000_000_00);
+    checkCount("The year's home utilities", t.homeUtilitiesCents, 100_000_000_00);
+    checkCount("The year's home insurance", t.homeInsuranceCents, 100_000_000_00);
+    if (
+      t.homeOfficeAttestedYear !== null &&
+      (!Number.isInteger(t.homeOfficeAttestedYear) || t.homeOfficeAttestedYear < 2000 || t.homeOfficeAttestedYear > 2100)
+    ) {
+      throw new Error("The attested year looks wrong — check it and try again.");
+    }
+    let businessBeganOn: Date | null = null;
+    if (t.businessBeganOn) {
+      businessBeganOn = businessDateFromKey(t.businessBeganOn);
+      if (!businessBeganOn) {
+        throw new Error("Enter the day the business began like 2026-05-01.");
+      }
+    }
+    taxbenPatch = {
+      businessBeganOn,
+      homeOfficeSqFt: t.homeOfficeSqFt,
+      homeSqFt: t.homeSqFt,
+      homeHousingCostsCents: t.homeHousingCostsCents,
+      homeUtilitiesCents: t.homeUtilitiesCents,
+      homeInsuranceCents: t.homeInsuranceCents,
+      homeOfficeAttestedYear: t.homeOfficeAttestedYear,
+    };
+  }
+
   let hiringPatch: { firstHireDate: Date | null } | undefined;
   if (input.hiring !== undefined) {
     let firstHireDate: Date | null = null;
@@ -295,6 +352,7 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
       ...(input.payer ?? {}),
       ...(localPatch ?? {}),
       ...(hiringPatch ?? {}),
+      ...(taxbenPatch ?? {}),
     };
     await tx.complianceProfile.upsert({
       where: { id: "singleton" },
