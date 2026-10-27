@@ -11,6 +11,7 @@ import { ClassifyControls } from "./classify-controls";
 import { ScheduleCPacketSection, Worksheet4562Section, Worksheet4797Section } from "./packet-sections";
 import { VoucherForm } from "./voucher-form";
 import { getComplianceProfile } from "@/domains/compliance/profile";
+import { VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
 import type { PacketData } from "@/domains/compliance/schedule-c";
 import type { Worksheet4562, Worksheet4797 } from "@/domains/compliance/worksheets";
 import type { QuarterlyEstimate } from "@/domains/compliance/estimates";
@@ -264,7 +265,7 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
                 </a>{" "}
                 — the app never pays for you — or fill the paper voucher:
               </p>
-              {formReady ? (
+              {formReady && estimate.year === VOUCHER_BOOKLET_YEAR ? (
                 <VoucherForm
                   filingId={filing.id}
                   quarter={estimate.quarter}
@@ -276,6 +277,11 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
                     zip: profile?.businessZip ?? "",
                   }}
                 />
+              ) : formReady ? (
+                <p className="text-sm text-ink-soft">
+                  The filled voucher booklet on file is for {VOUCHER_BOOKLET_YEAR}; for {estimate.year}, pay online
+                  or use that year&apos;s paper voucher.
+                </p>
               ) : null}
             </>
           ) : (

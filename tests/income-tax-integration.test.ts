@@ -6,6 +6,7 @@ import { businessDateFromKey } from "@/lib/business-date";
 import { computeScheduleCYear, packetCsv, packetPdf } from "@/domains/compliance/schedule-c";
 import { build4562Worksheet, build4797Worksheet } from "@/domains/compliance/worksheets";
 import { estimateQuarterlyTax } from "@/domains/compliance/estimates";
+import { prepareFiling } from "@/domains/compliance/filings";
 import { getTaxYearFacts, saveTaxYearFacts } from "@/domains/compliance/tax-facts";
 import { compute1099KTieOut } from "@/domains/compliance/k-reconciliation";
 
@@ -223,5 +224,29 @@ describe.skipIf(!enabled)("CMP-2 income tax helpers", () => {
 
   it("only the owner can save tax-year facts", async () => {
     await expect(saveTaxYearFacts(staffId, 2030, { federalTaxCents: 1 })).rejects.toThrow();
+  });
+
+  it("an estimate filing prepared with no prior year can be prepared again once the facts exist (CMP-2 review)", async () => {
+    const filing = await prisma.complianceFiling.create({
+      data: { obligationKey: "fed.estimated_tax", periodKey: "2099-Q1", state: "UPCOMING", actOn: day("2099-01-01"), dueOn: day("2099-04-15") },
+    });
+    try {
+      const noFacts = await estimateQuarterlyTax(2099, 1, "FEDERAL");
+      expect(noFacts.status).toBe("NO_PRIOR_YEAR");
+      await prepareFiling(ownerId, filing.id, { ...noFacts });
+      let row = await prisma.complianceFiling.findUniqueOrThrow({ where: { id: filing.id } });
+      expect(row.state).toBe("READY_FOR_REVIEW");
+      // The owner follows the filing's instruction and adds last year's tax…
+      await saveTaxYearFacts(ownerId, 2098, { federalTaxCents: 800000 });
+      // …and preparing again from READY_FOR_REVIEW replaces the snapshot.
+      const withFacts = await estimateQuarterlyTax(2099, 1, "FEDERAL");
+      await prepareFiling(ownerId, filing.id, { ...withFacts });
+      row = await prisma.complianceFiling.findUniqueOrThrow({ where: { id: filing.id } });
+      expect(row.state).toBe("READY_FOR_REVIEW");
+      expect(row.preparedData).toMatchObject({ status: "OK", quarterCents: 200000 });
+    } finally {
+      await prisma.complianceFiling.deleteMany({ where: { id: filing.id } });
+      await prisma.taxYearFacts.deleteMany({ where: { year: 2098 } });
+    }
   });
 });

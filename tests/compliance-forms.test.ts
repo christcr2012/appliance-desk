@@ -8,6 +8,7 @@ import {
   fillForm8300,
   fillW9,
   formManifest,
+  VOUCHER_BOOKLET_YEAR,
   verifyFormManifest,
 } from "@/domains/compliance/pdf-forms";
 import { F1040ES_VOUCHER_FIELDS } from "@/domains/compliance/forms/f1040es.fields";
@@ -143,5 +144,13 @@ describe("DR 0104EP voucher (CMP-2)", () => {
     expect(form.getTextField("SSN or ITIN").getText()).toBe("000-00-1234");
     expect(form.getTextField("Amount of Payment").getText()).toBe("1250");
     expect(form.getTextField("ZIP Code").getText()).toBe("80631");
+  });
+});
+
+describe("voucher booklet year (CMP-2 review)", () => {
+  it("matches the vendored estimated-tax booklets", () => {
+    const forms = formManifest().forms;
+    expect(forms[`irs/f1040es_${VOUCHER_BOOKLET_YEAR}.pdf`]).toBeTruthy();
+    expect(forms[`co/dr0104ep_${VOUCHER_BOOKLET_YEAR}.pdf`]).toBeTruthy();
   });
 });

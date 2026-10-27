@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getComplianceFiling } from "@/domains/compliance/filings";
 import { build1099Outputs, payerIdentity, type Prepared1099Row } from "@/domains/compliance/information-returns";
 import { dollars } from "@/domains/compliance/iris-csv";
-import { fillDr0104EpVoucher, fillEstimatedTaxVoucher, fillForm8300 } from "@/domains/compliance/pdf-forms";
+import { fillDr0104EpVoucher, fillEstimatedTaxVoucher, fillForm8300, VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
 import { packetCsv, packetPdf, type PacketData } from "@/domains/compliance/schedule-c";
 import type { QuarterlyEstimate } from "@/domains/compliance/estimates";
 
@@ -140,6 +140,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const estimate = (filing.preparedData ?? null) as QuarterlyEstimate | null;
   if (!estimate || estimate.status !== "OK") {
     return new Response("There is no worked-out amount to put on a voucher for this filing.", { status: 409 });
+  }
+  if (estimate.year !== VOUCHER_BOOKLET_YEAR) {
+    return new Response(
+      `A filled voucher is only available for ${VOUCHER_BOOKLET_YEAR} — the official booklet on file is that year's. For ${estimate.year}, pay online or use that year's paper voucher.`,
+      { status: 400 },
+    );
   }
   const form = await request.formData();
   const field = (name: string) => String(form.get(name) ?? "").trim();

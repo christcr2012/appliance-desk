@@ -55,6 +55,7 @@ export default async function BusinessFactsPage({
         }}
       />
       <TaxYearFactsForm
+        key={year}
         year={year}
         years={years}
         facts={{
