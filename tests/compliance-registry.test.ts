@@ -22,6 +22,10 @@ const base: ComplianceContext = {
   hasEin: true,
   hasDepreciableAssets: false,
   hasAssetSales: false,
+  tradeName: null,
+  usdotNumber: null,
+  truckRegistrationMonth: null,
+  greeleyLicenseDate: null,
 };
 const ctx = (patch: Partial<ComplianceContext>): ComplianceContext => ({ ...base, ...patch });
 const key = (d: Date) => businessDateKey(d);

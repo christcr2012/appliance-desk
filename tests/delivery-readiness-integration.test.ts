@@ -8,6 +8,7 @@ import { scheduleJob } from "@/domains/jobs/scheduling";
 import {
   assertDeliveryReadyInTx,
   deliveryTaxReadiness,
+  listDeliveryReadinessAttention,
   recordDeliveryCountInTx,
   recordReadinessOverrideInTx,
   saveReadiness,
@@ -633,5 +634,26 @@ maybeDescribe("FEETAX-2 delivery readiness (real Postgres)", () => {
     await expect(
       updateJobStatus(ownerId, second.id, "IN_PROGRESS"),
     ).rejects.toThrow(/needs a city license first/);
+  });
+
+  it("the To do attention read skips an address deleted after its location lookup", async () => {
+    // The location list and the per-address readiness read are two reads
+    // over live data; an address removed in between (another suite's
+    // cleanup, a real deletion) must not fail the whole To do list.
+    const ghostDb = {
+      addressTaxLocation: {
+        findMany: async () => [
+          {
+            serviceAddressId: `dr-ghost-${tag}`,
+            lookedUpAt: NOW,
+            jurisdictions: [{ jurisdictionId: `dr-ghost-place-${tag}` }],
+          },
+        ],
+      },
+      serviceAddress: { findUnique: async () => null },
+    };
+    await expect(
+      listDeliveryReadinessAttention(NOW, ghostDb as never),
+    ).resolves.toEqual([]);
   });
 });

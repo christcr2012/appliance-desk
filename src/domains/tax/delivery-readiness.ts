@@ -693,7 +693,21 @@ export async function listDeliveryReadinessAttention(
   for (const location of locations) {
     if (!location.serviceAddressId || seenAddresses.has(location.serviceAddressId)) continue;
     seenAddresses.add(location.serviceAddressId);
-    const readiness = await deliveryTaxReadinessWith(db, location.serviceAddressId, now);
+    // The To do list is a reporting read over live data: an address another
+    // part of the app deleted after the location lookup above must not fail
+    // the whole list. Skip an address that is confirmed gone; a read that
+    // fails for any other reason still throws.
+    let readiness: DeliveryReadiness;
+    try {
+      readiness = await deliveryTaxReadinessWith(db, location.serviceAddressId, now);
+    } catch (error) {
+      const stillThere = await db.serviceAddress.findUnique({
+        where: { id: location.serviceAddressId },
+        select: { id: true },
+      });
+      if (stillThere) throw error;
+      continue;
+    }
     for (const place of readiness.places) {
       if (!place.problem || !place.jurisdictionId || byPlace.has(place.jurisdictionId)) {
         continue;
