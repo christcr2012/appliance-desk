@@ -7,7 +7,9 @@ vi.mock("next/navigation", () => import("./kit/kit-test-env"));
 vi.mock("@/lib/session", () => ({ requireRole: async () => ({ user: { id: "u1", role: s.role } }) }));
 vi.mock("@/app/desk/settings/decisions/actions", () => ({
   keepDecisionAction: vi.fn(), changeDecisionAction: vi.fn(), askProfessionalAction: vi.fn(), reopenDecisionAction: vi.fn(),
+  markStartingValuesReviewedAction: vi.fn(),
 }));
+vi.mock("@/domains/decisions/attention", () => ({ countUnreviewedStartingValues: async () => 3 }));
 vi.mock("@/domains/decisions", async () => {
   const { DECISION_SUBJECTS } = await import("@/domains/decisions/registry");
   return {
@@ -52,5 +54,11 @@ describe("Decisions & reviews page", () => {
     const page = await html("ADMIN", "CPA");
     expect(page).toContain("/desk/settings/decisions/form?for=CPA&amp;format=docx");
     expect(page).toContain("/desk/settings/decisions/form?for=CPA&amp;format=pdf");
+  });
+
+  it("the owner is offered 'Mark as reviewed' while starting values are waiting; an admin is not", async () => {
+    expect(await html("OWNER", "OWNER")).toContain("Mark as reviewed");
+    expect((await html("OWNER", "OWNER")).replaceAll("<!-- -->", "")).toContain("3 starting values are running the app");
+    expect(await html("ADMIN", "OWNER")).not.toContain("Mark as reviewed");
   });
 });

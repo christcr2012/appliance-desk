@@ -47,7 +47,8 @@ test("decisions: keep, change, ask, download and enter an answer", async ({ page
     await expect(page.getByRole("heading", { name: "Decisions & reviews", level: 1 })).toBeVisible();
     await expect(page.getByRole("link", { name: /^For you \d+/ })).toHaveAttribute("aria-current", "page");
     const keep = card(page, title("IN-06"));
-    await expect(keep.getByText("No public source — careful choice in use")).toBeVisible();
+    // IN-06 is Chris's own answer of 2026-10-13, so it now carries a researched starting value until the nightly run records it.
+    await expect(keep.getByText("Starting value — not confirmed")).toBeVisible();
     await keep.getByRole("button", { name: "Keep this" }).click();
     await expect(page.getByText(`Kept: ${title("IN-06")}`)).toBeVisible();
     await page.goto("/desk/settings/decisions?for=ANSWERED");

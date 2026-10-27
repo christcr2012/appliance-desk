@@ -3,6 +3,21 @@
 Branch `ai/claude/ops-2`. A retired refrigerator, freezer or mini-fridge can no longer be marked "scrapped" or "thrown away" (one at a time, in bulk, or as the leftovers of a parts-stripping) until its **refrigerant record** is signed on screen: refrigerant type, whether it was recovered (by whom, their address, certification number, equipment, date) or had already leaked, and the scrap yard's receipt number. The app prints the signed **statement** (PDF) to hand the scrap yard. The record is kept for **6 years** (a dated rule-book number; the federal rule asks for 3; not confirmed). Owner setting on the Retired appliances page: which kinds of appliance have refrigerant (starting value: refrigerators, freezers and mini-fridges; washers and dryers no). Migration `20261106000000_refrigerant` (additive). Proof: pure tests (`tests/ops2-refrigerant-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops2-refrigerant-integration.test.ts`), typecheck and lint clean.
 Not done: the **recycler receipt photo** (a text receipt number is saved instead; a photo needs a new private upload area) and the **sealed-system repair gate** (needs a technician certification record, which belongs to VAULT-1, not built yet). The Colorado-specific rule is not confirmed (DQ-OPS2-1).
 
+## October 26 — DEC-2: researched starting values in the live app (PR #635, merged after green checks)
+
+Branch `ai/claude/dec-2-starting-values`. DEC-1b (PR #603) is merged. Codex found two real problems, both fixed before merge: the overnight values were being cancelled on their start day (nobody was named to carry them out), and the nightly save now re-checks under its lock that nobody answered meanwhile.
+Coded: every question in Decisions & reviews has a researched value with sources (tax-by-charge, Greeley careful choices,
+filing basis, delivery fee, bad debt, setup fee, record years, remembered-device days, and the "as built" wording
+answers); new questions for Greeley's measure 2F city rate and the late fee amount. The nightly run (inside the existing
+books-nightly cron, before the Books check) applies each value once, from the next Denver day, only over untouched
+settings, as the one active owner, with a record that names no person; questions Chris already answered are recorded as
+confirmed. One To do item ("N starting values are now in use") until the owner presses Mark as reviewed (or keeps/changes any
+question). New rental agreements and quote conversions take the late fee from Settings; the form pre-fills it; renewals keep old terms.
+Proof: unit tests here (registry, defaults, day 11 with the clock changes, screens) and `tests/starting-values-integration.test.ts`
+on throwaway Postgres; the waiver browser spec `e2e/late-fee-waiver.spec.ts` runs in CI only. Not done on purpose: the
+`Invoice.lateFeeWaivedAt` field from the old spec (FEE-1's waiver on the pending charge replaced it).
+Needs Chris: nothing new on the checklist; the starting values show on his For you / For your CPA tabs.
+
 ## October 26 — DEC-1b: Decisions & reviews screens, forms and import (in review, merged with latest main)
 
 Branch `ai/claude/dec-1b-decisions-screens`. Coded: Settings › Decisions & reviews (`/desk/settings/decisions`: tabs,

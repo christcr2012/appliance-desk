@@ -162,7 +162,26 @@ export type NewAgreementInput = {
 type DraftSettingsSnapshot = {
   twelveMonthPrepayFreeMonthEnabled: boolean;
   draftReservationHoldDays: number;
+  /** DEC-2: the late fee terms new agreements start with. Left out, the built-in starting terms apply. */
+  lateFeeGraceDays?: number;
+  lateFeeFlatCents?: number;
+  lateFeePercent?: number;
 };
+
+/**
+ * DEC-2: a new agreement takes its late fee terms from Settings when the person creating it leaves them out. Once an
+ * agreement exists it keeps its own terms (renewals copy the old agreement's, never the setting).
+ */
+export function lateFeeTermsForNewAgreement(
+  input: { lateFeeGraceDays?: number; lateFeeCents?: number; lateFeePercent?: number },
+  settings: { lateFeeGraceDays?: number; lateFeeFlatCents?: number; lateFeePercent?: number },
+) {
+  return {
+    lateFeeGraceDays: input.lateFeeGraceDays ?? Math.max(settings.lateFeeGraceDays ?? LATE_FEE_MIN_GRACE_DAYS, LATE_FEE_MIN_GRACE_DAYS),
+    lateFeeCents: input.lateFeeCents ?? Math.min(settings.lateFeeFlatCents ?? 0, LATE_FEE_CAP_CENTS),
+    lateFeePercent: input.lateFeePercent ?? settings.lateFeePercent ?? 0,
+  };
+}
 
 export type CreateDraftAgreementInTxOptions = {
   id?: string;
@@ -234,9 +253,7 @@ export async function createDraftAgreementInTx(
       termMonths,
       depositCents: input.depositCents ?? 0,
       damageWaiverCents: input.damageWaiverCents ?? 0,
-      lateFeeGraceDays: input.lateFeeGraceDays ?? LATE_FEE_MIN_GRACE_DAYS,
-      lateFeeCents: input.lateFeeCents ?? 0,
-      lateFeePercent: input.lateFeePercent ?? 0,
+      ...lateFeeTermsForNewAgreement(input, options.settings),
       paidInFullInAdvance,
       freeMonthGranted,
       reservationExpiresAt: addDays(
@@ -273,15 +290,18 @@ export async function createDraftAgreement(
   const requestedId = input.requestKey
     ? draftRequestId(userId, input.requestKey)
     : undefined;
+  // Late fee terms the person left out come from Settings, and are only looked up when a new draft is really created.
+  // A repeated save request is compared on what the person actually sent, so a Settings change between the first
+  // save and a retry never turns the retry into "different terms".
   const terms = {
     customerId: input.customerId,
     serviceAddressId: input.serviceAddressId,
     termMonths,
     depositCents: input.depositCents ?? 0,
     damageWaiverCents: input.damageWaiverCents ?? 0,
-    lateFeeGraceDays: input.lateFeeGraceDays ?? LATE_FEE_MIN_GRACE_DAYS,
-    lateFeeCents: input.lateFeeCents ?? 0,
-    lateFeePercent: input.lateFeePercent ?? 0,
+    ...(input.lateFeeGraceDays !== undefined ? { lateFeeGraceDays: input.lateFeeGraceDays } : {}),
+    ...(input.lateFeeCents !== undefined ? { lateFeeCents: input.lateFeeCents } : {}),
+    ...(input.lateFeePercent !== undefined ? { lateFeePercent: input.lateFeePercent } : {}),
     paidInFullInAdvance,
   };
 

@@ -66,6 +66,11 @@ export default async function NewAgreementPage({
       <div className="mt-6">
         <RentalWizard
           ucccFilingNeeded={!businessSettings.ucccNotificationFiledOn}
+          lateFeeDefaults={{
+            graceDays: businessSettings.lateFeeGraceDays,
+            cents: businessSettings.lateFeeFlatCents,
+            percent: businessSettings.lateFeePercent,
+          }}
           initialRequestKey={requestKey}
           initialDraft={
             draft

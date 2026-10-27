@@ -57,8 +57,8 @@ describe("screens and actions", () => {
     expect(read("src/app/desk/settings/decisions/form/route.ts")).toContain('requireRole("OWNER", "ADMIN")');
     expect(read("src/app/desk/settings/decisions/import/page.tsx")).toContain('requireRole("OWNER")');
     const actions = read("src/app/desk/settings/decisions/actions.ts");
-    expect(actions.match(/export async function/g)).toHaveLength(4);
-    expect(actions.match(/requireRole\("OWNER"\)/g)).toHaveLength(4);
+    expect(actions.match(/export async function/g)).toHaveLength(5);
+    expect(actions.match(/requireRole\("OWNER"\)/g)).toHaveLength(5);
     expect(read("src/app/api/desk/decisions/answer/route.ts")).toContain('["OWNER"], { write: true }');
     expect(read("src/app/api/desk/decisions/import/route.ts")).toContain('["OWNER"], { write: true }');
   });
