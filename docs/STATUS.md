@@ -3,6 +3,20 @@
 After a refrigerant record is signed, the owner can keep the recycler's receipt photo or PDF with the business
 records (private files, same pattern as the insurance certificate). Tests on real Postgres pass. Still open on OPS-2:
 the sealed-system repair gate (needs a technician-certification record). Vehicle-insurance link is PR #689 (auto-merge on).
+## October 27 — Fix: closing the emergency link works in the same millisecond (branch `ai/claude/pause-window-edge`)
+
+CI caught a rare edge from the successor-pause work (#672): if "Close this link now" and the contact's Pause press landed in
+the very same millisecond, the pause still went through. The window is now strictly before its end. A test checks the exact
+closing instant. Nothing else changes.
+
+## October 27 — OPS-3: vehicle-to-insurance link (branch `ai/claude/ops3-vehicle-insurance`)
+
+Each delivery vehicle can now be linked to the insurance policy that covers it. The vehicle page says "Insured by …,
+ends …" and warns when that policy has ended (the ended policy already reaches the To do list through OPS-4). Only
+live policies can be picked; deleting a policy just clears the link. Additive migration; tests on real Postgres pass.
+Merged earlier today: review check (#685), insurance certificate on a record (#687, #688). GitHub rule: the
+up-to-date requirement is off; `review-gate` still needs to be saved as a required check (OWNER-CHECKLIST section A).
+NEXT: OPS-2 leftovers (sealed-system technician check, receipt photo).
 ## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
 React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 

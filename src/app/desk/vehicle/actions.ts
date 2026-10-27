@@ -10,7 +10,7 @@ const fail = (error: unknown): VehicleActionState => ({ status: "error", message
 const text = (fd: FormData, key: string) => String(fd.get(key) ?? "");
 const int = (fd: FormData, key: string) => Number(text(fd, key).replaceAll(",", "").trim());
 const optInt = (fd: FormData, key: string) => (text(fd, key).trim() ? int(fd, key) : null);
-const refresh = () => { revalidatePath("/desk/vehicle"); revalidatePath("/desk/driver"); revalidatePath("/desk/today"); revalidatePath("/desk/tasks"); };
+const refresh = () => { revalidatePath("/desk/vehicle"); revalidatePath("/desk/driver"); revalidatePath("/desk/today"); revalidatePath("/desk/tasks"); revalidatePath("/desk/insurance"); };
 
 export async function saveVehicleAction(vehicleId: string | null, _: VehicleActionState, fd: FormData): Promise<VehicleActionState> {
   const session = await requireRole("OWNER", "ADMIN");
@@ -20,7 +20,7 @@ export async function saveVehicleAction(vehicleId: string | null, _: VehicleActi
       gvwrLbs: int(fd, "gvwr"), registrationMonth: optInt(fd, "registrationMonth"), odometerAtPurchase: int(fd, "odometerAtPurchase") || 0,
       maintenanceEveryMiles: optInt(fd, "maintenanceEveryMiles"), maintenanceEveryMonths: optInt(fd, "maintenanceEveryMonths"),
       lastMaintenanceOnKey: text(fd, "lastMaintenanceOn") || undefined, lastMaintenanceMiles: optInt(fd, "lastMaintenanceMiles"),
-      medicalCardExpiresOnKey: text(fd, "medicalCardExpiresOn") || undefined, notes: text(fd, "notes"),
+      medicalCardExpiresOnKey: text(fd, "medicalCardExpiresOn") || undefined, notes: text(fd, "notes"), insurancePolicyId: text(fd, "insurancePolicyId") || null,
     });
     refresh();
     return { status: "success", message: vehicleId ? "Saved." : "Vehicle added." };
