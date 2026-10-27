@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { routeForEntry, pathsByRoute, measureGzipKb, baselines, validateBudget } from "./check-desk-bundle.mjs";
+import { routeForEntry, pathsByRoute, pathsFromClientReferences, measureGzipKb, baselines, validateBudget } from "./check-desk-bundle.mjs";
 
 test("route groups and dynamic page segments preserve visible routes", () => {
   assert.equal(routeForEntry("/(owner)/desk/(ops)/customers/[id]/page"), "/desk/customers/[id]");
@@ -43,4 +43,21 @@ test("uncovered new routes, stale baselines, missing and unsafe JS chunks fail",
   assert.throws(() => pathsByRoute({ pages: { "/": ["static/chunks/root.js"] } }), /No \/desk pages/);
   assert.throws(() => measureGzipKb({"/desk/today": ["../../secret.js"]}, "/tmp"), /Unsafe/);
   assert.throws(() => measureGzipKb({"/desk/today": ["static/chunks/missing.js"]}, "/tmp"), /Missing JavaScript/);
+});
+
+test("Next 16 client-reference page manifests provide actual page and shared JS", () => {
+  const root = mkdtempSync(join(tmpdir(), "desk-rsc-"));
+  try {
+    const dir = join(root, "server/app/desk/today");
+    mkdirSync(dir, { recursive: true });
+    const js = 'globalThis.__RSC_MANIFEST=globalThis.__RSC_MANIFEST||{};' +
+      'globalThis.__RSC_MANIFEST["/desk/today/page"]=' +
+      JSON.stringify({ clientModules: {
+        "components/app-shell": { chunks: ["static/chunks/desk.js", "static/chunks/desk.js"] },
+        "components/today": { chunks: [12, "/_next/static/chunks/today.js"] },
+      } }) + ';';
+    writeFileSync(join(dir, "page_client-reference-manifest.js"), js);
+    assert.deepEqual(pathsFromClientReferences(root, ["static/chunks/bootstrap.js"])["/desk/today"],
+      ["static/chunks/bootstrap.js", "static/chunks/desk.js", "static/chunks/today.js"]);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

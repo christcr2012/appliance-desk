@@ -62,7 +62,8 @@ export function pathsFromClientReferences(buildDir, bootstrap = []) {
   visit(appDir);
   const routes = new Map();
   for (const file of manifests.sort()) {
-    const source = "/" + relative(appDir, file).replace(/_client-reference-manifest\\.js$/, "");
+    const name = relative(appDir, file);
+    const source = "/" + name.slice(0, -"_client-reference-manifest.js".length);
     const route = routeForEntry(source);
     if (route !== "/desk" && !route.startsWith("/desk/")) continue;
     const sandbox = { __RSC_MANIFEST: {} };
@@ -73,7 +74,10 @@ export function pathsFromClientReferences(buildDir, bootstrap = []) {
     const chunks = routes.get(route) ?? new Set(bootstrap.filter(v => typeof v === "string" && v.endsWith(".js")));
     const collect = (value) => {
       if (typeof value === "string" && value.endsWith(".js")) {
-        let chunk = value.replace(/^\\/?_next\\//, "").replace(/^\\//, "");
+        let chunk = value;
+        if (chunk.startsWith("/_next/")) chunk = chunk.slice(7);
+        else if (chunk.startsWith("_next/")) chunk = chunk.slice(6);
+        if (chunk.startsWith("/")) chunk = chunk.slice(1);
         if (chunk.startsWith("static/")) chunks.add(chunk);
       } else if (Array.isArray(value)) {
         for (const nested of value) collect(nested);
