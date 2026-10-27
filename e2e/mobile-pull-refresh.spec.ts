@@ -43,3 +43,31 @@ test("reduced motion exposes a manual refresh control without a pull gesture", a
   await pull.getByRole("button", { name: "Refresh" }).click();
   await expect(pull.getByTestId("pull-refresh-status")).toHaveText(/Updated just now|Refreshing…/);
 });
+
+test("mobile rule cards reveal their existing actions without triggering a money change", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/desk/sales-tax/rules", { waitUntil: "load" });
+  const card = page.locator("[data-swipe-card]").first();
+  await expect(card).toBeVisible();
+  await expect(card).toHaveAttribute("data-swipe-open", "false");
+  const rect = await card.boundingBox();
+  expect(rect).not.toBeNull();
+  const x = rect!.x + rect!.width * 0.75;
+  const y = rect!.y + Math.min(rect!.height / 2, 35);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  for (const dx of [25, 50, 95]) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x - dx, y }] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(card).toHaveAttribute("data-swipe-open", "true");
+  await expect(card.getByRole("link", { name: "History" })).toBeVisible();
+  await expect(card.getByRole("link", { name: "Change…" })).toBeVisible();
+  await page.getByRole("heading", { level: 1, name: /Tax and fee rules/ }).click();
+  await expect(card).toHaveAttribute("data-swipe-open", "false");
+  await expect(card.getByRole("button", { name: /More for row/ })).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await card.dispatchEvent("pointerdown", { pointerType: "touch", pointerId: 1, clientX: 210, clientY: 20 });
+  await card.dispatchEvent("pointerup", { pointerType: "touch", pointerId: 1, clientX: 120, clientY: 20 });
+  await expect(card).toHaveAttribute("data-swipe-open", "false");
+});
