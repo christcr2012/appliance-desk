@@ -4,7 +4,7 @@ import { monthKey } from "@/domains/books/depreciation";
 
 /** Authenticated, read-only CSV files. A download never emails or rewrites a ledger. */
 export async function GET(request:Request,{params}:{params:Promise<{month:string}>}){
- const session=await requireRole("OWNER","ADMIN");
+ const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
  const {month}=await params,kind=new URL(request.url).searchParams.get("file");
  if(kind!=="journal"&&kind!=="profit")
   return Response.json({error:"Choose journal or profit."},{status:400,
