@@ -231,6 +231,10 @@ export const BACKUP_MODEL_POLICY = {
   CollectionStep: "collectionStep",
   CollectionCase: "collectionCase",
   SmallClaimsFiling: "smallClaimsFiling",
+  // OPS-7: security incidents, the service-provider list and accessibility complaints are business records.
+  SecurityIncident: "securityIncident",
+  ServiceVendor: "serviceVendor",
+  AccessibilityComplaint: "accessibilityComplaint",
 
   // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
   RecallMatch: "recallMatch",
