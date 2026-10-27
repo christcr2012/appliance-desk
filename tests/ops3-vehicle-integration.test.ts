@@ -131,4 +131,62 @@ describe.skipIf(!enabled)("vehicle and mileage (real Postgres)", () => {
     await expect(startRouteDay(ownerId, vehicleId, 99_999)).rejects.toThrow(/find/);
     await archiveVehicle(ownerId, vehicleId, false);
   });
+  it("links the vehicle to an insurance policy: live policies only, shown on the overview, cleared if the policy goes", async () => {
+    const policyIds: string[] = [];
+    try {
+      const mk = (n: string, expires: Date, archived = false) => prisma.ownerInsurancePolicy.create({
+        data: { kind: "COMMERCIAL_AUTO", insurer: `Auto Mutual ${n}`, policyNumber: `V-${tag}-${n}`, expiresOn: expires, archivedAt: archived ? new Date() : null, createdByUserId: ownerId },
+      });
+      const live = await mk("live", new Date(Date.now() + 200 * 86_400_000));
+      const old = await mk("old", new Date(Date.now() - 3 * 86_400_000));
+      const gone = await mk("gone", new Date(Date.now() + 200 * 86_400_000), true);
+      policyIds.push(live.id, old.id, gone.id);
+      const input = { ...van, nickname: `Linked ${tag}`, insurancePolicyId: live.id };
+      await expect(saveVehicle(staffId, null, input)).rejects.toThrow();
+      await expect(saveVehicle(ownerId, null, { ...input, insurancePolicyId: gone.id })).rejects.toThrow(/still on your list/);
+      await expect(saveVehicle(ownerId, null, { ...input, insurancePolicyId: "missing" })).rejects.toThrow(/still on your list/);
+      const id = await saveVehicle(ownerId, null, input);
+      let overview = await loadVehicleOverview(new Date());
+      let row = overview.vehicles.find((v) => v.id === id)!;
+      expect(row.insurancePolicy?.insurer).toBe("Auto Mutual live");
+      expect(overview.policies.map((p) => p.id)).toContain(live.id);
+      expect(overview.policies.map((p) => p.id)).not.toContain(gone.id);
+      // Switch to a policy that has already ended: it is allowed (still on the list) and the page can say so.
+      await saveVehicle(ownerId, id, { ...input, insurancePolicyId: old.id });
+      overview = await loadVehicleOverview(new Date());
+      row = overview.vehicles.find((v) => v.id === id)!;
+      expect(row.insurancePolicy!.expiresOn.getTime()).toBeLessThan(Date.now());
+      // A policy moved to old policies stays linked when the vehicle is saved for another reason, but cannot be newly picked.
+      await saveVehicle(ownerId, id, { ...input, insurancePolicyId: live.id });
+      await prisma.ownerInsurancePolicy.update({ where: { id: live.id }, data: { archivedAt: new Date() } });
+      await saveVehicle(ownerId, id, { ...input, notes: "changed", insurancePolicyId: live.id });
+      expect((await prisma.fleetVehicle.findUniqueOrThrow({ where: { id } })).insurancePolicyId).toBe(live.id);
+      overview = await loadVehicleOverview(new Date());
+      row = overview.vehicles.find((v) => v.id === id)!;
+      expect(row.insurancePolicy?.id).toBe(live.id);
+      expect(row.insurancePolicy?.archivedAt).not.toBeNull();
+      expect(overview.policies.map((p) => p.id)).not.toContain(live.id);
+      await expect(saveVehicle(ownerId, null, { ...input, nickname: `Other ${tag}`, insurancePolicyId: live.id })).rejects.toThrow(/still on your list/);
+      await prisma.ownerInsurancePolicy.update({ where: { id: live.id }, data: { archivedAt: null } });
+      // A renewal that has not started yet is readable from the overview (the page says "not covering yet").
+      const future = await mk("future", new Date(Date.now() + 400 * 86_400_000));
+      policyIds.push(future.id);
+      await prisma.ownerInsurancePolicy.update({ where: { id: future.id }, data: { effectiveOn: new Date(Date.now() + 30 * 86_400_000) } });
+      await saveVehicle(ownerId, id, { ...input, insurancePolicyId: future.id });
+      overview = await loadVehicleOverview(new Date());
+      expect(overview.vehicles.find((v) => v.id === id)!.insurancePolicy!.effectiveOn!.getTime()).toBeGreaterThan(Date.now());
+      await saveVehicle(ownerId, id, { ...input, insurancePolicyId: live.id });
+      // Unlinking works, and deleting a linked policy clears the link instead of failing.
+      await saveVehicle(ownerId, id, { ...input, insurancePolicyId: live.id });
+      await prisma.ownerInsurancePolicy.delete({ where: { id: live.id } });
+      expect((await prisma.fleetVehicle.findUniqueOrThrow({ where: { id } })).insurancePolicyId).toBeNull();
+      await saveVehicle(ownerId, id, { ...input, insurancePolicyId: null });
+      await archiveVehicle(ownerId, id, true);
+      await prisma.mileageTrip.deleteMany({ where: { vehicleId: id } });
+      await prisma.auditLog.deleteMany({ where: { entityId: id } });
+      await prisma.fleetVehicle.delete({ where: { id } });
+    } finally {
+      await prisma.ownerInsurancePolicy.deleteMany({ where: { id: { in: policyIds } } });
+    }
+  });
 });

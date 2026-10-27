@@ -9,9 +9,10 @@ async function rateForYear(year: number): Promise<number | null> {
 }
 
 export async function loadVehicleOverview(now: Date) {
-  const [settings, vehicles] = await Promise.all([
+  const [settings, vehicles, policies] = await Promise.all([
     prisma.businessSettings.upsert({ where: { id: "singleton" }, create: { id: "singleton" }, update: {}, select: { mileageMethod: true, vehicleMedicalCardRequired: true } }),
-    prisma.fleetVehicle.findMany({ orderBy: [{ archivedAt: { sort: "asc", nulls: "first" } }, { createdAt: "asc" }], take: 20 }),
+    prisma.fleetVehicle.findMany({ orderBy: [{ archivedAt: { sort: "asc", nulls: "first" } }, { createdAt: "asc" }], take: 20, include: { insurancePolicy: { select: { id: true, insurer: true, policyNumber: true, effectiveOn: true, expiresOn: true, archivedAt: true } } } }),
+    prisma.ownerInsurancePolicy.findMany({ where: { archivedAt: null }, orderBy: [{ expiresOn: "desc" }], take: 50, select: { id: true, kind: true, insurer: true, policyNumber: true, expiresOn: true } }),
   ]);
   const todayMonth = Number(businessDateKey(now).slice(5, 7));
   const today = businessDayBounds(now).start;
@@ -36,7 +37,7 @@ export async function loadVehicleOverview(now: Date) {
     const rate = await rateForYear(year);
     years.push({ year, miles, rateTenths: rate, deductionCents: rate != null ? mileageDeductionCents(miles, rate) : null });
   }
-  return { settings, vehicles: out, trips, years };
+  return { settings, vehicles: out, trips, years, policies };
 }
 
 /** For the driver view: the vehicle(s) that can be driven today and whether today's trip is started or finished. */
