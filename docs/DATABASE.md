@@ -51,6 +51,13 @@ Migration `20261101000000_legal_rules`.
 - `RetailDeliveryFeeRecord.ruleVersionId` — the rule version that set the amount on new records (old rows keep `rateId`). `BusinessSettings.costlyChangeTimingPercent` (90, CHECK 85–95) and `timingSafetyMarginBusinessDays` (3, CHECK 1–10): when the app suggests acting on a change that costs the business.
 - `LedgerAccount` `TAX_ABSORBED` (expense, "Tax/fee the business paid for a late change", seed id `k_seed_tax_absorbed`; same entry in `src/domains/books/system-chart.json`). Backups include `LegalRuleVersion` (`BACKUP_MODEL_POLICY`).
 
+## November 10 — Delivery-area tax readiness (FEETAX-2, additive)
+
+Migration `20261110000000_delivery_readiness`.
+- `JurisdictionReadiness` — one row per taxing place carrying only delivery-setup facts: `licenseRequired` (`NONE`, `AFTER_FIRST_DELIVERY`, `AFTER_SECOND_DELIVERY_IN_12_MONTHS`, `ALWAYS`, `UNKNOWN`), `licenseRecordId` (the Business records item holding the city's license), `filesThrough` (`SUTS`, `CITY_PORTAL`, `STATE_RETURN`, `UNKNOWN`), `sourceUrl`, `checkedOn`, `reviewStatus`, `notes`. Whether a place taxes rentals is deliberately NOT stored here — that is the `TaxabilityRule` RENTAL cell for the jurisdiction, the one live rent decision. The migration seeds one `TaxJurisdiction` (code = uppercase place slug) plus one readiness row for each of the 58 incorporated places in `docs/research/2026-10-25-tax-jurisdictions-50mi.md`. No tax rates are seeded — rates keep coming from `TaxRateVersion`. Backups include both new models (`BACKUP_MODEL_POLICY`).
+- `JurisdictionDeliveryCount` — one row per completed delivery order into a place (`orderId` unique, so a retried completion writes once): `jurisdictionId`, `deliveredOn`. Drives the license rules that count deliveries in 12 months.
+- `RentalAgreement.readinessOverrideByUserId` / `readinessOverrideReason` / `readinessOverrideAt` — the owner's one-order override of a "rules not decided" delivery-readiness refusal. Never set for a missing license; the save is audited (`tax.delivery_readiness_override`).
+
 ## November 4 — Official-page rule watches (TFA-3, additive)
 
 Migration `20261104000000_tfa3_rule_watches`.

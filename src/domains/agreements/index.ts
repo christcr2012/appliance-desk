@@ -1,4 +1,9 @@
 import { assertNotRecallHeld } from "@/domains/recalls/guard";
+import {
+  assertDeliveryReadyInTx,
+  deliveryTaxReadinessWith,
+  recordReadinessOverrideInTx,
+} from "@/domains/tax/delivery-readiness";
 import { LATE_FEE_CAP_CENTS, LATE_FEE_MIN_GRACE_DAYS, classifyLateFeeAgreement } from "@/domains/billing/late-fee-rules";
 import { draftRequestId } from "./draft-request";
 import { ensurePickupDraftInTx } from "./pickup-draft";
@@ -157,6 +162,10 @@ export type NewAgreementInput = {
   lateFeeCents?: number;
   lateFeePercent?: number;
   paidInFullInAdvance?: boolean;
+  /** FEETAX-2: the owner's reason for overriding a "rules not decided"
+   * delivery-readiness refusal for this order only. Never overrides a
+   * missing city license. */
+  overrideReason?: string;
 };
 
 type DraftSettingsSnapshot = {
@@ -187,6 +196,13 @@ export type CreateDraftAgreementInTxOptions = {
   id?: string;
   sourceEstimateId?: string | null;
   settings: DraftSettingsSnapshot;
+  /**
+   * FEETAX-2: estimate preparation creates unsigned draft shells that are
+   * never sent, approved or charged — readiness is enforced by the quote,
+   * approval and conversion gates instead, so preparation passes true.
+   * Real order saves (desk wizard, estimate conversion) leave it unset.
+   */
+  skipDeliveryReadinessCheck?: boolean;
 };
 
 function validateDraftTerms(input: NewAgreementInput) {
@@ -278,6 +294,29 @@ export async function createDraftAgreementInTx(
       },
     },
   });
+
+  // FEETAX-2: a new order may only be saved for an address that is ready
+  // to deliver to. The owner may override a "rules not decided" refusal
+  // for this one order with a reason (audited); a missing city license,
+  // an out-of-state address or an unconfirmed address can never be
+  // overridden, and the refusal rolls the whole save back.
+  const readiness = options.skipDeliveryReadinessCheck
+    ? null
+    : await deliveryTaxReadinessWith(tx, input.serviceAddressId);
+  if (readiness && !readiness.ready) {
+    if (input.overrideReason?.trim()) {
+      await recordReadinessOverrideInTx(tx, {
+        agreementId: agreement.id,
+        actorUserId: userId,
+        reason: input.overrideReason,
+        serviceAddressId: input.serviceAddressId,
+      });
+    }
+    await assertDeliveryReadyInTx(tx, {
+      serviceAddressId: input.serviceAddressId,
+      agreementId: agreement.id,
+    });
+  }
 
   return agreement;
 }
