@@ -106,6 +106,26 @@ describe.skipIf(!enabled)("TFA-2 §10 license renewal on real Postgres", () => {
       }
     }));
 
+  it("the Today reminder appears inside the spec's renewal window, not months early (review case)", async () =>
+    ownerFixture(async (ownerId) => {
+      const tag = randomUUID().slice(0, 8);
+      const name = "License window " + tag;
+      const account = await saveTaxFilingAccount(
+        ownerId, accountInput(name, { licenseExpiresOn: day("2027-12-31") }), null);
+      try {
+        const shown = async (now: Date) =>
+          (await listTaxFilingAttention(now)).licenses.rows.some((row) => row.title.includes(name));
+        // Section 3: the window opens November 1 of the expiry year, and
+        // at the default 90 percent timing the act-on day lands in late
+        // December. October, and even mid-December, are too early.
+        expect(await shown(day("2027-10-19"))).toBe(false);
+        expect(await shown(day("2027-12-20"))).toBe(false);
+        expect(await shown(day("2027-12-30"))).toBe(true);
+      } finally {
+        await prisma.taxFilingAccount.deleteMany({ where: { id: account.id } });
+      }
+    }));
+
   it("marking renewed rolls the date to the next odd year and audits it", async () =>
     ownerFixture(async (ownerId) => {
       const tag = randomUUID().slice(0, 8);
@@ -141,8 +161,8 @@ describe.skipIf(!enabled)("TFA-2 §10 license renewal on real Postgres", () => {
       try {
         const timing = await getRuleTimingSettings();
         const actOn = whenToAct({
-          opens: day("2026-01-01"), closes: day("2027-12-31"), effect: "COSTS",
-          now: day("2026-01-01"), percent: timing.percent,
+          opens: day("2027-11-01"), closes: day("2027-12-31"), effect: "COSTS",
+          now: day("2027-11-01"), percent: timing.percent,
           marginBusinessDays: timing.marginBusinessDays,
         }).actOn;
         const actOnKey = businessDateKey(actOn);

@@ -33,8 +33,8 @@ export async function listTaxFilingAttention(
   readOnly = false,
 ): Promise<FilingAttentionSet> {
   // TFA-2 §10: the license reminder appears at the timing point (section 3):
-  // the owner's chosen percent through the renewal window, which opens Jan 1
-  // of the year before the odd-year expiry. The query prefilter is generous
+  // the owner's chosen percent through the renewal window, November 1
+  // through December 31 of the expiry year. The query prefilter is generous
   // and the act-on day is applied below; without timing settings the old
   // fixed 60-business-day window stands.
   const timing = await getRuleTimingSettings().catch(() => null);
@@ -115,14 +115,15 @@ export async function listTaxFilingAttention(
   };
 
   // TFA-2 §10: with timing settings, a license shows once its act-on day
-  // arrives (renewal window: Jan 1 of the year before expiry, through the
-  // expiry). A date that cannot be evaluated still shows: an early license
-  // reminder is safer than a missed one.
+  // arrives inside the renewal window the spec sets (section 3:
+  // November 1 through December 31 of the expiry year). A date that
+  // cannot be evaluated still shows: an early license reminder is safer
+  // than a missed one.
   const licenseDue = (account: (typeof licenses)[number]): boolean => {
     if (!timing || !account.licenseExpiresOn) return true;
     try {
       const expiryKey = businessDateKey(account.licenseExpiresOn);
-      const opens = businessDateFromKey(`${Number(expiryKey.slice(0, 4)) - 1}-01-01`);
+      const opens = businessDateFromKey(`${expiryKey.slice(0, 4)}-11-01`);
       if (!opens) return true;
       const actOn = whenToAct({
         opens, closes: account.licenseExpiresOn, effect: "COSTS", now,

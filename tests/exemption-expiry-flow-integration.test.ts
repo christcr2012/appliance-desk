@@ -21,6 +21,98 @@ const day = (s: string) => businessDateFromKey(s)!;
 const daysAgo = (count: number) =>
   day(businessDateKey(new Date(Date.now() - count * 24 * 3600 * 1000)));
 
+describe.skipIf(!enabled)("TFA-2 §9 per-invoice credit attribution on real Postgres", () => {
+  it("an earlier grant's share comes off its own invoice, never a different bill (review case)", async () => {
+    const tag = randomUUID().slice(0, 8);
+    const ownerId = "tfa2-ex4-owner-" + tag;
+    const userId = "tfa2-ex4-user-" + tag;
+    const customerId = "tfa2-ex4-customer-" + tag;
+    const jurisdictionId = "tfa2-ex4-jur-" + tag;
+    try {
+      await prisma.user.createMany({
+        data: [
+          { id: ownerId, email: tag + "-owner4@example.test", name: "Ex Owner", role: "OWNER", emailVerified: true },
+          { id: userId, email: tag + "-customer4@example.test", name: "Attribution Customer", role: "CUSTOMER", emailVerified: true },
+        ],
+      });
+      await prisma.customer.create({
+        data: { id: customerId, userId, referralCode: "A" + tag },
+      });
+      await prisma.taxJurisdiction.create({
+        data: {
+          id: jurisdictionId, code: "E4-" + tag, name: "Test state",
+          level: "STATE", administration: "STATE_COLLECTED", reviewStatus: "REVIEWED",
+        },
+      });
+      const rate = await prisma.taxRateVersion.create({
+        data: { jurisdictionId, rateMilliPercent: 8000, effectiveFrom: day("2025-01-01"), source: "MANUAL" },
+      });
+      async function taxedInvoice(issuedAt: Date) {
+        const invoice = await prisma.invoice.create({
+          data: {
+            customerId, status: "PAID", issuedAt,
+            amountDueCents: 10_800, amountPaidCents: 10_800,
+          },
+        });
+        await prisma.invoiceTaxLine.create({
+          data: {
+            invoiceId: invoice.id, jurisdictionId, rateVersionId: rate.id,
+            category: "RENTAL", taxableCents: 10_000, taxCents: 800, source: "ENGINE",
+          },
+        });
+        return invoice.id;
+      }
+      const older = await taxedInvoice(daysAgo(40));
+      const newer = await taxedInvoice(daysAgo(20));
+      const certificate = (validFrom: Date) => ({
+        reason: "RESALE" as const, certificatePhotoId: "photo-" + tag,
+        jurisdictionIds: [jurisdictionId], validFrom, expiresOn: null,
+      });
+      // Certificate A covers only the newer bill (issued after it starts).
+      await createCustomerTaxExemption(ownerId, customerId, certificate(daysAgo(25)));
+      const afterA = await prisma.customerCredit.findMany({
+        where: { customerId, sourceType: "EXEMPTION_BACKDATE" },
+        select: { id: true, amountCents: true },
+      });
+      expect(afterA).toHaveLength(1);
+      expect(afterA[0]!.amountCents).toBe(800);
+      // Certificate B covers both bills.
+      await createCustomerTaxExemption(ownerId, customerId, certificate(daysAgo(50)));
+      const creditB = await prisma.customerCredit.findFirstOrThrow({
+        where: { customerId, sourceType: "EXEMPTION_BACKDATE", id: { not: afterA[0]!.id } },
+        select: { id: true, amountCents: true },
+      });
+      expect(creditB.amountCents).toBe(800);
+      const grantB = await prisma.auditLog.findFirstOrThrow({
+        where: { action: "tax.exemption.backdate_credit", entityId: creditB.id },
+        select: { newValue: true },
+      });
+      // B's own share is the older bill alone: the newer bill's tax was
+      // already credited by A and must not be re-attributed to the older
+      // bill (the old earliest-first split left the older bill looking
+      // uncredited, so a refund could pay its tax a second time).
+      expect((grantB.newValue as { perInvoice?: unknown[] }).perInvoice)
+        .toEqual([{ invoiceId: older, cents: 800 }]);
+      await expect(issueInvoiceRefund(ownerId, {
+        invoiceId: older, amountCents: 10_800, reason: "OTHER",
+      })).rejects.toThrow(/still eligible/);
+      await expect(issueInvoiceRefund(ownerId, {
+        invoiceId: newer, amountCents: 10_800, reason: "OTHER",
+      })).rejects.toThrow(/still eligible/);
+    } finally {
+      await prisma.customerCredit.deleteMany({ where: { customerId } });
+      await prisma.invoiceTaxLine.deleteMany({ where: { jurisdictionId } });
+      await prisma.invoice.deleteMany({ where: { customerId } });
+      await prisma.customerTaxExemption.deleteMany({ where: { customerId } });
+      await prisma.taxRateVersion.deleteMany({ where: { jurisdictionId } });
+      await prisma.taxJurisdiction.deleteMany({ where: { id: jurisdictionId } });
+      await prisma.customer.deleteMany({ where: { id: customerId } });
+      await prisma.auditLog.deleteMany({ where: { userId: ownerId } });
+      await prisma.user.deleteMany({ where: { id: { in: [ownerId, userId] } } });
+    }
+  });
+});
+
 describe.skipIf(!enabled)("TFA-2 §9 exemption expiry flow on real Postgres", () => {
   it("shows the expired-certificate To do only for billed customers with no current certificate", async () => {
     const tag = randomUUID().slice(0, 8);

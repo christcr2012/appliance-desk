@@ -295,7 +295,7 @@ export async function createCustomerTaxExemption(
         // add a manual credit) rather than paying the same tax twice.
         const priorCredits = await tx.customerCredit.findMany({
           where: { customerId, sourceType: "EXEMPTION_BACKDATE" },
-          select: { amountCents: true, sourceId: true },
+          select: { id: true, amountCents: true, sourceId: true },
         });
         const priorIds = [...new Set(priorCredits.map((credit) => credit.sourceId).filter((id): id is string => !!id))];
         if (priorIds.length) {
@@ -304,6 +304,32 @@ export async function createCustomerTaxExemption(
             select: { id: true, validFrom: true, expiresOn: true, jurisdictionIds: true },
           });
           const priorById = new Map(priorRows.map((prior) => [prior.id, prior]));
+          // Earlier grants recorded which invoices their credit covered;
+          // those shares come off the SAME invoices here, never off a
+          // different bill (the review's case: a certificate that
+          // credited only the newer invoice must not leave the older
+          // one's tax looking uncredited, or a later refund pays it
+          // twice while the newer bill is wrongly capped).
+          const priorGrants = await tx.auditLog.findMany({
+            where: {
+              action: "tax.exemption.backdate_credit", entityType: "CustomerCredit",
+              entityId: { in: priorCredits.map((credit) => credit.id) },
+            },
+            select: { entityId: true, newValue: true },
+          });
+          const splitByCreditId = new Map<string, Array<{ invoiceId: string; cents: number }>>();
+          for (const grant of priorGrants) {
+            const value = (grant.newValue ?? {}) as {
+              perInvoice?: Array<{ invoiceId?: string; cents?: number }>;
+            };
+            if (!grant.entityId || !Array.isArray(value.perInvoice)) continue;
+            splitByCreditId.set(grant.entityId, value.perInvoice.filter(
+              (entry): entry is { invoiceId: string; cents: number } =>
+                typeof entry.invoiceId === "string" && typeof entry.cents === "number",
+            ));
+          }
+          let priorTotal = 0;
+          const priorPerInvoice = new Map<string, number>();
           for (const credit of priorCredits) {
             const prior = credit.sourceId ? priorById.get(credit.sourceId) : undefined;
             if (!prior) continue;
@@ -317,19 +343,30 @@ export async function createCustomerTaxExemption(
             const areasOverlap = !data.jurisdictionIds.length || !priorAreas.length
               || data.jurisdictionIds.some((id) => priorAreas.includes(id));
             if (!areasOverlap) continue;
-            creditCents -= credit.amountCents;
+            priorTotal += credit.amountCents;
+            for (const entry of splitByCreditId.get(credit.id) ?? []) {
+              priorPerInvoice.set(entry.invoiceId,
+                (priorPerInvoice.get(entry.invoiceId) ?? 0) + entry.cents);
+            }
           }
-        }
-        // Attribute what the earlier credits already covered to the
-        // earliest invoices first, so the per-invoice record below sums
-        // to the credit actually granted and each invoice's share is the
-        // part of its tax no earlier certificate already returned.
-        let unsubtracted = perInvoice.reduce((sum, entry) => sum + entry.cents, 0) - creditCents;
-        for (const entry of perInvoice) {
-          if (unsubtracted <= 0) break;
-          const cut = Math.min(entry.cents, unsubtracted);
-          entry.cents -= cut;
-          unsubtracted -= cut;
+          creditCents -= priorTotal;
+          // Subtract each earlier grant's recorded share from its own
+          // invoice first. Only what no recorded split accounts for
+          // (shares on invoices outside this grant, or a grant too old
+          // to have a split) is spread earliest-first, so the totals
+          // still match the aggregate and any error under-credits.
+          let unsubtracted = priorTotal;
+          for (const entry of perInvoice) {
+            const share = Math.min(entry.cents, priorPerInvoice.get(entry.invoiceId) ?? 0);
+            entry.cents -= share;
+            unsubtracted -= share;
+          }
+          for (const entry of perInvoice) {
+            if (unsubtracted <= 0) break;
+            const cut = Math.min(entry.cents, unsubtracted);
+            entry.cents -= cut;
+            unsubtracted -= cut;
+          }
         }
       }
       if (creditCents > 0) {
