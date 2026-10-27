@@ -126,9 +126,16 @@ export const BACKUP_MODEL_POLICY = {
   TaxFilingAmendment: "taxFilingAmendment",
   BusinessPaperwork: "businessPaperwork",
   // VAULT-1: record file index rows are backed up (the file bytes ride the
-  // nightly media copy of the private store). numberEncrypted on the parent
-  // record stays encrypted in backups too; a restore needs the same key.
+  // nightly media copy of the private store). The parent record's saved
+  // number stays encrypted in backups too; a restore needs the same key.
   BusinessRecordFile: "businessRecordFile",
+  // VAULT-2: logins are backed up still encrypted (a restore needs the same
+  // VAULT_ENCRYPTION_KEY). Unlock rows are session-bound and meaningless
+  // after a restore; emergency requests hold a one-time token hash and
+  // one-time state, so they are never restored — the owner re-issues a link.
+  VaultCredential: "vaultCredential",
+  VaultUnlock: null,
+  EmergencyAccessRequest: null,
   PurchaseUseTax: "purchaseUseTax",
   // W-14/W-2: purchase records, their receipt pages and the parts-receipt tax answer are tax evidence.
   Purchase: "purchase",
