@@ -30,6 +30,10 @@ enum Role {
   // to a new hire today.
   STAFF
   CUSTOMER
+  // ACCT-1: an outside accountant (CPA or tax professional) the owner invites.
+  // Sees only books, taxes, compliance, CPA decisions and shared records —
+  // deny by default everywhere else (docs/build-specs/engines/ACCOUNTANT-ACCESS.md).
+  ACCOUNTANT
 }
 
 model User {
@@ -59,6 +63,10 @@ model User {
   signInPausedUntil           DateTime?
   // ACC-5: the person's job role (a plain id, no database link, so backups restore in any order). Null = access level alone.
   jobRoleId                   String?
+  // ACCT-1: for ACCOUNTANT users — the firm they work for (shown on the team list and beside their audited
+  // changes) and the date their access ends. Null end date = "keep until the owner removes it".
+  firm                        String?
+  accessEndsOn                DateTime?
 
   // Better Auth's own tables (sessions, accounts, verification tokens / TOTP)
   sessions  Session[]
@@ -1165,6 +1173,9 @@ model TeamInvitation {
   accessLevel          Role      @default(STAFF)
   adminCapabilityLimits Json     @default("[]")
   jobRoleId            String?
+  // ACCT-1: for accountant invitations — the firm name and the access end date, copied onto the user at acceptance.
+  firm                 String?
+  accessEndsOn         DateTime?
   codeHash             String    @unique
   expiresAt            DateTime
   status               String    @default("INVITED")
@@ -3443,6 +3454,9 @@ model BusinessSettings {
   budgetReminderLeadDays Int @default(7)
   booksStartDate DateTime?
   booksLastBroughtUpToDateAt DateTime?
+  // ACCT-1: when the owner last looked at the "Changes by your accountant" feed (Books home). The Today
+  // card shows while accountant changes newer than this exist.
+  accountantChangesSeenAt DateTime?
   booksLastProblemCount Int @default(0)
   booksConsecutiveFailedNights Int @default(0)
   booksReviewReminderDay Int @default(15)
@@ -3792,6 +3806,10 @@ model ComplianceFiling {
   preparedData     Json?
   preparedHash     String?   @db.Char(64)
   outputFileUrl    String?
+  // ACCT-1: the "Reviewed" mark — the accountant (or owner/admin) has checked the prepared figures.
+  // Preparing new figures clears it; it never approves or submits anything.
+  reviewedByUserId String?
+  reviewedAt       DateTime?
   approvedByUserId String?
   approvedAt       DateTime?
   submittedAt      DateTime?
@@ -5077,6 +5095,8 @@ enum LedgerAccountType {
 
 enum JournalSourceType {
   OPENING
+  // ACCT-1: a hand-written adjusting entry (the accountant's adjustments and the owner's own).
+  ADJUSTMENT
   SCRAP_PAYMENT
   INVOICE
   RECEIPT
@@ -5827,6 +5847,9 @@ model BusinessPaperwork {
   repeatEveryMonths Int?
   notes            String?
   sortOrder        Int             @default(0)
+  // ACCT-1: the owner marks a record "Share with my accountant" (off by default); only shared records are
+  // visible to the ACCOUNTANT level, and any saved number stays masked for them.
+  shareWithAccountant Boolean      @default(false)
   lastDoneOn       DateTime?
   createdByUserId  String?
   updatedByUserId  String?
