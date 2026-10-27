@@ -38,14 +38,14 @@ export function useOptimisticAction<T, Change>(
   run: (change: Change, data: FormData, options: OptimisticChangeOptions) => void;
 } {
   const [optimisticItems, update] = useOptimistic(items, reducer);
-  const pending = useRef(false);
+  const pending = useRef(new Set<Change>());
 
   function run(change: Change, data: FormData, options: OptimisticChangeOptions): void {
     if (options.confirm || (typeof action !== "function" && action.confirm)) {
       throw new Error("An action that asks for confirmation cannot run optimistically.");
     }
-    if (pending.current) return; // Ignore a double-submit while the first write is unsettled.
-    pending.current = true;
+    if (pending.current.has(change)) return; // Ignore only another write for the same item.
+    pending.current.add(change);
     startTransition(async () => {
       update(change);
       try {
@@ -67,7 +67,7 @@ export function useOptimisticAction<T, Change>(
         unstable_rethrow(error);
         toast({ message: plainError(error), tone: "danger" });
       } finally {
-        pending.current = false;
+        pending.current.delete(change);
       }
     });
   }

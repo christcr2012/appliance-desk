@@ -23,6 +23,7 @@ function Example({
     <>
       <p data-testid="items">{items.join(",")}</p>
       <button type="button" onClick={() => run("todo-1", new FormData(), { success, undo })}>Snooze</button>
+      <button type="button" onClick={() => run("todo-2", new FormData(), { success, undo })}>Snooze another</button>
       <Toaster />
     </>
   );
@@ -90,6 +91,20 @@ describe("AR-11 useOptimisticAction", () => {
     });
     expect(action).toHaveBeenCalledTimes(1);
     await act(async () => resolve(undefined));
+  });
+
+  it("allows a second, distinct To do item while refusing repeats of the first", async () => {
+    const resolves: Array<(result: unknown) => void> = [];
+    const action = vi.fn(() => new Promise<unknown>((done) => resolves.push(done)));
+    render(<Example action={action} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^Snooze$/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Snooze another" }));
+      fireEvent.click(screen.getByRole("button", { name: /^Snooze$/ }));
+    });
+    expect(action).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("items")).toHaveTextContent("todo-1,todo-2");
+    await act(async () => { resolves.forEach(done => done({ ok: true })); });
   });
 
   it("surfaces an unsuccessful Undo instead of silently saying it worked", async () => {

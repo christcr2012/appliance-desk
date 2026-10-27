@@ -1,7 +1,7 @@
 ## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (in progress)
 Branch `ai/chatgpt/ar-11-optimistic-snooze-20261027`: a shared non-money optimistic-action helper, Today Snooze integration,
 plain server-failure rollback, Undo, duplicate-submit guard and focused tests. Not yet verified by CI,
-reviewed or merged. Do not mark the full AR-11 card complete; swipe PR #662 is separately in review,
+reviewed or merged. Do not mark the full AR-11 card complete; swipe PR #662 has merged,
 and React 19.3, view/title transitions and bundle performance budget still remain.
 
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
