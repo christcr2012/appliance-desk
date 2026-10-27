@@ -69,7 +69,7 @@ export async function getTaxWorkspaceOverview(
     throw new Error("Enter a valid tax overview date.");
   const today = businessDayBounds(now).start;
   return prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
+    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "ACCOUNTANT"]);
     // Apply the account start-date filter IN the query, before the top-N limit.
     // An owner may move firstPeriodStart after obsolete OPEN rows exist.
     const configuredStarts = await tx.taxFilingAccount.findMany({
