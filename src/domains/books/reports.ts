@@ -31,7 +31,7 @@ function bounds(from:string,to:string){
  return {start,end:exclusive(to)};
 }
 async function authorized(tx:Tx,userId:string){
- await assertActiveTeamActor(tx,userId,["OWNER","ADMIN"]);
+ await assertActiveTeamActor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
  const settings=await tx.businessSettings.findUnique({where:{id:"singleton"},select:{booksStartDate:true,lemonRepairPercent:true}});
  if(!settings?.booksStartDate)throw new ReportIntegrityError("Owner must initialize Books before reading financial reports.");
  return settings;
