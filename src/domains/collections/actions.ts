@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { deliverMessage } from "@/domains/messaging/deliver";
+import { assertJobScopeInTx } from "@/domains/jobs/scope";
 import { ensurePickupDraftInTx } from "@/domains/agreements/pickup-draft";
 import { readNoticeWording } from "./engine";
 import { renderFinalNotice, renderSecondNotice } from "./templates";
@@ -26,11 +27,11 @@ export async function refreshNoticeIfStale(stepId: string): Promise<boolean> {
     await tx.$queryRaw`SELECT "id" FROM "CollectionStep" WHERE "id" = ${stepId} FOR UPDATE`;
     const row = await tx.collectionStep.findUnique({
       where: { id: stepId },
-      include: { invoice: { select: { invoiceNumber: true, dueDate: true, amountDueCents: true, amountPaidCents: true } }, customer: { select: { user: { select: { name: true } } } } },
+      include: { invoice: { select: { invoiceNumber: true, dueDate: true, amountDueCents: true, amountPaidCents: true, status: true } }, customer: { select: { user: { select: { name: true } } } } },
     });
     if (!row || row.state !== "WAITING" || (row.kind !== "SECOND_NOTICE" && row.kind !== "FINAL_NOTICE") || !row.invoice.dueDate) return false;
     const owed = Math.max(0, row.invoice.amountDueCents - row.invoice.amountPaidCents);
-    if (owed <= 0 || owed === row.amountOwedCents) return false;
+    if (owed <= 0 || owed === row.amountOwedCents || !["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(row.invoice.status)) return false;
     const facts = {
       customerName: row.customer.user.name ?? "there", invoiceNumber: row.invoice.invoiceNumber, owedCents: owed,
       dueOnText: longDate(row.invoice.dueDate), daysPastDue: daysPastDue(businessDateKey(row.invoice.dueDate), businessDateKey(new Date())), ...wording,
@@ -47,24 +48,30 @@ export async function sendNotice(actorUserId: string, stepId: string): Promise<{
   if (await refreshNoticeIfStale(stepId)) {
     throw new CollectionError("The customer paid part of this bill since the notice was written, so the notice now shows the new amount. Read it again, then press Send.");
   }
-  const step = await prisma.$transaction(async (tx) => {
+  const claimed = await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
     await tx.$queryRaw`SELECT "id" FROM "CollectionStep" WHERE "id" = ${stepId} FOR UPDATE`;
     const row = await tx.collectionStep.findUnique({
       where: { id: stepId },
-      include: { invoice: { select: { amountDueCents: true, amountPaidCents: true, invoiceNumber: true, agreementId: true } }, customer: { select: { id: true, user: { select: { email: true } } } } },
+      include: { invoice: { select: { amountDueCents: true, amountPaidCents: true, invoiceNumber: true, agreementId: true, status: true } }, customer: { select: { id: true, user: { select: { email: true } } } } },
     });
     if (!row) throw new CollectionError("Couldn't find that notice.");
     if (row.kind !== "SECOND_NOTICE" && row.kind !== "FINAL_NOTICE") throw new CollectionError("That step is a decision, not a notice.");
     if (row.state !== "WAITING") throw new CollectionError("That notice was already handled.");
+    if (!["OPEN", "PARTIALLY_PAID", "DELINQUENT"].includes(row.invoice.status)) {
+      await tx.collectionStep.update({ where: { id: stepId }, data: { state: "SKIPPED", note: "The bill is no longer open.", decidedAt: new Date(), decidedByUserId: actorUserId } });
+      return { blocked: "This bill is no longer open (it was paid, written off or cancelled), so no notice is needed." } as const;
+    }
     const confirming = await tx.bankPaymentInFlight.count({ where: { invoiceId: row.invoiceId, clearedAt: null } });
     if (confirming > 0) throw new CollectionError("A bank payment for this bill is still being confirmed. Wait until it clears before sending a notice, so the customer isn't asked to pay twice.");
     if (row.invoice.amountDueCents - row.invoice.amountPaidCents <= 0) {
       await tx.collectionStep.update({ where: { id: stepId }, data: { state: "SKIPPED", note: "Paid before it was sent.", decidedAt: new Date(), decidedByUserId: actorUserId } });
-      throw new CollectionError("This bill has been paid, so no notice is needed.");
+      return { blocked: "This bill has been paid, so no notice is needed." } as const;
     }
-    return row;
+    return { row } as const;
   });
+  if ("blocked" in claimed) throw new CollectionError(claimed.blocked);
+  const step = claimed.row;
   if (!step.subject || !step.body) throw new CollectionError("This notice has no text.");
   const result = await deliverMessage({
     idempotencyKey: `collection-${step.id}`,
@@ -182,9 +189,12 @@ export async function createCollectionPickup(actorUserId: string, agreementId: s
 /** "Customer objected": the visit ends with nothing taken, and the small-claims step comes up. */
 export async function customerObjected(actorUserId: string, agreementId: string, note: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
-    await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN", "STAFF"]);
+    const actor = await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN", "STAFF"]);
     const row = await lockedCase(tx, agreementId);
     if (row.objectedAt) return;
+    // A staff member may only end a visit they are allowed to work on (assigned to them, or open to staff).
+    if (row.pickupJobId && actor.role === "STAFF") await assertJobScopeInTx(tx, { userId: actorUserId, role: "STAFF" }, { jobId: row.pickupJobId, write: "STATUS" });
+    if (!row.pickupJobId && actor.role === "STAFF") throw new CollectionError("There is no pickup visit to end for this account.");
     const text = clean(note) || "Customer objected at the door.";
     if (row.pickupJobId) {
       await tx.$queryRaw`SELECT "id" FROM "Job" WHERE "id" = ${row.pickupJobId} FOR UPDATE`;

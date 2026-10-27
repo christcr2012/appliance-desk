@@ -1,5 +1,6 @@
 // OPS-6: the nightly pass of the past-due ladder. It only writes WAITING steps (drafts for Chris); it never sends
 // anything, never contacts a customer, and never takes or changes money. Safe to run twice.
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notInFlightWhere } from "@/domains/billing/in-flight";
 import { businessDateKey } from "@/lib/business-date";
@@ -10,6 +11,7 @@ import { renderFinalNotice, renderSecondNotice } from "./templates";
 
 const OPEN_STATUSES = ["OPEN", "PARTIALLY_PAID", "DELINQUENT"] as const;
 const MAX_BILLS_PER_PASS = 500;
+const MAX_PAGES = 40; // up to 20,000 bills a night
 
 export async function readNoticeWording(): Promise<{ payHowText?: string; helpText?: string }> {
   const row = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { collectionPayHowText: true, collectionHelpText: true } });
@@ -33,28 +35,37 @@ function longDate(date: Date): string {
 
 export type PassResult = { checked: number; created: number; skipped: number };
 
-export async function runCollectionsPass(now: Date = new Date()): Promise<PassResult> {
+export async function runCollectionsPass(now: Date = new Date(), pageSize: number = MAX_BILLS_PER_PASS): Promise<PassResult> {
   const ladder = await readLadder();
   const wording = await readNoticeWording();
   const nowKey = businessDateKey(now);
+  const where = {
+    status: { in: [...OPEN_STATUSES] },
+    ...notInFlightWhere, // a bill whose bank payment is still being confirmed is not chased
+    dueDate: { not: null, lt: now },
+    agreementId: { not: null },
+    agreement: { status: "ACTIVE" },
+  } satisfies Prisma.InvoiceWhereInput;
+
+  let created = 0;
+  let checked = 0;
+  let cursor: string | undefined;
+  // Walk every eligible bill in pages (oldest first) so a long list is never cut off at the first page.
+  for (let page = 0; page < MAX_PAGES; page += 1) {
   const bills = await prisma.invoice.findMany({
-    where: {
-      status: { in: [...OPEN_STATUSES] },
-      ...notInFlightWhere, // a bill whose bank payment is still being confirmed is not chased
-      dueDate: { not: null, lt: now },
-      agreementId: { not: null },
-      agreement: { status: "ACTIVE" },
-    },
+    where,
     orderBy: [{ dueDate: "asc" }, { id: "asc" }],
-    take: MAX_BILLS_PER_PASS,
+    take: pageSize,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true, invoiceNumber: true, dueDate: true, amountDueCents: true, amountPaidCents: true,
       agreementId: true, customerId: true,
       customer: { select: { user: { select: { name: true } } } },
     },
   });
-
-  let created = 0;
+  if (bills.length === 0) break;
+  checked += bills.length;
+  cursor = bills[bills.length - 1].id;
   for (const bill of bills) {
     const owed = Math.max(0, bill.amountDueCents - bill.amountPaidCents);
     if (!stepStillNeeded(owed, true) || !bill.dueDate || !bill.agreementId) continue;
@@ -88,6 +99,8 @@ export async function runCollectionsPass(now: Date = new Date()): Promise<PassRe
       });
     }
   }
+  if (bills.length < pageSize) break;
+  }
 
   // Close out waiting steps whose bill has been paid or whose rental is over, so Chris never sees a stale to-do.
   const stale = await prisma.collectionStep.findMany({
@@ -108,5 +121,5 @@ export async function runCollectionsPass(now: Date = new Date()): Promise<PassRe
       skipped += r.count;
     }
   }
-  return { checked: bills.length, created, skipped };
+  return { checked, created, skipped };
 }

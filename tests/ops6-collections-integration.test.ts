@@ -116,6 +116,30 @@ describe.skipIf(!enabled)("collections (real Postgres, fake message path)", () =
     await prisma.invoice.delete({ where: { id: other.id } });
   });
 
+  it("walks every overdue bill, not just the first page", async () => {
+    const extra: string[] = [];
+    for (const age of [60, 61, 62]) {
+      extra.push((await prisma.invoice.create({ data: { customerId, agreementId, status: "OPEN", amountDueCents: 1_000, amountPaidCents: 0, dueDate: new Date(now.getTime() - age * DAY) } })).id);
+    }
+    const result = await runCollectionsPass(now, 2); // pages of two: the newest bills are on later pages
+    expect(result.checked).toBeGreaterThanOrEqual(4);
+    for (const id of extra) expect(await prisma.collectionStep.count({ where: { invoiceId: id, kind: "SECOND_NOTICE" } })).toBe(1);
+    await prisma.collectionStep.deleteMany({ where: { invoiceId: { in: extra } } });
+    await prisma.invoice.deleteMany({ where: { id: { in: extra } } });
+  });
+
+  it("refuses to send a notice for a bill that was written off, and remembers the notice is no longer needed", async () => {
+    const bill = await prisma.invoice.create({ data: { customerId, agreementId, status: "OPEN", amountDueCents: 2_000, amountPaidCents: 0, dueDate: new Date(now.getTime() - 15 * DAY) } });
+    await runCollectionsPass(now);
+    const step = await prisma.collectionStep.findFirstOrThrow({ where: { invoiceId: bill.id, kind: "SECOND_NOTICE" } });
+    await prisma.invoice.update({ where: { id: bill.id }, data: { status: "WRITTEN_OFF" } });
+    await expect(sendNotice(ownerId, step.id)).rejects.toThrow(/no longer open/);
+    expect(sent.calls).toHaveLength(0);
+    expect((await prisma.collectionStep.findUniqueOrThrow({ where: { id: step.id } })).state).toBe("SKIPPED");
+    await prisma.collectionStep.deleteMany({ where: { invoiceId: bill.id } });
+    await prisma.invoice.delete({ where: { id: bill.id } });
+  });
+
   it("does not call an uncertain or pending message \"sent\"", async () => {
     const step = await prisma.collectionStep.findFirstOrThrow({ where: { invoiceId, kind: "FINAL_NOTICE" } });
     for (const state of ["UNKNOWN", "PENDING"]) {
@@ -171,6 +195,11 @@ describe.skipIf(!enabled)("collections (real Postgres, fake message path)", () =
   });
 
   it("ends the visit when the customer objects and brings up small claims", async () => {
+    const pending = await prisma.collectionCase.findUniqueOrThrow({ where: { agreementId } });
+    await prisma.job.update({ where: { id: pending.pickupJobId! }, data: { assignedToUserId: ownerId } });
+    await expect(customerObjected(staffId, agreementId, "Not my visit")).rejects.toThrow(); // staff may only end a visit that is theirs
+    expect((await prisma.job.findUniqueOrThrow({ where: { id: pending.pickupJobId! } })).status).not.toBe("CANCELLED");
+    await prisma.job.update({ where: { id: pending.pickupJobId! }, data: { assignedToUserId: staffId } });
     await customerObjected(staffId, agreementId, "Said no at the door");
     const kase = await prisma.collectionCase.findUniqueOrThrow({ where: { agreementId } });
     expect(kase.objectedAt).not.toBeNull();
