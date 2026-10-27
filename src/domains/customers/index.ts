@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/session";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   createTrustedCredentialUserInTx,
@@ -34,16 +35,33 @@ export async function getCustomers() {
 /** How many (non-archived) customers exist — used to clamp the page
  * number before fetching that page's rows (src/domains/pagination.ts). */
 /** Same rows the list shows (the hidden built-in walk-in customer is not counted). */
-export async function getCustomersCount(): Promise<number> {
+export type CustomerListFilters = { q?: string; status?: "active"; kind?: "pm" };
+/** One access-controlled list predicate shared by count and page, so pagination never lies about its result set. */
+export function customerListWhere(filters: CustomerListFilters = {}): Prisma.CustomerWhereInput {
+  const q = filters.q?.trim().slice(0, 80);
+  return {
+    archivedAt: null,
+    isWalkIn: false,
+    ...(filters.status === "active" ? { rentalAgreements: { some: { status: "ACTIVE" as const } } } : {}),
+    ...(filters.kind === "pm" ? { isPropertyManager: true } : {}),
+    ...(q ? { OR: [
+      { user: { name: { contains: q, mode: "insensitive" as const } } },
+      { user: { email: { contains: q, mode: "insensitive" as const } } },
+      { companyName: { contains: q, mode: "insensitive" as const } },
+    ] } : {}),
+  };
+}
+
+export async function getCustomersCount(filters: CustomerListFilters = {}): Promise<number> {
   await requireRole("OWNER", "ADMIN", "STAFF");
-  return prisma.customer.count({ where: { archivedAt: null, isWalkIn: false } });
+  return prisma.customer.count({ where: customerListWhere(filters) });
 }
 
 /** Paginated variant for /desk/customers's own list. */
-export async function getCustomersPage(skip: number, pageSize: number) {
+export async function getCustomersPage(skip: number, pageSize: number, filters: CustomerListFilters = {}) {
   await requireRole("OWNER", "ADMIN", "STAFF");
   return prisma.customer.findMany({
-    where: { archivedAt: null, isWalkIn: false },
+    where: customerListWhere(filters),
     include: {
       user: { select: { name: true, email: true } },
       serviceAddresses: true,
