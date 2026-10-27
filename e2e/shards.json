@@ -100,7 +100,6 @@
       "decisions.spec.ts",
       "collections.spec.ts",
       "late-fee-waiver.spec.ts",
-      "late-fee-waiver.spec.ts",
       "books-closing.spec.ts"
     ]
   }
