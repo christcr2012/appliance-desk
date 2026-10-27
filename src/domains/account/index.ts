@@ -56,7 +56,7 @@ export async function updateMyProfile(userId: string, input: { name: string; pho
   const phone = normalizePhone(input.phone);
   const result = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
-    await assertActiveTeamActor(tx, userId);
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN", "STAFF", "ACCOUNTANT"]);
     const before = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, phone: true } });
     const nameChanged = (before.name ?? "") !== name;
     const phoneChanged = before.phone !== phone;

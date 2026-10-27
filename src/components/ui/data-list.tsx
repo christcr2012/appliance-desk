@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 export type DataListColumn<T> = {
   key: string;
   header: string;
-  cell: (row: T) => ReactNode;
+  cell: (row: T, surface?: "desktop" | "mobile") => ReactNode;
   primary?: boolean;
   hideOnPhone?: boolean;
 };
@@ -61,7 +61,7 @@ export function DataList<T>({
                       column.primary ? "font-semibold text-ink" : "text-ink-soft"
                     }`}
                   >
-                    {column.cell(row)}
+                    {column.cell(row, "desktop")}
                   </td>
                 ))}
               </tr>
@@ -91,7 +91,7 @@ export function DataList<T>({
                           : "text-sm text-ink-soft"
                       }`}
                     >
-                      {column.cell(row)}
+                      {column.cell(row, "mobile")}
                     </dd>
                   </div>
                 ))}

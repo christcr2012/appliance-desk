@@ -291,6 +291,10 @@ export async function renewRecord(
   if (input.dueOn && !dueOn) throw new Error("That date isn't a real date.");
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
+    // An insurance certificate record is tied to its policy: lock the policy first (the same order the insurance screen
+    // uses), so a renewal here and a policy edit there can never deadlock or overwrite each other.
+    const linkedPolicy = await tx.ownerInsurancePolicy.findUnique({ where: { recordId: id }, select: { id: true } });
+    if (linkedPolicy) await tx.$queryRaw`SELECT "id" FROM "OwnerInsurancePolicy" WHERE "id" = ${linkedPolicy.id} FOR UPDATE`;
     const rows = await tx.$queryRaw<
       { version: number; expiresOn: Date | null; dueOn: Date | null; repeatEveryMonths: number | null }[]
     >`SELECT "version", "expiresOn", "dueOn", "repeatEveryMonths" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
@@ -330,6 +334,10 @@ export async function renewRecord(
         version: { increment: 1 },
       },
     });
+    // The renewed expiry is the policy's new end date too, so the insurance screen and To do list stop reporting it as ended.
+    if (linkedPolicy && nextExpires) {
+      await tx.ownerInsurancePolicy.update({ where: { id: linkedPolicy.id }, data: { expiresOn: nextExpires } });
+    }
     await audit(tx, userId, "records.renewed", id, [
       ...(nextExpires !== undefined ? ["expiresOn"] : []),
       ...(nextDue !== undefined ? ["dueOn"] : []),

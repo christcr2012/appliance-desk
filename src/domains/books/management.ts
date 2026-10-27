@@ -166,6 +166,8 @@ export async function mapExportAccount(actor:BooksActor,input:{
   if (input.externalTaxRate?.trim() && input.target!=="XERO_JOURNAL_CSV")
     throw new BooksInputError("Only Xero export mappings accept a tax rate.");
   return prisma.$transaction(async tx=>{
+    await tx.$queryRaw`SELECT "id" FROM "LedgerAccount" WHERE "id"=${input.accountId} FOR UPDATE`;
+    await assertActiveTeamActor(tx,actor.id,["OWNER","ACCOUNTANT"]);
     const account=await tx.ledgerAccount.findUnique({where:{id:input.accountId}});
     if(!account)throw new BooksInputError("Account not found.");
     const current=await tx.accountExportMapping.findUnique({where:{ledgerAccountId_target:{
@@ -206,6 +208,7 @@ export async function closeAccountingMonth(actor:BooksActor, key:string) {
   allow(actor,"OWNER","ACCOUNTANT");periodKey(key);
   return prisma.$transaction(async tx=>{
     await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext(${"books-period:"+key}))) AS guard`;
+    await assertActiveTeamActor(tx,actor.id,["OWNER","ACCOUNTANT"]);
     const settings=await tx.businessSettings.findUnique({where:{id:"singleton"}});
     if(!settings?.booksStartDate)throw new BooksInputError("Initialize your books first.");
     if(key>businessDateKey(new Date()).slice(0,7))throw new BooksInputError("Cannot close a future month.");
@@ -229,6 +232,7 @@ export async function reopenAccountingMonth(actor:BooksActor,key:string,reason:s
   allow(actor,"OWNER","ACCOUNTANT");periodKey(key);const why=safeText(reason,300);
   return prisma.$transaction(async tx=>{
     await tx.$queryRaw`SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext(${"books-period:"+key}))) AS guard`;
+    await assertActiveTeamActor(tx,actor.id,["OWNER","ACCOUNTANT"]);
     const period=await tx.accountingPeriod.findUnique({where:{periodKey:key}});
     if(period?.status!=="CLOSED")throw new BooksInputError("This month is already open.");
     await tx.accountingPeriod.update({where:{periodKey:key},
