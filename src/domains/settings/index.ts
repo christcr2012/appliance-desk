@@ -1,3 +1,4 @@
+import { looksRefrigerated } from "@/domains/refrigerant/rules";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
@@ -469,6 +470,7 @@ export async function createApplianceType(
       slug,
       monthlyPriceCents: input.monthlyPriceCents,
       showOnWebsite: false,
+      hasRefrigerant: looksRefrigerated(name),
       sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
     },
   });

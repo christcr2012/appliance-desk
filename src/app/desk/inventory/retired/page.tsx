@@ -9,6 +9,8 @@ import { businessDateKey, formatBusinessDate } from "@/lib/business-date";
 import { RetiredList } from "./retired-list";
 import { ScrapMoney } from "./scrap-money";
 import { ReminderSetting } from "./reminder-setting";
+import { prisma } from "@/lib/prisma";
+import { saveRefrigerantTypesAction } from "./refrigerant-types-action";
 
 export const metadata = { title: "Retired appliances" };
 
@@ -34,6 +36,7 @@ export default async function RetiredAppliancesPage({ searchParams }: { searchPa
     listDepositAccounts(session.user.id),
     getRetiredFollowUpDays(),
   ]);
+  const types = session.user.role === "OWNER" ? await prisma.applianceType.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, hasRefrigerant: true } }) : [];
   const today = businessDateKey(new Date());
   const listLimit = RETIRED_LIST_LIMIT;
   return (
@@ -70,6 +73,23 @@ export default async function RetiredAppliancesPage({ searchParams }: { searchPa
       )}
       {rows.length >= listLimit && <p className="text-sm text-ink-soft">Showing the {listLimit} most recently changed.</p>}
       <ReminderSetting days={followUpDays} />
+      {types.length > 0 && (
+        <section className="rounded-card border border-line bg-surface p-5" aria-labelledby="refrigerant-types-heading">
+          <h2 id="refrigerant-types-heading" className="text-lg font-semibold">Which appliances have refrigerant?</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Refrigerators, freezers and mini-fridges (starting value, not confirmed) need a signed refrigerant statement before they can be marked scrapped or thrown away. Washers and dryers don&apos;t. This only affects appliances you finish from now on.
+          </p>
+          <form action={saveRefrigerantTypesAction} className="mt-3 grid gap-1">
+            {types.map((t) => (
+              <label key={t.id} className="flex min-h-11 items-center gap-3 text-sm">
+                <input type="checkbox" name="typeId" value={t.id} defaultChecked={t.hasRefrigerant} className="h-5 w-5" />
+                {t.name}
+              </label>
+            ))}
+            <div><button type="submit" className="min-h-11 rounded-control bg-brand px-4 font-semibold text-white">Save</button></div>
+          </form>
+        </section>
+      )}
       <ScrapMoney
         today={today}
         accounts={accounts}
