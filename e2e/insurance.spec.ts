@@ -8,7 +8,7 @@ for (const width of [360, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/desk/insurance");
     await expect(page.getByRole("heading", { level: 1, name: /Insurance/ })).toBeVisible();
-    await expect(page.getByText("Workers' compensation", { exact: false }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Workers' compensation/ }).first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(false);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   });
