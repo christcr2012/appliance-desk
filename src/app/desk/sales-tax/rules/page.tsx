@@ -11,12 +11,13 @@ import {
   type MenuItem,
 } from "@/components/kit";
 import { requireRole } from "@/lib/session";
-import { getRuleTimingSettings, listRuleCards, type RuleCard } from "@/domains/rules/reads";
+import { getRuleTimingSettings, getWatchOfficialPages, listRuleCards, type RuleCard } from "@/domains/rules/reads";
 import { describeRuleValue, ruleDef, ruleStateLabel } from "@/domains/rules/registry";
 import { parseRulesParams, RULE_AREA_OPTIONS } from "./params";
 import { RuleHistory } from "./rule-history";
 import { RuleChangeSheet } from "./rule-change-sheet";
 import { TimingSection } from "./timing-section";
+import { WatchSection } from "./watch-section";
 import { undoRuleVersionFormAction } from "./actions";
 
 export const metadata = { title: "Tax and fee rules", robots: { index: false, follow: false } };
@@ -110,7 +111,7 @@ export default async function RulesPage({
   const owner = session.user.role === "OWNER";
   const rawParams = await searchParams;
   const params = parseRulesParams(rawParams);
-  const [cards, timing] = await Promise.all([listRuleCards(), getRuleTimingSettings()]);
+  const [cards, timing, watchEnabled] = await Promise.all([listRuleCards(), getRuleTimingSettings(), getWatchOfficialPages()]);
   const now = new Date();
   const search = new URLSearchParams({
     ...(params.q ? { q: params.q } : {}),
@@ -189,6 +190,7 @@ export default async function RulesPage({
         />
       )}
       {owner && <TimingSection percent={timing.percent} marginBusinessDays={timing.marginBusinessDays} />}
+      {owner && <WatchSection enabled={watchEnabled} />}
       {changeCard && (
         <RuleChangeSheet
           ruleKey={changeCard.key}
