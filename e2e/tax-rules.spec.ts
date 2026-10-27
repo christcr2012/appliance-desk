@@ -23,6 +23,23 @@ test.describe("Taxes › Rules (TFA-1)", () => {
     expect(results.violations).toEqual([]);
   });
 
+  test("owner watch switch renders, toggles and persists (TFA-3)", async ({ page }) => {
+    test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
+    await page.goto("/desk/sales-tax/rules");
+    await expect(page.getByText("Watch the official tax pages")).toBeVisible();
+    const toggle = page.getByRole("checkbox", { name: "Watch for new tax and fee amounts" });
+    await expect(toggle).toBeChecked();
+    await toggle.uncheck();
+    await page.getByRole("button", { name: "Save watch setting" }).click();
+    await expect(page.getByText("Watching is off.")).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("checkbox", { name: "Watch for new tax and fee amounts" })).not.toBeChecked();
+    // Restore the starting value so other specs see the default state.
+    await page.getByRole("checkbox", { name: "Watch for new tax and fee amounts" }).check();
+    await page.getByRole("button", { name: "Save watch setting" }).click();
+    await expect(page.getByText("Watching is on.")).toBeVisible();
+  });
+
   test("history shows every version of a rule", async ({ page }) => {
     test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
     await page.goto("/desk/sales-tax/rules");
