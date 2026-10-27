@@ -456,6 +456,22 @@
       "description": "Actual bank interest, excluding hypothetical future income",
       "paymentSource": false,
       "scheduleCLine": "6"
+    },
+    {
+      "role": "WAGES",
+      "name": "Wages",
+      "type": "EXPENSE",
+      "description": "Pay for employees, before anything is taken out",
+      "paymentSource": false,
+      "scheduleCLine": "26"
+    },
+    {
+      "role": "EMPLOYER_PAYROLL_TAXES",
+      "name": "Payroll taxes (business share)",
+      "type": "EXPENSE",
+      "description": "The business's own share of payroll taxes: the Social Security and Medicare match, unemployment insurance and the FAMLI employer share",
+      "paymentSource": false,
+      "scheduleCLine": "23"
     }
   ],
   "categories": [
