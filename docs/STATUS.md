@@ -1,9 +1,17 @@
-## October 26 — AR-11 desktop shortcuts and idle-safe freshness (PR #647, in review)
+## October 26 — AR-11 desk-wide loading screens (in review)
+
+Branch `ai/chatgpt/ar-11-loading-skeletons` makes every top-level desk page area show a kit list or record skeleton while
+its server content loads; the root fallback also uses the kit. A filesystem inventory test protects
+future screens, and an authenticated browser test checks Today → Customers under a slow response.
+No data, role, money or provider changes. Local tests cannot run without repository checkout;
+CI at exact head and review still required. AR-11 remains open after this: transitions, touch,
+remembered lists, optimistic helper and bundle speed check.
+
+## October 26 — AR-11 desktop shortcuts and idle-safe freshness (merged PR #647)
 
 Branch `ai/chatgpt/ar-11-keyboard-freshness`, head after latest main merge. Adds on-desktop
 navigation keys and a searchable help dialog, plus guarded refresh on Today, Bills and Customers.
-The old CI found a shifted-key ordering issue, now fixed; new exact-head CI and review verification
-remain required. AR-11 is not yet complete (touch, view transitions, skeletons, bundle budget).
+The shifted-key ordering bug was fixed; exact-head CI and review passed before merge. AR-11 is not yet complete (touch, view transitions, skeletons, bundle budget).
 
 ## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
 ## October 26 — TFA-3: official-page watches with strict parsers (in progress)
