@@ -659,3 +659,22 @@ h4 {
 .skip-link:focus {
   left: 0;
 }
+
+/* AR-11: desktop/text entry remains selectable; desk chrome feels native on touch screens. */
+.desk-app { accent-color: var(--color-primary); }
+.desk-app button,
+.desk-app [role="tab"],
+.desk-app [role="menuitem"],
+.desk-app nav a {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.desk-app input,
+.desk-app textarea,
+.desk-app [contenteditable] { user-select: text; }
+@media (prefers-reduced-motion: no-preference) {
+  .desk-app button:active { transform: scale(0.98); }
+}
+
+/* Keep the browser's native pull-to-refresh from taking over authenticated desk pages. */
+html:has(.desk-app) { overscroll-behavior-y: contain; }
