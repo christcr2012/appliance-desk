@@ -134,6 +134,7 @@ export const BACKUP_MODEL_POLICY = {
   // stays encrypted in backups too; a restore needs the same key.
   ComplianceProfile: "complianceProfile",
   ComplianceFiling: "complianceFiling",
+  W9Request: "w9Request",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",
