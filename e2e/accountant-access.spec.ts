@@ -131,7 +131,9 @@ test.describe("ACCT-1 accountant access", () => {
       await ownerPage.goto("/desk/settings?section=staff");
       const row = ownerPage.locator("tr", { hasText: "Casey CPA" });
       await row.getByRole("button", { name: "Remove access" }).click();
-      await expect(ownerPage.locator("tr", { hasText: "Casey CPA" }).getByText("Removed")).toBeVisible();
+      // Exact text: the row also carries the "Access removed and signed out
+      // everywhere." action message, which a substring match would count too.
+      await expect(ownerPage.locator("tr", { hasText: "Casey CPA" }).getByText("Removed", { exact: true })).toBeVisible();
       await acctPage.goto("/desk/books");
       await expect(acctPage).toHaveURL(/\/login/);
 
