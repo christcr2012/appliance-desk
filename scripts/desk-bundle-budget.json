@@ -101,6 +101,7 @@
   "/desk/revenue": 310,
   "/desk/sales": 310,
   "/desk/sales-tax": 310,
+  "/desk/sales-tax/area": 310,
   "/desk/sales-tax/areas": 310,
   "/desk/sales-tax/audit-pack": 310,
   "/desk/sales-tax/delivery-fees": 310,
@@ -145,5 +146,7 @@
   "/desk/suppliers/new": 310,
   "/desk/tasks": 310,
   "/desk/today": 310,
+  "/desk/vault": 310,
+  "/desk/vault/[id]": 310,
   "/desk/vehicle": 310
 }

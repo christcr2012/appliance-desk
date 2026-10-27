@@ -1,3 +1,6 @@
+## October 27 — AR-11 bundle CI measurement correction (PR #691)
+The checker passed its five unit tests and static type/lint checks. Five independent production builds all found the same three new routes: `/desk/sales-tax/area` 303.30 KB gzip, `/desk/vault` 306.73 KB, and `/desk/vault/[id]` 306.51–306.52 KB. Added each at 310 KB (rounded to next 10 KB); all 147 existing budgets stayed within their limits with React 19.3. Fresh exact-head full CI and review are still required before merge; no bypass of the regression check.
+
 ## October 27 — AR-11 bundle guard: CI failure diagnosis, measured routes in next run (PR #691)
 The guard's five browser shards exposed three added routes after the first 147-page baseline: tax area and two vault pages. Its lint error was a reserved variable name. Fixed lint and made the guard report measured gzip sizes for any missing route; fresh CI will supply actual numbers before updating the committed baseline. React navigation PR #665 merged as `a0772141` after exact-head CI and resolved review.
 
