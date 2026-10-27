@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/session";
 import { hasFieldCryptoKey } from "@/lib/field-crypto";
 import { getComplianceProfile } from "@/domains/compliance/profile";
+import { businessDateKey } from "@/lib/business-date";
 import { getTaxYearFacts } from "@/domains/compliance/tax-facts";
 import { formatMoney } from "@/lib/money-ui";
 import { FactsForm } from "./facts-form";
@@ -52,6 +53,17 @@ export default async function BusinessFactsPage({
           businessState: profile.businessState ?? "",
           businessZip: profile.businessZip ?? "",
           businessPhone: profile.businessPhone ?? "",
+        }}
+        local={{
+          tradeName: profile.tradeName ?? "",
+          usdotNumber: profile.usdotNumber ?? "",
+          truckRegistrationMonth: profile.truckRegistrationMonth,
+          greeleyLicenseDate: profile.greeleyLicenseDate ? businessDateKey(profile.greeleyLicenseDate) : "",
+          registeredAgentName: profile.registeredAgentName ?? "",
+          registeredAgentAddress: profile.registeredAgentAddress ?? "",
+          registeredAgentCity: profile.registeredAgentCity ?? "",
+          registeredAgentState: profile.registeredAgentState ?? "",
+          registeredAgentZip: profile.registeredAgentZip ?? "",
         }}
       />
       <TaxYearFactsForm
