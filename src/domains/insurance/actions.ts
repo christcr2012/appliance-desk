@@ -19,7 +19,7 @@ type PolicyFacts = { kind: InsuranceKindValue; insurer: string; policyNumber: st
 const recordFields = (p: PolicyFacts) => ({
   title: `${KIND_LABELS[p.kind]} certificate — ${p.insurer}`,
   agency: p.insurer, referenceNumber: p.policyNumber, issuedOn: p.effectiveOn, expiresOn: p.expiresOn,
-  costCents: p.annualPremiumCents, remindDaysBefore: 0,
+  costCents: p.annualPremiumCents,
 });
 
 async function syncCertificateRecord(tx: Tx, actorUserId: string, recordId: string, p: PolicyFacts) {
@@ -70,7 +70,7 @@ export async function keepCertificateOnRecord(actorUserId: string, policyId: str
     const last = await tx.businessPaperwork.aggregate({ _max: { sortOrder: true } });
     const record = await tx.businessPaperwork.create({
       data: {
-        ...recordFields(policy), groupName: "Insurance", kind: "INSURANCE", status: "DONE",
+        ...recordFields(policy), remindDaysBefore: 0, groupName: "Insurance", kind: "INSURANCE", status: "DONE",
         sortOrder: (last._max.sortOrder ?? 0) + 10, createdByUserId: actorUserId, updatedByUserId: actorUserId,
       },
       select: { id: true },
