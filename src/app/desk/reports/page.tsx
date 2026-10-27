@@ -32,7 +32,7 @@ type LeadSourceRow = Awaited<
 >[number];
 
 export default async function ReportsPage() {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const [earnings, missingCostJobs, leadSources] = await Promise.all([
     getEarningsReport(),
     getJobsMissingRepairCost(),
@@ -230,7 +230,9 @@ export default async function ReportsPage() {
         </Card>
       </div>
 
-      <TelecomReportSection actorUserId={session.user.id} />
+      {session.user.role !== "ACCOUNTANT" && (
+        <TelecomReportSection actorUserId={session.user.id} />
+      )}
       <p className="mt-6 max-w-2xl text-xs text-ink-faint">
         “Estimated” is reconstructed from each agreement&apos;s agreed monthly
         price and how long it has been billing. “Rent collected” is the rent part of the

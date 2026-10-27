@@ -28,7 +28,7 @@ const columns: DataListColumn<WaitingRow>[] = [
 export const metadata = { title: "Delivery fees waiting on you", robots: { index: false, follow: false } };
 
 export default async function PendingDeliveryFeesPage() {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const [waitingForDecision, waitingForRate, groups] = await Promise.all([
     prisma.retailDeliveryFeeRecord.findMany({
       where: { status: "PENDING_DECISION" },

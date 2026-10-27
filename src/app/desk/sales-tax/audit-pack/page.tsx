@@ -10,7 +10,7 @@ export const metadata = { title: "Audit pack", robots: { index: false, follow: f
 export const dynamic = "force-dynamic";
 
 export default async function AuditPackPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string }> }) {
-  await requireRole("OWNER", "ADMIN");
+  await requireRole("OWNER", "ADMIN", "ACCOUNTANT");
   const query = await searchParams;
   const range = parseAuditRange(query.from, query.to);
   const pack = "error" in range ? null : await buildAuditPack(range.from, range.to);
