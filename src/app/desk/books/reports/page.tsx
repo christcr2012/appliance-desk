@@ -23,7 +23,7 @@ function Explain({metric}:{metric:keyof typeof METRICS}){
  </details>;
 }
 export default async function BooksReportsPage({searchParams}:{searchParams:Promise<Search>}){
- const session=await requireRole("OWNER","ADMIN");
+ const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
  const q=await searchParams,today=businessDateKey(new Date());
  if(q.kind==="trends")return <MoneyTrendsSection userId={session.user.id} query={q}/>;
  const kind=["profit","balance","payback"].includes(q.kind??"")?q.kind??"profit":"profit";
