@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/session";
 import { financeReportCsv } from "@/domains/budget/reports";
 export const dynamic="force-dynamic";
 export async function GET(request:Request){
- const session=await requireRole("OWNER","ADMIN");
+ const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
  const url=new URL(request.url);
  const param=(name:string)=>url.searchParams.get(name)??undefined;
  const compare=param("compare");
