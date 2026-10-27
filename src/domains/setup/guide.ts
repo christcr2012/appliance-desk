@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { getSetupRecordFacts } from "@/domains/paperwork/record-facts";
 import {
   WALKTHROUGHS,
   getStep,
@@ -77,23 +78,16 @@ async function loadFacts(): Promise<SetupFacts> {
       }
     }
   }
-  const [audits, records, filingAccounts] = await Promise.all([
+  const [audits, recordFacts, filingAccounts] = await Promise.all([
     prisma.auditLog.findMany({
       where: { entityType: "SetupGuide" },
       orderBy: { createdAt: "asc" },
       take: 2000,
       select: { action: true, entityId: true, newValue: true },
     }),
-    prisma.businessPaperwork.findMany({
-      where: { templateKey: { in: [...templateKeys] } },
-      select: {
-        id: true,
-        templateKey: true,
-        numberEncrypted: true,
-        lastDoneOn: true,
-        _count: { select: { recordFiles: { where: { deletedAt: null } } } },
-      },
-    }),
+    // VAULT-2: presence facts come from the paperwork domain so the secret
+    // column name stays inside that domain (see record-facts.ts).
+    getSetupRecordFacts([...templateKeys]),
     prisma.taxFilingAccount.findMany({ where: { active: true }, select: { kind: true } }),
   ]);
   const markedDone = new Set<string>();
@@ -114,17 +108,7 @@ async function loadFacts(): Promise<SetupFacts> {
   return {
     markedDone,
     dismissed,
-    records: new Map(
-      records.map((r) => [
-        r.templateKey as string,
-        {
-          id: r.id,
-          hasNumber: r.numberEncrypted != null,
-          fileCount: r._count.recordFiles,
-          hasBeenDone: r.lastDoneOn != null,
-        },
-      ]),
-    ),
+    records: recordFacts,
     filingKinds: new Set(filingAccounts.map((a) => a.kind)),
   };
 }
