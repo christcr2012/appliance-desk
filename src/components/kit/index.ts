@@ -45,3 +45,4 @@ export { DeskShortcuts, deskShortcutHref, shortcutTypingTarget, ignoreDeskShortc
 export { AutoRefresh, refreshPermitted, freshnessLabel, IDLE_LIMIT_MS, RETURN_AFTER_MS } from "./auto-refresh";
 export { PullToRefresh, pullDistance, canPullRefresh, PULL_REFRESH_THRESHOLD } from "./pull-to-refresh";
 export { RememberList, rememberedListHref, followRememberedClick, readListPosition, saveListPosition, clearRememberedLists } from "./remember-list";
+export { useOptimisticAction, type OptimisticChangeOptions, type OptimisticFormAction } from "./use-optimistic-action";
