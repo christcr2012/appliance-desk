@@ -5946,6 +5946,7 @@ model BusinessPaperwork {
   linkedObligationKeys String[] @default([])
   recordFiles     BusinessRecordFile[]
   readinessLicenses JurisdictionReadiness[] @relation("ReadinessLicenseRecord")
+  insurancePolicy OwnerInsurancePolicy? @relation("InsurancePolicyRecord")
 
   @@index([status, dueOn])
 }
@@ -6362,6 +6363,10 @@ model OwnerInsurancePolicy {
   agentEmail       String?
   /// Where the certificate of insurance (COI) PDF is kept, e.g. "Emailed by agent, in the Insurance folder in Drive".
   certificateNote  String?
+  /// OPS-4 + VAULT-1: the business record that holds this policy's certificate PDF (private files, expiry reminders,
+  /// export pack). Created on demand by the owner; the policy's dates and yearly cost are copied onto it on every save.
+  recordId         String?       @unique
+  record           BusinessPaperwork? @relation("InsurancePolicyRecord", fields: [recordId], references: [id], onDelete: SetNull)
   notes            String?
   archivedAt       DateTime?
   createdByUserId  String
