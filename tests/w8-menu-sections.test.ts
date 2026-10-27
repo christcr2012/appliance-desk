@@ -75,7 +75,7 @@ describe("W-8 simpler menu", () => {
 
   it("More lists the rarely used screens by role, and never the developer-only storage check", () => {
     expect(deskMoreLinks("OWNER").map((link) => link.label)).toEqual(
-      ["Expenses", "Suppliers", "Growth signals", "Launch list", "System health", "Manage my business", "Website", "Business paperwork", "Privacy requests", "App feedback", "Activity", "My account"]);
+      ["Expenses", "Suppliers", "Growth signals", "Launch list", "System health", "Manage my business", "Website", "Business paperwork", "Insurance", "Privacy requests", "App feedback", "Activity", "My account"]);
     expect(deskMoreLinks("ADMIN").map((link) => link.label)).toEqual(
       ["Expenses", "Suppliers", "Growth signals", "Launch list", "System health", "Manage my business", "Website", "App feedback", "Activity", "My account"]);
     expect(deskMoreLinks("STAFF").map((link) => link.label)).toEqual(["Expenses", "Activity", "My account"]);

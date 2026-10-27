@@ -1392,6 +1392,12 @@ null for background operations; automatic audit records explicitly say `by: auto
 `BooksProblem` tracks durable unresolved source/appliance problems by their unique subject key.
 Existing financial entries remain append-only and closed months stay immutable.
 
+### OPS-4: insurance (additive migration `20261107000000_insurance`)
+
+- `OwnerInsurancePolicy` — one row per policy: kind (`InsuranceKind`: GENERAL_LIABILITY, COMMERCIAL_AUTO, EQUIPMENT, WORKERS_COMP, OTHER), insurer, policy number, limits (free text), yearly premium in cents, start and end dates, agent name/email, a note on where the certificate is kept, `archivedAt`. In the backup manifest.
+- `InsuranceCertificateRequest` — each time a certificate was requested for someone (requester, company, email, holder wording, who asked, when); linked to the policy (Restrict). In the backup manifest.
+- `BusinessSettings.insuranceRemindFirstDays` / `insuranceRemindSecondDays` (60 / 30), `workersCompStatus` (`WorkersCompStatus`: NOT_SET, NO_EMPLOYEES_REJECTED, POLICY_IN_PLACE), `workersCompEmployees`, `workersCompNote`, `workersCompFormSentOn`, `workersCompMailNumber`.
+
 ### OPS-5: payment disputes (additive migration `20261103000000_disputes`)
 
 - `PaymentDispute` — one row per Stripe dispute (unique `stripeDisputeId`): amount, reason, Stripe status, our state

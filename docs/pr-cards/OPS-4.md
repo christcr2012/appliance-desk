@@ -11,4 +11,5 @@ TFA-1 (dated rules) and VAULT-1 where the spec says. Risk: see the spec section.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Built on branch `ai/claude/ops-4` (from main; PR open, see STATUS). Evidence: `tests/ops4-insurance-rules.test.ts`; `tests/ops4-insurance-integration.test.ts` (throwaway Postgres, 5 tests); `e2e/insurance.spec.ts` (CI only). Questions filed: DQ-OPS4-1, DQ-OPS4-2.
+Not built: certificate PDF upload (a note says where it is kept; needs VAULT-1 file storage), premium into the cash budget, and the "staff user marked employee" link (employee count is entered instead).

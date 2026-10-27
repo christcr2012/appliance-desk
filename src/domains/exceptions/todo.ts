@@ -17,6 +17,7 @@ const ACTION_LABEL: Record<string, string> = {
   RECALL_POSSIBLE: "Check recall",
   SAFETY_INCIDENT: "Decide",
   RETIRED_SALE_TAX_REVIEW: "Open sale",
+  INSURANCE_RENEWAL: "Open insurance",
   APPROVAL_REQUEST: "Approve or decline",
   GOAL_BEHIND: "See goals",
   IDLE_APPLIANCES: "See idle appliances",
