@@ -216,7 +216,7 @@ export function AppShell({
 
       <div className="min-w-0 w-full max-w-full">
         <OfflineBar />
-        <header className="flex w-full min-w-0 max-w-full min-h-16 items-center gap-3 border-b border-line bg-surface px-4 lg:hidden print:hidden">
+        <header className="flex w-full min-w-0 max-w-full min-h-16 items-center gap-3 border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)] lg:hidden print:hidden">
           <Image
             src="/brand/badge.svg"
             alt=""
@@ -249,7 +249,7 @@ export function AppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto min-w-0 max-w-screen-2xl p-4 pb-28 sm:p-6 lg:p-8 lg:pb-8 print:max-w-none print:p-0"
+          className="mx-auto min-w-0 max-w-screen-2xl overscroll-y-contain p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:p-6 lg:p-8 lg:pb-8 print:max-w-none print:p-0"
         >
           {children}
         </main>

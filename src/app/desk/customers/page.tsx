@@ -4,6 +4,7 @@ import { parsePage, paginationMeta } from "@/domains/pagination";
 import { Pagination } from "@/components/pagination";
 import { ExportCsvLink } from "@/components/export-csv-link";
 import { AutoRefresh } from "@/components/kit/auto-refresh";
+import { PullToRefresh } from "@/components/kit/pull-to-refresh";
 import {
   ButtonLink,
   DataList,
@@ -72,7 +73,7 @@ export default async function CustomersPage({
   ];
 
   return (
-    <div>
+    <PullToRefresh><div>
       <AutoRefresh />
       <PageHeader
         title="Customers"
@@ -110,6 +111,6 @@ export default async function CustomersPage({
           page === 1 ? "/desk/customers" : `/desk/customers?page=${page}`
         }
       />
-    </div>
+    </div></PullToRefresh>
   );
 }
