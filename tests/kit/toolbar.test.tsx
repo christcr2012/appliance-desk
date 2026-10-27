@@ -45,6 +45,17 @@ describe("kit Toolbar (KIT 4.4)", () => {
     );
   });
 
+  it("search and filters reset numbered pagination as well as cursors", () => {
+    expect(applyFilters("/desk/customers", "page=6&cursor=abc&q=older", [
+      { kind: "select", param: "kind", label: "Customer type", options: [{ value: "pm", label: "Property manager" }] },
+    ], { kind: "pm" })).toBe("/desk/customers?q=older&kind=pm");
+    resetNav("/desk/customers", "page=6&cursor=abc");
+    vi.useFakeTimers();
+    render(<Toolbar search={{ placeholder: "Find customers", label: "Find customers" }} />);
+    act(() => { fireEvent.change(screen.getByRole("searchbox", { name: "Find customers" }), { target: { value: "Maria" } });
+      vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS); });
+    expect(nav.replace).toHaveBeenCalledWith("/desk/customers?q=Maria", { scroll: false });
+  });
   it("phone: Filter opens a bottom sheet; Show results writes the params; the button counts active filters", async () => {
     resetNav("/desk/billing", "status=open&cursor=abc&card=yes");
     render(<Toolbar filters={filters} />);
