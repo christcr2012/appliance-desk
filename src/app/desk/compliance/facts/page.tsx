@@ -29,6 +29,14 @@ export default async function BusinessFactsPage() {
         truckGvwrLbs={profile.truckGvwrLbs}
         employees={profile.employees}
         hasHomeOffice={profile.hasHomeOffice}
+        payer={{
+          businessLegalName: profile.businessLegalName ?? "",
+          businessAddress: profile.businessAddress ?? "",
+          businessCity: profile.businessCity ?? "",
+          businessState: profile.businessState ?? "",
+          businessZip: profile.businessZip ?? "",
+          businessPhone: profile.businessPhone ?? "",
+        }}
       />
     </div>
   );
