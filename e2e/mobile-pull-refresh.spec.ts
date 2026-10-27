@@ -63,7 +63,7 @@ test("mobile rule cards reveal their existing actions without triggering a money
   await expect(card).toHaveAttribute("data-swipe-open", "true");
   await expect(card.getByRole("link", { name: "History" })).toBeVisible();
   await expect(card.getByRole("link", { name: "Change…" })).toBeVisible();
-  await page.locator("h1").click();
+  await page.getByRole("heading", { level: 1, name: /Tax and fee rules/ }).click();
   await expect(card).toHaveAttribute("data-swipe-open", "false");
   await expect(card.getByRole("button", { name: /More for row/ })).toBeVisible();
   await page.emulateMedia({ reducedMotion: "reduce" });
