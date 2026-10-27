@@ -667,6 +667,16 @@ model Appliance {
   acquisitionTaxChoice String?
   acquisitionTaxRecordedAt DateTime?
   acquisitionTaxRecordedByUserId String?
+  // TAXBEN-1: the recorded capital-vs-expense decision for this unit, written once by the
+  // classification pass. Later rule or election changes never rewrite it; the decision
+  // keeps the line amount and the rule value it was made with.
+  capDecision String?
+  capReason String?
+  capLineCents Int?
+  capRuleKey String?
+  capRuleValue String?
+  capDecidedAt DateTime?
+  capPlacedInServiceOn DateTime?
   // W-14: the purchase (one receipt, many appliances) this machine came from. Older machines have none.
   purchaseId String?
   purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
@@ -3448,6 +3458,10 @@ model Purchase {
   createdByUserId   String
   // Monotonic revision of the tax answer so two people never overwrite each other silently.
   taxRevisionAt     DateTime
+  // TAXBEN-1: was this bought from a relative or the owner's other business? Null = the
+  // question was never asked (purchases recorded before it existed); bonus depreciation
+  // is not available for a related-party purchase.
+  boughtFromRelatedParty Boolean?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -3536,6 +3550,18 @@ model BusinessSettings {
   depreciationMonthsDefault Int @default(60)
   depreciationSalvagePercent Int @default(0)
   badDebtTaxRecovery String @default("UNDECIDED")
+  // TAXBEN-1: business-use percent by expense account role for mixed-use accounts
+  // ({} = not answered yet; an unanswered account deducts 0%).
+  businessUsePercents Json @default("{}")
+  // TAXBEN-1: the de minimis safe-harbor election by tax year ({} = the starting
+  // value, on — DQ-TAXBEN-DE-MINIMIS, CPA).
+  deMinimisElections Json @default("{}")
+  // TAXBEN-1: is the business (or its storage) inside a Colorado enterprise zone?
+  // UNKNOWN | YES | NO — starting value UNKNOWN (DQ-TAXBEN-EZ-FLEET, CPA).
+  enterpriseZone String @default("UNKNOWN")
+  // TAXBEN-1: how capitalized equipment is written off first: BONUS | SECTION179.
+  // Starting value BONUS (DQ-TAXBEN-179-VS-BONUS, CPA).
+  capitalizationPreference String @default("BONUS")
   lemonRepairPercent Int @default(30)
   vendor1099ThresholdCents Int @default(200000)
   exportPayoutLines Json @default("{\"QBO_JOURNAL_CSV\":true,\"XERO_JOURNAL_CSV\":false,\"GENERIC_JOURNAL_CSV\":true,\"CASH_MOVEMENTS_CSV\":true}")
@@ -3820,6 +3846,18 @@ model ComplianceProfile {
   truckGvwrLbs   Int?
   employees      Int      @default(0)
   hasHomeOffice  Boolean  @default(false)
+  // TAXBEN-1: the day the business began (starting value: the earlier of the first
+  // appliance becoming AVAILABLE and the first public lead — DQ-TAXBEN-BEGAN, CPA).
+  // Expenses dated before it are tagged start-up.
+  businessBeganOn DateTime?
+  // TAXBEN-1: home-office facts, entered once. Sizes in square feet; costs are the
+  // whole-home amounts for a year, in cents.
+  homeOfficeSqFt            Int?
+  homeSqFt                  Int?
+  homeHousingCostsCents     Int?
+  homeUtilitiesCents        Int?
+  homeInsuranceCents        Int?
+  homeOfficeAttestedYear    Int?
   // CMP-3: the payer identity printed on information returns (1099s) and
   // Form 8300 — the business's legal name and mailing address, entered
   // once on the business-facts screen.
@@ -3866,6 +3904,8 @@ model TaxYearFacts {
   federalAgiCents      Int? // that year's federal adjusted gross income
   coloradoTaxCents     Int? // that year's total Colorado tax (DR 0104)
   form1099KGrossCents  Int? // that year's Form 1099-K box 1a, as typed
+  seHealthPremiumCents Int? // TAXBEN-1: that year's self-employed health insurance premiums, as typed
+  seHealthEmployerPlanMonths Json? // TAXBEN-1: month numbers (1-12) the owner was eligible for an employer health plan (own or spouse's)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

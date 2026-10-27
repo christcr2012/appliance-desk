@@ -80,6 +80,13 @@ export async function getComplianceProfile(): Promise<ComplianceProfile> {
     registeredAgentCity: null,
     registeredAgentState: null,
     registeredAgentZip: null,
+    businessBeganOn: null,
+    homeOfficeSqFt: null,
+    homeSqFt: null,
+    homeHousingCostsCents: null,
+    homeUtilitiesCents: null,
+    homeInsuranceCents: null,
+    homeOfficeAttestedYear: null,
     updatedAt: new Date(0),
   };
 }
