@@ -40,7 +40,10 @@ export const ALWAYS_ALLOWED = ["today", "account", "security", "notices", "searc
  * ACCOUNTANT level explicitly; this gate is the outer wall, not the only one.
  */
 export const ACCOUNTANT_SCREENS = ["books", "sales-tax", "billing"] as const;
-const ACCOUNTANT_ALWAYS = ["today", "account", "security", "notices", "search"] as const;
+// "today" is deliberately absent: the Today inbox is operations scope
+// (jobs, tasks, customer work). The accountant's home is Books, and the
+// shell refuses Today for them like any other unlisted screen.
+const ACCOUNTANT_ALWAYS = ["account", "security", "notices", "search"] as const;
 const ACCOUNTANT_PATH_EXCEPTIONS = ["/desk/paperwork"] as const;
 
 /**

@@ -104,7 +104,10 @@ const DECISION_GUARD_ALLOWLIST = [
 
 // Every domain file whose actor gates may name the accountant.
 const DOMAIN_ALLOWLIST = [
+  "domains/account/index.ts",
   "domains/books/adjustments.ts",
+  "domains/books/cash/accounts.ts",
+  "domains/books/cash/desk.ts",
   "domains/books/cash/matches.ts",
   "domains/books/exports/index.ts",
   "domains/books/fixed-assets.ts",
@@ -114,8 +117,10 @@ const DOMAIN_ALLOWLIST = [
   "domains/compliance/filings.ts",
   "domains/decisions/attachments.ts",
   "domains/decisions/index.ts",
+  "domains/exceptions/index.ts",
   "domains/paperwork/records.ts",
   "domains/tax/returns-view.ts",
+  "domains/tax/workspace-overview.ts",
 ];
 
 // Areas that must never admit the role, whatever the sets above say (defense in depth, readable intent).
@@ -222,12 +227,12 @@ describe("ACCT-1 accountant screen gate (pure)", () => {
       "/desk/paperwork/rec-1",
       "/desk/billing",
       "/desk/reports",
-      "/desk/today",
       "/desk/account",
     ]) {
       expect(accountantAllowsPath(ok), ok).toBe(true);
     }
     for (const no of [
+      "/desk/today", // operations inbox — not the accountant's surface
       "/desk/settings",
       "/desk/settings/decisions/form",
       "/desk/settings/decisions/import",

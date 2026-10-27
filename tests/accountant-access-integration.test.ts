@@ -45,8 +45,12 @@ import {
 } from "@/domains/accountant";
 import { listAccountantAttention } from "@/domains/accountant/attention";
 import {
-  addCustomAccount, exportMonthReview, getBooksWorkspace, initializeBooks, renameAccount,
+  addCustomAccount, closeAccountingMonth, exportMonthReview, getBooksWorkspace, initializeBooks, mapExportAccount, renameAccount, reopenAccountingMonth,
 } from "@/domains/books/management";
+import { getTaxWorkspaceOverview } from "@/domains/tax/workspace-overview";
+import { getCashDesk } from "@/domains/books/cash/desk";
+import { getCashAccounts } from "@/domains/books/cash/accounts";
+import { updateMyProfile } from "@/domains/account";
 import { createAdjustingEntry, reverseAdjustingEntry } from "@/domains/books/adjustments";
 import { approveFiling, markFilingReviewed, prepareFiling, submitFiling } from "@/domains/compliance/filings";
 import { getDecision, listDecisions, recordProfessionalAnswer } from "@/domains/decisions";
@@ -345,6 +349,33 @@ describe.skipIf(!enabled)("ACCT-1 accountant access on real Postgres", () => {
         fileName: "nope.pdf", bytes: new TextEncoder().encode("%PDF-1.4 test"), label: null,
       }),
     ).rejects.toThrow();
+  });
+
+  it("the page readers behind the accountant's screens admit the role (taxes overview, cash desk, profile save)", async () => {
+    // Codex round 2: the pages admitted ACCOUNTANT but these readers still
+    // refused it, so the screens rendered errors.
+    await expect(getTaxWorkspaceOverview(accountantId)).resolves.toBeTruthy();
+    await expect(getCashDesk(accountantId)).resolves.toBeTruthy();
+    await expect(getCashAccounts(accountantId)).resolves.toBeInstanceOf(Array);
+    const saved = await updateMyProfile(accountantId, { name: "Casey CPA", phone: "" });
+    expect(saved).toMatchObject({ nameChanged: false });
+  });
+
+  it("an ended accountant's in-flight books writes are refused inside the transaction", async () => {
+    // Codex P1: mapping/close/reopen checked only the role the caller claimed.
+    // End the access, then call with the stale actor — the in-transaction
+    // recheck must refuse all three.
+    const stale = { id: accountantId, role: "ACCOUNTANT" as const };
+    const before = await prisma.user.findUniqueOrThrow({ where: { id: accountantId }, select: { accessEndsOn: true } });
+    await prisma.user.update({ where: { id: accountantId }, data: { accessEndsOn: new Date(Date.now() - 60_000) } });
+    try {
+      const account = await prisma.ledgerAccount.findFirstOrThrow({ where: { active: true } });
+      await expect(mapExportAccount(stale, { accountId: account.id, target: "GENERIC_JOURNAL_CSV", externalName: "Stale" })).rejects.toThrow();
+      await expect(closeAccountingMonth(stale, "2025-03")).rejects.toThrow();
+      await expect(reopenAccountingMonth(stale, "2025-03", "stale")).rejects.toThrow();
+    } finally {
+      await prisma.user.update({ where: { id: accountantId }, data: { accessEndsOn: before.accessEndsOn } });
+    }
   });
 
   it("the accountant can open their second-step setup and My account (the sign-in journey's own reads)", async () => {
