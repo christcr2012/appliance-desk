@@ -1,6 +1,36 @@
 ## October 27 — ACCT-1: Accountant sign-in
 
 
+## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
+React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
+
+## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
+
+MERGED earlier: the review check (#685) and OPS-4 "Keep certificate on record" (#687, squash `ffac3c8`). #687 merged
+before its two Codex fixes landed because `review-gate` is not yet a required check (one row on OWNER-CHECKLIST
+section A needs Chris). This PR carries those fixes: policy saves keep the owner's reminder days on the record, and
+renewing a linked record moves the policy's end date in the same step. Tests on real Postgres pass.
+NEXT: OPS-3 vehicle-to-insurance link, then OPS-2 leftovers.
+
+## October 27 — Lane 7 follow-ups: review gate merged, insurance certificate on a record
+
+MERGED: the automatic-merge safety check (`review-gate`, PR #685). Self-review notes now have to name the commit
+reviewed and come from the author or a collaborator; Codex findings clear only with a written disposition. It is already
+posting on open PRs. NEEDS CHRIS: two GitHub rule settings (agents cannot edit them) — one row in OWNER-CHECKLIST
+section A; until done, PRs still need a re-sync when main moves. IN PROGRESS (branch `ai/claude/ops-vault-gaps`): OPS-4
+"Keep certificate on record" (links each policy to one Insurance record in the vault; tests on real Postgres pass).
+NEXT: OPS-3 vehicle-to-insurance link, then OPS-2 leftovers.
+
+## October 27 — Automatic merging and the review gate (branch `ai/claude/auto-merge-review-gate`)
+
+Chris asked for pull requests to merge themselves, because several agents work at once and main keeps moving. Two
+things were in the way: the main-branch rule required every PR to be re-synced after each other merge, and nothing
+handled Codex being slow or out of usage. Built: a `review-gate` check (`.github/workflows/review-gate.yml`,
+`scripts/review-gate.mjs`, 14 tests) that passes when Codex reviewed and every finding has a reply, or, when Codex
+is unavailable (usage limit, or no answer in 25 minutes), when the author left a "self-reviewed" comment after the last
+real push (a sync with main does not erase it). It only reads pull requests and writes one commit status; it never
+checks out a PR. After this merges the main-branch rule is changed to require `review-gate` and to stop requiring
+branches to be up to date, then auto-merge is turned on per PR. AGENTS.md section 6 and the quickstart say how.
 
 ## October 27 — CMP-5: Hiring readiness (merged)
 

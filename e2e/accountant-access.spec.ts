@@ -89,8 +89,16 @@ test.describe("ACCT-1 accountant access", () => {
       await expect(acctPage).toHaveURL(/not-for-accountant/);
       await acctPage.goto("/desk/sales-tax");
       await expect(acctPage).not.toHaveURL(/not-for-accountant/);
+      // The overview reader behind the page must admit the role too, not just
+      // the page gate (an error page would still satisfy the URL check).
+      await expect(acctPage.getByRole("heading", { name: "Tax overview" })).toBeVisible();
+      await acctPage.goto("/desk/books/cash");
+      await expect(acctPage.getByRole("heading", { name: "Bank statements and cash records" })).toBeVisible();
       await acctPage.goto("/desk/compliance");
       await expect(acctPage).not.toHaveURL(/not-for-accountant/);
+      // Today is operations scope: the shell refuses it cleanly, in-desk.
+      await acctPage.goto("/desk/today");
+      await expect(acctPage).toHaveURL(/not-for-accountant/);
 
       // Axe on the books home, desktop then phone width.
       await acctPage.goto("/desk/books");
@@ -129,11 +137,13 @@ test.describe("ACCT-1 accountant access", () => {
 
       // 6. The owner removes the accountant; the next request is refused.
       await ownerPage.goto("/desk/settings?section=staff");
-      const row = ownerPage.locator("tr", { hasText: "Casey CPA" });
+      // Scope by this run's unique email: the name repeats across runs on a
+      // reused database, and strict mode counts every matching row.
+      const row = ownerPage.locator("tr", { hasText: email });
       await row.getByRole("button", { name: "Remove access" }).click();
       // Exact text: the row also carries the "Access removed and signed out
       // everywhere." action message, which a substring match would count too.
-      await expect(ownerPage.locator("tr", { hasText: "Casey CPA" }).getByText("Removed", { exact: true })).toBeVisible();
+      await expect(ownerPage.locator("tr", { hasText: email }).getByText("Removed", { exact: true })).toBeVisible();
       await acctPage.goto("/desk/books");
       await expect(acctPage).toHaveURL(/\/login/);
 

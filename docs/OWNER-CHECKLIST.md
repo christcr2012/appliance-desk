@@ -17,6 +17,12 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   Ready when: before you store a real EIN in Compliance › Business facts. You'll know it
   worked: the EIN box on Business facts is enabled and saving an EIN shows "ending" plus its last 4 digits.
   Until then the EIN box stays off on purpose, so a tax ID is never stored unprotected.
+- [ ] **GitHub: let pull requests merge themselves (2 settings, about 3 minutes).** Agents are blocked from editing the
+  repository's merge rules, so this one needs your hands. Steps: GitHub → christcr2012/appliance-desk → Settings → Rules →
+  Rulesets → "Ci and deploy" → under "Require status checks to pass" (a) turn OFF "Require branches to be up to date
+  before merging" and (b) add the check named `review-gate` (it is already running on every open pull request). Save.
+  Ready when: now (the check is on main). You'll know it worked: a pull request with auto-merge turned on merges by
+  itself once `ci` and `review-gate` are green, even if main moved. Until then agents re-sync and merge by hand.
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
   Environments → Production → Branch Tracking → choose `live` → Save; also turn automatic Preview deployments off.
   Ready when: now (`live` exists). You'll know it worked: Branch Tracking shows `live`.
@@ -283,6 +289,7 @@ on readiness).
 
 | Date | Row added | Why |
 |---|---|---|
+| 2026-10-27 | GitHub merge rules for auto-merge | Agents cannot edit repository rules; Chris asked for automatic merging. |
 | 2026-10-23 | Business paperwork list | Chris asked for one place for LLC/EIN/licenses with renewal reminders (built in the app). |
 | 2026-10-23 | Whole file created | Consolidated from GO-LIVE-CHECKLIST, OWNER-INPUTS and the STATUS acceptance list. |
 | 2026-10-23 | Shop-sale taxability answers | Shop sales are refused until the owner records taxability for items sold and used appliance sales. |

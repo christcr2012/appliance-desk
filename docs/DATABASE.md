@@ -1469,7 +1469,7 @@ Existing financial entries remain append-only and closed months stay immutable.
 - `BusinessSettings.mileageMethod` (`MileageMethod`, default STANDARD_RATE) and `vehicleMedicalCardRequired` (default true).
 - One seeded rule-book row: `us.mileage_rate` = 725 (tenths of a cent, 72.5¢) from 2026-01-01, from IRS Notice 2026-10 (secondary summary, checked 2026-10-26).
 ### OPS-4: insurance (additive migration `20261107000000_insurance`)
-- `OwnerInsurancePolicy` — one row per policy: kind (`InsuranceKind`: GENERAL_LIABILITY, COMMERCIAL_AUTO, EQUIPMENT, WORKERS_COMP, OTHER), insurer, policy number, limits (free text), yearly premium in cents, start and end dates, agent name/email, a note on where the certificate is kept, `archivedAt`. In the backup manifest.
+- `OwnerInsurancePolicy` — one row per policy: kind (`InsuranceKind`: GENERAL_LIABILITY, COMMERCIAL_AUTO, EQUIPMENT, WORKERS_COMP, OTHER), insurer, policy number, limits (free text), yearly premium in cents, start and end dates, agent name/email, a note on where the certificate is kept, `archivedAt`, and `recordId` (unique, optional link to the `BusinessPaperwork` record that holds the certificate file; `ON DELETE SET NULL`). In the backup manifest.
 - `InsuranceCertificateRequest` — each time a certificate was requested for someone (requester, company, email, holder wording, who asked, when); linked to the policy (Restrict). In the backup manifest.
 - `BusinessSettings.insuranceRemindFirstDays` / `insuranceRemindSecondDays` (60 / 30), `workersCompStatus` (`WorkersCompStatus`: NOT_SET, NO_EMPLOYEES_REJECTED, POLICY_IN_PLACE), `workersCompEmployees`, `workersCompNote`, `workersCompFormSentOn`, `workersCompMailNumber`.
 

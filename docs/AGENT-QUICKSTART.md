@@ -27,8 +27,9 @@ DB, reset from the parent, copy production identities, or mark business tax sett
 ## The loop
 
 Branch `ai/<tool>/<topic>` from `main` → build with tests → `npm run check:quick` → **one push** → open PR (plain English
-body; "automated review unavailable — waived; self-reviewed" if none appears) → read the `ci` result at the exact head →
-read every review comment → merge with the expected-head SHA → short STATUS entry → report to Chris.
+body) → **turn on auto-merge (squash)** and keep working → answer every Codex finding with a reply (if Codex is
+unavailable, post one "self-reviewed <short sha>" comment after your last push) → GitHub merges by itself when `ci` and
+`review-gate` are green; main moving does not force a re-sync → short STATUS entry → report to Chris.
 
 ## When CI is red
 
