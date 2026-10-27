@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { businessDateFromKey } from "@/lib/business-date";
 import { encryptField, hasFieldCryptoKey } from "@/lib/field-crypto";
 import type { ComplianceContext } from "./registry";
 import type { ComplianceProfile } from "@prisma/client";
@@ -32,6 +33,18 @@ export interface BusinessFactsInput {
     businessZip: string | null;
     businessPhone: string | null;
   };
+  /** CMP-4: the local-filing facts; undefined = leave as-is. The license date travels as a YYYY-MM-DD key. */
+  local?: {
+    tradeName: string | null;
+    usdotNumber: string | null;
+    truckRegistrationMonth: number | null;
+    greeleyLicenseDate: string | null;
+    registeredAgentName: string | null;
+    registeredAgentAddress: string | null;
+    registeredAgentCity: string | null;
+    registeredAgentState: string | null;
+    registeredAgentZip: string | null;
+  };
 }
 
 /** The stored profile, or the starting values when none was saved yet. */
@@ -53,6 +66,15 @@ export async function getComplianceProfile(): Promise<ComplianceProfile> {
     businessState: null,
     businessZip: null,
     businessPhone: null,
+    tradeName: null,
+    usdotNumber: null,
+    truckRegistrationMonth: null,
+    greeleyLicenseDate: null,
+    registeredAgentName: null,
+    registeredAgentAddress: null,
+    registeredAgentCity: null,
+    registeredAgentState: null,
+    registeredAgentZip: null,
     updatedAt: new Date(0),
   };
 }
@@ -71,6 +93,10 @@ export function profileContext(
     hasEin: Boolean(profile.einEncrypted),
     hasDepreciableAssets: books.hasDepreciableAssets,
     hasAssetSales: books.hasAssetSales,
+    tradeName: profile.tradeName,
+    usdotNumber: profile.usdotNumber,
+    truckRegistrationMonth: profile.truckRegistrationMonth,
+    greeleyLicenseDate: profile.greeleyLicenseDate,
   };
 }
 
@@ -104,6 +130,27 @@ export function missingFacts(profile: ComplianceProfile): MissingFact[] {
       why: "Decides whether you need a USDOT number and confirms the heavy vehicle tax doesn't apply. It's on the sticker inside the driver's door.",
     });
   }
+  if (profile.truckGvwrLbs !== null && profile.truckRegistrationMonth === null) {
+    missing.push({
+      key: "truckRegistrationMonth",
+      label: "Your truck's registration month",
+      why: "The registration and specific ownership tax renew in that month each year. It's the month on the truck's current registration card.",
+    });
+  }
+  if (profile.truckGvwrLbs !== null && profile.truckGvwrLbs >= 16001 && !profile.usdotNumber) {
+    missing.push({
+      key: "usdotNumber",
+      label: "Your USDOT number",
+      why: "At 16,001 lb or more the truck needs one, and its last two digits set the every-two-years update schedule — the app reads the dates off the number itself.",
+    });
+  }
+  if (profile.greeleyLicenseDate === null) {
+    missing.push({
+      key: "greeleyLicenseDate",
+      label: "Your Greeley license date",
+      why: "The city license renews every two years on the date it was issued. The date is on the license from the city's sales tax portal.",
+    });
+  }
   return missing;
 }
 
@@ -127,6 +174,51 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
   }
   if (!Number.isSafeInteger(input.employees) || input.employees < 0 || input.employees > 10000) {
     throw new Error("Enter how many employees you have.");
+  }
+  let localPatch:
+    | {
+        tradeName: string | null;
+        usdotNumber: string | null;
+        truckRegistrationMonth: number | null;
+        greeleyLicenseDate: Date | null;
+        registeredAgentName: string | null;
+        registeredAgentAddress: string | null;
+        registeredAgentCity: string | null;
+        registeredAgentState: string | null;
+        registeredAgentZip: string | null;
+      }
+    | undefined;
+  if (input.local !== undefined) {
+    const local = input.local;
+    if (
+      local.truckRegistrationMonth !== null &&
+      (!Number.isInteger(local.truckRegistrationMonth) || local.truckRegistrationMonth < 1 || local.truckRegistrationMonth > 12)
+    ) {
+      throw new Error("The registration month must be a month from 1 to 12.");
+    }
+    const usdotNumber = local.usdotNumber?.replace(/[\s-]/g, "") || null;
+    if (usdotNumber !== null && !/^\d{2,10}$/.test(usdotNumber)) {
+      throw new Error("A USDOT number is digits only (2 to 10) — check it and try again.");
+    }
+    let greeleyLicenseDate: Date | null = null;
+    if (local.greeleyLicenseDate) {
+      greeleyLicenseDate = businessDateFromKey(local.greeleyLicenseDate);
+      if (!greeleyLicenseDate) {
+        throw new Error("Enter the Greeley license date like 2026-05-01.");
+      }
+    }
+    const trimmed = (value: string | null) => value?.trim() || null;
+    localPatch = {
+      tradeName: trimmed(local.tradeName),
+      usdotNumber,
+      truckRegistrationMonth: local.truckRegistrationMonth,
+      greeleyLicenseDate,
+      registeredAgentName: trimmed(local.registeredAgentName),
+      registeredAgentAddress: trimmed(local.registeredAgentAddress),
+      registeredAgentCity: trimmed(local.registeredAgentCity),
+      registeredAgentState: trimmed(local.registeredAgentState),
+      registeredAgentZip: trimmed(local.registeredAgentZip),
+    };
   }
 
   let einPatch: { einEncrypted: string | null; einLast4: string | null } | undefined;
@@ -169,6 +261,7 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
       hasHomeOffice: input.hasHomeOffice,
       ...(einPatch ?? {}),
       ...(input.payer ?? {}),
+      ...(localPatch ?? {}),
     };
     await tx.complianceProfile.upsert({
       where: { id: "singleton" },
@@ -176,9 +269,17 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
       update: data,
     });
     // The audit names the changed fields only — never the EIN itself.
+    // Dates compare by instant, not by object, so re-saving the same
+    // license date does not report a change that never happened.
     const changed = Object.keys(data).filter((field) => {
       const key = field as keyof typeof data;
-      return !before || before[key as keyof ComplianceProfile] !== data[key];
+      if (!before) return true;
+      const beforeValue = before[key as keyof ComplianceProfile];
+      const afterValue = data[key];
+      if (beforeValue instanceof Date && afterValue instanceof Date) {
+        return beforeValue.getTime() !== afterValue.getTime();
+      }
+      return beforeValue !== afterValue;
     });
     await tx.auditLog.create({
       data: {

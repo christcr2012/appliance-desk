@@ -62,9 +62,10 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   Encryption keys (same key as the CMP-1 row above). Never paste it in a chat or GitHub. Worked when
   Compliance › Business facts lets you enter your EIN.
 
-- [ ] **Vault encryption key (about 5 minutes).** When VAULT-2 ships, follow the same walkthrough: More → Set up
+- [ ] **Vault encryption key (about 5 minutes).** Follow the same walkthrough: More → Set up
   your business → Encryption keys (the second step — a different key from the compliance key). Never paste it in a
-  chat or GitHub. Worked when Business › Logins lets you save one login.
+  chat or GitHub. Worked when More → Logins vault lets you save one login (until the key is set, that page says
+  "Not set up yet").
 - [ ] **Fill in "If something happens to me" and ask your attorney about a successor member (about 15 minutes).** Open
   More › If something happens to me and type who to call, who would keep the business running, your CPA and attorney, and
   where records are kept (never passwords). Then ask your attorney whether your LLC agreement names a successor member

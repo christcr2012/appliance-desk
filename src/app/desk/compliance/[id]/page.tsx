@@ -8,10 +8,11 @@ import { obligationByKey } from "@/domains/compliance/registry";
 import { IRIS_MAX_ROWS_PER_FILE } from "@/domains/compliance/iris-csv";
 import { FilingActions } from "./filing-actions";
 import { ClassifyControls } from "./classify-controls";
-import { ScheduleCPacketSection, Worksheet4562Section, Worksheet4797Section } from "./packet-sections";
+import { BppSection, ScheduleCPacketSection, Worksheet4562Section, Worksheet4797Section } from "./packet-sections";
+import { bppSnapshotFromPrepared } from "@/domains/compliance/bpp";
 import { VoucherForm } from "./voucher-form";
 import { getComplianceProfile } from "@/domains/compliance/profile";
-import { VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
+import { vendoredDsForm, VOUCHER_BOOKLET_YEAR } from "@/domains/compliance/pdf-forms";
 import type { PacketData } from "@/domains/compliance/schedule-c";
 import type { Worksheet4562, Worksheet4797 } from "@/domains/compliance/worksheets";
 import type { QuarterlyEstimate } from "@/domains/compliance/estimates";
@@ -63,6 +64,8 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
       ? ((filing.preparedData as { worksheet4797?: Worksheet4797 } | null)?.worksheet4797 ?? null)
       : null;
   const estimate = isEstimate ? (filing.preparedData as (QuarterlyEstimate & { payUrl?: string; payLabel?: string }) | null) : null;
+  const isBpp = filing.obligationKey === "co.bpp.weld_declaration";
+  const bppSnapshot = isBpp ? bppSnapshotFromPrepared(filing.preparedData) : null;
   const profile = isEstimate ? await getComplianceProfile() : null;
   const prepared = (filing.preparedData ?? {}) as {
     recipients?: { supplierId: string; name: string; tinLast4: string | null; hasW9: boolean; necCents: number; misc1Cents: number; misc3Cents: number }[];
@@ -132,7 +135,7 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
         ) : null}
       </dl>
 
-      {rows.length && !is1099 && !isCmp2 ? (
+      {rows.length && !is1099 && !isCmp2 && !isBpp ? (
         <section className="max-w-3xl space-y-2">
           <h3 className="font-semibold text-ink">Prepared numbers</h3>
           <table className="w-full text-sm">
@@ -162,7 +165,7 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
             : "Nothing prepared yet."}
         </p>
       ) : null}
-      {(is1099 || isCmp2) && filing.preparedHash ? (
+      {(is1099 || isCmp2 || isBpp) && filing.preparedHash ? (
         <p className="max-w-3xl text-sm text-ink-soft">
           Fingerprint of the prepared numbers: {filing.preparedHash.slice(0, 12)}… Approving uses exactly these
           numbers; if anything changes, you&apos;ll be asked to review again.
@@ -244,6 +247,17 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
       {packet && packet.scheduleC ? (
         <ScheduleCPacketSection filingId={filing.id} packet={packet} outputsReady={outputsReady} />
       ) : null}
+      {bppSnapshot ? (
+        <BppSection
+          filingId={filing.id}
+          filingState={filing.state}
+          snapshot={bppSnapshot}
+          outputsReady={outputsReady}
+          dsFormsAvailable={
+            vendoredDsForm("ds056", bppSnapshot.year) !== null && vendoredDsForm("ds060", bppSnapshot.year) !== null
+          }
+        />
+      ) : null}
       {worksheet4562 ? <Worksheet4562Section worksheet={worksheet4562} /> : null}
       {worksheet4797 ? <Worksheet4797Section worksheet={worksheet4797} /> : null}
 
@@ -313,6 +327,10 @@ export default async function FilingPage({ params }: { params: Promise<{ id: str
           "fed.4797",
           "fed.estimated_tax",
           "co.income.dr0104ep",
+          "co.bpp.weld_declaration",
+          "greeley.business_license",
+          "co.vehicle_registration",
+          "fed.usdot",
         ].includes(filing.obligationKey)}
         isOwner={user.role === "OWNER"}
         separateSubmission={["UPLOAD_FILE", "ACCOUNTANT_PACKET", "FILLED_FORM"].includes(obligation?.channel ?? "")}
