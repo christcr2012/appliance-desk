@@ -187,23 +187,33 @@ export async function markPaperworkDone(userId: string, id: string, expectedVers
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
     const rows = await tx.$queryRaw<
-      { dueOn: Date | null; repeatEveryMonths: number | null; version: number }[]
-    >`SELECT "dueOn", "repeatEveryMonths", "version" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
+      { dueOn: Date | null; expiresOn: Date | null; repeatEveryMonths: number | null; version: number }[]
+    >`SELECT "dueOn", "expiresOn", "repeatEveryMonths", "version" FROM "BusinessPaperwork" WHERE "id" = ${id} FOR UPDATE`;
     const row = rows[0];
     if (!row) throw new Error("That item no longer exists.");
     if (row.version !== expectedVersion) throw new Error(PAPERWORK_STALE_MESSAGE);
-    // A repeating item moves to its next date. A one-time item is simply finished, so its date is cleared
-    // and it stops reminding. (For a license that expires, change the date on the item instead.)
-    const nextDue =
-      row.repeatEveryMonths && row.dueOn
-        ? nextDueAfterRenewal(row.dueOn, row.repeatEveryMonths, now)
-        : null;
+    // VAULT-1: reminders key off the earlier of the action date and the expiry
+    // date, so mark-done must move BOTH. A repeating item advances each date
+    // it has by its repeat length; a one-time item is simply finished, so
+    // both dates are cleared and it stops reminding.
+    const repeating = Boolean(row.repeatEveryMonths);
+    const nextDue = repeating
+      ? row.dueOn
+        ? nextDueAfterRenewal(row.dueOn, row.repeatEveryMonths!, now)
+        : null
+      : null;
+    const nextExpires = repeating
+      ? row.expiresOn
+        ? nextDueAfterRenewal(row.expiresOn, row.repeatEveryMonths!, now)
+        : null
+      : null;
     await tx.businessPaperwork.update({
       where: { id },
       data: {
         status: "DONE",
         lastDoneOn: now,
         dueOn: nextDue,
+        expiresOn: nextExpires,
         updatedByUserId: userId,
         version: { increment: 1 },
       },

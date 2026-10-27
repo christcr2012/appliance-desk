@@ -11,6 +11,7 @@ import { createZip } from "@/lib/zip";
 import { PAPERWORK_STALE_MESSAGE } from "./index";
 import {
   RECORD_KIND_LABEL,
+  contentDisposition,
   nextDueAfterRenewal,
   RECOMMENDED_ADMIN_KINDS,
   RECORD_PDF_MAX_BYTES,
@@ -20,6 +21,8 @@ import {
   sniffRecordFile,
   type RecordKind,
 } from "./rules";
+
+export { contentDisposition };
 
 /**
  * VAULT-1: business records on top of BusinessPaperwork.
@@ -542,14 +545,22 @@ export async function buildExportPack(
     }
     return store;
   };
-  return prisma.$transaction(async (tx) => {
+  // Only the snapshot read and the audit write run inside (short)
+  // transactions. Downloading every attachment, generating the PDF and
+  // compressing the ZIP happen outside: several 15 MB PDFs can take far
+  // longer than a database transaction may live, and the export must not
+  // die at its final step because the transaction expired.
+  const rows = await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, userId, ["OWNER"]);
-    const rows = await tx.businessPaperwork.findMany({
+    const found = await tx.businessPaperwork.findMany({
       where: { id: { in: recordIds } },
       include: { recordFiles: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } } },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     });
-    if (rows.length === 0) throw new Error("Pick at least one record to export.");
+    if (found.length === 0) throw new Error("Pick at least one record to export.");
+    return found;
+  });
+  {
     const dtos = rows.map((r) => toDto(r, false));
     const entries: { name: string; data: Uint8Array }[] = [];
     const usedNames = new Set<string>();
@@ -584,7 +595,10 @@ export async function buildExportPack(
     const index = await buildIndexPdf(dtos, new Date());
     entries.unshift({ name: "index.pdf", data: index });
     const bytes = createZip(entries, new Date());
-    await audit(tx, userId, "records.exported", "export", dtos.map((d) => d.id));
+    await prisma.$transaction(async (tx) => {
+      await assertActiveTeamActor(tx, userId, ["OWNER"]);
+      await audit(tx, userId, "records.exported", "export", dtos.map((d) => d.id));
+    });
     return { fileName: `business-records-${businessDateKey(new Date())}.zip`, bytes };
-  });
+  }
 }

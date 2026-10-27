@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { crc32, createZip } from "@/lib/zip";
 import {
   adminCanSeeRecord,
+  contentDisposition,
   effectiveRecordDate,
   sniffRecordFile,
 } from "@/domains/paperwork/rules";
@@ -127,5 +128,25 @@ describe("VAULT-1 starter templates", () => {
     ]) {
       expect(byKey.has(key), key).toBe(true);
     }
+  });
+});
+
+describe("contentDisposition", () => {
+  it("keeps a plain ASCII name as-is", () => {
+    expect(contentDisposition("ein-letter.pdf")).toBe(
+      "inline; filename=\"ein-letter.pdf\"; filename*=UTF-8''ein-letter.pdf",
+    );
+  });
+
+  it("encodes a non-Latin-1 name instead of throwing on the header", () => {
+    const header = contentDisposition("保険.pdf");
+    // The quoted fallback is pure ASCII (header-safe); the real name rides filename*.
+    expect(header).toMatch(/^inline; filename="[ -~]*"; filename\*=UTF-8''%E4%BF%9D%E9%99%BA\.pdf$/);
+    expect(header).not.toContain("保険");
+  });
+
+  it("neutralizes quotes and newlines in the fallback", () => {
+    const header = contentDisposition("a\"b\nc.pdf");
+    expect(header).toContain("filename=\"a_b_c.pdf\"");
   });
 });

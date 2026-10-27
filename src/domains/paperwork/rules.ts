@@ -64,6 +64,18 @@ export function nextDueAfterRenewal(
   return result;
 }
 
+/**
+ * Content-Disposition for a download whose name the owner typed: header
+ * values must be ByteStrings, so a name outside Latin-1 (Japanese, emoji)
+ * would throw. Send an ASCII fallback plus the RFC 5987 UTF-8 form.
+ */
+export function contentDisposition(fileName: string, disposition: "inline" | "attachment" = "inline"): string {
+  const fallback = fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_") || "file";
+  const encoded = encodeURIComponent(fileName)
+    .replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0"));
+  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
 export function maskReference(value: string | null | undefined): string {
   if (!value) return "";
   const trimmed = value.trim();

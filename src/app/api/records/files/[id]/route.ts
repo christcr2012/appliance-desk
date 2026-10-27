@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import {
   auditRecordDownload,
+  contentDisposition,
   getRecord,
   getRecordFileRow,
   readRecordFileBytes,
@@ -37,13 +38,12 @@ export async function GET(
   if (role === "OWNER") {
     await auditRecordDownload(session.user.id, file.recordId, file.id);
   }
-  const safeName = file.fileName.replace(/[\r\n"]/g, "_");
   return new Response(Buffer.from(result.bytes), {
     status: 200,
     headers: {
       "Content-Type": file.contentType,
       "Content-Length": String(result.bytes.length),
-      "Content-Disposition": `inline; filename="${safeName}"`,
+      "Content-Disposition": contentDisposition(file.fileName),
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
     },
