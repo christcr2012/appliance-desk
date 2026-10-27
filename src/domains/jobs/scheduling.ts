@@ -6,6 +6,7 @@ import { assertActiveTeamActor, type TeamRole } from "@/lib/team-actor";
 import { assertJobScopeInTx } from "./scope";
 import { businessDateKey } from "@/lib/business-date";
 import { effectiveLocationPermission } from "@/domains/customers/location-contacts";
+import { assertDeliveryReadyInTx } from "@/domains/tax/delivery-readiness";
 
 // ---------------------------------------------------------------------------
 // Scheduling (Batch C, slice P1-A). Who does a visit, how long it takes, and
@@ -205,6 +206,7 @@ export async function scheduleJob(
       where: { id: input.jobId },
       select: { status: true, version: true, scheduledAt: true,
         durationMinutes: true, assignedToUserId: true, agreementId: true,
+        serviceAddressId: true,
         type: true, requestedDelivery: true, requestedDeliveryAt: true,
         confirmedDeliveryAt: true, originalConfirmedDeliveryFor: true },
     });
@@ -213,6 +215,36 @@ export async function scheduleJob(
     }
     if (before.status !== "SCHEDULED" && before.status !== "IN_PROGRESS") {
       throw new Error("Only a job that is scheduled or in progress can be rescheduled.");
+    }
+
+    // FEETAX-2: (re)scheduling a delivery-type visit re-checks the
+    // address's delivery readiness — a place can stop being ready
+    // after the job was created (a license lapses, a delivery-count
+    // rule is crossed). The agreement's recorded owner override is
+    // honoured.
+    if (["DELIVERY", "INSTALLATION", "REMOVAL"].includes(before.type)) {
+      const readinessAddressId =
+        before.serviceAddressId ??
+        (before.agreementId
+          ? (
+              await tx.rentalAgreement.findUnique({
+                where: { id: before.agreementId },
+                select: { serviceAddressId: true },
+              })
+            )?.serviceAddressId
+          : null);
+      if (readinessAddressId) {
+        // Evaluate at the new scheduled date: a license expiring
+        // before that day must not satisfy the gate.
+        await assertDeliveryReadyInTx(
+          tx,
+          {
+            serviceAddressId: readinessAddressId,
+            agreementId: before.agreementId,
+          },
+          input.scheduledAt,
+        );
+      }
     }
 
     // W-24: the customer's option is a request, and receipt-backed money
