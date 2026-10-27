@@ -4,6 +4,14 @@ The checker passed its five unit tests and static type/lint checks. Five indepen
 ## October 27 — AR-11 bundle guard: CI failure diagnosis, measured routes in next run (PR #691)
 The guard's five browser shards exposed three added routes after the first 147-page baseline: tax area and two vault pages. Its lint error was a reserved variable name. Fixed lint and made the guard report measured gzip sizes for any missing route; fresh CI will supply actual numbers before updating the committed baseline. React navigation PR #665 merged as `a0772141` after exact-head CI and resolved review.
 
+## October 27 — OPS-3: vehicle-to-insurance link (branch `ai/claude/ops3-vehicle-insurance`)
+
+Each delivery vehicle can now be linked to the insurance policy that covers it. The vehicle page says "Insured by …,
+ends …" and warns when that policy has ended (the ended policy already reaches the To do list through OPS-4). Only
+live policies can be picked; deleting a policy just clears the link. Additive migration; tests on real Postgres pass.
+Merged earlier today: review check (#685), insurance certificate on a record (#687, #688). GitHub rule: the
+up-to-date requirement is off; `review-gate` still needs to be saved as a required check (OWNER-CHECKLIST section A).
+NEXT: OPS-2 leftovers (sealed-system technician check, receipt photo).
 ## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
 React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 

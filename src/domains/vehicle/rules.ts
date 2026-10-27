@@ -36,7 +36,7 @@ export const needsMedicalCard = (gvwrLbs: number, setting: boolean) => gvwrLbs >
 export type VehicleInput = {
   nickname: string; year: number; make: string; model: string; vin?: string; plate?: string; gvwrLbs: number;
   registrationMonth?: number | null; odometerAtPurchase: number; maintenanceEveryMiles?: number | null; maintenanceEveryMonths?: number | null;
-  lastMaintenanceOnKey?: string; lastMaintenanceMiles?: number | null; medicalCardExpiresOnKey?: string; notes?: string;
+  lastMaintenanceOnKey?: string; lastMaintenanceMiles?: number | null; medicalCardExpiresOnKey?: string; notes?: string; insurancePolicyId?: string | null;
 };
 
 export function checkVehicleInput(input: VehicleInput, thisYear: number): string | null {
