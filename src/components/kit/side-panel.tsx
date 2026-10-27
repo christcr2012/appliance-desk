@@ -18,6 +18,7 @@ export function SidePanel({
 }) {
   return (
     <aside
+      data-kit-panel
       aria-label={title}
       className="hidden lg:sticky lg:top-0 lg:flex lg:max-h-dvh lg:w-[420px] lg:shrink-0 lg:flex-col lg:border-l lg:border-line lg:bg-surface"
     >

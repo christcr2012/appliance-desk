@@ -51,7 +51,7 @@ export default async function VehiclePage() {
     <div className="space-y-6">
       <PageHeader title="Vehicle and mileage" />
       <p className="text-sm text-ink-soft">
-        Your delivery vehicle, the license rules that follow from its weight, and a mileage log for your taxes. Drivers enter the starting and ending odometer on the <Link className="underline" href="/desk/driver">Driver view</Link>. Vehicle insurance is on the <Link className="underline" href="/desk/insurance">Insurance</Link> screen.
+        Your delivery vehicle, the license rules that follow from its weight, and a mileage log for your taxes. Drivers enter the starting and ending odometer on the <Link className="underline" href="/desk/driver">Driver view</Link>. Vehicle insurance is kept on the Insurance screen under More.
       </p>
 
       {active.length === 0 ? <Card title="Your vehicle"><p className="text-sm">No vehicle yet. Add the one you deliver with below.</p></Card> : active.map((v) => (

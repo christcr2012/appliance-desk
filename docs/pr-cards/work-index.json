@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "91f7d34d",
-  "updated": "2026-10-23",
+  "updated": "2026-10-26",
   "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
@@ -4712,7 +4712,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — merged #608 and #647; loading sweep in review",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -5623,7 +5623,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR open on ai/claude/ops-6",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5635,7 +5635,9 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-6-integration.test.ts"
+        "tests/ops6-collections-rules.test.ts",
+        "tests/ops6-no-ownership-wording.test.ts",
+        "tests/ops6-collections-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-6.md"
