@@ -28,6 +28,10 @@ vi.mock("@/lib/prisma", () => ({
           update: invoiceUpdate,
         },
         auditLog: { create: auditLogCreate },
+        // CMP-3: a cash payment runs the Form 8300 detector in the same
+        // transaction; with no receipts in the fake it finds nothing to do.
+        receipt: { findMany: vi.fn().mockResolvedValue([]) },
+        complianceFiling: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
       }),
   },
 }));

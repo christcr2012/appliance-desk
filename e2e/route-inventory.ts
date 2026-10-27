@@ -47,6 +47,13 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
       "Launch confirmation tokens are single-use and expire; a fixed token would make the accessibility test stateful and non-repeatable.",
   },
   { path: "/join/[code]", role: "PUBLIC", fixture: "/join/not-a-real-link" },
+  {
+    path: "/w9/[token]",
+    role: "PUBLIC",
+    fixture: "A newly issued one-time W-9 request link for a test supplier",
+    manualOnlyReason:
+      "W-9 links are single-use and expire in 14 days; a fixed token would make the accessibility test stateful and non-repeatable.",
+  },
   { path: "/login", role: "PUBLIC", fixture: "/login" },
   { path: "/login/two-factor", role: "PUBLIC", fixture: "/login/two-factor" },
   { path: "/reset-password", role: "PUBLIC", fixture: "/reset-password" },
