@@ -72,6 +72,29 @@ describe("BPP spreadsheet", () => {
     expect(lines[3]).toContain("860.00");
   });
 
+  it("carries the whole-line rent for a set whose rent is never split (PR #670 review)", () => {
+    const setSnapshot: BppSnapshot = {
+      ...snapshot,
+      items: snapshot.items.map((item) => ({
+        ...item,
+        rentedOut: true,
+        userName: "Casey Renter",
+        userAddress: "12 Oak St, Greeley, CO 80631",
+        rentLineLabel: "Washer/Dryer set",
+        rentLineMonthlyCents: 6000,
+        unitsOnLine: 2,
+        monthlyRentCents: null, // a set's rent is never split by invention
+      })),
+    };
+    const csv = bppSpreadsheetCsv(setSnapshot);
+    const lines = csv.trim().split("\n");
+    expect(lines[0]).toContain("whole line, shared by its units");
+    // The per-unit rent cell stays empty; the whole line's $60.00 lands
+    // in its own labeled column on both units of the set.
+    expect(lines[1]).toContain(",Washer/Dryer set,60.00");
+    expect(lines[2]).toContain(",Washer/Dryer set,60.00");
+  });
+
   it("quotes cells that carry commas", () => {
     const csv = bppSpreadsheetCsv(snapshot);
     expect(csv).toContain('"Casey Renter, 12 Oak St, Greeley, CO 80631"');

@@ -59,7 +59,9 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
   const appDisposed = `cmp4-app4-${tag}`;
   const appLater = `cmp4-app5-${tag}`;
   const appPreBooks = `cmp4-app6-${tag}`;
-  const applianceIds = [appRented, appSet1, appSet2, appDisposed, appLater, appPreBooks];
+  const appReserved = `cmp4-app7-${tag}`;
+  const appDeliveredLate = `cmp4-app8-${tag}`;
+  const applianceIds = [appRented, appSet1, appSet2, appDisposed, appLater, appPreBooks, appReserved, appDeliveredLate];
   const ruleIds: string[] = [];
 
   function unit(id: string, assetNumber: string, manufacturer: string, model: string, serial?: string) {
@@ -126,6 +128,10 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
     await book(appDisposed, 99000, "2026-01-15", "2026-12-01");
     await book(appLater, 30000, "2027-02-01");
     await book(appPreBooks, 15000, "2026-02-01");
+    await unit(appReserved, `C4G-${tag}`, "GE", "GTW");
+    await unit(appDeliveredLate, `C4H-${tag}`, "GE", "GTD");
+    await book(appReserved, 12000, "2026-06-01");
+    await book(appDeliveredLate, 13000, "2026-06-01");
     const line1 = await prisma.rentalLine.findFirstOrThrow({ where: { agreementId } });
     const line2 = await prisma.rentalLine.findFirstOrThrow({ where: { agreementId: setAgreementId } });
     await prisma.applianceAssignment.create({
@@ -137,6 +143,29 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
     await prisma.applianceAssignment.create({
       data: { rentalLineId: line2.id, applianceId: appSet2, assignedAt: new Date("2026-05-01T12:00:00Z") },
     });
+    // Possession is the custody record, not the assignment (PR #670
+    // review): the three delivered units have stays covering Jan 1.
+    const stay = (applianceId: string, agreement: string, started: string) =>
+      prisma.applianceCustodyEpisode.create({
+        data: {
+          applianceId, customerId, serviceAddressId: addressId, agreementId: agreement,
+          startedOn: day(started), startEvidence: "MANUAL",
+        },
+      });
+    await stay(appRented, agreementId, "2026-05-02");
+    await stay(appSet1, setAgreementId, "2026-05-02");
+    await stay(appSet2, setAgreementId, "2026-05-02");
+    // Reserved in December on the single-washer line, never delivered:
+    // an assignment only — no stay — so no renter may be reported.
+    await prisma.applianceAssignment.create({
+      data: { rentalLineId: line1.id, applianceId: appReserved, assignedAt: new Date("2026-12-20T12:00:00Z") },
+    });
+    // Reserved in December on the set line, delivered January 10: the
+    // stay starts after January 1, so it was not rented out that day.
+    await prisma.applianceAssignment.create({
+      data: { rentalLineId: line2.id, applianceId: appDeliveredLate, assignedAt: new Date("2026-12-20T12:00:00Z") },
+    });
+    await stay(appDeliveredLate, setAgreementId, "2027-01-10");
   });
 
   afterAll(async () => {
@@ -150,6 +179,7 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
     await prisma.complianceFiling.deleteMany({
       where: { obligationKey: { in: ["co.bpp.weld_declaration", "greeley.business_license", "co.vehicle_registration", "fed.usdot"] } },
     }).catch(() => undefined);
+    await prisma.applianceCustodyEpisode.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.applianceAssignment.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.bookAsset.deleteMany({ where: { applianceId: { in: applianceIds } } });
     await prisma.rentalLine.deleteMany({ where: { agreementId: { in: [agreementId, setAgreementId] } } });
@@ -164,7 +194,15 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
   it("the January 1 snapshot counts what was owned, rented and priced — and only that", async () => {
     const snapshot = await computeBppSnapshot(2027);
     const mine = snapshot.items.filter((i) => i.assetNumber.endsWith(tag));
-    expect(mine.map((i) => i.assetNumber).sort()).toEqual([`C4A-${tag}`, `C4B-${tag}`, `C4C-${tag}`, `C4F-${tag}`]);
+    expect(mine.map((i) => i.assetNumber).sort()).toEqual([
+      `C4A-${tag}`, `C4B-${tag}`, `C4C-${tag}`, `C4F-${tag}`, `C4G-${tag}`, `C4H-${tag}`,
+    ]);
+    const reserved = mine.find((i) => i.assetNumber === `C4G-${tag}`)!;
+    expect(reserved.rentedOut).toBe(false); // a reservation is not possession
+    expect(reserved.userName).toBeNull();
+    expect(reserved.monthlyRentCents).toBeNull();
+    const deliveredLate = mine.find((i) => i.assetNumber === `C4H-${tag}`)!;
+    expect(deliveredLate.rentedOut).toBe(false); // delivered January 10, not held on January 1
     const preBooks = mine.find((i) => i.assetNumber === `C4F-${tag}`)!;
     expect(preBooks.yearAcquired).toBe(2025); // the purchase year, not the clamped books year
     expect(preBooks.placedInService).toBe("Dec 2025");
@@ -292,6 +330,6 @@ describe.skipIf(!enabled)("CMP-4 Colorado and local filings", () => {
     const closed = await prisma.complianceFiling.findUniqueOrThrow({ where: { id: filing.id } });
     expect(closed.state).toBe("NOT_APPLICABLE");
     const kept = closed.preparedData as { snapshot?: { totalCostCents?: number } } | null;
-    expect(kept?.snapshot?.totalCostCents).toBeGreaterThanOrEqual(101000);
+    expect(kept?.snapshot?.totalCostCents).toBeGreaterThanOrEqual(126000);
   });
 });

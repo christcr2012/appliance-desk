@@ -8,8 +8,11 @@ import type { ComplianceFiling } from "@prisma/client";
  * taxes what the business owned on January 1; the app builds that day's
  * picture from its own records — the book assets (the rental fleet; the
  * truck is never a book asset, so vehicles are excluded by construction)
- * and the rental assignment in force that day for the lessor columns of
- * DS 060. Nothing is estimated: the exemption check compares the total
+ * and, for the lessor columns of DS 060, the custody episodes: they are
+ * the possession record (opened by a completed delivery, closed by a
+ * completed removal), while an assignment is only a reservation made
+ * when a draft line is added — it never puts a renter on the form by
+ * itself. Nothing is estimated: the exemption check compares the total
  * ORIGINAL cost with the dated rule (the assessor works out actual value
  * from cost and year on their own schedules), and the filing says so.
  */
@@ -114,15 +117,71 @@ export async function computeBppSnapshot(year: number): Promise<BppSnapshot> {
     if (assignment.unassignedAt && businessDateKey(assignment.unassignedAt) <= asOf) continue;
     inForce.set(assignment.applianceId, assignment); // ascending order: the latest in-force wins
   }
-  const unitsPerLine = new Map<string, number>();
-  for (const assignment of inForce.values()) {
-    unitsPerLine.set(assignment.rentalLineId, (unitsPerLine.get(assignment.rentalLineId) ?? 0) + 1);
+  const assignmentsByAppliance = new Map<string, typeof assignments>();
+  for (const assignment of assignments) {
+    const list = assignmentsByAppliance.get(assignment.applianceId) ?? [];
+    list.push(assignment);
+    assignmentsByAppliance.set(assignment.applianceId, list);
   }
 
-  const items: BppItem[] = owned
-    .map((asset) => {
+  // Who physically held each unit on January 1 (PR #670 review): the
+  // custody episode covering that day. An episode with no recorded
+  // start day counts as held unless it had already ended — the stay
+  // predates the record; a stay that starts after January 1 (reserved
+  // in December, delivered in January) does not count at all.
+  const episodes = applianceIds.length
+    ? await prisma.applianceCustodyEpisode.findMany({
+        where: { applianceId: { in: applianceIds } },
+        include: { customer: { include: { user: true } }, serviceAddress: true },
+        orderBy: { startedOn: "asc" },
+      })
+    : [];
+  const heldOnJan1 = new Map<string, (typeof episodes)[number]>();
+  for (const episode of episodes) {
+    if (episode.startedOn && businessDateKey(episode.startedOn) > asOf) continue;
+    if (episode.endedOn && businessDateKey(episode.endedOn) <= asOf) continue;
+    heldOnJan1.set(episode.applianceId, episode);
+  }
+
+  type RentalLineOf = (typeof assignments)[number]["rentalLine"];
+  // The rental line a stay's rent comes from: the in-force assignment
+  // when it belongs to the stay's agreement, else this unit's own
+  // assignment under the stay's agreement.
+  const lineForStay = (
+    applianceId: string,
+    episode: (typeof episodes)[number],
+    assignment: (typeof assignments)[number] | undefined,
+  ): RentalLineOf | null => {
+    if (assignment && (episode.agreementId === null || assignment.rentalLine.agreementId === episode.agreementId)) {
+      return assignment.rentalLine;
+    }
+    if (episode.agreementId) {
+      const own = (assignmentsByAppliance.get(applianceId) ?? []).filter(
+        (a) => a.rentalLine.agreementId === episode.agreementId,
+      );
+      const started = own.filter((a) => businessDateKey(a.assignedAt) <= asOf).at(-1) ?? own[0];
+      return started?.rentalLine ?? null;
+    }
+    return null;
+  };
+
+  const formatAddress = (address: { line1: string; line2: string | null; city: string; state: string; zip: string }) =>
+    [address.line1, address.line2, `${address.city}, ${address.state} ${address.zip}`].filter(Boolean).join(", ");
+
+  const resolved = owned.map((asset) => {
+    const episode = heldOnJan1.get(asset.applianceId) ?? null;
+    const assignment = inForce.get(asset.applianceId);
+    const line = episode ? lineForStay(asset.applianceId, episode, assignment) : null;
+    return { asset, episode, assignment, line };
+  });
+  const unitsPerLine = new Map<string, number>();
+  for (const entry of resolved) {
+    if (entry.line) unitsPerLine.set(entry.line.id, (unitsPerLine.get(entry.line.id) ?? 0) + 1);
+  }
+
+  const items: BppItem[] = resolved
+    .map(({ asset, episode, assignment, line }) => {
       const appliance = asset.appliance;
-      const assignment = inForce.get(asset.applianceId);
       const placed = businessDateKey(ownershipDate(asset));
       const [placedYear, placedMonth] = placed.split("-").map(Number);
       const description = [
@@ -134,15 +193,15 @@ export async function computeBppSnapshot(year: number): Promise<BppSnapshot> {
         .join(" — ");
       let userName: string | null = null;
       let userAddress: string | null = null;
-      if (assignment) {
-        const agreement = assignment.rentalLine.agreement;
-        userName = agreement.customer.user.name ?? agreement.customer.user.email;
-        const address = agreement.serviceAddress;
-        userAddress = [address.line1, address.line2, `${address.city}, ${address.state} ${address.zip}`]
-          .filter(Boolean)
-          .join(", ");
+      if (episode) {
+        userName = episode.customer.user.name ?? episode.customer.user.email;
+        userAddress = episode.serviceAddress
+          ? formatAddress(episode.serviceAddress)
+          : assignment
+            ? formatAddress(assignment.rentalLine.agreement.serviceAddress)
+            : null;
       }
-      const unitsOnLine = assignment ? (unitsPerLine.get(assignment.rentalLineId) ?? 1) : 0;
+      const unitsOnLine = line ? (unitsPerLine.get(line.id) ?? 1) : 0;
       return {
         assetNumber: appliance.assetNumber,
         description,
@@ -152,14 +211,13 @@ export async function computeBppSnapshot(year: number): Promise<BppSnapshot> {
         placedInService: `${MONTHS_SHORT[placedMonth - 1]} ${placedYear}`,
         costCents: asset.costCents,
         over350: asset.costCents > BPP_ITEM_LISTING_LINE_CENTS,
-        rentedOut: Boolean(assignment),
+        rentedOut: Boolean(episode),
         userName,
         userAddress,
-        rentLineLabel: assignment?.rentalLine.label ?? null,
-        rentLineMonthlyCents: assignment?.rentalLine.monthlyPriceCents ?? null,
+        rentLineLabel: line?.label ?? null,
+        rentLineMonthlyCents: line?.monthlyPriceCents ?? null,
         unitsOnLine,
-        monthlyRentCents:
-          assignment && unitsOnLine === 1 ? assignment.rentalLine.monthlyPriceCents : null,
+        monthlyRentCents: line && unitsOnLine === 1 ? line.monthlyPriceCents : null,
       };
     })
     .sort((a, b) => a.assetNumber.localeCompare(b.assetNumber));
@@ -269,6 +327,7 @@ export function bppSpreadsheetCsv(snapshot: BppSnapshot): string {
       "Name and address of user",
       "Monthly rent ($)",
       "Rental line",
+      "Rental line monthly rent ($) — whole line, shared by its units",
     ].join(","),
   ];
   for (const item of snapshot.items) {
@@ -284,6 +343,7 @@ export function bppSpreadsheetCsv(snapshot: BppSnapshot): string {
         csvCell(item.userName ? `${item.userName}, ${item.userAddress ?? ""}` : ""),
         csvCell(item.monthlyRentCents !== null ? dollars(item.monthlyRentCents) : ""),
         csvCell(item.rentLineLabel ?? ""),
+        csvCell(item.rentLineMonthlyCents !== null ? dollars(item.rentLineMonthlyCents) : ""),
       ].join(","),
     );
   }
