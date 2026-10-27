@@ -13,11 +13,11 @@ key, and the nightly photo copy may pair with the wrong backup.
 The backup record table, stages, pruning and photo pairing are one chain; each piece alone leaves the chain wrong.
 
 ## Acceptance
-- [ ] Capture, upload, read-back, prune and photo-copy failures are told apart (tests for each).
-- [ ] A prune failure after a verified upload is a successful backup plus a "tidy-up" notice.
-- [ ] The newest verified backup and its photo list are never deleted, at any age (test with 1,200 objects).
-- [ ] Backups never use the public pictures' key; missing private storage gives a plain next step.
-- [ ] Photo copy pairs with today's verified backup only; a photo deleted during the copy is not copied.
+- [x] Capture, upload, read-back, prune and photo-copy failures are told apart (tests for each).
+- [x] A prune failure after a verified upload is a successful backup plus a "tidy-up" notice.
+- [x] The newest verified backup and its photo list are never deleted, at any age (test with 1,200 objects).
+- [x] Backups never use the public pictures' key; missing private storage gives a plain next step.
+- [x] Photo copy pairs with today's verified backup only; a photo deleted during the copy is not copied.
 - [ ] "Run the backup again" runs once on double click and doesn't change other jobs.
 - [ ] Restore drill restores rows, relationships and photos into throwaway targets (CI).
 - [ ] `ci` green at the exact head; every review comment read.
@@ -26,14 +26,29 @@ The backup record table, stages, pruning and photo pairing are one chain; each p
 One row: confirm which private storage the live app's backups use (System health shows it). Never blocks merging.
 
 ## Progress
-Private preview-storage security prerequisite in progress on branch `ai/chatgpt/mcp-2-preview-storage-safety` (separate PR required by AGENTS.md §6 for an existing public-repository exposure).
 
-Plan acceptance for the independently safe security fix:
-- [ ] Remove the real private-store identifier and hostname from current application code, test fixtures and public setup examples; do not embed a replacement identifier.
-- [ ] In preview, require its explicitly named token and store ID to match before any private access; no fallback to production/public credentials.
-- [ ] Build the allowed private hostname from the validated store ID, and reject responses from a wrong host or path before using an unsigned URL.
-- [ ] Unit tests cover matching credentials, missing or mismatched values, wrong-host responses, unauthorized roles, and cleanup failures; no real credentials or store identifiers in fixtures.
-- [ ] CI passes at the exact head and all reviews are addressed before merge.
+October 27 — PR #611 remains open while latest-main reconciliation is verified. The original PR head
+`63a109676f23b24ffca8ed50bee269c24ea35d78` passed all 12 CI checks (run 40444106710),
+with both Codex findings fixed and review threads resolved. The branch now merges the newer main
+history, keeping VAULT-1 business-record file recovery and MCP-10a feedback-photo recovery in
+the MCP-2 media domain. Focused backup/media tests passed: 28/28, including the new business-record
+copy regression. New exact-head CI/review and the real private-store confirmation remain pending.
+The private preview-storage prerequisite was merged in PR #609. No production restore was attempted.
 
-The code for this prerequisite removes live identifiers from source/test fixtures and preserves fail-closed checks; CI and review still pending. The remainder of MCP-2 (backup artifacts, recovery, pruning, paired media, owner retry and restore drill) is NOT implemented by this preliminary security fix and remains open on this card.
 
+- Security prerequisite merged as PR #609. Recovery implementation on branch ai/chatgpt/mcp-2-backup-reliability.
+- Verified locally: isolated npm install with synthetic Prisma settings; schema validation; all 26 focused backup/media unit tests; npm run check:quick (secret scan, migration/route consistency, typecheck, lint and words).
+- Code covers staged SHA-256 readback and private credentials, a ledger-linked full media pair, privacy-deletion checks, safe pruning and old-object pagination, owner-only serialized retry and retention settings, a plain-language System health screen and a user guide.
+- Second PR CI: all four browser shards passed. Three unit groups failed only
+  while importing the shared photo-storage module into a component DOM
+  (top-level Blob/Undici requires a Node ReadableStream). Fixed by
+  loading Blob dynamically only inside private-store readiness, retaining
+  exactly the same runtime credential checks. New UI regression test verifies
+  metadata helpers load in the component DOM. Requires new exact-head CI.
+- The first PR CI failure analysis found restore self-ordering, advisory-lock void decoding,
+  media scenario setup, preview refusal wording, and browser navigation/test selector issues.
+  Codex review flagged expired RUNNING retries and manifest retry collisions. All were fixed;
+  new synthetic tests verify distinct retry manifests, and a real-database test proves
+  expired RUNNING eligibility. These require a new exact-head CI to confirm.
+- Real-database tests for competing owner/nightly retries and retention, and the existing full restored-database drill extended with linked backup artifacts and customer/agreement/invoice relationships, are included. Browser tests cover owner settings/retry visibility and accessibility. They are not yet proven until exact-head CI finishes.
+- No hosted storage/provider/production data changed. Owner's live private-store confirmation is on the single owner checklist. Do not claim the merge until CI, review and exact-head receipt are observed.

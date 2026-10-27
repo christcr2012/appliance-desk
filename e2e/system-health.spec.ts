@@ -109,8 +109,41 @@ test.describe("owner system health", () => {
     await box.fill("45");
     await page.getByRole("region", { name: "When a job counts as late" }).getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Now 45 minutes after a job's usual time.", { exact: false })).toBeVisible();
-    await page.getByRole("button", { name: "Restore recommended" }).click();
+    await page.getByRole("region", { name: "When a job counts as late" })
+      .getByRole("button", { name: "Restore recommended" }).click();
     await expect(page.getByText("Now 2 hours after a job's usual time.", { exact: false })).toBeVisible();
+  });
+
+  test("MCP-2: backup retention is owner-editable and retry appears only after failed daily backup", async ({ page }) => {
+    const { businessDateKey } = await import("@/lib/business-date");
+    const current = await prisma.businessSettings.findUniqueOrThrow({
+      where: {id:"singleton"},select:{backupRetentionDays:true},
+    });
+    const key="backup:"+businessDateKey(new Date());
+    const present=await prisma.automationRun.findUnique({where:{ruleKey_runKey:{ruleKey:"backup",runKey:key}}});
+    test.skip(!!present,"Other fixture has today's backup run; do not change it.");
+    let created:string|null=null;
+    try {
+      await page.goto("/desk/automations#backup-settings",{waitUntil:"load"});
+      const box=page.getByLabel("Keep daily backups for (days)");
+      await expect(box).toHaveValue(String(current.backupRetentionDays));
+      await expect(page.getByRole("button",{name:"Run the backup again"})).toHaveCount(0);
+      await box.fill("42");
+      await page.locator("#backup-settings").getByRole("button",{name:"Save",exact:true}).click();
+      await expect(page.locator("#backup-settings")).toContainText("Daily copies are kept for 42 days");
+      await page.locator("#backup-settings").getByRole("button",{name:"Restore recommended"}).click();
+      await expect(page.locator("#backup-settings")).toContainText("Daily copies are kept for 30 days");
+      const row=await prisma.automationRun.create({data:{
+        ruleKey:"backup",runKey:key,state:"FAILED",environment:"ci",
+        startedAt:new Date(),finishedAt:new Date(),failureCode:"BACKUP_READBACK",
+      }});
+      created=row.id;
+      await page.reload();
+      await expect(page.getByRole("button",{name:"Run the backup again"})).toBeVisible();
+    } finally {
+      if(created)await prisma.automationRun.delete({where:{id:created}});
+      await prisma.businessSettings.update({where:{id:"singleton"},data:{backupRetentionDays:current.backupRetentionDays}});
+    }
   });
 
   test("phone and desktop pass light/dark accessibility checks", async ({ page }) => {

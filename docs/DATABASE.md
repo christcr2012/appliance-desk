@@ -1429,7 +1429,6 @@ The starting Manager job role gains the new owner/admin `feedback` screen. All f
 privacy export includes a person's reports and the replies they saw, and deletion blanks their words and pictures while
 keeping numbers, states and dates.
 
-
 ### BA-1: books autopilot (implementation branch)
 
 The additive `20261026050000_books_autopilot` migration adds an automatic-enrollment marker,
@@ -1491,6 +1490,17 @@ All three tables are in the backup manifest.
 - `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed.
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
+
+## MCP-2 backup-artifact ledger (additive, 2026-10-25)
+
+`BackupArtifact` tracks the protected storage **pathname only**, file hash and size, database migration/revision,
+the source automation run, verification stage, and an optional media-manifest parent link. The database artifact and
+its latest complete media pair must be retained even when past the configured 30-day default. Never store Blob tokens,
+signed URLs or private image payloads in this table. It participates in the backup manifest and disaster restore;
+restored ledger rows are historical facts, not permission to use the restored store or automatically restart a job.
+`BusinessSettings.backupRetentionDays` defaults to 30 (owner range 7–365).
+Migration: `20261026010000_mcp2_backup_artifacts`; additive with no data rewrite.
+
 
 ### OPS-8: continuity (migration `20261109000000_continuity`)
 - `BusinessSettings` gains the "If something happens to me" details (`continuityEmergencyName/Contact`, `continuitySuccessorName/Contact`, `continuityCpaName/Contact`, `continuityAttorneyName/Contact`, `continuityRecordsNote`, `continuityReviewedAt`) and the owner-only pause switch (`chargesPausedAt`, `chargesPausedByUserId`, `chargesPausedNote`). Null `chargesPausedAt` = charges run normally.

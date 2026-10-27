@@ -6,7 +6,8 @@ import { listOpsAgentKeys } from "@/domains/system-issues/ops-auth";
 import { OpsKeyPanel } from "./ops-key-panel";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { Button, PageHeader } from "@/components/ui";
-import { saveLateGraceAction, setAutomationPausedAction } from "./actions";
+import { saveLateGraceAction, setAutomationPausedAction, saveBackupRetentionAction, retryBackupAction } from "./actions";
+import { getBackupDashboard } from "@/domains/backup/dashboard";
 import { HealthLegend, HealthRow } from "./health-row";
 
 export const metadata = { title: "System health" };
@@ -24,10 +25,10 @@ function hoursAndMinutes(minutes: number): string {
   return [hours, mins].filter(Boolean).join(" ") || "0 minutes";
 }
 
-export default async function AutomationsPage({ searchParams }: { searchParams?: Promise<{ issuesCursor?: string }> } = {}) {
+export default async function AutomationsPage({ searchParams }: { searchParams?: Promise<{ issuesCursor?: string; backupMessage?: string }> } = {}) {
   const session = await requireRole("OWNER", "ADMIN");
   const cursor = (await searchParams)?.issuesCursor;
-  const [health, issueList] = await Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor })]);
+  const [health, issueList, backup] = await Promise.all([getAutomationHealth(), listSystemIssues(session.user.id, { limit: 25, cursor }), getBackupDashboard()]);
   const canPause = session.user.role === "OWNER";
   const keys = canPause ? await listOpsAgentKeys(session.user.id) : [];
   const grace = health[0]?.graceMinutes ?? RECOMMENDED_LATE_GRACE_MINUTES;
@@ -45,6 +46,48 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
         lastUsedAt: key.lastUsedAt ? timestamp(key.lastUsedAt) : null,
         revokedAt: key.revokedAt ? timestamp(key.revokedAt) : null,
       }))} /> : <p className="text-sm text-ink-soft">AI check-up keys are managed by the owner.</p>}
+
+      <section id="backup-settings" aria-labelledby="backup-settings-heading" className="mb-6 rounded-card border border-line bg-surface p-4">
+        <h2 id="backup-settings-heading" className="text-base font-bold text-ink">Backup and recovery</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Backup destination: {backup.destination}. Private photo storage: {backup.privatePhotos === "READY"
+            ? "Connected" : "Needs attention (" + backup.privatePhotos.toLowerCase().replaceAll("_", " ") + ")" }.
+          {backup.destination === "not set up" ? " Connect a private backup or photo store in hosting settings; never use public pictures storage." : ""}
+        </p>
+        <p className="mt-1 text-sm text-ink-soft">
+          Latest checked database copy: {timestamp(backup.latestVerifiedAt)}.
+          Last complete database and photo recovery set: {timestamp(backup.lastCompleteAt)}.
+          {backup.latestBytes != null ? " Latest database copy size: " + backup.latestBytes + " bytes." : ""}
+        </p>
+        <p className="mt-1 text-sm text-ink-soft">Daily copies are kept for {backup.retentionDays} days.
+          Starting value 30 days, because daily copies need room for recovery.
+          The newest working database backup and the last complete photo set are always kept, even after this limit.
+        </p>
+        {canPause ? <>
+          <form action={saveBackupRetentionAction} className="mt-3 space-y-2">
+            <input type="hidden" name="expected" value={backup.retentionDays} />
+            <label htmlFor="backupRetentionDays" className="block text-sm font-medium text-ink">Keep daily backups for (days)</label>
+            <input id="backupRetentionDays" name="days" type="number" min={7} max={365} step={1}
+              defaultValue={backup.retentionDays} required className="w-40 rounded-control border border-line-strong bg-surface p-2 text-sm text-ink" />
+            <p className="text-xs text-ink-soft">Between 7 and 365 days. Only the owner can change this. Does not delete the last working copy.</p>
+            <div className="flex flex-wrap gap-3">
+              <Button type="submit" variant="secondary">Save</Button>
+              <Button type="submit" variant="secondary" name="operation" value="restore" formNoValidate>Restore recommended</Button>
+            </div>
+          </form>
+          {backup.allowManualRetry ? <form action={retryBackupAction} className="mt-3">
+            <Button type="submit" variant="secondary">Run the backup again</Button>
+            <p className="mt-1 text-xs text-ink-soft">Available only after today&apos;s backup failed or ended without a clear result. A second click while one is running won&apos;t start another.</p>
+          </form> : <p className="mt-3 text-sm text-ink-soft">A manual retry is offered after today&apos;s backup fails or has an uncertain result.</p>}
+          {["verified","busy","failed","unavailable"].includes((await searchParams)?.backupMessage ?? "") ?
+            <p role="status" className="mt-2 text-sm text-ink">{{
+              verified: "The manual recovery run finished. Check the latest verified copy above.",
+              busy: "A backup is already running; another copy was not started.",
+              failed: "The backup did not finish. Read the job's failure details below.",
+              unavailable: "A retry is not available right now. Reload and check the job.",
+            }[(await searchParams)?.backupMessage as "verified"|"busy"|"failed"|"unavailable"]}</p> : null}
+        </> : <p className="mt-2 text-sm text-ink-soft">Only the owner can change backup settings or retry a failed backup.</p>}
+      </section>
 
       <HealthLegend />
 
