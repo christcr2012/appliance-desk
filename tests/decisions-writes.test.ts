@@ -28,6 +28,8 @@ const m = vi.hoisted(() => {
     user: { findUnique: vi.fn(async () => (log.push("read:user"),
       { id: "owner", role: state.role, archivedAt: state.archived ? new Date() : null })) },
     businessSettings: {
+      // DEC-2: acting on a question marks the starting values reviewed.
+      updateMany: vi.fn(async () => ({ count: 1 })),
       findUnique: vi.fn(async () => (log.push("read:settings"), { ...state.settings })),
       findUniqueOrThrow: vi.fn(async () => (log.push("read:settings"), { ...state.settings })),
       update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -47,6 +49,16 @@ const m = vi.hoisted(() => {
     taxabilityRuleVersion: {
       count: vi.fn(async () => 1),
       create: vi.fn(async () => (log.push("write:version"), {})),
+    },
+    // TFA-1: how long records are kept is a dated rule, so the context load
+    // reads it here instead of the settings row.
+    legalRuleVersion: {
+      findMany: vi.fn(async () => (log.push("read:rule-version"),
+        [{ id: "rule-version-1", ruleKey: "records.keep_years", value: 7,
+          effectiveFrom: new Date("2026-01-01"), origin: "RESEARCHED", undoneAt: null }])),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) =>
+        (log.push("write:rule-version"), { id: "rule-version-2", ...data })),
+      update: vi.fn(async () => (log.push("write:rule-version:update"), {})),
     },
     taxJurisdiction: { findFirst: vi.fn(async () => null) },
     taxFilingAccount: { findMany: vi.fn(async () => []) },
@@ -119,7 +131,7 @@ describe("who may read and write decisions", () => {
     const cards = await listDecisions("admin");
     expect(cards.length).toBeGreaterThan(30);
     expect(cards.find((card) => card.id === "IN-37-RDF-OWED")).toMatchObject({
-      state: "NO_SOURCE", current: { value: "UNDECIDED" }, audience: "CPA" });
+      state: "STARTING_VALUE", current: { value: "UNDECIDED" }, audience: "CPA" });
     m.state.role = "STAFF";
     await expect(listDecisions("staff")).rejects.toThrow(/no longer has access/);
     m.state.role = "CUSTOMER";

@@ -221,12 +221,25 @@ export async function checkStripeClearing(now = new Date()): Promise<ClearingRes
   for (const row of pending) for (const kind of expectedKinds(row))
     if (!posted.has(row.id + ":" + kind)) return unknown("Stripe entries await journal posting.");
 
+  // Opening-balance corrections are immutable difference journals. A correction
+  // recorded within this cutoff must adjust BOTH the journal balance and the
+  // Stripe comparison baseline, or a valid correction appears as a false gap.
+  // Later-dated corrections do not affect an older reconciliation day.
+  const corrections = await prisma.journalLine.aggregate({
+    where: { ledgerAccountId: clearing.id, entry: {
+      sourceType: "OPENING", sourceId: businessDateKey(settings.booksStartDate),
+      eventKind: { startsWith: "OPENING_CORRECTED_" },
+      entryDate: { lte: cutoff },
+    } },
+    _sum: { debitCents: true, creditCents: true },
+  });
   const opened = opening.lines
     .filter(line => line.ledgerAccount.systemRole === "STRIPE_CLEARING")
     .reduce((sum, line) => sum + line.debitCents - line.creditCents, 0);
-  const expected = opened + (imported._sum.netCents ?? 0);
+  const correctionCents = (corrections._sum.debitCents ?? 0) - (corrections._sum.creditCents ?? 0);
+  const expected = opened + correctionCents + (imported._sum.netCents ?? 0);
   const actual = (journal._sum.debitCents ?? 0) - (journal._sum.creditCents ?? 0);
-  if (![expected, actual].every(Number.isSafeInteger))
+  if (![opened, correctionCents, expected, actual].every(Number.isSafeInteger))
     return unknown("Stripe reconciliation exceeds safe integer cents.");
   const differenceCents = actual - expected;
   const period = businessDateKey(cutoff);

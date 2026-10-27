@@ -35,8 +35,8 @@ const newAgreementSchema = z.object({
     .optional(),
   depositDollars: z.coerce.number().min(0).max(100000).optional(),
   damageWaiverDollars: z.coerce.number().min(0).max(100000).optional(),
-  lateFeeGraceDays: z.coerce.number().int().min(0).max(60).optional(),
-  lateFeeDollars: z.coerce.number().min(0).max(1000).optional(),
+  lateFeeGraceDays: z.coerce.number().int().min(10, "Colorado's rule: at least 10 days.").max(60).optional(),
+  lateFeeDollars: z.coerce.number().min(0).max(15, "A late fee can be at most $15.").optional(),
   lateFeePercent: z.coerce.number().min(0).max(100).optional(),
   paidInFullInAdvance: z.boolean().optional(),
 });
@@ -72,11 +72,14 @@ export async function createDraftAgreementAction(
       damageWaiverCents: data.damageWaiverDollars
         ? dollarsToCents(data.damageWaiverDollars)
         : 0,
-      lateFeeGraceDays: data.lateFeeGraceDays ?? 5,
-      lateFeeCents: data.lateFeeDollars
-        ? dollarsToCents(data.lateFeeDollars)
-        : 0,
-      lateFeePercent: data.lateFeePercent ?? 0,
+      // DEC-2: a box the form leaves out takes its value from Settings; a box the person cleared is zero.
+      lateFeeGraceDays: data.lateFeeGraceDays,
+      lateFeeCents: data.lateFeeDollars === undefined
+        ? undefined
+        : data.lateFeeDollars
+          ? dollarsToCents(data.lateFeeDollars)
+          : 0,
+      lateFeePercent: data.lateFeePercent,
       paidInFullInAdvance: data.paidInFullInAdvance ?? false,
     });
   } catch (error) {

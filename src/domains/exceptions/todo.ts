@@ -8,9 +8,14 @@ export function todoKey(item: Pick<ExceptionItem, "category" | "href" | "title">
   return createHash("sha256").update(identity).digest("hex");
 }
 const ACTION_LABEL: Record<string, string> = {
+  BOOKS_NOT_UP_TO_DATE: "Open books",
+  BOOKS_NEEDS_FIX: "Fix books",
+  BOOKS_SETUP: "Start books",
   RENTAL_ENDING_SOON: "Decide",
   PICKUP_UNSCHEDULED: "Schedule pickup",
   RETIRED_APPLIANCE_PLAN: "Decide",
+  RECALL_POSSIBLE: "Check recall",
+  SAFETY_INCIDENT: "Decide",
   RETIRED_SALE_TAX_REVIEW: "Open sale",
   APPROVAL_REQUEST: "Approve or decline",
   GOAL_BEHIND: "See goals",
@@ -19,6 +24,10 @@ const ACTION_LABEL: Record<string, string> = {
   VISIT_NEEDS_ASSIGNMENT: "Assign / set a time",
   CLEANING_NEEDED: "Open appliance",
   PAST_DUE_INVOICE: "Review unpaid invoice",
+  BANK_PAYMENT_SLOW: "See bank payment",
+  PAYMENT_DISPUTE: "Answer dispute",
+  LATE_FEE_REVIEW: "Open the bill",
+  DECISIONS_STARTING_VALUES: "Review",
   HELD_PAYMENT_DECISION: "Decide",
   DEPOSIT_DECISION: "Decide",
   NEW_LEAD_CONTACT: "Contact lead",
@@ -29,6 +38,7 @@ const ACTION_LABEL: Record<string, string> = {
   OVERDUE_JOB: "Open visit",
   EARLY_ENDING_NOT_DONE: "Schedule pickup",
   TAX_RETURN_DUE: "File return",
+  COMPLIANCE_DUE: "Open filing",
   TAX_LICENSE_RENEWAL: "Renew license",
   TAX_SETUP_CHECK: "Check setup",
   BUSINESS_PAPERWORK: "Open paperwork",

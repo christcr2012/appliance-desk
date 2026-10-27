@@ -25,6 +25,9 @@ import { shortDateLabel } from "@/domains/tax/file-and-pay";
 // ---------------------------------------------------------------------------
 
 export type ExceptionCategory =
+  | "BOOKS_NOT_UP_TO_DATE"
+  | "BOOKS_NEEDS_FIX"
+  | "BOOKS_SETUP"
   | "SYSTEM_ISSUE"
   | "BILLING_BLOCKED"
   | "SALES_TAX"
@@ -39,10 +42,15 @@ export type ExceptionCategory =
   | "RETAIL_DELIVERY_FEE"
   | "STALE_RESERVATION"
   | "PAST_DUE_INVOICE"
+  | "BANK_PAYMENT_SLOW"
+  | "PAYMENT_DISPUTE"
+  | "LATE_FEE_REVIEW"
+  | "DECISIONS_STARTING_VALUES"
   | "HELD_PAYMENT_DECISION"
   | "DEPOSIT_DECISION"
   | "NEW_LEAD_CONTACT"
   | "LEAD_FOLLOW_UP"
+  | "COMPLIANCE_DUE"
   | "APPROVED_QUOTE"
   | "SIGNING_PAYMENT_DUE"
   | "UNSIGNED_AGREEMENT"
@@ -51,6 +59,8 @@ export type ExceptionCategory =
   | "RENTAL_ENDING_SOON"
   | "PICKUP_UNSCHEDULED"
   | "RETIRED_APPLIANCE_PLAN"
+  | "RECALL_POSSIBLE"
+  | "SAFETY_INCIDENT"
   | "RETIRED_SALE_TAX_REVIEW"
   | "APPROVAL_REQUEST"
   | "GOAL_BEHIND"
@@ -78,7 +88,7 @@ export type ExceptionCategory =
   | "OUT_OF_SERVICE"
   | "FEEDBACK_WAITING";
 
-export type ExceptionSeverity = "high" | "medium";
+export type ExceptionSeverity = "high" | "medium" | "low";
 
 export type ExceptionItem = {
   category: ExceptionCategory;
@@ -104,6 +114,24 @@ export type ExceptionItem = {
       }
     | {
         type: "APPLY_OFFICIAL_RATE";
+        id: string;
+        label: string;
+      }
+    | {
+        /** TFA-2: approve a prepared delivery-fee switch (id = the switch row). */
+        type: "APPROVE_RDF_SWITCH";
+        id: string;
+        label: string;
+      }
+    | {
+        /** TFA-2 §8: confirm a filing-frequency advice (id = the advice row). */
+        type: "CONFIRM_FILING_FREQUENCY";
+        id: string;
+        label: string;
+      }
+    | {
+        /** BILL-1: record a bank payment Stripe says cleared (id = the in-flight row). */
+        type: "RECORD_BANK_PAYMENT";
         id: string;
         label: string;
       };
@@ -394,6 +422,111 @@ export function officialRateReviewException(input: {
   };
 }
 
+/** TFA-2 §6.3: a delivery-fee switch the app prepared and dated, waiting for the owner's approval. */
+export function rdfSwitchException(input: {
+  switchId: string;
+  kind: "START" | "STOP";
+  startsOn: Date;
+  basisRetailCents: number | null;
+  since: Date;
+  now: Date;
+}): ExceptionItem {
+  const startsKey = businessDateKey(input.startsOn);
+  // Spec §6.3: if the date arrives unapproved, the item turns high severity.
+  const due = input.startsOn.getTime() <= input.now.getTime();
+  const basis = input.basisRetailCents != null
+    ? ` Last year's Colorado retail sales were ${formatMoney(input.basisRetailCents)}.`
+    : "";
+  return {
+    category: "SALES_TAX",
+    severity: due ? "high" : "medium",
+    title: input.kind === "START"
+      ? `Delivery fee turns on ${startsKey}`
+      : `Delivery fee turns off ${startsKey}`,
+    detail: input.kind === "START"
+      ? `The retail delivery fee starts on ${startsKey}.${basis} Until you approve, the fee is owed but not billed to customers.${due ? " The law requires the fee from this date, so approve as soon as you can." : ""}`
+      : `The retail delivery fee stops on ${startsKey}.${basis} It stays on bills dated before ${startsKey}.`,
+    href: "/desk/sales-tax/setup#fee",
+    action: {
+      type: "APPROVE_RDF_SWITCH",
+      id: input.switchId,
+      label: input.kind === "START" ? "Approve: fee on" : "Approve: fee off",
+    },
+    since: input.since,
+  };
+}
+
+/** TFA-2 §8: filing-frequency advice from the trailing-12-month average. */
+export function filingFrequencyAdviceException(input: {
+  adviceId: string;
+  accountName: string;
+  currentFrequency: "ANNUAL" | "QUARTERLY" | "MONTHLY";
+  advisedFrequency: "ANNUAL" | "QUARTERLY" | "MONTHLY";
+  averageMonthlyCents: number;
+  since: Date;
+}): ExceptionItem {
+  const rank = { ANNUAL: 1, QUARTERLY: 2, MONTHLY: 3 } as const;
+  const word = { ANNUAL: "yearly", QUARTERLY: "quarterly", MONTHLY: "monthly" } as const;
+  const lessOften = rank[input.advisedFrequency] < rank[input.currentFrequency];
+  const average = formatMoney(input.averageMonthlyCents);
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: lessOften
+      ? `You may file ${word[input.advisedFrequency]}: ${input.accountName}`
+      : `Colorado may move you to ${word[input.advisedFrequency]} on Jan 1: ${input.accountName}`,
+    detail: lessOften
+      ? `State and state-collected tax for ${input.accountName} averaged ${average} a month over the last 12 months, under the ${word[input.advisedFrequency]} limit. Colorado has to agree before you switch: in Revenue Online, ask to change this account's filing frequency. Then confirm here and future returns use the new schedule.`
+      : `State and state-collected tax for ${input.accountName} averaged ${average} a month over the last 12 months, over the limit for ${word[input.currentFrequency]} filing. Colorado may move this account to ${word[input.advisedFrequency]} filing on Jan 1. Check Revenue Online; if Colorado moved you, confirm here so future returns use the new schedule. If Colorado kept your current frequency, snooze this instead.`,
+    href: "/desk/sales-tax/setup#accounts",
+    todoKey: `filing-frequency-advice:${input.adviceId}`,
+    action: {
+      type: "CONFIRM_FILING_FREQUENCY",
+      id: input.adviceId,
+      label: `Confirm: file ${word[input.advisedFrequency]}`,
+    },
+    since: input.since,
+  };
+}
+
+/** TFA-2 §7: the January 1 use-tax reset, shown until it is old news or the year switches to monthly. */
+export function useTaxResetException(input: {
+  accountId: string;
+  accountName: string;
+  year: string;
+  since: Date;
+}): ExceptionItem {
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `Use tax is back to one yearly return for ${input.year}`,
+    detail: `${input.accountName}: Colorado consumer use tax starts each year as one yearly return, due Jan 20 next year. It switches to monthly only if this year's use tax passes the limit.`,
+    href: "/desk/sales-tax/setup#accounts",
+    todoKey: `use-tax-reset:${input.accountId}:${input.year}`,
+    since: input.since,
+  };
+}
+
+/** TFA-2 §9: a certificate expired and the customer has been billed (so taxed) since. */
+export function expiredExemptionException(input: {
+  customerId: string;
+  customerName: string;
+  expiresOn: Date;
+  contact?: ExceptionItem["contact"];
+}): ExceptionItem {
+  const expiredOn = businessDateKey(input.expiresOn);
+  return {
+    category: "SALES_TAX",
+    severity: "medium",
+    title: `${input.customerName}'s exemption certificate expired on ${expiredOn}`,
+    detail: `Bills since then charge tax again. Ask for a new one (Colorado form DR 0715 or DR 5002, or the multistate MTC form). Draft message: "Hi, this is Robinson Appliance Rentals. The tax-exemption certificate we have on file for you expired on ${expiredOn}, so recent bills include sales tax. Please send a current certificate and we will credit the tax charged since the new one took effect." Send it only through the customer's usual email or text switch.`,
+    href: `/desk/customers/${input.customerId}?tab=billing`,
+    todoKey: `exemption-expired:${input.customerId}:${expiredOn}`,
+    contact: input.contact,
+    since: input.expiresOn,
+  };
+}
+
 export function taxSourceUnreachableException(input: {
   label: string;
   url: string;
@@ -673,6 +806,80 @@ export function pastDueInvoiceException(invoice: {
   };
 }
 
+/**
+ * BILL-1: a bank payment that is taking longer than the owner's number of banking days, or that Stripe says cleared
+ * while our books do not show it. Never says the customer is late: the customer paid.
+ */
+export function bankPaymentSlowException(row: {
+  id: string;
+  customerId: string | null;
+  invoiceId: string | null;
+  customerName: string;
+  amountCents: number;
+  startedAt: Date;
+  bankingDaysOld: number;
+  settledInStripeAt: Date | null;
+}): ExceptionItem {
+  const amount = `$${(row.amountCents / 100).toFixed(2)}`;
+  const settled = row.settledInStripeAt !== null;
+  return {
+    category: "BANK_PAYMENT_SLOW",
+    severity: settled ? "high" : "medium",
+    title: settled
+      ? `${row.customerName}'s bank payment cleared but isn't recorded — ${amount}`
+      : `${row.customerName}'s bank payment is taking a while — ${amount}`,
+    detail: settled
+      ? "Stripe says this payment arrived, but it isn't on the bill yet. Use “Record it now”."
+      : `The bank has been confirming this payment for ${row.bankingDaysOld} banking days. Nothing is lost; banks usually take up to 4. Check Stripe if it keeps waiting.`,
+    // The row id in the link gives each payment its own To do identity (snoozing one never hides another).
+    href: `/desk/billing/reconciliation?payment=${encodeURIComponent(row.id)}`,
+    amountCents: row.amountCents,
+    since: row.startedAt,
+    ...(settled ? { action: { type: "RECORD_BANK_PAYMENT" as const, id: row.id, label: "Record it now" } } : {}),
+  };
+}
+
+/**
+ * FEE-1: an overdue bill that has no late fee because the customer was never warned (or is active military).
+ * A fee needs a warning first; Chris chooses what happens next on the bill page.
+ */
+export function lateFeeReviewException(row: {
+  invoiceId: string;
+  customerId: string;
+  customerName: string;
+  invoiceNumber: number;
+  reason: "NOT_WARNED" | "MILITARY";
+  dueOn: Date | null;
+  amountCents: number;
+}): ExceptionItem {
+  return {
+    category: "LATE_FEE_REVIEW",
+    severity: "medium",
+    title: row.reason === "MILITARY"
+      ? `No automatic late fee for ${row.customerName} — active military`
+      : `No late fee for ${row.customerName} — they weren't warned yet`,
+    detail: row.reason === "MILITARY"
+      ? `Bill #${row.invoiceNumber} is past the day a fee could be added. You decide whether to skip it.`
+      : `Bill #${row.invoiceNumber} is past the day a fee could be added, but the warning was never delivered. Send the warning, record a phone call, or skip the fee.`,
+    href: `/desk/billing/customer/${encodeURIComponent(row.customerId)}/invoice/${encodeURIComponent(row.invoiceId)}`,
+    amountCents: row.amountCents,
+    since: row.dueOn ?? new Date(0),
+    ...(row.dueOn ? { dueOn: row.dueOn, dueDateOnly: true } : {}),
+  };
+}
+
+/** DEC-2: researched starting values now run the app; the owner reviews them or sends the tax ones to the CPA. */
+export function startingValuesAppliedException(input: { count: number; newest: Date }): ExceptionItem {
+  return {
+    category: "DECISIONS_STARTING_VALUES",
+    severity: "medium",
+    title: `${input.count} starting value${input.count === 1 ? " is" : "s are"} now in use`,
+    detail: "Researched answers for tax and rental questions. Review them, or send the tax ones to your CPA.",
+    href: "/desk/settings/decisions?state=starting_value",
+    since: input.newest,
+  };
+}
+
 export function overdueJobException(job: {
   id: string;
   type: string;
@@ -809,6 +1016,8 @@ export function taxReturnDueException(input: {
   /** W-9: when the period's total is known the To do says exactly what to file and pay. */
   amountCents?: number | null;
   kind?: "SALES_RETURN" | "USE_TAX_RETURN" | "RETAIL_DELIVERY_FEE_RETURN";
+  /** TFA-1: the day the timing rule says to act, shown next to the due date. */
+  actOnKey?: string;
 }): ExceptionItem {
   const daysUntilLegalDue = businessDaysBetween(input.now, input.legalDueOn);
   const daysUntilBaseDue = businessDaysBetween(input.now, input.dueOn);
@@ -825,7 +1034,9 @@ export function taxReturnDueException(input: {
     severity: urgent ? "high" : "medium",
     title: taxReturnTitle(input, daysUntilLegalDue < 0),
     detail: `${input.zeroReturn ? "A zero return may still be required. " : ""}` +
-      `Filing period ended ${businessDateKey(input.periodEnd)}. Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
+      `Filing period ended ${businessDateKey(input.periodEnd)}. ` +
+      (input.actOnKey ? `File and pay on ${shortDateLabel(input.actOnKey)}. ` : "") +
+      `Legal deadline: ${businessDateKey(input.legalDueOn)}.` +
       (input.readOnly ? " Only the Owner can change filing details." : " Open the filing workspace to review the return."),
     href: input.periodId ? `/desk/sales-tax/returns/${input.periodId}` : "/desk/sales-tax/returns",
     dueOn: input.dueOn,
@@ -920,7 +1131,7 @@ export function sortExceptions(items: ExceptionItem[]): ExceptionItem[] {
     if (a.dueOn && b.dueOn && a.dueOn.getTime() !== b.dueOn.getTime())
       return a.dueOn.getTime() - b.dueOn.getTime();
     if (!!a.dueOn !== !!b.dueOn) return a.dueOn ? -1 : 1;
-    if (a.severity !== b.severity) return a.severity === "high" ? -1 : 1;
+    if (a.severity !== b.severity) return ({high:0,medium:1,low:2}[a.severity])-({high:0,medium:1,low:2}[b.severity]);
     return a.since.getTime() - b.since.getTime();
   });
 }

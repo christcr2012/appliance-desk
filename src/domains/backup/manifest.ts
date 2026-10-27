@@ -17,6 +17,9 @@ export const BACKUP_MODEL_POLICY = {
   Verification: null,
   RateLimit: null,
   TwoFactor: null,
+  // ACC-6: device rows are only identifiers for the sign-in notice and "remember this device"; a restore
+  // re-records devices as people sign in, so they are never restored.
+  KnownDevice: null,
   Customer: "customer",
   Referral: "referral",
   ServiceAddress: "serviceAddress",
@@ -41,6 +44,8 @@ export const BACKUP_MODEL_POLICY = {
   PurchaseOrderReceiptOperation: "purchaseOrderReceiptOperation",
   PartStockMovement: "partStockMovement",
   RetiredAppliancePlan: "retiredAppliancePlan",
+  // OPS-2: the signed refrigerant statement details for scrapped or discarded appliances are business records.
+  RefrigerantRecord: "refrigerantRecord",
   ScrapPayment: "scrapPayment",
   StaffCapabilityOverride: "staffCapabilityOverride",
   // ACC-2: invitations are short-lived and hold only a hash of a link code; a restore re-invites instead.
@@ -96,6 +101,12 @@ export const BACKUP_MODEL_POLICY = {
   TaxJurisdiction: "taxJurisdiction",
   TaxRateVersion: "taxRateVersion",
   TaxRateObservation: "taxRateObservation",
+  // TFA-1: the dated rule book is business tax evidence; it is restored.
+  LegalRuleVersion: "legalRuleVersion",
+  // TFA-2: prepared delivery-fee switches and their owner approvals.
+  RetailDeliveryFeeSwitch: "retailDeliveryFeeSwitch",
+  // TFA-2 §8: filing-frequency advice rows are tax-filing evidence.
+  FilingFrequencyAdvice: "filingFrequencyAdvice",
   OfficialSourceWatch: "officialSourceWatch",
   TaxabilityRule: "taxabilityRule",
   // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
@@ -117,6 +128,10 @@ export const BACKUP_MODEL_POLICY = {
   RetailDeliveryFeeRate: "retailDeliveryFeeRate",
   RetailDeliveryFeeRecord: "retailDeliveryFeeRecord",
   BusinessSettings: "businessSettings",
+  // CMP-1: compliance facts and filings are business records. einEncrypted
+  // stays encrypted in backups too; a restore needs the same key.
+  ComplianceProfile: "complianceProfile",
+  ComplianceFiling: "complianceFiling",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",
@@ -193,6 +208,7 @@ export const BACKUP_MODEL_POLICY = {
   BudgetPlanVersion: "budgetPlanVersion",
   BudgetReviewSnapshot: "budgetReviewSnapshot",
   AccountingPeriod: "accountingPeriod",
+  BooksProblem: "booksProblem",
   StripeBalanceTransaction: "stripeBalanceTransaction",
   IntegrationCursor: "integrationCursor",
   ExpenseCategory: "expenseCategory",
@@ -205,7 +221,16 @@ export const BACKUP_MODEL_POLICY = {
   FeedbackEntry: "feedbackEntry",
   FeedbackAttachment: "feedbackAttachment",
   FeedbackEvent: "feedbackEvent",
+  // BILL-1: "the bank is confirming a payment" flags. Business state (a bill shows "Being confirmed" and gets no late fee while one is open), restored after bills and agreements.
+  BankPaymentInFlight: "bankPaymentInFlight",
+  PendingCharge: "pendingCharge",
+  // OPS-5: payment disputes (Stripe's record, Chris's answer and the bank-dispute follow-up) are business records.
+  PaymentDispute: "paymentDispute",
 
+  // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
+  RecallMatch: "recallMatch",
+  RecallWatchState: "recallWatchState",
+  SafetyIncident: "safetyIncident",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

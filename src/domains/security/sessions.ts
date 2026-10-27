@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { forgetTrustedDevicesInTx } from "./trusted-devices";
 
 export type SessionSummary = {
   id: string;
@@ -67,6 +68,8 @@ export async function revokeOtherSessions(
     const removed = await tx.session.deleteMany({
       where: { userId, token: { not: currentToken } },
     });
+    // ACC-6: signing out everywhere forgets remembered devices, so the next sign-in asks for a code again.
+    await forgetTrustedDevicesInTx(tx, userId);
     await tx.auditLog.create({
       data: {
         userId,
@@ -94,6 +97,8 @@ export async function revokeStaffSessionsByOwner(
       throw new Error("Only a staff or admin account can be signed out from the Team screen.");
     }
     const removed = await tx.session.deleteMany({ where: { userId: staffUserId } });
+    // ACC-6: signing someone out everywhere forgets their remembered devices too.
+    await forgetTrustedDevicesInTx(tx, staffUserId);
     await tx.auditLog.create({
       data: {
         userId: ownerUserId,

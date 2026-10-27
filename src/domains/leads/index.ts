@@ -11,8 +11,13 @@ import {
 import { getBusinessSettings, parseServiceArea } from "@/domains/settings";
 import { generateUniqueReferralCode, linkReferralIfCodeProvided } from "@/domains/referrals";
 import { scoreLead } from "./scoring";
+import { leadContactKeys } from "./keys";
+import { recordRealContactInTx, markFirstContactInTx } from "./contact";
+import { chooseOwnerForNewLeadInTx, lockLeadAssignmentInTx } from "./assignment";
+import { findDuplicateForNewLeadInTx } from "./duplicates";
+import { lockLiveLeadInTx } from "./lock";
+import { assertActiveTeamActor } from "@/lib/team-actor";
 import { getLeadScoringPolicy, parseLeadScoringPolicy } from "./scoring-policy";
-import { recordRealContactInTx } from "./contact";
 import { locateServiceAddress } from "@/domains/tax/locations";
 import type { LeadFormInput } from "./schema";
 import { summarizeApplianceRequests } from "./requests";
@@ -63,6 +68,16 @@ export async function createLead(input: LeadFormInput) {
     const packageRequests = packages.flatMap((p) =>
       p.components.map((c) => ({ applianceTypeId: c.applianceTypeId, packageId: p.id, quantity: input.quantity * c.quantity })),
     );
+    // LD-1: serialize creation on the settings row BEFORE the duplicate
+    // check, so a concurrent create of the same phone/email cannot slip
+    // past it — the second check runs after the first create commits.
+    await lockLeadAssignmentInTx(tx);
+    // LD-1: duplicate check before the create (same phone or email as a live
+    // lead flags it; a customer-only match is audited after the create).
+    const duplicate = await findDuplicateForNewLeadInTx(tx, {
+      phone: input.phone,
+      email: input.email,
+    });
     const created = await tx.lead.create({
       data: {
         isBusiness: input.accountType === "business",
@@ -71,6 +86,11 @@ export async function createLead(input: LeadFormInput) {
         contactName: input.contactName,
         phone: input.phone,
         email: input.email || null,
+        ...leadContactKeys({ phone: input.phone, email: input.email }),
+        // LD-1: the lead arrives owned (starting value: the owner), never unassigned.
+        assignedToUserId: await chooseOwnerForNewLeadInTx(tx),
+        // LD-1: flag a possible duplicate. The lead is always created.
+        possibleDuplicateOfLeadId: duplicate.leadId,
         bestTimeToContact: input.bestTimeToContact || null,
         howHeard: input.howHeard || null,
         referredByCode: input.referralCode || null,
@@ -112,6 +132,18 @@ export async function createLead(input: LeadFormInput) {
         },
       },
     });
+
+    // LD-1: this person already has a customer account — note it, don't block.
+    if (!duplicate.leadId && duplicate.customerId) {
+      await tx.auditLog.create({
+        data: {
+          action: "lead.matches_customer",
+          entityType: "Lead",
+          entityId: created.id,
+          newValue: { customerId: duplicate.customerId },
+        },
+      });
+    }
 
     return created;
   });
@@ -180,45 +212,76 @@ export async function createLeadManually(userId: string, input: ManualLeadInput)
     scoringPolicy,
   );
 
-  const lead = await prisma.lead.create({
-    data: {
-      isBusiness: Boolean(input.isBusiness),
-      isPropertyManager: Boolean(input.isPropertyManager),
-      companyName: input.companyName || null,
-      contactName: input.contactName,
+  // LD-1: one transaction, so the owner choice and the lead are never split
+  // (in ROTATE mode the settings-row lock also keeps concurrent creates apart).
+  return prisma.$transaction(async (tx) => {
+    // LD-1: serialize creation on the settings row BEFORE the duplicate
+    // check, so a concurrent create of the same phone/email cannot slip
+    // past it — the second check runs after the first create commits.
+    await lockLeadAssignmentInTx(tx);
+    // LD-1: duplicate check before the create (same phone or email as a live
+    // lead flags it; a customer-only match is audited after the create).
+    const duplicate = await findDuplicateForNewLeadInTx(tx, {
       phone: input.phone,
-      email: input.email || null,
-      notes: input.notes || null,
-      addressLine1: input.addressLine1 || null,
-      city: input.city || null,
-      zip: input.zip || null,
-      lastRealContactAt: new Date(),
-      score,
-      scoreReasons: reasons,
-      isHighValue,
-      scoringPolicyVersion: scoringPolicy.version,
-      createdByUserId: userId,
-    },
-  });
+      email: input.email,
+    });
+    const lead = await tx.lead.create({
+      data: {
+        isBusiness: Boolean(input.isBusiness),
+        isPropertyManager: Boolean(input.isPropertyManager),
+        companyName: input.companyName || null,
+        contactName: input.contactName,
+        phone: input.phone,
+        email: input.email || null,
+        ...leadContactKeys({ phone: input.phone, email: input.email }),
+        assignedToUserId: await chooseOwnerForNewLeadInTx(tx),
+        // LD-1: flag a possible duplicate. The lead is always created.
+        possibleDuplicateOfLeadId: duplicate.leadId,
+        notes: input.notes || null,
+        addressLine1: input.addressLine1 || null,
+        city: input.city || null,
+        zip: input.zip || null,
+        lastRealContactAt: new Date(),
+        score,
+        scoreReasons: reasons,
+        isHighValue,
+        scoringPolicyVersion: scoringPolicy.version,
+        createdByUserId: userId,
+      },
+    });
 
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "lead.create.manual",
-      entityType: "Lead",
-      entityId: lead.id,
-      newValue: { contactName: lead.contactName, phone: lead.phone },
-    },
-  });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "lead.create.manual",
+        entityType: "Lead",
+        entityId: lead.id,
+        newValue: { contactName: lead.contactName, phone: lead.phone },
+      },
+    });
 
-  return lead;
+    // LD-1: this person already has a customer account — note it, don't block.
+    if (!duplicate.leadId && duplicate.customerId) {
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: "lead.matches_customer",
+          entityType: "Lead",
+          entityId: lead.id,
+          newValue: { customerId: duplicate.customerId },
+        },
+      });
+    }
+
+    return lead;
+  });
 }
 
 const ALL_STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "CONVERTED", "LOST"];
 
 export async function getLeadsCount(filter?: { status?: LeadStatus }): Promise<number> {
   return prisma.lead.count({
-    where: filter?.status ? { status: filter.status } : undefined,
+    where: { mergedIntoLeadId: null, ...(filter?.status ? { status: filter.status } : {}) },
   });
 }
 
@@ -228,7 +291,7 @@ export async function getLeadsPage(
   pageSize: number,
 ) {
   return prisma.lead.findMany({
-    where: filter?.status ? { status: filter.status } : undefined,
+    where: { mergedIntoLeadId: null, ...(filter?.status ? { status: filter.status } : {}) },
     include: { applianceRequests: { include: { applianceType: true, package: true } } },
     orderBy: [{ score: "desc" }, { createdAt: "desc" }],
     skip,
@@ -239,6 +302,7 @@ export async function getLeadsPage(
 export async function getLeadCountsByStatus(): Promise<Record<LeadStatus, number>> {
   const counts = await prisma.lead.groupBy({
     by: ["status"],
+    where: { mergedIntoLeadId: null },
     _count: { _all: true },
   });
   const result = Object.fromEntries(
@@ -262,36 +326,60 @@ export async function updateLeadStatus(
   leadId: string,
   status: Exclude<LeadStatus, "CONVERTED">,
   lostReason?: string | null,
+  // LD-1: the follow-up date rides in the same transaction as the status
+  // change — only CONTACTED carries one; every other status clears it.
+  followUpOn?: Date | null,
 ) {
   if (status === "LOST" && !lostReason?.trim()) {
     throw new Error("Give a reason before marking this lead lost.");
   }
 
-  const before = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
+  const now = new Date();
+  return prisma.$transaction(async (tx) => {
+    // Lock the row first; refuse a lead merged away in another session.
+    const locked = await lockLiveLeadInTx(tx, leadId);
+    await assertActiveTeamActor(tx, userId, ["OWNER", "ADMIN", "STAFF"]);
+    if (locked.status === "CONVERTED") {
+      throw new Error("This lead has already been converted to a customer.");
+    }
 
-  const updated = await prisma.lead.update({
-    where: { id: leadId },
-    data: {
-      status,
-      lostReason: status === "LOST" ? lostReason!.trim() : null,
-    },
+    const nextFollowUpOn = status === "CONTACTED" ? followUpOn ?? null : null;
+    // LD-1: the follow-up version guards setLeadFollowUp's compare-and-set,
+    // so every write that changes the follow-up date must advance it — a
+    // stale follow-up save from another session is then refused instead of
+    // overwriting this change. An unchanged date leaves the version alone.
+    const followUpChanged =
+      (locked.nextFollowUpOn?.getTime() ?? null) !== (nextFollowUpOn?.getTime() ?? null);
+    const updated = await tx.lead.update({
+      where: { id: leadId },
+      data: {
+        status,
+        lostReason: status === "LOST" ? lostReason!.trim() : null,
+        nextFollowUpOn,
+        ...(followUpChanged ? { version: { increment: 1 } } : {}),
+      },
+    });
+
+    if (status === "CONTACTED") {
+      await markFirstContactInTx(tx, leadId, now);
+    }
+
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "lead.status",
+        entityType: "Lead",
+        entityId: leadId,
+        oldValue: { status: locked.status },
+        newValue:
+          status === "LOST"
+            ? { status, lostReason: updated.lostReason, nextFollowUpOn: null }
+            : { status, nextFollowUpOn: updated.nextFollowUpOn?.toISOString() ?? null },
+      },
+    });
+
+    return updated;
   });
-
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: "lead.status",
-      entityType: "Lead",
-      entityId: leadId,
-      oldValue: { status: before.status },
-      newValue:
-        status === "LOST"
-          ? { status, lostReason: updated.lostReason }
-          : { status },
-    },
-  });
-
-  return updated;
 }
 
 export async function getLeadNotes(leadId: string) {
@@ -313,6 +401,8 @@ export async function addLeadNote(
   }
   const contactedAt = new Date();
   await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, authorId, ["OWNER", "ADMIN", "STAFF"]);
+    await lockLiveLeadInTx(tx, leadId);
     await tx.leadNote.create({
       data: { leadId, authorId, body: trimmed },
     });
@@ -320,9 +410,43 @@ export async function addLeadNote(
   });
 }
 
+/**
+ * LD-1: "Log a contact" — a person records a real outbound contact (a call,
+ * a visit, a message sent outside the app). The note is kind CONTACTED, so
+ * the lead leaves "New": firstContactedAt is set and a NEW lead becomes
+ * CONTACTED, and the follow-up date can then be set. Plain notes never do
+ * this — only a logged contact (or an accepted text/email/quote) counts.
+ */
+export async function logLeadContact(
+  actorId: string,
+  leadId: string,
+  body: string,
+): Promise<void> {
+  const trimmed = body.trim();
+  if (!trimmed) {
+    throw new Error("Write what happened before logging the contact.");
+  }
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN", "STAFF"]);
+    await lockLiveLeadInTx(tx, leadId);
+    await tx.leadNote.create({
+      data: { leadId, authorId: actorId, body: trimmed, kind: "CONTACTED" },
+    });
+    await markFirstContactInTx(tx, leadId, now);
+    await recordRealContactInTx(tx, leadId, now);
+  });
+}
+
 export function canConvertLead(
-  lead: Pick<Lead, "status" | "email">,
+  lead: Pick<Lead, "status" | "email" | "mergedIntoLeadId">,
 ): { ok: true } | { ok: false; reason: string } {
+  if (lead.mergedIntoLeadId) {
+    return {
+      ok: false,
+      reason: "This lead was merged into another lead. Convert that lead instead.",
+    };
+  }
   if (lead.status === "CONVERTED") {
     return {
       ok: false,
@@ -378,7 +502,12 @@ export async function convertLeadToCustomerInTx(
   leadId: string,
   options: ConvertLeadInTxOptions = {},
 ) {
-  const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId } });
+  let lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId } });
+
+  // LD-1: lock the row, then re-read it — a lead merged away in another
+  // session must not convert here. lockLiveLeadInTx throws for merged leads.
+  await lockLiveLeadInTx(tx, leadId);
+  lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId } });
 
   const effectiveEmail = options.emailOverride?.trim() || lead.email;
   const check = canConvertLead({ ...lead, email: effectiveEmail });
@@ -391,7 +520,9 @@ export async function convertLeadToCustomerInTx(
     where: { id: lead.id, status: lead.status },
     data: {
       status: "CONVERTED",
-      ...(options.emailOverride ? { email } : {}),
+      ...(options.emailOverride
+        ? { email: email, ...leadContactKeys({ email, phone: lead.phone }) }
+        : {}),
     },
   });
   if (claim.count !== 1) {
@@ -462,7 +593,9 @@ export async function convertLeadToCustomerInTx(
     data: {
       status: "CONVERTED",
       convertedCustomerId: customerRow.id,
-      ...(options.emailOverride ? { email } : {}),
+      ...(options.emailOverride
+        ? { email: email, ...leadContactKeys({ email, phone: lead.phone }) }
+        : {}),
     },
   });
 

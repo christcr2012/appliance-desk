@@ -4,6 +4,10 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { cancelPendingDecisionChangesInTx } from "@/domains/decisions/pending";
 import { subjectForTaxCell } from "@/domains/decisions/tax-cells";
+import { ruleAsOf } from "@/domains/rules/reads";
+import { saveRuleVersion, saveRuleVersionInTx } from "@/domains/rules/changes";
+import { assertRdfHandlingChangeable } from "./rdf-handling-lock";
+import { licenseDefaultExpiry, nextLicenseExpiry } from "./license-dates";
 
 function textField(value: string | null, max: number, name: string) {
   if (value !== null && (value.length > max || /[\r\n<>]/.test(value)))
@@ -45,7 +49,6 @@ export async function saveTaxSettings(
     shortTermLeaseElection: enumValue(input.shortTermLeaseElection, ShortTermLeaseElection, "lease election"),
     shortTermLeaseElectionNote: textField(input.shortTermLeaseElectionNote, 500, "lease decision note"),
     rdfHandling: enumValue(input.rdfHandling, RdfHandling, "fee handling"),
-    rdfThresholdCents: cents(input.rdfThresholdCents, 1_000_000_000_00, "delivery fee threshold"),
     rdfCpaConfirmedOn: date(input.rdfCpaConfirmedOn, "CPA date"),
     autoApplyOfficialRateChanges: input.autoApplyOfficialRateChanges === true,
     autoRateChangeMaxMilliPercent: cents(input.autoRateChangeMaxMilliPercent, 100_000, "automatic rate change ceiling"),
@@ -56,16 +59,30 @@ export async function saveTaxSettings(
       zip: textField(input.businessLocation.zip, 12, "business ZIP") ?? "",
     } : {},
   };
+  // TFA-1: the delivery-fee threshold is a dated rule, not a setting. The
+  // form still sends it; a changed value becomes an OWNER rule version.
+  const thresholdCents = cents(input.rdfThresholdCents, 1_000_000_000_00, "delivery fee threshold");
   await prisma.$transaction(async tx => {
     await assertActiveTeamActor(tx, actorId, ["OWNER"]);
     await tx.$queryRaw`SELECT "id" FROM "BusinessSettings" WHERE "id" = 'singleton' FOR UPDATE`;
     const before = await tx.businessSettings.findUniqueOrThrow({
       where: { id: "singleton" },
       select: { updatedAt: true, shortTermLeaseElection: true, rdfHandling: true,
-        rdfThresholdCents: true, rdfCpaConfirmedOn: true, businessTaxAddress: true },
+        rdfCpaConfirmedOn: true, businessTaxAddress: true },
     });
     if (before.updatedAt.getTime() !== expectedUpdatedAt.getTime())
       throw new Error("Settings changed in another session. Refresh before saving.");
+    // TFA-2 §6.7: once the fee applies to a sale, who pays it is locked.
+    if (changed.rdfHandling !== before.rdfHandling) await assertRdfHandlingChangeable(tx);
+    const beforeThreshold = (await ruleAsOf<number>("co.rdf.qualified_threshold", new Date(), tx)).value;
+    if (beforeThreshold !== thresholdCents) {
+      await saveRuleVersionInTx(tx, actorId, {
+        key: "co.rdf.qualified_threshold",
+        value: thresholdCents,
+        effectiveFrom: businessDateFromKey(businessDateKey(new Date()))!,
+        reason: "Changed on the tax setup screen.",
+      });
+    }
     // A choice saved here is newer than one still waiting for its start date in Decisions & reviews.
     await cancelPendingDecisionChangesInTx(tx, actorId, [
       before.shortTermLeaseElection !== changed.shortTermLeaseElection ? "IN-33-ELECTION" : null,
@@ -92,9 +109,9 @@ export async function saveTaxSettings(
       data: { userId: actorId, action: "tax.setup.settings_updated",
         entityType: "BusinessSettings", entityId: "singleton",
         oldValue: { leaseElection: before.shortTermLeaseElection, rdfHandling: before.rdfHandling,
-          rdfThresholdCents: before.rdfThresholdCents, rdfCpaConfirmedOn: before.rdfCpaConfirmedOn?.toISOString() ?? null },
+          rdfThresholdCents: beforeThreshold, rdfCpaConfirmedOn: before.rdfCpaConfirmedOn?.toISOString() ?? null },
         newValue: { leaseElection: changed.shortTermLeaseElection, rdfHandling: changed.rdfHandling,
-          rdfThresholdCents: changed.rdfThresholdCents,
+          rdfThresholdCents: thresholdCents,
           rdfCpaConfirmedOn: changed.rdfCpaConfirmedOn?.toISOString() ?? null,
           businessAddressChanged: priorAddress !== JSON.stringify(changed.businessTaxAddress) } },
     });
@@ -157,6 +174,23 @@ function safeDeductionLabels(value: FilingAccountInput["deductionLabels"]) {
   return out;
 }
 
+/**
+ * TFA-2 §10: while the dated rule says the state license ends Dec 31 of odd
+ * years, a sales account saved with no license date gets that date (Dec 31,
+ * 2027 for the current cycle). Any other rule value, or a rule that cannot
+ * be read, leaves the date for the owner to enter.
+ */
+async function licenseExpiryDefaultInTx(
+  tx: Prisma.TransactionClient, now: Date,
+): Promise<Date | null> {
+  try {
+    const rule = await ruleAsOf<{ rule?: unknown }>("co.license.expiry", now, tx);
+    return rule.value?.rule === "DEC_31_ODD_YEARS" ? licenseDefaultExpiry(now) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveTaxFilingAccount(
   actorId: string, input: FilingAccountInput, expectedUpdatedAt: Date | null,
 ): Promise<{ id: string }> {
@@ -208,7 +242,7 @@ export async function saveTaxFilingAccount(
       await tx.$queryRaw`SELECT "id" FROM "TaxFilingAccount" WHERE "id" = ${input.id} FOR UPDATE`;
       const before = await tx.taxFilingAccount.findUniqueOrThrow({
         where: { id: input.id },
-        select: { updatedAt: true, kind: true, basis: true, _count: { select: { periods: true } } },
+        select: { updatedAt: true, kind: true, basis: true, licenseExpiresOn: true, _count: { select: { periods: true } } },
       });
       if (before.kind !== data.kind && before._count.periods > 0)
         throw new Error("Filing accounts with recorded returns cannot change return type.");
@@ -217,10 +251,16 @@ export async function saveTaxFilingAccount(
       if (before.basis !== data.basis)
         await cancelPendingDecisionChangesInTx(tx, actorId, ["IN-35-BASIS"],
           "A newer reporting basis was saved for a filing account.");
+      // TFA-2 §10: an empty license date on a sales account that has none
+      // gets the rule's date instead of staying blank.
+      if (data.kind === "SALES_RETURN" && data.licenseExpiresOn === null && before.licenseExpiresOn === null)
+        data.licenseExpiresOn = await licenseExpiryDefaultInTx(tx, new Date());
       await tx.taxFilingAccount.update({ where: { id: input.id }, data });
       id = input.id;
     } else {
       if (expectedUpdatedAt) throw new Error("A new account cannot have an old version.");
+      if (data.kind === "SALES_RETURN" && data.licenseExpiresOn == null)
+        data.licenseExpiresOn = await licenseExpiryDefaultInTx(tx, new Date());
       id = (await tx.taxFilingAccount.create({ data, select: { id: true } })).id;
     }
     if (input.areaAssignments !== undefined) {
@@ -238,7 +278,7 @@ export async function saveTaxFilingAccount(
         await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" IN (${Prisma.join(keys)}) ORDER BY "id" FOR UPDATE`;
         const matched = await tx.taxJurisdiction.findMany({
           where: { id: { in: keys } },
-          select: { id: true, filingAccountId: true, useTaxFilingAccountId: true,
+          select: { id: true, level: true, filingAccountId: true, useTaxFilingAccountId: true,
             filingCode: true, filingOrder: true, serviceFeeMilliPercent: true },
         });
         if (matched.length !== keys.length) throw new Error("A selected tax jurisdiction was not found.");
@@ -254,7 +294,11 @@ export async function saveTaxFilingAccount(
             throw new Error("Tax jurisdiction belongs to a different filing account.");
           const code = textField(row.filingCode, 40, "SUTS filing code");
           const order = cents(row.filingOrder, 10000, "SUTS filing order");
-          const fee = cents(row.serviceFeeMilliPercent, 100000, "area service fee");
+          // TFA-1: the state line's service fee is set by the dated rule, not
+          // by this form. Keep the stored value so a crafted submit cannot change it.
+          const fee = before.level === "STATE"
+            ? before.serviceFeeMilliPercent
+            : cents(row.serviceFeeMilliPercent, 100000, "area service fee");
           const modified = salesId !== before.filingAccountId || useId !== before.useTaxFilingAccountId ||
             (row.mode !== "NONE" && (code !== before.filingCode || order !== before.filingOrder ||
               fee !== before.serviceFeeMilliPercent));
@@ -299,6 +343,37 @@ export async function saveTaxFilingAccount(
           configured: Boolean(data.accountNumber && data.firstPeriodStart && data.basis !== "UNDECIDED") } },
     });
     return { id };
+  });
+}
+
+/**
+ * TFA-2 §10: the owner renewed the state license. The stored expiry rolls
+ * to Dec 31 of the next odd year (2027 becomes 2029), and the renewal is
+ * audited. The current date must be on file first: renewing extends a real
+ * license, it does not invent one.
+ */
+export async function markLicenseRenewed(
+  actorId: string, accountId: string,
+): Promise<{ licenseExpiresOn: Date }> {
+  return prisma.$transaction(async tx => {
+    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+    await tx.$queryRaw`SELECT "id" FROM "TaxFilingAccount" WHERE "id" = ${accountId} FOR UPDATE`;
+    const account = await tx.taxFilingAccount.findUniqueOrThrow({
+      where: { id: accountId }, select: { licenseExpiresOn: true },
+    });
+    if (!account.licenseExpiresOn)
+      throw new Error("Enter the current license expiration first, then mark it renewed.");
+    const next = nextLicenseExpiry(account.licenseExpiresOn);
+    await tx.taxFilingAccount.update({
+      where: { id: accountId }, data: { licenseExpiresOn: next },
+    });
+    await tx.auditLog.create({
+      data: { userId: actorId, action: "tax.license.renewed",
+        entityType: "TaxFilingAccount", entityId: accountId,
+        oldValue: { licenseExpiresOn: account.licenseExpiresOn.toISOString() },
+        newValue: { licenseExpiresOn: next.toISOString() } },
+    });
+    return { licenseExpiresOn: next };
   });
 }
 
@@ -479,19 +554,15 @@ export async function addRdfRate(
   const key = businessDateKey(input.effectiveOn);
   if (!key.endsWith("-07-01")) throw new Error("Colorado retail delivery fee rates start July 1.");
   const amountCents = cents(input.amountCents, 1000, "RDF amount");
-  return prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-    const row = await tx.retailDeliveryFeeRate.create({
-      data: { effectiveOn: businessDateFromKey(key)!, amountCents, enteredByUserId: actorId },
-      select: { id: true },
-    });
-    await tx.auditLog.create({ data: {
-      userId: actorId, action: "tax.setup.rdf_rate_created",
-      entityType: "RetailDeliveryFeeRate", entityId: row.id,
-      newValue: { effectiveOn: key, amountCents },
-    } });
-    return row.id;
+  // TFA-1: a July rate is an OWNER rule version, not a rate-table row. A
+  // past July 1 runs the late-change true-up in the same transaction.
+  const { versionId } = await saveRuleVersion(actorId, {
+    key: "co.rdf.amount",
+    value: amountCents,
+    effectiveFrom: businessDateFromKey(key)!,
+    reason: "Recorded on the tax setup screen.",
   });
+  return versionId;
 }
 
 
@@ -501,6 +572,11 @@ export async function addManualTaxRateVersion(actorId: string, input: {
   rateMilliPercent: number;
   sourceNote: string;
 }): Promise<string> {
+  checkManualRateInput(input);
+  return prisma.$transaction(tx => addManualTaxRateVersionInTx(tx, actorId, input));
+}
+
+function checkManualRateInput(input: { effectiveFrom: Date; rateMilliPercent: number; sourceNote: string }) {
   date(input.effectiveFrom, "effective date");
   const key = businessDateKey(input.effectiveFrom);
   const effectiveFrom = businessDateFromKey(key);
@@ -508,31 +584,39 @@ export async function addManualTaxRateVersion(actorId: string, input: {
   const rateMilliPercent = cents(input.rateMilliPercent, 100_000, "rate");
   const sourceNote = textField(input.sourceNote, 500, "official rate evidence");
   if (!sourceNote) throw new Error("Explain the official rate evidence.");
-  return prisma.$transaction(async tx => {
-    await assertActiveTeamActor(tx, actorId, ["OWNER"]);
-    await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
-    const jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
-      where: { id: input.jurisdictionId }, select: { id: true },
-    });
-    const latest = await tx.taxRateVersion.findFirst({
-      where: { jurisdictionId: jurisdiction.id }, orderBy: { effectiveFrom: "desc" },
-    });
-    if (latest && effectiveFrom <= latest.effectiveFrom)
-      throw new Error("New rate must follow the existing history; review corrections separately.");
-    const row = await tx.taxRateVersion.create({
-      data: {
-        jurisdictionId: jurisdiction.id, effectiveFrom, rateMilliPercent,
-        source: "MANUAL", sourceNote, recordedByUserId: actorId,
-      }, select: { id: true },
-    });
-    await tx.auditLog.create({
-      data: {
-        userId: actorId, action: "tax.setup.rate_version_appended",
-        entityType: "TaxRateVersion", entityId: row.id,
-        newValue: { jurisdictionId: jurisdiction.id, effectiveDate: key, rateMilliPercent },
-      },
-    });
-    return row.id;
+  return { key, effectiveFrom, rateMilliPercent, sourceNote };
+}
+
+/** The same save inside a caller's transaction (Decisions & reviews: the city rate answer, DEC-2). */
+export async function addManualTaxRateVersionInTx(
+  tx: Prisma.TransactionClient,
+  actorId: string,
+  input: { jurisdictionId: string; effectiveFrom: Date; rateMilliPercent: number; sourceNote: string },
+): Promise<string> {
+  const { key, effectiveFrom, rateMilliPercent, sourceNote } = checkManualRateInput(input);
+  await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+  await tx.$queryRaw`SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${input.jurisdictionId} FOR UPDATE`;
+  const jurisdiction = await tx.taxJurisdiction.findUniqueOrThrow({
+    where: { id: input.jurisdictionId }, select: { id: true },
   });
+  const latest = await tx.taxRateVersion.findFirst({
+    where: { jurisdictionId: jurisdiction.id }, orderBy: { effectiveFrom: "desc" },
+  });
+  if (latest && effectiveFrom <= latest.effectiveFrom)
+    throw new Error("New rate must follow the existing history; review corrections separately.");
+  const row = await tx.taxRateVersion.create({
+    data: {
+      jurisdictionId: jurisdiction.id, effectiveFrom, rateMilliPercent,
+      source: "MANUAL", sourceNote, recordedByUserId: actorId,
+    }, select: { id: true },
+  });
+  await tx.auditLog.create({
+    data: {
+      userId: actorId, action: "tax.setup.rate_version_appended",
+      entityType: "TaxRateVersion", entityId: row.id,
+      newValue: { jurisdictionId: jurisdiction.id, effectiveDate: key, rateMilliPercent },
+    },
+  });
+  return row.id;
 }
 

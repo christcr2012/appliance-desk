@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { getExceptionOverview, getTodaysJobs, type ExceptionItem } from "@/domains/exceptions";
+import { syncComplianceFilings } from "@/domains/compliance/filings";
 import {
   INBOX_GROUP,
   INBOX_GROUP_LABEL,
@@ -12,6 +13,8 @@ import {
   type InboxGroup,
 } from "@/domains/exceptions/inbox";
 import { manuallyApplyObservedRate, undoAutoAppliedRateVersion } from "@/domains/tax/official-rate-auto-apply";
+import { approveRdfSwitch } from "@/domains/tax/rdf-switches";
+import { confirmFilingFrequencyAdvice } from "@/domains/tax/filing-frequency-advice";
 import { acknowledgeOfficialSourceChange } from "@/domains/tax/official-source-watch";
 import { snoozeTodo, todoDeadlineLabel, unsnoozeTodo } from "@/domains/exceptions/todo";
 import { getDueTaskSummary } from "@/domains/tasks/workspace";
@@ -27,6 +30,8 @@ import { jobTypeLabel } from "@/lib/status-labels";
 import { visibleOwnerActions } from "@/lib/owner-actions";
 import { ActionButton, EmptyState, Icon, InboxCard, InfoTip, StatusTabs, TONE_DOT, Toaster, mapHref, type ActionSpec, type Tone } from "@/components/kit";
 import { SetupCard } from "./setup-card";
+import { decisionsTodayCount } from "@/domains/decisions/today";
+import { recordBankPaymentAction } from "../billing/reconciliation/actions";
 import { TodayInbox, type InboxEntry } from "./today-inbox";
 
 export const metadata = { title: "Today" };
@@ -73,6 +78,28 @@ async function applyOfficialRateAction(formData: FormData) {
     observationId,
     actorUserId: session.user.id,
   });
+  revalidatePath("/desk/today");
+}
+
+async function approveRdfSwitchAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER");
+  const switchId = formData.get("switchId");
+  if (typeof switchId !== "string" || !switchId || switchId.length > 200) {
+    return;
+  }
+  await approveRdfSwitch(session.user.id, switchId);
+  revalidatePath("/desk/today");
+}
+
+async function confirmFilingFrequencyAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER");
+  const adviceId = formData.get("adviceId");
+  if (typeof adviceId !== "string" || !adviceId || adviceId.length > 200) {
+    return;
+  }
+  await confirmFilingFrequencyAdvice(session.user.id, adviceId);
   revalidatePath("/desk/today");
 }
 
@@ -162,6 +189,11 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const role = (session.user as { role?: string }).role ?? "";
   const canManage = role === "OWNER" || role === "ADMIN";
   const now = new Date();
+  // CMP-1: keep the compliance filing rows fresh on the attention surface
+  // itself, so a filing reminder never depends on opening Compliance first.
+  // A sync failure must never take Today down — the reminders simply wait
+  // for the next load, like the setup checklist below.
+  if (canManage) await syncComplianceFilings(now).catch(() => undefined);
   const group = parseGroup(query.group);
 
   // The first-time setup checklist is for the owner only. getSetupChecklist refuses anyone else itself;
@@ -194,6 +226,8 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   // O-7: a private workspace for the owner and admins. A problem reading it only hides the shortcuts; it never hides work.
   // Only the optional notes (goal, idle appliances, low use) can be hidden; every other item always shows.
   const workspace = canManage ? await getWorkspace(session.user.id).catch(() => null) : null;
+  // DEC-1b: "Decisions waiting" — owner only, low priority, at most one day a week.
+  const decisionsWaiting = await decisionsTodayCount({ id: session.user.id, role }, now);
   const hiddenOptional = new Set(workspace?.prefs.hiddenOptionalCardIds ?? []);
   const exceptions = sortInbox(allExceptions.filter((item) => !hiddenOptional.has(item.category)));
   const truncated = allTruncated.filter((item) => !hiddenOptional.has(item.category));
@@ -203,8 +237,10 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
 
   const handlers =
     role === "OWNER"
-      ? { acknowledgeTaxSource: acknowledgeTaxSourceAction, applyOfficialRate: applyOfficialRateAction, undoOfficialRate: undoOfficialRateAction }
-      : undefined;
+      ? { acknowledgeTaxSource: acknowledgeTaxSourceAction, applyOfficialRate: applyOfficialRateAction, undoOfficialRate: undoOfficialRateAction, recordBankPayment: recordBankPaymentAction, approveRdfSwitch: approveRdfSwitchAction, confirmFilingFrequency: confirmFilingFrequencyAction }
+      : role === "ADMIN"
+        ? { recordBankPayment: recordBankPaymentAction }
+        : undefined;
   const groupParam = group === "all" || group === "snoozed" ? null : group;
   const snoozeHref = canManage
     ? (key: string) => `/desk/today?${new URLSearchParams({ ...(groupParam ? { group: groupParam } : {}), snooze: key }).toString()}`
@@ -398,14 +434,14 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
 
   return (
     // The kit lays out for a 20 px phone gutter (KIT 1); the current shell gives 16 px, so add the difference until AR-1.
-    <div className="px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
-      <div className="flex min-w-0 flex-1 flex-col gap-4 lg:max-w-[760px]">
+    <div className="w-full min-w-0 max-w-full px-1 sm:px-0 lg:flex lg:items-start lg:gap-6">
+      <div className="flex w-full min-w-0 max-w-full flex-1 flex-col gap-4 lg:max-w-[760px]">
         {notInJobRole ? (
           <p role="status" className="rounded-card border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink">
             You don&apos;t have access to that screen.
           </p>
         ) : null}
-        <header className="flex items-start gap-3">
+        <header className="flex w-full min-w-0 items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-ink-soft">{formatWeekdayDate(now)}</p>
             <h1 tabIndex={-1} className="text-[28px] leading-8 font-extrabold tracking-[-0.5px] text-ink lg:text-[26px]">
@@ -415,14 +451,14 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
           <Link
             href="/desk/search"
             aria-label="Search"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-tint"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-tint"
           >
             <Icon name="search" />
           </Link>
           <Link
             href="/desk/account"
             aria-label="Your account"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-on-primary"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-on-primary"
           >
             {initials(session.user.name, session.user.email)}
           </Link>
@@ -433,6 +469,17 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
           </div>
         ) : null}
         {setupChecklist ? <SetupCard checklist={setupChecklist} /> : null}
+        {decisionsWaiting ? (
+          <section aria-label="System">
+            <InboxCard
+              eyebrow="System"
+              eyebrowTone="neutral"
+              title={`Decisions waiting: ${decisionsWaiting}`}
+              detail="The app is running on starting values. Confirm or change them when you have time."
+              actions={[{ kind: "link", label: "Open", href: "/desk/settings/decisions", primary: true }]}
+            />
+          </section>
+        ) : null}
         {group !== "snoozed" ? <StatusTabs label="Inbox groups" param="group" current={group} items={tabs} /> : null}
         {group === "snoozed" ? (
           <div className="flex items-center gap-3">
@@ -473,7 +520,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
         ) : null}
       </div>
       <Toaster />
-      <aside aria-label="Today at a glance" className="mt-6 flex flex-col gap-6 lg:mt-0 lg:w-[340px] lg:shrink-0">
+      <aside aria-label="Today at a glance" className="mt-6 flex w-full min-w-0 max-w-full flex-col gap-6 lg:mt-0 lg:w-[340px] lg:shrink-0">
         {health ? (
           <div className="hidden lg:block">
             <HealthStrip health={health} />

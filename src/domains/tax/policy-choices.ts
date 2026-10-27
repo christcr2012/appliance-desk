@@ -1,6 +1,7 @@
 import type { Prisma, RdfHandling, ShortTermLeaseElection, TaxReportingBasis } from "@prisma/client";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { reportingBasisProblem, taxPolicyValueProblem, type TaxPolicyField } from "./policy-values";
+import { assertRdfHandlingChangeable } from "./rdf-handling-lock";
 
 /**
  * One-setting tax policy saves for Decisions & reviews (DEC-1a). They run inside the caller's transaction and do what
@@ -19,6 +20,8 @@ export async function saveTaxPolicyChoiceInTx(
     where: { id: "singleton" },
     select: { shortTermLeaseElection: true, rdfHandling: true, retailDeliveryFeeDecision: true },
   });
+  // TFA-2 §6.7: once the fee applies to a sale, who pays it is locked.
+  if (field === "rdfHandling" && value !== before.rdfHandling) await assertRdfHandlingChangeable(tx);
   const data: Prisma.BusinessSettingsUpdateInput =
     field === "shortTermLeaseElection"
       ? { shortTermLeaseElection: value as ShortTermLeaseElection }

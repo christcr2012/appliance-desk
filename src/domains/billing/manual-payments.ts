@@ -1,3 +1,4 @@
+import { postBookSourceAfterCommit } from "@/domains/books/immediate";
 import type { InvoiceStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
@@ -61,6 +62,7 @@ export async function recordManualPayment(
   }
 
   let result: ManualPaymentResult | undefined;
+  let committedReceiptId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
     await assertCapability(tx, actingUserId, "RECORD_MANUAL_PAYMENT");
@@ -119,7 +121,7 @@ export async function recordManualPayment(
       .filter(Boolean)
       .join(" — ") || undefined;
 
-    await createReceiptWithAllocations(tx, {
+    const recordedReceipt = await createReceiptWithAllocations(tx, {
       customerId,
       source: "MANUAL",
       amountCents: input.amountCents,
@@ -129,6 +131,7 @@ export async function recordManualPayment(
       notes: receiptNotes,
       allocations,
     });
+    committedReceiptId=recordedReceipt.receiptId;
 
     // Keep the existing per-invoice audit trail even though the receipt is now
     // the cash source of truth.
@@ -156,6 +159,7 @@ export async function recordManualPayment(
     };
   });
 
+  if(committedReceiptId)await postBookSourceAfterCommit("RECEIPT",committedReceiptId);
   return result!;
 }
 
@@ -170,6 +174,7 @@ export async function writeOffInvoice(
   reason: string,
 ): Promise<void> {
   await prisma.$transaction((tx) => writeOffInvoiceInTx(tx, invoiceId, actingUserId, reason));
+  await postBookSourceAfterCommit("INVOICE",invoiceId);
 }
 
 /** The whole write-off inside a transaction the caller owns (approvals run it as the owner). */

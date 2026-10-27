@@ -281,6 +281,13 @@
       "paymentSource": false
     },
     {
+      "role": "TAX_ABSORBED",
+      "name": "Tax/fee the business paid for a late change",
+      "type": "EXPENSE",
+      "description": "Tax/fee the business paid for a late change",
+      "paymentSource": false
+    },
+    {
       "role": "EXPENSE_FUEL",
       "name": "Fuel",
       "type": "EXPENSE",

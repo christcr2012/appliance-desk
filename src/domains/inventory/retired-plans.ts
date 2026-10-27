@@ -1,9 +1,13 @@
+import { MISSING_RECORD_MESSAGE, refrigerantRecordRequired } from "@/domains/refrigerant/rules";
+import { assertNotRecalledForSale } from "@/domains/recalls/guard";
 import type { Prisma, RetiredPlanChoice } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { postForSource } from "@/domains/books/post";
+import { stageEquipmentBookRetirementInTx, writeOffRetiredBookAssetInTx,
+  reverseBookAssetNonSaleDisposalInTx } from "@/domains/books/fixed-assets";
 import { applyPartMovementsInTx, lockPartRecords, OPERATION_KEY_PATTERN } from "@/domains/purchasing/ledger";
 
 // ---------------------------------------------------------------------------
@@ -22,6 +26,30 @@ export const PLAN_CHOICES: Array<{ value: RetiredPlanChoice; label: string; help
   { value: "DISPOSE", label: "Throw it away", help: "It goes to the dump." },
   { value: "OTHER", label: "Donate or something else", help: "Anything else; add a short note." },
 ];
+
+/** Every enum value must name its frozen book retirement purpose. */
+export const BOOK_RETIREMENT_INTENT:Record<RetiredPlanChoice,string> = {
+  SELL:"SELL", STRIP:"STRIP", SCRAP:"SCRAP", DISPOSE:"DISPOSE", OTHER:"DONATE_OTHER",
+};
+
+/** A plan remains operational even if the accountant must fix its journal later. */
+async function bestEffortBookStep(tx:Tx,applianceId:string,work:()=>Promise<void>):Promise<void>{
+ await tx.$executeRaw`SAVEPOINT book_plan`;
+ try{
+  await work();
+  await tx.booksProblem.updateMany({where:{kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",
+    subjectType:"APPLIANCE",subjectId:applianceId,resolvedAt:null},data:{resolvedAt:new Date()}});
+  await tx.$executeRaw`RELEASE SAVEPOINT book_plan`;
+ }catch{
+  await tx.$executeRaw`ROLLBACK TO SAVEPOINT book_plan`;
+  await tx.$executeRaw`RELEASE SAVEPOINT book_plan`;
+  await tx.booksProblem.upsert({where:{kind_subjectType_subjectId:{
+   kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:applianceId,
+  }},create:{kind:"APPLIANCE_RETIREMENT_NOT_RECORDED",subjectType:"APPLIANCE",subjectId:applianceId,
+   message:"This retired appliance's book value needs review."},
+   update:{message:"This retired appliance's book value needs review.",lastSeenAt:new Date(),resolvedAt:null}});
+ }
+}
 
 export function planChoiceLabel(choice: RetiredPlanChoice): string {
   return PLAN_CHOICES.find((c) => c.value === choice)?.label ?? choice;
@@ -91,6 +119,10 @@ export async function setRetiredPlan(
         data: { applianceId, choice: input.choice, note, decidedAt: now, decidedByUserId: actorUserId },
       });
     }
+    await tx.bookAsset.updateMany({
+      where:{applianceId,retiredOn:{not:null},disposedOn:null},
+      data:{retirementIntent:input.choice?BOOK_RETIREMENT_INTENT[input.choice]:"DECIDE_LATER"},
+    });
     await tx.auditLog.create({
       data: {
         userId: actorUserId, action: "appliance.retired_plan.set", entityType: "Appliance", entityId: applianceId,
@@ -123,9 +155,24 @@ async function completeInTx(tx: Tx, actorUserId: string, applianceId: string, in
     if (input.remainder !== "SCRAPPED" && input.remainder !== "THROWN_AWAY") throw new RetiredPlanError("Say what happened to the rest: scrapped or thrown away.");
     remainder = input.remainder;
   }
+  // OPS-2: a refrigerator-type appliance can't be scrapped or thrown away until its refrigerant statement is on file.
+  const refrigerant = await tx.appliance.findUnique({
+    where: { id: applianceId },
+    select: { assetNumber: true, applianceType: { select: { hasRefrigerant: true } }, refrigerantRecord: { select: { applianceId: true } } },
+  });
+  if (refrigerantRecordRequired(refrigerant?.applianceType.hasRefrigerant === true, { choice: plan.choice, remainder: remainder ?? plan.remainder }) && !refrigerant?.refrigerantRecord) {
+    throw new RetiredPlanError(`${MISSING_RECORD_MESSAGE}${bulk ? ` (${refrigerant?.assetNumber ?? "one of the appliances"})` : ""}`);
+  }
   await tx.retiredAppliancePlan.update({
     where: { applianceId },
     data: { doneOn, doneNote: note, doneByUserId: actorUserId, remainder: remainder ?? plan.remainder, reopenedAt: null, reopenReason: null },
+  });
+  await bestEffortBookStep(tx,applianceId,async()=>{
+    const staged=await stageEquipmentBookRetirementInTx(
+      tx,actorUserId,applianceId,doneOn,BOOK_RETIREMENT_INTENT[plan.choice]);
+    if(!staged)throw new Error("Book retirement needs review.");
+    await writeOffRetiredBookAssetInTx(
+      tx,{kind:"equipment",userId:actorUserId},applianceId,doneOn,plan.choice.toLowerCase());
   });
   await tx.auditLog.create({
     data: {
@@ -171,6 +218,10 @@ export async function reopenRetiredPlan(actorUserId: string, applianceId: string
       where: { applianceId },
       data: { doneOn: null, doneNote: null, doneByUserId: null, reopenedAt: now, reopenReason: why },
     });
+    await bestEffortBookStep(tx,applianceId,async()=>{
+      await reverseBookAssetNonSaleDisposalInTx(
+        tx,{kind:"equipment",userId:actorUserId},applianceId,now);
+    });
     await tx.auditLog.create({
       data: { userId: actorUserId, action: "appliance.retired_plan.reopened", entityType: "Appliance", entityId: applianceId, newValue: { reason: why } },
     });
@@ -209,6 +260,8 @@ export async function addSalvagedParts(
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
     const appliance = await lockRetired(tx, applianceId);
+    // OPS-1: parts from a recalled machine are not listed for sale.
+    await assertNotRecalledForSale(tx, applianceId, "listed for parts");
     const plan = appliance.retiredPlan;
     if (!plan || plan.choice !== "STRIP") throw new RetiredPlanError("Choose “Strip it for parts” for this appliance first.");
 

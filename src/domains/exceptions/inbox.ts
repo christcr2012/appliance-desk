@@ -8,7 +8,14 @@ export type InboxGroup = "money" | "sales" | "rentals" | "equipment" | "taxes" |
 
 /** Every category in exactly one group. A category added later fails the build here until it is placed. */
 export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
+  BOOKS_NOT_UP_TO_DATE: "taxes",
+  BOOKS_NEEDS_FIX: "taxes",
+  BOOKS_SETUP: "taxes",
   PAST_DUE_INVOICE: "money",
+  BANK_PAYMENT_SLOW: "money",
+  PAYMENT_DISPUTE: "money",
+  LATE_FEE_REVIEW: "money",
+  DECISIONS_STARTING_VALUES: "taxes",
   HELD_PAYMENT_DECISION: "money",
   DEPOSIT_DECISION: "money",
   CANCELLATION_REFUND_DUE: "money",
@@ -16,6 +23,7 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   BILLING_BLOCKED: "money",
   SUBSCRIPTION_UPDATE_PENDING: "money",
   APPROVAL_REQUEST: "money",
+  COMPLIANCE_DUE: "money",
   NEW_LEAD_CONTACT: "sales",
   LEAD_FOLLOW_UP: "sales",
   APPROVED_QUOTE: "sales",
@@ -47,6 +55,8 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   IDLE_APPLIANCES: "equipment",
   LOW_UTILIZATION: "equipment",
   RETIRED_APPLIANCE_PLAN: "equipment",
+  RECALL_POSSIBLE: "equipment",
+  SAFETY_INCIDENT: "equipment",
   RETIRED_SALE_TAX_REVIEW: "equipment",
   SALES_TAX: "taxes",
   TAX_RETURN_DUE: "taxes",
@@ -103,6 +113,9 @@ export type InboxHandlers = {
   acknowledgeTaxSource?: FormAction;
   applyOfficialRate?: FormAction;
   undoOfficialRate?: FormAction;
+  recordBankPayment?: FormAction;
+  approveRdfSwitch?: FormAction;
+  confirmFilingFrequency?: FormAction;
 };
 
 export type InboxActionOptions = {
@@ -122,6 +135,18 @@ function formPrimary(item: ExceptionItem, handlers: InboxHandlers | undefined): 
     case "APPLY_OFFICIAL_RATE":
       return handlers?.applyOfficialRate
         ? { kind: "form", label: action.label, action: handlers.applyOfficialRate, fields: { observationId: action.id }, primary: true }
+        : null;
+    case "APPROVE_RDF_SWITCH":
+      return handlers?.approveRdfSwitch
+        ? { kind: "form", label: action.label, action: handlers.approveRdfSwitch, fields: { switchId: action.id }, primary: true, pendingLabel: "Approving…", successMessage: "Switch approved" }
+        : null;
+    case "CONFIRM_FILING_FREQUENCY":
+      return handlers?.confirmFilingFrequency
+        ? { kind: "form", label: action.label, action: handlers.confirmFilingFrequency, fields: { adviceId: action.id }, primary: true, pendingLabel: "Confirming…", successMessage: "Filing frequency updated" }
+        : null;
+    case "RECORD_BANK_PAYMENT":
+      return handlers?.recordBankPayment
+        ? { kind: "form", label: action.label, action: handlers.recordBankPayment, fields: { rowId: action.id }, primary: true, pendingLabel: "Recording…", successMessage: "Payment recorded" }
         : null;
     case "UNDO_OFFICIAL_RATE":
       return handlers?.undoOfficialRate

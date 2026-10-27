@@ -51,7 +51,7 @@ describe.skipIf(!enabled)("Money › Bills reads", () => {
     await prisma.user.deleteMany({ where: { id: { in: people.map((p) => p.userId) } } });
   });
 
-  const idsOf = async (status: "open" | "past-due" | "paid" | "closed" | "drafts", customerId: string) =>
+  const idsOf = async (status: "open" | "past-due" | "being-confirmed" | "paid" | "closed" | "drafts", customerId: string) =>
     (await getBills({ status, sort: "due-asc", customerId })).rows.map((row) => row.id).sort();
 
   it("each tab returns the right bills", async () => {
@@ -74,7 +74,7 @@ describe.skipIf(!enabled)("Money › Bills reads", () => {
 
   it("counts and totals match the rows", async () => {
     const counts = await getBillCounts({ sort: "due-asc", customerId: a.customerId });
-    expect(counts).toEqual({ open: 3, "past-due": 2, paid: 1, closed: 1, drafts: 0 });
+    expect(counts).toEqual({ open: 3, "past-due": 2, "being-confirmed": 0, paid: 1, closed: 1, drafts: 0 });
     expect(await getBillTotals({ status: "open", sort: "due-asc", customerId: a.customerId })).toEqual({ count: 3, owedCents: 7000 + 7000 + 4000 });
     expect(await getBillTotals({ status: "paid", sort: "due-asc", customerId: a.customerId })).toEqual({ count: 1, owedCents: 0 });
   });

@@ -40,12 +40,18 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ commsCursor?: string }>;
 }) {
-  const session = await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN", "STAFF");
   const { id } = await params;
   const query = await searchParams;
+  // LD-1: the task read is OWNER/ADMIN-only, so a STAFF user would fail the
+  // whole page if it ran unconditionally. Staff work the lead itself; they
+  // do not see its follow-up tasks.
+  const isStaff = session.user.role === "STAFF";
   const [lead, tasks, estimates, messages] = await Promise.all([
     getLeadById(id),
-    getTasksForLead(id),
+    isStaff
+      ? Promise.resolve([] as Awaited<ReturnType<typeof getTasksForLead>>)
+      : getTasksForLead(id),
     getLeadEstimates(id),
     getMessageHistory("Lead", id),
   ]);
@@ -218,8 +224,10 @@ export default async function LeadDetailPage({
       )}
 
       <div className="mt-6">
-        <SendTextPanel userId={session.user.id} entityType="Lead" entityId={lead.id} path={`/desk/leads/${lead.id}`}
-          families={["lead_received"]} principal={{ leadId: lead.id }} />
+        {isStaff ? null : (
+          <SendTextPanel userId={session.user.id} entityType="Lead" entityId={lead.id} path={`/desk/leads/${lead.id}`}
+            families={["lead_received"]} principal={{ leadId: lead.id }} />
+        )}
       </div>
       <div className="mt-4"><CallPanel userId={session.user.id} subject={{ type: "Lead", id: lead.id }} path={`/desk/leads/${lead.id}`} /></div>
 
@@ -228,7 +236,9 @@ export default async function LeadDetailPage({
       </div>
 
       <div id="follow-up" className="mt-6 scroll-mt-24">
-        <LinkedTasksPanel linkType="lead" linkId={lead.id} tasks={tasks} />
+        {isStaff ? null : (
+          <LinkedTasksPanel linkType="lead" linkId={lead.id} tasks={tasks} />
+        )}
       </div>
 
       <div className="mt-6 rounded-lg border border-line bg-white p-5">
@@ -238,7 +248,11 @@ export default async function LeadDetailPage({
           with this lead even after it&apos;s converted or lost.
         </p>
         <AddLeadNoteForm leadId={lead.id} />
-        <LeadCommunicationTimeline leadId={id} cursorToken={query.commsCursor} />
+        {/* LD-1: the linked-communication timeline is owner/admin-only
+            (getLinkedCommunicationRows requires OWNER/ADMIN and redirects
+            staff to the home page), so staff do not render it. Staff still
+            see the message history above and can log notes here. */}
+        {isStaff ? null : <LeadCommunicationTimeline leadId={id} cursorToken={query.commsCursor} />}
 
       </div>
     </div>

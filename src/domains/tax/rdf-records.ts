@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { getAgreementTaxContext } from "./locations";
 import { resolveTaxability } from "./engine";
-import { rdfRateForSale, retailDeliveryFeeStatus } from "./retail-delivery-fee";
+import { retailDeliveryFeeStatus } from "./retail-delivery-fee";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { recordedRetailSales } from "./rdf-sales-evidence";
 import { recordShopSaleDeliveryFeeInTx } from "./rdf-shop-sale";
+import { rdfFeeAbsorbedByLateApproval } from "./rdf-switches";
+import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
 
 type Tx = Prisma.TransactionClient;
 type Result = { recordId: string | null; status: RdfRecordStatus | null };
@@ -14,7 +16,7 @@ type Decision = {
   status: RdfRecordStatus;
   reason: string;
   saleOn: Date | null;
-  rateId: string | null;
+  ruleVersionId: string | null;
   amountCents: number | null;
   collectedFromCustomer: boolean | null;
 };
@@ -28,7 +30,7 @@ const notDue = (reason: string): Decision => ({
   status: "NOT_DUE",
   reason,
   saleOn: null,
-  rateId: null,
+  ruleVersionId: null,
   amountCents: null,
   collectedFromCustomer: null,
 });
@@ -39,7 +41,7 @@ const pending = (
   status,
   reason,
   saleOn: null,
-  rateId: null,
+  ruleVersionId: null,
   amountCents: null,
   collectedFromCustomer: null,
 });
@@ -101,13 +103,14 @@ async function decide(
     where: { id: "singleton" },
     select: {
       shortTermLeaseElection: true,
-      rdfThresholdCents: true,
       rdfThresholdCrossedOn: true,
       rdfHandling: true,
       rdfCpaConfirmedOn: true,
     },
   });
   if (!settings) return pending("Complete the business settings before deciding delivery fees.");
+  // TFA-1: the small-seller limit is a dated rule, not a setting.
+  const thresholdCents = (await ruleAsOf<number>("co.rdf.qualified_threshold", deliveredOn, tx)).value;
   const context = await getAgreementTaxContext(tx, agreementId, deliveredOn);
   const stateRows = await tx.taxJurisdiction.findMany({
     where: {
@@ -128,30 +131,18 @@ async function decide(
   if (rental.taxability === "UNDECIDED") return pending(rental.reason);
   if (rental.taxability === "EXEMPT") return notDue(rental.reason);
   const year = Number(businessDateKey(deliveredOn).slice(0, 4));
-  const [previous, current, account] = await Promise.all([
+  const [previous, current] = await Promise.all([
     recordedRetailSales(tx, year - 1),
     recordedRetailSales(tx, year),
-    tx.taxFilingAccount.findFirst({
-      where: {
-        kind: "SALES_RETURN",
-        jurisdictions: { some: { level: "STATE" } },
-      },
-      select: { frequency: true },
-    }),
   ]);
-  if (!account && previous === 0 && current > settings.rdfThresholdCents)
-    return pending(
-      "Confirm the Colorado filing frequency before calculating the 90-day grace period.",
-    );
   const applicability = retailDeliveryFeeStatus({
     today: deliveredOn,
     saleType: "RENTAL",
     election: settings.shortTermLeaseElection,
     previousYearRetailCents: previous,
     currentYearRetailCents: current,
-    thresholdCents: settings.rdfThresholdCents,
+    thresholdCents,
     thresholdCrossedOn: settings.rdfThresholdCrossedOn,
-    frequency: account?.frequency ?? "MONTHLY",
     handling: settings.rdfHandling,
     cpaConfirmedOn: settings.rdfCpaConfirmedOn,
   });
@@ -169,12 +160,13 @@ async function decide(
       "PENDING_RATE",
     );
   const saleOn = coDate(saleEvidence);
-  const rates = await tx.retailDeliveryFeeRate.findMany({
-    where: { effectiveOn: { lte: saleOn } },
-    orderBy: [{ effectiveOn: "desc" }, { id: "desc" }],
-    select: { id: true, effectiveOn: true, amountCents: true },
-  });
-  const rate = rdfRateForSale(saleOn, rates);
+  // TFA-1: the fee amount is the dated rule in force on the sale date.
+  let rate: { value: number; version: { id: string } } | null = null;
+  try {
+    rate = await ruleAsOf<number>("co.rdf.amount", saleOn, tx);
+  } catch (error) {
+    if (!(error instanceof RuleMissingError)) throw error;
+  }
   if (!rate)
     return {
       ...pending(
@@ -183,13 +175,16 @@ async function decide(
       ),
       saleOn,
     };
+  // TFA-2 §6.3/§4a: a delivery made while its START switch awaited approval
+  // is never charged to the customer later; the business carries the fee.
+  const absorbed = await rdfFeeAbsorbedByLateApproval(tx, saleOn);
   return {
     status: "READY",
     reason: applicability.reason,
     saleOn,
-    rateId: rate.id,
-    amountCents: rate.amountCents,
-    collectedFromCustomer: settings.rdfHandling === "COLLECT_FROM_CUSTOMER",
+    ruleVersionId: rate.version.id,
+    amountCents: rate.value,
+    collectedFromCustomer: settings.rdfHandling === "COLLECT_FROM_CUSTOMER" && !absorbed,
   };
 }
 
@@ -235,7 +230,8 @@ export async function recordRentalDeliveryFeeInTx(
   const decision = await decide(tx, input.agreementId, firstDeliveredOn);
   const data = {
     status: decision.status,
-    rateId: decision.rateId,
+    ruleVersionId: decision.ruleVersionId,
+    rateId: null,
     saleOn: decision.saleOn,
     amountCents: decision.amountCents,
     collectedFromCustomer: decision.collectedFromCustomer,
@@ -267,7 +263,7 @@ export async function recordRentalDeliveryFeeInTx(
           reason: decision.reason,
           deliveredOn: row.deliveredOn.toISOString(),
           saleOn: row.saleOn?.toISOString() ?? null,
-          rateId: row.rateId,
+          ruleVersionId: row.ruleVersionId,
           amountCents: row.amountCents,
         },
       },

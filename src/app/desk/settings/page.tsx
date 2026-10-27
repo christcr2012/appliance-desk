@@ -25,6 +25,9 @@ import { ButtonLink, Card, PageHeader } from "@/components/ui";
 import { formatBusinessDate, formatBusinessTime } from "@/lib/business-date";
 import { SettingsForm } from "./settings-form";
 import { SigningChargeForm } from "./signing-charge-form";
+import { BankPaymentForm } from "./bank-payment-form";
+import { LateFeeNoticeForm } from "./late-fee-notice-form";
+import { UcccFilingForm } from "./uccc-filing-form";
 import { MandatorySigningPolicyForm } from "./mandatory-signing-policy-form";
 import { effectiveMandatorySigningPolicy, parseMandatorySigningPolicyVersions } from "@/domains/billing/signing-mandatory-policy";
 import { businessDateKey } from "@/lib/business-date";
@@ -48,8 +51,9 @@ import { termsPolicyDefaults, termsPolicyStatus } from "@/domains/settings/terms
 import { profileExtrasDefaults } from "@/domains/settings/profile-extras";
 import { sectionRevision } from "@/domains/settings/preview";
 import { twoFactorRolesFromSetting } from "@/domains/security/two-factor";
-import { updateSecondStepSettingsAction, updateSignInPauseAction, updateTwoFactorRequiredRolesAction } from "./actions";
+import { updateSecondStepSettingsAction, updateSignInPauseAction, updateTrustedDeviceSettingsAction, updateTwoFactorRequiredRolesAction } from "./actions";
 import { getPauseSettings } from "@/domains/security/sign-in-guard";
+import { getTrustedDeviceSettings } from "@/domains/security/trusted-devices";
 import { getMethodSettings, twilioKeysPresent } from "@/domains/security/second-step";
 import { EMAIL_WEAKER_WARNING, METHOD_LABEL } from "@/domains/security/second-step-rules";
 import { listOwnSessions } from "@/domains/security/sessions";
@@ -126,6 +130,15 @@ export default async function DeskSettingsPage({
           setupFeeTaxAdviserReference: settings.setupFeeTaxAdviserReference,
           updatedAt: settings.updatedAt,
         }} />
+      </Card>
+      <Card title="Bank payments" description="How long a bank transfer can wait before it needs your attention.">
+        <BankPaymentForm editable={session.user.role === "OWNER"} days={settings.bankPaymentSlowBusinessDays ?? 6} />
+      </Card>
+      <Card title="Late fee warning" description="A late fee is only added after the customer was told.">
+        <LateFeeNoticeForm editable={session.user.role === "OWNER"} days={settings.lateFeeNoticeDaysBefore ?? 2} />
+      </Card>
+      <Card title="Colorado consumer lease filing" description="Needed before the first household rental over 4 months.">
+        <UcccFilingForm editable={session.user.role === "OWNER"} filedOn={settings.ucccNotificationFiledOn ? businessDateKey(settings.ucccNotificationFiledOn) : null} />
       </Card>
       <Card title="Mandatory fees on complete estimates" description="Owner-only effective-dated rule revisions; charge collection stays disabled until independent clearance.">
         <MandatorySigningPolicyForm editable={session.user.role === "OWNER"} effectiveDate={businessDateKey(new Date())}
@@ -261,6 +274,7 @@ export default async function DeskSettingsPage({
     const ownSessions = await listOwnSessions(session.user.id, session.session.token);
     const methodSettings = await getMethodSettings();
     const pauseSettings = await getPauseSettings();
+    const trustedDeviceSettings = await getTrustedDeviceSettings();
     content = (
       <Card
         title="Security"
@@ -377,6 +391,25 @@ export default async function DeskSettingsPage({
             <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save wrong-password rules</button>
             <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
           </div>
+        </form>
+        <form action={updateTrustedDeviceSettingsAction} className="mt-8 space-y-4 border-t border-line pt-6">
+          <fieldset disabled={!canChange} className="space-y-3">
+            <legend className="font-medium text-ink">Remember devices</legend>
+            <p className="text-sm text-ink-soft">
+              On a phone or computer someone ticks &quot;Remember this device&quot;, the app skips the code there for this many days.
+              Starting value 30 days, a common choice for small business apps. Set 0 to always ask for the code.
+              Lowering this shortens every remembered device at once; a changed password, a changed sign-in email, a
+              changed second step, or signing out everywhere always asks for the code again.
+            </p>
+            <label className="block text-sm text-ink">Remember devices for (days)
+              <input name="days" type="number" min={0} max={90} defaultValue={trustedDeviceSettings.days} className="mt-1 block w-28 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink" />
+            </label>
+          </fieldset>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={!canChange} className="rounded-control bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-50">Save remember-device rules</button>
+            <button type="submit" name="restoreRecommended" value="1" disabled={!canChange} className="rounded-control border border-line-strong px-4 py-2 text-sm font-medium text-ink disabled:opacity-50">Restore recommended</button>
+          </div>
+          {!canChange && <p className="text-sm text-ink-soft">Only the Owner can change this.</p>}
         </form>
         <SessionControls
           sessions={ownSessions.map((row) => ({
@@ -523,6 +556,7 @@ export default async function DeskSettingsPage({
       />
       <div className="mb-3 flex flex-wrap gap-3">
         <ButtonLink href="/desk/control-center" variant="secondary">Manage my business</ButtonLink>
+        <ButtonLink href="/desk/settings/decisions" variant="secondary">Decisions &amp; reviews</ButtonLink>
         <ButtonLink href="/desk/settings/history" variant="secondary">Settings history and undo</ButtonLink>
         <ButtonLink href="/desk/settings/switches" variant="secondary">All switches in one place</ButtonLink>
         <ButtonLink href="/desk/settings/price-changes" variant="secondary">Price changes with a start date</ButtonLink>

@@ -4,6 +4,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
 import { writeOffInvoice, writeOffInvoiceInTx } from "@/domains/billing/manual-payments";
 import { postExpense, postExpenseInTx, POST_EXPENSE_TX_OPTIONS } from "@/domains/books/expenses";
+import { postBookSourceAfterCommit } from "@/domains/books/immediate";
 import { decideDepositRefund, issueInvoiceRefund, refundHeldPayment } from "@/domains/billing/refunds";
 import { applyCreditDecision, applyCreditDecisionInTx } from "@/domains/billing/money-decisions";
 import { HELD_PAYMENT_STATUS } from "@/domains/billing/payment-status";
@@ -261,6 +262,7 @@ class RunFailure extends Error {}
 export async function decideApproval(ownerId: string, requestId: string, decision: "APPROVE" | "DECLINE", note?: string): Promise<DecisionResult> {
   const cleanNote = note?.trim().slice(0, 300) || null;
   let phaseB: { req: { kind: string; input: unknown; targetRef: string }; who: string } | null = null;
+  let committedBooksSource: { type: "INVOICE" | "EXPENSE"; id: string } | null = null;
   let result: DecisionResult;
   try {
     result = await prisma.$transaction(async (tx): Promise<DecisionResult> => {
@@ -298,8 +300,10 @@ export async function decideApproval(ownerId: string, requestId: string, decisio
           await applyCreditDecisionInTx(tx, ownerId, { creditId: String(input.creditId), invoiceId: String(input.invoiceId), amountCents: Number(input.amountCents) });
         } else if (req.kind === "WRITE_OFF") {
           await writeOffInvoiceInTx(tx, String(input.invoiceId), ownerId, `${String(input.reason)} (requested by ${who}, approved by the owner)`);
+          committedBooksSource = { type: "INVOICE", id: String(input.invoiceId) };
         } else if (req.kind === "EXPENSE") {
           await postExpenseInTx(tx, ownerId, String(input.expenseId), Number(input.version));
+          committedBooksSource = { type: "EXPENSE", id: String(input.expenseId) };
         } else {
           throw new RunFailure("This kind of request cannot be approved yet.");
         }
@@ -326,6 +330,9 @@ export async function decideApproval(ownerId: string, requestId: string, decisio
     throw e;
   }
   const pending = phaseB as { req: { kind: string; input: unknown; targetRef: string }; who: string } | null;
+  // This happens only after the original approval transaction commits.
+  const savedSource = committedBooksSource as { type: "INVOICE" | "EXPENSE"; id: string } | null;
+  if (savedSource) await postBookSourceAfterCommit(savedSource.type, savedSource.id);
   if (!pending) return result;
   return runApprovedStripeWork(ownerId, requestId, pending.req.input as Record<string, unknown>, pending.who, pending.req.targetRef);
 }

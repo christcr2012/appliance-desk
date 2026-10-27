@@ -8,6 +8,8 @@ import { assignDueUseTaxRowsToPeriod } from "./use-tax";
 import { SUCCESSFUL_PAYMENT_STATUSES, isSuccessfulPaymentStatus } from "@/domains/billing/payment-status";
 import { legalDueOn } from "./filing-calendar";
 import { buildRdfPacketInTx, type RdfPacket } from "./rdf-filing";
+import { shopSaleFeeKeptOnReturnInTx } from "./rdf-shop-sale";
+import { ruleAsOf, RuleMissingError } from "@/domains/rules/reads";
 
 export type FilingPacketRow = {
   jurisdictionId: string;
@@ -368,6 +370,24 @@ export async function loadFilingPacketInTx(
       }
     }
     const issued: Prisma.InvoiceWhereInput = { status: { notIn: ["DRAFT", "VOID"] } };
+    // TFA-1: Colorado allows no service fee on state sales tax from Jan 1,
+    // 2026. The dated rule, not the stored jurisdiction value, decides the
+    // state line for periods starting then; local lines keep their own fee.
+    let stateServiceFee: number | null = null;
+    if (period.periodStart >= new Date("2026-01-01T07:00:00Z")) {
+      try {
+        stateServiceFee = (await ruleAsOf<number>("co.sales.state_service_fee", period.periodStart, tx)).value;
+      } catch (error) {
+        if (error instanceof RuleMissingError) {
+          return { status: "BLOCKED", problems: ["The state service-fee rule is missing. Check Taxes › Rules before filing."] };
+        }
+        throw error;
+      }
+    }
+    const stateFeeTax = <T extends { jurisdiction: { level: string; serviceFeeMilliPercent: number } }>(tax: T): T =>
+      stateServiceFee === null || tax.jurisdiction.level !== "STATE"
+        ? tax
+        : { ...tax, jurisdiction: { ...tax.jurisdiction, serviceFeeMilliPercent: stateServiceFee } };
     const where = basis === "ACCRUAL"
       ? { invoice: {
           ...issued,
@@ -400,7 +420,7 @@ export async function loadFilingPacketInTx(
     for (const line of lines) {
       const amount = line.invoice.amountDueCents;
       if (account.basis === "ACCRUAL") {
-        evidence.push({ tax: line, taxableCents: line.taxableCents,
+        evidence.push({ tax: stateFeeTax(line), taxableCents: line.taxableCents,
           exemptCents: line.exemptCents, taxCents: line.taxCents });
         continue;
       }
@@ -454,7 +474,7 @@ export async function loadFilingPacketInTx(
         countTaxable += taxableShares[i]!;
         countExempt += exemptShares[i]!;
       }
-      evidence.push({ tax: line, taxableCents: countTaxable, exemptCents: countExempt, taxCents: countTax });
+      evidence.push({ tax: stateFeeTax(line), taxableCents: countTaxable, exemptCents: countExempt, taxCents: countTax });
     }
     // A refund belongs to its OWN reporting period, which may differ from
     // the original invoice's issue/receipt month. Never block future returns
@@ -481,11 +501,18 @@ export async function loadFilingPacketInTx(
       const lines = invoice.taxLines;
       const totalTax = sum(lines.map(t => t.taxCents));
       const invoiceAmount = invoice.amountDueCents;
+      // TFA-2 §6.5: a returned shop sale keeps its delivery fee — the fee
+      // is never part of any refund, so it leaves the allocation base.
+      // Without this, a $54 refund of a $54.37 sale ($50 goods, $4 tax,
+      // $0.37 fee) reads as refunding only $3.97 of tax and leaves three
+      // cents of tax payable on a sale that was fully taken back.
+      const keptFeeCents = await shopSaleFeeKeptOnReturnInTx(tx, invoice.id);
+      const basisCents = invoiceAmount - keptFeeCents;
       const allRefunds = [...invoice.refunds].sort((a,b) => a.id.localeCompare(b.id));
       const totalRefunds = sum(allRefunds.map(r => r.amountCents));
-      if (invoiceAmount <= 0 || totalTax < 0 || totalTax > invoiceAmount ||
+      if (basisCents <= 0 || totalTax < 0 || totalTax > basisCents ||
           lines.some(t => t.taxCents < 0 || t.taxableCents < 0 || t.exemptCents < 0) ||
-          totalRefunds > invoiceAmount || totalRefunds <= 0) {
+          totalRefunds > basisCents || totalRefunds <= 0) {
         problems.push("Refund invoice " + invoice.invoiceNumber +
           " needs reconciliation before tax may be reported.");
         continue;
@@ -497,25 +524,25 @@ export async function loadFilingPacketInTx(
       }
       const weights = allRefunds.map(r => r.amountCents);
       const totalTaxRefund = allocateAcrossLines(totalRefunds,
-        [totalTax, invoiceAmount - totalTax])[0]!;
+        [totalTax, basisCents - totalTax])[0]!;
       const perLineTax = allocateAcrossLines(totalTaxRefund, lines.map(l => l.taxCents));
       for (const [index, line] of lines.entries()) {
         if (line.jurisdiction.filingAccountId !== account.id) continue;
         const tax = allocateAcrossLines(perLineTax[index]!, weights)[refundIndex]!;
         const principal = line.taxableCents + line.exemptCents;
-        if (principal > invoiceAmount) {
+        if (principal > basisCents) {
           problems.push("Refund invoice " + invoice.invoiceNumber +
             " has principal that cannot be allocated.");
           continue;
         }
         const grossRefund = allocateAcrossLines(totalRefunds,
-          [principal, invoiceAmount - principal])[0]!;
+          [principal, basisCents - principal])[0]!;
         const [totalTaxable, totalExempt] = principal > 0
           ? allocateAcrossLines(grossRefund, [line.taxableCents, line.exemptCents])
           : [0, 0];
         const taxable = allocateAcrossLines(totalTaxable, weights)[refundIndex]!;
         const exempt = allocateAcrossLines(totalExempt, weights)[refundIndex]!;
-        evidence.push({ tax: line, taxableCents: -taxable,
+        evidence.push({ tax: stateFeeTax(line), taxableCents: -taxable,
           exemptCents: -exempt, taxCents: -tax });
       }
     }

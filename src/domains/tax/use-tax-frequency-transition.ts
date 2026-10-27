@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { dueOnFor, legalDueOn } from "./filing-calendar";
 import { chooseUseTaxFrequency } from "./use-tax-frequency";
+import { ruleAsOf } from "@/domains/rules/reads";
 
 function fromKey(value: string): Date {
   const result = businessDateFromKey(value);
@@ -30,6 +31,11 @@ export async function advanceColoradoUseTaxFrequency(
   const closedEnd = new Date(Date.UTC(year, month - 1, 0));
   const closedEndKey = closedEnd.toISOString().slice(0, 10);
   const [closedYear] = closedEndKey.split("-").map(Number);
+  // TFA-2 §7: a switch is earned by the CURRENT year's running total only.
+  // In January the most recently finished month is last December, which
+  // belongs to the old year — the new year has no finished month yet, so no
+  // switch can be earned (the account starts the year ANNUAL; see the reset).
+  if (closedYear !== year) return false;
   const yearStart = fromKey(`${closedYear}-01-01`);
   const monthEnd = fromKey(closedEndKey);
   const nextStart = fromKey(`${year}-${String(month).padStart(2, "0")}-01`);
@@ -45,11 +51,8 @@ export async function advanceColoradoUseTaxFrequency(
         account.frequency !== "ANNUAL" || !account.firstPeriodStart ||
         !account.useTaxJurisdictions.some(j => j.level === "STATE")) return false;
 
-    const settings = await tx.businessSettings.findUnique({
-      where: { id: "singleton" },
-      select: { useTaxMonthlyThresholdCents: true },
-    });
-    const threshold = settings?.useTaxMonthlyThresholdCents ?? 30000;
+    // TFA-1: the monthly-filing limit is a dated rule, not a setting.
+    const threshold = (await ruleAsOf<number>("co.use.monthly_threshold", monthEnd, tx)).value;
     const due = await tx.purchaseUseTax.aggregate({
       where: {
         status: { in: ["DUE", "FILED"] },
@@ -61,7 +64,6 @@ export async function advanceColoradoUseTaxFrequency(
     const decision = chooseUseTaxFrequency({
       yearDueCents: due._sum.useTaxDueCents ?? 0,
       thresholdCents: threshold,
-      currentFrequency: "ANNUAL",
       monthEnd,
     });
     if (decision.frequency !== "MONTHLY") return false;
@@ -141,6 +143,65 @@ export async function advanceColoradoUseTaxFrequency(
           yearDueCents: due._sum.useTaxDueCents ?? 0,
           thresholdCents: threshold,
         },
+      },
+    });
+    return true;
+  });
+}
+
+/**
+ * TFA-2 §7: on Jan 1 the account returns to ANNUAL. Last year's monthly
+ * periods stay exactly as they are (they are last year's returns); only the
+ * cadence for the new year changes, and the change is audited so Today can
+ * show "Use tax is back to one yearly return for {year}".
+ *
+ * Safe on every daily run: it fires only while the account is MONTHLY, it
+ * operated in an earlier year, and no period of the new year exists yet.
+ * The filing calendar calls it before period generation, so the new year's
+ * annual period is the first period the year ever gets.
+ */
+export async function resetColoradoUseTaxFrequencyForNewYear(
+  accountId: string,
+  now: Date,
+): Promise<boolean> {
+  const today = businessDateKey(now);
+  const [year] = today.split("-").map(Number);
+  if (!year) throw new Error("Invalid Colorado date.");
+  const jan1 = fromKey(`${year}-01-01`);
+
+  return prisma.$transaction(async (tx) => {
+    // Same lock as the mid-year switch: the two never interleave.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${"use-tax-frequency:" + accountId}))::text AS locked`;
+    const account = await tx.taxFilingAccount.findUnique({
+      where: { id: accountId },
+      include: { useTaxJurisdictions: { select: { level: true } } },
+    });
+    if (!account || !account.active || account.kind !== "USE_TAX_RETURN" ||
+        account.frequency !== "MONTHLY" || !account.firstPeriodStart ||
+        !account.useTaxJurisdictions.some(j => j.level === "STATE")) return false;
+
+    const operatedBefore = await tx.taxFilingPeriod.findFirst({
+      where: { filingAccountId: accountId, periodStart: { lt: jan1 } },
+      select: { id: true },
+    });
+    if (!operatedBefore) return false;
+    const begunThisYear = await tx.taxFilingPeriod.findFirst({
+      where: { filingAccountId: accountId, periodStart: { gte: jan1 } },
+      select: { id: true },
+    });
+    if (begunThisYear) return false;
+
+    await tx.taxFilingAccount.update({
+      where: { id: accountId },
+      data: { frequency: "ANNUAL" },
+    });
+    await tx.auditLog.create({
+      data: {
+        action: "tax.use_tax_frequency.reset",
+        entityType: "TaxFilingAccount",
+        entityId: accountId,
+        oldValue: { frequency: "MONTHLY" },
+        newValue: { frequency: "ANNUAL", forYear: String(year) },
       },
     });
     return true;

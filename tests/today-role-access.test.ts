@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// FEE-1: the late-fee review list has its own database tests; here it must not add reads to the capped Today queries.
+vi.mock("@/domains/exceptions/late-fee-attention", () => ({ listLateFeeReview: async () => ({ rows: [], total: 0 }) }));
+
 const mocks = vi.hoisted(() => ({
   settings: vi.fn(),
   requireRole: vi.fn(),
@@ -27,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   systemIssueCount: vi.fn(),
   officialRateAttention: vi.fn(async () => []),
   rdfRefundAttention: vi.fn(async () => []),
+  rdfSwitches: vi.fn(),
   filingAttention: vi.fn(async () => ({ returns: { rows: [], total: 0 }, licenses: { rows: [], total: 0 }, setupChecks: { rows: [], total: 0 } })),
   amendmentAttention: vi.fn(async () => ({ amendments: { rows: [], total: 0 }, readiness: { rows: [], total: 0 } })),
   acquisitionAttention: vi.fn(async () => []),
@@ -41,9 +45,21 @@ vi.mock("@/domains/tax/amendment-attention", () => ({
 vi.mock("@/domains/tax/filing-attention", () => ({
   listTaxFilingAttention: mocks.filingAttention,
   listRdfRefundAttention: mocks.rdfRefundAttention,
+  // TFA-2 §7: the use-tax year-reset notice.
+  listUseTaxResetAttention: vi.fn(async () => []),
+  // TFA-2 §9: expired exemption certificates.
+  listExpiredExemptionAttention: vi.fn(async () => []),
+  // TFA-2 §8: filing-frequency advice.
+  listFilingFrequencyAdviceAttention: vi.fn(async () => []),
 }));
 vi.mock("@/domains/tax/official-rate-auto-apply", () => ({
   listOfficialRateAttention: mocks.officialRateAttention,
+}));
+vi.mock("@/domains/exceptions/bank-payment-attention", () => ({
+  listBankPaymentSlow: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/dispute-attention", () => ({
+  listDisputeAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
@@ -56,6 +72,9 @@ vi.mock("@/domains/exceptions/lead-turning-points", () => ({
   listNewLeadContact: vi.fn(async () => ({ rows: [], total: 0 })),
   listLeadFollowUps: vi.fn(async () => ({ rows: [], total: 0 })),
   listApprovedQuoteToRental: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/compliance-attention", () => ({
+  listComplianceDue: vi.fn(async () => ({ rows: [], total: 0 })), // covered by tests/compliance-filings-integration.test.ts
 }));
 vi.mock("@/domains/exceptions/goal-attention", () => ({
   listGoalAttention: vi.fn(async () => []), // covered by tests/goals-integration.test.ts
@@ -78,11 +97,12 @@ vi.mock("@/domains/exceptions/turning-points-attention", () => ({
 vi.mock("@/domains/exceptions/feedback-attention", () => ({
   listFeedbackWaiting: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/recall-attention", () => ({ listRecallAttention: vi.fn(async () => []) }));
 vi.mock("@/lib/session", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     rentalAgreement: { findMany: mocks.agreement },
-    invoice: { findMany: mocks.invoice },
+    invoice: { findMany: mocks.invoice, count: vi.fn().mockResolvedValue(0) },
     job: { findMany: mocks.job },
     businessSettings: { findUnique: mocks.settings },
     maintenanceRequest: { findMany: mocks.request },
@@ -94,6 +114,7 @@ vi.mock("@/lib/prisma", () => ({
     agreementSigningPayment: { findMany: mocks.signingPayment, count: mocks.signingPaymentCount },
     preDeliveryCancellation: { findMany: mocks.cancellationRefunds, count: mocks.cancellationRefundCount },
     auditLog: { findMany: mocks.audit },
+    decisionRecord: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(null) },
     exceptionSnooze: { findMany: mocks.snoozes },
     customerTaxExemption: {
       findMany: mocks.taxExemption,
@@ -109,6 +130,8 @@ vi.mock("@/lib/prisma", () => ({
       findMany: mocks.officialSourceWatch,
       count: vi.fn().mockResolvedValue(0),
     },
+    // TFA-2: the RDF approval switches read on Today.
+    retailDeliveryFeeSwitch: { findMany: mocks.rdfSwitches },
     // R17: term-ended agreements and maintenance-due appliances are found with set-based SQL.
     $queryRaw: mocks.raw,
   },
@@ -141,6 +164,7 @@ beforeEach(() => {
     mocks.systemIssues,
     mocks.officialRateAttention,
     mocks.rdfRefundAttention,
+    mocks.rdfSwitches,
     mocks.outOfService,
   ]) {
     fn.mockResolvedValue([]);
@@ -215,6 +239,27 @@ describe("Today server-side visibility", () => {
       expect(mocks.rdfRefundAttention).toHaveBeenCalledTimes(1);
     },
   );
+
+  it("TFA-2 §6.3: a pending delivery-fee switch appears on Today with its approve action", async () => {
+    mocks.requireRole.mockResolvedValue({ user: { role: "OWNER" } });
+    mocks.rdfSwitches.mockResolvedValue([
+      {
+        id: "switch-1",
+        kind: "START",
+        startsOn: new Date(),
+        basisRetailCents: 5_100_000_00,
+        createdAt: new Date(),
+      },
+    ]);
+    const result = await getExceptions();
+    const item = result.find(
+      (x) => x.category === "SALES_TAX" && x.title.startsWith("Delivery fee turns on"),
+    );
+    expect(item).toBeTruthy();
+    expect(item?.action).toEqual(
+      expect.objectContaining({ type: "APPROVE_RDF_SWITCH" }),
+    );
+  });
 
   it.each([getExceptions, getTodaysJobs])(
     "rejects an unauthorized caller before any query",

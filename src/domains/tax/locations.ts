@@ -23,6 +23,7 @@ import { assertActiveTeamActor } from "@/lib/team-actor";
 import { recordedRetailSales } from "./rdf-sales-evidence";
 import { retailDeliveryFeeStatus } from "./retail-delivery-fee";
 import { resolveTaxabilityAsOf, type TaxabilityCell } from "./taxability-history";
+import { ruleAsOf } from "@/domains/rules/reads";
 import { GREELEY_JURISDICTION_WHERE, taxCellForSubject } from "@/domains/decisions/tax-cells";
 
 const LOOKUP_REUSE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -982,7 +983,7 @@ export async function assertTaxReadyForAgreement(
   const settings = await tx.businessSettings.findUniqueOrThrow({
     where: { id: "singleton" },
     select: {
-      shortTermLeaseElection: true, rdfThresholdCents: true,
+      shortTermLeaseElection: true,
       rdfThresholdCrossedOn: true, rdfHandling: true, rdfCpaConfirmedOn: true,
     },
   });
@@ -1043,21 +1044,17 @@ export async function assertTaxReadyForAgreement(
         context.jurisdictions.some(j => j.id === state.id &&
           resolveTaxability(j, "RENTAL", context).taxability === "TAXABLE"))) {
         const year = Number(businessDateKey(taxDate).slice(0, 4));
-        const [priorRetail, currentRetail, filingAccount] = await Promise.all([
+        const [priorRetail, currentRetail] = await Promise.all([
           recordedRetailSales(tx, year - 1),
           recordedRetailSales(tx, year),
-          tx.taxFilingAccount.findFirst({
-            where: { kind: "SALES_RETURN", jurisdictions: { some: { level: "STATE" } } },
-            select: { frequency: true },
-          }),
         ]);
         const decision = retailDeliveryFeeStatus({
           today: taxDate, saleType: "RENTAL", election: settings.shortTermLeaseElection,
           previousYearRetailCents: priorRetail, currentYearRetailCents: currentRetail,
-          thresholdCents: settings.rdfThresholdCents,
+          // TFA-1: the small-seller limit is a dated rule, not a setting.
+          thresholdCents: (await ruleAsOf<number>("co.rdf.qualified_threshold", taxDate, tx)).value,
           thresholdCrossedOn: settings.rdfThresholdCrossedOn,
           handling: settings.rdfHandling, cpaConfirmedOn: settings.rdfCpaConfirmedOn,
-          frequency: filingAccount?.frequency ?? "MONTHLY",
         });
         if (decision.status === "UNDECIDED")
           problems.push("Colorado retail delivery fee: " + decision.reason);

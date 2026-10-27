@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DECISION_SUBJECTS, decisionSubject } from "@/domains/decisions/registry";
+import { isRuleKey } from "@/domains/rules/registry";
 import { allTaxCellSubjectIds, taxCellForSubject, taxCellSubjectId } from "@/domains/decisions/tax-cells";
 import { BANNED } from "../scripts/check-owner-wording.mjs";
 
@@ -97,6 +98,14 @@ describe("Decisions & reviews registry", () => {
     const covered = new Set(DECISION_SUBJECTS.flatMap((subject) => subject.covers));
     for (const field of required) expect(covered.has(field), field).toBe(true);
     for (const field of covered) {
+      if (field.includes(":")) {
+        // A dated rule, not a stored field: the model must exist and the
+        // rule key must be registered (TFA-1).
+        const [model, ruleKey] = field.split(":");
+        expect(models.has(model!), `${field} model exists in the schema`).toBe(true);
+        expect(isRuleKey(ruleKey!), `${field} rule is registered`).toBe(true);
+        continue;
+      }
       const [model, name] = field.split(".");
       expect(models.get(model!)?.has(name!), `${field} exists in the schema`).toBe(true);
     }
@@ -115,15 +124,71 @@ describe("Decisions & reviews registry", () => {
     }
   });
 
-  it("has no researched starting values yet (DEC-2 adds them with sources)", () => {
-    for (const subject of DECISION_SUBJECTS) expect(subject.recommended, subject.id).toBeNull();
+  it("every question has a researched starting value, or says why it has none (DEC-2)", () => {
+    for (const subject of DECISION_SUBJECTS) {
+      expect(subject.recommended, `${subject.id} has no starting value and no reason`).not.toBeNull();
+    }
+  });
+
+  it("every starting value is one of the question's own choices and passes the setting's own check", () => {
+    for (const subject of DECISION_SUBJECTS) {
+      const value = subject.recommended!.value;
+      expect(subject.options.some((option) => JSON.stringify(option.value) === JSON.stringify(value)),
+        `${subject.id}: ${JSON.stringify(value)} is not one of its choices`).toBe(true);
+      expect(subject.validate(value), subject.id).toBeNull();
+    }
+  });
+
+  it("every starting value explains itself in plain words and cites sources with the date they were opened", () => {
+    for (const subject of DECISION_SUBJECTS) {
+      const { why, sources } = subject.recommended!;
+      expect(why.length, `${subject.id} why`).toBeGreaterThan(30);
+      expect(why, `${subject.id}: statute and letter numbers belong in sources`).not.toMatch(/C\.R\.S\.|GIL-|PLR-/);
+      expect(sources.length, `${subject.id} sources`).toBeGreaterThan(0);
+      for (const source of sources) {
+        expect(source.url, subject.id).toMatch(/^(https:\/\/|docs\/)/);
+        expect(source.checkedOn, subject.id).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        if (source.url.startsWith("docs/")) expect(existsSync(source.url.split("#")[0]!), `${subject.id}: ${source.url}`).toBe(true);
+      }
+    }
+  });
+
+  it("the careful tax choices match the research file", () => {
+    const value = (id: string) => decisionSubject(id)!.recommended!.value;
+    expect(value("IN-33-ELECTION")).toBe("PAY_ON_ACQUISITION");
+    expect(value("IN-34-LATE-PAYMENT-FEE-STATE")).toBe("EXEMPT");
+    expect(value("IN-34-DELIVERY-STATE")).toBe("TAXABLE");
+    for (const id of allTaxCellSubjectIds().filter((code) => code.endsWith("-GREELEY") || code === "IN-33-GREELEY")) {
+      expect(value(id), id).toBe("TAXABLE");
+    }
+    expect(value("IN-35-BASIS")).toBe("ACCRUAL");
+    expect(value("IN-37-RDF")).toBe("PAY_MYSELF");
+    expect(value("IN-39-BADDEBT")).toBe("NO");
+    expect(value("IN-71")).toBe(7);
+    expect(value("LATE-FEE-AMOUNT")).toBe(500);
+    expect(value("GREELEY-RATE-2F")).toBe(4110);
+  });
+
+  it("questions Chris already answered are applied as confirmed; the rest are starting values", () => {
+    for (const id of ["IN-84", "IN-06", "IN-76", "IN-52", "IN-78", "IN-83", "LATE-FEE-AMOUNT"]) {
+      expect(decisionSubject(id)!.recommended!.kind, id).toBe("CONFIRMED");
+    }
+    for (const id of ["IN-33-ELECTION", "IN-44", "IN-79"]) {
+      expect(decisionSubject(id)!.recommended!.kind ?? "STARTING_VALUE_APPLIED", id).toBe("STARTING_VALUE_APPLIED");
+    }
+  });
+
+  it("only the retired-appliance tax figure is an estimate; everything else runs live", () => {
+    for (const subject of DECISION_SUBJECTS) {
+      expect(subject.liveUse, subject.id).toBe(subject.id === "IN-56" ? "ESTIMATE_ONLY" : "YES");
+    }
   });
 
   it("reads each value from the setting in one shared context", async () => {
     const ctx = {
       settings: { shortTermLeaseElection: "PAY_ON_ACQUISITION", rdfHandling: "UNDECIDED",
         retailDeliveryFeeDecision: "NOT_LIABLE", badDebtTaxRecovery: "NO", setupFeeTaxPlanningTreatment: "TAXABLE",
-        setupFeeTaxTreatment: "UNDECIDED", recordRetentionYears: 7 },
+        setupFeeTaxTreatment: "UNDECIDED", recordRetentionYears: 7, trustedDeviceDays: 30 },
       taxCells: [
         { jurisdictionId: null, category: "DELIVERY" as const, taxability: "TAXABLE", provisional: true },
         { jurisdictionId: "greeley", category: "RENTAL" as const, taxability: "EXEMPT", provisional: false },
@@ -140,6 +205,7 @@ describe("Decisions & reviews registry", () => {
     expect(await decisionSubject("IN-35-BASIS")!.read({ ...ctx, filingBases: [] })).toBe("UNDECIDED");
     expect(await decisionSubject("IN-33-GREELEY")!.read({ ...ctx, greeleyJurisdictionId: null })).toBe("UNDECIDED");
     expect(await decisionSubject("IN-71")!.read(ctx)).toBe(7);
+    expect(await decisionSubject("TRUSTED-DEVICE-DAYS")!.read(ctx)).toBe(30);
     expect(await decisionSubject("IN-84")!.read(ctx)).toBe("AS_BUILT");
   });
 });

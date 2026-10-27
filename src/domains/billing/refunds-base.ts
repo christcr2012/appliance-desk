@@ -1,9 +1,13 @@
+import { postBookSourceAfterCommit } from "@/domains/books/immediate";
+import { REFUND_ON_DISPUTE_WARNING, RECOMMENDED_ACH_DISPUTE_WINDOW_DAYS, bankRefundEarliest } from "@/domains/disputes/rules";
+import { formatBusinessDate } from "@/lib/business-date";
 import type { Prisma, RefundReason } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { assertActiveTeamActor } from "@/lib/team-actor";
 import { assertCapability } from "@/domains/capabilities";
 import { lockCustomerLedger } from "./ledger";
+import { exemptionBackdateCreditCentsForInvoiceInTx } from "@/domains/tax/exemptions";
 import {
   HELD_PAYMENT_STATUS,
   HELD_REFUNDED_STATUS,
@@ -186,6 +190,25 @@ export async function decideDepositRefund(
       throw new Error("A partial deposit refund requires a deduction reason.");
     }
 
+    // OPS-5: a deposit paid by bank debit can be reversed by the customer's bank for weeks. Wait out the window
+    // (owner setting) so we never refund money the bank may still take back.
+    const bankPayment = await tx.payment.findFirst({
+      where: {
+        method: "ach",
+        status: { in: [...SUCCESSFUL_PAYMENT_STATUSES] },
+        invoice: { agreementId: deposit.agreementId, lineItems: { some: { kind: "DEPOSIT" } } },
+      },
+      select: { createdAt: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (bankPayment) {
+      const settings = await tx.businessSettings.findUnique({ where: { id: "singleton" }, select: { achDisputeWindowDays: true } });
+      const earliest = bankRefundEarliest(bankPayment.createdAt, settings?.achDisputeWindowDays ?? RECOMMENDED_ACH_DISPUTE_WINDOW_DAYS);
+      if (earliest.getTime() > Date.now()) {
+        throw new Error(`This deposit was paid by bank debit, and the customer's bank can still reverse it. Refund it on or after ${formatBusinessDate(earliest)}.`);
+      }
+    }
+
     await tx.deposit.update({
       where: { id: deposit.id },
       data: {
@@ -259,6 +282,8 @@ type RefundInput = {
   toCredit?: boolean;
   /** Set by an owner approval: if a refund carrying this marker already exists on the invoice, it is returned instead of making a second one. */
   approvalMarker?: string;
+  /** OPS-5: the owner has read the open-dispute warning and still wants to refund. */
+  acknowledgeDispute?: boolean;
 };
 
 /**
@@ -314,9 +339,23 @@ export async function prepareInvoiceRefundInTx(
     (sum, refund) => sum + refund.amountCents,
     0,
   );
-  const refundableCents = invoice.amountPaidCents - alreadyRefundedCents;
+  // Tax this invoice already handed back as a back-dated exemption
+  // credit is no longer refundable: a refund on top of the credit would
+  // return the same tax twice (TFA-2 §9 review fix).
+  const exemptionCreditCents = await exemptionBackdateCreditCentsForInvoiceInTx(
+    tx, invoice.customerId, invoice.id,
+  );
+  const refundableCents = invoice.amountPaidCents - alreadyRefundedCents - exemptionCreditCents;
   if (input.amountCents > refundableCents) {
     throw new Error("Refund amount exceeds the invoice amount still eligible for refund.");
+  }
+  if (!input.acknowledgeDispute) {
+    // OPS-5: a refund does not end a dispute, so the customer could be paid twice. Stop and say so.
+    const openDispute = await tx.paymentDispute.findFirst({
+      where: { invoiceId: invoice.id, state: { in: ["NEEDS_RESPONSE", "UNDER_REVIEW"] } },
+      select: { id: true },
+    });
+    if (openDispute) throw new Error(REFUND_ON_DISPUTE_WARNING);
   }
 
   if (input.toCredit) {
@@ -517,6 +556,7 @@ export async function issueInvoiceRefund(
   });
 
   if (!prepared.claim) {
+    await postBookSourceAfterCommit("REFUND",prepared.refundId);
     return { refundId: prepared.refundId, providerOpId: null };
   }
 
@@ -526,6 +566,8 @@ export async function issueInvoiceRefund(
     invoiceId: input.invoiceId,
     amountCents: input.amountCents,
   });
+  // Pending Stripe refunds do not generate a ledger entry until provider evidence exists.
+  await postBookSourceAfterCommit("REFUND",prepared.refundId);
 
   return {
     refundId: prepared.refundId,
@@ -608,7 +650,10 @@ export async function refundHeldPayment(
     };
   });
 
-  if (!prepared.claim) return { refundId: prepared.refundId, providerOpId: "", outcome: "SUCCEEDED" };
+  if (!prepared.claim) {
+    await postBookSourceAfterCommit("REFUND",prepared.refundId);
+    return { refundId: prepared.refundId, providerOpId: "", outcome: "SUCCEEDED" };
+  }
 
   const outcome = await executeStripeRefund({
     claim: prepared.claim,
@@ -618,5 +663,6 @@ export async function refundHeldPayment(
       await tx.refund.update({ where: { id: prepared.refundId }, data: { stripeRefundId } });
     },
   });
+  await postBookSourceAfterCommit("REFUND",prepared.refundId);
   return { refundId: prepared.refundId, providerOpId: prepared.claim.providerOpId, outcome };
 }

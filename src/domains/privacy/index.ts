@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isRateLimited } from "@/lib/rate-limit";
 import { deliverMessage } from "@/domains/messaging/deliver";
+import { leadContactKeys } from "@/domains/leads/keys";
 import { getPrivatePhotoStore } from "@/lib/photo-storage";
 import { deletePrivatePhotoWithRecovery } from "@/domains/backup/media-deletion";
 import { privateBlobUrl } from "@/domains/feedback/media";
@@ -414,6 +415,8 @@ async function claimPrivacyDeletion(
     // VERIFIED and claimed, so the owner can safely retry without duplicating
     // the database pseudonymization.
     await tx.session.deleteMany({ where: { userId: customer.userId } });
+    // ACC-6: device rows are per-person identifiers, so they go with the rest of the person's sign-in data.
+    await tx.knownDevice.deleteMany({ where: { userId: customer.userId } });
     if (!request.fulfilledByUserId) {
       const claimed = await tx.privacyRequest.updateMany({
         where: { id: requestId, status: "VERIFIED", fulfilledByUserId: null },
@@ -521,6 +524,8 @@ export async function fulfillPrivacyDeletion(
     const deletedEmail = `deleted-${customer.userId}@invalid`;
 
     await tx.session.deleteMany({ where: { userId: customer.userId } });
+    // ACC-6: device rows are per-person identifiers, so they go with the rest of the person's sign-in data.
+    await tx.knownDevice.deleteMany({ where: { userId: customer.userId } });
     await tx.account.updateMany({
       where: { userId: customer.userId },
       data: { accessToken: null, refreshToken: null, idToken: null, password: null },
@@ -564,6 +569,7 @@ export async function fulfillPrivacyDeletion(
         contactName: "Deleted customer",
         phone: "deleted",
         email: deletedEmail,
+        ...leadContactKeys({ phone: "deleted", email: deletedEmail }),
         bestTimeToContact: null,
         notes: null,
         addressLine1: null,
