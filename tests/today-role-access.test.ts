@@ -88,6 +88,9 @@ vi.mock("@/domains/exceptions/lead-turning-points", () => ({
 vi.mock("@/domains/exceptions/compliance-attention", () => ({
   listComplianceDue: vi.fn(async () => ({ rows: [], total: 0 })), // covered by tests/compliance-filings-integration.test.ts
 }));
+vi.mock("@/domains/exceptions/supplier-w9-attention", () => ({
+  listSupplierW9Needed: vi.fn(async () => ({ rows: [], total: 0 })), // covered by CMP-3's tests/w9-integration.test.ts
+}));
 vi.mock("@/domains/exceptions/goal-attention", () => ({
   listGoalAttention: vi.fn(async () => []), // covered by tests/goals-integration.test.ts
 }));
