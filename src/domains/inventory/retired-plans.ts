@@ -1,3 +1,4 @@
+import { MISSING_RECORD_MESSAGE, refrigerantRecordRequired } from "@/domains/refrigerant/rules";
 import { assertNotRecalledForSale } from "@/domains/recalls/guard";
 import type { Prisma, RetiredPlanChoice } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -153,6 +154,14 @@ async function completeInTx(tx: Tx, actorUserId: string, applianceId: string, in
     if (bulk) throw new RetiredPlanError("Strip-for-parts appliances are finished one at a time, so the parts and the leftovers are recorded.");
     if (input.remainder !== "SCRAPPED" && input.remainder !== "THROWN_AWAY") throw new RetiredPlanError("Say what happened to the rest: scrapped or thrown away.");
     remainder = input.remainder;
+  }
+  // OPS-2: a refrigerator-type appliance can't be scrapped or thrown away until its refrigerant statement is on file.
+  const refrigerant = await tx.appliance.findUnique({
+    where: { id: applianceId },
+    select: { assetNumber: true, applianceType: { select: { hasRefrigerant: true } }, refrigerantRecord: { select: { applianceId: true } } },
+  });
+  if (refrigerantRecordRequired(refrigerant?.applianceType.hasRefrigerant === true, { choice: plan.choice, remainder: remainder ?? plan.remainder }) && !refrigerant?.refrigerantRecord) {
+    throw new RetiredPlanError(`${MISSING_RECORD_MESSAGE}${bulk ? ` (${refrigerant?.assetNumber ?? "one of the appliances"})` : ""}`);
   }
   await tx.retiredAppliancePlan.update({
     where: { applianceId },

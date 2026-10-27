@@ -6,7 +6,6 @@ export type RetailDeliveryFeeDecision = {
   reason: string;
 };
 
-type Frequency = "MONTHLY" | "QUARTERLY" | "ANNUAL";
 type Handling = "UNDECIDED" | "COLLECT_FROM_CUSTOMER" | "PAY_MYSELF";
 type Election = "UNDECIDED" | "PAY_ON_ACQUISITION" | "COLLECT_ON_RENTALS";
 
@@ -23,23 +22,15 @@ function assertCents(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(label + " must be nonnegative integer cents.");
 }
 
-/** First filing-period start not earlier than 90 calendar days after crossing. */
-export function rdfNewBusinessStartsOn(crossedOn: Date, frequency: Frequency): Date {
+/**
+ * The statute's start date: the first day of the month after the 90th day following crossing.
+ * The filing frequency does not move it (June 15 crossing ends September 13, so the fee starts October 1).
+ */
+export function rdfQualifiedEndsOn(crossedOn: Date): Date {
   const [year, month, day] = validatedDate(crossedOn, "Threshold crossing").split("-").map(Number);
   const eligible = new Date(Date.UTC(year!, month! - 1, day! + 90));
   let y = eligible.getUTCFullYear();
-  let m = eligible.getUTCMonth() + 1;
-  if (frequency === "ANNUAL") {
-    if (m !== 1 || eligible.getUTCDate() !== 1) y += 1;
-    return fromKey(`${y}-01-01`);
-  }
-  if (frequency === "QUARTERLY") {
-    const q = Math.floor((m - 1) / 3) * 3 + 1;
-    if (m !== q || eligible.getUTCDate() !== 1) m = q + 3;
-    else m = q;
-  } else if (eligible.getUTCDate() !== 1) {
-    m += 1;
-  }
+  let m = eligible.getUTCMonth() + 2;
   if (m > 12) { y += 1; m -= 12; }
   return fromKey(`${y}-${String(m).padStart(2, "0")}-01`);
 }
@@ -57,7 +48,6 @@ export function retailDeliveryFeeStatus(input: {
   currentYearRetailCents: number;
   thresholdCents: number;
   thresholdCrossedOn: Date | null;
-  frequency: Frequency;
   handling: Handling;
   cpaConfirmedOn: Date | null;
 }): RetailDeliveryFeeDecision {
@@ -87,11 +77,11 @@ export function retailDeliveryFeeStatus(input: {
       reason: "Retail sales did not exceed the applicable small-business threshold.",
     };
   } else if (input.thresholdCrossedOn) {
-    startsOn = rdfNewBusinessStartsOn(input.thresholdCrossedOn, input.frequency);
+    startsOn = rdfQualifiedEndsOn(input.thresholdCrossedOn);
     if (today < businessDateKey(startsOn)) {
       return {
         status: "EXEMPT_SMALL_BUSINESS", startsOn,
-        reason: "New-business exemption continues until the first qualifying filing period after 90 days.",
+        reason: "New-business exemption continues until the first day of the month after the 90-day period.",
       };
     }
   } else {

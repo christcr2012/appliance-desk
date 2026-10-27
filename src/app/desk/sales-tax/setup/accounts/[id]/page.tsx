@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { saveTaxAccountAction } from "../../actions";
+import { saveTaxAccountAction, markLicenseRenewedAction } from "../../actions";
 import { TaxActionForm } from "../../forms";
 import { ruleAsOf } from "@/domains/rules/reads";
+import { nextLicenseExpiry } from "@/domains/tax/license-dates";
 const css="w-full rounded border border-input bg-background p-2 text-sm";
 const label="grid gap-1 text-sm font-medium";
 export default async function FilingAccountEditor({params}:{params:Promise<{id:string}>}) {
@@ -116,6 +117,10 @@ export default async function FilingAccountEditor({params}:{params:Promise<{id:s
       </fieldset>}
       <label className={label}>Filing notes<textarea name="filingNotes" maxLength={1000} defaultValue={account.filingNotes??""} className={css}/></label>
     </TaxActionForm> : <div role="status" className="rounded border border-border p-4 text-sm">Read-only. Ask the owner to update this account.</div>}
+    {session.user.role==="OWNER" && account.licenseExpiresOn && <TaxActionForm title="License renewal" action={markLicenseRenewedAction} submitLabel="Mark license renewed">
+      <input type="hidden" name="id" value={account.id}/>
+      <p className="text-sm">Renewed with Colorado? Mark it here and the expiration moves to {nextLicenseExpiry(account.licenseExpiresOn).toISOString().slice(0, 10)}, the end of the next odd year. The renewal reminders follow the new date.</p>
+    </TaxActionForm>}
   </main>;
 }
 

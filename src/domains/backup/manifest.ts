@@ -44,6 +44,8 @@ export const BACKUP_MODEL_POLICY = {
   PurchaseOrderReceiptOperation: "purchaseOrderReceiptOperation",
   PartStockMovement: "partStockMovement",
   RetiredAppliancePlan: "retiredAppliancePlan",
+  // OPS-2: the signed refrigerant statement details for scrapped or discarded appliances are business records.
+  RefrigerantRecord: "refrigerantRecord",
   ScrapPayment: "scrapPayment",
   StaffCapabilityOverride: "staffCapabilityOverride",
   // ACC-2: invitations are short-lived and hold only a hash of a link code; a restore re-invites instead.
@@ -101,6 +103,10 @@ export const BACKUP_MODEL_POLICY = {
   TaxRateObservation: "taxRateObservation",
   // TFA-1: the dated rule book is business tax evidence; it is restored.
   LegalRuleVersion: "legalRuleVersion",
+  // TFA-2: prepared delivery-fee switches and their owner approvals.
+  RetailDeliveryFeeSwitch: "retailDeliveryFeeSwitch",
+  // TFA-2 §8: filing-frequency advice rows are tax-filing evidence.
+  FilingFrequencyAdvice: "filingFrequencyAdvice",
   OfficialSourceWatch: "officialSourceWatch",
   TaxabilityRule: "taxabilityRule",
   // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
