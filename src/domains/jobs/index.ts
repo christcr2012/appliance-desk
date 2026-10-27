@@ -1,3 +1,4 @@
+import { assertSealedSystemAssignee } from "@/domains/certifications/actions";
 import { requireRole } from "@/lib/session";
 import { assertValidRepairCostCents } from "./repair-costs";
 import { prisma } from "@/lib/prisma";
@@ -166,6 +167,8 @@ export type NewJobInput = {
   applianceIds?: string[];
   notes?: string | null;
   assignedToUserId?: string | null;
+  /** A repair on a sealed refrigerant system: only a certified person may be assigned. */
+  sealedSystem?: boolean;
   durationMinutes?: number | null;
   /** Visits the person has already agreed to overlap; anything else that conflicts is refused. */
   confirmedConflictJobIds?: readonly string[];
@@ -183,6 +186,10 @@ export async function createJob(userId: string, input: NewJobInput) {
 /** Everything after the actor check, for callers that already hold the user locks in a transaction. */
 export async function createJobInTx(tx: Prisma.TransactionClient, userId: string, input: NewJobInput) {
     const durationMinutes = validateDurationMinutes(input.durationMinutes);
+    if (input.sealedSystem) {
+      if (input.type !== "MAINTENANCE_VISIT") throw new Error("Only a repair visit can be marked as a sealed-system repair.");
+      await assertSealedSystemAssignee(tx, input.assignedToUserId);
+    }
     if (input.assignedToUserId) {
       const assignee = await tx.user.findUnique({
         where: { id: input.assignedToUserId },
@@ -307,6 +314,7 @@ export async function createJobInTx(tx: Prisma.TransactionClient, userId: string
         type: input.type,
         scheduledAt: input.scheduledAt ?? null,
         assignedToUserId: input.assignedToUserId || null,
+        sealedSystem: input.sealedSystem === true,
         durationMinutes,
         customerId: input.customerId || null,
         serviceAddressId: input.serviceAddressId || null,
