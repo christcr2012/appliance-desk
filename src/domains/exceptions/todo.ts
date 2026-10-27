@@ -31,6 +31,7 @@ const ACTION_LABEL: Record<string, string> = {
   PAYMENT_DISPUTE: "Answer dispute",
   COLLECTION_STEP: "Open collections",
   CONTINUITY: "Open continuity",
+  SETUP_GUIDE: "Set up",
   PRIVACY_DUTY: "Open privacy and security",
   LATE_FEE_REVIEW: "Open the bill",
   DECISIONS_STARTING_VALUES: "Review",

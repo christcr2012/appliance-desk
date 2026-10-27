@@ -20,6 +20,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/acc5-job-roles-integration.test.ts", // ACC-5 edits the shared starting job roles and the invitation settings.
   "tests/trusted-devices-integration.test.ts", // ACC-6 changes and restores the remember-days setting, the customer-email switch and the text-code switch.
   "tests/business-records-integration.test.ts", // VAULT-1 changes and restores the shared admin-visible record kinds setting.
+  "tests/setup-guide-integration.test.ts", // SETUP-1 creates a Colorado filing account and reads guide state across all records.
   "tests/goals-integration.test.ts", // O-5 changes and restores the shared alert settings.
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
   "tests/approval-money-integration.test.ts", // O-3B changes and restores the shared approval limits.

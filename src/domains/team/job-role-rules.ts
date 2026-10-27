@@ -51,6 +51,8 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
   insurance: "management",
   // OPS-7: privacy and security duties sit with the other owner-level settings.
   "privacy-security": "management",
+  // SETUP-1: owner-only; a job role that includes Settings can open it, nobody else.
+  "setup-guide": "management",
   feedback: "feedback",
 };
 

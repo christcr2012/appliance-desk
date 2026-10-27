@@ -8,7 +8,7 @@ Build spec: `docs/build-specs/engines/RECORDS-VAULT.md` sections 1–3. Requeste
 - [x] Starter records offered for every account and document in the spec; adding them twice changes nothing.
 - [x] Renewal reminders on To do; "Renewed…" keeps the old file as history.
 - [x] Export pack (ZIP + index), numbers masked unless unlocked; audited. (Masked form delivered here; the unlocked form arrives with VAULT-2's unlock, per drift item 5.)
-- [ ] OWNER only (ADMIN read of non-sensitive kinds); `ci` green; every review comment read.
+- [x] OWNER only (ADMIN read of non-sensitive kinds); `ci` green; every review comment read.
 
 ## Progress
 Packet written 2026-10-26 (Vivienne, Lane 6). Branch `ai/vivienne/vault-1`, base
@@ -103,3 +103,15 @@ plain-words checks pass. Browser: `e2e/business-records.spec.ts` (new,
 browser-c) and the updated `e2e/business-paperwork.spec.ts` through the repo
 launcher — results recorded in the PR. Remaining acceptance line (ci green at
 the exact head; every review comment read) completes in the PR itself.
+
+**Merged 2026-10-27** — PR #659 (successor to #657/#658, same final tree;
+their branch histories showed phantom conflicts after main moved), squash
+commit `9f7671dd` on main at head `562beffb`. CI fully green at the exact head
+on both runs; Codex raised 7 findings across the three PRs (export pack
+leaving record files out of the nightly copy, export quietly omitting
+unreadable files, renew leaving a stale action date, export work inside one
+database transaction, non-Latin-1 download file names, mark-done ignoring
+expiry dates, and a P1: file removal not locking its row) — all fixed with
+regression tests, every thread answered and resolved. Main's post-merge
+secret scan passed. This close-out rides the SETUP-1 branch per the lane's
+established pattern.

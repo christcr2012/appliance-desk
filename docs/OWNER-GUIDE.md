@@ -125,6 +125,8 @@ Each record shows what kind it is (license, tax account, insurance, document…)
 
 **Files** live on the record: attach a PDF or photo (up to 900 KB, or a PDF up to 15 MB with the large-file option) and it is stored privately — never on a public link. **Renewed…** records the new expiry and keeps the old files as history. **Export a pack** on the list page builds a ZIP of chosen records' files plus an index (numbers masked) for your accountant or your own off-site copy; every export is written to the activity log, as is every file the owner opens. Mark steps **Not needed**, or **Archive** a record to keep it without the reminders.
 
+**Setting the business up** is guided: **More → Set up your business** (`/desk/setup-guide`) walks you through the LLC, EIN, bank and Stripe, the Colorado and Greeley licenses, IRS accounts and the IRIS code for 1099s, insurance, the vehicle, email, texting, the encryption keys, your CPA and backups — 15 walkthroughs with plain steps and official links. Where a step produces a number or a file, you save it on the spot and it lands on the matching record above. Steps the app can verify (a key is set, a number is saved, a file is attached) check themselves and show **Checked ✓** — the app only ever confirms a key exists, never its value. Your **Today** list suggests the next walkthrough until all are finished or you mark one **Not for me**.
+
 ## Signing in and staying safe
 
 Go to `/login`. **Forgot password?** emails a one-hour, one-use link. Owner and admin accounts land on the desk; customers land on their own account. Public sign-up is turned off, so nobody can create an account except through you.

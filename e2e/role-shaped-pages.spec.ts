@@ -24,7 +24,7 @@ const disposable = process.env.CI === "true" && ["localhost", "127.0.0.1"].inclu
 /** Pages that carry the seeded money values for an owner or admin. */
 const moneyPages = ["/desk/inventory/ci-security-appliance", "/desk/jobs/ci-security-job", "/desk/agreements"];
 /** Pages only the owner may open. Anyone else is sent away and receives none of the page. */
-const ownerOnly = ["/desk/settings/permissions", "/desk/approvals", "/desk/privacy", "/desk/today"];
+const ownerOnly = ["/desk/settings/permissions", "/desk/approvals", "/desk/privacy", "/desk/setup-guide", "/desk/today"];
 /** Pages an owner and any admin may open (limits only stop saving, never reading), and staff may not.
  * /desk/paperwork (Business records) joined this list with VAULT-1: admins may read the
  * record kinds the owner allows; records holding a number stay owner-only inside the page. */
