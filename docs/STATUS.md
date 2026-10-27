@@ -1,3 +1,12 @@
+## October 27 — OPS-3: vehicle-to-insurance link (branch `ai/claude/ops3-vehicle-insurance`)
+
+Each delivery vehicle can now be linked to the insurance policy that covers it. The vehicle page says "Insured by …,
+ends …" and warns when that policy has ended (the ended policy already reaches the To do list through OPS-4). Only
+live policies can be picked; deleting a policy just clears the link. Additive migration; tests on real Postgres pass.
+Merged earlier today: review check (#685), insurance certificate on a record (#687, #688). GitHub rule: the
+up-to-date requirement is off; `review-gate` still needs to be saved as a required check (OWNER-CHECKLIST section A).
+NEXT: OPS-2 leftovers (sealed-system technician check, receipt photo).
+
 ## October 27 — OPS-4 follow-up: two Codex fixes (branch `ai/claude/ops4-codex-fixes`)
 
 MERGED earlier: the review check (#685) and OPS-4 "Keep certificate on record" (#687, squash `ffac3c8`). #687 merged

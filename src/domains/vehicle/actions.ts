@@ -20,14 +20,21 @@ export async function saveVehicle(actorUserId: string, vehicleId: string | null,
     plate: t(input.plate, 12).toUpperCase() || null, gvwrLbs: input.gvwrLbs, registrationMonth: input.registrationMonth ?? null,
     odometerAtPurchase: input.odometerAtPurchase, maintenanceEveryMiles: input.maintenanceEveryMiles || null, maintenanceEveryMonths: input.maintenanceEveryMonths || null,
     lastMaintenanceOn, lastMaintenanceMiles: input.lastMaintenanceMiles ?? null, medicalCardExpiresOn, notes: t(input.notes, 400) || null,
+    insurancePolicyId: input.insurancePolicyId || null,
   };
   return prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER", "ADMIN"]);
+    if (data.insurancePolicyId) {
+      // Lock the policy first (the order the insurance screen uses) and make sure it is a live one.
+      await tx.$queryRaw`SELECT "id" FROM "OwnerInsurancePolicy" WHERE "id" = ${data.insurancePolicyId} FOR UPDATE`;
+      const policy = await tx.ownerInsurancePolicy.findUnique({ where: { id: data.insurancePolicyId }, select: { archivedAt: true } });
+      if (!policy || policy.archivedAt) throw new VehicleError("Pick an insurance policy that is still on your list.");
+    }
     if (vehicleId) {
       await tx.$queryRaw`SELECT "id" FROM "FleetVehicle" WHERE "id" = ${vehicleId} FOR UPDATE`;
       if (!(await tx.fleetVehicle.findUnique({ where: { id: vehicleId }, select: { id: true } }))) throw new VehicleError("Couldn't find that vehicle.");
       await tx.fleetVehicle.update({ where: { id: vehicleId }, data });
-      await tx.auditLog.create({ data: { userId: actorUserId, action: "vehicle.updated", entityType: "FleetVehicle", entityId: vehicleId, newValue: { gvwrLbs: data.gvwrLbs } } });
+      await tx.auditLog.create({ data: { userId: actorUserId, action: "vehicle.updated", entityType: "FleetVehicle", entityId: vehicleId, newValue: { gvwrLbs: data.gvwrLbs, insurancePolicyId: data.insurancePolicyId } } });
       return vehicleId;
     }
     const made = await tx.fleetVehicle.create({ data: { ...data, createdByUserId: actorUserId } });

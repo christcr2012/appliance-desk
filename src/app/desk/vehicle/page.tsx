@@ -15,9 +15,10 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const monthOptions: Array<[string, string]> = [["", "Not set"], ...MONTHS.map((m, i) => [String(i + 1), m] as [string, string])];
 const num = (n: number) => n.toLocaleString("en-US");
 
-type VehicleDefaults = { nickname: string; year: number; make: string; model: string; vin: string | null; plate: string | null; gvwrLbs: number; registrationMonth: number | null; odometerAtPurchase: number; maintenanceEveryMiles: number | null; maintenanceEveryMonths: number | null; lastMaintenanceOn: Date | null; lastMaintenanceMiles: number | null; medicalCardExpiresOn: Date | null; notes: string | null };
+type VehicleDefaults = { nickname: string; year: number; make: string; model: string; vin: string | null; plate: string | null; gvwrLbs: number; registrationMonth: number | null; odometerAtPurchase: number; maintenanceEveryMiles: number | null; maintenanceEveryMonths: number | null; lastMaintenanceOn: Date | null; lastMaintenanceMiles: number | null; medicalCardExpiresOn: Date | null; notes: string | null; insurancePolicyId: string | null };
+type PolicyChoice = { id: string; insurer: string; policyNumber: string; expiresOn: Date };
 
-function VehicleFields({ v }: { v?: VehicleDefaults }) {
+function VehicleFields({ v, policies }: { v?: VehicleDefaults; policies: PolicyChoice[] }) {
   const key = (d: Date | null | undefined) => d ? businessDateKey(d) : "";
   return (
     <div className="grid gap-3 md:grid-cols-2">
@@ -35,6 +36,7 @@ function VehicleFields({ v }: { v?: VehicleDefaults }) {
       <Field label="Last service on" name="lastMaintenanceOn" type="date" defaultValue={key(v?.lastMaintenanceOn)} />
       <Field label="Odometer at the last service" name="lastMaintenanceMiles" type="number" min={0} defaultValue={v?.lastMaintenanceMiles ?? ""} />
       <Field label="Driver's medical card expires" name="medicalCardExpiresOn" type="date" defaultValue={key(v?.medicalCardExpiresOn)} />
+      <Select label="Insurance policy that covers it" name="insurancePolicyId" defaultValue={v?.insurancePolicyId ?? ""} options={[["", "Not linked yet"], ...policies.map((p) => [p.id, `${p.insurer} · ${p.policyNumber} · ends ${businessDateKey(p.expiresOn)}`] as [string, string])]} />
       <Field label="Notes" name="notes" defaultValue={v?.notes ?? ""} />
     </div>
   );
@@ -63,11 +65,17 @@ export default async function VehiclePage() {
               <ul className="mt-1 list-disc pl-5 text-sm">{v.rules.points.map((p) => <li key={p}>{p}</li>)}</ul>
               <p className="mt-2 text-xs text-ink-soft">Weight lines: a CDL from 26,001 lb (federal); Colorado commercial-vehicle rules from 16,001 lb (C.R.S. 42-4-235). Summaries only — confirm with the Colorado State Patrol.</p>
             </div>
+            <p className="text-sm">
+              {v.insurancePolicy
+                ? `Insured by ${v.insurancePolicy.insurer} (policy ${v.insurancePolicy.policyNumber}), ${v.insurancePolicy.expiresOn.getTime() < now.getTime() ? "ended" : "ends"} ${businessDateKey(v.insurancePolicy.expiresOn)}.`
+                : "No insurance policy linked yet — pick one in Edit below so you can see at a glance that this vehicle is covered."}
+              {v.insurancePolicy && v.insurancePolicy.expiresOn.getTime() < now.getTime() ? <span className="font-semibold"> This policy has ended: renew it or link the new one.</span> : null}
+            </p>
             {v.due.length > 0 ? <ul className="text-sm">{v.due.map((d) => <li key={d.key + d.label} className="font-semibold">{d.label}: <span className="font-normal">{d.detail}</span></li>)}</ul> : null}
             {v.todayTrip ? <p className="text-sm">Today&apos;s trip: started at {num(v.todayTrip.startOdometer)}{v.todayTrip.endOdometer != null ? `, finished at ${num(v.todayTrip.endOdometer)} (${num(v.todayTrip.miles ?? 0)} miles)` : " — not finished yet"}.</p> : null}
             <details>
               <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Change this vehicle</summary>
-              <VehicleForm action={saveVehicleAction.bind(null, v.id)} submit="Save changes"><VehicleFields v={v} /></VehicleForm>
+              <VehicleForm action={saveVehicleAction.bind(null, v.id)} submit="Save changes"><VehicleFields v={v} policies={o.policies} /></VehicleForm>
             </details>
             <details>
               <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Record a service</summary>
@@ -84,7 +92,7 @@ export default async function VehiclePage() {
       ))}
 
       <Card title={active.length === 0 ? "Add your vehicle" : "Add another vehicle"}>
-        <VehicleForm action={saveVehicleAction.bind(null, null)} submit="Add vehicle"><VehicleFields /></VehicleForm>
+        <VehicleForm action={saveVehicleAction.bind(null, null)} submit="Add vehicle"><VehicleFields policies={o.policies} /></VehicleForm>
       </Card>
 
       {active.length > 0 ? (
