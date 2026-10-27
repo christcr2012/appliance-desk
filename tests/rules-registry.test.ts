@@ -35,6 +35,17 @@ const CMP4_MIGRATION = readFileSync(
   "prisma/migrations/20261111000000_cmp4_colorado_local/migration.sql", "utf8",
 );
 
+// TAXBEN-1 seeds the write-off and benefit rules in its own migration
+// (docs/research/2026-10-25-tax-benefits.md).
+const TAXBEN_MIGRATION = readFileSync(
+  "prisma/migrations/20261113000000_taxben_benefits/migration.sql", "utf8",
+);
+
+// TAXBEN-1 S5 seeds the benefit engine's rate rules in a follow-up migration.
+const TAXBEN_RATES_MIGRATION = readFileSync(
+  "prisma/migrations/20261113020000_taxben_benefit_rates/migration.sql", "utf8",
+);
+
 const SEEDED: Record<RuleKey, unknown> = {
   "co.rdf.amount": 31,
   "co.rdf.qualified_threshold": 50000000,
@@ -62,11 +73,24 @@ const SEEDED: Record<RuleKey, unknown> = {
   "co.accessibility_fix_days": 30,
   "co.bpp.exemption_threshold": 5600000,
   "co.bpp.extension": { tenDayFeeCents: 2000, twentyDayFeeCents: 4000 },
+  "us.de_minimis_per_item": 250000,
+  "us.startup_costs": { deductionCents: 500000, phaseoutStartCents: 5000000, amortizationMonths: 180 },
+  "us.qbi": { percent: 20, minimumCents: 40000, minimumQbiCents: 100000 },
+  "us.se_tax": { deductiblePercent: 50, ssWageBaseCents: 18450000 },
+  "us.se_tax_rates": { netEarningsPercent: 92.35, socialSecurityPercent: 12.4, medicarePercent: 2.9, minimumNetEarningsCents: 40000 },
+  "us.mid_quarter": { percent: 40 },
+  "us.sep_ira": { percentOfNetProfit: 20, maxCents: 7200000 },
+  "us.solo_401k": { deferralCents: 2450000, maxTotalCents: 7200000 },
+  "us.home_office_simplified": { rateCentsPerSqFt: 500, maxSqFt: 300 },
+  "us.class_life_months": { rentalAppliances: 60, tools: 84 },
+  "us.passenger_auto_caps": { year1WithBonusCents: 2030000, year1WithoutBonusCents: 1230000 },
+  "co.enterprise_zone_credit": { percent: 3 },
+  "co.bpp_exemption": 5600000,
 };
 
 describe("rule registry", () => {
   it("defines every seeded key with a title, explanation, area, schema and edit fields", () => {
-    expect(RULE_KEYS).toHaveLength(26);
+    expect(RULE_KEYS).toHaveLength(39);
     for (const key of RULE_KEYS) {
       const def = RULES[key];
       expect(def.key).toBe(key);
@@ -104,8 +128,10 @@ describe("rule registry", () => {
       const smallClaims = key.startsWith("co.small_claims");
       const privacy = key.startsWith("co.breach") || key === "co.accessibility_fix_days";
       const refrigerant = key === "records.refrigerant_keep_years";
-      const bpp = key.startsWith("co.bpp");
-      const source = mileage ? VEHICLE_MIGRATION : privacy ? PRIVACY_MIGRATION : smallClaims ? SMALL_CLAIMS_MIGRATION : refrigerant ? REFRIGERANT_MIGRATION : bpp ? CMP4_MIGRATION : MIGRATION;
+      const bpp = key.startsWith("co.bpp") && key !== "co.bpp_exemption";
+      const taxben = key === "co.bpp_exemption" || key === "co.enterprise_zone_credit" || key === "us.de_minimis_per_item" || key === "us.startup_costs" || key === "us.qbi" || key === "us.se_tax" || key === "us.sep_ira" || key === "us.solo_401k" || key === "us.home_office_simplified" || key === "us.class_life_months" || key === "us.passenger_auto_caps";
+      const benefitRates = key === "us.se_tax_rates" || key === "us.mid_quarter";
+      const source = benefitRates ? TAXBEN_RATES_MIGRATION : taxben ? TAXBEN_MIGRATION : mileage ? VEHICLE_MIGRATION : privacy ? PRIVACY_MIGRATION : smallClaims ? SMALL_CLAIMS_MIGRATION : refrigerant ? REFRIGERANT_MIGRATION : bpp ? CMP4_MIGRATION : MIGRATION;
       const row = source.split("),\n").find((text) => text.includes(`'${key}'`) && text.includes("'RESEARCHED'"));
       expect(row, `${key} must be seeded`).toBeDefined();
       expect(row).toContain(bpp ? "2026-10-27T12:00:00Z" : mileage || smallClaims || privacy || refrigerant ? "2026-10-26T12:00:00Z" : "2026-10-25T12:00:00Z");

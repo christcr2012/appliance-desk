@@ -17,8 +17,19 @@ export function TaxYearFactsForm({
 }: {
   year: number;
   years: number[];
-  facts: { federalTax: string; federalAgi: string; coloradoTax: string; form1099KGross: string };
+  facts: {
+    federalTax: string;
+    federalAgi: string;
+    coloradoTax: string;
+    form1099KGross: string;
+    seHealthPremiums: string;
+    employerPlanMonths: number[];
+  };
 }) {
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
   const router = useRouter();
   const [state, formAction, pending] = useActionState<ComplianceActionState, FormData>(saveTaxYearFactsAction, {});
   const inputCls = "w-full rounded-lg border border-border bg-card px-3 py-2";
@@ -72,6 +83,27 @@ export function TaxYearFactsForm({
         <input name="form1099KGross" defaultValue={facts.form1099KGross} inputMode="decimal" className={inputCls} />
         <span className={helpCls}>Box 1a of the Form 1099-K Stripe sends for that year. The packet compares it with the books.</span>
       </label>
+      <label className={labelCls}>
+        That year&apos;s health insurance premiums you paid yourself ($)
+        <input name="seHealthPremiums" defaultValue={facts.seHealthPremiums} inputMode="decimal" className={inputCls} />
+        <span className={helpCls}>Premiums for your own health plan while self-employed. They can count as a deduction on Taxes › Tax benefits — except for months an employer plan was open to you.</span>
+      </label>
+      <fieldset>
+        <legend className={labelCls}>Months an employer health plan was open to you (yours or your spouse&apos;s)</legend>
+        <p className={helpCls}>Tick each month you could have joined an employer plan. Premiums for those months do not count.</p>
+        <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {monthNames.map((name, i) => (
+            <label key={name} className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                name={`employerPlanMonth${i + 1}`}
+                defaultChecked={facts.employerPlanMonths.includes(i + 1)}
+              />
+              {name}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <button
         type="submit"
         disabled={pending}

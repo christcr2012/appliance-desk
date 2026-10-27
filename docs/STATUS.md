@@ -9,6 +9,45 @@ pickup $0, else an owner-recorded driving-route exception's frozen price, else t
 customer estimate pages show that same price (an exception says so in plain words). Not here: the billed delivery line (FEETAX-1), portal checkout (PORTAL-1), a clickable map pin.
 Proof: unit tests and the zone DB tests run here on a throwaway Postgres; browser tests in CI. Branch `ai/claude/zone-1-service-area-map`. Checklist row added.
 
+||||||| fa71334d
+
+## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (PR #696)
+
+Branch `ai/vivienne/taxben-1`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` sections 1–3.
+Every expense account in the system chart now carries a **deduction mapping** (Schedule C line,
+percent, kind); shared accounts (phone and internet) deduct the owner's answered business-use
+percent and **0% until answered**, with the answer kept in **Write-off settings** on the new
+**Taxes › Tax benefits** page and asked once in the guided setup. Each purchase is classified
+when it is recorded: the invoice line (price plus its share of the same invoice's delivery and
+installation charges) at or under the rule book's de minimis limit is **expensed** when the
+year's election is on; the rest is **capitalized** — Section 179 when the CPA preference says
+so, never bonus for a purchase from a relative or the owner's other business (the purchase form
+asks), bonus after the rule's boundary date, else class life — and the decision, its plain-words
+reason and the rule value used are recorded on the unit and never rewritten. The **written
+capitalization policy** is generated from the rule book, signed by the owner on screen, stored
+as a Business record, and re-asked every December. **Start-up costs** (posted expenses before
+the business-began day — stored fact, else the earlier of the first appliance available and the
+first public lead) exclude fleet purchases, interest and taxes; the Section 195 result prints on
+the accountant packet and the depreciation worksheet's Part VI block. The **benefit list**
+computes on read: depreciation and expensing totals, the mid-quarter watch with an
+October/November To do, vehicle mileage vs actual costs, home office both methods, the
+self-employment chain (SE tax at the rule-book rates, its deductible half, SEP-IRA and solo
+401(k) estimates with a January–March To do), SE health insurance less employer-plan months,
+QBI with its minimum, the enterprise-zone row and January pre-certification To do, the county
+property line against the exemption, the bad-debt explanation, the loss row, and the ordinary
+deductions checklist with "missing anything?" prompts — every number from the rule book,
+guarded by a lint test over the taxben module. Thirteen new rules seeded (including
+`us.se_tax_rates` and `us.mid_quarter` in a follow-up migration); registry count 39. Six
+starting values filed as DQ-TAXBEN-* (de minimis election, bonus vs Section 179, appliance
+class life, business-began date, solo 401(k) deadline, enterprise-zone fleet use). Proof:
+`tests/taxben-classification.test.ts`, `tests/taxben-startup.test.ts`,
+`tests/taxben-policy.test.ts`, `tests/taxben-benefits-integration.test.ts`,
+`tests/taxben-rule-book-lint.test.ts` on throwaway Postgres, plus the purchase, packet,
+exceptions and setup suites. All six Codex findings on PR #696 were fixed in one batch
+(contra-income sign, de minimis purchase-year, the missing owner save path for the new
+facts, de minimis units in the mid-quarter basis, the derived began date, and the renewal
+link's year), each with a regression test; local suites 55/55 green before the push.
+exceptions and setup suites.
 ## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)
 
 A repair visit can be marked "sealed refrigerant system". Only a person with a refrigerant (Type I) certification on file can be
@@ -211,21 +250,25 @@ also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthrou
 `tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
 saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
 
-## October 27 — FEETAX-2: delivery-area tax readiness (in progress, PR #669)
+## October 27 — FEETAX-2: delivery-area tax readiness (merged)
 
-Branch `ai/vivienne/feetax-2-final` (successor to the first PR, #666). Every place within 50 miles of Greeley is seeded with its delivery
+MERGED via PR #684, squash `8a71a069` on main (chain #666 → #669 → #677 → #678 → #684; the
+earlier PRs were closed unmerged for GitHub merge-check reasons as main moved, the tree was
+blob-verified at every step). Every place within 50 miles of Greeley is seeded with its delivery
 readiness (city license rule, how returns are filed, source and review state — no tax rates
 seeded, and no rent-tax decisions either: whether a place taxes rentals stays in the tax rules). Before an address can be quoted, ordered
 or scheduled, the new readiness check refuses it with a plain reason when a place's rules are
 undecided, a required city license is missing or expired, the delivery count crosses a city's
 license rule, the address's tax places aren't confirmed, or the address is outside Colorado. The
 one override — owner-only, with a reason, written to Activity — covers "rules not decided" only;
-a missing license can never be overridden. Delivery counts are recorded when a delivery job
-finishes. New screen **Taxes › Delivery area** lists every place and runs "Check an address";
+a missing license can never be overridden. Delivery counts are recorded when a delivery or
+installation job finishes, and dispatch counts in-flight deliveries of both kinds with the
+address's places locked, so two dispatches cannot both slip under a city's license line. New
+screen **Taxes › Delivery area** lists every place and runs "Check an address";
 a "Get ready to deliver in {city}" item lands on the To do list only for places a real customer
-address needs. Proof so far: `tests/delivery-readiness-integration.test.ts` (19 tests), the
-conversion suite and the wired-path suites on throwaway Postgres; PR #669 carries the full
-verification record. Starting values filed as
+address needs. Proof: `tests/delivery-readiness-integration.test.ts` (24 tests), the
+conversion suite and the wired-path suites on throwaway Postgres; 17 CI runs across the chain;
+eleven Codex findings, all real, all fixed with regression tests. Starting values filed as
 DQ-FEETAX2-1 (Boulder rent "likely") and DQ-FEETAX2-2 (presumed city licenses).
 
 ## October 27 — CMP-4 merged (PR #670)

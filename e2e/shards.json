@@ -63,7 +63,8 @@
       "books-month-review.spec.ts",
       "business-records.spec.ts",
       "setup-guide.spec.ts",
-      "delivery-area.spec.ts"
+      "delivery-area.spec.ts",
+      "tax-benefits.spec.ts"
     ],
     "browser-d": [
       "accessibility.spec.ts",
