@@ -87,7 +87,8 @@
       "signature-public.spec.ts",
       "signature-focus.spec.ts",
       "desk-offline.spec.ts",
-      "recalls.spec.ts"
+      "recalls.spec.ts",
+      "app-feel.spec.ts"
     ],
     "browser-e": [
       "crm-workspace.spec.ts",
