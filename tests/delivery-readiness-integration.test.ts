@@ -10,6 +10,7 @@ import {
   deliveryTaxReadiness,
   recordDeliveryCountInTx,
   recordReadinessOverrideInTx,
+  saveReadiness,
 } from "@/domains/tax/delivery-readiness";
 import { prisma } from "@/lib/prisma";
 
@@ -145,7 +146,10 @@ maybeDescribe("FEETAX-2 delivery readiness (real Postgres)", () => {
 
   afterEach(async () => {
     await prisma.auditLog.deleteMany({
-      where: { action: "tax.delivery_readiness_override", entityId: { startsWith: "dr-" } },
+      where: {
+        action: { in: ["tax.delivery_readiness_override", "tax.readiness_update"] },
+        entityId: { startsWith: "dr-" },
+      },
     });
     // Agreements and jobs created through the real save paths carry
     // generated ids, so they are cleaned up by their dr- customer/address.
@@ -553,6 +557,51 @@ maybeDescribe("FEETAX-2 delivery readiness (real Postgres)", () => {
     await expect(
       updateJobStatus(ownerId, second.id, "IN_PROGRESS"),
     ).rejects.toThrow(/needs a city license first/);
+  });
+
+  it("saving a place's readiness creates then updates one row, audited", async () => {
+    const city = await makeJurisdiction("saveedit", { rentalRule: "TAXABLE" });
+    await saveReadiness(ownerId, city, {
+      licenseRequired: "ALWAYS",
+      filesThrough: "SUTS",
+      licenseRecordId: null,
+      sourceUrl: "https://example.test/license",
+      notes: "Checked with the city clerk.",
+      markReviewed: true,
+    }, NOW);
+    let row = await prisma.jurisdictionReadiness.findUniqueOrThrow({
+      where: { jurisdictionId: city },
+    });
+    expect(row.licenseRequired).toBe("ALWAYS");
+    expect(row.reviewStatus).toBe("REVIEWED");
+
+    await saveReadiness(ownerId, city, {
+      licenseRequired: "NONE",
+      filesThrough: "SUTS",
+      licenseRecordId: null,
+      sourceUrl: null,
+      notes: "Clerk confirmed no license is needed.",
+      markReviewed: false,
+    }, NOW);
+    row = await prisma.jurisdictionReadiness.findUniqueOrThrow({
+      where: { jurisdictionId: city },
+    });
+    expect(row.licenseRequired).toBe("NONE");
+    const audits = await prisma.auditLog.count({
+      where: { action: "tax.readiness_update", entityId: city },
+    });
+    expect(audits).toBe(2);
+
+    await expect(
+      saveReadiness(ownerId, "dr-jur-missing", {
+        licenseRequired: "NONE",
+        filesThrough: "SUTS",
+        licenseRecordId: null,
+        sourceUrl: null,
+        notes: null,
+        markReviewed: false,
+      }, NOW),
+    ).rejects.toThrow(/Couldn't find that place/);
   });
 
   it("a delivery already on the truck counts toward the threshold at dispatch", async () => {

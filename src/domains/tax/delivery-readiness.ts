@@ -616,11 +616,13 @@ export async function saveReadiness(
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
-    const jurisdiction = await tx.taxJurisdiction.findUnique({
-      where: { id: jurisdictionId },
-      select: { id: true },
-    });
-    if (!jurisdiction) throw new Error("Couldn't find that place.");
+    // Writes lock the row first (AGENTS.md): the parent jurisdiction
+    // is the stable lock target, including when no readiness row
+    // exists yet for the upsert to lock.
+    const locked = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "TaxJurisdiction" WHERE "id" = ${jurisdictionId} FOR UPDATE
+    `;
+    if (locked.length !== 1) throw new Error("Couldn't find that place.");
     if (input.licenseRecordId) {
       const record = await tx.businessPaperwork.findUnique({
         where: { id: input.licenseRecordId },
