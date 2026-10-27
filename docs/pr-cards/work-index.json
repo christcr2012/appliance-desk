@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "91f7d34d",
-  "updated": "2026-10-23",
+  "updated": "2026-10-26",
   "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
@@ -4052,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "IN REVIEW — PR #613; full CI green at implementation head 72ac47ff; final docs-only CI pending",
+      "status": "MERGED — PR #613, exact-head CI green 40357496521",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4065,7 +4065,7 @@
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "IN_REVIEW",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {
@@ -4075,7 +4075,7 @@
       "dependencies": [
         "BA-2"
       ],
-      "status": "IN PROGRESS — branch ai/vivienne/vault-1 (base 238f7a57, CMP-1 merged); packet and drift check written 2026-10-26; building. First commit also lands the ACC-6 merged-status tidy-up.",
+      "status": "MERGED — PR #624, exact-head CI green 40444991438 at eb2a99c7",
       "migration": "month_review",
       "budget": 480,
       "units": [
@@ -4087,9 +4087,12 @@
       ],
       "tests": [
         "tests/ba3-month-review-integration.test.ts",
-        "e2e/books-month-review.spec.ts"
+        "e2e/books-month-review.spec.ts",
+        "tests/ba3-accountant-send.test.ts",
+        "tests/ba3-month-review.test.ts",
+        "tests/ba3-month-actions.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-3.md"
     },
     {
@@ -4712,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651; remembered lists PR pending",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -5249,7 +5252,10 @@
       ],
       "tests": [
         "tests/rules-parsers.test.ts",
-        "tests/rules-observation-integration.test.ts"
+        "tests/rules-observation-integration.test.ts",
+        "tests/tax-official-source-watch-integration.test.ts",
+        "tests/tax-official-rate-auto-apply-integration.test.ts",
+        "tests/today-role-access.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/TFA-3.md"
@@ -5393,7 +5399,7 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/vault-1; packet and drift check written 2026-10-26; built and verified locally (unit 10/10, integration 12/12, both browser specs green via the repo launcher); PR follows. First commit also lands the ACC-6 merged-status tidy-up.",
       "migration": "20261103000000_business_records",
       "budget": 450,
       "units": [
@@ -5545,7 +5551,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-3)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5557,7 +5563,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-3-integration.test.ts"
+        "tests/ops3-vehicle-rules.test.ts",
+        "tests/ops3-vehicle-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-3.md"
@@ -5570,7 +5577,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-4)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5582,7 +5589,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-4-integration.test.ts"
+        "tests/ops4-insurance-rules.test.ts",
+        "tests/ops4-insurance-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-4.md"
@@ -5619,7 +5627,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR open on ai/claude/ops-6",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5631,7 +5639,9 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-6-integration.test.ts"
+        "tests/ops6-collections-rules.test.ts",
+        "tests/ops6-no-ownership-wording.test.ts",
+        "tests/ops6-collections-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-6.md"
@@ -5643,7 +5653,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR open on ai/claude/ops-7",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5655,7 +5665,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-7-integration.test.ts"
+        "tests/ops7-privacy-rules.test.ts",
+        "tests/ops7-privacy-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-7.md"
@@ -5668,7 +5679,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-8)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5680,7 +5691,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-8-integration.test.ts"
+        "tests/ops8-continuity-rules.test.ts",
+        "tests/ops8-continuity-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-8.md"

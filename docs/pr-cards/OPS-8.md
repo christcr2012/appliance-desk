@@ -11,4 +11,4 @@ TFA-1 (dated rules) and VAULT-1 where the spec says. Risk: see the spec section.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Built on `ai/claude/ops-8` (PR pending): continuity page, pause switch (owner-only, audited, enforced in `runAutomation`), live snapshot, December yearly check-up To do and walkthrough. Not built: emergency access for the successor (needs VAULT-1; recorded on the owner checklist), vendor-terms and tax set-aside figures are checklist steps that open existing screens, not computed.
