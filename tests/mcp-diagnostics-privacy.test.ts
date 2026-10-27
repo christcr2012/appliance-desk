@@ -92,7 +92,7 @@ describe("MCP read-only diagnostic privacy boundary", () => {
       healthOverview(actor), issuesList(actor, { limit: 20 }),
       issueGet(actor, "c1234567890123"), automationRuns(actor, "backup", 20),
       configurationReadiness(actor), backupStatus(actor),
-      decisionsList(actor, 20), decisionGet(actor, "TEST-1"),
+      decisionsList(actor, { limit: 20 }), decisionGet(actor, "TEST-1"),
     ]);
     for (const item of outputs) expect(JSON.stringify(item)).not.toContain(hidden);
     expect(outputs[5]).toMatchObject({
@@ -112,6 +112,47 @@ describe("MCP read-only diagnostic privacy boundary", () => {
       () => backupStatus(actor),
     ]) await expect(call()).rejects.toThrow("STAFF_FORBIDDEN");
     expect(f.guard).toHaveBeenCalledWith(expect.anything(), actor.userId, ["OWNER", "ADMIN"]);
+  });
+
+  it("pages through every scheduled job without losing the tail of the catalog", async () => {
+    const jobs = Array.from({ length: 37 }, (_, i) => ({
+      ruleKey: `job-${String(i).padStart(2, "0")}`, label: `Scheduled job ${i}`,
+      state: "working", explanation: "Scheduled", nextDueAt: date,
+      lastSuccessAt: date, missingEnv: [], lastFailure: null,
+    }));
+    f.health.mockResolvedValue(jobs);
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 5; page += 1) {
+      const result = await healthOverview(actor, { cursor, limit: 10 });
+      for (const job of result.jobs as Array<{ key: string }>) seen.push(job.key);
+      cursor = result.nextCursor as string | undefined;
+      if (!cursor) break;
+    }
+    expect(seen).toEqual(jobs.map((job) => job.ruleKey));
+    await expect(healthOverview(actor, { cursor: "unknown-job", limit: 10 }))
+      .rejects.toThrow("INVALID_CURSOR");
+  });
+
+  it("pages through every decision and refuses unknown cursors", async () => {
+    const cards = Array.from({ length: 41 }, (_, i) => ({
+      id: `TEST-${i}`, area: "Operations", title: "Safe question",
+      question: "What should be set?", state: "OPEN",
+      current: { words: "not decided" }, recommended: null,
+      last: null, history: [],
+    }));
+    f.list.mockResolvedValue(cards);
+    const ids: string[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 7; page += 1) {
+      const result = await decisionsList(actor, { cursor, limit: 7 });
+      ids.push(...result.decisions.map((card) => card.id));
+      cursor = result.nextCursor ?? undefined;
+      if (!cursor) break;
+    }
+    expect(ids).toEqual(cards.map((card) => card.id));
+    await expect(decisionsList(actor, { cursor: "TEST-999", limit: 7 }))
+      .rejects.toThrow("INVALID_CURSOR");
   });
 
   it("never echoes a private freeform decision answer", () => {

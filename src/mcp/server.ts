@@ -51,9 +51,9 @@ export function boundMcpOutput(raw: Record<string, unknown>): Record<string, unk
   }
   if (removed) {
     if (!rows.length) throw new Error("TOOL_RESULT_TOO_LARGE");
-    if (arrayName === "issues" || arrayName === "decisions") {
-      const last = rows.at(-1) as { id?: string };
-      result.nextCursor = last.id ?? null;
+    if (arrayName === "issues" || arrayName === "decisions" || arrayName === "jobs") {
+      const last = rows.at(-1) as { id?: string; key?: string };
+      result.nextCursor = arrayName === "jobs" ? last.key ?? null : last.id ?? null;
     }
     if (arrayName === "decisions") result.remaining = Number(result.remaining ?? 0) + removed;
     result.truncated = true;
@@ -112,7 +112,10 @@ export function buildMcpServer(context: AgentContext): McpServer {
 
   server.registerTool("appliance_health_get_overview", {
     title: "System health", description: "Read safe scheduled job health states and next steps.",
-    inputSchema: z.strictObject({}),
+    inputSchema: z.strictObject({
+      cursor: z.string().regex(/^[a-z][a-z0-9:-]{0,79}$/).optional(),
+      limit: z.number().int().min(1).max(25).default(10),
+    }),
     outputSchema: z.object({
       states: z.record(z.string(), z.number()),
       jobs: z.array(z.object({
@@ -120,9 +123,9 @@ export function buildMcpServer(context: AgentContext): McpServer {
         nextStep: z.string(), lastGoodUtc: utc, nextDueUtc: utc, nextDueDenver: utc,
         failureCode: z.string().nullable(), missingSettings: z.array(z.string()),
       })),
-      truncated: z.boolean().optional(),
+      nextCursor: z.string().nullable(), truncated: z.boolean().optional(),
     }), annotations: readOnly,
-  }, async () => read("ops:read", () => healthOverview(context)));
+  }, async ({ cursor, limit }) => read("ops:read", () => healthOverview(context, { cursor, limit })));
 
   server.registerTool("appliance_health_list_issues", {
     title: "Open system issues", description: "Page through issue codes and status without private reports.",
@@ -187,12 +190,15 @@ export function buildMcpServer(context: AgentContext): McpServer {
 
   server.registerTool("appliance_decisions_list", {
     title: "Decisions and reviews", description: "Read safe question wording and private-answer status.",
-    inputSchema: z.strictObject({ limit: z.number().int().min(1).max(50).default(20) }),
+    inputSchema: z.strictObject({
+      cursor: z.string().max(80).regex(/^[A-Z][A-Z0-9-]+$/).optional(),
+      limit: z.number().int().min(1).max(50).default(20),
+    }),
     outputSchema: z.object({
       decisions: z.array(decisionShape), remaining: z.number(),
-      nextCursor: z.string().nullable().optional(), truncated: z.boolean().optional(),
+      nextCursor: z.string().nullable(), truncated: z.boolean().optional(),
     }), annotations: readOnly,
-  }, async ({ limit }) => read("decisions:read", () => decisionsList(context, limit)));
+  }, async ({ cursor, limit }) => read("decisions:read", () => decisionsList(context, { cursor, limit })));
 
   server.registerTool("appliance_decisions_get", {
     title: "Decision detail", description: "Read one decision and answer-history dates, never freeform answers.",

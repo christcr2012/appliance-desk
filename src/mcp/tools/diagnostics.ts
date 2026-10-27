@@ -17,14 +17,17 @@ export async function checkMcpActor(ctx: AgentContext): Promise<void> {
   });
 }
 
-export async function healthOverview(ctx: AgentContext): Promise<Record<string, unknown>> {
+export async function healthOverview(ctx: AgentContext, input: { cursor?: string; limit?: number } = {}): Promise<Record<string, unknown>> {
   await checkMcpActor(ctx);
   const rows = await getAutomationHealth();
   const states: Record<string, number> = {};
   for (const row of rows) states[row.state] = (states[row.state] ?? 0) + 1;
+  const start = input.cursor ? rows.findIndex((row) => row.ruleKey === input.cursor) + 1 : 0;
+  if (input.cursor && start === 0) throw new Error("INVALID_CURSOR");
+  const selected = rows.slice(start, start + (input.limit ?? 10));
   return {
     states,
-    jobs: rows.map((row) => ({
+    jobs: selected.map((row) => ({
       key: row.ruleKey, title: row.label, state: row.state,
       explanation: row.explanation, nextStep: row.state === "working" ? "No action needed" : "Review System health in the app",
       lastGoodUtc: at(row.lastSuccessAt), nextDueUtc: at(row.nextDueAt),
@@ -32,6 +35,7 @@ export async function healthOverview(ctx: AgentContext): Promise<Record<string, 
       failureCode: row.lastFailure?.code ?? null,
       missingSettings: row.missingEnv,
     })),
+    nextCursor: start + selected.length < rows.length ? selected.at(-1)?.ruleKey ?? null : null,
   };
 }
 
@@ -152,10 +156,17 @@ function safeDecision(card: DecisionCard) {
     lastRecordedUtc: at(card.last?.createdAt),
   };
 }
-export async function decisionsList(ctx: AgentContext, limit: number) {
+export async function decisionsList(ctx: AgentContext, input: { cursor?: string; limit: number }) {
   const all = await listDecisions(ctx.userId);
-  return { decisions: all.slice(0, limit).map(safeDecision),
-    remaining: Math.max(0, all.length - limit) };
+  const start = input.cursor ? all.findIndex((card) => card.id === input.cursor) + 1 : 0;
+  if (input.cursor && start === 0) throw new Error("INVALID_CURSOR");
+  const page = all.slice(start, start + input.limit);
+  const remaining = Math.max(0, all.length - start - page.length);
+  return {
+    decisions: page.map(safeDecision),
+    remaining,
+    nextCursor: remaining > 0 ? page.at(-1)?.id ?? null : null,
+  };
 }
 export async function decisionGet(ctx: AgentContext, id: string) {
   const card = await getDecision(ctx.userId, id);

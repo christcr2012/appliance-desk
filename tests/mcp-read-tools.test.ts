@@ -59,7 +59,7 @@ describe("MCP-4 diagnostic tool registry", () => {
 
   it("enforces scope per call and rejects unknown or invalid fields", async () => {
     const { client, close } = await connect(actor("reader", ["ops:read"]));
-    fakes.health.mockResolvedValue({ states: {}, jobs: [] });
+    fakes.health.mockResolvedValue({ states: {}, jobs: [], nextCursor: null });
     try {
       const denied = await client.callTool({ name: "appliance_decisions_list", arguments: {} });
       expect(denied.isError).toBe(true);
@@ -81,7 +81,7 @@ describe("MCP-4 diagnostic tool registry", () => {
         name: "appliance_health_get_overview", arguments: {},
       });
       expect(allowed.isError).not.toBe(true);
-      expect(allowed.structuredContent).toEqual({ states: {}, jobs: [] });
+      expect(allowed.structuredContent).toEqual({ states: {}, jobs: [], nextCursor: null });
     } finally { await close(); }
   });
 
@@ -98,6 +98,34 @@ describe("MCP-4 diagnostic tool registry", () => {
       expect(JSON.stringify(left)).not.toContain("assistant-two");
       expect(JSON.stringify(right)).not.toContain("assistant-one");
     } finally { await Promise.all([a.close(), b.close()]); }
+  });
+
+  it("accepts health and decision continuation cursors and passes them to their scoped handlers", async () => {
+    const { client, close } = await connect(actor("owner", ["ops:read", "decisions:read"]));
+    fakes.health.mockResolvedValue({ states: {}, jobs: [], nextCursor: null });
+    fakes.decisions.mockResolvedValue({ decisions: [], remaining: 0, nextCursor: null });
+    try {
+      const health = await client.callTool({ name: "appliance_health_get_overview",
+        arguments: { cursor: "backup", limit: 5 } });
+      expect(health.isError).not.toBe(true);
+      expect(fakes.health).toHaveBeenCalledWith(expect.anything(), { cursor: "backup", limit: 5 });
+      const decisions = await client.callTool({ name: "appliance_decisions_list",
+        arguments: { cursor: "TEST-10", limit: 5 } });
+      expect(decisions.isError).not.toBe(true);
+      expect(fakes.decisions).toHaveBeenCalledWith(expect.anything(), { cursor: "TEST-10", limit: 5 });
+    } finally { await close(); }
+  });
+
+  it("preserves health's last visible job as the cursor if the size cap trims a page", () => {
+    const jobs = Array.from({ length: 35 }, (_, i) => ({
+      key: `job-${i}`, explanation: "SAFE".repeat(150),
+    }));
+    const result = boundMcpOutput({ states: { working: 35 }, jobs, nextCursor: "job-35" });
+    expect(JSON.stringify(result).length).toBeLessThan(8192);
+    expect(result.truncated).toBe(true);
+    const kept = result.jobs as typeof jobs;
+    expect(kept.length).toBeLessThan(jobs.length);
+    expect(result.nextCursor).toBe(kept.at(-1)?.key);
   });
 
   it("keeps results under 8 KB and carries the last returned issue cursor", () => {

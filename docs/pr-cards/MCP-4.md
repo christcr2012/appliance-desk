@@ -40,3 +40,11 @@ freeform reports, answer histories, provider errors and private storage paths.
   block a previously authorized tool call.
 - Changed-file ESLint passed. Full local typecheck exhausted the sandbox's 3 GB
   Node.js heap; exact-head GitHub `ci` and `review-gate` are mandatory before merge.
+
+**Review follow-up — October 27:** Codex identified that health's full 37-job catalog
+could be silently truncated and that later decisions were inaccessible. Both reads
+now accept strict cursors and bounded page sizes; if the 8 KB cap trims a page,
+the cursor is set to its final returned entry. Four additional tests cover the
+full 37-job/41-decision catalogs, SDK cursor input, and output-budget truncation.
+Focused SDK/privacy test suite now passes 11/11; changed-file ESLint passed.
+Review-thread replies/resolutions and GitHub exact-head CI remain required.
