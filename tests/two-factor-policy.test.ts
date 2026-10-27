@@ -16,7 +16,14 @@ describe("two-factor role policy", () => {
     expect(twoFactorRolesFromSetting(["STAFF", "CUSTOMER", "OWNER", "STAFF"])).toEqual([
       "OWNER",
       "STAFF",
+      "ACCOUNTANT",
     ]);
+  });
+
+  it("always requires the accountant, whatever the stored policy says (ACCT-1)", () => {
+    expect(twoFactorRolesFromSetting([])).toEqual(["ACCOUNTANT"]);
+    expect(roleRequiresTwoFactor("ACCOUNTANT", [])).toBe(true);
+    expect(roleRequiresTwoFactor("ACCOUNTANT", ["OWNER"])).toBe(true);
   });
 
   it("requires Owner/Admin by default while Customer can never be required", () => {
