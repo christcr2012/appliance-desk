@@ -224,6 +224,10 @@ export const BACKUP_MODEL_POLICY = {
   RecallMatch: "recallMatch",
   RecallWatchState: "recallWatchState",
   SafetyIncident: "safetyIncident",
+
+  // OPS-3: the delivery vehicle and its mileage log are business records.
+  FleetVehicle: "fleetVehicle",
+  MileageTrip: "mileageTrip",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

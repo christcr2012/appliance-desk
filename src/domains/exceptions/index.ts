@@ -12,6 +12,7 @@ import { listRetiredPlanAttention } from "./retired-attention";
 import { listRecallAttention } from "./recall-attention";
 import { listBooksAttention, listBooksSetupAttention } from "./books-attention";
 import { listResaleTaxAttention } from "./resale-tax-attention";
+import { listVehicleAttention } from "./vehicle-attention";
 import { listApprovalAttention } from "./approval-attention";
 import { listGoalAttention } from "./goal-attention";
 import { prisma } from "@/lib/prisma";
@@ -1098,6 +1099,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const recallAttention = canViewFinance ? await listRecallAttention(now) : [];
   const booksAttention = canViewFinance ? await listBooksAttention(now) : [];
   const booksSetupAttention = session.user.role === "OWNER" ? await listBooksSetupAttention(now) : [];
+  const vehicleAttention = (session.user as { role?: string }).role === "OWNER" ? await listVehicleAttention(now) : [];
   const resaleTaxAttention = (session.user as { role?: string }).role === "OWNER" ? await listResaleTaxAttention(now) : [];
   const approvalAttention = (session.user as { role?: string }).role === "OWNER" ? await listApprovalAttention(now) : [];
   const goalAttention = canViewFinance ? await listGoalAttention(now) : [];
@@ -1180,6 +1182,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...booksAttention,
     ...booksSetupAttention,
     ...resaleTaxAttention,
+    ...vehicleAttention,
     ...approvalAttention,
     ...goalAttention,
   ];

@@ -11,6 +11,11 @@ const MIGRATION = readFileSync(
   "prisma/migrations/20261101000000_legal_rules/migration.sql", "utf8",
 );
 
+// OPS-3 seeds the mileage rate in its own migration.
+const VEHICLE_MIGRATION = readFileSync(
+  "prisma/migrations/20261108000000_vehicle/migration.sql", "utf8",
+);
+
 // The seeded value for each key, exactly as the migration inserts it.
 const SEEDED: Record<RuleKey, unknown> = {
   "co.rdf.amount": 31,
@@ -27,12 +32,13 @@ const SEEDED: Record<RuleKey, unknown> = {
   "us.section179": { limitCents: 256000000, phaseoutCents: 409000000 },
   "us.bonus_depreciation": { percent: 100, acquiredAfter: "2025-01-19" },
   "records.keep_years": 7,
+  "us.mileage_rate": 725,
   "greeley.sales_rate": 4110,
 };
 
 describe("rule registry", () => {
   it("defines every seeded key with a title, explanation, area, schema and edit fields", () => {
-    expect(RULE_KEYS).toHaveLength(15);
+    expect(RULE_KEYS).toHaveLength(16);
     for (const key of RULE_KEYS) {
       const def = RULES[key];
       expect(def.key).toBe(key);
@@ -66,9 +72,10 @@ describe("rule registry", () => {
   it("seeds every key in the migration with its researched source and check date", () => {
     for (const key of RULE_KEYS) {
       // Seed rows wrap across lines; split the INSERT into its row tuples.
-      const row = MIGRATION.split("),\n").find((text) => text.includes(`'${key}'`) && text.includes("'RESEARCHED'"));
+      const mileage = key === "us.mileage_rate";
+      const row = (mileage ? VEHICLE_MIGRATION : MIGRATION).split("),\n").find((text) => text.includes(`'${key}'`) && text.includes("'RESEARCHED'"));
       expect(row, `${key} must be seeded`).toBeDefined();
-      expect(row).toContain("2026-10-25T12:00:00Z");
+      expect(row).toContain(mileage ? "2026-10-26T12:00:00Z" : "2026-10-25T12:00:00Z");
       // A source quote names the document or page the value came from.
       expect(row!.length).toBeGreaterThan(120);
     }

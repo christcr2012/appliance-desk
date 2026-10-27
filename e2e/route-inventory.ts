@@ -251,6 +251,7 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
       "The CI seed does not create a deterministic part record; inventory-part behavior is covered by real-Postgres tests.",
   },
   { path: "/desk/paperwork", role: "OWNER", fixture: "/desk/paperwork" },
+  { path: "/desk/vehicle", role: "OWNER", fixture: "/desk/vehicle" },
   {
     path: "/desk/paperwork/[id]",
     role: "OWNER",

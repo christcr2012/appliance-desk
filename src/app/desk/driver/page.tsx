@@ -1,5 +1,7 @@
 import { getDriverJobsForToday } from "@/domains/jobs";
 import { EmptyState, PageHeader } from "@/components/ui";
+import { loadDriverMileage } from "@/domains/vehicle/reads";
+import { MileageCard } from "./mileage-card";
 import { DriverJobCard } from "./driver-job-card";
 
 export const metadata = { title: "Driver view" };
@@ -10,6 +12,7 @@ export const metadata = { title: "Driver view" };
 // so there's nothing further to restrict.
 export default async function DriverViewPage() {
   const jobs = await getDriverJobsForToday();
+  const mileage = await loadDriverMileage(new Date());
 
   return (
     <div className="mx-auto max-w-md">
@@ -17,6 +20,8 @@ export default async function DriverViewPage() {
         title="Shared team route"
         description="All scheduled visits for the team today."
       />
+
+      <MileageCard vehicles={mileage} />
 
       {jobs.length === 0 ? (
         <EmptyState
