@@ -1,3 +1,6 @@
+## October 27 — Lane 1 AR-12 controls and saved views (PR incoming)
+Built five accessible kit choice controls, mobile/desktop record lookup, built-in Bills/Customers views, honest pending flags on filters not yet supported, real customer search/rental/property-manager filtering, and owner/admin-only saved views with the existing locked workspace store. Tests now cover controls, view registry, customer predicates, and strict saved filter values. CI and review remain pending; no money logic or production settings changed. Remaining AR-12 wording, status explanation, feature settings, help and practice outcomes follow separately.
+
 ## October 27 — Lane 1 AR-12: accessible selection controls and useful views (plan)
 Plan committed before implementation on `ai/chatgpt/ar12-controls-views-20261027`: five accessible kit selectors, starter list views, and supported saved Bills and Customers filters. Tests and exact-head CI will be required before merge; no owner confirmation is assumed.
 
