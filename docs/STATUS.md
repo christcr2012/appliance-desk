@@ -1,3 +1,7 @@
+## October 27 — Lane 2 MCP-3 local SDK OAuth round trip passed (not merged)
+
+On `ai/chatgpt/mcp-3-oauth-connect` a disposable-PostgreSQL test now covers PKCE registration, owner consent, signed resource token, refresh, MCP whoami and instant token rejection after Disconnect. Seventeen additional focused unit/security/size tests and changed-file ESLint passed. The only allowed dynamic-registration resource is the canonical app MCP endpoint. Full quick check, browser/axe, exact-head CI and review **remain**, so MCP-3 is not shipped. MCP-2 was merged on #611; MCP-4 read tools remain on a separate dependent plan branch. No real accounts or deployment settings were touched.
+
 ## October 27 — MCP-3 OAuth hardening checkpoint (still unshipped)
 
 PR #611 MCP-2 is merged with final-head green CI; MCP-3 remains in its separate

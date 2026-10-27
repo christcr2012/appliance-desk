@@ -3,7 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { jwt, twoFactor } from "better-auth/plugins";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { getMcpIssuer, validateMcpRedirectUri } from "@/mcp/issuer";
-import { MCP_SCOPES } from "@/mcp/scopes";
+import { OAUTH_SCOPES } from "@/mcp/scopes";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
@@ -112,12 +112,15 @@ export const auth = betterAuth({
       oauthProvider({
         loginPage: "/login",
         consentPage: "/connect/consent",
-        scopes: [...MCP_SCOPES],
-        resources: [`${getMcpIssuer()}/api/mcp`],
+        scopes: [...OAUTH_SCOPES],
+        resources: [{ identifier: `${getMcpIssuer()}/api/mcp`, allowedScopes: [...OAUTH_SCOPES] }],
         allowDynamicClientRegistration: true,
         allowUnauthenticatedClientRegistration: true,
         clientRegistrationRequirePKCE: true,
-        clientRegistrationAllowedScopes: [...MCP_SCOPES],
+        clientRegistrationAllowedScopes: [...OAUTH_SCOPES],
+        // Register only this app-owned resource; reject any outside OAuth audience.
+        clientRegistrationDefaultResources: [`${getMcpIssuer()}/api/mcp`],
+        clientRegistrationAllowedResources: [`${getMcpIssuer()}/api/mcp`],
         validateRedirectUri: validateMcpRedirectUri,
         accessTokenExpiresIn: 600,
         refreshTokenExpiresIn: 60 * 60 * 24 * 30,

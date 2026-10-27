@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getMcpIssuer } from "@/mcp/issuer";
-import { SCOPE_WORDS, MCP_SCOPES } from "@/mcp/scopes";
+import { SCOPE_WORDS, OAUTH_SCOPES } from "@/mcp/scopes";
 import { respondToAssistantConsent } from "./actions";
 
 export const metadata = { title: "Connect an AI assistant" };
@@ -17,7 +17,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
   const client = clientId ? await prisma.oauthClient.findFirst({ where: { clientId, disabled: { not: true } } }) : null;
   if (!client) notFound();
   const requested = (query.get("scope") ?? "").split(/\s+/).filter(Boolean);
-  if (requested.some((scope) => !MCP_SCOPES.includes(scope as typeof MCP_SCOPES[number]))) notFound();
+  if (requested.some((scope) => !OAUTH_SCOPES.includes(scope as typeof OAUTH_SCOPES[number]))) notFound();
   let callbackHost = "Unknown callback";
   try { callbackHost = new URL(query.get("redirect_uri") ?? "").host; } catch { /* OAuth endpoint still validates it */ }
   return (
@@ -28,7 +28,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
         <p className="mt-3 text-sm">Returning to: {callbackHost}</p>
         <p className="mt-3">It will act as you ({session.user.name}). It can’t see bank or card numbers or change anything.</p>
         <ul className="my-4 list-disc space-y-2 pl-5">
-          {requested.map((scope) => <li key={scope}>{SCOPE_WORDS[scope as typeof MCP_SCOPES[number]]}</li>)}
+          {requested.map((scope) => <li key={scope}>{SCOPE_WORDS[scope as typeof OAUTH_SCOPES[number]]}</li>)}
         </ul>
         <form action={respondToAssistantConsent} className="flex flex-wrap gap-3">
           <input type="hidden" name="oauthQuery" value={query.toString()} />
