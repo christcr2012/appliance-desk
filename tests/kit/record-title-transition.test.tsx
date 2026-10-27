@@ -8,10 +8,13 @@ describe("AR-11 shared record titles", () => {
   it("matches a list record id to the header, without conflating different records", () => {
     expect(recordTransitionName("customer-123")).toBe("record-customer-123");
     expect(recordTransitionName("customer-124")).not.toBe(recordTransitionName("customer-123"));
-    render(<>
-      <RecordTitleTransition id="customer-123"><span>Pat Customer</span></RecordTitleTransition>
-      <RecordHeader transitionId="customer-123" title="Pat Customer" back={{href:"/desk/customers",label:"Customers"}} />
-    </>);
+    // A view-transition name must be unique within any one rendered screen.
+    // The same name appears first on the list, then on the destination record.
+    const { rerender } = render(
+      <RecordTitleTransition id="customer-123"><span>Pat Customer</span></RecordTitleTransition>,
+    );
+    expect(screen.getByText("Pat Customer")).toBeInTheDocument();
+    rerender(<RecordHeader transitionId="customer-123" title="Pat Customer" back={{href:"/desk/customers",label:"Customers"}} />);
     expect(screen.getByRole("heading", { level: 1, name: "Pat Customer" })).toBeInTheDocument();
   });
   it("uses exactly 180ms animations and disables all movement for reduced-motion", () => {
