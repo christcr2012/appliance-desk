@@ -118,6 +118,12 @@ export type ExceptionItem = {
         label: string;
       }
     | {
+        /** TFA-3: approve a stored official-page rule reading (id = the observation row). "Not right" rides alongside in the inbox. */
+        type: "APPROVE_RULE_CHANGE";
+        id: string;
+        label: string;
+      }
+    | {
         /** TFA-2: approve a prepared delivery-fee switch (id = the switch row). */
         type: "APPROVE_RDF_SWITCH";
         id: string;
@@ -352,6 +358,7 @@ function milliPercentLabel(value: number | null): string {
 function officialRateReasonLabel(reason: string): string {
   const labels: Record<string, string> = {
     AUTO_APPLY_DISABLED: "automatic official-rate changes are turned off",
+    GREELEY_ALWAYS_REVIEWED: "Greeley's own rate always waits for your approval",
     DELTA_EXCEEDS_LIMIT: "the rate jump exceeds your automatic-change limit",
     EFFECTIVE_DATE_CONFLICT: "another rate already uses that effective date",
     JURISDICTION_NOT_REVIEWED: "the tax jurisdiction has not been reviewed",
@@ -388,6 +395,67 @@ export function officialRateScheduledException(input: {
           },
         }
       : {}),
+    since: input.since,
+  };
+}
+
+/**
+ * TFA-3 section 14: a stored official-page reading that differs from the
+ * rule book, waiting for the owner's approval. The detail carries the
+ * page evidence, how sure the app is, and what approving will change.
+ * Once the stated start date passes unapproved the item turns high
+ * severity; nothing is ever applied on its own.
+ */
+export function ruleChangeReviewException(input: {
+  observationId: string;
+  ruleTitle: string;
+  describedValue: string;
+  ruleKey: string;
+  effectiveFrom: Date | null;
+  evidence: string;
+  watchUrl: string;
+  readOnTwoDays: boolean;
+  plausible: boolean;
+  startPassed: boolean;
+  since: Date;
+  now: Date;
+}): ExceptionItem {
+  const dateLabel = input.effectiveFrom ? businessDateKey(input.effectiveFrom) : null;
+  const confidence = input.readOnTwoDays
+    ? "Read the same way on 2 days."
+    : "Read once — check the page.";
+  const plausibility = input.plausible
+    ? "Within the usual range."
+    : "Unusually large change — check carefully.";
+  const effect = input.ruleKey === "co.rdf.amount" && dateLabel
+    ? `New delivered sales from ${dateLabel} get ${input.describedValue}.`
+    : dateLabel
+      ? `From ${dateLabel}, this becomes ${input.describedValue}.`
+      : "The page states no start date, so this cannot be approved until the city states one.";
+  const late = input.startPassed && dateLabel
+    ? ` The new amount started on ${dateLabel} — approve it so your records are right.`
+    : "";
+  return {
+    category: "SALES_TAX",
+    severity: input.startPassed ? "high" : "medium",
+    title: dateLabel
+      ? `${input.ruleTitle}: the official page now says ${input.describedValue} from ${dateLabel}`
+      : `${input.ruleTitle}: the official page now says ${input.describedValue}`,
+    detail: `${input.evidence.slice(0, 300)} ${confidence} ${plausibility} ${effect}${late}`,
+    href: "/desk/sales-tax/rules",
+    ...(input.watchUrl ? { sourceHref: input.watchUrl, sourceLabel: "Official page" } : {}),
+    ...(dateLabel
+      ? {
+          action: {
+            type: "APPROVE_RULE_CHANGE" as const,
+            id: input.observationId,
+            label: "Approve",
+          },
+          dueOn: input.effectiveFrom!,
+          dueDateOnly: true,
+        }
+      : {}),
+    todoKey: `rule-change-review:${input.observationId}`,
     since: input.since,
   };
 }
