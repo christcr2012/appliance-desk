@@ -1,3 +1,6 @@
+## October 27 — ACCT-1: Accountant sign-in
+
+
 ## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
 React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 
@@ -82,9 +85,9 @@ React 19.3/title transitions and measured JS budget remain in progress.
 
 
 
-## October 27 — VAULT-2: Logins vault and emergency access (in build)
+## October 27 — VAULT-2: Logins vault and emergency access (PR #667 merged)
 
-Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+Merged 2026-10-27 (squash `5aadc888`; successor to #664 after a phantom-dirty rebuild; two Codex rounds, six real findings, all fixed with regression tests — the second round: the emergency code now honours the owner's security-texting switch, the export PDF wrap is character-exact including repeated spaces, and characters the PDF fonts cannot print are substituted there while a new `logins.txt` in the export ZIP carries every login exactly as saved). New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
 the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
 encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
 beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,
