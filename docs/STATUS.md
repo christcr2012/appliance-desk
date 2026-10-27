@@ -1,3 +1,15 @@
+## October 25 (late) — MCP-2 PR #611 component-import correction
+
+Branch ai/chatgpt/mcp-2-backup-reliability; PR #611 still OPEN. Second
+exact-head CI verified all four browser groups (and the existing functional
+backup/restore tests) but component-suite imports of a shared photo helper
+loaded Node-only Blob code in JSDOM; a lazy server-side Blob import fixes
+that cause, with a dedicated DOM regression test. The earlier two Codex
+findings are resolved; updated review of head 1fb7462 found no major issue.
+Next: run quick gate, publish this patch, require full green exact-head
+unit/browser CI and read every remaining comment before authorized merge.
+No hosted provider/storage settings or production data changed.
+
 ## October 25 (late) — MCP-2 PR #611 first CI and review fixes
 
 Branch ai/chatgpt/mcp-2-backup-reliability; PR #611 (NOT merged). Initial exact-head CI

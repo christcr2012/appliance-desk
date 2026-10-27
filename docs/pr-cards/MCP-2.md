@@ -30,6 +30,12 @@ One row: confirm which private storage the live app's backups use (System health
 - Security prerequisite merged as PR #609. Recovery implementation on branch ai/chatgpt/mcp-2-backup-reliability.
 - Verified locally: isolated npm install with synthetic Prisma settings; schema validation; all 26 focused backup/media unit tests; npm run check:quick (secret scan, migration/route consistency, typecheck, lint and words).
 - Code covers staged SHA-256 readback and private credentials, a ledger-linked full media pair, privacy-deletion checks, safe pruning and old-object pagination, owner-only serialized retry and retention settings, a plain-language System health screen and a user guide.
+- Second PR CI: all four browser shards passed. Three unit groups failed only
+  while importing the shared photo-storage module into a component DOM
+  (top-level Blob/Undici requires a Node ReadableStream). Fixed by
+  loading Blob dynamically only inside private-store readiness, retaining
+  exactly the same runtime credential checks. New UI regression test verifies
+  metadata helpers load in the component DOM. Requires new exact-head CI.
 - The first PR CI failure analysis found restore self-ordering, advisory-lock void decoding,
   media scenario setup, preview refusal wording, and browser navigation/test selector issues.
   Codex review flagged expired RUNNING retries and manifest retry collisions. All were fixed;

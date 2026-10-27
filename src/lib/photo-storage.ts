@@ -1,5 +1,5 @@
 import { isTestingEnvironment } from "./testing-environment";
-import { list } from "@vercel/blob";
+
 
 function tokenStoreId(token: string | undefined): string | null {
   if (!token) return null;
@@ -167,6 +167,10 @@ export async function checkPrivateStoreReady(): Promise<PrivateStoreReadiness> {
   const store = getPrivatePhotoStore();
   if (!store) return "TOKEN_STORE_MISMATCH";
   try {
+    // Import the server-side Blob SDK only when making a readiness probe.
+    // Eagerly importing it from this shared URL/metadata helper loads Undici in
+    // component-test DOM environments that correctly lack ReadableStream.
+    const { list } = await import("@vercel/blob");
     await list({ limit: 1, prefix: "jobs/", token: store.token, abortSignal: AbortSignal.timeout(15_000) });
     return "READY";
   } catch (cause) {
