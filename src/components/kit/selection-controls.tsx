@@ -129,7 +129,7 @@ export function SearchablePicker({ name, label, search, value, addNew }: {
     setOpen(next);
     if (!next) { setQuery(""); setResult(null); setErrorQuery(null); setLoadingQuery(null); }
   };
-  const body: ReactNode = <Command shouldFilter={false} label={"Choose " + label} className="text-ink">
+  const body: ReactNode = <Command shouldFilter={false} label={"Search " + label} className="text-ink">
     <CommandInput value={query} onValueChange={setQuery} placeholder="Type 2 letters to search"
       aria-label={"Search " + label} className={FIELD + " mb-2"} />
     {query.trim().length < PICKER_MIN_CHARS ? <p className="py-3 text-sm text-ink-soft">Type 2 letters to search.</p> :
