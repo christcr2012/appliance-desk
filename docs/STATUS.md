@@ -1,3 +1,18 @@
+## October 26 — CMP-3: 1099s and W-9s, Form 8300 detector (PR open)
+
+Branch `ai/vivienne/cmp-3`. Suppliers carry an encrypted tax ID (last 4 only on screen) with a one-time W-9
+link page (typed answers — which also fill the official W-9 PDF into the private store — or a PDF upload;
+rate limited, single use, 14 days). Paying a 1099 supplier with no W-9 raises a To do carrying the 24%
+backup-withholding warning. 1099 preparation runs on the year-end review's books basis with the dated
+threshold rule; amounts the owner has not classified stay out of the boxes (classified on the filing page,
+never guessed); after approval the filing page serves the IRIS portal CSV (template header verified,
+100-form batches) and filled Copy B PDFs built from the approved numbers only. The IRIS A2A client is built
+and fixture-tested behind its switch (off until the A2A TCC lands). Recording a manual cash payment runs
+the Form 8300 detector in the same transaction: the receipt that pushes a customer's 12-month cash total
+over $10,000 creates the filing once, due in 15 days, with a filled draft on the filing page. The CMP-1
+close-out at the top of this branch's history is already on main (238f7a57). Next for this lane after CMP-3
+merges: **CMP-2**.
+
 ## October 26 — OPS-7: privacy and security duties (built, PR pending)
 ## October 26 — AR-11 remembers desk list filters and scroll (in progress)
 
@@ -66,6 +81,11 @@ Packet: `docs/pr-cards/CI-MAINT-2026-10-26-allowlist.md`.
 
 ## October 26 — CI speed fixes across parallel lanes (PR #645)
 Chris clarified that one slow **passing** CI phase must not cause another CI run or automatic rebalancing. PR #645 keeps the three isolated unit groups and five browser groups, turns the 180-second duration into a non-failing notice/step summary, and preserves real test failures plus a separate 10-minute hang safety cap. Rebalance only if 3 of the latest 5 comparable runs for a group exceed the target (or a structural regression is proven). Stronger exact-group guards, fast job-role mapping pre-push regression and safer local testing/branch history instructions remain. Implementation head `c0f4ef83` passed all 12 jobs in CI run 40439042142: the 3 unit phases took 159/148/138 seconds, and all 5 browser groups passed. The final evidence-only commit must be green at its exact head before guarded merge (PR #645 is authoritative for that terminal gate). No blocking review threads were observed; diff self-reviewed. No tests, production settings, or secret allowlist changed.
+## October 26 — CMP-1: Compliance center (MERGED, PR #642, commit 238f7a57)
+
+The Compliance center is on main: the obligation registry with sources and 2026–2028 periods, business facts with the EIN encrypted (last 4 only), the prepare → approve (hash-bound) → submit filing flow, the To do COMPLIANCE_DUE category, the filled-form engine with the vendored 1040-ES booklet, and the Compliance screen (Coming up / Needs you / Done / Not needed). Four Codex review rounds were answered on the way in; the final head passed every check. The merged detail lives in the October 26 entry below and on the CMP-1 card. Still on Chris's checklist: set the compliance encryption key so the EIN box unlocks. Next for this lane: **CMP-3** (1099s and W-9s, plus the Form 8300 detector) on this foundation, then CMP-2.
+
+
 ## October 26 — OPS-2: refrigerant records for scrapped fridges and freezers (built, PR pending)
 
 Branch `ai/claude/ops-6` (stacked on OPS-5). A nightly pass now watches bills that are past due and prepares the next step for you — a **second notice** on day 10, a **final notice** on day 20 (email text plus a printable letter), and a **decision** on day 30 (payment plan, pick up the appliance, or small claims). All three days are your settings. Nothing is sent, nothing is picked up and no money moves until you press the button; sending still goes through the normal message path, so it stays off while live email is off. Every message is written in "Robinson Appliance Rentals"'s own name. A **pickup** can be made only after you record that the customer agreed (or a court order), and never for a customer marked on active military duty without a recorded court order; "Customer objected" ends the visit with nothing taken and brings up small claims. The **small-claims packet** (PDF) gathers the bills and payments, notices sent, the appliance cost and the claim amount; it checks the $7,500 limit, the filing fee ($31 up to $500, otherwise $55) and the court's 2-a-month / 18-a-year limits from the rule book. You file it yourself. A test now fails if any agreement, quote or notice wording offers ownership or a purchase option. Proved so far: 24 new tests (pure rules and wording, ownership-wording scan, and 9 on a throwaway database); CI still to run. Not built: the court's own claim form is not copied into the app — the packet tells you to fill in JDF 250 from the Colorado Judicial Branch site so it is always the current one.
