@@ -23,6 +23,13 @@ Migration `20261101000000_legal_rules`.
 - `RetailDeliveryFeeRecord.ruleVersionId` — the rule version that set the amount on new records (old rows keep `rateId`). `BusinessSettings.costlyChangeTimingPercent` (90, CHECK 85–95) and `timingSafetyMarginBusinessDays` (3, CHECK 1–10): when the app suggests acting on a change that costs the business.
 - `LedgerAccount` `TAX_ABSORBED` (expense, "Tax/fee the business paid for a late change", seed id `k_seed_tax_absorbed`; same entry in `src/domains/books/system-chart.json`). Backups include `LegalRuleVersion` (`BACKUP_MODEL_POLICY`).
 
+## November 4 — Official-page rule watches (TFA-3, additive)
+
+Migration `20261104000000_tfa3_rule_watches`.
+- `LegalRuleObservation` — one stored reading from a strict parser over an official page: `ruleKey`, `value` (JSON, same shapes as the rule registry), `effectiveFrom` (nullable: a page may state no date), `watchId` (the `OfficialSourceWatch` read), `evidence` (the page words the reading came from), `observedAt`. Approval trail: `approvedVersionId` (the `LegalRuleVersion` an approval created), dismissal trail: `dismissedAt`, `dismissNote`, `dismissedByUserId`. A reading is never applied on its own; the same reading is stored once per business day. Backups include `LegalRuleObservation` (`BACKUP_MODEL_POLICY`).
+- `OfficialSourceWatch.parserKey` — which strict parser reads the page (`RDF_RATES`, `GREELEY_RATE`, `IRS_1099_THRESHOLD`, `CO_INTEREST`); null means hash-only watching. The migration turns the six seeded watches on, sets the Greeley parser, and adds the RDF rates, IRS 1099 instructions and Colorado penalties-and-interest watches.
+- `BusinessSettings.watchOfficialTaxPages` (default true): the owner's master switch for the watches, on Taxes › Rules. `BusinessSettings.autoApplyOfficialRateChanges` default flips to false and the existing row is set false: every new rate waits for the owner's approval on To do (the auto-apply code path stays, behind the setting).
+
 ## October 27 — Fair late fees (FEE-1, additive)
 
 Migration `20261027040000_fair_late_fees`. New table `PendingCharge`: a late fee recorded as its own charge (`kind` LATE_FEE,
@@ -1434,8 +1441,21 @@ Existing financial entries remain append-only and closed months stay immutable.
   NOT_REPORTED with the owner's note.
 All three tables are in the backup manifest.
 
-### OPS-2: refrigerant records (additive migration `20261106000000_refrigerant`)
+### OPS-6: collections (additive migration `20261104000000_collections`)
 
+- `CollectionStep` — one row per bill per step (`SECOND_NOTICE`, `FINAL_NOTICE`, `DECISION`, `SMALL_CLAIMS`), unique on
+  (bill, step), with state WAITING / SENT / SKIPPED / DONE, the drafted subject and text, who decided and when, the message
+  delivery it produced, and the note. The nightly pass only writes WAITING rows.
+- `CollectionCase` — one per rental that reached the decision step: the customer's recorded pickup agreement (when, how, who
+  recorded it), the court order (date, court and case number), the pickup visit, the objection, and when it was resolved.
+- `SmallClaimsFiling` — a filing Chris says he made (county, date, amount, fee); used only to count the court's limits.
+- `BusinessSettings.collectionSecondNoticeDay` / `collectionFinalNoticeDay` / `collectionDecisionDay` (10 / 20 / 30); `collectionPayHowText` / `collectionHelpText` (nullable owner wording for the two editable lines in notices; empty = recommended text).
+- Three seeded rule-book rows: `co.small_claims_limit` ($7,500), `co.small_claims_filing_limits` (2 a month, 18 a year per
+  county) and `co.small_claims_fees` ($31 up to $500, otherwise $55), from the Colorado Judicial Branch pages, accessed 2026-10-26.
+- The "on active military duty" flag already existed (`Customer.activeMilitary`); collections reads it.
+All three tables are in the backup manifest.
+
+### OPS-2: refrigerant records (additive migration `20261106000000_refrigerant`)
 - `ApplianceType.hasRefrigerant` — set true at migration time for types whose name or slug mentions refrigerator, fridge or freezer; new appliance types get the same starting value when they are added; the owner can change it on Retired appliances.
 - `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed.
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.

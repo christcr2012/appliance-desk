@@ -108,6 +108,8 @@ export const BACKUP_MODEL_POLICY = {
   // TFA-2 §8: filing-frequency advice rows are tax-filing evidence.
   FilingFrequencyAdvice: "filingFrequencyAdvice",
   OfficialSourceWatch: "officialSourceWatch",
+  // TFA-3: stored official-page readings and their approval trail.
+  LegalRuleObservation: "legalRuleObservation",
   TaxabilityRule: "taxabilityRule",
   // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
   TaxabilityRuleVersion: "taxabilityRuleVersion",
@@ -225,6 +227,10 @@ export const BACKUP_MODEL_POLICY = {
   PendingCharge: "pendingCharge",
   // OPS-5: payment disputes (Stripe's record, Chris's answer and the bank-dispute follow-up) are business records.
   PaymentDispute: "paymentDispute",
+  // OPS-6: the past-due ladder steps, the per-rental collection record (pickup agreement, court order, objection) and the small-claims filings Chris recorded are business records.
+  CollectionStep: "collectionStep",
+  CollectionCase: "collectionCase",
+  SmallClaimsFiling: "smallClaimsFiling",
 
   // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
   RecallMatch: "recallMatch",

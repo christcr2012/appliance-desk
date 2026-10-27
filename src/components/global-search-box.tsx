@@ -15,6 +15,7 @@ export function GlobalSearchBox() {
       </label>
       <input
         id="global-search"
+        data-kit-search
         name="q"
         type="search"
         placeholder="Search or jump to…"

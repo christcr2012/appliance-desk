@@ -56,7 +56,7 @@ const groups = [
 export const DESK_NAV_ALIASES: Record<string, string[]> = {
   "/desk/dispatch": ["/desk/jobs", "/desk/driver"],
   "/desk/inventory": ["/desk/parts", "/desk/purchases", "/desk/purchase-orders", "/desk/recalls"],
-  "/desk/billing": ["/desk/disputes", "/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
+  "/desk/billing": ["/desk/disputes", "/desk/collections", "/desk/sales", "/desk/revenue", "/desk/reports", "/desk/fleet", "/desk/dashboard"],
   // CMP-1: Compliance belongs to the Taxes area (next to sales tax).
   "/desk/sales-tax": ["/desk/compliance"],
   "/desk/more": [

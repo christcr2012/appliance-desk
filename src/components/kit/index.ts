@@ -41,3 +41,5 @@ export { InfoTip } from "./info-tip";
 export { useMediaQuery, DESKTOP_QUERY } from "./use-media-query";
 export { OfflineBar, useDeskOffline } from "./offline-bar";
 export { RegisterDeskServiceWorker } from "./register-sw";
+export { DeskShortcuts, deskShortcutHref, shortcutTypingTarget, ignoreDeskShortcut } from "./shortcuts";
+export { AutoRefresh, refreshPermitted, freshnessLabel, IDLE_LIMIT_MS, RETURN_AFTER_MS } from "./auto-refresh";

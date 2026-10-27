@@ -7,8 +7,12 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { assertActiveTeamActor } from "@/lib/team-actor";
+import { GREELEY_JURISDICTION_WHERE } from "@/domains/decisions/tax-cells";
+import { parserForKey } from "@/domains/rules/parsers/index";
+import { recordRuleObservationInTx } from "@/domains/rules/observations";
 
 import { listActiveOfficialSourceWatches } from "./official-rate-metadata";
+import { processOfficialRateCandidate } from "./official-rate-auto-apply";
 import { fetchOfficialSourcePage } from "./safe-official-source-fetch";
 
 const CPA_REMINDER_TEXT =
@@ -19,11 +23,36 @@ export type OfficialSourceWatchRun = {
   changed: number;
   recovered: number;
   failed: number;
+  /** TFA-3: rule readings stored this run (they wait for owner approval). */
+  observations: number;
 };
 
 function isColoradoMonday(now: Date): boolean {
   const key = businessDateKey(now);
   return new Date(`${key}T12:00:00.000Z`).getUTCDay() === 1;
+}
+
+/**
+ * TFA-3 section 12 cadence: every watch is read weekly (the Monday run);
+ * a parser-backed watch is also read daily inside its known change
+ * window. Windows use Denver month-days; the Nov 1 to Jan 31 window
+ * wraps the year end. The Greeley ballot window is dated (2026 only).
+ */
+export function watchDueOn(parserKey: string | null, now: Date): boolean {
+  if (isColoradoMonday(now)) return true;
+  const key = businessDateKey(now);
+  const monthDay = key.slice(5);
+  switch (parserKey) {
+    case "RDF_RATES":
+      return monthDay >= "04-15" && monthDay <= "07-01";
+    case "IRS_1099_THRESHOLD":
+    case "CO_INTEREST":
+      return monthDay >= "11-01" || monthDay <= "01-31";
+    case "GREELEY_RATE":
+      return key >= "2026-11-04" && key <= "2026-12-31";
+    default:
+      return false;
+  }
 }
 
 function sanitizeError(cause: unknown): string {
@@ -228,6 +257,62 @@ async function sendChangedSourceMessage(input: {
   });
 }
 
+/**
+ * TFA-3: run a parser-backed watch's strict parser over freshly fetched
+ * text and store what it reads. Returns how many readings were stored.
+ * A parser that cannot read the page throws, so the caller records the
+ * "couldn't read" failure — a reading is never guessed. Greeley readings
+ * go through the existing TaxRateVersion review path instead of the rule
+ * observation store (spec section 14); a Greeley reading with no stated
+ * date cannot be scheduled anywhere yet, so it is left for the
+ * GREELEY-RATE-2F decision and stores nothing.
+ */
+async function recordParserReadings(
+  watch: { id: string; parserKey: string | null },
+  pageText: string,
+  now: Date,
+): Promise<number> {
+  const parser = parserForKey(watch.parserKey);
+  if (!parser) return 0;
+  const parsed = parser(pageText);
+  if (!parsed.ok) throw new Error(`Couldn't read the page: ${parsed.why}`);
+
+  if (watch.parserKey === "GREELEY_RATE") {
+    const reading = parsed.values.find((value) => value.ruleKey === "greeley.sales_rate");
+    if (!reading || typeof reading.value !== "number" || !reading.effectiveFrom) return 0;
+    const jurisdiction = await prisma.taxJurisdiction.findFirst({
+      where: GREELEY_JURISDICTION_WHERE,
+      select: { id: true, code: true, level: true },
+      orderBy: { id: "asc" },
+    });
+    if (!jurisdiction) return 0;
+    await processOfficialRateCandidate({
+      jurisdictionId: jurisdiction.id,
+      jurisdictionCode: jurisdiction.code,
+      jurisdictionLevel: jurisdiction.level,
+      effectiveFrom: reading.effectiveFrom,
+      rateMilliPercent: reading.value,
+    }, now);
+    return 0;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    let stored = 0;
+    for (const value of parsed.values) {
+      await recordRuleObservationInTx(tx, {
+        ruleKey: value.ruleKey,
+        value: value.value,
+        effectiveFrom: value.effectiveFrom,
+        watchId: watch.id,
+        evidence: parsed.evidence,
+        observedAt: now,
+      });
+      stored += 1;
+    }
+    return stored;
+  });
+}
+
 export async function runOfficialSourceWatch(
   now = new Date(),
 ): Promise<OfficialSourceWatchRun> {
@@ -240,10 +325,17 @@ export async function runOfficialSourceWatch(
     changed: 0,
     recovered: 0,
     failed: 0,
+    observations: 0,
   };
-  if (!isColoradoMonday(now)) return totals;
 
-  const watches = await listActiveOfficialSourceWatches();
+  // The owner switch on Taxes > Rules gates all watching (starting value
+  // on). The December CPA reminder above is not a watch and still runs.
+  const settings = await getBusinessSettings();
+  if (!settings.watchOfficialTaxPages) return totals;
+
+  const watches = (await listActiveOfficialSourceWatches()).filter(
+    (watch) => watchDueOn(watch.parserKey, now),
+  );
   for (const watch of watches) {
     totals.checked += 1;
 
@@ -258,6 +350,23 @@ export async function runOfficialSourceWatch(
       }
 
       const recovered = watch.consecutiveFailures > 0;
+      const isParserWatch = parserForKey(watch.parserKey) !== null;
+
+      // A parser watch only counts as read once its parser has read the
+      // page and stored the readings. Resetting the failure count on a
+      // successful fetch alone hid repeated "couldn't read" failures
+      // (the count never reached the unreachable-source warning) and
+      // marked pages as seen that were never actually read.
+      if (isParserWatch) {
+        try {
+          totals.observations += await recordParserReadings(watch, result.text, now);
+        } catch (cause) {
+          await recordFailure(watch.id, now, cause);
+          totals.failed += 1;
+          continue;
+        }
+      }
+
       if (watch.lastHash === null) {
         await prisma.officialSourceWatch.update({
           where: { id: watch.id },
@@ -285,6 +394,7 @@ export async function runOfficialSourceWatch(
         if (recovered) totals.recovered += 1;
 
         if (
+          !isParserWatch &&
           watch.lastChangedAt &&
           !watch.reviewedAt &&
           watch.lastExcerpt
@@ -326,6 +436,8 @@ export async function runOfficialSourceWatch(
       });
       totals.changed += 1;
       if (recovered) totals.recovered += 1;
+
+      if (isParserWatch) continue;
 
       try {
         await sendChangedSourceMessage({

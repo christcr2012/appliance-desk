@@ -13,6 +13,7 @@ import { DataList, EmptyState as LegacyEmptyState, StatusPill as LegacyStatusPil
 import {
   ActionButton,
   ActiveFilterChips,
+  AutoRefresh,
   DataTable,
   EmptyState,
   OverflowMenu,
@@ -226,6 +227,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     return (
       <div className="px-1 sm:px-0">
         {header}
+        <AutoRefresh />
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <h2 className="flex-1 text-base font-bold text-ink">{legacyTitle}</h2>
           <ActionButton spec={{ kind: "link", label: "All bills", href: "/desk/billing" }} variant="secondary" />
@@ -279,6 +281,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     // The kit lays out for a 20 px phone gutter (KIT 1); the current shell gives 16 px, so add the difference until AR-1.
     <div className="px-1 sm:px-0">
       {header}
+      <AutoRefresh />
       <Toaster />
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
         <StatusTabs label="Bill status" current={params.status} items={tabs} />

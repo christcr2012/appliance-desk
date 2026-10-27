@@ -194,6 +194,8 @@ model Customer {
   bankDebitBlockedAt DateTime?
   bankDebitBlockedReason String?
   paymentDisputes PaymentDispute[]
+  collectionSteps CollectionStep[]
+  collectionCases CollectionCase[]
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
@@ -1179,6 +1181,7 @@ enum RentalAgreementStatus {
 }
 
 model RentalAgreement {
+  collectionCase CollectionCase?
   // BILL-1: bank payments being confirmed for a subscription bill that is not mirrored locally yet.
   bankPaymentsInFlight BankPaymentInFlight[]
   lateFeeClass LateFeeClass?
@@ -2569,6 +2572,7 @@ model CreditApplication {
 }
 
 model Invoice {
+  collectionSteps CollectionStep[]
   paymentDisputes PaymentDispute[]
   rdfShopRecords RetailDeliveryFeeRecord[] @relation("RdfShopInvoice")
   id          String        @id @default(cuid())
@@ -2925,6 +2929,9 @@ model OfficialSourceWatch {
   label               String
   url                 String   @unique
   active              Boolean  @default(true)
+  // TFA-3: which strict parser reads this page (RDF_RATES, GREELEY_RATE,
+  // IRS_1099_THRESHOLD, CO_INTEREST); null means hash-only watching.
+  parserKey           String?
   lastHash            String?
   lastText            String?
   lastExcerpt         String?
@@ -2935,6 +2942,31 @@ model OfficialSourceWatch {
   reviewedAt          DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  ruleObservations LegalRuleObservation[]
+}
+
+// TFA-3: one stored reading from a strict parser over an official page
+// (same pattern as TaxRateObservation). A reading is never applied on its
+// own: the owner approves it on To do (approvedVersionId links the rule
+// version it created) or dismisses it (dismissedAt), and a dismissed or
+// approved reading never asks again.
+model LegalRuleObservation {
+  id                String              @id @default(cuid())
+  ruleKey           String              @db.VarChar(80)
+  value             Json
+  effectiveFrom     DateTime?
+  watchId           String
+  watch             OfficialSourceWatch @relation(fields: [watchId], references: [id])
+  evidence          String              @db.VarChar(1000)
+  observedAt        DateTime            @default(now())
+  dismissedAt       DateTime?
+  dismissNote       String?             @db.VarChar(500)
+  dismissedByUserId String?
+  approvedVersionId String?
+
+  @@index([ruleKey, effectiveFrom])
+  @@index([observedAt])
 }
 
 model TaxabilityRule {
@@ -3478,7 +3510,13 @@ model BusinessSettings {
   rdfCpaConfirmedOn               DateTime?
   rdfThresholdCrossedOn           DateTime?
   businessTaxAddress              Json                   @default("{}")
-  autoApplyOfficialRateChanges    Boolean                @default(true)
+  // TFA-3: starting value false (Chris's answer, recorded in DECISIONS):
+  // every new rate waits for his approval on To do. The auto-apply code
+  // path stays, but only runs if he turns this on himself.
+  autoApplyOfficialRateChanges    Boolean                @default(false)
+  // TFA-3: master switch for the official-page watches (Taxes > Rules,
+  // owner only). Starting value on; the per-watch active flags stay data.
+  watchOfficialTaxPages           Boolean                @default(true)
   autoRateChangeMaxMilliPercent   Int                    @default(1000)
   // TFA-1: timing for changes that cost the business or do not help to do
   // early (paying a return, filing 1099s, renewing a license). The desk
@@ -3588,6 +3626,12 @@ model BusinessSettings {
   // OPS-5: how long after a bank debit a customer can still dispute it (starting value 60 days, from the NACHA rules
   // via Stripe's documentation). Deposit refunds for bank payments wait this long.
   achDisputeWindowDays Int @default(60)
+  // OPS-6: days past due when each step of the past-due ladder comes up (starting values 10 / 20 / 30).
+  collectionSecondNoticeDay Int @default(10)
+  collectionFinalNoticeDay Int @default(20)
+  collectionPayHowText String?
+  collectionHelpText String?
+  collectionDecisionDay Int @default(30)
 }
 
 model ComplianceProfile {
@@ -5965,6 +6009,88 @@ model InsuranceCertificateRequest {
   requestedAt      DateTime @default(now())
 
   @@index([policyId, requestedAt])
+}
+
+// OPS-6: the past-due ladder. One row per bill per step, made by the nightly pass; nothing reaches a customer until
+// the owner or an admin approves it.
+enum CollectionStepKind {
+  SECOND_NOTICE
+  FINAL_NOTICE
+  DECISION
+  SMALL_CLAIMS
+}
+
+enum CollectionStepState {
+  WAITING
+  SENT
+  SKIPPED
+  DONE
+}
+
+model CollectionStep {
+  id            String @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  kind          CollectionStepKind
+  state         CollectionStepState @default(WAITING)
+  // The day (Denver) the step came up, and the amount owed when it did.
+  cameUpOn      DateTime
+  amountOwedCents Int
+  subject       String?
+  body          String?
+  decidedAt     DateTime?
+  decidedByUserId String?
+  deliveryId    String?
+  // What the owner chose or wrote: the DECISION choice, or why a notice was skipped.
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([invoiceId, kind])
+  @@index([state, kind])
+  @@index([customerId])
+}
+
+// OPS-6: one per rental that fell behind. Holds the pickup consent, the active-duty court order, the objection and
+// the small-claims decision, so each of those is a dated record rather than a note.
+model CollectionCase {
+  id            String @id @default(cuid())
+  agreementId   String @unique
+  agreement     RentalAgreement @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  openedAt      DateTime @default(now())
+  pickupConsentAt DateTime?
+  pickupConsentHow String?
+  pickupConsentByUserId String?
+  courtOrderOn  DateTime?
+  courtOrderNote String?
+  pickupJobId   String?
+  objectedAt    DateTime?
+  objectedNote  String?
+  resolvedAt    DateTime?
+  resolvedNote  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([resolvedAt])
+}
+
+// OPS-6: a small-claims case the owner says he filed. Only used to count the court's limits (2 a month, 18 a year per county).
+model SmallClaimsFiling {
+  id            String @id @default(cuid())
+  county        String
+  filedOn       DateTime
+  amountCents   Int
+  feeCents      Int
+  agreementId   String?
+  recordedByUserId String
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([county, filedOn])
 }
 
 enum RefrigerantOutcome {
