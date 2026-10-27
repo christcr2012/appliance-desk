@@ -1,10 +1,12 @@
-## October 26 — OPS-8: "If something happens to me" and the yearly check-up (built, PR pending)
+## October 26 — Lane 7 (back-office operations) close-out
+Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653. Each merged at a green exact-head `ci` with Codex findings answered. Not built: letting a successor use the pause switch in an emergency needs VAULT-1 (does not exist yet). Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.
+## October 26 — OPS-8: "If something happens to me" and the yearly check-up (PR #653, CI green at the exact head; merging)
 
 Branch `ai/claude/ops-8`. New **More → If something happens to me** screen (`/desk/continuity`, owner only): who to call (emergency contact, who would keep the business running, CPA, attorney, where records are kept), a live snapshot (appliances out, unpaid bills and total owed, visits in the next 14 days; counts only, no customer names), and an owner-only **Pause all automatic charges** switch. While on, the nightly jobs that start charges, add late fees, send past-due notices or email reminders do not run (11 named jobs); backups, payment checking, recall watch and the tax watches keep running; nothing is refunded or cancelled. Each press is written to Activity. A paused store shows a high To do until turned back on. **Yearly check-up** (`/desk/continuity/checkup`): in December an owner To do opens an 11-step walkthrough (insurance, prices, CPA packet, policies, records clean-up, access, vendors, recalls, expiring records, tax set-aside, this page); ticking only records that you looked; finishing is once per year.
 Proof: `tests/ops8-continuity-rules.test.ts` and `tests/ops8-continuity-integration.test.ts` on throwaway Postgres (owner-only, audit once per real change, the pause stops `late-fees` but not `backup`, December and Denver-calendar edges, finish-once); `e2e/continuity.spec.ts` (axe at 360 and 1440). Not yet done: CI at the exact head; the successor using the switch through VAULT emergency access (VAULT-1 does not exist yet, so only the owner can press it today — see OWNER-CHECKLIST). Starting values not confirmed: DQ-OPS8-1, DQ-OPS8-2.
-## October 26 — OPS-3: vehicle, mileage log and driving rules (built, PR pending)
-## October 26 — OPS-4: insurance (built, PR pending)
-## October 26 — OPS-7: privacy and security duties (built, PR pending)
+## October 26 — OPS-3: vehicle, mileage log and driving rules (merged, PR #648)
+## October 26 — OPS-4: insurance (merged, PR #641)
+## October 26 — OPS-7: privacy and security duties (merged, PR #637)
 ## October 26 — AR-11 remembers desk list filters and scroll (in progress)
 Branch ai/chatgpt/ar-11-remember-lists stores only a tab-scoped list query and scroll number
 for known list pages. Links in AreaTabs, sidebar and bottom bar restore the query for plain links;
