@@ -12,8 +12,10 @@ import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
 import { listRetiredPlanAttention } from "./retired-attention";
 import { listRecallAttention } from "./recall-attention";
-import { listBooksAttention, listBooksSetupAttention } from "./books-attention";
+import { listBooksAttention, listBooksSetupAttention, listBooksMonthReviewAttention } from "./books-attention";
 import { listResaleTaxAttention } from "./resale-tax-attention";
+import { listVehicleAttention } from "./vehicle-attention";
+import { listInsuranceAttention } from "./insurance-attention";
 import { listApprovalAttention } from "./approval-attention";
 import { listGoalAttention } from "./goal-attention";
 import { prisma } from "@/lib/prisma";
@@ -23,6 +25,7 @@ import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listFeedbackWaiting } from "./feedback-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
 import { listComplianceDue } from "./compliance-attention";
+import { listSupplierW9Needed } from "./supplier-w9-attention";
 import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
 import { listUnsignedAgreements } from "./unsigned-agreements";
 import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment, listCleaningNeeded } from "./turning-points-attention";
@@ -30,6 +33,9 @@ import { requireRole } from "@/lib/session";
 import { listBankPaymentSlow } from "./bank-payment-attention";
 import { listDisputeAttention } from "./dispute-attention";
 import { listCollectionAttention } from "./collection-attention";
+import { listContinuityAttention } from "./continuity-attention";
+import { listSetupGuideAttention } from "./setup-attention";
+import { listPrivacyAttention } from "@/domains/security/reads";
 import { listLateFeeReview } from "./late-fee-attention";
 import { listStartingValuesAttention } from "@/domains/decisions/attention";
 import { notInFlightWhere } from "@/domains/billing/in-flight";
@@ -1121,8 +1127,14 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const recallAttention = canViewFinance ? await listRecallAttention(now) : [];
   const booksAttention = canViewFinance ? await listBooksAttention(now) : [];
   const booksSetupAttention = session.user.role === "OWNER" ? await listBooksSetupAttention(now) : [];
+  const vehicleAttention = (session.user as { role?: string }).role === "OWNER" ? await listVehicleAttention(now) : [];
+  const insuranceAttention = (session.user as { role?: string }).role === "OWNER" ? await listInsuranceAttention(now) : [];
+  const booksMonthReviewAttention = canViewFinance ? await listBooksMonthReviewAttention(now) : [];
   const resaleTaxAttention = (session.user as { role?: string }).role === "OWNER" ? await listResaleTaxAttention(now) : [];
+  const privacyAttention = (session.user as { role?: string }).role === "OWNER" ? await listPrivacyAttention(now) : [];
   const approvalAttention = (session.user as { role?: string }).role === "OWNER" ? await listApprovalAttention(now) : [];
+  const continuityAttention = (session.user as { role?: string }).role === "OWNER" ? await listContinuityAttention(now) : [];
+  const setupGuideAttention = (session.user as { role?: string }).role === "OWNER" ? await listSetupGuideAttention(now) : [];
   const goalAttention = canViewFinance ? await listGoalAttention(now) : [];
   const signingPaymentAttention = canViewFinance
     ? await listSigningPaymentAttention(EXCEPTION_CATEGORY_CAP)
@@ -1142,6 +1154,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const newLeadContact = canViewFinance ? await listNewLeadContact(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const leadFollowUps = canViewFinance ? await listLeadFollowUps(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const complianceDue = canViewFinance ? await listComplianceDue(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const supplierW9 = canViewFinance ? await listSupplierW9Needed(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const approvedQuotes = canViewFinance ? await listApprovedQuoteToRental(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const rentalEndingSoon = canViewFinance ? await listRentalEndingSoon(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const unsignedAgreements = canViewFinance ? await listUnsignedAgreements(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
@@ -1181,6 +1194,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...newLeadContact.rows,
     ...leadFollowUps.rows,
     ...complianceDue.rows,
+    ...supplierW9.rows,
     ...approvedQuotes.rows,
     ...depositDecisions.rows,
     ...rentalEndingSoon.rows,
@@ -1206,8 +1220,14 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...recallAttention,
     ...booksAttention,
     ...booksSetupAttention,
+    ...booksMonthReviewAttention,
     ...resaleTaxAttention,
+    ...vehicleAttention,
+    ...insuranceAttention,
+    ...privacyAttention,
     ...approvalAttention,
+    ...continuityAttention,
+    ...setupGuideAttention,
     ...goalAttention,
   ];
 
@@ -1254,6 +1274,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["NEW_LEAD_CONTACT", newLeadContact],
       ["LEAD_FOLLOW_UP", leadFollowUps],
       ["COMPLIANCE_DUE", complianceDue],
+      ["SUPPLIER_TAX_ID", supplierW9],
       ["APPROVED_QUOTE", approvedQuotes],
       ["RENTAL_ENDING_SOON", rentalEndingSoon],
       ["UNSIGNED_AGREEMENT", unsignedAgreements],

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { submitExpensePost } from "@/domains/approvals";
 import {
-  createExpense, voidExpense, attachExpenseReceipt, saveRecurringExpense,
+  createExpense, voidExpense, attachExpenseReceipt, saveRecurringExpense, recordExpenseNoReceiptReason,
 } from "@/domains/books/expenses";
 
 const read = (form: FormData, field: string) => String(form.get(field) ?? "").trim();
@@ -43,6 +43,7 @@ export async function createExpenseAction(form: FormData) {
     jobId: read(form, "jobId"), purchaseOrderId: read(form, "purchaseOrderId"),
     capitalizeToAppliance: form.get("capitalize") === "on",
     budgetEnvelopeId: read(form,"budgetEnvelopeId"),
+    noReceipt:form.get("noReceipt")==="on",noReceiptReason:read(form,"noReceiptReason"),
     }, wantsPosted ? "DRAFT" : mode === "DRAFT" && session.user.role !== "STAFF" ? "DRAFT" : "SUBMITTED");
     // "Post now" goes through the same limit check as the Post button (an admin over the owner's limit sends it for approval).
     return wantsPosted ? submitExpensePost(session.user.id, created.id, 1) : created;
@@ -62,6 +63,12 @@ export async function attachExpenseReceiptAction(form: FormData) {
   const session = await requireRole("OWNER", "ADMIN", "STAFF");
   await handled("Private receipt", () =>
     attachExpenseReceipt(session.user.id, read(form, "id"), read(form, "url")));
+}
+export async function explainMissingExpenseReceiptAction(form:FormData){
+ const session=await requireRole("OWNER","ADMIN","STAFF");
+ await handled("Receipt explanation",()=>
+  recordExpenseNoReceiptReason(session.user.id,read(form,"id"),
+   Number(read(form,"version")),read(form,"reason")));
 }
 export async function saveRecurringAction(form: FormData) {
   const session = await requireRole("OWNER", "ADMIN");

@@ -132,6 +132,7 @@ function SearchBox({ param, placeholder, label }: { param: string; placeholder: 
       <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-soft" />
       <input
         id={id}
+        data-kit-search
         type="search"
         value={value}
         placeholder={placeholder}

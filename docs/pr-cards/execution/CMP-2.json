@@ -1,0 +1,128 @@
+{
+  "acceptance": [
+    "Every income, contra-income and expense account in the system chart (src/domains/books/system-chart.json) carries a Schedule C line, proven by tests/schedule-c-mapping.test.ts; owner-added or unmapped accounts fall back to line 27a (Other expenses) listed by name, never dropped.",
+    "The accountant packet for fed.income.schedule_c is prepared from the posted books for the filing's tax year: year totals by Schedule C line, gross receipts tied to the 1099-K reconciliation, the 4562 and 4797 worksheets and the home-office note when the facts say a home office is used; the packet downloads as CSV and as a generated PDF from the approved filing only.",
+    "The 4562 worksheet is built from BookAsset records and their latest tax evidence (cost, placed-in-service date, Section 179, bonus and allowed depreciation) with the dated us.section179 and us.bonus_depreciation rule values shown for the year; assets without tax evidence are listed as needing CPA review, never given invented numbers. The 4797 worksheet is built from the year's retired-appliance sales through the existing Section 1245 estimate (src/domains/sales/retired-sale-tax.ts). Both worksheets are marked 'Estimate — your CPA confirms'.",
+    "Quarterly estimates (fed.estimated_tax and co.income.dr0104ep) use the safe-harbor method from the prior year's tax facts the owner enters once per year (TaxYearFacts): required annual payment 100% of last year's tax, 110% when last year's federal AGI is over $150,000, one quarter of that per payment. Colorado uses the same prior-year safe harbor, confirmed against the official 2026 DR 0104EP instructions (100%/110% of the preceding year's net Colorado tax; the 70%-of-actual alternative is not computed and the Decisions question records that). A year with no prior-year facts produces no number — the filing says to enter an estimate from the CPA.",
+    "Filled vouchers: the federal voucher comes from the vendored 1040-ES booklet through the existing fillEstimatedTaxVoucher; the Colorado voucher is filled from the official DR 0104EP 2026 PDF vendored from tax.colorado.gov and pinned in the forms manifest (SHA-256 2b4e33fe2bdc4f5e3b324687f11ef7a0b22698673341a7a8b07764203946b12c, fillable voucher on page index 4). The voucher identity (owner name and SSN) is typed at download time and used only to fill that PDF — never stored, logged or audited. The filing page links IRS Direct Pay and Colorado Revenue Online; the app never pays.",
+    "The 1099-K tie-out reads the stored StripeBalanceTransaction rows by month (gross charges, fees, refunds, disputes) and compares the year's gross with the 1099-K amount the owner typed from Stripe's form (TaxYearFacts.form1099KGrossCents), showing the difference in the packet. No live Stripe call is made by the tie-out.",
+    "TXF export is omitted on purpose: the spec allows building it only after confirming the format spec from an official or vendor source, and no authoritative TXF 042 specification could be confirmed (only secondary summaries; the format is being superseded by FDX). The packet CSV stays. Recorded here and on the card as the packet drift for this item.",
+    "Tests named by the work index pass: tests/schedule-c-mapping.test.ts, tests/estimated-tax.test.ts, tests/1099k-tieout.test.ts, plus tests/income-tax-integration.test.ts for the books-based preparation; ci green; every review comment read."
+  ],
+  "baseline": "f103c7fcbefb6966a2ac3464e6674a14dbc7f783",
+  "card": "docs/pr-cards/CMP-2.md",
+  "checks": {
+    "browser": [
+      "e2e/compliance.spec.ts"
+    ],
+    "db": [
+      "tests/income-tax-integration.test.ts"
+    ],
+    "node": [],
+    "unit": [
+      "tests/schedule-c-mapping.test.ts",
+      "tests/estimated-tax.test.ts",
+      "tests/1099k-tieout.test.ts",
+      "tests/compliance-forms.test.ts"
+    ]
+  },
+  "gates": [],
+  "id": "CMP-2",
+  "invariants": [
+    "Estimates are always labelled estimates; no number is invented — a missing prior-year tax fact or missing asset tax evidence yields words ('ask your CPA', 'CPA review needed'), never a fabricated amount.",
+    "Nothing is filed and nothing is paid by the app: CMP-2 prepares packets, worksheets and vouchers inside the CMP-1 prepare → approve flow (preparedHash binding), and paying happens only through the IRS and Colorado payment links.",
+    "The owner's personal SSN for a voucher is handled like the CMP-1/CMP-3 secrets: typed at download time, used only inside that request's PDF fill, never stored, logged or audited.",
+    "Money stays integer cents; times are stored UTC and shown America/Denver; writes lock the row first and re-check the actor inside the transaction.",
+    "Schedule C totals come from the posted journal lines of the filing's tax year, the same books the year-end package reads; the mapping never guesses silently — unmapped accounts land on line 27a by name."
+  ],
+  "next": "Full tests, CI, review, merge; then Lane 5's remaining compliance work per MASTER-ROADMAP (CMP-4 next in the compliance spec order). CMP-2 merging also unblocks Lane 4's TAXBEN-1.",
+  "outcome": "Income tax season works end to end: every books account maps to a Schedule C line; the app prepares the year's accountant packet (Schedule C totals tied to the 1099-K, 4562 and 4797 worksheets marked as CPA-confirm estimates, home-office note) as CSV and PDF under the owner's approval; quarterly federal and Colorado estimates are computed by the safe-harbor method from last year's entered tax (or honestly refuse when there is no prior year), with filled 1040-ES and DR 0104EP vouchers and payment links — the app never pays and never invents a number.",
+  "parent": "CMP-2",
+  "proposedFiles": [
+    "docs/DATABASE.md",
+    "docs/OWNER-GUIDE.md",
+    "docs/OWNER-INPUTS.md",
+    "docs/STATUS.md",
+    "docs/pr-cards/CMP-2.md",
+    "docs/pr-cards/CMP-3.md",
+    "docs/pr-cards/work-index.json",
+    "prisma/migrations/20261110000000_cmp2_income_tax/migration.sql",
+    "prisma/schema.prisma",
+    "src/app/desk/compliance/[id]/outputs/route.ts",
+    "src/app/desk/compliance/[id]/packet-sections.tsx",
+    "src/app/desk/compliance/[id]/page.tsx",
+    "src/app/desk/compliance/[id]/voucher-form.tsx",
+    "src/app/desk/compliance/actions.ts",
+    "src/app/desk/compliance/facts/page.tsx",
+    "src/app/desk/compliance/facts/tax-year-facts-form.tsx",
+    "src/domains/backup/manifest.ts",
+    "src/domains/books/system-chart.json",
+    "src/domains/compliance/estimates.ts",
+    "src/domains/compliance/forms/co/dr0104ep_2026.pdf",
+    "src/domains/compliance/forms/dr0104ep.fields.ts",
+    "src/domains/compliance/forms/manifest.json",
+    "src/domains/compliance/k-reconciliation.ts",
+    "src/domains/compliance/pdf-forms.ts",
+    "src/domains/compliance/schedule-c.ts",
+    "src/domains/compliance/tax-facts.ts",
+    "src/domains/compliance/worksheets.ts",
+    "tests/1099k-tieout.test.ts",
+    "tests/compliance-forms.test.ts",
+    "tests/estimated-tax.test.ts",
+    "tests/income-tax-integration.test.ts",
+    "tests/schedule-c-mapping.test.ts"
+  ],
+  "references": [
+    {
+      "anchor": "## CMP-2",
+      "path": "docs/build-specs/engines/COMPLIANCE.md",
+      "purpose": "The build spec: Schedule C mapping, accountant packet, 4562/4797 worksheets, safe-harbor estimates, 1099-K reconciliation, the TXF condition."
+    },
+    {
+      "anchor": "model BookAsset",
+      "path": "prisma/schema.prisma",
+      "purpose": "The asset record (cost, placedInServiceOn, lifeMonths) plus BookTaxEvidence (section179Cents, bonusDepreciationCents, allowedDepreciationCents, confidence) the 4562 worksheet is built from."
+    },
+    {
+      "anchor": "export function estimateRetiredSale",
+      "path": "src/domains/sales/retired-sale-tax.ts",
+      "purpose": "The existing Section 1245 estimate the 4797 worksheet reuses — never a second depreciation math."
+    },
+    {
+      "anchor": "export async function fillEstimatedTaxVoucher",
+      "path": "src/domains/compliance/pdf-forms.ts",
+      "purpose": "The CMP-1 voucher filler for the 1040-ES booklet; the DR 0104EP filler joins the same manifest-checked engine."
+    },
+    {
+      "anchor": "export async function yearEndPackage",
+      "path": "src/domains/books/closing.ts",
+      "purpose": "The year-end books basis (posted journals for the calendar year) the Schedule C totals mirror."
+    },
+    {
+      "anchor": "model StripeBalanceTransaction",
+      "path": "prisma/schema.prisma",
+      "purpose": "The stored Stripe balance rows the 1099-K tie-out aggregates by month — no live Stripe call."
+    },
+    {
+      "anchor": "us.section179",
+      "path": "src/domains/rules/registry.ts",
+      "purpose": "The dated rule book entries (us.section179 limits, us.bonus_depreciation percent) the 4562 worksheet reads with ruleAsOf for the placed-in-service year."
+    },
+    {
+      "anchor": "export async function prepareGuidedAction",
+      "path": "src/app/desk/compliance/actions.ts",
+      "purpose": "The CMP-1/CMP-3 preparation dispatch CMP-2 extends for schedule_c, 4562, 4797 and the two estimate obligations."
+    }
+  ],
+  "risk": "Tax estimates and worksheets (always labelled estimates, CPA confirms; nothing filed or paid by the app), and the owner's personal SSN handled at voucher-download time only (never stored or logged).",
+  "sequence": [
+    "CMP-3 close-out riding this branch (STATUS, CMP-3 card, work index)",
+    "Additive schema: LedgerAccount.scheduleCLine, TaxYearFacts; system chart gains a Schedule C line for every account; mapping test",
+    "Schedule C year totals from posted journals + the packet builder (CSV + generated PDF) and the 1099-K tie-out from stored Stripe rows",
+    "4562 and 4797 worksheets from assets, tax evidence and retired sales (existing Section 1245 estimate)",
+    "Tax-year facts (prior-year tax and AGI, Colorado tax, typed 1099-K gross) on the Business facts page",
+    "Safe-harbor estimates for the federal and Colorado quarterly filings; vendor the official DR 0104EP 2026 PDF with its field map; voucher downloads filled at request time",
+    "Filing page sections for the packet, worksheets, tie-out and estimates with the payment links; Decisions question for the Colorado method note; docs and tests"
+  ],
+  "version": 1
+}

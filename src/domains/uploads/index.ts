@@ -58,6 +58,16 @@ export async function canUploadPhoto(
       })) !== null
     );
   }
+  // VAULT-1: business-record files go only to an existing record's folder, and
+  // only the owner uploads them (admins may read allowed records, never write).
+  if (segments[0] === "records" && user.role === "OWNER") {
+    return (
+      (await prisma.businessPaperwork.findUnique({
+        where: { id },
+        select: { id: true },
+      })) !== null
+    );
+  }
   if (segments[0] === "tax-exemptions" && user.role === "OWNER") {
     return (
       (await prisma.customer.findFirst({

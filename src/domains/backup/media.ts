@@ -15,7 +15,7 @@ import {
 } from "@/domains/backup/media-deletion";
 import { privateBlobUrl } from "@/domains/feedback/media";
 
-const PRIMARY_PREFIXES = ["jobs/", "appliances/", "maintenance-requests/", "feedback/"] as const;
+const PRIMARY_PREFIXES = ["jobs/", "appliances/", "maintenance-requests/", "feedback/", "records/"] as const;
 const MEDIA_MANIFEST_SUFFIX = ".media.json";
 
 export type MediaManifestEntry = {
@@ -225,8 +225,15 @@ export async function runMediaInventoryAndCopy(input: {
     select: { id: true, pathname: true },
     orderBy: { id: "asc" },
   });
+  // VAULT-1: keep business-record files, including renewal history, recoverable.
+  const recordFileRows = await prisma.businessRecordFile.findMany({
+    where: { deletedAt: null },
+    select: { id: true, pathname: true },
+    orderBy: { id: "asc" },
+  });
   const photos = [
     ...photoRows,
+    ...recordFileRows.map((row) => ({ id: "record:" + row.id, url: privateBlobUrl(store.storeId, row.pathname) })),
     ...feedbackRows.map((row) => ({ id: `feedback:${row.id}`, url: privateBlobUrl(store.storeId, row.pathname) })),
   ];
   const referencedPaths = new Set<string>();

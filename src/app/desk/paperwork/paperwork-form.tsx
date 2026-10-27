@@ -2,8 +2,15 @@
 
 import { useActionState } from "react";
 import { Button, Field, Select, Textarea } from "@/components/ui";
-import { PAPERWORK_GROUPS, PAPERWORK_STATUS_LABEL } from "@/domains/paperwork/rules";
+import {
+  PAPERWORK_GROUPS,
+  PAPERWORK_STATUS_LABEL,
+  RECORD_KINDS,
+  RECORD_KIND_LABEL,
+} from "@/domains/paperwork/rules";
 import type { PaperworkFormState } from "./actions";
+
+export type ObligationOption = { key: string; title: string };
 
 export type PaperworkFormValues = {
   title: string;
@@ -18,6 +25,16 @@ export type PaperworkFormValues = {
   remindDaysBefore: number;
   repeatEveryMonths: string;
   notes: string;
+  kind: string;
+  issuedOn: string;
+  expiresOn: string;
+  numberLabel: string;
+  /** Display only: whether a number is already stored (the number itself never comes back to the browser). */
+  hasNumber: boolean;
+  numberLast4: string;
+  portalUrl: string;
+  costDollars: string;
+  linkedObligationKeys: string[];
 };
 
 export const EMPTY_PAPERWORK: PaperworkFormValues = {
@@ -33,16 +50,27 @@ export const EMPTY_PAPERWORK: PaperworkFormValues = {
   remindDaysBefore: 30,
   repeatEveryMonths: "",
   notes: "",
+  kind: "TASK",
+  issuedOn: "",
+  expiresOn: "",
+  numberLabel: "",
+  hasNumber: false,
+  numberLast4: "",
+  portalUrl: "",
+  costDollars: "",
+  linkedObligationKeys: [],
 };
 
 export function PaperworkForm({
   action,
   initial,
   submitLabel,
+  obligationOptions = [],
 }: {
   action: (state: PaperworkFormState, formData: FormData) => Promise<PaperworkFormState>;
   initial: PaperworkFormValues;
   submitLabel: string;
+  obligationOptions?: ObligationOption[];
 }) {
   const [state, formAction, pending] = useActionState(action, { status: "idle" } as PaperworkFormState);
   return (
@@ -54,27 +82,60 @@ export function PaperworkForm({
             <option key={group} value={group}>{group}</option>
           ))}
         </Select>
-        <Select label="Where are you with it?" name="status" defaultValue={initial.status}>
-          {Object.entries(PAPERWORK_STATUS_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
+        <Select label="What kind of record is it?" name="kind" defaultValue={initial.kind}>
+          {RECORD_KINDS.map((kind) => (
+            <option key={kind} value={kind}>{RECORD_KIND_LABEL[kind]}</option>
           ))}
         </Select>
       </div>
+      <Select label="Where are you with it?" name="status" defaultValue={initial.status}>
+        {Object.entries(PAPERWORK_STATUS_LABEL).map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </Select>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="What is the number called?"
+          name="numberLabel"
+          defaultValue={initial.numberLabel}
+          autoComplete="off"
+          help="For example: EIN, Policy number, Account number."
+        />
+        <Field
+          label={initial.hasNumber ? `Number (on file: ••••${initial.numberLast4 ?? ""})` : "Number (optional)"}
+          name="numberValue"
+          defaultValue=""
+          autoComplete="off"
+          help={
+            initial.hasNumber
+              ? "Leave blank to keep the number on file. Type a new one to replace it. Numbers are stored encrypted; only the owner sees them, and only ever masked."
+              : "Stored encrypted. Only the owner can see it, and only ever masked (last four characters). It is kept out of the activity log."
+          }
+        />
+      </div>
       <Field
-        label="Number (optional)"
+        label="Reference (optional, not secret)"
         name="referenceNumber"
         defaultValue={initial.referenceNumber}
         autoComplete="off"
-        help="An EIN, license or policy number. Only the owner can see this. It is kept out of the activity log."
+        help="A reference you don't mind being plain text (a confirmation or case number). Only the owner can see this. It is kept out of the activity log."
       />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Started or issued on" name="startedOn" type="date" defaultValue={initial.startedOn} />
+        <Field label="Started on" name="startedOn" type="date" defaultValue={initial.startedOn} />
+        <Field label="Issued on" name="issuedOn" type="date" defaultValue={initial.issuedOn} />
         <Field
-          label="Next due, renewal or expiry date"
+          label="Expires on"
+          name="expiresOn"
+          type="date"
+          defaultValue={initial.expiresOn}
+          help="When the document itself runs out (a license, a policy). You get a reminder before it."
+        />
+        <Field
+          label="Next action date"
           name="dueOn"
           type="date"
           defaultValue={initial.dueOn}
-          help="Leave empty if there is no date. When a date is set, you get a reminder on your Today list."
+          help="The next thing that's due, if different from the expiry. Reminders use whichever date comes first."
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -93,11 +154,48 @@ export function PaperworkForm({
           min={1}
           max={120}
           defaultValue={initial.repeatEveryMonths}
-          help="12 for yearly. Leave empty if it happens once. Used by 'Mark done and schedule the next one'."
+          help="12 for yearly. Leave empty if it happens once. Used by 'Mark done and schedule the next one' and 'Renewed…'."
         />
       </div>
-      <Field label="Who handles it" name="agency" defaultValue={initial.agency} help="The office or company, for example Colorado Secretary of State." />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Who handles it" name="agency" defaultValue={initial.agency} help="The office or company, for example Colorado Secretary of State." />
+        <Field
+          label="Cost (optional)"
+          name="costDollars"
+          inputMode="decimal"
+          defaultValue={initial.costDollars}
+          help="The yearly or renewal cost in dollars, if there is one. Used by your budget."
+        />
+      </div>
       <Field label="Website (optional)" name="officialUrl" type="url" defaultValue={initial.officialUrl} help="Must start with https://" />
+      <Field
+        label="Portal / sign-in page (optional)"
+        name="portalUrl"
+        type="url"
+        defaultValue={initial.portalUrl}
+        help="Where you sign in or manage this — for example Revenue Online. Must start with https://"
+      />
+      {obligationOptions.length > 0 && (
+        <fieldset>
+          <legend className="text-sm font-semibold">This record is used for (compliance list)</legend>
+          <p className="mt-1 text-xs text-ink-soft">
+            Tick the filings or accounts this record unlocks or feeds. Linked filings can warn you when the document behind them is expiring.
+          </p>
+          <div className="mt-2 grid gap-1 sm:grid-cols-2">
+            {obligationOptions.map((option) => (
+              <label key={option.key} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="obligationKey"
+                  value={option.key}
+                  defaultChecked={initial.linkedObligationKeys.includes(option.key)}
+                />
+                {option.title}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <Textarea label="What it is, in plain words" name="whatItIs" rows={4} defaultValue={initial.whatItIs} />
       <Textarea label="Your own notes" name="notes" rows={3} defaultValue={initial.notes} help="Who you talked to, what they said, where the papers are kept." />
       {state.status === "error" && (
@@ -107,4 +205,3 @@ export function PaperworkForm({
     </form>
   );
 }
-

@@ -196,6 +196,9 @@ model Customer {
   paymentDisputes PaymentDispute[]
   collectionSteps CollectionStep[]
   collectionCases CollectionCase[]
+  // OPS-7: a legal hold stops every automatic purge and privacy deletion for this customer.
+  legalHoldAt DateTime?
+  legalHoldReason String?
   id     String @id @default(cuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])
@@ -839,6 +842,24 @@ model Supplier {
   email       String?
   notes       String?
 
+  // CMP-3: the W-9 record. The TIN itself is stored only encrypted
+  // (field-crypto, AES-256-GCM); screens show the last 4. legalName is the
+  // name on the tax return, which can differ from the trade name above.
+  tinType           String? // "SSN" | "EIN"
+  tinEncrypted      String?
+  tinLast4          String?
+  legalName         String?
+  // The mailing address from the W-9 — 1099 recipient copies and the IRIS
+  // file are incomplete without it (review finding on PR #654).
+  mailingAddress    String?
+  mailingCity       String?
+  mailingState      String?
+  mailingZip        String?
+  w9ReceivedOn      DateTime?
+  w9FileUrl         String?
+  backupWithholding Boolean   @default(false)
+  w9Requests        W9Request[]
+
   // Batch C P1-C: archived suppliers are hidden from pickers and cannot take new purchase orders.
   archivedAt DateTime?
 
@@ -847,6 +868,21 @@ model Supplier {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// CMP-3: a one-time W-9 request link for a supplier. Only the token's
+// SHA-256 hash is stored; the link works once and expires after 14 days.
+model W9Request {
+  id              String    @id @default(cuid())
+  supplierId      String
+  supplier        Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  tokenHash       String    @unique
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+
+  @@index([supplierId])
 }
 
 // One order placed with a supplier. DRAFT while Chris is still putting
@@ -3377,6 +3413,18 @@ model PurchaseUseTax {
 // ---------------------------------------------------------------------------
 
 model BusinessSettings {
+  // OPS-3: how the owner claims vehicle costs. Starting value: the standard mileage rate in the first year (keeps both options open).
+  mileageMethod MileageMethod @default(STANDARD_RATE)
+  // OPS-3: a medical card is asked for from this vehicle weight up (starting value: required from 16,001 lb; not confirmed).
+  vehicleMedicalCardRequired Boolean @default(true)
+  // OPS-4: insurance. Renewal reminders (days before a policy ends) and workers' compensation status.
+  insuranceRemindFirstDays Int @default(60)
+  insuranceRemindSecondDays Int @default(30)
+  workersCompStatus WorkersCompStatus @default(NOT_SET)
+  workersCompEmployees Int @default(0)
+  workersCompNote String?
+  workersCompFormSentOn DateTime?
+  workersCompMailNumber String?
   // Batch M-2: remind on Today when a retired appliance has had no plan (or an unfinished one) this many days; 0 = never.
   retiredFollowUpDays Int @default(30)
   // O-5: warn on Today when a ready-to-rent appliance has sat idle this many days (0 = never) and when fleet utilization
@@ -3397,6 +3445,8 @@ model BusinessSettings {
   booksLastBroughtUpToDateAt DateTime?
   booksLastProblemCount Int @default(0)
   booksConsecutiveFailedNights Int @default(0)
+  booksReviewReminderDay Int @default(15)
+  accountantEmail String?
   depreciationMonthsDefault Int @default(60)
   depreciationSalvagePercent Int @default(0)
   badDebtTaxRecovery String @default("UNDECIDED")
@@ -3541,6 +3591,20 @@ model BusinessSettings {
   autoRenewEnabled Boolean @default(false)
   // Batch E: durable automation pause state and versioned, owner-editable lead scoring policy.
   pausedAutomations Json @default("[]")
+  // OPS-8: the owner's "If something happens to me" page, and the owner-only switch that stops new automatic charges and reminders.
+  continuityEmergencyName String?
+  continuityEmergencyContact String?
+  continuitySuccessorName String?
+  continuitySuccessorContact String?
+  continuityCpaName String?
+  continuityCpaContact String?
+  continuityAttorneyName String?
+  continuityAttorneyContact String?
+  continuityRecordsNote String?
+  continuityReviewedAt DateTime?
+  chargesPausedAt DateTime?
+  chargesPausedByUserId String?
+  chargesPausedNote String?
   leadScoringPolicy Json @default("{\"version\":1,\"termPoints\":{\"month-to-month\":0,\"6-month\":10,\"12-month\":20},\"additionalUnitPoints\":5,\"businessAccountPoints\":10,\"multiUnitPropertyManagerPoints\":25,\"highValueThreshold\":30}")
   draftReservationHoldDays Int @default(7)
   // Older review findings: how long a removed receipt file / an unsent request photo waits before the nightly clean-up deletes it.
@@ -3607,6 +3671,10 @@ model BusinessSettings {
   signInPauseMinutes       Int     @default(15)
   // ACC-6: days a ticked "Remember this device" skips the sign-in code (0-90; 0 = always ask). Starting value 30.
   trustedDeviceDays        Int     @default(30)
+  // VAULT-1: which business-record kinds an ADMIN may open (read-only). Starting
+  // value: the non-sensitive kinds. A record holding an encrypted number is
+  // never admin-readable, whatever its kind (domain rule, not just this list).
+  paperworkAdminKinds      String[] @default(["DOCUMENT", "LICENSE", "PERMIT", "REGISTRATION", "INSURANCE", "VEHICLE", "CONTRACT"])
   invitationLinkDays  Int     @default(7)
   adminsMayInviteStaff Boolean @default(false)
 
@@ -3625,6 +3693,21 @@ model BusinessSettings {
   collectionPayHowText String?
   collectionHelpText String?
   collectionDecisionDay Int @default(30)
+
+  // OPS-7: how long to keep things, in years (starting values from the research; the purge below is OFF until the owner turns it on).
+  retentionAgreementYears Int @default(7)
+  retentionTaxYears Int @default(7)
+  retentionRefrigerantYears Int @default(6)
+  retentionLeadYears Int @default(2)
+  retentionMessageYears Int @default(3)
+  retentionPurgeEnabled Boolean @default(false)
+  // OPS-7: face-match ID checks stay off unless the owner turns them on.
+  faceMatchIdEnabled Boolean @default(false)
+  // OPS-7: marketing texts only between these hours, Denver time.
+  marketingTextStartHour Int @default(8)
+  marketingTextEndHour Int @default(21)
+  // OPS-7: how many months before a service provider's security terms are due for a re-read.
+  vendorReviewMonths Int @default(12)
 }
 
 model ComplianceProfile {
@@ -3641,7 +3724,32 @@ model ComplianceProfile {
   truckGvwrLbs   Int?
   employees      Int      @default(0)
   hasHomeOffice  Boolean  @default(false)
+  // CMP-3: the payer identity printed on information returns (1099s) and
+  // Form 8300 — the business's legal name and mailing address, entered
+  // once on the business-facts screen.
+  businessLegalName String?
+  businessAddress   String?
+  businessCity      String?
+  businessState     String?
+  businessZip       String?
+  businessPhone     String?
   updatedAt      DateTime @updatedAt
+}
+
+// CMP-2: what the owner (or the CPA) recorded about one finished tax
+// year — the figures the safe-harbor estimates are computed from, plus
+// the 1099-K gross typed from Stripe's form for the tie-out. Every field
+// is optional: a missing figure means the app shows words ("ask your
+// CPA"), never an invented number. Entered on the business-facts screen.
+model TaxYearFacts {
+  id                   String   @id @default(cuid())
+  year                 Int      @unique
+  federalTaxCents      Int? // that year's total federal tax (Form 1040)
+  federalAgiCents      Int? // that year's federal adjusted gross income
+  coloradoTaxCents     Int? // that year's total Colorado tax (DR 0104)
+  form1099KGrossCents  Int? // that year's Form 1099-K box 1a, as typed
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model ComplianceFiling {
@@ -3650,7 +3758,7 @@ model ComplianceFiling {
   // APPROVED → SUBMITTED step happens once only under the row lock.
   id               String    @id @default(cuid())
   obligationKey    String    @db.VarChar(60)
-  periodKey        String    @db.VarChar(20)
+  periodKey        String    @db.VarChar(40)
   state            String    @db.VarChar(20)
   dueOn            DateTime
   actOn            DateTime
@@ -4990,6 +5098,10 @@ model LedgerAccount {
   description     String // plain words, shown on screen
   isPaymentSource Boolean                @default(false)
   filingAccountId String? // set for per-filing-account tax payable accounts
+  // CMP-2: the Schedule C line this account's year totals land on
+  // (src/domains/compliance/schedule-c.ts); null = not yet mapped, which
+  // the packet treats as line 27a (Other expenses) listed by name.
+  scheduleCLine   String?
   active          Boolean                @default(true)
   sortOrder       Int                    @default(0)
   mappings        AccountExportMapping[]
@@ -5055,6 +5167,8 @@ model AccountingPeriod {
   closedAt       DateTime?
   closedByUserId String?
   reopenedReason String?
+  reviewNotes Json?
+  accountantSentAt DateTime?
   updatedAt      DateTime               @updatedAt
 }
 
@@ -5090,6 +5204,11 @@ model ExpenseCategory {
   ledgerAccountId String
   active          Boolean   @default(true)
   sortOrder       Int       @default(0)
+  // CMP-3: which 1099 box payments in this category count toward, when the
+  // supplier is a 1099 vendor: "NEC_1" (services), "MISC_1" (rents) or
+  // "MISC_3" (other income). Null = not classified yet — those amounts are
+  // shown as unclassified on the 1099 filing, never silently guessed.
+  form1099Box     String?
   expenses        Expense[]
   createdAt       DateTime  @default(now())
 }
@@ -5107,6 +5226,7 @@ model Expense {
   paidFromAccountId     String
   memo                  String?
   receiptPhotoId        String?
+  noReceiptReason       String?
   applianceId           String?
   jobId                 String?
   purchaseOrderId       String?
@@ -5686,8 +5806,49 @@ model BusinessPaperwork {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   version          Int             @default(1)
+  // VAULT-1: a paperwork item is a business record. kind says what sort of record
+  // it is; issuedOn/expiresOn are the document's own dates (dueOn stays the next
+  // action date; reminders use the earlier of expiresOn and dueOn).
+  kind            String   @default("TASK") // TASK | LICENSE | PERMIT | REGISTRATION | TAX_ACCOUNT | INSURANCE | BANK | DOCUMENT | ACCOUNT | VEHICLE | CONTRACT
+  issuedOn        DateTime?
+  expiresOn       DateTime?
+  /// What the stored number is ("EIN", "Policy number", "TCC").
+  numberLabel     String?  @db.VarChar(60)
+  /// The number itself, encrypted with the compliance field key (never plaintext,
+  /// never logged; screens and exports show numberLast4 only).
+  numberEncrypted String?
+  numberLast4     String?  @db.VarChar(4)
+  portalUrl       String?  @db.VarChar(500)
+  /// VAULT-2 link: the vault login for this record, when one exists.
+  credentialId    String?
+  /// Yearly or renewal cost in cents; feeds the budget and Schedule C mapping.
+  costCents       Int?
+  /// Compliance registry keys this record unlocks or feeds.
+  linkedObligationKeys String[] @default([])
+  recordFiles     BusinessRecordFile[]
 
   @@index([status, dueOn])
+}
+
+/// VAULT-1: one stored file on a business record (private store only). The file
+/// bytes live in the private Blob store under records/{recordId}/{id}.{ext};
+/// this row is the searchable, auditable index. deletedAt soft-deletes so a
+/// replaced file stays in the record's history.
+model BusinessRecordFile {
+  id               String    @id @default(cuid())
+  recordId         String
+  record           BusinessPaperwork @relation(fields: [recordId], references: [id], onDelete: Restrict)
+  pathname         String    @unique
+  fileName         String    @db.VarChar(200)
+  contentType      String    @db.VarChar(80)
+  sizeBytes        Int
+  sha256           String    @db.Char(64)
+  label            String?   @db.VarChar(120)
+  uploadedByUserId String
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+
+  @@index([recordId, deletedAt])
 }
 
 // O-5: a monthly target for one business number (cash collected, or new rentals). One per metric per Colorado month.
@@ -5988,6 +6149,118 @@ model SafetyIncident {
   @@index([jobId])
 }
 
+// OPS-4: the owner's insurance policies (general liability, commercial auto, equipment, workers' comp) with a renewal
+// date that feeds To do reminders. Limits are free text ("$1M per claim") because only the agent can say what is right.
+enum InsuranceKind {
+  GENERAL_LIABILITY
+  COMMERCIAL_AUTO
+  EQUIPMENT
+  WORKERS_COMP
+  OTHER
+}
+
+enum WorkersCompStatus {
+  NOT_SET
+  NO_EMPLOYEES_REJECTED
+  POLICY_IN_PLACE
+}
+
+model OwnerInsurancePolicy {
+  id               String        @id @default(cuid())
+  kind             InsuranceKind
+  insurer          String
+  policyNumber     String
+  limitsText       String?
+  annualPremiumCents Int?
+  effectiveOn      DateTime?
+  expiresOn        DateTime
+  agentName        String?
+  agentEmail       String?
+  /// Where the certificate of insurance (COI) PDF is kept, e.g. "Emailed by agent, in the Insurance folder in Drive".
+  certificateNote  String?
+  notes            String?
+  archivedAt       DateTime?
+  createdByUserId  String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  certificateRequests InsuranceCertificateRequest[]
+
+  @@index([expiresOn])
+}
+
+/// Each time Chris asked his agent for a certificate of insurance on behalf of someone (usually a property manager).
+model InsuranceCertificateRequest {
+  id               String   @id @default(cuid())
+  policyId         String
+  policy           OwnerInsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  requesterName    String
+  requesterCompany String?
+  requesterEmail   String
+  holderText       String?
+  requestedByUserId String
+  requestedAt      DateTime @default(now())
+
+  @@index([policyId, requestedAt])
+}
+
+// OPS-3: the delivery vehicle(s), the mileage log, and the rules that follow from the vehicle's weight (GVWR).
+enum MileageMethod {
+  STANDARD_RATE
+  ACTUAL_COSTS
+}
+
+enum MileageTripSource {
+  ROUTE
+  MANUAL
+}
+
+model FleetVehicle {
+  id                    String   @id @default(cuid())
+  nickname              String
+  year                  Int
+  make                  String
+  model                 String
+  vin                   String?
+  plate                 String?
+  /// Gross vehicle weight rating in pounds. Required: the license and commercial-vehicle rules depend on it.
+  gvwrLbs               Int
+  /// 1-12: the month the registration is due each year.
+  registrationMonth     Int?
+  odometerAtPurchase    Int      @default(0)
+  maintenanceEveryMiles Int?
+  maintenanceEveryMonths Int?
+  lastMaintenanceOn     DateTime?
+  lastMaintenanceMiles  Int?
+  medicalCardExpiresOn  DateTime?
+  notes                 String?
+  archivedAt            DateTime?
+  createdByUserId       String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  trips                 MileageTrip[]
+}
+
+model MileageTrip {
+  id              String            @id @default(cuid())
+  vehicleId       String
+  vehicle         FleetVehicle      @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  /// The business day (Denver midnight).
+  tripDate        DateTime
+  startOdometer   Int
+  /// Null while the day is still in progress.
+  endOdometer     Int?
+  miles           Int?
+  purpose         String
+  source          MileageTripSource
+  stops           Int               @default(0)
+  notes           String?
+  createdByUserId String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([vehicleId, tripDate])
+}
+
 // OPS-6: the past-due ladder. One row per bill per step, made by the nightly pass; nothing reaches a customer until
 // the owner or an admin approves it.
 enum CollectionStepKind {
@@ -6100,4 +6373,68 @@ model RefrigerantRecord {
   updatedAt        DateTime @updatedAt
 
   @@index([recoveredOn])
+}
+
+// OPS-8: one row per calendar year the owner finished the December business check-up. Nothing here changes money or customers.
+model YearlyCheckup {
+  year              Int      @id
+  completedAt       DateTime @default(now())
+  completedByUserId String
+  ticked            Json     @default("[]")
+  note              String?
+}
+
+enum SecurityIncidentState {
+  OPEN
+  CLOSED
+}
+
+// OPS-7: "something may have leaked". The deadlines come from the dated rule book, never from this row.
+model SecurityIncident {
+  id               String @id @default(cuid())
+  state            SecurityIncidentState @default(OPEN)
+  summary          String
+  discoveredAt     DateTime
+  determinedAt     DateTime?
+  residentsAffected Int?
+  informationInvolved String?
+  openedByUserId   String
+  residentsNotifiedAt DateTime?
+  attorneyGeneralNotifiedAt DateTime?
+  bureausNotifiedAt DateTime?
+  vendorsNotifiedAt DateTime?
+  closedAt         DateTime?
+  closedNote       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([state, discoveredAt])
+}
+
+// OPS-7: a service provider that holds our data, with the date its security terms were last read.
+model ServiceVendor {
+  id             String @id @default(cuid())
+  name           String @unique
+  whatTheyDo     String
+  dataTheyHold   String
+  termsReviewedOn DateTime?
+  termsReviewedByUserId String?
+  notes          String?
+  active         Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// OPS-7: someone told us the website or app is hard to use. Colorado gives a short window to fix it.
+model AccessibilityComplaint {
+  id          String @id @default(cuid())
+  receivedAt  DateTime
+  fromWho     String?
+  description String
+  recordedByUserId String
+  resolvedAt  DateTime?
+  resolvedNote String?
+  createdAt   DateTime @default(now())
+
+  @@index([resolvedAt, receivedAt])
 }

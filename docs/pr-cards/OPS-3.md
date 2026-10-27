@@ -11,4 +11,5 @@ TFA-1 (dated rules) and VAULT-1 where the spec says. Risk: see the spec section.
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Built on branch `ai/claude/ops-3` (from main; PR open, see STATUS). Evidence: `tests/ops3-vehicle-rules.test.ts`; `tests/ops3-vehicle-integration.test.ts` (throwaway Postgres, 7 tests); `e2e/vehicle.spec.ts` (CI only). Questions filed: DQ-OPS3-1, DQ-OPS3-2.
+Not built: actual-cost comparison from the books, vehicle-to-insurance-policy link, CMP-2 feed, and the first/last-stop prompt (a card on the Driver view instead).

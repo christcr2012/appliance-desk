@@ -8,7 +8,7 @@ Depends on BA-1 (actor refactor and autopilot).
 ## Acceptance
 - [x] All BA-2 acceptance tests, including disposable PostgreSQL corrections and replay cases, passed at implementation head `72ac47ff` in CI run 40355797414.
 - [x] Existing non-setup Books actions retained; new setup and correction screens covered by repo CI and role tests.
-- [ ] Final docs-only commit requires exact-head CI; previous complete CI run 40355797414 passed at `72ac47ff`, and Codex opening-Stripe finding has been fixed with an integration test. Review thread disposition recorded.
+- [x] Final exact-head CI run 40357496521 passed at `6337a754`; the corrected Stripe opening was integration-tested, review thread resolved, and PR #613 merged.
 
 ## BA-2 implementation and evidence plan
 - [x] Provide the owner-only four-step setup wizard; an admin sees an owner-help message.
@@ -19,9 +19,11 @@ Depends on BA-1 (actor refactor and autopilot).
 - [x] Support owner-only, locked, append-only corrections to opening balances, numbered by correction cycle, safe across retries and across closed periods.
 - [x] Replace old irreversible-opening wording on Books home and add a correction form with a reason.
 - [x] Cover authorization, defaults, zero and nonzero opening, corrections, double-submit, closed periods and Today with throwaway PostgreSQL tests.
-- [ ] Final exact-head CI and review-thread resolution; BA-1 already merged.
+- [x] Exact-head CI and review-thread resolution completed. PR #613 merged after BA-1.
 
 **Dependency:** BA-1 merged as PR #610. BA-2 PR #613 now targets `main`; the current branch contains a merge of the latest main.
 
 ## Progress
 All BA-2 feature screens, finance rules, real-Postgres tests, owner guidance and latest main reconciliation are implemented. Full CI passed at `72ac47ff` (run 40355797414, typecheck/lint, all unit/database shards and browser shards). Codex found a missing corrected-opening Stripe reconciliation baseline; fixed and tested at that passing head. This documentation update awaits its own exact-head CI before merge. No production finance data or provider settings touched.
+
+**Lane 3 closeout (2026-10-26):** PR #613 merged into `main` with final CI green at `6337a754`. Older pending descriptions above are historic checkpoints.

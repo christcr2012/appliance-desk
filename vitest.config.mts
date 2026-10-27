@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/ops8-continuity-integration.test.ts", // OPS-8 changes and restores the shared continuity details and the charges-paused switch.
+  "tests/ops3-vehicle-integration.test.ts", // OPS-3 changes and restores the shared mileage method and medical-card setting.
+  "tests/ops4-insurance-integration.test.ts", // OPS-4 changes and restores the shared insurance reminder days and workers' compensation status.
+  "tests/ops7-privacy-integration.test.ts", // OPS-7 changes and restores the shared privacy settings (retention years, purge switch).
   "tests/job-click-to-call-integration.test.ts", // COM-N2 changes and restores the shared phone policy.
   "tests/telecom-reporting-settings-integration.test.ts", // COM-N4 changes and restores the shared phone policy.
   "tests/com-n1c-workflow-integration.test.ts", // COM-N1C changes and restores the shared phone/text policy, text switch and approved wording.
@@ -15,6 +19,8 @@ const SHARED_SETTINGS_TESTS = [
   "tests/acc4-recovery-integration.test.ts", // ACC-4 changes and restores the shared wrong-password pause numbers and invitation link days.
   "tests/acc5-job-roles-integration.test.ts", // ACC-5 edits the shared starting job roles and the invitation settings.
   "tests/trusted-devices-integration.test.ts", // ACC-6 changes and restores the remember-days setting, the customer-email switch and the text-code switch.
+  "tests/business-records-integration.test.ts", // VAULT-1 changes and restores the shared admin-visible record kinds setting.
+  "tests/setup-guide-integration.test.ts", // SETUP-1 creates a Colorado filing account and reads guide state across all records.
   "tests/goals-integration.test.ts", // O-5 changes and restores the shared alert settings.
   "tests/approvals-integration.test.ts", // O-3 changes and restores the shared approval limits and settings row.
   "tests/approval-money-integration.test.ts", // O-3B changes and restores the shared approval limits.
@@ -39,6 +45,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/ba1-books-autopilot-integration.test.ts", // BA-1 modifies singleton Books dates and depreciation.
   "tests/ba1-nightly-autopilot-integration.test.ts", // BA-1 changes the singleton Books start and health settings.
   "tests/ba2-books-setup-integration.test.ts", // BA-2 owns the Books singleton and closes/reopens historical periods.
+  "tests/ba3-month-review-integration.test.ts", // BA-3 opens/locks periods and owns Books singleton.
   "tests/books-export-delivery-integration.test.ts", // K-CASH-6 also updates/restores singleton Books opening.
   "tests/books-exports-integration.test.ts", // K-5 temporarily sets shared Books opening date and verifies export provenance.
   "tests/telecom-statement-books-integration.test.ts", // COM-N3 changes booksStartDate and posts expenses.

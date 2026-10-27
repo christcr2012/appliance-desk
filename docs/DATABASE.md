@@ -1,3 +1,18 @@
+## November 10 — Income tax helpers (CMP-2, additive)
+
+Migration `20261110000000_cmp2_income_tax`.
+- `LedgerAccount.scheduleCLine` — the Schedule C line this account's year totals land on (a line code like `1`, `20b`, `27a`). The migration fills it for every system account from the system chart (`src/domains/books/system-chart.json`, the same values); owner-added accounts stay null, which the accountant packet reads as line 27a (Other expenses), listed by name — an account is never dropped or guessed into a more specific line.
+- `TaxYearFacts` — one row per finished tax year (`year` unique): `federalTaxCents`, `federalAgiCents`, `coloradoTaxCents` (what that year's returns said — the quarterly estimates' safe-harbor basis) and `form1099KGrossCents` (the 1099-K box 1a typed from Stripe's form, for the tie-out). All nullable: a missing figure means the app shows words ("ask your CPA"), never an invented number. Entered by the owner on Business facts; registered in the backup manifest.
+
+## November 7 — Supplier tax IDs, W-9s and 1099 preparation (CMP-3, additive)
+
+Migrations `20261107000000_supplier_tin_w9` and `20261107010000_filing_period_key_widen`.
+- `Supplier` gains the 1099 record: `tinType` (SSN or EIN), `tinEncrypted` (the tax ID under the same AES-256-GCM field crypto as the EIN; never logged, never shown) with `tinLast4` the only clear digits, `legalName` (the name on the W-9), the W-9 mailing address (`mailingAddress`, `mailingCity`, `mailingState`, `mailingZip` — the IRIS file and recipient copies are incomplete without it), `w9ReceivedOn`, `w9FileUrl` (an uploaded W-9 in the private file store), and `backupWithholding` (24% applies until a W-9 is on file).
+- `W9Request` — one row per one-time W-9 link: `supplierId`, `tokenHash` (only the SHA-256 hash of the link token is stored), `expiresAt` (14 days), `usedAt`, `createdByUserId`. A fresh request deletes the supplier's unused ones.
+- `ExpenseCategory.form1099Box` — which 1099 box the category's payments belong in (`NEC_1`, `MISC_1`, `MISC_3`, or null = not classified yet; amounts are never guessed into a box). The migration classifies only the two system categories whose meaning is certain: warehouse rent → `MISC_1`, professional fees (CPA/legal) → `NEC_1`.
+- `ComplianceProfile` gains the payer block printed on information returns: `businessLegalName`, `businessAddress`, `businessCity`, `businessState`, `businessZip`, `businessPhone`.
+- `ComplianceFiling.periodKey` widens from 20 to 40 characters: Form 8300 filings key their period by the triggering receipt (`8300-` + the receipt id).
+
 ## November 2 — Compliance center (CMP-1, additive)
 
 Migration `20261102000000_compliance`.
@@ -1369,6 +1384,10 @@ Already deployed schema `AccountingDelivery` from the K-CASH evidence migration 
 
 New table `BusinessPaperwork` and enum `PaperworkStatus` (TO_DO, IN_PROGRESS, DONE, NOT_NEEDED): the owner's own list of business paperwork (LLC, EIN, licenses, insurance, yearly filings) with an optional due/expiry date, reminder lead days (0–365), optional repeat length in months (1–120), a free-text `referenceNumber` (EIN/license/policy number) and notes. `templateKey` is unique for the starter checklist so adding it twice does nothing; `version` supports edit-conflict checks. No foreign keys and no existing table changes; zero-data migration. Owner-only at the domain boundary; the reference number and notes are never written to the activity log. The table is in the backup manifest. Dated items feed the Today list (category `BUSINESS_PAPERWORK`).
 
+## Business records (VAULT-1, 2026-10-26, additive migration `20261103000000_business_records`)
+
+`BusinessPaperwork` gains the record fields: `kind` (TASK, LICENSE, PERMIT, REGISTRATION, TAX_ACCOUNT, INSURANCE, BANK, DOCUMENT, ACCOUNT, VEHICLE, CONTRACT; default TASK), `issuedOn`, `expiresOn` (reminders use the earlier of `expiresOn` and `dueOn`), `numberLabel`, `numberEncrypted` (the record's number, encrypted with the compliance field key — AES-256-GCM `v1:` format via `src/lib/field-crypto.ts`; never plaintext, never logged, screens and exports carry only `numberLast4`), `numberLast4`, `portalUrl`, `credentialId` (VAULT-2's vault link, plain reference), `costCents`, and `linkedObligationKeys` (compliance registry keys this record feeds). New table `BusinessRecordFile`: the index of files stored privately under `records/{recordId}/{id}.{ext}` — content type sniffed from magic bytes at attach time (PDF/PNG/JPEG/WebP), `sha256`, size, label, soft delete (`deletedAt`) so replaced files stay as history; the record FK is `onDelete: Restrict` (the domain refuses to delete a record with files, in plain words). `BusinessSettings.paperworkAdminKinds` lists which record kinds an ADMIN may read (starting value: DOCUMENT, LICENSE, PERMIT, REGISTRATION, INSURANCE, VEHICLE, CONTRACT); a record holding an encrypted number is never admin-readable whatever its kind — that rule is in the domain, not the setting. `BusinessRecordFile` rows are in the backup manifest (bytes ride the nightly private-media copy; `numberEncrypted` stays encrypted in backups). Route: `/desk/paperwork` ("Business records"); file reads go through `/api/records/files/[id]` (role-gated, `Cache-Control: private, no-store`, owner downloads audited); exports through `/api/records/export` (owner only, audited, numbers masked).
+
 ## Read-path indexes (October 23)
 
 Migration `20261023150000_read_path_indexes` adds plain indexes (no data change) on links that screens and jobs look up:
@@ -1411,6 +1430,17 @@ null for background operations; automatic audit records explicitly say `by: auto
 `BusinessSettings` records when the nightly book catch-up last ran and how many issues remain;
 `BooksProblem` tracks durable unresolved source/appliance problems by their unique subject key.
 Existing financial entries remain append-only and closed months stay immutable.
+
+### OPS-3: vehicle and mileage (additive migration `20261108000000_vehicle`)
+
+- `FleetVehicle` — nickname, year, make, model, VIN, plate, `gvwrLbs` (required, > 0), `registrationMonth` (1–12), `odometerAtPurchase`, maintenance interval (miles/months) and last service, `medicalCardExpiresOn`, `archivedAt`. In the backup manifest.
+- `MileageTrip` — one row per trip: vehicle (Restrict), Denver-midnight `tripDate`, start/end odometer, `miles` (database checks: end ≥ start, miles = end − start), purpose, `source` (`MileageTripSource`: ROUTE or MANUAL), stops. A partial unique index allows only one ROUTE trip per vehicle per day. In the backup manifest.
+- `BusinessSettings.mileageMethod` (`MileageMethod`, default STANDARD_RATE) and `vehicleMedicalCardRequired` (default true).
+- One seeded rule-book row: `us.mileage_rate` = 725 (tenths of a cent, 72.5¢) from 2026-01-01, from IRS Notice 2026-10 (secondary summary, checked 2026-10-26).
+### OPS-4: insurance (additive migration `20261107000000_insurance`)
+- `OwnerInsurancePolicy` — one row per policy: kind (`InsuranceKind`: GENERAL_LIABILITY, COMMERCIAL_AUTO, EQUIPMENT, WORKERS_COMP, OTHER), insurer, policy number, limits (free text), yearly premium in cents, start and end dates, agent name/email, a note on where the certificate is kept, `archivedAt`. In the backup manifest.
+- `InsuranceCertificateRequest` — each time a certificate was requested for someone (requester, company, email, holder wording, who asked, when); linked to the policy (Restrict). In the backup manifest.
+- `BusinessSettings.insuranceRemindFirstDays` / `insuranceRemindSecondDays` (60 / 30), `workersCompStatus` (`WorkersCompStatus`: NOT_SET, NO_EMPLOYEES_REJECTED, POLICY_IN_PLACE), `workersCompEmployees`, `workersCompNote`, `workersCompFormSentOn`, `workersCompMailNumber`.
 
 ### OPS-5: payment disputes (additive migration `20261103000000_disputes`)
 
@@ -1464,3 +1494,18 @@ restored ledger rows are historical facts, not permission to use the restored st
 `BusinessSettings.backupRetentionDays` defaults to 30 (owner range 7–365).
 Migration: `20261026010000_mcp2_backup_artifacts`; additive with no data rewrite.
 
+
+### OPS-8: continuity (migration `20261109000000_continuity`)
+- `BusinessSettings` gains the "If something happens to me" details (`continuityEmergencyName/Contact`, `continuitySuccessorName/Contact`, `continuityCpaName/Contact`, `continuityAttorneyName/Contact`, `continuityRecordsNote`, `continuityReviewedAt`) and the owner-only pause switch (`chargesPausedAt`, `chargesPausedByUserId`, `chargesPausedNote`). Null `chargesPausedAt` = charges run normally.
+- `YearlyCheckup` — one row per calendar year the December check-up was finished: `year` (primary key), `completedAt`, `completedByUserId`, `ticked` (list of item keys), `note`. In the backup manifest.
+### OPS-7: privacy and security (additive migration `20261105000000_privacy_security`)
+- `SecurityIncident` — one row per possible leak: what happened, when found, when decided, how many Colorado residents, the kinds of information involved (required before the notice letter opens), and the date Chris did each step (people, Attorney General, credit bureaus, service providers). Deadlines are never stored; they are computed from the dated rule book.
+- `ServiceVendor` — the providers that hold customer information (seeded: Vercel, Neon, Stripe, Google Workspace, Twilio, Resend) and the date their security terms were last reviewed.
+- `AccessibilityComplaint` — a reported problem using the site or app, with the fix-by date computed from the rule book.
+- `Customer.legalHoldAt` / `legalHoldReason` — a legal hold; blocks the nightly clean-up and privacy deletion.
+- `BusinessSettings`: `retentionAgreementYears` (7), `retentionTaxYears` (7), `retentionRefrigerantYears` (6), `retentionLeadYears` (2), `retentionMessageYears` (3), `retentionPurgeEnabled` (false), `faceMatchIdEnabled` (false), `marketingTextStartHour` (8), `marketingTextEndHour` (21), `vendorReviewMonths` (12).
+- Four seeded rule-book rows: `co.breach_notice_days` (30), `co.breach_ag_threshold` (500), `co.breach_bureau_threshold` (1000), `co.accessibility_fix_days` (30), checked 2026-10-26 (summaries of C.R.S. 6-1-716 and 24-34-802).
+The three new tables are in the backup manifest.
+### BA-3 review evidence (implementation branch)
+
+Additive migration `20261026070000_books_month_review` retains review reasons and accountant-send evidence per month, owner review reminder day (default 15), optional accountant destination, and expense no-receipt explanations. It never rewrites the original ledger or opens a provider connection. Accountants receive a report only when the OWNER explicitly selects Send.

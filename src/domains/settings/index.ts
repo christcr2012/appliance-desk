@@ -15,6 +15,9 @@ import type { EditableSettingsSection } from "./section-config";
 // just to read settings.
 const DEFAULT_SETTINGS = {
   id: "singleton",
+  // VAULT-1: kinds an ADMIN may open on Business records (the schema default;
+  // mirrored here so a missing settings row still yields the starting value).
+  paperworkAdminKinds: ["DOCUMENT", "LICENSE", "PERMIT", "REGISTRATION", "INSURANCE", "VEHICLE", "CONTRACT"],
   publicBusinessName: "[Company Name]",
   publicPhone: "[Phone Number]",
   publicEmail: "[Email Address]",
