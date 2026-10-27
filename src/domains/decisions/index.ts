@@ -511,9 +511,14 @@ export async function applyStartingValue(
     value: Prisma.JsonValue; effectiveFrom: string | Date | null; why: string; sources: DecisionSourceRef[];
     /** CONFIRMED for a question the owner already answered (DEC-2); the default is a starting value. */
     kind?: "STARTING_VALUE_APPLIED" | "CONFIRMED";
+    /**
+     * DEC-2's nightly run: re-check, under the same lock the write takes, that nobody has answered this question since
+     * the run looked (any record) and that the setting is still untouched; if not, nothing is saved.
+     */
+    onlyIfStillUntouched?: boolean;
   },
   via: DecisionVia = "SCREEN",
-): Promise<void> {
+): Promise<"APPLIED" | "ALREADY_ANSWERED" | "ALREADY_CHANGED"> {
   const subject = requireSubject(id);
   const chosen = checkOption(subject, input.value);
   const why = cleanText(input.why, 500, "reason");
@@ -521,15 +526,23 @@ export async function applyStartingValue(
   if (!Array.isArray(input.sources) || input.sources.length > 20) throw new Error("Invalid source list.");
   const now = new Date();
   decisionStart(input.effectiveFrom, now);
-  await runWrite(actorId, [subject], async (tx) => {
+  return runWrite(actorId, [subject], async (tx): Promise<"APPLIED" | "ALREADY_ANSWERED" | "ALREADY_CHANGED"> => {
     const ctx = await loadDecisionContext(tx);
     const previous = await subject.read(ctx);
+    if (input.onlyIfStillUntouched) {
+      if (await tx.decisionRecord.findFirst({ where: { subjectId: subject.id }, select: { id: true } })) return "ALREADY_ANSWERED";
+      const recommended = subject.recommended?.value;
+      const untouched = previous === "UNDECIDED" || (recommended !== undefined && sameValue(previous, recommended)) ||
+        (subject.untouchedDefault !== undefined && sameValue(previous, subject.untouchedDefault));
+      if (previous === null || !untouched) return "ALREADY_CHANGED";
+    }
     await applyDecisionInTx(tx, actorId, {
       subject, kind: input.kind ?? "STARTING_VALUE_APPLIED", value: chosen, previous, effectiveFrom: input.effectiveFrom,
       confirmedOn: now, reason: why, sources: input.sources,
       record: { audience: subject.audience, via, explanation: why, sources: input.sources,
         ...(via === "MIGRATION" ? { noAnswerer: true } : {}) }, now, ctx,
     });
+    return "APPLIED";
   });
 }
 
@@ -759,7 +772,7 @@ export async function applyDueDecisionChanges(
         const change = await tx.decisionScheduledChange.findUniqueOrThrow({ where: { id } });
         const record = await tx.decisionRecord.findUniqueOrThrow({
           where: { id: change.decisionRecordId },
-          select: { kind: true, answeredByUserId: true, professionalName: true, professionalFirm: true,
+          select: { kind: true, via: true, answeredByUserId: true, professionalName: true, professionalFirm: true,
             professionalAnsweredOn: true, explanation: true, sources: true, createdAt: true },
         });
         const subject = decisionSubject(change.subjectId);
@@ -767,26 +780,41 @@ export async function applyDueDecisionChanges(
         if (record.answeredByUserId) {
           await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${record.answeredByUserId} FOR SHARE`;
         }
-        const decider = record.answeredByUserId ? await tx.user.findUnique({
-          where: { id: record.answeredByUserId }, select: { role: true, archivedAt: true },
+        // DEC-2: a value the app's own nightly run recorded names nobody as its answerer. It is saved by the one
+        // active owner (the same rule the nightly run used to schedule it); with none or several it stays waiting
+        // untouched, and is never cancelled as if a person had left.
+        const systemMade = !record.answeredByUserId && record.via === "MIGRATION";
+        let executorId = record.answeredByUserId;
+        if (systemMade) {
+          const owners = await tx.user.findMany({
+            where: { role: "OWNER", archivedAt: null }, select: { id: true }, take: 2, orderBy: { id: "asc" },
+          });
+          if (owners.length !== 1) return null;
+          executorId = owners[0]!.id;
+          await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${executorId} FOR SHARE`;
+        }
+        const decider = executorId ? await tx.user.findUnique({
+          where: { id: executorId }, select: { role: true, archivedAt: true },
         }) : null;
         if (!decider || decider.archivedAt || decider.role !== "OWNER") {
           await cancelForInactiveDecider(tx, change, now);
           return "CANCELLED" as const;
         }
-        const actorId = record.answeredByUserId!;
+        const actorId = executorId!;
         await assertActiveTeamActor(tx, actorId, ["OWNER"]);
         await tx.decisionScheduledChange.update({ where: { id }, data: { appliedAt: now } });
         const previous = await subject.read(await loadDecisionContext(tx));
         const who = record.professionalName
           ? (record.professionalFirm ? `${record.professionalName}, ${record.professionalFirm}` : record.professionalName)
           : "the owner";
-        const kind = (["CHANGED", "PROFESSIONAL_ANSWER", "STARTING_VALUE_APPLIED"].includes(record.kind)
+        const kind = ((systemMade ? ["CHANGED", "PROFESSIONAL_ANSWER", "STARTING_VALUE_APPLIED", "CONFIRMED"]
+          : ["CHANGED", "PROFESSIONAL_ANSWER", "STARTING_VALUE_APPLIED"]).includes(record.kind)
           ? record.kind : "CHANGED") as DecisionWriteKind;
         await subject.write(tx, actorId, change.value, change.effectiveFrom, {
           kind,
           confirmedOn: record.professionalAnsweredOn ?? record.createdAt,
-          reason: (kind === "STARTING_VALUE_APPLIED" ? record.explanation ?? "Researched starting value"
+          reason: (kind === "STARTING_VALUE_APPLIED" || (systemMade && kind === "CONFIRMED")
+            ? record.explanation ?? "Researched starting value"
             : `Decided by ${who}${record.explanation ? ": " + record.explanation : ""}`).slice(0, 500),
           sources: sourcesOf(record.sources),
           effectiveFrom: change.effectiveFrom,

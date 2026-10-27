@@ -59,11 +59,15 @@ export async function applyStartingValues(now: Date = new Date()): Promise<Start
       continue;
     }
     try {
-      await applyStartingValue(actorId, subject.id, {
+      // The checks above are only a first look; the save repeats them under its own lock so an answer given in the
+      // meantime (or a second nightly run at the same moment) is never replaced.
+      const outcome = await applyStartingValue(actorId, subject.id, {
         value: recommended.value, effectiveFrom, why: recommended.why, sources: recommended.sources,
-        kind: recommended.kind ?? "STARTING_VALUE_APPLIED",
+        kind: recommended.kind ?? "STARTING_VALUE_APPLIED", onlyIfStillUntouched: true,
       }, VIA);
-      (recommended.kind === "CONFIRMED" ? result.confirmed : result.applied).push(subject.id);
+      if (outcome === "ALREADY_ANSWERED") result.skipped.push({ id: subject.id, why: "Answered a moment ago" });
+      else if (outcome === "ALREADY_CHANGED") result.skipped.push({ id: subject.id, why: "Already set by you" });
+      else (recommended.kind === "CONFIRMED" ? result.confirmed : result.applied).push(subject.id);
     } catch (error) {
       // One question that can't be applied yet (e.g. Greeley's tax area doesn't exist) never stops the rest.
       result.skipped.push({ id: subject.id, why: error instanceof Error ? error.message.slice(0, 200) : "Could not be applied" });

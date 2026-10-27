@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { DECISION_SUBJECTS } from "@/domains/decisions/registry";
+import { DECISION_SUBJECTS, decisionSubject } from "@/domains/decisions/registry";
+import { applyDueDecisionChanges, applyStartingValue, confirmDecision, loadDecisionContext } from "@/domains/decisions";
 import { applyStartingValues } from "@/domains/decisions/starting-values";
 import { listStartingValuesAttention, markStartingValuesReviewed } from "@/domains/decisions/attention";
 import { getTaxabilityRulesAsOf } from "@/domains/tax/locations";
@@ -111,6 +112,62 @@ describe.skipIf(!enabled)("DEC-2 researched starting values on PostgreSQL", () =
     expect((await records()).filter((row) => ["LATE-FEE-AMOUNT", "TRUSTED-DEVICE-DAYS"].includes(row.subjectId))).toEqual([]);
     const settings = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
     expect(settings).toMatchObject({ lateFeeFlatCents: 1000, trustedDeviceDays: 60 });
+  }));
+
+  it("the whole path works: scheduled overnight, then saved by the one active owner on its day", () => withOneOwner(async (ownerId) => {
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeFlatCents: 0, trustedDeviceDays: 30 } });
+    const started = new Date(Date.now() - 60_000);
+    await applyStartingValues();
+    // Keep this test to its own two questions: cancel every other waiting change this run made.
+    await prisma.decisionScheduledChange.updateMany({
+      where: { createdAt: { gte: started }, subjectId: { notIn: ["LATE-FEE-AMOUNT", "TRUSTED-DEVICE-DAYS"] } },
+      data: { cancelledAt: new Date() } });
+    const afterThreeDays = new Date(Date.now() + 3 * 86_400_000);
+    const result = await applyDueDecisionChanges(afterThreeDays);
+    expect(result.cancelled).toBe(0);
+    expect(result.applied).toBeGreaterThanOrEqual(2);
+    const settings = await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } });
+    expect(settings.lateFeeFlatCents).toBe(500); // the $5 late fee now really applies to new agreements
+    const waiting = await prisma.decisionScheduledChange.findMany({ where: { subjectId: { in: ["LATE-FEE-AMOUNT", "TRUSTED-DEVICE-DAYS"] }, createdAt: { gte: started } } });
+    expect(waiting.length).toBe(2);
+    for (const row of waiting) expect(row.appliedAt).not.toBeNull();
+    // The record still names nobody; the history rows name the owner who executed it.
+    const fee = await prisma.decisionRecord.findFirstOrThrow({ where: { subjectId: "LATE-FEE-AMOUNT", createdAt: { gte: started } } });
+    expect(fee.answeredByUserId).toBeNull();
+    expect(await prisma.auditLog.count({ where: { userId: ownerId, action: "decision.scheduled_applied" } })).toBeGreaterThanOrEqual(2);
+    await prisma.staffTask.deleteMany({ where: { sourceKey: { startsWith: "decision-cancelled:" }, createdAt: { gte: started } } });
+  }));
+
+  it("with two active owners a due starting value waits instead of being cancelled", () => withOneOwner(async () => {
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { lateFeeFlatCents: 0 } });
+    const started = new Date(Date.now() - 60_000);
+    await applyStartingValues();
+    await prisma.decisionScheduledChange.updateMany({
+      where: { createdAt: { gte: started }, subjectId: { not: "LATE-FEE-AMOUNT" } }, data: { cancelledAt: new Date() } });
+    const second = await prisma.user.create({ data: {
+      email: `owner3-${randomUUID().replaceAll("-", "")}@starting-values.example.test`, name: "Third owner",
+      role: "OWNER", passwordHash: "test-only" } });
+    try {
+      const result = await applyDueDecisionChanges(new Date(Date.now() + 3 * 86_400_000));
+      expect(result.cancelled).toBe(0);
+      const row = await prisma.decisionScheduledChange.findFirstOrThrow({ where: { subjectId: "LATE-FEE-AMOUNT", createdAt: { gte: started } } });
+      expect(row).toMatchObject({ appliedAt: null, cancelledAt: null });
+      expect((await prisma.businessSettings.findUniqueOrThrow({ where: { id: "singleton" } })).lateFeeFlatCents).toBe(0);
+    } finally {
+      await prisma.user.delete({ where: { id: second.id } });
+    }
+  }));
+
+  it("an answer given after the run looked is never replaced (checked again under the write's own lock)", () => withOneOwner(async (ownerId) => {
+    await prisma.businessSettings.update({ where: { id: "singleton" }, data: { trustedDeviceDays: 30 } });
+    const subject = decisionSubject("TRUSTED-DEVICE-DAYS")!;
+    const value = subject.recommended!.value;
+    await confirmDecision(ownerId, "TRUSTED-DEVICE-DAYS", await subject.read(await prisma.$transaction((tx) => loadDecisionContext(tx))));
+    const outcome = await applyStartingValue(ownerId, "TRUSTED-DEVICE-DAYS", {
+      value, effectiveFrom: businessDateKey(addBusinessDays(new Date(), 1)), why: "Researched", sources: subject.recommended!.sources,
+      onlyIfStillUntouched: true }, "MIGRATION");
+    expect(outcome).toBe("ALREADY_ANSWERED");
+    expect(await prisma.decisionRecord.count({ where: { subjectId: "TRUSTED-DEVICE-DAYS", kind: "STARTING_VALUE_APPLIED" } })).toBe(0);
   }));
 
   it("leaves signed agreements and issued invoices exactly as they were", () => withOneOwner(async () => {
