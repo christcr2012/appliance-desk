@@ -1,4 +1,4 @@
-## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (in progress)
+## October 27 — TAXBEN-1: Write-offs and tax benefits, found automatically (PR #696)
 
 Branch `ai/vivienne/taxben-1`. Spec `docs/build-specs/engines/TAX-BENEFITS.md` sections 1–3.
 Every expense account in the system chart now carries a **deduction mapping** (Schedule C line,
@@ -30,7 +30,24 @@ class life, business-began date, solo 401(k) deadline, enterprise-zone fleet use
 `tests/taxben-classification.test.ts`, `tests/taxben-startup.test.ts`,
 `tests/taxben-policy.test.ts`, `tests/taxben-benefits-integration.test.ts`,
 `tests/taxben-rule-book-lint.test.ts` on throwaway Postgres, plus the purchase, packet,
+exceptions and setup suites. All six Codex findings on PR #696 were fixed in one batch
+(contra-income sign, de minimis purchase-year, the missing owner save path for the new
+facts, de minimis units in the mid-quarter basis, the derived began date, and the renewal
+link's year), each with a regression test; local suites 55/55 green before the push.
 exceptions and setup suites.
+## October 27 — OPS-2: recycler receipt photo on a record (branch `ai/claude/ops2-receipt-photo`)
+
+After a refrigerant record is signed, the owner can keep the recycler's receipt photo or PDF with the business
+records (private files, same pattern as the insurance certificate). Tests on real Postgres pass. Still open on OPS-2:
+the sealed-system repair gate (needs a technician-certification record). Vehicle-insurance link is PR #689 (auto-merge on).
+## October 27 — Lane 1 AR-12 review fixes (PR #693)
+Addressed three Codex findings: searched record results cannot be selected for a different query, native segmented radios work without callbacks, and changing list search/filters resets page numbers. Fixed picker lint and Bills workspace test fake; added regression coverage. Fresh exact-head CI/review still required; an unrelated compliance lock-test failure in the prior CI is being checked separately.
+
+## October 27 — Lane 1 AR-12 controls and saved views (PR incoming)
+Built five accessible kit choice controls, mobile/desktop record lookup, built-in Bills/Customers views, honest pending flags on filters not yet supported, real customer search/rental/property-manager filtering, and owner/admin-only saved views with the existing locked workspace store. Tests now cover controls, view registry, customer predicates, and strict saved filter values. CI and review remain pending; no money logic or production settings changed. Remaining AR-12 wording, status explanation, feature settings, help and practice outcomes follow separately.
+
+## October 27 — Lane 1 AR-12: accessible selection controls and useful views (plan)
+Plan committed before implementation on `ai/chatgpt/ar12-controls-views-20261027`: five accessible kit selectors, starter list views, and supported saved Bills and Customers filters. Tests and exact-head CI will be required before merge; no owner confirmation is assumed.
 
 ## October 27 — Fix: closing the emergency link works in the same millisecond (branch `ai/claude/pause-window-edge`)
 
