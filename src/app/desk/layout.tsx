@@ -30,7 +30,7 @@ export default async function DeskLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireRoleForTwoFactorSetup("OWNER", "ADMIN", "STAFF");
+  const session = await requireRoleForTwoFactorSetup("OWNER", "ADMIN", "STAFF", "ACCOUNTANT");
   const role = session.user.role;
   const pathname = (await headers()).get("x-appliance-pathname");
   if (!isTwoFactorEnrollmentExemptPath(pathname)) {
