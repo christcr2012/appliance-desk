@@ -145,6 +145,15 @@ export function adminCanSeeRecord(
   return adminKinds.includes(record.kind);
 }
 
+/**
+ * ACCT-1: may the ACCOUNTANT see this record? Only when the owner marked it
+ * "Share with my accountant" (off by default). The DTO still masks any saved
+ * number for them, exactly like an admin's view.
+ */
+export function accountantCanSeeRecord(record: { shareWithAccountant: boolean }): boolean {
+  return record.shareWithAccountant === true;
+}
+
 /** The date a renewal reminder keys off: the earlier of the expiry and the next action date. */
 export function effectiveRecordDate(record: { dueOn: Date | null; expiresOn: Date | null }): Date | null {
   if (record.dueOn && record.expiresOn) return record.dueOn < record.expiresOn ? record.dueOn : record.expiresOn;

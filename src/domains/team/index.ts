@@ -63,6 +63,11 @@ async function sendInvitationEmail(input: { to: string; name: string; level: str
         `Hello ${input.name},`,
         `${input.inviterName} reset your sign-in. Open this link to choose a new password; you will set up your second sign-in step again afterwards: ${link}`,
         `The link works once and stops working after ${input.days} day${input.days === 1 ? "" : "s"}. If you were not expecting this, tell the owner.`,
+      ].join("\n\n") : input.level === "ACCOUNTANT" ? [
+        `Hello ${input.name},`,
+        `${input.inviterName} invited you to see the books of Robinson Appliance Rentals.`,
+        `Open this link to choose your password and finish setting up your account: ${link}`,
+        `The link works once and stops working after ${input.days} day${input.days === 1 ? "" : "s"}. If you were not expecting this, ignore this email.`,
       ].join("\n\n") : [
         `Hello ${input.name},`,
         `${input.inviterName} invited you to join the team as ${ACCESS_LEVEL_LABEL[input.level] ?? "Staff"}.`,
@@ -87,7 +92,7 @@ function parseLimits(level: InvitableLevel, raw: unknown): string[] {
   return [...out];
 }
 
-export type InviteInput = { name: string; email: string; phone?: string | null; accessLevel: string; adminCapabilityLimits?: unknown; jobRoleId?: string | null };
+export type InviteInput = { name: string; email: string; phone?: string | null; accessLevel: string; adminCapabilityLimits?: unknown; jobRoleId?: string | null; firm?: string | null; accessEndsOn?: Date | null };
 
 async function inviterLabel(tx: Tx, id: string) {
   const u = await tx.user.findUnique({ where: { id }, select: { name: true, email: true } });
@@ -118,6 +123,13 @@ export async function inviteTeamMember(actorId: string, input: InviteInput) {
   const phone = input.phone ? normalizePhone(input.phone) : null;
   const level = parseInvitableLevel(input.accessLevel);
   const limits = parseLimits(level, input.adminCapabilityLimits);
+  // ACCT-1: an accountant invitation also carries the firm and the access end date (null end = the owner
+  // chose "keep until I remove it" in the form). Accountants never get a job role — the level is the limit.
+  const firm = level === "ACCOUNTANT" ? (input.firm?.trim().slice(0, 120) || null) : null;
+  const accessEndsOn = level === "ACCOUNTANT" ? (input.accessEndsOn ?? null) : null;
+  if (accessEndsOn !== null && Number.isNaN(accessEndsOn.getTime())) {
+    throw new TeamError("That access end date doesn't look right.");
+  }
   const code = newInvitationCode();
 
   const created = await prisma.$transaction(async (tx) => {
@@ -127,17 +139,18 @@ export async function inviteTeamMember(actorId: string, input: InviteInput) {
     await lockEmail(tx, email);
     await assertEmailFree(tx, email);
     const jobRoleId = input.jobRoleId || null;
+    if (jobRoleId && level === "ACCOUNTANT") throw new TeamError("An accountant doesn't get a job role — their access level is the limit.");
     if (jobRoleId) {
       try { await assertJobRoleFits(tx, jobRoleId, level); } catch (e) { throw e instanceof JobRoleError ? new TeamError(e.message) : e; }
     }
     const inv = await tx.teamInvitation.create({
       data: {
-        email, name, phone, accessLevel: level, adminCapabilityLimits: limits, jobRoleId, codeHash: hashInvitationCode(code),
+        email, name, phone, accessLevel: level, adminCapabilityLimits: limits, jobRoleId, firm, accessEndsOn, codeHash: hashInvitationCode(code),
         expiresAt: invitationExpiry(new Date(), settings.invitationLinkDays), invitedById: actorId,
       },
     });
     await tx.auditLog.create({
-      data: { userId: actorId, action: "team.invite.create", entityType: "TeamInvitation", entityId: inv.id, newValue: { email, accessLevel: level, limits, jobRoleId } },
+      data: { userId: actorId, action: "team.invite.create", entityType: "TeamInvitation", entityId: inv.id, newValue: { email, accessLevel: level, limits, jobRoleId, firm, accessEndsOn: accessEndsOn?.toISOString() ?? null } },
     });
     return { inv, inviter: await inviterLabel(tx, actorId), days: settings.invitationLinkDays };
   });
@@ -236,6 +249,10 @@ export async function acceptInvitation(code: string, password: string, confirm: 
     }
     const user = await createTrustedCredentialUserInTx(tx, { email: inv.email, name: inv.name, role: inv.accessLevel, password, emailVerified: true });
     if (inv.phone) await tx.user.update({ where: { id: user.id }, data: { phone: inv.phone } });
+    // ACCT-1: the accountant's firm and access end date, chosen at invite time, land on their account.
+    if (inv.accessLevel === "ACCOUNTANT") {
+      await tx.user.update({ where: { id: user.id }, data: { firm: inv.firm, accessEndsOn: inv.accessEndsOn } });
+    }
     if (inv.accessLevel === "ADMIN") {
       const limits = (Array.isArray(inv.adminCapabilityLimits) ? inv.adminCapabilityLimits : []).filter((c): c is string => typeof c === "string" && isCapability(c));
       for (const capability of limits) {
@@ -258,26 +275,28 @@ export async function acceptInvitation(code: string, password: string, confirm: 
 
 export type TeamMemberRow = {
   id: string; name: string; email: string; accessLevel: string; active: boolean; twoStepOn: boolean; lastSignIn: Date | null; jobRoleId: string | null;
+  firm: string | null; accessEndsOn: Date | null;
 };
-export type TeamInvitationRow = { id: string; name: string; email: string; accessLevel: string; state: string; expiresAt: Date; limits: string[] };
+export type TeamInvitationRow = { id: string; name: string; email: string; accessLevel: string; state: string; expiresAt: Date; limits: string[]; firm: string | null; accessEndsOn: Date | null };
 
 /** The Team list. Never includes codes, hashes, passwords or tokens. */
 export async function getTeam(): Promise<{ members: TeamMemberRow[]; invitations: TeamInvitationRow[] }> {
   const users = await prisma.user.findMany({
-    where: { role: { in: ["OWNER", "ADMIN", "STAFF"] } },
-    select: { id: true, name: true, email: true, role: true, archivedAt: true, twoFactorEnabled: true, jobRoleId: true, sessions: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
+    where: { role: { in: ["OWNER", "ADMIN", "STAFF", "ACCOUNTANT"] } },
+    select: { id: true, name: true, email: true, role: true, archivedAt: true, twoFactorEnabled: true, jobRoleId: true, firm: true, accessEndsOn: true, sessions: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
     orderBy: [{ name: "asc" }, { id: "asc" }],
     take: 500,
   });
-  const order: Record<string, number> = { OWNER: 0, ADMIN: 1, STAFF: 2 };
+  const order: Record<string, number> = { OWNER: 0, ADMIN: 1, STAFF: 2, ACCOUNTANT: 3 };
   const members = users
-    .map((u) => ({ id: u.id, name: u.name || u.email, email: u.email, accessLevel: u.role as string, active: !u.archivedAt, twoStepOn: u.twoFactorEnabled, lastSignIn: u.sessions[0]?.createdAt ?? null, jobRoleId: u.jobRoleId }))
+    .map((u) => ({ id: u.id, name: u.name || u.email, email: u.email, accessLevel: u.role as string, active: !u.archivedAt, twoStepOn: u.twoFactorEnabled, lastSignIn: u.sessions[0]?.createdAt ?? null, jobRoleId: u.jobRoleId, firm: u.firm, accessEndsOn: u.accessEndsOn }))
     .sort((a, b) => order[a.accessLevel] - order[b.accessLevel]);
   const rows = await prisma.teamInvitation.findMany({ where: { purpose: "INVITE", status: { in: ["INVITED", "CANCELLED"] } }, orderBy: { createdAt: "desc" }, take: 200 });
   const now = new Date();
   const invitations = rows.map((r) => ({
     id: r.id, name: r.name, email: r.email, accessLevel: r.accessLevel as string, state: effectiveInvitationState(r.status, r.expiresAt, now), expiresAt: r.expiresAt,
     limits: (Array.isArray(r.adminCapabilityLimits) ? r.adminCapabilityLimits : []).filter((c): c is string => typeof c === "string"),
+    firm: r.firm, accessEndsOn: r.accessEndsOn,
   }));
   return { members, invitations };
 }
@@ -305,7 +324,7 @@ export async function removeTeamMember(actorId: string, targetId: string) {
   return noticeWarning(targetId, "team_removed");
 }
 
-export async function restoreTeamMember(actorId: string, targetId: string) {
+export async function restoreTeamMember(actorId: string, targetId: string, input: { accessEndsOn?: Date | null } = {}) {
   await prisma.$transaction(async (tx) => {
     const actor = await assertActiveTeamActor(tx, actorId, ["OWNER", "ADMIN"]);
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${targetId} FOR UPDATE`;
@@ -313,10 +332,46 @@ export async function restoreTeamMember(actorId: string, targetId: string) {
     if (!target) throw new TeamError("That account no longer exists.");
     assertMayRemoveOrRestore(actor.role, actorId, target.role, target.id);
     if (!target.archivedAt) throw new TeamError("That person is not removed.");
-    await tx.user.update({ where: { id: targetId }, data: { archivedAt: null } });
+    // ACCT-1: a restored accountant always gets a fresh end date — the old one may already have passed.
+    if (target.role === "ACCOUNTANT") {
+      if (!input.accessEndsOn || Number.isNaN(input.accessEndsOn.getTime())) {
+        throw new TeamError("Give the restored accountant a new access end date.");
+      }
+      await tx.user.update({ where: { id: targetId }, data: { archivedAt: null, accessEndsOn: input.accessEndsOn } });
+    } else {
+      await tx.user.update({ where: { id: targetId }, data: { archivedAt: null } });
+    }
     await tx.auditLog.create({ data: { userId: actorId, action: "team.restore", entityType: "User", entityId: targetId, newValue: { role: target.role } } });
   });
   return noticeWarning(targetId, "team_restored");
+}
+
+/**
+ * ACCT-1 (owner only): change when an accountant's access ends. Null means "keep until I remove it".
+ * An end date in the past signs them out everywhere at once, like the nightly sweep would.
+ */
+export async function setAccountantAccessEndDate(ownerId: string, targetId: string, accessEndsOn: Date | null) {
+  if (accessEndsOn !== null && Number.isNaN(accessEndsOn.getTime())) throw new TeamError("That access end date doesn't look right.");
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, ownerId, ["OWNER"]);
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${targetId} FOR UPDATE`;
+    const target = await tx.user.findUnique({ where: { id: targetId }, select: { id: true, role: true, archivedAt: true, accessEndsOn: true } });
+    if (!target) throw new TeamError("That account no longer exists.");
+    if (target.role !== "ACCOUNTANT") throw new TeamError("That account is not an accountant.");
+    if (target.archivedAt) throw new TeamError("That accountant has been removed. Restore them to change the end date.");
+    await tx.user.update({ where: { id: targetId }, data: { accessEndsOn } });
+    if (accessEndsOn !== null && accessEndsOn.getTime() <= Date.now()) {
+      await tx.session.deleteMany({ where: { userId: targetId } });
+      await forgetTrustedDevicesInTx(tx, targetId);
+    }
+    await tx.auditLog.create({
+      data: {
+        userId: ownerId, action: "team.accountant_end_date", entityType: "User", entityId: targetId,
+        oldValue: { accessEndsOn: target.accessEndsOn?.toISOString() ?? null },
+        newValue: { accessEndsOn: accessEndsOn?.toISOString() ?? null },
+      },
+    });
+  });
 }
 
 /**
@@ -340,7 +395,7 @@ export async function changeAccessLevel(ownerId: string, targetId: string, newLe
       if ((await activeOwnerCount(tx)) <= 1) throw new TeamError("The last owner cannot be changed.");
       throw new TeamError("An owner's access level cannot be changed here.");
     }
-    if (target.role !== "STAFF" && target.role !== "ADMIN") throw new TeamError("That account is not a team login.");
+    if (target.role !== "STAFF" && target.role !== "ADMIN" && target.role !== "ACCOUNTANT") throw new TeamError("That account is not a team login.");
     if (target.archivedAt) throw new TeamError("Restore this person before changing their access level.");
     if (target.role === level) throw new TeamError(`That person is already ${ACCESS_LEVEL_LABEL[level]}.`);
     await tx.user.update({ where: { id: targetId }, data: { role: level as Role, jobRoleId: null } });
@@ -368,7 +423,7 @@ async function finishReset(tx: Tx, inv: InvitationRow, password: string) {
   if (!targetId) throw new TeamError(INVALID_LINK_MESSAGE);
   await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${targetId} FOR UPDATE`;
   const target = await tx.user.findUnique({ where: { id: targetId }, select: { id: true, email: true, role: true, archivedAt: true } });
-  if (!target || target.archivedAt || target.email !== inv.email || (target.role !== "STAFF" && target.role !== "ADMIN")) throw new TeamError(INVALID_LINK_MESSAGE);
+  if (!target || target.archivedAt || target.email !== inv.email || (target.role !== "STAFF" && target.role !== "ADMIN" && target.role !== "ACCOUNTANT")) throw new TeamError(INVALID_LINK_MESSAGE);
   // The owner who made the link must still be an active owner, checked under a shared lock on their row.
   try { await assertActiveTeamActor(tx, inv.invitedById, ["OWNER"]); } catch { throw new TeamError(INVALID_LINK_MESSAGE); }
   const hash = await (await auth.$context).password.hash(password);
@@ -394,7 +449,7 @@ export async function resetTeamSignIn(ownerId: string, targetId: string) {
     const target = await tx.user.findUnique({ where: { id: targetId }, select: { id: true, email: true, name: true, role: true, archivedAt: true, twoFactorEnabled: true } });
     if (!target) throw new TeamError("That account no longer exists.");
     if (target.id === ownerId) throw new TeamError("You cannot reset your own sign-in this way. Use My account, or the recovery steps.");
-    if (target.role !== "STAFF" && target.role !== "ADMIN") throw new TeamError("Only staff and admin sign-ins can be reset here.");
+    if (target.role !== "STAFF" && target.role !== "ADMIN" && target.role !== "ACCOUNTANT") throw new TeamError("Only staff, admin and accountant sign-ins can be reset here.");
     if (target.archivedAt) throw new TeamError("Restore this person before resetting their sign-in.");
     await tx.teamInvitation.updateMany({ where: { purpose: "RESET", targetUserId: targetId, status: "INVITED" }, data: { status: "CANCELLED", cancelledAt: new Date() } });
     await tx.twoFactor.deleteMany({ where: { userId: targetId } });

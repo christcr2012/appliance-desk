@@ -202,9 +202,15 @@ export async function enforceTrustedDeviceGate(input: {
     const row = await prisma.verification.findFirst({ where: { identifier }, select: { value: true, expiresAt: true } });
     if (!row || row.expiresAt.getTime() <= now.getTime()) return;
     const user = input.email
-      ? await prisma.user.findUnique({ where: { email: normalizeAccountEmail(input.email) }, select: { id: true } })
+      ? await prisma.user.findUnique({ where: { email: normalizeAccountEmail(input.email) }, select: { id: true, role: true } })
       : null;
     if (!user || row.value !== user.id) return;
+    // ACCT-1: an accountant always enters a code — a trust row left over from
+    // before the person became an accountant must never skip it.
+    if (user.role === "ACCOUNTANT") {
+      await prisma.verification.deleteMany({ where: { identifier } });
+      return;
+    }
     const deviceHash = input.deviceCookie ? hashDeviceCookie(input.deviceCookie) : null;
     const device = deviceHash
       ? await prisma.knownDevice.findUnique({ where: { userId_deviceHash: { userId: user.id, deviceHash } }, select: { trustedUntil: true } })
