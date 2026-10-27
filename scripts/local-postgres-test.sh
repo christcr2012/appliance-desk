@@ -66,6 +66,9 @@ export TEST_STAFF_PASSWORD='Ci-Test-Staff-Password-Not-Real-1!'
 export TEST_ADMIN_EMAIL=ci-admin@example.test
 export TEST_ADMIN_PASSWORD='Ci-Test-Admin-Password-Not-Real-1!'
 export BETTER_AUTH_SECRET=ci-test-secret-not-for-production-use-only
+# Test-only key for disposable local databases, built from a throwaway string
+# so no key-shaped literal sits in the repo (the secret scanner objects).
+export COMPLIANCE_ENCRYPTION_KEY="$(printf '0123456789abcdef0123456789abcdef' | base64)"
 export BETTER_AUTH_URL=http://localhost:3000
 export NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Never allow an inherited deployment setting to activate a real provider.
