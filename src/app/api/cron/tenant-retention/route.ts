@@ -2,6 +2,7 @@ import { cronAuthorized } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { runAutomation } from "@/domains/automation/runs";
 import { eraseExpiredTenantPII } from "@/domains/customers/location-contacts";
+import { runRetentionPurge } from "@/domains/security/retention";
 import { runStoredFileCleanup } from "@/domains/stored-files/cleanup";
 export const maxDuration = 60;
 /**
@@ -32,5 +33,14 @@ export async function GET(request: Request): Promise<NextResponse> {
       return { counts };
     },
   });
-  return NextResponse.json({ ...result, storedFileCleanup: cleanup });
+  // OPS-7: the old-enquiry purge ships OFF (owner setting) and is bounded per night.
+  const purge = await runAutomation({
+    ruleKey: "retention-purge",
+    budgetSeconds: 60,
+    work: async () => {
+      const done = await runRetentionPurge(new Date());
+      return { counts: { removed: done.leadsRemoved, kept: done.leadsKept } };
+    },
+  });
+  return NextResponse.json({ ...result, storedFileCleanup: cleanup, retentionPurge: purge });
 }

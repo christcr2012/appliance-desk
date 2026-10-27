@@ -1455,6 +1455,14 @@ All three tables are in the backup manifest.
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
 
+### OPS-7: privacy and security (additive migration `20261105000000_privacy_security`)
+- `SecurityIncident` — one row per possible leak: what happened, when found, when decided, how many Colorado residents, the kinds of information involved (required before the notice letter opens), and the date Chris did each step (people, Attorney General, credit bureaus, service providers). Deadlines are never stored; they are computed from the dated rule book.
+- `ServiceVendor` — the providers that hold customer information (seeded: Vercel, Neon, Stripe, Google Workspace, Twilio, Resend) and the date their security terms were last reviewed.
+- `AccessibilityComplaint` — a reported problem using the site or app, with the fix-by date computed from the rule book.
+- `Customer.legalHoldAt` / `legalHoldReason` — a legal hold; blocks the nightly clean-up and privacy deletion.
+- `BusinessSettings`: `retentionAgreementYears` (7), `retentionTaxYears` (7), `retentionRefrigerantYears` (6), `retentionLeadYears` (2), `retentionMessageYears` (3), `retentionPurgeEnabled` (false), `faceMatchIdEnabled` (false), `marketingTextStartHour` (8), `marketingTextEndHour` (21), `vendorReviewMonths` (12).
+- Four seeded rule-book rows: `co.breach_notice_days` (30), `co.breach_ag_threshold` (500), `co.breach_bureau_threshold` (1000), `co.accessibility_fix_days` (30), checked 2026-10-26 (summaries of C.R.S. 6-1-716 and 24-34-802).
+The three new tables are in the backup manifest.
 ### BA-3 review evidence (implementation branch)
 
 Additive migration `20261026070000_books_month_review` retains review reasons and accountant-send evidence per month, owner review reminder day (default 15), optional accountant destination, and expense no-receipt explanations. It never rewrites the original ledger or opens a provider connection. Accountants receive a report only when the OWNER explicitly selects Send.

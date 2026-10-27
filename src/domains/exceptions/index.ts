@@ -30,6 +30,7 @@ import { requireRole } from "@/lib/session";
 import { listBankPaymentSlow } from "./bank-payment-attention";
 import { listDisputeAttention } from "./dispute-attention";
 import { listCollectionAttention } from "./collection-attention";
+import { listPrivacyAttention } from "@/domains/security/reads";
 import { listLateFeeReview } from "./late-fee-attention";
 import { listStartingValuesAttention } from "@/domains/decisions/attention";
 import { notInFlightWhere } from "@/domains/billing/in-flight";
@@ -1123,6 +1124,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const booksSetupAttention = session.user.role === "OWNER" ? await listBooksSetupAttention(now) : [];
   const booksMonthReviewAttention = canViewFinance ? await listBooksMonthReviewAttention(now) : [];
   const resaleTaxAttention = (session.user as { role?: string }).role === "OWNER" ? await listResaleTaxAttention(now) : [];
+  const privacyAttention = (session.user as { role?: string }).role === "OWNER" ? await listPrivacyAttention(now) : [];
   const approvalAttention = (session.user as { role?: string }).role === "OWNER" ? await listApprovalAttention(now) : [];
   const goalAttention = canViewFinance ? await listGoalAttention(now) : [];
   const signingPaymentAttention = canViewFinance
@@ -1209,6 +1211,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...booksSetupAttention,
     ...booksMonthReviewAttention,
     ...resaleTaxAttention,
+    ...privacyAttention,
     ...approvalAttention,
     ...goalAttention,
   ];

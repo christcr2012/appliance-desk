@@ -8,6 +8,7 @@ import { lockCanonicalSmsAddress } from "./sms-address-lock";
 import { sendCustomerEmail } from "@/lib/customer-email";
 import { getSmsProviderState, sendSms } from "@/lib/sms";
 import { recordLeadMessageContactInTx } from "@/domains/leads/contact";
+import { marketingTextAllowed } from "@/domains/security/rules";
 import {
   getMarketingSuppression,
   normalizeMessageAddress,
@@ -171,6 +172,12 @@ export async function deliverMessage(
   );
 
   const nonProduction = isNonProductionDeployment();
+  // OPS-7: marketing texts only inside the owner's allowed hours (Denver time). Transactional texts are not limited here.
+  let outsideMarketingHours = false;
+  if (input.purpose === "MARKETING" && input.channel === "SMS") {
+    const hours = await prisma.businessSettings.findUnique({ where: { id: "singleton" }, select: { marketingTextStartHour: true, marketingTextEndHour: true } });
+    outsideMarketingHours = !marketingTextAllowed(new Date(), hours?.marketingTextStartHour ?? 8, hours?.marketingTextEndHour ?? 21);
+  }
   const blockedMarketing = input.purpose === "MARKETING" && suppression;
   const blockedSmsStop =
     input.channel === "SMS" && suppression?.reason === "stop";
@@ -183,7 +190,7 @@ export async function deliverMessage(
   // throws, a new delivery has not been created and a retryable FAILED /
   // NOT_SENT row has not been reclaimed.
   const rendered =
-    nonProduction || blockedMarketing || blockedBounce || blockedSmsStop ? null : input.render();
+    nonProduction || outsideMarketingHours || blockedMarketing || blockedBounce || blockedSmsStop ? null : input.render();
 
   // SMS and STOP serialize under the same canonical phone-address lock.
   // The transaction commits the durable send claim before any provider call;
@@ -223,6 +230,14 @@ export async function deliverMessage(
     return asResult(
       await finish(delivery.id, "FAILED", {
         lastError: "hard bounce on file",
+      }),
+    );
+  }
+
+  if (outsideMarketingHours) {
+    return asResult(
+      await finish(delivery.id, "NOT_SENT", {
+        lastError: "outside the allowed marketing text hours; try again during the day",
       }),
     );
   }
