@@ -4,6 +4,8 @@ import { runAutomation } from "@/domains/automation/runs";
 import { runBooksAutopilot } from "@/domains/books/autopilot";
 import { runStripeBooksNightly } from "@/domains/books/stripe-balance";
 import { prisma } from "@/lib/prisma";
+import { applyStartingValues } from "@/domains/decisions/starting-values";
+import { reportBackgroundError } from "@/lib/report-error";
 
 export const maxDuration = 60;
 
@@ -14,11 +16,17 @@ export async function GET(request: Request): Promise<NextResponse> {
  if(!cronAuthorized(request.headers.get("authorization"),secret))
   return NextResponse.json({error:"Unauthorized."},{status:401});
 
+ // DEC-2: researched starting values go in once, from the next Colorado business day, over untouched defaults only.
+ // Runs here (no new cron entry) and before the Books check so it never waits on Books being set up.
+ let startingValues:unknown=null;
+ try{startingValues=await applyStartingValues();}
+ catch(error){await reportBackgroundError(error,"books-nightly:starting-values");startingValues={outcome:"FAILED"};}
+
  const settings=await prisma.businessSettings.findUnique({
   where:{id:"singleton"},select:{booksStartDate:true},
  });
  if(!settings?.booksStartDate)
-  return NextResponse.json({outcome:"PAUSED",reason:"Set up Books before automatic recording."});
+  return NextResponse.json({outcome:"PAUSED",reason:"Set up Books before automatic recording.",startingValues});
 
  const recording=await runAutomation({
   ruleKey:"books-nightly:record",budgetSeconds:50,
@@ -26,7 +34,7 @@ export async function GET(request: Request): Promise<NextResponse> {
  });
  // Do not let a failed recording run silently appear as a successful Stripe import.
  if(process.env.BOOKS_STRIPE_SYNC_ENABLED!=="true")
-  return NextResponse.json({recording,stripe:{outcome:"PAUSED"}});
+  return NextResponse.json({recording,stripe:{outcome:"PAUSED"},startingValues});
 
  const stripe=await runAutomation({
   // Keep the historic key: existing owner pauses and health history target this rule.
@@ -40,5 +48,5 @@ export async function GET(request: Request): Promise<NextResponse> {
     posted:answer.posted,differences:answer.clearing.state==="DIFFERENCE"?1:0}};
   },
  });
- return NextResponse.json({recording,stripe});
+ return NextResponse.json({recording,stripe,startingValues});
 }

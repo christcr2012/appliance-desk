@@ -84,6 +84,34 @@ type SavedDraft = {
   lines: AddedLine[];
 };
 
+/**
+ * The term & fee boxes a rental starts with: a saved draft's own terms, or for a new one the late fee in Settings
+ * (DEC-2) so the owner sees what the agreement will say before changing anything.
+ */
+export function initialTermFields(
+  initialDraft: SavedDraft | undefined,
+  lateFeeDefaults?: { graceDays: number; cents: number; percent: number },
+) {
+  return initialDraft
+    ? {
+        termMonths: initialDraft.termMonths?.toString() ?? "",
+        depositDollars: centsAsDollars(initialDraft.depositCents).toString(),
+        damageWaiverDollars: centsAsDollars(initialDraft.damageWaiverCents).toString(),
+        lateFeeGraceDays: initialDraft.lateFeeGraceDays.toString(),
+        lateFeeDollars: centsAsDollars(initialDraft.lateFeeCents).toString(),
+        lateFeePercent: initialDraft.lateFeePercent.toString(),
+        paidInFullInAdvance: initialDraft.paidInFullInAdvance,
+      }
+    : {
+        ...EMPTY_TERM_FIELDS,
+        ...(lateFeeDefaults ? {
+          lateFeeGraceDays: lateFeeDefaults.graceDays.toString(),
+          lateFeeDollars: lateFeeDefaults.cents > 0 ? centsAsDollars(lateFeeDefaults.cents).toString() : "",
+          lateFeePercent: lateFeeDefaults.percent > 0 ? lateFeeDefaults.percent.toString() : "",
+        } : {}),
+      };
+}
+
 export function RentalWizard({
   customers,
   availableAppliances: initialAvailableAppliances,
@@ -93,8 +121,11 @@ export function RentalWizard({
   initialDraft,
   initialRequestKey,
   ucccFilingNeeded = false,
+  lateFeeDefaults,
 }: {
   customers: CustomerOption[];
+  /** DEC-2: the late fee terms in Settings, which a new agreement starts with (the person can still change them). */
+  lateFeeDefaults?: { graceDays: number; cents: number; percent: number };
   /** FEE-1: Colorado consumer-lease filing not marked done yet. */
   ucccFilingNeeded?: boolean;
   availableAppliances: ApplianceOption[];
@@ -223,19 +254,7 @@ export function RentalWizard({
   }
 
   // Step 2 — term & fees
-  const [termFields, setTermFields] = useState(
-    initialDraft
-      ? {
-          termMonths: initialDraft.termMonths?.toString() ?? "",
-          depositDollars: centsAsDollars(initialDraft.depositCents).toString(),
-          damageWaiverDollars: centsAsDollars(initialDraft.damageWaiverCents).toString(),
-          lateFeeGraceDays: initialDraft.lateFeeGraceDays.toString(),
-          lateFeeDollars: centsAsDollars(initialDraft.lateFeeCents).toString(),
-          lateFeePercent: initialDraft.lateFeePercent.toString(),
-          paidInFullInAdvance: initialDraft.paidInFullInAdvance,
-        }
-      : { ...EMPTY_TERM_FIELDS },
-  );
+  const [termFields, setTermFields] = useState(initialTermFields(initialDraft, lateFeeDefaults));
   const [agreementId, setAgreementId] = useState<string | null>(
     initialDraft?.id ?? null,
   );

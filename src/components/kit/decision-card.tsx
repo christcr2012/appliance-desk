@@ -18,6 +18,11 @@ export type DecisionCardProps = {
   actions?: ReactNode;
 };
 
+/** A source inside the project (docs/…) opens its page in the project's public repository; the web opens as is. */
+function sourceHref(url: string) {
+  return url.startsWith("docs/") ? `https://github.com/christcr2012/appliance-desk/blob/main/${url}` : url;
+}
+
 export function DecisionCard({ title, question, doingNow, pills, why, affects, notes = [], actions }: DecisionCardProps) {
   return (
     <article className="rounded-card border border-line bg-surface px-4 py-3.5" aria-label={title}>
@@ -40,8 +45,8 @@ export function DecisionCard({ title, question, doingNow, pills, why, affects, n
             {why.sources.length > 0 ? (
               <ul className="space-y-1">
                 {why.sources.map((source) => (
-                  <li key={source.url}>
-                    <a href={source.url} target="_blank" rel="noopener noreferrer" className="underline">{source.title}</a>
+                  <li key={source.url + source.title}>
+                    <a href={sourceHref(source.url)} target="_blank" rel="noopener noreferrer" className="underline">{source.title}</a>
                     <span className="text-ink-soft">, checked {source.checkedOn}</span>
                   </li>
                 ))}

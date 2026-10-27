@@ -24,4 +24,11 @@ apply is pointless without the values, and the $5 value does nothing until new a
 - [ ] `ci` green at the exact head; every review comment read.
 
 ## Progress
-Not started.
+Built on branch `ai/claude/dec-2-starting-values` (stacked on DEC-1b, PR #603).
+- [x] Registry values with sources: `src/domains/decisions/starting-values-data.ts`; new subjects `GREELEY-RATE-2F`, `LATE-FEE-AMOUNT`.
+- [x] Nightly apply: `src/domains/decisions/starting-values.ts`, called from `/api/cron/books-nightly` (before the Books check so it never waits for Books).
+- [x] Signed agreements and issued invoices unchanged (integration test compares rows).
+- [x] New agreements / quote conversions / the wizard read the late fee from Settings; renewals keep old terms.
+- [x] Waiver: already built by FEE-1 on the pending charge (the old `lateFeeWaivedAt` design is superseded); browser spec added.
+- [x] Day-11 and clock-change test: `tests/late-fee-day11.test.ts`.
+- [ ] `ci` green at the exact head and review comments read (see the PR).
