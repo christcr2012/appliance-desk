@@ -113,7 +113,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             // HEIC/HEIF phone pictures are converted to JPEG in the browser before upload (src/lib/photo-convert.ts),
             // so nothing is stored that most browsers cannot show.
             // Receipts and invoices are often PDFs; no other folder accepts them.
-            ...((pathname.startsWith("purchases/") || pathname.startsWith("expenses/") || pathname.startsWith("bank-statements/") || pathname.startsWith("accounting-confirmations/")) ? ["application/pdf"] : []),
+            ...((pathname.startsWith("purchases/") || pathname.startsWith("expenses/") || pathname.startsWith("bank-statements/") || pathname.startsWith("accounting-confirmations/") || pathname.startsWith("records/")) ? ["application/pdf"] : []),
           ],
           maximumSizeInBytes: MAX_UPLOAD_BYTES,
           addRandomSuffix: true,

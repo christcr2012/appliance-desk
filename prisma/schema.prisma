@@ -3670,6 +3670,10 @@ model BusinessSettings {
   signInPauseMinutes       Int     @default(15)
   // ACC-6: days a ticked "Remember this device" skips the sign-in code (0-90; 0 = always ask). Starting value 30.
   trustedDeviceDays        Int     @default(30)
+  // VAULT-1: which business-record kinds an ADMIN may open (read-only). Starting
+  // value: the non-sensitive kinds. A record holding an encrypted number is
+  // never admin-readable, whatever its kind (domain rule, not just this list).
+  paperworkAdminKinds      String[] @default(["DOCUMENT", "LICENSE", "PERMIT", "REGISTRATION", "INSURANCE", "VEHICLE", "CONTRACT"])
   invitationLinkDays  Int     @default(7)
   adminsMayInviteStaff Boolean @default(false)
 
@@ -5763,8 +5767,49 @@ model BusinessPaperwork {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   version          Int             @default(1)
+  // VAULT-1: a paperwork item is a business record. kind says what sort of record
+  // it is; issuedOn/expiresOn are the document's own dates (dueOn stays the next
+  // action date; reminders use the earlier of expiresOn and dueOn).
+  kind            String   @default("TASK") // TASK | LICENSE | PERMIT | REGISTRATION | TAX_ACCOUNT | INSURANCE | BANK | DOCUMENT | ACCOUNT | VEHICLE | CONTRACT
+  issuedOn        DateTime?
+  expiresOn       DateTime?
+  /// What the stored number is ("EIN", "Policy number", "TCC").
+  numberLabel     String?  @db.VarChar(60)
+  /// The number itself, encrypted with the compliance field key (never plaintext,
+  /// never logged; screens and exports show numberLast4 only).
+  numberEncrypted String?
+  numberLast4     String?  @db.VarChar(4)
+  portalUrl       String?  @db.VarChar(500)
+  /// VAULT-2 link: the vault login for this record, when one exists.
+  credentialId    String?
+  /// Yearly or renewal cost in cents; feeds the budget and Schedule C mapping.
+  costCents       Int?
+  /// Compliance registry keys this record unlocks or feeds.
+  linkedObligationKeys String[] @default([])
+  recordFiles     BusinessRecordFile[]
 
   @@index([status, dueOn])
+}
+
+/// VAULT-1: one stored file on a business record (private store only). The file
+/// bytes live in the private Blob store under records/{recordId}/{id}.{ext};
+/// this row is the searchable, auditable index. deletedAt soft-deletes so a
+/// replaced file stays in the record's history.
+model BusinessRecordFile {
+  id               String    @id @default(cuid())
+  recordId         String
+  record           BusinessPaperwork @relation(fields: [recordId], references: [id], onDelete: Restrict)
+  pathname         String    @unique
+  fileName         String    @db.VarChar(200)
+  contentType      String    @db.VarChar(80)
+  sizeBytes        Int
+  sha256           String    @db.Char(64)
+  label            String?   @db.VarChar(120)
+  uploadedByUserId String
+  createdAt        DateTime  @default(now())
+  deletedAt        DateTime?
+
+  @@index([recordId, deletedAt])
 }
 
 // O-5: a monthly target for one business number (cash collected, or new rentals). One per metric per Colorado month.
