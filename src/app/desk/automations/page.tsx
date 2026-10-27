@@ -47,7 +47,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams?:
         revokedAt: key.revokedAt ? timestamp(key.revokedAt) : null,
       }))} /> : <p className="text-sm text-ink-soft">AI check-up keys are managed by the owner.</p>}
 
-      <AssistantConnections userId={session.user.id} />
+      <AssistantConnections userId={session.user.id} canSeeAll={session.user.role === "OWNER"} />
 
       <HealthLegend />
 

@@ -2,10 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { getMcpIssuer } from "@/mcp/issuer";
 import { disconnectAssistant } from "./assistant-actions";
 
-export async function AssistantConnections({ userId }: { userId: string }) {
+export async function AssistantConnections({ userId, canSeeAll }: { userId: string; canSeeAll: boolean }) {
   const issuer = getMcpIssuer();
   const records = issuer ? await prisma.mcpConnection.findMany({
-    where: { userId }, orderBy: { createdAt: "desc" }, take: 30,
+    where: canSeeAll ? {} : { userId }, include: { user: { select: { name: true } } },
+    orderBy: { createdAt: "desc" }, take: 30,
   }) : [];
   return (
     <section aria-labelledby="assistant-connections-heading" className="mb-6 rounded-card border border-line bg-surface p-4">
@@ -21,7 +22,7 @@ export async function AssistantConnections({ userId }: { userId: string }) {
               {records.map((record) => (
                 <li key={record.id} className="rounded-field border border-line p-3">
                   <p className="font-medium">{record.label}</p>
-                  <p className="text-sm text-ink-soft">{record.revokedAt ? "Disconnected" : "Connected"} · {record.scopes.join(", ")}</p>
+                  <p className="text-sm text-ink-soft">{record.revokedAt ? "Disconnected" : "Connected"} · {record.scopes.join(", ")}{canSeeAll ? ` · Approved by ${record.user.name ?? "a team member"}` : ""}</p>
                   {!record.revokedAt && (
                     <form action={disconnectAssistant} className="mt-2">
                       <input type="hidden" name="id" value={record.id} />

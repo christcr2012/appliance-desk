@@ -73,7 +73,7 @@ export async function authenticateMcpRequest(request: Request): Promise<AgentCon
   }
   return {
     userId,
-    name: user.name,
+    name: user.name ?? "Team member",
     role: user.role,
     connectionId: connection.id,
     connectionLabel: connection.label,
