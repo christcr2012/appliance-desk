@@ -61,6 +61,18 @@ a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:gene
 a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:221
 a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:234
 a94257d255ed1bf32e84abb2fd4a7be57e0b9450:src/domains/compliance/registry.ts:generic-api-key:270
+# Same class again on CMP-1's final rebuilt branch (PR successor to #639):
+# every obligation-key literal in the registry commit a5d3103b and the two
+# obligationKey lookups in the filings integration test — keys, not secrets.
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:170
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:184
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:198
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:228
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:244
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:257
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:src/domains/compliance/registry.ts:generic-api-key:296
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:tests/compliance-filings-integration.test.ts:generic-api-key:159
+a5d3103b214a7d67a01d4ba3178f8e5bd2f4386e:tests/compliance-filings-integration.test.ts:generic-api-key:180
 # Same three lines again: merging main into LD-1 re-committed main's versions
 # of these files in new commits (d29df93, fc4ad1e), so the scanner attributes
 # the lines to those commits too.
