@@ -8,7 +8,7 @@ import { assertBooksWriter, booksAuditActor, type BooksWriter } from "./actor";
 import { BookAssetInputError, lastBusinessDay, lastCompletedMonth, monthKey, monthlySchedule, nextMonth, remainingSchedule } from "./depreciation";
 
 type Tx=Prisma.TransactionClient;
-type BookRole="OWNER"|"ADMIN";
+type BookRole="OWNER"|"ADMIN"|"ACCOUNTANT";
 const intents=["SELL","DECIDE_LATER","SCRAP","STRIP","DISPOSE","DONATE_OTHER"] as const;
 const classifications=["UNKNOWN","RENTAL_ASSET","EXPENSED","INVENTORY","OTHER"] as const;
 const confidence=["UNKNOWN","OWNER_SUPPLIED","CPA_CONFIRMED"] as const;
@@ -117,7 +117,8 @@ export async function enrollBookAsset(userId:string,applianceId:string,placedDat
 export async function setBookAssetPolicy(userId:string,id:string,expectedVersion:number,lifeMonths:number,salvagePercent:number){
  bounded(lifeMonths,1,360,"Book life");bounded(salvagePercent,0,95,"Book salvage");
  return prisma.$transaction(async tx=>{
-  await actor(tx,userId);
+  // ACCT-1: life/salvage are among the accountant's allowed changes.
+  await actor(tx,userId,["OWNER","ACCOUNTANT"]);
   const row=await lockAsset(tx,id);
   if(row.version!==expectedVersion||row.retiredOn)throw new BookAssetInputError("Asset changed or retired; refresh.");
   const history=await postedEvidence(tx,id);
@@ -271,7 +272,8 @@ export async function addBookTaxEvidence(userId:string,id:string,input:{
  if(input.confidence==="CPA_CONFIRMED" && (!cpa||!reference))
   throw new BookAssetInputError("CPA-confirmed evidence requires the named CPA and source reference.");
  return prisma.$transaction(async tx=>{
-  await actor(tx,userId);
+  // ACCT-1: tax-basis evidence (section 179 / bonus fields) is among the accountant's allowed changes.
+  await actor(tx,userId,["OWNER","ACCOUNTANT"]);
   await lockAsset(tx,id);
   const row=await tx.bookTaxEvidence.create({data:{
    applianceId:id,classification:input.classification,confidence:input.confidence,
@@ -288,7 +290,7 @@ export async function addBookTaxEvidence(userId:string,id:string,input:{
 }
 export async function getBookAssets(userId:string) {
  return prisma.$transaction(async tx=>{
-  await actor(tx,userId,["OWNER","ADMIN"]);
+  await actor(tx,userId,["OWNER","ADMIN","ACCOUNTANT"]);
   const [settings,assets,candidates]=await Promise.all([
    tx.businessSettings.findUnique({where:{id:"singleton"},select:{
     booksStartDate:true,depreciationMonthsDefault:true,depreciationSalvagePercent:true,
