@@ -20,6 +20,14 @@ type Props = {
   channel: string;
   canPrepareGuided: boolean;
   isOwner: boolean;
+  /**
+   * CMP-3 (PR #654 review): filings whose file is downloaded after
+   * approval and filed in an outside system (the IRIS portal upload, the
+   * BSA E-Filing Form 8300) must be approved first and marked submitted
+   * only after the owner actually files — never "approve and file" in
+   * one step, which recorded a submission that hadn't happened.
+   */
+  separateSubmission?: boolean;
 };
 
 const btn =
@@ -27,7 +35,7 @@ const btn =
 const primaryBtn =
   "rounded-lg border border-action bg-action px-3 py-2 text-sm font-medium text-on-action disabled:opacity-50";
 
-export function FilingActions({ filingId, state, preparedHash, channel, canPrepareGuided, isOwner }: Props) {
+export function FilingActions({ filingId, state, preparedHash, channel, canPrepareGuided, isOwner, separateSubmission }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [result, setResult] = useState<ComplianceActionState>({});
@@ -69,21 +77,40 @@ export function FilingActions({ filingId, state, preparedHash, channel, canPrepa
                 disabled={pending}
                 onClick={() =>
                   run(() =>
-                    channel === "GUIDED_WEB"
+                    channel === "GUIDED_WEB" || separateSubmission
                       ? approveAction(filingId, preparedHash)
                       : approveAndSubmitAction(filingId, preparedHash, confirmation),
                   )
                 }
               >
-                {channel === "GUIDED_WEB" ? "Approve these numbers" : "Approve and file"}
+                {channel === "GUIDED_WEB" || separateSubmission ? "Approve these numbers" : "Approve and file"}
               </button>
               <span className="text-sm text-ink-soft">
-                Approving locks in exactly the numbers above.
+                {separateSubmission
+                  ? "Approving locks in exactly the numbers above. Then download the filing file, file it with the agency, and mark it submitted here."
+                  : "Approving locks in exactly the numbers above."}
               </span>
             </>
           ) : (
             <p className="text-sm text-ink-soft">Waiting for the owner to approve these numbers.</p>
           )}
+        </div>
+      ) : null}
+
+      {state === "READY_FOR_REVIEW" && canPrepareGuided ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={btn}
+            disabled={pending}
+            onClick={() => run(() => prepareGuidedAction(filingId))}
+          >
+            Prepare again with the latest numbers
+          </button>
+          <span className="text-sm text-ink-soft">
+            If the facts behind these numbers changed — for example you just added last year&apos;s tax figures —
+            prepare again before approving.
+          </span>
         </div>
       ) : null}
 

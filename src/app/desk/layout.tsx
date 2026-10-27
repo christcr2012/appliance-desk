@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
 import { RegisterDeskServiceWorker } from "@/components/kit/register-sw";
+import { DeskShortcuts } from "@/components/kit/shortcuts";
 import {
   enforceTwoFactorForDeskPage,
   requireRoleForTwoFactorSetup,
@@ -42,6 +43,7 @@ export default async function DeskLayout({
       <AppShell nav={groups} role={role}>{children}</AppShell>
       <IdleLogout timeoutMinutes={20} />
       <RegisterDeskServiceWorker />
+      <DeskShortcuts role={role} />
     </>
   );
 }

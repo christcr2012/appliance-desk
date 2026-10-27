@@ -1,7 +1,7 @@
 {
   "version": 1,
   "auditedBase": "91f7d34d",
-  "updated": "2026-10-23",
+  "updated": "2026-10-26",
   "process": "Just-in-time cards from approved contracts; execution follows SESSION-START. Implementation PRs target 400-800 added production lines and 2-5 genuinely completed approved slices per PR on rolling averages, with evidence-backed exceptions. Record outcomes in current-pr-scorecard.json; PR totals never substitute for product acceptance. Owner clarification 2026-10-14: PR workload accounting counts whole predefined batch subsections in the authoritative roadmap/design, never a function, UI hookup, guard, helper or execution-packet subtask. Partial subsections count zero completed batch subsections; count each subsection once with full eligible engineering and pre-merge evidence. Group related subsections into substantial PRs; use focused checks during work and full required gates on the coherent PR. Existing acceptance and safety gates remain.",
   "cards": [
     {
@@ -4052,7 +4052,7 @@
       "dependencies": [
         "BA-1"
       ],
-      "status": "IN REVIEW — PR #613; full CI green at implementation head 72ac47ff; final docs-only CI pending",
+      "status": "MERGED — PR #613, exact-head CI green 40357496521",
       "migration": "opening_correction",
       "budget": 380,
       "units": [
@@ -4065,7 +4065,7 @@
       "tests": [
         "tests/ba2-books-setup-integration.test.ts"
       ],
-      "readiness": "IN_REVIEW",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-2.md"
     },
     {
@@ -4075,7 +4075,7 @@
       "dependencies": [
         "BA-2"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED — PR #624, exact-head CI green 40444991438 at eb2a99c7",
       "migration": "month_review",
       "budget": 480,
       "units": [
@@ -4087,9 +4087,12 @@
       ],
       "tests": [
         "tests/ba3-month-review-integration.test.ts",
-        "e2e/books-month-review.spec.ts"
+        "e2e/books-month-review.spec.ts",
+        "tests/ba3-accountant-send.test.ts",
+        "tests/ba3-month-review.test.ts",
+        "tests/ba3-month-actions.test.ts"
       ],
-      "readiness": "CARD_READY",
+      "readiness": "MERGED",
       "plannedCard": "docs/pr-cards/BA-3.md"
     },
     {
@@ -4712,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651; remembered lists PR pending",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -5169,7 +5172,7 @@
         "tests/known-devices.test.ts",
         "e2e/my-account.spec.ts"
       ],
-      "status": "IN PROGRESS — PR #616 open. CI all green at head beb787c4; Codex review dispositions: P2 (two-step page prerender) already fixed via force-dynamic, P1 (forget action actor recheck) fixed with an in-transaction assertActiveTeamActor + 3 unit tests, typecheck clean. Awaiting ci at the new exact head, then reply/resolve threads and merge.",
+      "status": "MERGED 2026-10-26 — PR #628 (merge commit 66543a92) at head eac60bcd; PR #616 was rebuilt as #628 after its snapshot history could not merge. ci green at the exact head after one failed-jobs rerun (browser-a phase budget on the PR-event run; the dispatched run was fully green). Codex dispositions for #616's findings recorded in #628's body; #628 had no review threads. Main's post-merge run passed the secret scan with no refresh needed.",
       "units": [
         "ACC-6"
       ]
@@ -5265,7 +5268,7 @@
         "TFA-1",
         "DEC-1"
       ],
-      "status": "IN PROGRESS",
+      "status": "MERGED — PR #642, 238f7a57 (2026-10-26)",
       "migration": "20261102000000_compliance (ComplianceProfile, ComplianceFiling)",
       "budget": 550,
       "units": [
@@ -5320,8 +5323,8 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (Supplier TIN fields)",
+      "status": "MERGED — PR #656, f103c7fc (2026-10-27)",
+      "migration": "20261107000000_supplier_tin_w9 + 20261107010000_filing_period_key_widen (Supplier TIN fields, W9Request, ExpenseCategory.form1099Box, ComplianceProfile payer block, ComplianceFiling.periodKey 20→40)",
       "budget": 600,
       "units": [
         "CMP-3"
@@ -5335,7 +5338,9 @@
         "tests/w9-integration.test.ts",
         "tests/1099-prep-integration.test.ts",
         "tests/iris-csv.test.ts",
-        "tests/form8300-detector.test.ts"
+        "tests/iris-a2a.test.ts",
+        "tests/form-8300-detector.test.ts",
+        "tests/compliance-forms.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-3.md"
@@ -5396,7 +5401,7 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "MERGED 2026-10-27 — PR #659, squash 9f7671dd on main at head 562beffb; CI green at the exact head on both runs; 7 Codex findings across #657/#658/#659 all fixed with tests and resolved. Close-out rides the SETUP-1 branch.",
       "migration": "20261103000000_business_records",
       "budget": 450,
       "units": [
@@ -5446,7 +5451,7 @@
       "dependencies": [
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/setup-1; built and verified locally (130 tests across the affected suites, typecheck/lint clean, checks phase green in the repo launcher; browser spec gated on PR CI — the local launcher build exceeds its 600s cap in this VM). VAULT-1 close-out rides this branch.",
       "migration": "none",
       "budget": 400,
       "units": [
@@ -5548,7 +5553,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-3)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5560,7 +5565,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-3-integration.test.ts"
+        "tests/ops3-vehicle-rules.test.ts",
+        "tests/ops3-vehicle-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-3.md"
@@ -5573,7 +5579,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-4)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5585,7 +5591,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-4-integration.test.ts"
+        "tests/ops4-insurance-rules.test.ts",
+        "tests/ops4-insurance-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-4.md"
@@ -5648,7 +5655,7 @@
       "dependencies": [
         "TFA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — PR open on ai/claude/ops-7",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5660,7 +5667,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-7-integration.test.ts"
+        "tests/ops7-privacy-rules.test.ts",
+        "tests/ops7-privacy-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-7.md"
@@ -5673,7 +5681,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-8)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5685,7 +5693,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-8-integration.test.ts"
+        "tests/ops8-continuity-rules.test.ts",
+        "tests/ops8-continuity-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-8.md"
@@ -6055,8 +6064,20 @@
       "path": "docs/pr-cards/execution/CMP-1.json"
     },
     {
+      "id": "CMP-3",
+      "path": "docs/pr-cards/execution/CMP-3.json"
+    },
+    {
+      "id": "CMP-2",
+      "path": "docs/pr-cards/execution/CMP-2.json"
+    },
+    {
       "id": "TFA-2",
       "path": "docs/pr-cards/execution/TFA-2.json"
+    },
+    {
+      "id": "SETUP-1",
+      "path": "docs/pr-cards/execution/SETUP-1.json"
     }
   ]
 }

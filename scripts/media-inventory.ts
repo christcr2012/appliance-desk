@@ -10,7 +10,7 @@ import {
 } from "../src/domains/backup/media-deletion";
 import { privateBlobUrl } from "../src/domains/feedback/media";
 
-const PRIMARY_PREFIXES = ["jobs/", "appliances/", "maintenance-requests/", "feedback/"] as const;
+const PRIMARY_PREFIXES = ["jobs/", "appliances/", "maintenance-requests/", "feedback/", "records/"] as const;
 const MEDIA_MANIFEST_SUFFIX = ".media.json";
 
 export type MediaManifestEntry = {
@@ -207,9 +207,18 @@ export async function runMediaInventoryAndCopy(input: {
     select: { id: true, pathname: true },
     orderBy: { id: "asc" },
   });
+  // VAULT-1: business-record files live in the same private store (records/<record>/<file>)
+  // in their own table. Every live row is copied, including files kept as renewal
+  // history; a removed file (soft-deleted row) is skipped.
+  const recordFileRows = await prisma.businessRecordFile.findMany({
+    where: { deletedAt: null },
+    select: { id: true, pathname: true },
+    orderBy: { id: "asc" },
+  });
   const photos = [
     ...photoRows,
     ...feedbackRows.map((row) => ({ id: `feedback:${row.id}`, url: privateBlobUrl(store.storeId, row.pathname) })),
+    ...recordFileRows.map((row) => ({ id: `record:${row.id}`, url: privateBlobUrl(store.storeId, row.pathname) })),
   ];
   const referencedPaths = new Set<string>();
   const entries: MediaManifestEntry[] = [];

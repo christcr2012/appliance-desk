@@ -12,9 +12,9 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
 
 ## A. Quick things only you can do (minutes each)
 
-- [ ] **Set the compliance encryption key (CMP-1).** Steps: have your developer generate a random 32-byte key
-  (base64) and save it in Vercel as `COMPLIANCE_ENCRYPTION_KEY` (Production and Preview) — never in a chat,
-  email or GitHub. Ready when: before you store a real EIN in Compliance › Business facts. You'll know it
+- [ ] **Set the compliance encryption key (CMP-1).** Follow the walkthrough: More → Set up your business →
+  Encryption keys (it shows how to make the key and where it goes — never paste it in a chat, email or GitHub).
+  Ready when: before you store a real EIN in Compliance › Business facts. You'll know it
   worked: the EIN box on Business facts is enabled and saving an EIN shows "ending" plus its last 4 digits.
   Until then the EIN box stays off on purpose, so a tax ID is never stored unprotected.
 - [ ] **Vercel: make the website follow the `live` branch (IN-68).** Steps: Vercel → project *appliance-desk* → Settings →
@@ -48,17 +48,22 @@ IDs (IN-xx) in [OWNER-INPUTS.md](OWNER-INPUTS.md). The agents' machine-readable 
   deployment ([runbooks/ROLLBACK.md](runbooks/ROLLBACK.md)). You'll know it worked: you can point to both.
 
 - [ ] **IRS filing code for 1099s (IRIS TCC, about 20 minutes, free).** Needed before your first 1099s (due Jan 31
-  after a year you pay a contractor $2,000+). Steps: irs.gov/iris → "Apply for an IRIS TCC" → sign in with ID.me → choose
-  "Taxpayer Portal" for the business. Ready when the app's Compliance screen shows the 1099 upload file (CMP-3). Worked
+  after a year you pay a contractor $2,000+). Follow the walkthrough: More → Set up your business → IRIS
+  transmitter code (1099 e-file). Ready when the app's Compliance screen shows the 1099 upload file (CMP-3). Worked
   when IRS shows the TCC as active. Later, for filing straight from the app: apply for an **A2A** TCC the same way.
-- [ ] **Encryption key for tax ids (about 5 minutes).** When CMP-1 ships, add `COMPLIANCE_ENCRYPTION_KEY` (the app's
-  setup page shows how to make one; 32 random bytes) in Vercel → Settings → Environment Variables (Production and
-  Preview). Never paste it in a chat or GitHub. Worked when Compliance › Business facts lets you enter your EIN.
+- [ ] **Encryption key for tax ids (about 5 minutes).** Follow the walkthrough: More → Set up your business →
+  Encryption keys (same key as the CMP-1 row above). Never paste it in a chat or GitHub. Worked when
+  Compliance › Business facts lets you enter your EIN.
 
-- [ ] **Vault encryption key (about 5 minutes).** When VAULT-2 ships, add `VAULT_ENCRYPTION_KEY` (a different key from
-  the compliance key; the Set up your business guide shows how to make one) in Vercel → Settings → Environment
-  Variables (Production and Preview). Never paste it in a chat or GitHub. Worked when Business › Logins lets you save
-  one login.
+- [ ] **Vault encryption key (about 5 minutes).** When VAULT-2 ships, follow the same walkthrough: More → Set up
+  your business → Encryption keys (the second step — a different key from the compliance key). Never paste it in a
+  chat or GitHub. Worked when Business › Logins lets you save one login.
+- [ ] **Fill in "If something happens to me" and ask your attorney about a successor member (about 15 minutes).** Open
+  More › If something happens to me and type who to call, who would keep the business running, your CPA and attorney, and
+  where records are kept (never passwords). Then ask your attorney whether your LLC agreement names a successor member
+  (a Colorado LLC with no members dissolves 91 days later, C.R.S. 7-80-801; Decisions question DQ-OPS8-1). Ready when
+  OPS-8 is live. Worked when the page's "Still missing" note is gone. The page's pause switch works for you today;
+  letting your successor press it needs the records vault (VAULT-1), which is not built yet.
 - [ ] **If you have no employees: send the workers' comp rejection form (Colorado).** As an LLC member you may reject
   coverage by sending the state's form by certified mail (C.R.S. 8-41-202). The Insurance screen (OPS-4) will hold the
   date and the certified-mail number. Worked when the Division or your insurer confirms.
@@ -155,7 +160,7 @@ Order matters: tax answers → money → email/text → the rest. "Live" switche
   `BETTER_AUTH_URL` set to the real domain and emailed links checked.
 - [ ] **Accounts and platform:** your real owner login works and test/seed accounts are removed from production (with your OK);
   `BETTER_AUTH_SECRET`/`CRON_SECRET` are long unique values; nightly jobs show green history in Vercel Cron; private photo
-  storage tokens set; a daily backup restore was rehearsed (agent does it, you read the proof).
+  storage tokens set (confirm them in More → Set up your business → Backups and private storage); a daily backup restore was rehearsed (agent does it, you read the proof).
 - [ ] **Spanish (IN-83):** a fluent reviewer you trust checks translations; attorney approves the controlling agreement text.
 - [ ] **Launch day, in this order:** every box above ticked or marked "skip for now"; automated checks green on the exact
   version; one real $1 payment, a refund, a renewal reminder and a customer login tested; then you say "launch" in writing.
@@ -288,5 +293,6 @@ on readiness).
 | 2026-10-26 | Turn on late fees for real card customers | FEE-1: fees only reach a customer's real automatic charge when you switch it on. |
 | 2026-10-26 | Add three payment events to your Stripe webhook | BILL-1: the app can only show "Being confirmed" for bank payments if Stripe sends those events. |
 | 2026-10-26 | Add three dispute events to your Stripe webhook | OPS-5: the app only hears about disputes if Stripe sends those events. |
+| 2026-10-26 | Fill in "If something happens to me", successor-member question | OPS-8: the page only helps if the contacts are real, and only your attorney can answer the successor question. |
 | 2026-10-25 | Ask Greeley Sales Tax about rentals and fees | Fee taxability research (FEETAX-1): Greeley's code couldn't be read; a written answer can remove tax from optional service fees. |
 | 2026-10-26 | Check the recall list answers as expected | OPS-1: the live government recall answer could not be fetched while building. |

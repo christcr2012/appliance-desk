@@ -1,3 +1,5 @@
+import { businessDateKey, businessDateFromKey } from "@/lib/business-date";
+import { lastCompletedMonth } from "@/domains/books/depreciation";
 import { prisma } from "@/lib/prisma";
 import type { ExceptionItem } from "./rules";
 
@@ -45,4 +47,38 @@ export async function listBooksSetupAttention(now=new Date()):Promise<ExceptionI
  return [{category:"BOOKS_SETUP",severity:bills>0?"medium":"low",
   title:"Set up your books (5 minutes)",detail:"Tell us when the business started and whether you had money in its accounts.",
   href:"/desk/books/setup",since:now}];
+}
+
+/** Each ended, still-open month is an owner review task, not a fabricated bill. */
+export async function listBooksMonthReviewAttention(now=new Date()):Promise<ExceptionItem[]>{
+ const settings=await prisma.businessSettings.findUnique({where:{id:"singleton"},select:{
+  booksStartDate:true,booksReviewReminderDay:true,
+ }});
+ if(!settings?.booksStartDate)return [];
+ const today=businessDateKey(now),last=lastCompletedMonth(now);
+ const first=businessDateKey(settings.booksStartDate).slice(0,7);
+ if(last<first)return [];
+ const keys:string[]=[];
+ let key=first;
+ for(let i=0;key<=last&&i<240;i++){
+  keys.push(key);
+  const [year,month]=key.split("-").map(Number);
+  key=new Date(Date.UTC(year,month,1)).toISOString().slice(0,7);
+ }
+ const closed=await prisma.accountingPeriod.findMany({where:{
+  periodKey:{in:keys},status:"CLOSED",
+ },select:{periodKey:true}});
+ const locked=new Set(closed.map(x=>x.periodKey));
+ const day=Math.max(1,Math.min(28,settings.booksReviewReminderDay));
+ return keys.filter(x=>!locked.has(x)).slice(0,50).map(period=>{
+  const [year,month]=period.split("-").map(Number);
+  const next=new Date(Date.UTC(year,month,1)).toISOString().slice(0,7);
+  const high=today>next+"-"+String(day).padStart(2,"0");
+  const title=new Intl.DateTimeFormat("en-US",{month:"long",year:"numeric",timeZone:"UTC"})
+   .format(new Date(Date.UTC(year,month-1,1)));
+  return {category:"BOOKS_MONTH_REVIEW",severity:high?"high":"medium",
+   title:"Review "+title+"'s books",
+   detail:"Check what was recorded, receipts, payments and equipment value before locking this month.",
+   href:"/desk/books/months/"+period,since:businessDateFromKey(next+"-01")!};
+ });
 }

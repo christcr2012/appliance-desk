@@ -22,6 +22,15 @@ type Manifest = {
   forms: Record<string, { sha256: string; source: string; title: string; retrievedOn: string }>;
 };
 
+/**
+ * The tax year of the vendored estimated-tax voucher booklets
+ * (irs/f1040es_2026.pdf and co/dr0104ep_2026.pdf). CMP-2 review: a
+ * filled voucher must never be produced for a different filing year —
+ * callers refuse and point at the online payment routes instead. Bump
+ * this when a new year's booklets are vendored.
+ */
+export const VOUCHER_BOOKLET_YEAR = 2026;
+
 export function formManifest(): Manifest {
   return manifest as Manifest;
 }
@@ -94,4 +103,194 @@ export async function fillEstimatedTaxVoucher(
     form.getTextField(fieldName).setText(byKey[key]);
   }
   return pdf.save();
+}
+
+import { NEC_COPY_B_FIELDS } from "./forms/f1099nec.fields";
+import { MISC_COPY_B_FIELDS } from "./forms/f1099msc.fields";
+import { W9_FIELDS } from "./forms/fw9.fields";
+import { F8300_FIELDS } from "./forms/f8300.fields";
+
+/** Shared fill: verify the vendored file's hash, check every mapped field exists, then set the given values. */
+async function fillMappedForm(
+  file: string,
+  fieldMap: Record<string, string>,
+  values: Record<string, string | undefined>,
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  const entry = formManifest().forms[file];
+  if (!entry) throw new FormLayoutError(`The form ${file} is not in the manifest.`);
+  const bytes = fs.readFileSync(path.join(dir, file));
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  if (hash !== entry.sha256) {
+    throw new FormLayoutError(`The official form ${file} does not match its recorded hash.`);
+  }
+  const pdf = await PDFDocument.load(bytes);
+  const form = pdf.getForm();
+  const names = new Set(form.getFields().map((f) => f.getName()));
+  for (const fieldName of Object.values(fieldMap)) {
+    if (!names.has(fieldName)) {
+      throw new FormLayoutError(
+        `The official form ${file} no longer has the field ${fieldName} — the form was re-issued; update the field map.`,
+      );
+    }
+  }
+  for (const [key, fieldName] of Object.entries(fieldMap)) {
+    const value = values[key];
+    if (value !== undefined && value !== "") form.getTextField(fieldName).setText(value);
+  }
+  return pdf.save();
+}
+
+export interface PartyBlock {
+  name: string;
+  street?: string;
+  suite?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  phone?: string;
+  tin: string;
+}
+
+function partyValues(prefix: "payer" | "recipient", party: PartyBlock): Record<string, string | undefined> {
+  return {
+    [`${prefix}Name`]: party.name,
+    [`${prefix}Street`]: party.street,
+    [`${prefix}Suite`]: party.suite,
+    [`${prefix}City`]: party.city,
+    [`${prefix}State`]: party.state,
+    [`${prefix}Country`]: party.country,
+    [`${prefix}Zip`]: party.zip,
+    [`${prefix}Tin`]: party.tin,
+    ...(prefix === "payer" ? { payerPhone: party.phone } : {}),
+  };
+}
+
+/** CMP-3: one recipient's filled 1099-NEC Copy B (the copy pages stay in the file; only Copy B is filled). */
+export async function fill1099NecCopyB(
+  input: { year: number; payer: PartyBlock; recipient: PartyBlock; box1aDollars: string; accountNumber?: string },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  return fillMappedForm(
+    "irs/f1099nec_2026.pdf",
+    NEC_COPY_B_FIELDS as unknown as Record<string, string>,
+    {
+      calendarYear: String(input.year),
+      ...partyValues("payer", input.payer),
+      ...partyValues("recipient", input.recipient),
+      accountNumber: input.accountNumber,
+      box1a: input.box1aDollars,
+    },
+    dir,
+  );
+}
+
+/** CMP-3: one recipient's filled 1099-MISC Copy B (boxes 1 and 3). */
+export async function fill1099MiscCopyB(
+  input: { year: number; payer: PartyBlock; recipient: PartyBlock; box1Dollars?: string; box3Dollars?: string; accountNumber?: string },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  return fillMappedForm(
+    "irs/f1099msc_2026.pdf",
+    MISC_COPY_B_FIELDS as unknown as Record<string, string>,
+    {
+      calendarYear: String(input.year),
+      ...partyValues("payer", input.payer),
+      ...partyValues("recipient", input.recipient),
+      accountNumber: input.accountNumber,
+      box1: input.box1Dollars,
+      box3: input.box3Dollars,
+    },
+    dir,
+  );
+}
+
+/** CMP-3: the filled W-9 a supplier's typed answers produce (kept with their record). */
+export async function fillW9(
+  input: { legalName: string; businessName?: string; address?: string; cityStateZip?: string; tinType: "SSN" | "EIN"; tinDigits: string },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  const d = input.tinDigits;
+  const split =
+    input.tinType === "SSN"
+      ? { ssn1: d.slice(0, 3), ssn2: d.slice(3, 5), ssn3: d.slice(5, 9) }
+      : { ein1: d.slice(0, 2), ein2: d.slice(2, 9) };
+  return fillMappedForm(
+    "irs/fw9.pdf",
+    W9_FIELDS as unknown as Record<string, string>,
+    {
+      legalName: input.legalName,
+      businessName: input.businessName,
+      address: input.address,
+      cityStateZip: input.cityStateZip,
+      ...split,
+    },
+    dir,
+  );
+}
+
+/** CMP-3: a prefilled Form 8300 draft for the owner to check and file through BSA E-Filing. */
+export async function fillForm8300(
+  input: {
+    lastName: string;
+    firstName: string;
+    middleInitial?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+    dateReceived: string;
+    totalCashDollars: string;
+    businessName: string;
+    businessEin?: string;
+    businessAddress?: string;
+    businessCity?: string;
+    businessState?: string;
+    businessZip?: string;
+  },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  // The date-received field is an 8-box comb field: MMDDYYYY, no dashes.
+  const digits = input.dateReceived.replace(/[^0-9]/g, "");
+  const dateReceived =
+    digits.length === 8 && input.dateReceived.includes("-")
+      ? `${digits.slice(4, 6)}${digits.slice(6, 8)}${digits.slice(0, 4)}`
+      : digits;
+  return fillMappedForm(
+    "irs/f8300.pdf",
+    F8300_FIELDS as unknown as Record<string, string>,
+    { ...input, dateReceived, totalCash: input.totalCashDollars },
+    dir,
+  );
+}
+
+import { DR0104EP_VOUCHER_FIELDS } from "./forms/dr0104ep.fields";
+
+/**
+ * CMP-2: fills the DR 0104EP payment voucher (page index 4 of the
+ * vendored 2026 booklet). The identity values are the owner's, typed at
+ * download time — nothing here stores them.
+ */
+export async function fillDr0104EpVoucher(
+  values: VoucherValues & { middleInitial?: string },
+  dir = COMPLIANCE_FORMS_DIR,
+): Promise<Uint8Array> {
+  return fillMappedForm(
+    "co/dr0104ep_2026.pdf",
+    DR0104EP_VOUCHER_FIELDS as unknown as Record<string, string>,
+    {
+      lastName: values.lastName,
+      firstName: values.firstName,
+      middleInitial: values.middleInitial,
+      ssn: values.ssn,
+      address: values.address,
+      city: values.city,
+      state: values.state,
+      zip: values.zip,
+      amount: values.amountDollars,
+    },
+    dir,
+  );
 }

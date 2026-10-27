@@ -4,6 +4,7 @@ import { businessDateKey } from "@/lib/business-date";
 import { prisma } from "@/lib/prisma";
 import { recordSystemIssue, resolveSystemIssue } from "@/domains/system-issues";
 import { classifyFailure, newCorrelationId } from "./failures";
+import { pausedByChargeSwitch } from "@/domains/continuity/rules";
 
 export type AutomationOutcome = "RAN" | "ALREADY_RAN" | "FAILED" | "PAUSED";
 
@@ -68,8 +69,10 @@ function validateCounts(counts: Record<string, number>): Record<string, number> 
 async function settingsPaused(ruleKey: string): Promise<boolean> {
   const settings = await prisma.businessSettings.findUnique({
     where: { id: "singleton" },
-    select: { pausedAutomations: true },
+    select: { pausedAutomations: true, chargesPausedAt: true },
   });
+  // OPS-8: the owner-only "Pause all automatic charges" switch stops the jobs that start charges or send reminders.
+  if (settings?.chargesPausedAt && pausedByChargeSwitch(ruleKey)) return true;
   return pausedRuleKeys(settings?.pausedAutomations).includes(ruleKey);
 }
 

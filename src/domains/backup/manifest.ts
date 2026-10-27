@@ -122,6 +122,10 @@ export const BACKUP_MODEL_POLICY = {
   TaxFilingPeriod: "taxFilingPeriod",
   TaxFilingAmendment: "taxFilingAmendment",
   BusinessPaperwork: "businessPaperwork",
+  // VAULT-1: record file index rows are backed up (the file bytes ride the
+  // nightly media copy of the private store). numberEncrypted on the parent
+  // record stays encrypted in backups too; a restore needs the same key.
+  BusinessRecordFile: "businessRecordFile",
   PurchaseUseTax: "purchaseUseTax",
   // W-14/W-2: purchase records, their receipt pages and the parts-receipt tax answer are tax evidence.
   Purchase: "purchase",
@@ -134,6 +138,8 @@ export const BACKUP_MODEL_POLICY = {
   // stays encrypted in backups too; a restore needs the same key.
   ComplianceProfile: "complianceProfile",
   ComplianceFiling: "complianceFiling",
+  W9Request: "w9Request",
+  TaxYearFacts: "taxYearFacts",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",
@@ -231,11 +237,24 @@ export const BACKUP_MODEL_POLICY = {
   CollectionStep: "collectionStep",
   CollectionCase: "collectionCase",
   SmallClaimsFiling: "smallClaimsFiling",
+  // OPS-7: security incidents, the service-provider list and accessibility complaints are business records.
+  SecurityIncident: "securityIncident",
+  ServiceVendor: "serviceVendor",
+  AccessibilityComplaint: "accessibilityComplaint",
 
   // OPS-1: recall matches (Chris's decisions and the holds they cause), the recall-check bookmark, and the safety-incident log are business records.
   RecallMatch: "recallMatch",
   RecallWatchState: "recallWatchState",
   SafetyIncident: "safetyIncident",
+  // OPS-8: which December check-up items the owner looked at, per year.
+  YearlyCheckup: "yearlyCheckup",
+
+  // OPS-3: the delivery vehicle and its mileage log are business records.
+  FleetVehicle: "fleetVehicle",
+  MileageTrip: "mileageTrip",
+  // OPS-4: insurance policies and certificate requests are business records.
+  OwnerInsurancePolicy: "ownerInsurancePolicy",
+  InsuranceCertificateRequest: "insuranceCertificateRequest",
 } satisfies Record<Prisma.ModelName, ModelDelegate | null>;
 
 export const BACKUP_TABLES = Object.values(BACKUP_MODEL_POLICY).filter(

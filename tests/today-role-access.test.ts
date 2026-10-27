@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // FEE-1: the late-fee review list has its own database tests; here it must not add reads to the capped Today queries.
+vi.mock("@/domains/security/reads", () => ({ listPrivacyAttention: async () => [] }));
 vi.mock("@/domains/exceptions/late-fee-attention", () => ({ listLateFeeReview: async () => ({ rows: [], total: 0 }) }));
 
 const mocks = vi.hoisted(() => ({
@@ -63,8 +64,20 @@ vi.mock("@/domains/exceptions/bank-payment-attention", () => ({
 vi.mock("@/domains/exceptions/dispute-attention", () => ({
   listDisputeAttention: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/domains/exceptions/vehicle-attention", () => ({
+  listVehicleAttention: vi.fn(async () => []), // covered by tests/ops3-vehicle-integration.test.ts
+}));
+vi.mock("@/domains/exceptions/insurance-attention", () => ({
+  listInsuranceAttention: vi.fn(async () => []), // covered by tests/ops4-insurance-integration.test.ts
+}));
 vi.mock("@/domains/exceptions/collection-attention", () => ({
   listCollectionAttention: vi.fn(async () => ({ rows: [], total: 0 })),
+}));
+vi.mock("@/domains/exceptions/continuity-attention", () => ({
+  listContinuityAttention: vi.fn(async () => []), // covered by tests/ops8-continuity-integration.test.ts
+}));
+vi.mock("@/domains/exceptions/setup-attention", () => ({
+  listSetupGuideAttention: vi.fn(async () => []), // covered by tests/setup-guide-integration.test.ts
 }));
 vi.mock("@/domains/exceptions/signed-delivery-attention", () => ({
   listSignedDeliveryAttention: vi.fn(async () => ({ rows: [], total: 0 })),
@@ -80,6 +93,9 @@ vi.mock("@/domains/exceptions/lead-turning-points", () => ({
 }));
 vi.mock("@/domains/exceptions/compliance-attention", () => ({
   listComplianceDue: vi.fn(async () => ({ rows: [], total: 0 })), // covered by tests/compliance-filings-integration.test.ts
+}));
+vi.mock("@/domains/exceptions/supplier-w9-attention", () => ({
+  listSupplierW9Needed: vi.fn(async () => ({ rows: [], total: 0 })), // covered by CMP-3's tests/w9-integration.test.ts
 }));
 vi.mock("@/domains/exceptions/goal-attention", () => ({
   listGoalAttention: vi.fn(async () => []), // covered by tests/goals-integration.test.ts
