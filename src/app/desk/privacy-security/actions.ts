@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import {
-  addVendor, closeIncident, determineIncident, markIncidentStepDone, markVendorReviewed, openIncident,
+  addVendor, closeIncident, determineIncident, markIncidentStepDone, saveIncidentInformation, markVendorReviewed, openIncident,
   recordAccessibilityComplaint, resolveAccessibilityComplaint, savePrivacySettings, setLegalHold,
   type IncidentStepKey,
 } from "@/domains/security/actions";
@@ -32,6 +32,10 @@ export async function openIncidentAction(_: SecurityActionState, fd: FormData): 
 export async function determineIncidentAction(id: string, _: SecurityActionState, fd: FormData): Promise<SecurityActionState> {
   const session = await requireRole("OWNER");
   try { await determineIncident(session.user.id, id, { determinedAt: dateOf(fd, "determinedOn"), residentsAffected: num(fd, "residents") }); refresh(); return { status: "success", message: "The clock is set. The deadlines are now on your To do list." }; } catch (e) { return fail(e); }
+}
+export async function incidentInformationAction(id: string, _: SecurityActionState, fd: FormData): Promise<SecurityActionState> {
+  const session = await requireRole("OWNER");
+  try { await saveIncidentInformation(session.user.id, id, text(fd, "information")); refresh(); return { status: "success", message: "Saved. The notice letter can now be opened." }; } catch (e) { return fail(e); }
 }
 export async function stepDoneAction(id: string, step: IncidentStepKey, _: SecurityActionState, fd: FormData): Promise<SecurityActionState> {
   const session = await requireRole("OWNER");

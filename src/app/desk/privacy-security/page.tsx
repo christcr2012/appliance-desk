@@ -43,11 +43,17 @@ export default async function SecurityPage() {
               <div key={incident.id} className="space-y-3 rounded-control border border-line p-3">
                 <p className="font-semibold">Found out {dateText(incident.discoveredAt)}: {incident.summary}</p>
                 {!incident.determinedAt ? (
+                  <div className="space-y-4">
                   <SecurityForm action={determineIncidentAction.bind(null, incident.id)} submit="Start the clock">
                     <p className="text-sm">Was information really exposed? When you decide yes, enter that date and the number of Colorado residents affected.</p>
                     <Field label="Date you decided" name="determinedOn" type="date" defaultValue={today} />
                     <Field label="Colorado residents affected" name="residents" type="number" min={0} max={10000000} defaultValue={0} />
                   </SecurityForm>
+
+                  <SecurityForm action={closeIncidentAction.bind(null, incident.id)} submit="It was a false alarm — close it" secondary>
+                    <TextArea label="What you checked and why nothing was exposed" name="note" />
+                  </SecurityForm>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm">Decided {dateText(incident.determinedAt)}; {incident.residentsAffected} Colorado resident{incident.residentsAffected === 1 ? "" : "s"} affected.</p>

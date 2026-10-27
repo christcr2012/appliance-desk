@@ -64,6 +64,18 @@ export async function determineIncident(actorUserId: string, id: string, input: 
   });
 }
 
+/** The kinds of information involved, written by the owner; the notice letter will not open without it. */
+export async function saveIncidentInformation(actorUserId: string, id: string, information: string): Promise<void> {
+  const text = clean(information, 500);
+  if (!text) throw new SecurityError("List the kinds of information involved, for example names, phone numbers, email addresses, rental records.");
+  await prisma.$transaction(async (tx) => {
+    await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
+    await lockIncident(tx, id);
+    await tx.securityIncident.update({ where: { id }, data: { informationInvolved: text } });
+    await tx.auditLog.create({ data: { userId: actorUserId, action: "security.incident_information", entityType: "SecurityIncident", entityId: id } });
+  });
+}
+
 export type IncidentStepKey = "RESIDENTS" | "ATTORNEY_GENERAL" | "BUREAUS" | "VENDORS";
 const STEP_FIELD = {
   RESIDENTS: "residentsNotifiedAt", ATTORNEY_GENERAL: "attorneyGeneralNotifiedAt", BUREAUS: "bureausNotifiedAt", VENDORS: "vendorsNotifiedAt",
@@ -88,7 +100,7 @@ export async function closeIncident(actorUserId: string, id: string, note: strin
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorUserId, ["OWNER"]);
     const row = await lockIncident(tx, id);
-    const rules = await readBreachRules(new Date());
+    const rules = await readBreachRules(row.determinedAt ?? row.discoveredAt);
     if (row.determinedAt && row.residentsAffected !== null) {
       const owed: string[] = [];
       if (!row.residentsNotifiedAt && row.residentsAffected > 0) owed.push("tell the affected people");
@@ -138,6 +150,11 @@ export async function setLegalHold(actorUserId: string, customerId: string, hold
     const customer = await tx.customer.findUnique({ where: { id: customerId }, select: { legalHoldAt: true } });
     if (!customer) throw new SecurityError("Couldn't find that customer.");
     if (hold === Boolean(customer.legalHoldAt)) return;
+    if (hold) {
+      // A deletion that has already been claimed is deleting files right now and can't be called back.
+      const underway = await tx.privacyRequest.count({ where: { customerId, kind: "DELETE", status: "VERIFIED", fulfilledByUserId: { not: null } } });
+      if (underway > 0) throw new SecurityError("A deletion for this customer is already under way. Let it finish or fail first, then place the hold.");
+    }
     await tx.customer.update({
       where: { id: customerId },
       data: hold ? { legalHoldAt: new Date(), legalHoldReason: text } : { legalHoldAt: null, legalHoldReason: null },

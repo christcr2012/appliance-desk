@@ -24,6 +24,7 @@ CREATE TABLE "SecurityIncident" (
   "discoveredAt" TIMESTAMP(3) NOT NULL,
   "determinedAt" TIMESTAMP(3),
   "residentsAffected" INTEGER,
+  "informationInvolved" TEXT,
   "openedByUserId" TEXT NOT NULL,
   "residentsNotifiedAt" TIMESTAMP(3),
   "attorneyGeneralNotifiedAt" TIMESTAMP(3),

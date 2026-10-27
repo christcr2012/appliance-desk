@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
-  closeIncident, determineIncident, markIncidentStepDone, markVendorReviewed, openIncident,
+  closeIncident, determineIncident, markIncidentStepDone, saveIncidentInformation, markVendorReviewed, openIncident,
   recordAccessibilityComplaint, resolveAccessibilityComplaint, savePrivacySettings, setLegalHold, RECOMMENDED_PRIVACY_SETTINGS,
 } from "@/domains/security/actions";
 import { runRetentionPurge } from "@/domains/security/retention";
@@ -149,5 +149,21 @@ describe.skipIf(!enabled)("privacy and security duties (real Postgres)", () => {
     const row = await prisma.messageDelivery.findUniqueOrThrow({ where: { idempotencyKey: `ops7-mkt-${tag}` } });
     expect(row.lastError).toMatch(/marketing text hours/);
     await prisma.messageDelivery.deleteMany({ where: { idempotencyKey: `ops7-mkt-${tag}` } });
+  });
+
+  it("a hold cannot be placed while a deletion is already running, and a suspected incident can be closed as a false alarm", async () => {
+    const req = await prisma.privacyRequest.create({ data: { kind: "DELETE", status: "VERIFIED", customerId, requesterEmail: `${custUser}@example.test`, verifiedAt: new Date(), fulfilledByUserId: ownerId } });
+    await expect(setLegalHold(ownerId, customerId, true, "late hold")).rejects.toThrow(/already under way/);
+    await prisma.privacyRequest.delete({ where: { id: req.id } });
+
+    const id = await openIncident(ownerId, { summary: "Laptop lost, probably encrypted", discoveredAt: new Date(now.getTime() - DAY) });
+    await expect(closeIncident(adminId, id, "x")).rejects.toThrow();
+    await closeIncident(ownerId, id, "Checked: disk was encrypted, nothing exposed");
+    expect((await prisma.securityIncident.findUniqueOrThrow({ where: { id } })).state).toBe("CLOSED");
+
+    const other = await openIncident(ownerId, { summary: "Spreadsheet shared too widely", discoveredAt: new Date(now.getTime() - DAY) });
+    await expect(saveIncidentInformation(ownerId, other, "   ")).rejects.toThrow(/kinds of information/);
+    await saveIncidentInformation(ownerId, other, "names and phone numbers");
+    expect((await prisma.securityIncident.findUniqueOrThrow({ where: { id: other } })).informationInvolved).toBe("names and phone numbers");
   });
 });

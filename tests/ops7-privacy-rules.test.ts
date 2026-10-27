@@ -72,14 +72,22 @@ describe("dates and settings", () => {
 });
 
 describe("breach letter", () => {
-  it("includes every item Colorado requires and leaves the exposed-information line for the owner to fill in", () => {
-    const { body } = renderBreachLetter({
-      businessName: "Robinson Appliance Rentals", businessPhone: "970-555-0100", businessAddress: "1 Main St, Greeley, CO",
-      todayText: "November 2, 2026", discoveredText: "October 30, 2026", determinedText: "November 1, 2026", whatHappened: "",
-    });
-    for (const needle of ["October 30, 2026", "November 1, 2026", "What information was involved", "Equifax, Experian and TransUnion", "coag.gov", "970-555-0100", "1 Main St"]) {
+  const facts = {
+    businessName: "Robinson Appliance Rentals", businessPhone: "970-555-0100", businessAddress: "1 Main St, Greeley, CO",
+    todayText: "November 2, 2026", discoveredText: "October 30, 2026", determinedText: "November 1, 2026", whatHappened: "",
+    informationInvolved: "names, phone numbers and rental records",
+  };
+  it("includes every item Colorado requires and the owner's own words for what was exposed", () => {
+    const { body } = renderBreachLetter(facts);
+    for (const needle of ["October 30, 2026", "November 1, 2026", "What information was involved: names, phone numbers and rental records", "Equifax, Experian and TransUnion", "coag.gov", "970-555-0100", "1 Main St"]) {
       expect(body).toContain(needle);
     }
-    expect(body).toContain("[Chris:");
+    expect(body).not.toMatch(/\[[^\]]+\]/);
+  });
+  it("refuses to make a letter with a blank, so no placeholder is ever printed", () => {
+    expect(() => renderBreachLetter({ ...facts, informationInvolved: "  " })).toThrow(/kinds of information/);
+    expect(() => renderBreachLetter({ ...facts, businessPhone: "" })).toThrow(/phone/);
+    expect(() => renderBreachLetter({ ...facts, businessPhone: "[Phone Number]" })).toThrow(/phone/);
+    expect(() => renderBreachLetter({ ...facts, businessAddress: "[Business Address]" })).toThrow(/address/);
   });
 });

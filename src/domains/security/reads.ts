@@ -15,11 +15,14 @@ export async function loadPrivacyOverview(now: Date) {
     readBreachRules(now),
     ruleAsOf<number>("co.accessibility_fix_days", now),
   ]);
+  // Each incident is judged by the rules in force on the day it was decided (or found), so a later rule change never moves its deadlines.
+  const incidentRules = await Promise.all(incidents.map((i) => (i.state === "OPEN" ? readBreachRules(i.determinedAt ?? i.discoveredAt) : Promise.resolve(rules))));
+  const complaintFix = await Promise.all(complaints.map((c) => ruleAsOf<number>("co.accessibility_fix_days", c.receivedAt)));
   return {
     settings, rules, fixDays: fixDays.value,
-    incidents: incidents.map((i) => ({ ...i, steps: i.state === "OPEN" ? incidentSteps(i, rules) : ([] as IncidentStep[]) })),
+    incidents: incidents.map((i, n) => ({ ...i, steps: i.state === "OPEN" ? incidentSteps(i, incidentRules[n]) : ([] as IncidentStep[]) })),
     vendors: vendors.map((v) => ({ ...v, due: vendorReviewDue(v.termsReviewedOn, now, settings.vendorReviewMonths) })),
-    complaints: complaints.map((c) => ({ ...c, fixBy: accessibilityFixBy(c.receivedAt, fixDays.value) })),
+    complaints: complaints.map((c, n) => ({ ...c, fixBy: accessibilityFixBy(c.receivedAt, complaintFix[n].value) })),
     holds,
   };
 }
@@ -38,7 +41,8 @@ export async function listPrivacyAttention(now: Date): Promise<ExceptionItem[]> 
   ]);
   const rows: ExceptionItem[] = [];
   for (const incident of incidents) {
-    for (const step of incidentSteps(incident, rules).filter((s) => !s.done && s.key !== "VENDORS")) {
+    const incidentRules = await readBreachRules(incident.determinedAt ?? incident.discoveredAt);
+    for (const step of incidentSteps(incident, incidentRules).filter((s) => !s.done && s.key !== "VENDORS")) {
       const overdue = step.due ? step.due.getTime() < now.getTime() : false;
       rows.push({
         category: "PRIVACY_DUTY", severity: "high",
@@ -58,7 +62,7 @@ export async function listPrivacyAttention(now: Date): Promise<ExceptionItem[]> 
     });
   }
   for (const c of complaints) {
-    const fixBy = accessibilityFixBy(c.receivedAt, fixDays.value);
+    const fixBy = accessibilityFixBy(c.receivedAt, (await ruleAsOf<number>("co.accessibility_fix_days", c.receivedAt)).value);
     rows.push({
       category: "PRIVACY_DUTY", severity: fixBy.getTime() < now.getTime() ? "high" : "medium",
       title: `Fix the accessibility problem by ${dateText(fixBy)}`,

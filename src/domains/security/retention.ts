@@ -35,9 +35,24 @@ export async function runRetentionPurge(now: Date, limit: number = PURGE_NIGHTLY
   let kept = 0;
   for (const { id } of candidates) {
     try {
-      // One statement per lead: a lead still referenced elsewhere is refused by the database and simply kept.
-      await prisma.lead.delete({ where: { id } });
-      removed += 1;
+      // Lock the lead, then check it again against the same rules: a lead converted, estimated or placed on hold since
+      // the list above was made is kept. (Converting a lead takes the same lock, so the two can never cross.)
+      const gone = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Lead" WHERE "id" = ${id} FOR UPDATE`;
+        const now2 = await tx.lead.findFirst({
+          where: { id, status: { in: ["NEW", "CONTACTED", "LOST"] }, convertedCustomerId: null, updatedAt: { lt: cutoff }, estimates: { none: {} } },
+          select: { emailLower: true, phoneDigits: true },
+        });
+        if (!now2) return false;
+        const heldNow = await tx.customer.findMany({ where: { legalHoldAt: { not: null } }, select: { phone: true, user: { select: { email: true } } } });
+        const emails = new Set(heldNow.map((c) => c.user.email.toLowerCase()));
+        const phones = new Set(heldNow.map((c) => (c.phone ?? "").replace(/\D/g, "")).filter((d) => d.length >= 7));
+        if ((now2.emailLower && emails.has(now2.emailLower)) || (now2.phoneDigits && phones.has(now2.phoneDigits))) return false;
+        // One statement per lead: a lead still referenced elsewhere is refused by the database and simply kept.
+        await tx.lead.delete({ where: { id } });
+        return true;
+      });
+      if (gone) removed += 1; else kept += 1;
     } catch {
       kept += 1;
     }

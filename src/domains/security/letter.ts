@@ -9,6 +9,8 @@ export type BreachLetterFacts = {
   discoveredText: string;
   determinedText: string;
   whatHappened: string;
+  /** The kinds of information involved, written by the owner. Required: the letter is never made with a blank for it. */
+  informationInvolved: string;
 };
 
 const DEFAULT_WHAT = "Some of the personal information we keep about you may have been seen by someone who should not have seen it.";
@@ -16,14 +18,18 @@ const DEFAULT_WHAT = "Some of the personal information we keep about you may hav
 /** The items Colorado requires: date(s) of the breach, what information, contact for the business, bureau numbers, AG contact, and what to do. */
 export function renderBreachLetter(f: BreachLetterFacts): { title: string; body: string } {
   const what = f.whatHappened.trim() || DEFAULT_WHAT;
+  const involved = f.informationInvolved.trim();
+  if (!involved) throw new Error("Write down what kinds of information were involved before opening the letter.");
+  if (!f.businessPhone.trim() || /^\[.*\]$/.test(f.businessPhone.trim())) throw new Error("Add your business phone number in Settings first, so people can reach you.");
+  if (!f.businessAddress.trim() || /^\[.*\]$/.test(f.businessAddress.trim())) throw new Error("Add your business mailing address in Settings first.");
   const body = [
     "We are writing to tell you about a security problem that may involve your personal information.",
     `What happened: ${what} We found out on ${f.discoveredText} and confirmed on ${f.determinedText}.`,
-    "What information was involved: [Chris: list the kinds of information, for example names, phone numbers, email addresses, rental records. Do not guess.]",
+    `What information was involved: ${involved}`,
     "What we are doing: we are fixing the cause and checking that it cannot happen again.",
     "What you can do: watch your accounts and statements for anything you do not recognize. You can ask the three national credit bureaus (Equifax, Experian and TransUnion) for your free credit reports and place a fraud alert or credit freeze at no cost. The Federal Trade Commission explains the steps at IdentityTheft.gov.",
     "Colorado Attorney General: you can also contact the Colorado Attorney General's office at coag.gov.",
-    `Questions: call us at ${f.businessPhone || "[phone number]"} or write to ${f.businessAddress || "[mailing address]"}.`,
+    `Questions: call us at ${f.businessPhone.trim()} or write to ${f.businessAddress.trim()}.`,
   ].join("\n\n");
   return { title: "Notice of a security problem", body };
 }

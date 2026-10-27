@@ -387,6 +387,11 @@ async function claimPrivacyDeletion(
       where: { id: request.customerId },
       select: { id: true, userId: true },
     });
+    // OPS-7: a legal hold stops the deletion. The hold is checked under the customer's lock before anything is claimed, and
+    // placing a hold refuses while a deletion is already claimed (see setLegalHold), so the two can never cross.
+    await tx.$queryRaw`SELECT "id" FROM "Customer" WHERE "id" = ${customer.id} FOR UPDATE`;
+    const heldNow = await tx.customer.findUniqueOrThrow({ where: { id: customer.id }, select: { legalHoldAt: true } });
+    if (heldNow.legalHoldAt) throw new Error("This customer is on a legal hold. Lift the hold first (Settings › Privacy › Legal holds), then delete.");
     // MCP-10a: lock the person's row before listing their app-feedback pictures. A picture save locks the same row
     // (FOR SHARE) and refuses once this claim is recorded, so no picture can slip in between claim and fulfilment.
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${customer.userId} FOR UPDATE`;

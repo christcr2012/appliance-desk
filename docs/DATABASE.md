@@ -1456,7 +1456,7 @@ All three tables are in the backup manifest.
 `RefrigerantRecord` is in the backup manifest.
 
 ### OPS-7: privacy and security (additive migration `20261105000000_privacy_security`)
-- `SecurityIncident` — one row per possible leak: what happened, when found, when decided, how many Colorado residents, and the date Chris did each step (people, Attorney General, credit bureaus, service providers). Deadlines are never stored; they are computed from the dated rule book.
+- `SecurityIncident` — one row per possible leak: what happened, when found, when decided, how many Colorado residents, the kinds of information involved (required before the notice letter opens), and the date Chris did each step (people, Attorney General, credit bureaus, service providers). Deadlines are never stored; they are computed from the dated rule book.
 - `ServiceVendor` — the providers that hold customer information (seeded: Vercel, Neon, Stripe, Google Workspace, Twilio, Resend) and the date their security terms were last reviewed.
 - `AccessibilityComplaint` — a reported problem using the site or app, with the fix-by date computed from the rule book.
 - `Customer.legalHoldAt` / `legalHoldReason` — a legal hold; blocks the nightly clean-up and privacy deletion.
