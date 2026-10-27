@@ -194,3 +194,12 @@ export async function importPayrollCsv(
 export async function listPayrollImports(limit = 12): Promise<PayrollImport[]> {
   return prisma.payrollImport.findMany({ orderBy: [{ payDate: "desc" }, { createdAt: "desc" }], take: limit });
 }
+
+/**
+ * The stored pay date as a YYYY-MM-DD key. payDate is a PostgreSQL DATE:
+ * its readback is midnight UTC, NOT a Colorado instant — running it
+ * through businessDateKey (Denver) would shift every date back a day.
+ */
+export function payrollDateKey(row: Pick<PayrollImport, "payDate">): string {
+  return row.payDate.toISOString().slice(0, 10);
+}

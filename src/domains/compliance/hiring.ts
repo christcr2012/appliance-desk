@@ -35,6 +35,33 @@ const fmtDay = (d: Date) =>
     year: "numeric",
   }).format(d);
 
+/**
+ * The new-hire filing that belongs to the CURRENT first start date.
+ * Correcting the date retires the old filing (NOT_APPLICABLE) and sync
+ * creates a replacement — matching on periodKey (the start date itself)
+ * keeps the checklist from ever reading the retired filing's state or
+ * deadline.
+ */
+export function selectNewHireFiling<T extends { obligationKey: string; periodKey: string; state: string; dueOn: Date }>(
+  filings: T[],
+  firstHireDate: Date | null,
+): { state: string; dueOn: Date } | null {
+  if (!firstHireDate) return null;
+  const hireKey = businessDateKey(firstHireDate);
+  return filings.find((f) => f.obligationKey === "co.payroll.new_hire" && f.periodKey === hireKey) ?? null;
+}
+
+/**
+ * An obligation's researched figures, reused as checklist guidance so a
+ * number lives in exactly one place (the registry entry, with its year
+ * attached and its official source one tap away) instead of being
+ * copied into a second string that can drift.
+ */
+function registryGuidance(key: string): string {
+  const explain = obligationByKey(key)?.explain ?? "";
+  return explain.replace(/ Dormant until you hire\.$/, ".");
+}
+
 const DONE_FILING_STATES = ["SUBMITTED", "ACCEPTED", "DONE_ELSEWHERE", "NOT_APPLICABLE"];
 
 /** The checklist, or null while the business has no employees (it stays hidden). */
@@ -96,14 +123,14 @@ export function hiringChecklist(input: HiringChecklistInput): HiringChecklistIte
     {
       key: "ui_account",
       title: "Colorado unemployment insurance account",
-      what: "Register as an employer with the Department of Labor and Employment (MyUI Employer+). Premiums are quarterly on the first $30,600 of each employee's 2026 wages.",
+      what: `Register as an employer with the Department of Labor and Employment (MyUI Employer+). ${registryGuidance("co.payroll.ui")}`,
       state: "info",
       links: source("co.payroll.ui"),
     },
     {
       key: "famli",
       title: "Register for Colorado FAMLI",
-      what: "Register in My FAMLI+ Employer before your first payroll. The 2026 premium is 0.88% of wages; with 9 or fewer employees you remit only the employee's 0.44% share.",
+      what: `Register in My FAMLI+ Employer before your first payroll. ${registryGuidance("co.payroll.famli")}`,
       state: "info",
       links: source("co.payroll.famli"),
     },

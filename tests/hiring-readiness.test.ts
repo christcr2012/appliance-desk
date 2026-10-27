@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { businessDateFromKey, businessDateKey } from "@/lib/business-date";
 import { newHirePeriods } from "@/domains/compliance/local-schedules";
-import { hiringChecklist, type HiringChecklistInput } from "@/domains/compliance/hiring";
+import { hiringChecklist, selectNewHireFiling, type HiringChecklistInput } from "@/domains/compliance/hiring";
 import {
   parsePayrollCsv,
+  payrollDateKey,
   payrollMoneyToCents,
   payrollRowBalanceError,
   type PayrollCsvRow,
@@ -111,6 +112,32 @@ describe("hiring checklist", () => {
     expect(items.find((i) => i.key === "new_hire")!.state).toBe("done");
     const noDate = hiringChecklist(checklistInput({ firstHireDate: null, newHireFiling: null }))!;
     expect(noDate.find((i) => i.key === "new_hire")!.dueText).toContain("add the date in Business facts");
+  });
+});
+
+describe("review fixes: filing selection, date-only display, single-source figures", () => {
+  it("selects the new-hire filing for the current start date, never the retired one", () => {
+    const filings = [
+      { obligationKey: "co.payroll.new_hire", periodKey: "2027-03-02", state: "NOT_APPLICABLE", dueOn: day("2027-03-22") },
+      { obligationKey: "co.payroll.new_hire", periodKey: "2027-04-01", state: "UPCOMING", dueOn: day("2027-04-21") },
+      { obligationKey: "fed.payroll.941", periodKey: "2027-Q2", state: "UPCOMING", dueOn: day("2027-07-31") },
+    ];
+    expect(selectNewHireFiling(filings, day("2027-04-01"))?.state).toBe("UPCOMING");
+    expect(selectNewHireFiling(filings, day("2027-03-02"))?.state).toBe("NOT_APPLICABLE");
+    expect(selectNewHireFiling(filings, null)).toBeNull();
+    expect(selectNewHireFiling(filings, day("2027-05-05"))).toBeNull();
+  });
+
+  it("displays a stored DATE without the Denver shift (midnight UTC readback)", () => {
+    // A @db.Date readback is midnight UTC; businessDateKey would call it May 14 in Denver.
+    expect(payrollDateKey({ payDate: new Date("2026-05-15T00:00:00.000Z") })).toBe("2026-05-15");
+  });
+
+  it("checklist rate figures come from the registry entries themselves", () => {
+    const items = hiringChecklist(checklistInput({}))!;
+    expect(items.find((i) => i.key === "famli")!.what).toContain("0.88%");
+    expect(items.find((i) => i.key === "ui_account")!.what).toContain("$30,600");
+    expect(items.find((i) => i.key === "famli")!.what).not.toContain("Dormant");
   });
 });
 

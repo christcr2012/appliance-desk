@@ -4,8 +4,8 @@ import { requireRole } from "@/lib/session";
 import { businessDateKey } from "@/lib/business-date";
 import { OBLIGATIONS, notNeededObligations, obligationByKey, unscheduledObligations } from "@/domains/compliance/registry";
 import { getComplianceProfile, missingFacts } from "@/domains/compliance/profile";
-import { hiringChecklist, hiringSummary } from "@/domains/compliance/hiring";
-import { listPayrollImports } from "@/domains/compliance/payroll-import";
+import { hiringChecklist, hiringSummary, selectNewHireFiling } from "@/domains/compliance/hiring";
+import { listPayrollImports, payrollDateKey } from "@/domains/compliance/payroll-import";
 import { formatMoney } from "@/lib/money-ui";
 import { PayrollImportForm } from "./payroll-import-form";
 import {
@@ -101,7 +101,7 @@ export default async function CompliancePage({
     employees: profile.employees,
     hasEin: Boolean(profile.einEncrypted),
     firstHireDate: profile.firstHireDate,
-    newHireFiling: filings.find((f) => f.obligationKey === "co.payroll.new_hire") ?? null,
+    newHireFiling: selectNewHireFiling(filings, profile.firstHireDate),
   };
   const checklist = hiringChecklist(hiringInput);
   const payrollImports = checklist ? await listPayrollImports() : [];
@@ -207,7 +207,7 @@ export default async function CompliancePage({
               <ul className="mt-3 space-y-1 text-sm text-ink-soft">
                 {payrollImports.map((row) => (
                   <li key={row.id}>
-                    {businessDateKey(row.payDate)} · wages {formatMoney(row.grossWagesCents)} · employer taxes{" "}
+                    {payrollDateKey(row)} · wages {formatMoney(row.grossWagesCents)} · employer taxes{" "}
                     {formatMoney(row.employerTaxesCents)} · withdrawn {formatMoney(row.withdrawnCents)}
                     {row.providerName ? ` · ${row.providerName}` : ""}
                   </li>
