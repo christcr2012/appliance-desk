@@ -21,6 +21,11 @@ const SMALL_CLAIMS_MIGRATION = readFileSync(
 );
 
 // The seeded value for each key, exactly as the migration inserts it.
+// OPS-7 seeds the breach and accessibility timing rules in its own migration.
+const PRIVACY_MIGRATION = readFileSync(
+  "prisma/migrations/20261105000000_privacy_security/migration.sql", "utf8",
+);
+
 const SEEDED: Record<RuleKey, unknown> = {
   "co.rdf.amount": 31,
   "co.rdf.qualified_threshold": 50000000,
@@ -41,11 +46,15 @@ const SEEDED: Record<RuleKey, unknown> = {
   "co.small_claims_filing_limits": { perMonth: 2, perYear: 18 },
   "co.small_claims_fees": { lowMaxCents: 50000, lowFeeCents: 3100, highFeeCents: 5500 },
   "records.refrigerant_keep_years": 6,
+  "co.breach_notice_days": 30,
+  "co.breach_ag_threshold": 500,
+  "co.breach_bureau_threshold": 1000,
+  "co.accessibility_fix_days": 30,
 };
 
 describe("rule registry", () => {
   it("defines every seeded key with a title, explanation, area, schema and edit fields", () => {
-    expect(RULE_KEYS).toHaveLength(19);
+    expect(RULE_KEYS).toHaveLength(23);
     for (const key of RULE_KEYS) {
       const def = RULES[key];
       expect(def.key).toBe(key);
@@ -80,11 +89,12 @@ describe("rule registry", () => {
     for (const key of RULE_KEYS) {
       // Seed rows wrap across lines; split the INSERT into its row tuples.
       const smallClaims = key.startsWith("co.small_claims");
+      const privacy = key.startsWith("co.breach") || key === "co.accessibility_fix_days";
       const refrigerant = key === "records.refrigerant_keep_years";
-      const source = smallClaims ? SMALL_CLAIMS_MIGRATION : refrigerant ? REFRIGERANT_MIGRATION : MIGRATION;
+      const source = privacy ? PRIVACY_MIGRATION : smallClaims ? SMALL_CLAIMS_MIGRATION : refrigerant ? REFRIGERANT_MIGRATION : MIGRATION;
       const row = source.split("),\n").find((text) => text.includes(`'${key}'`) && text.includes("'RESEARCHED'"));
       expect(row, `${key} must be seeded`).toBeDefined();
-      expect(row).toContain(smallClaims || refrigerant ? "2026-10-26T12:00:00Z" : "2026-10-25T12:00:00Z");
+      expect(row).toContain(smallClaims || privacy || refrigerant ? "2026-10-26T12:00:00Z" : "2026-10-25T12:00:00Z");
       // A source quote names the document or page the value came from.
       expect(row!.length).toBeGreaterThan(120);
     }

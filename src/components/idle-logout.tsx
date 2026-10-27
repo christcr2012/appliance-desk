@@ -5,6 +5,7 @@ import { portalStatement } from "@/domains/language/portal-copy";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
+import { clearRememberedLists } from "@/components/kit/remember-list";
 
 const ACTIVITY_EVENTS = [
   "mousedown",
@@ -104,6 +105,7 @@ export function IdleLogout({ timeoutMinutes }: { timeoutMinutes: number }) {
         if (signingOutRef.current) return;
         signingOutRef.current = true;
         void signOut().finally(() => {
+          clearRememberedLists();
           router.push(language==="es"?"/login?reason=timeout&language=es":"/login?reason=timeout");
           router.refresh();
         });

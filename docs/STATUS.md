@@ -2,6 +2,40 @@
 
 Branch `ai/claude/ops-8`. New **More → If something happens to me** screen (`/desk/continuity`, owner only): who to call (emergency contact, who would keep the business running, CPA, attorney, where records are kept), a live snapshot (appliances out, unpaid bills and total owed, visits in the next 14 days; counts only, no customer names), and an owner-only **Pause all automatic charges** switch. While on, the nightly jobs that start charges, add late fees, send past-due notices or email reminders do not run (11 named jobs); backups, payment checking, recall watch and the tax watches keep running; nothing is refunded or cancelled. Each press is written to Activity. A paused store shows a high To do until turned back on. **Yearly check-up** (`/desk/continuity/checkup`): in December an owner To do opens an 11-step walkthrough (insurance, prices, CPA packet, policies, records clean-up, access, vendors, recalls, expiring records, tax set-aside, this page); ticking only records that you looked; finishing is once per year.
 Proof: `tests/ops8-continuity-rules.test.ts` and `tests/ops8-continuity-integration.test.ts` on throwaway Postgres (owner-only, audit once per real change, the pause stops `late-fees` but not `backup`, December and Denver-calendar edges, finish-once); `e2e/continuity.spec.ts` (axe at 360 and 1440). Not yet done: CI at the exact head; the successor using the switch through VAULT emergency access (VAULT-1 does not exist yet, so only the owner can press it today — see OWNER-CHECKLIST). Starting values not confirmed: DQ-OPS8-1, DQ-OPS8-2.
+## October 26 — OPS-7: privacy and security duties (built, PR pending)
+## October 26 — AR-11 remembers desk list filters and scroll (in progress)
+Branch ai/chatgpt/ar-11-remember-lists stores only a tab-scoped list query and scroll number
+for known list pages. Links in AreaTabs, sidebar and bottom bar restore the query for plain links;
+direct filtered links stay authoritative. Both manual and idle sign-out clear list memory.
+Unit and authenticated browser coverage added; exact-head CI and review pending.
+React transitions, swipe actions, optimistic helper and bundle budget remain in AR-11.
+## October 26 — AR-11 mobile refresh and safe-area chrome (PR pending)
+Branch `ai/chatgpt/ar-11-mobile-pull-refresh`: touch-only 72px downward pull refresh on Today, Bills and Customers,
+with cancelled/sideways/scrolled/dirty/offline and reduced-motion guards plus a manual
+Refresh button when motion is reduced. Phone chrome respects safe areas; static form and
+server-action paths are untouched. Unit/browser proof and exact-head CI still required.
+React transitions, swipe row actions, remembered lists, optimistic helper and bundle budget remain.
+## October 26 — Lane 3 complete: automatic Books, setup and monthly review
+BA-1 PR #610, BA-2 PR #613 and BA-3 PR #624 are merged into main. The final PR heads passed CI:
+BA-1 e85e4358 (run 40317413250), BA-2 6337a754 (run 40357496521) and BA-3 eb2a99c7
+(run 40444991438). BA-3 has no unresolved review threads. The nightly records, first-time setup,
+and month-end checks are built; accountant emailing requires a separate owner action. No live
+provider setting, customer message, production records or payments were changed. Lane 3 has no
+remaining implementation cards. Real-business acceptance and release status are separate from CI.
+## October 26 — AR-11 desk-wide loading screens (in review)
+Branch `ai/claude/ops-7` (stacked on OPS-6). New **Privacy and security** screen (More menu, owner and admin). **Something may have leaked**: you record the date you found out, then the date you decided information was really exposed and how many Colorado residents; the app works out the deadline (30 days, starting value from the dated rule book, not confirmed), also needs the Attorney General at 500 or more people and the credit bureaus above 1,000, fills in a printable notice letter, and puts each step on your To do list. It sends nothing; the date can only move earlier, and the incident cannot be closed while a notice is still owed. **Service providers** (Vercel, Neon, Stripe, Google, Twilio, Resend) each get a yearly "security terms reviewed" check that returns to your To do list. **Legal hold** on a customer stops the nightly clean-up and blocks their privacy deletion. **Keep for** years are settings (agreements 7, tax 7, refrigerant 6, enquiries 2, messages 3); the nightly **clean-up of old enquiries ships OFF**, removes at most 200 a night, never signed or billed history, and logs every run. **Face-match ID** stays off. **Marketing texts** are held outside 8 am–9 pm Denver time (setting). **Accessibility complaints** get a 30-day fix date on your To do list. A public page "How we handle your information" shows the disposal policy.
+Migration `20261105000000_privacy_security` (additive). Proof: pure tests (`tests/ops7-privacy-rules.test.ts`) and 6 database tests on a throwaway Postgres (`tests/ops7-privacy-integration.test.ts`), including a bug the test caught (old enquiries with no stored phone key would never have been cleaned up). Browser check `e2e/privacy-security.spec.ts` runs only in CI.
+Not done: the 6-1-713 text and the breach rules were summarized from secondary sources (the statute site was not reachable from the build machine), so the rule-book rows say "summary" and the questions are filed as DQ-OPS7-1/2/3. No ID-image storage exists in the app yet, so there was nothing to purge there. Messages older than the setting are not purged (they are tied to legal records).
+Branch `ai/chatgpt/ar-11-loading-skeletons` makes every top-level desk page area show a kit list or record skeleton while
+its server content loads; the root fallback also uses the kit. A filesystem inventory test protects
+future screens, and an authenticated browser test checks Today → Customers under a slow response.
+No data, role, money or provider changes. Local tests cannot run without repository checkout;
+CI at exact head and review still required. AR-11 remains open after this: transitions, touch,
+remembered lists, optimistic helper and bundle speed check.
+## October 26 — AR-11 desktop shortcuts and idle-safe freshness (merged PR #647)
+Branch `ai/chatgpt/ar-11-keyboard-freshness`, head after latest main merge. Adds on-desktop
+navigation keys and a searchable help dialog, plus guarded refresh on Today, Bills and Customers.
+The shifted-key ordering bug was fixed; exact-head CI and review passed before merge. AR-11 is not yet complete (touch, view transitions, skeletons, bundle budget).
 ## October 26 — OPS-6: collecting from customers who stop paying (built, PR pending)
 ## October 26 — TFA-3: official-page watches with strict parsers (in progress)
 
@@ -14,6 +48,10 @@ rate review path, and a Greeley approval also mirrors into the rule book so the 
 the live Greeley page does not state its rate in a sentence yet, so that reader reports "couldn't read" until
 the city publishes one (never a guess). Local proof: parsers 13/13, observation 9/9, watch 18/18, rate review
 6/6, Today access 11/11, registries 24/24 on throwaway Postgres. PR #646: CI green at the exact head, review round 1 resolved; merging.
+## October 26 — BA-3: guided monthly Books review (PR #624)
+
+Completed four month-end source checks, immutable accountant CSV package and explicit owner-approved email with honest provider outcomes, owner-only audited month closing, expense receipt explanations, reminder items and role-safe screens. BA-1 and BA-2 prerequisites are merged. CI run 40441051070 passed full tests, browser/accessibility (all five shards), secret scan and typecheck at `d0fa86a2`; all 10 Codex findings dispositioned and threads resolved. Reconciled newer main without discarding other lanes. The final documentation-only commit must still pass its exact-head CI before guarded merge. No customer email, payment, live settings or production data changed.
+
 ## October 26 — CI: obligation-key scanner allowlist (Lane 6 gap PR, open)
 
 One durable shape allowlist in `.gitleaks.toml` now covers the rules and compliance

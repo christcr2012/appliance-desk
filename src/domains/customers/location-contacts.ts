@@ -209,15 +209,15 @@ export async function eraseExpiredTenantPII(now = new Date(), limit = 250) {
     const rows = await tx.locationContact.findMany({
       where: { endedAt: { lte: cutoff }, erasedAt: null, privacyHoldAt: null,
         // Any recorded repair is potentially relevant to a claim/dispute. Keep the
-        // occupant until a reviewed hold release process exists; never infer closure.
-        serviceAddress: { maintenanceRequests: { none: {} } } },
+        // occupant until a reviewed hold release process exists; never infer closure. OPS-7: a customer on legal hold keeps theirs too.
+        serviceAddress: { maintenanceRequests: { none: {} }, customer: { legalHoldAt: null } } },
       select: { id: true }, orderBy: [{ endedAt: "asc" }, { id: "asc" }], take: limit,
     });
     if (!rows.length) return 0;
     const changed = await tx.locationContact.updateMany({
       where: { id: { in: rows.map(x => x.id) }, endedAt: { lte: cutoff },
         erasedAt: null, privacyHoldAt: null,
-        serviceAddress: { maintenanceRequests: { none: {} } } },
+        serviceAddress: { maintenanceRequests: { none: {} }, customer: { legalHoldAt: null } } },
       data: { name: null, phone: null, email: null, preferredLanguage: "en",
         repairTokenHash: null, repairTokenExpiresAt: null, erasedAt: now },
     });
