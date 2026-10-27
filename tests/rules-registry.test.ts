@@ -30,6 +30,11 @@ const PRIVACY_MIGRATION = readFileSync(
   "prisma/migrations/20261105000000_privacy_security/migration.sql", "utf8",
 );
 
+// CMP-4 seeds the Weld property declaration rules in its own migration.
+const CMP4_MIGRATION = readFileSync(
+  "prisma/migrations/20261111000000_cmp4_colorado_local/migration.sql", "utf8",
+);
+
 const SEEDED: Record<RuleKey, unknown> = {
   "co.rdf.amount": 31,
   "co.rdf.qualified_threshold": 50000000,
@@ -55,11 +60,13 @@ const SEEDED: Record<RuleKey, unknown> = {
   "co.breach_ag_threshold": 500,
   "co.breach_bureau_threshold": 1000,
   "co.accessibility_fix_days": 30,
+  "co.bpp.exemption_threshold": 5600000,
+  "co.bpp.extension": { tenDayFeeCents: 2000, twentyDayFeeCents: 4000 },
 };
 
 describe("rule registry", () => {
   it("defines every seeded key with a title, explanation, area, schema and edit fields", () => {
-    expect(RULE_KEYS).toHaveLength(24);
+    expect(RULE_KEYS).toHaveLength(26);
     for (const key of RULE_KEYS) {
       const def = RULES[key];
       expect(def.key).toBe(key);
@@ -97,10 +104,11 @@ describe("rule registry", () => {
       const smallClaims = key.startsWith("co.small_claims");
       const privacy = key.startsWith("co.breach") || key === "co.accessibility_fix_days";
       const refrigerant = key === "records.refrigerant_keep_years";
-      const source = mileage ? VEHICLE_MIGRATION : privacy ? PRIVACY_MIGRATION : smallClaims ? SMALL_CLAIMS_MIGRATION : refrigerant ? REFRIGERANT_MIGRATION : MIGRATION;
+      const bpp = key.startsWith("co.bpp");
+      const source = mileage ? VEHICLE_MIGRATION : privacy ? PRIVACY_MIGRATION : smallClaims ? SMALL_CLAIMS_MIGRATION : refrigerant ? REFRIGERANT_MIGRATION : bpp ? CMP4_MIGRATION : MIGRATION;
       const row = source.split("),\n").find((text) => text.includes(`'${key}'`) && text.includes("'RESEARCHED'"));
       expect(row, `${key} must be seeded`).toBeDefined();
-      expect(row).toContain(mileage || smallClaims || privacy || refrigerant ? "2026-10-26T12:00:00Z" : "2026-10-25T12:00:00Z");
+      expect(row).toContain(bpp ? "2026-10-27T12:00:00Z" : mileage || smallClaims || privacy || refrigerant ? "2026-10-26T12:00:00Z" : "2026-10-25T12:00:00Z");
       // A source quote names the document or page the value came from.
       expect(row!.length).toBeGreaterThan(120);
     }

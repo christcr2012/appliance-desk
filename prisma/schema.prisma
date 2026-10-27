@@ -3683,6 +3683,16 @@ model BusinessSettings {
   // value: the non-sensitive kinds. A record holding an encrypted number is
   // never admin-readable, whatever its kind (domain rule, not just this list).
   paperworkAdminKinds      String[] @default(["DOCUMENT", "LICENSE", "PERMIT", "REGISTRATION", "INSURANCE", "VEHICLE", "CONTRACT"])
+  // VAULT-2: emergency access (spec §7) — ships OFF. The contact gets no
+  // account; when the owner turns this on and issues a link, the contact can
+  // request access, wait emergencyWaitDays (1-30, CHECK in the migration),
+  // confirm a one-time code sent to the saved contact, and download one
+  // read-only export. The owner can deny at any time.
+  emergencyAccessEnabled   Boolean @default(false)
+  emergencyContactName     String? @db.VarChar(120)
+  emergencyContactEmail    String? @db.VarChar(200)
+  emergencyContactPhone    String? @db.VarChar(40)
+  emergencyWaitDays        Int     @default(7)
   invitationLinkDays  Int     @default(7)
   adminsMayInviteStaff Boolean @default(false)
 
@@ -3741,6 +3751,23 @@ model ComplianceProfile {
   businessState     String?
   businessZip       String?
   businessPhone     String?
+  // CMP-4: the local-filing facts. tradeName is the name the LLC files
+  // under, if any (an LLC's Colorado trade name never needs renewal —
+  // C.R.S. § 7-71-104). usdotNumber's last two digits set the FMCSA
+  // biennial update schedule. truckRegistrationMonth (1-12) is the month
+  // on the truck's current registration. greeleyLicenseDate is the date
+  // the city license was issued or last renewed; the two-year renewal
+  // cycle runs from it. The registered agent fields are the exact values
+  // the SOS periodic report shows.
+  tradeName              String?
+  usdotNumber            String?
+  truckRegistrationMonth Int?
+  greeleyLicenseDate     DateTime?
+  registeredAgentName    String?
+  registeredAgentAddress String?
+  registeredAgentCity    String?
+  registeredAgentState   String?
+  registeredAgentZip     String?
   updatedAt      DateTime @updatedAt
 }
 
@@ -5857,6 +5884,70 @@ model BusinessRecordFile {
   deletedAt        DateTime?
 
   @@index([recordId, deletedAt])
+}
+
+// VAULT-2: one business login. The secret fields are encrypted with the VAULT
+// key (src/lib/field-crypto.ts, VAULT_ENCRYPTION_KEY — never the compliance
+// key) and are read only inside src/domains/vault (the grep test enforces
+// it). Listing DTOs carry a masked username, never a ciphertext.
+model VaultCredential {
+  id                String    @id @default(cuid())
+  title             String    @db.VarChar(120)
+  url               String?   @db.VarChar(500)
+  usernameEncrypted String?
+  passwordEncrypted String?
+  notesEncrypted    String?
+  /// Where the second-step code comes from ("Authenticator on Chris's phone") — never a TOTP secret.
+  totpHint          String?   @db.VarChar(120)
+  lastRotatedOn     DateTime?
+  rotateEveryMonths Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  version           Int       @default(1)
+}
+
+// VAULT-2: proof that this session entered a fresh second-step code. Rows are
+// deleted on sign-out-everywhere, password change and second-step change, and
+// are never backed up.
+model VaultUnlock {
+  id        String   @id @default(cuid())
+  userId    String
+  sessionId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, expiresAt])
+}
+
+// VAULT-2: emergency access, designed in spec §7 and shipped OFF (the owner
+// turns it on in BusinessSettings). One row per link the owner issues; the
+// link token itself is never stored, only its SHA-256 hash. The contact's
+// one-time code is likewise stored hashed. Never backed up.
+model EmergencyAccessRequest {
+  id                   String    @id @default(cuid())
+  tokenHash            String    @unique @db.Char(64)
+  /// LINK_READY | WAITING | DENIED | CODE_SENT | VERIFIED | CONSUMED | SUPERSEDED
+  status               String    @default("LINK_READY") @db.VarChar(20)
+  contactName          String?   @db.VarChar(120)
+  contactEmail         String?   @db.VarChar(200)
+  contactPhone         String?   @db.VarChar(40)
+  requestedAt          DateTime?
+  waitEndsAt           DateTime?
+  remindedHalfwayAt    DateTime?
+  remindedDayBeforeAt  DateTime?
+  startNoticeFailedAt  DateTime?
+  deniedAt             DateTime?
+  codeHash             String?   @db.Char(64)
+  codeExpiresAt        DateTime?
+  codeAttempts         Int       @default(0)
+  codeSentAt           DateTime?
+  exportExpiresAt      DateTime?
+  downloadedAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  version              Int       @default(1)
+
+  @@index([status, waitEndsAt])
 }
 
 // O-5: a monthly target for one business number (cash collected, or new rentals). One per metric per Colorado month.

@@ -4715,7 +4715,7 @@
       "dependencies": [
         "AR-0"
       ],
-      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652; swipe PR #662 CI green and awaiting close-out, React/transitions, snooze, bundle pending",
+      "status": "IN PROGRESS — merged #608/#647/#649/#651/#652/#662; Snooze PR #663 exact-head green, React/transitions PR #665 and JS budget still pending",
       "migration": "none",
       "budget": 480,
       "units": [
@@ -5297,8 +5297,8 @@
         "CMP-1",
         "BA-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "additive (account Schedule C line)",
+      "status": "MERGED — PR #660, e4e9cf31 (2026-10-27)",
+      "migration": "20261110000000_cmp2_income_tax (LedgerAccount.scheduleCLine + system-chart backfill, TaxYearFacts)",
       "budget": 500,
       "units": [
         "CMP-2"
@@ -5311,7 +5311,8 @@
       "tests": [
         "tests/schedule-c-mapping.test.ts",
         "tests/estimated-tax.test.ts",
-        "tests/1099k-tieout.test.ts"
+        "tests/1099k-tieout.test.ts",
+        "tests/income-tax-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-2.md"
@@ -5352,8 +5353,8 @@
       "dependencies": [
         "CMP-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
-      "migration": "none",
+      "status": "MERGED — PR #670, squash 95de266b on main (2026-10-27)",
+      "migration": "20261111000000_cmp4_colorado_local (ComplianceProfile CMP-4 facts, co.bpp rule seeds)",
       "budget": 400,
       "units": [
         "CMP-4"
@@ -5364,8 +5365,10 @@
         "docs/research/2026-10-25-federal-colorado-compliance.md"
       ],
       "tests": [
-        "tests/bpp-declaration-integration.test.ts",
-        "tests/sos-report.test.ts"
+        "tests/bpp-snapshot.test.ts",
+        "tests/local-filings.test.ts",
+        "tests/colorado-local-integration.test.ts",
+        "tests/compliance-forms.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-4.md"
@@ -5426,7 +5429,7 @@
         "VAULT-1",
         "ACC-6"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS — branch ai/vivienne/vault-2; packet and drift check written 2026-10-27 (docs/pr-cards/execution/VAULT-2.json). SETUP-1 close-out rides this branch.",
       "migration": "additive (VaultCredential, VaultUnlock)",
       "budget": 450,
       "units": [
@@ -5451,7 +5454,7 @@
       "dependencies": [
         "VAULT-1"
       ],
-      "status": "IN PROGRESS — branch ai/vivienne/setup-1; built and verified locally (130 tests across the affected suites, typecheck/lint clean, checks phase green in the repo launcher; browser spec gated on PR CI — the local launcher build exceeds its 600s cap in this VM). VAULT-1 close-out rides this branch.",
+      "status": "MERGED 2026-10-27 — PR #661, squash 39d4bf8e on main (final head 716515bb, CI fully green at the exact head; 2 Codex findings + 3 CI-caught registry/import misses fixed with regression tests in one round).",
       "migration": "none",
       "budget": 400,
       "units": [
@@ -6072,12 +6075,20 @@
       "path": "docs/pr-cards/execution/CMP-2.json"
     },
     {
+      "id": "CMP-4",
+      "path": "docs/pr-cards/execution/CMP-4.json"
+    },
+    {
       "id": "TFA-2",
       "path": "docs/pr-cards/execution/TFA-2.json"
     },
     {
       "id": "SETUP-1",
       "path": "docs/pr-cards/execution/SETUP-1.json"
+    },
+    {
+      "id": "VAULT-2",
+      "path": "docs/pr-cards/execution/VAULT-2.json"
     }
   ]
 }

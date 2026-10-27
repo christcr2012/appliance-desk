@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## October 27 — Lane 2 MCP-3 local SDK OAuth round trip passed (not merged)
 
 On `ai/chatgpt/mcp-3-oauth-connect` a disposable-PostgreSQL test now covers PKCE registration, owner consent, signed resource token, refresh, MCP whoami and instant token rejection after Disconnect. Seventeen additional focused unit/security/size tests and changed-file ESLint passed. The only allowed dynamic-registration resource is the canonical app MCP endpoint. Full quick check, browser/axe, exact-head CI and review **remain**, so MCP-3 is not shipped. MCP-2 was merged on #611; MCP-4 read tools remain on a separate dependent plan branch. No real accounts or deployment settings were touched.
@@ -14,6 +15,45 @@ customer email/SMS/payment or production database change was made.
 ## October 27 — Lane 2 MCP-3 secure assistant connection (in progress, not shipped)
 
 Worktree `ai/chatgpt/mcp-3-oauth-connect` merged the latest main and implemented an initial fail-closed issuer, scope validation, OAuth generated schema, migration, private backup omissions and revoked-on-restore plan, MCP whoami route, and draft consent/disconnect screens. Thirteen focused tests passed; scoped TypeScript checking exposed three fixable errors. New OAuth revocation tests require disposable PostgreSQL verification. The feature is **not ready for PR or merge**: SDK OAuth grant and refresh proof, registration throttling, integration/e2e/a11y coverage, exact-head CI, and review remain. MCP-2 PR #611 merged at bc204189 after exact-head CI and resolved reviews. No customer data, hosting settings, production keys or live communications changed.
+||||||| bc204189
+=======
+## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
+A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
+Undo only after the server confirms. Failed writes restore the task. Different items
+may submit together; repeated taps on one item are blocked. Money confirmations
+remain excluded. GitHub Actions `ci` passed at implementation head `eea4097c`
+(all five browsers, three unit groups and static/security checks). Codex P2 was
+fixed with a regression and replied to. Documentation close-out still needs
+exact-head CI/review resolution before merge. Swipe #662 has merged;
+React 19.3/title transitions and measured JS budget remain in progress.
+
+
+
+## October 27 — VAULT-2: Logins vault and emergency access (in build)
+
+Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
+encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
+beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,
+Copy and saving a secret all need an **unlock**: a fresh second-step code verified by Better Auth itself (the
+same methods as sign-in), good for 5 minutes on that session only; every reveal is audited with the field
+name, never the value; shown values hide after 30 seconds. Five wrong codes in 15 minutes lock the vault for
+30 minutes and email the owner (a new `vault_locked` account notice); sign-out-everywhere, password/email
+change and second-step change clear unlocks at the same points ACC-6 forgets devices. A grep test keeps the
+four encrypted-secret column names inside the vault and paperwork domains only (SETUP-1's guide now reads
+record facts through a paperwork helper). Logins link to VAULT-1 records both ways (the record page shows
+"Login: …"); rotation reminders land on To do as a `VAULT` item when a login carries a change-every setting.
+Backups keep credentials still encrypted; unlock rows and emergency requests are never backed up.
+**Emergency access ships switched off**: an owner setting (contact name/email/phone, wait 1–30 days, starting
+value 7) plus a one-time link whose token is stored only as a hash. The public `/emergency/[token]` page runs
+the flow — request (owner reminded by email and text at the start), a daily cron sweep reminding halfway and
+a day before the wait ends, deny at any time, then a code sent to the SAVED contact only, and one download
+(records pack + the vault decrypted into a PDF) that works once inside 24 hours. Filed DQ-VAULT-BANK (bank
+logins allowed, with the honest on-screen note) and DQ-CONT-SUCCESSOR. Proof: `tests/vault.test.ts` (masking,
+rotation, key separation), `tests/vault-secret-fields-grep.test.ts`, `tests/vault-integration.test.ts` (real
+Postgres, serial: owner boundary, unlock lifecycle, lockout, emergency end to end), `e2e/vault.spec.ts`
+(browser-e). Next for this lane: **ACCT-1** (accountant sign-in), which also unblocks Lane 4's TAXBEN-2.
+>>>>>>> origin/main
 
 ## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
 GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
@@ -37,13 +77,51 @@ also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthrou
 `tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
 saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
 
-## October 27 — CMP-3 merged (PR #656); CMP-2 in progress
+## October 27 — CMP-4 merged (PR #670)
+
+CMP-4 is on main (squash 95de266b): the Colorado and local filings — the Weld County business personal
+property declaration (January 1 snapshot from the asset records with possession read from the custody
+episodes, the $56,000 exemption check with an owner-confirmed close when under, the filled DS 056 /
+DS 060 forms gated on the vendored printing being the filing's own year, and the itemized spreadsheet),
+the Secretary of State periodic report with the exact values to type, the trade name entry (an LLC's
+Colorado trade name never needs renewal — C.R.S. § 7-71-104), the Greeley business license on its
+two-year cycle from the recorded license date, the truck registration month, and the USDOT biennial
+schedule read off the recorded USDOT number. Two PRs (#668, then its successor #670) and six Codex
+findings — all real, all fixed with regression tests. Lane 5's compliance line is now complete except
+CMP-5, which stays dormant until the business has employees.
+
+## October 27 — CMP-2 merged (PR #660)
+
+CMP-2 is on main (squash e4e9cf31): every books account mapped to a Schedule C line, the year-end
+accountant packet (CSV + PDF) prepared from posted journals under the approve flow, the 4562 and 4797
+worksheets, quarterly federal and Colorado estimates by the prior-year safe harbor from owner-entered
+tax-year facts (no prior year → words only, no number), the DR 0104EP and 1040-ES vouchers filled at
+download time with nothing stored, and the 1099-K tie-out. One PR, one review round: three Codex
+findings, all real, fixed with regression tests. CMP-2 merging unblocked Lane 4's TAXBEN-1. Two honest
+gaps recorded in the PR: no TXF export (no authoritative TXF 042 spec could be confirmed) and the
+Colorado 70%-of-actual-tax estimate prong is not computed (DQ-CMP-CO-EST).
+
+## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
+
+Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
+walkthroughs for the real-world accounts — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley
+license, Weld assessor, IRS accounts, the IRIS TCC, insurance, the vehicle, email domain, texting, the
+encryption keys, the CPA and backups. Each has plain steps with official links, what to have ready, and the
+VAULT-1 record it fills; where a step produces a number or a file, saving it lands on that record through
+the VAULT-1 rules (encrypted, masked, sniffed). Steps the app can verify check themselves — presence only
+for keys (`ENV_PRESENT` allowlist), a saved number or file on a record, a set-up filing account. Progress is
+the audit log folded on read (no new table); "Not for me" dismisses a walkthrough. The suggested next is the
+one whose needed-by date comes soonest (the IRIS TCC before January 31), and one To do names it until all
+are done or dismissed. The OWNER-CHECKLIST rows for the keys, the TCC and backups now link here. This branch
+also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthroughs.test.ts` (data + order),
+`tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
+saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
+
+## October 27 — CMP-3 merged (PR #656)
 
 CMP-3 is on main (squash f103c7fc): 1099s and W-9s, the IRIS portal CSV and A2A client, and the Form 8300
 detector, after three PRs (#654, #655, #656) and ten Codex findings — all real, all fixed with regression
-tests. Lane 5 is now building **CMP-2** (income tax helpers: Schedule C packet, 4562/4797 worksheets,
-quarterly federal and Colorado estimates, 1099-K tie-out) on branch `ai/vivienne/cmp-2`; the CMP-3 close-out
-rides at the base of that branch. CMP-2 merging also unblocks Lane 4's TAXBEN-1.
+tests.
 
 ## October 26 — Lane 7 (back-office operations) close-out
 Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653. Each merged at a green exact-head `ci` with Codex findings answered. Not built: letting a successor use the pause switch in an emergency needs VAULT-1 (does not exist yet). Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.

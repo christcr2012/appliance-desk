@@ -19,7 +19,23 @@ type Props = {
     businessZip: string;
     businessPhone: string;
   };
+  local: {
+    tradeName: string;
+    usdotNumber: string;
+    truckRegistrationMonth: number | null;
+    greeleyLicenseDate: string;
+    registeredAgentName: string;
+    registeredAgentAddress: string;
+    registeredAgentCity: string;
+    registeredAgentState: string;
+    registeredAgentZip: string;
+  };
 };
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 const inputCls = "w-full rounded-lg border border-border bg-card px-3 py-2";
 const labelCls = "block text-sm font-medium text-ink";
@@ -123,6 +139,45 @@ export function FactsForm(props: Props) {
       </div>
 
       <div>
+        <label className={labelCls} htmlFor="truckRegistrationMonth">
+          Truck registration month
+        </label>
+        <select
+          id="truckRegistrationMonth"
+          name="truckRegistrationMonth"
+          defaultValue={props.local.truckRegistrationMonth ?? ""}
+          className={inputCls}
+        >
+          <option value="">Not set yet</option>
+          {MONTH_NAMES.map((name, i) => (
+            <option key={name} value={i + 1}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <p className={helpCls}>The month on the truck&apos;s current registration — it renews in that month every year.</p>
+      </div>
+
+      <div>
+        <label className={labelCls} htmlFor="usdotNumber">
+          USDOT number (only at 16,001 lb or more)
+        </label>
+        <input
+          id="usdotNumber"
+          name="usdotNumber"
+          inputMode="numeric"
+          autoComplete="off"
+          defaultValue={props.local.usdotNumber}
+          placeholder="e.g. 1234567"
+          className={inputCls}
+        />
+        <p className={helpCls}>
+          The every-two-years update schedule is read off the number itself: the last digit is the filing month
+          and the one before it picks odd or even years.
+        </p>
+      </div>
+
+      <div>
         <label className={labelCls} htmlFor="employees">
           Employees (not counting you)
         </label>
@@ -172,6 +227,62 @@ export function FactsForm(props: Props) {
         <div>
           <label className={labelCls} htmlFor="businessPhone">Phone (optional)</label>
           <input id="businessPhone" name="businessPhone" defaultValue={props.payer.businessPhone} className={inputCls} />
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-4 border-t border-border pt-5">
+        <legend className="text-sm font-semibold text-ink">Colorado and local filings</legend>
+        <div>
+          <label className={labelCls} htmlFor="tradeName">
+            Trade name (if you filed one)
+          </label>
+          <input id="tradeName" name="tradeName" defaultValue={props.local.tradeName} className={inputCls} />
+          <p className={helpCls}>
+            A name you do business under that isn&apos;t the LLC&apos;s legal name. An LLC&apos;s trade name never
+            needs renewal — it stays effective while the LLC is in good standing.
+          </p>
+        </div>
+        <div>
+          <label className={labelCls} htmlFor="greeleyLicenseDate">
+            Greeley business license date
+          </label>
+          <input
+            id="greeleyLicenseDate"
+            name="greeleyLicenseDate"
+            type="date"
+            defaultValue={props.local.greeleyLicenseDate}
+            className={inputCls}
+          />
+          <p className={helpCls}>
+            The date the city license was issued or last renewed. It&apos;s free and renews every two years on
+            that date — the reminder runs from here.
+          </p>
+        </div>
+        <div>
+          <label className={labelCls} htmlFor="registeredAgentName">Registered agent name</label>
+          <input id="registeredAgentName" name="registeredAgentName" defaultValue={props.local.registeredAgentName} className={inputCls} />
+          <p className={helpCls}>
+            Shown on the Secretary of State periodic report, with the address below — the values are offered back
+            to you at report time so you can check them against the SOS site.
+          </p>
+        </div>
+        <div>
+          <label className={labelCls} htmlFor="registeredAgentAddress">Registered agent address</label>
+          <input id="registeredAgentAddress" name="registeredAgentAddress" defaultValue={props.local.registeredAgentAddress} className={inputCls} />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className={labelCls} htmlFor="registeredAgentCity">City</label>
+            <input id="registeredAgentCity" name="registeredAgentCity" defaultValue={props.local.registeredAgentCity} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="registeredAgentState">State</label>
+            <input id="registeredAgentState" name="registeredAgentState" defaultValue={props.local.registeredAgentState} maxLength={2} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="registeredAgentZip">ZIP</label>
+            <input id="registeredAgentZip" name="registeredAgentZip" defaultValue={props.local.registeredAgentZip} className={inputCls} />
+          </div>
         </div>
       </fieldset>
 

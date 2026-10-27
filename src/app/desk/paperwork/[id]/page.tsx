@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { getRecord, listRecordHistory } from "@/domains/paperwork/records";
+import { getCredentialForRecord } from "@/domains/vault";
 import { OBLIGATIONS } from "@/domains/compliance/registry";
 import { PAPERWORK_STATUS_LABEL, type PaperworkStatusValue } from "@/domains/paperwork/rules";
 import { businessDateKey } from "@/lib/business-date";
@@ -46,6 +47,8 @@ export default async function PaperworkItemPage({ params }: { params: Promise<{ 
   const repeats = record.repeatEveryMonths !== null;
   const obligationTitle = new Map(OBLIGATIONS.map((o) => [o.key, o.title]));
   const history = isOwner ? await listRecordHistory(id) : [];
+  // VAULT-2: the linked login (owner only — the vault is never visible to anyone else).
+  const linkedLogin = isOwner ? await getCredentialForRecord(session.user.id, id).catch(() => null) : null;
   const factRows: [string, string][] = [
     ["Kind", record.kindLabel],
     ...(record.agency ? [["Handled by", record.agency] as [string, string]] : []),
@@ -126,6 +129,27 @@ export default async function PaperworkItemPage({ params }: { params: Promise<{ 
         </dl>
         {isOwner && record.notes && <p className="mt-4 whitespace-pre-wrap text-sm text-ink-soft">{record.notes}</p>}
       </Card>
+
+      {isOwner && (
+        <Card title="Login" description="The vault login for this account, if you've saved one. The password itself lives in the vault — it's shown only there, after a fresh sign-in code.">
+          {linkedLogin ? (
+            <p className="text-sm">
+              Login:{" "}
+              <Link href={`/desk/vault/${linkedLogin.id}`} className="font-semibold text-action underline">
+                {linkedLogin.title}
+              </Link>
+            </p>
+          ) : (
+            <p className="text-sm text-ink-soft">
+              No login linked yet. Save it in the{" "}
+              <Link href="/desk/vault" className="font-semibold text-action underline">
+                Logins vault
+              </Link>{" "}
+              and link it to this record there.
+            </p>
+          )}
+        </Card>
+      )}
 
       <Card title="Files" description="Stored privately. Photos and documents on this record, newest kept as history when replaced.">
         {record.files.length === 0 ? (

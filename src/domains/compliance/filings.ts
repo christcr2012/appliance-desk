@@ -71,8 +71,28 @@ export function submissionKeyFor(filing: { id: string; preparedHash: string | nu
 const FULL_TIN = /\b\d{3}-\d{2}-\d{4}\b|\b\d{2}-\d{7}\b|\b\d{9}\b/;
 
 /** Prepared numbers are shown for review and may be exported — never a full tax id. */
+/**
+ * Prepared data may legitimately carry identifier fields whose values
+ * can look like a tax ID — an appliance serial number is often nine
+ * bare digits. Those named fields are skipped; every other string or
+ * number value is still scanned, so a real tax ID anywhere else in
+ * the prepared data is refused.
+ */
+const TAX_ID_SCAN_SKIP_KEYS = new Set(["serialNumber"]);
+
+function containsFullTaxId(value: unknown): boolean {
+  if (typeof value === "string" || typeof value === "number") return FULL_TIN.test(String(value));
+  if (Array.isArray(value)) return value.some(containsFullTaxId);
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).some(
+      ([key, v]) => !TAX_ID_SCAN_SKIP_KEYS.has(key) && containsFullTaxId(v),
+    );
+  }
+  return false;
+}
+
 export function assertNoFullTaxId(data: unknown): void {
-  if (FULL_TIN.test(canonical(data))) {
+  if (containsFullTaxId(data)) {
     throw new Error(
       "Those prepared numbers include a full tax ID. Prepared numbers never hold one — use the last 4 digits instead.",
     );
