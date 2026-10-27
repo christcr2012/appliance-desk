@@ -6,6 +6,9 @@ import { getBillCounts, getBills, getBillTotals, type BillRow } from "@/domains/
 import { getInvoiceDetail, type InvoiceDetail } from "@/domains/billing/invoice-detail";
 import { SUCCESSFUL_PAYMENT_STATUSES } from "@/domains/billing/payment-status";
 import { requireRole } from "@/lib/session";
+import { getWorkspace, savedViewHref } from "@/domains/workspace";
+import { saveBillViewAction } from "@/app/desk/views/actions";
+import { builtInViewsFor } from "@/components/kit/built-in-views";
 import { businessDayBounds, formatBusinessDate } from "@/lib/business-date";
 import { formatMoney } from "@/lib/money-ui";
 import { formatCents } from "@/domains/pricing";
@@ -63,7 +66,7 @@ const FILTERS: FilterDef[] = [
 ];
 
 const VIEWS: ViewDef[] = [
-  { id: "past-due", label: "Past due", href: "/desk/billing?status=past-due", builtIn: true },
+  ...builtInViewsFor("billing"),
   { id: "by-customer", label: "By customer", href: "/desk/billing?view=by-customer", builtIn: true },
   { id: "deposits", label: "Deposits", href: "/desk/billing?view=deposits", builtIn: true },
   { id: "waiting", label: "Waiting for Stripe", href: "/desk/billing?view=waiting", builtIn: true },
@@ -190,7 +193,9 @@ function BillPanel({ detail, row, closeHref, now }: { detail: InvoiceDetail; row
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<Search> }) {
-  await requireRole("OWNER", "ADMIN");
+  const session = await requireRole("OWNER", "ADMIN");
+  const workspace = await getWorkspace(session.user.id);
+  const savedViews = workspace.prefs.savedViews.filter(v => v.routeKey === "billing").map(v => ({ id: v.id, label: v.label, href: savedViewHref(v), builtIn: false }));
   const search = await searchParams;
   const legacy = legacyBillsRedirect(search);
   if (legacy) redirect(legacy);
@@ -217,7 +222,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       filters={FILTERS}
       sorts={Object.entries(BILL_SORT_LABEL).map(([value, label]) => ({ value, label }))}
       currentSort={params.sort}
-      views={VIEWS}
+      views={[...VIEWS, ...savedViews]}
+      saveViewAction={saveBillViewAction}
+      saveViewKeys={["status", "due", "autopay"]}
       currentViewId={params.view ?? (params.status === "past-due" ? "past-due" : undefined)}
     />
   );
