@@ -5,9 +5,10 @@ this file is archived in [archive/rules-reset-2026-10-23/](archive/rules-reset-2
 
 ## 1. Orient (5 minutes)
 
-1. `git fetch origin` and work from actual current `main`. Look at open PRs, their CI and unread review comments
-   (`gh api repos/christcr2012/appliance-desk/pulls?state=open`). **Finish or merge what is already open before
-   starting something new.**
+1. `git fetch origin` and work from actual current `main`. Review **your lane's** open PRs, CI and unread
+   review comments (`gh api repos/christcr2012/appliance-desk/pulls?state=open`). Fix an actionable blocker;
+   when checks/review are pending, continue eligible independent work rather than waiting. Never disturb another
+   agent's lane. A moving `main` alone does **not** require syncing an open PR.
 2. Read the top of [STATUS.md](STATUS.md) and `npm run work -- start` (names the active card). Trust the repo and
    GitHub over any chat handoff — handoffs go stale.
 3. Read [TESTING-ENVIRONMENT.md](TESTING-ENVIRONMENT.md) before hosted acceptance: use the seeded testing app,
@@ -32,9 +33,12 @@ building, then the complete tree once. Commands and the table of known CI failur
 
 ## 4. Publish and merge
 
-One push per CI cycle. Open the PR to `main` in plain English. Green `ci` at the exact head + every review comment
-read and dispositioned → merge with the expected-head SHA (`gh api -X PUT .../pulls/N/merge -f sha=HEAD -f merge_method=merge`).
-Update STATUS (short top entry). Do not wait for Vercel, a release, or any real-account acceptance.
+One push per CI cycle. Open the PR to `main` in plain English and enable **squash auto-merge immediately**.
+GitHub merges when both `ci` and `review-gate` are green on the exact head, acceptance is met, and protections
+allow it; review comments must be read, replied to and fixed when blocking. If GitHub blocks the merge despite green
+checks, investigate the **specific** protection/conflict and never bypass it. Main advancing is not itself a
+blocker. In parallel, build the next independent approved outcome. Update STATUS briefly; do not wait for a
+release or real-account acceptance.
 
 ## 5. Close out
 

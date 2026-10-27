@@ -1,3 +1,11 @@
+## October 27 — MCP-3 safe reconnect generation (additive)
+
+Migration `20261129000000_mcp_reconnect_generation` adds `McpConnection.grantVersion`. Each new owner approval rotates this opaque value; signed MCP access tokens carry its current version, so a disconnected token cannot be resurrected by approving the same client again. Existing connections receive a distinct version during migration; old JWTs cannot regain access. Consent activation and disconnect serialize on user and connection rows. The private backup snapshot continues to omit OAuth grants.
+
+## October 27 — MCP-3 assistant connections (development, not deployed)
+
+The additive OAuth schema adds Better Auth `jwks`, `oauthClient`, `oauthResource`, `oauthClientResource`, `oauthRefreshToken`, `oauthAccessToken`, `oauthConsent`, and `oauthClientAssertion` plus an app-owned `McpConnection` ledger. The OAuth models, private signing keys, client secrets, grants, access and refresh tokens are explicitly excluded from backup snapshots. Connection labels, scopes, last use and revocation status are retained; restore marks each restored connection revoked, requiring reconnection. The OAuth feature remains disabled unless the host explicitly sets `MCP_ISSUER_URL`. Migration and client-generation validation alone do not establish live-provider proof.
+
 ## November 12 — Hiring readiness (CMP-5, additive)
 
 Migration `20261112000000_cmp5_hiring`.
@@ -10,6 +18,7 @@ Migration `20261112000000_cmp5_hiring`.
 Migration `20261111000000_cmp4_colorado_local`.
 - `ComplianceProfile` gains the local-filing facts: `tradeName` (the name the business trades under, if any — an LLC's statement of trade name never renews, C.R.S. § 7-71-104, so it carries no dates), `usdotNumber` (digits only; the FMCSA biennial update month and odd/even years are read off its last two digits), `truckRegistrationMonth` (1–12), `greeleyLicenseDate` (the date on the city's license; renewals fall every two years on that date), and the Secretary of State registered-agent block (`registeredAgentName`, `registeredAgentAddress`, `registeredAgentCity`, `registeredAgentState`, `registeredAgentZip`) printed as exact values to type on the SOS periodic report. All nullable: a missing fact means the obligation shows without dates, never an invented deadline.
 - Two dated rules are seeded as RESEARCHED `LegalRuleVersion` rows by the migration: `co.bpp.exemption_threshold` (5,600,000 cents — the $56,000 Weld County total-actual-value exemption for 2026, compared against the fleet's total original cost, the figure the assessor's actual value derives from) and `co.bpp.extension` (the declaration extension fees, $20 for 10 days / $40 for 20 days). The Weld forms DS 056 and DS 060 are vendored as fillable PDFs under `src/domains/compliance/forms/co/` and pinned in the forms manifest; the forms are never pre-filled with the owner's tax ID or a signature.
+
 
 ## November 10 — Income tax helpers (CMP-2, additive)
 
@@ -1514,6 +1523,8 @@ All three tables are in the backup manifest.
 - `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed. `receiptRecordId` (optional, unique link to the `BusinessPaperwork` record that holds the recycler's receipt file; `ON DELETE SET NULL`).
 - One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
 `RefrigerantRecord` is in the backup manifest.
+
+- `TeamCertification` — a team member's refrigerant (EPA 608 Type I) certification: person (Restrict), `kind` (starts `EPA_608_TYPE_I`), certification number, optional issue date; one per person per kind. Owner-entered. A `Job` marked `sealedSystem` (repair visits only) can only be assigned to someone with a row here. In the backup manifest.
 
 ## MCP-2 backup-artifact ledger (additive, 2026-10-25)
 

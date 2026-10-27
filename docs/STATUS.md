@@ -1,3 +1,17 @@
+## October 27 — ACCT-1: Accountant sign-in
+
+## October 27 — OPS-2: sealed-system repair gate (branch `ai/claude/ops2-sealed-system`)
+
+A repair visit can be marked "sealed refrigerant system". Only a person with a refrigerant (Type I) certification on file can be
+given it, you included; certifications are entered by the owner in Settings > Team. The rule applies when the visit is created,
+when it comes from a maintenance request, and when it is reassigned. Question DQ-OPS2-2 filed (starting value, not confirmed).
+Tests on real Postgres pass. This was the last unbuilt OPS-2 item.
+## October 27 — Fast-lane execution rules alignment (branch `ai/chatgpt/fast-lane-protocol`)
+
+Aligned session instructions with the already-approved squash auto-merge, final-head `ci` and `review-gate`,
+no up-to-date branch rule, and continuous work on independent approved items during CI. Preserved all
+data, permission, payment, spending, and release protections. PR and CI evidence pending.
+
 ## October 27 — OPS-2: recycler receipt photo on a record (branch `ai/claude/ops2-receipt-photo`)
 
 After a refrigerant record is signed, the owner can keep the recycler's receipt photo or PDF with the business
@@ -26,6 +40,19 @@ live policies can be picked; deleting a policy just clears the link. Additive mi
 Merged earlier today: review check (#685), insurance certificate on a record (#687, #688). GitHub rule: the
 up-to-date requirement is off; `review-gate` still needs to be saved as a required check (OWNER-CHECKLIST section A).
 NEXT: OPS-2 leftovers (sealed-system technician check, receipt photo).
+
+## October 27 — MCP-3 backup recovery compatibility, CI follow-up (unmerged)
+
+The OAuth tables are deliberately excluded from business backup. The backup restore dependency scanner previously rejected ANY `@@map` model, even an excluded OAuth model, which caused CI unit/restore failures. The parser now allows excluded mapped tables but still rejects restoring mapped business tables. Backup policy test fixtures list the OAuth exclusions explicitly. Focused backup tests passed 15/15, and real disposable-PostgreSQL restore drill passed 1/1; changed-file ESLint, secret/migration and route checks passed. All three reviewer threads on PR #692 have a code fix, reply and resolution. Final-head CI and Reviewgate remain before auto-merge.
+
+## October 27 — MCP-3 PR #692 review fixes (in progress, not merged)
+
+GitHub PR #692 was published through the documented sandbox-transfer route with auto-merge enabled. Three reviewer findings are being fixed: disconnected signed tokens must stay invalid after reconnect, consent/disconnect must serialize, and older active assistants must remain visible to disconnect. The owner-triggered GitHub CI run and `review-gate` must pass at the final head; no deployment settings were changed.
+
+## October 27 — MCP-3 AI assistant OAuth (PR #692 open)
+
+Secure assistant OAuth implementation has been published as PR #692 with automatic merge enabled. Disposable-PostgreSQL roundtrip and 17 focused security/scope checks passed; the sandbox full TypeScript quick gate exhausted its memory. GitHub exact-head CI and Reviewgate are required for merge. No production provider settings or real data were changed.
+
 ## October 27 — Lane 1 React 19.3 transition merge preparation (PR #665)
 React 19.3 and shared customer-title/area transitions passed exact-head CI at `f6b00f0`. All three Codex issues were fixed, replied to and resolved; reconciled the branch with newer main while preserving concurrent changes. Recheck exact-head CI and review-gate on this merge commit before merging. AR-11 bundle budget remains separate.
 
@@ -98,6 +125,23 @@ boxes, now corrected (acceptance 1 stays open only for the "Not built" items eac
 #653 (its note stayed "running" on an older commit): self-read, nothing blocking. Unblocked by VAULT-1 but still not built:
 OPS-4 certificate upload and OPS-2 sealed-system technician check. Browser proof for the public page is CI only.
 
+## October 27 — Lane 2 MCP-3 local SDK OAuth round trip passed (not merged)
+
+On `ai/chatgpt/mcp-3-oauth-connect` a disposable-PostgreSQL test now covers PKCE registration, owner consent, signed resource token, refresh, MCP whoami and instant token rejection after Disconnect. Seventeen additional focused unit/security/size tests and changed-file ESLint passed. The only allowed dynamic-registration resource is the canonical app MCP endpoint. Full quick check, browser/axe, exact-head CI and review **remain**, so MCP-3 is not shipped. MCP-2 was merged on #611; MCP-4 read tools remain on a separate dependent plan branch. No real accounts or deployment settings were touched.
+
+## October 27 — MCP-3 OAuth hardening checkpoint (still unshipped)
+
+PR #611 MCP-2 is merged with final-head green CI; MCP-3 remains in its separate
+branch. MCP-3 now denies stale-owner/admin grants, revokes refresh/access/consent
+records atomically and tests those rules on disposable PostgreSQL (3/3 passing).
+Its bearer/request/issuer tests and stream-size tests passed (17 focused tests).
+The complete OAuth client handshake and CI are NOT yet verified. No live issuer,
+customer email/SMS/payment or production database change was made.
+
+## October 27 — Lane 2 MCP-3 secure assistant connection (in progress, not shipped)
+
+Worktree `ai/chatgpt/mcp-3-oauth-connect` merged the latest main and implemented an initial fail-closed issuer, scope validation, OAuth generated schema, migration, private backup omissions and revoked-on-restore plan, MCP whoami route, and draft consent/disconnect screens. Thirteen focused tests passed; scoped TypeScript checking exposed three fixable errors. New OAuth revocation tests require disposable PostgreSQL verification. The feature is **not ready for PR or merge**: SDK OAuth grant and refresh proof, registration throttling, integration/e2e/a11y coverage, exact-head CI, and review remain. MCP-2 PR #611 merged at bc204189 after exact-head CI and resolved reviews. No customer data, hosting settings, production keys or live communications changed.
+
 ## October 27 — Lane 1 AR-11 optimistic Snooze and Undo (PR #663)
 A shared helper now hides Snoozed To do items immediately, but shows success and 10-second
 Undo only after the server confirms. Failed writes restore the task. Different items
@@ -110,9 +154,9 @@ React 19.3/title transitions and measured JS budget remain in progress.
 
 
 
-## October 27 — VAULT-2: Logins vault and emergency access (in build)
+## October 27 — VAULT-2: Logins vault and emergency access (PR #667 merged)
 
-Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+Merged 2026-10-27 (squash `5aadc888`; successor to #664 after a phantom-dirty rebuild; two Codex rounds, six real findings, all fixed with regression tests — the second round: the emergency code now honours the owner's security-texting switch, the export PDF wrap is character-exact including repeated spaces, and characters the PDF fonts cannot print are substituted there while a new `logins.txt` in the export ZIP carries every login exactly as saved). New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
 the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
 encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
 beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,
@@ -135,12 +179,28 @@ rotation, key separation), `tests/vault-secret-fields-grep.test.ts`, `tests/vaul
 Postgres, serial: owner boundary, unlock lifecycle, lockout, emergency end to end), `e2e/vault.spec.ts`
 (browser-e). Next for this lane: **ACCT-1** (accountant sign-in), which also unblocks Lane 4's TAXBEN-2.
 
+
 ## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
 GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
 selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings
 (portalled Confirm interactions and long labels) were fixed and regression-tested; replies posted.
 Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
 optimistic Snooze and bundle budget remain. No user payment or permission path changed.
+## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
+
+Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
+walkthroughs for the real-world accounts — LLC basics, EIN, bank and Stripe, Colorado sales tax, Greeley
+license, Weld assessor, IRS accounts, the IRIS TCC, insurance, the vehicle, email domain, texting, the
+encryption keys, the CPA and backups. Each has plain steps with official links, what to have ready, and the
+VAULT-1 record it fills; where a step produces a number or a file, saving it lands on that record through
+the VAULT-1 rules (encrypted, masked, sniffed). Steps the app can verify check themselves — presence only
+for keys (`ENV_PRESENT` allowlist), a saved number or file on a record, a set-up filing account. Progress is
+the audit log folded on read (no new table); "Not for me" dismisses a walkthrough. The suggested next is the
+one whose needed-by date comes soonest (the IRIS TCC before January 31), and one To do names it until all
+are done or dismissed. The OWNER-CHECKLIST rows for the keys, the TCC and backups now link here. This branch
+also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthroughs.test.ts` (data + order),
+`tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
+saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
 
 ## October 27 — FEETAX-2: delivery-area tax readiness (in progress, PR #669)
 
