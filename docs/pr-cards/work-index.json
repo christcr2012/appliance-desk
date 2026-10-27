@@ -5249,7 +5249,10 @@
       ],
       "tests": [
         "tests/rules-parsers.test.ts",
-        "tests/rules-observation-integration.test.ts"
+        "tests/rules-observation-integration.test.ts",
+        "tests/tax-official-source-watch-integration.test.ts",
+        "tests/tax-official-rate-auto-apply-integration.test.ts",
+        "tests/today-role-access.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/TFA-3.md"
@@ -5262,7 +5265,7 @@
         "TFA-1",
         "DEC-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "IN PROGRESS",
       "migration": "20261102000000_compliance (ComplianceProfile, ComplianceFiling)",
       "budget": 550,
       "units": [
@@ -5277,7 +5280,8 @@
         "tests/compliance-registry.test.ts",
         "tests/field-crypto.test.ts",
         "tests/compliance-forms.test.ts",
-        "e2e/compliance.spec.ts"
+        "e2e/compliance.spec.ts",
+        "tests/compliance-filings-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/CMP-1.md"
@@ -5518,7 +5522,7 @@
         "TFA-1",
         "VAULT-1"
       ],
-      "status": "APPROVED — Chris 2026-10-25",
+      "status": "BUILT — PR open (OPS-2)",
       "migration": "additive",
       "budget": 400,
       "units": [
@@ -5530,7 +5534,8 @@
         "docs/research/2026-10-25-operating-risks.md"
       ],
       "tests": [
-        "tests/ops-2-integration.test.ts"
+        "tests/ops2-refrigerant-rules.test.ts",
+        "tests/ops2-refrigerant-integration.test.ts"
       ],
       "readiness": "CARD_READY",
       "plannedCard": "docs/pr-cards/OPS-2.md"
@@ -6043,6 +6048,10 @@
     {
       "id": "K-CASH-7",
       "path": "docs/pr-cards/execution/K-CASH-7.json"
+    },
+    {
+      "id": "CMP-1",
+      "path": "docs/pr-cards/execution/CMP-1.json"
     },
     {
       "id": "TFA-2",

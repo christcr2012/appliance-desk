@@ -7,6 +7,10 @@ import { RULES, RULE_KEYS, describeRuleValue, type RuleKey } from "@/domains/rul
 // seeded money value equals the dollar amount in
 // docs/research/2026-10-25-tax-fee-rules.md × 100. Runs without a database:
 // the seed is checked against the migration text.
+// OPS-2 seeds the refrigerant record-keeping rule in its own migration.
+const REFRIGERANT_MIGRATION = readFileSync(
+  "prisma/migrations/20261106000000_refrigerant/migration.sql", "utf8",
+);
 const MIGRATION = readFileSync(
   "prisma/migrations/20261101000000_legal_rules/migration.sql", "utf8",
 );
@@ -34,11 +38,12 @@ const SEEDED: Record<RuleKey, unknown> = {
   "records.keep_years": 7,
   "us.mileage_rate": 725,
   "greeley.sales_rate": 4110,
+  "records.refrigerant_keep_years": 6,
 };
 
 describe("rule registry", () => {
   it("defines every seeded key with a title, explanation, area, schema and edit fields", () => {
-    expect(RULE_KEYS).toHaveLength(16);
+    expect(RULE_KEYS).toHaveLength(17);
     for (const key of RULE_KEYS) {
       const def = RULES[key];
       expect(def.key).toBe(key);
@@ -73,9 +78,11 @@ describe("rule registry", () => {
     for (const key of RULE_KEYS) {
       // Seed rows wrap across lines; split the INSERT into its row tuples.
       const mileage = key === "us.mileage_rate";
-      const row = (mileage ? VEHICLE_MIGRATION : MIGRATION).split("),\n").find((text) => text.includes(`'${key}'`) && text.includes("'RESEARCHED'"));
+      const refrigerant = key === "records.refrigerant_keep_years";
+      const source = mileage ? VEHICLE_MIGRATION : refrigerant ? REFRIGERANT_MIGRATION : MIGRATION;
+      const row = source.split("),\n").find((text) => text.includes(`'${key}'`) && text.includes("'RESEARCHED'"));
       expect(row, `${key} must be seeded`).toBeDefined();
-      expect(row).toContain(mileage ? "2026-10-26T12:00:00Z" : "2026-10-25T12:00:00Z");
+      expect(row).toContain(mileage || refrigerant ? "2026-10-26T12:00:00Z" : "2026-10-25T12:00:00Z");
       // A source quote names the document or page the value came from.
       expect(row!.length).toBeGreaterThan(120);
     }

@@ -137,6 +137,7 @@ export const RULES = {
       percentField("regular", "Regular interest (%)"),
       percentField("discounted", "Discounted interest (%)"),
     ],
+    watch: "https://tax.colorado.gov/index.php/tax-topics-penalties-and-interest",
   }),
   "co.lease.short_term_months": defineRule({
     key: "co.lease.short_term_months",
@@ -167,6 +168,7 @@ export const RULES = {
     describe: (v: number) => `${formatMoney(v)} paid to a supplier in a year`,
     change: "FIXED_JAN_1",
     fields: [moneyField("value", "1099 limit ($)")],
+    watch: "https://www.irs.gov/instructions/i1099mec",
   }),
   "us.1099.deadlines": defineRule({
     key: "us.1099.deadlines",
@@ -235,6 +237,16 @@ export const RULES = {
     fields: [integerField("value", "Keep records for (years)", 1, 50)],
     decisionId: "IN-71",
   }),
+  "records.refrigerant_keep_years": defineRule({
+    key: "records.refrigerant_keep_years",
+    title: "Years to keep refrigerant records",
+    explain: "How long to keep the signed statement that the refrigerant was removed before an appliance was scrapped. The federal rule asks for 3 years; 6 matches your tax records.",
+    area: "RECORDS",
+    schema: z.number().int().min(1).max(30),
+    describe: (v: number) => `${v} years`,
+    change: "ANY_DATE",
+    fields: [integerField("value", "Years to keep", 1, 30)],
+  }),
   "greeley.sales_rate": defineRule({
     key: "greeley.sales_rate",
     title: "Greeley sales-tax rate",
@@ -244,6 +256,7 @@ export const RULES = {
     describe: (v: number) => `${(v / 1000).toFixed(2)}%`,
     change: "ANY_DATE",
     fields: [integerField("value", "Greeley rate (milli-percent)", 0, 100000)],
+    watch: "https://greeleyco.gov/business/business-operations/sales-tax/",
   }),
 };
 

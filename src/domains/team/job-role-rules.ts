@@ -39,9 +39,12 @@ const PATH_TO_SCREEN: Record<string, ScreenKey> = {
   maintenance: "maintenance",
   inventory: "inventory", parts: "inventory", purchases: "inventory", "purchase-orders": "inventory",
   billing: "billing", sales: "billing", revenue: "billing", reports: "billing", fleet: "billing", dashboard: "billing",
+  compliance: "sales-tax",
   "sales-tax": "sales-tax", books: "books", expenses: "expenses", suppliers: "suppliers", activity: "activity",
   settings: "management", paperwork: "management", privacy: "management", automations: "management", growth: "management",
   launch: "management", "control-center": "management", approvals: "management",
+  // OPS-3: vehicles and mileage are expense-side money screens.
+  vehicle: "expenses",
   feedback: "feedback",
 };
 

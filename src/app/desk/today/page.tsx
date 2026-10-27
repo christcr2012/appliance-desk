@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { getExceptionOverview, getTodaysJobs, type ExceptionItem } from "@/domains/exceptions";
+import { syncComplianceFilings } from "@/domains/compliance/filings";
 import {
   INBOX_GROUP,
   INBOX_GROUP_LABEL,
@@ -14,6 +15,7 @@ import {
 import { manuallyApplyObservedRate, undoAutoAppliedRateVersion } from "@/domains/tax/official-rate-auto-apply";
 import { approveRdfSwitch } from "@/domains/tax/rdf-switches";
 import { confirmFilingFrequencyAdvice } from "@/domains/tax/filing-frequency-advice";
+import { approveRuleChange, dismissRuleChange } from "@/domains/rules/observations";
 import { acknowledgeOfficialSourceChange } from "@/domains/tax/official-source-watch";
 import { snoozeTodo, todoDeadlineLabel, unsnoozeTodo } from "@/domains/exceptions/todo";
 import { getDueTaskSummary } from "@/domains/tasks/workspace";
@@ -77,6 +79,29 @@ async function applyOfficialRateAction(formData: FormData) {
     observationId,
     actorUserId: session.user.id,
   });
+  revalidatePath("/desk/today");
+}
+
+async function approveRuleChangeAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER");
+  const observationId = formData.get("observationId");
+  if (typeof observationId !== "string" || !observationId || observationId.length > 200) {
+    return;
+  }
+  await approveRuleChange(observationId, session.user.id);
+  revalidatePath("/desk/today");
+}
+
+async function dismissRuleChangeAction(formData: FormData) {
+  "use server";
+  const session = await requireRole("OWNER");
+  const observationId = formData.get("observationId");
+  if (typeof observationId !== "string" || !observationId || observationId.length > 200) {
+    return;
+  }
+  const note = formData.get("note");
+  await dismissRuleChange(observationId, session.user.id, typeof note === "string" ? note : "");
   revalidatePath("/desk/today");
 }
 
@@ -188,6 +213,11 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
   const role = (session.user as { role?: string }).role ?? "";
   const canManage = role === "OWNER" || role === "ADMIN";
   const now = new Date();
+  // CMP-1: keep the compliance filing rows fresh on the attention surface
+  // itself, so a filing reminder never depends on opening Compliance first.
+  // A sync failure must never take Today down — the reminders simply wait
+  // for the next load, like the setup checklist below.
+  if (canManage) await syncComplianceFilings(now).catch(() => undefined);
   const group = parseGroup(query.group);
 
   // The first-time setup checklist is for the owner only. getSetupChecklist refuses anyone else itself;
@@ -231,7 +261,7 @@ export default async function TodayPage({ searchParams }: { searchParams?: Promi
 
   const handlers =
     role === "OWNER"
-      ? { acknowledgeTaxSource: acknowledgeTaxSourceAction, applyOfficialRate: applyOfficialRateAction, undoOfficialRate: undoOfficialRateAction, recordBankPayment: recordBankPaymentAction, approveRdfSwitch: approveRdfSwitchAction, confirmFilingFrequency: confirmFilingFrequencyAction }
+      ? { acknowledgeTaxSource: acknowledgeTaxSourceAction, applyOfficialRate: applyOfficialRateAction, undoOfficialRate: undoOfficialRateAction, recordBankPayment: recordBankPaymentAction, approveRdfSwitch: approveRdfSwitchAction, confirmFilingFrequency: confirmFilingFrequencyAction, approveRuleChange: approveRuleChangeAction, dismissRuleChange: dismissRuleChangeAction }
       : role === "ADMIN"
         ? { recordBankPayment: recordBankPaymentAction }
         : undefined;

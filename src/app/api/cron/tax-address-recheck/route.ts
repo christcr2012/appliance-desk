@@ -52,6 +52,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             sourceChanged: sources.changed,
             sourceRecovered: sources.recovered,
             sourceFailed: sources.failed,
+            ruleObservations: sources.observations,
             rateObservations: rates.observations,
             rateAutoApplied: rates.autoApplied,
             rateReviewRequired: rates.reviewRequired,

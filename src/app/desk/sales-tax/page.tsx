@@ -4,6 +4,7 @@ import {
   getTaxWorkspaceOverview, includeTodayTaxAttention, type TaxAttentionKind,
 } from "@/domains/tax/workspace-overview";
 import { getExceptionOverview } from "@/domains/exceptions";
+import { syncComplianceFilings } from "@/domains/compliance/filings";
 import { BudgetContextCard } from "@/domains/budget/context";
 
 const label: Record<TaxAttentionKind, string> = {
@@ -12,6 +13,9 @@ const label: Record<TaxAttentionKind, string> = {
 };
 export default async function SalesTaxRootPage() {
   const actor = await requireRole("OWNER", "ADMIN");
+  // CMP-1: this page shows Today attention too — keep the filing rows fresh,
+  // and never let a sync failure take the Taxes home down.
+  await syncComplianceFilings().catch(() => undefined);
   const [projection, inbox] = await Promise.all([
     getTaxWorkspaceOverview(actor.user.id), getExceptionOverview(),
   ]);
@@ -81,6 +85,17 @@ export default async function SalesTaxRootPage() {
         </li>)}
         {!overview.nextDue.length && <li className="p-3 text-sm text-muted-foreground">No active open periods with a configured return.</li>}
       </ul>
+    </section>
+    <section className="space-y-3">
+      <h3 className="text-lg font-semibold">Beyond sales tax</h3>
+      <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        <p className="font-semibold">Compliance — income tax, 1099s, licenses and the rest</p>
+        <p className="text-sm text-muted-foreground">
+          Every federal, Colorado and city obligation that is not sales tax, with its dates and sources.
+          Nothing is filed without your approval.
+        </p>
+        <Link href="/desk/compliance" className="text-sm font-medium underline">Open Compliance</Link>
+      </div>
     </section>
   </main>;
 }

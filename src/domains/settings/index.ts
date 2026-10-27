@@ -1,3 +1,4 @@
+import { looksRefrigerated } from "@/domains/refrigerant/rules";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cache } from "react";
@@ -85,6 +86,8 @@ const DEFAULT_SETTINGS = {
   outOfServiceEscalationDays: 3,
   defaultJobDurationMinutes: 120,
   staffMayWorkUnassignedJobs: true,
+  // TFA-3: master switch for the official tax page watches (schema default true).
+  watchOfficialTaxPages: true,
   updatedAt: new Date(0),
 };
 
@@ -469,6 +472,7 @@ export async function createApplianceType(
       slug,
       monthlyPriceCents: input.monthlyPriceCents,
       showOnWebsite: false,
+      hasRefrigerant: looksRefrigerated(name),
       sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
     },
   });

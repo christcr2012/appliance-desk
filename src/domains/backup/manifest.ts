@@ -44,6 +44,8 @@ export const BACKUP_MODEL_POLICY = {
   PurchaseOrderReceiptOperation: "purchaseOrderReceiptOperation",
   PartStockMovement: "partStockMovement",
   RetiredAppliancePlan: "retiredAppliancePlan",
+  // OPS-2: the signed refrigerant statement details for scrapped or discarded appliances are business records.
+  RefrigerantRecord: "refrigerantRecord",
   ScrapPayment: "scrapPayment",
   StaffCapabilityOverride: "staffCapabilityOverride",
   // ACC-2: invitations are short-lived and hold only a hash of a link code; a restore re-invites instead.
@@ -106,6 +108,8 @@ export const BACKUP_MODEL_POLICY = {
   // TFA-2 §8: filing-frequency advice rows are tax-filing evidence.
   FilingFrequencyAdvice: "filingFrequencyAdvice",
   OfficialSourceWatch: "officialSourceWatch",
+  // TFA-3: stored official-page readings and their approval trail.
+  LegalRuleObservation: "legalRuleObservation",
   TaxabilityRule: "taxabilityRule",
   // DEC-1a: taxability history and the Decisions & reviews evidence are business records; both are restored.
   TaxabilityRuleVersion: "taxabilityRuleVersion",
@@ -126,6 +130,10 @@ export const BACKUP_MODEL_POLICY = {
   RetailDeliveryFeeRate: "retailDeliveryFeeRate",
   RetailDeliveryFeeRecord: "retailDeliveryFeeRecord",
   BusinessSettings: "businessSettings",
+  // CMP-1: compliance facts and filings are business records. einEncrypted
+  // stays encrypted in backups too; a restore needs the same key.
+  ComplianceProfile: "complianceProfile",
+  ComplianceFiling: "complianceFiling",
   MonthToMonthTermsVersion: "monthToMonthTermsVersion",
   SiteContent: "siteContent",
   SiteContentRevision: "siteContentRevision",

@@ -1,3 +1,9 @@
+## November 2 — Compliance center (CMP-1, additive)
+
+Migration `20261102000000_compliance`.
+- `ComplianceProfile` — the owner's business facts, one row (`id` = "singleton"): `entityType` (starting value SINGLE_MEMBER_LLC, a Decisions question), `einEncrypted` (the EIN under AES-256-GCM from `src/lib/field-crypto.ts`; the value itself is never logged or shown) with `einLast4` the only clear digits, `sosReportMonth`, `truckGvwrLbs`, `employees`, `hasHomeOffice`.
+- `ComplianceFiling` — one row per obligation period: `obligationKey` + `periodKey` (unique together), `state` (NOT_APPLICABLE, UPCOMING, READY_FOR_REVIEW, APPROVED, SUBMITTED, ACCEPTED, REJECTED, DONE_ELSEWHERE), `dueOn` / `actOn`, `preparedData` (JSON, never a full tax id) with `preparedHash` binding the owner's approval to the prepared numbers, `outputFileUrl`, approval/submission stamps, `note`, `version`, and `autoRetired` (true only while a NOT_APPLICABLE state came from the filing sync's automatic retirement when the facts stopped generating the period; the sync reactivates such a row when its period is generated again, and never reactivates an owner's own not-needed decision). Index on (`state`, `actOn`). Both models are in `BACKUP_MODEL_POLICY`.
+
 ## November 2 — Tax and fee autopilot switches (TFA-2, additive)
 
 Migrations `20261102000000_tfa2_switches` and `20261103000000_tfa2_filing_advice`.
@@ -16,6 +22,13 @@ Migration `20261101000000_legal_rules`.
 - `LegalRuleVersion` — one dated value per tax/fee rule: `ruleKey` (e.g. `co.rdf.amount`), `value` (JSON: cents, or an object for grouped numbers), `effectiveFrom` (that Colorado day's midnight), `origin` (RESEARCHED, OFFICIAL_WATCH, OWNER, PROFESSIONAL), `sourceUrl`, `sourceQuote`, `checkedOn`, `provisional` (true until confirmed), `autoApplied`, `undoneAt`, `createdByUserId`. **SQL-only index — do not drop:** `LegalRuleVersion_one_active_per_key_date_origin` (unique (`ruleKey`, `effectiveFrom`, `origin`) where `undoneAt` IS NULL — an undone version stays as history and must not block its replacement for the same start date); index on (`ruleKey`, `effectiveFrom`). Seeded with 18 researched versions from `docs/research/2026-10-25-tax-fee-rules.md` (RDF 28/29/28/31 cents by July 1, $500,000 small-seller limit, filing-frequency limits, 0 state service fee from 2026-01-01, $300 use-tax limit, penalties, 2026 interest, 36-month leases, odd-year licence expiry, $2,000 1099 limit, 1099 dates, Section 179, bonus depreciation, 7 record years, Greeley 4.11%), each with its source and checked date 2026-10-25. Existing `RetailDeliveryFeeRate` rows are copied in as OWNER versions so old rates keep their history. The owner's existing `BusinessSettings` values for the four switched fields (`recordRetentionYears`, `useTaxMonthlyThresholdCents`, `rdfThresholdCents`, `vendor1099ThresholdCents`) are carried over as OWNER versions from 2026-01-01 — but only when the owner actually changed them: the carry-over is guarded with `<> default` (7 / 30000 / 50000000 / 200000), because the first migration seeds `BusinessSettings` with the defaults, so an unguarded carry would create default-valued OWNER rows on every fresh database and block any later version for the same date. `RetailDeliveryFeeRecord_ready_requires_evidence` now accepts a rule version as evidence (`rateId` OR `ruleVersionId`), since new records cite a rule version with `rateId` null.
 - `RetailDeliveryFeeRecord.ruleVersionId` — the rule version that set the amount on new records (old rows keep `rateId`). `BusinessSettings.costlyChangeTimingPercent` (90, CHECK 85–95) and `timingSafetyMarginBusinessDays` (3, CHECK 1–10): when the app suggests acting on a change that costs the business.
 - `LedgerAccount` `TAX_ABSORBED` (expense, "Tax/fee the business paid for a late change", seed id `k_seed_tax_absorbed`; same entry in `src/domains/books/system-chart.json`). Backups include `LegalRuleVersion` (`BACKUP_MODEL_POLICY`).
+
+## November 4 — Official-page rule watches (TFA-3, additive)
+
+Migration `20261104000000_tfa3_rule_watches`.
+- `LegalRuleObservation` — one stored reading from a strict parser over an official page: `ruleKey`, `value` (JSON, same shapes as the rule registry), `effectiveFrom` (nullable: a page may state no date), `watchId` (the `OfficialSourceWatch` read), `evidence` (the page words the reading came from), `observedAt`. Approval trail: `approvedVersionId` (the `LegalRuleVersion` an approval created), dismissal trail: `dismissedAt`, `dismissNote`, `dismissedByUserId`. A reading is never applied on its own; the same reading is stored once per business day. Backups include `LegalRuleObservation` (`BACKUP_MODEL_POLICY`).
+- `OfficialSourceWatch.parserKey` — which strict parser reads the page (`RDF_RATES`, `GREELEY_RATE`, `IRS_1099_THRESHOLD`, `CO_INTEREST`); null means hash-only watching. The migration turns the six seeded watches on, sets the Greeley parser, and adds the RDF rates, IRS 1099 instructions and Colorado penalties-and-interest watches.
+- `BusinessSettings.watchOfficialTaxPages` (default true): the owner's master switch for the watches, on Taxes › Rules. `BusinessSettings.autoApplyOfficialRateChanges` default flips to false and the existing row is set false: every new rate waits for the owner's approval on To do (the auto-apply code path stays, behind the setting).
 
 ## October 27 — Fair late fees (FEE-1, additive)
 
@@ -1428,3 +1441,10 @@ Existing financial entries remain append-only and closed months stay immutable.
 - `SafetyIncident` — a marked injury or safety event (appliance, repair request or job), decision PENDING / REPORTED /
   NOT_REPORTED with the owner's note.
 All three tables are in the backup manifest.
+
+### OPS-2: refrigerant records (additive migration `20261106000000_refrigerant`)
+
+- `ApplianceType.hasRefrigerant` — set true at migration time for types whose name or slug mentions refrigerator, fridge or freezer; new appliance types get the same starting value when they are added; the owner can change it on Retired appliances.
+- `RefrigerantRecord` — one per appliance (tied to the appliance itself, so choosing "decide later" never deletes a signed record): refrigerant type, outcome (`RECOVERED` / `LEAKED_BEFORE`), who recovered it and their address, optional certification number and equipment, the date, the recycler's name and receipt number, and the on-screen signature (who and when), plus a snapshot of the signer's name and the appliance's asset number, description and serial number as they were when signed. The statement PDF is rebuilt from this row, so a reprint always matches what was signed.
+- One seeded rule-book row: `records.refrigerant_keep_years` (6), a summary of 40 CFR 82.155 checked 2026-10-26.
+`RefrigerantRecord` is in the backup manifest.

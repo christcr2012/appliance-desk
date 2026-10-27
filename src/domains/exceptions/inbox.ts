@@ -23,6 +23,7 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   BILLING_BLOCKED: "money",
   SUBSCRIPTION_UPDATE_PENDING: "money",
   APPROVAL_REQUEST: "money",
+  COMPLIANCE_DUE: "money",
   NEW_LEAD_CONTACT: "sales",
   LEAD_FOLLOW_UP: "sales",
   APPROVED_QUOTE: "sales",
@@ -116,6 +117,8 @@ export type InboxHandlers = {
   recordBankPayment?: FormAction;
   approveRdfSwitch?: FormAction;
   confirmFilingFrequency?: FormAction;
+  approveRuleChange?: FormAction;
+  dismissRuleChange?: FormAction;
 };
 
 export type InboxActionOptions = {
@@ -135,6 +138,10 @@ function formPrimary(item: ExceptionItem, handlers: InboxHandlers | undefined): 
     case "APPLY_OFFICIAL_RATE":
       return handlers?.applyOfficialRate
         ? { kind: "form", label: action.label, action: handlers.applyOfficialRate, fields: { observationId: action.id }, primary: true }
+        : null;
+    case "APPROVE_RULE_CHANGE":
+      return handlers?.approveRuleChange
+        ? { kind: "form", label: action.label, action: handlers.approveRuleChange, fields: { observationId: action.id }, primary: true, pendingLabel: "Approving…", successMessage: "Rule updated from the official page" }
         : null;
     case "APPROVE_RDF_SWITCH":
       return handlers?.approveRdfSwitch
@@ -169,6 +176,14 @@ export function inboxActions(item: ExceptionItem, options: InboxActionOptions = 
   const link = todoAction(item);
   const primary: ActionSpec = form ?? { kind: "link", label: link.label, href: link.href, primary: true };
   const actions: ActionSpec[] = [primary];
+  // TFA-3: a rule reading is answered Approve / Not right — the dismiss
+  // rides as a second form button beside Approve (owner handlers only).
+  if (item.action?.type === "APPROVE_RULE_CHANGE" && options.handlers?.dismissRuleChange) {
+    actions.push({
+      kind: "form", label: "Not right", action: options.handlers.dismissRuleChange,
+      fields: { observationId: item.action.id }, pendingLabel: "Marking…", successMessage: "Marked not right — it will not ask again",
+    });
+  }
   if (item.contact?.phone) actions.push({ kind: "tel", label: "Call", phone: item.contact.phone });
   else if (item.contact?.email) actions.push({ kind: "mailto", label: "Email", email: item.contact.email });
 

@@ -569,6 +569,9 @@ model ApplianceType {
   // Empty means the nightly check falls back to the type's own name.
   recallProductTerms String[] @default([])
 
+  // OPS-2: appliances of this type have a sealed refrigerant system, so scrapping or throwing one away needs a refrigerant record.
+  hasRefrigerant Boolean @default(false)
+
   // Soft-delete: an appliance type is never hard-deleted once it's been
   // referenced by a Lead/PricingRule/Appliance (that would break history).
   // Retiring a category sets isActive=false instead, which hides it from
@@ -689,6 +692,7 @@ model Appliance {
   staffTasks  StaffTask[]
   // Batch M-2: what the owner decided to do with it after retiring it, and parts taken from it.
   retiredPlan RetiredAppliancePlan?
+  refrigerantRecord RefrigerantRecord?
   saleLines InvoiceLineItem[] @relation("ApplianceSaleLine")
   saleDispositions RetiredSaleDisposition[]
   salvagedMovements PartStockMovement[] @relation("SalvageAppliance")
@@ -2921,6 +2925,9 @@ model OfficialSourceWatch {
   label               String
   url                 String   @unique
   active              Boolean  @default(true)
+  // TFA-3: which strict parser reads this page (RDF_RATES, GREELEY_RATE,
+  // IRS_1099_THRESHOLD, CO_INTEREST); null means hash-only watching.
+  parserKey           String?
   lastHash            String?
   lastText            String?
   lastExcerpt         String?
@@ -2931,6 +2938,31 @@ model OfficialSourceWatch {
   reviewedAt          DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  ruleObservations LegalRuleObservation[]
+}
+
+// TFA-3: one stored reading from a strict parser over an official page
+// (same pattern as TaxRateObservation). A reading is never applied on its
+// own: the owner approves it on To do (approvedVersionId links the rule
+// version it created) or dismisses it (dismissedAt), and a dismissed or
+// approved reading never asks again.
+model LegalRuleObservation {
+  id                String              @id @default(cuid())
+  ruleKey           String              @db.VarChar(80)
+  value             Json
+  effectiveFrom     DateTime?
+  watchId           String
+  watch             OfficialSourceWatch @relation(fields: [watchId], references: [id])
+  evidence          String              @db.VarChar(1000)
+  observedAt        DateTime            @default(now())
+  dismissedAt       DateTime?
+  dismissNote       String?             @db.VarChar(500)
+  dismissedByUserId String?
+  approvedVersionId String?
+
+  @@index([ruleKey, effectiveFrom])
+  @@index([observedAt])
 }
 
 model TaxabilityRule {
@@ -3470,7 +3502,13 @@ model BusinessSettings {
   rdfCpaConfirmedOn               DateTime?
   rdfThresholdCrossedOn           DateTime?
   businessTaxAddress              Json                   @default("{}")
-  autoApplyOfficialRateChanges    Boolean                @default(true)
+  // TFA-3: starting value false (Chris's answer, recorded in DECISIONS):
+  // every new rate waits for his approval on To do. The auto-apply code
+  // path stays, but only runs if he turns this on himself.
+  autoApplyOfficialRateChanges    Boolean                @default(false)
+  // TFA-3: master switch for the official-page watches (Taxes > Rules,
+  // owner only). Starting value on; the per-watch active flags stay data.
+  watchOfficialTaxPages           Boolean                @default(true)
   autoRateChangeMaxMilliPercent   Int                    @default(1000)
   // TFA-1: timing for changes that cost the business or do not help to do
   // early (paying a return, filing 1099s, renewing a license). The desk
@@ -3580,6 +3618,52 @@ model BusinessSettings {
   // OPS-5: how long after a bank debit a customer can still dispute it (starting value 60 days, from the NACHA rules
   // via Stripe's documentation). Deposit refunds for bank payments wait this long.
   achDisputeWindowDays Int @default(60)
+}
+
+model ComplianceProfile {
+  // CMP-1: the owner's business facts for compliance, one row ("singleton").
+  // entityType is a Decisions question (CMP-ENTITY, CPA) — SINGLE_MEMBER_LLC
+  // is the starting value, not a confirmed answer.
+  id             String   @id @default("singleton")
+  entityType     String   @default("SINGLE_MEMBER_LLC")
+  // The EIN itself is never stored in plain text: einEncrypted holds the
+  // AES-256-GCM value from src/lib/field-crypto.ts; only the last 4 show.
+  einLast4       String?  @db.Char(4)
+  einEncrypted   String?
+  sosReportMonth Int?
+  truckGvwrLbs   Int?
+  employees      Int      @default(0)
+  hasHomeOffice  Boolean  @default(false)
+  updatedAt      DateTime @updatedAt
+}
+
+model ComplianceFiling {
+  // CMP-1: one row per obligation period, moved by the filing flow
+  // (prepare → approve → submit). The approval binds preparedHash, and the
+  // APPROVED → SUBMITTED step happens once only under the row lock.
+  id               String    @id @default(cuid())
+  obligationKey    String    @db.VarChar(60)
+  periodKey        String    @db.VarChar(20)
+  state            String    @db.VarChar(20)
+  dueOn            DateTime
+  actOn            DateTime
+  preparedData     Json?
+  preparedHash     String?   @db.Char(64)
+  outputFileUrl    String?
+  approvedByUserId String?
+  approvedAt       DateTime?
+  submittedAt      DateTime?
+  confirmation     String?   @db.VarChar(200)
+  note             String?   @db.VarChar(1000)
+  version          Int       @default(1)
+  // True only while a NOT_APPLICABLE state came from the sync's automatic
+  // retirement (the facts stopped generating the period). An owner's own
+  // "not needed" decision never sets it, and the sync reactivates an
+  // auto-retired row when its period is generated again.
+  autoRetired      Boolean   @default(false)
+
+  @@unique([obligationKey, periodKey])
+  @@index([state, actOn])
 }
 
 model MonthToMonthTermsVersion {
@@ -5915,4 +5999,36 @@ model MileageTrip {
   updatedAt       DateTime          @updatedAt
 
   @@index([vehicleId, tripDate])
+}
+
+enum RefrigerantOutcome {
+  RECOVERED
+  LEAKED_BEFORE
+}
+
+// OPS-2: what happened to the refrigerant in a retired appliance before it was scrapped or thrown away (40 CFR 82.155:
+// the scrap yard must get a signed statement). Kept for the rule-book number of years (records.refrigerant_keep_years).
+model RefrigerantRecord {
+  applianceId      String   @id
+  appliance        Appliance @relation(fields: [applianceId], references: [id], onDelete: Restrict)
+  refrigerantType  String
+  outcome          RefrigerantOutcome
+  recoveredByName  String
+  recoveredByAddress String
+  certificationNumber String?
+  equipmentUsed    String?
+  recoveredOn      DateTime
+  recyclerName     String?
+  receiptReference String?
+  statementSignedAt DateTime
+  statementSignedByUserId String
+  // What the statement said when it was signed. Reprints use these, so later edits to a name or appliance never change a signed statement.
+  signedByName     String
+  assetNumberSnapshot String
+  applianceDescriptionSnapshot String
+  serialNumberSnapshot String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([recoveredOn])
 }

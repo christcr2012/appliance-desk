@@ -5,6 +5,8 @@ import { businessDateKey, businessDayBounds, businessDaysBetween } from "@/lib/b
 import { TAX_ADDRESS_CHANGE_REVIEW_NOTE } from "@/domains/tax/address-recheck";
 import { listOfficialRateAttention } from "@/domains/tax/official-rate-auto-apply";
 import { listPendingRdfSwitches } from "@/domains/tax/rdf-switches";
+import { listRuleChangeAttention } from "@/domains/rules/observations";
+import { ruleDef } from "@/domains/rules/registry";
 import { listTaxFilingAttention, listRdfRefundAttention, listUseTaxResetAttention, listExpiredExemptionAttention, listFilingFrequencyAdviceAttention } from "@/domains/tax/filing-attention";
 import { listTaxAmendmentAttention } from "@/domains/tax/amendment-attention";
 import { listAcquisitionTaxAttention } from "@/domains/tax/acquisition-attention";
@@ -21,6 +23,7 @@ import { listCancellationRefundAttention } from "./cancellation-refund-attention
 import { listSignedDeliveryAttention } from "./signed-delivery-attention";
 import { listFeedbackWaiting } from "./feedback-attention";
 import { listNewLeadContact, listLeadFollowUps, listApprovedQuoteToRental } from "./lead-turning-points";
+import { listComplianceDue } from "./compliance-attention";
 import { listHeldPaymentAttention, listDepositDecisionAttention } from "./money-turning-points";
 import { listUnsignedAgreements } from "./unsigned-agreements";
 import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment, listCleaningNeeded } from "./turning-points-attention";
@@ -51,6 +54,7 @@ import {
   taxRateReviewReminderException,
   officialRateReviewException,
   officialRateScheduledException,
+  ruleChangeReviewException,
   rdfSwitchException,
   taxSourceChangedException,
   taxSourceUnreachableException,
@@ -388,6 +392,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     taxSourceFailures,
     officialRateAttention,
     rdfSwitchesPending,
+    ruleChangeAttention,
     staleReservations,
     pastDueInvoices,
     overdueJobs,
@@ -545,6 +550,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       : empty<never>(),
     canViewFinance ? listOfficialRateAttention(now) : Promise.resolve([]),
     canViewFinance ? listPendingRdfSwitches(now) : Promise.resolve([]),
+    canViewFinance ? listRuleChangeAttention(now) : Promise.resolve([]),
     capped(
       (take) => prisma.rentalAgreement.findMany({
         where: staleWhere,
@@ -976,6 +982,22 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
             since: item.observedAt,
           }),
     ),
+    ...ruleChangeAttention.map((item) =>
+      ruleChangeReviewException({
+        observationId: item.observationId,
+        ruleTitle: ruleDef(item.ruleKey).title,
+        describedValue: ruleDef(item.ruleKey).describe(item.value as never),
+        ruleKey: item.ruleKey,
+        effectiveFrom: item.effectiveFrom,
+        evidence: item.evidence,
+        watchUrl: item.watchUrl,
+        readOnTwoDays: item.readOnTwoDays,
+        plausible: item.plausible,
+        startPassed: item.startPassed,
+        since: item.since,
+        now,
+      }),
+    ),
     ...taxExemptionsExpiring.rows
       .filter(
         (exemption): exemption is typeof exemption & { expiresOn: Date } =>
@@ -1119,6 +1141,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   const depositDecisions = canViewFinance ? await listDepositDecisionAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const newLeadContact = canViewFinance ? await listNewLeadContact(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const leadFollowUps = canViewFinance ? await listLeadFollowUps(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const complianceDue = canViewFinance ? await listComplianceDue(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const approvedQuotes = canViewFinance ? await listApprovedQuoteToRental(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const rentalEndingSoon = canViewFinance ? await listRentalEndingSoon(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const unsignedAgreements = canViewFinance ? await listUnsignedAgreements(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
@@ -1156,6 +1179,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...paymentDisputes.rows,
     ...newLeadContact.rows,
     ...leadFollowUps.rows,
+    ...complianceDue.rows,
     ...approvedQuotes.rows,
     ...depositDecisions.rows,
     ...rentalEndingSoon.rows,
@@ -1202,6 +1226,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
           taxSourceFailures.total +
           officialRateAttention.length +
           rdfSwitchesPending.length +
+          ruleChangeAttention.length +
           (canViewFinance &&
           (businessDateKey(now).endsWith("-05-15") ||
             businessDateKey(now).endsWith("-11-15"))
@@ -1227,6 +1252,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["DEPOSIT_DECISION", depositDecisions],
       ["NEW_LEAD_CONTACT", newLeadContact],
       ["LEAD_FOLLOW_UP", leadFollowUps],
+      ["COMPLIANCE_DUE", complianceDue],
       ["APPROVED_QUOTE", approvedQuotes],
       ["RENTAL_ENDING_SOON", rentalEndingSoon],
       ["UNSIGNED_AGREEMENT", unsignedAgreements],
