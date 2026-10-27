@@ -38,6 +38,6 @@ test('each exact unit/browser group must remain in CI, not merely the old minimu
 test('sharded cohorts cannot silently become one serial runner',()=>{
  for(const [id] of Object.entries(policy.matrices??{})){
   const changed=source().replace(new RegExp('(  '+id+':\\n[\\s\\S]*?strategy:\\n)'), '$1      max-parallel: 1\n');
-  assert.throws(()=>checkLayout(changed),/collapse or serialize/);
+  assert.throws(()=>checkLayout(changed),/collapse, disappear, duplicate or serialize/);
  }
 });
