@@ -1,3 +1,10 @@
+## October 27 — Lane 1 AR-11 swipe-to-reveal actions (in review)
+Branch `ai/chatgpt/ar-11-swipe-actions-20261027` adds touch-only left-swipe shortcuts to the first two existing list-card actions,
+with 64px threshold, tap-away, reduced-motion and the same safeguarded form/confirmation path as ⋯.
+Unit and authenticated mobile browser regressions added. Full CI and review not yet observed; do not
+mark AR-11 complete. Still remaining: React 19.3/title transitions, optimistic snooze and bundle budget.
+No money, role, provider, database or live-setting changes. Next: finish these AR-11 outcomes, then AR-12.
+
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
 Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
