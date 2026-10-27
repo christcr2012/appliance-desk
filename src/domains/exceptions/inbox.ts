@@ -28,6 +28,7 @@ export const INBOX_GROUP: Record<ExceptionCategory, InboxGroup> = {
   SUBSCRIPTION_UPDATE_PENDING: "money",
   APPROVAL_REQUEST: "money",
   COMPLIANCE_DUE: "money",
+  SUPPLIER_TAX_ID: "money",
   NEW_LEAD_CONTACT: "sales",
   LEAD_FOLLOW_UP: "sales",
   APPROVED_QUOTE: "sales",
