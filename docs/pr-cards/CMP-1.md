@@ -50,3 +50,19 @@ motion are never touched. Registry and integration tests cover all four.
 Also on #639: the secret scan's six registry lines were fingerprinted for
 the rebuilt branch's commit (a94257d2), the last item from PR #632's
 commit-range scan changeover.
+
+Review round 4 (Codex on PR #642, 2026-10-26): three findings, all
+accepted. (1) Automatic retirement is now distinguished from an owner's
+own not-needed decision by the filing's autoRetired flag (new column in
+the same migration): when the facts generate a period again, an
+auto-retired row reactivates to UPCOMING; an owner's decision never
+does. (2) The sync's retire step locks its candidate rows and rechecks
+their state inside the transaction (and the update carries the state
+guard), so a filing prepared or approved in the meantime is never
+overwritten. (3) Business-facts saves lock the profile row before
+reading the baseline the audit's changed-fields are computed from, so
+overlapping saves serialize and no change slips through unaudited.
+Regression tests cover all three (reactivation cycle, owner-decision
+permanence, prepared-filing survival, and a lock-blocking save). The
+round also adds the docs/DATABASE.md entry the merged-state docs gate
+requires for a schema change.

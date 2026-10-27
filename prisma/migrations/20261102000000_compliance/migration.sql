@@ -36,6 +36,7 @@ CREATE TABLE "ComplianceFiling" (
     "confirmation" VARCHAR(200),
     "note" VARCHAR(1000),
     "version" INTEGER NOT NULL DEFAULT 1,
+    "autoRetired" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "ComplianceFiling_pkey" PRIMARY KEY ("id")
 );

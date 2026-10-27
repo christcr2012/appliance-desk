@@ -3614,6 +3614,11 @@ model ComplianceFiling {
   confirmation     String?   @db.VarChar(200)
   note             String?   @db.VarChar(1000)
   version          Int       @default(1)
+  // True only while a NOT_APPLICABLE state came from the sync's automatic
+  // retirement (the facts stopped generating the period). An owner's own
+  // "not needed" decision never sets it, and the sync reactivates an
+  // auto-retired row when its period is generated again.
+  autoRetired      Boolean   @default(false)
 
   @@unique([obligationKey, periodKey])
   @@index([state, actOn])

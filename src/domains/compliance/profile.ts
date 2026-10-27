@@ -134,6 +134,17 @@ export async function saveBusinessFacts(actorId: string, input: BusinessFactsInp
 
   await prisma.$transaction(async (tx) => {
     await assertActiveTeamActor(tx, actorId, ["OWNER"]);
+    // Lock the profile row before reading the "before" snapshot: two
+    // overlapping saves then serialize, and the audit's changed fields are
+    // always computed against the latest committed facts — never a stale
+    // snapshot that could let a change slip through with no audit record.
+    // The upsert first guarantees the singleton row exists to lock.
+    await tx.complianceProfile.upsert({
+      where: { id: "singleton" },
+      create: { id: "singleton" },
+      update: {},
+    });
+    await tx.$queryRaw`SELECT "id" FROM "ComplianceProfile" WHERE "id" = 'singleton' FOR UPDATE`;
     const before = await tx.complianceProfile.findUnique({ where: { id: "singleton" } });
     const data = {
       entityType: input.entityType,

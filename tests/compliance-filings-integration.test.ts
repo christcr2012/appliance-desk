@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   approveFiling,
   listComplianceFilings,
+  markFilingNotApplicable,
   prepareFiling,
   submitFiling,
   syncComplianceFilings,
@@ -181,6 +182,95 @@ describe.skipIf(!enabled)("compliance filings", () => {
     expect(after.filter((r) => r.state === "UPCOMING")).toHaveLength(0);
     expect(after.find((r) => r.id === inMotion.id)!.state).toBe("APPROVED");
     expect(after.some((r) => r.state === "NOT_APPLICABLE")).toBe(true);
+  });
+
+  it("auto-retired filings reactivate when the facts return; an owner's not-needed decision never does", async () => {
+    const facts = (employees: number) =>
+      saveBusinessFacts(ownerId, {
+        entityType: "SINGLE_MEMBER_LLC",
+        ein: undefined,
+        sosReportMonth: 5,
+        truckGvwrLbs: 14000,
+        employees,
+        hasHomeOffice: false,
+      });
+    const now = new Date("2026-10-26T12:00:00Z");
+
+    await facts(1);
+    await syncComplianceFilings(now);
+    const active = await prisma.complianceFiling.findMany({
+      where: { obligationKey: "fed.payroll.941", state: "UPCOMING" },
+    });
+    active.forEach((r) => {
+      if (!filingIds.includes(r.id)) filingIds.push(r.id);
+    });
+    expect(active.length).toBeGreaterThan(0);
+
+    // The owner marks one period not needed — their decision, recorded.
+    const decided = active[0]!;
+    await markFilingNotApplicable(ownerId, decided.id, "Filed with the January return instead.");
+    // Another period is prepared, so it is in motion when the facts change.
+    const prepared = active[1]!;
+    await prepareFiling(ownerId, prepared.id, { wagesCents: 420000 });
+
+    await facts(0);
+    const retiredSync = await syncComplianceFilings(now);
+    expect(retiredSync.retired).toBeGreaterThan(0);
+    const whileAway = await prisma.complianceFiling.findMany({ where: { obligationKey: "fed.payroll.941" } });
+    // Everything untouched-pending retired automatically...
+    expect(whileAway.filter((r) => r.state === "UPCOMING")).toHaveLength(0);
+    expect(whileAway.some((r) => r.autoRetired)).toBe(true);
+    // ...the prepared one was locked and rechecked, not overwritten...
+    expect(whileAway.find((r) => r.id === prepared.id)!.state).toBe("READY_FOR_REVIEW");
+    // ...and the owner's decision stands apart from the automatic ones.
+    const decidedRow = whileAway.find((r) => r.id === decided.id)!;
+    expect(decidedRow.state).toBe("NOT_APPLICABLE");
+    expect(decidedRow.autoRetired).toBe(false);
+
+    await facts(1);
+    const backSync = await syncComplianceFilings(now);
+    expect(backSync.reactivated).toBeGreaterThan(0);
+    const back = await prisma.complianceFiling.findMany({ where: { obligationKey: "fed.payroll.941" } });
+    expect(back.filter((r) => r.state === "UPCOMING").length).toBe(active.length - 2);
+    expect(back.find((r) => r.id === decided.id)!.state).toBe("NOT_APPLICABLE");
+    expect(back.find((r) => r.id === prepared.id)!.state).toBe("READY_FOR_REVIEW");
+    await facts(0);
+    await syncComplianceFilings(now);
+  });
+
+  it("business facts saves wait for the profile row lock before reading their baseline", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const holder = prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "ComplianceProfile" WHERE "id" = 'singleton' FOR UPDATE`;
+        await gate;
+      },
+      { timeout: 20000, maxWait: 20000 },
+    );
+    let settled = false;
+    const save = saveBusinessFacts(ownerId, {
+      entityType: "SINGLE_MEMBER_LLC",
+      ein: undefined,
+      sosReportMonth: 5,
+      truckGvwrLbs: 14000,
+      employees: 0,
+      hasHomeOffice: false,
+    }).then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    await new Promise((r) => setTimeout(r, 500));
+    expect(settled).toBe(false);
+    release();
+    await Promise.all([holder, save]);
+    expect(settled).toBe(true);
   });
 
   it("two syncs at the same moment both succeed and create one set of rows", async () => {

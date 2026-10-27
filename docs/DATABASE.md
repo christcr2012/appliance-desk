@@ -1,3 +1,9 @@
+## November 2 — Compliance center (CMP-1, additive)
+
+Migration `20261102000000_compliance`.
+- `ComplianceProfile` — the owner's business facts, one row (`id` = "singleton"): `entityType` (starting value SINGLE_MEMBER_LLC, a Decisions question), `einEncrypted` (the EIN under AES-256-GCM from `src/lib/field-crypto.ts`; the value itself is never logged or shown) with `einLast4` the only clear digits, `sosReportMonth`, `truckGvwrLbs`, `employees`, `hasHomeOffice`.
+- `ComplianceFiling` — one row per obligation period: `obligationKey` + `periodKey` (unique together), `state` (NOT_APPLICABLE, UPCOMING, READY_FOR_REVIEW, APPROVED, SUBMITTED, ACCEPTED, REJECTED, DONE_ELSEWHERE), `dueOn` / `actOn`, `preparedData` (JSON, never a full tax id) with `preparedHash` binding the owner's approval to the prepared numbers, `outputFileUrl`, approval/submission stamps, `note`, `version`, and `autoRetired` (true only while a NOT_APPLICABLE state came from the filing sync's automatic retirement when the facts stopped generating the period; the sync reactivates such a row when its period is generated again, and never reactivates an owner's own not-needed decision). Index on (`state`, `actOn`). Both models are in `BACKUP_MODEL_POLICY`.
+
 ## November 2 — Tax and fee autopilot switches (TFA-2, additive)
 
 Migrations `20261102000000_tfa2_switches` and `20261103000000_tfa2_filing_advice`.

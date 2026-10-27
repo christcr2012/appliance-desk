@@ -6,7 +6,8 @@ import { whenToAct } from "@/domains/rules/timing";
 import { businessDateKey } from "@/lib/business-date";
 import { OBLIGATIONS, type ComplianceContext } from "./registry";
 import { getComplianceProfile, profileContext } from "./profile";
-import type { ComplianceFiling, Prisma } from "@prisma/client";
+import type { ComplianceFiling } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 /**
  * CMP-1: compliance filings — one row per obligation period, moved through
@@ -98,12 +99,13 @@ async function booksFactsForYear(
  * only a still-UPCOMING row gets a refreshed actOn when the facts or the
  * timing setting change.
  */
-export async function syncComplianceFilings(now = new Date()): Promise<{ created: number; refreshed: number; retired: number }> {
+export async function syncComplianceFilings(now = new Date()): Promise<{ created: number; refreshed: number; retired: number; reactivated: number }> {
   const { percent, marginBusinessDays: margin } = await getRuleTimingSettings();
   const thisYear = Number(businessDateKey(now).slice(0, 4));
   let created = 0;
   let refreshed = 0;
   let retired = 0;
+  let reactivated = 0;
 
   await prisma.$transaction(async (tx) => {
     // Serialize synchronization: the business settings row is locked for the
@@ -142,6 +144,16 @@ export async function syncComplianceFilings(now = new Date()): Promise<{ created
               },
             });
             created++;
+          } else if (existing.state === "NOT_APPLICABLE" && existing.autoRetired) {
+            // The facts came back, so this period is generated again: an
+            // automatically retired row reactivates. A row the owner
+            // marked not needed themselves (autoRetired false) is a
+            // decision and is never reactivated.
+            await tx.complianceFiling.update({
+              where: { id: existing.id },
+              data: { state: "UPCOMING", dueOn: period.dueOn, actOn, autoRetired: false },
+            });
+            reactivated++;
           } else if (
             existing.state === "UPCOMING" &&
             (existing.actOn.getTime() !== actOn.getTime() || existing.dueOn.getTime() !== period.dueOn.getTime())
@@ -156,8 +168,12 @@ export async function syncComplianceFilings(now = new Date()): Promise<{ created
         // Reconcile: a still-pending row whose period is no longer
         // generated — the obligation stopped applying (corrected facts) or
         // its schedule changed — is retired to NOT_APPLICABLE, so reminders
-        // stop. Rows already in motion (prepared, approved, submitted…)
-        // are history and are never touched.
+        // stop. The candidate rows are locked and their state rechecked
+        // inside this transaction before any is retired, so a filing that
+        // was prepared or approved in the meantime is never overwritten;
+        // the update itself also carries the state guard. Retired rows are
+        // marked autoRetired so a later sync can reactivate them if the
+        // facts generate the period again.
         const expectedKeys = new Set(periods.map((p) => p.periodKey));
         const pending = await tx.complianceFiling.findMany({
           where: {
@@ -169,16 +185,24 @@ export async function syncComplianceFilings(now = new Date()): Promise<{ created
         });
         const stale = pending.filter((f) => !expectedKeys.has(f.periodKey));
         if (stale.length) {
-          await tx.complianceFiling.updateMany({
-            where: { id: { in: stale.map((f) => f.id) } },
-            data: { state: "NOT_APPLICABLE" },
+          const staleIds = stale.map((f) => f.id);
+          await tx.$queryRaw`SELECT "id" FROM "ComplianceFiling" WHERE "id" IN (${Prisma.join(staleIds)}) FOR UPDATE`;
+          const stillPending = await tx.complianceFiling.findMany({
+            where: { id: { in: staleIds }, state: "UPCOMING" },
+            select: { id: true },
           });
-          retired += stale.length;
+          if (stillPending.length) {
+            const updated = await tx.complianceFiling.updateMany({
+              where: { id: { in: stillPending.map((f) => f.id) }, state: "UPCOMING" },
+              data: { state: "NOT_APPLICABLE", autoRetired: true },
+            });
+            retired += updated.count;
+          }
         }
       }
     }
   });
-  return { created, refreshed, retired };
+  return { created, refreshed, retired, reactivated };
 }
 
 async function lockFilingInTx(
@@ -375,7 +399,7 @@ export async function markFilingNotApplicable(
     }
     await tx.complianceFiling.update({
       where: { id: filingId },
-      data: { state: "NOT_APPLICABLE", note: note.slice(0, 1000), version: { increment: 1 } },
+      data: { state: "NOT_APPLICABLE", note: note.slice(0, 1000), version: { increment: 1 }, autoRetired: false },
     });
     await tx.auditLog.create({
       data: {
