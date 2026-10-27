@@ -34,12 +34,14 @@ test.describe("Compliance center (CMP-1)", () => {
   test("needs you shows obligations whose dates are not set yet", async ({ page }) => {
     test.skip(!fs.existsSync(owner), "Authenticated OWNER fixture required");
     await page.goto("/desk/compliance?tab=needs");
-    // The Greeley license and trade-name obligations apply, but their
-    // rules are unconfirmed — they must be visible with what is missing,
-    // never silently absent.
+    // The Greeley license and trade-name obligations apply, but the
+    // facts that would date them are not recorded yet — they must be
+    // visible with what is missing, never silently absent. (CMP-4
+    // confirmed an LLC's trade name never renews, so the obligation is
+    // titled "Trade name", not "Trade name renewal".)
     await expect(page.getByText("Applies to you, dates not set yet")).toBeVisible();
     await expect(page.getByText("Greeley business license")).toBeVisible();
-    await expect(page.getByText("Trade name renewal")).toBeVisible();
+    await expect(page.getByText("Trade name", { exact: true })).toBeVisible();
   });
 
   test("business facts renders and the EIN box explains itself", async ({ page }) => {

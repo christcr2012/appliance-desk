@@ -3743,6 +3743,23 @@ model ComplianceProfile {
   businessState     String?
   businessZip       String?
   businessPhone     String?
+  // CMP-4: the local-filing facts. tradeName is the name the LLC files
+  // under, if any (an LLC's Colorado trade name never needs renewal —
+  // C.R.S. § 7-71-104). usdotNumber's last two digits set the FMCSA
+  // biennial update schedule. truckRegistrationMonth (1-12) is the month
+  // on the truck's current registration. greeleyLicenseDate is the date
+  // the city license was issued or last renewed; the two-year renewal
+  // cycle runs from it. The registered agent fields are the exact values
+  // the SOS periodic report shows.
+  tradeName              String?
+  usdotNumber            String?
+  truckRegistrationMonth Int?
+  greeleyLicenseDate     DateTime?
+  registeredAgentName    String?
+  registeredAgentAddress String?
+  registeredAgentCity    String?
+  registeredAgentState   String?
+  registeredAgentZip     String?
   updatedAt      DateTime @updatedAt
 }
 

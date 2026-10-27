@@ -4,10 +4,10 @@ Build spec: `docs/build-specs/engines/COMPLIANCE.md` CMP-4. Depends on CMP-1. Ri
 county** (rental-fleet exemption off until confirmed).
 
 ## Acceptance
-- [ ] Jan 1 asset snapshot; items over $350 listed; total vs the dated $56,000 threshold; under → "No declaration needed".
-- [ ] Filled Weld DS 056/060 and spreadsheet when over; extension shown near the date.
-- [ ] SOS periodic report, trade name and Greeley license as exact values to type, with confirmation capture.
+- [x] Jan 1 asset snapshot; items over $350 listed; total vs the dated $56,000 threshold; under → "No declaration needed".
+- [x] Filled Weld DS 056/060 and spreadsheet when over; extension shown near the date.
+- [x] SOS periodic report, trade name and Greeley license as exact values to type, with confirmation capture.
 - [ ] Vehicle registration and USDOT (only at GVWR ≥ 16,001 lb); `ci` green; every review comment read.
 
 ## Progress
-Not started.
+Built on branch `ai/vivienne/cmp-4` (baseline dd5f7ff1). The January 1 snapshot reads the book assets owned that day with the rental in force on that date (a set's rent stays the line's price, never split; a line's rent is stated only for its single unit). The threshold verdict compares total original cost against the dated rule (research note: the assessor's actual value derives from cost and year, so under-on-cost is safely under; the filing page says which basis was used). Under → preparing closes the filing as not needed with the numbers kept; over → approval unlocks the filled DS 056 / DS 060 PDFs (vendored from weld.gov, hash-pinned; FEIN and signature never filled) and the full spreadsheet. Confirmed during the build: an LLC's statement of trade name never renews (C.R.S. § 7-71-104) — it is a recorded fact, not a filing; the Greeley license is free and renews every two years on the license date; the USDOT biennial month/year derive from the number's last two digits. Local verification: typecheck clean; unit suites (snapshot, schedules, forms, both registries) and the CMP-4 integration suite green on a disposable cluster, plus the CMP-1/2/3 compliance suites re-run green. PR #668 review (Codex, four findings, all real, all fixed): an under-exemption verdict no longer closes the filing by itself — the owner confirms the tracked fleet is everything before it closes as not needed; January 1 ownership reads the purchase date, not the Books-clamped in-service date; a nine-digit appliance serial number no longer trips the full-tax-ID guard (the guard is field-aware now, serial numbers only); and the filled DS forms are gated on the vendored printing being the filing's own year (the county re-issues them yearly with the year printed on the form — the 2022 printings stay vendored as the machinery's proof, never served for a 2027 filing). The vehicle/USDOT acceptance line and the CI/review boxes tick when the PR completes.

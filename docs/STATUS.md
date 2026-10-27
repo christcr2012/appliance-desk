@@ -30,6 +30,28 @@ selector; all unit and browser groups, checks and secret scan green. Codex revie
 Close-out docs need their own exact-head CI before merge. AR-11 is still in progress; React/title transitions,
 optimistic Snooze and bundle budget remain. No user payment or permission path changed.
 
+## October 27 — CMP-4 in progress (Lane 5)
+
+Lane 5 is building **CMP-4** (Colorado and local filings) on branch `ai/vivienne/cmp-4-final`, baseline
+`dd5f7ff1`: the Weld County business personal property declaration (January 1 snapshot from the asset
+records, the $56,000 exemption check, filled DS 056 / DS 060 forms and the itemized spreadsheet), the
+Secretary of State periodic report with the exact values to type, the trade name entry (research now
+confirms an LLC's Colorado trade name never needs renewal — C.R.S. § 7-71-104), the Greeley business
+license on its two-year cycle from the recorded license date, the truck registration month, and the
+USDOT biennial schedule read off the recorded USDOT number. The CMP-2 close-out rides at the base of
+this branch.
+
+## October 27 — CMP-2 merged (PR #660)
+
+CMP-2 is on main (squash e4e9cf31): every books account mapped to a Schedule C line, the year-end
+accountant packet (CSV + PDF) prepared from posted journals under the approve flow, the 4562 and 4797
+worksheets, quarterly federal and Colorado estimates by the prior-year safe harbor from owner-entered
+tax-year facts (no prior year → words only, no number), the DR 0104EP and 1040-ES vouchers filled at
+download time with nothing stored, and the 1099-K tie-out. One PR, one review round: three Codex
+findings, all real, fixed with regression tests. CMP-2 merging unblocked Lane 4's TAXBEN-1. Two honest
+gaps recorded in the PR: no TXF export (no authoritative TXF 042 spec could be confirmed) and the
+Colorado 70%-of-actual-tax estimate prong is not computed (DQ-CMP-CO-EST).
+
 ## October 27 — SETUP-1: Set up your business (guided walkthroughs) (PR open)
 
 Branch `ai/vivienne/setup-1`. New **More → Set up your business** (`/desk/setup-guide`, owner only): 15 guided
@@ -46,13 +68,11 @@ also carries VAULT-1's merged close-out (PR #659). Proof: `tests/setup-walkthrou
 `tests/setup-guide-integration.test.ts` (real Postgres: owner-only, folded progress, truthful checks, step
 saves, the To do), `e2e/setup-guide.spec.ts` (browser-c). Next for this lane: **VAULT-2** (logins vault), then **ACCT-1**.
 
-## October 27 — CMP-3 merged (PR #656); CMP-2 in progress
+## October 27 — CMP-3 merged (PR #656)
 
 CMP-3 is on main (squash f103c7fc): 1099s and W-9s, the IRIS portal CSV and A2A client, and the Form 8300
 detector, after three PRs (#654, #655, #656) and ten Codex findings — all real, all fixed with regression
-tests. Lane 5 is now building **CMP-2** (income tax helpers: Schedule C packet, 4562/4797 worksheets,
-quarterly federal and Colorado estimates, 1099-K tie-out) on branch `ai/vivienne/cmp-2`; the CMP-3 close-out
-rides at the base of that branch. CMP-2 merging also unblocks Lane 4's TAXBEN-1.
+tests.
 
 ## October 26 — Lane 7 (back-office operations) close-out
 Merged: OPS-1 recalls, OPS-5 disputes, OPS-2 refrigerant log, OPS-6 collections (#636), OPS-7 privacy and security (#637), OPS-4 insurance (#641), OPS-3 vehicle and mileage (#648). OPS-8 (If something happens to me, yearly check-up) is PR #653. Each merged at a green exact-head `ci` with Codex findings answered. Not built: letting a successor use the pause switch in an emergency needs VAULT-1 (does not exist yet). Owner items: DQ-OPS entries in docs/OWNER-INPUTS.md ("Starting value — not confirmed") and one row in docs/OWNER-CHECKLIST.md. Next: VAULT-1, then the successor access.
