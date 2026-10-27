@@ -11,6 +11,10 @@ import { reconcileUnknownDeliveries } from "@/domains/messaging/deliver";
 import { replayUnmatchedTwilioStatusEvents } from "@/domains/messaging/events";
 import { resolvePendingRdfRecords } from "@/domains/tax/rdf-records";
 import { processReadyRdfCharges } from "@/domains/tax/rdf-charges";
+import { recordCrossingIfCrossed } from "@/domains/tax/rdf-threshold-evidence";
+import { listPendingRdfSwitches, prepareRdfSwitches } from "@/domains/tax/rdf-switches";
+import { sendOwnerAlert } from "@/domains/messaging/owner-alerts";
+import { businessDateKey } from "@/lib/business-date";
 
 /** Daily recovery pass for durable provider intents. */
 export const maxDuration = 60;
@@ -62,7 +66,30 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const retailDeliveryFees = await runAutomation({
     ruleKey: "billing-reconcile:retail-delivery-fees",
-    work: async () => ({ counts: automationCounts(await resolvePendingRdfRecords(new Date(), 50)) }),
+    work: async () => {
+      // TFA-2: record the $500,000 crossing date from the crossing invoice
+      // before tonight's pending records are decided against it, then prepare
+      // any delivery-fee switch the app can already date for the owner.
+      const crossedOn = await recordCrossingIfCrossed(new Date());
+      await prepareRdfSwitches(new Date());
+      const resolved = await resolvePendingRdfRecords(new Date(), 50);
+      // Spec §6.3: the owner also gets an email when a switch is 30 days out
+      // (the alert key makes it once per switch, however often this runs).
+      const pendingSwitches = await listPendingRdfSwitches(new Date());
+      for (const row of pendingSwitches) {
+        await sendOwnerAlert({
+          key: `rdf-switch:${row.id}`,
+          subject: row.kind === "START"
+            ? `Retail delivery fees start on ${businessDateKey(row.startsOn)}`
+            : `Retail delivery fees stop on ${businessDateKey(row.startsOn)}`,
+          text: row.kind === "START"
+            ? `Retail delivery fees start on ${businessDateKey(row.startsOn)} for your delivered sales. Approve on Today so the app adds them from that day. Until you approve, the fee is owed but not billed to customers.`
+            : `Retail delivery fees stop on ${businessDateKey(row.startsOn)}. Approve on Today to confirm the change.`,
+          href: "/desk/today",
+        });
+      }
+      return { counts: automationCounts({ ...resolved, crossingRecorded: crossedOn ? 1 : 0, switchAlerts: pendingSwitches.length }) };
+    },
   });
 
   const retailDeliveryFeeCharges = await runAutomation({
