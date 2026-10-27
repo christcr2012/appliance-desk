@@ -49,6 +49,7 @@ export type ExceptionCategory =
   | "CONTINUITY"
   | "SETUP_GUIDE"
   | "VAULT"
+  | "ACCOUNTANT"
   | "PRIVACY_DUTY"
   | "LATE_FEE_REVIEW"
   | "DECISIONS_STARTING_VALUES"
