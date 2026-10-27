@@ -1,5 +1,8 @@
 import { getDriverJobsForToday } from "@/domains/jobs";
 import { EmptyState, PageHeader } from "@/components/ui";
+import { prisma } from "@/lib/prisma";
+import { NoteAction } from "@/app/desk/collections/controls";
+import { objectedAction } from "@/app/desk/collections/actions";
 import { DriverJobCard } from "./driver-job-card";
 
 export const metadata = { title: "Driver view" };
@@ -10,6 +13,8 @@ export const metadata = { title: "Driver view" };
 // so there's nothing further to restrict.
 export default async function DriverViewPage() {
   const jobs = await getDriverJobsForToday();
+  const objectable = jobs.length ? await prisma.collectionCase.findMany({ where: { pickupJobId: { in: jobs.map((j) => j.id) }, objectedAt: null }, select: { pickupJobId: true, agreementId: true } }) : [];
+  const objectionFor = new Map(objectable.map((c) => [c.pickupJobId, c.agreementId]));
 
   return (
     <div className="mx-auto max-w-md">
@@ -30,8 +35,8 @@ export default async function DriverViewPage() {
           </p>
           <div className="space-y-4">
             {jobs.map((job) => (
+              <div key={job.id} className="space-y-2">
               <DriverJobCard
-                key={job.id}
                 job={{
                   id: job.id,
                   type: job.type,
@@ -55,6 +60,11 @@ export default async function DriverViewPage() {
                   })),
                 }}
               />
+              {objectionFor.get(job.id) && job.status !== "COMPLETED" && job.status !== "CANCELLED" && (
+                <div className="rounded-lg border border-line bg-white p-3"><p className="mb-2 text-sm">If the customer says no at the door, do not take the appliance.</p>
+                  <NoteAction label="Customer objected — end the visit" noteLabel="What happened" secondary run={objectedAction.bind(null, objectionFor.get(job.id)!)} /></div>
+              )}
+              </div>
             ))}
           </div>
         </>

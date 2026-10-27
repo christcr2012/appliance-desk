@@ -29,6 +29,7 @@ import { listRentalEndingSoon, listPickupUnscheduled, listVisitNeedsAssignment, 
 import { requireRole } from "@/lib/session";
 import { listBankPaymentSlow } from "./bank-payment-attention";
 import { listDisputeAttention } from "./dispute-attention";
+import { listCollectionAttention } from "./collection-attention";
 import { listLateFeeReview } from "./late-fee-attention";
 import { listStartingValuesAttention } from "@/domains/decisions/attention";
 import { notInFlightWhere } from "@/domains/billing/in-flight";
@@ -1135,6 +1136,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
   // DEC-2: owner only (the starting values are the owner's to review).
   const startingValues = role === "OWNER" ? await listStartingValuesAttention() : noTurningPoints;
   const paymentDisputes = canViewFinance ? await listDisputeAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
+  const collectionSteps = canViewFinance ? await listCollectionAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const lateFeeReview = canViewFinance ? await listLateFeeReview(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
   const heldPayments = canViewFinance ? await listHeldPaymentAttention(EXCEPTION_CATEGORY_CAP) : noTurningPoints;
   const depositDecisions = canViewFinance ? await listDepositDecisionAttention(EXCEPTION_CATEGORY_CAP, now) : noTurningPoints;
@@ -1176,6 +1178,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
     ...bankPaymentsSlow.rows,
     ...startingValues.rows,
     ...paymentDisputes.rows,
+    ...collectionSteps.rows,
     ...newLeadContact.rows,
     ...leadFollowUps.rows,
     ...complianceDue.rows,
@@ -1245,6 +1248,7 @@ export async function getExceptionOverview(): Promise<ExceptionOverview> {
       ["SIGNED_DELIVERY_UNSCHEDULED", signedDeliveryAttention],
       ["BANK_PAYMENT_SLOW", bankPaymentsSlow],
       ["PAYMENT_DISPUTE", paymentDisputes],
+      ["COLLECTION_STEP", collectionSteps],
       ["LATE_FEE_REVIEW", lateFeeReview],
       ["DECISIONS_STARTING_VALUES", startingValues],
       ["HELD_PAYMENT_DECISION", heldPayments],
