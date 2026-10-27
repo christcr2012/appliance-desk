@@ -6,7 +6,7 @@ Build spec: `docs/build-specs/engines/RECORDS-VAULT.md` sections 8–9. Requeste
 - [x] Every walkthrough in the spec, each with steps, links (https), the record it fills and automatic checks where possible.
 - [x] Progress per walkthrough; next suggested by what it unlocks soonest; Today card until done or "Not for me".
 - [x] Owner checklist rows link to their walkthrough instead of repeating steps.
-- [ ] Checks never reveal secret values (presence only); `ci` green; every review comment read. (Checks are presence-only by construction and tested; the ci/review half completes in the PR.)
+- [x] Checks never reveal secret values (presence only); `ci` green; every review comment read.
 
 ## Execution packet (2026-10-27, base `9f7671dd` — VAULT-1 merged)
 
@@ -32,6 +32,8 @@ and OWNER-CHECKLIST link updates. **No migration** (per the card plan).
 - Integration (throwaway Postgres): ADMIN/STAFF/CUSTOMER get not-found from every guide read/write; progress folds correctly through done → reopened → done and dismiss → restore; a check that passes marks its step done even with no manual mark; a manual mark never beats a failing check's truth about numbers/keys (step shows done-by-you, check shown separately); saving a number through a step lands encrypted on the record with last-4 only in the DTO; the To do names the suggested walkthrough and clears when all are done or dismissed.
 
 ## Progress
+MERGED 2026-10-27 via PR #661, squash commit 39d4bf8e on main (final head 716515bb; CI fully green at the exact head — secret scan, typecheck/lint, all three unit shards, all five browser shards; both Codex threads replied to and resolved before merging).
+
 Review round on PR #661 (2026-10-27): CI's unit shards caught a real miss — the new /desk/setup-guide address was not in the ACC-5 job-role screen registry (fixed: it belongs to the management screen, owner-only like continuity/insurance). Codex raised two findings, both real, both fixed with regression tests: (1) RECORD_EXISTS checked steps for records that merely exist — and the starter checklist creates every record empty, so adding starters silently "finished" account/policy steps; the check now requires the record itself to have been marked done (its lastDoneOn), and describeCheck says so. (2) The backups step checked the PUBLIC photo token (BLOB_READ_WRITE_TOKEN); record files use the private store, so the step now checks PRIVATE_PHOTO_BLOB_READ_WRITE_TOKEN + PRIVATE_PHOTO_BLOB_STORE_ID via a new ENV_ALL_PRESENT check (all named settings present, values never read beyond presence).
 
 Packet and drift check written 2026-10-27 (this commit also lands the VAULT-1 merged close-out in this card file set: VAULT-1 card acceptance + work-index). Built the same day: `src/domains/setup/walkthroughs.ts` (15 walkthroughs, pure data + suggestion order) and `guide.ts` (audit-folded progress, presence/record/filing-account checks, step saves through the VAULT-1 domain), screens at `/desk/setup-guide` + `/[key]`, the `SETUP_GUIDE` To do, the More-menu entry, checklist links, OWNER-GUIDE section. Local proof on the merged (CMP-2) tree: 130 tests across the setup, records, paperwork, exceptions, menu and guide suites; typecheck and lint clean; migration and shard checks clean; the range secret scan clean. The local browser launcher's build step exceeds its 600-second cap in this VM (three attempts, including one warm), so the browser spec's local run is replaced by the checks phase plus PR CI as the browser gate — stated in the PR.

@@ -1,3 +1,28 @@
+## October 27 — VAULT-2: Logins vault and emergency access (in build)
+
+Branch `ai/vivienne/vault-2`. New **More → Logins vault** (`/desk/vault`, owner only — every other role gets
+the same not-found answer as a missing page): the business's logins with usernames, passwords and notes
+encrypted under their own key (`VAULT_ENCRYPTION_KEY`, separate from the compliance key; a field-crypto trio
+beside CMP-1's, whose behaviour is unchanged). Lists show titles, websites and masked usernames only. Show,
+Copy and saving a secret all need an **unlock**: a fresh second-step code verified by Better Auth itself (the
+same methods as sign-in), good for 5 minutes on that session only; every reveal is audited with the field
+name, never the value; shown values hide after 30 seconds. Five wrong codes in 15 minutes lock the vault for
+30 minutes and email the owner (a new `vault_locked` account notice); sign-out-everywhere, password/email
+change and second-step change clear unlocks at the same points ACC-6 forgets devices. A grep test keeps the
+four encrypted-secret column names inside the vault and paperwork domains only (SETUP-1's guide now reads
+record facts through a paperwork helper). Logins link to VAULT-1 records both ways (the record page shows
+"Login: …"); rotation reminders land on To do as a `VAULT` item when a login carries a change-every setting.
+Backups keep credentials still encrypted; unlock rows and emergency requests are never backed up.
+**Emergency access ships switched off**: an owner setting (contact name/email/phone, wait 1–30 days, starting
+value 7) plus a one-time link whose token is stored only as a hash. The public `/emergency/[token]` page runs
+the flow — request (owner reminded by email and text at the start), a daily cron sweep reminding halfway and
+a day before the wait ends, deny at any time, then a code sent to the SAVED contact only, and one download
+(records pack + the vault decrypted into a PDF) that works once inside 24 hours. Filed DQ-VAULT-BANK (bank
+logins allowed, with the honest on-screen note) and DQ-CONT-SUCCESSOR. Proof: `tests/vault.test.ts` (masking,
+rotation, key separation), `tests/vault-secret-fields-grep.test.ts`, `tests/vault-integration.test.ts` (real
+Postgres, serial: owner boundary, unlock lifecycle, lockout, emergency end to end), `e2e/vault.spec.ts`
+(browser-e). Next for this lane: **ACCT-1** (accountant sign-in), which also unblocks Lane 4's TAXBEN-2.
+
 ## October 27 — Lane 1 AR-11 swipe-to-reveal actions (PR #662, CI green before close-out docs)
 GitHub Actions `ci` passed at `fd3df4ba` (run 40492854181) after fixing one ambiguous browser
 selector; all unit and browser groups, checks and secret scan green. Codex review's two real findings

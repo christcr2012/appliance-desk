@@ -279,6 +279,21 @@ export const ACCESSIBILITY_ROUTES: AccessibilityRoute[] = [
   { path: "/desk/paperwork", role: "OWNER", fixture: "/desk/paperwork" },
   { path: "/desk/setup-guide", role: "OWNER", fixture: "/desk/setup-guide" },
   { path: "/desk/setup-guide/[key]", role: "OWNER", fixture: "/desk/setup-guide/ein" },
+  { path: "/desk/vault", role: "OWNER", fixture: "/desk/vault" },
+  {
+    path: "/desk/vault/[id]",
+    role: "OWNER",
+    fixture: "A generated vault credential id",
+    manualOnlyReason:
+      "Vault logins are created by the owner; the CI seed has none. Item behavior is covered by real-Postgres tests.",
+  },
+  {
+    path: "/emergency/[token]",
+    role: "PUBLIC",
+    fixture: "A generated emergency link token",
+    manualOnlyReason:
+      "Emergency links are issued by the owner on demand and ship switched off; the public page behavior is covered by real-Postgres tests.",
+  },
   { path: "/desk/vehicle", role: "OWNER", fixture: "/desk/vehicle" },
   { path: "/desk/insurance", role: "OWNER", fixture: "/desk/insurance" },
   {
