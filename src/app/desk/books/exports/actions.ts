@@ -7,7 +7,7 @@ import { registerQboDelivery, decideQboDelivery, type DeliveryDecision } from "@
 import type { ExportMode, ExportTarget } from "@prisma/client";
 
 export async function runBookExportAction(form:FormData) {
-  const session=await requireRole("OWNER","ADMIN");
+  const session=await requireRole("OWNER","ADMIN","ACCOUNTANT");
   const field=(name:string)=>String(form.get(name)??"").trim();
   const input:ExportInput={
     target:field("target") as ExportTarget,mode:field("mode") as ExportMode,
