@@ -3,6 +3,10 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 
 const SHARED_SETTINGS_TESTS = [
+  "tests/ops8-continuity-integration.test.ts", // OPS-8 changes and restores the shared continuity details and the charges-paused switch.
+  "tests/ops3-vehicle-integration.test.ts", // OPS-3 changes and restores the shared mileage method and medical-card setting.
+  "tests/ops4-insurance-integration.test.ts", // OPS-4 changes and restores the shared insurance reminder days and workers' compensation status.
+  "tests/ops7-privacy-integration.test.ts", // OPS-7 changes and restores the shared privacy settings (retention years, purge switch).
   "tests/job-click-to-call-integration.test.ts", // COM-N2 changes and restores the shared phone policy.
   "tests/telecom-reporting-settings-integration.test.ts", // COM-N4 changes and restores the shared phone policy.
   "tests/com-n1c-workflow-integration.test.ts", // COM-N1C changes and restores the shared phone/text policy, text switch and approved wording.
@@ -39,6 +43,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/ba1-books-autopilot-integration.test.ts", // BA-1 modifies singleton Books dates and depreciation.
   "tests/ba1-nightly-autopilot-integration.test.ts", // BA-1 changes the singleton Books start and health settings.
   "tests/ba2-books-setup-integration.test.ts", // BA-2 owns the Books singleton and closes/reopens historical periods.
+  "tests/ba3-month-review-integration.test.ts", // BA-3 opens/locks periods and owns Books singleton.
   "tests/books-export-delivery-integration.test.ts", // K-CASH-6 also updates/restores singleton Books opening.
   "tests/books-exports-integration.test.ts", // K-5 temporarily sets shared Books opening date and verifies export provenance.
   "tests/telecom-statement-books-integration.test.ts", // COM-N3 changes booksStartDate and posts expenses.
@@ -70,6 +75,7 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-prepaid-invoice-integration.test.ts",
   "tests/tax-rate-change-integration.test.ts",
   "tests/rules-as-of-integration.test.ts", // TFA-1 changes and restores the shared timing settings; its rule versions are test-scoped.
+  "tests/rules-observation-integration.test.ts", // TFA-3 approves and dismisses rule readings; its versions are test-scoped and removed after.
   "tests/tax-refund-evidence-integration.test.ts",
   "tests/tax-stripe-invoice-mirror-integration.test.ts",
   "tests/agreements-term-integration.test.ts",
@@ -127,6 +133,8 @@ const SHARED_SETTINGS_TESTS = [
   "tests/tax-filing-reminders-integration.test.ts",
   "tests/tax-invoice-lines-integration.test.ts",
   "tests/tax-official-rate-auto-apply-integration.test.ts",
+  "tests/tax-official-source-watch-integration.test.ts", // TFA-3 toggles the shared watch switch and the seeded watches' active flags while it runs.
+  "tests/tax-official-rate-metadata-integration.test.ts", // Asserts on the seeded watches' active flags and the settings singleton the watch suites toggle.
   "tests/tax-overview.test.ts",
   "tests/tax-return-actions-integration.test.ts",
   "tests/tax-setup-actions-integration.test.ts",
