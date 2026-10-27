@@ -67,7 +67,8 @@ it("refuses before any money is read (staff never reach bills)", async () => {
   const denial = new Error("denied");
   m.guard.mockRejectedValue(denial);
   await expect(Page({ searchParams: Promise.resolve({}) })).rejects.toBe(denial);
-  expect(m.guard).toHaveBeenCalledWith("OWNER", "ADMIN");
+  // ACCT-1: the accountant gets the read-only list too; staff stay refused.
+  expect(m.guard).toHaveBeenCalledWith("OWNER", "ADMIN", "ACCOUNTANT");
   expect(m.bills).not.toHaveBeenCalled();
   expect(m.counts).not.toHaveBeenCalled();
   expect(m.totals).not.toHaveBeenCalled();
